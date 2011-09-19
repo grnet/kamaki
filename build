@@ -1,0 +1,40 @@
+#!/usr/bin/env python
+
+import os
+import stat
+
+SRCDIR = 'kamaki'
+SRC = 'kamaki.py'
+CLIENT = 'client.py'
+DSTDIR = 'bin'
+DST = 'kamaki'
+
+
+def main():
+    if not os.path.exists(DSTDIR):
+        os.makedirs(DSTDIR)
+    dstpath = os.path.join(DSTDIR, DST)
+    dst = open(dstpath, 'w')
+    
+    srcpath = os.path.join(SRCDIR, SRC)
+    clientpath = os.path.join(SRCDIR, CLIENT)
+
+    for line in open(srcpath):
+        if line.startswith('from client import'):
+            for l in open(clientpath):
+                if l.startswith('#'):
+                    continue    # Skip comments
+                dst.write(l)
+        else:
+            dst.write(line)
+    
+    dst.close()
+    
+    # Make file executable
+    mode = stat.S_IMODE(os.stat(dstpath).st_mode)
+    mode |= 0111
+    os.chmod(dstpath, mode)
+
+
+if __name__ == '__main__':
+    main()
