@@ -246,11 +246,28 @@ class CreateServer(Command):
                             help='use flavor FLAVOR_ID')
         parser.add_option('-i', dest='image', metavar='IMAGE_ID', default=1,
                             help='use image IMAGE_ID')
-
+        parser.add_option('--personality', dest='personality', action='append',
+                            metavar='PATH,SERVERPATH',
+                            help='add a personality file')
+    
     def main(self, name):
         flavor_id = int(self.flavor)
         image_id = int(self.image)
-        reply = self.client.create_server(name, flavor_id, image_id)
+        personality = []
+        if self.personality:
+            for p in self.personality:
+                lpath, sep, rpath = p.partition(',')
+                if not lpath or not rpath:
+                    logging.error("Invalid personality argument '%s'", p)
+                    return
+                if not os.path.exists(lpath):
+                    logging.error("File %s does not exist", lpath)
+                    return
+                with open(lpath) as f:
+                    personality.append((rpath, f.read()))
+        
+        reply = self.client.create_server(name, flavor_id, image_id,
+                                            personality)
         print_dict(reply)
 
 

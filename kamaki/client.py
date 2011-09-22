@@ -34,6 +34,7 @@
 import json
 import logging
 
+from base64 import b64encode
 from httplib import HTTPConnection, HTTPSConnection
 from urlparse import urlparse
 
@@ -126,8 +127,17 @@ class Client(object):
         reply = self._get(path)
         return reply['server']
     
-    def create_server(self, name, flavor, image):
+    def create_server(self, name, flavor, image, personality=None):
+        """personality is a list of (path, data) tuples"""
+        
         req = {'name': name, 'flavorRef': flavor, 'imageRef': image}
+        if personality:
+            p = []
+            for path, data in personality:
+                contents = b64encode(data)
+                p.append({'path': path, 'contents': contents})
+            req['personality'] = p
+        
         body = json.dumps({'server': req})
         reply = self._post('/servers', body)
         return reply['server']
