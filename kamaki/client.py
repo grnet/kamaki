@@ -40,9 +40,21 @@ from urlparse import urlparse
 
 
 class ClientError(Exception):
-    def __init__(self, message, details=''):
+    def __init__(self, message, status=0, details=''):
         self.message = message
+        self.status = status
         self.details = details
+
+    def __int__(self):
+        return int(self.status)
+
+    def __str__(self):
+        r = self.message
+        if self.status:
+            r += "\nHTTP Status: %d" % self.status
+        if self.details:
+            r += "\nDetails: \n%s" % self.details
+        return r
 
 
 class Client(object):
@@ -58,7 +70,7 @@ class Client(object):
         elif p.scheme == 'https':
             conn = HTTPSConnection(p.netloc)
         else:
-            raise ClientError("Unknown URL scheme")
+            raise ClientError('Unknown URL scheme')
         
         headers = {'X-Auth-Token': self.token}
         if body:
@@ -88,7 +100,7 @@ class Client(object):
         try:
             reply = json.loads(buf) if buf else {}
         except ValueError:
-            raise ClientError('Invalid response from the server', buf)
+            raise ClientError('Did not receive valid JSON reply', buf)
         
         if resp.status != success:
             if len(reply) == 1:
@@ -96,7 +108,7 @@ class Client(object):
                 val = reply[key]
                 message = '%s: %s' % (key, val.get('message', ''))
                 details = val.get('details', '')
-                raise ClientError(message, details)
+                raise ClientError(message, resp.status, details)
             else:
                 raise ClientError('Invalid response from the server')
 
