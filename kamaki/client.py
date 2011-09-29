@@ -100,7 +100,8 @@ class Client(object):
         try:
             reply = json.loads(buf) if buf else {}
         except ValueError:
-            raise ClientError('Did not receive valid JSON reply', buf)
+            raise ClientError('Did not receive valid JSON reply',
+                              resp.status, buf)
         
         if resp.status != success:
             if len(reply) == 1:
