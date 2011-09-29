@@ -39,6 +39,9 @@ from httplib import HTTPConnection, HTTPSConnection
 from urlparse import urlparse
 
 
+log = logging.getLogger('kamaki.client')
+
+
 class ClientError(Exception):
     def __init__(self, message, status=0, details=''):
         self.message = message
@@ -77,24 +80,24 @@ class Client(object):
             headers['Content-Type'] = 'application/json'
             headers['Content-Length'] = len(body)
         
-        logging.debug('%s', '>' * 40)
-        logging.debug('%s %s', method, path)
+        log.debug('%s', '>' * 40)
+        log.debug('%s %s', method, path)
 
         for key, val in headers.items():
-            logging.debug('%s: %s', key, val)
-        logging.debug('')
+            log.debug('%s: %s', key, val)
+        log.debug('')
         if body:
-            logging.debug(body)
-            logging.debug('')
+            log.debug(body)
+            log.debug('')
         
         conn.request(method, path, body, headers)
 
         resp = conn.getresponse()
-        logging.debug('%s', '<' * 40)
-        logging.info('%d %s', resp.status, resp.reason)
+        log.debug('%s', '<' * 40)
+        log.info('%d %s', resp.status, resp.reason)
         for key, val in resp.getheaders():
-            logging.info('%s: %s', key.capitalize(), val)
-        logging.info('')
+            log.info('%s: %s', key.capitalize(), val)
+        log.info('')
         
         buf = resp.read()
         try:

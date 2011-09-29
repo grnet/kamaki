@@ -50,6 +50,9 @@ TOKEN_ENV = 'KAMAKI_TOKEN'
 RCFILE = '.kamakirc'
 
 
+log = logging.getLogger('kamaki')
+
+
 def print_addresses(addresses, margin):
     for address in addresses:
         if address['id'] == 'public':
@@ -156,20 +159,13 @@ class Command(object):
         self.parser = parser
     
     def _init_logging(self):
-        ch = logging.StreamHandler()
-        ch.setFormatter(logging.Formatter('%(message)s'))
-        logger = logging.getLogger()
-        logger.addHandler(ch)
-        
         if self.debug:
-            level = logging.DEBUG
+            log.setLevel(logging.DEBUG)
         elif self.verbose:
-            level = logging.INFO
+            log.setLevel(logging.INFO)
         else:
-            level = logging.WARNING
+            log.setLevel(logging.WARNING)
         
-        logger.setLevel(level)
-    
     def _init_conf(self):
         if not self.api:
             self.api = os.environ.get(API_ENV, None)
@@ -258,10 +254,10 @@ class CreateServer(Command):
             for p in self.personality:
                 lpath, sep, rpath = p.partition(',')
                 if not lpath or not rpath:
-                    logging.error("Invalid personality argument '%s'", p)
+                    log.error("Invalid personality argument '%s'", p)
                     return
                 if not os.path.exists(lpath):
-                    logging.error("File %s does not exist", lpath)
+                    log.error("File %s does not exist", lpath)
                     return
                 with open(lpath) as f:
                     personality.append((rpath, f.read()))
@@ -663,9 +659,13 @@ def main():
         cmd = cls(argv)
         cmd.execute()
     except ClientError, err:
-        logging.error('%s', err.message)
-        logging.info('%s', err.details)
+        log.error('%s', err.message)
+        log.info('%s', err.details)
 
 
 if __name__ == '__main__':
+    ch = logging.StreamHandler()
+    ch.setFormatter(logging.Formatter('%(message)s'))
+    log.addHandler(ch)
+    
     main()
