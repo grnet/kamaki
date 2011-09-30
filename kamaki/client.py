@@ -134,19 +134,32 @@ class Client(object):
     # Servers
     
     def list_servers(self, detail=False):
+        """List servers, returned detailed output if detailed is True"""
         path = '/servers/detail' if detail else '/servers'
         reply = self._get(path)
         return reply['servers']['values']
     
     def get_server_details(self, server_id):
+        """Return detailed output on a server specified by its id"""
         path = '/servers/%d' % server_id
         reply = self._get(path)
         return reply['server']
     
-    def create_server(self, name, flavor, image, personality=None):
-        """personality is a list of (path, data) tuples"""
+    def create_server(self, name, flavor_id, image_id, personality=None):
+        """Submit request to create a new server
+
+        The flavor_id specifies the hardware configuration to use,
+        the image_id specifies the OS Image to be deployed inside the new
+        server.
+
+        The personality argument is a list of (file path, file contents)
+        tuples, describing files to be injected into the server upon creation.
+
+        The call returns a dictionary describing the newly created server.
+
+        """
         
-        req = {'name': name, 'flavorRef': flavor, 'imageRef': image}
+        req = {'name': name, 'flavorRef': flavor_id, 'imageRef': image_id}
         if personality:
             p = []
             for path, data in personality:
@@ -159,37 +172,54 @@ class Client(object):
         return reply['server']
     
     def update_server_name(self, server_id, new_name):
+        """Update the name of the server as reported by the API.
+
+        This call does not modify the hostname actually used by the server
+        internally.
+
+        """
         path = '/servers/%d' % server_id
         body = json.dumps({'server': {'name': new_name}})
         self._put(path, body)
     
     def delete_server(self, server_id):
+        """Submit a deletion request for a server specified by id"""
         path = '/servers/%d' % server_id
         self._delete(path)
     
     def reboot_server(self, server_id, hard=False):
+        """Submit a reboot request for a server specified by id"""
         path = '/servers/%d/action' % server_id
         type = 'HARD' if hard else 'SOFT'
         body = json.dumps({'reboot': {'type': type}})
         self._post(path, body)
     
     def start_server(self, server_id):
+        """Submit a startup request for a server specified by id"""
         path = '/servers/%d/action' % server_id
         body = json.dumps({'start': {}})
         self._post(path, body)
     
     def shutdown_server(self, server_id):
+        """Submit a shutdown request for a server specified by id"""
         path = '/servers/%d/action' % server_id
         body = json.dumps({'shutdown': {}})
         self._post(path, body)
     
     def get_server_console(self, server_id):
+        """Get a VNC connection to the console of a server specified by id"""
         path = '/servers/%d/action' % server_id
         body = json.dumps({'console': {'type': 'vnc'}})
         reply = self._cmd('POST', path, body, 200)
         return reply['console']
     
     def set_firewall_profile(self, server_id, profile):
+        """Set the firewall profile for the public interface of a server
+
+        The server is specified by id, the profile argument
+        is one of (ENABLED, DISABLED, PROTECTED).
+
+        """
         path = '/servers/%d/action' % server_id
         body = json.dumps({'firewallProfile': {'profile': profile}})
         self._cmd('POST', path, body, 202)
