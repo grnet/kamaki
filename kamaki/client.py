@@ -80,26 +80,27 @@ class Client(object):
             headers['Content-Type'] = 'application/json'
             headers['Content-Length'] = len(body)
         
-        log.debug('%s', '>' * 40)
+        log.debug('>' * 50)
         log.debug('%s %s', method, path)
-
         for key, val in headers.items():
             log.debug('%s: %s', key, val)
-        log.debug('')
         if body:
-            log.debug(body)
             log.debug('')
+            log.debug(body)
         
         conn.request(method, path, body, headers)
-
+        
         resp = conn.getresponse()
-        log.debug('%s', '<' * 40)
+        buf = resp.read()
+        
+        log.debug('<' * 50)
         log.info('%d %s', resp.status, resp.reason)
         for key, val in resp.getheaders():
             log.info('%s: %s', key.capitalize(), val)
         log.info('')
+        log.debug(buf)
+        log.debug('-' * 50)
         
-        buf = resp.read()
         try:
             reply = json.loads(buf) if buf else {}
         except ValueError:
