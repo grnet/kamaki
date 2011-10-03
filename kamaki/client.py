@@ -210,7 +210,7 @@ class Client(object):
         """Get a VNC connection to the console of a server specified by id"""
         path = '/servers/%d/action' % server_id
         body = json.dumps({'console': {'type': 'vnc'}})
-        reply = self._cmd('POST', path, body, 200)
+        reply = self._post(path, body, 200)
         return reply['console']
     
     def set_firewall_profile(self, server_id, profile):
@@ -222,7 +222,7 @@ class Client(object):
         """
         path = '/servers/%d/action' % server_id
         body = json.dumps({'firewallProfile': {'profile': profile}})
-        self._cmd('POST', path, body, 202)
+        self._post(path, body, 202)
     
     def list_server_addresses(self, server_id, network=None):
         path = '/servers/%d/ips' % server_id
