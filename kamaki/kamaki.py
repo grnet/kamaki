@@ -387,7 +387,8 @@ class UpdateServerMetadata(Command):
     description = 'update server metadata'
     
     def main(self, server_id, key, val):
-        reply = self.client.update_server_metadata(int(server_id), key, val)
+        metadata = {key: val}
+        reply = self.client.update_server_metadata(int(server_id), **metadata)
         print_dict(reply)
 
 
@@ -515,7 +516,8 @@ class UpdateImageMetadata(Command):
     description = 'update image metadata'
     
     def main(self, image_id, key, val):
-        reply = self.client.update_image_metadata(int(image_id), key, val)
+        metadata = {key: val}
+        reply = self.client.update_image_metadata(int(image_id), **metadata)
         print_dict(reply)
 
 

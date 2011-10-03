@@ -245,9 +245,9 @@ class Client(object):
         reply = self._put(path, body, 201)
         return reply['meta']
     
-    def update_server_metadata(self, server_id, key, val):
+    def update_server_metadata(self, server_id, **metadata):
         path = '/servers/%d/meta' % server_id
-        body = json.dumps({'metadata': {key: val}})
+        body = json.dumps({'metadata': metadata})
         reply = self._post(path, body, 201)
         return reply['metadata']
     
@@ -309,9 +309,9 @@ class Client(object):
         reply = self._put(path, body, 201)
         reply['meta']
 
-    def update_image_metadata(self, image_id, key, val):
+    def update_image_metadata(self, image_id, **metadata):
         path = '/images/%d/meta' % image_id
-        body = json.dumps({'metadata': {key: val}})
+        body = json.dumps({'metadata': metadata})
         reply = self._post(path, body, 201)
         return reply['metadata']
 
