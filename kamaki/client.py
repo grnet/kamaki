@@ -34,7 +34,6 @@
 import json
 import logging
 
-from base64 import b64encode
 from httplib import HTTPConnection, HTTPSConnection
 from urlparse import urlparse
 
@@ -162,11 +161,7 @@ class Client(object):
         
         req = {'name': name, 'flavorRef': flavor_id, 'imageRef': image_id}
         if personality:
-            p = []
-            for path, data in personality:
-                contents = b64encode(data)
-                p.append({'path': path, 'contents': contents})
-            req['personality'] = p
+            req['personality'] = personality
         
         body = json.dumps({'server': req})
         reply = self._post('/servers', body)

@@ -38,8 +38,11 @@ import logging
 import os
 import sys
 
+from base64 import b64encode
 from collections import defaultdict
+from grp import getgrgid
 from optparse import OptionParser
+from pwd import getpwuid
 
 from client import Client, ClientError
 
@@ -239,31 +242,46 @@ class CreateServer(Command):
 
     def add_options(self, parser):
         parser.add_option('-f', dest='flavor', metavar='FLAVOR_ID', default=1,
-                            help='use flavor FLAVOR_ID')
+                        help='use flavor FLAVOR_ID')
         parser.add_option('-i', dest='image', metavar='IMAGE_ID', default=1,
-                            help='use image IMAGE_ID')
-        parser.add_option('--personality', dest='personality', action='append',
-                            metavar='PATH,SERVERPATH',
-                            help='add a personality file')
+                        help='use image IMAGE_ID')
+        parser.add_option('--personality',
+                        dest='personalities',
+                        action='append',
+                        default=[],
+                        metavar='PATH[,SERVER PATH[,OWNER[,GROUP,[MODE]]]]',
+                        help='add a personality file')
     
     def main(self, name):
         flavor_id = int(self.flavor)
         image_id = int(self.image)
-        personality = []
-        if self.personality:
-            for p in self.personality:
-                lpath, sep, rpath = p.partition(',')
-                if not lpath or not rpath:
-                    log.error("Invalid personality argument '%s'", p)
-                    return
-                if not os.path.exists(lpath):
-                    log.error("File %s does not exist", lpath)
-                    return
-                with open(lpath) as f:
-                    personality.append((rpath, f.read()))
+        personalities = []
+        for personality in self.personalities:
+            p = personality.split(',')
+            p.extend([None] * (5 - len(p)))     # Fill missing fields with None
+            
+            path = p[0]
+            
+            if not path:
+                log.error("Invalid personality argument '%s'", p)
+                return
+            if not os.path.exists(path):
+                log.error("File %s does not exist", path)
+                return
+            
+            with open(path) as f:
+                contents = b64encode(f.read())
+            
+            st = os.stat(path)
+            personalities.append({
+                'path': p[1] or os.path.abspath(path),
+                'owner': p[2] or getpwuid(st.st_uid).pw_name,
+                'group': p[3] or getgrgid(st.st_gid).gr_name,
+                'mode': int(p[4]) if p[4] else 0x7777 & st.st_mode,
+                'contents': contents})
         
         reply = self.client.create_server(name, flavor_id, image_id,
-                                            personality)
+                                            personalities)
         print_dict(reply)
 
 
