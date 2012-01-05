@@ -1,32 +1,49 @@
 #!/usr/bin/env python
 
 import os
+import shutil
 import stat
 
+from os.path import exists, join
+
+
 SRCDIR = 'kamaki'
-SRC = 'kamaki.py'
-CLIENT = 'client.py'
 DSTDIR = 'bin'
 DST = 'kamaki'
 
+FILES = ('config.py', 'utils.py', 'client.py', 'cli.py')
+
+
+def cat(path, dst, skipheader=True):
+    dst.write('\n')
+    
+    in_header = True
+    for line in open(path):
+        if in_header and line.strip() and not line.startswith('#'):
+            in_header = False
+        
+        if line.startswith('from kamaki.'):
+            continue    # Skip local imports
+        
+        if skipheader and in_header:
+            continue
+        
+        dst.write(line)
+
 
 def main():
-    if not os.path.exists(DSTDIR):
+    if not exists(DSTDIR):
         os.makedirs(DSTDIR)
-    dstpath = os.path.join(DSTDIR, DST)
+    dstpath = join(DSTDIR, DST)
+    
     dst = open(dstpath, 'w')
     
-    srcpath = os.path.join(SRCDIR, SRC)
-    clientpath = os.path.join(SRCDIR, CLIENT)
-
-    for line in open(srcpath):
-        if line.startswith('from client import'):
-            for l in open(clientpath):
-                if l.startswith('#'):
-                    continue    # Skip comments
-                dst.write(l)
-        else:
-            dst.write(line)
+    dst.write('#!/usr/bin/env python\n')
+    
+    cat(join(SRCDIR, '__init__.py'), dst, skipheader=False)
+    
+    for file in FILES:
+        cat(join(SRCDIR, file), dst)
     
     dst.close()
     

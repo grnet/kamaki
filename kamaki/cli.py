@@ -76,9 +76,9 @@ from grp import getgrgid
 from optparse import OptionParser
 from pwd import getpwuid
 
-from client import ComputeClient, ImagesClient, ClientError
-from config import Config, ConfigError
-from utils import OrderedDict, print_addresses, print_dict, print_items
+from kamaki.client import ComputeClient, ImagesClient, ClientError
+from kamaki.config import Config, ConfigError
+from kamaki.utils import OrderedDict, print_addresses, print_dict, print_items
 
 
 # Path to the file that stores the configuration
