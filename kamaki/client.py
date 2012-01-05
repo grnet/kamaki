@@ -129,8 +129,9 @@ class Client(object):
     
     def _delete(self, path, success=204):
         return self._cmd('DELETE', path, None, success)
-    
-    
+
+
+class ComputeClient(Client):
     # Servers
     
     def list_servers(self, detail=False):
@@ -350,3 +351,9 @@ class Client(object):
         path = '/networks/%s/action' % network_id
         body = json.dumps({'remove': {'serverRef': server_id}})
         self._post(path, body)
+
+
+class ImagesClient(Client):
+    def list_public(self, detail=False):
+        path = '/images/detail' if detail else '/images/'
+        return self._get(path)

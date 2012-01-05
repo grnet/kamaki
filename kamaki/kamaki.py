@@ -33,230 +33,177 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+"""
+To add a command create a new class and add a 'command' decorator. The class
+must have a 'main' method which will contain the code to be executed.
+Optionally a command can implement an 'update_parser' class method in order
+to add command line arguments, or modify the OptionParser in any way.
+
+The name of the class is important and it will determine the name and grouping
+of the command. This behavior can be overriden with the 'group' and 'name'
+decorator arguments:
+
+    @command(api='nova')
+    class server_list(object):
+        # This command will be named 'list' under group 'server'
+        ...
+
+    @command(api='nova', name='ls')
+    class server_list(object):
+        # This command will be named 'ls' under group 'server'
+        ...
+
+The docstring of a command class will be used as the command description in
+help messages, unless overriden with the 'description' decorator argument.
+
+The syntax of a command will be generated dynamically based on the signature
+of the 'main' method, unless overriden with the 'syntax' decorator argument:
+
+    def main(self, server_id, network=None):
+        # This syntax of this command will be: '<server id> [network]'
+        ...
+
+The order of commands is important, it will be preserved in the help output.
+"""
+
 import inspect
 import logging
 import os
 import sys
 
 from base64 import b64encode
-from collections import defaultdict
 from grp import getgrgid
 from optparse import OptionParser
 from pwd import getpwuid
 
-from client import Client, ClientError
+from client import ComputeClient, ImagesClient, ClientError
+from config import Config, ConfigError
+from utils import OrderedDict, print_addresses, print_dict, print_items
 
 
-API_ENV = 'KAMAKI_API'
-URL_ENV = 'KAMAKI_URL'
-TOKEN_ENV = 'KAMAKI_TOKEN'
-RCFILE = '.kamakirc'
+# Path to the file that stores the configuration
+CONFIG_PATH = os.path.expanduser('~/.kamakirc')
 
+# Name of a shell variable to bypass the CONFIG_PATH value
+CONFIG_ENV = 'KAMAKI_CONFIG'
+
+# The defaults also determine the allowed keys
+CONFIG_DEFAULTS = {
+    'apis': 'nova synnefo glance plankton',
+    'token': '',
+    'compute_url': 'https://okeanos.grnet.gr/api/v1',
+    'images_url': 'https://okeanos.grnet.gr/plankton',
+}
 
 log = logging.getLogger('kamaki')
 
-
-def print_addresses(addresses, margin):
-    for address in addresses:
-        if address['id'] == 'public':
-            net = 'public'
-        else:
-            net = '%s/%s' % (address['id'], address['name'])
-        print '%s:' % net.rjust(margin + 4)
-        
-        ether = address.get('mac', None)
-        if ether:
-            print '%s: %s' % ('ether'.rjust(margin + 8), ether)
-        
-        firewall = address.get('firewallProfile', None)
-        if firewall:
-            print '%s: %s' % ('firewall'.rjust(margin + 8), firewall)
-        
-        for ip in address.get('values', []):
-            key = 'inet' if ip['version'] == 4 else 'inet6'
-            print '%s: %s' % (key.rjust(margin + 8), ip['addr'])
+_commands = OrderedDict()
 
 
-def print_metadata(metadata, margin):
-    print '%s:' % 'metadata'.rjust(margin)
-    for key, val in metadata.get('values', {}).items():
-        print '%s: %s' % (key.rjust(margin + 4), val)
-
-
-def print_dict(d, exclude=()):
-    if not d:
-        return
-    margin = max(len(key) for key in d) + 1
+def command(api=None, group=None, name=None, description=None, syntax=None):
+    """Class decorator that registers a class as a CLI command."""
     
-    for key, val in sorted(d.items()):
-        if key in exclude:
-            continue
+    def decorator(cls):
+        grp, sep, cmd = cls.__name__.partition('_')
+        if not sep:
+            grp, cmd = None, cls.__name__
         
-        if key == 'addresses':
-            print '%s:' % 'addresses'.rjust(margin)
-            print_addresses(val.get('values', []), margin)
-            continue
-        elif key == 'metadata':
-            print_metadata(val, margin)
-            continue
-        elif key == 'servers':
-            val = ', '.join(str(x) for x in val['values'])
+        cls.api = api
+        cls.group = group or grp
+        cls.name = name or cmd
+        cls.description = description or cls.__doc__
+        cls.syntax = syntax
         
-        print '%s: %s' % (key.rjust(margin), val)
+        if cls.syntax is None:
+            # Generate a syntax string based on main's arguments
+            spec = inspect.getargspec(cls.main.im_func)
+            args = spec.args[1:]
+            n = len(args) - len(spec.defaults or ())
+            required = ' '.join('<%s>' % x.replace('_', ' ') for x in args[:n])
+            optional = ' '.join('[%s]' % x.replace('_', ' ') for x in args[n:])
+            cls.syntax = ' '.join(x for x in [required, optional] if x)
+        
+        if cls.group not in _commands:
+            _commands[cls.group] = OrderedDict()
+        _commands[cls.group][cls.name] = cls
+        return cls
+    return decorator
 
 
-def print_items(items, detail=False):
-    for item in items:
-        print '%s %s' % (item['id'], item.get('name', ''))
-        if detail:
-            print_dict(item, exclude=('id', 'name'))
-            print
-
-
-class Command(object):
-    """Abstract class.
-    
-    All commands should subclass this class.
-    """
-    
-    api = 'openstack'
-    group = '<group>'
-    name = '<command>'
-    syntax = ''
-    description = ''
-    
-    def __init__(self, argv):
-        self._init_parser(argv)
-        self._init_logging()
-        self._init_conf()
-        if self.name != '<command>':
-            self.client = Client(self.url, self.token)
-    
-    def _init_parser(self, argv):
-        parser = OptionParser()
-        parser.usage = '%%prog %s %s %s [options]' % (self.group, self.name,
-                                                        self.syntax)
-        parser.add_option('--api', dest='api', metavar='API',
-                            help='API can be either openstack or synnefo')
-        parser.add_option('--url', dest='url', metavar='URL',
-                            help='API URL')
-        parser.add_option('--token', dest='token', metavar='TOKEN',
-                            help='use token TOKEN')
-        parser.add_option('-v', action='store_true', dest='verbose',
-                            default=False, help='use verbose output')
-        parser.add_option('-d', action='store_true', dest='debug',
-                            default=False, help='use debug output')
-        
-        self.add_options(parser)
-        
-        options, args = parser.parse_args(argv)
-        
-        # Add options to self
-        for opt in parser.option_list:
-            key = opt.dest
-            if key:
-                val = getattr(options, key)
-                setattr(self, key, val)
-        
-        self.args = args
-        self.parser = parser
-    
-    def _init_logging(self):
-        if self.debug:
-            log.setLevel(logging.DEBUG)
-        elif self.verbose:
-            log.setLevel(logging.INFO)
-        else:
-            log.setLevel(logging.WARNING)
-        
-    def _init_conf(self):
-        if not self.api:
-            self.api = os.environ.get(API_ENV, None)
-        if not self.url:
-            self.url = os.environ.get(URL_ENV, None)
-        if not self.token:
-            self.token = os.environ.get(TOKEN_ENV, None)
-        
-        path = os.path.join(os.path.expanduser('~'), RCFILE)
-        if not os.path.exists(path):
-            return
-
-        for line in open(path):
-            key, sep, val = line.partition('=')
-            if not sep:
-                continue
-            key = key.strip().lower()
-            val = val.strip()
-            if key == 'api' and not self.api:
-                self.api = val
-            elif key == 'url' and not self.url:
-                self.url = val
-            elif key == 'token' and not self.token:
-                self.token = val
-    
-    def add_options(self, parser):
-        pass
-    
-    def main(self, *args):
-        pass
-    
-    def execute(self):
-        try:
-            self.main(*self.args)
-        except TypeError:
-            self.parser.print_help()
-
-
-# Server Group
-
-class ListServers(Command):
-    group = 'server'
-    name = 'list'
-    description = 'list servers'
-    
-    def add_options(self, parser):
-        parser.add_option('-l', action='store_true', dest='detail',
-                            default=False, help='show detailed output')
+@command()
+class config_list(object):
+    """list configuration options"""
     
     def main(self):
-        servers = self.client.list_servers(self.detail)
-        print_items(servers, self.detail)
+        for key, val in sorted(self.config.items()):
+            print '%s=%s' % (key, val)
 
 
-class GetServerDetails(Command):
-    group = 'server'
-    name = 'info'
-    syntax = '<server id>'
-    description = 'get server details'
+@command()
+class config_get(object):
+    """get a configuration option"""
+    
+    def main(self, key):
+        val = self.config.get(key)
+        if val is not None:
+            print val
+
+
+@command()
+class config_set(object):
+    """set a configuration option"""
+    
+    def main(self, key, val):
+        self.config.set(key, val)
+
+
+@command()
+class config_del(object):
+    """delete a configuration option"""
+    
+    def main(self, key):
+        self.config.delete(key)
+
+
+@command(api='nova')
+class server_list(object):
+    """list servers"""
+    
+    @classmethod
+    def update_parser(cls, parser):
+        parser.add_option('-l', dest='detail', action='store_true',
+                default=False, help='show detailed output')
+    
+    def main(self):
+        servers = self.client.list_servers(self.options.detail)
+        print_items(servers, self.options.detail)
+
+
+@command(api='nova')
+class server_info(object):
+    """get server details"""
     
     def main(self, server_id):
         server = self.client.get_server_details(int(server_id))
         print_dict(server)
 
 
-class CreateServer(Command):
-    group = 'server'
-    name = 'create'
-    syntax = '<server name>'
-    description = 'create server'
-
-    def add_options(self, parser):
-        parser.add_option('-f', dest='flavor', metavar='FLAVOR_ID', default=1,
-                        help='use flavor FLAVOR_ID')
-        parser.add_option('-i', dest='image', metavar='IMAGE_ID', default=1,
-                        help='use image IMAGE_ID')
-        parser.add_option('--personality',
-                        dest='personalities',
-                        action='append',
-                        default=[],
-                        metavar='PATH[,SERVER PATH[,OWNER[,GROUP,[MODE]]]]',
-                        help='add a personality file')
+@command(api='nova')
+class server_create(object):
+    """create server"""
     
-    def main(self, name):
-        flavor_id = int(self.flavor)
-        image_id = int(self.image)
+    @classmethod
+    def update_parser(cls, parser):
+        parser.add_option('--personality', dest='personalities',
+                action='append', default=[],
+                metavar='PATH[,SERVER PATH[,OWNER[,GROUP,[MODE]]]]',
+                help='add a personality file')
+        parser.epilog = "If missing, optional personality values will be " \
+                "filled based on the file at PATH if missing."
+    
+    def main(self, name, flavor_id, image_id):
         personalities = []
-        for personality in self.personalities:
+        for personality in self.options.personalities:
             p = personality.split(',')
             p.extend([None] * (5 - len(p)))     # Fill missing fields with None
             
@@ -264,10 +211,10 @@ class CreateServer(Command):
             
             if not path:
                 log.error("Invalid personality argument '%s'", p)
-                return
+                return 1
             if not os.path.exists(path):
                 log.error("File %s does not exist", path)
-                return
+                return 1
             
             with open(path) as f:
                 contents = b64encode(f.read())
@@ -280,95 +227,76 @@ class CreateServer(Command):
                 'mode': int(p[4]) if p[4] else 0x7777 & st.st_mode,
                 'contents': contents})
         
-        reply = self.client.create_server(name, flavor_id, image_id,
-                                            personalities)
+        reply = self.client.create_server(name, int(flavor_id), image_id,
+                personalities)
         print_dict(reply)
 
 
-class UpdateServerName(Command):
-    group = 'server'
-    name = 'rename'
-    syntax = '<server id> <new name>'
-    description = 'update server name'
+@command(api='nova')
+class server_rename(object):
+    """update server name"""
     
     def main(self, server_id, new_name):
         self.client.update_server_name(int(server_id), new_name)
 
 
-class DeleteServer(Command):
-    group = 'server'
-    name = 'delete'
-    syntax = '<server id>'
-    description = 'delete server'
+@command(api='nova')
+class server_delete(object):
+    """delete server"""
     
     def main(self, server_id):
         self.client.delete_server(int(server_id))
 
 
-class RebootServer(Command):
-    group = 'server'
-    name = 'reboot'
-    syntax = '<server id>'
-    description = 'reboot server'
+@command(api='nova')
+class server_reboot(object):
+    """reboot server"""
     
-    def add_options(self, parser):
-        parser.add_option('-f', action='store_true', dest='hard',
-                            default=False, help='perform a hard reboot')
+    @classmethod
+    def update_parser(cls, parser):
+        parser.add_option('-f', dest='hard', action='store_true',
+                default=False, help='perform a hard reboot')
     
     def main(self, server_id):
-        self.client.reboot_server(int(server_id), self.hard)
+        self.client.reboot_server(int(server_id), self.options.hard)
 
 
-class StartServer(Command):
-    api = 'synnefo'
-    group = 'server'
-    name = 'start'
-    syntax = '<server id>'
-    description = 'start server'
+@command(api='synnefo')
+class server_start(object):
+    """start server"""
     
     def main(self, server_id):
         self.client.start_server(int(server_id))
 
 
-class StartServer(Command):
-    api = 'synnefo'
-    group = 'server'
-    name = 'shutdown'
-    syntax = '<server id>'
-    description = 'shutdown server'
+@command(api='synnefo')
+class server_shutdown(object):
+    """shutdown server"""
     
     def main(self, server_id):
         self.client.shutdown_server(int(server_id))
 
 
-class ServerConsole(Command):
-    api = 'synnefo'
-    group = 'server'
-    name = 'console'
-    syntax = '<server id>'
-    description = 'get VNC console'
-
+@command(api='synnefo')
+class server_console(object):
+    """get a VNC console"""
+    
     def main(self, server_id):
         reply = self.client.get_server_console(int(server_id))
         print_dict(reply)
 
 
-class SetFirewallProfile(Command):
-    api = 'synnefo'
-    group = 'server'
-    name = 'firewall'
-    syntax = '<server id> <profile>'
-    description = 'set the firewall profile'
+@command(api='synnefo')
+class server_firewall(object):
+    """set the firewall profile"""
     
     def main(self, server_id, profile):
         self.client.set_firewall_profile(int(server_id), profile)
 
 
-class ListAddresses(Command):
-    group = 'server'
-    name = 'addr'
-    syntax = '<server id> [network]'
-    description = 'list server addresses'
+@command(api='synnefo')
+class server_addr(object):
+    """list server addresses"""
     
     def main(self, server_id, network=None):
         reply = self.client.list_server_addresses(int(server_id), network)
@@ -376,33 +304,27 @@ class ListAddresses(Command):
         print_addresses(reply, margin)
 
 
-class GetServerMeta(Command):
-    group = 'server'
-    name = 'meta'
-    syntax = '<server id> [key]'
-    description = 'get server metadata'
+@command(api='nova')
+class server_meta(object):
+    """get server metadata"""
     
     def main(self, server_id, key=None):
         reply = self.client.get_server_metadata(int(server_id), key)
         print_dict(reply)
 
 
-class CreateServerMetadata(Command):
-    group = 'server'
-    name = 'addmeta'
-    syntax = '<server id> <key> <val>'
-    description = 'add server metadata'
+@command(api='nova')
+class server_addmeta(object):
+    """add server metadata"""
     
     def main(self, server_id, key, val):
         reply = self.client.create_server_metadata(int(server_id), key, val)
         print_dict(reply)
 
 
-class UpdateServerMetadata(Command):
-    group = 'server'
-    name = 'setmeta'
-    syntax = '<server id> <key> <val>'
-    description = 'update server metadata'
+@command(api='nova')
+class server_setmeta(object):
+    """update server metadata"""
     
     def main(self, server_id, key, val):
         metadata = {key: val}
@@ -410,282 +332,335 @@ class UpdateServerMetadata(Command):
         print_dict(reply)
 
 
-class DeleteServerMetadata(Command):
-    group = 'server'
-    name = 'delmeta'
-    syntax = '<server id> <key>'
-    description = 'delete server metadata'
+@command(api='nova')
+class server_delmeta(object):
+    """delete server metadata"""
     
     def main(self, server_id, key):
         self.client.delete_server_metadata(int(server_id), key)
 
 
-class GetServerStats(Command):
-    api = 'synnefo'
-    group = 'server'
-    name = 'stats'
-    syntax = '<server id>'
-    description = 'get server statistics'
+@command(api='synnefo')
+class server_stats(object):
+    """get server statistics"""
     
     def main(self, server_id):
         reply = self.client.get_server_stats(int(server_id))
         print_dict(reply, exclude=('serverRef',))
 
 
-# Flavor Group
-
-class ListFlavors(Command):
-    group = 'flavor'
-    name = 'list'
-    description = 'list flavors'
+@command(api='nova')
+class flavor_list(object):
+    """list flavors"""
     
-    def add_options(self, parser):
-        parser.add_option('-l', action='store_true', dest='detail',
-                            default=False, help='show detailed output')
-
+    @classmethod
+    def update_parser(cls, parser):
+        parser.add_option('-l', dest='detail', action='store_true',
+                default=False, help='show detailed output')
+    
     def main(self):
-        flavors = self.client.list_flavors(self.detail)
-        print_items(flavors, self.detail)
+        flavors = self.client.list_flavors(self.options.detail)
+        print_items(flavors, self.options.detail)
 
 
-class GetFlavorDetails(Command):
-    group = 'flavor'
-    name = 'info'
-    syntax = '<flavor id>'
-    description = 'get flavor details'
+@command(api='nova')
+class flavor_info(object):
+    """get flavor details"""
     
     def main(self, flavor_id):
         flavor = self.client.get_flavor_details(int(flavor_id))
         print_dict(flavor)
 
 
-class ListImages(Command):
-    group = 'image'
-    name = 'list'
-    description = 'list images'
-
-    def add_options(self, parser):
-        parser.add_option('-l', action='store_true', dest='detail',
-                            default=False, help='show detailed output')
-
+@command(api='nova')
+class image_list(object):
+    """list images"""
+    
+    @classmethod
+    def update_parser(cls, parser):
+        parser.add_option('-l', dest='detail', action='store_true',
+                default=False, help='show detailed output')
+    
     def main(self):
-        images = self.client.list_images(self.detail)
-        print_items(images, self.detail)
+        images = self.client.list_images(self.options.detail)
+        print_items(images, self.options.detail)
 
 
-class GetImageDetails(Command):
-    group = 'image'
-    name = 'info'
-    syntax = '<image id>'
-    description = 'get image details'
+@command(api='nova')
+class image_info(object):
+    """get image details"""
     
     def main(self, image_id):
-        image = self.client.get_image_details(int(image_id))
+        image = self.client.get_image_details(image_id)
         print_dict(image)
 
 
-class CreateImage(Command):
-    group = 'image'
-    name = 'create'
-    syntax = '<server id> <image name>'
-    description = 'create image'
+@command(api='nova')
+class image_create(object):
+    """create image"""
     
     def main(self, server_id, name):
         reply = self.client.create_image(int(server_id), name)
         print_dict(reply)
 
 
-class DeleteImage(Command):
-    group = 'image'
-    name = 'delete'
-    syntax = '<image id>'
-    description = 'delete image'
+@command(api='nova')
+class image_delete(object):
+    """delete image"""
     
     def main(self, image_id):
-        self.client.delete_image(int(image_id))
+        self.client.delete_image(image_id)
 
 
-class GetImageMetadata(Command):
-    group = 'image'
-    name = 'meta'
-    syntax = '<image id> [key]'
-    description = 'get image metadata'
+@command(api='nova')
+class image_meta(object):
+    """get image metadata"""
     
     def main(self, image_id, key=None):
-        reply = self.client.get_image_metadata(int(image_id), key)
+        reply = self.client.get_image_metadata(image_id, key)
         print_dict(reply)
 
 
-class CreateImageMetadata(Command):
-    group = 'image'
-    name = 'addmeta'
-    syntax = '<image id> <key> <val>'
-    description = 'add image metadata'
+@command(api='nova')
+class image_addmeta(object):
+    """add image metadata"""
     
     def main(self, image_id, key, val):
-        reply = self.client.create_image_metadata(int(image_id), key, val)
+        reply = self.client.create_image_metadata(image_id, key, val)
         print_dict(reply)
 
 
-class UpdateImageMetadata(Command):
-    group = 'image'
-    name = 'setmeta'
-    syntax = '<image id> <key> <val>'
-    description = 'update image metadata'
+@command(api='nova')
+class image_setmeta(object):
+    """update image metadata"""
     
     def main(self, image_id, key, val):
         metadata = {key: val}
-        reply = self.client.update_image_metadata(int(image_id), **metadata)
+        reply = self.client.update_image_metadata(image_id, **metadata)
         print_dict(reply)
 
 
-class DeleteImageMetadata(Command):
-    group = 'image'
-    name = 'delmeta'
-    syntax = '<image id> <key>'
-    description = 'delete image metadata'
+@command(api='nova')
+class image_delmeta(object):
+    """delete image metadata"""
     
     def main(self, image_id, key):
-        self.client.delete_image_metadata(int(image_id), key)
+        self.client.delete_image_metadata(image_id, key)
 
 
-class ListNetworks(Command):
-    api = 'synnefo'
-    group = 'network'
-    name = 'list'
-    description = 'list networks'
+@command(api='synnefo')
+class network_list(object):
+    """list networks"""
     
-    def add_options(self, parser):
-        parser.add_option('-l', action='store_true', dest='detail',
-                            default=False, help='show detailed output')
+    @classmethod
+    def update_parser(cls, parser):
+        parser.add_option('-l', dest='detail', action='store_true',
+                default=False, help='show detailed output')
     
     def main(self):
-        networks = self.client.list_networks(self.detail)
-        print_items(networks, self.detail)
+        networks = self.client.list_networks(self.options.detail)
+        print_items(networks, self.options.detail)
 
 
-class CreateNetwork(Command):
-    api = 'synnefo'
-    group = 'network'
-    name = 'create'
-    syntax = '<network name>'
-    description = 'create a network'
+@command(api='synnefo')
+class network_create(object):
+    """create a network"""
     
     def main(self, name):
         reply = self.client.create_network(name)
         print_dict(reply)
 
 
-class GetNetworkDetails(Command):
-    api = 'synnefo'
-    group = 'network'
-    name = 'info'
-    syntax = '<network id>'
-    description = 'get network details'
-
+@command(api='synnefo')
+class network_info(object):
+    """get network details"""
+    
     def main(self, network_id):
         network = self.client.get_network_details(network_id)
         print_dict(network)
 
 
-class RenameNetwork(Command):
-    api = 'synnefo'
-    group = 'network'
-    name = 'rename'
-    syntax = '<network id> <new name>'
-    description = 'update network name'
+@command(api='synnefo')
+class network_rename(object):
+    """update network name"""
     
-    def main(self, network_id, name):
-        self.client.update_network_name(network_id, name)
+    def main(self, network_id, new_name):
+        self.client.update_network_name(network_id, new_name)
 
 
-class DeleteNetwork(Command):
-    api = 'synnefo'
-    group = 'network'
-    name = 'delete'
-    syntax = '<network id>'
-    description = 'delete a network'
+@command(api='synnefo')
+class network_delete(object):
+    """delete a network"""
     
     def main(self, network_id):
         self.client.delete_network(network_id)
 
-class ConnectServer(Command):
-    api = 'synnefo'
-    group = 'network'
-    name = 'connect'
-    syntax = '<server id> <network id>'
-    description = 'connect a server to a network'
+
+@command(api='synnefo')
+class network_connect(object):
+    """connect a server to a network"""
     
     def main(self, server_id, network_id):
         self.client.connect_server(server_id, network_id)
 
 
-class DisconnectServer(Command):
-    api = 'synnefo'
-    group = 'network'
-    name = 'disconnect'
-    syntax = '<server id> <network id>'
-    description = 'disconnect a server from a network'
-
+@command(api='synnefo')
+class network_disconnect(object):
+    """disconnect a server from a network"""
+    
     def main(self, server_id, network_id):
         self.client.disconnect_server(server_id, network_id)
 
 
-
-def print_usage(exe, groups, group=None):
-    nop = Command([])
-    nop.parser.print_help()
+@command(api='glance')
+class glance_list(object):
+    """list images"""
     
+    def main(self):
+        images = self.client.list_public()
+        print images
+
+
+def print_groups(groups):
+    print
+    print 'Groups:'
+    for group in groups:
+        print '  %s' % group
+
+
+def print_commands(group, commands):
     print
     print 'Commands:'
-    
-    if group:
-        items = [(group, groups[group])]
-    else:
-        items = sorted(groups.items())
-    
-    for group, commands in items:
-        for command, cls in sorted(commands.items()):
-            name = '  %s %s' % (group, command)
-            print '%s %s' % (name.ljust(22), cls.description)
-        print
+    for name, cls in _commands[group].items():
+        if name in commands:
+            print '  %s %s' % (name.ljust(10), cls.description)
 
 
 def main():
-    nop = Command([])
-    groups = defaultdict(dict)
-    module = sys.modules[__name__]
-    for name, cls in inspect.getmembers(module, inspect.isclass):
-        if issubclass(cls, Command) and cls != Command:
-            if nop.api == 'openstack' and nop.api != cls.api:
-                continue    # Ignore synnefo commands
-            groups[cls.group][cls.name] = cls
+    parser = OptionParser(add_help_option=False)
+    parser.usage = '%prog <group> <command> [options]'
+    parser.add_option('--help', dest='help', action='store_true',
+            default=False, help='show this help message and exit')
+    parser.add_option('--api', dest='apis', metavar='API', action='append',
+            help='API to use (can be used multiple times)')
+    parser.add_option('--compute-url', dest='compute_url', metavar='URL',
+            help='URL for the compute API')
+    parser.add_option('--images-url', dest='images_url', metavar='URL',
+            help='URL for the images API')
+    parser.add_option('--token', dest='token', metavar='TOKEN',
+            help='use token TOKEN')
+    parser.add_option('-v', dest='verbose', action='store_true', default=False,
+            help='use verbose output')
+    parser.add_option('-d', dest='debug', action='store_true', default=False,
+            help='use debug output')
     
-    argv = list(sys.argv)
-    exe = os.path.basename(argv.pop(0))
-    group = argv.pop(0) if argv else None
-    command = argv.pop(0) if argv else None
+    # Do a preliminary parsing, ignore any errors since we will print help
+    # anyway if we don't reach the main parsing.
+    _error = parser.error
+    parser.error = lambda msg: None
+    options, args = parser.parse_args(sys.argv)
+    parser.error = _error
     
-    if group not in groups:
-        group = None
-    
-    if not group or command not in groups[group]:
-        print_usage(exe, groups, group)
-        sys.exit(1)
-    
-    cls = groups[group][command]
+    if options.debug:
+        log.setLevel(logging.DEBUG)
+    elif options.verbose:
+        log.setLevel(logging.INFO)
+    else:
+        log.setLevel(logging.WARNING)
     
     try:
-        cmd = cls(argv)
-        cmd.execute()
+        config = Config(CONFIG_PATH, CONFIG_ENV, CONFIG_DEFAULTS)
+    except ConfigError, e:
+        log.error('%s', e.args[0])
+        return 1
+    
+    for key in CONFIG_DEFAULTS:
+        config.override(key, getattr(options, key))
+    
+    apis = config.get('apis').split()
+    
+    # Find available groups based on the given APIs
+    available_groups = []
+    for group, group_commands in _commands.items():
+        for name, cls in group_commands.items():
+            if cls.api is None or cls.api in apis:
+                available_groups.append(group)
+                break
+    
+    if len(args) < 2:
+        parser.print_help()
+        print_groups(available_groups)
+        return 0
+    
+    group = args[1]
+    
+    if group not in available_groups:
+        parser.print_help()
+        print_groups(available_groups)
+        return 1
+    
+    # Find available commands based on the given APIs
+    available_commands = []
+    for name, cls in _commands[group].items():
+        if cls.api is None or cls.api in apis:
+            available_commands.append(name)
+            continue
+    
+    parser.usage = '%%prog %s <command> [options]' % group
+    
+    if len(args) < 3:
+        parser.print_help()
+        print_commands(group, available_commands)
+        return 0
+    
+    name = args[2]
+    
+    if name not in available_commands:
+        parser.print_help()
+        print_commands(group, available_commands)
+        return 1
+    
+    cls = _commands[group][name]
+    cls.config = config
+    
+    syntax = '%s [options]' % cls.syntax if cls.syntax else '[options]'
+    parser.usage = '%%prog %s %s %s' % (group, name, syntax)
+    parser.epilog = ''
+    if hasattr(cls, 'update_parser'):
+        cls.update_parser(parser)
+    
+    options, args = parser.parse_args(sys.argv)
+    if options.help:
+        parser.print_help()
+        return 0
+    
+    cmd = cls()
+    cmd.config = config
+    cmd.options = options
+    
+    if cmd.api in ('nova', 'synnefo'):
+        url = config.get('compute_url')
+        token = config.get('token')
+        cmd.client = ComputeClient(url, token)
+    elif cmd.api in ('glance', 'plankton'):
+        url = config.get('images_url')
+        token = config.get('token')
+        cmd.client = ImagesClient(url, token)
+    
+    try:
+        return cmd.main(*args[3:])
+    except TypeError:
+        parser.print_help()
+        return 1
     except ClientError, err:
         log.error('%s', err.message)
         log.info('%s', err.details)
+        return 2
 
 
 if __name__ == '__main__':
     ch = logging.StreamHandler()
     ch.setFormatter(logging.Formatter('%(message)s'))
     log.addHandler(ch)
-    
-    main()
+    err = main() or 0
+    sys.exit(err)
