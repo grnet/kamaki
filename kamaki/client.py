@@ -35,6 +35,7 @@ import json
 import logging
 
 from httplib import HTTPConnection, HTTPSConnection
+from urllib import quote
 from urlparse import urlparse
 
 
@@ -64,7 +65,7 @@ class Client(object):
         self.url = url
         self.token = token
     
-    def _cmd(self, method, path, body=None, success=200):
+    def http_cmd(self, method, path, body=None, headers=None, success=200):
         p = urlparse(self.url)
         path = p.path + path
         if p.scheme == 'http':
@@ -74,7 +75,8 @@ class Client(object):
         else:
             raise ClientError('Unknown URL scheme')
         
-        headers = {'X-Auth-Token': self.token}
+        headers = headers or {}
+        headers['X-Auth-Token'] = self.token
         if body:
             headers['Content-Type'] = 'application/json'
             headers['Content-Length'] = len(body)
@@ -118,17 +120,17 @@ class Client(object):
 
         return reply
     
-    def _get(self, path, success=200):
-        return self._cmd('GET', path, None, success)
+    def http_get(self, path, success=200):
+        return self.http_cmd('GET', path, success=success)
     
-    def _post(self, path, body, success=202):
-        return self._cmd('POST', path, body, success)
+    def http_post(self, path, body=None, headers=None, success=202):
+        return self.http_cmd('POST', path, body, headers, success)
     
-    def _put(self, path, body, success=204):
-        return self._cmd('PUT', path, body, success)
+    def http_put(self, path, body, success=204):
+        return self.http_cmd('PUT', path, body, success=success)
     
-    def _delete(self, path, success=204):
-        return self._cmd('DELETE', path, None, success)
+    def http_delete(self, path, success=204):
+        return self.http_cmd('DELETE', path, success=success)
 
 
 class ComputeClient(Client):
@@ -137,13 +139,13 @@ class ComputeClient(Client):
     def list_servers(self, detail=False):
         """List servers, returned detailed output if detailed is True"""
         path = '/servers/detail' if detail else '/servers'
-        reply = self._get(path)
+        reply = self.http_get(path)
         return reply['servers']['values']
     
     def get_server_details(self, server_id):
         """Return detailed output on a server specified by its id"""
         path = '/servers/%d' % server_id
-        reply = self._get(path)
+        reply = self.http_get(path)
         return reply['server']
     
     def create_server(self, name, flavor_id, image_id, personality=None):
@@ -165,7 +167,7 @@ class ComputeClient(Client):
             req['personality'] = personality
         
         body = json.dumps({'server': req})
-        reply = self._post('/servers', body)
+        reply = self.http_post('/servers', body)
         return reply['server']
     
     def update_server_name(self, server_id, new_name):
@@ -177,37 +179,37 @@ class ComputeClient(Client):
         """
         path = '/servers/%d' % server_id
         body = json.dumps({'server': {'name': new_name}})
-        self._put(path, body)
+        self.http_put(path, body)
     
     def delete_server(self, server_id):
         """Submit a deletion request for a server specified by id"""
         path = '/servers/%d' % server_id
-        self._delete(path)
+        self.http_delete(path)
     
     def reboot_server(self, server_id, hard=False):
         """Submit a reboot request for a server specified by id"""
         path = '/servers/%d/action' % server_id
         type = 'HARD' if hard else 'SOFT'
         body = json.dumps({'reboot': {'type': type}})
-        self._post(path, body)
+        self.http_post(path, body)
     
     def start_server(self, server_id):
         """Submit a startup request for a server specified by id"""
         path = '/servers/%d/action' % server_id
         body = json.dumps({'start': {}})
-        self._post(path, body)
+        self.http_post(path, body)
     
     def shutdown_server(self, server_id):
         """Submit a shutdown request for a server specified by id"""
         path = '/servers/%d/action' % server_id
         body = json.dumps({'shutdown': {}})
-        self._post(path, body)
+        self.http_post(path, body)
     
     def get_server_console(self, server_id):
         """Get a VNC connection to the console of a server specified by id"""
         path = '/servers/%d/action' % server_id
         body = json.dumps({'console': {'type': 'vnc'}})
-        reply = self._post(path, body, 200)
+        reply = self.http_post(path, body, success=200)
         return reply['console']
     
     def set_firewall_profile(self, server_id, profile):
@@ -215,45 +217,44 @@ class ComputeClient(Client):
 
         The server is specified by id, the profile argument
         is one of (ENABLED, DISABLED, PROTECTED).
-
         """
         path = '/servers/%d/action' % server_id
         body = json.dumps({'firewallProfile': {'profile': profile}})
-        self._post(path, body, 202)
+        self.http_post(path, body)
     
     def list_server_addresses(self, server_id, network=None):
         path = '/servers/%d/ips' % server_id
         if network:
             path += '/%s' % network
-        reply = self._get(path)
+        reply = self.http_get(path)
         return [reply['network']] if network else reply['addresses']['values']
     
     def get_server_metadata(self, server_id, key=None):
         path = '/servers/%d/meta' % server_id
         if key:
             path += '/%s' % key
-        reply = self._get(path)
+        reply = self.http_get(path)
         return reply['meta'] if key else reply['metadata']['values']
     
     def create_server_metadata(self, server_id, key, val):
         path = '/servers/%d/meta/%s' % (server_id, key)
         body = json.dumps({'meta': {key: val}})
-        reply = self._put(path, body, 201)
+        reply = self.http_put(path, body, 201)
         return reply['meta']
     
     def update_server_metadata(self, server_id, **metadata):
         path = '/servers/%d/meta' % server_id
         body = json.dumps({'metadata': metadata})
-        reply = self._post(path, body, 201)
+        reply = self.http_post(path, body, success=201)
         return reply['metadata']
     
     def delete_server_metadata(self, server_id, key):
         path = '/servers/%d/meta/%s' % (server_id, key)
-        reply = self._delete(path)
+        reply = self.http_delete(path)
     
     def get_server_stats(self, server_id):
         path = '/servers/%d/stats' % server_id
-        reply = self._get(path)
+        reply = self.http_get(path)
         return reply['stats']
     
     
@@ -261,12 +262,12 @@ class ComputeClient(Client):
     
     def list_flavors(self, detail=False):
         path = '/flavors/detail' if detail else '/flavors'
-        reply = self._get(path)
+        reply = self.http_get(path)
         return reply['flavors']['values']
 
     def get_flavor_details(self, flavor_id):
         path = '/flavors/%d' % flavor_id
-        reply = self._get(path)
+        reply = self.http_get(path)
         return reply['flavor']
     
     
@@ -274,86 +275,114 @@ class ComputeClient(Client):
     
     def list_images(self, detail=False):
         path = '/images/detail' if detail else '/images'
-        reply = self._get(path)
+        reply = self.http_get(path)
         return reply['images']['values']
 
     def get_image_details(self, image_id):
         path = '/images/%d' % image_id
-        reply = self._get(path)
+        reply = self.http_get(path)
         return reply['image']
 
     def create_image(self, server_id, name):
         req = {'name': name, 'serverRef': server_id}
         body = json.dumps({'image': req})
-        reply = self._post('/images', body)
+        reply = self.http_post('/images', body)
         return reply['image']
 
     def delete_image(self, image_id):
         path = '/images/%d' % image_id
-        self._delete(path)
+        self.http_delete(path)
 
     def get_image_metadata(self, image_id, key=None):
         path = '/images/%d/meta' % image_id
         if key:
             path += '/%s' % key
-        reply = self._get(path)
+        reply = self.http_get(path)
         return reply['meta'] if key else reply['metadata']['values']
     
     def create_image_metadata(self, image_id, key, val):
         path = '/images/%d/meta/%s' % (image_id, key)
         body = json.dumps({'meta': {key: val}})
-        reply = self._put(path, body, 201)
+        reply = self.http_put(path, body, 201)
         reply['meta']
 
     def update_image_metadata(self, image_id, **metadata):
         path = '/images/%d/meta' % image_id
         body = json.dumps({'metadata': metadata})
-        reply = self._post(path, body, 201)
+        reply = self.http_post(path, body, success=201)
         return reply['metadata']
 
     def delete_image_metadata(self, image_id, key):
         path = '/images/%d/meta/%s' % (image_id, key)
-        reply = self._delete(path)
+        reply = self.http_delete(path)
     
     
     # Networks
     
     def list_networks(self, detail=False):
         path = '/networks/detail' if detail else '/networks'
-        reply = self._get(path)
+        reply = self.http_get(path)
         return reply['networks']['values']
     
     def create_network(self, name):
         body = json.dumps({'network': {'name': name}})
-        reply = self._post('/networks', body)
+        reply = self.http_post('/networks', body)
         return reply['network']
     
     def get_network_details(self, network_id):
         path = '/networks/%s' % network_id
-        reply = self._get(path)
+        reply = self.http_get(path)
         return reply['network']
     
     def update_network_name(self, network_id, new_name):
         path = '/networks/%s' % network_id
         body = json.dumps({'network': {'name': new_name}})
-        self._put(path, body)
+        self.http_put(path, body)
     
     def delete_network(self, network_id):
         path = '/networks/%s' % network_id
-        self._delete(path)
+        self.http_delete(path)
 
     def connect_server(self, server_id, network_id):
         path = '/networks/%s/action' % network_id
         body = json.dumps({'add': {'serverRef': server_id}})
-        self._post(path, body)
+        self.http_post(path, body)
     
     def disconnect_server(self, server_id, network_id):
         path = '/networks/%s/action' % network_id
         body = json.dumps({'remove': {'serverRef': server_id}})
-        self._post(path, body)
+        self.http_post(path, body)
 
 
-class ImagesClient(Client):
-    def list_public(self, detail=False):
+class GlanceClient(Client):
+    def list_public(self, detail=False, filters={}, order=''):
         path = '/images/detail' if detail else '/images/'
-        return self._get(path)
+        params = {}
+        params.update(filters)
+        
+        if order.startswith('-'):
+            params['sort_dir'] = 'desc'
+            order = order[1:]
+        else:
+            params['sort_dir'] = 'asc'
+        
+        if order:
+            params['sort_key'] = order
+        
+        if params:
+            path += '?' + '&'.join('%s=%s' % item for item in params.items())
+        return self.http_get(path)
+
+    def register(self, name, location, params={}, properties={}):
+        path = '/images/'
+        headers = {}
+        headers['x-image-meta-name'] = quote(name)
+        headers['x-image-meta-location'] = location
+        for key, val in params.items():
+            if key in ('id', 'store', 'disk_format', 'container_format',
+                       'size', 'checksum', 'is_public', 'owner'):
+                key = 'x-image-meta-' + key.replace('_', '-')
+                headers[key] = val
+        for key, val in properties.items():
+            headers['x-image-meta-property-' + quote(key)] = quote(val)
+        return self.http_post(path, headers=headers, success=200)

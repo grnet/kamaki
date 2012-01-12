@@ -85,37 +85,35 @@ def print_addresses(addresses, margin):
             print '%s: %s' % (key.rjust(margin + 8), ip['addr'])
 
 
-def print_metadata(metadata, margin):
-    print '%s:' % 'metadata'.rjust(margin)
-    for key, val in metadata.get('values', {}).items():
-        print '%s: %s' % (key.rjust(margin + 4), val)
-
-
 def print_dict(d, exclude=()):
     if not d:
         return
     margin = max(len(key) for key in d) + 1
-
+    
     for key, val in sorted(d.items()):
         if key in exclude:
             continue
-
+        
         if key == 'addresses':
             print '%s:' % 'addresses'.rjust(margin)
             print_addresses(val.get('values', []), margin)
             continue
-        elif key == 'metadata':
-            print_metadata(val, margin)
-            continue
         elif key == 'servers':
             val = ', '.join(str(x) for x in val['values'])
-
+        elif isinstance(val, dict):
+            if val.keys() == ['values']:
+                val = val['values']
+            print '%s:' % key.rjust(margin)
+            for key, val in val.items():
+                print '%s: %s' % (key.rjust(margin + 4), val)
+            continue
+        
         print '%s: %s' % (key.rjust(margin), val)
 
 
-def print_items(items, detail=False):
+def print_items(items, title=('id', 'name')):
     for item in items:
-        print '%s %s' % (item['id'], item.get('name', ''))
-        if detail:
-            print_dict(item, exclude=('id', 'name'))
+        print ' '.join(str(item.pop(key)) for key in title if key in item)
+        if item:
+            print_dict(item)
             print

@@ -76,7 +76,7 @@ from grp import getgrgid
 from optparse import OptionParser
 from pwd import getpwuid
 
-from kamaki.client import ComputeClient, ImagesClient, ClientError
+from kamaki.client import ComputeClient, GlanceClient, ClientError
 from kamaki.config import Config, ConfigError
 from kamaki.utils import OrderedDict, print_addresses, print_dict, print_items
 
@@ -89,7 +89,7 @@ CONFIG_ENV = 'KAMAKI_CONFIG'
 
 # The defaults also determine the allowed keys
 CONFIG_DEFAULTS = {
-    'apis': 'nova synnefo glance plankton',
+    'apis': 'nova synnefo glance',
     'token': '',
     'compute_url': 'https://okeanos.grnet.gr/api/v1',
     'images_url': 'https://okeanos.grnet.gr/plankton',
@@ -176,7 +176,7 @@ class server_list(object):
     
     def main(self):
         servers = self.client.list_servers(self.options.detail)
-        print_items(servers, self.options.detail)
+        print_items(servers)
 
 
 @command(api='nova')
@@ -360,7 +360,7 @@ class flavor_list(object):
     
     def main(self):
         flavors = self.client.list_flavors(self.options.detail)
-        print_items(flavors, self.options.detail)
+        print_items(flavors)
 
 
 @command(api='nova')
@@ -383,7 +383,7 @@ class image_list(object):
     
     def main(self):
         images = self.client.list_images(self.options.detail)
-        print_items(images, self.options.detail)
+        print_items(images)
 
 
 @command(api='nova')
@@ -459,7 +459,7 @@ class network_list(object):
     
     def main(self):
         networks = self.client.list_networks(self.options.detail)
-        print_items(networks, self.options.detail)
+        print_items(networks)
 
 
 @command(api='synnefo')
@@ -516,9 +516,80 @@ class network_disconnect(object):
 class glance_list(object):
     """list images"""
     
+    @classmethod
+    def update_parser(cls, parser):
+        parser.add_option('-l', dest='detail', action='store_true',
+                default=False, help='show detailed output')
+        parser.add_option('--container-format', dest='container_format',
+                metavar='FORMAT', help='filter by container format')
+        parser.add_option('--disk-format', dest='disk_format',
+                metavar='FORMAT', help='filter by disk format')
+        parser.add_option('--name', dest='name', metavar='NAME',
+                help='filter by name')
+        parser.add_option('--size-min', dest='size_min', metavar='BYTES',
+                help='filter by minimum size')
+        parser.add_option('--size-max', dest='size_max', metavar='BYTES',
+                help='filter by maximum size')
+        parser.add_option('--status', dest='status', metavar='STATUS',
+                help='filter by status')
+        parser.add_option('--order', dest='order', metavar='FIELD',
+                help='order by FIELD (use a - prefix to reverse order)')
+    
     def main(self):
-        images = self.client.list_public()
-        print images
+        filters = {}
+        for filter in ('container_format', 'disk_format', 'name', 'size_min',
+                       'size_max', 'status'):
+            val = getattr(self.options, filter, None)
+            if val is not None:
+                filters[filter] = val
+        
+        order = self.options.order or ''
+        images = self.client.list_public(self.options.detail, filters=filters,
+                                         order=order)
+        print_items(images, title=('name',))
+
+
+@command(api='glance')
+class glance_register(object):
+    """register an image"""
+    
+    @classmethod
+    def update_parser(cls, parser):
+        parser.add_option('--checksum', dest='checksum', metavar='CHECKSUM',
+                help='set image checksum')
+        parser.add_option('--container-format', dest='container_format',
+                metavar='FORMAT', help='set container format')
+        parser.add_option('--disk-format', dest='disk_format',
+                metavar='FORMAT', help='set disk format')
+        parser.add_option('--id', dest='id',
+                metavar='ID', help='set image ID')
+        parser.add_option('--owner', dest='owner',
+                metavar='USER', help='set image owner (admin only)')
+        parser.add_option('--property', dest='properties', action='append',
+                metavar='KEY=VAL',
+                help='add a property (can be used multiple times)')
+        parser.add_option('--public', dest='is_public', action='store_true',
+                help='mark image as public')
+        parser.add_option('--size', dest='size', metavar='SIZE',
+                help='set image size')
+    
+    def main(self, name, location):
+        params = {}
+        for key in ('checksum', 'container_format', 'disk_format', 'id',
+                    'owner', 'is_public', 'size'):
+            val = getattr(self.options, key)
+            if val is not None:
+                params[key] = val
+        
+        properties = {}
+        for property in self.options.properties or []:
+            key, sep, val = property.partition('=')
+            if not sep:
+                log.error("Invalid property '%s'", property)
+                return 1
+            properties[key.strip()] = val.strip()
+        
+        self.client.register(name, location, params, properties)
 
 
 def print_groups(groups):
@@ -541,7 +612,7 @@ def main():
     parser.usage = '%prog <group> <command> [options]'
     parser.add_option('--help', dest='help', action='store_true',
             default=False, help='show this help message and exit')
-    parser.add_option('--api', dest='apis', metavar='API', action='append',
+    parser.add_option('--api', dest='apis', action='append', metavar='API',
             help='API to use (can be used multiple times)')
     parser.add_option('--compute-url', dest='compute_url', metavar='URL',
             help='URL for the compute API')
@@ -642,16 +713,19 @@ def main():
         url = config.get('compute_url')
         token = config.get('token')
         cmd.client = ComputeClient(url, token)
-    elif cmd.api in ('glance', 'plankton'):
+    elif cmd.api == 'glance':
         url = config.get('images_url')
         token = config.get('token')
-        cmd.client = ImagesClient(url, token)
+        cmd.client = GlanceClient(url, token)
     
     try:
         return cmd.main(*args[3:])
-    except TypeError:
-        parser.print_help()
-        return 1
+    except TypeError as e:
+        if e.args and e.args[0].startswith('main()'):
+            parser.print_help()
+            return 1
+        else:
+            raise
     except ClientError, err:
         log.error('%s', err.message)
         log.info('%s', err.details)
