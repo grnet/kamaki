@@ -122,6 +122,8 @@ def command(api=None, group=None, name=None, description=None, syntax=None):
             required = ' '.join('<%s>' % x.replace('_', ' ') for x in args[:n])
             optional = ' '.join('[%s]' % x.replace('_', ' ') for x in args[n:])
             cls.syntax = ' '.join(x for x in [required, optional] if x)
+            if spec.varargs:
+                cls.syntax += ' <%s ...>' % spec.varargs
         
         if cls.group not in _commands:
             _commands[cls.group] = OrderedDict()
@@ -550,6 +552,15 @@ class glance_list(object):
 
 
 @command(api='glance')
+class glance_meta(object):
+    """get image metadata"""
+    
+    def main(self, image_id):
+        image = self.client.get_meta(image_id)
+        print_dict(image)
+
+
+@command(api='glance')
 class glance_register(object):
     """register an image"""
     
@@ -590,6 +601,50 @@ class glance_register(object):
             properties[key.strip()] = val.strip()
         
         self.client.register(name, location, params, properties)
+
+
+@command(api='glance')
+class glance_members(object):
+    """get image members"""
+    
+    def main(self, image_id):
+        members = self.client.list_members(image_id)
+        for member in members:
+            print member['member_id']
+
+
+@command(api='glance')
+class glance_shared(object):
+    """list shared images"""
+    
+    def main(self, member):
+        images = self.client.list_shared(member)
+        for image in images:
+            print image['image_id']
+
+
+@command(api='glance')
+class glance_addmember(object):
+    """add a member to an image"""
+    
+    def main(self, image_id, member):
+        self.client.add_member(image_id, member)
+
+
+@command(api='glance')
+class glance_delmember(object):
+    """remove a member from an image"""
+    
+    def main(self, image_id, member):
+        self.client.remove_member(image_id, member)
+
+
+@command(api='glance')
+class glance_setmembers(object):
+    """set the members of an image"""
+    
+    def main(self, image_id, *member):
+        self.client.set_members(image_id, member)
 
 
 def print_groups(groups):

@@ -65,7 +65,8 @@ class Client(object):
         self.url = url
         self.token = token
     
-    def http_cmd(self, method, path, body=None, headers=None, success=200):
+    def raw_http_cmd(self, method, path, body=None, headers=None, success=200,
+                     json_reply=False):
         p = urlparse(self.url)
         path = p.path + path
         if p.scheme == 'http':
@@ -92,32 +93,43 @@ class Client(object):
         conn.request(method, path, body, headers)
         
         resp = conn.getresponse()
-        buf = resp.read()
+        reply = resp.read()
         
         log.debug('<' * 50)
         log.info('%d %s', resp.status, resp.reason)
         for key, val in resp.getheaders():
             log.info('%s: %s', key.capitalize(), val)
         log.info('')
-        log.debug(buf)
+        log.debug(reply)
         log.debug('-' * 50)
         
-        try:
-            reply = json.loads(buf) if buf else {}
-        except ValueError:
-            raise ClientError('Did not receive valid JSON reply',
-                              resp.status, buf)
+        if json_reply:
+            try:
+                reply = json.loads(reply) if reply else {}
+            except ValueError:
+                raise ClientError('Did not receive valid JSON reply',
+                                  resp.status, reply)
         
         if resp.status != success:
             if len(reply) == 1:
-                key = reply.keys()[0]
-                val = reply[key]
-                message = '%s: %s' % (key, val.get('message', ''))
-                details = val.get('details', '')
+                if json_reply:
+                    key = reply.keys()[0]
+                    val = reply[key]
+                    message = '%s: %s' % (key, val.get('message', ''))
+                    details = val.get('details', '')
+                else:
+                    message = reply
+                    details = ''
+    
                 raise ClientError(message, resp.status, details)
             else:
                 raise ClientError('Invalid response from the server')
-
+        
+        return resp, reply
+    
+    def http_cmd(self, method, path, body=None, headers=None, success=200):
+        resp, reply = self.raw_http_cmd(method, path, body, headers, success,
+                                        json_reply=True)
         return reply
     
     def http_get(self, path, success=200):
@@ -126,7 +138,7 @@ class Client(object):
     def http_post(self, path, body=None, headers=None, success=202):
         return self.http_cmd('POST', path, body, headers, success)
     
-    def http_put(self, path, body, success=204):
+    def http_put(self, path, body=None, success=204):
         return self.http_cmd('PUT', path, body, success=success)
     
     def http_delete(self, path, success=204):
@@ -372,7 +384,20 @@ class GlanceClient(Client):
         if params:
             path += '?' + '&'.join('%s=%s' % item for item in params.items())
         return self.http_get(path)
-
+    
+    def get_meta(self, image_id):
+        path = '/images/%s' % image_id
+        resp, buf = self.raw_http_cmd('HEAD', path)
+        reply = {}
+        prefix = 'x-image-meta-'
+        for key, val in resp.getheaders():
+            key = key.lower()
+            if not key.startswith(prefix):
+                continue
+            key = key[len(prefix):]
+            reply[key] = val
+        return reply
+    
     def register(self, name, location, params={}, properties={}):
         path = '/images/'
         headers = {}
@@ -386,3 +411,27 @@ class GlanceClient(Client):
         for key, val in properties.items():
             headers['x-image-meta-property-' + quote(key)] = quote(val)
         return self.http_post(path, headers=headers, success=200)
+    
+    def list_members(self, image_id):
+        path = '/images/%s/members' % image_id
+        reply = self.http_get(path)
+        return reply['members']
+
+    def list_shared(self, member):
+        path = '/shared-images/%s' % member
+        reply = self.http_get(path)
+        return reply['shared_images']
+
+    def add_member(self, image_id, member):
+        path = '/images/%s/members/%s' % (image_id, member)
+        self.http_put(path)
+    
+    def remove_member(self, image_id, member):
+        path = '/images/%s/members/%s' % (image_id, member)
+        self.http_delete(path)
+    
+    def set_members(self, image_id, members):
+        path = '/images/%s/members' % image_id
+        req = {'memberships': [{'member_id': member} for member in members]}
+        body = json.dumps(req)
+        self.http_put(path, body)
