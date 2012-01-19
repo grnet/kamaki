@@ -41,6 +41,20 @@ from .http import HTTPClient
 
 
 class ImageClient(HTTPClient):
+    @property
+    def url(self):
+        url = self.config.get('image_url') or self.config.get('url')
+        if not url:
+            raise ClientError('No URL was given')
+        return url
+    
+    @property
+    def token(self):
+        token = self.config.get('image_token') or self.config.get('token')
+        if not token:
+            raise ClientError('No token was given')
+        return token
+    
     def list_public(self, detail=False, filters={}, order=''):
         path = '/images/detail' if detail else '/images/'
         params = {}

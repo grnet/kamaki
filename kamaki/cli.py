@@ -123,8 +123,15 @@ def command(api=None, group=None, name=None, description=None, syntax=None):
 class config_list(object):
     """list configuration options"""
     
+    @classmethod
+    def update_parser(cls, parser):
+        parser.add_option('-a', dest='all', action='store_true',
+                default=False, help='include empty values')
+    
     def main(self):
         for key, val in sorted(self.config.items()):
+            if not val and not self.options.all:
+                continue
             print '%s=%s' % (key, val)
 
 
@@ -635,6 +642,24 @@ class glance_setmembers(object):
 
 
 @command(api='storage')
+class store_container(object):
+    """get container info"""
+    
+    @classmethod
+    def update_parser(cls, parser):
+        parser.add_option('--account', dest='account', metavar='ACCOUNT',
+                help='use account ACCOUNT')
+        parser.add_option('--container', dest='container', metavar='CONTAINER',
+                help='use container CONTAINER')
+    
+    def main(self):
+        self.config.override('storage_account', self.options.account)
+        self.config.override('storage_container', self.options.container)
+        reply = self.client.get_container_meta()
+        print_dict(reply)
+
+
+@command(api='storage')
 class store_upload(object):
     """upload a file"""
     
@@ -646,13 +671,34 @@ class store_upload(object):
                 help='use container CONTAINER')
     
     def main(self, path, remote_path=None):
-        account = self.options.account or self.config.get('storage_account')
-        container = self.options.container or \
-                    self.config.get('storage_container')
+        self.config.override('storage_account', self.options.account)
+        self.config.override('storage_container', self.options.container)
+        
+        # Use the more efficient Pithos client if available
+        if 'pithos' in self.config.get('apis').split():
+            self.client = clients.PithosClient(self.config)
+        
         if remote_path is None:
             remote_path = basename(path)
         with open(path) as f:
-            self.client.create_object(account, container, remote_path, f)
+            self.client.create_object(remote_path, f)
+
+
+@command(api='storage')
+class store_delete(object):
+    """delete a file"""
+    
+    @classmethod
+    def update_parser(cls, parser):
+        parser.add_option('--account', dest='account', metavar='ACCOUNT',
+                help='use account ACCOUNT')
+        parser.add_option('--container', dest='container', metavar='CONTAINER',
+                help='use container CONTAINER')
+    
+    def main(self, path):
+        self.config.override('storage_account', self.options.account)
+        self.config.override('storage_container', self.options.container)
+        self.client.delete_object(path)
 
 
 def print_groups(groups):
@@ -764,14 +810,11 @@ def main():
     cmd.config = config
     cmd.options = options
     
-    if cmd.api in ('compute', 'image', 'storage', 'cyclades'):
-        token = config.get('token')
-        if cmd.api in ('compute', 'image', 'storage'):
-            url = config.get(cmd.api + '_url')
-        elif cmd.api == 'cyclades':
-            url = config.get('compute_url')
-        cls_name = cmd.api.capitalize() + 'Client'
-        cmd.client = getattr(clients, cls_name)(url, token)
+    if cmd.api:
+        client_name = cmd.api.capitalize() + 'Client'
+        client = getattr(clients, client_name, None)
+        if client:
+            cmd.client = client(config)
     
     try:
         ret = cmd.main(*args[3:])

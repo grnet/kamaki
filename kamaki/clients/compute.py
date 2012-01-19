@@ -31,16 +31,28 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-"""
-    OpenStack Compute API 1.1 client
-"""
-
 import json
 
 from .http import HTTPClient
 
 
-class ComputeClient(HTTPClient):    
+class ComputeClient(HTTPClient):
+    """OpenStack Compute API 1.1 client"""
+    
+    @property
+    def url(self):
+        url = self.config.get('compute_url') or self.config.get('url')
+        if not url:
+            raise ClientError('No URL was given')
+        return url
+    
+    @property
+    def token(self):
+        token = self.config.get('compute_token') or self.config.get('token')
+        if not token:
+            raise ClientError('No token was given')
+        return token
+    
     def list_servers(self, detail=False):
         """List servers, returned detailed output if detailed is True"""
         path = '/servers/detail' if detail else '/servers'

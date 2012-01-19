@@ -46,14 +46,17 @@ CONFIG_ENV = 'KAMAKI_CONFIG'
 
 # The defaults also determine the allowed keys
 CONFIG_DEFAULTS = {
-    'apis': 'compute image storage cyclades',
+    'apis': 'compute image storage cyclades pithos',
     'token': '',
+    'url': '',
+    'compute_token': '',
     'compute_url': 'https://okeanos.grnet.gr/api/v1',
+    'image_token': '',
     'image_url': 'https://okeanos.grnet.gr/plankton',
-    'storage_url': 'https://plus.pithos.grnet.gr/v1',
     'storage_account': '',
     'storage_container': '',
-    'test_token': ''
+    'storage_token': '',
+    'storage_url': 'https://plus.pithos.grnet.gr/v1'
 }
 
 

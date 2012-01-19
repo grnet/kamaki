@@ -53,3 +53,4 @@ from .compute import ComputeClient
 from .image import ImageClient
 from .storage import StorageClient
 from .cyclades import CycladesClient
+from .pithos import PithosClient

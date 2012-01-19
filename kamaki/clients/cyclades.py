@@ -31,16 +31,14 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-"""
-    GRNet Cyclades API client
-"""
-
 import json
 
-from .http import HTTPClient
+from .compute import ComputeClient
 
 
-class CycladesClient(HTTPClient):    
+class CycladesClient(ComputeClient):
+    """GRNet Cyclades API client"""
+    
     def start_server(self, server_id):
         """Submit a startup request for a server specified by id"""
         path = '/servers/%d/action' % server_id

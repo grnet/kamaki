@@ -31,19 +31,51 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-"""
-    OpenStack Object Storage API 1.0 client
-"""
-
+from . import ClientError
 from .http import HTTPClient
 
 
 class StorageClient(HTTPClient):
-    def __init__(self, url, token, account, container):
-        self.url = url
-        self.token = token
-        self.account = account
-        self.container = container
+    """OpenStack Object Storage API 1.0 client"""
+    
+    @property
+    def url(self):
+        url = self.config.get('storage_url') or self.config.get('url')
+        if not url:
+            raise ClientError('No URL was given')
+        return url
+
+    @property
+    def token(self):
+        token = self.config.get('storage_token') or self.config.get('token')
+        if not token:
+            raise ClientError('No token was given')
+        return token
+    
+    @property
+    def account(self):
+        account = self.config.get('storage_account')
+        if not account:
+            raise ClientError('No account was given')
+        return account
+    
+    @property
+    def container(self):
+        container = self.config.get('storage_container')
+        if not container:
+            raise ClientError('No container was given')
+        return container
+    
+    def get_container_meta(self):
+        path = '/%s/%s' % (self.account, self.container)
+        resp, reply = self.raw_http_cmd('HEAD', path, success=204)
+        reply = {}
+        prefix = 'x-container-'
+        for key, val in resp.getheaders():
+            key = key.lower()
+            if key.startswith(prefix):
+                reply[key[len(prefix):]] = val
+        return reply
     
     def create_object(self, object, f):
         path = '/%s/%s/%s' % (self.account, self.container, object)

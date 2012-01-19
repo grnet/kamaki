@@ -44,9 +44,22 @@ log = logging.getLogger('kamaki.clients')
 
 
 class HTTPClient(object):
-    def __init__(self, url, token):
-        self.url = url
-        self.token = token
+    def __init__(self, config):
+        self.config = config
+    
+    @property
+    def url(self):
+        url = self.config.get('url')
+        if not url:
+            raise ClientError('No URL was given')
+        return url
+    
+    @property
+    def token(self):
+        token = self.config.get('token')
+        if not token:
+            raise ClientError('No token was given')
+        return token
     
     def raw_http_cmd(self, method, path, body=None, headers=None, success=200,
                      json_reply=False):
@@ -62,7 +75,7 @@ class HTTPClient(object):
         headers = headers or {}
         headers['X-Auth-Token'] = self.token
         if body:
-            headers['Content-Type'] = 'application/json'
+            headers.setdefault('Content-Type', 'application/json')
             headers['Content-Length'] = len(body)
         
         log.debug('>' * 50)
@@ -93,7 +106,7 @@ class HTTPClient(object):
                 raise ClientError('Did not receive valid JSON reply',
                                   resp.status, reply)
         
-        if resp.status != success:
+        if success and resp.status != success:
             if len(reply) == 1:
                 if json_reply:
                     key = reply.keys()[0]
