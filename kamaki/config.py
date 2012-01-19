@@ -35,6 +35,27 @@ import json
 import logging
 import os
 
+from os.path import exists, expanduser
+
+
+# Path to the file that stores the configuration
+CONFIG_PATH = expanduser('~/.kamakirc')
+
+# Name of a shell variable to bypass the CONFIG_PATH value
+CONFIG_ENV = 'KAMAKI_CONFIG'
+
+# The defaults also determine the allowed keys
+CONFIG_DEFAULTS = {
+    'apis': 'compute image storage cyclades',
+    'token': '',
+    'compute_url': 'https://okeanos.grnet.gr/api/v1',
+    'image_url': 'https://okeanos.grnet.gr/plankton',
+    'storage_url': 'https://plus.pithos.grnet.gr/v1',
+    'storage_account': '',
+    'storage_container': '',
+    'test_token': ''
+}
+
 
 log = logging.getLogger('kamaki.config')
 
@@ -44,20 +65,20 @@ class ConfigError(Exception):
 
 
 class Config(object):
-    def __init__(self, path, env, defaults):
-        self.path = os.environ.get(env, path)
-        self.defaults = defaults
+    def __init__(self):
+        self.path = os.environ.get(CONFIG_ENV, CONFIG_PATH)
+        self.defaults = CONFIG_DEFAULTS
         
         d = self.read()
         for key, val in d.items():
-            if key not in defaults:
+            if key not in self.defaults:
                 log.warning('Ignoring unknown config key "%s".', key)
         
         self.d = d
         self.overrides = {}
     
     def read(self):
-        if not os.path.exists(self.path):
+        if not exists(self.path):
             return {}
         
         with open(self.path) as f:
@@ -86,7 +107,7 @@ class Config(object):
             return self.overrides[key]
         if key in self.d:
             return self.d[key]
-        return self.defaults.get(key)
+        return self.defaults.get(key, '')
     
     def set(self, key, val):
         if key not in self.defaults:

@@ -43,12 +43,12 @@ The name of the class is important and it will determine the name and grouping
 of the command. This behavior can be overriden with the 'group' and 'name'
 decorator arguments:
 
-    @command(api='nova')
+    @command(api='compute')
     class server_list(object):
         # This command will be named 'list' under group 'server'
         ...
 
-    @command(api='nova', name='ls')
+    @command(api='compute', name='ls')
     class server_list(object):
         # This command will be named 'ls' under group 'server'
         ...
@@ -69,31 +69,18 @@ The order of commands is important, it will be preserved in the help output.
 import inspect
 import logging
 import os
-import sys
 
 from base64 import b64encode
 from grp import getgrgid
 from optparse import OptionParser
+from os.path import abspath, basename, exists
 from pwd import getpwuid
+from sys import argv, exit
 
-from kamaki.client import ComputeClient, GlanceClient, ClientError
+from kamaki import clients
 from kamaki.config import Config, ConfigError
 from kamaki.utils import OrderedDict, print_addresses, print_dict, print_items
 
-
-# Path to the file that stores the configuration
-CONFIG_PATH = os.path.expanduser('~/.kamakirc')
-
-# Name of a shell variable to bypass the CONFIG_PATH value
-CONFIG_ENV = 'KAMAKI_CONFIG'
-
-# The defaults also determine the allowed keys
-CONFIG_DEFAULTS = {
-    'apis': 'nova synnefo glance',
-    'token': '',
-    'compute_url': 'https://okeanos.grnet.gr/api/v1',
-    'images_url': 'https://okeanos.grnet.gr/plankton',
-}
 
 log = logging.getLogger('kamaki')
 
@@ -167,7 +154,7 @@ class config_del(object):
         self.config.delete(key)
 
 
-@command(api='nova')
+@command(api='compute')
 class server_list(object):
     """list servers"""
     
@@ -181,7 +168,7 @@ class server_list(object):
         print_items(servers)
 
 
-@command(api='nova')
+@command(api='compute')
 class server_info(object):
     """get server details"""
     
@@ -190,7 +177,7 @@ class server_info(object):
         print_dict(server)
 
 
-@command(api='nova')
+@command(api='compute')
 class server_create(object):
     """create server"""
     
@@ -214,7 +201,7 @@ class server_create(object):
             if not path:
                 log.error("Invalid personality argument '%s'", p)
                 return 1
-            if not os.path.exists(path):
+            if not exists(path):
                 log.error("File %s does not exist", path)
                 return 1
             
@@ -223,7 +210,7 @@ class server_create(object):
             
             st = os.stat(path)
             personalities.append({
-                'path': p[1] or os.path.abspath(path),
+                'path': p[1] or abspath(path),
                 'owner': p[2] or getpwuid(st.st_uid).pw_name,
                 'group': p[3] or getgrgid(st.st_gid).gr_name,
                 'mode': int(p[4]) if p[4] else 0x7777 & st.st_mode,
@@ -234,7 +221,7 @@ class server_create(object):
         print_dict(reply)
 
 
-@command(api='nova')
+@command(api='compute')
 class server_rename(object):
     """update server name"""
     
@@ -242,7 +229,7 @@ class server_rename(object):
         self.client.update_server_name(int(server_id), new_name)
 
 
-@command(api='nova')
+@command(api='compute')
 class server_delete(object):
     """delete server"""
     
@@ -250,7 +237,7 @@ class server_delete(object):
         self.client.delete_server(int(server_id))
 
 
-@command(api='nova')
+@command(api='compute')
 class server_reboot(object):
     """reboot server"""
     
@@ -263,7 +250,7 @@ class server_reboot(object):
         self.client.reboot_server(int(server_id), self.options.hard)
 
 
-@command(api='synnefo')
+@command(api='asterias')
 class server_start(object):
     """start server"""
     
@@ -271,7 +258,7 @@ class server_start(object):
         self.client.start_server(int(server_id))
 
 
-@command(api='synnefo')
+@command(api='asterias')
 class server_shutdown(object):
     """shutdown server"""
     
@@ -279,7 +266,7 @@ class server_shutdown(object):
         self.client.shutdown_server(int(server_id))
 
 
-@command(api='synnefo')
+@command(api='asterias')
 class server_console(object):
     """get a VNC console"""
     
@@ -288,7 +275,7 @@ class server_console(object):
         print_dict(reply)
 
 
-@command(api='synnefo')
+@command(api='asterias')
 class server_firewall(object):
     """set the firewall profile"""
     
@@ -296,7 +283,7 @@ class server_firewall(object):
         self.client.set_firewall_profile(int(server_id), profile)
 
 
-@command(api='synnefo')
+@command(api='asterias')
 class server_addr(object):
     """list server addresses"""
     
@@ -306,7 +293,7 @@ class server_addr(object):
         print_addresses(reply, margin)
 
 
-@command(api='nova')
+@command(api='compute')
 class server_meta(object):
     """get server metadata"""
     
@@ -315,7 +302,7 @@ class server_meta(object):
         print_dict(reply)
 
 
-@command(api='nova')
+@command(api='compute')
 class server_addmeta(object):
     """add server metadata"""
     
@@ -324,7 +311,7 @@ class server_addmeta(object):
         print_dict(reply)
 
 
-@command(api='nova')
+@command(api='compute')
 class server_setmeta(object):
     """update server metadata"""
     
@@ -334,7 +321,7 @@ class server_setmeta(object):
         print_dict(reply)
 
 
-@command(api='nova')
+@command(api='compute')
 class server_delmeta(object):
     """delete server metadata"""
     
@@ -342,7 +329,7 @@ class server_delmeta(object):
         self.client.delete_server_metadata(int(server_id), key)
 
 
-@command(api='synnefo')
+@command(api='asterias')
 class server_stats(object):
     """get server statistics"""
     
@@ -351,7 +338,7 @@ class server_stats(object):
         print_dict(reply, exclude=('serverRef',))
 
 
-@command(api='nova')
+@command(api='compute')
 class flavor_list(object):
     """list flavors"""
     
@@ -365,7 +352,7 @@ class flavor_list(object):
         print_items(flavors)
 
 
-@command(api='nova')
+@command(api='compute')
 class flavor_info(object):
     """get flavor details"""
     
@@ -374,7 +361,7 @@ class flavor_info(object):
         print_dict(flavor)
 
 
-@command(api='nova')
+@command(api='compute')
 class image_list(object):
     """list images"""
     
@@ -388,7 +375,7 @@ class image_list(object):
         print_items(images)
 
 
-@command(api='nova')
+@command(api='compute')
 class image_info(object):
     """get image details"""
     
@@ -397,7 +384,7 @@ class image_info(object):
         print_dict(image)
 
 
-@command(api='nova')
+@command(api='compute')
 class image_create(object):
     """create image"""
     
@@ -406,7 +393,7 @@ class image_create(object):
         print_dict(reply)
 
 
-@command(api='nova')
+@command(api='compute')
 class image_delete(object):
     """delete image"""
     
@@ -414,7 +401,7 @@ class image_delete(object):
         self.client.delete_image(image_id)
 
 
-@command(api='nova')
+@command(api='compute')
 class image_meta(object):
     """get image metadata"""
     
@@ -423,7 +410,7 @@ class image_meta(object):
         print_dict(reply)
 
 
-@command(api='nova')
+@command(api='compute')
 class image_addmeta(object):
     """add image metadata"""
     
@@ -432,7 +419,7 @@ class image_addmeta(object):
         print_dict(reply)
 
 
-@command(api='nova')
+@command(api='compute')
 class image_setmeta(object):
     """update image metadata"""
     
@@ -442,7 +429,7 @@ class image_setmeta(object):
         print_dict(reply)
 
 
-@command(api='nova')
+@command(api='compute')
 class image_delmeta(object):
     """delete image metadata"""
     
@@ -450,7 +437,7 @@ class image_delmeta(object):
         self.client.delete_image_metadata(image_id, key)
 
 
-@command(api='synnefo')
+@command(api='asterias')
 class network_list(object):
     """list networks"""
     
@@ -464,7 +451,7 @@ class network_list(object):
         print_items(networks)
 
 
-@command(api='synnefo')
+@command(api='asterias')
 class network_create(object):
     """create a network"""
     
@@ -473,7 +460,7 @@ class network_create(object):
         print_dict(reply)
 
 
-@command(api='synnefo')
+@command(api='asterias')
 class network_info(object):
     """get network details"""
     
@@ -482,7 +469,7 @@ class network_info(object):
         print_dict(network)
 
 
-@command(api='synnefo')
+@command(api='asterias')
 class network_rename(object):
     """update network name"""
     
@@ -490,7 +477,7 @@ class network_rename(object):
         self.client.update_network_name(network_id, new_name)
 
 
-@command(api='synnefo')
+@command(api='asterias')
 class network_delete(object):
     """delete a network"""
     
@@ -498,7 +485,7 @@ class network_delete(object):
         self.client.delete_network(network_id)
 
 
-@command(api='synnefo')
+@command(api='asterias')
 class network_connect(object):
     """connect a server to a network"""
     
@@ -506,7 +493,7 @@ class network_connect(object):
         self.client.connect_server(server_id, network_id)
 
 
-@command(api='synnefo')
+@command(api='asterias')
 class network_disconnect(object):
     """disconnect a server from a network"""
     
@@ -514,7 +501,7 @@ class network_disconnect(object):
         self.client.disconnect_server(server_id, network_id)
 
 
-@command(api='glance')
+@command(api='image')
 class glance_list(object):
     """list images"""
     
@@ -551,7 +538,7 @@ class glance_list(object):
         print_items(images, title=('name',))
 
 
-@command(api='glance')
+@command(api='image')
 class glance_meta(object):
     """get image metadata"""
     
@@ -560,7 +547,7 @@ class glance_meta(object):
         print_dict(image)
 
 
-@command(api='glance')
+@command(api='image')
 class glance_register(object):
     """register an image"""
     
@@ -603,7 +590,7 @@ class glance_register(object):
         self.client.register(name, location, params, properties)
 
 
-@command(api='glance')
+@command(api='image')
 class glance_members(object):
     """get image members"""
     
@@ -613,7 +600,7 @@ class glance_members(object):
             print member['member_id']
 
 
-@command(api='glance')
+@command(api='image')
 class glance_shared(object):
     """list shared images"""
     
@@ -623,7 +610,7 @@ class glance_shared(object):
             print image['image_id']
 
 
-@command(api='glance')
+@command(api='image')
 class glance_addmember(object):
     """add a member to an image"""
     
@@ -631,7 +618,7 @@ class glance_addmember(object):
         self.client.add_member(image_id, member)
 
 
-@command(api='glance')
+@command(api='image')
 class glance_delmember(object):
     """remove a member from an image"""
     
@@ -639,12 +626,33 @@ class glance_delmember(object):
         self.client.remove_member(image_id, member)
 
 
-@command(api='glance')
+@command(api='image')
 class glance_setmembers(object):
     """set the members of an image"""
     
     def main(self, image_id, *member):
         self.client.set_members(image_id, member)
+
+
+@command(api='storage')
+class store_upload(object):
+    """upload a file"""
+    
+    @classmethod
+    def update_parser(cls, parser):
+        parser.add_option('--account', dest='account', metavar='ACCOUNT',
+                help='use account ACCOUNT')
+        parser.add_option('--container', dest='container', metavar='CONTAINER',
+                help='use container CONTAINER')
+    
+    def main(self, path, remote_path=None):
+        account = self.options.account or self.config.get('storage_account')
+        container = self.options.container or \
+                    self.config.get('storage_container')
+        if remote_path is None:
+            remote_path = basename(path)
+        with open(path) as f:
+            self.client.create_object(account, container, remote_path, f)
 
 
 def print_groups(groups):
@@ -663,18 +671,14 @@ def print_commands(group, commands):
 
 
 def main():
+    ch = logging.StreamHandler()
+    ch.setFormatter(logging.Formatter('%(message)s'))
+    log.addHandler(ch)
+    
     parser = OptionParser(add_help_option=False)
     parser.usage = '%prog <group> <command> [options]'
     parser.add_option('--help', dest='help', action='store_true',
             default=False, help='show this help message and exit')
-    parser.add_option('--api', dest='apis', action='append', metavar='API',
-            help='API to use (can be used multiple times)')
-    parser.add_option('--compute-url', dest='compute_url', metavar='URL',
-            help='URL for the compute API')
-    parser.add_option('--images-url', dest='images_url', metavar='URL',
-            help='URL for the images API')
-    parser.add_option('--token', dest='token', metavar='TOKEN',
-            help='use token TOKEN')
     parser.add_option('-v', dest='verbose', action='store_true', default=False,
             help='use verbose output')
     parser.add_option('-d', dest='debug', action='store_true', default=False,
@@ -684,7 +688,7 @@ def main():
     # anyway if we don't reach the main parsing.
     _error = parser.error
     parser.error = lambda msg: None
-    options, args = parser.parse_args(sys.argv)
+    options, args = parser.parse_args(argv)
     parser.error = _error
     
     if options.debug:
@@ -695,13 +699,10 @@ def main():
         log.setLevel(logging.WARNING)
     
     try:
-        config = Config(CONFIG_PATH, CONFIG_ENV, CONFIG_DEFAULTS)
+        config = Config()
     except ConfigError, e:
         log.error('%s', e.args[0])
-        return 1
-    
-    for key in CONFIG_DEFAULTS:
-        config.override(key, getattr(options, key))
+        exit(1)
     
     apis = config.get('apis').split()
     
@@ -716,14 +717,14 @@ def main():
     if len(args) < 2:
         parser.print_help()
         print_groups(available_groups)
-        return 0
+        exit(0)
     
     group = args[1]
     
     if group not in available_groups:
         parser.print_help()
         print_groups(available_groups)
-        return 1
+        exit(1)
     
     # Find available commands based on the given APIs
     available_commands = []
@@ -737,17 +738,16 @@ def main():
     if len(args) < 3:
         parser.print_help()
         print_commands(group, available_commands)
-        return 0
+        exit(0)
     
     name = args[2]
     
     if name not in available_commands:
         parser.print_help()
         print_commands(group, available_commands)
-        return 1
+        exit(1)
     
     cls = _commands[group][name]
-    cls.config = config
     
     syntax = '%s [options]' % cls.syntax if cls.syntax else '[options]'
     parser.usage = '%%prog %s %s %s' % (group, name, syntax)
@@ -755,41 +755,38 @@ def main():
     if hasattr(cls, 'update_parser'):
         cls.update_parser(parser)
     
-    options, args = parser.parse_args(sys.argv)
+    options, args = parser.parse_args(argv)
     if options.help:
         parser.print_help()
-        return 0
+        exit(0)
     
     cmd = cls()
     cmd.config = config
     cmd.options = options
     
-    if cmd.api in ('nova', 'synnefo'):
-        url = config.get('compute_url')
+    if cmd.api in ('compute', 'image', 'storage', 'cyclades'):
         token = config.get('token')
-        cmd.client = ComputeClient(url, token)
-    elif cmd.api == 'glance':
-        url = config.get('images_url')
-        token = config.get('token')
-        cmd.client = GlanceClient(url, token)
+        if cmd.api in ('compute', 'image', 'storage'):
+            url = config.get(cmd.api + '_url')
+        elif cmd.api == 'cyclades':
+            url = config.get('compute_url')
+        cls_name = cmd.api.capitalize() + 'Client'
+        cmd.client = getattr(clients, cls_name)(url, token)
     
     try:
-        return cmd.main(*args[3:])
+        ret = cmd.main(*args[3:])
+        exit(ret)
     except TypeError as e:
         if e.args and e.args[0].startswith('main()'):
             parser.print_help()
-            return 1
+            exit(1)
         else:
             raise
-    except ClientError, err:
+    except clients.ClientError, err:
         log.error('%s', err.message)
         log.info('%s', err.details)
-        return 2
+        exit(2)
 
 
 if __name__ == '__main__':
-    ch = logging.StreamHandler()
-    ch.setFormatter(logging.Formatter('%(message)s'))
-    log.addHandler(ch)
-    err = main() or 0
-    sys.exit(err)
+    main()
