@@ -82,6 +82,12 @@ class StorageClient(HTTPClient):
         data = f.read()
         self.http_put(path, data, success=201)
 
+    def get_object(self, object):
+        path = '/%s/%s/%s' % (self.account, self.container, object)
+        resp, reply = self.raw_http_cmd('GET', path, success=200,
+                skip_read=True)
+        return resp.fp
+
     def delete_object(self, object):
         path = '/%s/%s/%s' % (self.account, self.container, object)
         self.http_delete(path)

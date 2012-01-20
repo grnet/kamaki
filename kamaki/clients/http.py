@@ -62,7 +62,7 @@ class HTTPClient(object):
         return token
     
     def raw_http_cmd(self, method, path, body=None, headers=None, success=200,
-                     json_reply=False):
+                     json_reply=False, skip_read=False):
         p = urlparse(self.url)
         path = p.path + path
         if p.scheme == 'http':
@@ -89,7 +89,7 @@ class HTTPClient(object):
         conn.request(method, path, body, headers)
         
         resp = conn.getresponse()
-        reply = resp.read()
+        reply = '' if skip_read else resp.read()
         
         log.debug('<' * 50)
         log.info('%d %s', resp.status, resp.reason)

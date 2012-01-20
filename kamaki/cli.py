@@ -75,7 +75,7 @@ from grp import getgrgid
 from optparse import OptionParser
 from os.path import abspath, basename, exists
 from pwd import getpwuid
-from sys import argv, exit
+from sys import argv, exit, stdout
 
 from kamaki import clients
 from kamaki.config import Config, ConfigError
@@ -641,9 +641,8 @@ class glance_setmembers(object):
         self.client.set_members(image_id, member)
 
 
-@command(api='storage')
-class store_container(object):
-    """get container info"""
+class store_command(object):
+    """base class for all store_* commands"""
     
     @classmethod
     def update_parser(cls, parser):
@@ -655,29 +654,28 @@ class store_container(object):
     def main(self):
         self.config.override('storage_account', self.options.account)
         self.config.override('storage_container', self.options.container)
+        
+        # Use the more efficient Pithos client if available
+        if 'pithos' in self.config.get('apis').split():
+            self.client = clients.PithosClient(self.config)
+
+
+@command(api='storage')
+class store_container(store_command):
+    """get container info"""
+    
+    def main(self):
+        store_command.main(self)
         reply = self.client.get_container_meta()
         print_dict(reply)
 
 
 @command(api='storage')
-class store_upload(object):
+class store_upload(store_command):
     """upload a file"""
     
-    @classmethod
-    def update_parser(cls, parser):
-        parser.add_option('--account', dest='account', metavar='ACCOUNT',
-                help='use account ACCOUNT')
-        parser.add_option('--container', dest='container', metavar='CONTAINER',
-                help='use container CONTAINER')
-    
     def main(self, path, remote_path=None):
-        self.config.override('storage_account', self.options.account)
-        self.config.override('storage_container', self.options.container)
-        
-        # Use the more efficient Pithos client if available
-        if 'pithos' in self.config.get('apis').split():
-            self.client = clients.PithosClient(self.config)
-        
+        store_command.main(self)
         if remote_path is None:
             remote_path = basename(path)
         with open(path) as f:
@@ -685,19 +683,26 @@ class store_upload(object):
 
 
 @command(api='storage')
-class store_delete(object):
+class store_download(store_command):
+    """download a file"""
+    
+    def main(self, remote_path, local_path):
+        store_command.main(self)
+        f = self.client.get_object(remote_path)
+        out = open(local_path, 'w') if local_path != '-' else stdout
+        block = 4096
+        data = f.read(block)
+        while data:
+            out.write(data)
+            data = f.read(block)
+
+
+@command(api='storage')
+class store_delete(store_command):
     """delete a file"""
     
-    @classmethod
-    def update_parser(cls, parser):
-        parser.add_option('--account', dest='account', metavar='ACCOUNT',
-                help='use account ACCOUNT')
-        parser.add_option('--container', dest='container', metavar='CONTAINER',
-                help='use container CONTAINER')
-    
     def main(self, path):
-        self.config.override('storage_account', self.options.account)
-        self.config.override('storage_container', self.options.container)
+        store_command.main(self)
         self.client.delete_object(path)
 
 
