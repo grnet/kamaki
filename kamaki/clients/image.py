@@ -37,6 +37,7 @@
 
 from urllib import quote
 
+from . import ClientError
 from .http import HTTPClient
 
 

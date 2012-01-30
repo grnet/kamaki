@@ -257,7 +257,7 @@ class server_reboot(object):
         self.client.reboot_server(int(server_id), self.options.hard)
 
 
-@command(api='asterias')
+@command(api='cyclades')
 class server_start(object):
     """start server"""
     
@@ -265,7 +265,7 @@ class server_start(object):
         self.client.start_server(int(server_id))
 
 
-@command(api='asterias')
+@command(api='cyclades')
 class server_shutdown(object):
     """shutdown server"""
     
@@ -273,7 +273,7 @@ class server_shutdown(object):
         self.client.shutdown_server(int(server_id))
 
 
-@command(api='asterias')
+@command(api='cyclades')
 class server_console(object):
     """get a VNC console"""
     
@@ -282,7 +282,7 @@ class server_console(object):
         print_dict(reply)
 
 
-@command(api='asterias')
+@command(api='cyclades')
 class server_firewall(object):
     """set the firewall profile"""
     
@@ -290,7 +290,7 @@ class server_firewall(object):
         self.client.set_firewall_profile(int(server_id), profile)
 
 
-@command(api='asterias')
+@command(api='cyclades')
 class server_addr(object):
     """list server addresses"""
     
@@ -336,7 +336,7 @@ class server_delmeta(object):
         self.client.delete_server_metadata(int(server_id), key)
 
 
-@command(api='asterias')
+@command(api='cyclades')
 class server_stats(object):
     """get server statistics"""
     
@@ -392,15 +392,6 @@ class image_info(object):
 
 
 @command(api='compute')
-class image_create(object):
-    """create image"""
-    
-    def main(self, server_id, name):
-        reply = self.client.create_image(int(server_id), name)
-        print_dict(reply)
-
-
-@command(api='compute')
 class image_delete(object):
     """delete image"""
     
@@ -444,7 +435,7 @@ class image_delmeta(object):
         self.client.delete_image_metadata(image_id, key)
 
 
-@command(api='asterias')
+@command(api='cyclades')
 class network_list(object):
     """list networks"""
     
@@ -458,7 +449,7 @@ class network_list(object):
         print_items(networks)
 
 
-@command(api='asterias')
+@command(api='cyclades')
 class network_create(object):
     """create a network"""
     
@@ -467,7 +458,7 @@ class network_create(object):
         print_dict(reply)
 
 
-@command(api='asterias')
+@command(api='cyclades')
 class network_info(object):
     """get network details"""
     
@@ -476,7 +467,7 @@ class network_info(object):
         print_dict(network)
 
 
-@command(api='asterias')
+@command(api='cyclades')
 class network_rename(object):
     """update network name"""
     
@@ -484,7 +475,7 @@ class network_rename(object):
         self.client.update_network_name(network_id, new_name)
 
 
-@command(api='asterias')
+@command(api='cyclades')
 class network_delete(object):
     """delete a network"""
     
@@ -492,7 +483,7 @@ class network_delete(object):
         self.client.delete_network(network_id)
 
 
-@command(api='asterias')
+@command(api='cyclades')
 class network_connect(object):
     """connect a server to a network"""
     
@@ -500,7 +491,7 @@ class network_connect(object):
         self.client.connect_server(server_id, network_id)
 
 
-@command(api='asterias')
+@command(api='cyclades')
 class network_disconnect(object):
     """disconnect a server from a network"""
     

@@ -33,6 +33,7 @@
 
 import json
 
+from . import ClientError
 from .http import HTTPClient
 
 
@@ -146,41 +147,35 @@ class ComputeClient(HTTPClient):
         path = '/images/detail' if detail else '/images'
         reply = self.http_get(path)
         return reply['images']['values']
-
+    
     def get_image_details(self, image_id):
-        path = '/images/%d' % image_id
+        path = '/images/%s' % image_id
         reply = self.http_get(path)
         return reply['image']
-
-    def create_image(self, server_id, name):
-        req = {'name': name, 'serverRef': server_id}
-        body = json.dumps({'image': req})
-        reply = self.http_post('/images', body)
-        return reply['image']
-
+    
     def delete_image(self, image_id):
-        path = '/images/%d' % image_id
+        path = '/images/%s' % image_id
         self.http_delete(path)
 
     def get_image_metadata(self, image_id, key=None):
-        path = '/images/%d/meta' % image_id
+        path = '/images/%s/meta' % image_id
         if key:
             path += '/%s' % key
         reply = self.http_get(path)
         return reply['meta'] if key else reply['metadata']['values']
     
     def create_image_metadata(self, image_id, key, val):
-        path = '/images/%d/meta/%s' % (image_id, key)
+        path = '/images/%s/meta/%s' % (image_id, key)
         body = json.dumps({'meta': {key: val}})
         reply = self.http_put(path, body, success=201)
-        reply['meta']
+        return reply['meta']
 
     def update_image_metadata(self, image_id, **metadata):
-        path = '/images/%d/meta' % image_id
+        path = '/images/%s/meta' % image_id
         body = json.dumps({'metadata': metadata})
         reply = self.http_post(path, body, success=201)
         return reply['metadata']
 
     def delete_image_metadata(self, image_id, key):
-        path = '/images/%d/meta/%s' % (image_id, key)
-        reply = self.http_delete(path)
+        path = '/images/%s/meta/%s' % (image_id, key)
+        self.http_delete(path)

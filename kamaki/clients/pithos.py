@@ -73,7 +73,7 @@ class PithosClient(StorageClient):
         if resp.status == 201:
             return
         
-        hashes = set(reply.split())
+        hashes = set(json.loads(reply))
         
         f.seek(0)
         data = f.read(blocksize)
