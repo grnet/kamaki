@@ -41,10 +41,13 @@ from .storage import StorageClient
 class PithosClient(StorageClient):
     """GRNet Pithos API client"""
     
-    def put_block(self, data):
+    def put_block(self, data, hash):
         path = '/%s/%s?update' % (self.account, self.container)
-        headers = {'Content-Type': 'application/octet-stream'}
-        self.raw_http_cmd('POST', path, data, headers, success=202)
+        headers = {'Content-Type': 'application/octet-stream',
+                   'Content-Length': len(data)}
+        resp, reply = self.raw_http_cmd('POST', path, data, headers,
+                                        success=202)
+        assert reply.strip() == hash, 'Local hash does not match server'
     
     def create_object(self, object, f):
         meta = self.get_container_meta()
@@ -52,17 +55,19 @@ class PithosClient(StorageClient):
         blockhash = meta['block-hash']
         
         size = 0
-        hashes = []
+        hashes = {}
         data = f.read(blocksize)
         while data:
-            size += len(data)
+            bytes = len(data)
             h = hashlib.new(blockhash)
-            h.update(data)
-            hashes.append(h.hexdigest())
+            h.update(data.rstrip('\x00'))
+            hash = h.hexdigest()
+            hashes[hash] = (size, bytes)
+            size += bytes
             data = f.read(blocksize)
                 
         path = '/%s/%s/%s?hashmap&format=json' % (self.account, self.container,
-                object)
+                                                  object)
         hashmap = dict(bytes=size, hashes=hashes)
         req = json.dumps(hashmap)
         resp, reply = self.raw_http_cmd('PUT', path, req, success=None)
@@ -73,17 +78,12 @@ class PithosClient(StorageClient):
         if resp.status == 201:
             return
         
-        hashes = set(json.loads(reply))
+        missing = json.loads(reply)
         
-        f.seek(0)
-        data = f.read(blocksize)
-        while data:
-            h = hashlib.new(blockhash)
-            h.update(data)
-            hash = h.hexdigest()
-            if hash in hashes:
-                self.put_block(data)
-                hashes.remove(hash)
-            data = f.read(blocksize)
+        for hash in missing:
+            offset, bytes = hashes[hash]
+            f.seek(offset)
+            data = f.read(bytes)
+            self.put_block(data, hash)
         
-        self.http_put(path, req, success=201)        
+        self.http_put(path, req, success=201)
