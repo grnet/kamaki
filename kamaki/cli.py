@@ -739,6 +739,9 @@ def main():
             help='use verbose output')
     parser.add_option('-d', dest='debug', action='store_true', default=False,
             help='use debug output')
+    parser.add_option('-o', dest='options', action='append',
+            metavar='KEY=VAL',
+            help='override a config value (can be used multiple times)')
     
     # Do a preliminary parsing, ignore any errors since we will print help
     # anyway if we don't reach the main parsing.
@@ -759,6 +762,13 @@ def main():
     except ConfigError, e:
         log.error('%s', e.args[0])
         exit(1)
+    
+    for option in options.options or []:
+        key, sep, val = option.partition('=')
+        if not sep:
+            log.error('Invalid option "%s"', option)
+            exit(1)
+        config.override(key.strip(), val.strip())
     
     apis = config.get('apis').split()
     
