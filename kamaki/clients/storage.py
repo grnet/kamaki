@@ -66,6 +66,10 @@ class StorageClient(HTTPClient):
             raise ClientError('No container was given')
         return container
     
+    def create_container(self, container):
+        path = '/%s/%s' % (self.account, container)
+        self.http_put(path, success=201)
+    
     def get_container_meta(self):
         path = '/%s/%s' % (self.account, self.container)
         resp, reply = self.raw_http_cmd('HEAD', path, success=204)

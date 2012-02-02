@@ -637,10 +637,10 @@ class store_command(object):
     
     @classmethod
     def update_parser(cls, parser):
-        parser.add_option('--account', dest='account', metavar='ACCOUNT',
-                help='use account ACCOUNT')
-        parser.add_option('--container', dest='container', metavar='CONTAINER',
-                help='use container CONTAINER')
+        parser.add_option('--account', dest='account', metavar='NAME',
+                help='use account NAME')
+        parser.add_option('--container', dest='container', metavar='NAME',
+                help='use container NAME')
     
     def main(self):
         self.config.override('storage_account', self.options.account)
@@ -649,6 +649,20 @@ class store_command(object):
         # Use the more efficient Pithos client if available
         if 'pithos' in self.config.get('apis').split():
             self.client = clients.PithosClient(self.config)
+
+
+@command(api='storage')
+class store_create(object):
+    """create a container"""
+    
+    @classmethod
+    def update_parser(cls, parser):
+        parser.add_option('--account', dest='account', metavar='ACCOUNT',
+                help='use account ACCOUNT')
+    
+    def main(self, container):
+        self.config.override('storage_account', self.options.account)
+        self.client.create_container(container)
 
 
 @command(api='storage')
