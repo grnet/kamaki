@@ -36,6 +36,7 @@ import json
 
 from . import ClientError
 from .storage import StorageClient
+from ..utils import OrderedDict
 
 
 class PithosClient(StorageClient):
@@ -55,7 +56,7 @@ class PithosClient(StorageClient):
         blockhash = meta['block-hash']
         
         size = 0
-        hashes = {}
+        hashes = OrderedDict()
         data = f.read(blocksize)
         while data:
             bytes = len(data)
@@ -68,7 +69,7 @@ class PithosClient(StorageClient):
                 
         path = '/%s/%s/%s?hashmap&format=json' % (self.account, self.container,
                                                   object)
-        hashmap = dict(bytes=size, hashes=hashes)
+        hashmap = dict(bytes=size, hashes=hashes.keys())
         req = json.dumps(hashmap)
         resp, reply = self.raw_http_cmd('PUT', path, req, success=None)
         
