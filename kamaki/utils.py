@@ -31,37 +31,40 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-class OrderedDict(dict):
-    """An ordered dict implementation for Python versions prior to 2.7"""
+try:
+    from collections import OrderDict
+except ImportError:
+    class OrderedDict(dict):
+        """An ordered dict implementation for Python versions prior to 2.7"""
     
-    def __init__(self):
-        dict.__init__(self)
-        self._keys = []
+        def __init__(self):
+            dict.__init__(self)
+            self._keys = []
     
-    def __delitem__(self, key):
-        dict.__delitem__(self, key)
-        self._keys.remove(key)
+        def __delitem__(self, key):
+            dict.__delitem__(self, key)
+            self._keys.remove(key)
     
-    def __iter__(self):
-        return iter(self._keys)
+        def __iter__(self):
+            return iter(self._keys)
     
-    def __repr__(self):
-        return repr(self.items())
+        def __repr__(self):
+            return repr(self.items())
     
-    def __setitem__(self, key, value):
-        if key not in self:
-            self._keys.append(key)
-        dict.__setitem__(self, key, value)
+        def __setitem__(self, key, value):
+            if key not in self:
+                self._keys.append(key)
+            dict.__setitem__(self, key, value)
     
-    def keys(self):
-        return self._keys
+        def keys(self):
+            return self._keys
     
-    def iteritems(self):
-        for key in self._keys:
-            yield key, self[key]
+        def iteritems(self):
+            for key in self._keys:
+                yield key, self[key]
     
-    def items(self):
-        return list(self.iteritems())
+        def items(self):
+            return list(self.iteritems())
 
 
 def print_addresses(addresses, margin):
