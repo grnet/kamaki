@@ -49,5 +49,8 @@ setup(
     include_package_data=True,
     entry_points={
         'console_scripts': ['kamaki = kamaki.cli:main']
-    }
+    },
+    install_requires=[
+        'clint>=0.3'
+    ]
 )

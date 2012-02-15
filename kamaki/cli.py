@@ -73,21 +73,39 @@ import os
 from base64 import b64encode
 from grp import getgrgid
 from optparse import OptionParser
-from os.path import abspath, basename, exists
+from os.path import abspath, basename, exists, expanduser
 from pwd import getpwuid
 from sys import argv, exit, stdout
 
+from clint.textui import puts, puts_err, indent
+from clint.textui.cols import columns
+
 from kamaki import clients
-from kamaki.config import Config, ConfigError
+from kamaki.config import Config
 from kamaki.utils import OrderedDict, print_addresses, print_dict, print_items
 
 
-log = logging.getLogger('kamaki')
+# Path to the file that stores the configuration
+CONFIG_PATH = expanduser('~/.kamakirc')
+
+# Name of a shell variable to bypass the CONFIG_PATH value
+CONFIG_ENV = 'KAMAKI_CONFIG'
+
 
 _commands = OrderedDict()
 
 
-def command(api=None, group=None, name=None, description=None, syntax=None):
+GROUPS = {
+    'config': "Configuration commands",
+    'server': "Compute API server commands",
+    'flavor': "Compute API flavor commands",
+    'image': "Compute API image commands",
+    'network': "Compute API network commands (Cyclades extension)",
+    'glance': "Image API commands",
+    'store': "Storage API commands"}
+
+
+def command(api=None, group=None, name=None, syntax=None):
     """Class decorator that registers a class as a CLI command."""
     
     def decorator(cls):
@@ -101,6 +119,11 @@ def command(api=None, group=None, name=None, description=None, syntax=None):
         cls.description = description or cls.__doc__
         cls.syntax = syntax
         
+        short_description, sep, long_description = cls.__doc__.partition('\n')
+        cls.description = short_description
+        cls.long_description = long_description or short_description
+        
+        cls.syntax = syntax
         if cls.syntax is None:
             # Generate a syntax string based on main's arguments
             spec = inspect.getargspec(cls.main.im_func)
@@ -119,53 +142,60 @@ def command(api=None, group=None, name=None, description=None, syntax=None):
     return decorator
 
 
-@command()
+@command(api='config')
 class config_list(object):
-    """list configuration options"""
+    """List configuration options"""
     
-    @classmethod
     def update_parser(cls, parser):
         parser.add_option('-a', dest='all', action='store_true',
-                default=False, help='include empty values')
+                          default=False, help='include default values')
     
     def main(self):
-        for key, val in sorted(self.config.items()):
-            if not val and not self.options.all:
-                continue
-            print '%s=%s' % (key, val)
+        include_defaults = self.options.all
+        for section in sorted(self.config.sections()):
+            items = self.config.items(section, include_defaults)
+            for key, val in sorted(items):
+                puts('%s.%s = %s' % (section, key, val))
 
 
-@command()
+@command(api='config')
 class config_get(object):
-    """get a configuration option"""
+    """Show a configuration option"""
     
-    def main(self, key):
-        val = self.config.get(key)
-        if val is not None:
-            print val
+    def main(self, option):
+        section, sep, key = option.rpartition('.')
+        section = section or 'global'
+        value = self.config.get(section, key)
+        if value is not None:
+            print value
 
 
-@command()
+@command(api='config')
 class config_set(object):
-    """set a configuration option"""
+    """Set a configuration option"""
     
-    def main(self, key, val):
-        self.config.set(key, val)
+    def main(self, option, value):
+        section, sep, key = option.rpartition('.')
+        section = section or 'global'
+        self.config.set(section, key, value)
+        self.config.write()
 
 
-@command()
-class config_del(object):
-    """delete a configuration option"""
+@command(api='config')
+class config_delete(object):
+    """Delete a configuration option (and use the default value)"""
     
-    def main(self, key):
-        self.config.delete(key)
+    def main(self, option):
+        section, sep, key = option.rpartition('.')
+        section = section or 'global'
+        self.config.remove_option(section, key)
+        self.config.write()
 
 
 @command(api='compute')
 class server_list(object):
     """list servers"""
     
-    @classmethod
     def update_parser(cls, parser):
         parser.add_option('-l', dest='detail', action='store_true',
                 default=False, help='show detailed output')
@@ -188,7 +218,6 @@ class server_info(object):
 class server_create(object):
     """create server"""
     
-    @classmethod
     def update_parser(cls, parser):
         parser.add_option('--personality', dest='personalities',
                 action='append', default=[],
@@ -248,7 +277,6 @@ class server_delete(object):
 class server_reboot(object):
     """reboot server"""
     
-    @classmethod
     def update_parser(cls, parser):
         parser.add_option('-f', dest='hard', action='store_true',
                 default=False, help='perform a hard reboot')
@@ -349,7 +377,6 @@ class server_stats(object):
 class flavor_list(object):
     """list flavors"""
     
-    @classmethod
     def update_parser(cls, parser):
         parser.add_option('-l', dest='detail', action='store_true',
                 default=False, help='show detailed output')
@@ -372,7 +399,6 @@ class flavor_info(object):
 class image_list(object):
     """list images"""
     
-    @classmethod
     def update_parser(cls, parser):
         parser.add_option('-l', dest='detail', action='store_true',
                 default=False, help='show detailed output')
@@ -439,7 +465,6 @@ class image_delmeta(object):
 class network_list(object):
     """list networks"""
     
-    @classmethod
     def update_parser(cls, parser):
         parser.add_option('-l', dest='detail', action='store_true',
                 default=False, help='show detailed output')
@@ -503,7 +528,6 @@ class network_disconnect(object):
 class glance_list(object):
     """list images"""
     
-    @classmethod
     def update_parser(cls, parser):
         parser.add_option('-l', dest='detail', action='store_true',
                 default=False, help='show detailed output')
@@ -549,7 +573,6 @@ class glance_meta(object):
 class glance_register(object):
     """register an image"""
     
-    @classmethod
     def update_parser(cls, parser):
         parser.add_option('--checksum', dest='checksum', metavar='CHECKSUM',
                 help='set image checksum')
@@ -635,7 +658,6 @@ class glance_setmembers(object):
 class store_command(object):
     """base class for all store_* commands"""
     
-    @classmethod
     def update_parser(cls, parser):
         parser.add_option('--account', dest='account', metavar='NAME',
                 help='use account NAME')
@@ -655,7 +677,6 @@ class store_command(object):
 class store_create(object):
     """create a container"""
     
-    @classmethod
     def update_parser(cls, parser):
         parser.add_option('--account', dest='account', metavar='ACCOUNT',
                 help='use account ACCOUNT')
@@ -711,133 +732,161 @@ class store_delete(store_command):
         self.client.delete_object(path)
 
 
-def print_groups(groups):
-    print
-    print 'Groups:'
-    for group in groups:
-        print '  %s' % group
+def print_groups():
+    puts('\nGroups:')
+    with indent(2):
+        for group in _commands:
+            description = GROUPS.get(group, '')
+            puts(columns([group, 12], [description, 60]))
 
 
-def print_commands(group, commands):
-    print
-    print 'Commands:'
-    for name, cls in _commands[group].items():
-        if name in commands:
-            print '  %s %s' % (name.ljust(10), cls.description)
+def print_commands(group):
+    description = GROUPS.get(group, '')
+    if description:
+        puts('\n' + description)
+    
+    puts('\nCommands:')
+    with indent(2):
+        for name, cls in _commands[group].items():
+            puts(columns([name, 12], [cls.description, 60]))
 
 
 def main():
-    ch = logging.StreamHandler()
-    ch.setFormatter(logging.Formatter('%(message)s'))
-    log.addHandler(ch)
-    
     parser = OptionParser(add_help_option=False)
     parser.usage = '%prog <group> <command> [options]'
-    parser.add_option('--help', dest='help', action='store_true',
-            default=False, help='show this help message and exit')
-    parser.add_option('-v', dest='verbose', action='store_true', default=False,
-            help='use verbose output')
-    parser.add_option('-d', dest='debug', action='store_true', default=False,
-            help='use debug output')
+    parser.add_option('-h', '--help', dest='help', action='store_true',
+                      default=False,
+                      help="Show this help message and exit")
+    parser.add_option('--config', dest='config', metavar='PATH',
+                      help="Specify the path to the configuration file")
+    parser.add_option('-i', '--include', dest='include', action='store_true',
+                      default=False,
+                      help="Include protocol headers in the output")
+    parser.add_option('-s', '--silent', dest='silent', action='store_true',
+                      default=False,
+                      help="Silent mode, don't output anything")
+    parser.add_option('-v', '--verbose', dest='verbose', action='store_true',
+                      default=False,
+                      help="Make the operation more talkative")
+    parser.add_option('-V', '--version', dest='version', action='store_true',
+                      default=False,
+                      help="Show version number and quit")
     parser.add_option('-o', dest='options', action='append',
-            metavar='KEY=VAL',
-            help='override a config value (can be used multiple times)')
+                      default=[], metavar="KEY=VAL",
+                      help="Override a config values")
     
-    # Do a preliminary parsing, ignore any errors since we will print help
-    # anyway if we don't reach the main parsing.
-    _error = parser.error
-    parser.error = lambda msg: None
-    options, args = parser.parse_args(argv)
-    parser.error = _error
-    
-    if options.debug:
-        log.setLevel(logging.DEBUG)
-    elif options.verbose:
-        log.setLevel(logging.INFO)
-    else:
-        log.setLevel(logging.WARNING)
-    
-    try:
-        config = Config()
-    except ConfigError, e:
-        log.error('%s', e.args[0])
-        exit(1)
-    
-    for option in options.options or []:
-        key, sep, val = option.partition('=')
-        if not sep:
-            log.error('Invalid option "%s"', option)
-            exit(1)
-        config.override(key.strip(), val.strip())
-    
-    apis = config.get('apis').split()
-    
-    # Find available groups based on the given APIs
-    available_groups = []
-    for group, group_commands in _commands.items():
-        for name, cls in group_commands.items():
-            if cls.api is None or cls.api in apis:
-                available_groups.append(group)
-                break
-    
-    if len(args) < 2:
-        parser.print_help()
-        print_groups(available_groups)
+    if args.contains(['-V', '--version']):
+        import kamaki
+        print "kamaki %s" % kamaki.__version__
         exit(0)
     
-    group = args[1]
+    if args.contains(['-s', '--silent']):
+        level = logging.CRITICAL
+    elif args.contains(['-v', '--verbose']):
+        level = logging.INFO
+    else:
+        level = logging.WARNING
     
-    if group not in available_groups:
+    logging.basicConfig(level=level, format='%(message)s')
+    
+    if '--config' in args:
+        config_path = args.grouped['--config'].get(0)
+    else:
+        config_path = os.environ.get(CONFIG_ENV, CONFIG_PATH)
+    
+    config = Config(config_path)
+    
+    for option in args.grouped.get('-o', []):
+        keypath, sep, val = option.partition('=')
+        if not sep:
+            log.error("Invalid option '%s'", option)
+            exit(1)
+        section, sep, key = keypath.partition('.')
+        if not sep:
+            log.error("Invalid option '%s'", option)
+            exit(1)
+        config.override(section.strip(), key.strip(), val.strip())
+    
+    apis = set(['config'])
+    for api in ('compute', 'image', 'storage'):
+        if config.getboolean(api, 'enable'):
+            apis.add(api)
+    if config.getboolean('compute', 'cyclades_extensions'):
+        apis.add('cyclades')
+    if config.getboolean('storage', 'pithos_extensions'):
+        apis.add('pithos')
+    
+    # Remove commands that belong to APIs that are not included
+    for group, group_commands in _commands.items():
+        for name, cls in group_commands.items():
+            if cls.api not in apis:
+                del group_commands[name]
+        if not group_commands:
+            del _commands[group]
+    
+    if not args.grouped['_']:
         parser.print_help()
-        print_groups(available_groups)
-        exit(1)
+        print_groups()
+        exit(0)
     
-    # Find available commands based on the given APIs
-    available_commands = []
-    for name, cls in _commands[group].items():
-        if cls.api is None or cls.api in apis:
-            available_commands.append(name)
-            continue
+    group = args.grouped['_'][0]
+    
+    if group not in _commands:
+        parser.print_help()
+        print_groups()
+        exit(1)
     
     parser.usage = '%%prog %s <command> [options]' % group
     
-    if len(args) < 3:
+    if len(args.grouped['_']) == 1:
         parser.print_help()
-        print_commands(group, available_commands)
+        print_commands(group)
         exit(0)
     
-    name = args[2]
+    name = args.grouped['_'][1]
     
-    if name not in available_commands:
+    if name not in _commands[group]:
         parser.print_help()
-        print_commands(group, available_commands)
+        print_commands(group)
         exit(1)
     
-    cls = _commands[group][name]
+    cmd = _commands[group][name]()
     
-    syntax = '%s [options]' % cls.syntax if cls.syntax else '[options]'
+    syntax = '%s [options]' % cmd.syntax if cmd.syntax else '[options]'
     parser.usage = '%%prog %s %s %s' % (group, name, syntax)
+    parser.description = cmd.description
     parser.epilog = ''
-    if hasattr(cls, 'update_parser'):
-        cls.update_parser(parser)
+    if hasattr(cmd, 'update_parser'):
+        cmd.update_parser(parser)
     
-    options, args = parser.parse_args(argv)
-    if options.help:
+    if args.contains(['-h', '--help']):
         parser.print_help()
         exit(0)
     
-    cmd = cls()
-    cmd.config = config
-    cmd.options = options
+    cmd.options, cmd.args = parser.parse_args(argv)
     
-    if cmd.api:
-        client_name = cmd.api.capitalize() + 'Client'
-        client = getattr(clients, client_name, None)
-        if client:
-            cmd.client = client(config)
-    
+    api = cmd.api
+    if api == 'config':
+        cmd.config = config
+    elif api in ('compute', 'image', 'storage'):
+        token = config.get(api, 'token') or config.get('gobal', 'token')
+        url = config.get(api, 'url')
+        client_cls = getattr(clients, api)
+        kwargs = dict(base_url=url, token=token)
+        
+        # Special cases
+        if api == 'compute' and config.getboolean(api, 'cyclades_extensions'):
+            client_cls = clients.cyclades
+        elif api == 'storage':
+            kwargs['account'] = config.get(api, 'account')
+            kwargs['container'] = config.get(api, 'container')
+            if config.getboolean(api, 'pithos_extensions'):
+                client_cls = clients.pithos
+        
+        cmd.client = client_cls(**kwargs)
+        
     try:
-        ret = cmd.main(*args[3:])
+        ret = cmd.main(*args.grouped['_'][2:])
         exit(ret)
     except TypeError as e:
         if e.args and e.args[0].startswith('main()'):
