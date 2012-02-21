@@ -32,59 +32,86 @@
 # or implied, of GRNET S.A.
 
 import hashlib
-import json
+import os
 
-from . import ClientError
-from .storage import StorageClient
 from ..utils import OrderedDict
+
+from .storage import StorageClient
+
+
+def pithos_hash(block, blockhash):
+    h = hashlib.new(blockhash)
+    h.update(block.rstrip('\x00'))
+    return h.hexdigest()
 
 
 class PithosClient(StorageClient):
     """GRNet Pithos API client"""
     
     def put_block(self, data, hash):
-        path = '/%s/%s?update' % (self.account, self.container)
+        path = '/%s/%s' % (self.account, self.container)
+        params = {'update': ''}
         headers = {'Content-Type': 'application/octet-stream',
-                   'Content-Length': len(data)}
-        resp, reply = self.raw_http_cmd('POST', path, data, headers,
-                                        success=202)
-        assert reply.strip() == hash, 'Local hash does not match server'
+                   'Content-Length': str(len(data))}
+        r = self.post(path, params=params, data=data, headers=headers,
+                      success=202)
+        assert r.text.strip() == hash, 'Local hash does not match server'
     
-    def create_object(self, object, f):
-        meta = self.get_container_meta()
+    def create_object(self, object, f, hash_cb=None, upload_cb=None):
+        """Create an object by uploading only the missing blocks
+        
+        hash_cb is a generator function taking the total number of blocks to
+        be hashed as an argument. Its next() will be called every time a block
+        is hashed.
+        
+        upload_cb is a generator function with the same properties that is
+        called every time a block is uploaded.
+        """
+        self.assert_container()
+        
+        meta = self.get_container_meta(self.container)
         blocksize = int(meta['block-size'])
         blockhash = meta['block-hash']
         
-        size = 0
+        file_size = os.fstat(f.fileno()).st_size
+        nblocks = 1 + (file_size - 1) // blocksize
         hashes = OrderedDict()
-        data = f.read(blocksize)
-        while data:
-            bytes = len(data)
-            h = hashlib.new(blockhash)
-            h.update(data.rstrip('\x00'))
-            hash = h.hexdigest()
+        
+        size = 0
+        
+        if hash_cb:
+            hash_gen = hash_cb(nblocks)
+            hash_gen.next()
+        for i in range(nblocks):
+            block = f.read(blocksize)
+            bytes = len(block)
+            hash = pithos_hash(block, blockhash)
             hashes[hash] = (size, bytes)
             size += bytes
-            data = f.read(blocksize)
+            if hash_cb:
+                hash_gen.next()
+        
+        assert size == file_size
                 
-        path = '/%s/%s/%s?hashmap&format=json' % (self.account, self.container,
-                                                  object)
+        path = '/%s/%s/%s' % (self.account, self.container, object)
+        params = {'hashmap': '', 'format': 'json'}
         hashmap = dict(bytes=size, hashes=hashes.keys())
-        req = json.dumps(hashmap)
-        resp, reply = self.raw_http_cmd('PUT', path, req, success=None)
+        r = self.put(path, params=params, json=hashmap, success=(201, 409))
         
-        if resp.status not in (201, 409):
-            raise ClientError('Invalid response from the server')
-        
-        if resp.status == 201:
+        if r.status_code == 201:
             return
         
-        missing = json.loads(reply)
+        missing = r.json
         
+        if upload_cb:
+            upload_gen = upload_cb(len(missing))
+            upload_gen.next()
         for hash in missing:
             offset, bytes = hashes[hash]
             f.seek(offset)
             data = f.read(bytes)
             self.put_block(data, hash)
+            if upload_cb:
+                upload_gen.next()
         
-        self.http_put(path, req, success=201)
+        self.put(path, params=params, json=hashmap, success=201)
