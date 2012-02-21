@@ -31,67 +31,64 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from . import ClientError
-from .http import HTTPClient
+from . import Client, ClientError
 
 
-class StorageClient(HTTPClient):
+class StorageClient(Client):
     """OpenStack Object Storage API 1.0 client"""
     
-    @property
-    def url(self):
-        url = self.config.get('storage_url') or self.config.get('url')
-        if not url:
-            raise ClientError('No URL was given')
-        return url
-
-    @property
-    def token(self):
-        token = self.config.get('storage_token') or self.config.get('token')
-        if not token:
-            raise ClientError('No token was given')
-        return token
+    def __init__(self, base_url, token, account=None, container=None):
+        super(StorageClient, self).__init__(base_url, token)
+        self.account = account
+        self.container = container
     
-    @property
-    def account(self):
-        account = self.config.get('storage_account')
-        if not account:
-            raise ClientError('No account was given')
-        return account
+    def assert_account(self):
+        if not self.account:
+            raise ClientError("Please provide an account")
     
-    @property
-    def container(self):
-        container = self.config.get('storage_container')
-        if not container:
-            raise ClientError('No container was given')
-        return container
+    def assert_container(self):
+        self.assert_account()
+        if not self.container:
+            raise ClientError("Please provide a container")
     
     def create_container(self, container):
+        self.assert_account()
         path = '/%s/%s' % (self.account, container)
-        self.http_put(path, success=201)
+        r = self.put(path, success=(201, 202))
+        if r.status_code == 202:
+            raise ClientError("Container already exists")
     
-    def get_container_meta(self):
-        path = '/%s/%s' % (self.account, self.container)
-        resp, reply = self.raw_http_cmd('HEAD', path, success=204)
+    def get_container_meta(self, container):
+        self.assert_account()
+        path = '/%s/%s' % (self.account, container)
+        r = self.head(path, success=(204, 404))
+        if r.status_code == 404:
+            raise ClientError("Container does not exist", r.status_code)
+        
         reply = {}
         prefix = 'x-container-'
-        for key, val in resp.getheaders():
+        for key, val in r.headers.items():
             key = key.lower()
             if key.startswith(prefix):
                 reply[key[len(prefix):]] = val
+        
         return reply
     
-    def create_object(self, object, f):
+    def create_object(self, object, f, hash_cb=None, upload_cb=None):
+        # This is a naive implementation, it loads the whole file in memory
+        self.assert_container()
         path = '/%s/%s/%s' % (self.account, self.container, object)
         data = f.read()
-        self.http_put(path, data, success=201)
-
+        self.put(path, data=data, success=201)
+    
     def get_object(self, object):
+        self.assert_container()
         path = '/%s/%s/%s' % (self.account, self.container, object)
-        resp, reply = self.raw_http_cmd('GET', path, success=200,
-                skip_read=True)
-        return resp.fp
-
+        r = self.get(path, raw=True)
+        size = int(r.headers['content-length'])
+        return r.raw, size
+    
     def delete_object(self, object):
+        self.assert_container()
         path = '/%s/%s/%s' % (self.account, self.container, object)
-        self.http_delete(path)
+        self.delete(path, success=204)

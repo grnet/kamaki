@@ -77,8 +77,12 @@ from os.path import abspath, basename, exists, expanduser
 from pwd import getpwuid
 from sys import argv, exit, stdout
 
-from clint.textui import puts, puts_err, indent
+from clint import args
+from clint.textui import puts, puts_err, indent, progress
+from clint.textui.colored import magenta, red, yellow
 from clint.textui.cols import columns
+
+from requests.exceptions import ConnectionError
 
 from kamaki import clients
 from kamaki.config import Config
@@ -116,8 +120,6 @@ def command(api=None, group=None, name=None, syntax=None):
         cls.api = api
         cls.group = group or grp
         cls.name = name or cmd
-        cls.description = description or cls.__doc__
-        cls.syntax = syntax
         
         short_description, sep, long_description = cls.__doc__.partition('\n')
         cls.description = short_description
@@ -194,7 +196,7 @@ class config_delete(object):
 
 @command(api='compute')
 class server_list(object):
-    """list servers"""
+    """List servers"""
     
     def update_parser(cls, parser):
         parser.add_option('-l', dest='detail', action='store_true',
@@ -207,7 +209,7 @@ class server_list(object):
 
 @command(api='compute')
 class server_info(object):
-    """get server details"""
+    """Get server details"""
     
     def main(self, server_id):
         server = self.client.get_server_details(int(server_id))
@@ -216,15 +218,15 @@ class server_info(object):
 
 @command(api='compute')
 class server_create(object):
-    """create server"""
+    """Create a server"""
     
     def update_parser(cls, parser):
         parser.add_option('--personality', dest='personalities',
-                action='append', default=[],
-                metavar='PATH[,SERVER PATH[,OWNER[,GROUP,[MODE]]]]',
-                help='add a personality file')
+                          action='append', default=[],
+                          metavar='PATH[,SERVER PATH[,OWNER[,GROUP,[MODE]]]]',
+                          help='add a personality file')
         parser.epilog = "If missing, optional personality values will be " \
-                "filled based on the file at PATH if missing."
+                        "filled based on the file at PATH."
     
     def main(self, name, flavor_id, image_id):
         personalities = []
@@ -259,7 +261,7 @@ class server_create(object):
 
 @command(api='compute')
 class server_rename(object):
-    """update server name"""
+    """Update a server's name"""
     
     def main(self, server_id, new_name):
         self.client.update_server_name(int(server_id), new_name)
@@ -267,7 +269,7 @@ class server_rename(object):
 
 @command(api='compute')
 class server_delete(object):
-    """delete server"""
+    """Delete a server"""
     
     def main(self, server_id):
         self.client.delete_server(int(server_id))
@@ -275,7 +277,7 @@ class server_delete(object):
 
 @command(api='compute')
 class server_reboot(object):
-    """reboot server"""
+    """Reboot a server"""
     
     def update_parser(cls, parser):
         parser.add_option('-f', dest='hard', action='store_true',
@@ -287,7 +289,7 @@ class server_reboot(object):
 
 @command(api='cyclades')
 class server_start(object):
-    """start server"""
+    """Start a server"""
     
     def main(self, server_id):
         self.client.start_server(int(server_id))
@@ -295,7 +297,7 @@ class server_start(object):
 
 @command(api='cyclades')
 class server_shutdown(object):
-    """shutdown server"""
+    """Shutdown a server"""
     
     def main(self, server_id):
         self.client.shutdown_server(int(server_id))
@@ -303,7 +305,7 @@ class server_shutdown(object):
 
 @command(api='cyclades')
 class server_console(object):
-    """get a VNC console"""
+    """Get a VNC console"""
     
     def main(self, server_id):
         reply = self.client.get_server_console(int(server_id))
@@ -312,7 +314,7 @@ class server_console(object):
 
 @command(api='cyclades')
 class server_firewall(object):
-    """set the firewall profile"""
+    """Set the server's firewall profile"""
     
     def main(self, server_id, profile):
         self.client.set_firewall_profile(int(server_id), profile)
@@ -320,7 +322,7 @@ class server_firewall(object):
 
 @command(api='cyclades')
 class server_addr(object):
-    """list server addresses"""
+    """List a server's addresses"""
     
     def main(self, server_id, network=None):
         reply = self.client.list_server_addresses(int(server_id), network)
@@ -330,7 +332,7 @@ class server_addr(object):
 
 @command(api='compute')
 class server_meta(object):
-    """get server metadata"""
+    """Get a server's metadata"""
     
     def main(self, server_id, key=None):
         reply = self.client.get_server_metadata(int(server_id), key)
@@ -339,7 +341,7 @@ class server_meta(object):
 
 @command(api='compute')
 class server_addmeta(object):
-    """add server metadata"""
+    """Add server metadata"""
     
     def main(self, server_id, key, val):
         reply = self.client.create_server_metadata(int(server_id), key, val)
@@ -348,7 +350,7 @@ class server_addmeta(object):
 
 @command(api='compute')
 class server_setmeta(object):
-    """update server metadata"""
+    """Update server's metadata"""
     
     def main(self, server_id, key, val):
         metadata = {key: val}
@@ -358,7 +360,7 @@ class server_setmeta(object):
 
 @command(api='compute')
 class server_delmeta(object):
-    """delete server metadata"""
+    """Delete server metadata"""
     
     def main(self, server_id, key):
         self.client.delete_server_metadata(int(server_id), key)
@@ -366,7 +368,7 @@ class server_delmeta(object):
 
 @command(api='cyclades')
 class server_stats(object):
-    """get server statistics"""
+    """Get server statistics"""
     
     def main(self, server_id):
         reply = self.client.get_server_stats(int(server_id))
@@ -375,7 +377,7 @@ class server_stats(object):
 
 @command(api='compute')
 class flavor_list(object):
-    """list flavors"""
+    """List flavors"""
     
     def update_parser(cls, parser):
         parser.add_option('-l', dest='detail', action='store_true',
@@ -388,7 +390,7 @@ class flavor_list(object):
 
 @command(api='compute')
 class flavor_info(object):
-    """get flavor details"""
+    """Get flavor details"""
     
     def main(self, flavor_id):
         flavor = self.client.get_flavor_details(int(flavor_id))
@@ -397,7 +399,7 @@ class flavor_info(object):
 
 @command(api='compute')
 class image_list(object):
-    """list images"""
+    """List images"""
     
     def update_parser(cls, parser):
         parser.add_option('-l', dest='detail', action='store_true',
@@ -410,7 +412,7 @@ class image_list(object):
 
 @command(api='compute')
 class image_info(object):
-    """get image details"""
+    """Get image details"""
     
     def main(self, image_id):
         image = self.client.get_image_details(image_id)
@@ -419,7 +421,7 @@ class image_info(object):
 
 @command(api='compute')
 class image_delete(object):
-    """delete image"""
+    """Delete image"""
     
     def main(self, image_id):
         self.client.delete_image(image_id)
@@ -427,7 +429,7 @@ class image_delete(object):
 
 @command(api='compute')
 class image_meta(object):
-    """get image metadata"""
+    """Get image metadata"""
     
     def main(self, image_id, key=None):
         reply = self.client.get_image_metadata(image_id, key)
@@ -436,7 +438,7 @@ class image_meta(object):
 
 @command(api='compute')
 class image_addmeta(object):
-    """add image metadata"""
+    """Add image metadata"""
     
     def main(self, image_id, key, val):
         reply = self.client.create_image_metadata(image_id, key, val)
@@ -445,7 +447,7 @@ class image_addmeta(object):
 
 @command(api='compute')
 class image_setmeta(object):
-    """update image metadata"""
+    """Update image metadata"""
     
     def main(self, image_id, key, val):
         metadata = {key: val}
@@ -455,7 +457,7 @@ class image_setmeta(object):
 
 @command(api='compute')
 class image_delmeta(object):
-    """delete image metadata"""
+    """Delete image metadata"""
     
     def main(self, image_id, key):
         self.client.delete_image_metadata(image_id, key)
@@ -463,7 +465,7 @@ class image_delmeta(object):
 
 @command(api='cyclades')
 class network_list(object):
-    """list networks"""
+    """List networks"""
     
     def update_parser(cls, parser):
         parser.add_option('-l', dest='detail', action='store_true',
@@ -476,7 +478,7 @@ class network_list(object):
 
 @command(api='cyclades')
 class network_create(object):
-    """create a network"""
+    """Create a network"""
     
     def main(self, name):
         reply = self.client.create_network(name)
@@ -485,7 +487,7 @@ class network_create(object):
 
 @command(api='cyclades')
 class network_info(object):
-    """get network details"""
+    """Get network details"""
     
     def main(self, network_id):
         network = self.client.get_network_details(network_id)
@@ -494,7 +496,7 @@ class network_info(object):
 
 @command(api='cyclades')
 class network_rename(object):
-    """update network name"""
+    """Update network name"""
     
     def main(self, network_id, new_name):
         self.client.update_network_name(network_id, new_name)
@@ -502,7 +504,7 @@ class network_rename(object):
 
 @command(api='cyclades')
 class network_delete(object):
-    """delete a network"""
+    """Delete a network"""
     
     def main(self, network_id):
         self.client.delete_network(network_id)
@@ -510,7 +512,7 @@ class network_delete(object):
 
 @command(api='cyclades')
 class network_connect(object):
-    """connect a server to a network"""
+    """Connect a server to a network"""
     
     def main(self, server_id, network_id):
         self.client.connect_server(server_id, network_id)
@@ -518,7 +520,7 @@ class network_connect(object):
 
 @command(api='cyclades')
 class network_disconnect(object):
-    """disconnect a server from a network"""
+    """Disconnect a server from a network"""
     
     def main(self, server_id, network_id):
         self.client.disconnect_server(server_id, network_id)
@@ -526,7 +528,7 @@ class network_disconnect(object):
 
 @command(api='image')
 class glance_list(object):
-    """list images"""
+    """List images"""
     
     def update_parser(cls, parser):
         parser.add_option('-l', dest='detail', action='store_true',
@@ -562,7 +564,7 @@ class glance_list(object):
 
 @command(api='image')
 class glance_meta(object):
-    """get image metadata"""
+    """Get image metadata"""
     
     def main(self, image_id):
         image = self.client.get_meta(image_id)
@@ -571,7 +573,7 @@ class glance_meta(object):
 
 @command(api='image')
 class glance_register(object):
-    """register an image"""
+    """Register an image"""
     
     def update_parser(cls, parser):
         parser.add_option('--checksum', dest='checksum', metavar='CHECKSUM',
@@ -595,10 +597,13 @@ class glance_register(object):
     def main(self, name, location):
         params = {}
         for key in ('checksum', 'container_format', 'disk_format', 'id',
-                    'owner', 'is_public', 'size'):
+                    'owner', 'size'):
             val = getattr(self.options, key)
             if val is not None:
                 params[key] = val
+        
+        if self.options.is_public:
+            params['is_public'] = 'true'
         
         properties = {}
         for property in self.options.properties or []:
@@ -613,7 +618,7 @@ class glance_register(object):
 
 @command(api='image')
 class glance_members(object):
-    """get image members"""
+    """Get image members"""
     
     def main(self, image_id):
         members = self.client.list_members(image_id)
@@ -623,7 +628,7 @@ class glance_members(object):
 
 @command(api='image')
 class glance_shared(object):
-    """list shared images"""
+    """List shared images"""
     
     def main(self, member):
         images = self.client.list_shared(member)
@@ -633,7 +638,7 @@ class glance_shared(object):
 
 @command(api='image')
 class glance_addmember(object):
-    """add a member to an image"""
+    """Add a member to an image"""
     
     def main(self, image_id, member):
         self.client.add_member(image_id, member)
@@ -641,7 +646,7 @@ class glance_addmember(object):
 
 @command(api='image')
 class glance_delmember(object):
-    """remove a member from an image"""
+    """Remove a member from an image"""
     
     def main(self, image_id, member):
         self.client.remove_member(image_id, member)
@@ -649,7 +654,7 @@ class glance_delmember(object):
 
 @command(api='image')
 class glance_setmembers(object):
-    """set the members of an image"""
+    """Set the members of an image"""
     
     def main(self, image_id, *member):
         self.client.set_members(image_id, member)
@@ -660,72 +665,107 @@ class store_command(object):
     
     def update_parser(cls, parser):
         parser.add_option('--account', dest='account', metavar='NAME',
-                help='use account NAME')
+                          help="Specify an account to use")
         parser.add_option('--container', dest='container', metavar='NAME',
-                help='use container NAME')
+                          help="Specify a container to use")
+    
+    def progress(self, message):
+        """Return a generator function to be used for progress tracking"""
+        
+        MESSAGE_LENGTH = 25
+        MAX_PROGRESS_LENGTH = 32
+        
+        def progress_gen(n):
+            msg = message.ljust(MESSAGE_LENGTH)
+            width = min(n, MAX_PROGRESS_LENGTH)
+            hide = self.config.get('global', 'silent') or (n < 2)
+            for i in progress.bar(range(n), msg, width, hide):
+                yield
+            yield
+        
+        return progress_gen
     
     def main(self):
-        self.config.override('storage_account', self.options.account)
-        self.config.override('storage_container', self.options.container)
-        
-        # Use the more efficient Pithos client if available
-        if 'pithos' in self.config.get('apis').split():
-            self.client = clients.PithosClient(self.config)
+        if self.options.account is not None:
+            self.client.account = self.options.account
+        if self.options.container is not None:
+            self.client.container = self.options.container
 
 
 @command(api='storage')
 class store_create(object):
-    """create a container"""
+    """Create a container"""
     
     def update_parser(cls, parser):
-        parser.add_option('--account', dest='account', metavar='ACCOUNT',
-                help='use account ACCOUNT')
+        parser.add_option('--account', dest='account', metavar='NAME',
+                          help="Specify an account to use")
     
     def main(self, container):
-        self.config.override('storage_account', self.options.account)
+        if self.options.account:
+            self.client.account = self.options.account
         self.client.create_container(container)
 
 
 @command(api='storage')
-class store_container(store_command):
-    """get container info"""
+class store_container(object):
+    """Get container info"""
     
-    def main(self):
-        store_command.main(self)
-        reply = self.client.get_container_meta()
+    def update_parser(cls, parser):
+        parser.add_option('--account', dest='account', metavar='NAME',
+                          help="Specify an account to use")
+    
+    def main(self, container):
+        if self.options.account:
+            self.client.account = self.options.account
+        reply = self.client.get_container_meta(container)
         print_dict(reply)
 
 
 @command(api='storage')
 class store_upload(store_command):
-    """upload a file"""
+    """Upload a file"""
     
     def main(self, path, remote_path=None):
-        store_command.main(self)
+        super(store_upload, self).main()
+        
         if remote_path is None:
             remote_path = basename(path)
         with open(path) as f:
-            self.client.create_object(remote_path, f)
+            hash_cb = self.progress('Calculating block hashes')
+            upload_cb = self.progress('Uploading blocks')
+            self.client.create_object(remote_path, f, hash_cb=hash_cb,
+                                      upload_cb=upload_cb)
 
 
 @command(api='storage')
 class store_download(store_command):
-    """download a file"""
-    
-    def main(self, remote_path, local_path):
-        store_command.main(self)
-        f = self.client.get_object(remote_path)
+    """Download a file"""
+        
+    def main(self, remote_path, local_path='-'):
+        super(store_download, self).main()
+        
+        f, size = self.client.get_object(remote_path)
         out = open(local_path, 'w') if local_path != '-' else stdout
-        block = 4096
-        data = f.read(block)
+        
+        blocksize = 4 * 1024**2
+        nblocks = 1 + (size - 1) // blocksize
+        
+        cb = self.progress('Downloading blocks') if local_path != '-' else None
+        if cb:
+            gen = cb(nblocks)
+            gen.next()
+        
+        data = f.read(blocksize)
         while data:
             out.write(data)
-            data = f.read(block)
+            data = f.read(blocksize)
+            if cb:
+                gen.next()
 
 
 @command(api='storage')
 class store_delete(store_command):
-    """delete a file"""
+    """Delete a file"""
     
     def main(self, path):
         store_command.main(self)
@@ -751,6 +791,15 @@ def print_commands(group):
             puts(columns([name, 12], [cls.description, 60]))
 
 
+def add_handler(name, level, prefix=''):
+    h = logging.StreamHandler()
+    fmt = logging.Formatter(prefix + '%(message)s')
+    h.setFormatter(fmt)
+    logger = logging.getLogger(name)
+    logger.addHandler(h)
+    logger.setLevel(level)
+
+
 def main():
     parser = OptionParser(add_help_option=False)
     parser.usage = '%prog <group> <command> [options]'
@@ -759,6 +808,9 @@ def main():
                       help="Show this help message and exit")
     parser.add_option('--config', dest='config', metavar='PATH',
                       help="Specify the path to the configuration file")
+    parser.add_option('-d', '--debug', dest='debug', action='store_true',
+                      default=False,
+                      help="Include debug output")
     parser.add_option('-i', '--include', dest='include', action='store_true',
                       default=False,
                       help="Include protocol headers in the output")
@@ -779,15 +831,6 @@ def main():
         import kamaki
         print "kamaki %s" % kamaki.__version__
         exit(0)
-    
-    if args.contains(['-s', '--silent']):
-        level = logging.CRITICAL
-    elif args.contains(['-v', '--verbose']):
-        level = logging.INFO
-    else:
-        level = logging.WARNING
-    
-    logging.basicConfig(level=level, format='%(message)s')
     
     if '--config' in args:
         config_path = args.grouped['--config'].get(0)
@@ -859,34 +902,54 @@ def main():
     if hasattr(cmd, 'update_parser'):
         cmd.update_parser(parser)
     
-    if args.contains(['-h', '--help']):
+    options, arguments = parser.parse_args(argv)
+    
+    if options.help:
         parser.print_help()
         exit(0)
     
-    cmd.options, cmd.args = parser.parse_args(argv)
+    if options.silent:
+        add_handler('', logging.CRITICAL)
+    elif options.debug:
+        add_handler('requests', logging.INFO, prefix='* ')
+        add_handler('clients.send', logging.DEBUG, prefix='> ')
+        add_handler('clients.recv', logging.DEBUG, prefix='< ')
+    elif options.verbose:
+        add_handler('requests', logging.INFO, prefix='* ')
+        add_handler('clients.send', logging.INFO, prefix='> ')
+        add_handler('clients.recv', logging.INFO, prefix='< ')
+    elif options.include:
+        add_handler('clients.recv', logging.INFO)
+    else:
+        add_handler('', logging.WARNING)
     
     api = cmd.api
-    if api == 'config':
-        cmd.config = config
-    elif api in ('compute', 'image', 'storage'):
-        token = config.get(api, 'token') or config.get('gobal', 'token')
-        url = config.get(api, 'url')
-        client_cls = getattr(clients, api)
-        kwargs = dict(base_url=url, token=token)
-        
-        # Special cases
-        if api == 'compute' and config.getboolean(api, 'cyclades_extensions'):
-            client_cls = clients.cyclades
-        elif api == 'storage':
-            kwargs['account'] = config.get(api, 'account')
-            kwargs['container'] = config.get(api, 'container')
-            if config.getboolean(api, 'pithos_extensions'):
-                client_cls = clients.pithos
-        
-        cmd.client = client_cls(**kwargs)
-        
+    if api in ('compute', 'cyclades'):
+        url = config.get('compute', 'url')
+        token = config.get('compute', 'token') or config.get('global', 'token')
+        if config.getboolean('compute', 'cyclades_extensions'):
+            cmd.client = clients.cyclades(url, token)
+        else:
+            cmd.client = clients.compute(url, token)
+    elif api in ('storage', 'pithos'):
+        url = config.get('storage', 'url')
+        token = config.get('storage', 'token') or config.get('global', 'token')
+        account = config.get('storage', 'account')
+        container = config.get('storage', 'container')
+        if config.getboolean('storage', 'pithos_extensions'):
+            cmd.client = clients.pithos(url, token, account, container)
+        else:
+            cmd.client = clients.storage(url, token, account, container)
+    elif api == 'image':
+        url = config.get('image', 'url')
+        token = config.get('image', 'token') or config.get('global', 'token')
+        cmd.client = clients.image(url, token)
+    
+    cmd.options = options
+    cmd.config = config
+    
     try:
-        ret = cmd.main(*args.grouped['_'][2:])
+        ret = cmd.main(*arguments[3:])
         exit(ret)
     except TypeError as e:
         if e.args and e.args[0].startswith('main()'):
@@ -894,10 +957,21 @@ def main():
             exit(1)
         else:
             raise
-    except clients.ClientError, err:
-        log.error('%s', err.message)
-        log.info('%s', err.details)
+    except clients.ClientError as err:
+        if err.status == 404:
+            color = yellow
+        elif 500 <= err.status < 600:
+            color = magenta
+        else:
+            color = red
+        
+        puts_err(color(err.message))
+        if err.details and (options.verbose or options.debug):
+            puts_err(err.details)
         exit(2)
+    except ConnectionError as err:
+        puts_err(red("Connection error"))
+        exit(1)
 
 
 if __name__ == '__main__':
