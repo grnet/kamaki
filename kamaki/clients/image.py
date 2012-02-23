@@ -31,30 +31,19 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-"""
-    OpenStack Image Service API 1.0 client
-"""
 
-from urllib import quote
-
-from . import ClientError
-from .http import HTTPClient
+from . import Client, ClientError
 
 
-class ImageClient(HTTPClient):
-    @property
-    def url(self):
-        url = self.config.get('image_url') or self.config.get('url')
-        if not url:
-            raise ClientError('No URL was given')
-        return url
+class ImageClient(Client):
+    """OpenStack Image Service API 1.0 and GRNET Plankton client"""
     
-    @property
-    def token(self):
-        token = self.config.get('image_token') or self.config.get('token')
-        if not token:
-            raise ClientError('No token was given')
-        return token
+    def raise_for_status(self, r):
+        if r.status_code == 404:
+            raise ClientError("Image not found", r.status_code)
+        
+        # Fallback to the default
+        super(ImageClient, self).raise_for_status(r)
     
     def list_public(self, detail=False, filters={}, order=''):
         path = '/images/detail' if detail else '/images/'
@@ -70,57 +59,67 @@ class ImageClient(HTTPClient):
         if order:
             params['sort_key'] = order
         
-        if params:
-            path += '?' + '&'.join('%s=%s' % item for item in params.items())
-        return self.http_get(path)
+        r = self.get(path, params=params, success=200)
+        return r.json
     
     def get_meta(self, image_id):
-        path = '/images/%s' % image_id
-        resp, buf = self.raw_http_cmd('HEAD', path)
+        path = '/images/%s' % (image_id,)
+        r = self.head(path, success=200)
+        
         reply = {}
-        prefix = 'x-image-meta-'
-        for key, val in resp.getheaders():
+        properties = {}
+        meta_prefix = 'x-image-meta-'
+        property_prefix = 'x-image-meta-property-'
+        
+        for key, val in r.headers.items():
             key = key.lower()
-            if not key.startswith(prefix):
-                continue
-            key = key[len(prefix):]
-            reply[key] = val
+            if key.startswith(property_prefix):
+                key = key[len(property_prefix):]
+                properties[key] = val
+            elif key.startswith(meta_prefix):
+                key = key[len(meta_prefix):]
+                reply[key] = val
+        
+        if properties:
+            reply['properties'] = properties
         return reply
     
     def register(self, name, location, params={}, properties={}):
         path = '/images/'
         headers = {}
-        headers['x-image-meta-name'] = quote(name)
+        headers['x-image-meta-name'] = name
         headers['x-image-meta-location'] = location
+        
         for key, val in params.items():
             if key in ('id', 'store', 'disk_format', 'container_format',
                        'size', 'checksum', 'is_public', 'owner'):
                 key = 'x-image-meta-' + key.replace('_', '-')
                 headers[key] = val
+        
         for key, val in properties.items():
-            headers['x-image-meta-property-' + quote(key)] = quote(val)
-        return self.http_post(path, headers=headers, success=200)
+            headers['x-image-meta-property-' + key] = val
+        
+        self.post(path, headers=headers, success=200)
     
     def list_members(self, image_id):
-        path = '/images/%s/members' % image_id
-        reply = self.http_get(path)
-        return reply['members']
+        path = '/images/%s/members' % (image_id,)
+        r = self.get(path, success=200)
+        return r.json['members']
 
     def list_shared(self, member):
-        path = '/shared-images/%s' % member
-        reply = self.http_get(path)
-        return reply['shared_images']
+        path = '/shared-images/%s' % (member,)
+        r = self.get(path, success=200)
+        return r.json['shared_images']
 
     def add_member(self, image_id, member):
         path = '/images/%s/members/%s' % (image_id, member)
-        self.http_put(path)
+        r = self.put(path, success=204)
     
     def remove_member(self, image_id, member):
         path = '/images/%s/members/%s' % (image_id, member)
-        self.http_delete(path)
+        self.delete(path, success=204)
     
     def set_members(self, image_id, members):
         path = '/images/%s/members' % image_id
         req = {'memberships': [{'member_id': member} for member in members]}
-        body = json.dumps(req)
-        self.http_put(path, body)
+        self.put(path, json=req, success=204)
