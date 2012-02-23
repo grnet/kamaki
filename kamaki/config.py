@@ -31,6 +31,8 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+import os
+
 from collections import defaultdict
 from ConfigParser import RawConfigParser, NoOptionError, NoSectionError
 
@@ -112,5 +114,6 @@ class Config(RawConfigParser):
     
     def write(self):
         with open(self.path, 'w') as f:
+            os.chmod(self.path, 0600)
             f.write(HEADER.lstrip())
             RawConfigParser.write(self, f)
