@@ -84,7 +84,7 @@ class StorageClient(Client):
     def get_object(self, object):
         self.assert_container()
         path = '/%s/%s/%s' % (self.account, self.container, object)
-        r = self.get(path, raw=True)
+        r = self.get(path, raw=True, success=200)
         size = int(r.headers['content-length'])
         return r.raw, size
     
@@ -92,3 +92,10 @@ class StorageClient(Client):
         self.assert_container()
         path = '/%s/%s/%s' % (self.account, self.container, object)
         self.delete(path, success=204)
+    
+    def list_objects(self, path=''):
+        self.assert_container()
+        path = '/%s/%s' % (self.account, self.container)
+        params = dict(format='json')
+        r = self.get(path, params=params, success=(200, 204))
+        return r.json

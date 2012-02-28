@@ -94,7 +94,7 @@ class PithosClient(StorageClient):
         assert size == file_size
                 
         path = '/%s/%s/%s' % (self.account, self.container, object)
-        params = {'hashmap': '', 'format': 'json'}
+        params = dict(format='json', hashmap='')
         hashmap = dict(bytes=size, hashes=hashes.keys())
         r = self.put(path, params=params, json=hashmap, success=(201, 409))
         
