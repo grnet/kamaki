@@ -148,7 +148,7 @@ def command(api=None, group=None, name=None, syntax=None):
 class config_list(object):
     """List configuration options"""
     
-    def update_parser(cls, parser):
+    def update_parser(self, parser):
         parser.add_option('-a', dest='all', action='store_true',
                           default=False, help='include default values')
     
@@ -198,7 +198,7 @@ class config_delete(object):
 class server_list(object):
     """List servers"""
     
-    def update_parser(cls, parser):
+    def update_parser(self, parser):
         parser.add_option('-l', dest='detail', action='store_true',
                 default=False, help='show detailed output')
     
@@ -220,7 +220,7 @@ class server_info(object):
 class server_create(object):
     """Create a server"""
     
-    def update_parser(cls, parser):
+    def update_parser(self, parser):
         parser.add_option('--personality', dest='personalities',
                           action='append', default=[],
                           metavar='PATH[,SERVER PATH[,OWNER[,GROUP,[MODE]]]]',
@@ -279,7 +279,7 @@ class server_delete(object):
 class server_reboot(object):
     """Reboot a server"""
     
-    def update_parser(cls, parser):
+    def update_parser(self, parser):
         parser.add_option('-f', dest='hard', action='store_true',
                 default=False, help='perform a hard reboot')
     
@@ -379,7 +379,7 @@ class server_stats(object):
 class flavor_list(object):
     """List flavors"""
     
-    def update_parser(cls, parser):
+    def update_parser(self, parser):
         parser.add_option('-l', dest='detail', action='store_true',
                 default=False, help='show detailed output')
     
@@ -401,7 +401,7 @@ class flavor_info(object):
 class image_list(object):
     """List images"""
     
-    def update_parser(cls, parser):
+    def update_parser(self, parser):
         parser.add_option('-l', dest='detail', action='store_true',
                 default=False, help='show detailed output')
     
@@ -467,7 +467,7 @@ class image_delmeta(object):
 class network_list(object):
     """List networks"""
     
-    def update_parser(cls, parser):
+    def update_parser(self, parser):
         parser.add_option('-l', dest='detail', action='store_true',
                 default=False, help='show detailed output')
     
@@ -530,7 +530,7 @@ class network_disconnect(object):
 class glance_list(object):
     """List images"""
     
-    def update_parser(cls, parser):
+    def update_parser(self, parser):
         parser.add_option('-l', dest='detail', action='store_true',
                 default=False, help='show detailed output')
         parser.add_option('--container-format', dest='container_format',
@@ -575,7 +575,7 @@ class glance_meta(object):
 class glance_register(object):
     """Register an image"""
     
-    def update_parser(cls, parser):
+    def update_parser(self, parser):
         parser.add_option('--checksum', dest='checksum', metavar='CHECKSUM',
                 help='set image checksum')
         parser.add_option('--container-format', dest='container_format',
