@@ -46,7 +46,7 @@ recvlog = logging.getLogger('clients.recv')
 # Add a convenience json property to the responses
 def _json(self):
     try:
-        return json.loads(self.content)
+        return json.loads(self.content) if self.content else {}
     except ValueError:
         raise ClientError("Invalid JSON reply", self.status_code)
 requests.Response.json = property(_json)

@@ -660,14 +660,12 @@ class glance_setmembers(object):
         self.client.set_members(image_id, member)
 
 
-class store_command(object):
-    """base class for all store_* commands"""
+class _store_account_command(object):
+    """Base class for account level storage commands"""
     
-    def update_parser(cls, parser):
+    def update_parser(self, parser):
         parser.add_option('--account', dest='account', metavar='NAME',
                           help="Specify an account to use")
-        parser.add_option('--container', dest='container', metavar='NAME',
-                          help="Specify a container to use")
     
     def progress(self, message):
         """Return a generator function to be used for progress tracking"""
@@ -688,17 +686,25 @@ class store_command(object):
     def main(self):
         if self.options.account is not None:
             self.client.account = self.options.account
+
+
+class _store_container_command(_store_account_command):
+    """Base class for container level storage commands"""
+    
+    def update_parser(self, parser):
+        super(_store_container_command, self).update_parser(parser)
+        parser.add_option('--container', dest='container', metavar='NAME',
+                          help="Specify a container to use")
+    
+    def main(self):
+        super(_store_container_command, self).main()
         if self.options.container is not None:
             self.client.container = self.options.container
 
 
 @command(api='storage')
-class store_create(object):
+class store_create(_store_account_command):
     """Create a container"""
-    
-    def update_parser(cls, parser):
-        parser.add_option('--account', dest='account', metavar='NAME',
-                          help="Specify an account to use")
     
     def main(self, container):
         if self.options.account:
@@ -707,12 +713,8 @@ class store_create(object):
 
 
 @command(api='storage')
-class store_container(object):
+class store_container(_store_account_command):
     """Get container info"""
-    
-    def update_parser(cls, parser):
-        parser.add_option('--account', dest='account', metavar='NAME',
-                          help="Specify an account to use")
     
     def main(self, container):
         if self.options.account:
@@ -722,7 +724,29 @@ class store_container(object):
 
 
 @command(api='storage')
-class store_upload(store_command):
+class store_list(_store_container_command):
+    """List objects"""
+    
+    def format_size(self, size):
+        units = ('B', 'K', 'M', 'G', 'T')
+        size = float(size)
+        for unit in units:
+            if size <= 1024:
+                break
+            size /= 1024
+        s = ('%.1f' % size).rstrip('.0')
+        return s + unit
+    
+    
+    def main(self, path=''):
+        super(store_list, self).main()
+        for object in self.client.list_objects():
+            size = self.format_size(object['bytes'])
+            print '%6s %s' % (size, object['name'])
+        
+
+@command(api='storage')
+class store_upload(_store_container_command):
     """Upload a file"""
     
     def main(self, path, remote_path=None):
@@ -738,7 +762,7 @@ class store_upload(store_command):
 
 
 @command(api='storage')
-class store_download(store_command):
+class store_download(_store_container_command):
     """Download a file"""
         
     def main(self, remote_path, local_path='-'):
@@ -764,7 +788,7 @@ class store_download(store_command):
 
 
 @command(api='storage')
-class store_delete(store_command):
+class store_delete(_store_container_command):
     """Delete a file"""
     
     def main(self, path):
