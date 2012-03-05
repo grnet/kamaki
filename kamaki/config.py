@@ -1,4 +1,4 @@
-# Copyright 2011 GRNET S.A. All rights reserved.
+# Copyright 2011-2012 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -51,20 +51,25 @@ DEFAULTS = {
     'compute': {
         'enable': 'on',
         'cyclades_extensions': 'on',
-        'url': 'https://okeanos.grnet.gr/api/v1.1',
+        'url': 'https://cyclades.okeanos.grnet.gr/api/v1.1',
         'token': ''
     },
     'image': {
         'enable': 'on',
-        'url': 'https://okeanos.grnet.gr/plankton',
+        'url': 'https://plankton.okeanos.grnet.gr/plankton',
         'token': ''
     },
     'storage': {
         'enable': 'on',
         'pithos_extensions': 'on',
-        'url': 'https://plus.pithos.grnet.gr/v1',
+        'url': 'https://pithos.okeanos.grnet.gr/v1',
         'account': '',
         'container': '',
+        'token': ''
+    },
+    'astakos': {
+        'enable': 'on',
+        'url': 'https://astakos.okeanos.grnet.gr',
         'token': ''
     }
 }
