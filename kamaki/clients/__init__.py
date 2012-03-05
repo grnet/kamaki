@@ -1,4 +1,4 @@
-# Copyright 2011 GRNET S.A. All rights reserved.
+# Copyright 2011-2012 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -74,23 +74,13 @@ class ClientError(Exception):
 
 
 class Client(object):
-    def __init__(self, base_url, token, include=False, verbose=False):
+    def __init__(self, base_url, token):
         self.base_url = base_url
         self.auth = XAuthTokenAuth(token)
-        self.include = include
-        self.verbose = verbose
     
-    def raise_for_status(self, r):
-        if 400 <= r.status_code < 500:
-            message, sep, details = r.text.partition('\n')
-        elif 500 <= r.status_code < 600:
-            message = '%d Server Error' % (r.status_code,)
-            details = r.text
-        else:
-            message = '%d Unknown Error' % (r.status_code,)
-            details = r.text
-        
-        message = message or "HTTP Error %d" % (r.status_code,)
+    def raise_for_status(self, r):        
+        message = "%d %s" % (r.status_code, r.status)
+        details = r.text
         raise ClientError(message, r.status_code, details)
 
     def request(self, method, path, **kwargs):
@@ -150,3 +140,4 @@ from .image import ImageClient as image
 from .storage import StorageClient as storage
 from .cyclades import CycladesClient as cyclades
 from .pithos import PithosClient as pithos
+from .astakos import AstakosClient as astakos

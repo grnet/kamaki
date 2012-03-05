@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright 2011 GRNET S.A. All rights reserved.
+# Copyright 2011-2012 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -106,7 +106,8 @@ GROUPS = {
     'image': "Compute API image commands",
     'network': "Compute API network commands (Cyclades extension)",
     'glance': "Image API commands",
-    'store': "Storage API commands"}
+    'store': "Storage API commands",
+    'astakos': "Astakos API commands"}
 
 
 def command(api=None, group=None, name=None, syntax=None):
@@ -796,6 +797,15 @@ class store_delete(_store_container_command):
         self.client.delete_object(path)
 
 
+@command(api='astakos')
+class astakos_authenticate(object):
+    """Authenticate a user"""
+    
+    def main(self):
+        reply = self.client.authenticate()
+        print_dict(reply)
+
+
 def print_groups():
     puts('\nGroups:')
     with indent(2):
@@ -812,7 +822,7 @@ def print_commands(group):
     puts('\nCommands:')
     with indent(2):
         for name, cls in _commands[group].items():
-            puts(columns([name, 12], [cls.description, 60]))
+            puts(columns([name, 14], [cls.description, 60]))
 
 
 def add_handler(name, level, prefix=''):
@@ -875,7 +885,7 @@ def main():
         config.override(section.strip(), key.strip(), val.strip())
     
     apis = set(['config'])
-    for api in ('compute', 'image', 'storage'):
+    for api in ('compute', 'image', 'storage', 'astakos'):
         if config.getboolean(api, 'enable'):
             apis.add(api)
     if config.getboolean('compute', 'cyclades_extensions'):
@@ -968,6 +978,10 @@ def main():
         url = config.get('image', 'url')
         token = config.get('image', 'token') or config.get('global', 'token')
         cmd.client = clients.image(url, token)
+    elif api == 'astakos':
+        url = config.get('astakos', 'url')
+        token = config.get('astakos', 'token') or config.get('global', 'token')
+        cmd.client = clients.astakos(url, token)
     
     cmd.options = options
     cmd.config = config
