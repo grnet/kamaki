@@ -103,9 +103,8 @@ GROUPS = {
     'config': "Configuration commands",
     'server': "Compute API server commands",
     'flavor': "Compute API flavor commands",
-    'image': "Compute API image commands",
+    'image': "Compute or Glance API image commands",
     'network': "Compute API network commands (Cyclades extension)",
-    'glance': "Image API commands",
     'store': "Storage API commands",
     'astakos': "Astakos API commands"}
 
@@ -429,8 +428,8 @@ class image_delete(object):
 
 
 @command(api='compute')
-class image_meta(object):
-    """Get image metadata"""
+class image_properties(object):
+    """Get image properties"""
     
     def main(self, image_id, key=None):
         reply = self.client.get_image_metadata(image_id, key)
@@ -438,8 +437,8 @@ class image_meta(object):
 
 
 @command(api='compute')
-class image_addmeta(object):
-    """Add image metadata"""
+class image_addproperty(object):
+    """Add an image property"""
     
     def main(self, image_id, key, val):
         reply = self.client.create_image_metadata(image_id, key, val)
@@ -447,8 +446,8 @@ class image_addmeta(object):
 
 
 @command(api='compute')
-class image_setmeta(object):
-    """Update image metadata"""
+class image_setproperty(object):
+    """Update an image property"""
     
     def main(self, image_id, key, val):
         metadata = {key: val}
@@ -457,8 +456,8 @@ class image_setmeta(object):
 
 
 @command(api='compute')
-class image_delmeta(object):
-    """Delete image metadata"""
+class image_delproperty(object):
+    """Delete an image property"""
     
     def main(self, image_id, key):
         self.client.delete_image_metadata(image_id, key)
@@ -528,8 +527,8 @@ class network_disconnect(object):
 
 
 @command(api='image')
-class glance_list(object):
-    """List images"""
+class image_public(object):
+    """List public images"""
     
     def update_parser(self, parser):
         parser.add_option('-l', dest='detail', action='store_true',
@@ -564,7 +563,7 @@ class glance_list(object):
 
 
 @command(api='image')
-class glance_meta(object):
+class image_meta(object):
     """Get image metadata"""
     
     def main(self, image_id):
@@ -573,7 +572,7 @@ class glance_meta(object):
 
 
 @command(api='image')
-class glance_register(object):
+class image_register(object):
     """Register an image"""
     
     def update_parser(self, parser):
@@ -596,6 +595,11 @@ class glance_register(object):
                 help='set image size')
     
     def main(self, name, location):
+        if not location.startswith('pithos://'):
+            account = self.config.get('storage', 'account')
+            container = self.config.get('storage', 'container')
+            location = 'pithos://%s/%s/%s' % (account, container, location)
+        
         params = {}
         for key in ('checksum', 'container_format', 'disk_format', 'id',
                     'owner', 'size'):
@@ -618,7 +622,7 @@ class glance_register(object):
 
 
 @command(api='image')
-class glance_members(object):
+class image_members(object):
     """Get image members"""
     
     def main(self, image_id):
@@ -628,7 +632,7 @@ class glance_members(object):
 
 
 @command(api='image')
-class glance_shared(object):
+class image_shared(object):
     """List shared images"""
     
     def main(self, member):
@@ -638,7 +642,7 @@ class glance_shared(object):
 
 
 @command(api='image')
-class glance_addmember(object):
+class image_addmember(object):
     """Add a member to an image"""
     
     def main(self, image_id, member):
@@ -646,7 +650,7 @@ class glance_addmember(object):
 
 
 @command(api='image')
-class glance_delmember(object):
+class image_delmember(object):
     """Remove a member from an image"""
     
     def main(self, image_id, member):
@@ -654,7 +658,7 @@ class glance_delmember(object):
 
 
 @command(api='image')
-class glance_setmembers(object):
+class image_setmembers(object):
     """Set the members of an image"""
     
     def main(self, image_id, *member):
