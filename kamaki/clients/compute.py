@@ -75,7 +75,7 @@ class ComputeClient(Client):
                           'flavorRef': flavor_id,
                           'imageRef': image_id}}
         if personality:
-            req['personality'] = personality
+            req['server']['personality'] = personality
         
         r = self.post('/servers', json=req, success=202)
         return r.json['server']
