@@ -37,6 +37,14 @@ from . import Client, ClientError
 class AstakosClient(Client):
     """GRNet Astakos API client"""
     
+    def raise_for_status(self, r):
+        msg = r.text.strip()
+        if msg:
+            raise ClientError(msg, r.status_code)
+        else:
+            # Fallback to the default
+            super(AstakosClient, self).raise_for_status(r)
+    
     def authenticate(self):
         r = self.get('/im/authenticate')
         return r.json
