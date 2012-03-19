@@ -57,7 +57,8 @@ class PithosClient(StorageClient):
                       success=202)
         assert r.text.strip() == hash, 'Local hash does not match server'
     
-    def create_object(self, object, f, hash_cb=None, upload_cb=None):
+    def create_object(self, object, f, size=None, hash_cb=None,
+                      upload_cb=None):
         """Create an object by uploading only the missing blocks
         
         hash_cb is a generator function taking the total number of blocks to
@@ -73,7 +74,7 @@ class PithosClient(StorageClient):
         blocksize = int(meta['block-size'])
         blockhash = meta['block-hash']
         
-        file_size = os.fstat(f.fileno()).st_size
+        file_size = size if size is not None else os.fstat(f.fileno()).st_size
         nblocks = 1 + (file_size - 1) // blocksize
         hashes = OrderedDict()
         
