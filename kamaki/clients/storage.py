@@ -74,11 +74,12 @@ class StorageClient(Client):
         
         return reply
     
-    def create_object(self, object, f, hash_cb=None, upload_cb=None):
+    def create_object(self, object, f, size=None, hash_cb=None,
+                      upload_cb=None):
         # This is a naive implementation, it loads the whole file in memory
         self.assert_container()
         path = '/%s/%s/%s' % (self.account, self.container, object)
-        data = f.read()
+        data = f.read(size) if size is not None else f.read()
         self.put(path, data=data, success=201)
     
     def get_object(self, object):
