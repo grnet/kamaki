@@ -237,10 +237,10 @@ class server_create(object):
             path = p[0]
             
             if not path:
-                log.error("Invalid personality argument '%s'", p)
+                print "Invalid personality argument '%s'" % p
                 return 1
             if not exists(path):
-                log.error("File %s does not exist", path)
+                print "File %s does not exist" % path
                 return 1
             
             with open(path) as f:
@@ -614,7 +614,7 @@ class image_register(object):
         for property in self.options.properties or []:
             key, sep, val = property.partition('=')
             if not sep:
-                log.error("Invalid property '%s'", property)
+                print "Invalid property '%s'" % property
                 return 1
             properties[key.strip()] = val.strip()
         
@@ -880,11 +880,11 @@ def main():
     for option in args.grouped.get('-o', []):
         keypath, sep, val = option.partition('=')
         if not sep:
-            log.error("Invalid option '%s'", option)
+            print "Invalid option '%s'" % option
             exit(1)
         section, sep, key = keypath.partition('.')
         if not sep:
-            log.error("Invalid option '%s'", option)
+            print "Invalid option '%s'" % option
             exit(1)
         config.override(section.strip(), key.strip(), val.strip())
     
