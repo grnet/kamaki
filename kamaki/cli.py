@@ -712,8 +712,7 @@ class store_create(_store_account_command):
     """Create a container"""
     
     def main(self, container):
-        if self.options.account:
-            self.client.account = self.options.account
+        super(store_create, self).main()
         self.client.create_container(container)
 
 
@@ -722,8 +721,7 @@ class store_container(_store_account_command):
     """Get container info"""
     
     def main(self, container):
-        if self.options.account:
-            self.client.account = self.options.account
+        super(store_container, self).main()
         reply = self.client.get_container_meta(container)
         print_dict(reply)
 
@@ -799,6 +797,15 @@ class store_delete(_store_container_command):
     def main(self, path):
         super(store_delete, self).main()
         self.client.delete_object(path)
+
+
+@command(api='storage')
+class store_purge(_store_account_command):
+    """Purge a container"""
+    
+    def main(self, container):
+        super(store_purge, self).main()
+        self.client.purge_container(container)
 
 
 @command(api='astakos')
