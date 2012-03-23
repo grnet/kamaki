@@ -92,7 +92,7 @@ class Config(RawConfigParser):
         
         try:
             return RawConfigParser.get(self, section, option)
-        except (NoSectionError, NoOptionError) as e:
+        except (NoSectionError, NoOptionError):
             return DEFAULTS.get(section, {}).get(option)
     
     def set(self, section, option, value):
