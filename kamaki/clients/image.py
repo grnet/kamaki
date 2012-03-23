@@ -113,8 +113,8 @@ class ImageClient(Client):
 
     def add_member(self, image_id, member):
         path = '/images/%s/members/%s' % (image_id, member)
-        r = self.put(path, success=204)
-    
+        self.put(path, success=204)
+
     def remove_member(self, image_id, member):
         path = '/images/%s/members/%s' % (image_id, member)
         self.delete(path, success=204)

@@ -797,7 +797,7 @@ class store_delete(_store_container_command):
     """Delete a file"""
     
     def main(self, path):
-        store_command.main(self)
+        super(store_delete, self).main()
         self.client.delete_object(path)
 
 
