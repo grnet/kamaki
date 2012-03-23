@@ -34,6 +34,8 @@
 import hashlib
 import os
 
+from time import time
+
 from ..utils import OrderedDict
 
 from .storage import StorageClient
@@ -47,7 +49,14 @@ def pithos_hash(block, blockhash):
 
 class PithosClient(StorageClient):
     """GRNet Pithos API client"""
-    
+
+    def purge_container(self, container):
+        self.assert_account()
+
+        path = '/%s/%s' % (self.account, container)
+        params = {'until': int(time())}
+        self.delete(path, params=params, success=204)
+
     def put_block(self, data, hash):
         path = '/%s/%s' % (self.account, self.container)
         params = {'update': ''}
