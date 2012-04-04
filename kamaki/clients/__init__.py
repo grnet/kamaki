@@ -57,15 +57,6 @@ def _status(self):
 requests.Response.status = property(_status)
 
 
-class XAuthTokenAuth(AuthBase):
-    def __init__(self, token):
-        self.token = token
-    
-    def __call__(self, r):
-        r.headers['X-Auth-Token'] = self.token
-        return r
-
-
 class ClientError(Exception):
     def __init__(self, message, status=0, details=''):
         self.message = message
@@ -76,8 +67,8 @@ class ClientError(Exception):
 class Client(object):
     def __init__(self, base_url, token):
         self.base_url = base_url
-        self.auth = XAuthTokenAuth(token)
-    
+        self.token = token
+
     def raise_for_status(self, r):        
         message = "%d %s" % (r.status_code, r.status)
         details = r.text
@@ -86,17 +77,22 @@ class Client(object):
     def request(self, method, path, **kwargs):
         raw = kwargs.pop('raw', False)
         success = kwargs.pop('success', 200)
+
+        data = kwargs.pop('data', None)
+        headers = kwargs.pop('headers', {})
+        headers.setdefault('X-Auth-Token', self.token)
+
         if 'json' in kwargs:
             data = json.dumps(kwargs.pop('json'))
-            kwargs['data'] = data
-            headers = kwargs.setdefault('headers', {})
-            headers['content-type'] = 'application/json'
+            headers.setdefault('Content-Type', 'application/json')
+
+        if data:
+            headers.setdefault('Content-Length', str(len(data)))
 
         url = self.base_url + path
-        kwargs.setdefault('auth', self.auth)
         kwargs.setdefault('verify', False)  # Disable certificate verification
-        r = requests.request(method, url, **kwargs)
-        
+        r = requests.request(method, url, headers=headers, data=data, **kwargs)
+
         req = r.request
         sendlog.info('%s %s', req.method, req.url)
         for key, val in req.headers.items():
