@@ -1,4 +1,4 @@
-# Copyright 2011 GRNET S.A. All rights reserved.
+# Copyright 2011-2012 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -35,8 +35,6 @@ import hashlib
 import os
 
 from time import time
-
-from ..utils import OrderedDict
 
 from .storage import StorageClient
 
@@ -85,18 +83,21 @@ class PithosClient(StorageClient):
         
         file_size = size if size is not None else os.fstat(f.fileno()).st_size
         nblocks = 1 + (file_size - 1) // blocksize
-        hashes = OrderedDict()
-        
+        hashes = []
+        map = {}
+
         size = 0
         
         if hash_cb:
             hash_gen = hash_cb(nblocks)
             hash_gen.next()
+    
         for i in range(nblocks):
             block = f.read(blocksize)
             bytes = len(block)
             hash = pithos_hash(block, blockhash)
-            hashes[hash] = (size, bytes)
+            hashes.append(hash)
+            map[hash] = (size, bytes)
             size += bytes
             if hash_cb:
                 hash_gen.next()
@@ -105,7 +106,7 @@ class PithosClient(StorageClient):
                 
         path = '/%s/%s/%s' % (self.account, self.container, object)
         params = dict(format='json', hashmap='')
-        hashmap = dict(bytes=size, hashes=hashes.keys())
+        hashmap = dict(bytes=size, hashes=hashes)
         r = self.put(path, params=params, json=hashmap, success=(201, 409))
         
         if r.status_code == 201:
@@ -116,12 +117,13 @@ class PithosClient(StorageClient):
         if upload_cb:
             upload_gen = upload_cb(len(missing))
             upload_gen.next()
+
         for hash in missing:
-            offset, bytes = hashes[hash]
+            offset, bytes = map[hash]
             f.seek(offset)
             data = f.read(bytes)
             self.put_block(data, hash)
             if upload_cb:
                 upload_gen.next()
-        
+
         self.put(path, params=params, json=hashmap, success=201)
