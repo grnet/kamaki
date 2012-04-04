@@ -107,8 +107,10 @@ class PithosClient(StorageClient):
         path = '/%s/%s/%s' % (self.account, self.container, object)
         params = dict(format='json', hashmap='')
         hashmap = dict(bytes=size, hashes=hashes)
-        r = self.put(path, params=params, json=hashmap, success=(201, 409))
-        
+        headers = {'Content-Type': 'application/octet-stream'}
+        r = self.put(path, params=params, headers=headers, json=hashmap,
+                     success=(201, 409))
+
         if r.status_code == 201:
             return
         
