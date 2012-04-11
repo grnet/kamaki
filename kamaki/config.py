@@ -39,6 +39,12 @@ from ConfigParser import RawConfigParser, NoOptionError, NoSectionError
 from .utils import OrderedDict
 
 
+# Path to the file that stores the configuration
+CONFIG_PATH = os.path.expanduser('~/.kamakirc')
+
+# Name of a shell variable to bypass the CONFIG_PATH value
+CONFIG_ENV = 'KAMAKI_CONFIG'
+
 HEADER = """
 # Kamaki configuration file
 """
@@ -78,9 +84,9 @@ DEFAULTS = {
 class Config(RawConfigParser):
     def __init__(self, path=None):
         RawConfigParser.__init__(self, dict_type=OrderedDict)
-        self.path = path
+        self.path = path or os.environ.get(CONFIG_ENV, CONFIG_PATH)
         self._overrides = defaultdict(dict)
-        self.read(path)
+        self.read(self.path)
     
     def sections(self):
         return DEFAULTS.keys()
