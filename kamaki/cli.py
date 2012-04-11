@@ -73,7 +73,7 @@ import os
 from base64 import b64encode
 from grp import getgrgid
 from optparse import OptionParser
-from os.path import abspath, basename, exists, expanduser
+from os.path import abspath, basename, exists
 from pwd import getpwuid
 from sys import argv, exit, stdout
 
@@ -87,13 +87,6 @@ from requests.exceptions import ConnectionError
 from kamaki import clients
 from kamaki.config import Config
 from kamaki.utils import OrderedDict, print_addresses, print_dict, print_items
-
-
-# Path to the file that stores the configuration
-CONFIG_PATH = expanduser('~/.kamakirc')
-
-# Name of a shell variable to bypass the CONFIG_PATH value
-CONFIG_ENV = 'KAMAKI_CONFIG'
 
 
 _commands = OrderedDict()
@@ -878,12 +871,10 @@ def main():
         exit(0)
     
     if '--config' in args:
-        config_path = args.grouped['--config'].get(0)
+        config = Config(args.grouped['--config'].get(0))
     else:
-        config_path = os.environ.get(CONFIG_ENV, CONFIG_PATH)
-    
-    config = Config(config_path)
-    
+        config = Config()
+
     for option in args.grouped.get('-o', []):
         keypath, sep, val = option.partition('=')
         if not sep:
