@@ -56,7 +56,7 @@ class StorageClient(Client):
         path = '/%s/%s' % (self.account, container)
         r = self.put(path, success=(201, 202))
         if r.status_code == 202:
-            raise ClientError("Container already exists")
+            raise ClientError("Container already exists", r.status_code)
     
     def get_container_meta(self, container):
         self.assert_account()
