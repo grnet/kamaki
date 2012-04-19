@@ -4,11 +4,13 @@ Overview
 History
 -------
 
-Here, at the `Greek Research and Technology Network <http://grnet.gr/default.asp?pid=1&la=2>`_, we have been developing an IaaS
-cloud management software called **synnefo** (or **+nefo**) that is accessed and managed 
-via the OpenStack Compute API v1.1. We have also recently deployed synnefo in one of our
-datacenters to provide the `~okeanos <http://okeanos.grnet.gr/>`_ IaaS service to the Greek Research and Academic 
-Community (currenty in alpha testing phase).
+Here, at the
+`Greek Research and Technology Network <http://grnet.gr/default.asp?pid=1&la=2>`_,
+we have been developing an IaaS cloud management software called **synnefo**
+(or **+nefo**) that is accessed and managed via the OpenStack Compute API v1.1.
+We have also recently deployed synnefo in one of our datacenters to provide the
+`~okeanos <http://okeanos.grnet.gr/>`_ IaaS service to the Greek Research and
+Academic Community (currenty in alpha testing phase).
 
 From the early start, we needed a simple command-line tool to test the OpenStack API.
 That's why we developed ./kamaki, which proved to be powerful and intuitive enough,
@@ -39,13 +41,11 @@ Community & Support
 -------------------
 
 For any problems you may bump into while using ./kamaki or for help from the development
-team please refer to the following links:
+team please contact us at:
 
-* Feedback: kamaki-feedback@lists.grnet.gr
-* Bug-reports: kamaki-bugs@lists.grnet.gr
-* Support: kamaki-support@lists.grnet.gr
-* Appear on the ./kamaki users section: kamaki-users@lists.grnet.gr
+* synnefo@lists.grnet.gr
 
-Please be sure to have read the Documentation and check the known `issues <https://code.grnet.gr/projects/kamaki/issues>`_ before
-contacting the team.
+Please be sure to have read the Documentation and check the known
+`issues <https://code.grnet.gr/projects/kamaki/issues>`_ before contacting the
+team.
 
