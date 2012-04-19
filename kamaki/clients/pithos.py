@@ -128,4 +128,5 @@ class PithosClient(StorageClient):
             if upload_cb:
                 upload_gen.next()
 
-        self.put(path, params=params, json=hashmap, success=201)
+        self.put(path, params=params, headers=headers, json=hashmap,
+                 success=201)
