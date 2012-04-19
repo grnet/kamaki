@@ -26,7 +26,8 @@ Contents:
    :maxdepth: 2
    
    overview
-   client
+   cli
+   clients
 
 
 

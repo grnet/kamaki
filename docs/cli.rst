@@ -1,7 +1,7 @@
-client
-======
+cli
+===
 
-.. automodule:: kamaki.client
+.. automodule:: kamaki.cli
     :members:
     :show-inheritance:
     :undoc-members:
