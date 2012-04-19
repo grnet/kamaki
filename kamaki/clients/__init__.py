@@ -59,6 +59,7 @@ requests.Response.status = property(_status)
 
 class ClientError(Exception):
     def __init__(self, message, status=0, details=''):
+        super(ClientError, self).__init__(message, status, details)
         self.message = message
         self.status = status
         self.details = details
