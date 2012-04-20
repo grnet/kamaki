@@ -51,7 +51,8 @@ setup(
         'console_scripts': ['kamaki = kamaki.cli:main']
     },
     install_requires=[
-        'requests>=0.10.6',
-        'clint>=0.3'
+        'ansicolors>=1.0',
+        'requests>=0.11',
+        'clint>=0.3',
     ]
 )

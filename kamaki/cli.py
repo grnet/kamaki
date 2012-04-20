@@ -79,9 +79,8 @@ from sys import argv, exit, stdout
 
 from clint import args
 from clint.textui import puts, puts_err, indent, progress
-from clint.textui.colored import magenta, red, yellow
 from clint.textui.cols import columns
-
+from colors import magenta, red, yellow
 from requests.exceptions import ConnectionError
 
 from kamaki import clients
