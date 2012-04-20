@@ -66,6 +66,8 @@ of the 'main' method, unless overriden with the 'syntax' decorator argument:
 The order of commands is important, it will be preserved in the help output.
 """
 
+from __future__ import print_function
+
 import inspect
 import logging
 import os
@@ -75,11 +77,10 @@ from grp import getgrgid
 from optparse import OptionParser
 from os.path import abspath, basename, exists
 from pwd import getpwuid
-from sys import argv, exit, stdout
+from sys import argv, exit, stdout, stderr
 
 from clint import args
-from clint.textui import puts, puts_err, indent, progress
-from clint.textui.cols import columns
+from clint.textui import progress
 from colors import magenta, red, yellow
 from requests.exceptions import ConnectionError
 
@@ -149,7 +150,7 @@ class config_list(object):
         for section in sorted(self.config.sections()):
             items = self.config.items(section, include_defaults)
             for key, val in sorted(items):
-                puts('%s.%s = %s' % (section, key, val))
+                print('%s.%s = %s' % (section, key, val))
 
 
 @command(api='config')
@@ -161,7 +162,7 @@ class config_get(object):
         section = section or 'global'
         value = self.config.get(section, key)
         if value is not None:
-            print value
+            print(value)
 
 
 @command(api='config')
@@ -229,10 +230,10 @@ class server_create(object):
             path = p[0]
             
             if not path:
-                print "Invalid personality argument '%s'" % p
+                print("Invalid personality argument '%s'" % p)
                 return 1
             if not exists(path):
-                print "File %s does not exist" % path
+                print("File %s does not exist" % path)
                 return 1
             
             with open(path) as f:
@@ -606,7 +607,7 @@ class image_register(object):
         for property in self.options.properties or []:
             key, sep, val = property.partition('=')
             if not sep:
-                print "Invalid property '%s'" % property
+                print("Invalid property '%s'" % property)
                 return 1
             properties[key.strip()] = val.strip()
         
@@ -620,7 +621,7 @@ class image_members(object):
     def main(self, image_id):
         members = self.client.list_members(image_id)
         for member in members:
-            print member['member_id']
+            print(member['member_id'])
 
 
 @command(api='image')
@@ -630,7 +631,7 @@ class image_shared(object):
     def main(self, member):
         images = self.client.list_shared(member)
         for image in images:
-            print image['image_id']
+            print(image['image_id'])
 
 
 @command(api='image')
@@ -737,7 +738,7 @@ class store_list(_store_container_command):
         super(store_list, self).main()
         for object in self.client.list_objects():
             size = self.format_size(object['bytes'])
-            print '%6s %s' % (size, object['name'])
+            print('%6s %s' % (size, object['name']))
         
 
 @command(api='storage')
@@ -810,22 +811,20 @@ class astakos_authenticate(object):
 
 
 def print_groups():
-    puts('\nGroups:')
-    with indent(2):
-        for group in _commands:
-            description = GROUPS.get(group, '')
-            puts(columns([group, 12], [description, 60]))
+    print('\nGroups:')
+    for group in _commands:
+        description = GROUPS.get(group, '')
+        print(' ', group.ljust(12), description)
 
 
 def print_commands(group):
     description = GROUPS.get(group, '')
     if description:
-        puts('\n' + description)
+        print('\n' + description)
     
-    puts('\nCommands:')
-    with indent(2):
-        for name, cls in _commands[group].items():
-            puts(columns([name, 14], [cls.description, 60]))
+    print('\nCommands:')
+    for name, cls in _commands[group].items():
+        print(' ', name.ljust(14), cls.description)
 
 
 def add_handler(name, level, prefix=''):
@@ -866,7 +865,7 @@ def main():
     
     if args.contains(['-V', '--version']):
         import kamaki
-        print "kamaki %s" % kamaki.__version__
+        print("kamaki %s" % kamaki.__version__)
         exit(0)
     
     if '--config' in args:
@@ -877,11 +876,11 @@ def main():
     for option in args.grouped.get('-o', []):
         keypath, sep, val = option.partition('=')
         if not sep:
-            print "Invalid option '%s'" % option
+            print("Invalid option '%s'" % option)
             exit(1)
         section, sep, key = keypath.partition('.')
         if not sep:
-            print "Invalid option '%s'" % option
+            print("Invalid option '%s'" % option)
             exit(1)
         config.override(section.strip(), key.strip(), val.strip())
     
@@ -1004,12 +1003,12 @@ def main():
         else:
             color = red
         
-        puts_err(color(err.message))
+        print(color(err.message), file=stderr)
         if err.details and (options.verbose or options.debug):
-            puts_err(err.details)
+            print(err.details, file=stderr)
         exit(2)
     except ConnectionError as err:
-        puts_err(red("Connection error"))
+        print(red("Connection error"), file=stderr)
         exit(1)
 
 
