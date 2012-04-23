@@ -80,8 +80,8 @@ from pwd import getpwuid
 from sys import argv, exit, stdout, stderr
 
 from clint import args
-from clint.textui import progress
 from colors import magenta, red, yellow
+from progress.bar import IncrementalBar
 from requests.exceptions import ConnectionError
 
 from kamaki import clients
@@ -100,6 +100,10 @@ GROUPS = {
     'network': "Compute API network commands (Cyclades extension)",
     'store': "Storage API commands",
     'astakos': "Astakos API commands"}
+
+
+class ProgressBar(IncrementalBar):
+    suffix = '%(percent)d%% - %(eta)ds'
 
 
 def command(api=None, group=None, name=None, syntax=None):
@@ -669,13 +673,10 @@ class _store_account_command(object):
         """Return a generator function to be used for progress tracking"""
         
         MESSAGE_LENGTH = 25
-        MAX_PROGRESS_LENGTH = 32
         
         def progress_gen(n):
             msg = message.ljust(MESSAGE_LENGTH)
-            width = min(n, MAX_PROGRESS_LENGTH)
-            hide = self.config.get('global', 'silent') or (n < 2)
-            for i in progress.bar(range(n), msg, width, hide):
+            for i in ProgressBar(msg).iter(range(n)):
                 yield
             yield
         

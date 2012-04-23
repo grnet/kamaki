@@ -52,6 +52,7 @@ setup(
     },
     install_requires=[
         'ansicolors>=1.0',
+        'progress>=1.0',
         'requests>=0.11',
         'clint>=0.3',
     ]
