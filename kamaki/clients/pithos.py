@@ -82,7 +82,7 @@ class PithosClient(StorageClient):
         blockhash = meta['block-hash']
 
         size = size if size is not None else os.fstat(f.fileno()).st_size
-        nblocks = 1 + (file_size - 1) // blocksize
+        nblocks = 1 + (size - 1) // blocksize
         hashes = []
         map = {}
 
