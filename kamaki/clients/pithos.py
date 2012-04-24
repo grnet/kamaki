@@ -80,30 +80,30 @@ class PithosClient(StorageClient):
         meta = self.get_container_meta(self.container)
         blocksize = int(meta['block-size'])
         blockhash = meta['block-hash']
-        
-        file_size = size if size is not None else os.fstat(f.fileno()).st_size
+
+        size = size if size is not None else os.fstat(f.fileno()).st_size
         nblocks = 1 + (file_size - 1) // blocksize
         hashes = []
         map = {}
 
-        size = 0
-        
+        offset = 0
+
         if hash_cb:
             hash_gen = hash_cb(nblocks)
             hash_gen.next()
-    
+
         for i in range(nblocks):
-            block = f.read(blocksize)
+            block = f.read(min(blocksize, size - offset))
             bytes = len(block)
             hash = pithos_hash(block, blockhash)
             hashes.append(hash)
-            map[hash] = (size, bytes)
-            size += bytes
+            map[hash] = (offset, bytes)
+            offset += bytes
             if hash_cb:
                 hash_gen.next()
-        
-        assert size == file_size
-                
+
+        assert offset == size
+
         path = '/%s/%s/%s' % (self.account, self.container, object)
         params = dict(format='json', hashmap='')
         hashmap = dict(bytes=size, hashes=hashes)
