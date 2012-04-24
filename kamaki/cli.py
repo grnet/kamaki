@@ -71,15 +71,15 @@ from __future__ import print_function
 import inspect
 import logging
 import os
+import sys
 
+from argparse import ArgumentParser
 from base64 import b64encode
 from grp import getgrgid
-from optparse import OptionParser
 from os.path import abspath, basename, exists
 from pwd import getpwuid
-from sys import argv, exit, stdout, stderr
+from sys import exit, stdout, stderr
 
-from clint import args
 from colors import magenta, red, yellow
 from progress.bar import IncrementalBar
 from requests.exceptions import ConnectionError
@@ -146,11 +146,11 @@ class config_list(object):
     """List configuration options"""
     
     def update_parser(self, parser):
-        parser.add_option('-a', dest='all', action='store_true',
+        parser.add_argument('-a', dest='all', action='store_true',
                           default=False, help='include default values')
-    
+
     def main(self):
-        include_defaults = self.options.all
+        include_defaults = self.args.all
         for section in sorted(self.config.sections()):
             items = self.config.items(section, include_defaults)
             for key, val in sorted(items):
@@ -196,11 +196,11 @@ class server_list(object):
     """List servers"""
     
     def update_parser(self, parser):
-        parser.add_option('-l', dest='detail', action='store_true',
+        parser.add_argument('-l', dest='detail', action='store_true',
                 default=False, help='show detailed output')
-    
+
     def main(self):
-        servers = self.client.list_servers(self.options.detail)
+        servers = self.client.list_servers(self.args.detail)
         print_items(servers)
 
 
@@ -218,16 +218,16 @@ class server_create(object):
     """Create a server"""
     
     def update_parser(self, parser):
-        parser.add_option('--personality', dest='personalities',
+        parser.add_argument('--personality', dest='personalities',
                           action='append', default=[],
                           metavar='PATH[,SERVER PATH[,OWNER[,GROUP,[MODE]]]]',
                           help='add a personality file')
-        parser.epilog = "If missing, optional personality values will be " \
-                        "filled based on the file at PATH."
-    
+        parser.epilog = ("If missing, optional personality values will be "
+                        "filled based on the file at PATH.")
+
     def main(self, name, flavor_id, image_id):
         personalities = []
-        for personality in self.options.personalities:
+        for personality in self.args.personalities:
             p = personality.split(',')
             p.extend([None] * (5 - len(p)))     # Fill missing fields with None
             
@@ -277,11 +277,11 @@ class server_reboot(object):
     """Reboot a server"""
     
     def update_parser(self, parser):
-        parser.add_option('-f', dest='hard', action='store_true',
+        parser.add_argument('-f', dest='hard', action='store_true',
                 default=False, help='perform a hard reboot')
-    
+
     def main(self, server_id):
-        self.client.reboot_server(int(server_id), self.options.hard)
+        self.client.reboot_server(int(server_id), self.args.hard)
 
 
 @command(api='cyclades')
@@ -377,11 +377,11 @@ class flavor_list(object):
     """List flavors"""
     
     def update_parser(self, parser):
-        parser.add_option('-l', dest='detail', action='store_true',
+        parser.add_argument('-l', dest='detail', action='store_true',
                 default=False, help='show detailed output')
-    
+
     def main(self):
-        flavors = self.client.list_flavors(self.options.detail)
+        flavors = self.client.list_flavors(self.args.detail)
         print_items(flavors)
 
 
@@ -399,11 +399,11 @@ class image_list(object):
     """List images"""
     
     def update_parser(self, parser):
-        parser.add_option('-l', dest='detail', action='store_true',
+        parser.add_argument('-l', dest='detail', action='store_true',
                 default=False, help='show detailed output')
-    
+
     def main(self):
-        images = self.client.list_images(self.options.detail)
+        images = self.client.list_images(self.args.detail)
         print_items(images)
 
 
@@ -465,11 +465,11 @@ class network_list(object):
     """List networks"""
     
     def update_parser(self, parser):
-        parser.add_option('-l', dest='detail', action='store_true',
+        parser.add_argument('-l', dest='detail', action='store_true',
                 default=False, help='show detailed output')
-    
+
     def main(self):
-        networks = self.client.list_networks(self.options.detail)
+        networks = self.client.list_networks(self.args.detail)
         print_items(networks)
 
 
@@ -528,33 +528,33 @@ class image_public(object):
     """List public images"""
     
     def update_parser(self, parser):
-        parser.add_option('-l', dest='detail', action='store_true',
+        parser.add_argument('-l', dest='detail', action='store_true',
                 default=False, help='show detailed output')
-        parser.add_option('--container-format', dest='container_format',
+        parser.add_argument('--container-format', dest='container_format',
                 metavar='FORMAT', help='filter by container format')
-        parser.add_option('--disk-format', dest='disk_format',
+        parser.add_argument('--disk-format', dest='disk_format',
                 metavar='FORMAT', help='filter by disk format')
-        parser.add_option('--name', dest='name', metavar='NAME',
+        parser.add_argument('--name', dest='name', metavar='NAME',
                 help='filter by name')
-        parser.add_option('--size-min', dest='size_min', metavar='BYTES',
+        parser.add_argument('--size-min', dest='size_min', metavar='BYTES',
                 help='filter by minimum size')
-        parser.add_option('--size-max', dest='size_max', metavar='BYTES',
+        parser.add_argument('--size-max', dest='size_max', metavar='BYTES',
                 help='filter by maximum size')
-        parser.add_option('--status', dest='status', metavar='STATUS',
+        parser.add_argument('--status', dest='status', metavar='STATUS',
                 help='filter by status')
-        parser.add_option('--order', dest='order', metavar='FIELD',
+        parser.add_argument('--order', dest='order', metavar='FIELD',
                 help='order by FIELD (use a - prefix to reverse order)')
-    
+
     def main(self):
         filters = {}
         for filter in ('container_format', 'disk_format', 'name', 'size_min',
                        'size_max', 'status'):
-            val = getattr(self.options, filter, None)
+            val = getattr(self.args, filter, None)
             if val is not None:
                 filters[filter] = val
         
-        order = self.options.order or ''
-        images = self.client.list_public(self.options.detail, filters=filters,
+        order = self.args.order or ''
+        images = self.client.list_public(self.args.detail, filters=filters,
                                          order=order)
         print_items(images, title=('name',))
 
@@ -573,24 +573,24 @@ class image_register(object):
     """Register an image"""
     
     def update_parser(self, parser):
-        parser.add_option('--checksum', dest='checksum', metavar='CHECKSUM',
+        parser.add_argument('--checksum', dest='checksum', metavar='CHECKSUM',
                 help='set image checksum')
-        parser.add_option('--container-format', dest='container_format',
+        parser.add_argument('--container-format', dest='container_format',
                 metavar='FORMAT', help='set container format')
-        parser.add_option('--disk-format', dest='disk_format',
+        parser.add_argument('--disk-format', dest='disk_format',
                 metavar='FORMAT', help='set disk format')
-        parser.add_option('--id', dest='id',
+        parser.add_argument('--id', dest='id',
                 metavar='ID', help='set image ID')
-        parser.add_option('--owner', dest='owner',
+        parser.add_argument('--owner', dest='owner',
                 metavar='USER', help='set image owner (admin only)')
-        parser.add_option('--property', dest='properties', action='append',
+        parser.add_argument('--property', dest='properties', action='append',
                 metavar='KEY=VAL',
                 help='add a property (can be used multiple times)')
-        parser.add_option('--public', dest='is_public', action='store_true',
+        parser.add_argument('--public', dest='is_public', action='store_true',
                 help='mark image as public')
-        parser.add_option('--size', dest='size', metavar='SIZE',
+        parser.add_argument('--size', dest='size', metavar='SIZE',
                 help='set image size')
-    
+
     def main(self, name, location):
         if not location.startswith('pithos://'):
             account = self.config.get('storage', 'account')
@@ -600,15 +600,15 @@ class image_register(object):
         params = {}
         for key in ('checksum', 'container_format', 'disk_format', 'id',
                     'owner', 'size'):
-            val = getattr(self.options, key)
+            val = getattr(self.args, key)
             if val is not None:
                 params[key] = val
         
-        if self.options.is_public:
+        if self.args.is_public:
             params['is_public'] = 'true'
         
         properties = {}
-        for property in self.options.properties or []:
+        for property in self.args.properties or []:
             key, sep, val = property.partition('=')
             if not sep:
                 print("Invalid property '%s'" % property)
@@ -666,9 +666,9 @@ class _store_account_command(object):
     """Base class for account level storage commands"""
     
     def update_parser(self, parser):
-        parser.add_option('--account', dest='account', metavar='NAME',
+        parser.add_argument('--account', dest='account', metavar='NAME',
                           help="Specify an account to use")
-    
+
     def progress(self, message):
         """Return a generator function to be used for progress tracking"""
         
@@ -683,8 +683,8 @@ class _store_account_command(object):
         return progress_gen
     
     def main(self):
-        if self.options.account is not None:
-            self.client.account = self.options.account
+        if self.args.account is not None:
+            self.client.account = self.args.account
 
 
 class _store_container_command(_store_account_command):
@@ -692,13 +692,13 @@ class _store_container_command(_store_account_command):
     
     def update_parser(self, parser):
         super(_store_container_command, self).update_parser(parser)
-        parser.add_option('--container', dest='container', metavar='NAME',
+        parser.add_argument('--container', dest='container', metavar='NAME',
                           help="Specify a container to use")
-    
+
     def main(self):
         super(_store_container_command, self).main()
-        if self.options.container is not None:
-            self.client.container = self.options.container
+        if self.args.container is not None:
+            self.client.container = self.args.container
 
 
 @command(api='storage')
@@ -838,43 +838,43 @@ def add_handler(name, level, prefix=''):
 
 
 def main():
-    parser = OptionParser(add_help_option=False)
-    parser.usage = '%prog <group> <command> [options]'
-    parser.add_option('-h', '--help', dest='help', action='store_true',
+    exe = basename(sys.argv[0])
+    parser = ArgumentParser(add_help=False)
+    parser.prog = '%s <group> <command>' % exe
+    parser.add_argument('-h', '--help', dest='help', action='store_true',
                       default=False,
                       help="Show this help message and exit")
-    parser.add_option('--config', dest='config', metavar='PATH',
+    parser.add_argument('--config', dest='config', metavar='PATH',
                       help="Specify the path to the configuration file")
-    parser.add_option('-d', '--debug', dest='debug', action='store_true',
+    parser.add_argument('-d', '--debug', dest='debug', action='store_true',
                       default=False,
                       help="Include debug output")
-    parser.add_option('-i', '--include', dest='include', action='store_true',
+    parser.add_argument('-i', '--include', dest='include', action='store_true',
                       default=False,
                       help="Include protocol headers in the output")
-    parser.add_option('-s', '--silent', dest='silent', action='store_true',
+    parser.add_argument('-s', '--silent', dest='silent', action='store_true',
                       default=False,
                       help="Silent mode, don't output anything")
-    parser.add_option('-v', '--verbose', dest='verbose', action='store_true',
+    parser.add_argument('-v', '--verbose', dest='verbose', action='store_true',
                       default=False,
                       help="Make the operation more talkative")
-    parser.add_option('-V', '--version', dest='version', action='store_true',
+    parser.add_argument('-V', '--version', dest='version', action='store_true',
                       default=False,
                       help="Show version number and quit")
-    parser.add_option('-o', dest='options', action='append',
+    parser.add_argument('-o', dest='options', action='append',
                       default=[], metavar="KEY=VAL",
                       help="Override a config values")
-    
-    if args.contains(['-V', '--version']):
+
+    args, argv = parser.parse_known_args()
+
+    if args.version:
         import kamaki
         print("kamaki %s" % kamaki.__version__)
         exit(0)
-    
-    if '--config' in args:
-        config = Config(args.grouped['--config'].get(0))
-    else:
-        config = Config()
 
-    for option in args.grouped.get('-o', []):
+    config = Config(args.config) if args.config else Config()
+
+    for option in args.options:
         keypath, sep, val = option.partition('=')
         if not sep:
             print("Invalid option '%s'" % option)
@@ -901,59 +901,59 @@ def main():
                 del group_commands[name]
         if not group_commands:
             del _commands[group]
-    
-    if not args.grouped['_']:
+
+    group = argv.pop(0) if argv else None
+
+    if not group:
         parser.print_help()
         print_groups()
         exit(0)
-    
-    group = args.grouped['_'][0]
-    
+
     if group not in _commands:
         parser.print_help()
         print_groups()
         exit(1)
-    
-    parser.usage = '%%prog %s <command> [options]' % group
-    
-    if len(args.grouped['_']) == 1:
+
+    parser.prog = '%s %s <command>' % (exe, group)
+    command = argv.pop(0) if argv else None
+
+    if not command:
         parser.print_help()
         print_commands(group)
         exit(0)
-    
-    name = args.grouped['_'][1]
-    
-    if name not in _commands[group]:
+
+    if command not in _commands[group]:
         parser.print_help()
         print_commands(group)
         exit(1)
     
-    cmd = _commands[group][name]()
-    
-    syntax = '%s [options]' % cmd.syntax if cmd.syntax else '[options]'
-    parser.usage = '%%prog %s %s %s' % (group, name, syntax)
+    cmd = _commands[group][command]()
+
+    parser.prog = '%s %s %s' % (exe, group, command)
+    if cmd.syntax:
+        parser.prog += '  %s' % cmd.syntax
     parser.description = cmd.description
     parser.epilog = ''
     if hasattr(cmd, 'update_parser'):
         cmd.update_parser(parser)
     
-    options, arguments = parser.parse_args(argv)
+    args, argv = parser.parse_known_args()
     
-    if options.help:
+    if args.help:
         parser.print_help()
         exit(0)
     
-    if options.silent:
+    if args.silent:
         add_handler('', logging.CRITICAL)
-    elif options.debug:
+    elif args.debug:
         add_handler('requests', logging.INFO, prefix='* ')
         add_handler('clients.send', logging.DEBUG, prefix='> ')
         add_handler('clients.recv', logging.DEBUG, prefix='< ')
-    elif options.verbose:
+    elif args.verbose:
         add_handler('requests', logging.INFO, prefix='* ')
         add_handler('clients.send', logging.INFO, prefix='> ')
         add_handler('clients.recv', logging.INFO, prefix='< ')
-    elif options.include:
+    elif args.include:
         add_handler('clients.recv', logging.INFO)
     else:
         add_handler('', logging.WARNING)
@@ -984,11 +984,11 @@ def main():
         token = config.get('astakos', 'token') or config.get('global', 'token')
         cmd.client = clients.astakos(url, token)
     
-    cmd.options = options
+    cmd.args = args
     cmd.config = config
     
     try:
-        ret = cmd.main(*arguments[3:])
+        ret = cmd.main(*argv[2:])
         exit(ret)
     except TypeError as e:
         if e.args and e.args[0].startswith('main()'):
@@ -998,14 +998,14 @@ def main():
             raise
     except clients.ClientError as err:
         if err.status == 404:
-            color = yellow
+            message = yellow(err.message)
         elif 500 <= err.status < 600:
-            color = magenta
+            message = magenta(err.message)
         else:
-            color = red
+            message = red(err.message)
         
-        print(color(err.message), file=stderr)
-        if err.details and (options.verbose or options.debug):
+        print(message, file=stderr)
+        if err.details and (args.verbose or args.debug):
             print(err.details, file=stderr)
         exit(2)
     except ConnectionError as err:

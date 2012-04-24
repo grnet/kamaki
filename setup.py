@@ -33,10 +33,16 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+from setuptools import setup
+from sys import version_info
+
 import kamaki
 
-from setuptools import setup
 
+required = ['ansicolors>=1.0', 'progress>=1.0', 'requests>=0.11']
+
+if version_info[0:2] < (2, 7):
+    required.extend(['argparse', 'ordereddict'])
 
 setup(
     name='kamaki',
@@ -50,10 +56,5 @@ setup(
     entry_points={
         'console_scripts': ['kamaki = kamaki.cli:main']
     },
-    install_requires=[
-        'ansicolors>=1.0',
-        'progress>=1.0',
-        'requests>=0.11',
-        'clint>=0.3',
-    ]
+    install_requires=required
 )
