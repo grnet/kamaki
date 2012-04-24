@@ -62,7 +62,7 @@ DEFAULTS = {
     },
     'image': {
         'enable': 'on',
-        'url': 'https://plankton.okeanos.grnet.gr/plankton',
+        'url': 'https://cyclades.okeanos.grnet.gr/plankton',
         'token': ''
     },
     'storage': {
