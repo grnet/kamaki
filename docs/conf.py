@@ -41,7 +41,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Kamaki'
-copyright = u'2011, GRNet'
+copyright = u'2012, GRNet'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -213,8 +213,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'kamaki', u'Kamaki Documentation',
-     [u'GRNet'], 1)
+    ('man/kamaki', 'kamaki', 'Command-line tool for managing clouds', '', 1),
 ]
 
 # If true, show URL addresses after external links.
