@@ -31,40 +31,33 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-import json
-
-from . import ClientError
-from .http import HTTPClient
+from . import Client, ClientError
 
 
-class ComputeClient(HTTPClient):
+class ComputeClient(Client):
     """OpenStack Compute API 1.1 client"""
     
-    @property
-    def url(self):
-        url = self.config.get('compute_url') or self.config.get('url')
-        if not url:
-            raise ClientError('No URL was given')
-        return url
-    
-    @property
-    def token(self):
-        token = self.config.get('compute_token') or self.config.get('token')
-        if not token:
-            raise ClientError('No token was given')
-        return token
+    def raise_for_status(self, r):
+        d = r.json
+        key = d.keys()[0]
+        val = d[key]
+        message = '%s: %s' % (key, val.get('message', ''))
+        details = val.get('details', '')
+        raise ClientError(message, r.status_code, details)
     
     def list_servers(self, detail=False):
         """List servers, returned detailed output if detailed is True"""
+        
         path = '/servers/detail' if detail else '/servers'
-        reply = self.http_get(path)
-        return reply['servers']['values']
+        r = self.get(path, success=200)
+        return r.json['servers']['values']
     
     def get_server_details(self, server_id):
         """Return detailed output on a server specified by its id"""
-        path = '/servers/%d' % server_id
-        reply = self.http_get(path)
-        return reply['server']
+        
+        path = '/servers/%s' % (server_id,)
+        r = self.get(path, success=200)
+        return r.json['server']
     
     def create_server(self, name, flavor_id, image_id, personality=None):
         """Submit request to create a new server
@@ -78,13 +71,14 @@ class ComputeClient(HTTPClient):
 
         The call returns a dictionary describing the newly created server.
         """
-        req = {'name': name, 'flavorRef': flavor_id, 'imageRef': image_id}
+        req = {'server': {'name': name,
+                          'flavorRef': flavor_id,
+                          'imageRef': image_id}}
         if personality:
-            req['personality'] = personality
+            req['server']['personality'] = personality
         
-        body = json.dumps({'server': req})
-        reply = self.http_post('/servers', body)
-        return reply['server']
+        r = self.post('/servers', json=req, success=202)
+        return r.json['server']
     
     def update_server_name(self, server_id, new_name):
         """Update the name of the server as reported by the API.
@@ -92,90 +86,92 @@ class ComputeClient(HTTPClient):
         This call does not modify the hostname actually used by the server
         internally.
         """
-        path = '/servers/%d' % server_id
-        body = json.dumps({'server': {'name': new_name}})
-        self.http_put(path, body)
+        path = '/servers/%s' % (server_id,)
+        req = {'server': {'name': new_name}}
+        self.put(path, json=req, success=204)
     
     def delete_server(self, server_id):
         """Submit a deletion request for a server specified by id"""
-        path = '/servers/%d' % server_id
-        self.http_delete(path)
+        
+        path = '/servers/%s' % (server_id,)
+        self.delete(path, success=204)
     
     def reboot_server(self, server_id, hard=False):
         """Submit a reboot request for a server specified by id"""
-        path = '/servers/%d/action' % server_id
-        type = 'HARD' if hard else 'SOFT'
-        body = json.dumps({'reboot': {'type': type}})
-        self.http_post(path, body)
         
+        path = '/servers/%s/action' % (server_id,)
+        type = 'HARD' if hard else 'SOFT'
+        req = {'reboot': {'type': type}}
+        self.post(path, json=req, success=202)
+    
     def get_server_metadata(self, server_id, key=None):
-        path = '/servers/%d/meta' % server_id
+        path = '/servers/%s/meta' % (server_id,)
         if key:
             path += '/%s' % key
-        reply = self.http_get(path)
-        return reply['meta'] if key else reply['metadata']['values']
+        r = self.get(path, success=200)
+        return r.json['meta'] if key else r.json['metadata']['values']
     
     def create_server_metadata(self, server_id, key, val):
         path = '/servers/%d/meta/%s' % (server_id, key)
-        body = json.dumps({'meta': {key: val}})
-        reply = self.http_put(path, body, success=201)
-        return reply['meta']
+        req = {'meta': {key: val}}
+        r = self.put(path, json=req, success=201)
+        return r.json['meta']
     
     def update_server_metadata(self, server_id, **metadata):
-        path = '/servers/%d/meta' % server_id
-        body = json.dumps({'metadata': metadata})
-        reply = self.http_post(path, body, success=201)
-        return reply['metadata']
+        path = '/servers/%d/meta' % (server_id,)
+        req = {'metadata': metadata}
+        r = self.post(path, json=req, success=201)
+        return r.json['metadata']
     
     def delete_server_metadata(self, server_id, key):
         path = '/servers/%d/meta/%s' % (server_id, key)
-        reply = self.http_delete(path)
-        
-        
+        self.delete(path, success=204)
+    
+    
     def list_flavors(self, detail=False):
         path = '/flavors/detail' if detail else '/flavors'
-        reply = self.http_get(path)
-        return reply['flavors']['values']
+        r = self.get(path, success=200)
+        return r.json['flavors']['values']
 
     def get_flavor_details(self, flavor_id):
         path = '/flavors/%d' % flavor_id
-        reply = self.http_get(path)
-        return reply['flavor']
+        r = self.get(path, success=200)
+        return r.json['flavor']
     
     
     def list_images(self, detail=False):
         path = '/images/detail' if detail else '/images'
-        reply = self.http_get(path)
-        return reply['images']['values']
+        r = self.get(path, success=200)
+        return r.json['images']['values']
     
     def get_image_details(self, image_id):
-        path = '/images/%s' % image_id
-        reply = self.http_get(path)
-        return reply['image']
+        path = '/images/%s' % (image_id,)
+        r = self.get(path, success=200)
+        return r.json['image']
     
     def delete_image(self, image_id):
-        path = '/images/%s' % image_id
-        self.http_delete(path)
+        path = '/images/%s' % (image_id,)
+        self.delete(path, success=204)
 
     def get_image_metadata(self, image_id, key=None):
-        path = '/images/%s/meta' % image_id
+        path = '/images/%s/meta' % (image_id,)
         if key:
             path += '/%s' % key
-        reply = self.http_get(path)
-        return reply['meta'] if key else reply['metadata']['values']
+        r = self.get(path, success=200)
+        return r.json['meta'] if key else r.json['metadata']['values']
     
     def create_image_metadata(self, image_id, key, val):
         path = '/images/%s/meta/%s' % (image_id, key)
-        body = json.dumps({'meta': {key: val}})
-        reply = self.http_put(path, body, success=201)
-        return reply['meta']
+        req = {'meta': {key: val}}
+        r = self.put(path, json=req, success=201)
+        return r.json['meta']
 
     def update_image_metadata(self, image_id, **metadata):
-        path = '/images/%s/meta' % image_id
-        body = json.dumps({'metadata': metadata})
-        reply = self.http_post(path, body, success=201)
-        return reply['metadata']
+        path = '/images/%s/meta' % (image_id,)
+        req = {'metadata': metadata}
+        r = self.post(path, json=req, success=201)
+        return r.json['metadata']
 
     def delete_image_metadata(self, image_id, key):
         path = '/images/%s/meta/%s' % (image_id, key)
-        self.http_delete(path)
+        self.delete(path, success=204)

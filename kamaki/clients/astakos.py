@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-
-# Copyright 2011 GRNET S.A. All rights reserved.
+# Copyright 2012 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -33,28 +31,20 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from setuptools import setup
-from sys import version_info
-
-import kamaki
+from . import Client, ClientError
 
 
-required = ['ansicolors>=1.0', 'progress>=1.0', 'requests>=0.11']
-
-if version_info[0:2] < (2, 7):
-    required.extend(['argparse', 'ordereddict'])
-
-setup(
-    name='kamaki',
-    version=kamaki.__version__,
-    description='A command-line tool for managing clouds',
-    long_description=open('README.rst').read(),
-    url='http://code.grnet.gr/projects/kamaki',
-    license='BSD',
-    packages=['kamaki', 'kamaki.clients'],
-    include_package_data=True,
-    entry_points={
-        'console_scripts': ['kamaki = kamaki.cli:main']
-    },
-    install_requires=required
-)
+class AstakosClient(Client):
+    """GRNet Astakos API client"""
+    
+    def raise_for_status(self, r):
+        msg = r.text.strip()
+        if msg:
+            raise ClientError(msg, r.status_code)
+        else:
+            # Fallback to the default
+            super(AstakosClient, self).raise_for_status(r)
+    
+    def authenticate(self):
+        r = self.get('/im/authenticate')
+        return r.json

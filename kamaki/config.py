@@ -1,4 +1,4 @@
-# Copyright 2011 GRNET S.A. All rights reserved.
+# Copyright 2011-2012 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -31,102 +31,100 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-import json
-import logging
 import os
 
-from os.path import exists, expanduser
+from collections import defaultdict
+from ConfigParser import RawConfigParser, NoOptionError, NoSectionError
+
+from .utils import OrderedDict
 
 
 # Path to the file that stores the configuration
-CONFIG_PATH = expanduser('~/.kamakirc')
+CONFIG_PATH = os.path.expanduser('~/.kamakirc')
 
 # Name of a shell variable to bypass the CONFIG_PATH value
 CONFIG_ENV = 'KAMAKI_CONFIG'
 
-# The defaults also determine the allowed keys
-CONFIG_DEFAULTS = {
-    'apis': 'compute image storage cyclades pithos',
-    'token': '',
-    'url': '',
-    'compute_token': '',
-    'compute_url': 'https://okeanos.grnet.gr/api/v1',
-    'image_token': '',
-    'image_url': 'https://okeanos.grnet.gr/plankton',
-    'storage_account': '',
-    'storage_container': '',
-    'storage_token': '',
-    'storage_url': 'https://plus.pithos.grnet.gr/v1'
+HEADER = """
+# Kamaki configuration file
+"""
+
+DEFAULTS = {
+    'global': {
+        'colors': 'on',
+        'token': ''
+    },
+    'compute': {
+        'enable': 'on',
+        'cyclades_extensions': 'on',
+        'url': 'https://cyclades.okeanos.grnet.gr/api/v1.1',
+        'token': ''
+    },
+    'image': {
+        'enable': 'on',
+        'url': 'https://cyclades.okeanos.grnet.gr/plankton',
+        'token': ''
+    },
+    'storage': {
+        'enable': 'on',
+        'pithos_extensions': 'on',
+        'url': 'https://pithos.okeanos.grnet.gr/v1',
+        'account': '',
+        'container': '',
+        'token': ''
+    },
+    'astakos': {
+        'enable': 'on',
+        'url': 'https://astakos.okeanos.grnet.gr',
+        'token': ''
+    }
 }
 
 
-log = logging.getLogger('kamaki.config')
-
-
-class ConfigError(Exception):
-    pass
-
-
-class Config(object):
-    def __init__(self):
-        self.path = os.environ.get(CONFIG_ENV, CONFIG_PATH)
-        self.defaults = CONFIG_DEFAULTS
-        
-        d = self.read()
-        for key, val in d.items():
-            if key not in self.defaults:
-                log.warning('Ignoring unknown config key "%s".', key)
-        
-        self.d = d
-        self.overrides = {}
+class Config(RawConfigParser):
+    def __init__(self, path=None):
+        RawConfigParser.__init__(self, dict_type=OrderedDict)
+        self.path = path or os.environ.get(CONFIG_ENV, CONFIG_PATH)
+        self._overrides = defaultdict(dict)
+        self.read(self.path)
     
-    def read(self):
-        if not exists(self.path):
-            return {}
-        
-        with open(self.path) as f:
-            data = f.read()
+    def sections(self):
+        return DEFAULTS.keys()
+    
+    def get(self, section, option):
+        value = self._overrides.get(section, {}).get(option)
+        if value is not None:
+            return value
         
         try:
-            d = json.loads(data)
-            assert isinstance(d, dict)
-            return d
-        except (ValueError, AssertionError):
-            msg = '"%s" does not look like a kamaki config file.' % self.path
-            raise ConfigError(msg)
+            return RawConfigParser.get(self, section, option)
+        except (NoSectionError, NoOptionError):
+            return DEFAULTS.get(section, {}).get(option)
+    
+    def set(self, section, option, value):
+        if section not in RawConfigParser.sections(self):
+            self.add_section(section)
+        RawConfigParser.set(self, section, option, value)
+    
+    def remove_option(self, section, option):
+        try:
+            RawConfigParser.remove_option(self, section, option)
+        except NoSectionError:
+            pass
+    
+    def items(self, section, include_defaults=False):
+        d = dict(DEFAULTS[section]) if include_defaults else {}
+        try:
+            d.update(RawConfigParser.items(self, section))
+        except NoSectionError:
+            pass
+        return d.items()
+    
+    def override(self, section, option, value):
+        self._overrides[section][option] = value
     
     def write(self):
-        self.read()     # Make sure we don't overwrite anything wrong
         with open(self.path, 'w') as f:
-            data = json.dumps(self.d, indent=True)
-            f.write(data)
-    
-    def items(self):
-        for key, val in self.defaults.items():
-            yield key, self.get(key)
-    
-    def get(self, key):
-        if key in self.overrides:
-            return self.overrides[key]
-        if key in self.d:
-            return self.d[key]
-        return self.defaults.get(key, '')
-    
-    def set(self, key, val):
-        if key not in self.defaults:
-            log.warning('Ignoring unknown config key "%s".', key)
-            return
-        self.d[key] = val
-        self.write()
-    
-    def delete(self, key):
-        if key not in self.defaults:
-            log.warning('Ignoring unknown config key "%s".', key)
-            return
-        self.d.pop(key, None)
-        self.write()
-    
-    def override(self, key, val):
-        assert key in self.defaults
-        if val is not None:
-            self.overrides[key] = val
+            os.chmod(self.path, 0600)
+            f.write(HEADER.lstrip())
+            RawConfigParser.write(self, f)

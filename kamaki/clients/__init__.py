@@ -1,4 +1,4 @@
-# Copyright 2011 GRNET S.A. All rights reserved.
+# Copyright 2011-2012 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -31,26 +31,111 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+import json
+import logging
+
+import requests
+
+from requests.auth import AuthBase
+
+
+sendlog = logging.getLogger('clients.send')
+recvlog = logging.getLogger('clients.recv')
+
+
+# Add a convenience json property to the responses
+def _json(self):
+    try:
+        return json.loads(self.content) if self.content else {}
+    except ValueError:
+        raise ClientError("Invalid JSON reply", self.status_code)
+requests.Response.json = property(_json)
+
+# Add a convenience status property to the responses
+def _status(self):
+    return requests.status_codes._codes[self.status_code][0].upper()
+requests.Response.status = property(_status)
+
+
 class ClientError(Exception):
     def __init__(self, message, status=0, details=''):
+        super(ClientError, self).__init__(message, status, details)
         self.message = message
         self.status = status
         self.details = details
 
-    def __int__(self):
-        return int(self.status)
 
-    def __str__(self):
-        r = self.message
-        if self.status:
-            r += "\nHTTP Status: %d" % self.status
-        if self.details:
-            r += "\nDetails: \n%s" % self.details
+class Client(object):
+    def __init__(self, base_url, token):
+        self.base_url = base_url
+        self.token = token
+
+    def raise_for_status(self, r):        
+        message = "%d %s" % (r.status_code, r.status)
+        details = r.text
+        raise ClientError(message, r.status_code, details)
+
+    def request(self, method, path, **kwargs):
+        raw = kwargs.pop('raw', False)
+        success = kwargs.pop('success', 200)
+
+        data = kwargs.pop('data', None)
+        headers = kwargs.pop('headers', {})
+        headers.setdefault('X-Auth-Token', self.token)
+
+        if 'json' in kwargs:
+            data = json.dumps(kwargs.pop('json'))
+            headers.setdefault('Content-Type', 'application/json')
+
+        if data:
+            headers.setdefault('Content-Length', str(len(data)))
+
+        url = self.base_url + path
+        kwargs.setdefault('verify', False)  # Disable certificate verification
+        r = requests.request(method, url, headers=headers, data=data, **kwargs)
+
+        req = r.request
+        sendlog.info('%s %s', req.method, req.url)
+        for key, val in req.headers.items():
+            sendlog.info('%s: %s', key, val)
+        sendlog.info('')
+        if req.data:
+            sendlog.info('%s', req.data)
+        
+        recvlog.info('%d %s', r.status_code, r.status)
+        for key, val in r.headers.items():
+            recvlog.info('%s: %s', key, val)
+        recvlog.info('')
+        if not raw and r.text:
+            recvlog.debug(r.text)
+        
+        if success is not None:
+            # Success can either be an in or a collection
+            success = (success,) if isinstance(success, int) else success
+            if r.status_code not in success:
+                self.raise_for_status(r)
+
         return r
 
+    def delete(self, path, **kwargs):
+        return self.request('delete', path, **kwargs)
 
-from .compute import ComputeClient
-from .image import ImageClient
-from .storage import StorageClient
-from .cyclades import CycladesClient
-from .pithos import PithosClient
+    def get(self, path, **kwargs):
+        return self.request('get', path, **kwargs)
+
+    def head(self, path, **kwargs):
+        return self.request('head', path, **kwargs)
+
+    def post(self, path, **kwargs):
+        return self.request('post', path, **kwargs)
+
+    def put(self, path, **kwargs):
+        return self.request('put', path, **kwargs)
+
+
+from .compute import ComputeClient as compute
+from .image import ImageClient as image
+from .storage import StorageClient as storage
+from .cyclades import CycladesClient as cyclades
+from .pithos import PithosClient as pithos
+from .astakos import AstakosClient as astakos
