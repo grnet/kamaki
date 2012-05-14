@@ -39,6 +39,8 @@ class ComputeClient(Client):
     
     def raise_for_status(self, r):
         d = r.json
+        if not d:
+            return super(ComputeClient, self).raise_for_status(r)
         key = d.keys()[0]
         val = d[key]
         message = '%s: %s' % (key, val.get('message', ''))
