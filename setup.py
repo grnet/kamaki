@@ -39,7 +39,7 @@ from sys import version_info
 import kamaki
 
 
-required = ['ansicolors>=1.0', 'progress>=1.0', 'requests>=0.11']
+required = ['ansicolors==1.0.2', 'progress==1.0.1', 'requests==0.12.1']
 
 if version_info[0:2] < (2, 7):
     required.extend(['argparse', 'ordereddict'])
