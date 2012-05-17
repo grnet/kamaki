@@ -37,40 +37,40 @@ from . import Client, ClientError
 
 class ImageClient(Client):
     """OpenStack Image Service API 1.0 and GRNET Plankton client"""
-    
+
     def raise_for_status(self, r):
         if r.status_code == 404:
             raise ClientError("Image not found", r.status_code)
-        
+
         # Fallback to the default
         super(ImageClient, self).raise_for_status(r)
-    
+
     def list_public(self, detail=False, filters={}, order=''):
         path = '/images/detail' if detail else '/images/'
         params = {}
         params.update(filters)
-        
+
         if order.startswith('-'):
             params['sort_dir'] = 'desc'
             order = order[1:]
         else:
             params['sort_dir'] = 'asc'
-        
+
         if order:
             params['sort_key'] = order
-        
+
         r = self.get(path, params=params, success=200)
         return r.json
-    
+
     def get_meta(self, image_id):
         path = '/images/%s' % (image_id,)
         r = self.head(path, success=200)
-        
+
         reply = {}
         properties = {}
         meta_prefix = 'x-image-meta-'
         property_prefix = 'x-image-meta-property-'
-        
+
         for key, val in r.headers.items():
             key = key.lower()
             if key.startswith(property_prefix):
@@ -79,28 +79,28 @@ class ImageClient(Client):
             elif key.startswith(meta_prefix):
                 key = key[len(meta_prefix):]
                 reply[key] = val
-        
+
         if properties:
             reply['properties'] = properties
         return reply
-    
+
     def register(self, name, location, params={}, properties={}):
         path = '/images/'
         headers = {}
         headers['x-image-meta-name'] = name
         headers['x-image-meta-location'] = location
-        
+
         for key, val in params.items():
             if key in ('id', 'store', 'disk_format', 'container_format',
                        'size', 'checksum', 'is_public', 'owner'):
                 key = 'x-image-meta-' + key.replace('_', '-')
                 headers[key] = val
-        
+
         for key, val in properties.items():
             headers['x-image-meta-property-' + key] = val
-        
+
         self.post(path, headers=headers, success=200)
-    
+
     def list_members(self, image_id):
         path = '/images/%s/members' % (image_id,)
         r = self.get(path, success=200)
@@ -118,7 +118,7 @@ class ImageClient(Client):
     def remove_member(self, image_id, member):
         path = '/images/%s/members/%s' % (image_id, member)
         self.delete(path, success=204)
-    
+
     def set_members(self, image_id, members):
         path = '/images/%s/members' % image_id
         req = {'memberships': [{'member_id': member} for member in members]}

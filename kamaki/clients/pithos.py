@@ -63,20 +63,20 @@ class PithosClient(StorageClient):
         r = self.post(path, params=params, data=data, headers=headers,
                       success=202)
         assert r.text.strip() == hash, 'Local hash does not match server'
-    
+
     def create_object(self, object, f, size=None, hash_cb=None,
                       upload_cb=None):
         """Create an object by uploading only the missing blocks
-        
+
         hash_cb is a generator function taking the total number of blocks to
         be hashed as an argument. Its next() will be called every time a block
         is hashed.
-        
+
         upload_cb is a generator function with the same properties that is
         called every time a block is uploaded.
         """
         self.assert_container()
-        
+
         meta = self.get_container_meta(self.container)
         blocksize = int(meta['block-size'])
         blockhash = meta['block-hash']
@@ -113,9 +113,9 @@ class PithosClient(StorageClient):
 
         if r.status_code == 201:
             return
-        
+
         missing = r.json
-        
+
         if upload_cb:
             upload_gen = upload_cb(len(missing))
             upload_gen.next()
