@@ -70,14 +70,11 @@ from __future__ import print_function
 
 import inspect
 import logging
-import os
 import sys
 
 from argparse import ArgumentParser
 from base64 import b64encode
-from grp import getgrgid
 from os.path import abspath, basename, exists
-from pwd import getpwuid
 from sys import exit, stdout, stderr
 
 from colors import magenta, red, yellow
@@ -222,8 +219,6 @@ class server_create(object):
                           action='append', default=[],
                           metavar='PATH[,SERVER PATH[,OWNER[,GROUP,[MODE]]]]',
                           help='add a personality file')
-        parser.epilog = ("If missing, optional personality values will be "
-                        "filled based on the file at PATH.")
 
     def main(self, name, flavor_id, image_id):
         personalities = []
@@ -242,15 +237,16 @@ class server_create(object):
             
             with open(path) as f:
                 contents = b64encode(f.read())
-            
-            st = os.stat(path)
-            personalities.append({
-                'path': p[1] or abspath(path),
-                'owner': p[2] or getpwuid(st.st_uid).pw_name,
-                'group': p[3] or getgrgid(st.st_gid).gr_name,
-                'mode': int(p[4]) if p[4] else 0x7777 & st.st_mode,
-                'contents': contents})
-        
+
+            d = {'path': p[1] or abspath(path), 'contents': contents}
+            if p[2]:
+                d['owner'] = p[2]
+            if p[3]:
+                d['group'] = p[3]
+            if p[4]:
+                d['mode'] = int(p[4])
+            personalities.append(d)
+
         reply = self.client.create_server(name, int(flavor_id), image_id,
                 personalities)
         print_dict(reply)
