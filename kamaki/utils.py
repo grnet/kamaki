@@ -31,12 +31,6 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-try:
-    from collections import OrderedDict
-except ImportError:
-    from ordereddict import OrderedDict
-
-
 def print_addresses(addresses, margin):
     for address in addresses:
         if address['id'] == 'public':
