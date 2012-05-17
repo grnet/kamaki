@@ -110,20 +110,20 @@ class ProgressBar(IncrementalBar):
 
 def command(api=None, group=None, name=None, syntax=None):
     """Class decorator that registers a class as a CLI command."""
-    
+
     def decorator(cls):
         grp, sep, cmd = cls.__name__.partition('_')
         if not sep:
             grp, cmd = None, cls.__name__
-        
+
         cls.api = api
         cls.group = group or grp
         cls.name = name or cmd
-        
+
         short_description, sep, long_description = cls.__doc__.partition('\n')
         cls.description = short_description
         cls.long_description = long_description or short_description
-        
+
         cls.syntax = syntax
         if cls.syntax is None:
             # Generate a syntax string based on main's arguments
@@ -135,7 +135,7 @@ def command(api=None, group=None, name=None, syntax=None):
             cls.syntax = ' '.join(x for x in [required, optional] if x)
             if spec.varargs:
                 cls.syntax += ' <%s ...>' % spec.varargs
-        
+
         if cls.group not in _commands:
             _commands[cls.group] = OrderedDict()
         _commands[cls.group][cls.name] = cls
@@ -146,7 +146,7 @@ def command(api=None, group=None, name=None, syntax=None):
 @command(api='config')
 class config_list(object):
     """List configuration options"""
-    
+
     def update_parser(self, parser):
         parser.add_argument('-a', dest='all', action='store_true',
                           default=False, help='include default values')
@@ -162,7 +162,7 @@ class config_list(object):
 @command(api='config')
 class config_get(object):
     """Show a configuration option"""
-    
+
     def main(self, option):
         section, sep, key = option.rpartition('.')
         section = section or 'global'
@@ -174,7 +174,7 @@ class config_get(object):
 @command(api='config')
 class config_set(object):
     """Set a configuration option"""
-    
+
     def main(self, option, value):
         section, sep, key = option.rpartition('.')
         section = section or 'global'
@@ -185,7 +185,7 @@ class config_set(object):
 @command(api='config')
 class config_delete(object):
     """Delete a configuration option (and use the default value)"""
-    
+
     def main(self, option):
         section, sep, key = option.rpartition('.')
         section = section or 'global'
@@ -196,7 +196,7 @@ class config_delete(object):
 @command(api='compute')
 class server_list(object):
     """List servers"""
-    
+
     def update_parser(self, parser):
         parser.add_argument('-l', dest='detail', action='store_true',
                 default=False, help='show detailed output')
@@ -209,7 +209,7 @@ class server_list(object):
 @command(api='compute')
 class server_info(object):
     """Get server details"""
-    
+
     def main(self, server_id):
         server = self.client.get_server_details(int(server_id))
         print_dict(server)
@@ -218,7 +218,7 @@ class server_info(object):
 @command(api='compute')
 class server_create(object):
     """Create a server"""
-    
+
     def update_parser(self, parser):
         parser.add_argument('--personality', dest='personalities',
                           action='append', default=[],
@@ -230,16 +230,16 @@ class server_create(object):
         for personality in self.args.personalities:
             p = personality.split(',')
             p.extend([None] * (5 - len(p)))     # Fill missing fields with None
-            
+
             path = p[0]
-            
+
             if not path:
                 print("Invalid personality argument '%s'" % p)
                 return 1
             if not exists(path):
                 print("File %s does not exist" % path)
                 return 1
-            
+
             with open(path) as f:
                 contents = b64encode(f.read())
 
@@ -260,7 +260,7 @@ class server_create(object):
 @command(api='compute')
 class server_rename(object):
     """Update a server's name"""
-    
+
     def main(self, server_id, new_name):
         self.client.update_server_name(int(server_id), new_name)
 
@@ -268,7 +268,7 @@ class server_rename(object):
 @command(api='compute')
 class server_delete(object):
     """Delete a server"""
-    
+
     def main(self, server_id):
         self.client.delete_server(int(server_id))
 
@@ -276,7 +276,7 @@ class server_delete(object):
 @command(api='compute')
 class server_reboot(object):
     """Reboot a server"""
-    
+
     def update_parser(self, parser):
         parser.add_argument('-f', dest='hard', action='store_true',
                 default=False, help='perform a hard reboot')
@@ -288,7 +288,7 @@ class server_reboot(object):
 @command(api='cyclades')
 class server_start(object):
     """Start a server"""
-    
+
     def main(self, server_id):
         self.client.start_server(int(server_id))
 
@@ -296,7 +296,7 @@ class server_start(object):
 @command(api='cyclades')
 class server_shutdown(object):
     """Shutdown a server"""
-    
+
     def main(self, server_id):
         self.client.shutdown_server(int(server_id))
 
@@ -304,7 +304,7 @@ class server_shutdown(object):
 @command(api='cyclades')
 class server_console(object):
     """Get a VNC console"""
-    
+
     def main(self, server_id):
         reply = self.client.get_server_console(int(server_id))
         print_dict(reply)
@@ -313,7 +313,7 @@ class server_console(object):
 @command(api='cyclades')
 class server_firewall(object):
     """Set the server's firewall profile"""
-    
+
     def main(self, server_id, profile):
         self.client.set_firewall_profile(int(server_id), profile)
 
@@ -321,7 +321,7 @@ class server_firewall(object):
 @command(api='cyclades')
 class server_addr(object):
     """List a server's addresses"""
-    
+
     def main(self, server_id, network=None):
         reply = self.client.list_server_addresses(int(server_id), network)
         margin = max(len(x['name']) for x in reply)
@@ -331,7 +331,7 @@ class server_addr(object):
 @command(api='compute')
 class server_meta(object):
     """Get a server's metadata"""
-    
+
     def main(self, server_id, key=None):
         reply = self.client.get_server_metadata(int(server_id), key)
         print_dict(reply)
@@ -340,7 +340,7 @@ class server_meta(object):
 @command(api='compute')
 class server_addmeta(object):
     """Add server metadata"""
-    
+
     def main(self, server_id, key, val):
         reply = self.client.create_server_metadata(int(server_id), key, val)
         print_dict(reply)
@@ -349,7 +349,7 @@ class server_addmeta(object):
 @command(api='compute')
 class server_setmeta(object):
     """Update server's metadata"""
-    
+
     def main(self, server_id, key, val):
         metadata = {key: val}
         reply = self.client.update_server_metadata(int(server_id), **metadata)
@@ -359,7 +359,7 @@ class server_setmeta(object):
 @command(api='compute')
 class server_delmeta(object):
     """Delete server metadata"""
-    
+
     def main(self, server_id, key):
         self.client.delete_server_metadata(int(server_id), key)
 
@@ -367,7 +367,7 @@ class server_delmeta(object):
 @command(api='cyclades')
 class server_stats(object):
     """Get server statistics"""
-    
+
     def main(self, server_id):
         reply = self.client.get_server_stats(int(server_id))
         print_dict(reply, exclude=('serverRef',))
@@ -376,7 +376,7 @@ class server_stats(object):
 @command(api='compute')
 class flavor_list(object):
     """List flavors"""
-    
+
     def update_parser(self, parser):
         parser.add_argument('-l', dest='detail', action='store_true',
                 default=False, help='show detailed output')
@@ -389,7 +389,7 @@ class flavor_list(object):
 @command(api='compute')
 class flavor_info(object):
     """Get flavor details"""
-    
+
     def main(self, flavor_id):
         flavor = self.client.get_flavor_details(int(flavor_id))
         print_dict(flavor)
@@ -398,7 +398,7 @@ class flavor_info(object):
 @command(api='compute')
 class image_list(object):
     """List images"""
-    
+
     def update_parser(self, parser):
         parser.add_argument('-l', dest='detail', action='store_true',
                 default=False, help='show detailed output')
@@ -411,7 +411,7 @@ class image_list(object):
 @command(api='compute')
 class image_info(object):
     """Get image details"""
-    
+
     def main(self, image_id):
         image = self.client.get_image_details(image_id)
         print_dict(image)
@@ -420,7 +420,7 @@ class image_info(object):
 @command(api='compute')
 class image_delete(object):
     """Delete image"""
-    
+
     def main(self, image_id):
         self.client.delete_image(image_id)
 
@@ -428,7 +428,7 @@ class image_delete(object):
 @command(api='compute')
 class image_properties(object):
     """Get image properties"""
-    
+
     def main(self, image_id, key=None):
         reply = self.client.get_image_metadata(image_id, key)
         print_dict(reply)
@@ -437,7 +437,7 @@ class image_properties(object):
 @command(api='compute')
 class image_addproperty(object):
     """Add an image property"""
-    
+
     def main(self, image_id, key, val):
         reply = self.client.create_image_metadata(image_id, key, val)
         print_dict(reply)
@@ -446,7 +446,7 @@ class image_addproperty(object):
 @command(api='compute')
 class image_setproperty(object):
     """Update an image property"""
-    
+
     def main(self, image_id, key, val):
         metadata = {key: val}
         reply = self.client.update_image_metadata(image_id, **metadata)
@@ -456,7 +456,7 @@ class image_setproperty(object):
 @command(api='compute')
 class image_delproperty(object):
     """Delete an image property"""
-    
+
     def main(self, image_id, key):
         self.client.delete_image_metadata(image_id, key)
 
@@ -464,7 +464,7 @@ class image_delproperty(object):
 @command(api='cyclades')
 class network_list(object):
     """List networks"""
-    
+
     def update_parser(self, parser):
         parser.add_argument('-l', dest='detail', action='store_true',
                 default=False, help='show detailed output')
@@ -477,7 +477,7 @@ class network_list(object):
 @command(api='cyclades')
 class network_create(object):
     """Create a network"""
-    
+
     def main(self, name):
         reply = self.client.create_network(name)
         print_dict(reply)
@@ -486,7 +486,7 @@ class network_create(object):
 @command(api='cyclades')
 class network_info(object):
     """Get network details"""
-    
+
     def main(self, network_id):
         network = self.client.get_network_details(network_id)
         print_dict(network)
@@ -495,7 +495,7 @@ class network_info(object):
 @command(api='cyclades')
 class network_rename(object):
     """Update network name"""
-    
+
     def main(self, network_id, new_name):
         self.client.update_network_name(network_id, new_name)
 
@@ -503,7 +503,7 @@ class network_rename(object):
 @command(api='cyclades')
 class network_delete(object):
     """Delete a network"""
-    
+
     def main(self, network_id):
         self.client.delete_network(network_id)
 
@@ -511,7 +511,7 @@ class network_delete(object):
 @command(api='cyclades')
 class network_connect(object):
     """Connect a server to a network"""
-    
+
     def main(self, server_id, network_id):
         self.client.connect_server(server_id, network_id)
 
@@ -519,7 +519,7 @@ class network_connect(object):
 @command(api='cyclades')
 class network_disconnect(object):
     """Disconnect a server from a network"""
-    
+
     def main(self, server_id, network_id):
         self.client.disconnect_server(server_id, network_id)
 
@@ -527,7 +527,7 @@ class network_disconnect(object):
 @command(api='image')
 class image_public(object):
     """List public images"""
-    
+
     def update_parser(self, parser):
         parser.add_argument('-l', dest='detail', action='store_true',
                 default=False, help='show detailed output')
@@ -553,7 +553,7 @@ class image_public(object):
             val = getattr(self.args, filter, None)
             if val is not None:
                 filters[filter] = val
-        
+
         order = self.args.order or ''
         images = self.client.list_public(self.args.detail, filters=filters,
                                          order=order)
@@ -563,7 +563,7 @@ class image_public(object):
 @command(api='image')
 class image_meta(object):
     """Get image metadata"""
-    
+
     def main(self, image_id):
         image = self.client.get_meta(image_id)
         print_dict(image)
@@ -572,7 +572,7 @@ class image_meta(object):
 @command(api='image')
 class image_register(object):
     """Register an image"""
-    
+
     def update_parser(self, parser):
         parser.add_argument('--checksum', dest='checksum', metavar='CHECKSUM',
                 help='set image checksum')
@@ -597,17 +597,17 @@ class image_register(object):
             account = self.config.get('storage', 'account')
             container = self.config.get('storage', 'container')
             location = 'pithos://%s/%s/%s' % (account, container, location)
-        
+
         params = {}
         for key in ('checksum', 'container_format', 'disk_format', 'id',
                     'owner', 'size'):
             val = getattr(self.args, key)
             if val is not None:
                 params[key] = val
-        
+
         if self.args.is_public:
             params['is_public'] = 'true'
-        
+
         properties = {}
         for property in self.args.properties or []:
             key, sep, val = property.partition('=')
@@ -615,14 +615,14 @@ class image_register(object):
                 print("Invalid property '%s'" % property)
                 return 1
             properties[key.strip()] = val.strip()
-        
+
         self.client.register(name, location, params, properties)
 
 
 @command(api='image')
 class image_members(object):
     """Get image members"""
-    
+
     def main(self, image_id):
         members = self.client.list_members(image_id)
         for member in members:
@@ -632,7 +632,7 @@ class image_members(object):
 @command(api='image')
 class image_shared(object):
     """List shared images"""
-    
+
     def main(self, member):
         images = self.client.list_shared(member)
         for image in images:
@@ -642,7 +642,7 @@ class image_shared(object):
 @command(api='image')
 class image_addmember(object):
     """Add a member to an image"""
-    
+
     def main(self, image_id, member):
         self.client.add_member(image_id, member)
 
@@ -650,7 +650,7 @@ class image_addmember(object):
 @command(api='image')
 class image_delmember(object):
     """Remove a member from an image"""
-    
+
     def main(self, image_id, member):
         self.client.remove_member(image_id, member)
 
@@ -658,31 +658,31 @@ class image_delmember(object):
 @command(api='image')
 class image_setmembers(object):
     """Set the members of an image"""
-    
+
     def main(self, image_id, *member):
         self.client.set_members(image_id, member)
 
 
 class _store_account_command(object):
     """Base class for account level storage commands"""
-    
+
     def update_parser(self, parser):
         parser.add_argument('--account', dest='account', metavar='NAME',
                           help="Specify an account to use")
 
     def progress(self, message):
         """Return a generator function to be used for progress tracking"""
-        
+
         MESSAGE_LENGTH = 25
-        
+
         def progress_gen(n):
             msg = message.ljust(MESSAGE_LENGTH)
             for i in ProgressBar(msg).iter(range(n)):
                 yield
             yield
-        
+
         return progress_gen
-    
+
     def main(self):
         if self.args.account is not None:
             self.client.account = self.args.account
@@ -690,7 +690,7 @@ class _store_account_command(object):
 
 class _store_container_command(_store_account_command):
     """Base class for container level storage commands"""
-    
+
     def update_parser(self, parser):
         super(_store_container_command, self).update_parser(parser)
         parser.add_argument('--container', dest='container', metavar='NAME',
@@ -705,7 +705,7 @@ class _store_container_command(_store_account_command):
 @command(api='storage')
 class store_create(_store_account_command):
     """Create a container"""
-    
+
     def main(self, container):
         super(store_create, self).main()
         self.client.create_container(container)
@@ -714,7 +714,7 @@ class store_create(_store_account_command):
 @command(api='storage')
 class store_container(_store_account_command):
     """Get container info"""
-    
+
     def main(self, container):
         super(store_container, self).main()
         reply = self.client.get_container_meta(container)
@@ -724,7 +724,7 @@ class store_container(_store_account_command):
 @command(api='storage')
 class store_list(_store_container_command):
     """List objects"""
-    
+
     def format_size(self, size):
         units = ('B', 'K', 'M', 'G', 'T')
         size = float(size)
@@ -734,22 +734,21 @@ class store_list(_store_container_command):
             size /= 1024
         s = ('%.1f' % size).rstrip('.0')
         return s + unit
-    
-    
+
     def main(self, path=''):
         super(store_list, self).main()
         for object in self.client.list_objects():
             size = self.format_size(object['bytes'])
             print('%6s %s' % (size, object['name']))
-        
+
 
 @command(api='storage')
 class store_upload(_store_container_command):
     """Upload a file"""
-    
+
     def main(self, path, remote_path=None):
         super(store_upload, self).main()
-        
+
         if remote_path is None:
             remote_path = basename(path)
         with open(path) as f:
@@ -762,21 +761,21 @@ class store_upload(_store_container_command):
 @command(api='storage')
 class store_download(_store_container_command):
     """Download a file"""
-        
+
     def main(self, remote_path, local_path='-'):
         super(store_download, self).main()
-        
+
         f, size = self.client.get_object(remote_path)
         out = open(local_path, 'w') if local_path != '-' else stdout
-        
-        blocksize = 4 * 1024**2
+
+        blocksize = 4 * 1024 ** 2
         nblocks = 1 + (size - 1) // blocksize
-        
+
         cb = self.progress('Downloading blocks') if local_path != '-' else None
         if cb:
             gen = cb(nblocks)
             gen.next()
-        
+
         data = f.read(blocksize)
         while data:
             out.write(data)
@@ -788,7 +787,7 @@ class store_download(_store_container_command):
 @command(api='storage')
 class store_delete(_store_container_command):
     """Delete a file"""
-    
+
     def main(self, path):
         super(store_delete, self).main()
         self.client.delete_object(path)
@@ -797,7 +796,7 @@ class store_delete(_store_container_command):
 @command(api='storage')
 class store_purge(_store_account_command):
     """Purge a container"""
-    
+
     def main(self, container):
         super(store_purge, self).main()
         self.client.purge_container(container)
@@ -806,7 +805,7 @@ class store_purge(_store_account_command):
 @command(api='astakos')
 class astakos_authenticate(object):
     """Authenticate a user"""
-    
+
     def main(self):
         reply = self.client.authenticate()
         print_dict(reply)
@@ -823,7 +822,7 @@ def print_commands(group):
     description = GROUPS.get(group, '')
     if description:
         print('\n' + description)
-    
+
     print('\nCommands:')
     for name, cls in _commands[group].items():
         print(' ', name.ljust(14), cls.description)
@@ -885,7 +884,7 @@ def main():
             print("Invalid option '%s'" % option)
             exit(1)
         config.override(section.strip(), key.strip(), val.strip())
-    
+
     apis = set(['config'])
     for api in ('compute', 'image', 'storage', 'astakos'):
         if config.getboolean(api, 'enable'):
@@ -894,7 +893,7 @@ def main():
         apis.add('cyclades')
     if config.getboolean('storage', 'pithos_extensions'):
         apis.add('pithos')
-    
+
     # Remove commands that belong to APIs that are not included
     for group, group_commands in _commands.items():
         for name, cls in group_commands.items():
@@ -927,7 +926,7 @@ def main():
         parser.print_help()
         print_commands(group)
         exit(1)
-    
+
     cmd = _commands[group][command]()
 
     parser.prog = '%s %s %s' % (exe, group, command)
@@ -937,13 +936,13 @@ def main():
     parser.epilog = ''
     if hasattr(cmd, 'update_parser'):
         cmd.update_parser(parser)
-    
+
     args, argv = parser.parse_known_args()
-    
+
     if args.help:
         parser.print_help()
         exit(0)
-    
+
     if args.silent:
         add_handler('', logging.CRITICAL)
     elif args.debug:
@@ -958,7 +957,7 @@ def main():
         add_handler('clients.recv', logging.INFO)
     else:
         add_handler('', logging.WARNING)
-    
+
     api = cmd.api
     if api in ('compute', 'cyclades'):
         url = config.get('compute', 'url')
@@ -984,10 +983,10 @@ def main():
         url = config.get('astakos', 'url')
         token = config.get('astakos', 'token') or config.get('global', 'token')
         cmd.client = clients.astakos(url, token)
-    
+
     cmd.args = args
     cmd.config = config
-    
+
     try:
         ret = cmd.main(*argv[2:])
         exit(ret)
@@ -1004,7 +1003,7 @@ def main():
             message = magenta(err.message)
         else:
             message = red(err.message)
-        
+
         print(message, file=stderr)
         if err.details and (args.verbose or args.debug):
             print(err.details, file=stderr)

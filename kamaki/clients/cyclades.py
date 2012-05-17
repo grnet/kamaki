@@ -36,29 +36,29 @@ from .compute import ComputeClient
 
 class CycladesClient(ComputeClient):
     """GRNet Cyclades API client"""
-    
+
     def start_server(self, server_id):
         """Submit a startup request for a server specified by id"""
-        
+
         path = '/servers/%s/action' % (server_id,)
         req = {'start': {}}
         self.post(path, json=req, success=202)
-    
+
     def shutdown_server(self, server_id):
         """Submit a shutdown request for a server specified by id"""
-        
+
         path = '/servers/%s/action' % (server_id,)
         req = {'shutdown': {}}
         self.post(path, json=req, success=202)
-    
+
     def get_server_console(self, server_id):
         """Get a VNC connection to the console of a server specified by id"""
-        
+
         path = '/servers/%s/action' % (server_id,)
         req = {'console': {'type': 'vnc'}}
         r = self.post(path, json=req, success=200)
         return r.json['console']
-    
+
     def set_firewall_profile(self, server_id, profile):
         """Set the firewall profile for the public interface of a server
 
@@ -68,7 +68,7 @@ class CycladesClient(ComputeClient):
         path = '/servers/%s/action' % (server_id,)
         req = {'firewallProfile': {'profile': profile}}
         self.post(path, json=req, success=202)
-    
+
     def list_server_addresses(self, server_id, network=None):
         path = '/servers/%s/ips' % (server_id,)
         if network:
@@ -78,13 +78,12 @@ class CycladesClient(ComputeClient):
             return [r.json['network']]
         else:
             return r.json['addresses']['values']
-    
+
     def get_server_stats(self, server_id):
         path = '/servers/%s/stats' % (server_id,)
         r = self.get(path, success=200)
         return r.json['stats']
-    
-    
+
     def list_networks(self, detail=False):
         path = '/networks/detail' if detail else '/networks'
         r = self.get(path, success=200)
