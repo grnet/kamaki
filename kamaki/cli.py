@@ -77,13 +77,18 @@ from base64 import b64encode
 from os.path import abspath, basename, exists
 from sys import exit, stdout, stderr
 
+try:
+    from collections import OrderedDict
+except ImportError:
+    from ordereddict import OrderedDict
+
 from colors import magenta, red, yellow
 from progress.bar import IncrementalBar
 from requests.exceptions import ConnectionError
 
-from kamaki import clients
-from kamaki.config import Config
-from kamaki.utils import OrderedDict, print_addresses, print_dict, print_items
+from . import clients
+from .config import Config
+from .utils import print_addresses, print_dict, print_items
 
 
 _commands = OrderedDict()

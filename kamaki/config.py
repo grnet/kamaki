@@ -36,7 +36,10 @@ import os
 from collections import defaultdict
 from ConfigParser import RawConfigParser, NoOptionError, NoSectionError
 
-from .utils import OrderedDict
+try:
+    from collections import OrderedDict
+except ImportError:
+    from ordereddict import OrderedDict
 
 
 # Path to the file that stores the configuration
