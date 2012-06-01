@@ -36,7 +36,10 @@ import os
 from collections import defaultdict
 from ConfigParser import RawConfigParser, NoOptionError, NoSectionError
 
-from .utils import OrderedDict
+try:
+    from collections import OrderedDict
+except ImportError:
+    from ordereddict import OrderedDict
 
 
 # Path to the file that stores the configuration
@@ -87,31 +90,31 @@ class Config(RawConfigParser):
         self.path = path or os.environ.get(CONFIG_ENV, CONFIG_PATH)
         self._overrides = defaultdict(dict)
         self.read(self.path)
-    
+
     def sections(self):
         return DEFAULTS.keys()
-    
+
     def get(self, section, option):
         value = self._overrides.get(section, {}).get(option)
         if value is not None:
             return value
-        
+
         try:
             return RawConfigParser.get(self, section, option)
         except (NoSectionError, NoOptionError):
             return DEFAULTS.get(section, {}).get(option)
-    
+
     def set(self, section, option, value):
         if section not in RawConfigParser.sections(self):
             self.add_section(section)
         RawConfigParser.set(self, section, option, value)
-    
+
     def remove_option(self, section, option):
         try:
             RawConfigParser.remove_option(self, section, option)
         except NoSectionError:
             pass
-    
+
     def items(self, section, include_defaults=False):
         d = dict(DEFAULTS[section]) if include_defaults else {}
         try:
@@ -119,10 +122,10 @@ class Config(RawConfigParser):
         except NoSectionError:
             pass
         return d.items()
-    
+
     def override(self, section, option, value):
         self._overrides[section][option] = value
-    
+
     def write(self):
         with open(self.path, 'w') as f:
             os.chmod(self.path, 0600)

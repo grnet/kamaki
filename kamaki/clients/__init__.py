@@ -43,14 +43,6 @@ sendlog = logging.getLogger('clients.send')
 recvlog = logging.getLogger('clients.recv')
 
 
-# Add a convenience json property to the responses
-def _json(self):
-    try:
-        return json.loads(self.content) if self.content else {}
-    except ValueError:
-        raise ClientError("Invalid JSON reply", self.status_code)
-requests.Response.json = property(_json)
-
 # Add a convenience status property to the responses
 def _status(self):
     return requests.status_codes._codes[self.status_code][0].upper()
@@ -70,7 +62,7 @@ class Client(object):
         self.base_url = base_url
         self.token = token
 
-    def raise_for_status(self, r):        
+    def raise_for_status(self, r):
         message = "%d %s" % (r.status_code, r.status)
         details = r.text
         raise ClientError(message, r.status_code, details)
@@ -101,14 +93,14 @@ class Client(object):
         sendlog.info('')
         if req.data:
             sendlog.info('%s', req.data)
-        
+
         recvlog.info('%d %s', r.status_code, r.status)
         for key, val in r.headers.items():
             recvlog.info('%s: %s', key, val)
         recvlog.info('')
-        if not raw and r.text:
-            recvlog.debug(r.text)
-        
+        if not raw and r.content:
+            recvlog.debug(r.content)
+
         if success is not None:
             # Success can either be an in or a collection
             success = (success,) if isinstance(success, int) else success

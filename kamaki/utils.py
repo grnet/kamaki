@@ -31,11 +31,6 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-try:
-    from collections import OrderedDict
-except ImportError:
-    from ordereddict import OrderedDict
-
 
 def print_addresses(addresses, margin):
     for address in addresses:
@@ -62,11 +57,11 @@ def print_dict(d, exclude=()):
     if not d:
         return
     margin = max(len(key) for key in d) + 1
-    
+
     for key, val in sorted(d.items()):
         if key in exclude:
             continue
-        
+
         if key == 'addresses':
             print '%s:' % 'addresses'.rjust(margin)
             print_addresses(val.get('values', []), margin)
@@ -80,7 +75,7 @@ def print_dict(d, exclude=()):
             for key, val in val.items():
                 print '%s: %s' % (key.rjust(margin + 4), val)
             continue
-        
+
         print '%s: %s' % (key.rjust(margin), val)
 
 

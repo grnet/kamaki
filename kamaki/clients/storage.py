@@ -36,44 +36,44 @@ from . import Client, ClientError
 
 class StorageClient(Client):
     """OpenStack Object Storage API 1.0 client"""
-    
+
     def __init__(self, base_url, token, account=None, container=None):
         super(StorageClient, self).__init__(base_url, token)
         self.account = account
         self.container = container
-    
+
     def assert_account(self):
         if not self.account:
             raise ClientError("Please provide an account")
-    
+
     def assert_container(self):
         self.assert_account()
         if not self.container:
             raise ClientError("Please provide a container")
-    
+
     def create_container(self, container):
         self.assert_account()
         path = '/%s/%s' % (self.account, container)
         r = self.put(path, success=(201, 202))
         if r.status_code == 202:
             raise ClientError("Container already exists", r.status_code)
-    
+
     def get_container_meta(self, container):
         self.assert_account()
         path = '/%s/%s' % (self.account, container)
         r = self.head(path, success=(204, 404))
         if r.status_code == 404:
             raise ClientError("Container does not exist", r.status_code)
-        
+
         reply = {}
         prefix = 'x-container-'
         for key, val in r.headers.items():
             key = key.lower()
             if key.startswith(prefix):
                 reply[key[len(prefix):]] = val
-        
+
         return reply
-    
+
     def create_object(self, object, f, size=None, hash_cb=None,
                       upload_cb=None):
         # This is a naive implementation, it loads the whole file in memory
@@ -81,19 +81,19 @@ class StorageClient(Client):
         path = '/%s/%s/%s' % (self.account, self.container, object)
         data = f.read(size) if size is not None else f.read()
         self.put(path, data=data, success=201)
-    
+
     def get_object(self, object):
         self.assert_container()
         path = '/%s/%s/%s' % (self.account, self.container, object)
         r = self.get(path, raw=True, success=200)
         size = int(r.headers['content-length'])
         return r.raw, size
-    
+
     def delete_object(self, object):
         self.assert_container()
         path = '/%s/%s/%s' % (self.account, self.container, object)
         self.delete(path, success=204)
-    
+
     def list_objects(self, path=''):
         self.assert_container()
         path = '/%s/%s' % (self.account, self.container)
