@@ -2,4 +2,10 @@
 
 %:
 	dh $@ --with python2
-	cd docs && make man
+
+override_dh_auto_build:
+	cd docs && make man && rm -r doctrees
+
+override_dh_installman:
+	dh_installman docs/build/kamaki.1
+
