@@ -1,3 +1,9 @@
+kamaki (0.5.1-3) stable; urgency=low
+
+  * Fix python-requests dependency version
+
+ -- Kostas Papadimitriou <kpap@grnet.gr>  Thu, 21 Jun 2012 14:35:11 +0300
+
 kamaki (0.5.1-2) stable; urgency=low
 
   * Fix package dependencies
