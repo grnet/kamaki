@@ -82,6 +82,11 @@ class StorageClient(Client):
         data = f.read(size) if size is not None else f.read()
         self.put(path, data=data, success=201)
 
+    def create_directory(self, object):
+        self.assert_container()
+        path = '/%s/%s/%s' % (self.account, self.container, object)
+        self.put(path, data='', directory=True, success=201)
+
     def get_object(self, object):
         self.assert_container()
         path = '/%s/%s/%s' % (self.account, self.container, object)

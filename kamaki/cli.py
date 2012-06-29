@@ -701,6 +701,13 @@ class _store_container_command(_store_account_command):
         if self.args.container is not None:
             self.client.container = self.args.container
 
+@command(api='storage')
+class store_mkdir(_store_container_command):
+    """Create a directory"""
+
+    def main(self, path):
+        super(store_mkdir, self).main()
+        self.client.create_directory(path)
 
 @command(api='storage')
 class store_create(_store_account_command):

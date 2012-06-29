@@ -70,17 +70,21 @@ class Client(object):
     def request(self, method, path, **kwargs):
         raw = kwargs.pop('raw', False)
         success = kwargs.pop('success', 200)
+        directory = kwargs.pop('directory', False)
 
         data = kwargs.pop('data', None)
         headers = kwargs.pop('headers', {})
         headers.setdefault('X-Auth-Token', self.token)
 
-        if 'json' in kwargs:
-            data = json.dumps(kwargs.pop('json'))
-            headers.setdefault('Content-Type', 'application/json')
-
-        if data:
-            headers.setdefault('Content-Length', str(len(data)))
+        if directory:
+            headers.setdefault('Content-Type', 'application/directory')
+            headers.setdefault('Content-length', '0')
+        else:
+            if 'json' in kwargs:
+                data = json.dumps(kwargs.pop('json'))
+                headers.setdefault('Content-Type', 'application/json')
+            if data:
+                headers.setdefault('Content-Length', str(len(data)))
 
         url = self.base_url + path
         kwargs.setdefault('verify', False)  # Disable certificate verification
