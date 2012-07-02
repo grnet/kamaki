@@ -67,7 +67,7 @@ def print_dict(d, exclude=()):
             print_addresses(val.get('values', []), margin)
             continue
         elif key == 'servers':
-            val = ', '.join(str(x) for x in val['values'])
+            val = ', '.join(unicode(x) for x in val['values'])
         elif isinstance(val, dict):
             if val.keys() == ['values']:
                 val = val['values']
@@ -81,7 +81,7 @@ def print_dict(d, exclude=()):
 
 def print_items(items, title=('id', 'name')):
     for item in items:
-        print ' '.join(str(item.pop(key)) for key in title if key in item)
+        print ' '.join(unicode(item.pop(key)) for key in title if key in item)
         if item:
             print_dict(item)
             print
