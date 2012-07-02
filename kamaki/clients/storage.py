@@ -99,6 +99,17 @@ class StorageClient(Client):
         path = '/%s/%s/%s' % (self.account, self.container, object)
         self.delete(path, success=204)
 
+
+    #list methods
+    
+    def list_containers(self):
+        self.assert_container()
+        path = '/%s' % (self.account) 
+        params = dict(format='json')
+        r = self.get(path, params = params, success = (200, 204))
+        return r.json
+        
+
     def list_objects(self, path=''):
         self.assert_container()
         path = '/%s/%s' % (self.account, self.container)
