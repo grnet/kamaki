@@ -74,6 +74,13 @@ class StorageClient(Client):
 
         return reply
 
+    def list_containers(self):
+        self.assert_account()
+        path = '/%s' % (self.account) 
+        params = dict(format='json')
+        r = self.get(path, params = params, success = (200, 204))
+        return r.json
+
     def create_object(self, object, f, size=None, hash_cb=None,
                       upload_cb=None):
         # This is a naive implementation, it loads the whole file in memory
@@ -98,18 +105,7 @@ class StorageClient(Client):
         self.assert_container()
         path = '/%s/%s/%s' % (self.account, self.container, object)
         self.delete(path, success=204)
-
-
-    #list methods
-    
-    def list_containers(self):
-        self.assert_container()
-        path = '/%s' % (self.account) 
-        params = dict(format='json')
-        r = self.get(path, params = params, success = (200, 204))
-        return r.json
         
-
     def list_objects(self, path=''):
         self.assert_container()
         path = '/%s/%s' % (self.account, self.container)

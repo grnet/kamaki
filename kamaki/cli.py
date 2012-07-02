@@ -747,8 +747,6 @@ class store_list(_store_container_command):
             size = self.format_size(object['bytes'])
             print('%6s %s' % (size, object['name']))
 
-
-
 @command(api='storage')
 class store_upload(_store_container_command):
     """Upload a file"""
@@ -807,7 +805,6 @@ class store_purge(_store_account_command):
     def main(self, container):
         super(store_purge, self).main()
         self.client.purge_container(container)
-
 
 @command(api='astakos')
 class astakos_authenticate(object):
