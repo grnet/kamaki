@@ -88,7 +88,7 @@ from requests.exceptions import ConnectionError
 
 from . import clients
 from .config import Config
-from .utils import print_addresses, print_dict, print_items
+from .utils import print_addresses, print_dict, print_items, format_size
 
 
 _commands = OrderedDict()
@@ -727,26 +727,26 @@ class store_container(_store_account_command):
         reply = self.client.get_container_meta(container)
         print_dict(reply)
 
+@command(api='storage')
+class store_list_containers(_store_account_command):
+    """List containers"""
+
+    def main(self):
+        super(store_list_containers, self).main()
+        for object in self.client.list_containers():
+            size = self.format_size(object['bytes'])
+            print('%s (%s, %s objects)' % (object['name'], size, object['count']))
 
 @command(api='storage')
 class store_list(_store_container_command):
     """List objects"""
-
-    def format_size(self, size):
-        units = ('B', 'K', 'M', 'G', 'T')
-        size = float(size)
-        for unit in units:
-            if size <= 1024:
-                break
-            size /= 1024
-        s = ('%.1f' % size).rstrip('.0')
-        return s + unit
 
     def main(self, path=''):
         super(store_list, self).main()
         for object in self.client.list_objects():
             size = self.format_size(object['bytes'])
             print('%6s %s' % (size, object['name']))
+
 
 
 @command(api='storage')

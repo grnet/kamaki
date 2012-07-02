@@ -85,3 +85,13 @@ def print_items(items, title=('id', 'name')):
         if item:
             print_dict(item)
             print
+
+def format_size(self, size):
+    units = ('B', 'K', 'M', 'G', 'T')
+    size = float(size)
+    for unit in units:
+        if size <= 1024:
+            break
+        size /= 1024
+    s = ('%.1f' % size).rstrip('.0')
+    return s + unit
