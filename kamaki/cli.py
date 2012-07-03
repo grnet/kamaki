@@ -754,11 +754,11 @@ class store_object_info(_store_container_command):
         print_dict(reply)
 
 @command(api='storage')
-class store_list_object(_store_container_command):
-    """List objects in directory"""
+class store_list_path(_store_container_command):
+    """List objects in remote path"""
 
     def main(self, path):
-        super(store_list_object, self).main()
+        super(store_list_path, self).main()
         for obj in self.client.list_objects_in_path(path_prefix=path):
             size = format_size(obj['bytes'])
             print('%6s %s' % (size, obj['name']))
