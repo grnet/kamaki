@@ -738,14 +738,24 @@ class store_list_containers(_store_account_command):
             print('%s (%s, %s objects)' % (object['name'], size, object['count']))
 
 @command(api='storage')
+class store_list_object(_store_container_command):
+    """List objects in directory"""
+
+    def main(self, path):
+        super(store_list_object, self).main()
+        for obj in self.client.list_objects_in_path(path_prefix=path):
+            size = self.format_size(obj['bytes'])
+            print('%6s %s' % (size, obj['name']))
+
+@command(api='storage')
 class store_list(_store_container_command):
     """List objects"""
 
-    def main(self, path=''):
+    def main(self):
         super(store_list, self).main()
-        for object in self.client.list_objects():
-            size = self.format_size(object['bytes'])
-            print('%6s %s' % (size, object['name']))
+        for obj in self.client.list_objects():
+            size = self.format_size(obj['bytes'])
+            print('%6s %s' % (size, obj['name']))
 
 @command(api='storage')
 class store_upload(_store_container_command):

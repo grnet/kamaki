@@ -105,10 +105,17 @@ class StorageClient(Client):
         self.assert_container()
         path = '/%s/%s/%s' % (self.account, self.container, object)
         self.delete(path, success=204)
-        
-    def list_objects(self, path=''):
+       
+    def list_objects(self):
         self.assert_container()
         path = '/%s/%s' % (self.account, self.container)
         params = dict(format='json')
         r = self.get(path, params=params, success=(200, 204))
         return r.json
+
+    def list_objects_in_path(self, path_prefix):
+        reply = []
+        for obj in self.list_objects():
+            if obj['name'].startswith(path_prefix):
+                reply.append(objson)
+        return reply
