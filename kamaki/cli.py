@@ -719,12 +719,12 @@ class store_create(_store_account_command):
 
 
 @command(api='storage')
-class store_container(_store_account_command):
+class store_container_info(_store_account_command):
     """Get container info"""
 
     def main(self, container):
-        super(store_container, self).main()
-        reply = self.client.get_container_meta(container)
+        super(store_container_info, self).main()
+        reply = self.client.get_container_info(container)
         print_dict(reply)
 
 @command(api='storage')
@@ -736,6 +736,15 @@ class store_list_containers(_store_account_command):
         for object in self.client.list_containers():
             size = self.format_size(object['bytes'])
             print('%s (%s, %s objects)' % (object['name'], size, object['count']))
+
+@command(api='storage')
+class store_object_info(_store_container_command):
+    """Get object info"""
+
+    def main(self, object_path):
+        super(store_object_info, self).main()
+        reply = self.client.get_object_info(object_path)
+        print_dict(reply)
 
 @command(api='storage')
 class store_list_object(_store_container_command):
