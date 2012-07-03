@@ -717,6 +717,13 @@ class store_create(_store_account_command):
         super(store_create, self).main()
         self.client.create_container(container)
 
+@command(api='storage')
+class store_delete_container(_store_account_command):
+    """Delete empty container"""
+
+    def main(self, container):
+        super(store_delete_container, self).main()
+        self.client.delete_container(container)
 
 @command(api='storage')
 class store_container_info(_store_account_command):
@@ -734,7 +741,7 @@ class store_list_containers(_store_account_command):
     def main(self):
         super(store_list_containers, self).main()
         for object in self.client.list_containers():
-            size = self.format_size(object['bytes'])
+            size = format_size(object['bytes'])
             print('%s (%s, %s objects)' % (object['name'], size, object['count']))
 
 @command(api='storage')
@@ -753,7 +760,7 @@ class store_list_object(_store_container_command):
     def main(self, path):
         super(store_list_object, self).main()
         for obj in self.client.list_objects_in_path(path_prefix=path):
-            size = self.format_size(obj['bytes'])
+            size = format_size(obj['bytes'])
             print('%6s %s' % (size, obj['name']))
 
 @command(api='storage')
@@ -763,7 +770,7 @@ class store_list(_store_container_command):
     def main(self):
         super(store_list, self).main()
         for obj in self.client.list_objects():
-            size = self.format_size(obj['bytes'])
+            size = format_size(obj['bytes'])
             print('%6s %s' % (size, obj['name']))
 
 @command(api='storage')
@@ -815,7 +822,6 @@ class store_delete(_store_container_command):
     def main(self, path):
         super(store_delete, self).main()
         self.client.delete_object(path)
-
 
 @command(api='storage')
 class store_purge(_store_account_command):

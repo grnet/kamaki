@@ -74,6 +74,19 @@ class StorageClient(Client):
 
         return reply
 
+    def delete_container(self, container):
+        #Response codes
+        #   Success             204
+        #   NotFound            404
+        #   Conflict(not empty) 409
+        self.assert_account()
+        path = '/%s/%s' % (self.account, container)
+        r = self.delete(path, success=(204, 404, 409))
+        if r.status_code == 404:
+            raise ClientError("Container does not exist", r.status_code)
+        elif r.status_code == 409:
+            raise ClientError("Container is not empty", r.status_code)
+
     def list_containers(self):
         self.assert_account()
         path = '/%s' % (self.account) 
@@ -120,8 +133,4 @@ class StorageClient(Client):
         return r.json
 
     def list_objects_in_path(self, path_prefix):
-        reply = []
-        for obj in self.list_objects():
-            if obj['name'].startswith(path_prefix):
-                reply.append(objson)
-        return reply
+        return [obj for obj in self.list_objects() if obj['name'].startswith(path_prefix)]

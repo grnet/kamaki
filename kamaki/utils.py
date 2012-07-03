@@ -86,7 +86,7 @@ def print_items(items, title=('id', 'name')):
             print_dict(item)
             print
 
-def format_size(self, size):
+def format_size(size):
     units = ('B', 'K', 'M', 'G', 'T')
     size = float(size)
     for unit in units:

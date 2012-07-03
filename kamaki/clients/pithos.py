@@ -52,8 +52,9 @@ class PithosClient(StorageClient):
         self.assert_account()
 
         path = '/%s/%s' % (self.account, container)
-        params = {'until': int(time())}
-        self.delete(path, params=params, success=204)
+        #params = {'until': int(time())}
+        #self.delete(path, params=params, success=204)
+        self.delete(path, success=204)
 
     def put_block(self, data, hash):
         path = '/%s/%s' % (self.account, self.container)
@@ -77,7 +78,7 @@ class PithosClient(StorageClient):
         """
         self.assert_container()
 
-        meta = self.get_container_meta(self.container)
+        meta = self.get_container_info(self.container)
         blocksize = int(meta['block-size'])
         blockhash = meta['block-hash']
 
