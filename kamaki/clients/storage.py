@@ -131,7 +131,9 @@ class StorageClient(Client):
     def delete_object(self, object):
         self.assert_container()
         path = '/%s/%s/%s' % (self.account, self.container, object)
-        self.delete(path, success=204)
+        r = self.delete(path, success=(204, 404))
+        if r.status_code == 404:
+            raise ClientError("Object %s not found" % object, r.status_code)
        
     def list_objects(self):
         self.assert_container()

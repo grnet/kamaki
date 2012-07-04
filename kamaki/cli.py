@@ -732,17 +732,10 @@ class store_create(_store_account_command):
         super(store_create, self).main()
         self.client.create_container(container)
 
-@command(api='storage')
-class store_delete_container(_store_account_command):
-    """Delete empty container"""
-
-    def main(self, container):
-        super(store_delete_container, self).main()
-        self.client.delete_container(container)
 
 @command(api='storage')
 class store_list(_store_container_command):
-    """List objects"""
+    """List containers [, object trees [or objects in a directory]]"""
 
     def print_objects(self, object_list):
         for obj in object_list:
@@ -806,14 +799,17 @@ class store_download(_store_container_command):
             if cb:
                 gen.next()
 
-
 @command(api='storage')
 class store_delete(_store_container_command):
-    """Delete a file"""
+    """Delete a container [or an object]"""
 
-    def main(self, path):
+    def main(self, container, object=None):
         super(store_delete, self).main()
-        self.client.delete_object(path)
+        if object is None:
+            self.client.delete_container(container)
+        else:
+            self.client.container = container
+            self.client.delete_object(object)
 
 @command(api='storage')
 class store_purge(_store_account_command):
