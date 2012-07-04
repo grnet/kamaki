@@ -703,12 +703,18 @@ class _store_container_command(_store_account_command):
 
 @command(api='storage')
 class store_info(_store_account_command):
-    """Get account information"""
+    """Get information for account [, container [or object]]"""
 
-    def main(self):
+    def main(self, container=None, object=None):
         super(store_info, self).main()
-        r = self.client.get_account_info()
-        print_dict(r)
+        if container is None:
+            reply = self.client.get_account_info()
+        elif object is None:
+            reply = self.client.get_container_info(container)
+        else:
+            self.client.container = container
+            reply = self.client.get_object_info(object)
+        print_dict(reply)
 
 @command(api='storage')
 class store_mkdir(_store_container_command):
@@ -735,15 +741,6 @@ class store_delete_container(_store_account_command):
         self.client.delete_container(container)
 
 @command(api='storage')
-class store_container_info(_store_account_command):
-    """Get container info"""
-
-    def main(self, container):
-        super(store_container_info, self).main()
-        reply = self.client.get_container_info(container)
-        print_dict(reply)
-
-@command(api='storage')
 class store_list_containers(_store_account_command):
     """List containers"""
 
@@ -752,16 +749,6 @@ class store_list_containers(_store_account_command):
         for object in self.client.list_containers():
             size = format_size(object['bytes'])
             print('%s (%s, %s objects)' % (object['name'], size, object['count']))
-
-@command(api='storage')
-class store_object_info(_store_container_command):
-    """Get object info"""
-
-    def main(self, object_path):
-        super(store_object_info, self).main()
-        reply = self.client.get_object_info(object_path)
-        print_dict(reply)
-
 @command(api='storage')
 class store_list_path(_store_container_command):
     """List objects in remote path"""

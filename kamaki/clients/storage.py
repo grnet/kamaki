@@ -119,7 +119,7 @@ class StorageClient(Client):
         self.assert_container()
         path = '/%s/%s/%s' % (self.account, self.container, object)
         r = self.head(path, success=200)
-        return r.json
+        return r.headers
 
     def get_object(self, object):
         self.assert_container()
