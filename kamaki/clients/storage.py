@@ -33,6 +33,8 @@
 
 from . import Client, ClientError
 
+def filter_dict_with_prefix(d, prefix):
+    return {key:d[key] for key in d if key.startswith(prefix)}
 
 class StorageClient(Client):
     """OpenStack Object Storage API 1.0 client"""
@@ -59,6 +61,9 @@ class StorageClient(Client):
             raise ClientError("No authorization")
         return r.headers
 
+    def get_account_meta(self):
+        return filter_dict_with_prefix(self.get_account_info(), 'X-Account-Meta-')
+
     def create_container(self, container):
         self.assert_account()
         path = '/%s/%s' % (self.account, container)
@@ -81,6 +86,9 @@ class StorageClient(Client):
                 reply[key[len(prefix):]] = val
 
         return reply
+
+    def get_container_meta(self, container):
+        return filter_dict_with_prefix(self.get_container_info(container), 'X-Container-Meta-')
 
     def delete_container(self, container):
         #Response codes
@@ -122,6 +130,9 @@ class StorageClient(Client):
         path = '/%s/%s/%s' % (self.account, self.container, object)
         r = self.head(path, success=200)
         return r.headers
+
+    def get_object_meta(self, object):
+        return filter_dict_with_prefix(self.get_object_info(object), 'X-Object-Meta-')
 
     def get_object(self, object):
         self.assert_container()

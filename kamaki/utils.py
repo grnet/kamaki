@@ -95,3 +95,4 @@ def format_size(size):
         size /= 1024
     s = ('%.1f' % size).rstrip('.0')
     return s + unit
+

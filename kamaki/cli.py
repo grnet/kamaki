@@ -717,6 +717,21 @@ class store_info(_store_account_command):
         print_dict(reply)
 
 @command(api='storage')
+class store_meta(_store_account_command):
+    """Get custom meta-content for account [, container [or object]]"""
+
+    def main(self, container = None, object = None):
+        super(store_meta, self).main()
+        if container is None:
+            reply = self.client.get_account_meta()
+        elif object is None:
+            reply = self.client.get_container_meta(container)
+        else:
+            self.client.container = container
+            reply = self.client.get_object_meta(object)
+        print_dict(reply)
+
+@command(api='storage')
 class store_create(_store_account_command):
     """Create a container [or a directory object]"""
 
