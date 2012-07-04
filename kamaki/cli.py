@@ -702,6 +702,15 @@ class _store_container_command(_store_account_command):
             self.client.container = self.args.container
 
 @command(api='storage')
+class store_info(_store_account_command):
+    """Get account information"""
+
+    def main(self):
+        super(store_info, self).main()
+        r = self.client.get_account_info()
+        print_dict(r)
+
+@command(api='storage')
 class store_mkdir(_store_container_command):
     """Create a directory"""
 
@@ -760,7 +769,7 @@ class store_list_path(_store_container_command):
     def main(self, path):
         super(store_list_path, self).main()
         for obj in self.client.list_objects_in_path(path_prefix=path):
-            size = format_size(obj['bytes'])
+            size = format_size(obj['bytes']) if 0 < obj['bytes'] else 'D'
             print('%6s %s' % (size, obj['name']))
 
 @command(api='storage')
@@ -770,7 +779,7 @@ class store_list(_store_container_command):
     def main(self):
         super(store_list, self).main()
         for obj in self.client.list_objects():
-            size = format_size(obj['bytes'])
+            size = format_size(obj['bytes']) if 0 < obj['bytes'] else 'D'
             print('%6s %s' % (size, obj['name']))
 
 @command(api='storage')

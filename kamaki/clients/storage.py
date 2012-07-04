@@ -51,6 +51,14 @@ class StorageClient(Client):
         if not self.container:
             raise ClientError("Please provide a container")
 
+    def get_account_info(self):
+        self.assert_account()
+        path = '/%s' % self.account
+        r = self.head(path, success=(204, 401))
+        if r.status_code == 401:
+            raise ClientError("No authorization")
+        return r.headers
+
     def create_container(self, container):
         self.assert_account()
         path = '/%s/%s' % (self.account, container)
