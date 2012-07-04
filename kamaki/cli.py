@@ -741,33 +741,30 @@ class store_delete_container(_store_account_command):
         self.client.delete_container(container)
 
 @command(api='storage')
-class store_list_containers(_store_account_command):
-    """List containers"""
-
-    def main(self):
-        super(store_list_containers, self).main()
-        for object in self.client.list_containers():
-            size = format_size(object['bytes'])
-            print('%s (%s, %s objects)' % (object['name'], size, object['count']))
-@command(api='storage')
-class store_list_path(_store_container_command):
-    """List objects in remote path"""
-
-    def main(self, path):
-        super(store_list_path, self).main()
-        for obj in self.client.list_objects_in_path(path_prefix=path):
-            size = format_size(obj['bytes']) if 0 < obj['bytes'] else 'D'
-            print('%6s %s' % (size, obj['name']))
-
-@command(api='storage')
 class store_list(_store_container_command):
     """List objects"""
 
-    def main(self):
-        super(store_list, self).main()
-        for obj in self.client.list_objects():
+    def print_objects(self, object_list):
+        for obj in object_list:
             size = format_size(obj['bytes']) if 0 < obj['bytes'] else 'D'
             print('%6s %s' % (size, obj['name']))
+
+    def print_containers(self, container_list):
+        for container in container_list:
+            size = format_size(container['bytes'])
+            print('%s (%s, %s objects)' % (container['name'], size, container['count']))
+            
+
+    def main(self, container=None, object=None):
+        super(store_list, self).main()
+        if container is None:
+            reply = self.client.list_containers()
+            self.print_containers(reply)
+        else:
+            self.client.container = container
+            reply = self.client.list_objects() if object is None \
+                else self.client.list_objects_in_path(path_prefix=object)
+            self.print_objects(reply)
 
 @command(api='storage')
 class store_upload(_store_container_command):
@@ -783,7 +780,6 @@ class store_upload(_store_container_command):
             upload_cb = self.progress('Uploading blocks')
             self.client.create_object(remote_path, f, hash_cb=hash_cb,
                                       upload_cb=upload_cb)
-
 
 @command(api='storage')
 class store_download(_store_container_command):
