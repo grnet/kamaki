@@ -758,9 +758,10 @@ class store_list(_store_container_command):
 class store_upload(_store_container_command):
     """Upload a file"""
 
-    def main(self, path, remote_path=None):
+    def main(self, container, path, remote_path=None):
         super(store_upload, self).main()
 
+        self.client.container = container
         if remote_path is None:
             remote_path = basename(path)
         with open(path) as f:
@@ -773,9 +774,10 @@ class store_upload(_store_container_command):
 class store_download(_store_container_command):
     """Download a file"""
 
-    def main(self, remote_path, local_path='-'):
+    def main(self, container,remote_path, local_path='-'):
         super(store_download, self).main()
 
+        self.client.container = container
         f, size = self.client.get_object(remote_path)
         out = open(local_path, 'w') if local_path != '-' else stdout
 

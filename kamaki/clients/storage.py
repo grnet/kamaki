@@ -102,13 +102,15 @@ class StorageClient(Client):
         r = self.get(path, params = params, success = (200, 204))
         return r.json
 
-    def create_object(self, object, f, size=None, hash_cb=None,
+    """def create_object(self, object, f, size=None, hash_cb=None,
                       upload_cb=None):
         # This is a naive implementation, it loads the whole file in memory
+        #Look in pithos for a nice implementation
         self.assert_container()
         path = '/%s/%s/%s' % (self.account, self.container, object)
         data = f.read(size) if size is not None else f.read()
         self.put(path, data=data, success=201)
+    """
 
     def create_directory(self, object):
         self.assert_container()
