@@ -717,21 +717,16 @@ class store_info(_store_account_command):
         print_dict(reply)
 
 @command(api='storage')
-class store_mkdir(_store_container_command):
-    """Create a directory"""
-
-    def main(self, path):
-        super(store_mkdir, self).main()
-        self.client.create_directory(path)
-
-@command(api='storage')
 class store_create(_store_account_command):
-    """Create a container"""
+    """Create a container [or a directory object]"""
 
-    def main(self, container):
+    def main(self, container, directory_object=None):
         super(store_create, self).main()
-        self.client.create_container(container)
-
+        if directory_object is None:
+            self.client.create_container(container)
+        else:
+            self.client.container = container
+            self.client.create_directory(directory_object)
 
 @command(api='storage')
 class store_list(_store_container_command):
