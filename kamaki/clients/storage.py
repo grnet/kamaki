@@ -32,9 +32,7 @@
 # or implied, of GRNET S.A.
 
 from . import Client, ClientError
-
-def filter_dict_with_prefix(d, prefix):
-    return {key:d[key] for key in d if key.startswith(prefix)}
+from .utils import filter_dict_with_prefix, prefix_keys
 
 class StorageClient(Client):
     """OpenStack Object Storage API 1.0 client"""
@@ -64,6 +62,15 @@ class StorageClient(Client):
     def get_account_meta(self):
         return filter_dict_with_prefix(self.get_account_info(), 'X-Account-Meta-')
 
+    def set_account_meta(self, metapairs):
+        self.assert_account()
+        path = '/%s' % self.account
+        meta = prefix_keys(metapairs, 'X-Account-Meta-')
+        self.post(path, meta=meta, success=202)
+
+    def get_account_policy(self):
+        return filter_dict_with_prefix(self.get_account_info(), 'X-Account-Policy-')
+
     def create_container(self, container):
         self.assert_account()
         path = '/%s/%s' % (self.account, container)
@@ -90,6 +97,9 @@ class StorageClient(Client):
     def get_container_meta(self, container):
         return filter_dict_with_prefix(self.get_container_info(container), 'X-Container-Meta-')
 
+    def get_container_policy(self, container):
+        return filter_dict_with_prefix(self.get_container_info(container), 'X-Container-Policy-')
+
     def delete_container(self, container):
         #Response codes
         #   Success             204
@@ -110,7 +120,7 @@ class StorageClient(Client):
         r = self.get(path, params = params, success = (200, 204))
         return r.json
 
-    """def create_object(self, object, f, size=None, hash_cb=None,
+    def create_object(self, object, f, size=None, hash_cb=None,
                       upload_cb=None):
         # This is a naive implementation, it loads the whole file in memory
         #Look in pithos for a nice implementation
@@ -118,7 +128,6 @@ class StorageClient(Client):
         path = '/%s/%s/%s' % (self.account, self.container, object)
         data = f.read(size) if size is not None else f.read()
         self.put(path, data=data, success=201)
-    """
 
     def create_directory(self, object):
         self.assert_container()
@@ -133,6 +142,7 @@ class StorageClient(Client):
 
     def get_object_meta(self, object):
         return filter_dict_with_prefix(self.get_object_info(object), 'X-Object-Meta-')
+
 
     def get_object(self, object):
         self.assert_container()

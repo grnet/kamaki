@@ -71,6 +71,7 @@ class Client(object):
         raw = kwargs.pop('raw', False)
         success = kwargs.pop('success', 200)
         directory = kwargs.pop('directory', False)
+        meta = kwargs.pop('meta', False)
 
         data = kwargs.pop('data', None)
         headers = kwargs.pop('headers', {})
@@ -86,6 +87,10 @@ class Client(object):
             if data:
                 headers.setdefault('Content-Length', str(len(data)))
 
+        if meta:
+            for key in meta.keys():
+                headers[key] = meta[key]
+            
         url = self.base_url + path
         kwargs.setdefault('verify', False)  # Disable certificate verification
         r = requests.request(method, url, headers=headers, data=data, **kwargs)

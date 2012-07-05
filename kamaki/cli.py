@@ -88,7 +88,7 @@ from requests.exceptions import ConnectionError
 
 from . import clients
 from .config import Config
-from .utils import print_addresses, print_dict, print_items, format_size
+from .utils import print_addresses, print_dict, print_items, format_size, dict_from_args
 
 
 _commands = OrderedDict()
@@ -729,6 +729,31 @@ class store_meta(_store_account_command):
         else:
             self.client.container = container
             reply = self.client.get_object_meta(object)
+        print_dict(reply)
+
+@command(api='storage')
+class store_set_account_meta(_store_account_command):
+    """Set account meta-content"""
+
+    def main(self, metakey, metaval, *more):
+        super(store_set_account_meta, self).main()
+        args_len = len(more)
+        if args_len%2 == 1:
+            print('Parameter %s will be ignored' % more[-1])
+        pairs = dict_from_args(*more)
+        pairs[metakey] = metaval
+        self.client.set_account_meta(pairs)
+
+@command(api='storage')
+class store_policy(_store_account_command):
+    """Get  policy for account [, container [or object]]"""
+
+    def main(self, container = None):
+        super(store_policy, self).main()
+        if container is None:
+            reply = self.client.get_account_policy()
+        else:
+            reply = self.client.get_container_policy(container)
         print_dict(reply)
 
 @command(api='storage')

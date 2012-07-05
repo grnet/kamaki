@@ -50,11 +50,9 @@ class PithosClient(StorageClient):
 
     def purge_container(self, container):
         self.assert_account()
-
         path = '/%s/%s' % (self.account, container)
-        #params = {'until': int(time())}
-        #self.delete(path, params=params, success=204)
-        self.delete(path, success=204)
+        params = {'until': int(time())}
+        self.delete(path, params=params, success=204)
 
     def put_block(self, data, hash):
         path = '/%s/%s' % (self.account, self.container)
