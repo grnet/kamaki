@@ -37,6 +37,7 @@ import os
 from time import time
 
 from .storage import StorageClient
+from .utils import path4url, params4url, prefix_keys
 
 
 def pithos_hash(block, blockhash):
@@ -77,8 +78,9 @@ class PithosClient(StorageClient):
         self.assert_container()
 
         meta = self.get_container_info(self.container)
-        blocksize = int(meta['block-size'])
-        blockhash = meta['block-hash']
+        print(unicode(meta))
+        blocksize = int(meta['x-container-block-size'])
+        blockhash = meta['x-container-block-hash']
 
         size = size if size is not None else os.fstat(f.fileno()).st_size
         nblocks = 1 + (size - 1) // blocksize
@@ -129,3 +131,25 @@ class PithosClient(StorageClient):
 
         self.put(path, params=params, headers=headers, json=hashmap,
                  success=201)
+
+
+    def set_account_meta(self, metapairs):
+        assert(type(metapairs) is dict)
+        self.assert_account()
+        path = path4url(self.account)+params4url({'update':None})
+        meta = prefix_keys(metapairs, 'X-Account-Meta-')
+        self.post(path, meta=meta, success=202)
+
+    def set_container_meta(self, metapairs):
+        assert(type(metapairs) is dict)
+        self.assert_container()
+        path=path4url(self.account, self.container)+params4url({'update':None})
+        meta = prefix_keys(metapairs, 'X-Container-Meta-')
+        self.post(path, meta=meta, success=202)
+
+    def set_object_meta(self, object, metapairs):
+        assert(type(metapairs) is dict)
+        self.assert_container()
+        path=path4url(self.account, self.container, object)+params4url({'update':None})
+        meta = prefix_keys(metapairs, 'X-Object-Meta-')
+        self.post(path, meta=meta, success=202)

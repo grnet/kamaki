@@ -32,7 +32,7 @@
 # or implied, of GRNET S.A.
 
 from . import Client, ClientError
-from .utils import filter_dict_with_prefix, prefix_keys
+from .utils import filter_dict_with_prefix, prefix_keys, path4url, params4url
 
 class StorageClient(Client):
     """OpenStack Object Storage API 1.0 client"""
@@ -53,7 +53,7 @@ class StorageClient(Client):
 
     def get_account_info(self):
         self.assert_account()
-        path = '/%s' % self.account
+        path = path4url(self.account)
         r = self.head(path, success=(204, 401))
         if r.status_code == 401:
             raise ClientError("No authorization")
@@ -62,9 +62,9 @@ class StorageClient(Client):
     def get_account_meta(self):
         return filter_dict_with_prefix(self.get_account_info(), 'X-Account-Meta-')
 
-    def set_account_meta(self, metapairs):
+    def replace_account_meta(self, metapairs):
         self.assert_account()
-        path = '/%s' % self.account
+        path = path4url(self.account)
         meta = prefix_keys(metapairs, 'X-Account-Meta-')
         self.post(path, meta=meta, success=202)
 
@@ -73,29 +73,31 @@ class StorageClient(Client):
 
     def create_container(self, container):
         self.assert_account()
-        path = '/%s/%s' % (self.account, container)
+        path = path4url(self.account, container)
         r = self.put(path, success=(201, 202))
         if r.status_code == 202:
             raise ClientError("Container already exists", r.status_code)
 
     def get_container_info(self, container):
         self.assert_account()
-        path = '/%s/%s' % (self.account, container)
+        path = path4url(self.account, container)
         r = self.head(path, success=(204, 404))
         if r.status_code == 404:
             raise ClientError("Container does not exist", r.status_code)
-
-        reply = {}
-        prefix = 'x-container-'
-        for key, val in r.headers.items():
-            key = key.lower()
-            if key.startswith(prefix):
-                reply[key[len(prefix):]] = val
-
+        reply = r.headers
         return reply
 
     def get_container_meta(self, container):
         return filter_dict_with_prefix(self.get_container_info(container), 'X-Container-Meta-')
+
+    def get_container_object_meta(self, container):
+        return filter_dict_with_prefix(self.get_container_info(container), 'X-Container-Object-Meta')
+
+    def replace_container_meta(self, metapairs):
+        self.assert_container()
+        path=path4url(self.account, self.container)
+        meta = prefix_keys(metapairs, 'X-Container-Meta-')
+        self.post(path, meta=meta, success=202)
 
     def get_container_policy(self, container):
         return filter_dict_with_prefix(self.get_container_info(container), 'X-Container-Policy-')
@@ -106,7 +108,7 @@ class StorageClient(Client):
         #   NotFound            404
         #   Conflict(not empty) 409
         self.assert_account()
-        path = '/%s/%s' % (self.account, container)
+        path = path4url(self.account, container)
         r = self.delete(path, success=(204, 404, 409))
         if r.status_code == 404:
             raise ClientError("Container does not exist", r.status_code)
@@ -115,7 +117,7 @@ class StorageClient(Client):
 
     def list_containers(self):
         self.assert_account()
-        path = '/%s' % (self.account) 
+        path = path4url(self.account) 
         params = dict(format='json')
         r = self.get(path, params = params, success = (200, 204))
         return r.json
@@ -125,42 +127,47 @@ class StorageClient(Client):
         # This is a naive implementation, it loads the whole file in memory
         #Look in pithos for a nice implementation
         self.assert_container()
-        path = '/%s/%s/%s' % (self.account, self.container, object)
+        path = path4url(self.account, self.container, object)
         data = f.read(size) if size is not None else f.read()
         self.put(path, data=data, success=201)
 
     def create_directory(self, object):
         self.assert_container()
-        path = '/%s/%s/%s' % (self.account, self.container, object)
+        path = path4url(self.account, self.container, object)
         self.put(path, data='', directory=True, success=201)
 
     def get_object_info(self, object):
         self.assert_container()
-        path = '/%s/%s/%s' % (self.account, self.container, object)
+        path = path4url(self.account, self.container, object)
         r = self.head(path, success=200)
         return r.headers
 
     def get_object_meta(self, object):
         return filter_dict_with_prefix(self.get_object_info(object), 'X-Object-Meta-')
 
+    def replace_object(self, metapairs):
+        self.assert_container()
+        path=path4url(self.account, self.container)
+        meta = prefix_keys(metapairs, 'X-Object-Meta-')
+        self.post(path, meta=meta, success=202)
 
     def get_object(self, object):
         self.assert_container()
-        path = '/%s/%s/%s' % (self.account, self.container, object)
+        path = path4url(self.account, self.container, object)
         r = self.get(path, raw=True, success=200)
         size = int(r.headers['content-length'])
         return r.raw, size
 
     def delete_object(self, object):
         self.assert_container()
-        path = '/%s/%s/%s' % (self.account, self.container, object)
+        path = path4url(self.account, self.container, object)
         r = self.delete(path, success=(204, 404))
         if r.status_code == 404:
             raise ClientError("Object %s not found" %object, r.status_code)
        
     def list_objects(self):
         self.assert_container()
-        path = '/%s/%s' % (self.account, self.container)
+        path = path4url(self.account, self.container)
         params = dict(format='json')
         r = self.get(path, params=params, success=(200, 204, 404))
         if r.status_code == 404:
@@ -169,7 +176,7 @@ class StorageClient(Client):
 
     def list_objects_in_path(self, path_prefix):
         self.assert_container()
-        path = '/%s/%s' % (self.account, self.container)
+        path = path4url(self.account, self.container)
         params = dict(format='json', path=path_prefix)
         r = self.get(path, params=params, success=(200, 204, 404))
         if r.status_code == 404:

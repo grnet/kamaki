@@ -725,6 +725,8 @@ class store_meta(_store_account_command):
         if container is None:
             reply = self.client.get_account_meta()
         elif object is None:
+            reply = self.client.get_container_object_meta(container)
+            print_dict(reply)
             reply = self.client.get_container_meta(container)
         else:
             self.client.container = container
@@ -732,17 +734,44 @@ class store_meta(_store_account_command):
         print_dict(reply)
 
 @command(api='storage')
-class store_set_account_meta(_store_account_command):
-    """Set account meta-content"""
+class store_setmeta(_store_account_command):
+    """Set a new metadatum for account [, container [or object]]"""
 
-    def main(self, metakey, metaval, *more):
+    def main(self, metakey, metavalue, container=None, object=None):
+        super(store_setmeta, self).main()
+        if container is None:
+            self.client.set_account_meta({metakey:metavalue})
+        else:
+            self.client.container = container
+            if object is None:
+                self.client.set_container_meta({metakey:metavalue})
+            else:
+                self.client.set_object_meta(object, {metakey:metavalue})
+
+@command(api='storage')
+class store_set_account_meta(_store_account_command):
+    """Set (replace) account meta-content"""
+
+    def main(self, metakey, metaval, *moreargs):
         super(store_set_account_meta, self).main()
-        args_len = len(more)
-        if args_len%2 == 1:
-            print('Parameter %s will be ignored' % more[-1])
-        pairs = dict_from_args(*more)
+        if len(moreargs)%2 == 1:
+            print('Parameter %s will be ignored' % moreargs[-1])
+        pairs = dict_from_args(*moreargs)
         pairs[metakey] = metaval
         self.client.set_account_meta(pairs)
+
+@command(api='storage')
+class store_set_container_meta(_store_account_command):
+    """Set (replace) container meta-content"""
+
+    def main(self, container, metakey, metaval, *moreargs):
+        super(store_set_container_meta, self).main()
+        self.client.container = container
+        if len(moreargs)%2 == 1:
+            print('Parameter %s will be ignored' % moreargs[-1])
+        pairs = dict_from_args(*moreargs)
+        pairs[metakey] = metaval
+        print(unicode(pairs))
 
 @command(api='storage')
 class store_policy(_store_account_command):

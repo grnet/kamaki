@@ -41,3 +41,31 @@ def prefix_keys(d, prefix):
     """
     return {prefix+key:d[key] for key in d.keys()}
 
+def path4url(*args):
+    """@return a string with all args in the form /arg1/arg2/...
+       @param args must be strings
+    """
+    path = ''
+    for arg in args:
+        path = path + '/' + arg
+    return path
+
+def params4url(params):
+    """@return a string with all params in the form ?key1=val1&key2=val2&...
+            e.g. input
+                {'key1':'val1', 'key2':None, 'key3':'val3'}
+            will return
+                ?key1=val1&key2&key3=val3
+       @param should be a dict.
+            Use params['somekey']=None for params that will apear without 
+            a value at the final string
+    """
+    assert(type(params) is dict)
+    result = ''
+    delimiter = '?'
+    for name in params:
+        result = result + delimiter + name
+        result = result + '=' + params[name] if params[name] is not None else result
+        delimeter = '&'
+    return result
+

@@ -85,7 +85,7 @@ class Client(object):
                 data = json.dumps(kwargs.pop('json'))
                 headers.setdefault('Content-Type', 'application/json')
             if data:
-                headers.setdefault('Content-Length', str(len(data)))
+                headers.setdefault('Content-Length', unicode(len(data)))
 
         if meta:
             for key in meta.keys():
