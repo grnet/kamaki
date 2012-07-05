@@ -749,31 +749,6 @@ class store_setmeta(_store_account_command):
                 self.client.set_object_meta(object, {metakey:metavalue})
 
 @command(api='storage')
-class store_set_account_meta(_store_account_command):
-    """Set (replace) account meta-content"""
-
-    def main(self, metakey, metaval, *moreargs):
-        super(store_set_account_meta, self).main()
-        if len(moreargs)%2 == 1:
-            print('Parameter %s will be ignored' % moreargs[-1])
-        pairs = dict_from_args(*moreargs)
-        pairs[metakey] = metaval
-        self.client.set_account_meta(pairs)
-
-@command(api='storage')
-class store_set_container_meta(_store_account_command):
-    """Set (replace) container meta-content"""
-
-    def main(self, container, metakey, metaval, *moreargs):
-        super(store_set_container_meta, self).main()
-        self.client.container = container
-        if len(moreargs)%2 == 1:
-            print('Parameter %s will be ignored' % moreargs[-1])
-        pairs = dict_from_args(*moreargs)
-        pairs[metakey] = metaval
-        print(unicode(pairs))
-
-@command(api='storage')
 class store_policy(_store_account_command):
     """Get  policy for account [, container [or object]]"""
 
