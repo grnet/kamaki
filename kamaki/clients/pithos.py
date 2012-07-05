@@ -37,7 +37,7 @@ import os
 from time import time
 
 from .storage import StorageClient
-from .utils import path4url, params4url, prefix_keys
+from .utils import path4url, params4url, prefix_keys, filter_in, filter_out
 
 
 def pithos_hash(block, blockhash):
@@ -132,6 +132,11 @@ class PithosClient(StorageClient):
         self.put(path, params=params, headers=headers, json=hashmap,
                  success=201)
 
+    def get_account_policy(self):
+        return filter_in(self.get_account_info(), 'X-Account-Policy-')
+
+    def get_account_meta(self):
+        return filter_in(self.get_account_info(), 'X-Account-Meta-')
 
     def set_account_meta(self, metapairs):
         assert(type(metapairs) is dict)
@@ -140,10 +145,33 @@ class PithosClient(StorageClient):
         meta = prefix_keys(metapairs, 'X-Account-Meta-')
         self.post(path, meta=meta, success=202)
 
+    def get_container_policy(self, container):
+        return filter_in(self.get_container_info(container), 'X-Container-Policy-')
+
+    def get_container_meta(self, container):
+        return filter_in(self.get_container_info(container), 'X-Container-Meta-')
+
+    def get_container_object_meta(self, container):
+        return filter_in(self.get_container_info(container), 'X-Container-Object-Meta')
+
     def set_container_meta(self, metapairs):
         assert(type(metapairs) is dict)
         self.assert_container()
         path=path4url(self.account, self.container)+params4url({'update':None})
+        meta = prefix_keys(metapairs, 'X-Container-Meta-')
+        self.post(path, meta=meta, success=202)
+
+    def delete_container_meta(self, metakey):
+        headers = self.get_container_info(self.container)
+        new_headers = filter_out(headers, 'x-container-meta-'+metakey, exactMatch = True)
+        if len(new_headers) == len(headers):
+            raise ClientError('X-Container-Meta-%s not found' % metakey, 404)
+        path = path4url(self.account, self.container)
+        self.post(path, headers=new_headers, success = 202)
+
+    def replace_container_meta(self, metapairs):
+        self.assert_container()
+        path=path4url(self.account, self.container)
         meta = prefix_keys(metapairs, 'X-Container-Meta-')
         self.post(path, meta=meta, success=202)
 

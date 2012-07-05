@@ -93,8 +93,10 @@ class Client(object):
             
         url = self.base_url + path
         kwargs.setdefault('verify', False)  # Disable certificate verification
+        print('HAVE WE BEEN OVER THIS? '+unicode(headers))
         r = requests.request(method, url, headers=headers, data=data, **kwargs)
 
+        print('HAVE WE BEEN OVER THIS?')
         req = r.request
         sendlog.info('%s %s', req.method, req.url)
         for key, val in req.headers.items():

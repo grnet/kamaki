@@ -749,6 +749,21 @@ class store_setmeta(_store_account_command):
                 self.client.set_object_meta(object, {metakey:metavalue})
 
 @command(api='storage')
+class store_delmeta(_store_account_command):
+    """Delete an existing metadatum of account [, container [or object]]"""
+
+    def main(self, metakey, container=None, object=None):
+        super(store_delmeta, self).main()
+        if container is None:
+            self.client.delete_account_meta(metakey)
+        else:
+            self.client.container = container
+            if object is None:
+                self.client.delete_container_meta(metakey)
+            else:
+                self.client.delete_object_meta(metakey, object)
+
+@command(api='storage')
 class store_policy(_store_account_command):
     """Get  policy for account [, container [or object]]"""
 

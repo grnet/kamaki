@@ -31,7 +31,14 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-def filter_dict_with_prefix(d, prefix):
+def filter_out(d, prefix, exactMatch = False):
+    """@return a dict that contains the entries of d that are NOT prefixed with prefic
+    """
+    if exactMatch:
+        return {key:d[key] for key in d if not key.lower() == prefix.lower()}
+    return {key:d[key] for key in d if not key.lower().startswith(prefix.lower())}
+
+def filter_in(d, prefix):
     """@return a dict that contains only the entries of d that are prefixed with prefic
     """
     return {key:d[key] for key in d if key.lower().startswith(prefix.lower())}

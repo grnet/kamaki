@@ -32,7 +32,7 @@
 # or implied, of GRNET S.A.
 
 from . import Client, ClientError
-from .utils import filter_dict_with_prefix, prefix_keys, path4url, params4url
+from .utils import filter_in, filter_out, prefix_keys, path4url, params4url
 
 class StorageClient(Client):
     """OpenStack Object Storage API 1.0 client"""
@@ -59,17 +59,19 @@ class StorageClient(Client):
             raise ClientError("No authorization")
         return r.headers
 
-    def get_account_meta(self):
-        return filter_dict_with_prefix(self.get_account_info(), 'X-Account-Meta-')
-
     def replace_account_meta(self, metapairs):
         self.assert_account()
         path = path4url(self.account)
         meta = prefix_keys(metapairs, 'X-Account-Meta-')
         self.post(path, meta=meta, success=202)
 
-    def get_account_policy(self):
-        return filter_dict_with_prefix(self.get_account_info(), 'X-Account-Policy-')
+    def delete_account_meta(self, metakey):
+        headers = self.get_account_info()
+        new_headers = filter_out(headers, 'X-Account-Meta-'+metakey, exactMatch = True)
+        if len(new_headers) == len(headers):
+            raise ClientError('X-Account-Meta-%s not found' % metakey, 404)
+        path = path4url(self.account)
+        self.post(path, headers=new_headers, success = 202)
 
     def create_container(self, container):
         self.assert_account()
@@ -86,21 +88,6 @@ class StorageClient(Client):
             raise ClientError("Container does not exist", r.status_code)
         reply = r.headers
         return reply
-
-    def get_container_meta(self, container):
-        return filter_dict_with_prefix(self.get_container_info(container), 'X-Container-Meta-')
-
-    def get_container_object_meta(self, container):
-        return filter_dict_with_prefix(self.get_container_info(container), 'X-Container-Object-Meta')
-
-    def replace_container_meta(self, metapairs):
-        self.assert_container()
-        path=path4url(self.account, self.container)
-        meta = prefix_keys(metapairs, 'X-Container-Meta-')
-        self.post(path, meta=meta, success=202)
-
-    def get_container_policy(self, container):
-        return filter_dict_with_prefix(self.get_container_info(container), 'X-Container-Policy-')
 
     def delete_container(self, container):
         #Response codes
@@ -143,7 +130,18 @@ class StorageClient(Client):
         return r.headers
 
     def get_object_meta(self, object):
-        return filter_dict_with_prefix(self.get_object_info(object), 'X-Object-Meta-')
+        return filter_in(self.get_object_info(object), 'X-Object-Meta-')
+
+    def delete_object_meta(self, metakey, object):
+        headers = self.get_object_info(object)
+        new_headers = filter_out(headers, 'X-Object-Meta-'+metakey, exactMatch = True)
+        if len(new_headers) == len(headers):
+            raise ClientError('X-Object-Meta-%s not found' % metakey, 404)
+        path = path4url(self.account, self.container, object)
+        print('HAVE WE BEEN OVER THIS?')
+        print(unicode(new_headers))
+        print('HAVE WE BEEN OVER THIS?')
+        self.post(path, headers=new_headers, success = 202)
 
     def replace_object(self, metapairs):
         self.assert_container()
