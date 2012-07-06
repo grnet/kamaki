@@ -127,11 +127,22 @@ class PithosClient(StorageClient):
         self.put(path, json=hashmap,
                  success=201)
 
+    def set_account_group(self, group, usernames):
+        self.assert_account()
+        path = path4url(self.account)+params4url({'update':None})
+        userstr = ''
+        dlm = ''
+        for user in usernames:
+            userstr = userstr + dlm + user
+            dlm = ','
+        self.set_header('X-Account-Group-'+group, userstr)
+        self.post(path, success=202)
+
     def get_account_quota(self):
-        return filter_in(self.get_account_info(), 'X-Account-Policy-Quota')
+        return filter_in(self.get_account_info(), 'X-Account-Policy-Quota', exactMatch = True)
 
     def get_account_versioning(self):
-        return filter_in(self.get_account_info(), 'X-Account-Policy-Versioning')
+        return filter_in(self.get_account_info(), 'X-Account-Policy-Versioning', exactMatch = True)
 
     def get_account_meta(self):
         return filter_in(self.get_account_info(), 'X-Account-Meta-')

@@ -702,128 +702,6 @@ class _store_container_command(_store_account_command):
             self.client.container = self.args.container
 
 @command(api='storage')
-class store_info(_store_account_command):
-    """Get information for account [, container [or object]]"""
-
-    def main(self, container=None, object=None):
-        super(store_info, self).main()
-        if container is None:
-            reply = self.client.get_account_info()
-        elif object is None:
-            reply = self.client.get_container_info(container)
-        else:
-            self.client.container = container
-            reply = self.client.get_object_info(object)
-        print_dict(reply)
-
-@command(api='storage')
-class store_meta(_store_account_command):
-    """Get custom meta-content for account [, container [or object]]"""
-
-    def main(self, container = None, object = None):
-        super(store_meta, self).main()
-        if container is None:
-            reply = self.client.get_account_meta()
-        elif object is None:
-            reply = self.client.get_container_object_meta(container)
-            print_dict(reply)
-            reply = self.client.get_container_meta(container)
-        else:
-            self.client.container = container
-            reply = self.client.get_object_meta(object)
-        print_dict(reply)
-
-@command(api='storage')
-class store_setmeta(_store_account_command):
-    """Set a new metadatum for account [, container [or object]]"""
-
-    def main(self, metakey, metavalue, container=None, object=None):
-        super(store_setmeta, self).main()
-        if container is None:
-            self.client.set_account_meta({metakey:metavalue})
-        else:
-            self.client.container = container
-            if object is None:
-                self.client.set_container_meta({metakey:metavalue})
-            else:
-                self.client.set_object_meta(object, {metakey:metavalue})
-
-@command(api='storage')
-class store_setquota(_store_account_command):
-    """Set new quota (in KB) for account [or container]"""
-
-    def main(self, quota, container = None):
-        super(store_setquota, self).main()
-        if container is None:
-            self.client.set_account_quota(quota)
-        else:
-            self.client.container = container
-            self.client.set_container_quota(quota)
-
-@command(api='storage')
-class store_setversioning(_store_account_command):
-    """Set new versioning (auto, none) for account [or container]"""
-
-    def main(self, versioning, container = None):
-        super(store_setversioning, self).main()
-        if container is None:
-            self.client.set_account_versioning(versioning)
-        else:
-            self.client.container = container
-            self.client.set_container_versioning(versioning)
-
-@command(api='storage')
-class store_delmeta(_store_account_command):
-    """Delete an existing metadatum of account [, container [or object]]"""
-
-    def main(self, metakey, container=None, object=None):
-        super(store_delmeta, self).main()
-        if container is None:
-            self.client.delete_account_meta(metakey)
-        else:
-            self.client.container = container
-            if object is None:
-                self.client.delete_container_meta(metakey)
-            else:
-                self.client.delete_object_meta(metakey, object)
-
-@command(api='storage')
-class store_quota(_store_account_command):
-    """Get  quota for account [or container]"""
-
-    def main(self, container = None):
-        super(store_quota, self).main()
-        if container is None:
-            reply = self.client.get_account_quota()
-        else:
-            reply = self.client.get_container_quota(container)
-        print_dict(reply)
-
-@command(api='storage')
-class store_versioning(_store_account_command):
-    """Get  versioning for account [or container ]"""
-
-    def main(self, container = None):
-        super(store_versioning, self).main()
-        if container is None:
-            reply = self.client.get_account_versioning()
-        else:
-            reply = self.client.get_container_versioning(container)
-        print_dict(reply)
-
-@command(api='storage')
-class store_create(_store_account_command):
-    """Create a container [or a directory object]"""
-
-    def main(self, container, directory_object=None):
-        super(store_create, self).main()
-        if directory_object is None:
-            self.client.create_container(container)
-        else:
-            self.client.container = container
-            self.client.create_directory(directory_object)
-
-@command(api='storage')
 class store_list(_store_container_command):
     """List containers [, object trees [or objects in a directory]]"""
 
@@ -849,6 +727,18 @@ class store_list(_store_container_command):
             self.print_objects(reply)
 
 @command(api='storage')
+class store_create(_store_account_command):
+    """Create a container [or a directory object]"""
+
+    def main(self, container, directory_object=None):
+        super(store_create, self).main()
+        if directory_object is None:
+            self.client.create_container(container)
+        else:
+            self.client.container = container
+            self.client.create_directory(directory_object)
+
+@command(api='storage')
 class store_upload(_store_container_command):
     """Upload a file"""
 
@@ -861,8 +751,7 @@ class store_upload(_store_container_command):
         with open(path) as f:
             hash_cb = self.progress('Calculating block hashes')
             upload_cb = self.progress('Uploading blocks')
-            self.client.create_object(remote_path, f, hash_cb=hash_cb,
-                                      upload_cb=upload_cb)
+            self.client.create_object(remote_path, f, hash_cb=hash_cb, upload_cb=upload_cb)
 
 @command(api='storage')
 class store_download(_store_container_command):
@@ -927,6 +816,124 @@ class store_unpublish(_store_container_command):
         super(store_unpublish, self).main()
         self.client.container = container
         self.client.unpublish_object(object)
+
+@command(api='storage')
+class store_info(_store_account_command):
+    """Get information for account [, container [or object]]"""
+
+    def main(self, container=None, object=None):
+        super(store_info, self).main()
+        if container is None:
+            reply = self.client.get_account_info()
+        elif object is None:
+            reply = self.client.get_container_info(container)
+        else:
+            self.client.container = container
+            reply = self.client.get_object_info(object)
+        print_dict(reply)
+
+@command(api='storage')
+class store_meta(_store_account_command):
+    """Get custom meta-content for account [, container [or object]]"""
+
+    def main(self, container = None, object = None):
+        super(store_meta, self).main()
+        if container is None:
+            reply = self.client.get_account_meta()
+        elif object is None:
+            reply = self.client.get_container_object_meta(container)
+            print_dict(reply)
+            reply = self.client.get_container_meta(container)
+        else:
+            self.client.container = container
+            reply = self.client.get_object_meta(object)
+        print_dict(reply)
+
+@command(api='storage')
+class store_setmeta(_store_account_command):
+    """Set a new metadatum for account [, container [or object]]"""
+
+    def main(self, metakey, metavalue, container=None, object=None):
+        super(store_setmeta, self).main()
+        if container is None:
+            self.client.set_account_meta({metakey:metavalue})
+        else:
+            self.client.container = container
+            if object is None:
+                self.client.set_container_meta({metakey:metavalue})
+            else:
+                self.client.set_object_meta(object, {metakey:metavalue})
+
+@command(api='storage')
+class store_delmeta(_store_account_command):
+    """Delete an existing metadatum of account [, container [or object]]"""
+
+    def main(self, metakey, container=None, object=None):
+        super(store_delmeta, self).main()
+        if container is None:
+            self.client.delete_account_meta(metakey)
+        else:
+            self.client.container = container
+            if object is None:
+                self.client.delete_container_meta(metakey)
+            else:
+                self.client.delete_object_meta(metakey, object)
+
+@command(api='storage')
+class store_quota(_store_account_command):
+    """Get  quota for account [or container]"""
+
+    def main(self, container = None):
+        super(store_quota, self).main()
+        if container is None:
+            reply = self.client.get_account_quota()
+        else:
+            reply = self.client.get_container_quota(container)
+        print_dict(reply)
+
+@command(api='storage')
+class store_setquota(_store_account_command):
+    """Set new quota (in KB) for account [or container]"""
+
+    def main(self, quota, container = None):
+        super(store_setquota, self).main()
+        if container is None:
+            self.client.set_account_quota(quota)
+        else:
+            self.client.container = container
+            self.client.set_container_quota(quota)
+
+@command(api='storage')
+class store_versioning(_store_account_command):
+    """Get  versioning for account [or container ]"""
+
+    def main(self, container = None):
+        super(store_versioning, self).main()
+        if container is None:
+            reply = self.client.get_account_versioning()
+        else:
+            reply = self.client.get_container_versioning(container)
+        print_dict(reply)
+
+@command(api='storage')
+class store_setversioning(_store_account_command):
+    """Set new versioning (auto, none) for account [or container]"""
+
+    def main(self, versioning, container = None):
+        super(store_setversioning, self).main()
+        if container is None:
+            self.client.set_account_versioning(versioning)
+        else:
+            self.client.container = container
+            self.client.set_container_versioning(versioning)
+
+@command(api='storage')
+class store_setgroup(_store_account_command):
+    """Create/upodate a new user group on account"""
+
+    def main(self, groupname, *users):
+        super(store_setgroup, self).main()
+        self.client.set_account_group(groupname, users)
 
 @command(api='astakos')
 class astakos_authenticate(object):
