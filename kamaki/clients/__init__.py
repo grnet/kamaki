@@ -5,11 +5,11 @@
 # conditions are met:
 #
 #   1. Redistributions of source code must retain the above
-#      copyright notice, this list of conditions and the following
+#      copyright notice, self.list of conditions and the following
 #      disclaimer.
 #
 #   2. Redistributions in binary form must reproduce the above
-#      copyright notice, this list of conditions and the following
+#      copyright notice, self.list of conditions and the following
 #      disclaimer in the documentation and/or other materials
 #      provided with the distribution.
 #
@@ -61,46 +61,47 @@ class Client(object):
     def __init__(self, base_url, token):
         self.base_url = base_url
         self.token = token
+        self.headers = {}
 
     def raise_for_status(self, r):
         message = "%d %s" % (r.status_code, r.status)
         details = r.text
         raise ClientError(message, r.status_code, details)
 
+    def set_header(self, name, value):
+        #If the header exists, replace the value
+        #otherwise create a new header
+        self.headers[unicode(name)] = unicode(value)
+
     def request(self, method, path, **kwargs):
         raw = kwargs.pop('raw', False)
         success = kwargs.pop('success', 200)
         directory = kwargs.pop('directory', False)
-        meta = kwargs.pop('meta', False)
+        #meta = kwargs.pop('meta', False)
 
         data = kwargs.pop('data', None)
-        headers = kwargs.pop('headers', {})
-        headers.setdefault('X-Auth-Token', self.token)
+        #headers = kwargs.pop('headers', {})
+        self.headers.setdefault('X-Auth-Token', self.token)
         publish = kwargs.pop('publish', None)
 
         if directory:
-            headers.setdefault('Content-Type', 'application/directory')
-            headers.setdefault('Content-length', '0')
+            self.headers.setdefault('Content-Type', 'application/directory')
+            self.headers.setdefault('Content-length', '0')
         else:
             if 'json' in kwargs:
                 data = json.dumps(kwargs.pop('json'))
-                headers.setdefault('Content-Type', 'application/json')
+                self.headers.setdefault('Content-Type', 'application/json')
             if data:
-                headers.setdefault('Content-Length', unicode(len(data)))
+                self.headers.setdefault('Content-Length', unicode(len(data)))
 
-        if meta:
-            for key in meta.keys():
-                headers[key] = meta[key]
+        #if meta:
+        #    for key in meta.keys():
+        #        self.headers[key] = meta[key]
 
-        if publish is not None:
-            headers.setdefault('X-object-public', unicode(publish))
-            
         url = self.base_url + path
         kwargs.setdefault('verify', False)  # Disable certificate verification
-        print('HAVE WE BEEN OVER THIS? '+unicode(headers))
-        r = requests.request(method, url, headers=headers, data=data, **kwargs)
+        r = requests.request(method, url, headers=self.headers, data=data, **kwargs)
 
-        print('HAVE WE BEEN OVER THIS?')
         req = r.request
         sendlog.info('%s %s', req.method, req.url)
         for key, val in req.headers.items():

@@ -62,16 +62,17 @@ class StorageClient(Client):
     def replace_account_meta(self, metapairs):
         self.assert_account()
         path = path4url(self.account)
-        meta = prefix_keys(metapairs, 'X-Account-Meta-')
-        self.post(path, meta=meta, success=202)
+        for key, val in  metapairs:
+            self.set_header('X-Account-Meta-'+key, val)
+        self.post(path, success=202)
 
     def delete_account_meta(self, metakey):
         headers = self.get_account_info()
-        new_headers = filter_out(headers, 'X-Account-Meta-'+metakey, exactMatch = True)
-        if len(new_headers) == len(headers):
+        self.headers = filter_out(headers, 'X-Account-Meta-'+metakey, exactMatch = True)
+        if len(self.headers) == len(headers):
             raise ClientError('X-Account-Meta-%s not found' % metakey, 404)
         path = path4url(self.account)
-        self.post(path, headers=new_headers, success = 202)
+        self.post(path, success = 202)
 
     def create_container(self, container):
         self.assert_account()
@@ -86,8 +87,7 @@ class StorageClient(Client):
         r = self.head(path, success=(204, 404))
         if r.status_code == 404:
             raise ClientError("Container does not exist", r.status_code)
-        reply = r.headers
-        return reply
+        return r.headers
 
     def delete_container(self, container):
         self.assert_account()
@@ -100,9 +100,8 @@ class StorageClient(Client):
 
     def list_containers(self):
         self.assert_account()
-        path = path4url(self.account) 
-        params = dict(format='json')
-        r = self.get(path, params = params, success = (200, 204))
+        path = path4url(self.account)+params4url(dict(format='json'))
+        r = self.get(path, success = (200, 204))
         return r.json
 
     def create_object(self, object, f, size=None, hash_cb=None,
@@ -130,20 +129,18 @@ class StorageClient(Client):
 
     def delete_object_meta(self, metakey, object):
         headers = self.get_object_info(object)
-        new_headers = filter_out(headers, 'X-Object-Meta-'+metakey, exactMatch = True)
-        if len(new_headers) == len(headers):
+        self.headers = filter_out(headers, 'X-Object-Meta-'+metakey, exactMatch = True)
+        if len(self.headers) == len(headers):
             raise ClientError('X-Object-Meta-%s not found' % metakey, 404)
         path = path4url(self.account, self.container, object)
-        print('HAVE WE BEEN OVER THIS?')
-        print(unicode(new_headers))
-        print('HAVE WE BEEN OVER THIS?')
-        self.post(path, headers=new_headers, success = 202)
+        self.post(path, success = 202)
 
-    def replace_object(self, metapairs):
+    def replace_object_meta(self, metapairs):
         self.assert_container()
         path=path4url(self.account, self.container)
-        meta = prefix_keys(metapairs, 'X-Object-Meta-')
-        self.post(path, meta=meta, success=202)
+        for key, val in metapairs:
+            self.set_header('X-Object-Meta-'+key, val)
+        self.post(path, success=202)
 
     def get_object(self, object):
         self.assert_container()
@@ -162,16 +159,17 @@ class StorageClient(Client):
     def list_objects(self):
         self.assert_container()
         path = path4url(self.account, self.container)
-        params = dict(format='json')
+        params = dict(format='json') #request parameters
         r = self.get(path, params=params, success=(200, 204, 404))
         if r.status_code == 404:
             raise ClientError("Incorrect account (%s) for that container"%self.account, r.status_code)
+        print(unicode(r.json))
         return r.json
 
     def list_objects_in_path(self, path_prefix):
         self.assert_container()
         path = path4url(self.account, self.container)
-        params = dict(format='json', path=path_prefix)
+        params = dict(format='json', path=path_prefix) #request parameters
         r = self.get(path, params=params, success=(200, 204, 404))
         if r.status_code == 404:
             raise ClientError("Incorrect account (%s) for that container"%self.account, r.status_code)

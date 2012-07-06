@@ -69,10 +69,10 @@ def params4url(params):
     """
     assert(type(params) is dict)
     result = ''
-    delimiter = '?'
+    dlmtr = '?'
     for name in params:
-        result = result + delimiter + name
+        result = result + dlmtr + name
         result = result + '=' + params[name] if params[name] is not None else result
-        delimeter = '&'
+        dlmtr = '&'
     return result
 

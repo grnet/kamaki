@@ -801,7 +801,6 @@ class store_list(_store_container_command):
             size = format_size(container['bytes'])
             print('%s (%s, %s objects)' % (container['name'], size, container['count']))
             
-
     def main(self, container=None, object=None):
         super(store_list, self).main()
         if container is None:

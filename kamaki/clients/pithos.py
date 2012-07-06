@@ -51,17 +51,14 @@ class PithosClient(StorageClient):
 
     def purge_container(self, container):
         self.assert_account()
-        path = '/%s/%s' % (self.account, container)
-        params = {'until': int(time())}
-        self.delete(path, params=params, success=204)
+        path = path4url(self.account, container)+params4url({'until': unicode(time())})
+        self.delete(path, success=204)
 
     def put_block(self, data, hash):
-        path = '/%s/%s' % (self.account, self.container)
-        params = {'update': ''}
-        headers = {'Content-Type': 'application/octet-stream',
-                   'Content-Length': str(len(data))}
-        r = self.post(path, params=params, data=data, headers=headers,
-                      success=202)
+        path = path4url(self.account, self.container)+params4url({'update':None})
+        self.set_header('Content-Type', 'application/octet-stream')
+        self.set_header('Content-Length', len(data))
+        r = self.post(path, data=data, success=202)
         assert r.text.strip() == hash, 'Local hash does not match server'
 
     def create_object(self, object, f, size=None, hash_cb=None,
@@ -78,7 +75,6 @@ class PithosClient(StorageClient):
         self.assert_container()
 
         meta = self.get_container_info(self.container)
-        print(unicode(meta))
         blocksize = int(meta['x-container-block-size'])
         blockhash = meta['x-container-block-hash']
 
@@ -105,12 +101,11 @@ class PithosClient(StorageClient):
 
         assert offset == size
 
-        path = '/%s/%s/%s' % (self.account, self.container, object)
-        params = dict(format='json', hashmap='')
+        path = path4url(self.account, self.container, object)+params4url(dict(format='json', hashmap=''))
+        
         hashmap = dict(bytes=size, hashes=hashes)
-        headers = {'Content-Type': 'application/octet-stream'}
-        r = self.put(path, params=params, headers=headers, json=hashmap,
-                     success=(201, 409))
+        self.set_header('Content-Type', 'application/octet-stream')
+        r = self.put(path, json=hashmap, success=(201, 409))
 
         if r.status_code == 201:
             return
@@ -129,7 +124,7 @@ class PithosClient(StorageClient):
             if upload_cb:
                 upload_gen.next()
 
-        self.put(path, params=params, headers=headers, json=hashmap,
+        self.put(path, json=hashmap,
                  success=201)
 
     def get_account_policy(self):
@@ -142,8 +137,9 @@ class PithosClient(StorageClient):
         assert(type(metapairs) is dict)
         self.assert_account()
         path = path4url(self.account)+params4url({'update':None})
-        meta = prefix_keys(metapairs, 'X-Account-Meta-')
-        self.post(path, meta=meta, success=202)
+        for key, val in metapairs.items():
+            self.set_header('X-Account-Meta-'+key, val)
+        self.post(path, success=202)
 
     def get_container_policy(self, container):
         return filter_in(self.get_container_info(container), 'X-Container-Policy-')
@@ -158,39 +154,44 @@ class PithosClient(StorageClient):
         assert(type(metapairs) is dict)
         self.assert_container()
         path=path4url(self.account, self.container)+params4url({'update':None})
-        meta = prefix_keys(metapairs, 'X-Container-Meta-')
-        self.post(path, meta=meta, success=202)
+        for key, val in metapairs.items():
+            self.set_header('X-Container-Meta-'+key, val)
+        self.post(path, success=202)
 
     def delete_container_meta(self, metakey):
         headers = self.get_container_info(self.container)
-        new_headers = filter_out(headers, 'x-container-meta-'+metakey, exactMatch = True)
-        if len(new_headers) == len(headers):
+        self.headers = filter_out(headers, 'x-container-meta-'+metakey, exactMatch = True)
+        if len(self.headers) == len(headers):
             raise ClientError('X-Container-Meta-%s not found' % metakey, 404)
         path = path4url(self.account, self.container)
-        self.post(path, headers=new_headers, success = 202)
+        self.post(path, success = 202)
 
     def replace_container_meta(self, metapairs):
         self.assert_container()
         path=path4url(self.account, self.container)
-        meta = prefix_keys(metapairs, 'X-Container-Meta-')
-        self.post(path, meta=meta, success=202)
+        for key, val in metapairs.items():
+            self.set_header('X-Container-Meta-'+key, val)
+        self.post(path, success=202)
 
     def set_object_meta(self, object, metapairs):
         assert(type(metapairs) is dict)
         self.assert_container()
         path=path4url(self.account, self.container, object)+params4url({'update':None})
-        meta = prefix_keys(metapairs, 'X-Object-Meta-')
-        self.post(path, meta=meta, success=202)
+        for key, val in metapairs.items():
+            self.set_header('X-Object-Meta-'+key, val)
+        self.post(path, success=202)
 
     def publish_object(self, object):
         self.assert_container()
         path = path4url(self.account, self.container, object)+params4url({'update':None})
-        self.post(path, publish=True, success=202)
+        self.set_header('X-Object-Public', True)
+        self.post(path, success=202)
 
     def unpublish_object(self, object):
         self.assert_container()
         path = path4url(self.account, self.container, object)+params4url({'update':None})
-        self.post(path, publish=False, success=202)
+        self.set_header('X-Object-Public', False)
+        self.post(path, success=202)
         
         
         
