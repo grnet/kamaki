@@ -749,6 +749,30 @@ class store_setmeta(_store_account_command):
                 self.client.set_object_meta(object, {metakey:metavalue})
 
 @command(api='storage')
+class store_setquota(_store_account_command):
+    """Set new quota (in KB) for account [or container]"""
+
+    def main(self, quota, container = None):
+        super(store_setquota, self).main()
+        if container is None:
+            self.client.set_account_quota(quota)
+        else:
+            self.client.container = container
+            self.client.set_container_quota(quota)
+
+@command(api='storage')
+class store_setversioning(_store_account_command):
+    """Set new versioning (auto, none) for account [or container]"""
+
+    def main(self, versioning, container = None):
+        super(store_setversioning, self).main()
+        if container is None:
+            self.client.set_account_versioning(versioning)
+        else:
+            self.client.container = container
+            self.client.set_container_versioning(versioning)
+
+@command(api='storage')
 class store_delmeta(_store_account_command):
     """Delete an existing metadatum of account [, container [or object]]"""
 
@@ -764,15 +788,27 @@ class store_delmeta(_store_account_command):
                 self.client.delete_object_meta(metakey, object)
 
 @command(api='storage')
-class store_policy(_store_account_command):
-    """Get  policy for account [, container [or object]]"""
+class store_quota(_store_account_command):
+    """Get  quota for account [or container]"""
 
     def main(self, container = None):
-        super(store_policy, self).main()
+        super(store_quota, self).main()
         if container is None:
-            reply = self.client.get_account_policy()
+            reply = self.client.get_account_quota()
         else:
-            reply = self.client.get_container_policy(container)
+            reply = self.client.get_container_quota(container)
+        print_dict(reply)
+
+@command(api='storage')
+class store_versioning(_store_account_command):
+    """Get  versioning for account [or container ]"""
+
+    def main(self, container = None):
+        super(store_versioning, self).main()
+        if container is None:
+            reply = self.client.get_account_versioning()
+        else:
+            reply = self.client.get_container_versioning(container)
         print_dict(reply)
 
 @command(api='storage')

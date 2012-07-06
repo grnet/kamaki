@@ -127,8 +127,11 @@ class PithosClient(StorageClient):
         self.put(path, json=hashmap,
                  success=201)
 
-    def get_account_policy(self):
-        return filter_in(self.get_account_info(), 'X-Account-Policy-')
+    def get_account_quota(self):
+        return filter_in(self.get_account_info(), 'X-Account-Policy-Quota')
+
+    def get_account_versioning(self):
+        return filter_in(self.get_account_info(), 'X-Account-Policy-Versioning')
 
     def get_account_meta(self):
         return filter_in(self.get_account_info(), 'X-Account-Meta-')
@@ -141,8 +144,23 @@ class PithosClient(StorageClient):
             self.set_header('X-Account-Meta-'+key, val)
         self.post(path, success=202)
 
-    def get_container_policy(self, container):
-        return filter_in(self.get_container_info(container), 'X-Container-Policy-')
+    def set_account_quota(self, quota):
+        self.assert_account()
+        path = path4url(self.account)+params4url({'update':None})
+        self.set_header('X-Account-Policy-Quota', quota)
+        self.post(path, success=202)
+
+    def set_account_versioning(self, versioning):
+        self.assert_account()
+        path = path4url(self.account)+params4url({'update':None})
+        self.set_header('X-Account-Policy-Versioning', versioning)
+        self.post(path, success=202)
+
+    def get_container_versioning(self, container):
+        return filter_in(self.get_container_info(container), 'X-Container-Policy-Versioning')
+
+    def get_container_quota(self, container):
+        return filter_in(self.get_container_info(container), 'X-Container-Policy-Quota')
 
     def get_container_meta(self, container):
         return filter_in(self.get_container_info(container), 'X-Container-Meta-')
@@ -173,6 +191,18 @@ class PithosClient(StorageClient):
             self.set_header('X-Container-Meta-'+key, val)
         self.post(path, success=202)
 
+    def set_container_quota(self, quota):
+        self.assert_container()
+        path = path4url(self.account, self.container)+params4url({'update':None})
+        self.set_header('X-Container-Policy-Quota', quota)
+        self.post(path, success=202)
+
+    def set_container_versioning(self, versioning):
+        self.assert_container()
+        path = path4url(self.account, self.container)+params4url({'update':None})
+        self.set_header('X-Container-Policy-Versioning', versioning)
+        self.post(path, success=202)
+
     def set_object_meta(self, object, metapairs):
         assert(type(metapairs) is dict)
         self.assert_container()
@@ -192,6 +222,3 @@ class PithosClient(StorageClient):
         path = path4url(self.account, self.container, object)+params4url({'update':None})
         self.set_header('X-Object-Public', False)
         self.post(path, success=202)
-        
-        
-        
