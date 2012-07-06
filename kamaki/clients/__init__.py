@@ -76,6 +76,7 @@ class Client(object):
         data = kwargs.pop('data', None)
         headers = kwargs.pop('headers', {})
         headers.setdefault('X-Auth-Token', self.token)
+        publish = kwargs.pop('publish', None)
 
         if directory:
             headers.setdefault('Content-Type', 'application/directory')
@@ -90,6 +91,9 @@ class Client(object):
         if meta:
             for key in meta.keys():
                 headers[key] = meta[key]
+
+        if publish is not None:
+            headers.setdefault('X-object-public', unicode(publish))
             
         url = self.base_url + path
         kwargs.setdefault('verify', False)  # Disable certificate verification

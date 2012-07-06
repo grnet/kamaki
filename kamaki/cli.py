@@ -875,6 +875,24 @@ class store_purge(_store_account_command):
         super(store_purge, self).main()
         self.client.purge_container(container)
 
+@command(api='storage')
+class store_publish(_store_container_command):
+    """Publish an object"""
+
+    def main(self, container, object):
+        super(store_publish, self).main()
+        self.client.container = container
+        self.client.publish_object(object)
+
+@command(api='storage')
+class store_unpublish(_store_container_command):
+    """Unpublish an object"""
+
+    def main(self, container, object):
+        super(store_unpublish, self).main()
+        self.client.container = container
+        self.client.unpublish_object(object)
+
 @command(api='astakos')
 class astakos_authenticate(object):
     """Authenticate a user"""

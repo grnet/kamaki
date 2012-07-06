@@ -90,10 +90,6 @@ class StorageClient(Client):
         return reply
 
     def delete_container(self, container):
-        #Response codes
-        #   Success             204
-        #   NotFound            404
-        #   Conflict(not empty) 409
         self.assert_account()
         path = path4url(self.account, container)
         r = self.delete(path, success=(204, 404, 409))

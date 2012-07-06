@@ -181,3 +181,16 @@ class PithosClient(StorageClient):
         path=path4url(self.account, self.container, object)+params4url({'update':None})
         meta = prefix_keys(metapairs, 'X-Object-Meta-')
         self.post(path, meta=meta, success=202)
+
+    def publish_object(self, object):
+        self.assert_container()
+        path = path4url(self.account, self.container, object)+params4url({'update':None})
+        self.post(path, publish=True, success=202)
+
+    def unpublish_object(self, object):
+        self.assert_container()
+        path = path4url(self.account, self.container, object)+params4url({'update':None})
+        self.post(path, publish=False, success=202)
+        
+        
+        
