@@ -242,3 +242,32 @@ class PithosClient(StorageClient):
         path = path4url(self.account, self.container, object)+params4url({'update':None})
         self.set_header('X-Object-Public', False)
         self.post(path, success=202)
+
+    def set_object_sharing(self, object, read_permition = False, write_permition = False):
+        """Give read/write permisions to an object.
+           @param object is the object to change sharing permitions onto
+           @param read_permition is a list of users and user groups that get read permition for this object
+                False means all previous read permitions will be removed
+           @param write_perimition is a list of users and user groups to get write permition for this object
+                False means all previous read permitions will be removed
+        """
+        self.assert_container()
+        path = path4url(self.account, self.container, object)
+        perms = ''
+        if read_permition:
+            dlm = ''
+            perms = 'read='
+            for rperm in read_permition:
+                perms = perms + dlm + rperm
+                dlm = ','
+        if write_permition:
+            dlm = ''
+            perms = 'write=' if not read_permition else perms + ';write='
+            for wperm in write_permition:
+                perms = perms + dlm + wperm
+                dlm = ','
+        self.set_header('X-Object-Sharing', perms)
+        self.post(path, success=(202, 204))
+
+    def erase_object_sharing(self, object):
+        self.set_object_sharing(object)

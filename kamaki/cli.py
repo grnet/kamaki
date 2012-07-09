@@ -746,7 +746,6 @@ class store_copy(_store_account_command):
         super(store_copy, self).main()
         self.client.copy_object(src_container = source_container, src_object = source_path, dst_container = destination_container, dst_object = destination_path)
 
-
 @command(api='storage')
 class store_move(_store_account_command):
     """Move an object"""
@@ -833,6 +832,42 @@ class store_unpublish(_store_container_command):
         super(store_unpublish, self).main()
         self.client.container = container
         self.client.unpublish_object(object)
+
+@command(api='storage')
+class store_setpermitions(_store_container_command):
+    """Set sharing permitions"""
+
+    def main(self, container, object, *permitions):
+        super(store_setpermitions, self).main()
+        read = False
+        write = False
+        for perms in permitions:
+            splstr = perms.split('=')
+            if 'read' == splstr[0]:
+                read = [user_or_group.strip() for user_or_group in splstr[1].split(',')]
+            elif 'write' == splstr[0]:
+                write = [user_or_group.strip() for user_or_group in splstr[1].split(',')]
+            else:
+                read = False
+                write = False
+        if not read and not write:
+            print(u'Read/write permitions are given in the following format:')
+            print(u'\tread=username,groupname,...')
+            print(u'and/or')
+            print(u'\twrite=username,groupname,...')
+            return
+        self.client.container = container
+        self.client.set_object_sharing(object, read_permition=read, write_permition=write)
+
+@command(api='storage')
+class store_delpermitions(_store_container_command):
+    """Delete all sharing permitions"""
+
+    def main(self, container, object):
+        super(store_delpermitions, self).main()
+        self.client.container = container
+        self.client.erase_object_sharing(object)
+
 
 @command(api='storage')
 class store_info(_store_account_command):
