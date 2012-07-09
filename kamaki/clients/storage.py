@@ -157,6 +157,14 @@ class StorageClient(Client):
         self.set_header('Content-Length', 0)
         self.put(dst_path, success=201)
 
+    def move_object(self, src_container, src_object, dst_container, dst_object=False):
+        self.assert_account()
+        dst_object = dst_object or src_object
+        dst_path = path4url(self.account, dst_container, dst_object)
+        self.set_header('X-Move-From', path4url(src_container, src_object))
+        self.set_header('Content-Length', 0)
+        self.put(dst_path, success=201)
+
     def delete_object(self, object):
         self.assert_container()
         path = path4url(self.account, self.container, object)

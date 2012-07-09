@@ -740,11 +740,20 @@ class store_create(_store_account_command):
 
 @command(api='storage')
 class store_copy(_store_account_command):
-    """Copy an opbject"""
+    """Copy an object"""
 
     def main(self, source_container, source_path, destination_container, destination_path = False):
         super(store_copy, self).main()
-        self.client.copy_object(source_container, source_path, destination_container, destination_path)
+        self.client.copy_object(src_container = source_container, src_object = source_path, dst_container = destination_container, dst_object = destination_path)
+
+
+@command(api='storage')
+class store_move(_store_account_command):
+    """Move an object"""
+
+    def main(self, source_container, source_path, destination_container, destination_path = False):
+        super(store_move, self).main()
+        self.client.move_object(src_container = source_container, src_object = source_path, dst_container = destination_container, dst_object = destination_path)
 
 @command(api='storage')
 class store_upload(_store_container_command):
