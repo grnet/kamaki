@@ -149,6 +149,14 @@ class StorageClient(Client):
         size = int(r.headers['content-length'])
         return r.raw, size
 
+    def copy_object(self, src_container, src_object, dst_container, dst_object=False):
+        self.assert_account()
+        dst_object = dst_object or src_object
+        dst_path = path4url(self.account, dst_container, dst_object)
+        self.set_header('X-Copy-From', path4url(src_container, src_object))
+        self.set_header('Content-Length', 0)
+        self.put(dst_path, success=201)
+
     def delete_object(self, object):
         self.assert_container()
         path = path4url(self.account, self.container, object)
@@ -163,7 +171,6 @@ class StorageClient(Client):
         r = self.get(path, params=params, success=(200, 204, 404))
         if r.status_code == 404:
             raise ClientError("Incorrect account (%s) for that container"%self.account, r.status_code)
-        print(unicode(r.json))
         return r.json
 
     def list_objects_in_path(self, path_prefix):

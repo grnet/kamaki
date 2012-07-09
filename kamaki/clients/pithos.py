@@ -36,7 +36,7 @@ import os
 
 from time import time
 
-from .storage import StorageClient
+from .storage import StorageClient, ClientError
 from .utils import path4url, params4url, prefix_keys, filter_in, filter_out
 
 
@@ -138,6 +138,12 @@ class PithosClient(StorageClient):
         self.set_header('X-Account-Group-'+group, userstr)
         self.post(path, success=202)
 
+    def del_account_group(self, group):
+        self.assert_account()
+        path = path4url(self.account)+params4url({'update':None})
+        self.set_header('X-Account-Group-'+group, '')
+        r = self.post(path, success=202)
+
     def get_account_quota(self):
         return filter_in(self.get_account_info(), 'X-Account-Policy-Quota', exactMatch = True)
 
@@ -146,6 +152,9 @@ class PithosClient(StorageClient):
 
     def get_account_meta(self):
         return filter_in(self.get_account_info(), 'X-Account-Meta-')
+
+    def get_account_group(self):
+        return filter_in(self.get_account_info(), 'X-Account-Group-')
 
     def set_account_meta(self, metapairs):
         assert(type(metapairs) is dict)

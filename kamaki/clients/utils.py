@@ -38,11 +38,13 @@ def filter_out(d, prefix, exactMatch = False):
         return {key:d[key] for key in d if not key.lower() == prefix.lower()}
     return {key:d[key] for key in d if not key.lower().startswith(prefix.lower())}
 
-def filter_in(d, prefix):
-    """@return a dict that contains only the entries of d that are prefixed with prefic
+def filter_in(d, prefix, exactMatch = False):
+    """@return a dict that contains only the entries of d that are prefixed with prefix
     """
+    if exactMatch:
+        return {key:d[key] for key in d if key.lower() == prefix.lower()}
     return {key:d[key] for key in d if key.lower().startswith(prefix.lower())}
-
+    
 def prefix_keys(d, prefix):
     """@return a sallow copy of d with all its keys prefixed with prefix
     """

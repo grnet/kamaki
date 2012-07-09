@@ -739,6 +739,14 @@ class store_create(_store_account_command):
             self.client.create_directory(directory_object)
 
 @command(api='storage')
+class store_copy(_store_account_command):
+    """Copy an opbject"""
+
+    def main(self, source_container, source_path, destination_container, destination_path = False):
+        super(store_copy, self).main()
+        self.client.copy_object(source_container, source_path, destination_container, destination_path)
+
+@command(api='storage')
 class store_upload(_store_container_command):
     """Upload a file"""
 
@@ -928,12 +936,29 @@ class store_setversioning(_store_account_command):
             self.client.set_container_versioning(versioning)
 
 @command(api='storage')
+class store_group(_store_account_command):
+    """Get user groups details for account"""
+
+    def main(self):
+        super(store_group, self).main()
+        reply = self.client.get_account_group()
+        print_dict(reply)
+
+@command(api='storage')
 class store_setgroup(_store_account_command):
-    """Create/upodate a new user group on account"""
+    """Create/update a new user group on account"""
 
     def main(self, groupname, *users):
         super(store_setgroup, self).main()
         self.client.set_account_group(groupname, users)
+
+@command(api='storage')
+class store_delgroup(_store_account_command):
+    """Delete a user group on an account"""
+
+    def main(self, groupname):
+        super(store_delgroup, self).main()
+        self.client.del_account_group(groupname)
 
 @command(api='astakos')
 class astakos_authenticate(object):
