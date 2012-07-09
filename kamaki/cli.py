@@ -755,12 +755,30 @@ class store_move(_store_account_command):
         self.client.move_object(src_container = source_container, src_object = source_path, dst_container = destination_container, dst_object = destination_path)
 
 @command(api='storage')
+class store_append(_store_container_command):
+    """Append local file to (existing) remote object"""
+
+    def main(self, container, remote_path, local_path):
+        super(store_append, self).main()
+        self.client.container = container
+        f = open(local_path, 'r')
+        self.client.update_object(object=remote_path, source_file = f)
+
+@command(api='storage')
+class store_truncate(_store_container_command):
+    """Truncate remote file up to a size"""
+
+    def main(self, container, object, size=0):
+        super(store_truncate, self).main()
+        self.client.container = container
+        self.client.update_object(object, data_range = (0, int(size)))
+
+@command(api='storage')
 class store_upload(_store_container_command):
     """Upload a file"""
 
     def main(self, container, path, remote_path=None):
         super(store_upload, self).main()
-
         self.client.container = container
         if remote_path is None:
             remote_path = basename(path)
@@ -834,6 +852,16 @@ class store_unpublish(_store_container_command):
         self.client.unpublish_object(object)
 
 @command(api='storage')
+class store_permitions(_store_container_command):
+    """Get object read/write permitions"""
+
+    def main(self, container, object):
+        super(store_permitions, self).main()
+        self.container = container
+        reply = self.client.get_object_sharing(object)
+        print_dict(reply)
+
+@command(api='storage')
 class store_setpermitions(_store_container_command):
     """Set sharing permitions"""
 
@@ -866,7 +894,7 @@ class store_delpermitions(_store_container_command):
     def main(self, container, object):
         super(store_delpermitions, self).main()
         self.client.container = container
-        self.client.erase_object_sharing(object)
+        self.client.del_object_sharing(object)
 
 
 @command(api='storage')

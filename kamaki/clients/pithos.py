@@ -64,7 +64,6 @@ class PithosClient(StorageClient):
     def create_object(self, object, f, size=None, hash_cb=None,
                       upload_cb=None):
         """Create an object by uploading only the missing blocks
-
         hash_cb is a generator function taking the total number of blocks to
         be hashed as an argument. Its next() will be called every time a block
         is hashed.
@@ -124,8 +123,7 @@ class PithosClient(StorageClient):
             if upload_cb:
                 upload_gen.next()
 
-        self.put(path, json=hashmap,
-                 success=201)
+        self.put(path, json=hashmap, success=201)
 
     def set_account_group(self, group, usernames):
         self.assert_account()
@@ -243,6 +241,9 @@ class PithosClient(StorageClient):
         self.set_header('X-Object-Public', False)
         self.post(path, success=202)
 
+    def get_object_sharing(self, object):
+        return filter_in(self.get_object_info(object), 'X-Object-Sharing', exactMatch = True)
+
     def set_object_sharing(self, object, read_permition = False, write_permition = False):
         """Give read/write permisions to an object.
            @param object is the object to change sharing permitions onto
@@ -252,7 +253,6 @@ class PithosClient(StorageClient):
                 False means all previous read permitions will be removed
         """
         self.assert_container()
-        path = path4url(self.account, self.container, object)
         perms = ''
         if read_permition:
             dlm = ''
@@ -266,8 +266,12 @@ class PithosClient(StorageClient):
             for wperm in write_permition:
                 perms = perms + dlm + wperm
                 dlm = ','
+        path = path4url(self.account, self.container, object)+params4url({'update':None})
         self.set_header('X-Object-Sharing', perms)
         self.post(path, success=(202, 204))
 
-    def erase_object_sharing(self, object):
+    def del_object_sharing(self, object):
         self.set_object_sharing(object)
+
+    #def update_object(self, object, content_range=False, source_file=False):
+     #   print('Not implemented yet - but I should copy create_object')

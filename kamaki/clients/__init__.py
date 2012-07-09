@@ -77,10 +77,8 @@ class Client(object):
         raw = kwargs.pop('raw', False)
         success = kwargs.pop('success', 200)
         directory = kwargs.pop('directory', False)
-        #meta = kwargs.pop('meta', False)
 
         data = kwargs.pop('data', None)
-        #headers = kwargs.pop('headers', {})
         self.headers.setdefault('X-Auth-Token', self.token)
         publish = kwargs.pop('publish', None)
 
@@ -93,10 +91,6 @@ class Client(object):
                 self.headers.setdefault('Content-Type', 'application/json')
             if data:
                 self.headers.setdefault('Content-Length', unicode(len(data)))
-
-        #if meta:
-        #    for key in meta.keys():
-        #        self.headers[key] = meta[key]
 
         url = self.base_url + path
         kwargs.setdefault('verify', False)  # Disable certificate verification

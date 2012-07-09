@@ -189,3 +189,24 @@ class StorageClient(Client):
         if r.status_code == 404:
             raise ClientError("Incorrect account (%s) for that container"%self.account, r.status_code)
         return r.json
+
+    def update_object(self, object, data_range = False, source_file = False):
+        """Update the content of an object
+           @param data_range is a tupple of the form (from, to) denoting the part of the remote object to be updated
+                if False, */* will be used instead
+           @param souce_file the source file from which to update - update_object attempts to append/replace using the whole source file
+                if False, update_object truncates remote object to the given data_range
+        """
+        #Slow implementation that loads all data in memory
+        self.assert_container()
+        data_range_str = '%s-%s' % (unicode(data_range[0]), unicode(data_range[1])) if data_range else '*'
+        self.set_header('Content-Range', 'bytes %s/*'%data_range_str)
+        data= source_file.read() if source_file else ''
+        self.set_header('Content-Type', 'application/octet-stream')
+        if source_file:
+            self.set_header('Content-Length', len(data))
+        else:
+            self.set_header('X-Object-Bytes', data_range[1]-data_range[0])
+            self.set_header('X-Source-Object', path4url(self.container, object))
+        path = path4url(self.account, self.container, object)+params4url({'update':None})
+        self.post(path, data=data, success = (202, 204))
