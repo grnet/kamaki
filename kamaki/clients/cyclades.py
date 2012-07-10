@@ -85,7 +85,6 @@ class CycladesClient(ComputeClient):
         r = self.get(path, success=200)
         return r.json['stats']
     
-    
     def list_networks(self, detail=False):
         path = path4url('networks', 'detail') if detail else path4url('networks')
         print('ready to get network list with this req: '+path)
@@ -118,6 +117,8 @@ class CycladesClient(ComputeClient):
         self.post(path, json=req, success=202)
 
     def disconnect_server(self, server_id, network_id):
+        matched_nets = [net for net in self.list_server_addresses(server_id) if net['network_id'] == network_id]
         path = path4url('networks', network_id, 'action')
-        req = {'remove': {'serverRef': server_id}}
-        self.post(path, json=req, success=202)
+        for nic in matched_nets:
+            req = {'remove': {'attachment': unicode(nic['id'])}}
+            self.post(path, json=req, success=202)

@@ -33,36 +33,36 @@
 
 def print_dict(d, exclude=(), ident= 0):
     margin = max(max(len(key) for key in d) + 1, ident)
-    for key, val in sorted(d.items()):
+    for key, val in d.items():
         if key in exclude:
             continue
         print_str = '%s:' % unicode(key)
         if isinstance(val, dict):
             print(print_str.rjust(margin)+' {')
-            print_dict(val, exclude = exclude, ident = margin + 8)
+            print_dict(val, exclude = exclude, ident = margin + 6)
             print '}'.rjust(margin)
         elif isinstance(val, list):
             print(print_str.rjust(margin)+' [')
-            print_list(val, exclude = exclude, ident = margin + 8)
+            print_list(val, exclude = exclude, ident = margin + 6)
             print ']'.rjust(margin)
         else:
-            print print_str.rjust(margin+4)+' '+unicode(val)
+            print print_str.rjust(margin)+' '+unicode(val)
 
 def print_list(l, exclude=(), ident = 0):
     margin = max(max(len(item) for item in l) + 1, ident)
-    for item in sorted(l):
+    for item in l:
         if item in exclude:
             continue
         if isinstance(item, dict):
             print('{'.rjust(margin))
-            print_dict(item, exclude = exclude, ident = margin + 8)
+            print_dict(item, exclude = exclude, ident = margin + 6)
             print '}'.rjust(margin)
         elif isinstance(item, list):
             print '['.rjust(margin)
-            print_list(item, exclude = exclude, ident = margin + 8)
+            print_list(item, exclude = exclude, ident = margin + 6)
             print ']'.rjust(margin)
         else:
-            print unicode(val).rjust(margin + 4)
+            print unicode(val).rjust(margin)
 
 def print_items(items, title=('id', 'name')):
     for item in items:

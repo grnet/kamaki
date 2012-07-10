@@ -325,8 +325,6 @@ class server_addr(object):
     def main(self, server_id, network=None):
         reply = self.client.list_server_addresses(int(server_id), network)
         print_list(reply)
-        #print_addresses(reply, margin)
-
 
 @command(api='compute')
 class server_meta(object):
