@@ -32,88 +32,92 @@
 # or implied, of GRNET S.A.
 
 from .compute import ComputeClient
+from .utils import path4url
 
 
 class CycladesClient(ComputeClient):
     """GRNet Cyclades API client"""
-
+    
     def start_server(self, server_id):
         """Submit a startup request for a server specified by id"""
-
-        path = '/servers/%s/action' % (server_id,)
+        
+        path = path4url('servers', server_id, action)#'/servers/%s/action' % (server_id,)
         req = {'start': {}}
         self.post(path, json=req, success=202)
-
+    
     def shutdown_server(self, server_id):
         """Submit a shutdown request for a server specified by id"""
-
-        path = '/servers/%s/action' % (server_id,)
+        
+        path = path4url('servers', server_id, 'action')#'/servers/%s/action' % (server_id,)
         req = {'shutdown': {}}
         self.post(path, json=req, success=202)
-
+    
     def get_server_console(self, server_id):
         """Get a VNC connection to the console of a server specified by id"""
-
-        path = '/servers/%s/action' % (server_id,)
+        
+        path = path4url('servers', server_id, 'action')#'/servers/%s/action' % (server_id,)
         req = {'console': {'type': 'vnc'}}
         r = self.post(path, json=req, success=200)
         return r.json['console']
-
+    
     def set_firewall_profile(self, server_id, profile):
         """Set the firewall profile for the public interface of a server
 
         The server is specified by id, the profile argument
         is one of (ENABLED, DISABLED, PROTECTED).
         """
-        path = '/servers/%s/action' % (server_id,)
+        path = path4url('servers', server_id, 'action')#'/servers/%s/action' % (server_id,)
         req = {'firewallProfile': {'profile': profile}}
         self.post(path, json=req, success=202)
-
+    
     def list_server_addresses(self, server_id, network=None):
-        path = '/servers/%s/ips' % (server_id,)
+        path = path4url('servers', server_id, 'ips')#'/servers/%s/ips' % (server_id,)
         if network:
-            path += '/%s' % network
+            path += path4url(network)#'/%s' % network
         r = self.get(path, success=200)
         if network:
             return [r.json['network']]
         else:
             return r.json['addresses']['values']
-
+    
     def get_server_stats(self, server_id):
-        path = '/servers/%s/stats' % (server_id,)
+        path = path4url('servers', server_id, 'stats')#'/servers/%s/stats' % (server_id,)
         r = self.get(path, success=200)
         return r.json['stats']
-
+    
+    
     def list_networks(self, detail=False):
-        path = '/networks/detail' if detail else '/networks'
+        path = path4url('networks', 'detail') if detail else path4url('networks')
+        print('ready to get network list with this req: '+path)
         r = self.get(path, success=200)
         return r.json['networks']['values']
 
     def create_network(self, name):
         req = {'network': {'name': name}}
-        r = self.post('/networks', json=req, success=202)
+        r = self.post(path4url('networks'), json=req, success=202)
         return r.json['network']
 
     def get_network_details(self, network_id):
-        path = '/networks/%s' % (network_id,)
+        path = path4url('networks', network_id)#'/networks/%s' % (network_id,)
         r = self.get(path, success=200)
+        print(unicode(r.json))
         return r.json['network']
 
     def update_network_name(self, network_id, new_name):
-        path = '/networks/%s' % (network_id,)
+        path = path4url('networks', network_id)#'/networks/%s' % (network_id,)
         req = {'network': {'name': new_name}}
         self.put(path, json=req, success=204)
 
     def delete_network(self, network_id):
-        path = '/networks/%s' % (network_id,)
+        path = path4url('networks', network_id)#'/networks/%s' % (network_id,)
         self.delete(path, success=204)
 
     def connect_server(self, server_id, network_id):
-        path = '/networks/%s/action' % (network_id,)
+        path = path4url('networks', network_id, 'action')
         req = {'add': {'serverRef': server_id}}
         self.post(path, json=req, success=202)
 
     def disconnect_server(self, server_id, network_id):
-        path = '/networks/%s/action' % (network_id,)
+        path = path4url('networks', network_id, 'action')
         req = {'remove': {'serverRef': server_id}}
         self.post(path, json=req, success=202)

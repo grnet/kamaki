@@ -31,13 +31,12 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-
 def print_addresses(addresses, margin):
     for address in addresses:
         if address['id'] == 'public':
             net = 'public'
         else:
-            net = '%s/%s' % (address['id'], address['name'])
+            net = '%s/%s' % (address['id'], address['network_id'])
         print '%s:' % net.rjust(margin + 4)
 
         ether = address.get('mac', None)
@@ -52,7 +51,6 @@ def print_addresses(addresses, margin):
             key = 'inet' if ip['version'] == 4 else 'inet6'
             print '%s: %s' % (key.rjust(margin + 8), ip['addr'])
 
-
 def print_dict(d, exclude=()):
     if not d:
         return
@@ -62,8 +60,12 @@ def print_dict(d, exclude=()):
         if key in exclude:
             continue
 
-        if key == 'addresses':
-            print '%s:' % 'addresses'.rjust(margin)
+        #if key == 'addresses':
+        #    print '%s:' % 'addresses'.rjust(margin)
+        #    print_addresses(val.get('values', []), margin)
+        #    continue
+        if key == 'attachments':
+            print '%s:' % 'attachments'.rjust(margin)
             print_addresses(val.get('values', []), margin)
             continue
         elif key == 'servers':

@@ -56,7 +56,7 @@ def path4url(*args):
     """
     path = ''
     for arg in args:
-        path = path + '/' + arg
+        path = path + '/' + unicode(arg)
     return path
 
 def params4url(params):

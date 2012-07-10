@@ -32,35 +32,35 @@
 # or implied, of GRNET S.A.
 
 from . import Client, ClientError
+from .utils import path4url
 
 
 class ComputeClient(Client):
     """OpenStack Compute API 1.1 client"""
-
+    
     def raise_for_status(self, r):
         d = r.json
-        if not d:
-            return super(ComputeClient, self).raise_for_status(r)
         key = d.keys()[0]
         val = d[key]
         message = '%s: %s' % (key, val.get('message', ''))
         details = val.get('details', '')
         raise ClientError(message, r.status_code, details)
-
+    
     def list_servers(self, detail=False):
         """List servers, returned detailed output if detailed is True"""
-
-        path = '/servers/detail' if detail else '/servers'
+        
+        #path = '/servers/detail' if detail else '/servers'
+        path = path4url('servers','detail') if detail else path4url('servers')
         r = self.get(path, success=200)
         return r.json['servers']['values']
-
+    
     def get_server_details(self, server_id):
         """Return detailed output on a server specified by its id"""
-
-        path = '/servers/%s' % (server_id,)
+        
+        path = path4url('servers', server_id)#'/servers/%s' % (server_id,)
         r = self.get(path, success=200)
         return r.json['server']
-
+    
     def create_server(self, name, flavor_id, image_id, personality=None):
         """Submit request to create a new server
 
@@ -78,100 +78,100 @@ class ComputeClient(Client):
                           'imageRef': image_id}}
         if personality:
             req['server']['personality'] = personality
-
-        r = self.post('/servers', json=req, success=202)
+        
+        r = self.post(path4url('servers'), json=req, success=202)
         return r.json['server']
-
+    
     def update_server_name(self, server_id, new_name):
         """Update the name of the server as reported by the API.
 
         This call does not modify the hostname actually used by the server
         internally.
         """
-        path = '/servers/%s' % (server_id,)
+        path = path4url('servers', server_id)#'/servers/%s' % (server_id,)
         req = {'server': {'name': new_name}}
         self.put(path, json=req, success=204)
-
+    
     def delete_server(self, server_id):
         """Submit a deletion request for a server specified by id"""
-
-        path = '/servers/%s' % (server_id,)
+        path = path4url('servers', server_id)#'/servers/%s' % (server_id,)
         self.delete(path, success=204)
-
+    
     def reboot_server(self, server_id, hard=False):
         """Submit a reboot request for a server specified by id"""
-
-        path = '/servers/%s/action' % (server_id,)
+        path = path4url('servers', server_id, 'action')
         type = 'HARD' if hard else 'SOFT'
         req = {'reboot': {'type': type}}
         self.post(path, json=req, success=202)
-
+    
     def get_server_metadata(self, server_id, key=None):
-        path = '/servers/%s/meta' % (server_id,)
+        path = path4url('servers', server_id, 'meta')#'/servers/%s/meta' % (server_id,)
         if key:
-            path += '/%s' % key
+            path = path4url(path, key)
         r = self.get(path, success=200)
         return r.json['meta'] if key else r.json['metadata']['values']
-
+    
     def create_server_metadata(self, server_id, key, val):
-        path = '/servers/%d/meta/%s' % (server_id, key)
+        path = path4url('servers', server_id, 'meta', key)#'/servers/%d/meta/%s' % (server_id, key)
         req = {'meta': {key: val}}
         r = self.put(path, json=req, success=201)
         return r.json['meta']
-
+    
     def update_server_metadata(self, server_id, **metadata):
-        path = '/servers/%d/meta' % (server_id,)
+        path = path4url('servers', server_id, 'meta')#'/servers/%s/meta' % (server_id,)
         req = {'metadata': metadata}
         r = self.post(path, json=req, success=201)
         return r.json['metadata']
-
+    
     def delete_server_metadata(self, server_id, key):
-        path = '/servers/%d/meta/%s' % (server_id, key)
+        path = path4url('servers', server_id, 'meta', key)#'/servers/%d/meta/%s' % (server_id, key)
         self.delete(path, success=204)
-
+    
+    
     def list_flavors(self, detail=False):
-        path = '/flavors/detail' if detail else '/flavors'
+        path = path4url('flavors', 'detail') if detail else path4url('flavors')#'/flavors/detail' if detail else '/flavors'
         r = self.get(path, success=200)
         return r.json['flavors']['values']
 
     def get_flavor_details(self, flavor_id):
-        path = '/flavors/%d' % flavor_id
+        path = path4url('flavors', flavor_id)#'/flavors/%d' % flavor_id
         r = self.get(path, success=200)
         return r.json['flavor']
-
+    
+    
     def list_images(self, detail=False):
-        path = '/images/detail' if detail else '/images'
+        path = path4url('images','detail') if detail else path4url('images')
         r = self.get(path, success=200)
         return r.json['images']['values']
-
+    
     def get_image_details(self, image_id):
-        path = '/images/%s' % (image_id,)
+        path = path4url('images', image_id)
         r = self.get(path, success=200)
         return r.json['image']
-
+    
     def delete_image(self, image_id):
-        path = '/images/%s' % (image_id,)
+        path = path4url('images', image_id)
         self.delete(path, success=204)
 
     def get_image_metadata(self, image_id, key=None):
-        path = '/images/%s/meta' % (image_id,)
+        path = path4url('images', image_id, 'meta')
         if key:
-            path += '/%s' % key
+            path = path4url(path, key)
         r = self.get(path, success=200)
         return r.json['meta'] if key else r.json['metadata']['values']
-
+    
     def create_image_metadata(self, image_id, key, val):
-        path = '/images/%s/meta/%s' % (image_id, key)
+        path = path4url('images', image_id, 'meta', key)
         req = {'meta': {key: val}}
         r = self.put(path, json=req, success=201)
         return r.json['meta']
 
     def update_image_metadata(self, image_id, **metadata):
-        path = '/images/%s/meta' % (image_id,)
+        path = path4url('images', image_id, 'meta')
         req = {'metadata': metadata}
         r = self.post(path, json=req, success=201)
         return r.json['metadata']
 
     def delete_image_metadata(self, image_id, key):
-        path = '/images/%s/meta/%s' % (image_id, key)
+        path = path4url('images', image_id, 'meta', key)
         self.delete(path, success=204)
