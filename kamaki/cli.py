@@ -762,7 +762,8 @@ class store_append(_store_container_command):
         super(store_append, self).main()
         self.client.container = container
         f = open(local_path, 'r')
-        self.client.append_object(object=remote_path, source_file = f)
+        upload_cb = self.progress('Appending blocks')
+        self.client.append_object(object=remote_path, source_file = f, upload_cb = upload_cb)
 
 @command(api='storage')
 class store_truncate(_store_container_command):
@@ -781,7 +782,8 @@ class store_overwrite(_store_container_command):
         super(store_overwrite, self).main()
         self.client.container = container
         f = open(local_path, 'r')
-        self.client.overwrite_object(object=remote_path, start=start, end=end, source_file=f)
+        upload_cb = self.progress('Overwritting blocks')
+        self.client.overwrite_object(object=remote_path, start=start, end=end, source_file=f, upload_cb = upload_cb)
 
 @command(api='storage')
 class store_upload(_store_container_command):

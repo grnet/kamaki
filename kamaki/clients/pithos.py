@@ -272,7 +272,11 @@ class PithosClient(StorageClient):
     def del_object_sharing(self, object):
         self.set_object_sharing(object)
 
-    def append_object(self, object, source_file):
+    def append_object(self, object, source_file, upload_cb = None):
+        """@poaram upload_db is a generator for showing progress of upload
+            to caller application, e.g. a progress bar. Its next is called
+            whenever a block is uploaded
+        """
         self.assert_container()
         meta = self.get_container_info(self.container)
         blocksize = int(meta['x-container-block-size'])
@@ -282,11 +286,15 @@ class PithosClient(StorageClient):
         self.set_header('Content-Range', 'bytes */*')
         self.set_header('Content-Type', 'application/octet-stream')
         path=path4url(self.account, self.container, object)+params4url({'update':None})
+        if upload_cb is not None:
+            upload_gen = upload_cb(nblocks)
         for i in range(nblocks):
             block = source_file.read(min(blocksize, filesize - offset))
             offset += len(block)
             self.set_header('Content-Length', len(block))
             self.post(path, data=block, success=(202, 204))
+            if upload_cb is not None:
+                upload_gen.next()
 
     def truncate_object(self, object, upto_bytes):
         self.assert_container()
@@ -297,7 +305,7 @@ class PithosClient(StorageClient):
         path=path4url(self.account, self.container, object)+params4url({'update':None})
         self.post(path, success=(202, 204))
 
-    def overwrite_object(self, object, start, end, source_file):
+    def overwrite_object(self, object, start, end, source_file, upload_cb=None):
         """Overwrite a part of an object with given source file
            @start the part of the remote object to start overwriting from, in bytes
            @end the part of the remote object to stop overwriting to, in bytes
@@ -312,9 +320,13 @@ class PithosClient(StorageClient):
         self.set_header('Content-Range', 'bytes %s-%s/*' % (start, end) )
         self.set_header('Content-Type', 'application/octet-stream')
         path=path4url(self.account, self.container, object)+params4url({'update':None})
+        if upload_cb is not None:
+            upload_gen = upload_cb(nblocks)
         for i in range(nblocks):
             block = source_file.read(min(blocksize, filesize - offset, datasize - offset))
             offset += len(block)
             self.set_header('Content-Length', len(block))
             self.post(path, data=block, success=(202, 204))
+            if upload_cb is not None:
+                upload_gen.next()
 
