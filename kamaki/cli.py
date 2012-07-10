@@ -771,7 +771,8 @@ class store_truncate(_store_container_command):
     def main(self, container, object, size=0):
         super(store_truncate, self).main()
         self.client.container = container
-        self.client.update_object(object, data_range = (0, int(size)))
+        self.client.truncate_object(object, size)
+        #self.client.update_object(object, data_range = (0, int(size)))
 
 @command(api='storage')
 class store_upload(_store_container_command):

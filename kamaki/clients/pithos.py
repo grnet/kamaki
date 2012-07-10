@@ -276,11 +276,8 @@ class PithosClient(StorageClient):
         self.assert_container()
         meta = self.get_container_info(self.container)
         blocksize = int(meta['x-container-block-size'])
-        blockhash = meta['x-container-block-hash']
-        print('blocksize:%s blockhash:%s'%(blocksize, blockhash))
         filesize = os.fstat(source_file.fileno()).st_size
         nblocks = 1 + (filesize - 1)//blocksize
-        print('filesize:%s nblocks:%s'%(filesize, nblocks))
         offset = 0
         self.set_header('Content-Range', 'bytes */*')
         self.set_header('Content-Type', 'application/octet-stream')
@@ -290,3 +287,12 @@ class PithosClient(StorageClient):
             offset += len(block)
             self.set_header('Content-Length', len(block))
             self.post(path, data=block, success=(202, 204))
+
+    def truncate_object(self, object, upto_bytes):
+        self.assert_container()
+        self.set_header('Content-Range', 'bytes 0-%s/*'%upto_bytes)
+        self.set_header('Content-Type', 'application/octet-stream')
+        self.set_header('X-Object-Bytes', upto_bytes)
+        self.set_header('X-Source-Object', path4url(self.container, object))
+        path=path4url(self.account, self.container, object)+params4url({'update':None})
+        self.post(path, success=(202, 204))
