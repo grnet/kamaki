@@ -228,6 +228,12 @@ class PithosClient(StorageClient):
             self.set_header('X-Object-Meta-'+key, val)
         self.post(path, success=202)
 
+    def delete_object_meta(self, metakey, object):
+        self.assert_container()
+        self.set_header('X-Object-Meta-'+metakey, '')
+        path = path4url(self.account, self.container, object)+params4url({'update':None})
+        self.post(path, success=202)
+
     def publish_object(self, object):
         self.assert_container()
         path = path4url(self.account, self.container, object)+params4url({'update':None})

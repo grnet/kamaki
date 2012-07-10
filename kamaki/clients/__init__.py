@@ -96,6 +96,7 @@ class Client(object):
         kwargs.setdefault('verify', False)  # Disable certificate verification
         r = requests.request(method, url, headers=self.headers, data=data, **kwargs)
 
+        url = self.base_url + path
         req = r.request
         sendlog.info('%s %s', req.method, req.url)
         for key, val in req.headers.items():
