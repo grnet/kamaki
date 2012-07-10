@@ -101,7 +101,6 @@ class PithosClient(StorageClient):
         assert offset == size
 
         path = path4url(self.account, self.container, object)+params4url(dict(format='json', hashmap=''))
-        
         hashmap = dict(bytes=size, hashes=hashes)
         self.set_header('Content-Type', 'application/octet-stream')
         r = self.put(path, json=hashmap, success=(201, 409))
@@ -273,5 +272,21 @@ class PithosClient(StorageClient):
     def del_object_sharing(self, object):
         self.set_object_sharing(object)
 
-    #def update_object(self, object, content_range=False, source_file=False):
-     #   print('Not implemented yet - but I should copy create_object')
+    def append_object(self, object, source_file):
+        self.assert_container()
+        meta = self.get_container_info(self.container)
+        blocksize = int(meta['x-container-block-size'])
+        blockhash = meta['x-container-block-hash']
+        print('blocksize:%s blockhash:%s'%(blocksize, blockhash))
+        filesize = os.fstat(source_file.fileno()).st_size
+        nblocks = 1 + (filesize - 1)//blocksize
+        print('filesize:%s nblocks:%s'%(filesize, nblocks))
+        offset = 0
+        self.set_header('Content-Range', 'bytes */*')
+        self.set_header('Content-Type', 'application/octet-stream')
+        path=path4url(self.account, self.container, object)+params4url({'update':None})
+        for i in range(nblocks):
+            block = source_file.read(min(blocksize, filesize - offset))
+            offset += len(block)
+            self.set_header('Content-Length', len(block))
+            self.post(path, data=block, success=(202, 204))

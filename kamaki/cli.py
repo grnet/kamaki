@@ -762,7 +762,7 @@ class store_append(_store_container_command):
         super(store_append, self).main()
         self.client.container = container
         f = open(local_path, 'r')
-        self.client.update_object(object=remote_path, source_file = f)
+        self.client.append_object(object=remote_path, source_file = f)
 
 @command(api='storage')
 class store_truncate(_store_container_command):
