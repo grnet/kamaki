@@ -772,7 +772,16 @@ class store_truncate(_store_container_command):
         super(store_truncate, self).main()
         self.client.container = container
         self.client.truncate_object(object, size)
-        #self.client.update_object(object, data_range = (0, int(size)))
+
+@command(api='storage')
+class store_overwrite(_store_container_command):
+    """Overwrite part (from start to end) of a remote file"""
+
+    def main(self, container, remote_path, start, end, local_path):
+        super(store_overwrite, self).main()
+        self.client.container = container
+        f = open(local_path, 'r')
+        self.client.overwrite_object(object=remote_path, start=start, end=end, source_file=f)
 
 @command(api='storage')
 class store_upload(_store_container_command):

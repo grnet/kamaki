@@ -296,3 +296,25 @@ class PithosClient(StorageClient):
         self.set_header('X-Source-Object', path4url(self.container, object))
         path=path4url(self.account, self.container, object)+params4url({'update':None})
         self.post(path, success=(202, 204))
+
+    def overwrite_object(self, object, start, end, source_file):
+        """Overwrite a part of an object with given source file
+           @start the part of the remote object to start overwriting from, in bytes
+           @end the part of the remote object to stop overwriting to, in bytes
+        """
+        self.assert_container()
+        meta = self.get_container_info(self.container)
+        blocksize = int(meta['x-container-block-size'])
+        filesize = os.fstat(source_file.fileno()).st_size
+        datasize = int(end) - int(start) + 1
+        nblocks = 1 + (datasize - 1)//blocksize
+        offset = 0
+        self.set_header('Content-Range', 'bytes %s-%s/*' % (start, end) )
+        self.set_header('Content-Type', 'application/octet-stream')
+        path=path4url(self.account, self.container, object)+params4url({'update':None})
+        for i in range(nblocks):
+            block = source_file.read(min(blocksize, filesize - offset, datasize - offset))
+            offset += len(block)
+            self.set_header('Content-Length', len(block))
+            self.post(path, data=block, success=(202, 204))
+
