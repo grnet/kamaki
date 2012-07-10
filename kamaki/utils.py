@@ -31,55 +31,38 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-def print_addresses(addresses, margin):
-    for address in addresses:
-        if address['id'] == 'public':
-            net = 'public'
-        else:
-            net = '%s/%s' % (address['id'], address['network_id'])
-        print '%s:' % net.rjust(margin + 4)
-
-        ether = address.get('mac', None)
-        if ether:
-            print '%s: %s' % ('ether'.rjust(margin + 8), ether)
-
-        firewall = address.get('firewallProfile', None)
-        if firewall:
-            print '%s: %s' % ('firewall'.rjust(margin + 8), firewall)
-
-        for ip in address.get('values', []):
-            key = 'inet' if ip['version'] == 4 else 'inet6'
-            print '%s: %s' % (key.rjust(margin + 8), ip['addr'])
-
-def print_dict(d, exclude=()):
-    if not d:
-        return
-    margin = max(len(key) for key in d) + 1
-
+def print_dict(d, exclude=(), ident= 0):
+    margin = max(max(len(key) for key in d) + 1, ident)
     for key, val in sorted(d.items()):
         if key in exclude:
             continue
+        print_str = '%s:' % unicode(key)
+        if isinstance(val, dict):
+            print(print_str.rjust(margin)+' {')
+            print_dict(val, exclude = exclude, ident = margin + 8)
+            print '}'.rjust(margin)
+        elif isinstance(val, list):
+            print(print_str.rjust(margin)+' [')
+            print_list(val, exclude = exclude, ident = margin + 8)
+            print ']'.rjust(margin)
+        else:
+            print print_str.rjust(margin+4)+' '+unicode(val)
 
-        #if key == 'addresses':
-        #    print '%s:' % 'addresses'.rjust(margin)
-        #    print_addresses(val.get('values', []), margin)
-        #    continue
-        if key == 'attachments':
-            print '%s:' % 'attachments'.rjust(margin)
-            print_addresses(val.get('values', []), margin)
+def print_list(l, exclude=(), ident = 0):
+    margin = max(max(len(item) for item in l) + 1, ident)
+    for item in sorted(l):
+        if item in exclude:
             continue
-        elif key == 'servers':
-            val = ', '.join(unicode(x) for x in val['values'])
-        elif isinstance(val, dict):
-            if val.keys() == ['values']:
-                val = val['values']
-            print '%s:' % key.rjust(margin)
-            for key, val in val.items():
-                print '%s: %s' % (key.rjust(margin + 4), val)
-            continue
-
-        print '%s: %s' % (key.rjust(margin), val)
-
+        if isinstance(item, dict):
+            print('{'.rjust(margin))
+            print_dict(item, exclude = exclude, ident = margin + 8)
+            print '}'.rjust(margin)
+        elif isinstance(item, list):
+            print '['.rjust(margin)
+            print_list(item, exclude = exclude, ident = margin + 8)
+            print ']'.rjust(margin)
+        else:
+            print unicode(val).rjust(margin + 4)
 
 def print_items(items, title=('id', 'name')):
     for item in items:

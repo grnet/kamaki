@@ -88,7 +88,7 @@ from requests.exceptions import ConnectionError
 
 from . import clients
 from .config import Config
-from .utils import print_addresses, print_dict, print_items, format_size, dict_from_args
+from .utils import print_list, print_dict, print_items, format_size, dict_from_args
 
 
 _commands = OrderedDict()
@@ -324,8 +324,8 @@ class server_addr(object):
 
     def main(self, server_id, network=None):
         reply = self.client.list_server_addresses(int(server_id), network)
-        margin = max(len(x['name']) for x in reply)
-        print_addresses(reply, margin)
+        print_list(reply)
+        #print_addresses(reply, margin)
 
 
 @command(api='compute')
