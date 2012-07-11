@@ -31,24 +31,38 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+def matches(val1, val2, exactMath=True):
+    """Case Insenstive match"""
+    if exactMath:
+        return True if val1.lower() == val2.lower() else False
+    else:
+        return True if val1.lower().startswith(val2.lower()) else False
+
 def filter_out(d, prefix, exactMatch = False):
     """@return a dict that contains the entries of d that are NOT prefixed with prefic
     """
-    if exactMatch:
-        return {key:d[key] for key in d if not key.lower() == prefix.lower()}
-    return {key:d[key] for key in d if not key.lower().startswith(prefix.lower())}
+    ret = {}
+    for key, val in d.items():
+        if not matches(key, prefix, exactMath = exactMath):
+            ret[key] = val
+    return ret
 
 def filter_in(d, prefix, exactMatch = False):
     """@return a dict that contains only the entries of d that are prefixed with prefix
     """
-    if exactMatch:
-        return {key:d[key] for key in d if key.lower() == prefix.lower()}
-    return {key:d[key] for key in d if key.lower().startswith(prefix.lower())}
+    ret = {}
+    for key, val in d.items():
+        if matches(key, prefix, exactMath = exactMath):
+            ret[key] = val
+    return ret
     
 def prefix_keys(d, prefix):
     """@return a sallow copy of d with all its keys prefixed with prefix
     """
-    return {prefix+key:d[key] for key in d.keys()}
+    ret = {}
+    for key, val in d.items():
+        ret[prefix+key] = val
+    return ret
 
 def path4url(*args):
     """@return a string with all args in the form /arg1/arg2/...

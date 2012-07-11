@@ -88,8 +88,7 @@ from requests.exceptions import ConnectionError
 
 from . import clients
 from .config import Config
-from .utils import print_list, print_dict, print_items, format_size, dict_from_args
-
+from .utils import print_list, print_dict, print_items, format_size
 
 _commands = OrderedDict()
 

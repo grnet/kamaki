@@ -85,6 +85,3 @@ def format_size(size):
     s = ('%.1f' % size).rstrip('.0')
     return s + unit
 
-def dict_from_args(*args):
-    return {args[i]:args[i+1] for i in range(0, len(args)/2)}
-
