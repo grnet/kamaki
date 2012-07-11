@@ -32,13 +32,18 @@
 # or implied, of GRNET S.A.
 
 def print_dict(d, exclude=(), ident= 0):
-    if 0 == len(d):
-        return
-    margin = max(1 + max(len(unicode(key)) for key in d), ident)
+    try:
+        margin = max(
+            1 + max(len(unicode(key).strip()) for key in d.keys() \
+                if not isinstance(key, dict) and not isinstance(key, list)),
+            ident)
+    except ValueError:
+        margin = ident
+
     for key, val in d.items():
         if key in exclude:
             continue
-        print_str = '%s:' % unicode(key)
+        print_str = '%s:' % unicode(key).strip()
         if isinstance(val, dict):
             print(print_str.rjust(margin)+' {')
             print_dict(val, exclude = exclude, ident = margin + 6)
@@ -48,12 +53,17 @@ def print_dict(d, exclude=(), ident= 0):
             print_list(val, exclude = exclude, ident = margin + 6)
             print ']'.rjust(margin)
         else:
-            print print_str.rjust(margin)+' '+unicode(val)
+            print print_str.rjust(margin)+' '+unicode(val).strip()
 
 def print_list(l, exclude=(), ident = 0):
-    if 0 == len(l):
-        return
-    margin = max(1 + max(len(unicode(item)) for item in l), ident)
+    try:
+        margin = max(
+            1 + max(len(unicode(item).strip()) for item in l \
+                if not isinstance(item, dict) and not isinstance(item, list)),
+            ident)
+    except ValueError:
+        margin = ident
+
     for item in l:
         if item in exclude:
             continue
