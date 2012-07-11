@@ -34,7 +34,7 @@
 def print_dict(d, exclude=(), ident= 0):
     if 0 == len(d):
         return
-    margin = max(1 + max(len(key) for key in d), ident)
+    margin = max(1 + max(len(unicode(key)) for key in d), ident)
     for key, val in d.items():
         if key in exclude:
             continue
@@ -53,7 +53,7 @@ def print_dict(d, exclude=(), ident= 0):
 def print_list(l, exclude=(), ident = 0):
     if 0 == len(l):
         return
-    margin = max(1 + max(len(item) for item in l), ident)
+    margin = max(1 + max(len(unicode(item)) for item in l), ident)
     for item in l:
         if item in exclude:
             continue
