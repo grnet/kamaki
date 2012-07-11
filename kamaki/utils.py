@@ -32,7 +32,9 @@
 # or implied, of GRNET S.A.
 
 def print_dict(d, exclude=(), ident= 0):
-    margin = max(max(len(key) for key in d) + 1, ident)
+    if 0 == len(d):
+        return
+    margin = max(1 + max(len(key) for key in d), ident)
     for key, val in d.items():
         if key in exclude:
             continue
@@ -49,7 +51,9 @@ def print_dict(d, exclude=(), ident= 0):
             print print_str.rjust(margin)+' '+unicode(val)
 
 def print_list(l, exclude=(), ident = 0):
-    margin = max(max(len(item) for item in l) + 1, ident)
+    if 0 == len(l):
+        return
+    margin = max(1 + max(len(item) for item in l), ident)
     for item in l:
         if item in exclude:
             continue
@@ -62,7 +66,7 @@ def print_list(l, exclude=(), ident = 0):
             print_list(item, exclude = exclude, ident = margin + 6)
             print ']'.rjust(margin)
         else:
-            print unicode(val).rjust(margin)
+            print unicode(item).rjust(margin)
 
 def print_items(items, title=('id', 'name')):
     for item in items:

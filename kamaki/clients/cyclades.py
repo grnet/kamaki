@@ -99,7 +99,6 @@ class CycladesClient(ComputeClient):
     def get_network_details(self, network_id):
         path = path4url('networks', network_id)#'/networks/%s' % (network_id,)
         r = self.get(path, success=200)
-        print(unicode(r.json))
         return r.json['network']
 
     def update_network_name(self, network_id, new_name):
