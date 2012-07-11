@@ -69,7 +69,7 @@ class CycladesClient(ComputeClient):
         req = {'firewallProfile': {'profile': profile}}
         self.post(path, json=req, success=202)
     
-    def list_server_addresses(self, server_id, network=None):
+    def list_server_nic_details(self, server_id, network=None):
         path = path4url('servers', server_id, 'ips')
         if network:
             path += path4url(network)
@@ -77,7 +77,7 @@ class CycladesClient(ComputeClient):
         if network:
             return [r.json['network']]
         else:
-            return r.json['addresses']['values']
+            return r.json['attachments']['values']
     
     def get_server_stats(self, server_id):
         path = path4url('servers', server_id, 'stats')
@@ -125,7 +125,7 @@ class CycladesClient(ComputeClient):
         self.post(path, json=req, success=202)
 
     def disconnect_server(self, server_id, network_id):
-        matched_nets = [net for net in self.list_server_addresses(server_id) if net['network_id'] == network_id]
+        matched_nets = [net for net in self.list_server_nic_details(server_id) if net['network_id'] == network_id]
         path = path4url('networks', network_id, 'action')
         for nic in matched_nets:
             req = {'remove': {'attachment': unicode(nic['id'])}}

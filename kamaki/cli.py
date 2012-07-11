@@ -322,7 +322,7 @@ class server_addr(object):
     """List a server's addresses"""
 
     def main(self, server_id, network=None):
-        reply = self.client.list_server_addresses(int(server_id), network)
+        reply = self.client.list_server_nic_details(int(server_id), network)
         print_list(reply)
 
 @command(api='compute')
