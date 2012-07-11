@@ -49,7 +49,6 @@ class ComputeClient(Client):
     def list_servers(self, detail=False):
         """List servers, returned detailed output if detailed is True"""
         
-        #path = '/servers/detail' if detail else '/servers'
         path = path4url('servers','detail') if detail else path4url('servers')
         r = self.get(path, success=200)
         return r.json['servers']['values']
@@ -57,7 +56,7 @@ class ComputeClient(Client):
     def get_server_details(self, server_id):
         """Return detailed output on a server specified by its id"""
         
-        path = path4url('servers', server_id)#'/servers/%s' % (server_id,)
+        path = path4url('servers', server_id)
         r = self.get(path, success=200)
         return r.json['server']
     
@@ -88,13 +87,13 @@ class ComputeClient(Client):
         This call does not modify the hostname actually used by the server
         internally.
         """
-        path = path4url('servers', server_id)#'/servers/%s' % (server_id,)
+        path = path4url('servers', server_id)
         req = {'server': {'name': new_name}}
         self.put(path, json=req, success=204)
     
     def delete_server(self, server_id):
         """Submit a deletion request for a server specified by id"""
-        path = path4url('servers', server_id)#'/servers/%s' % (server_id,)
+        path = path4url('servers', server_id)
         self.delete(path, success=204)
     
     def reboot_server(self, server_id, hard=False):
@@ -105,36 +104,36 @@ class ComputeClient(Client):
         self.post(path, json=req, success=202)
     
     def get_server_metadata(self, server_id, key=None):
-        path = path4url('servers', server_id, 'meta')#'/servers/%s/meta' % (server_id,)
+        path = path4url('servers', server_id, 'meta')
         if key:
             path = path4url(path, key)
         r = self.get(path, success=200)
         return r.json['meta'] if key else r.json['metadata']['values']
     
     def create_server_metadata(self, server_id, key, val):
-        path = path4url('servers', server_id, 'meta', key)#'/servers/%d/meta/%s' % (server_id, key)
+        path = path4url('servers', server_id, 'meta', key)
         req = {'meta': {key: val}}
         r = self.put(path, json=req, success=201)
         return r.json['meta']
     
     def update_server_metadata(self, server_id, **metadata):
-        path = path4url('servers', server_id, 'meta')#'/servers/%s/meta' % (server_id,)
+        path = path4url('servers', server_id, 'meta')
         req = {'metadata': metadata}
         r = self.post(path, json=req, success=201)
         return r.json['metadata']
     
     def delete_server_metadata(self, server_id, key):
-        path = path4url('servers', server_id, 'meta', key)#'/servers/%d/meta/%s' % (server_id, key)
+        path = path4url('servers', server_id, 'meta', key)
         self.delete(path, success=204)
     
     
     def list_flavors(self, detail=False):
-        path = path4url('flavors', 'detail') if detail else path4url('flavors')#'/flavors/detail' if detail else '/flavors'
+        path = path4url('flavors', 'detail') if detail else path4url('flavors')
         r = self.get(path, success=200)
         return r.json['flavors']['values']
 
     def get_flavor_details(self, flavor_id):
-        path = path4url('flavors', flavor_id)#'/flavors/%d' % flavor_id
+        path = path4url('flavors', flavor_id)
         r = self.get(path, success=200)
         return r.json['flavor']
     
