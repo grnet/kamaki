@@ -129,8 +129,8 @@ def command(api=None, group=None, name=None, syntax=None):
             spec = inspect.getargspec(cls.main.im_func)
             args = spec.args[1:]
             n = len(args) - len(spec.defaults or ())
-            required = ' '.join('<%s>' % x.replace('_', ' ') for x in args[:n])
-            optional = ' '.join('[%s]' % x.replace('_', ' ') for x in args[n:])
+            required = ' '.join('<%s>' % x.replace('____', '[:').replace('___', ':').replace('__',']').replace('_', ' ') for x in args[:n])
+            optional = ' '.join('[%s]' % x.replace('____', '[:').replace('___', ':').replace('__', ']').replace('_', ' ') for x in args[n:])
             cls.syntax = ' '.join(x for x in [required, optional] if x)
             if spec.varargs:
                 cls.syntax += ' <%s ...>' % spec.varargs
@@ -693,14 +693,27 @@ class _store_container_command(_store_account_command):
         parser.add_argument('--container', dest='container', metavar='NAME',
                           help="Specify a container to use")
 
-    def main(self):
+    def extract_container_and_path(self, container_with_path):
+        assert isinstance(container_with_path, str)
+        cnp = container_with_path.split(':')
+        self.container = cnp[0]
+        self.path = cnp[1] if len(cnp) > 1 else None
+            
+
+    def main(self, container_with_path=None):
         super(_store_container_command, self).main()
-        if self.args.container is not None:
+        if container_with_path is not None:
+            self.extract_container_and_path(container_with_path)
+            self.client.container = self.container
+        elif self.args.container is not None:
             self.client.container = self.args.container
+        else:
+            self.container = None
 
 @command(api='storage')
 class store_list(_store_container_command):
-    """List containers [, object trees [or objects in a directory]]"""
+    """List containers, object trees or objects in a directory
+    """
 
     def print_objects(self, object_list):
         for obj in object_list:
@@ -712,86 +725,85 @@ class store_list(_store_container_command):
             size = format_size(container['bytes'])
             print('%s (%s, %s objects)' % (container['name'], size, container['count']))
             
-    def main(self, container=None, object=None):
-        super(store_list, self).main()
-        if container is None:
+    def main(self, container____path__=None):
+        super(store_list, self).main(container____path__)
+        if self.container is None:
             reply = self.client.list_containers()
             self.print_containers(reply)
         else:
-            self.client.container = container
-            reply = self.client.list_objects() if object is None \
-                else self.client.list_objects_in_path(path_prefix=object)
+            reply = self.client.list_objects() if self.path is None \
+                else self.client.list_objects_in_path(path_prefix=self.path)
             self.print_objects(reply)
 
 @command(api='storage')
-class store_create(_store_account_command):
-    """Create a container [or a directory object]"""
+class store_create(_store_container_command):
+    """Create a container or a directory object"""
 
-    def main(self, container, directory_object=None):
-        super(store_create, self).main()
-        if directory_object is None:
-            self.client.create_container(container)
+    def main(self, container____directory__):
+        super(store_create, self).main(container____directory__)
+        if self.path is None:
+            self.client.create_container(self.container)
         else:
-            self.client.container = container
-            self.client.create_directory(directory_object)
+            self.client.create_directory(self.path)
 
 @command(api='storage')
-class store_copy(_store_account_command):
+class store_copy(_store_container_command):
     """Copy an object"""
 
-    def main(self, source_container, source_path, destination_container, destination_path = False):
-        super(store_copy, self).main()
-        self.client.copy_object(src_container = source_container, src_object = source_path, dst_container = destination_container, dst_object = destination_path)
+    def main(self, source_container___path, destination_container____path__):
+        super(store_copy, self).main(source_container___path)
+        dst = destination_container____path__.split(':')
+        dst_cont = dst[0]
+        dst_path = dst[1] if len(dst) > 1 else False
+        self.client.copy_object(src_container = self.container, src_object = self.path, dst_container = dst_cont, dst_object = dst_path)
 
 @command(api='storage')
-class store_move(_store_account_command):
+class store_move(_store_container_command):
     """Move an object"""
 
-    def main(self, source_container, source_path, destination_container, destination_path = False):
-        super(store_move, self).main()
-        self.client.move_object(src_container = source_container, src_object = source_path, dst_container = destination_container, dst_object = destination_path)
+    def main(self, source_container___path, destination_container____path__):
+        super(store_move, self).main(source_container___path)
+        dst = destination_container____path__.split(':')
+        dst_cont = dst[0]
+        dst_path = dst[1] if len(dst) > 1 else False
+        self.client.move_object(src_container = self.container, src_object = self.path, dst_container = dst_cont, dst_object = dst_path)
 
 @command(api='storage')
 class store_append(_store_container_command):
     """Append local file to (existing) remote object"""
 
-    def main(self, container, remote_path, local_path):
-        super(store_append, self).main()
-        self.client.container = container
+    def main(self, local_path, container___path):
+        super(store_append, self).main(container___path)
         f = open(local_path, 'r')
         upload_cb = self.progress('Appending blocks')
-        self.client.append_object(object=remote_path, source_file = f, upload_cb = upload_cb)
+        self.client.append_object(object=self.path, source_file = f, upload_cb = upload_cb)
 
 @command(api='storage')
 class store_truncate(_store_container_command):
     """Truncate remote file up to a size"""
 
-    def main(self, container, object, size=0):
-        super(store_truncate, self).main()
-        self.client.container = container
-        self.client.truncate_object(object, size)
+    def main(self, container___path, size=0):
+        super(store_truncate, self).main(container___path)
+        self.client.truncate_object(self.path, size)
 
 @command(api='storage')
 class store_overwrite(_store_container_command):
     """Overwrite part (from start to end) of a remote file"""
 
-    def main(self, container, remote_path, start, end, local_path):
-        super(store_overwrite, self).main()
-        self.client.container = container
+    def main(self, local_path, container___path, start, end):
+        super(store_overwrite, self).main(container___path)
         f = open(local_path, 'r')
         upload_cb = self.progress('Overwritting blocks')
-        self.client.overwrite_object(object=remote_path, start=start, end=end, source_file=f, upload_cb = upload_cb)
+        self.client.overwrite_object(object=self.path, start=start, end=end, source_file=f, upload_cb = upload_cb)
 
 @command(api='storage')
 class store_upload(_store_container_command):
     """Upload a file"""
 
-    def main(self, container, path, remote_path=None):
-        super(store_upload, self).main()
-        self.client.container = container
-        if remote_path is None:
-            remote_path = basename(path)
-        with open(path) as f:
+    def main(self, local_path, container____path__):
+        super(store_upload, self).main(container____path__)
+        remote_path = basename(local_path) if self.path is None else self.path
+        with open(local_path) as f:
             hash_cb = self.progress('Calculating block hashes')
             upload_cb = self.progress('Uploading blocks')
             self.client.create_object(remote_path, f, hash_cb=hash_cb, upload_cb=upload_cb)
@@ -800,11 +812,9 @@ class store_upload(_store_container_command):
 class store_download(_store_container_command):
     """Download a file"""
 
-    def main(self, container,remote_path, local_path='-'):
-        super(store_download, self).main()
-
-        self.client.container = container
-        f, size = self.client.get_object(remote_path)
+    def main(self, container___path, local_path='-'):
+        super(store_download, self).main(container___path)
+        f, size = self.client.get_object(self.path)
         out = open(local_path, 'w') if local_path != '-' else stdout
 
         blocksize = 4 * 1024 ** 2
@@ -826,13 +836,12 @@ class store_download(_store_container_command):
 class store_delete(_store_container_command):
     """Delete a container [or an object]"""
 
-    def main(self, container, object=None):
-        super(store_delete, self).main()
+    def main(self, container____path__):
+        super(store_delete, self).main(container____path__)
         if object is None:
-            self.client.delete_container(container)
+            self.client.delete_container(self.container)
         else:
-            self.client.container = container
-            self.client.delete_object(object)
+            self.client.delete_object(self.path)
 
 @command(api='storage')
 class store_purge(_store_account_command):
@@ -846,36 +855,33 @@ class store_purge(_store_account_command):
 class store_publish(_store_container_command):
     """Publish an object"""
 
-    def main(self, container, object):
-        super(store_publish, self).main()
-        self.client.container = container
-        self.client.publish_object(object)
+    def main(self, container___path):
+        super(store_publish, self).main(container___path)
+        self.client.publish_object(self.path)
 
 @command(api='storage')
 class store_unpublish(_store_container_command):
     """Unpublish an object"""
 
-    def main(self, container, object):
-        super(store_unpublish, self).main()
-        self.client.container = container
-        self.client.unpublish_object(object)
+    def main(self, container___path):
+        super(store_unpublish, self).main(container___path)
+        self.client.unpublish_object(self.path)
 
 @command(api='storage')
 class store_permitions(_store_container_command):
     """Get object read/write permitions"""
 
-    def main(self, container, object):
-        super(store_permitions, self).main()
-        self.container = container
-        reply = self.client.get_object_sharing(object)
+    def main(self, container___path):
+        super(store_permitions, self).main(container___path)
+        reply = self.client.get_object_sharing(self.path)
         print_dict(reply)
 
 @command(api='storage')
 class store_setpermitions(_store_container_command):
     """Set sharing permitions"""
 
-    def main(self, container, object, *permitions):
-        super(store_setpermitions, self).main()
+    def main(self, container___path, *permitions):
+        super(store_setpermitions, self).main(container___path)
         read = False
         write = False
         for perms in permitions:
@@ -893,80 +899,72 @@ class store_setpermitions(_store_container_command):
             print(u'and/or')
             print(u'\twrite=username,groupname,...')
             return
-        self.client.container = container
-        self.client.set_object_sharing(object, read_permition=read, write_permition=write)
+        self.client.set_object_sharing(self.path, read_permition=read, write_permition=write)
 
 @command(api='storage')
 class store_delpermitions(_store_container_command):
     """Delete all sharing permitions"""
 
-    def main(self, container, object):
-        super(store_delpermitions, self).main()
-        self.client.container = container
-        self.client.del_object_sharing(object)
+    def main(self, container___path):
+        super(store_delpermitions, self).main(container___path)
+        self.client.del_object_sharing(self.path)
 
 
 @command(api='storage')
-class store_info(_store_account_command):
+class store_info(_store_container_command):
     """Get information for account [, container [or object]]"""
 
-    def main(self, container=None, object=None):
-        super(store_info, self).main()
-        if container is None:
+    def main(self, container____path__=None):
+        super(store_info, self).main(container____path__)
+        if self.container is None:
             reply = self.client.get_account_info()
-        elif object is None:
-            reply = self.client.get_container_info(container)
+        elif self.path is None:
+            reply = self.client.get_container_info(self.container)
         else:
-            self.client.container = container
-            reply = self.client.get_object_info(object)
+            reply = self.client.get_object_info(self.path)
         print_dict(reply)
 
 @command(api='storage')
-class store_meta(_store_account_command):
+class store_meta(_store_container_command):
     """Get custom meta-content for account [, container [or object]]"""
 
-    def main(self, container = None, object = None):
-        super(store_meta, self).main()
-        if container is None:
+    def main(self, container____path__ = None):
+        super(store_meta, self).main(container____path__)
+        if self.container is None:
             reply = self.client.get_account_meta()
-        elif object is None:
-            reply = self.client.get_container_object_meta(container)
+        elif self.path is None:
+            reply = self.client.get_container_object_meta(self.container)
             print_dict(reply)
-            reply = self.client.get_container_meta(container)
+            reply = self.client.get_container_meta(self.container)
         else:
-            self.client.container = container
-            reply = self.client.get_object_meta(object)
+            reply = self.client.get_object_meta(self.path)
         print_dict(reply)
 
 @command(api='storage')
-class store_setmeta(_store_account_command):
+class store_setmeta(_store_container_command):
     """Set a new metadatum for account [, container [or object]]"""
 
-    def main(self, metakey, metavalue, container=None, object=None):
-        super(store_setmeta, self).main()
-        if container is None:
+    def main(self, metakey, metavalue, container____path__=None):
+        super(store_setmeta, self).main(container____path__)
+        if self.container is None:
             self.client.set_account_meta({metakey:metavalue})
+        elif self.path is None:
+            self.client.set_container_meta({metakey:metavalue})
         else:
-            self.client.container = container
-            if object is None:
-                self.client.set_container_meta({metakey:metavalue})
-            else:
-                self.client.set_object_meta(object, {metakey:metavalue})
+            self.client.set_object_meta(self.path, {metakey:metavalue})
 
 @command(api='storage')
-class store_delmeta(_store_account_command):
+class store_delmeta(_store_container_command):
     """Delete an existing metadatum of account [, container [or object]]"""
 
-    def main(self, metakey, container=None, object=None):
-        super(store_delmeta, self).main()
-        if container is None:
+    def main(self, metakey, container____path__=None):
+        super(store_delmeta, self).main(container____path__)
+        if self.container is None:
             self.client.delete_account_meta(metakey)
+        elif self.path is None:
+            self.client.delete_container_meta(metakey)
         else:
-            self.client.container = container
-            if object is None:
-                self.client.delete_container_meta(metakey)
-            else:
-                self.client.delete_object_meta(metakey, object)
+            self.client.delete_object_meta(metakey, self.path)
 
 @command(api='storage')
 class store_quota(_store_account_command):

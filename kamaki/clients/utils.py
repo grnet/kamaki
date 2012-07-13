@@ -52,7 +52,7 @@ def filter_in(d, prefix, exactMatch = False):
     """
     ret = {}
     for key, val in d.items():
-        if matches(key, prefix, exactMath = exactMath):
+        if matches(key, prefix, exactMath = exactMatch):
             ret[key] = val
     return ret
     
