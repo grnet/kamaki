@@ -40,7 +40,7 @@ def print_dict(d, exclude=(), ident= 0):
     except ValueError:
         margin = ident
 
-    for key, val in d.items():
+    for key, val in sorted(d.items()):
         if key in exclude:
             continue
         print_str = '%s:' % unicode(key).strip()
@@ -64,7 +64,7 @@ def print_list(l, exclude=(), ident = 0):
     except ValueError:
         margin = ident
 
-    for item in l:
+    for item in sorted(l):
         if item in exclude:
             continue
         if isinstance(item, dict):
@@ -80,16 +80,16 @@ def print_list(l, exclude=(), ident = 0):
 
 def print_items(items, title=('id', 'name')):
     for item in items:
-        print ' '.join(unicode(item.pop(key)) for key in title if key in item)
-        if item:
+        if isinstance(item, dict) or isinstance(item, list):
+            print ' '.join(unicode(item.pop(key)) for key in title if key in item)
+        if isinstance(item, dict):
             print_dict(item)
-            print
 
 def format_size(size):
     units = ('B', 'K', 'M', 'G', 'T')
     size = float(size)
     for unit in units:
-        if size <= 1024:
+        if size < 1024:
             break
         size /= 1024
     s = ('%.1f' % size).rstrip('.0')
