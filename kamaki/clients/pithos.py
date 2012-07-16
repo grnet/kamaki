@@ -124,24 +124,50 @@ class PithosClient(StorageClient):
 
         self.put(path, json=hashmap, success=201)
 
-    def set_account_group(self, group, usernames):
+    def account_post(self,
+        update=True, groups={}, metadata={}, quota=None, versioning=None):
+        """ Full Pithos+ POST at account level
+        --- request parameters ---
+        @param update (bool): if True, Do not replace metadata/groups
+        --- request headers ---
+        @groups (dict): Optional user defined groups in the form
+                    {   'group1':['user1', 'user2', ...], 
+                        'group2':['userA', 'userB', ...], ...
+                    }
+        @metadata (dict): Optional user defined metadata in the form
+                    {   'name1': 'value1',
+                        'name2': 'value2', ...
+                    }
+        @param quota(integer): If supported, sets the Account quota
+        @param versioning(string): If supported, sets the Account versioning
+                    to 'auto' or some other supported versioning string
+        """
         self.assert_account()
-        path = path4url(self.account)+params4url({'update':None})
-        userstr = ''
-        dlm = ''
-        for user in usernames:
-            userstr = userstr + dlm + user
-            dlm = ','
-        self.set_header('X-Account-Group-'+group, userstr)
-        self.post(path, success=202)
+        path = path4url(self.account) + params4url({'update':None}) if update else ''
+        for group, usernames in groups.items():
+            userstr = ''
+            dlm = ''
+            for user in usernames:
+                userstr = userstr + dlm + user
+                dlm = ','
+            self.set_header('X-Account-Group-'+group, userstr)
+        for metaname, metaval in metadata.items():
+            self.set_header('X-Account-Meta-'+metaname, metaval)
+        if quota is not None:
+            self.set_header('X-Account-Policy-Quota', quota)
+        if versioning is not None:
+            self.set_header('X-Account-Policy-Versioning', versioning)
+
+        return self.post(path, success=202)
+
+    def set_account_group(self, group, usernames):
+        self.account_post(update=True, groups = {group:usernames})
 
     def del_account_group(self, group):
-        self.assert_account()
-        path = path4url(self.account)+params4url({'update':None})
-        self.set_header('X-Account-Group-'+group, '')
-        r = self.post(path, success=202)
+        return self.account_post(update=True, groups={group:[]})
 
-    def get_account_info(self, until = None, if_modified_since=None, if_unmodified_since=None):
+    def get_account_info(self, until = None,
+        if_modified_since=None, if_unmodified_since=None):
         """ --- Optional request parameters ---
         @param until (string): optional timestamp
         --- --- optional request headers ---
@@ -176,28 +202,18 @@ class PithosClient(StorageClient):
 
     def set_account_meta(self, metapairs):
         assert(type(metapairs) is dict)
-        self.assert_account()
-        path = path4url(self.account)+params4url({'update':None})
-        for key, val in metapairs.items():
-            self.set_header('X-Account-Meta-'+key, val)
-        self.post(path, success=202)
+        self.account_post(update=True, metadata=metapairs)
 
     def set_account_quota(self, quota):
-        self.assert_account()
-        path = path4url(self.account)+params4url({'update':None})
-        self.set_header('X-Account-Policy-Quota', quota)
-        self.post(path, success=202)
+        self.account_post(update=True, quota=quota)
 
     def set_account_versioning(self, versioning):
-        self.assert_account()
-        path = path4url(self.account)+params4url({'update':None})
-        self.set_header('X-Account-Policy-Versioning', versioning)
-        self.post(path, success=202)
+        self.account_post(update=True, versioning = versioning)
 
     def list_containers(self, 
         limit=None, marker=None, format='json', show_only_shared=False, until=None,
         if_modified_since=None, if_unmodified_since=None):
-        """ 
+        """  Full Pithos+ GET at account level
         @param limit (integer): The amount of results requested (server qill use default value if None)
         @param marker (string): Return containers with name lexicographically after marker
         @param format (string): reply format can be json or xml (default: json)
