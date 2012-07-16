@@ -45,9 +45,97 @@ def pithos_hash(block, blockhash):
     h.update(block.rstrip('\x00'))
     return h.hexdigest()
 
-
 class PithosClient(StorageClient):
     """GRNet Pithos API client"""
+
+    def account_head(self,
+        until = None,
+        if_modified_since=None, if_unmodified_since=None):
+        """ --- Optional request parameters ---
+        @param until (string): optional timestamp
+        --- --- optional request headers ---
+        @param if_modified_since (string): Retrieve if account has changed since provided timestamp
+        @param if_unmodified_since (string): Retrieve if account has not changed since provided timestamp
+        """
+        self.assert_account()
+        path = path4url(self.account)
+
+        path += '' if until is None else params4url({'until':until})
+        if if_modified_since is not None:
+            self.set_header('If-Modified-Since', if_modified_since)
+        if if_modified_since is not None:
+            self.set_header('If-Unmodified-Since', if_unmodified_since)
+
+        return self.head(path, success=(204, 401))
+
+    def account_get(self, 
+        limit=None, marker=None, format='json', show_only_shared=False, until=None,
+        if_modified_since=None, if_unmodified_since=None):
+        """  Full Pithos+ GET at account level
+        @param limit (integer): The amount of results requested (server qill use default value if None)
+        @param marker (string): Return containers with name lexicographically after marker
+        @param format (string): reply format can be json or xml (default: json)
+        @param shared (bool): If true, only shared containers will be included in results
+        @param until (string): optional timestamp
+        --- --- optional request headers ---
+        @param if_modified_since (string): Retrieve if account has changed since provided timestamp
+        @param if_unmodified_since (string): Retrieve if account has not changed since provided timestamp
+        """
+        self.assert_account()
+
+        param_dict = dict(format=format)
+        if limit is not None:
+            param_dict['limit'] = limit
+        if marker is not None:
+            param_dict['marker'] = marker
+        if show_only_shared:
+            param_dict['shared'] = None
+        if until is not None:
+            param_dict['until'] = until
+
+        path = path4url(self.account)+params4url(param_dict)
+        if if_modified_since is not None:
+            self.set_header('If-Modified-Since', if_modified_since)
+        if if_unmodified_since is not None:
+            self.set_header('If-Unmodified-Since', if_unmodified_since)
+
+        return self.get(path, success = (200, 204))
+
+    def account_post(self,
+        update=True, groups={}, metadata={}, quota=None, versioning=None):
+        """ Full Pithos+ POST at account level
+        --- request parameters ---
+        @param update (bool): if True, Do not replace metadata/groups
+        --- request headers ---
+        @groups (dict): Optional user defined groups in the form
+                    {   'group1':['user1', 'user2', ...], 
+                        'group2':['userA', 'userB', ...], ...
+                    }
+        @metadata (dict): Optional user defined metadata in the form
+                    {   'name1': 'value1',
+                        'name2': 'value2', ...
+                    }
+        @param quota(integer): If supported, sets the Account quota
+        @param versioning(string): If supported, sets the Account versioning
+                    to 'auto' or some other supported versioning string
+        """
+        self.assert_account()
+        path = path4url(self.account) + params4url({'update':None}) if update else ''
+        for group, usernames in groups.items():
+            userstr = ''
+            dlm = ''
+            for user in usernames:
+                userstr = userstr + dlm + user
+                dlm = ','
+            self.set_header('X-Account-Group-'+group, userstr)
+        for metaname, metaval in metadata.items():
+            self.set_header('X-Account-Meta-'+metaname, metaval)
+        if quota is not None:
+            self.set_header('X-Account-Policy-Quota', quota)
+        if versioning is not None:
+            self.set_header('X-Account-Policy-Versioning', versioning)
+
+        return self.post(path, success=202)
 
     def purge_container(self, container):
         self.assert_account()
@@ -124,66 +212,15 @@ class PithosClient(StorageClient):
 
         self.put(path, json=hashmap, success=201)
 
-    def account_post(self,
-        update=True, groups={}, metadata={}, quota=None, versioning=None):
-        """ Full Pithos+ POST at account level
-        --- request parameters ---
-        @param update (bool): if True, Do not replace metadata/groups
-        --- request headers ---
-        @groups (dict): Optional user defined groups in the form
-                    {   'group1':['user1', 'user2', ...], 
-                        'group2':['userA', 'userB', ...], ...
-                    }
-        @metadata (dict): Optional user defined metadata in the form
-                    {   'name1': 'value1',
-                        'name2': 'value2', ...
-                    }
-        @param quota(integer): If supported, sets the Account quota
-        @param versioning(string): If supported, sets the Account versioning
-                    to 'auto' or some other supported versioning string
-        """
-        self.assert_account()
-        path = path4url(self.account) + params4url({'update':None}) if update else ''
-        for group, usernames in groups.items():
-            userstr = ''
-            dlm = ''
-            for user in usernames:
-                userstr = userstr + dlm + user
-                dlm = ','
-            self.set_header('X-Account-Group-'+group, userstr)
-        for metaname, metaval in metadata.items():
-            self.set_header('X-Account-Meta-'+metaname, metaval)
-        if quota is not None:
-            self.set_header('X-Account-Policy-Quota', quota)
-        if versioning is not None:
-            self.set_header('X-Account-Policy-Versioning', versioning)
-
-        return self.post(path, success=202)
-
     def set_account_group(self, group, usernames):
         self.account_post(update=True, groups = {group:usernames})
 
     def del_account_group(self, group):
         return self.account_post(update=True, groups={group:[]})
 
-    def get_account_info(self, until = None,
-        if_modified_since=None, if_unmodified_since=None):
-        """ --- Optional request parameters ---
-        @param until (string): optional timestamp
-        --- --- optional request headers ---
-        @param if_modified_since (string): Retrieve if account has changed since provided timestamp
-        @param if_unmodified_since (string): Retrieve if account has not changed since provided timestamp
-        """
-        self.assert_account()
-        path = path4url(self.account)
 
-        path += '' if until is None else params4url({'until':until})
-        if if_modified_since is not None:
-            self.set_header('If-Modified-Since', if_modified_since)
-        if if_modified_since is not None:
-            self.set_header('If-Unmodified-Since', if_unmodified_since)
-
-        r = self.head(path, success=(204, 401))
+    def get_account_info(self):
+        r = self.account_head()
         if r.status_code == 401:
             raise ClientError("No authorization")
         return r.headers
@@ -210,38 +247,8 @@ class PithosClient(StorageClient):
     def set_account_versioning(self, versioning):
         self.account_post(update=True, versioning = versioning)
 
-    def list_containers(self, 
-        limit=None, marker=None, format='json', show_only_shared=False, until=None,
-        if_modified_since=None, if_unmodified_since=None):
-        """  Full Pithos+ GET at account level
-        @param limit (integer): The amount of results requested (server qill use default value if None)
-        @param marker (string): Return containers with name lexicographically after marker
-        @param format (string): reply format can be json or xml (default: json)
-        @param shared (bool): If true, only shared containers will be included in results
-        @param until (string): optional timestamp
-        --- --- optional request headers ---
-        @param if_modified_since (string): Retrieve if account has changed since provided timestamp
-        @param if_unmodified_since (string): Retrieve if account has not changed since provided timestamp
-        """
-        self.assert_account()
-
-        param_dict = dict(format=format)
-        if limit is not None:
-            param_dict['limit'] = limit
-        if marker is not None:
-            param_dict['marker'] = marker
-        if show_only_shared:
-            param_dict['shared'] = None
-        if until is not None:
-            param_dict['until'] = until
-
-        path = path4url(self.account)+params4url(param_dict)
-        if if_modified_since is not None:
-            self.set_header('If-Modified-Since', if_modified_since)
-        if if_unmodified_since is not None:
-            self.set_header('If-Unmodified-Since', if_unmodified_since)
-
-        r = self.get(path, success = (200, 204))
+    def list_containers(self):
+        r = self.account_get()
         return r.json
 
     def get_container_versioning(self, container):
