@@ -50,8 +50,10 @@ class PithosClient(StorageClient):
 
     def account_head(self,
         until = None,
-        if_modified_since=None, if_unmodified_since=None):
-        """ --- Optional request parameters ---
+        if_modified_since=None, if_unmodified_since=None,
+        *args, **kwargs):
+        """ Full Pithos+ HEAD at account level
+        --- request parameters ---
         @param until (string): optional timestamp
         --- --- optional request headers ---
         @param if_modified_since (string): Retrieve if account has changed since provided timestamp
@@ -66,12 +68,14 @@ class PithosClient(StorageClient):
         if if_modified_since is not None:
             self.set_header('If-Unmodified-Since', if_unmodified_since)
 
-        return self.head(path, success=(204, 401))
+        return self.head(path, *args, success=204, **kwargs)
 
     def account_get(self, 
         limit=None, marker=None, format='json', show_only_shared=False, until=None,
-        if_modified_since=None, if_unmodified_since=None):
+        if_modified_since=None, if_unmodified_since=None,
+        *args, **kwargs):
         """  Full Pithos+ GET at account level
+        --- request parameters ---
         @param limit (integer): The amount of results requested (server qill use default value if None)
         @param marker (string): Return containers with name lexicographically after marker
         @param format (string): reply format can be json or xml (default: json)
@@ -99,10 +103,11 @@ class PithosClient(StorageClient):
         if if_unmodified_since is not None:
             self.set_header('If-Unmodified-Since', if_unmodified_since)
 
-        return self.get(path, success = (200, 204))
+        return self.get(path, *args, success = (200, 204), **kwargs)
 
     def account_post(self,
-        update=True, groups={}, metadata={}, quota=None, versioning=None):
+        update=True, groups={}, metadata={}, quota=None, versioning=None,
+        *args, **kwargs):
         """ Full Pithos+ POST at account level
         --- request parameters ---
         @param update (bool): if True, Do not replace metadata/groups
@@ -135,18 +140,151 @@ class PithosClient(StorageClient):
         if versioning is not None:
             self.set_header('X-Account-Policy-Versioning', versioning)
 
-        return self.post(path, success=202)
+        return self.post(path, *args, success=202, **kwargs)
 
-    def purge_container(self, container):
-        self.assert_account()
-        path = path4url(self.account, container)+params4url({'until': unicode(time())})
-        self.delete(path, success=204)
+    def container_head(self,
+        until=None,
+        if_modified_since=None, if_unmodified_since=None):
+        """ Full Pithos+ HEAD at container level
+        --- request params ---
+        @param until (string): optional timestamp
+        --- optional request headers --- 
+        @param if_modified_since (string): Retrieve if account has changed since provided timestamp
+        @param if_unmodified_since (string): Retrieve if account has not changed since provided timestamp
+        """
+        self.assert_container()
+        path = path4url(self.account, self.container) + '' if until is None else params4url(dict(until=until))
+        if if_modified_since is not None:
+            self.set_header('If-Modified-Since', if_modified_since)
+        if if_unmodified_since is not None:
+            self.set_header('If-Unmodified-Since', if_unmodified_since)
+        return self.head(path, success=204)
+
+    def container_get(self,
+        limit = None, marker = None, prefix=None, delimiter=None, path = None, format='json', meta=[], show_only_shared=False,
+        if_modified_since=None, if_unmodified_since=None,
+        *args, **kwargs):
+        """ Full Pithos+ GET at container level
+        --- request parameters ---
+        @param limit (integer): The amount of results requested (server qill use default value if None)
+        @param marker (string): Return containers with name lexicographically after marker
+        @param prefix (string): Return objects starting with prefix
+        @param delimiter (string): Return objects up to the delimiter
+        @param path (string): assume prefix = path and delimiter = / (overwrites prefix
+            and delimiter)
+        @param format (string): reply format can be json or xml (default: json)
+        @param meta (list): Return objects that satisfy the key queries in the specified
+            comma separated list (use <key>, !<key> for existence queries, <key><op><value>
+            for value queries, where <op> can be one of =, !=, <=, >=, <, >)
+        @param shared (bool): If true, only shared containers will be included in results
+        @param until (string): optional timestamp
+        --- --- optional request headers ---
+        @param if_modified_since (string): Retrieve if account has changed since provided timestamp
+        @param if_unmodified_since (string): Retrieve if account has not changed since provided timestamp
+        """
+        self.assert_container()
+
+        param_dict = dict(format = format)
+        if limit is not None:
+            param_dict['limit'] = limit
+        if marker is not None:
+            param_dict['marker'] = marker
+        if path is not None:
+                param_dict['path'] = path
+        else:
+            if prefix is not None:
+                param_dict['prefix'] = prefix
+            if delimiter is not None:
+                param_dict['delimiter'] = prefix
+        if show_only_shared:
+            param_dict['shared'] = None
+        if meta is not None:
+            param_dict['meta'] = meta
+        if until is not None:
+            param_dict['until'] = until
+        path = path4url(self.account, self.container)+params4url(param_dict)
+        if if_modified_since is not None:
+            self.set_header('If-Modified-Since', if_modified_since)
+        if if_unmodified_since is not None:
+            self.set_header('If-Unmodified-Since', if_unmodified_since)
+        return self.get(path, *args, success=200, **kwargs)
+
+    def container_put(self,
+        quota=None, versioning=None, metadata={},
+        *args, **kwargs):
+        """ Full Pithos+ PUT at container level
+        --- request headers ---
+        @param quota (integer): Size limit in KB
+        @param versioning (string): 'auto' or other string supported by server
+        @metadata (dict): Optional user defined metadata in the form
+                    {   'name1': 'value1',
+                        'name2': 'value2', ...
+                    }
+        """
+        self.assert_container()
+        path = path4url(self.account, self.container)
+        for metaname, metaval in metadata.items():
+            self.set_header('X-Container-Meta-'+metaname, metaval)
+        if quota is not None:
+            self.set_header('X-Container-Policy-Quota', quota)
+        if versioning is not None:
+            self.set_header('X-Container-Policy-Versioning', versioning)
+        return self.put(path, *args, success=(201, 202), **kwargs)
+
+    def container_post(self,
+        update=True, format='json',
+        quota=None, versioning=None, metadata={}, content_type=None, content_length=None, transfer_encoding=None,
+        *args, **kwargs):
+        """ Full Pithos+ POST at container level
+        --- request params ---
+        @param update (bool):  if True, Do not replace metadata/groups
+        @param format(string): json (default) or xml
+        --- request headers ---
+        @param quota (integer): Size limit in KB
+        @param versioning (string): 'auto' or other string supported by server
+        @metadata (dict): Optional user defined metadata in the form
+                    {   'name1': 'value1',
+                        'name2': 'value2', ...
+                    }
+        @param content_type (string): set a custom content type
+        @param content_length (string): set a custrom content length
+        @param transer_encoding (string): set a custrom transfer encoding
+        """
+        self.assert_container()
+        param_dict = dict(format=format, update=None) if update else dict(format=format)
+        path = path4url(self.account, self.container)+params4url(param_dict)
+        for metaname, metaval in metadata.items():
+            self.set_header('X-Container-Meta-'+metaname, metaval)
+        if quota is not None:
+            self.set_header('X-Container-Policy-Quota', quota)
+        if versioning is not None:
+            self.set_header('X-Container-Policy-Versioning', versioning)
+        if content_type is not None:
+            self.set_header('Content-Type', content_type)
+        if content_length is not None:
+            self.set_header('Content-Length', content_length)
+        if transfer_encoding is not None:
+            self.set_header('Transfer-Encoding', transfer_encoding)
+        return self.post(path, *args, success=202, **kwargs)
+
+    def container_delete(self,
+        until=None,
+        *args, **kwargs):
+        """ Full Pithos+ DELETE at container level
+        --- request parameters ---
+        @param until (timestamp string): if defined, container is purged up to that time
+        """
+        self.assert_container()
+        path=path4url(self.account, self.container) + ('' if until is None else params4url(dict(until=until)))
+        return self.delete(path, success=204)
+
+    def purge_container(self):
+        self.container_delete(until=unicode(time()))
 
     def put_block(self, data, hash):
-        path = path4url(self.account, self.container)+params4url({'update':None})
-        self.set_header('Content-Type', 'application/octet-stream')
-        self.set_header('Content-Length', len(data))
-        r = self.post(path, data=data, success=202)
+        r = self.container_post(update=True,
+            content_type='application/octet-stream',
+            content_length=len(data), data=data)
         assert r.text.strip() == hash, 'Local hash does not match server'
 
     def create_object(self, object, f, size=None, hash_cb=None,
@@ -210,7 +348,7 @@ class PithosClient(StorageClient):
             if upload_cb:
                 upload_gen.next()
 
-        self.put(path, json=hashmap, success=201)
+        #self.put(path, json=hashmap, success=201)
 
     def set_account_group(self, group, usernames):
         self.account_post(update=True, groups = {group:usernames})
@@ -265,38 +403,16 @@ class PithosClient(StorageClient):
 
     def set_container_meta(self, metapairs):
         assert(type(metapairs) is dict)
-        self.assert_container()
-        path=path4url(self.account, self.container)+params4url({'update':None})
-        for key, val in metapairs.items():
-            self.set_header('X-Container-Meta-'+key, val)
-        self.post(path, success=202)
+        self.container_post(update=True, metadata=metapairs)
 
     def delete_container_meta(self, metakey):
-        headers = self.get_container_info(self.container)
-        self.headers = filter_out(headers, 'x-container-meta-'+metakey, exactMatch = True)
-        if len(self.headers) == len(headers):
-            raise ClientError('X-Container-Meta-%s not found' % metakey, 404)
-        path = path4url(self.account, self.container)
-        self.post(path, success = 202)
-
-    def replace_container_meta(self, metapairs):
-        self.assert_container()
-        path=path4url(self.account, self.container)
-        for key, val in metapairs.items():
-            self.set_header('X-Container-Meta-'+key, val)
-        self.post(path, success=202)
+        self.container_post(update=True, metadata={metakey:''})
 
     def set_container_quota(self, quota):
-        self.assert_container()
-        path = path4url(self.account, self.container)+params4url({'update':None})
-        self.set_header('X-Container-Policy-Quota', quota)
-        self.post(path, success=202)
+        self.container_post(update=True, quota=quota)
 
     def set_container_versioning(self, versioning):
-        self.assert_container()
-        path = path4url(self.account, self.container)+params4url({'update':None})
-        self.set_header('X-Container-Policy-Versioning', versioning)
-        self.post(path, success=202)
+        self.container_post(update=True, versioning=versioning)
 
     def set_object_meta(self, object, metapairs):
         assert(type(metapairs) is dict)

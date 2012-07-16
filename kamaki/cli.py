@@ -905,7 +905,8 @@ class store_purge(_store_account_command):
 
     def main(self, container):
         super(store_purge, self).main()
-        self.client.purge_container(container)
+        self.client.container = container
+        self.client.purge_container()
 
 @command(api='storage')
 class store_publish(_store_container_command):
