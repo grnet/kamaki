@@ -210,7 +210,11 @@ class server_info(object):
     """Get server details"""
 
     def main(self, server_id):
-        server = self.client.get_server_details(int(server_id))
+        try:
+            server = self.client.get_server_details(int(server_id))
+        except ValueError:
+            print('Server id must be a base10 integer')
+            return
         print_dict(server)
 
 
@@ -261,7 +265,11 @@ class server_rename(object):
     """Update a server's name"""
 
     def main(self, server_id, new_name):
-        self.client.update_server_name(int(server_id), new_name)
+        try:
+            self.client.update_server_name(int(server_id), new_name)
+        except ValueError:
+            print('Server id must be a base10 integer')
+            return
 
 
 @command(api='compute')
@@ -269,7 +277,11 @@ class server_delete(object):
     """Delete a server"""
 
     def main(self, server_id):
-        self.client.delete_server(int(server_id))
+        try:
+            self.client.delete_server(int(server_id))
+        except ValueError:
+            print('Server id must be a base10 integer')
+            return
 
 
 @command(api='compute')
@@ -281,7 +293,11 @@ class server_reboot(object):
                 default=False, help='perform a hard reboot')
 
     def main(self, server_id):
-        self.client.reboot_server(int(server_id), self.args.hard)
+        try:
+            self.client.reboot_server(int(server_id), self.args.hard)
+        except ValueError:
+            print('Server id must be a base10 integer')
+            return
 
 
 @command(api='cyclades')
@@ -289,7 +305,11 @@ class server_start(object):
     """Start a server"""
 
     def main(self, server_id):
-        self.client.start_server(int(server_id))
+        try:
+            self.client.start_server(int(server_id))
+        except ValueError:
+            print('Server id must be a base10 integer')
+            return
 
 
 @command(api='cyclades')
@@ -297,7 +317,11 @@ class server_shutdown(object):
     """Shutdown a server"""
 
     def main(self, server_id):
-        self.client.shutdown_server(int(server_id))
+        try:
+            self.client.shutdown_server(int(server_id))
+        except ValueError:
+            print('Server id must be a base10 integer')
+            return
 
 
 @command(api='cyclades')
@@ -305,7 +329,11 @@ class server_console(object):
     """Get a VNC console"""
 
     def main(self, server_id):
-        reply = self.client.get_server_console(int(server_id))
+        try:
+            reply = self.client.get_server_console(int(server_id))
+        except ValueError:
+            print('Server id must be a base10 integer')
+            return
         print_dict(reply)
 
 
@@ -314,7 +342,11 @@ class server_firewall(object):
     """Set the server's firewall profile"""
 
     def main(self, server_id, profile):
-        self.client.set_firewall_profile(int(server_id), profile)
+        try:
+            self.client.set_firewall_profile(int(server_id), profile)
+        except ValueError:
+            print('Server id must be a base10 integer')
+            return
 
 
 @command(api='cyclades')
@@ -322,7 +354,11 @@ class server_addr(object):
     """List a server's addresses"""
 
     def main(self, server_id, network=None):
-        reply = self.client.list_server_nic_details(int(server_id), network)
+        try:
+            reply = self.client.list_server_nic_details(int(server_id), network)
+        except ValueError:
+            print('Server id must be a base10 integer')
+            return
         print_list(reply)
 
 @command(api='compute')
@@ -330,7 +366,11 @@ class server_meta(object):
     """Get a server's metadata"""
 
     def main(self, server_id, key=None):
-        reply = self.client.get_server_metadata(int(server_id), key)
+        try:
+            reply = self.client.get_server_metadata(int(server_id), key)
+        except ValueError:
+            print('Server id must be a base10 integer')
+            return
         print_dict(reply)
 
 
@@ -339,7 +379,11 @@ class server_addmeta(object):
     """Add server metadata"""
 
     def main(self, server_id, key, val):
-        reply = self.client.create_server_metadata(int(server_id), key, val)
+        try:
+            reply = self.client.create_server_metadata(int(server_id), key, val)
+        except ValueError:
+            print('Server id must be a base10 integer')
+            return
         print_dict(reply)
 
 
@@ -349,7 +393,11 @@ class server_setmeta(object):
 
     def main(self, server_id, key, val):
         metadata = {key: val}
-        reply = self.client.update_server_metadata(int(server_id), **metadata)
+        try:
+            reply = self.client.update_server_metadata(int(server_id), **metadata)
+        except ValueError:
+            print('Server id must be a base10 integer')
+            return
         print_dict(reply)
 
 
@@ -358,7 +406,11 @@ class server_delmeta(object):
     """Delete server metadata"""
 
     def main(self, server_id, key):
-        self.client.delete_server_metadata(int(server_id), key)
+        try:
+            self.client.delete_server_metadata(int(server_id), key)
+        except ValueError:
+            print('Server id must be a base10 integer')
+            return
 
 
 @command(api='cyclades')
@@ -366,7 +418,11 @@ class server_stats(object):
     """Get server statistics"""
 
     def main(self, server_id):
-        reply = self.client.get_server_stats(int(server_id))
+        try:
+            reply = self.client.get_server_stats(int(server_id))
+        except ValueError:
+            print('Server id must be a base10 integer')
+            return
         print_dict(reply, exclude=('serverRef',))
 
 
