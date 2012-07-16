@@ -88,7 +88,7 @@ def params4url(params):
     dlmtr = '?'
     for name in params:
         result = result + dlmtr + name
-        result = result + '=' + params[name] if params[name] is not None else result
+        result = result + '=' + unicode(params[name]) if params[name] is not None else result
         dlmtr = '&'
     return result
 
