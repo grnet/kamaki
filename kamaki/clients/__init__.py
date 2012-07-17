@@ -68,10 +68,10 @@ class Client(object):
         details = r.text
         raise ClientError(message, r.status_code, details)
 
-    def set_header(self, name, value):
-        #If the header exists, replace the value
-        #otherwise create a new header
-        self.headers[unicode(name)] = unicode(value)
+    def set_header(self, name, value, iff=True):
+        """Set a header 'name':'value' provided value is not None and iff is True"""
+        if value is not None and iff:
+            self.headers[unicode(name)] = unicode(value)
 
     def request(self, method, path, **kwargs):
         raw = kwargs.pop('raw', False)
@@ -134,6 +134,12 @@ class Client(object):
 
     def put(self, path, **kwargs):
         return self.request('put', path, **kwargs)
+
+    def copy(self, path, **kwargs):
+        return self.request('copy', path, **kwargs)
+
+    def move(self, path, **kwargs):
+        return self.request('move', path, **kwargs)
 
 
 from .compute import ComputeClient as compute

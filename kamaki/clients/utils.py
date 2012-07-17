@@ -92,3 +92,13 @@ def params4url(params):
         dlmtr = '&'
     return result
 
+def list2str(alist, seperator=','):
+    """@return a string of comma seperated elements of the list"""
+    ret = ''
+    for item in sorted(alist):
+        if 0 == alist.index(item):
+            ret = unicode(item)
+        else:
+            ret += seperator+unicode(item)
+    return ret
+
