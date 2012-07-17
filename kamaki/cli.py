@@ -571,11 +571,14 @@ class network_connect(object):
 
 @command(api='cyclades')
 class network_disconnect(object):
-    """Disconnect a server from a network"""
+    """Disconnect a nic that connects a server to a network"""
 
-    def main(self, server_id, network_id):
-        self.client.disconnect_server(server_id, network_id)
-
+    def main(self, nic_id):
+        try:
+            server_id = nic_id.split('-')[1]
+            self.client.disconnect_server(server_id, nic_id)
+        except IndexError:
+            print('nid_id format: nic-<server_id>-<nic_index>')
 
 @command(api='image')
 class image_public(object):

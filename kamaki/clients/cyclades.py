@@ -69,15 +69,10 @@ class CycladesClient(ComputeClient):
         req = {'firewallProfile': {'profile': profile}}
         self.post(path, json=req, success=202)
     
-    def list_server_nic_details(self, server_id, network=None):
+    def list_server_nics(self, server_id):
         path = path4url('servers', server_id, 'ips')
-        if network:
-            path += path4url(network)
         r = self.get(path, success=200)
-        if network:
-            return [r.json['network']]
-        else:
-            return r.json['attachments']['values']
+        return r.json['addresses']['values']
     
     def get_server_stats(self, server_id):
         path = path4url('servers', server_id, 'stats')
@@ -124,9 +119,12 @@ class CycladesClient(ComputeClient):
         req = {'add': {'serverRef': server_id}}
         self.post(path, json=req, success=202)
 
-    def disconnect_server(self, server_id, network_id):
-        matched_nets = [net for net in self.list_server_nic_details(server_id) if net['network_id'] == network_id]
-        path = path4url('networks', network_id, 'action')
-        for nic in matched_nets:
-            req = {'remove': {'attachment': unicode(nic['id'])}}
+    def disconnect_server(self, server_id, nic_id):
+        server_nets = self.list_server_nics(server_id)
+        nets = [(net['id'],net['network_id'])  for net in server_nets if nic_id == net['id']]
+        print('Found:'+unicode(nets))
+        for (nic_id, network_id) in nets:
+            print('\n\n\nNow i am willing to DESTROY nic %s of net %s\n\n\n' % (nic_id, network_id))
+            path = path4url('networks', network_id, 'action')
+            req = dict(remove=dict(attachment=unicode(nic_id)))
             self.post(path, json=req, success=202)

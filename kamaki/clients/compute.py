@@ -39,11 +39,15 @@ class ComputeClient(Client):
     """OpenStack Compute API 1.1 client"""
     
     def raise_for_status(self, r):
-        d = r.json
-        key = d.keys()[0]
-        val = d[key]
-        message = '%s: %s' % (key, val.get('message', ''))
-        details = val.get('details', '')
+        try:
+            d = r.json
+            key = d.keys()[0]
+            val = d[key]
+            message = '%s: %s' % (key, val.get('message', ''))
+            details = val.get('details', '')
+        except AttributeError:
+            message = 'Request responded with error code '+unicode(r.status_code)
+            details = unicode(r.request.method)+' '+unicode(r.url)
         raise ClientError(message, r.status_code, details)
     
     def list_servers(self, detail=False):
