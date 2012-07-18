@@ -637,6 +637,7 @@ class PithosClient(StorageClient):
 
     def get_account_info(self):
         r = self.account_head()
+        r = self.account_head(until='12')
         if r.status_code == 401:
             raise ClientError("No authorization")
         return r.headers

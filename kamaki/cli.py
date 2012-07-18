@@ -43,15 +43,15 @@ The name of the class is important and it will determine the name and grouping
 of the command. This behavior can be overriden with the 'group' and 'name'
 decorator arguments:
 
-    @command(api='compute')
-    class server_list(object):
-        # This command will be named 'list' under group 'server'
-        ...
+@command(api='compute')
+class server_list(object):
+//This command will be named 'list' under group 'server'
+...
 
-    @command(api='compute', name='ls')
-    class server_list(object):
-        # This command will be named 'ls' under group 'server'
-        ...
+@command(api='compute', name='ls')
+class server_list(object):
+//This command will be named 'ls' under group 'server'
+...
 
 The docstring of a command class will be used as the command description in
 help messages, unless overriden with the 'description' decorator argument.
@@ -59,9 +59,9 @@ help messages, unless overriden with the 'description' decorator argument.
 The syntax of a command will be generated dynamically based on the signature
 of the 'main' method, unless overriden with the 'syntax' decorator argument:
 
-    def main(self, server_id, network=None):
-        # This syntax of this command will be: '<server id> [network]'
-        ...
+def main(self, server_id, network=None):
+// This syntax of this command will be: '<server id> [network]'
+...
 
 The order of commands is important, it will be preserved in the help output.
 """
@@ -102,10 +102,8 @@ GROUPS = {
     'store': "Storage API commands",
     'astakos': "Astakos API commands"}
 
-
 class ProgressBar(IncrementalBar):
     suffix = '%(percent)d%% - %(eta)ds'
-
 
 def command(api=None, group=None, name=None, syntax=None):
     """Class decorator that registers a class as a CLI command."""
@@ -141,7 +139,6 @@ def command(api=None, group=None, name=None, syntax=None):
         return cls
     return decorator
 
-
 @command(api='config')
 class config_list(object):
     """List configuration options"""
@@ -157,7 +154,6 @@ class config_list(object):
             for key, val in sorted(items):
                 print('%s.%s = %s' % (section, key, val))
 
-
 @command(api='config')
 class config_get(object):
     """Show a configuration option"""
@@ -169,7 +165,6 @@ class config_get(object):
         if value is not None:
             print(value)
 
-
 @command(api='config')
 class config_set(object):
     """Set a configuration option"""
@@ -180,7 +175,6 @@ class config_set(object):
         self.config.set(section, key, value)
         self.config.write()
 
-
 @command(api='config')
 class config_delete(object):
     """Delete a configuration option (and use the default value)"""
@@ -190,7 +184,6 @@ class config_delete(object):
         section = section or 'global'
         self.config.remove_option(section, key)
         self.config.write()
-
 
 @command(api='compute')
 class server_list(object):
@@ -204,7 +197,6 @@ class server_list(object):
         servers = self.client.list_servers(self.args.detail)
         print_items(servers)
 
-
 @command(api='compute')
 class server_info(object):
     """Get server details"""
@@ -213,10 +205,9 @@ class server_info(object):
         try:
             server = self.client.get_server_details(int(server_id))
         except ValueError:
-            print('Server id must be a base10 integer')
+            print(yellow('Server id must be a base10 integer'))
             return
         print_dict(server)
-
 
 @command(api='compute')
 class server_create(object):
@@ -259,7 +250,6 @@ class server_create(object):
                 personalities)
         print_dict(reply)
 
-
 @command(api='compute')
 class server_rename(object):
     """Update a server's name"""
@@ -268,9 +258,7 @@ class server_rename(object):
         try:
             self.client.update_server_name(int(server_id), new_name)
         except ValueError:
-            print('Server id must be a base10 integer')
-            return
-
+            print(yellow('Server id must be a base10 integer'))
 
 @command(api='compute')
 class server_delete(object):
@@ -280,9 +268,7 @@ class server_delete(object):
         try:
             self.client.delete_server(int(server_id))
         except ValueError:
-            print('Server id must be a base10 integer')
-            return
-
+            print(yellow('Server id must be a base10 integer'))
 
 @command(api='compute')
 class server_reboot(object):
@@ -296,9 +282,7 @@ class server_reboot(object):
         try:
             self.client.reboot_server(int(server_id), self.args.hard)
         except ValueError:
-            print('Server id must be a base10 integer')
-            return
-
+            print(yellow('Server id must be a base10 integer'))
 
 @command(api='cyclades')
 class server_start(object):
@@ -308,9 +292,7 @@ class server_start(object):
         try:
             self.client.start_server(int(server_id))
         except ValueError:
-            print('Server id must be a base10 integer')
-            return
-
+            print(yellow('Server id must be a base10 integer'))
 
 @command(api='cyclades')
 class server_shutdown(object):
@@ -320,9 +302,7 @@ class server_shutdown(object):
         try:
             self.client.shutdown_server(int(server_id))
         except ValueError:
-            print('Server id must be a base10 integer')
-            return
-
+            print(yellow('Server id must be a base10 integer'))
 
 @command(api='cyclades')
 class server_console(object):
@@ -332,10 +312,9 @@ class server_console(object):
         try:
             reply = self.client.get_server_console(int(server_id))
         except ValueError:
-            print('Server id must be a base10 integer')
+            print(yellow('Server id must be a base10 integer'))
             return
         print_dict(reply)
-
 
 @command(api='cyclades')
 class server_firewall(object):
@@ -345,9 +324,7 @@ class server_firewall(object):
         try:
             self.client.set_firewall_profile(int(server_id), profile)
         except ValueError:
-            print('Server id must be a base10 integer')
-            return
-
+            print(yellow('Server id must be a base10 integer'))
 
 @command(api='cyclades')
 class server_addr(object):
@@ -357,7 +334,7 @@ class server_addr(object):
         try:
             reply = self.client.list_server_nic_details(int(server_id), network)
         except ValueError:
-            print('Server id must be a base10 integer')
+            print(yellow('Server id must be a base10 integer'))
             return
         print_list(reply)
 
@@ -369,10 +346,9 @@ class server_meta(object):
         try:
             reply = self.client.get_server_metadata(int(server_id), key)
         except ValueError:
-            print('Server id must be a base10 integer')
+            print(yellow('Server id must be a base10 integer'))
             return
         print_dict(reply)
-
 
 @command(api='compute')
 class server_addmeta(object):
@@ -382,10 +358,9 @@ class server_addmeta(object):
         try:
             reply = self.client.create_server_metadata(int(server_id), key, val)
         except ValueError:
-            print('Server id must be a base10 integer')
+            print(yellow('Server id must be a base10 integer'))
             return
         print_dict(reply)
-
 
 @command(api='compute')
 class server_setmeta(object):
@@ -396,10 +371,9 @@ class server_setmeta(object):
         try:
             reply = self.client.update_server_metadata(int(server_id), **metadata)
         except ValueError:
-            print('Server id must be a base10 integer')
+            print(yellow('Server id must be a base10 integer'))
             return
         print_dict(reply)
-
 
 @command(api='compute')
 class server_delmeta(object):
@@ -409,9 +383,8 @@ class server_delmeta(object):
         try:
             self.client.delete_server_metadata(int(server_id), key)
         except ValueError:
-            print('Server id must be a base10 integer')
+            print(yellow('Server id must be a base10 integer'))
             return
-
 
 @command(api='cyclades')
 class server_stats(object):
@@ -421,10 +394,9 @@ class server_stats(object):
         try:
             reply = self.client.get_server_stats(int(server_id))
         except ValueError:
-            print('Server id must be a base10 integer')
+            print(yellow('Server id must be a base10 integer'))
             return
         print_dict(reply, exclude=('serverRef',))
-
 
 @command(api='compute')
 class flavor_list(object):
@@ -438,15 +410,17 @@ class flavor_list(object):
         flavors = self.client.list_flavors(self.args.detail)
         print_items(flavors)
 
-
 @command(api='compute')
 class flavor_info(object):
     """Get flavor details"""
 
     def main(self, flavor_id):
-        flavor = self.client.get_flavor_details(int(flavor_id))
+        try:
+            flavor = self.client.get_flavor_details(int(flavor_id))
+        except ValueError:
+            print(yellow('Flavor id must be a base10 integer'))
+            return
         print_dict(flavor)
-
 
 @command(api='compute')
 class image_list(object):
@@ -460,7 +434,6 @@ class image_list(object):
         images = self.client.list_images(self.args.detail)
         print_items(images)
 
-
 @command(api='compute')
 class image_info(object):
     """Get image details"""
@@ -469,14 +442,12 @@ class image_info(object):
         image = self.client.get_image_details(image_id)
         print_dict(image)
 
-
 @command(api='compute')
 class image_delete(object):
     """Delete image"""
 
     def main(self, image_id):
         self.client.delete_image(image_id)
-
 
 @command(api='compute')
 class image_properties(object):
@@ -486,7 +457,6 @@ class image_properties(object):
         reply = self.client.get_image_metadata(image_id, key)
         print_dict(reply)
 
-
 @command(api='compute')
 class image_addproperty(object):
     """Add an image property"""
@@ -494,7 +464,6 @@ class image_addproperty(object):
     def main(self, image_id, key, val):
         reply = self.client.create_image_metadata(image_id, key, val)
         print_dict(reply)
-
 
 @command(api='compute')
 class image_setproperty(object):
@@ -505,14 +474,12 @@ class image_setproperty(object):
         reply = self.client.update_image_metadata(image_id, **metadata)
         print_dict(reply)
 
-
 @command(api='compute')
 class image_delproperty(object):
     """Delete an image property"""
 
     def main(self, image_id, key):
         self.client.delete_image_metadata(image_id, key)
-
 
 @command(api='cyclades')
 class network_list(object):
@@ -526,7 +493,6 @@ class network_list(object):
         networks = self.client.list_networks(self.args.detail)
         print_items(networks)
 
-
 @command(api='cyclades')
 class network_create(object):
     """Create a network"""
@@ -534,7 +500,6 @@ class network_create(object):
     def main(self, name):
         reply = self.client.create_network(name)
         print_dict(reply)
-
 
 @command(api='cyclades')
 class network_info(object):
@@ -544,14 +509,12 @@ class network_info(object):
         network = self.client.get_network_details(network_id)
         print_dict(network)
 
-
 @command(api='cyclades')
 class network_rename(object):
     """Update network name"""
 
     def main(self, network_id, new_name):
         self.client.update_network_name(network_id, new_name)
-
 
 @command(api='cyclades')
 class network_delete(object):
@@ -560,14 +523,12 @@ class network_delete(object):
     def main(self, network_id):
         self.client.delete_network(network_id)
 
-
 @command(api='cyclades')
 class network_connect(object):
     """Connect a server to a network"""
 
     def main(self, server_id, network_id):
         self.client.connect_server(server_id, network_id)
-
 
 @command(api='cyclades')
 class network_disconnect(object):
@@ -578,7 +539,7 @@ class network_disconnect(object):
             server_id = nic_id.split('-')[1]
             self.client.disconnect_server(server_id, nic_id)
         except IndexError:
-            print('nid_id format: nic-<server_id>-<nic_index>')
+            print(yellow('nid_id format: nic-<server_id>-<nic_index>'))
 
 @command(api='image')
 class image_public(object):
@@ -615,7 +576,6 @@ class image_public(object):
                                          order=order)
         print_items(images, title=('name',))
 
-
 @command(api='image')
 class image_meta(object):
     """Get image metadata"""
@@ -623,7 +583,6 @@ class image_meta(object):
     def main(self, image_id):
         image = self.client.get_meta(image_id)
         print_dict(image)
-
 
 @command(api='image')
 class image_register(object):
@@ -674,7 +633,6 @@ class image_register(object):
 
         self.client.register(name, location, params, properties)
 
-
 @command(api='image')
 class image_members(object):
     """Get image members"""
@@ -683,7 +641,6 @@ class image_members(object):
         members = self.client.list_members(image_id)
         for member in members:
             print(member['member_id'])
-
 
 @command(api='image')
 class image_shared(object):
@@ -694,14 +651,12 @@ class image_shared(object):
         for image in images:
             print(image['image_id'])
 
-
 @command(api='image')
 class image_addmember(object):
     """Add a member to an image"""
 
     def main(self, image_id, member):
         self.client.add_member(image_id, member)
-
 
 @command(api='image')
 class image_delmember(object):
@@ -710,14 +665,12 @@ class image_delmember(object):
     def main(self, image_id, member):
         self.client.remove_member(image_id, member)
 
-
 @command(api='image')
 class image_setmembers(object):
     """Set the members of an image"""
 
     def main(self, image_id, *member):
         self.client.set_members(image_id, member)
-
 
 class _store_account_command(object):
     """Base class for account level storage commands"""
@@ -742,7 +695,6 @@ class _store_account_command(object):
     def main(self):
         if self.args.account is not None:
             self.client.account = self.args.account
-
 
 class _store_container_command(_store_account_command):
     """Base class for container level storage commands"""
@@ -969,7 +921,6 @@ class store_delpermitions(_store_container_command):
         super(store_delpermitions, self).main(container___path)
         self.client.del_object_sharing(self.path)
 
-
 @command(api='storage')
 class store_info(_store_container_command):
     """Get information for account [, container [or object]]"""
@@ -1107,13 +1058,11 @@ class astakos_authenticate(object):
         reply = self.client.authenticate()
         print_dict(reply)
 
-
 def print_groups():
     print('\nGroups:')
     for group in _commands:
         description = GROUPS.get(group, '')
         print(' ', group.ljust(12), description)
-
 
 def print_commands(group):
     description = GROUPS.get(group, '')
@@ -1124,7 +1073,6 @@ def print_commands(group):
     for name, cls in _commands[group].items():
         print(' ', name.ljust(14), cls.description)
 
-
 def add_handler(name, level, prefix=''):
     h = logging.StreamHandler()
     fmt = logging.Formatter(prefix + '%(message)s')
@@ -1132,7 +1080,6 @@ def add_handler(name, level, prefix=''):
     logger = logging.getLogger(name)
     logger.addHandler(h)
     logger.setLevel(level)
-
 
 def main():
     exe = basename(sys.argv[0])
@@ -1308,7 +1255,6 @@ def main():
     except ConnectionError as err:
         print(red("Connection error"), file=stderr)
         exit(1)
-
 
 if __name__ == '__main__':
     main()

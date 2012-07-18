@@ -33,37 +33,44 @@
 
 import unittest
 
+from kamaki.clients import pithos
 from kamaki.clients import cyclades
 
-def setUp_a_running_system():
-    print('Assuming you already have a running system at http://127.0.0.1:8000 ...')
-    return('http://127.0.0.1:8000', 'C/yBXmz3XjTFBnujc2biAg==')
+class testPithos(unittest.TestCase):
+    def setUp(self):
+        url = 'http://127.0.0.1:8000/v1'
+        token = 'C/yBXmz3XjTFBnujc2biAg=='
+        account = 'admin@adminland.com'
+        container=None
+        self.client = pithos(url, token, account, container)
 
-def shutdown_the_running_system():
-    print('Assuming you will shut down the system yourself ...')
+    def test_account_head(self):
+        r = self.client.account_head()
+        self.assertEqual(r.status_code, 204)
+        r = self.client.account_head(until='99999999', if_modified_since='1234', if_unmodified_since='5678')
+        self.assertEqual(r.status_code, 204)
+        print(unicode(r.headers['x-account-until-timestamp']))
 
 class testCyclades(unittest.TestCase):
     def setUp(self):
-        (self.base_url, self.token) = setUp_a_running_system()
-        self.base_url = self.base_url + '/api/v1.1'
-        self.cycl = cyclades(self.base_url, self.token)
-        self.flavor0 = 'C1R1024D30'
-        self.image0 = ''
+        pass
 
     def test_list_servers(self):
-        l = self.cycl.list_servers()
-        self.assertEqual('snf-10012', l[0]['name'])
-        self.assertEqual(1001, l[0]['id'])
+        pass
 
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(unittest.makeSuite(testCyclades))
+    #suite.addTest(unittest.makeSuite(testCyclades))
+    suite.addTest(unittest.makeSuite(testPithos))
     return suite
 
 if __name__ == '__main__':
     suiteFew = unittest.TestSuite()
 
+    #kamaki/pithos.py
+    suiteFew.addTest(testPithos('test_account_head'))
+
     #kamaki/cyclades.py
-    suiteFew.addTest(testCyclades('test_list_servers'))
+    #suiteFew.addTest(testCyclades('test_list_servers'))
 
     unittest.TextTestRunner(verbosity = 2).run(suite())

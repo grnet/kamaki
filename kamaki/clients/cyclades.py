@@ -34,7 +34,6 @@
 from .compute import ComputeClient
 from .utils import path4url
 
-
 class CycladesClient(ComputeClient):
     """GRNet Cyclades API client"""
     
@@ -122,9 +121,7 @@ class CycladesClient(ComputeClient):
     def disconnect_server(self, server_id, nic_id):
         server_nets = self.list_server_nics(server_id)
         nets = [(net['id'],net['network_id'])  for net in server_nets if nic_id == net['id']]
-        print('Found:'+unicode(nets))
         for (nic_id, network_id) in nets:
-            print('\n\n\nNow i am willing to DESTROY nic %s of net %s\n\n\n' % (nic_id, network_id))
             path = path4url('networks', network_id, 'action')
             req = dict(remove=dict(attachment=unicode(nic_id)))
             self.post(path, json=req, success=202)

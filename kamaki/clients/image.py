@@ -33,6 +33,7 @@
 
 
 from . import Client, ClientError
+from .utils import path4url
 
 
 class ImageClient(Client):
@@ -46,7 +47,7 @@ class ImageClient(Client):
         super(ImageClient, self).raise_for_status(r)
 
     def list_public(self, detail=False, filters={}, order=''):
-        path = '/images/detail' if detail else '/images/'
+        path = path4url('images','detail') if detail else path4url('images/')
         params = {}
         params.update(filters)
 
@@ -63,7 +64,7 @@ class ImageClient(Client):
         return r.json
 
     def get_meta(self, image_id):
-        path = '/images/%s' % (image_id,)
+        path=path4url('mages', image_id)
         r = self.head(path, success=200)
 
         reply = {}
@@ -85,41 +86,40 @@ class ImageClient(Client):
         return reply
 
     def register(self, name, location, params={}, properties={}):
-        path = '/images/'
-        headers = {}
-        headers['x-image-meta-name'] = name
-        headers['x-image-meta-location'] = location
+        path = path4url('images/')
+        self.set_header('X-Image-Meta-Name', name)
+        self.set_header('X-Image-Meta-Location', location)
 
         for key, val in params.items():
             if key in ('id', 'store', 'disk_format', 'container_format',
                        'size', 'checksum', 'is_public', 'owner'):
                 key = 'x-image-meta-' + key.replace('_', '-')
-                headers[key] = val
+                self.set_header(key, val)
 
         for key, val in properties.items():
-            headers['x-image-meta-property-' + key] = val
+            self.set_header('X-Image-Meta-Property-'+key, val)
 
-        self.post(path, headers=headers, success=200)
+        self.post(path, success=200)
 
     def list_members(self, image_id):
-        path = '/images/%s/members' % (image_id,)
+        path = path4url('images',image_id,'members')
         r = self.get(path, success=200)
         return r.json['members']
 
     def list_shared(self, member):
-        path = '/shared-images/%s' % (member,)
+        path = path4url('shared-images', member)
         r = self.get(path, success=200)
         return r.json['shared_images']
 
     def add_member(self, image_id, member):
-        path = '/images/%s/members/%s' % (image_id, member)
+        path = path4url('images', image_id, 'members', member)
         self.put(path, success=204)
 
     def remove_member(self, image_id, member):
-        path = '/images/%s/members/%s' % (image_id, member)
+        path = path4url('images', image_id, 'members', member)
         self.delete(path, success=204)
 
     def set_members(self, image_id, members):
-        path = '/images/%s/members' % image_id
+        path = path4url('images', image_id, 'members')
         req = {'memberships': [{'member_id': member} for member in members]}
         self.put(path, json=req, success=204)
