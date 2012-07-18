@@ -40,6 +40,7 @@ class testPithos(unittest.TestCase):
     def setUp(self):
         url = 'http://127.0.0.1:8000/v1'
         token = 'C/yBXmz3XjTFBnujc2biAg=='
+        token = 'ac0yH8cQMEZu3M3Mp1MWGA=='
         account = 'admin@adminland.com'
         container=None
         self.client = pithos(url, token, account, container)
@@ -47,9 +48,87 @@ class testPithos(unittest.TestCase):
     def test_account_head(self):
         r = self.client.account_head()
         self.assertEqual(r.status_code, 204)
-        r = self.client.account_head(until='99999999', if_modified_since='1234', if_unmodified_since='5678')
+        r = self.client.account_head(until='1000000000')
         self.assertEqual(r.status_code, 204)
-        print(unicode(r.headers['x-account-until-timestamp']))
+        datestring = unicode(r.headers['x-account-until-timestamp'])
+        self.assertEqual(u'Sun, 09 Sep 2001 01:46:40 GMT', datestring)
+        import time
+        now = time.mktime(time.gmtime())
+        r = self.client.account_head(if_modified_since=now)
+        r = self.client.account_head(if_unmodified_since=10000)
+
+    def test_account_get(self):
+        r = self.client.account_get()
+        self.assertEqual(r.status_code, 200)
+        fullLen = len(r.json)
+        self.assertEqual(fullLen, 3)
+        r = self.client.account_get(limit=1)
+        self.assertEqual(len(r.json), 1)
+        #Assume there exist at least two containers prefixed 'test'
+        r = self.client.account_get(limit=3, marker='test')
+        self.assertNotEqual(len(r.json), 0)
+        conames = [container['name'] for container in r.json if container['name'].lower().startswith('test')]
+        self.assertEqual(len(conames), len(r.json))
+        r = self.client.account_get(show_only_shared=True)
+        self.assertEqual(len(r.json), 2)
+        r = self.client.account_get(until=1342609206)
+        self.assertEqual(len(r.json), 2)
+
+    def test_account_post(self):
+        r = self.client.account_post()
+        self.assertEqual(r.status_code, 202)
+        grpName = 'tstgrp'
+        self.client.set_account_group(grpName, ['u1', 'u2'])
+        r = self.client.get_account_group()
+        self.assertEqual(r['x-account-group-'+grpName], 'u1,u2')
+        self.client.del_account_group(grpName)
+        r = self.client.get_account_group()
+        self.assertTrue(not r.has_key('x-account-group-grpName'))
+        self.client.set_account_meta({'metatest1':'v1', 'metatest2':'v2'})
+        r = self.client.get_account_meta()
+        self.assertEqual(r['x-account-meta-metatest1'], 'v1')
+        self.assertEqual(r['x-account-meta-metatest2'], 'v2')
+        self.client.del_account_meta('metatest1')
+        r = self.client.get_account_meta()
+        self.assertTrue(not r.has_key('x-account-meta-metatest1'))
+        self.client.del_account_meta('metatest2')
+        r = self.client.get_account_meta()
+        self.assertTrue(not r.has_key('x-account-meta-metatest2'))
+
+    def test_container_head(self):
+        self.client.container = 'testCo'
+        r = self.client.account_head()
+        self.assertEqual(r.status_code, 204)
+        r = self.client.account_head(until=1000000000)
+        datestring = unicode(r.headers['x-account-until-timestamp'])
+        self.assertEqual(u'Sun, 09 Sep 2001 01:46:40 GMT', datestring)
+        r = self.client.account_head(if_modified_since=1342609206)
+        r = self.client.account_head(if_unmodified_since=1342609206)
+        self.client.container = ''
+
+    def test_container_get(self):
+        self.client.container = 'testCo'
+        r = self.client.container_get()
+        self.assertEqual(r.status_code, 200)
+        fullLen = len(r.json)
+        r = self.client.container_get(prefix='lal')
+        lalobjects = [obj for obj in r.json if obj['name'].startswith('lal')]
+        self.assertTrue(len(r.json) > 1)
+        self.assertEqual(len(r.json), len(lalobjects))
+        r = self.client.container_get(limit=1)
+        self.assertEqual(len(r.json), 1)
+        r = self.client.container_get(marker='neo')
+        self.assertTrue(len(r.json) > 1)
+        neobjects = [obj for obj in r.json if obj['name'] > 'neo']
+        self.assertEqual(len(r.json), len(neobjects))
+        r = self.client.container_get(prefix='testDir/testDir', delimiter='2')
+        self.assertTrue(fullLen > len(r.json))
+        r = self.client.container_get(format='xml')
+        self.assertEqual(r.text.split()[4], 'name="testCo">')
+        #meta-check is not that obvious...
+        self.client.set_container_meta({'m1':'v1', 'm2':'v2'}
+        r = self.client.container_get(meta=[])
+        
 
 class testCyclades(unittest.TestCase):
     def setUp(self):
@@ -60,8 +139,8 @@ class testCyclades(unittest.TestCase):
 
 def suite():
     suite = unittest.TestSuite()
-    #suite.addTest(unittest.makeSuite(testCyclades))
     suite.addTest(unittest.makeSuite(testPithos))
+    #suite.addTest(unittest.makeSuite(testCyclades))
     return suite
 
 if __name__ == '__main__':
@@ -69,6 +148,10 @@ if __name__ == '__main__':
 
     #kamaki/pithos.py
     suiteFew.addTest(testPithos('test_account_head'))
+    suiteFew.addTest(testPithos('test_account_get'))
+    suiteFew.addTest(testPithos('test_account_post'))
+    suiteFew.addTest(testPithos('test_container_head'))
+    suiteFew.addTest(testPithos('test_container_get'))
 
     #kamaki/cyclades.py
     #suiteFew.addTest(testCyclades('test_list_servers'))

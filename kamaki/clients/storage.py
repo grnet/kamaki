@@ -66,7 +66,7 @@ class StorageClient(Client):
             self.set_header('X-Account-Meta-'+key, val)
         self.post(path, success=202)
 
-    def delete_account_meta(self, metakey):
+    def del_account_meta(self, metakey):
         headers = self.get_account_info()
         self.headers = filter_out(headers, 'X-Account-Meta-'+metakey, exactMatch = True)
         if len(self.headers) == len(headers):

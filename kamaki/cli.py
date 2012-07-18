@@ -971,7 +971,7 @@ class store_delmeta(_store_container_command):
     def main(self, metakey, container____path__=None):
         super(store_delmeta, self).main(container____path__)
         if self.container is None:
-            self.client.delete_account_meta(metakey)
+            self.client.del_account_meta(metakey)
         elif self.path is None:
             self.client.delete_container_meta(metakey)
         else:
@@ -1024,6 +1024,15 @@ class store_setversioning(_store_account_command):
         else:
             self.client.container = container
             self.client.set_container_versioning(versioning)
+
+#@command(api='storage')
+#class store_test(_store_account_command):
+#    """Perform a developer-level custom test"""
+#    def main(self):
+#        super(store_test, self).main()
+#        self.client.container = 'testCo'
+#        reply = self.client.container_get(delimiter='2')
+#        print_list(reply.json)
 
 @command(api='storage')
 class store_group(_store_account_command):

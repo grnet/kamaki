@@ -71,7 +71,7 @@ class PithosClient(StorageClient):
         if_modified_since=None, if_unmodified_since=None, *args, **kwargs):
         """  Full Pithos+ GET at account level
         --- request parameters ---
-        @param limit (integer): The amount of results requested (server qill use default value if None)
+        @param limit (integer): The amount of results requested (server will use default value if None)
         @param marker (string): Return containers with name lexicographically after marker
         @param format (string): reply format can be json or xml (default: json)
         @param shared (bool): If true, only shared containers will be included in results
@@ -150,7 +150,7 @@ class PithosClient(StorageClient):
         success = kwargs.pop('success', 204)
         return self.head(path, *args, success=success, **kwargs)
 
-    def container_get(self, limit = None, marker = None, prefix=None, delimiter=None, path = None, format='json', meta=[], show_only_shared=False,
+    def container_get(self, limit = None, marker = None, prefix=None, delimiter=None, path = None, format='json', meta=[], show_only_shared=False, until=None,
         if_modified_since=None, if_unmodified_since=None, *args, **kwargs):
         """ Full Pithos+ GET at container level
         --- request parameters ---
@@ -159,11 +159,11 @@ class PithosClient(StorageClient):
         @param prefix (string): Return objects starting with prefix
         @param delimiter (string): Return objects up to the delimiter
         @param path (string): assume prefix = path and delimiter = / (overwrites prefix
-            and delimiter)
+        and delimiter)
         @param format (string): reply format can be json or xml (default: json)
         @param meta (list): Return objects that satisfy the key queries in the specified
-            comma separated list (use <key>, !<key> for existence queries, <key><op><value>
-            for value queries, where <op> can be one of =, !=, <=, >=, <, >)
+        comma separated list (use <key>, !<key> for existence queries, <key><op><value>
+        for value queries, where <op> can be one of =, !=, <=, >=, <, >)
         @param shared (bool): If true, only shared containers will be included in results
         @param until (string): optional timestamp
         --- --- optional request headers ---
@@ -183,11 +183,11 @@ class PithosClient(StorageClient):
             if prefix is not None:
                 param_dict['prefix'] = prefix
             if delimiter is not None:
-                param_dict['delimiter'] = prefix
+                param_dict['delimiter'] = delimiter
         if show_only_shared:
             param_dict['shared'] = None
-        if meta is not None:
-            param_dict['meta'] = meta
+        if meta is not None and len(meta) > 0:
+            param_dict['meta'] = list2str(meta)
         if until is not None:
             param_dict['until'] = until
         path = path4url(self.account, self.container)+params4url(param_dict)
@@ -634,10 +634,10 @@ class PithosClient(StorageClient):
     def del_account_group(self, group):
         return self.account_post(update=True, groups={group:[]})
 
-
     def get_account_info(self):
         r = self.account_head()
-        r = self.account_head(until='12')
+        from datetime import datetime
+        r = self.account_head(if_modified_since=datetime.now())
         if r.status_code == 401:
             raise ClientError("No authorization")
         return r.headers
@@ -657,6 +657,9 @@ class PithosClient(StorageClient):
     def set_account_meta(self, metapairs):
         assert(type(metapairs) is dict)
         self.account_post(update=True, metadata=metapairs)
+
+    def del_account_meta(self, metakey):
+        self.account_post(update=True, metadata={metakey:''})
 
     def set_account_quota(self, quota):
         self.account_post(update=True, quota=quota)

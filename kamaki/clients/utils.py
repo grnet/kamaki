@@ -43,7 +43,7 @@ def filter_out(d, prefix, exactMatch = False):
     """
     ret = {}
     for key, val in d.items():
-        if not matches(key, prefix, exactMath = exactMath):
+        if not matches(key, prefix, exactMath = exactMatch):
             ret[key] = val
     return ret
 
