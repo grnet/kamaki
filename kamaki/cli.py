@@ -609,9 +609,13 @@ class image_register(object):
 
     def main(self, name, location):
         if not location.startswith('pithos://'):
-            account = self.config.get('storage', 'account')
+            account = self.config.get('storage', 'account').split()[0]
+            if account[-1] == '/':
+                account = account[:-1]
             container = self.config.get('storage', 'container')
-            location = 'pithos://%s/%s/%s' % (account, container, location)
+            location = 'pithos://%s/%s'%(account, location) \
+                if container is None or len(container) == 0 \
+                else 'pithos://%s/%s/%s' % (account, container, location)
 
         params = {}
         for key in ('checksum', 'container_format', 'disk_format', 'id',
