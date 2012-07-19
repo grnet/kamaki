@@ -853,7 +853,7 @@ class store_delete(_store_container_command):
 
     def main(self, container____path__):
         super(store_delete, self).main(container____path__)
-        if object is None:
+        if self.path is None:
             self.client.delete_container(self.container)
         else:
             self.client.delete_object(self.path)
@@ -977,7 +977,7 @@ class store_delmeta(_store_container_command):
         if self.container is None:
             self.client.del_account_meta(metakey)
         elif self.path is None:
-            self.client.delete_container_meta(metakey)
+            self.client.del_container_meta(metakey)
         else:
             self.client.delete_object_meta(metakey, self.path)
 
@@ -1035,7 +1035,7 @@ class store_setversioning(_store_account_command):
 #    def main(self):
 #        super(store_test, self).main()
 #        self.client.container = 'testCo'
-#        reply = self.client.container_get(delimiter='2')
+#        reply = self.client.container_get(if_unmodified_since=10000000000)
 #        print_list(reply.json)
 
 @command(api='storage')

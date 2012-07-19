@@ -203,9 +203,9 @@ class PithosClient(StorageClient):
         @param quota (integer): Size limit in KB
         @param versioning (string): 'auto' or other string supported by server
         @metadata (dict): Optional user defined metadata in the form
-                    {   'name1': 'value1',
-                        'name2': 'value2', ...
-                    }
+        {   'name1': 'value1',
+        'name2': 'value2', ...
+        }
         """
         self.assert_container()
         path = path4url(self.account, self.container)
@@ -227,12 +227,12 @@ class PithosClient(StorageClient):
         @param quota (integer): Size limit in KB
         @param versioning (string): 'auto' or other string supported by server
         @metadata (dict): Optional user defined metadata in the form
-                    {   'name1': 'value1',
-                        'name2': 'value2', ...
-                    }
+        {   'name1': 'value1',
+        'name2': 'value2', ...
+        }
         @param content_type (string): set a custom content type
         @param content_length (string): set a custrom content length
-        @param transer_encoding (string): set a custrom transfer encoding
+        @param transfer_encoding (string): set a custrom transfer encoding
         """
         self.assert_container()
         param_dict = dict(format=format, update=None) if update else dict(format=format)
@@ -262,7 +262,7 @@ class PithosClient(StorageClient):
 
     def object_head(self, object, version=None,
         if_etag_match=None, if_etag_not_match = None, if_modified_since = None, if_unmodified_since = None, *args, **kwargs):
-        """ Full Pithos+ DELETE at object level
+        """ Full Pithos+ HEAD at object level
         --- request parameters ---
         @param version (string): optional version identified
         --- request headers ---
@@ -687,7 +687,7 @@ class PithosClient(StorageClient):
         assert(type(metapairs) is dict)
         self.container_post(update=True, metadata=metapairs)
 
-    def delete_container_meta(self, metakey):
+    def del_container_meta(self, metakey):
         self.container_post(update=True, metadata={metakey:''})
 
     def set_container_quota(self, quota):
