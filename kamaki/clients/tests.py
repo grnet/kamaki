@@ -532,6 +532,70 @@ class testPithos(unittest.TestCase):
         self.client.container = ''
         self.client.reset_headers()
 
+    def test_object_copy(self):
+        self.client.container='testCo0'
+        obj = 'obj'+unicode(self.now)
+
+        
+        data= '{"key1":"val1", "key2":"val2"}'
+        r = self.client.object_put(obj+'orig', content_type='application/octet-stream', data= data)
+        self.client.reset_headers()
+        r = self.client.object_copy(obj+'orig', destination = '/'+self.client.container+'/'+obj, ignore_content_type=False, content_type='application/json')
+        self.assertEqual(r.status_code, 201)
+        self.client.reset_headers()
+
+        """Check destination account"""
+        r = self.client.object_copy(obj, destination='/testCo/'+obj, content_encoding='utf8',
+            content_type='application/json', destination_account='nonExistendAddress@NeverLand.com',
+            success=(201, 403))
+        self.assertEqual(r.status_code, 403)
+        self.client.reset_headers()
+
+        """Check destination being another container and also content_type and content encoding"""
+        r = self.client.object_copy(obj, destination='/testCo/'+obj, content_encoding='utf8', content_type='application/json')
+        self.assertEqual(r.status_code, 201)
+        self.assertEqual(r.headers['content-type'], 'application/json; charset=UTF-8')
+        self.client.reset_headers()
+        r = self.client.container='testCo'
+        self.client.delete_object(obj)
+        r = self.client.container='testCo0'
+        self.client.reset_headers()
+
+        """Check ignore_content_type and content_type"""
+        r = self.client.object_get(obj)
+        etag = r.headers['etag']
+        ctype = r.headers['content-type']
+        self.assertEqual(ctype, 'application/json')
+        self.client.reset_headers()
+        r = self.client.object_copy(obj+'orig', destination = '/'+self.client.container+'/'+obj+'0',
+            ignore_content_type=True, content_type='application/json')
+        self.assertEqual(r.status_code, 201)
+        self.assertNotEqual(r.headers['content-type'], 'application/json')
+        self.client.reset_headers()
+
+        """Check if_etag_(not_)match"""
+        r = self.client.object_copy(obj, destination='/'+self.client.container+'/'+obj+'1', if_etag_match=etag)
+        self.assertEqual(r.status_code, 201)
+        self.client.reset_headers()
+        r = self.client.object_copy(obj, destination='/'+self.client.container+'/'+obj+'2', if_etag_not_match='lalala')
+        self.assertEqual(r.status_code, 201)
+        vers2 = r.headers['x-object-version']
+        self.client.reset_headers()
+
+        """Check source_version and format (?)"""
+        r = self.client.object_copy(obj+'2', destination='/'+self.client.container+'/'+obj+'3', source_version=vers2)
+        self.assertEqual(r.status_code, 201)
+
+        """Still untested: format, content_disposition, manifest, permitions, public, metadata"""
+
+        self.client.delete_object(obj)
+        self.client.delete_object(obj+'0')
+        self.client.delete_object(obj+'1')
+        self.client.delete_object(obj+'2')
+        self.client.delete_object(obj+'3')
+        self.client.delete_object(obj+'orig')
+        self.client.container = ''
+
 class testCyclades(unittest.TestCase):
     def setUp(self):
         pass
@@ -560,6 +624,7 @@ if __name__ == '__main__':
     suiteFew.addTest(testPithos('test_object_head'))
     suiteFew.addTest(testPithos('test_object_get'))
     suiteFew.addTest(testPithos('test_object_put'))
+    suiteFew.addTest(testPithos('test_object_copy'))
 
     #kamaki/cyclades.py
     #suiteFew.addTest(testCyclades('test_list_servers'))

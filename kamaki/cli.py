@@ -1036,8 +1036,7 @@ class store_test(_store_account_command):
         super(store_test, self).main()
         self.client.container = 'testCo'
 
-        r = self.client.object_put('lali', content_length=1, data='a',
-            content_type='application/octet-stream', permitions={'read':'u1, u2', 'write':'u2, u3'})
+        r = self.client.object_copy('lolens', destination='/testCo/lali', if_etag_not_match='lalala', format='xml')
         print(unicode(r))
 
 @command(api='storage')

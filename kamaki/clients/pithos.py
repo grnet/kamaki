@@ -380,8 +380,8 @@ class PithosClient(StorageClient):
         success = kwargs.pop('success', 201)
         return self.put(path, *args, success=success, **kwargs)
 
-    def object_copy(self, object, format='json', ignore_content_type=False,
-        if_etag_match=None, if_etag_not_match=None, destination=None, destination_account=None,
+    def object_copy(self, object, destination, format='json', ignore_content_type=False,
+        if_etag_match=None, if_etag_not_match=None, destination_account=None,
         content_type=None, content_encoding=None, content_disposition=None, source_version=None,
         manifest=None, permitions={}, public=False, metadata={}, *args, **kwargs):
         """ Full Pithos+ COPY at object level
@@ -389,9 +389,9 @@ class PithosClient(StorageClient):
         @param format (string): json (default) or xml
         @param ignore_content_type (bool): Ignore the supplied Content-Type
         --- request headers ---
-         @param if_etag_match (string): if provided, return only results
+         @param if_etag_match (string): if provided, copy only results
                 with etag matching with this
-        @param if_etag_not_match (string): if provided, return only results
+        @param if_etag_not_match (string): if provided, copy only results
                 with etag not matching with this
         @param destination (string): The destination path in the form /<container>/<object>
         @param destination_account (string): The destination account to copy to
