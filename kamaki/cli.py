@@ -1029,14 +1029,16 @@ class store_setversioning(_store_account_command):
             self.client.container = container
             self.client.set_container_versioning(versioning)
 
-#@command(api='storage')
-#class store_test(_store_account_command):
-#    """Perform a developer-level custom test"""
-#    def main(self):
-#        super(store_test, self).main()
-#        self.client.container = 'testCo'
-#        reply = self.client.container_get(if_unmodified_since=10000000000)
-#        print_list(reply.json)
+@command(api='storage')
+class store_test(_store_account_command):
+    """Perform a developer-level custom test"""
+    def main(self):
+        super(store_test, self).main()
+        self.client.container = 'testCo'
+
+        r = self.client.object_put('lali', content_length=1, data='a',
+            content_type='application/octet-stream', permitions={'read':'u1, u2', 'write':'u2, u3'})
+        print(unicode(r))
 
 @command(api='storage')
 class store_group(_store_account_command):

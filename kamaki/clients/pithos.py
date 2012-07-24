@@ -82,7 +82,7 @@ class PithosClient(StorageClient):
         """
         self.assert_account()
 
-        param_dict = dict(format=format)
+        param_dict = {} if format is None else dict(format=format)
         if limit is not None:
             param_dict['limit'] = limit
         if marker is not None:
@@ -172,7 +172,7 @@ class PithosClient(StorageClient):
         """
         self.assert_container()
 
-        param_dict = dict(format = format)
+        param_dict = {} if format is None else dict(format=format)
         if limit is not None:
             param_dict['limit'] = limit
         if marker is not None:
@@ -196,8 +196,7 @@ class PithosClient(StorageClient):
         success = kwargs.pop('success', 200)
         return self.get(path, *args, success=success, **kwargs)
 
-    def container_put(self,
-        quota=None, versioning=None, metadata={}, *args, **kwargs):
+    def container_put(self, quota=None, versioning=None, metadata={}, *args, **kwargs):
         """ Full Pithos+ PUT at container level
         --- request headers ---
         @param quota (integer): Size limit in KB
@@ -235,7 +234,9 @@ class PithosClient(StorageClient):
         @param transfer_encoding (string): set a custrom transfer encoding
         """
         self.assert_container()
-        param_dict = dict(format=format, update=None) if update else dict(format=format)
+        param_dict = {} if format is None else dict(format=format)
+        if update:
+            param_dict['update'] = None
         path = path4url(self.account, self.container)+params4url(param_dict)
 
         for metaname, metaval in metadata.items():
@@ -248,8 +249,7 @@ class PithosClient(StorageClient):
         success = kwargs.pop('success', 202)
         return self.post(path, *args, success=success, **kwargs)
 
-    def container_delete(self, until=None,
-        *args, **kwargs):
+    def container_delete(self, until=None, *args, **kwargs):
         """ Full Pithos+ DELETE at container level
         --- request parameters ---
         @param until (timestamp string): if defined, container is purged up to that time
@@ -277,14 +277,14 @@ class PithosClient(StorageClient):
         path=path4url(self.account, self.container, object)
         path += '' if version is None else params4url(dict(version=version))
         self.set_header('If-Match', if_etag_match)
-        self.set_header('If-Not-Match', if_etag_not_match)
+        self.set_header('If-None-Match', if_etag_not_match)
         self.set_header('If-Modified-Since', if_modified_since)
         self.set_header('If-Unmodified-Since', if_unmodified_since)
         success = kwargs.pop('success', 200)
         return self.head(path, *args, success=success, **kwargs)
 
     def object_get(self, object, format='json', hashmap=False, version=None,
-        data_range=None, if_range=None, if_etag_match=None, if_etag_not_match = None, if_modified_since = None, if_unmodified_since = None, *args, **kwargs):
+        data_range=None, if_range=False, if_etag_match=None, if_etag_not_match = None, if_modified_since = None, if_unmodified_since = None, *args, **kwargs):
         """ Full Pithos+ GET at object level
         --- request parameters ---
         @param format (string): json (default) or xml
@@ -292,7 +292,7 @@ class PithosClient(StorageClient):
         @param version (string): optional version identified
         --- request headers ---
         @param data_range (string): Optional range of data to retrieve
-        @param if_range (string): 
+        @param if_range (bool): 
         @param if_etag_match (string): if provided, return only results
                 with etag matching with this
         @param if_etag_not_match (string): if provided, return only results
@@ -301,16 +301,16 @@ class PithosClient(StorageClient):
         @param if_unmodified_since (string): Retrieve if account has not changed since provided timestamp
         """
         self.assert_container()
-        param_dict = dict(format=format)
+        param_dict = {} if format is None else dict(format=format)
         if hashmap:
             param_dict['hashmap']=None
         if version is not None:
             param_dict['version']=version
         path=path4url(self.account, self.container, object)+params4url(param_dict)
         self.set_header('Range', data_range)
-        self.set_header('If-Range', if_range, Range is not None)
+        self.set_header('If-Range', '', if_range is True and data_range is not None)
         self.set_header('If-Match', if_etag_match, )
-        self.set_header('If-Not-Match', if_etag_not_match)
+        self.set_header('If-None-Match', if_etag_not_match)
         self.set_header('If-Modified-Since', if_modified_since)
         self.set_header('If-Unmodified-Since', if_unmodified_since)
         success = kwargs.pop('success', 200)
@@ -347,12 +347,14 @@ class PithosClient(StorageClient):
                 {'meta-key-1':'meta-value-1', 'meta-key-2':'meta-value-2', ...}
         """
         self.assert_container()
-        param_dict = dict(format=format, hashmap=None) if hashmap else dict(format=format)
+        param_dict = {} if format is None else dict(format=format)
+        if hashmap:
+            param_dict['hashmap'] = None
         path=path4url(self.account, self.container, object)+params4url(param_dict)
         self.set_header('If-Match', if_etag_match)
-        self.set_header('If-Not-Match', if_etag_not_match)
+        self.set_header('If-None-Match', if_etag_not_match)
         self.set_header('ETag', etag)
-        self.set_header('Content-Length', content_length, iff = transfer_encoding is None)
+        self.set_header('Content-Length', content_length)
         self.set_header('Content-Type', content_type)
         self.set_header('Transfer-Encoding', transfer_encoding)
         self.set_header('X-Copy-From', copy_from)
@@ -405,10 +407,12 @@ class PithosClient(StorageClient):
                 {'meta-key-1':'meta-value-1', 'meta-key-2':'meta-value-2', ...}
         """
         self.assert_container()
-        param_dict = dict(format=format, ignore_content_type=None) if ignore_content_type else dict(format=format)
+        param_dict = {} if format is None else dict(format=format)
+        if ignore_content_type:
+            param_dict['ignore_content_type'] = None
         path = path4url(self.account, self.container, object)+params4url(param_dict)
         self.set_header('If-Match', if_etag_match)
-        self.set_header('If-Not-Match', if_etag_not_match)
+        self.set_header('If-None-Match', if_etag_not_match)
         self.set_header('Destination', destination)
         self.set_header('Destination-Account', destination_account)
         self.set_header('Content-Type', content_type)
@@ -458,10 +462,12 @@ class PithosClient(StorageClient):
                 {'meta-key-1':'meta-value-1', 'meta-key-2':'meta-value-2', ...}
         """
         self.assert_container()
-        param_dict = dict(format=format, ignore_content_type=None) if ignore_content_type else dict(format=format)
+        param_dict = {} if format is None else dict(format=format)
+        if ignore_content_type:
+            param_dict['ignore_content_type']=None
         path = path4url(self.account, self.container, object)+params4url(param_dict)
         self.set_header('If-Match', if_etag_match)
-        self.set_header('If-Not-Match', if_etag_not_match)
+        self.set_header('If-None-Match', if_etag_not_match)
         self.set_header('Destination', destination)
         self.set_header('Destination-Account', destination_account)
         self.set_header('Content-Type', content_type)
@@ -516,10 +522,12 @@ class PithosClient(StorageClient):
                 {'meta-key-1':'meta-value-1', 'meta-key-2':'meta-value-2', ...}
         """
         self.assert_container()
-        param_dict = dict(format=format, update=None) if update else dict(format=format)
+        param_dict = {} if format is None else dict(format=format)
+        if update:
+            param_dict['update'] = None
         path = path4url(self.account, self.container, object)+params4url(param_dict)
         self.set_header('If-Match', if_etag_match)
-        self.set_header('If-Not-Match', if_etag_not_match)
+        self.set_header('If-None-Match', if_etag_not_match)
         self.set_header('Content-Length', content_length, iff=transfer_encoding is None)
         self.set_header('Content-Type', content_type)
         self.set_header('Content-Range', content_range)
@@ -729,7 +737,7 @@ class PithosClient(StorageClient):
         self.set_object_sharing(object)
 
     def append_object(self, object, source_file, upload_cb = None):
-        """@poaram upload_db is a generator for showing progress of upload
+        """@param upload_db is a generator for showing progress of upload
             to caller application, e.g. a progress bar. Its next is called
             whenever a block is uploaded
         """

@@ -95,8 +95,9 @@ def params4url(params):
 def list2str(alist, seperator=','):
     """@return a string of comma seperated elements of the list"""
     ret = ''
-    for item in sorted(alist):
-        if 0 == alist.index(item):
+    slist = sorted(alist)
+    for item in slist:
+        if 0 == slist.index(item):
             ret = unicode(item)
         else:
             ret += seperator+unicode(item)

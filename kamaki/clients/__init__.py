@@ -73,24 +73,22 @@ class Client(object):
         if value is not None and iff:
             self.headers[unicode(name)] = unicode(value)
 
+    def reset_headers(self):
+        self.headers = {}
+
     def request(self, method, path, **kwargs):
         raw = kwargs.pop('raw', False)
         success = kwargs.pop('success', 200)
-        directory = kwargs.pop('directory', False)
 
         data = kwargs.pop('data', None)
         self.headers.setdefault('X-Auth-Token', self.token)
         publish = kwargs.pop('publish', None)
 
-        if directory:
-            self.headers.setdefault('Content-Type', 'application/directory')
-            self.headers.setdefault('Content-length', '0')
-        else:
-            if 'json' in kwargs:
-                data = json.dumps(kwargs.pop('json'))
-                self.headers.setdefault('Content-Type', 'application/json')
-            if data:
-                self.headers.setdefault('Content-Length', unicode(len(data)))
+        if 'json' in kwargs:
+            data = json.dumps(kwargs.pop('json'))
+            self.headers.setdefault('Content-Type', 'application/json')
+        if data:
+            self.headers.setdefault('Content-Length', unicode(len(data)))
 
         url = self.base_url + path
         kwargs.setdefault('verify', False)  # Disable certificate verification
