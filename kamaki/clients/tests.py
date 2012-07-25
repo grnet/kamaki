@@ -59,6 +59,10 @@ class testPithos(unittest.TestCase):
         self.makeNewObject(self.c2, 'test')
         self.makeNewObject(self.c1, 'test1')
         self.makeNewObject(self.c2, 'test1')
+        """Prepare a object to be shared - also its container"""
+        self.client.container = self.c1
+        self.client.object_post('test', update=True,
+            permitions={'read':'someUser'})
 
     def makeNewObject(self, container, obj):
         self.client.container = container
@@ -113,9 +117,8 @@ class testPithos(unittest.TestCase):
         self.client.reset_headers()
 
         r = self.client.account_get(show_only_shared=True)
-        print(unicode([c['name'] for c in r.json]))
-        #self.assertEqual(len(r.json), 2)
-        #self.client.reset_headers()
+        self.assertTrue(self.c1 in [c['name'] for c in r.json])
+        self.client.reset_headers()
 
         r = self.client.account_get(until=1342609206)
         self.assertTrue(len(r.json) <= fullLen)
@@ -128,10 +131,10 @@ class testPithos(unittest.TestCase):
         r = self.client.account_head(if_unmodified_since=10000)
         self.client.reset_headers()
 
-    def atest_account_post(self):
+    def test_account_post(self):
         r = self.client.account_post()
         self.assertEqual(r.status_code, 202)
-        grpName = 'tstgrp'
+        grpName = 'grp'+unicode(self.now)
 
         """Method set/del_account_meta and set_account_groupcall account_post internally
         """
@@ -140,23 +143,24 @@ class testPithos(unittest.TestCase):
         self.assertEqual(r['x-account-group-'+grpName], 'u1,u2')
         self.client.del_account_group(grpName)
         r = self.client.get_account_group()
-        self.assertTrue(not r.has_key('x-account-group-grpName'))
+        self.assertTrue(not r.has_key('x-account-group-'+grpName))
         self.client.reset_headers()
 
-        self.client.set_account_meta({'metatest1':'v1', 'metatest2':'v2'})
+        mprefix = 'meta'+unicode(self.now)
+        self.client.set_account_meta({mprefix+'1':'v1', mprefix+'2':'v2'})
         r = self.client.get_account_meta()
-        self.assertEqual(r['x-account-meta-metatest1'], 'v1')
-        self.assertEqual(r['x-account-meta-metatest2'], 'v2')
+        self.assertEqual(r['x-account-meta-'+mprefix+'1'], 'v1')
+        self.assertEqual(r['x-account-meta-'+mprefix+'2'], 'v2')
         self.client.reset_headers()
 
-        self.client.del_account_meta('metatest1')
+        self.client.del_account_meta(mprefix+'1')
         r = self.client.get_account_meta()
-        self.assertTrue(not r.has_key('x-account-meta-metatest1'))
+        self.assertTrue(not r.has_key('x-account-meta-'+mprefix+'1'))
         self.client.reset_headers()
 
-        self.client.del_account_meta('metatest2')
+        self.client.del_account_meta(mprefix+'2')
         r = self.client.get_account_meta()
-        self.assertTrue(not r.has_key('x-account-meta-metatest2'))
+        self.assertTrue(not r.has_key('x-account-meta-'+mprefix+'2'))
         self.client.reset_headers()
 
         """Missing testing for quota, versioning, because normally
@@ -895,8 +899,8 @@ if __name__ == '__main__':
     #kamaki/pithos.py
     suiteFew.addTest(testPithos('test_account_head'))
     suiteFew.addTest(testPithos('test_account_get'))
-    """
     suiteFew.addTest(testPithos('test_account_post'))
+    """
     suiteFew.addTest(testPithos('test_container_head'))
     suiteFew.addTest(testPithos('test_container_get'))
     suiteFew.addTest(testPithos('test_container_put'))
