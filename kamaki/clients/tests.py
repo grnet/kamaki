@@ -699,7 +699,7 @@ class testPithos(unittest.TestCase):
         self.client.delete_object(obj+'2')
         self.client.container=''
 
-    def test_object_post(self):
+    def atest_object_post(self):
         self.client.container='testCo0'
         obj = 'obj'+unicode(self.now)
         """create a filesystem file"""
@@ -814,6 +814,30 @@ class testPithos(unittest.TestCase):
         os.remove(obj)
         self.client.container=''
 
+    def test_object_delete(self):
+        self.client.container='testCo0'
+        obj = 'obj'+unicode(self.now)
+        """create a file on container"""
+        r = self.client.object_put(obj, content_type='application/octet-stream',
+            data= 'H', metadata={'mkey1':'mval1', 'mkey2':'mval2'},
+            permitions={'read':['accX:groupA', 'u1', 'u2'], 'write':['u2', 'u3']})
+        self.client.reset_headers()
+
+        """Check with false until"""
+        r = self.client.object_delete(obj, until=1000000)
+        self.client.reset_headers()
+        r = self.client.object_get(obj, success=(200, 404))
+        self.assertEqual(r.status_code, 200)
+
+        """Check normal case"""
+        r = self.client.object_delete(obj)
+        self.client.reset_headers()
+        self.assertEqual(r.status_code, 204)
+        r = self.client.object_get(obj, success=(200, 404))
+        self.assertEqual(r.status_code, 404)
+
+        self.client.container = ''
+
 class testCyclades(unittest.TestCase):
     def setUp(self):
         pass
@@ -844,7 +868,8 @@ if __name__ == '__main__':
     #suiteFew.addTest(testPithos('test_object_put'))
     #suiteFew.addTest(testPithos('test_object_copy'))
     #suiteFew.addTest(testPithos('test_object_move'))
-    suiteFew.addTest(testPithos('test_object_post'))
+    #suiteFew.addTest(testPithos('test_object_post'))
+    suiteFew.addTest(testPithos('test_object_delete'))
 
     #kamaki/cyclades.py
     #suiteFew.addTest(testCyclades('test_list_servers'))

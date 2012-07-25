@@ -566,7 +566,7 @@ class PithosClient(StorageClient):
         path = path4url(self.account, self.container, object)
         path += '' if until is None else params4url(dict(until=until))
         success = kwargs.pop('success', 204)
-        self.delete(path, *args, success=success, **kwargs)
+        return self.delete(path, *args, success=success, **kwargs)
 
     def purge_container(self):
         self.container_delete(until=unicode(time()))
