@@ -46,8 +46,45 @@ class testPithos(unittest.TestCase):
         container=None
         self.client = pithos(url, token, account, container)
         self.now = time.mktime(time.gmtime())
+        self.c1 = 'c1_'+unicode(self.now)
+        self.c2 = 'c2_'+unicode(self.now)
+        self.c3 = 'c3_'+unicode(self.now)
+        self.client.create_container(self.c1)
+        self.client.reset_headers()
+        self.client.create_container(self.c2)
+        self.client.reset_headers()
+        self.client.create_container(self.c3)
+        self.client.reset_headers()
+        self.makeNewObject(self.c1, 'test')
+        self.makeNewObject(self.c2, 'test')
+        self.makeNewObject(self.c1, 'test1')
+        self.makeNewObject(self.c2, 'test1')
 
-    def atest_account_head(self):
+    def makeNewObject(self, container, obj):
+        self.client.container = container
+        self.client.object_put(obj, content_type='application/octet-stream',
+            data= obj+' '+container, metadata={'incontainer':container})
+        self.client.reset_headers()
+
+    def forceDeleteContainer(self, container):
+        self.client.container = container
+        r = self.client.list_objects()
+        for obj in r:
+            name = obj['name']
+            self.client.reset_headers()
+            self.client.object_delete(name)
+            print('Just deleted '+name+' in '+container)
+        self.client.reset_headers()
+        self.client.container_delete()
+        self.client.reset_headers()
+        self.container = ''
+
+    def tearDown(self):
+        self.forceDeleteContainer(self.c1)
+        self.forceDeleteContainer(self.c2)
+        self.forceDeleteContainer(self.c3)
+
+    def test_account_head(self):
         r = self.client.account_head()
         self.assertEqual(r.status_code, 204)
         r = self.client.account_head(until='1000000000')
@@ -60,27 +97,28 @@ class testPithos(unittest.TestCase):
         r = self.client.account_head(if_unmodified_since=10000)
         self.client.reset_headers()
 
-    def atest_account_get(self):
+    def test_account_get(self):
         r = self.client.account_get()
         self.assertEqual(r.status_code, 200)
         fullLen = len(r.json)
-        self.assertEqual(fullLen, 3)
+        self.assertTrue(fullLen > 2)
 
         r = self.client.account_get(limit=1)
         self.assertEqual(len(r.json), 1)
 
-        r = self.client.account_get(limit=3, marker='test')
-        self.assertNotEqual(len(r.json), 0)
-        conames = [container['name'] for container in r.json if container['name'].lower().startswith('test')]
-        self.assertEqual(len(conames), len(r.json))
+        r = self.client.account_get(limit=3, marker='c2_')
+        conames = [container['name'] for container in r.json if container['name'].lower().startswith('c2_')]
+        self.assertTrue(self.c2 in conames)
+        self.assertFalse(self.c1 in conames)
         self.client.reset_headers()
 
         r = self.client.account_get(show_only_shared=True)
-        self.assertEqual(len(r.json), 2)
-        self.client.reset_headers()
+        print(unicode([c['name'] for c in r.json]))
+        #self.assertEqual(len(r.json), 2)
+        #self.client.reset_headers()
 
         r = self.client.account_get(until=1342609206)
-        self.assertTrue(len(r.json) < fullLen)
+        self.assertTrue(len(r.json) <= fullLen)
         self.client.reset_headers()
 
         """Missing Full testing for if_modified_since, if_unmodified_since
@@ -479,7 +517,7 @@ class testPithos(unittest.TestCase):
         r = self.client.object_put('%s/%s'%(tmpdir, obj), format=None, 
             copy_from='/%s/%s'%(self.client.container, obj),
             content_encoding='application/octet-stream', 
-            source_account='admin@adminland.com', 
+            source_account=self.account,
             content_length=0, success=201)
         self.assertEqual(r.status_code, 201)
         self.client.reset_headers()
@@ -488,7 +526,7 @@ class testPithos(unittest.TestCase):
         fromstr = '/testCo0/'+tmpdir+'/'+obj
         r = self.client.object_put(obj, format=None, copy_from=fromstr,
             content_encoding='application/octet-stream', 
-            source_account='admin@adminland.com', 
+            source_account=self.account,
             content_length=0, success=201)
         self.assertEqual(r.status_code, 201)
         self.client.reset_headers()
@@ -686,7 +724,7 @@ class testPithos(unittest.TestCase):
         self.assertEqual(r.status_code, 201)
         self.client.reset_headers()
 
-        """Checkpublic and format """
+        """Check public and format """
         r = self.client.object_move(obj+'1', destination='/'+self.client.container+'/'+obj+'2', format='xml', public=True)
         self.assertEqual(r.status_code, 201)
         self.assertTrue(r.headers['content-type'].index('xml') > 0)
@@ -796,13 +834,13 @@ class testPithos(unittest.TestCase):
         """Check source_version and source_account"""
         r = self.client.object_post(obj, update=True, content_type='application/octet-srteam',
             content_length=5, content_range='bytes 1-5/*', source_object='/testCo0/'+obj,
-            source_account='admiral@adminland.com', source_version=helloVersion, data='12345',
+            source_account='thisAccountWillNeverExist@adminland.com', source_version=helloVersion, data='12345',
             success=(403, 202, 204))
         self.assertEqual(r.status_code, 403)
         self.client.reset_headers()
         r = self.client.object_post(obj, update=True, content_type='application/octet-srteam',
             content_length=5, content_range='bytes 1-5/*', source_object='/testCo0/'+obj,
-            source_account='admin@adminland.com', source_version=helloVersion, data='12345')
+            source_account='thisAccountWillNeverExist@adminland.com', source_version=helloVersion, data='12345')
         self.client.reset_headers()
         r = self.client.object_get(obj)
         self.assertEqual(r.text, 'eello!')
@@ -814,7 +852,7 @@ class testPithos(unittest.TestCase):
         os.remove(obj)
         self.client.container=''
 
-    def test_object_delete(self):
+    def atest_object_delete(self):
         self.client.container='testCo0'
         obj = 'obj'+unicode(self.now)
         """create a file on container"""
@@ -855,21 +893,23 @@ if __name__ == '__main__':
     suiteFew = unittest.TestSuite()
 
     #kamaki/pithos.py
-    #suiteFew.addTest(testPithos('test_account_head'))
-    #suiteFew.addTest(testPithos('test_account_get'))
-    #suiteFew.addTest(testPithos('test_account_post'))
-    #suiteFew.addTest(testPithos('test_container_head'))
-    #suiteFew.addTest(testPithos('test_container_get'))
-    #suiteFew.addTest(testPithos('test_container_put'))
-    #suiteFew.addTest(testPithos('test_container_post'))
-    #suiteFew.addTest(testPithos('test_container_delete'))
-    #suiteFew.addTest(testPithos('test_object_head'))
-    #suiteFew.addTest(testPithos('test_object_get'))
-    #suiteFew.addTest(testPithos('test_object_put'))
-    #suiteFew.addTest(testPithos('test_object_copy'))
-    #suiteFew.addTest(testPithos('test_object_move'))
-    #suiteFew.addTest(testPithos('test_object_post'))
+    suiteFew.addTest(testPithos('test_account_head'))
+    suiteFew.addTest(testPithos('test_account_get'))
+    """
+    suiteFew.addTest(testPithos('test_account_post'))
+    suiteFew.addTest(testPithos('test_container_head'))
+    suiteFew.addTest(testPithos('test_container_get'))
+    suiteFew.addTest(testPithos('test_container_put'))
+    suiteFew.addTest(testPithos('test_container_post'))
+    suiteFew.addTest(testPithos('test_container_delete'))
+    suiteFew.addTest(testPithos('test_object_head'))
+    suiteFew.addTest(testPithos('test_object_get'))
+    suiteFew.addTest(testPithos('test_object_put'))
+    suiteFew.addTest(testPithos('test_object_copy'))
+    suiteFew.addTest(testPithos('test_object_move'))
+    suiteFew.addTest(testPithos('test_object_post'))
     suiteFew.addTest(testPithos('test_object_delete'))
+    """
 
     #kamaki/cyclades.py
     #suiteFew.addTest(testCyclades('test_list_servers'))

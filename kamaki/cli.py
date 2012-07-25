@@ -1034,13 +1034,9 @@ class store_test(_store_account_command):
     """Perform a developer-level custom test"""
     def main(self):
         super(store_test, self).main()
-        self.client.container = 'testCo0'
-        obj = 'obj1343213613.0'
 
-        r = self.client.object_post(obj, update=True, content_type='application/octet-srteam',
-            content_length=5, content_range='bytes 0-4/*', source_object='/testCo0/'+obj,
-            source_version='3816', data='12345')
-        print(unicode(r))
+        r = self.client.account_get(limit=3, show_only_shared=True)
+        print(unicode(r.json))
 
 @command(api='storage')
 class store_group(_store_account_command):
