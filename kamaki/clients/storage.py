@@ -129,7 +129,7 @@ class StorageClient(Client):
     def get_object_meta(self, object):
         return filter_in(self.get_object_info(object), 'X-Object-Meta-')
 
-    def delete_object_meta(self, metakey, object):
+    def del_object_meta(self, metakey, object):
         self.assert_container()
         headers = filter_in(self.get_object_info(object), 'X-')
         self.headers = filter_out(headers, 'X-Object-Meta-'+metakey, exactMatch = True)

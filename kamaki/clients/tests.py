@@ -47,7 +47,7 @@ class testPithos(unittest.TestCase):
         self.client = pithos(url, token, account, container)
         self.now = time.mktime(time.gmtime())
 
-    def test_account_head(self):
+    def atest_account_head(self):
         r = self.client.account_head()
         self.assertEqual(r.status_code, 204)
         r = self.client.account_head(until='1000000000')
@@ -60,7 +60,7 @@ class testPithos(unittest.TestCase):
         r = self.client.account_head(if_unmodified_since=10000)
         self.client.reset_headers()
 
-    def test_account_get(self):
+    def atest_account_get(self):
         r = self.client.account_get()
         self.assertEqual(r.status_code, 200)
         fullLen = len(r.json)
@@ -90,7 +90,7 @@ class testPithos(unittest.TestCase):
         r = self.client.account_head(if_unmodified_since=10000)
         self.client.reset_headers()
 
-    def test_account_post(self):
+    def atest_account_post(self):
         r = self.client.account_post()
         self.assertEqual(r.status_code, 202)
         grpName = 'tstgrp'
@@ -125,7 +125,7 @@ class testPithos(unittest.TestCase):
         you don't have permitions for modified those at account level
         """
 
-    def test_container_head(self):
+    def atest_container_head(self):
         self.client.container = 'testCo'
 
         r = self.client.account_head()
@@ -141,7 +141,7 @@ class testPithos(unittest.TestCase):
         self.client.reset_headers()
         self.client.container = ''
 
-    def test_container_get(self):
+    def atest_container_get(self):
         self.client.container = 'testCo'
 
         r = self.client.container_get()
@@ -201,7 +201,7 @@ class testPithos(unittest.TestCase):
         self.container = ''
         self.client.reset_headers()
        
-    def test_container_put(self):
+    def atest_container_put(self):
         self.client.container = 'testCo'
 
         r = self.client.container_put()
@@ -255,7 +255,7 @@ class testPithos(unittest.TestCase):
         self.client.container = ''
         self.client.reset_headers()
 
-    def test_container_post(self):
+    def atest_container_post(self):
         self.client.container = 'testCo0'
 
         r = self.client.container_post()
@@ -322,7 +322,7 @@ class testPithos(unittest.TestCase):
         self.client.container = ''
         self.client.reset_headers()
 
-    def test_container_delete(self):
+    def atest_container_delete(self):
         container = 'testCo'+unicode(self.now)
         self.client.container = container
 
@@ -350,7 +350,7 @@ class testPithos(unittest.TestCase):
         self.client.container = ''
         self.client.reset_headers()
 
-    def test_object_head(self):
+    def atest_object_head(self):
         self.client.container = 'testCo0'
         obj = 'lolens'
 
@@ -382,7 +382,7 @@ class testPithos(unittest.TestCase):
         self.client.container = ''
         self.client.reset_headers()
 
-    def test_object_get(self):
+    def atest_object_get(self):
         self.client.container = 'testCo'
 
         r = self.client.object_get('lolens')
@@ -430,7 +430,7 @@ class testPithos(unittest.TestCase):
         self.client.container = ''
         self.client.reset_headers()
 
-    def test_object_put(self):
+    def atest_object_put(self):
         self.client.container = 'testCo0'
         obj='obj'+unicode(self.now)
 
@@ -532,16 +532,34 @@ class testPithos(unittest.TestCase):
         self.client.container = ''
         self.client.reset_headers()
 
-    def test_object_copy(self):
+    def atest_object_copy(self):
         self.client.container='testCo0'
         obj = 'obj'+unicode(self.now)
 
-        
         data= '{"key1":"val1", "key2":"val2"}'
-        r = self.client.object_put(obj+'orig', content_type='application/octet-stream', data= data)
+        r = self.client.object_put(obj+'orig', content_type='application/octet-stream',
+            data= data, metadata={'mkey1':'mval1', 'mkey2':'mval2'},
+            permitions={'read':['accX:groupA', 'u1', 'u2'], 'write':['u2', 'u3']})
         self.client.reset_headers()
-        r = self.client.object_copy(obj+'orig', destination = '/'+self.client.container+'/'+obj, ignore_content_type=False, content_type='application/json')
+        r = self.client.object_copy(obj+'orig', destination = '/'+self.client.container+'/'+obj, ignore_content_type=False, content_type='application/json', 
+            metadata={'mkey2':'mval2a', 'mkey3':'mval3'},
+            permitions={'write':['u5', 'accX:groupB']})
         self.assertEqual(r.status_code, 201)
+        self.client.reset_headers()
+
+        """Check Metadata"""
+        r = self.client.object_get(obj)
+        self.assertTrue(r.headers.has_key('x-object-meta-mkey1'))
+        self.assertEqual(r.headers['x-object-meta-mkey1'], 'mval1')
+        self.assertTrue(r.headers.has_key('x-object-meta-mkey2'))
+        self.assertEqual(r.headers['x-object-meta-mkey2'], 'mval2a')
+        self.assertTrue(r.headers.has_key('x-object-meta-mkey3'))
+        self.assertEqual(r.headers['x-object-meta-mkey3'], 'mval3')
+        """Check permitions"""
+        self.assertFalse('read' in r.headers['x-object-sharing'])
+        self.assertFalse('u2' in r.headers['x-object-sharing'])
+        self.assertTrue('write' in r.headers['x-object-sharing'])
+        self.assertTrue('accx:groupb' in r.headers['x-object-sharing'])
         self.client.reset_headers()
 
         """Check destination account"""
@@ -582,11 +600,16 @@ class testPithos(unittest.TestCase):
         vers2 = r.headers['x-object-version']
         self.client.reset_headers()
 
-        """Check source_version and format (?)"""
-        r = self.client.object_copy(obj+'2', destination='/'+self.client.container+'/'+obj+'3', source_version=vers2)
+        """Check source_version, public and format """
+        r = self.client.object_copy(obj+'2', destination='/'+self.client.container+'/'+obj+'3', source_version=vers2, format='xml', public=True)
         self.assertEqual(r.status_code, 201)
+        self.assertTrue(r.headers['content-type'].index('xml') > 0)
+        self.client.reset_headers()
+        r = self.client.object_get(obj+'3')
+        self.assertTrue(r.headers.has_key('x-object-public'))
+        self.client.reset_headers()
 
-        """Still untested: format, content_disposition, manifest, permitions, public, metadata"""
+        """Still untested: content_disposition, manifest"""
 
         self.client.delete_object(obj)
         self.client.delete_object(obj+'0')
@@ -595,6 +618,201 @@ class testPithos(unittest.TestCase):
         self.client.delete_object(obj+'3')
         self.client.delete_object(obj+'orig')
         self.client.container = ''
+
+    def atest_object_move(self):
+        self.client.container='testCo0'
+        obj = 'obj'+unicode(self.now)
+
+        data= '{"key1":"val1", "key2":"val2"}'
+        r = self.client.object_put(obj+'orig', content_type='application/octet-stream',
+            data= data, metadata={'mkey1':'mval1', 'mkey2':'mval2'},
+            permitions={'read':['accX:groupA', 'u1', 'u2'], 'write':['u2', 'u3']})
+        self.client.reset_headers()
+        r = self.client.object_move(obj+'orig', destination = '/'+self.client.container+'/'+obj, ignore_content_type=False, content_type='application/json', 
+            metadata={'mkey2':'mval2a', 'mkey3':'mval3'},
+            permitions={'write':['u5', 'accX:groupB']})
+        self.assertEqual(r.status_code, 201)
+        self.client.reset_headers()
+
+        """Check Metadata"""
+        r = self.client.object_get(obj)
+        self.assertTrue(r.headers.has_key('x-object-meta-mkey1'))
+        self.assertEqual(r.headers['x-object-meta-mkey1'], 'mval1')
+        self.assertTrue(r.headers.has_key('x-object-meta-mkey2'))
+        self.assertEqual(r.headers['x-object-meta-mkey2'], 'mval2a')
+        self.assertTrue(r.headers.has_key('x-object-meta-mkey3'))
+        self.assertEqual(r.headers['x-object-meta-mkey3'], 'mval3')
+        """Check permitions"""
+        self.assertFalse('read' in r.headers['x-object-sharing'])
+        self.assertFalse('u2' in r.headers['x-object-sharing'])
+        self.assertTrue('write' in r.headers['x-object-sharing'])
+        self.assertTrue('accx:groupb' in r.headers['x-object-sharing'])
+        self.client.reset_headers()
+
+        """Check destination account"""
+        r = self.client.object_move(obj, destination='/testCo/'+obj, content_encoding='utf8',
+            content_type='application/json', destination_account='nonExistendAddress@NeverLand.com',
+            success=(201, 403))
+        self.assertEqual(r.status_code, 403)
+        self.client.reset_headers()
+
+        """Check destination being another container and also content_type and content encoding"""
+        r = self.client.object_move(obj, destination='/testCo/'+obj,
+            content_encoding='utf8', content_type='application/json')
+        self.assertEqual(r.status_code, 201)
+        self.assertEqual(r.headers['content-type'], 'application/json; charset=UTF-8')
+        self.client.reset_headers()
+        self.client.reset_headers()
+
+        """Check ignore_content_type and content_type"""
+        r = self.client.container='testCo'
+        r = self.client.object_get(obj)
+        etag = r.headers['etag']
+        ctype = r.headers['content-type']
+        self.assertEqual(ctype, 'application/json')
+        self.client.reset_headers()
+        r = self.client.object_move(obj, destination = '/testCo0/'+obj,
+            ignore_content_type=True, content_type='application/json')
+        self.assertEqual(r.status_code, 201)
+        self.assertNotEqual(r.headers['content-type'], 'application/json')
+        r = self.client.container='testCo0'
+        self.client.reset_headers()
+
+        """Check if_etag_(not_)match"""
+        r = self.client.object_move(obj, destination='/'+self.client.container+'/'+obj+'0', if_etag_match=etag)
+        self.assertEqual(r.status_code, 201)
+        self.client.reset_headers()
+        r = self.client.object_move(obj+'0', destination='/'+self.client.container+'/'+obj+'1', if_etag_not_match='lalala')
+        self.assertEqual(r.status_code, 201)
+        self.client.reset_headers()
+
+        """Checkpublic and format """
+        r = self.client.object_move(obj+'1', destination='/'+self.client.container+'/'+obj+'2', format='xml', public=True)
+        self.assertEqual(r.status_code, 201)
+        self.assertTrue(r.headers['content-type'].index('xml') > 0)
+        self.client.reset_headers()
+        r = self.client.object_get(obj+'2')
+        self.assertTrue(r.headers.has_key('x-object-public'))
+        self.client.reset_headers()
+
+        """Still untested: content_disposition, manifest"""
+        self.client.delete_object(obj+'2')
+        self.client.container=''
+
+    def test_object_post(self):
+        self.client.container='testCo0'
+        obj = 'obj'+unicode(self.now)
+        """create a filesystem file"""
+        newf = open(obj, 'w')
+        newf.writelines(['ello!\n','This is a test line\n','inside a test file\n'])
+        """create a file on container"""
+        r = self.client.object_put(obj, content_type='application/octet-stream',
+            data= 'H', metadata={'mkey1':'mval1', 'mkey2':'mval2'},
+            permitions={'read':['accX:groupA', 'u1', 'u2'], 'write':['u2', 'u3']})
+        self.client.reset_headers()
+
+        """Append tests update, content_range, content_type, content_length"""
+        newf = open(obj, 'r')
+        self.client.append_object(obj, newf)
+        self.client.reset_headers()
+        r = self.client.object_get(obj)
+        self.assertTrue(r.text.startswith('Hello!'))
+        self.client.reset_headers()
+
+        """Overwrite tests update, content_type, content_length, content_range"""
+        newf.seek(0)
+        r = self.client.overwrite_object(obj, 0, 10, newf)
+        self.client.reset_headers()
+        r = self.client.object_get(obj)
+        self.assertTrue(r.text.startswith('ello!'))
+        newf.close()
+        self.client.reset_headers()
+        
+        """Truncate tests update, content_range, content_type,
+        object_bytes and source_object"""
+        r = self.client.truncate_object(obj, 5)
+        self.client.reset_headers()
+        r = self.client.object_get(obj)
+        self.assertEqual(r.text, 'ello!')
+        self.client.reset_headers()
+
+        """Check metadata"""
+        self.client.set_object_meta(obj, {'mkey2':'mval2a', 'mkey3':'mval3'})
+        self.client.reset_headers()
+        r = self.client.get_object_meta(obj)
+        self.assertTrue(r.has_key('x-object-meta-mkey1'))
+        self.assertEqual(r['x-object-meta-mkey1'], 'mval1')
+        self.assertTrue(r.has_key('x-object-meta-mkey2'))
+        self.assertEqual(r['x-object-meta-mkey2'], 'mval2a')
+        self.assertTrue(r.has_key('x-object-meta-mkey3'))
+        self.assertEqual(r['x-object-meta-mkey3'], 'mval3')
+        self.client.reset_headers()
+        self.client.del_object_meta('mkey1', obj)
+        self.client.reset_headers()
+        r = self.client.get_object_meta(obj)
+        self.assertFalse(r.has_key('x-object-meta-mkey1'))
+        self.client.reset_headers()
+
+        """Check permitions"""
+        self.client.set_object_sharing(obj, read_permition=['u4', 'u5'], write_permition=['u4'])
+        self.client.reset_headers()
+        r = self.client.get_object_sharing(obj)
+        self.assertTrue(r.has_key('x-object-sharing'))
+        val = r['x-object-sharing']
+        self.assertTrue(val.index('read') < val.index('u5') < val.index('write') < val.index('u4'))
+        self.client.reset_headers()
+        self.client.del_object_sharing(obj)
+        r = self.client.get_object_sharing(obj)
+        self.assertFalse(r.has_key('x-object-sharing'))
+        self.client.reset_headers()
+
+        """Check publish"""
+        self.client.publish_object(obj)
+        self.client.reset_headers()
+        r = self.client.get_object_info(obj)
+        self.assertTrue(r.has_key('x-object-public'))
+        self.client.reset_headers()
+        self.client.unpublish_object(obj)
+        self.client.reset_headers()
+        r = self.client.get_object_info(obj)
+        self.assertFalse(r.has_key('x-object-public'))
+        self.client.reset_headers()
+
+        """Check if_etag_(not)match"""
+        etag = r['etag']
+        r = self.client.object_post(obj, update=True, public=True,
+            if_etag_not_match=etag, success=(412,202,204))
+        self.assertEqual(r.status_code, 412)
+        self.client.reset_headers()
+        self.client.object_post(obj, update=True, public=True,
+            if_etag_match=etag, content_encoding='application/json')
+        self.client.reset_headers()
+        r = self.client.get_object_info(obj)
+        helloVersion = r['x-object-version']
+        self.assertTrue(r.has_key('x-object-public'))
+        self.assertEqual(r['content-encoding'], 'application/json')
+        self.client.reset_headers()
+
+        """Check source_version and source_account"""
+        r = self.client.object_post(obj, update=True, content_type='application/octet-srteam',
+            content_length=5, content_range='bytes 1-5/*', source_object='/testCo0/'+obj,
+            source_account='admiral@adminland.com', source_version=helloVersion, data='12345',
+            success=(403, 202, 204))
+        self.assertEqual(r.status_code, 403)
+        self.client.reset_headers()
+        r = self.client.object_post(obj, update=True, content_type='application/octet-srteam',
+            content_length=5, content_range='bytes 1-5/*', source_object='/testCo0/'+obj,
+            source_account='admin@adminland.com', source_version=helloVersion, data='12345')
+        self.client.reset_headers()
+        r = self.client.object_get(obj)
+        self.assertEqual(r.text, 'eello!')
+        self.client.reset_headers()
+
+        """We need to check transfer_encoding, content_disposition, manifest """
+
+        self.client.object_delete(obj)
+        os.remove(obj)
+        self.client.container=''
 
 class testCyclades(unittest.TestCase):
     def setUp(self):
@@ -613,18 +831,20 @@ if __name__ == '__main__':
     suiteFew = unittest.TestSuite()
 
     #kamaki/pithos.py
-    suiteFew.addTest(testPithos('test_account_head'))
-    suiteFew.addTest(testPithos('test_account_get'))
-    suiteFew.addTest(testPithos('test_account_post'))
-    suiteFew.addTest(testPithos('test_container_head'))
-    suiteFew.addTest(testPithos('test_container_get'))
-    suiteFew.addTest(testPithos('test_container_put'))
-    suiteFew.addTest(testPithos('test_container_post'))
-    suiteFew.addTest(testPithos('test_container_delete'))
-    suiteFew.addTest(testPithos('test_object_head'))
-    suiteFew.addTest(testPithos('test_object_get'))
-    suiteFew.addTest(testPithos('test_object_put'))
-    suiteFew.addTest(testPithos('test_object_copy'))
+    #suiteFew.addTest(testPithos('test_account_head'))
+    #suiteFew.addTest(testPithos('test_account_get'))
+    #suiteFew.addTest(testPithos('test_account_post'))
+    #suiteFew.addTest(testPithos('test_container_head'))
+    #suiteFew.addTest(testPithos('test_container_get'))
+    #suiteFew.addTest(testPithos('test_container_put'))
+    #suiteFew.addTest(testPithos('test_container_post'))
+    #suiteFew.addTest(testPithos('test_container_delete'))
+    #suiteFew.addTest(testPithos('test_object_head'))
+    #suiteFew.addTest(testPithos('test_object_get'))
+    #suiteFew.addTest(testPithos('test_object_put'))
+    #suiteFew.addTest(testPithos('test_object_copy'))
+    #suiteFew.addTest(testPithos('test_object_move'))
+    suiteFew.addTest(testPithos('test_object_post'))
 
     #kamaki/cyclades.py
     #suiteFew.addTest(testCyclades('test_list_servers'))

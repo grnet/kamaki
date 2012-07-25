@@ -402,9 +402,12 @@ class PithosClient(StorageClient):
         @param manifest (string): Object parts prefix in /<container>/<object> form
         @param permitions (dict): Object permissions in the form (all fields are optional)
                 {'read':[user1, group1, user2, ...], 'write':['user3, group2, group3, ...]}
+                permitions override source permitions, removing any old permitions
         @param public (bool): If true, Object is publicly accessible, if else, not
         @param metadata (dict): Optional user defined metadata in the form
                 {'meta-key-1':'meta-value-1', 'meta-key-2':'meta-value-2', ...}
+                Metadata are appended to the source metadata. In case of same keys, they
+                replace the old metadata
         """
         self.assert_container()
         param_dict = {} if format is None else dict(format=format)
@@ -708,7 +711,7 @@ class PithosClient(StorageClient):
         assert(type(metapairs) is dict)
         self.object_post(object, update=True, metadata=metapairs)
 
-    def delete_object_meta(self, metakey, object):
+    def del_object_meta(self, metakey, object):
         self.object_post(object, update=True, metadata={metakey:''})
 
     def publish_object(self, object):

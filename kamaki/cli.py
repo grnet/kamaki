@@ -979,7 +979,7 @@ class store_delmeta(_store_container_command):
         elif self.path is None:
             self.client.del_container_meta(metakey)
         else:
-            self.client.delete_object_meta(metakey, self.path)
+            self.client.del_object_meta(metakey, self.path)
 
 @command(api='storage')
 class store_quota(_store_account_command):
@@ -1034,9 +1034,12 @@ class store_test(_store_account_command):
     """Perform a developer-level custom test"""
     def main(self):
         super(store_test, self).main()
-        self.client.container = 'testCo'
+        self.client.container = 'testCo0'
+        obj = 'obj1343213613.0'
 
-        r = self.client.object_copy('lolens', destination='/testCo/lali', if_etag_not_match='lalala', format='xml')
+        r = self.client.object_post(obj, update=True, content_type='application/octet-srteam',
+            content_length=5, content_range='bytes 0-4/*', source_object='/testCo0/'+obj,
+            source_version='3816', data='12345')
         print(unicode(r))
 
 @command(api='storage')
