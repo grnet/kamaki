@@ -116,8 +116,8 @@ class StorageClient(Client):
     def create_directory(self, object):
         self.assert_container()
         path = path4url(self.account, self.container, object)
-        self.headers.setdefault('Content-Type', 'application/directory')
-        self.headers.setdefault('Content-length', '0')
+        self.set_header('Content-Type', 'application/directory')
+        self.set_header('Content-length', '0')
         self.put(path, success=201)
 
     def get_object_info(self, object):

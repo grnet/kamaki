@@ -32,10 +32,10 @@
 # or implied, of GRNET S.A.
 
 import unittest
-import time, datetime
-import os
+import time, datetime, os
+from shutil import copyfile
 
-from kamaki.clients import pithos, cyclades
+from kamaki.clients import pithos, cyclades, ClientError
 
 class testPithos(unittest.TestCase):
     def setUp(self):
@@ -43,6 +43,7 @@ class testPithos(unittest.TestCase):
         token = 'C/yBXmz3XjTFBnujc2biAg=='
         token = 'ac0yH8cQMEZu3M3Mp1MWGA=='
         account = 'admin@adminland.com'
+        self.fname = None
         container=None
         self.client = pithos(url, token, account, container)
         self.now = time.mktime(time.gmtime())
@@ -86,9 +87,18 @@ class testPithos(unittest.TestCase):
         self.container = ''
 
     def tearDown(self):
+        if self.fname is not None:
+            try:
+                os.remove(self.fname)
+            except OSError:
+                pass
+            self.fname = None
         self.forceDeleteContainer(self.c1)
         self.forceDeleteContainer(self.c2)
-        self.forceDeleteContainer(self.c3)
+        try:
+            self.forceDeleteContainer(self.c3)
+        except ClientError:
+            pass
         self.client.container=''
 
     def atest_account_head(self):
@@ -197,7 +207,7 @@ class testPithos(unittest.TestCase):
             self.client.reset_headers()
             self.assertNotEqual(r1.status_code, r2.status_code)
 
-    def test_container_get(self):
+    def atest_container_get(self):
         self.client.container = self.c1
 
         r = self.client.container_get()
@@ -260,7 +270,7 @@ class testPithos(unittest.TestCase):
             self.client.reset_headers()
        
     def atest_container_put(self):
-        self.client.container = 'testCo'
+        self.client.container = self.c2
 
         r = self.client.container_put()
         self.assertEqual(r.status_code, 202)
@@ -308,13 +318,10 @@ class testPithos(unittest.TestCase):
         self.assertEqual(r['x-container-meta-m2'], 'v2a')
         self.client.reset_headers()
        
-        self.client.del_container_meta(self.client.container) 
-        self.client.container_put(quota=cquota)
-        self.client.container = ''
-        self.client.reset_headers()
+        self.client.del_container_meta(self.client.container)
 
     def atest_container_post(self):
-        self.client.container = 'testCo0'
+        self.client.container = self.c2
 
         r = self.client.container_post()
         self.assertEqual(r.status_code, 202)
@@ -368,44 +375,56 @@ class testPithos(unittest.TestCase):
         uses content_type and content_length to post blocks
         of data to container. But how do you check that
         the blocks are there?"""
+        """Change a file at fs"""
+        self.fname = 'f'+unicode(self.now)
+        copyfile('pirifi.237M', self.fname)
+        newf = open(self.fname, 'a')
+        newf.write('add:'+unicode(self.now)+'\n')
+        newf.close()
+        """Upload it at a directory in container"""
+        self.client.create_directory('dir')
+        self.client.reset_headers()
+        newf = open(self.fname, 'r')
+        self.client.create_object('/dir/sample.file', newf)
+        self.client.reset_headers()
+        newf.close()
+        """Check if file has been uploaded"""
+        r = self.client.get_object_info('/dir/sample.file')
+        self.assertTrue(int(r['content-length']) > 248209936)
 
         """WTF is tranfer_encoding? What should I check about th** s**t? """
         r = self.client.container_post(update=True, transfer_encoding='xlm')
         self.client.reset_headers()
 
-        """This last part doesnt seem to work"""
-        """self.client.container_post(update=False)"""
-        """so we do it the wrong way"""
+        """Check update=False"""
+        r = self.client.object_post('test', update=False, metadata={'newmeta':'newval'})
+        self.client.reset_headers()
+        r = self.client.get_object_info('test')
+        self.client.reset_headers()
+        self.assertTrue(r.has_key('x-object-meta-newmeta'))
+        self.assertFalse(r.has_key('x-object-meta-incontainer'))
+
         r = self.client.del_container_meta('m2')
-        self.client.container = ''
         self.client.reset_headers()
 
-    def atest_container_delete(self):
-        container = 'testCo'+unicode(self.now)
-        self.client.container = container
-
-        """Create new container"""
-        r = self.client.container_put()
-        self.assertEqual(r.status_code, 201)
-        self.client.reset_headers()
+    def test_container_delete(self):
+        """Test container_delete"""
 
         """Fail to delete a non-empty container"""
-        self.client.container = 'testCo'
+        self.client.container = self.c2
         r = self.client.container_delete(success=409)
         self.assertEqual(r.status_code, 409)
         self.client.reset_headers()
 
-        """Fail to delete this container"""
-        self.client.container = container
+        """Fail to delete c3 (empty) container"""
+        self.client.container = self.c3
         r = self.client.container_delete(until='1000000000')
         self.assertEqual(r.status_code, 204)
         self.client.reset_headers()
 
-        """Delete this container"""
+        """Delete c3 (empty) container"""
         r = self.client.container_delete()
         self.assertEqual(r.status_code, 204)
-
-        self.client.container = ''
         self.client.reset_headers()
 
     def atest_object_head(self):
@@ -918,12 +937,12 @@ if __name__ == '__main__':
     suiteFew.addTest(testPithos('test_account_get'))
     suiteFew.addTest(testPithos('test_account_post'))
     suiteFew.addTest(testPithos('test_container_head'))
-    """
     suiteFew.addTest(testPithos('test_container_get'))
-    """
     suiteFew.addTest(testPithos('test_container_put'))
     suiteFew.addTest(testPithos('test_container_post'))
+    """
     suiteFew.addTest(testPithos('test_container_delete'))
+    """
     suiteFew.addTest(testPithos('test_object_head'))
     suiteFew.addTest(testPithos('test_object_get'))
     suiteFew.addTest(testPithos('test_object_put'))
