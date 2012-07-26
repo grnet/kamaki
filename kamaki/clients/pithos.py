@@ -573,8 +573,9 @@ class PithosClient(StorageClient):
 
     def put_block(self, data, hash):
         r = self.container_post(update=True, content_type='application/octet-stream',
-            content_length=len(data), data=data)
-        assert r.text.strip() == hash, 'Local hash does not match server'
+            content_length=len(data), data=data, format='json')
+        self.reset_headers()
+        assert r.json[0] == hash, 'Local hash does not match server'
 
     def create_object(self, object, f, size=None, hash_cb=None,
                       upload_cb=None):
@@ -787,4 +788,3 @@ class PithosClient(StorageClient):
                 content_length=len(block), content_range='bytes %s-%s/*'%(start,end), data=block)
             if upload_cb is not None:
                 upload_gen.next()
-
