@@ -62,6 +62,9 @@ class Client(object):
         self.base_url = base_url
         self.token = token
         self.headers = {}
+        self.DATE_FORMATS = ["%a %b %d %H:%M:%S %Y",
+            "%A, %d-%b-%y %H:%M:%S GMT",
+            "%a, %d %b %Y %H:%M:%S GMT"]
 
     def raise_for_status(self, r):
         message = "%d %s" % (r.status_code, r.status)

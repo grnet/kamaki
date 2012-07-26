@@ -144,7 +144,8 @@ class PithosClient(StorageClient):
         @param if_unmodified_since (string): Retrieve if account has not changed since provided timestamp
         """
         self.assert_container()
-        path = path4url(self.account, self.container) + '' if until is None else params4url(dict(until=until))
+        path = path4url(self.account, self.container)
+        path += '' if until is None else params4url(dict(until=until))
         self.set_header('If-Modified-Since', if_modified_since)
         self.set_header('If-Unmodified-Since', if_unmodified_since)
         success = kwargs.pop('success', 204)

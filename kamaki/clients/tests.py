@@ -32,7 +32,7 @@
 # or implied, of GRNET S.A.
 
 import unittest
-import time
+import time, datetime
 import os
 
 from kamaki.clients import pithos, cyclades
@@ -57,12 +57,14 @@ class testPithos(unittest.TestCase):
         self.client.reset_headers()
         self.makeNewObject(self.c1, 'test')
         self.makeNewObject(self.c2, 'test')
+        self.now_unformated = datetime.datetime.utcnow()
         self.makeNewObject(self.c1, 'test1')
         self.makeNewObject(self.c2, 'test1')
-        """Prepare a object to be shared - also its container"""
+        """Prepare an object to be shared - also its container"""
         self.client.container = self.c1
         self.client.object_post('test', update=True,
             permitions={'read':'someUser'})
+        self.makeNewObject(self.c1, 'another.test')
 
     def makeNewObject(self, container, obj):
         self.client.container = container
@@ -77,7 +79,7 @@ class testPithos(unittest.TestCase):
             name = obj['name']
             self.client.reset_headers()
             self.client.object_delete(name)
-            print('Just deleted '+name+' in '+container)
+            #print('Just deleted '+name+' in '+container)
         self.client.reset_headers()
         self.client.container_delete()
         self.client.reset_headers()
@@ -87,8 +89,9 @@ class testPithos(unittest.TestCase):
         self.forceDeleteContainer(self.c1)
         self.forceDeleteContainer(self.c2)
         self.forceDeleteContainer(self.c3)
+        self.client.container=''
 
-    def test_account_head(self):
+    def atest_account_head(self):
         r = self.client.account_head()
         self.assertEqual(r.status_code, 204)
         r = self.client.account_head(until='1000000000')
@@ -96,12 +99,17 @@ class testPithos(unittest.TestCase):
         datestring = unicode(r.headers['x-account-until-timestamp'])
         self.assertEqual(u'Sun, 09 Sep 2001 01:46:40 GMT', datestring)
         self.client.reset_headers()
-        r = self.client.account_head(if_modified_since=self.now)
-        self.client.reset_headers()
-        r = self.client.account_head(if_unmodified_since=10000)
-        self.client.reset_headers()
 
-    def test_account_get(self):
+        """Check if(un)modified_since"""
+        for format in self.client.DATE_FORMATS:
+            now_formated = self.now_unformated.strftime(format)
+            r1 = self.client.account_head(if_modified_since=now_formated, success=(204, 412))
+            self.client.reset_headers()
+            r2 = self.client.account_head(if_unmodified_since=now_formated, success=(204, 412))
+            self.client.reset_headers()
+            self.assertNotEqual(r1.status_code, r2.status_code)
+
+    def atest_account_get(self):
         r = self.client.account_get()
         self.assertEqual(r.status_code, 200)
         fullLen = len(r.json)
@@ -124,19 +132,21 @@ class testPithos(unittest.TestCase):
         self.assertTrue(len(r.json) <= fullLen)
         self.client.reset_headers()
 
-        """Missing Full testing for if_modified_since, if_unmodified_since
-        """
-        r = self.client.account_head(if_modified_since=self.now)
-        self.client.reset_headers()
-        r = self.client.account_head(if_unmodified_since=10000)
-        self.client.reset_headers()
+        """Check if(un)modified_since"""
+        for format in self.client.DATE_FORMATS:
+            now_formated = self.now_unformated.strftime(format)
+            r1 = self.client.account_get(if_modified_since=now_formated, success=(200, 412))
+            self.client.reset_headers()
+            r2 = self.client.account_get(if_unmodified_since=now_formated, success=(200, 412))
+            self.client.reset_headers()
+            self.assertNotEqual(r1.status_code, r2.status_code)
 
-    def test_account_post(self):
+    def atest_account_post(self):
         r = self.client.account_post()
         self.assertEqual(r.status_code, 202)
         grpName = 'grp'+unicode(self.now)
 
-        """Method set/del_account_meta and set_account_groupcall account_post internally
+        """Method set/del_account_meta and set_account_groupcall use account_post internally
         """
         self.client.set_account_group(grpName, ['u1', 'u2'])
         r = self.client.get_account_group()
@@ -164,34 +174,38 @@ class testPithos(unittest.TestCase):
         self.client.reset_headers()
 
         """Missing testing for quota, versioning, because normally
-        you don't have permitions for modified those at account level
+        you don't have permitions to modify those at account level
         """
 
     def atest_container_head(self):
-        self.client.container = 'testCo'
+        self.client.container = self.c1
 
-        r = self.client.account_head()
+        r = self.client.container_head()
         self.assertEqual(r.status_code, 204)
 
-        r = self.client.account_head(until=1000000000)
-        datestring = unicode(r.headers['x-account-until-timestamp'])
-        self.assertEqual(u'Sun, 09 Sep 2001 01:46:40 GMT', datestring)
+        """Check until"""
+        r = self.client.container_head(until=1000000, success=(204, 404))
+        self.assertEqual(r.status_code, 404)
 
-        r = self.client.account_head(if_modified_since=1342609206)
-        self.client.reset_headers()
-        r = self.client.account_head(if_unmodified_since=1342609206)
-        self.client.reset_headers()
-        self.client.container = ''
+        """Check and if(un)modified_since"""
+        for format in self.client.DATE_FORMATS:
+            now_formated = self.now_unformated.strftime(format)
+            self.client.reset_headers()
+            r1 = self.client.container_head(if_modified_since=now_formated, success=(204, 304, 412))
+            self.client.reset_headers()
+            r2 = self.client.container_head(if_unmodified_since=now_formated, success=(204, 304, 412))
+            self.client.reset_headers()
+            self.assertNotEqual(r1.status_code, r2.status_code)
 
-    def atest_container_get(self):
-        self.client.container = 'testCo'
+    def test_container_get(self):
+        self.client.container = self.c1
 
         r = self.client.container_get()
         self.assertEqual(r.status_code, 200)
         fullLen = len(r.json)
 
-        r = self.client.container_get(prefix='lal')
-        lalobjects = [obj for obj in r.json if obj['name'].startswith('lal')]
+        r = self.client.container_get(prefix='test')
+        lalobjects = [obj for obj in r.json if obj['name'].startswith('test')]
         self.assertTrue(len(r.json) > 1)
         self.assertEqual(len(r.json), len(lalobjects))
         self.client.reset_headers()
@@ -200,26 +214,26 @@ class testPithos(unittest.TestCase):
         self.assertEqual(len(r.json), 1)
         self.client.reset_headers()
 
-        r = self.client.container_get(marker='neo')
+        r = self.client.container_get(marker='another')
         self.assertTrue(len(r.json) > 1)
-        neobjects = [obj for obj in r.json if obj['name'] > 'neo']
+        neobjects = [obj for obj in r.json if obj['name'] > 'another']
         self.assertEqual(len(r.json), len(neobjects))
         self.client.reset_headers()
 
-        r = self.client.container_get(prefix='testDir/testDir', delimiter='2')
+        r = self.client.container_get(prefix='another.test', delimiter='.')
         self.assertTrue(fullLen > len(r.json))
         self.client.reset_headers()
 
-        r = self.client.container_get(path='testDir/testDir2')
-        self.assertTrue(fullLen > len(r.json))
+        r = self.client.container_get(path='/')
+        self.assertEqual(fullLen, len(r.json))
         self.client.reset_headers()
 
         r = self.client.container_get(format='xml')
-        self.assertEqual(r.text.split()[4], 'name="testCo">')
+        self.assertEqual(r.text.split()[4], 'name="'+self.c1+'">')
         self.client.reset_headers()
 
-        r = self.client.container_get(meta=['Lalakis'])
-        self.assertEqual(len(r.json), 1)
+        r = self.client.container_get(meta=['incontainer'])
+        self.assertTrue(len(r.json) > 0)
         self.client.reset_headers()
 
         r = self.client.container_get(show_only_shared=True)
@@ -234,14 +248,16 @@ class testPithos(unittest.TestCase):
             pass
         self.client.reset_headers()
 
-        """Missing Full testing for if_modified_since, if_unmodified_since
-        """
-        now = time.mktime(time.gmtime())
-        r = self.client.container_get(if_modified_since=now)
-        r = self.client.container_get(if_unmodified_since=now)
-
-        self.container = ''
-        self.client.reset_headers()
+        """Check and if(un)modified_since"""
+        for format in self.client.DATE_FORMATS:
+            now_formated = self.now_unformated.strftime(format)
+            self.client.reset_headers()
+            r1 = self.client.container_get(if_modified_since=now_formated, success=(200, 304, 412))
+            self.client.reset_headers()
+            r2 = self.client.container_get(if_unmodified_since=now_formated, success=(200, 304, 412))
+            self.client.reset_headers()
+            self.assertNotEqual(r1.status_code, r2.status_code)
+            self.client.reset_headers()
        
     def atest_container_put(self):
         self.client.container = 'testCo'
@@ -897,12 +913,14 @@ if __name__ == '__main__':
     suiteFew = unittest.TestSuite()
 
     #kamaki/pithos.py
+    """
     suiteFew.addTest(testPithos('test_account_head'))
     suiteFew.addTest(testPithos('test_account_get'))
     suiteFew.addTest(testPithos('test_account_post'))
-    """
     suiteFew.addTest(testPithos('test_container_head'))
+    """
     suiteFew.addTest(testPithos('test_container_get'))
+    """
     suiteFew.addTest(testPithos('test_container_put'))
     suiteFew.addTest(testPithos('test_container_post'))
     suiteFew.addTest(testPithos('test_container_delete'))

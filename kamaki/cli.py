@@ -1034,9 +1034,16 @@ class store_test(_store_account_command):
     """Perform a developer-level custom test"""
     def main(self):
         super(store_test, self).main()
-
-        r = self.client.account_get(limit=3, show_only_shared=True)
-        print(unicode(r.json))
+        DATE_FORMATS = ["%a %b %d %H:%M:%S %Y",
+            "%A, %d-%b-%y %H:%M:%S GMT",
+            "%a, %d %b %Y %H:%M:%S GMT"]
+        import time, datetime
+        t = datetime.datetime.utcnow()
+        ts = t.strftime(self.client.DATE_FORMATS[0])
+        p = t - datetime.timedelta(minutes=15000000)
+        past = p.strftime(self.client.DATE_FORMATS[0])
+        self.client.container = 'testCo'
+        self.client.container_head(until=100000000)
 
 @command(api='storage')
 class store_group(_store_account_command):

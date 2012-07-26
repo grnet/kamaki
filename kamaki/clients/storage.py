@@ -179,9 +179,11 @@ class StorageClient(Client):
         self.assert_container()
         path = path4url(self.account, self.container)
         params = dict(format='json') #request parameters
-        r = self.get(path, params=params, success=(200, 204, 404))
+        r = self.get(path, params=params, success=(200, 204, 304, 404))
         if r.status_code == 404:
             raise ClientError("Incorrect account (%s) for that container"%self.account, r.status_code)
+        elif r.status_code == 304:
+            return []
         return r.json
 
     def list_objects_in_path(self, path_prefix):
