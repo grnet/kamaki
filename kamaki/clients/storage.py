@@ -104,7 +104,7 @@ class StorageClient(Client):
         r = self.get(path, success = (200, 204))
         return r.json
 
-    def create_object(self, object, f, size=None, hash_cb=None,
+    def upload_object(self, object, f, size=None, hash_cb=None,
                       upload_cb=None):
         # This is a naive implementation, it loads the whole file in memory
         #Look in pithos for a nice implementation
@@ -127,14 +127,16 @@ class StorageClient(Client):
         return r.headers
 
     def get_object_meta(self, object):
-        return filter_in(self.get_object_info(object), 'X-Object-Meta-')
+        r = filter_in(self.get_object_info(object), 'X-Object-Meta-')
+        reply = {}
+        for (key, val) in r.items():
+            metakey = key.split('-')[-1]
+            reply[metakey] = val
+        return reply
 
     def del_object_meta(self, metakey, object):
         self.assert_container()
-        headers = filter_in(self.get_object_info(object), 'X-')
-        self.headers = filter_out(headers, 'X-Object-Meta-'+metakey, exactMatch = True)
-        if len(self.headers) == len(headers):
-            raise ClientError('X-Object-Meta-%s not found' % metakey, 404)
+        self.set_header('X-Object-Meta-'+metakey, '')
         path = path4url(self.account, self.container, object)
         self.post(path, success = 202)
 

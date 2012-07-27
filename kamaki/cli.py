@@ -821,7 +821,7 @@ class store_upload(_store_container_command):
         with open(local_path) as f:
             hash_cb = self.progress('Calculating block hashes')
             upload_cb = self.progress('Uploading blocks')
-            self.client.create_object(remote_path, f, hash_cb=hash_cb, upload_cb=upload_cb)
+            self.client.upload_object(remote_path, f, hash_cb=hash_cb, upload_cb=upload_cb)
 
 @command(api='storage')
 class store_download(_store_container_command):
@@ -1034,16 +1034,8 @@ class store_test(_store_account_command):
     """Perform a developer-level custom test"""
     def main(self):
         super(store_test, self).main()
-        DATE_FORMATS = ["%a %b %d %H:%M:%S %Y",
-            "%A, %d-%b-%y %H:%M:%S GMT",
-            "%a, %d %b %Y %H:%M:%S GMT"]
-        import time, datetime
-        t = datetime.datetime.utcnow()
-        ts = t.strftime(self.client.DATE_FORMATS[0])
-        p = t - datetime.timedelta(minutes=15000000)
-        past = p.strftime(self.client.DATE_FORMATS[0])
         self.client.container = 'testCo'
-        self.client.container_head(until=100000000)
+        r2 = self.client.container_post(transfer_encoding='chunked', data='lala')
 
 @command(api='storage')
 class store_group(_store_account_command):

@@ -578,8 +578,8 @@ class PithosClient(StorageClient):
         self.reset_headers()
         assert r.json[0] == hash, 'Local hash does not match server'
 
-    def create_object(self, object, f, size=None, hash_cb=None,
-                      upload_cb=None):
+    def upload_object(self, object, f, size=None, hash_cb=None,
+        upload_cb=None):
         """Create an object by uploading only the missing blocks
         hash_cb is a generator function taking the total number of blocks to
         be hashed as an argument. Its next() will be called every time a block
@@ -723,7 +723,18 @@ class PithosClient(StorageClient):
         self.object_post(object, update=True, public=False)
 
     def get_object_sharing(self, object):
-        return filter_in(self.get_object_info(object), 'X-Object-Sharing', exactMatch = True)
+        r = filter_in(self.get_object_info(object), 'X-Object-Sharing', exactMatch = True)
+        reply = {}
+        if len(r) > 0:
+            perms = r['x-object-sharing'].split(';')
+            for perm in perms:
+                try:
+                    perm.index('=')
+                except ValueError:
+                    raise ClientError('Incorrect reply format')
+                (key, val) = perm.strip().split('=')
+                reply[key] = val
+        return reply
 
     def set_object_sharing(self, object, read_permition = False, write_permition = False):
         """Give read/write permisions to an object.
