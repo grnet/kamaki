@@ -1032,10 +1032,21 @@ class store_setversioning(_store_account_command):
 @command(api='storage')
 class store_test(_store_account_command):
     """Perform a developer-level custom test"""
+
     def main(self):
         super(store_test, self).main()
-        self.client.container = 'testCo'
-        r2 = self.client.container_post(transfer_encoding='chunked', data='lala')
+        self.client.container = 'testCo0'
+        obj = 'test'
+        
+        r = self.client.object_put(obj, content_encoding='application/octet-stream', trasnfer_encoding='chunked')
+        while True:
+            try:
+                s = raw_input('(ctrl^D to exit):')
+                print('You gave me [%s] and I will append it at %s'%(s, obj))
+            except EOFError:
+                print('\nThanks!')
+                break
+
 
 @command(api='storage')
 class store_group(_store_account_command):

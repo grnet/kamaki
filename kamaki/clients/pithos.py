@@ -384,7 +384,7 @@ class PithosClient(StorageClient):
     def object_copy(self, object, destination, format='json', ignore_content_type=False,
         if_etag_match=None, if_etag_not_match=None, destination_account=None,
         content_type=None, content_encoding=None, content_disposition=None, source_version=None,
-        manifest=None, permitions={}, public=False, metadata={}, *args, **kwargs):
+        permitions={}, public=False, metadata={}, *args, **kwargs):
         """ Full Pithos+ COPY at object level
         --- request parameters ---
         @param format (string): json (default) or xml
@@ -400,7 +400,6 @@ class PithosClient(StorageClient):
         @param content_encoding (string): The encoding of the object
         @param content_disposition (string): The presentation style of the object
         @param source_version (string): The source version to copy from
-        @param manifest (string): Object parts prefix in /<container>/<object> form
         @param permitions (dict): Object permissions in the form (all fields are optional)
                 {'read':[user1, group1, user2, ...], 'write':['user3, group2, group3, ...]}
                 permitions override source permitions, removing any old permitions
@@ -423,7 +422,6 @@ class PithosClient(StorageClient):
         self.set_header('Content-Encoding', content_encoding)
         self.set_header('Content-Disposition', content_disposition)
         self.set_header('X-Source-Version', source_version)
-        self.set_header('X-Object-Manifest', manifest)
         perms = None
         for permition_type, permition_list in permitions.items():
             if perms is None:
@@ -441,8 +439,8 @@ class PithosClient(StorageClient):
 
     def object_move(self, object, format='json', ignore_content_type=False,
         if_etag_match=None, if_etag_not_match=None, destination=None, destination_account=None,
-        content_type=None, content_encoding=None, content_disposition=None, manifest=None,
-        permitions={}, public=False, metadata={}, *args, **kwargs):
+        content_type=None, content_encoding=None, content_disposition=None, permitions={},
+        public=False, metadata={}, *args, **kwargs):
         """ Full Pithos+ COPY at object level
         --- request parameters ---
         @param format (string): json (default) or xml
@@ -458,7 +456,6 @@ class PithosClient(StorageClient):
         @param content_encoding (string): The encoding of the object
         @param content_disposition (string): The presentation style of the object
         @param source_version (string): The source version to copy from
-        @param manifest (string): Object parts prefix in /<container>/<object> form
         @param permitions (dict): Object permissions in the form (all fields are optional)
                 {'read':[user1, group1, user2, ...], 'write':['user3, group2, group3, ...]}
         @param public (bool): If true, Object is publicly accessible, if false, not
@@ -477,7 +474,6 @@ class PithosClient(StorageClient):
         self.set_header('Content-Type', content_type)
         self.set_header('Content-Encoding', content_encoding)
         self.set_header('Content-Disposition', content_disposition)
-        self.set_header('X-Object-Manifest', manifest)
         perms = None
         for permition_type, permition_list in permitions.items():
             if perms is None:
