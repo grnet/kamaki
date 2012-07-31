@@ -85,7 +85,7 @@ class Client(object):
 
         data = kwargs.pop('data', None)
         self.headers.setdefault('X-Auth-Token', self.token)
-        publish = kwargs.pop('publish', None)
+        #publish = kwargs.pop('publish', None)
 
         if 'json' in kwargs:
             data = json.dumps(kwargs.pop('json'))

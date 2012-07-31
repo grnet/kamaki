@@ -1036,17 +1036,36 @@ class store_test(_store_account_command):
     def main(self):
         super(store_test, self).main()
         self.client.container = 'testCo0'
-        obj = 'test'
-        
-        r = self.client.object_put(obj, content_encoding='application/octet-stream', trasnfer_encoding='chunked')
-        while True:
-            try:
-                s = raw_input('(ctrl^D to exit):')
-                print('You gave me [%s] and I will append it at %s'%(s, obj))
-            except EOFError:
-                print('\nThanks!')
-                break
+        obj = 'newlala'
+        block_size = int(self.client.get_container_info('testCo0')['x-container-block-size'])
+        self.client.reset_headers()
 
+        #self.client.object_put(obj, content_type='application/octet-stream', content_length=7,
+        #    transfer_encoding='chunked', data='lalalala')
+
+        url = 'http://127.0.0.1:8000/v1/admin@adminlan.com/testCo0/tss'
+
+        import httplib
+
+        conn = httplib.HTTPConnection('127.0.0.1', 8000)
+        conn.set_debuglevel(1)
+        conn.connect()
+        request = conn.putrequest('PUT', '/v1/admin@adminland.com/testCo0/tss')
+        conn.putheader('content-type','application/octet-stream')
+        conn.putheader('X-Auth-Token','ac0yH8cQMEZu3M3Mp1MWGA==')
+        conn.putheader('Transfer-Encoding','chunked')
+        conn.putheader('Content-length', '0')
+        conn.endheaders()
+        for i in range(10):
+            msg='bottle%sbottle'%i
+            print('kamaki:Send(%s)'%msg)
+            msg += ' '*(block_size-len(msg))
+            conn.send(msg)
+        print('kamaki:Now, get a response')
+        resp = conn.getresponse()
+        print('kamaki:Got a response')
+        print(unicode(resp.status)+'\n'+unicode(resp.reason)+'\n- * - * -\n'+unicode(resp.read()))
+        conn.close()
 
 @command(api='storage')
 class store_group(_store_account_command):
