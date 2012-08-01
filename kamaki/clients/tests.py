@@ -31,11 +31,16 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+import gevent.monkey
+#Monkey-patch everything for gevent early on
+gevent.monkey.patch_all()
+
 import unittest
 import time, datetime, os, sys
 from shutil import copyfile
 
-from kamaki.clients import pithos, cyclades, ClientError
+from kamaki.clients import ClientError
+from kamaki.clients.pithos import PithosClient as pithos
 
 class testPithos(unittest.TestCase):
     """Set up a Pithos+ thorough test"""
@@ -103,7 +108,7 @@ class testPithos(unittest.TestCase):
             pass
         self.client.container=''
 
-    def atest_account_head(self):
+    def test_account_head(self):
         """Test account_HEAD"""
         r = self.client.account_head()
         self.assertEqual(r.status_code, 204)
@@ -122,7 +127,7 @@ class testPithos(unittest.TestCase):
             self.client.reset_headers()
             self.assertNotEqual(r1.status_code, r2.status_code)
 
-    def atest_account_get(self):
+    def test_account_get(self):
         """Test account_GET"""
         r = self.client.account_get()
         self.assertEqual(r.status_code, 200)
@@ -155,7 +160,7 @@ class testPithos(unittest.TestCase):
             self.client.reset_headers()
             self.assertNotEqual(r1.status_code, r2.status_code)
 
-    def atest_account_post(self):
+    def test_account_post(self):
         """Test account_POST"""
         r = self.client.account_post()
         self.assertEqual(r.status_code, 202)
@@ -192,7 +197,7 @@ class testPithos(unittest.TestCase):
         you don't have permitions to modify those at account level
         """
 
-    def atest_container_head(self):
+    def test_container_head(self):
         """Test container_HEAD"""
         self.client.container = self.c1
 
@@ -213,7 +218,7 @@ class testPithos(unittest.TestCase):
             self.client.reset_headers()
             self.assertNotEqual(r1.status_code, r2.status_code)
 
-    def atest_container_get(self):
+    def test_container_get(self):
         """Test container_GET"""
         self.client.container = self.c1
 
@@ -276,7 +281,7 @@ class testPithos(unittest.TestCase):
             self.assertNotEqual(r1.status_code, r2.status_code)
             self.client.reset_headers()
        
-    def atest_container_put(self):
+    def test_container_put(self):
         """Test container_PUT"""
         self.client.container = self.c2
 
@@ -328,13 +333,15 @@ class testPithos(unittest.TestCase):
        
         self.client.del_container_meta(self.client.container)
 
-    def atest_container_post(self):
+    def test_container_post(self):
         """Test container_POST"""
         self.client.container = self.c2
 
+        """Simple post"""
         r = self.client.container_post()
         self.assertEqual(r.status_code, 202)
 
+        """post meta"""
         self.client.set_container_meta({'m1':'v1', 'm2':'v2'})
         r = self.client.get_container_meta(self.client.container)
         self.assertTrue(r.has_key('x-container-meta-m1'))
@@ -343,6 +350,7 @@ class testPithos(unittest.TestCase):
         self.assertEqual(r['x-container-meta-m2'], 'v2')
         self.client.reset_headers()
 
+        """post/2del meta"""
         r = self.client.del_container_meta('m1')
         r = self.client.set_container_meta({'m2':'v2a'})
         r = self.client.get_container_meta(self.client.container)
@@ -351,29 +359,28 @@ class testPithos(unittest.TestCase):
         self.assertEqual(r['x-container-meta-m2'], 'v2a')
         self.client.reset_headers()
 
+        """check quota"""
         r = self.client.get_container_quota(self.client.container)
         cquota = r.values()[0]
         newquota = 2*int(cquota)
         self.client.reset_headers()
-
         r = self.client.set_container_quota(newquota)
         r = self.client.get_container_quota(self.client.container)
         xquota = int(r.values()[0])
         self.assertEqual(newquota, xquota)
         self.client.reset_headers()
-
         r = self.client.set_container_quota(cquota)
         r = self.client.get_container_quota(self.client.container)
         xquota = r.values()[0]
         self.assertEqual(cquota, xquota)
         self.client.reset_headers()
 
+        """Check versioning"""
         self.client.set_container_versioning('auto')
         r = self.client.get_container_versioning(self.client.container)
         nvers = r.values()[0]
         self.assertEqual('auto', nvers)
         self.client.reset_headers()
-
         self.client.set_container_versioning('none')
         r = self.client.get_container_versioning(self.client.container)
         nvers = r.values()[0]
@@ -383,21 +390,17 @@ class testPithos(unittest.TestCase):
         """put_block uses content_type and content_length to
         post blocks of data 2 container. All that in upload_object"""
         """Change a file at fs"""
-        self.fname = 'f'+unicode(self.now)
-        copyfile('pirifi.237M', self.fname)
-        newf = open(self.fname, 'a')
-        newf.write('add:'+unicode(self.now)+'\n')
-        newf.close()
+        self.create_large_file(1024*1024*100, 'l100M.'+unicode(self.now))
         """Upload it at a directory in container"""
         self.client.create_directory('dir')
         self.client.reset_headers()
         newf = open(self.fname, 'r')
-        self.client.upload_object('/dir/sample.file', newf)
+        self.client.async_upload_object('/dir/sample.file', newf)
         self.client.reset_headers()
         newf.close()
         """Check if file has been uploaded"""
         r = self.client.get_object_info('/dir/sample.file')
-        self.assertTrue(int(r['content-length']) > 248209936)
+        self.assertTrue(int(r['content-length']) > 100000000)
 
         """WTF is tranfer_encoding? What should I check about th** s**t? """
         #TODO
@@ -413,7 +416,7 @@ class testPithos(unittest.TestCase):
         r = self.client.del_container_meta('m2')
         self.client.reset_headers()
 
-    def atest_container_delete(self):
+    def test_container_delete(self):
         """Test container_DELETE"""
 
         """Fail to delete a non-empty container"""
@@ -433,7 +436,7 @@ class testPithos(unittest.TestCase):
         self.assertEqual(r.status_code, 204)
         self.client.reset_headers()
 
-    def atest_object_head(self):
+    def test_object_head(self):
         """Test object_HEAD"""
         self.client.container = self.c2
         obj = 'test'
@@ -467,7 +470,7 @@ class testPithos(unittest.TestCase):
             self.assertNotEqual(r1.status_code, r2.status_code)
             self.client.reset_headers()
 
-    def atest_object_get(self):
+    def test_object_get(self):
         """Test object_GET"""
         self.client.container = self.c1
         obj = 'test'
@@ -519,7 +522,7 @@ class testPithos(unittest.TestCase):
             self.assertNotEqual(r1.status_code, r2.status_code)
             self.client.reset_headers()
 
-    def atest_object_put(self):
+    def test_object_put(self):
         """test object_PUT"""
 
         self.client.container = self.c2
@@ -648,7 +651,7 @@ class testPithos(unittest.TestCase):
 
         """Some problems with transfer-encoding?"""
 
-    def atest_object_copy(self):
+    def test_object_copy(self):
         """test object_COPY"""
         self.client.container=self.c2
         obj = 'test2'
@@ -734,7 +737,7 @@ class testPithos(unittest.TestCase):
         self.assertTrue(r.has_key('x-object-public'))
         self.client.reset_headers()
 
-    def atest_object_move(self):
+    def test_object_move(self):
         """Test object_MOVE"""
         self.client.container= self.c2
         obj = 'test2'
@@ -816,7 +819,7 @@ class testPithos(unittest.TestCase):
         self.assertTrue(r.has_key('x-object-public'))
         self.client.reset_headers()
 
-    def atest_object_post(self):
+    def test_object_post(self):
         """Test object_POST"""
         self.client.container=self.c2
         obj = 'test2'
@@ -949,7 +952,7 @@ class testPithos(unittest.TestCase):
 
         """We need to check transfer_encoding """
 
-    def atest_object_delete(self):
+    def test_object_delete(self):
         """Test object_DELETE"""
         self.client.container=self.c2
         obj = 'test2'
@@ -972,31 +975,31 @@ class testPithos(unittest.TestCase):
         r = self.client.object_get(obj, success=(200, 404))
         self.assertEqual(r.status_code, 404)
 
-    def test_large_file_operations(self):
+    def atest_large_file_operations(self):
         """Test large file operations"""
         self.client.container = self.c1
+        pass
 
-        """Create a large (~6G) file at fs"""
-        self.fname = 'largefile'+unicode(self.now)
-        fsize = 1024*1024
+    def create_large_file(self, size, name):
+        """Create a large file at fs"""
+        self.fname = name
         import random
         random.seed(self.now)
         f = open(self.fname, 'w')
-        sys.stdout.write('\n\tcreating large file 0%')
-        for hobyte_id in range(fsize):
-            sss = 'hobt%s'%random.randint(0, 100)
-            f.write(sss*1024)
-            if 0 == hobyte_id%10485:
+        sys.stdout.write(' create random file %s of size %s'%(name, size)+' 0%')
+        for hobyte_id in range(size/8):
+            sss = 'hobt%s'%random.randint(1000, 9999)
+            f.write(sss)
+            if 0 == (hobyte_id*800)%size:
                 f.write('\n')
                 sys.stdout.write('\b\b')
-                prs = hobyte_id//10485
+                prs = (hobyte_id*800)//size
                 if prs > 10:
                     sys.stdout.write('\b')
                 sys.stdout.write('%s'%prs+'%')
                 sys.stdout.flush()
-        print('\n')
+        print('\b\b\b100%')
         f.close()
-
         """"""
 
 class testCyclades(unittest.TestCase):
@@ -1016,7 +1019,6 @@ if __name__ == '__main__':
     suiteFew = unittest.TestSuite()
 
     #kamaki/pithos.py
-    """
     suiteFew.addTest(testPithos('test_account_head'))
     suiteFew.addTest(testPithos('test_account_get'))
     suiteFew.addTest(testPithos('test_account_post'))
@@ -1034,6 +1036,7 @@ if __name__ == '__main__':
     suiteFew.addTest(testPithos('test_object_delete'))
     """
     suiteFew.addTest(testPithos('test_large_file_operations'))
+    """
 
     #kamaki/cyclades.py
     #suiteFew.addTest(testCyclades('atest_list_servers'))

@@ -68,6 +68,10 @@ The order of commands is important, it will be preserved in the help output.
 
 from __future__ import print_function
 
+import gevent.monkey
+#Monkey-patch everything for gevent early on
+gevent.monkey.patch_all()
+
 import inspect
 import logging
 import sys
@@ -821,7 +825,7 @@ class store_upload(_store_container_command):
         with open(local_path) as f:
             hash_cb = self.progress('Calculating block hashes')
             upload_cb = self.progress('Uploading blocks')
-            self.client.upload_object(remote_path, f, hash_cb=hash_cb, upload_cb=upload_cb)
+            self.client.async_upload_object(remote_path, f, hash_cb=hash_cb, upload_cb=upload_cb)
 
 @command(api='storage')
 class store_download(_store_container_command):

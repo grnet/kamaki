@@ -85,7 +85,6 @@ class Client(object):
 
         data = kwargs.pop('data', None)
         self.headers.setdefault('X-Auth-Token', self.token)
-        #publish = kwargs.pop('publish', None)
 
         if 'json' in kwargs:
             data = json.dumps(kwargs.pop('json'))
@@ -142,7 +141,8 @@ class Client(object):
     def move(self, path, **kwargs):
         return self.request('move', path, **kwargs)
 
-
+#TODO These should go away
+#   clients class should not be aware of its instances
 from .compute import ComputeClient as compute
 from .image import ImageClient as image
 from .storage import StorageClient as storage
