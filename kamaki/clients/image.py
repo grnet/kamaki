@@ -64,7 +64,7 @@ class ImageClient(Client):
         return r.json
 
     def get_meta(self, image_id):
-        path=path4url('mages', image_id)
+        path=path4url('images', image_id)
         r = self.head(path, success=200)
 
         reply = {}

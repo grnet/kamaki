@@ -57,29 +57,9 @@ DEFAULTS = {
         'colors': 'on',
         'token': ''
     },
-    'compute': {
-        'enable': 'on',
-        'cyclades_extensions': 'on',
-        'url': 'https://cyclades.okeanos.grnet.gr/api/v1.1',
-        'token': ''
-    },
-    'image': {
-        'enable': 'on',
-        'url': 'https://cyclades.okeanos.grnet.gr/plankton',
-        'token': ''
-    },
-    'storage': {
-        'enable': 'on',
-        'pithos_extensions': 'on',
-        'url': 'https://pithos.okeanos.grnet.gr/v1',
-        'account': '',
-        'container': '',
-        'token': ''
-    },
-    'astakos': {
-        'enable': 'on',
-        'url': 'https://astakos.okeanos.grnet.gr',
-        'token': ''
+    'config': {
+        'cli': 'config_cli',
+        'description': 'Configuration commands'
     }
 }
 
@@ -89,10 +69,16 @@ class Config(RawConfigParser):
         RawConfigParser.__init__(self, dict_type=OrderedDict)
         self.path = path or os.environ.get(CONFIG_ENV, CONFIG_PATH)
         self._overrides = defaultdict(dict)
+        self._load_defaults()
         self.read(self.path)
 
-    def sections(self):
-        return DEFAULTS.keys()
+    def _load_defaults(self):
+        for section, options in DEFAULTS.items():
+            for option, val in options.items():
+                self.set(section, option, val)
+
+    def apis(self):
+        return [api for api in self.sections() if api != 'global']
 
     def get(self, section, option):
         value = self._overrides.get(section, {}).get(option)

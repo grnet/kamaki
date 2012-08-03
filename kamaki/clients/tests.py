@@ -652,7 +652,7 @@ class testPithos(unittest.TestCase):
         """Some problems with transfer-encoding?"""
 
     def test_object_copy(self):
-        """test object_COPY"""
+        """Test object_COPY"""
         self.client.container=self.c2
         obj = 'test2'
 
