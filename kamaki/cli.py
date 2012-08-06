@@ -55,7 +55,7 @@ except ImportError:
 
 from colors import magenta, red, yellow
 #from progress.bar import IncrementalBar
-from requests.exceptions import ConnectionError
+#from requests.exceptions import ConnectionError
 
 #from . import clients
 from .config import Config
@@ -64,6 +64,7 @@ from .config import Config
 _commands = OrderedDict()
 
 GROUPS = {}
+CLI_LOCATIONS = ['', 'kamaki', 'kamaki.clients', 'kamaki.clis']
 
 def command(group=None, name=None, syntax=None):
     """Class decorator that registers a class as a CLI command."""
@@ -154,22 +155,23 @@ def main():
         for api in config.apis():
             api_cli = config.get(api, 'cli')
             if None == api_cli or len(api_cli)==0:
-                print('Warnig: No Command Line Interface "%s" given for API "%s"\n\t(cli option in config file)'%(api_cli, api))
+                print('Warnig: No Command Line Interface "%s" given for API "%s"'%(api_cli, api))
+                print('\t(cli option in config file)')
                 continue
             if not loaded_modules.has_key(api_cli):
-                try:
-                    __import__(api_cli)
-                except ImportError:
+                loaded_modules[api_cli] = False
+                for location in CLI_LOCATIONS:
+                    location += api_cli if location == '' else '.%s'%api_cli
                     try:
-                        __import__('kamaki.clients.'+api_cli)
+                        __import__(location)
+                        loaded_modules[api_cli] = True
+                        break
                     except ImportError:
-                        try:
-                            __import__('kamaki.'+api_cli)
-                        except ImportError:
-                            print('Warning: failed to load Command Line Interface "%s" for API "%s"\n\t(No suitable cli in known paths)'%(api_cli, api))
-                            loaded_modules[api_cli] = False
-                            continue
-                loaded_modules[api_cli] = True
+                        pass
+                if not loaded_modules[api_cli]:
+                    print('Warning: failed to load Command Line Interface "%s" for API "%s"'%(api_cli, api))
+                    print('\t(No suitable cli in known paths)')
+                    continue
             if not GROUPS.has_key(api):
                 GROUPS[api] = 'No description (interface: %s)'%api_cli
 

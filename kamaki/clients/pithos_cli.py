@@ -1,0 +1,467 @@
+# Copyright 2011-2012 GRNET S.A. All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or
+# without modification, are permitted provided that the following
+# conditions are met:
+#
+#   1. Redistributions of source code must retain the above
+#      copyright notice, this list of conditions and the following
+#      disclaimer.
+#
+#   2. Redistributions in binary form must reproduce the above
+#      copyright notice, this list of conditions and the following
+#      disclaimer in the documentation and/or other materials
+#      provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY GRNET S.A. ``AS IS'' AND ANY EXPRESS
+# OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL GRNET S.A OR
+# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
+# USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+# AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+# ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+#
+# The views and conclusions contained in the software and
+# documentation are those of the authors and should not be
+# interpreted as representing official policies, either expressed
+# or implied, of GRNET S.A.command
+
+from kamaki.cli import command, set_api_description
+set_api_description('store', 'Pithos+ storage commands')
+from .pithos import PithosClient
+
+from progress.bar import IncrementalBar
+
+
+class ProgressBar(IncrementalBar):
+    suffix = '%(percent)d%% - %(eta)ds'
+
+class _pithos_init(object):
+    def main(self):
+        token = self.config.get('store', 'token') or self.config.get('global', 'token')
+        base_url = self.config.get('store', 'url') or self.config.get('global', 'url')
+        account = self.config.get('store', 'account') or self.config.get('global', 'account')
+        container = self.config.get('store', 'container') or self.config.get('global', 'container')
+        self.client = PithosClient(base_url=base_url, token=token, account=account, container=container)
+
+class _store_account_command(_pithos_init):
+    """Base class for account level storage commands"""
+
+    def update_parser(self, parser):
+        parser.add_argument('--account', dest='account', metavar='NAME',
+                          help="Specify an account to use")
+
+    def progress(self, message):
+        """Return a generator function to be used for progress tracking"""
+
+        MESSAGE_LENGTH = 25
+
+        def progress_gen(n):
+            msg = message.ljust(MESSAGE_LENGTH)
+            for i in ProgressBar(msg).iter(range(n)):
+                yield
+            yield
+
+        return progress_gen
+
+    def main(self):
+        super(_store_account_command, self).main()
+        if self.args.account is not None:
+            self.client.account = self.args.account
+
+class _store_container_command(_store_account_command):
+    """Base class for container level storage commands"""
+
+    def update_parser(self, parser):
+        super(_store_container_command, self).update_parser(parser)
+        parser.add_argument('--container', dest='container', metavar='NAME',
+                          help="Specify a container to use")
+
+    def extract_container_and_path(self, container_with_path):
+        assert isinstance(container_with_path, str)
+        cnp = container_with_path.split(':')
+        self.container = cnp[0]
+        self.path = cnp[1] if len(cnp) > 1 else None
+            
+
+    def main(self, container_with_path=None):
+        super(_store_container_command, self).main()
+        if container_with_path is not None:
+            self.extract_container_and_path(container_with_path)
+            self.client.container = self.container
+        elif self.args.container is not None:
+            self.client.container = self.args.container
+        else:
+            self.container = None
+
+@command()
+class store_list(_store_container_command):
+    """List containers, object trees or objects in a directory
+    """
+
+    def print_objects(self, object_list):
+        for obj in object_list:
+            size = format_size(obj['bytes']) if 0 < obj['bytes'] else 'D'
+            print('%6s %s' % (size, obj['name']))
+
+    def print_containers(self, container_list):
+        for container in container_list:
+            size = format_size(container['bytes'])
+            print('%s (%s, %s objects)' % (container['name'], size, container['count']))
+            
+    def main(self, container____path__=None):
+        super(self.__class__, self).main(container____path__)
+        if self.container is None:
+            reply = self.client.list_containers()
+            self.print_containers(reply)
+        else:
+            reply = self.client.list_objects() if self.path is None \
+                else self.client.list_objects_in_path(path_prefix=self.path)
+            self.print_objects(reply)
+
+@command()
+class store_create(_store_container_command):
+    """Create a container or a directory object"""
+
+    def main(self, container____directory__):
+        super(self.__class__, self).main(container____directory__)
+        if self.path is None:
+            self.client.create_container(self.container)
+        else:
+            self.client.create_directory(self.path)
+
+@command()
+class store_copy(_store_container_command):
+    """Copy an object"""
+
+    def main(self, source_container___path, destination_container____path__):
+        super(self.__class__, self).main(source_container___path)
+        dst = destination_container____path__.split(':')
+        dst_cont = dst[0]
+        dst_path = dst[1] if len(dst) > 1 else False
+        self.client.copy_object(src_container = self.container, src_object = self.path, dst_container = dst_cont, dst_object = dst_path)
+
+@command()
+class store_move(_store_container_command):
+    """Move an object"""
+
+    def main(self, source_container___path, destination_container____path__):
+        super(self.__class__, self).main(source_container___path)
+        dst = destination_container____path__.split(':')
+        dst_cont = dst[0]
+        dst_path = dst[1] if len(dst) > 1 else False
+        self.client.move_object(src_container = self.container, src_object = self.path, dst_container = dst_cont, dst_object = dst_path)
+
+@command()
+class store_append(_store_container_command):
+    """Append local file to (existing) remote object"""
+
+    def main(self, local_path, container___path):
+        super(self.__class__, self).main(container___path)
+        f = open(local_path, 'r')
+        upload_cb = self.progress('Appending blocks')
+        self.client.append_object(object=self.path, source_file = f, upload_cb = upload_cb)
+
+@command()
+class store_truncate(_store_container_command):
+    """Truncate remote file up to a size"""
+
+    def main(self, container___path, size=0):
+        super(self.__class__, self).main(container___path)
+        self.client.truncate_object(self.path, size)
+
+@command()
+class store_overwrite(_store_container_command):
+    """Overwrite part (from start to end) of a remote file"""
+
+    def main(self, local_path, container___path, start, end):
+        super(self.__class__, self).main(container___path)
+        f = open(local_path, 'r')
+        upload_cb = self.progress('Overwritting blocks')
+        self.client.overwrite_object(object=self.path, start=start, end=end, source_file=f, upload_cb = upload_cb)
+
+@command()
+class store_upload(_store_container_command):
+    """Upload a file"""
+
+    def main(self, local_path, container____path__):
+        super(self.__class__, self).main(container____path__)
+        remote_path = basename(local_path) if self.path is None else self.path
+        with open(local_path) as f:
+            hash_cb = self.progress('Calculating block hashes')
+            upload_cb = self.progress('Uploading blocks')
+            self.client.async_upload_object(remote_path, f, hash_cb=hash_cb, upload_cb=upload_cb)
+
+@command()
+class store_download(_store_container_command):
+    """Download a file"""
+
+    def main(self, container___path, local_path='-'):
+        super(self.__class__, self).main(container___path)
+        f, size = self.client.get_object(self.path)
+        out = open(local_path, 'w') if local_path != '-' else stdout
+
+        blocksize = 4 * 1024 ** 2
+        nblocks = 1 + (size - 1) // blocksize
+
+        cb = self.progress('Downloading blocks') if local_path != '-' else None
+        if cb:
+            gen = cb(nblocks)
+            gen.next()
+
+        data = f.read(blocksize)
+        while data:
+            out.write(data)
+            data = f.read(blocksize)
+            if cb:
+                gen.next()
+
+@command()
+class store_delete(_store_container_command):
+    """Delete a container [or an object]"""
+
+    def main(self, container____path__):
+        super(self.__class__, self).main(container____path__)
+        if self.path is None:
+            self.client.delete_container(self.container)
+        else:
+            self.client.delete_object(self.path)
+
+@command()
+class store_purge(_store_account_command):
+    """Purge a container"""
+
+    def main(self, container):
+        super(self.__class__, self).main()
+        self.client.container = container
+        self.client.purge_container()
+
+@command()
+class store_publish(_store_container_command):
+    """Publish an object"""
+
+    def main(self, container___path):
+        super(self.__class__, self).main(container___path)
+        self.client.publish_object(self.path)
+
+@command()
+class store_unpublish(_store_container_command):
+    """Unpublish an object"""
+
+    def main(self, container___path):
+        super(self.__class__, self).main(container___path)
+        self.client.unpublish_object(self.path)
+
+@command()
+class store_permitions(_store_container_command):
+    """Get object read/write permitions"""
+
+    def main(self, container___path):
+        super(self.__class__, self).main(container___path)
+        reply = self.client.get_object_sharing(self.path)
+        print_dict(reply)
+
+@command()
+class store_setpermitions(_store_container_command):
+    """Set sharing permitions"""
+
+    def main(self, container___path, *permitions):
+        super(self.__class__, self).main(container___path)
+        read = False
+        write = False
+        for perms in permitions:
+            splstr = perms.split('=')
+            if 'read' == splstr[0]:
+                read = [user_or_group.strip() for user_or_group in splstr[1].split(',')]
+            elif 'write' == splstr[0]:
+                write = [user_or_group.strip() for user_or_group in splstr[1].split(',')]
+            else:
+                read = False
+                write = False
+        if not read and not write:
+            print(u'Read/write permitions are given in the following format:')
+            print(u'\tread=username,groupname,...')
+            print(u'and/or')
+            print(u'\twrite=username,groupname,...')
+            return
+        self.client.set_object_sharing(self.path, read_permition=read, write_permition=write)
+
+@command()
+class store_delpermitions(_store_container_command):
+    """Delete all sharing permitions"""
+
+    def main(self, container___path):
+        super(self.__class__, self).main(container___path)
+        self.client.del_object_sharing(self.path)
+
+@command()
+class store_info(_store_container_command):
+    """Get information for account [, container [or object]]"""
+
+    def main(self, container____path__=None):
+        super(self.__class__, self).main(container____path__)
+        if self.container is None:
+            reply = self.client.get_account_info()
+        elif self.path is None:
+            reply = self.client.get_container_info(self.container)
+        else:
+            reply = self.client.get_object_info(self.path)
+        print_dict(reply)
+
+@command()
+class store_meta(_store_container_command):
+    """Get custom meta-content for account [, container [or object]]"""
+
+    def main(self, container____path__ = None):
+        super(self.__class__, self).main(container____path__)
+        if self.container is None:
+            reply = self.client.get_account_meta()
+        elif self.path is None:
+            reply = self.client.get_container_object_meta(self.container)
+            print_dict(reply)
+            reply = self.client.get_container_meta(self.container)
+        else:
+            reply = self.client.get_object_meta(self.path)
+        print_dict(reply)
+
+@command()
+class store_setmeta(_store_container_command):
+    """Set a new metadatum for account [, container [or object]]"""
+
+    def main(self, metakey, metavalue, container____path__=None):
+        super(self.__class__, self).main(container____path__)
+        if self.container is None:
+            self.client.set_account_meta({metakey:metavalue})
+        elif self.path is None:
+            self.client.set_container_meta({metakey:metavalue})
+        else:
+            self.client.set_object_meta(self.path, {metakey:metavalue})
+
+@command()
+class store_delmeta(_store_container_command):
+    """Delete an existing metadatum of account [, container [or object]]"""
+
+    def main(self, metakey, container____path__=None):
+        super(self.__class__, self).main(container____path__)
+        if self.container is None:
+            self.client.del_account_meta(metakey)
+        elif self.path is None:
+            self.client.del_container_meta(metakey)
+        else:
+            self.client.del_object_meta(metakey, self.path)
+
+@command()
+class store_quota(_store_account_command):
+    """Get  quota for account [or container]"""
+
+    def main(self, container = None):
+        super(self.__class__, self).main()
+        if container is None:
+            reply = self.client.get_account_quota()
+        else:
+            reply = self.client.get_container_quota(container)
+        print_dict(reply)
+
+@command()
+class store_setquota(_store_account_command):
+    """Set new quota (in KB) for account [or container]"""
+
+    def main(self, quota, container = None):
+        super(self.__class__, self).main()
+        if container is None:
+            self.client.set_account_quota(quota)
+        else:
+            self.client.container = container
+            self.client.set_container_quota(quota)
+
+@command()
+class store_versioning(_store_account_command):
+    """Get  versioning for account [or container ]"""
+
+    def main(self, container = None):
+        super(self.__class__, self).main()
+        if container is None:
+            reply = self.client.get_account_versioning()
+        else:
+            reply = self.client.get_container_versioning(container)
+        print_dict(reply)
+
+@command()
+class store_setversioning(_store_account_command):
+    """Set new versioning (auto, none) for account [or container]"""
+
+    def main(self, versioning, container = None):
+        super(self.__class__, self).main()
+        if container is None:
+            self.client.set_account_versioning(versioning)
+        else:
+            self.client.container = container
+            self.client.set_container_versioning(versioning)
+
+@command()
+class store_test(_store_account_command):
+    """Perform a developer-level custom test"""
+
+    def main(self):
+        super(self.__class__, self).main()
+        self.client.container = 'testCo0'
+        obj = 'newlala'
+        block_size = int(self.client.get_container_info('testCo0')['x-container-block-size'])
+        self.client.reset_headers()
+
+        #self.client.object_put(obj, content_type='application/octet-stream', content_length=7,
+        #    transfer_encoding='chunked', data='lalalala')
+
+        url = 'http://127.0.0.1:8000/v1/admin@adminlan.com/testCo0/tss'
+
+        import httplib
+
+        conn = httplib.HTTPConnection('127.0.0.1', 8000)
+        conn.set_debuglevel(1)
+        conn.connect()
+        request = conn.putrequest('PUT', '/v1/admin@adminland.com/testCo0/tss')
+        conn.putheader('content-type','application/octet-stream')
+        conn.putheader('X-Auth-Token','ac0yH8cQMEZu3M3Mp1MWGA==')
+        conn.putheader('Transfer-Encoding','chunked')
+        conn.putheader('Content-length', '0')
+        conn.endheaders()
+        for i in range(10):
+            msg='bottle%sbottle'%i
+            print('kamaki:Send(%s)'%msg)
+            msg += ' '*(block_size-len(msg))
+            conn.send(msg)
+        print('kamaki:Now, get a response')
+        resp = conn.getresponse()
+        print('kamaki:Got a response')
+        print(unicode(resp.status)+'\n'+unicode(resp.reason)+'\n- * - * -\n'+unicode(resp.read()))
+        conn.close()
+
+@command()
+class store_group(_store_account_command):
+    """Get user groups details for account"""
+
+    def main(self):
+        super(self.__class__, self).main()
+        reply = self.client.get_account_group()
+        print_dict(reply)
+
+@command()
+class store_setgroup(_store_account_command):
+    """Create/update a new user group on account"""
+
+    def main(self, groupname, *users):
+        super(self.__class__, self).main()
+        self.client.set_account_group(groupname, users)
+
+@command()
+class store_delgroup(_store_account_command):
+    """Delete a user group on an account"""
+
+    def main(self, groupname):
+        super(self.__class__, self).main()
+        self.client.del_account_group(groupname)
