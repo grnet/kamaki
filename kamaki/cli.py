@@ -57,7 +57,7 @@ from colors import magenta, red, yellow
 #from progress.bar import IncrementalBar
 #from requests.exceptions import ConnectionError
 
-#from . import clients
+from . import clients
 from .config import Config
 #from .utils import print_list, print_dict, print_items, format_size
 
@@ -65,6 +65,18 @@ _commands = OrderedDict()
 
 GROUPS = {}
 CLI_LOCATIONS = ['', 'kamaki', 'kamaki.clients', 'kamaki.clis']
+
+class CLIError(Exception):
+    def __init__(self, message, status=0, details='', importance=0):
+        """importance is set by the raiser
+        0 is the lowest possible importance
+        Suggested values: 0, 1, 2, 3
+        """
+        super(CLIError, self).__init__(message, status, details)
+        self.message = message
+        self.status = status
+        self.details = details
+        self.importance = importance
 
 def command(group=None, name=None, syntax=None):
     """Class decorator that registers a class as a CLI command."""
@@ -285,15 +297,17 @@ def main():
             exit(1)
         else:
             raise
-    except ConnectionError as err:
-        print(red("Connection error"), file=stderr)
-        exit(1)
-    except Exception as err:
-        print(magenta(unicode(err)))
-        #if err.status:
-        #    print(red('Client error (%s)'%err.status), file=stderr)
-        #else:
-        #    print(err.message, file=stderr)
+    except CLIError as err:
+        errmsg = 'CLI Error '
+        errmsg += '(%s): '%err.status if err.status else ': '
+        errmsg += err.message if err.message else ''
+        if err.importance == 1:
+            errmsg = yellow(errmsg)
+        elif err.importance == 2:
+            errmsg = magenta(errmsg)
+        elif err.importance > 2:
+            errmsg = red(errmsg)
+        print(errmsg, file=stderr)
         exit(1)
 
 if __name__ == '__main__':

@@ -33,7 +33,8 @@
 
 from kamaki.cli import command, set_api_description
 set_api_description('store', 'Pithos+ storage commands')
-from .pithos import PithosClient
+from .pithos import PithosClient, ClientError
+from .cli_utils import raiseCLIError
 
 from progress.bar import IncrementalBar
 
@@ -113,9 +114,16 @@ class store_list(_store_container_command):
         for container in container_list:
             size = format_size(container['bytes'])
             print('%s (%s, %s objects)' % (container['name'], size, container['count']))
-            
+
+    
     def main(self, container____path__=None):
         super(self.__class__, self).main(container____path__)
+        try:
+            self.logic()
+        except ClientError as err:
+            raiseCLIError(err)
+
+    def logic(self):
         if self.container is None:
             reply = self.client.list_containers()
             self.print_containers(reply)
@@ -128,8 +136,15 @@ class store_list(_store_container_command):
 class store_create(_store_container_command):
     """Create a container or a directory object"""
 
+    
     def main(self, container____directory__):
         super(self.__class__, self).main(container____directory__)
+        try:
+            self.logic()
+        except ClientError as err:
+            raiseCLIError(err)
+
+    def logic(self):
         if self.path is None:
             self.client.create_container(self.container)
         else:
@@ -139,8 +154,15 @@ class store_create(_store_container_command):
 class store_copy(_store_container_command):
     """Copy an object"""
 
+    
     def main(self, source_container___path, destination_container____path__):
         super(self.__class__, self).main(source_container___path)
+        try:
+            self.logic()
+        except ClientError as err:
+            raiseCLIError(err)
+
+    def logic(self):
         dst = destination_container____path__.split(':')
         dst_cont = dst[0]
         dst_path = dst[1] if len(dst) > 1 else False
@@ -150,8 +172,15 @@ class store_copy(_store_container_command):
 class store_move(_store_container_command):
     """Move an object"""
 
+    
     def main(self, source_container___path, destination_container____path__):
         super(self.__class__, self).main(source_container___path)
+        try:
+            self.logic()
+        except ClientError as err:
+            raiseCLIError(err)
+
+    def logic(self):
         dst = destination_container____path__.split(':')
         dst_cont = dst[0]
         dst_path = dst[1] if len(dst) > 1 else False
@@ -161,8 +190,15 @@ class store_move(_store_container_command):
 class store_append(_store_container_command):
     """Append local file to (existing) remote object"""
 
+    
     def main(self, local_path, container___path):
         super(self.__class__, self).main(container___path)
+        try:
+            self.logic()
+        except ClientError as err:
+            raiseCLIError(err)
+
+    def logic(self):
         f = open(local_path, 'r')
         upload_cb = self.progress('Appending blocks')
         self.client.append_object(object=self.path, source_file = f, upload_cb = upload_cb)
@@ -171,16 +207,30 @@ class store_append(_store_container_command):
 class store_truncate(_store_container_command):
     """Truncate remote file up to a size"""
 
+    
     def main(self, container___path, size=0):
         super(self.__class__, self).main(container___path)
+        try:
+            self.logic()
+        except ClientError as err:
+            raiseCLIError(err)
+
+    def logic(self):
         self.client.truncate_object(self.path, size)
 
 @command()
 class store_overwrite(_store_container_command):
     """Overwrite part (from start to end) of a remote file"""
 
+    
     def main(self, local_path, container___path, start, end):
         super(self.__class__, self).main(container___path)
+        try:
+            self.logic()
+        except ClientError as err:
+            raiseCLIError(err)
+
+    def logic(self):
         f = open(local_path, 'r')
         upload_cb = self.progress('Overwritting blocks')
         self.client.overwrite_object(object=self.path, start=start, end=end, source_file=f, upload_cb = upload_cb)
@@ -189,8 +239,15 @@ class store_overwrite(_store_container_command):
 class store_upload(_store_container_command):
     """Upload a file"""
 
+    
     def main(self, local_path, container____path__):
         super(self.__class__, self).main(container____path__)
+        try:
+            self.logic()
+        except ClientError as err:
+            raiseCLIError(err)
+
+    def logic(self):
         remote_path = basename(local_path) if self.path is None else self.path
         with open(local_path) as f:
             hash_cb = self.progress('Calculating block hashes')
@@ -201,8 +258,15 @@ class store_upload(_store_container_command):
 class store_download(_store_container_command):
     """Download a file"""
 
+    
     def main(self, container___path, local_path='-'):
         super(self.__class__, self).main(container___path)
+        try:
+            self.logic()
+        except ClientError as err:
+            raiseCLIError(err)
+
+    def logic(self):
         f, size = self.client.get_object(self.path)
         out = open(local_path, 'w') if local_path != '-' else stdout
 
@@ -225,8 +289,15 @@ class store_download(_store_container_command):
 class store_delete(_store_container_command):
     """Delete a container [or an object]"""
 
+    
     def main(self, container____path__):
         super(self.__class__, self).main(container____path__)
+        try:
+            self.logic()
+        except ClientError as err:
+            raiseCLIError(err)
+
+    def logic(self):
         if self.path is None:
             self.client.delete_container(self.container)
         else:
@@ -236,8 +307,15 @@ class store_delete(_store_container_command):
 class store_purge(_store_account_command):
     """Purge a container"""
 
+    
     def main(self, container):
         super(self.__class__, self).main()
+        try:
+            self.logic()
+        except ClientError as err:
+            raiseCLIError(err)
+
+    def logic(self):
         self.client.container = container
         self.client.purge_container()
 
@@ -245,24 +323,39 @@ class store_purge(_store_account_command):
 class store_publish(_store_container_command):
     """Publish an object"""
 
+    
     def main(self, container___path):
         super(self.__class__, self).main(container___path)
-        self.client.publish_object(self.path)
+        try:
+            self.client.publish_object(self.path)
+        except ClientError as err:
+            raiseCLIError(err)
 
 @command()
 class store_unpublish(_store_container_command):
     """Unpublish an object"""
 
+    
     def main(self, container___path):
         super(self.__class__, self).main(container___path)
-        self.client.unpublish_object(self.path)
+        try:
+            self.client.unpublish_object(self.path)
+        except ClientError as err:
+            raiseCLIError(err)
 
 @command()
 class store_permitions(_store_container_command):
     """Get object read/write permitions"""
 
+    
     def main(self, container___path):
         super(self.__class__, self).main(container___path)
+        try:
+            self.logic()
+        except ClientError as err:
+            raiseCLIError(err)
+
+    def logic(self):
         reply = self.client.get_object_sharing(self.path)
         print_dict(reply)
 
@@ -270,8 +363,15 @@ class store_permitions(_store_container_command):
 class store_setpermitions(_store_container_command):
     """Set sharing permitions"""
 
+    
     def main(self, container___path, *permitions):
         super(self.__class__, self).main(container___path)
+        try:
+            self.logic()
+        except ClientError as err:
+            raiseCLIError(err)
+
+    def logic(self):
         read = False
         write = False
         for perms in permitions:
@@ -295,16 +395,27 @@ class store_setpermitions(_store_container_command):
 class store_delpermitions(_store_container_command):
     """Delete all sharing permitions"""
 
+    
     def main(self, container___path):
         super(self.__class__, self).main(container___path)
-        self.client.del_object_sharing(self.path)
+        try:
+            self.client.del_object_sharing(self.path)
+        except ClientError as err:
+            raiseCLIError(err)
 
 @command()
 class store_info(_store_container_command):
     """Get information for account [, container [or object]]"""
 
+    
     def main(self, container____path__=None):
         super(self.__class__, self).main(container____path__)
+        try:
+            self.logic()
+        except ClientError as err:
+            raiseCLIError(err)
+
+    def logic(self):
         if self.container is None:
             reply = self.client.get_account_info()
         elif self.path is None:
@@ -317,8 +428,15 @@ class store_info(_store_container_command):
 class store_meta(_store_container_command):
     """Get custom meta-content for account [, container [or object]]"""
 
+    
     def main(self, container____path__ = None):
         super(self.__class__, self).main(container____path__)
+        try:
+            self.logic()
+        except ClientError as err:
+            raiseCLIError(err)
+
+    def logic(self):
         if self.container is None:
             reply = self.client.get_account_meta()
         elif self.path is None:
@@ -333,8 +451,15 @@ class store_meta(_store_container_command):
 class store_setmeta(_store_container_command):
     """Set a new metadatum for account [, container [or object]]"""
 
+    
     def main(self, metakey, metavalue, container____path__=None):
         super(self.__class__, self).main(container____path__)
+        try:
+            self.logic()
+        except ClientError as err:
+            raiseCLIError(err)
+
+    def logic(self):
         if self.container is None:
             self.client.set_account_meta({metakey:metavalue})
         elif self.path is None:
@@ -346,8 +471,15 @@ class store_setmeta(_store_container_command):
 class store_delmeta(_store_container_command):
     """Delete an existing metadatum of account [, container [or object]]"""
 
+    
     def main(self, metakey, container____path__=None):
         super(self.__class__, self).main(container____path__)
+        try:
+            self.logic()
+        except ClientError as err:
+            raiseCLIError(err)
+
+    def logic(self):
         if self.container is None:
             self.client.del_account_meta(metakey)
         elif self.path is None:
@@ -359,8 +491,15 @@ class store_delmeta(_store_container_command):
 class store_quota(_store_account_command):
     """Get  quota for account [or container]"""
 
+    
     def main(self, container = None):
         super(self.__class__, self).main()
+        try:
+            self.logic()
+        except ClientError as err:
+            raiseCLIError(err)
+
+    def logic(self):
         if container is None:
             reply = self.client.get_account_quota()
         else:
@@ -371,8 +510,15 @@ class store_quota(_store_account_command):
 class store_setquota(_store_account_command):
     """Set new quota (in KB) for account [or container]"""
 
+    
     def main(self, quota, container = None):
         super(self.__class__, self).main()
+        try:
+            self.logic()
+        except ClientError as err:
+            raiseCLIError(err)
+
+    def logic(self):
         if container is None:
             self.client.set_account_quota(quota)
         else:
@@ -383,8 +529,15 @@ class store_setquota(_store_account_command):
 class store_versioning(_store_account_command):
     """Get  versioning for account [or container ]"""
 
+    
     def main(self, container = None):
         super(self.__class__, self).main()
+        try:
+            self.logic()
+        except ClientError as err:
+            raiseCLIError(err)
+
+    def logic(self):
         if container is None:
             reply = self.client.get_account_versioning()
         else:
@@ -395,8 +548,15 @@ class store_versioning(_store_account_command):
 class store_setversioning(_store_account_command):
     """Set new versioning (auto, none) for account [or container]"""
 
+    
     def main(self, versioning, container = None):
         super(self.__class__, self).main()
+        try:
+            self.logic()
+        except ClientError as err:
+            raiseCLIError(err)
+
+    def logic(self):
         if container is None:
             self.client.set_account_versioning(versioning)
         else:
@@ -404,49 +564,18 @@ class store_setversioning(_store_account_command):
             self.client.set_container_versioning(versioning)
 
 @command()
-class store_test(_store_account_command):
-    """Perform a developer-level custom test"""
-
-    def main(self):
-        super(self.__class__, self).main()
-        self.client.container = 'testCo0'
-        obj = 'newlala'
-        block_size = int(self.client.get_container_info('testCo0')['x-container-block-size'])
-        self.client.reset_headers()
-
-        #self.client.object_put(obj, content_type='application/octet-stream', content_length=7,
-        #    transfer_encoding='chunked', data='lalalala')
-
-        url = 'http://127.0.0.1:8000/v1/admin@adminlan.com/testCo0/tss'
-
-        import httplib
-
-        conn = httplib.HTTPConnection('127.0.0.1', 8000)
-        conn.set_debuglevel(1)
-        conn.connect()
-        request = conn.putrequest('PUT', '/v1/admin@adminland.com/testCo0/tss')
-        conn.putheader('content-type','application/octet-stream')
-        conn.putheader('X-Auth-Token','ac0yH8cQMEZu3M3Mp1MWGA==')
-        conn.putheader('Transfer-Encoding','chunked')
-        conn.putheader('Content-length', '0')
-        conn.endheaders()
-        for i in range(10):
-            msg='bottle%sbottle'%i
-            print('kamaki:Send(%s)'%msg)
-            msg += ' '*(block_size-len(msg))
-            conn.send(msg)
-        print('kamaki:Now, get a response')
-        resp = conn.getresponse()
-        print('kamaki:Got a response')
-        print(unicode(resp.status)+'\n'+unicode(resp.reason)+'\n- * - * -\n'+unicode(resp.read()))
-        conn.close()
-
-@command()
 class store_group(_store_account_command):
     """Get user groups details for account"""
 
+    
     def main(self):
         super(self.__class__, self).main()
+        try:
+            self.logic()
+        except ClientError as err:
+            raiseCLIError(err)
+
+    def logic(self):
         reply = self.client.get_account_group()
         print_dict(reply)
 
@@ -454,14 +583,22 @@ class store_group(_store_account_command):
 class store_setgroup(_store_account_command):
     """Create/update a new user group on account"""
 
+    
     def main(self, groupname, *users):
         super(self.__class__, self).main()
-        self.client.set_account_group(groupname, users)
+        try:
+            self.client.set_account_group(groupname, users)
+        except ClientError as err:
+            raiseCLIError(err)
 
 @command()
 class store_delgroup(_store_account_command):
     """Delete a user group on an account"""
 
+    
     def main(self, groupname):
         super(self.__class__, self).main()
-        self.client.del_account_group(groupname)
+        try:
+            self.client.del_account_group(groupname)
+        except ClientError as err:
+            raiseCLIError(err)

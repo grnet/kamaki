@@ -38,16 +38,13 @@ import requests
 
 from requests.auth import AuthBase
 
-
 sendlog = logging.getLogger('clients.send')
 recvlog = logging.getLogger('clients.recv')
-
 
 # Add a convenience status property to the responses
 def _status(self):
     return requests.status_codes._codes[self.status_code][0].upper()
 requests.Response.status = property(_status)
-
 
 class ClientError(Exception):
     def __init__(self, message, status=0, details=''):
@@ -55,7 +52,6 @@ class ClientError(Exception):
         self.message = message
         self.status = status
         self.details = details
-
 
 class Client(object):
     def __init__(self, base_url, token):
@@ -141,8 +137,6 @@ class Client(object):
     def move(self, path, **kwargs):
         return self.request('move', path, **kwargs)
 
-#TODO These should go away
-#   clients class should not be aware of its instances
 from .compute import ComputeClient as compute
 from .image import ImageClient as image
 from .storage import StorageClient as storage
