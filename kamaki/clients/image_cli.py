@@ -32,14 +32,19 @@
 # or implied, of GRNET S.A.command
 
 from kamaki.cli import command, set_api_description
+from kamaki.utils import print_dict, print_items
 set_api_description('image', "Compute/Cyclades or Glance API image commands")
-from .image import ImageClient
+from .image import ImageClient, ClientError
+from .cli_utils import raiseCLIError
 
 class _init_image(object):
     def main(self):
-        token = self.config.get('store', 'token') or self.config.get('global', 'token')
-        base_url = self.config.get('store', 'url') or self.config.get('global', 'url')
-        self.client = ImageClient(base_url=base_url, token=token)
+        try:
+            token = self.config.get('store', 'token') or self.config.get('global', 'token')
+            base_url = self.config.get('store', 'url') or self.config.get('global', 'url')
+            self.client = ImageClient(base_url=base_url, token=token)
+        except ClientError as err:
+            raiseCLIError(err)
 
 @command()
 class image_public(_init_image):
@@ -73,8 +78,11 @@ class image_public(_init_image):
                 filters[filter] = val
 
         order = self.args.order or ''
-        images = self.client.list_public(self.args.detail, filters=filters,
-                                         order=order)
+        try:
+            images = self.client.list_public(self.args.detail,
+                filters=filters, order=order)
+        except ClientError as err:
+            raiseCLIError(err)
         print_items(images, title=('name',))
 
 @command()
@@ -83,8 +91,10 @@ class image_meta(_init_image):
 
     def main(self, image_id):
     	super(self.__class__, self).main()
-        print('HELLO!')
-        image = self.client.get_meta(image_id)
+        try:
+            image = self.client.get_meta(image_id)
+        except ClientError as err:
+            raiseCLIError(err)
         print_dict(image)
 
 @command()
@@ -135,11 +145,13 @@ class image_register(_init_image):
         for property in self.args.properties or []:
             key, sep, val = property.partition('=')
             if not sep:
-                print("Invalid property '%s'" % property)
-                return 1
+                raise CLIError(message="Invalid property '%s'" % property, importance=1)
             properties[key.strip()] = val.strip()
 
-        self.client.register(name, location, params, properties)
+        try:
+            self.client.register(name, location, params, properties)
+        except ClientError as err:
+            raiseCLIError(err)
 
 @command()
 class image_members(_init_image):
@@ -147,7 +159,10 @@ class image_members(_init_image):
 
     def main(self, image_id):
     	super(self.__class__, self).main()
-        members = self.client.list_members(image_id)
+        try:
+            members = self.client.list_members(image_id)
+        except ClientError as err:
+            raiseCLIError(err)
         for member in members:
             print(member['member_id'])
 
@@ -157,7 +172,10 @@ class image_shared(_init_image):
 
     def main(self, member):
     	super(self.__class__, self).main()
-        images = self.client.list_shared(member)
+        try:
+            images = self.client.list_shared(member)
+        except ClientError as err:
+            raiseCLIError(err)
         for image in images:
             print(image['image_id'])
 
@@ -167,20 +185,29 @@ class image_addmember(_init_image):
 
     def main(self, image_id, member):
     	super(self.__class__, self).main()
-        self.client.add_member(image_id, member)
+        try:
+            self.client.add_member(image_id, member)
+        except ClientError as err:
+            raiseCLIError(err)
 
 @command()
 class image_delmember(_init_image):
     """Remove a member from an image"""
 
     def main(self, image_id, member):
-    	super(self.__class__, self).main()
-        self.client.remove_member(image_id, member)
+        super(self.__class__, self).main()
+        try:
+            self.client.remove_member(image_id, member)
+        except ClientError as err:
+            raiseCLIError(err)
 
 @command()
 class image_setmembers(_init_image):
     """Set the members of an image"""
 
     def main(self, image_id, *member):
-    	super(self.__class__, self).main()
-        self.client.set_members(image_id, member)
+        super(self.__class__, self).main()
+        try:
+            self.client.set_members(image_id, member)
+        except ClientError as err:
+            raiseCLIError(err)

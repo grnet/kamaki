@@ -31,29 +31,19 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
+from . import ClientError
+from kamaki.cli import CLIError
+from inspect import getargspec
 
-from kamaki.cli import command, set_api_description
-set_api_description('astakos', 'Astakos API commands')
-from .astakos import AstakosClient, ClientError
-from .cli_utils import raiseCLIError
-from kamaki.utils import print_dict
+def raiseCLIError(err, importance = -1):
+	if importance < 0:
+		if err.status <= 0:
+			importance = 0
+		elif err.status <= 400:
+			importance = 1
+		elif err.status <= 500:
+			importance = 2
+		else:
+			importance = 3
+	raise CLIError(err.message, err.status, err.details, importance)
 
-class _astakos_init(object):
-	def main(self):
-		token = self.config.get('astakos', 'token') or self.config.get('global', 'token')
-		base_url = self.config.get('astakos', 'url') or self.config.get('global', 'url')
-		if base_url is None:
-			raise ClientError('no URL for astakos')
-		self.client = AstakosClient(base_url=base_url, token=token)
-
-@command()
-class astakos_authenticate(_astakos_init):
-    """Authenticate a user"""
-
-    def main(self):
-    	super(astakos_authenticate, self).main()
-    	try:
-        	reply = self.client.authenticate()
-        except ClientError as err:
-        	raiseCLIError(err)
-        print_dict(reply)

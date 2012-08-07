@@ -30,8 +30,6 @@
 # documentation are those of the authors and should not be
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
-
-
 from . import Client, ClientError
 from .utils import path4url
 
