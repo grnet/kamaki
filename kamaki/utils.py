@@ -30,8 +30,11 @@
 # documentation are those of the authors and should not be
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
+from .cli import CLIError
 
 def print_dict(d, exclude=(), ident= 0):
+    if not isinstance(d, dict):
+        raise CLIError(message='Cannot dict_print a non-dict object')
     try:
         margin = max(
             1 + max(len(unicode(key).strip()) for key in d.keys() \
@@ -56,6 +59,8 @@ def print_dict(d, exclude=(), ident= 0):
             print print_str.rjust(margin)+' '+unicode(val).strip()
 
 def print_list(l, exclude=(), ident = 0):
+    if not isinstance(l, list):
+        raise CLIError(message='Cannot list_print a non-list object')
     try:
         margin = max(
             1 + max(len(unicode(item).strip()) for item in l \
@@ -87,11 +92,19 @@ def print_items(items, title=('id', 'name')):
 
 def format_size(size):
     units = ('B', 'K', 'M', 'G', 'T')
-    size = float(size)
+    try:
+        size = float(size)
+    except ValueError:
+        raise CLIError(message='Cannot format %s in bytes'%size)
+    print('right now size is %s'%size)
     for unit in units:
+        print('right now size is %s'%size)
         if size < 1024:
             break
         size /= 1024
-    s = ('%.1f' % size).rstrip('.0')
+    print('right now size is %s'%size)
+    s = ('%.1f' % size)
+    if '.0' == s[-2:]:
+        s = s[:-2]
     return s + unit
 

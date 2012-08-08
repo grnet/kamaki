@@ -32,7 +32,7 @@
 # or implied, of GRNET S.A.
 
 from kamaki.cli import command, set_api_description, CLIError
-from kamaki.utils import print_dict, print_items, print_list
+from kamaki.utils import print_dict, print_items, print_list, format_size
 set_api_description('server', "Compute/Cyclades API server commands")
 set_api_description('flavor', "Compute/Cyclades API flavor commands")
 set_api_description('image', "Compute/Cyclades or Glance API image commands")
@@ -47,6 +47,25 @@ class _init_cyclades(object):
         token = self.config.get('store', 'token') or self.config.get('global', 'token')
         base_url = self.config.get('store', 'url') or self.config.get('global', 'url')
         self.client = CycladesClient(base_url=base_url, token=token)
+
+@command()
+class server_test(_init_cyclades):
+    """Test class for cyclades"""
+    def update_parser(self, parser):
+        parser.add_argument('--container', dest='container', metavar='NAME',
+                          help="Specify a container to use")
+
+    def main(self):
+         print_items([
+                [1, 2, 3],
+                {1:1, 2:1, 3:2},
+                ['a', 'b', 'c'],
+                {
+                    'a':[1, 2, 3],
+                    'b':[4, 5, {6:'6'}],
+                    'c':{1:{2:{3:'4'}}}
+                }
+            ])
 
 @command()
 class server_list(_init_cyclades):

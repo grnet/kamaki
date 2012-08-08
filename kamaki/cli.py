@@ -215,6 +215,17 @@ def main():
                           help="Override a config value")
         return parser
 
+    def find_term_in_args(arg_list, term_list):
+        arg_tail = []
+        while len(arg_list) > 0:
+            group = arg_list.pop(0)
+            if group.startswith('-') or group not in term_list:
+                arg_tail.append(group)
+            else:
+                arg_list += arg_tail
+                return group
+        return None
+
     """Main Code"""
     exe = basename(sys.argv[0])
     parser = init_parser(exe)
@@ -241,32 +252,19 @@ def main():
         config.override(section.strip(), key.strip(), val.strip())
 
     load_groups(config)
-
-    group = argv.pop(0) if argv else None
-
-    #Check command and arguments syntactically
+    group = find_term_in_args(argv, _commands)
     if not group:
-        parser.print_help()
-        print_groups()
-        exit(0)
-
-    if group not in _commands:
         parser.print_help()
         print_groups()
         exit(1)
 
     parser.prog = '%s %s <command>' % (exe, group)
-    command = argv.pop(0) if argv else None
+    command = find_term_in_args(argv, _commands[group])
 
     if not command:
         parser.print_help()
         print_commands(group)
         exit(0)
-
-    if command not in _commands[group]:
-        parser.print_help()
-        print_commands(group)
-        exit(1)
 
     cmd = _commands[group][command]()
 
