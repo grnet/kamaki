@@ -31,7 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-from kamaki.cli import command, set_api_description
+from kamaki.cli import command, set_api_description, CLIError
 from kamaki.utils import format_size
 set_api_description('store', 'Pithos+ storage commands')
 from .pithos import PithosClient, ClientError
@@ -125,15 +125,16 @@ class store_list(_store_container_command):
         parser.add_argument('--path', action='store', dest='path', default=None, 
             help='show output starting with prefix up to /')
         parser.add_argument('--meta', action='store', dest='meta', default=None, 
-            help='show output having the specified meta keys')
+            help='show output having the specified meta keys (e.g. --meta "meta1 meta2 ..."')
         parser.add_argument('--if-modified-since', action='store', dest='if_modified_since', 
             default=None, help='show output if modified since then')
         parser.add_argument('--if-unmodified-since', action='store', dest='if_unmodified_since',
             default=None, help='show output if not modified since then')
         parser.add_argument('--until', action='store', dest='until', default=None,
             help='show metadata until that date')
-        #parser.add_argument('--format', action='store', dest='format', default="%d/%m/%Y %H:%M:%S",
-        #    help='format to parse until date (default: %d/%m/%Y %H:%M:%S)')
+        dateformat = '%d/%m/%Y %H:%M:%S'
+        parser.add_argument('--format', action='store', dest='format', default=dateformat,
+            help='format to parse until date (default: d/m/Y H:M:S)')
         parser.add_argument('--shared', action='store_true', dest='shared', default=False,
             help='show only shared')
         parser.add_argument('--public', action='store_true', dest='public', default=False,
@@ -196,21 +197,39 @@ class store_list(_store_container_command):
                 print('(press "enter" to continue)')
                 sys.stdin.read(1)
 
-    
+    def getuntil(self, orelse=None):
+        if hasattr(self.args, 'until'):
+            import time
+            until = getattr(self.args, 'until')
+            if until is None:
+                return None
+            format = getattr(self.args, 'format')
+            #except TypeError:
+            try:
+                t = time.strptime(until, format)
+            except ValueError as err:
+                raise CLIError(message='in --until: '+unicode(err), importance=1)
+            return int(time.mktime(t))
+        return orelse
+   
+    def getmeta(self, orelse=[]):
+        if hasattr(self.args, 'meta'):
+            meta = getattr(self.args, 'meta')
+            if meta is None:
+                return []
+            return meta.split(' ')
+        return orelse
+
     def main(self, container____path__=None):
         super(self.__class__, self).main(container____path__)
         try:
             if self.container is None:
                 r = self.client.account_get(limit=getattr(self.args, 'limit', None),
                     marker=getattr(self.args, 'marker', None),
-                    #prefix=getattr(self.args, 'prefix', None),
-                    #delimiter=getattr(self.args, 'delimiter', None),
-                    #path=getattr(self.args, 'path', None),
                     if_modified_since=getattr(self.args, 'if_modified_since', None),
                     if_unmodified_since=getattr(self.args, 'if_unmodified_since', None),
-                    until=getattr(self.args, 'until', None),
+                    until=self.getuntil(),
                     show_only_shared=getattr(self.args, 'shared', False))
-                #self.client.list_containers()
                 self.print_containers(r.json)
             else:
                 r = self.client.container_get(limit=getattr(self.args, 'limit', None),
@@ -220,7 +239,8 @@ class store_list(_store_container_command):
                     path=getattr(self.args, 'path', None) if self.path is None else self.path,
                     if_modified_since=getattr(self.args, 'if_modified_since', None),
                     if_unmodified_since=getattr(self.args, 'if_unmodified_since', None),
-                    until=getattr(self.args, 'until', None),
+                    until=self.getuntil(),
+                    meta=self.getmeta(),
                     show_only_shared=getattr(self.args, 'shared', False))
                 self.print_objects(r.json)
         except ClientError as err:

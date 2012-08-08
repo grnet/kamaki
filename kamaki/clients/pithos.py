@@ -90,7 +90,6 @@ class PithosClient(StorageClient):
         @param if_unmodified_since (string): Retrieve if account has not changed since provided timestamp
         """
         self.assert_account()
-        print(unicode(show_only_shared))
 
         param_dict = {} if format is None else dict(format=format)
         if limit is not None:

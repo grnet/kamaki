@@ -78,6 +78,9 @@ class CLIError(Exception):
         self.details = details
         self.importance = importance
 
+    def __unicode__(self):
+        return unicode(self.message)
+
 def command(group=None, name=None, syntax=None):
     """Class decorator that registers a class as a CLI command."""
 
