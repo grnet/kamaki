@@ -216,10 +216,13 @@ def main():
         return parser
 
     def find_term_in_args(arg_list, term_list):
+        """find an arg_list term in term_list. All other terms up to found
+        term are rearanged at the end of arg_list, preserving relative order
+        """
         arg_tail = []
         while len(arg_list) > 0:
             group = arg_list.pop(0)
-            if group.startswith('-') or group not in term_list:
+            if group not in term_list:
                 arg_tail.append(group)
             else:
                 arg_list += arg_tail
@@ -256,7 +259,7 @@ def main():
     if not group:
         parser.print_help()
         print_groups()
-        exit(1)
+        exit(0)
 
     parser.prog = '%s %s <command>' % (exe, group)
     command = find_term_in_args(argv, _commands[group])

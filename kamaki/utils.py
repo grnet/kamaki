@@ -32,6 +32,21 @@
 # or implied, of GRNET S.A.
 from .cli import CLIError
 
+def pretty_keys(d, delim='_', recurcive=False):
+    """Transform keys of a dict from the form
+    str1_str2_..._strN to the form strN
+    where _ is the delimeter
+    """
+    new_d = {}
+    for key, val in d.items():
+        new_key = key.split(delim)[-1]
+        if recurcive and isinstance(val, dict):
+            new_val = pretty_keys(val, delim, recurcive) 
+        else:
+            new_val = val
+        new_d[new_key] = new_val
+    return new_d
+
 def print_dict(d, exclude=(), ident= 0):
     if not isinstance(d, dict):
         raise CLIError(message='Cannot dict_print a non-dict object')
@@ -96,13 +111,10 @@ def format_size(size):
         size = float(size)
     except ValueError:
         raise CLIError(message='Cannot format %s in bytes'%size)
-    print('right now size is %s'%size)
     for unit in units:
-        print('right now size is %s'%size)
         if size < 1024:
             break
         size /= 1024
-    print('right now size is %s'%size)
     s = ('%.1f' % size)
     if '.0' == s[-2:]:
         s = s[:-2]

@@ -32,10 +32,12 @@
 # or implied, of GRNET S.A.command
 
 from kamaki.cli import command, set_api_description
+from kamaki.utils import format_size
 set_api_description('store', 'Pithos+ storage commands')
 from .pithos import PithosClient, ClientError
 from .cli_utils import raiseCLIError
-from kamaki.utils import print_dict
+from kamaki.utils import print_dict, pretty_keys, print_list
+from colors import bold
 
 from progress.bar import IncrementalBar
 
@@ -106,10 +108,52 @@ class store_list(_store_container_command):
     """List containers, object trees or objects in a directory
     """
 
+    def update_parser(self, parser):
+        super(self.__class__, self).update_parser(parser)
+        parser.add_argument('-l', action='store_true', dest='detail', default=False,
+            help='show detailed output')
+        """
+        parser.add_argument('-n', action='store', dest='limit', default=10000,
+            help='show limited output')
+        parser.add_argument('--marker', action='store', dest='marker', default=None,
+            help='show output greater then marker')
+        parser.add_argument('--prefix', action='store', dest='prefix', default=None,
+            help='show output starting with prefix')
+        parser.add_argument('--delimiter', action='store', dest='delimiter', default=None, 
+            help='show output up to the delimiter')
+        parser.add_argument('--path', action='store', dest='path', default=None, 
+            help='show output starting with prefix up to /')
+        parser.add_argument('--meta', action='store', dest='meta', default=None, 
+            help='show output having the specified meta keys')
+        parser.add_argument('--if-modified-since', action='store', dest='if_modified_since', 
+            default=None, help='show output if modified since then')
+        parser.add_argument('--if-unmodified-since', action='store', dest='if_unmodified_since',
+            default=None, help='show output if not modified since then')
+        parser.add_argument('--until', action='store', dest='until', default=None,
+            help='show metadata until that date')
+        parser.add_argument('--format', action='store', dest='format', default='%d/%m/%Y %H:%M:%S',
+            help='format to parse until date (default: %d/%m/%Y %H:%M:%S)')
+        parser.add_argument('--shared', action='store_true', dest='shared', default=False,
+            help='show only shared')
+        parser.add_argument('--public', action='store_true', dest='public', default=False,
+            help='show only public')
+        """
+
     def print_objects(self, object_list):
         for obj in object_list:
-            size = format_size(obj['bytes']) if 0 < obj['bytes'] else 'D'
-            print('%6s %s' % (size, obj['name']))
+            if obj['content_type'] == 'application/directory':
+                size = ''
+            else:
+                size = format_size(obj['bytes'])
+            oname = bold(obj['name'])
+            if getattr(self.args, 'detail'):
+                print(oname)
+                print_dict(pretty_keys(obj), exclude=('name'), ident=18)
+                print
+            else:
+                oname = '%6s %s'%(size, oname)
+                oname += '/' if len(size) == 0 else ''
+                print(oname)
 
     def print_containers(self, container_list):
         for container in container_list:
