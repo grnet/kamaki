@@ -112,9 +112,9 @@ class store_list(_store_container_command):
         super(self.__class__, self).update_parser(parser)
         parser.add_argument('-l', action='store_true', dest='detail', default=False,
             help='show detailed output')
-        """
         parser.add_argument('-n', action='store', dest='limit', default=10000,
             help='show limited output')
+        """
         parser.add_argument('--marker', action='store', dest='marker', default=None,
             help='show output greater then marker')
         parser.add_argument('--prefix', action='store', dest='prefix', default=None,
@@ -140,8 +140,16 @@ class store_list(_store_container_command):
         """
 
     def print_objects(self, object_list):
+        try:
+            limit = getattr(self.args, 'limit')
+            limit = int(limit)
+            object_list = object_list[:limit]
+        except AttributeError:
+            pass
         for obj in object_list:
             pretty_obj = obj.copy()
+            index = 1+object_list.index(obj)
+            empty_space = ' '*(len(object_list)/10 - index/10)
             if obj['content_type'] == 'application/directory':
                 isDir = True
                 size = 'D'
@@ -151,24 +159,26 @@ class store_list(_store_container_command):
                 pretty_obj['bytes'] = '%s (%s)'%(obj['bytes'],size)
             oname = bold(obj['name'])
             if getattr(self.args, 'detail'):
-                print(oname)
+                print('%s%s. %s'%(empty_space, index, oname))
                 print_dict(pretty_keys(pretty_obj), exclude=('name'))
                 print
             else:
-                oname = '%6s %s'%(size, oname)
+                oname = '%s%s. %6s %s'%(empty_space, index, size, oname)
                 oname += '/' if isDir else ''
                 print(oname)
 
     def print_containers(self, container_list):
         for container in container_list:
             size = format_size(container['bytes'])
+            index = 1+container_list.index(container)
+            cname = '%s. %s'%(index, bold(container['name']))
             if getattr(self.args, 'detail'):
-                print(bold(container['name']))
+                print(cname)
                 pretty_c = container.copy()
                 pretty_c['bytes'] = '%s (%s)'%(container['bytes'], size)
                 print_dict(pretty_keys(pretty_c), exclude=('name'))
             else:
-                print('%s (%s, %s objects)' % (bold(container['name']), size, container['count']))
+                print('%s (%s, %s objects)' % (cname, size, container['count']))
 
     
     def main(self, container____path__=None):
