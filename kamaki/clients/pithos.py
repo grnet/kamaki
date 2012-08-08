@@ -90,6 +90,7 @@ class PithosClient(StorageClient):
         @param if_unmodified_since (string): Retrieve if account has not changed since provided timestamp
         """
         self.assert_account()
+        print(unicode(show_only_shared))
 
         param_dict = {} if format is None else dict(format=format)
         if limit is not None:
@@ -160,7 +161,8 @@ class PithosClient(StorageClient):
         success = kwargs.pop('success', 204)
         return self.head(path, *args, success=success, **kwargs)
 
-    def container_get(self, limit = None, marker = None, prefix=None, delimiter=None, path = None, format='json', meta=[], show_only_shared=False, until=None,
+    def container_get(self, limit = None, marker = None, prefix=None, delimiter=None, path = None,
+        format='json', meta=[], show_only_shared=False, until=None,
         if_modified_since=None, if_unmodified_since=None, *args, **kwargs):
         """ Full Pithos+ GET at container level
         --- request parameters ---

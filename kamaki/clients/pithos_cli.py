@@ -112,9 +112,10 @@ class store_list(_store_container_command):
         super(self.__class__, self).update_parser(parser)
         parser.add_argument('-l', action='store_true', dest='detail', default=False,
             help='show detailed output')
-        parser.add_argument('-n', action='store', dest='limit', default=10000,
+        parser.add_argument('-N', action='store', dest='show_size', default=21,
+            help='print output in chunks of size N')
+        parser.add_argument('-n', action='store', dest='limit', default=None,
             help='show limited output')
-        """
         parser.add_argument('--marker', action='store', dest='marker', default=None,
             help='show output greater then marker')
         parser.add_argument('--prefix', action='store', dest='prefix', default=None,
@@ -131,24 +132,26 @@ class store_list(_store_container_command):
             default=None, help='show output if not modified since then')
         parser.add_argument('--until', action='store', dest='until', default=None,
             help='show metadata until that date')
-        parser.add_argument('--format', action='store', dest='format', default='%d/%m/%Y %H:%M:%S',
-            help='format to parse until date (default: %d/%m/%Y %H:%M:%S)')
+        #parser.add_argument('--format', action='store', dest='format', default="%d/%m/%Y %H:%M:%S",
+        #    help='format to parse until date (default: %d/%m/%Y %H:%M:%S)')
         parser.add_argument('--shared', action='store_true', dest='shared', default=False,
             help='show only shared')
         parser.add_argument('--public', action='store_true', dest='public', default=False,
             help='show only public')
-        """
 
     def print_objects(self, object_list):
+        import sys
         try:
-            limit = getattr(self.args, 'limit')
+            limit = getattr(self.args, 'show_size')
             limit = int(limit)
-            object_list = object_list[:limit]
         except AttributeError:
             pass
+        index = 0
         for obj in object_list:
+            if not obj.has_key('content_type'):
+                continue
             pretty_obj = obj.copy()
-            index = 1+object_list.index(obj)
+            index += 1
             empty_space = ' '*(len(object_list)/10 - index/10)
             if obj['content_type'] == 'application/directory':
                 isDir = True
@@ -166,8 +169,17 @@ class store_list(_store_container_command):
                 oname = '%s%s. %6s %s'%(empty_space, index, size, oname)
                 oname += '/' if isDir else ''
                 print(oname)
+            if limit <= index < len(object_list) and index%limit == 0:
+                print('(press "enter" to continue)')
+                sys.stdin.read(1)
 
     def print_containers(self, container_list):
+        import sys
+        try:
+            limit = getattr(self.args, 'show_size')
+            limit = int(limit)
+        except AttributeError:
+            pass
         for container in container_list:
             size = format_size(container['bytes'])
             index = 1+container_list.index(container)
@@ -177,20 +189,40 @@ class store_list(_store_container_command):
                 pretty_c = container.copy()
                 pretty_c['bytes'] = '%s (%s)'%(container['bytes'], size)
                 print_dict(pretty_keys(pretty_c), exclude=('name'))
+                print
             else:
                 print('%s (%s, %s objects)' % (cname, size, container['count']))
+            if limit <= index < len(container_list) and index%limit == 0:
+                print('(press "enter" to continue)')
+                sys.stdin.read(1)
 
     
     def main(self, container____path__=None):
         super(self.__class__, self).main(container____path__)
         try:
             if self.container is None:
-                reply = self.client.list_containers()
-                self.print_containers(reply)
+                r = self.client.account_get(limit=getattr(self.args, 'limit', None),
+                    marker=getattr(self.args, 'marker', None),
+                    #prefix=getattr(self.args, 'prefix', None),
+                    #delimiter=getattr(self.args, 'delimiter', None),
+                    #path=getattr(self.args, 'path', None),
+                    if_modified_since=getattr(self.args, 'if_modified_since', None),
+                    if_unmodified_since=getattr(self.args, 'if_unmodified_since', None),
+                    until=getattr(self.args, 'until', None),
+                    show_only_shared=getattr(self.args, 'shared', False))
+                #self.client.list_containers()
+                self.print_containers(r.json)
             else:
-                reply = self.client.list_objects() if self.path is None \
-                    else self.client.list_objects_in_path(path_prefix=self.path)
-                self.print_objects(reply)
+                r = self.client.container_get(limit=getattr(self.args, 'limit', None),
+                    marker=getattr(self.args, 'marker', None),
+                    prefix=getattr(self.args, 'prefix', None),
+                    delimiter=getattr(self.args, 'delimiter', None),
+                    path=getattr(self.args, 'path', None) if self.path is None else self.path,
+                    if_modified_since=getattr(self.args, 'if_modified_since', None),
+                    if_unmodified_since=getattr(self.args, 'if_unmodified_since', None),
+                    until=getattr(self.args, 'until', None),
+                    show_only_shared=getattr(self.args, 'shared', False))
+                self.print_objects(r.json)
         except ClientError as err:
             raiseCLIError(err)
 
