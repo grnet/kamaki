@@ -141,24 +141,34 @@ class store_list(_store_container_command):
 
     def print_objects(self, object_list):
         for obj in object_list:
+            pretty_obj = obj.copy()
             if obj['content_type'] == 'application/directory':
-                size = ''
+                isDir = True
+                size = 'D'
             else:
+                isDir = False
                 size = format_size(obj['bytes'])
+                pretty_obj['bytes'] = '%s (%s)'%(obj['bytes'],size)
             oname = bold(obj['name'])
             if getattr(self.args, 'detail'):
                 print(oname)
-                print_dict(pretty_keys(obj), exclude=('name'), ident=18)
+                print_dict(pretty_keys(pretty_obj), exclude=('name'))
                 print
             else:
                 oname = '%6s %s'%(size, oname)
-                oname += '/' if len(size) == 0 else ''
+                oname += '/' if isDir else ''
                 print(oname)
 
     def print_containers(self, container_list):
         for container in container_list:
             size = format_size(container['bytes'])
-            print('%s (%s, %s objects)' % (container['name'], size, container['count']))
+            if getattr(self.args, 'detail'):
+                print(bold(container['name']))
+                pretty_c = container.copy()
+                pretty_c['bytes'] = '%s (%s)'%(container['bytes'], size)
+                print_dict(pretty_keys(pretty_c), exclude=('name'))
+            else:
+                print('%s (%s, %s objects)' % (bold(container['name']), size, container['count']))
 
     
     def main(self, container____path__=None):
