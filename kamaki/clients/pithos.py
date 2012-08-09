@@ -260,14 +260,18 @@ class PithosClient(StorageClient):
         success = kwargs.pop('success', 202)
         return self.post(path, *args, success=success, **kwargs)
 
-    def container_delete(self, until=None, *args, **kwargs):
+    def container_delete(self, until=None, delimiter=None, *args, **kwargs):
         """ Full Pithos+ DELETE at container level
         --- request parameters ---
         @param until (timestamp string): if defined, container is purged up to that time
         """
         self.assert_container()
-        path=path4url(self.account, self.container)
-        path += '' if until is None else params4url(dict(until=until))
+        param_dict = {} 
+        if until is not None:
+            param_dict['until']=until
+        if delimiter is not None:
+            param_dict['delimiter'] = delimiter
+        path=path4url(self.account, self.container)+params4url(param_dict)
         success = kwargs.pop('success', 204)
         return self.delete(path, success=success)
 
@@ -564,14 +568,18 @@ class PithosClient(StorageClient):
         success=kwargs.pop('success', (202, 204))
         return self.post(path, *args, success=success, **kwargs)
        
-    def object_delete(self, object, until=None, *args, **kwargs):
+    def object_delete(self, object, until=None, delimiter=None, *args, **kwargs):
         """ Full Pithos+ DELETE at object level
         --- request parameters --- 
         @param until (string): Optional timestamp
         """
         self.assert_container()
-        path = path4url(self.account, self.container, object)
-        path += '' if until is None else params4url(dict(until=until))
+        param_dict = {} 
+        if until is not None:
+            param_dict['until']=until
+        if delimiter is not None:
+            param_dict['delimiter'] = delimiter
+        path = path4url(self.account, self.container, object)+params4url(param_dict)
         success = kwargs.pop('success', 204)
         return self.delete(path, *args, success=success, **kwargs)
 
@@ -775,6 +783,14 @@ class PithosClient(StorageClient):
         r = self.account_get()
         return r.json
 
+    def del_container(self, until=None, delimiter=None):
+        self.assert_container()
+        r = self.container_delete(until=until, delimiter=delimiter, success=(204, 404, 409))
+        if r.status_code == 404:
+            raise ClientError('Container "%s" does not exist'%self.container, r.status_code)
+        elif r.status_code == 409:
+            raise ClientError('Container "%s" is not empty'%self.container, r.status_code)
+
     def get_container_versioning(self, container):
         return filter_in(self.get_container_info(container), 'X-Container-Policy-Versioning')
 
@@ -799,6 +815,10 @@ class PithosClient(StorageClient):
 
     def set_container_versioning(self, versioning):
         self.container_post(update=True, versioning=versioning)
+
+    def del_object(self, obj, until=None, delimiter=None):
+        self.assert_container()
+        self.object_delete(obj, until=until, delimiter=delimiter)
 
     def set_object_meta(self, object, metapairs):
         assert(type(metapairs) is dict)

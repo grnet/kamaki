@@ -414,14 +414,49 @@ class store_download(_store_container_command):
 class store_delete(_store_container_command):
     """Delete a container [or an object]"""
 
+    def update_parser(self, parser):
+        parser.add_argument('--until', action='store', dest='until', default=None,
+            help='remove history until that date')
+        parser.add_argument('--format', action='store', dest='format', default='%d/%m/%Y %H:%M:%S',
+            help='format to parse until date (default: d/m/Y H:M:S)')
+        parser.add_argument('--delimiter', action='store', dest='delimiter',
+            default=None, 
+            help='mass delete objects with path staring with <object><delimiter>')
+        parser.add_argument('-r', action='store_true', dest='recursive', default=False,
+            help='empty dir or container and delete (if dir)')
     
+    def getuntil(self, orelse=None):
+        if hasattr(self.args, 'until'):
+            import time
+            until = getattr(self.args, 'until')
+            if until is None:
+                return None
+            format = getattr(self.args, 'format')
+            try:
+                t = time.strptime(until, format)
+            except ValueError as err:
+                raise CLIError(message='in --until: '+unicode(err), importance=1)
+            return int(time.mktime(t))
+        return orelse
+
+    def getdelimiter(self, orelse=None):
+        try:
+            dlm = getattr(self.args, 'delimiter')
+            if dlm is None:
+                return '/' if getattr(self.args, 'recursive') else orelse
+        except AttributeError:
+            return orelse
+        return dlm
+
     def main(self, container____path__):
         super(self.__class__, self).main(container____path__)
         try:
             if self.path is None:
-                self.client.delete_container(self.container)
+                self.client.del_container(until=self.getuntil(), delimiter=self.getdelimiter())
             else:
-                self.client.delete_object(self.path)
+                #self.client.delete_object(self.path)
+                self.client.del_object(self.path, until=self.getuntil(),
+                    delimiter=self.getdelimiter())
         except ClientError as err:
             raiseCLIError(err)
 
