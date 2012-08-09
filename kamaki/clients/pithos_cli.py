@@ -249,14 +249,32 @@ class store_list(_store_container_command):
             raiseCLIError(err)
 
 @command()
+class store_mkdir(_store_container_command):
+    """Create a directory"""
+
+    def main(self, directory):
+        super(self.__class__, self).main()
+        try:
+            self.client.create_directory(directory)
+        except ClientError as err:
+            raiseCLIError(err)
+
+@command()
 class store_create(_store_container_command):
     """Create a container or a directory object"""
+
+    def update_parser(self, parser):
+        parser.add_argument('--versioning', action='store', dest='versioning',
+                          default=None, help='set container versioning (auto/none)')
+        parser.add_argument('--quota', action='store', dest='quota',
+                          default=None, help='set default container quota')
 
     def main(self, container____directory__):
         super(self.__class__, self).main(container____directory__)
         try:
             if self.path is None:
-                self.client.create_container(self.container)
+                self.client.container_put(quota=getattr(self.args, 'quota'),
+                    versioning=getattr(self.args, 'versioning'))
             else:
                 self.client.create_directory(self.path)
         except ClientError as err:
