@@ -104,8 +104,7 @@ class StorageClient(Client):
         r = self.get(path, success = (200, 204))
         return r.json
 
-    def upload_object(self, object, f, size=None, hash_cb=None,
-        upload_cb=None):
+    def upload_object(self, object, f, size=None):
         # This is a naive implementation, it loads the whole file in memory
         #Look in pithos for a nice implementation
         self.assert_container()

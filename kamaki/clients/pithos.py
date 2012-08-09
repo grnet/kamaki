@@ -227,8 +227,8 @@ class PithosClient(StorageClient):
         return self.put(path, *args, success=success, **kwargs)
 
     def container_post(self, update=True, format='json',
-        quota=None, versioning=None, metadata={}, content_type=None, content_length=None, transfer_encoding=None,
-        *args, **kwargs):
+        quota=None, versioning=None, metadata={}, content_type=None, content_length=None,
+        transfer_encoding=None, *args, **kwargs):
         """ Full Pithos+ POST at container level
         --- request params ---
         @param update (bool):  if True, Do not replace metadata/groups
@@ -586,6 +586,29 @@ class PithosClient(StorageClient):
     def purge_container(self):
         self.container_delete(until=unicode(time()))
 
+    def upload_object_unchunked(self, obj, f, withHashFile = False, size=None, etag=None,
+        content_encoding=None, content_disposition=None, content_type=None, sharing=None,
+        public=None):
+        # This is a naive implementation, it loads the whole file in memory
+        #Look in pithos for a nice implementation
+        self.assert_container()
+
+        if withHashFile:
+            data = f.read()
+            try:
+                import json
+                data = json.dumps(json.loads(data))
+            except ValueError:
+                raise ClientError(message='"%s" is not json-formated'%f.name, status=1)
+            except SyntaxError:
+                raise ClientError(message='"%s" is not a valid hashmap file'%f.name, status=1)
+            from StringIO import StringIO
+            f = StringIO(data)
+        data = f.read(size) if size is not None else f.read()
+        self.object_put(obj, data=data, etag=etag, content_encoding=content_encoding,
+            content_disposition=content_disposition, content_type=content_type, permitions=sharing,
+            public=public, success=201)
+
     def put_block_async(self, data, hash):
         class SilentGreenlet(gevent.Greenlet):
             def _report_error(self, exc_info):
@@ -608,10 +631,19 @@ class PithosClient(StorageClient):
         self.reset_headers()
         assert r.json[0] == hash, 'Local hash does not match server'
 
-    def async_upload_object(self, object, f, size=None, hash_cb=None,
-        upload_cb=None):
-        """Like upload_object object but it sends blocks of data asynchronously
-        using geven/greenlet
+    def create_object_by_manifestation(self, obj, etag=None, content_encoding=None,
+        content_disposition=None, content_type=None, sharing=None, public=None):
+        self.assert_container()
+        obj_content_type = 'application/octet-stream' if content_type is None else content_type
+        self.object_put(obj, content_length=0, etag=etag, content_encoding=content_encoding,
+            content_disposition=content_disposition, content_type=content_type, permitions=sharing,
+            public=public, manifest='%s/%s'%(self.container,obj))
+
+    def upload_object(self, object, f, size=None, hash_cb=None, upload_cb=None, etag=None,
+        content_encoding=None, content_disposition=None, content_type=None, sharing=None,
+        public=None):
+        """upload_object chunk by chunk. Different chunks are uploaded asynchronously
+        in a pseudo-parallel fashion (using greenlets)
         """
         self.assert_container()
 
@@ -642,9 +674,13 @@ class PithosClient(StorageClient):
 
         assert offset == size
 
+        obj_content_type = 'application/octet-stream' if content_type is None else content_type
+
         hashmap = dict(bytes=size, hashes=hashes)
-        r = self.object_put(object, format='json', hashmap=True,
-            content_type='application/octet-stream', json=hashmap, success=(201, 409))
+        r = self.object_put(object, format='json', hashmap=True, content_type=obj_content_type,
+            json=hashmap, etag=etag, content_encoding=content_encoding,
+            content_disposition=content_disposition, permitions=sharing, public=public,
+            success=(201, 409))
         self.reset_headers()
 
         if r.status_code == 201:
@@ -661,7 +697,6 @@ class PithosClient(StorageClient):
             offset, bytes = map[hash]
             f.seek(offset)
             data = f.read(bytes)
-            #self.put_block(data, hash)
             r = self.put_block_async(data, hash)
             flying.append(r)
             for r in flying:
@@ -673,72 +708,8 @@ class PithosClient(StorageClient):
             flying = [r for r in flying if not r.ready()]
 
         gevent.joinall(flying)
-        self.object_put(object, format='json', hashmap=True,
-            content_type='application/octet-stream', json=hashmap, success=201)
-
-    def upload_object(self, object, f, size=None, hash_cb=None,
-        upload_cb=None):
-        """Create an object by uploading only the missing blocks
-        hash_cb is a generator function taking the total number of blocks to
-        be hashed as an argument. Its next() will be called every time a block
-        is hashed.
-        upload_cb is a generator function with the same properties that is
-        called every time a block is uploaded.
-        """
-        self.assert_container()
-
-        meta = self.get_container_info(self.container)
-        blocksize = int(meta['x-container-block-size'])
-        blockhash = meta['x-container-block-hash']
-
-        size = size if size is not None else os.fstat(f.fileno()).st_size
-        nblocks = 1 + (size - 1) // blocksize
-        hashes = []
-        map = {}
-
-        offset = 0
-
-        if hash_cb:
-            hash_gen = hash_cb(nblocks)
-            hash_gen.next()
-
-        for i in range(nblocks):
-            block = f.read(min(blocksize, size - offset))
-            bytes = len(block)
-            hash = pithos_hash(block, blockhash)
-            hashes.append(hash)
-            map[hash] = (offset, bytes)
-            offset += bytes
-            if hash_cb:
-                hash_gen.next()
-
-        assert offset == size
-
-        hashmap = dict(bytes=size, hashes=hashes)
-        r = self.object_put(object, format='json', hashmap=True,
-            content_type='application/octet-stream', json=hashmap, success=(201, 409))
-        self.reset_headers()
-
-        if r.status_code == 201:
-            return
-
-        missing = r.json
-
-        if upload_cb:
-            upload_gen = upload_cb(len(missing))
-            upload_gen.next()
-
-        for hash in missing:
-            offset, bytes = map[hash]
-            f.seek(offset)
-            data = f.read(bytes)
-            self.put_block(data, hash)
-            r = self.put_block(data, hash)
-            if upload_cb:
-                upload_gen.next()
-
-        self.object_put(object, format='json', hashmap=True,
-            content_type='application/octet-stream', json=hashmap, success=201)
+        self.object_put(object, format='json', hashmap=True, update=True,
+            content_type=obj_content_type, json=hashmap, success=201)
 
     def set_account_group(self, group, usernames):
         self.account_post(update=True, groups = {group:usernames})

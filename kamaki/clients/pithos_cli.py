@@ -39,6 +39,7 @@ from .pithos import PithosClient, ClientError
 from .cli_utils import raiseCLIError
 from kamaki.utils import print_dict, pretty_keys, print_list
 from colors import bold
+from sys import stdout
 
 from progress.bar import IncrementalBar
 
@@ -264,6 +265,7 @@ class store_create(_store_container_command):
     """Create a container or a directory object"""
 
     def update_parser(self, parser):
+        super(self.__class__, self).update_parser(parser)
         parser.add_argument('--versioning', action='store', dest='versioning', default=None,
             help='set container versioning (auto/none)')
         parser.add_argument('--quota', action='store', dest='quota', default=None,
@@ -365,17 +367,112 @@ class store_overwrite(_store_container_command):
             raiseCLIError(err)
 
 @command()
+class store_manifest(_store_container_command):
+    """Create a remote file with uploaded parts by manifestation"""
+
+    def update_parser(self, parser):
+        super(self.__class__, self).update_parser(parser)
+        parser.add_argument('--etag', action='store', dest='etag', default=None,
+            help='check written data')
+        parser.add_argument('--content-encoding', action='store', dest='content_encoding',
+            default=None, help='provide the object MIME content type')
+        parser.add_argument('--content-disposition', action='store', dest='content_disposition',
+            default=None, help='provide the presentation style of the object')
+        parser.add_argument('--content-type', action='store', dest='content_type', default=None,
+            help='create object with specific content type')
+        parser.add_argument('--sharing', action='store', dest='sharing', default=None,
+            help='define sharing object policy ( "read=user1,grp1,user2,... write=user1,grp2,...')
+        parser.add_argument('--public', action='store_true', dest='public', default=False,
+            help='make object publicly accessible')
+
+    def getsharing(self, orelse={}):
+        permstr = getattr(self.args, 'sharing')
+        if permstr is None:
+            return orelse
+        perms = {}
+        for p in permstr.split(' '):
+            (key, val) = p.split('=')
+            if key.lower() not in ('read', 'write'):
+                raise CLIError(message='in --sharing: Invalid permition key', importance=1)
+            val_list = val.split(',')
+            if not perms.has_key(key):
+                perms[key]=[]
+            for item in val_list:
+                if item not in perms[key]:
+                    perms[key].append(item)
+        return perms
+        
+    def main(self, container___path):
+        super(self.__class__, self).main(container___path)
+        try:
+            self.client.create_object_by_manifestation(self.path,
+                content_encoding=getattr(self.args, 'content_encoding'),
+                content_disposition=getattr(self.args, 'content_disposition'),
+                content_type=getattr(self.args, 'content_type'), sharing=self.getsharing(),
+                public=getattr(self.args, 'public'))
+        except ClientError as err:
+            raiseCLIError(err)
+
+@command()
 class store_upload(_store_container_command):
     """Upload a file"""
 
+    def update_parser(self, parser):
+        super(self.__class__, self).update_parser(parser)
+        parser.add_argument('--use_hashes', action='store_true', dest='use_hashes', default=False,
+            help='provide hashmap file instead of data')
+        parser.add_argument('--unchunked', action='store_true', dest='unchunked', default=False,
+            help='avoid chunked transfer mode')
+        parser.add_argument('--etag', action='store', dest='etag', default=None,
+            help='check written data')
+        parser.add_argument('--content-encoding', action='store', dest='content_encoding',
+            default=None, help='provide the object MIME content type')
+        parser.add_argument('--content-disposition', action='store', dest='content_disposition',
+            default=None, help='provide the presentation style of the object')
+        parser.add_argument('--content-type', action='store', dest='content_type', default=None,
+            help='create object with specific content type')
+        parser.add_argument('--sharing', action='store', dest='sharing', default=None,
+            help='define sharing object policy ( "read=user1,grp1,user2,... write=user1,grp2,...')
+        parser.add_argument('--public', action='store_true', dest='public', default=False,
+            help='make object publicly accessible')
+
+    def getsharing(self, orelse={}):
+        permstr = getattr(self.args, 'sharing')
+        if permstr is None:
+            return orelse
+        perms = {}
+        for p in permstr.split(' '):
+            (key, val) = p.split('=')
+            if key.lower() not in ('read', 'write'):
+                raise CLIError(message='in --sharing: Invalid permition key', importance=1)
+            val_list = val.split(',')
+            if not perms.has_key(key):
+                perms[key]=[]
+            for item in val_list:
+                if item not in perms[key]:
+                    perms[key].append(item)
+        return perms
+
     def main(self, local_path, container____path__):
         super(self.__class__, self).main(container____path__)
+        remote_path = local_path if self.path is None else self.path
         try:
-            remote_path = basename(local_path) if self.path is None else self.path
             with open(local_path) as f:
-                hash_cb = self.progress('Calculating block hashes')
-                upload_cb = self.progress('Uploading blocks')
-                self.client.async_upload_object(remote_path, f, hash_cb=hash_cb, upload_cb=upload_cb)
+                if getattr(self.args, 'unchunked'):
+                    self.client.upload_object_unchunked(remote_path, f,
+                    etag=getattr(self.args, 'etag'), withHashFile=getattr(self.args, 'use_hashes'),
+                    content_encoding=getattr(self.args, 'content_encoding'),
+                    content_disposition=getattr(self.args, 'content_disposition'),
+                    content_type=getattr(self.args, 'content_type'), sharing=self.getsharing(),
+                    public=getattr(self.args, 'public'))
+                else:
+                    hash_cb = self.progress('Calculating block hashes')
+                    upload_cb = self.progress('Uploading blocks')
+                    self.client.upload_object(remote_path, f, hash_cb=hash_cb, upload_cb=upload_cb,
+                    content_encoding=getattr(self.args, 'content_encoding'),
+                    content_disposition=getattr(self.args, 'content_disposition'),
+                    content_type=getattr(self.args, 'content_type'), sharing=self.getsharing(),
+                    public=getattr(self.args, 'public'))
         except ClientError as err:
             raiseCLIError(err)
 
@@ -415,6 +512,7 @@ class store_delete(_store_container_command):
     """Delete a container [or an object]"""
 
     def update_parser(self, parser):
+        super(self.__class__, self).update_parser(parser)
         parser.add_argument('--until', action='store', dest='until', default=None,
             help='remove history until that date')
         parser.add_argument('--format', action='store', dest='format', default='%d/%m/%Y %H:%M:%S',
@@ -568,6 +666,7 @@ class store_meta(_store_container_command):
     """Get custom meta-content for account [, container [or object]]"""
 
     def update_parser(self, parser):
+        super(self.__class__, self).update_parser(parser)
         parser.add_argument('-l', action='store_true', dest='detail', default=False,
             help='show detailed output')
         parser.add_argument('--until', action='store', dest='until', default=None,
