@@ -271,8 +271,8 @@ class PithosClient(StorageClient):
         success = kwargs.pop('success', 204)
         return self.delete(path, success=success)
 
-    def object_head(self, object, version=None,
-        if_etag_match=None, if_etag_not_match = None, if_modified_since = None, if_unmodified_since = None, *args, **kwargs):
+    def object_head(self, object, version=None, if_etag_match=None, if_etag_not_match = None,
+        if_modified_since = None, if_unmodified_since = None, *args, **kwargs):
         """ Full Pithos+ HEAD at object level
         --- request parameters ---
         @param version (string): optional version identified

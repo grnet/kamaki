@@ -32,6 +32,7 @@
 # or implied, of GRNET S.A.command
 
 from kamaki.cli import command, set_api_description, CLIError
+from kamaki.clients.utils import filter_in
 from kamaki.utils import format_size
 set_api_description('store', 'Pithos+ storage commands')
 from .pithos import PithosClient, ClientError
@@ -51,7 +52,8 @@ class _pithos_init(object):
         base_url = self.config.get('store', 'url') or self.config.get('global', 'url')
         account = self.config.get('store', 'account') or self.config.get('global', 'account')
         container = self.config.get('store', 'container') or self.config.get('global', 'container')
-        self.client = PithosClient(base_url=base_url, token=token, account=account, container=container)
+        self.client = PithosClient(base_url=base_url, token=token, account=account,
+            container=container)
 
 class _store_account_command(_pithos_init):
     """Base class for account level storage commands"""
@@ -75,7 +77,7 @@ class _store_account_command(_pithos_init):
 
     def main(self):
         super(_store_account_command, self).main()
-        if self.args.account is not None:
+        if hasattr(self.args, 'account') and self.args.account is not None:
             self.client.account = self.args.account
 
 class _store_container_command(_store_account_command):
@@ -98,7 +100,7 @@ class _store_container_command(_store_account_command):
         if container_with_path is not None:
             self.extract_container_and_path(container_with_path)
             self.client.container = self.container
-        elif self.args.container is not None:
+        elif hasattr(self.args, 'container') and self.args.container is not None:
             self.client.container = self.args.container
         else:
             self.container = None
@@ -498,17 +500,56 @@ class store_info(_store_container_command):
 class store_meta(_store_container_command):
     """Get custom meta-content for account [, container [or object]]"""
 
+    def update_parser(self, parser):
+        parser.add_argument('-l', action='store_true', dest='detail', default=False,
+            help='show detailed output')
+        parser.add_argument('--until', action='store', dest='until', default=None,
+            help='show metadata until that date')
+        dateformat='%d/%m/%Y %H:%M:%S'
+        parser.add_argument('--format', action='store', dest='format', default=dateformat,
+            help='format to parse until date (default: "d/m/Y H:M:S")')
+        parser.add_argument('--object_version', action='store', dest='object_version', default=None,
+            help='show specific version \ (applies only for objects)')
+
+    def getuntil(self, orelse=None):
+        if hasattr(self.args, 'until'):
+            import time
+            until = getattr(self.args, 'until')
+            if until is None:
+                return None
+            format = getattr(self.args, 'format')
+            #except TypeError:
+            try:
+                t = time.strptime(until, format)
+            except ValueError as err:
+                raise CLIError(message='in --until: '+unicode(err), importance=1)
+            return int(time.mktime(t))
+        return orelse
+
     def main(self, container____path__ = None):
         super(self.__class__, self).main(container____path__)
+
         try:
             if self.container is None:
-                reply = self.client.get_account_meta()
+                print(bold(self.client.account))
+                r = self.client.account_head(until=self.getuntil())
+                reply = r.headers if getattr(self.args, 'detail') \
+                    else pretty_keys(filter_in(r.headers, 'X-Account-Meta'), '-')
             elif self.path is None:
-                reply = self.client.get_container_object_meta(self.container)
-                print_dict(reply)
-                reply = self.client.get_container_meta(self.container)
+                print(bold(self.client.account+': '+self.container))
+                r = self.client.container_head(until=self.getuntil())
+                if getattr(self.args, 'detail'):
+                    reply = r.headers
+                else:
+                    cmeta = 'container-meta'
+                    ometa = 'object-meta'
+                    reply = {cmeta:pretty_keys(filter_in(r.headers, 'X-Container-Meta'), '-'),
+                        ometa:pretty_keys(filter_in(r.headers, 'X-Container-Object-Meta'), '-')}
             else:
-                reply = self.client.get_object_meta(self.path)
+                print(bold(self.client.account+': '+self.container+':'+self.path))
+                r = self.client.object_head(self.path, version=getattr(self.args, 'object_version'))
+                reply = r.headers if getattr(self.args, 'detail') \
+                    else pretty_keys(filter_in(r.headers, 'X-Object-Meta'), '-')
         except ClientError as err:
             raiseCLIError(err)
         print_dict(reply)
