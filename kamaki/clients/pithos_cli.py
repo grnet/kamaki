@@ -264,17 +264,31 @@ class store_create(_store_container_command):
     """Create a container or a directory object"""
 
     def update_parser(self, parser):
-        parser.add_argument('--versioning', action='store', dest='versioning',
-                          default=None, help='set container versioning (auto/none)')
-        parser.add_argument('--quota', action='store', dest='quota',
-                          default=None, help='set default container quota')
+        parser.add_argument('--versioning', action='store', dest='versioning', default=None,
+            help='set container versioning (auto/none)')
+        parser.add_argument('--quota', action='store', dest='quota', default=None,
+            help='set default container quota')
+        parser.add_argument('--meta', action='store', dest='meta', default=None,
+            help='set container metadata ("key1:val1 key2:val2 ...")')
+
+    def getmeta(self, orelse=None):
+        try:
+            meta = getattr(self.args,'meta')
+            metalist = meta.split(' ')
+        except AttributeError:
+            return orelse
+        metadict = {}
+        for metastr in metalist:
+            (key,val) = metastr.split(':')
+            metadict[key] = val
+        return metadict
 
     def main(self, container____directory__):
         super(self.__class__, self).main(container____directory__)
         try:
             if self.path is None:
                 self.client.container_put(quota=getattr(self.args, 'quota'),
-                    versioning=getattr(self.args, 'versioning'))
+                    versioning=getattr(self.args, 'versioning'), metadata=self.getmeta())
             else:
                 self.client.create_directory(self.path)
         except ClientError as err:
