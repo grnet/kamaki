@@ -44,8 +44,8 @@ from colors import yellow
 
 class _init_cyclades(object):
     def main(self):
-        token = self.config.get('store', 'token') or self.config.get('global', 'token')
-        base_url = self.config.get('store', 'url') or self.config.get('global', 'url')
+        token = self.config.get('compute', 'token') or self.config.get('global', 'token')
+        base_url = self.config.get('compute', 'url') or self.config.get('global', 'url')
         self.client = CycladesClient(base_url=base_url, token=token)
 
 @command()

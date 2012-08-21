@@ -331,10 +331,11 @@ class PithosClient(StorageClient):
         success = kwargs.pop('success', 200)
         return self.get(path, *args, success=success, **kwargs)
 
-    def object_put(self, object, format='json', hashmap=False,
-        if_etag_match=None, if_etag_not_match = None, etag=None, content_length = None, content_type=None, transfer_encoding=None,
-        copy_from=None, move_from=None, source_account=None, source_version=None, content_encoding = None, content_disposition=None,
-        manifest = None, permitions = {}, public = None, metadata={}, *args, **kwargs):
+    def object_put(self, object, format='json', hashmap=False, if_etag_match=None,
+        if_etag_not_match = None, etag=None, content_length = None, content_type=None,
+        transfer_encoding=None, copy_from=None, move_from=None, source_account=None,
+        source_version=None, content_encoding = None, content_disposition=None, manifest = None,
+        permitions = {}, public = None, metadata={}, *args, **kwargs):
         """ Full Pithos+ PUT at object level
         --- request parameters ---
         @param format (string): json (default) or xml
@@ -708,8 +709,8 @@ class PithosClient(StorageClient):
             flying = [r for r in flying if not r.ready()]
 
         gevent.joinall(flying)
-        self.object_put(object, format='json', hashmap=True, update=True,
-            content_type=obj_content_type, json=hashmap, success=201)
+        self.object_put(object, format='json', hashmap=True, content_type=obj_content_type, 
+            json=hashmap, success=201)
 
     def set_account_group(self, group, usernames):
         self.account_post(update=True, groups = {group:usernames})
