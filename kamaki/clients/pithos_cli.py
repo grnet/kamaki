@@ -305,6 +305,24 @@ class store_create(_store_container_command):
 class store_copy(_store_container_command):
     """Copy an object"""
 
+    def update_parser(self, parser):
+        super(store_copy, self).update_parser(parser)
+        parser.add_argument('--source-version', action='store', dest='source_version', default=None,
+            help='copy specific version')
+        parser.add_argument('--public', action='store_true', dest='public', default=False,
+            help='make object publicly accessible')
+        parser.add_argument('--content-type', action='store', dest='content_type', default=None,
+            help='change object\'s content type')
+        parser.add_argument('--delimiter', action='store', dest='delimiter', default=None,
+            help=u'mass copy objects with path staring with src_object + delimiter')
+        parser.add_argument('-r', action='store_true', dest='recursive', default=False,
+            help='mass copy with delimiter /')
+
+    def getdelimiter(self):
+        if getattr(self.args, 'recursive'):
+            return '/'
+        return getattr(self.args, 'delimiter')
+
     def main(self, source_container___path, destination_container____path__):
         super(self.__class__, self).main(source_container___path, path_is_optional=False)
         try:
@@ -312,7 +330,10 @@ class store_copy(_store_container_command):
             dst_cont = dst[0]
             dst_path = dst[1] if len(dst) > 1 else False
             self.client.copy_object(src_container = self.container, src_object = self.path,
-                dst_container = dst_cont, dst_object = dst_path)
+                dst_container = dst_cont, dst_object = dst_path,
+                source_version=getattr(self.args, 'source_version'),
+                public=getattr(self.args, 'public'),
+                content_type=getattr(self.args,'content_type'), delimiter=self.getdelimiter())
         except ClientError as err:
             raiseCLIError(err)
 

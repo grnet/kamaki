@@ -72,7 +72,7 @@ def _build_args(arglist, attrs):
 
 @command()
 class store_download(_pithos_sh_container_command):
-    """Download/show an object"""
+    """Download an object"""
 
     def update_parser(self, parser):
         super(store_download, self).update_parser(parser)

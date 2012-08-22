@@ -331,7 +331,7 @@ class PithosClient(StorageClient):
         success = kwargs.pop('success', 200)
         return self.get(path, *args, success=success, **kwargs)
 
-    def object_put(self, object, format='json', hashmap=False, if_etag_match=None,
+    def object_put(self, object, format='json', hashmap=False, delimiter = None, if_etag_match=None,
         if_etag_not_match = None, etag=None, content_length = None, content_type=None,
         transfer_encoding=None, copy_from=None, move_from=None, source_account=None,
         source_version=None, content_encoding = None, content_disposition=None, manifest = None,
@@ -366,6 +366,8 @@ class PithosClient(StorageClient):
         param_dict = {} if format is None else dict(format=format)
         if hashmap:
             param_dict['hashmap'] = None
+        if type(delimiter) is str:
+            param_dict['delimiter'] = delimiter
         path=path4url(self.account, self.container, object)+params4url(param_dict)
         self.set_header('If-Match', if_etag_match)
         self.set_header('If-None-Match', if_etag_not_match)
@@ -883,3 +885,13 @@ class PithosClient(StorageClient):
                 content_length=len(block), content_range='bytes %s-%s/*'%(start,end), data=block)
             if upload_cb is not None:
                 upload_gen.next()
+
+    def copy_object(self, src_container, src_object, dst_container, dst_object=False,
+        source_version = None, public=False, content_type=None, delimiter=None):
+        self.assert_account()
+        self.container = dst_container
+        dst_object = dst_object or src_object
+        src_path = path4url(src_container, src_object)
+        self.object_put(dst_object, success=201, copy_from=src_path, content_length=0,
+            source_version=source_version, public=public, content_type=content_type,
+            delimiter=delimiter)
