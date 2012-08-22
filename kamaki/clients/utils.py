@@ -103,3 +103,24 @@ def list2str(alist, seperator=','):
             ret += seperator+unicode(item)
     return ret
 
+def dict2file(d, f, depth = 0):
+    for k, v in d.items():
+        f.write('%s%s: '%('\t'*depth, k))
+        if type(v) is dict:
+            f.write('\n')
+            dict2file(v, f, depth+1)
+        elif type(v) is list:
+            f.write('\n')
+            list2file(v, f, depth+1)
+        else:
+            f.write(' %s\n'%unicode(v))
+
+def list2file(l, f, depth = 1):
+    for item in l:
+        if type(item) is dict:
+            dict2file(item, f, depth+1)
+        elif type(item) is list:
+            list2file(item, f, depth+1)
+        else:
+            f.write('%s%s\n'%('\t'*depth, unicode(item)))
+

@@ -49,12 +49,12 @@ class ProgressBar(IncrementalBar):
 
 class _pithos_init(object):
     def main(self):
-        token = self.config.get('store', 'token') or self.config.get('global', 'token')
-        base_url = self.config.get('store', 'url') or self.config.get('global', 'url')
-        account = self.config.get('store', 'account') or self.config.get('global', 'account')
-        container = self.config.get('store', 'container') or self.config.get('global', 'container')
-        self.client = PithosClient(base_url=base_url, token=token, account=account,
-            container=container)
+        self.token = self.config.get('store', 'token') or self.config.get('global', 'token')
+        self.base_url = self.config.get('store', 'url') or self.config.get('global', 'url')
+        self.account = self.config.get('store', 'account') or self.config.get('global', 'account')
+        self.container = self.config.get('store', 'container') or self.config.get('global', 'container')
+        self.client = PithosClient(base_url=self.base_url, token=self.token, account=self.account,
+            container=self.container)
 
 class _store_account_command(_pithos_init):
     """Base class for account level storage commands"""
@@ -89,17 +89,22 @@ class _store_container_command(_store_account_command):
         parser.add_argument('--container', dest='container', metavar='NAME',
                           help="Specify a container to use")
 
-    def extract_container_and_path(self, container_with_path):
+    def extract_container_and_path(self, container_with_path, path_is_optional=True):
         assert isinstance(container_with_path, str)
         cnp = container_with_path.split(':')
         self.container = cnp[0]
-        self.path = cnp[1] if len(cnp) > 1 else None
-            
+        try:
+            self.path = cnp[1]
+        except IndexError:
+            if path_is_optional:
+                self.path = None
+            else:
+                raise CLIError(message="Object path is missing", status=11)
 
-    def main(self, container_with_path=None):
+    def main(self, container_with_path=None, path_is_optional=True):
         super(_store_container_command, self).main()
         if container_with_path is not None:
-            self.extract_container_and_path(container_with_path)
+            self.extract_container_and_path(container_with_path, path_is_optional)
             self.client.container = self.container
         elif hasattr(self.args, 'container') and self.args.container is not None:
             self.client.container = self.args.container
@@ -301,7 +306,7 @@ class store_copy(_store_container_command):
     """Copy an object"""
 
     def main(self, source_container___path, destination_container____path__):
-        super(self.__class__, self).main(source_container___path)
+        super(self.__class__, self).main(source_container___path, path_is_optional=False)
         try:
             dst = destination_container____path__.split(':')
             dst_cont = dst[0]
@@ -316,7 +321,7 @@ class store_move(_store_container_command):
     """Move an object"""
 
     def main(self, source_container___path, destination_container____path__):
-        super(self.__class__, self).main(source_container___path)
+        super(self.__class__, self).main(source_container___path, path_is_optional=False)
         try:
             dst = destination_container____path__.split(':')
             dst_cont = dst[0]
@@ -332,7 +337,7 @@ class store_append(_store_container_command):
 
     
     def main(self, local_path, container___path):
-        super(self.__class__, self).main(container___path)
+        super(self.__class__, self).main(container___path, path_is_optional=False)
         try:
             f = open(local_path, 'r')
             upload_cb = self.progress('Appending blocks')
@@ -346,7 +351,7 @@ class store_truncate(_store_container_command):
 
     
     def main(self, container___path, size=0):
-        super(self.__class__, self).main(container___path)
+        super(self.__class__, self).main(container___path, path_is_optional=False)
         try:
             self.client.truncate_object(self.path, size)
         except ClientError as err:
@@ -357,7 +362,7 @@ class store_overwrite(_store_container_command):
     """Overwrite part (from start to end) of a remote file"""
 
     def main(self, local_path, container___path, start, end):
-        super(self.__class__, self).main(container___path)
+        super(self.__class__, self).main(container___path, path_is_optional=False)
         try:
             f = open(local_path, 'r')
             upload_cb = self.progress('Overwritting blocks')
@@ -403,7 +408,7 @@ class store_manifest(_store_container_command):
         return perms
         
     def main(self, container___path):
-        super(self.__class__, self).main(container___path)
+        super(self.__class__, self).main(container___path, path_is_optional=False)
         try:
             self.client.create_object_by_manifestation(self.path,
                 content_encoding=getattr(self.args, 'content_encoding'),
@@ -480,9 +485,8 @@ class store_upload(_store_container_command):
 class store_download(_store_container_command):
     """Download a file"""
 
-    
     def main(self, container___path, local_path='-'):
-        super(self.__class__, self).main(container___path)
+        super(self.__class__, self).main(container___path, path_is_optional=False)
         try:
             f, size = self.client.get_object(self.path)
         except ClientError as err:
@@ -575,7 +579,7 @@ class store_publish(_store_container_command):
     """Publish an object"""
 
     def main(self, container___path):
-        super(self.__class__, self).main(container___path)
+        super(self.__class__, self).main(container___path, path_is_optional=False)
         try:
             self.client.publish_object(self.path)
         except ClientError as err:
@@ -586,7 +590,7 @@ class store_unpublish(_store_container_command):
     """Unpublish an object"""
 
     def main(self, container___path):
-        super(self.__class__, self).main(container___path)
+        super(self.__class__, self).main(container___path, path_is_optional=False)
         try:
             self.client.unpublish_object(self.path)
         except ClientError as err:
@@ -597,7 +601,7 @@ class store_permitions(_store_container_command):
     """Get object read/write permitions"""
 
     def main(self, container___path):
-        super(self.__class__, self).main(container___path)
+        super(self.__class__, self).main(container___path, path_is_optional=False)
         try:
             reply = self.client.get_object_sharing(self.path)
             print_dict(reply)
@@ -609,7 +613,7 @@ class store_setpermitions(_store_container_command):
     """Set sharing permitions"""
 
     def main(self, container___path, *permitions):
-        super(self.__class__, self).main(container___path)
+        super(self.__class__, self).main(container___path, path_is_optional=False)
         read = False
         write = False
         for perms in permitions:
@@ -637,7 +641,7 @@ class store_delpermitions(_store_container_command):
     """Delete all sharing permitions"""
 
     def main(self, container___path):
-        super(self.__class__, self).main(container___path)
+        super(self.__class__, self).main(container___path, path_is_optional=False)
         try:
             self.client.del_object_sharing(self.path)
         except ClientError as err:
