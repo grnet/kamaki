@@ -37,6 +37,7 @@ from kamaki.cli import command, CLIError
 from kamaki.utils import print_list
 from .utils import dict2file, list2file
 from .pithos_cli import _store_container_command, _store_account_command
+from colors import bold
 
 #from getpass import getuser
 #from optparse import OptionParser
@@ -80,11 +81,28 @@ def _build_args(arglist, attrs):
     return args
 
 @command()
-class store_download(_pithos_sh_container_command):
+class store_versions(_pithos_sh_container_command):
+    """Get the version list of an object"""
+
+    def main(self, container___path):
+        super(store_versions, self).main(container___path)
+        try:
+            data = self.client.retrieve_object_versionlist(self.container, self.path)
+        except Fault as err:
+            raise CLIError(message=unicode(err), status=err.status)
+        from time import localtime, strftime
+        print('%s:%s version ids:'%(self.container,self.path))
+        for vitem in data['versions']:
+            t = localtime(float(vitem[1]))
+            vid = bold(unicode(vitem[0]))
+            print('\t%s \t(%s)'%(vid, strftime('%d-%m-%Y %H:%M:%S', t)))
+
+@command()
+class store_downloadz(_pithos_sh_container_command):
     """Download an object"""
 
     def update_parser(self, parser):
-        super(store_download, self).update_parser(parser)
+        super(store_downloadz, self).update_parser(parser)
         parser.add_argument('-l', action='store_true', dest='detail', default=False,
             help='show detailed output')
         parser.add_argument('--range', action='store', dest='range', default=None,
@@ -101,17 +119,13 @@ class store_download(_pithos_sh_container_command):
             default=None, help='show output if not modified since then')
         parser.add_argument('--object-version', action='store', dest='object-version', default=None,
             help='get the specific version')
-        parser.add_argument('--versionlist', action='store_true', dest='versionlist', default=False,
-            help='get the full object version list')
-        parser.add_argument('--hashmap', action='store_true', dest='hashmap', default=False,
-            help='get the object hashmap instead')
     
     def main(self, container___path, outputFile=None):
-        super(store_download, self).main(container___path)
+        super(store_downloadz, self).main(container___path)
 
         #prepare attributes and headers
         attrs = ['if_match', 'if_none_match', 'if_modified_since',
-                 'if_unmodified_since', 'hashmap']
+                 'if_unmodified_since']
         args = _build_args(self.args, attrs)
         args['format'] = 'json' if hasattr(self.args,'detail') else 'text'
         if getattr(self.args, 'range') is not None:
@@ -120,27 +134,18 @@ class store_download(_pithos_sh_container_command):
             args['if-range'] = 'If-Range:%s' % getattr(self.args, 'if_range')
 
         #branch through options
-        if getattr(self.args,'versionlist'):
-            try:
-                args.pop('detail')
-            except KeyError:
-                pass
-            args.pop('format')
-            data=self.client.retrieve_object_versionlist(self.container, self.path, **args)
-        elif getattr(self.args,'object-version'):
-            data = self.client.retrieve_object_version(self.container, self.path,
-                version=getattr(self.args, 'object-version'), **args)
-        elif getattr(self.args, 'hashmap'):
-            try:
-                args.pop('detail')
-            except KeyError:
-                pass
-            data=self.client.retrieve_object_hashmap(self.container, self.path, **args)
-        elif outputFile is None:
-            cat(self.client, self.container, self.path)
-        else:
-            download(self.client, self.container, self.path, outputFile)
-            return
+        try:
+            if getattr(self.args,'object-version'):
+                data = self.client.retrieve_object_version(self.container, self.path,
+                    version=getattr(self.args, 'object-version'), **args)
+            elif outputFile is None:
+                cat(self.client, self.container, self.path)
+                return
+            else:
+                download(self.client, self.container, self.path, outputFile)
+                return
+        except Fault as err:
+            raise CLIError(message=unicode(err), status=err.status, importance=err.status/100)
 
         f = stdout if outputFile is None else open(outputFile, 'w')
         if type(data) is dict:
@@ -169,5 +174,8 @@ class store_sharers(_pithos_sh_account_command):
         attrs = ['limit', 'marker']
         args = _build_args(self.args, attrs)
         args['format'] = 'json' if getattr(self.args, 'detail') else 'text'
-        
-        print_list(self.client.list_shared_by_others(**args))
+    
+        try:    
+            print_list(self.client.list_shared_by_others(**args))
+        except Fault as err:
+            raise CLIError(message=unicode(err), status=err.status, importance=err.status/100)

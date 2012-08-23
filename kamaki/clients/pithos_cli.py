@@ -39,13 +39,15 @@ from .pithos import PithosClient, ClientError
 from .cli_utils import raiseCLIError
 from kamaki.utils import print_dict, pretty_keys, print_list
 from colors import bold
-from sys import stdout
+from sys import stdout, exit
+import signal
 
 from progress.bar import IncrementalBar
 
 
 class ProgressBar(IncrementalBar):
-    suffix = '%(percent)d%% - %(eta)ds'
+    #suffix = '%(percent)d%% - %(eta)ds'
+    suffix = '%(percent)d%%'
 
 class _pithos_init(object):
     def main(self):
@@ -377,7 +379,6 @@ class store_move(_store_container_command):
 class store_append(_store_container_command):
     """Append local file to (existing) remote object"""
 
-    
     def main(self, local_path, container___path):
         super(self.__class__, self).main(container___path, path_is_optional=False)
         try:
@@ -527,31 +528,58 @@ class store_upload(_store_container_command):
 class store_download(_store_container_command):
     """Download a file"""
 
-    def main(self, container___path, local_path='-'):
+    def main(self, container___path, local_path=None):
         super(self.__class__, self).main(container___path, path_is_optional=False)
+
+        #setup output stream
+        if local_path is None:
+            out = stdout
+        else:
+            try:
+                out = open(local_path, 'a+')
+            except IOError as err:
+                raise CLIError(message='Cannot write to file %s - %s'%(local_path,unicode(err)),
+                    importance=1)
+        download_cb = self.progress('Downloading')
+
         try:
-            f, size = self.client.get_object(self.path)
+            self.client.download_object(self.path, out, download_cb)
         except ClientError as err:
             raiseCLIError(err)
+        except KeyboardInterrupt:
+            print('\ndownload canceled by user')
+            if local_path is not None:
+                print('re-run command to resume')
+
+@command()
+class store_hashmap(_store_container_command):
+    """Get the hashmap of an object"""
+
+    def update_parser(self, parser):
+        super(self.__class__, self).update_parser(parser)
+        parser.add_argument('--range', action='store', dest='range', default=None,
+            help='show range of data')
+        parser.add_argument('--if-range', action='store', dest='if_range', default=None,
+            help='show range of data')
+        parser.add_argument('--if-match', action='store', dest='if_match', default=None,
+            help='show output if ETags match')
+        parser.add_argument('--if-none-match', action='store', dest='if_none_match', default=None,
+            help='show output if ETags don\'t match')
+        parser.add_argument('--if-modified-since', action='store', dest='if_modified_since',
+            default=None, help='show output if modified since then')
+        parser.add_argument('--if-unmodified-since', action='store', dest='if_unmodified_since',
+            default=None, help='show output if not modified since then')
+        parser.add_argument('--object-version', action='store', dest='object_version', default=None,
+            help='get the specific version')
+
+    def main(self, container___path):
+        super(self.__class__, self).main(container___path, path_is_optional=False)
         try:
-            out = open(local_path, 'w') if local_path != '-' else stdout
-        except IOError:
-            raise CLIError(message='Cannot write to file %s'%local_path, importance=1)
-
-        blocksize = 4 * 1024 ** 2
-        nblocks = 1 + (size - 1) // blocksize
-
-        cb = self.progress('Downloading blocks') if local_path != '-' else None
-        if cb:
-            gen = cb(nblocks)
-            gen.next()
-
-        data = f.read(blocksize)
-        while data:
-            out.write(data)
-            data = f.read(blocksize)
-            if cb:
-                gen.next()
+            data = self.client.get_object_hashmap(self.path,
+                version=getattr(self.args, 'object_version'))
+        except ClientError as err:
+            raiseCLIError(err)
+        print_dict(data)
 
 @command()
 class store_delete(_store_container_command):

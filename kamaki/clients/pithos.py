@@ -299,7 +299,8 @@ class PithosClient(StorageClient):
         return self.head(path, *args, success=success, **kwargs)
 
     def object_get(self, object, format='json', hashmap=False, version=None,
-        data_range=None, if_range=False, if_etag_match=None, if_etag_not_match = None, if_modified_since = None, if_unmodified_since = None, *args, **kwargs):
+        data_range=None, if_range=False, if_etag_match=None, if_etag_not_match = None,
+        if_modified_since = None, if_unmodified_since = None, *args, **kwargs):
         """ Full Pithos+ GET at object level
         --- request parameters ---
         @param format (string): json (default) or xml
@@ -713,6 +714,65 @@ class PithosClient(StorageClient):
         gevent.joinall(flying)
         self.object_put(object, format='json', hashmap=True, content_type=obj_content_type, 
             json=hashmap, success=201)
+
+    def download_object(self, obj, f, download_cb=None):
+
+        self.assert_container()
+
+        #retrieve object hashmap
+        hashmap = self.get_object_hashmap(obj)
+        blocksize = int(hashmap['block_size'])
+        blockhash = hashmap['block_hash']
+        total_size = hashmap['bytes']
+        map = hashmap['hashes']
+        map_dict = {}
+        for h in map:
+            map_dict[h] = True
+        download_bars = len(map)
+
+        #load progress bar
+        if download_cb is not None:
+            download_gen = download_cb(total_size/blocksize + 1)
+            download_gen.next()
+
+        #load local file existing hashmap
+        if not f.isatty():
+            hash_dict = {}
+            index = 0
+            from os import path
+            if path.exists(f.name):
+                from binascii import hexlify
+                from .pithos_sh_lib.hashmap import HashMap
+                h = HashMap(blocksize, blockhash)
+                h.load(f)
+                for x in h:
+                    existing_hash = hexlify(x)
+                    if existing_hash not in map_dict:
+                        raise ClientError(message='Local file is substantialy different',
+                            status=600)
+                    hash_dict[existing_hash] = index
+                    index += 1
+                    if download_cb:
+                        download_gen.next()
+
+        #download and print
+        for i, h in enumerate(map):
+            if not f.isatty() and h in hash_dict:
+                continue
+            if download_cb is not None:
+                download_gen.next()
+            start = i*blocksize
+            end = start + blocksize -1 if start+blocksize < total_size else total_size -1
+            data_range = 'bytes=%s-%s'%(start, end)
+            data = self.object_get(obj, data_range=data_range, success=(200, 206))
+            if not f.isatty():
+                f.seek(start)
+            f.write(data.text)
+
+    def get_object_hashmap(self, obj, version=None):
+        r = self.object_get(obj, hashmap=True, version=version)
+        from json import loads
+        return loads(r.text)
 
     def set_account_group(self, group, usernames):
         self.account_post(update=True, groups = {group:usernames})
