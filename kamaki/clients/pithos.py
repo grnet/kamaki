@@ -895,3 +895,13 @@ class PithosClient(StorageClient):
         self.object_put(dst_object, success=201, copy_from=src_path, content_length=0,
             source_version=source_version, public=public, content_type=content_type,
             delimiter=delimiter)
+
+    def move_object(self, src_container, src_object, dst_container, dst_object=False,
+        source_version = None, public=False, content_type=None, delimiter=None):
+        self.assert_account()
+        self.container = dst_container
+        dst_object = dst_object or src_object
+        src_path = path4url(src_container, src_object)
+        self.object_put(dst_object, success=201, move_from=src_path, content_length=0,
+            source_version=source_version, public=public, content_type=content_type,
+            delimiter=delimiter)
