@@ -98,65 +98,6 @@ class store_versions(_pithos_sh_container_command):
             print('\t%s \t(%s)'%(vid, strftime('%d-%m-%Y %H:%M:%S', t)))
 
 @command()
-class store_downloadz(_pithos_sh_container_command):
-    """Download an object"""
-
-    def update_parser(self, parser):
-        super(store_downloadz, self).update_parser(parser)
-        parser.add_argument('-l', action='store_true', dest='detail', default=False,
-            help='show detailed output')
-        parser.add_argument('--range', action='store', dest='range', default=None,
-            help='show range of data')
-        parser.add_argument('--if-range', action='store', dest='if_range', default=None,
-            help='show range of data')
-        parser.add_argument('--if-match', action='store', dest='if_match', default=None,
-            help='show output if ETags match')
-        parser.add_argument('--if-none-match', action='store', dest='if_none_match', default=None,
-            help='show output if ETags don\'t match')
-        parser.add_argument('--if-modified-since', action='store', dest='if_modified_since',
-            default=None, help='show output if modified since then')
-        parser.add_argument('--if-unmodified-since', action='store', dest='if_unmodified_since',
-            default=None, help='show output if not modified since then')
-        parser.add_argument('--object-version', action='store', dest='object-version', default=None,
-            help='get the specific version')
-    
-    def main(self, container___path, outputFile=None):
-        super(store_downloadz, self).main(container___path)
-
-        #prepare attributes and headers
-        attrs = ['if_match', 'if_none_match', 'if_modified_since',
-                 'if_unmodified_since']
-        args = _build_args(self.args, attrs)
-        args['format'] = 'json' if hasattr(self.args,'detail') else 'text'
-        if getattr(self.args, 'range') is not None:
-            args['range'] = 'bytes=%s' % getattr(self.args,'range')
-        if getattr(self.args, 'if_range'):
-            args['if-range'] = 'If-Range:%s' % getattr(self.args, 'if_range')
-
-        #branch through options
-        try:
-            if getattr(self.args,'object-version'):
-                data = self.client.retrieve_object_version(self.container, self.path,
-                    version=getattr(self.args, 'object-version'), **args)
-            elif outputFile is None:
-                cat(self.client, self.container, self.path)
-                return
-            else:
-                download(self.client, self.container, self.path, outputFile)
-                return
-        except Fault as err:
-            raise CLIError(message=unicode(err), status=err.status, importance=err.status/100)
-
-        f = stdout if outputFile is None else open(outputFile, 'w')
-        if type(data) is dict:
-            dict2file(data, f)
-        elif type(data) is list:
-            list2file(data, f)
-        else:
-            f.write(unicode(data)+'\n')
-        f.close()
-
-@command()
 class store_sharers(_pithos_sh_account_command):
     """list accounts who share objects with current account"""
     

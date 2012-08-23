@@ -715,12 +715,12 @@ class PithosClient(StorageClient):
         self.object_put(object, format='json', hashmap=True, content_type=obj_content_type, 
             json=hashmap, success=201)
 
-    def download_object(self, obj, f, download_cb=None):
+    def download_object(self, obj, f, download_cb=None, version=None):
 
         self.assert_container()
 
         #retrieve object hashmap
-        hashmap = self.get_object_hashmap(obj)
+        hashmap = self.get_object_hashmap(obj, version=version)
         blocksize = int(hashmap['block_size'])
         blockhash = hashmap['block_hash']
         total_size = hashmap['bytes']
@@ -764,12 +764,13 @@ class PithosClient(StorageClient):
             start = i*blocksize
             end = start + blocksize -1 if start+blocksize < total_size else total_size -1
             data_range = 'bytes=%s-%s'%(start, end)
-            data = self.object_get(obj, data_range=data_range, success=(200, 206))
+            data = self.object_get(obj, data_range=data_range, success=(200, 206), version=version)
             if not f.isatty():
                 f.seek(start)
             f.write(data.text)
 
     def get_object_hashmap(self, obj, version=None):
+        data_range = ('bytes='+range) if type(range) is str else None
         r = self.object_get(obj, hashmap=True, version=version)
         from json import loads
         return loads(r.text)

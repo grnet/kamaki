@@ -528,6 +528,23 @@ class store_upload(_store_container_command):
 class store_download(_store_container_command):
     """Download a file"""
 
+    def update_parser(self, parser):
+        super(self.__class__, self).update_parser(parser)
+        parser.add_argument('--range', action='store', dest='range', default=None,
+            help='show range of data')
+        parser.add_argument('--if-range', action='store', dest='if_range', default=None,
+            help='show range of data')
+        parser.add_argument('--if-match', action='store', dest='if_match', default=None,
+            help='show output if ETags match')
+        parser.add_argument('--if-none-match', action='store', dest='if_none_match', default=None,
+            help='show output if ETags don\'t match')
+        parser.add_argument('--if-modified-since', action='store', dest='if_modified_since',
+            default=None, help='show output if modified since then')
+        parser.add_argument('--if-unmodified-since', action='store', dest='if_unmodified_since',
+            default=None, help='show output if not modified since then')
+        parser.add_argument('--object-version', action='store', dest='object_version', default=None,
+            help='get the specific version')
+
     def main(self, container___path, local_path=None):
         super(self.__class__, self).main(container___path, path_is_optional=False)
 
@@ -543,7 +560,8 @@ class store_download(_store_container_command):
         download_cb = self.progress('Downloading')
 
         try:
-            self.client.download_object(self.path, out, download_cb)
+            self.client.download_object(self.path, out, download_cb,
+                version=getattr(self.args,'object_version'))
         except ClientError as err:
             raiseCLIError(err)
         except KeyboardInterrupt:
@@ -557,8 +575,8 @@ class store_hashmap(_store_container_command):
 
     def update_parser(self, parser):
         super(self.__class__, self).update_parser(parser)
-        parser.add_argument('--range', action='store', dest='range', default=None,
-            help='show range of data')
+        #parser.add_argument('--range', action='store', dest='range', default=None,
+        #    help='show range of data')
         parser.add_argument('--if-range', action='store', dest='if_range', default=None,
             help='show range of data')
         parser.add_argument('--if-match', action='store', dest='if_match', default=None,
