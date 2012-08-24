@@ -72,10 +72,18 @@ class Client(object):
         if value is not None and iff:
             self.headers[unicode(name)] = unicode(value)
 
-    def reset_headers(self):
+    def request(self, method, path, reset_headers = True, **kwargs):
+        if not reset_headers:
+            return self._request(method, path, **kwargs)
+        try:
+            r = self._request(method, path, **kwargs)
+        except Exception as err:
+            self.headers = {}
+            raise err
         self.headers = {}
+        return r
 
-    def request(self, method, path, **kwargs):
+    def _request(self, method, path, **kwargs):
         raw = kwargs.pop('raw', False)
         success = kwargs.pop('success', 200)
 
@@ -113,7 +121,6 @@ class Client(object):
             success = (success,) if isinstance(success, int) else success
             if r.status_code not in success:
                 self.raise_for_status(r)
-
         return r
 
     def delete(self, path, **kwargs):

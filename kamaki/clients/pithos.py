@@ -109,7 +109,7 @@ class PithosClient(StorageClient):
         return self.get(path, *args, success = success, **kwargs)
 
     def account_post(self, update=True,
-        groups={}, metadata={}, quota=None, versioning=None, *args, **kwargs):
+        groups={}, metadata=None, quota=None, versioning=None, *args, **kwargs):
         """ Full Pithos+ POST at account level
         --- request parameters ---
         @param update (bool): if True, Do not replace metadata/groups
@@ -135,8 +135,9 @@ class PithosClient(StorageClient):
                 userstr = userstr + dlm + user
                 dlm = ','
             self.set_header('X-Account-Group-'+group, userstr)
-        for metaname, metaval in metadata.items():
-            self.set_header('X-Account-Meta-'+metaname, metaval)
+        if metadata is not None:
+            for metaname, metaval in metadata.items():
+                self.set_header('X-Account-Meta-'+metaname, metaval)
         self.set_header('X-Account-Policy-Quota', quota)
         self.set_header('X-Account-Policy-Versioning', versioning)
 
@@ -207,7 +208,7 @@ class PithosClient(StorageClient):
         success = kwargs.pop('success', 200)
         return self.get(path, *args, success=success, **kwargs)
 
-    def container_put(self, quota=None, versioning=None, metadata={}, *args, **kwargs):
+    def container_put(self, quota=None, versioning=None, metadata=None, *args, **kwargs):
         """ Full Pithos+ PUT at container level
         --- request headers ---
         @param quota (integer): Size limit in KB
@@ -219,15 +220,16 @@ class PithosClient(StorageClient):
         """
         self.assert_container()
         path = path4url(self.account, self.container)
-        for metaname, metaval in metadata.items():
-            self.set_header('X-Container-Meta-'+metaname, metaval)
+        if metadata is not None:
+            for metaname, metaval in metadata.items():
+                self.set_header('X-Container-Meta-'+metaname, metaval)
         self.set_header('X-Container-Policy-Quota', quota)
         self.set_header('X-Container-Policy-Versioning', versioning)
         success = kwargs.pop('success',(201, 202))
         return self.put(path, *args, success=success, **kwargs)
 
     def container_post(self, update=True, format='json',
-        quota=None, versioning=None, metadata={}, content_type=None, content_length=None,
+        quota=None, versioning=None, metadata=None, content_type=None, content_length=None,
         transfer_encoding=None, *args, **kwargs):
         """ Full Pithos+ POST at container level
         --- request params ---
@@ -250,8 +252,9 @@ class PithosClient(StorageClient):
             param_dict['update'] = None
         path = path4url(self.account, self.container)+params4url(param_dict)
 
-        for metaname, metaval in metadata.items():
-            self.set_header('X-Container-Meta-'+metaname, metaval)
+        if metadata is not None:
+            for metaname, metaval in metadata.items():
+                self.set_header('X-Container-Meta-'+metaname, metaval)
         self.set_header('X-Container-Policy-Quota', quota)
         self.set_header('X-Container-Policy-Versioning', versioning)
         self.set_header('Content-Type', content_type)
@@ -336,7 +339,7 @@ class PithosClient(StorageClient):
         if_etag_not_match = None, etag=None, content_length = None, content_type=None,
         transfer_encoding=None, copy_from=None, move_from=None, source_account=None,
         source_version=None, content_encoding = None, content_disposition=None, manifest = None,
-        permitions = {}, public = None, metadata={}, *args, **kwargs):
+        permitions =None, public = None, metadata=None, *args, **kwargs):
         """ Full Pithos+ PUT at object level
         --- request parameters ---
         @param format (string): json (default) or xml
@@ -384,17 +387,19 @@ class PithosClient(StorageClient):
         self.set_header('Content-Disposition', content_disposition)
         self.set_header('X-Object-Manifest', manifest)
         perms = None
-        for permition_type, permition_list in permitions.items():
-            if perms is None:
-                perms = '' #Remove permitions
-            if len(permition_list) == 0:
-                continue
-            perms += ';'+permition_type if len(perms) > 0 else permition_type
-            perms += '='+list2str(permition_list, seperator=',')
+        if permitions is not None:
+            for permition_type, permition_list in permitions.items():
+                if perms is None:
+                    perms = '' #Remove permitions
+                if len(permition_list) == 0:
+                    continue
+                perms += ';'+permition_type if len(perms) > 0 else permition_type
+                perms += '='+list2str(permition_list, seperator=',')
         self.set_header('X-Object-Sharing', perms)
         self.set_header('X-Object-Public', public)
-        for key, val in metadata.items():
-            self.set_header('X-Object-Meta-'+key, val)
+        if metadata is not None:
+            for key, val in metadata.items():
+                self.set_header('X-Object-Meta-'+key, val)
 
         success = kwargs.pop('success', 201)
         return self.put(path, *args, success=success, **kwargs)
@@ -402,7 +407,7 @@ class PithosClient(StorageClient):
     def object_copy(self, object, destination, format='json', ignore_content_type=False,
         if_etag_match=None, if_etag_not_match=None, destination_account=None,
         content_type=None, content_encoding=None, content_disposition=None, source_version=None,
-        permitions={}, public=False, metadata={}, *args, **kwargs):
+        permitions=None, public=False, metadata=None, *args, **kwargs):
         """ Full Pithos+ COPY at object level
         --- request parameters ---
         @param format (string): json (default) or xml
@@ -441,17 +446,19 @@ class PithosClient(StorageClient):
         self.set_header('Content-Disposition', content_disposition)
         self.set_header('X-Source-Version', source_version)
         perms = None
-        for permition_type, permition_list in permitions.items():
-            if perms is None:
-                perms = '' #Remove permitions
-            if len(permition_list) == 0:
-                continue
-            perms += ';'+permition_type if len(perms) > 0 else permition_type
-            perms += '='+list2str(permition_list, seperator=',')
+        if permitions is not None:
+            for permition_type, permition_list in permitions.items():
+                if perms is None:
+                    perms = '' #Remove permitions
+                if len(permition_list) == 0:
+                    continue
+                perms += ';'+permition_type if len(perms) > 0 else permition_type
+                perms += '='+list2str(permition_list, seperator=',')
         self.set_header('X-Object-Sharing', perms)
         self.set_header('X-Object-Public', public)
-        for key, val in metadata.items():
-            self.set_header('X-Object-Meta-'+key, val)
+        if metadata is not None:
+            for key, val in metadata.items():
+                self.set_header('X-Object-Meta-'+key, val)
         success = kwargs.pop('success', 201)
         return self.copy(path, *args, success=success, **kwargs)
 
@@ -632,7 +639,6 @@ class PithosClient(StorageClient):
     def put_block(self, data, hash):
         r = self.container_post(update=True, content_type='application/octet-stream',
             content_length=len(data), data=data, format='json')
-        self.reset_headers()
         assert r.json[0] == hash, 'Local hash does not match server'
 
     def create_object_by_manifestation(self, obj, etag=None, content_encoding=None,
@@ -685,7 +691,6 @@ class PithosClient(StorageClient):
             json=hashmap, etag=etag, content_encoding=content_encoding,
             content_disposition=content_disposition, permitions=sharing, public=public,
             success=(201, 409))
-        self.reset_headers()
 
         if r.status_code == 201:
             return
