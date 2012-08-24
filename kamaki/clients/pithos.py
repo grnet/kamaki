@@ -720,12 +720,18 @@ class PithosClient(StorageClient):
         self.object_put(object, format='json', hashmap=True, content_type=obj_content_type, 
             json=hashmap, success=201)
 
-    def download_object(self, obj, f, download_cb=None, version=None):
+    def download_object(self, obj, f, download_cb=None, version=None, overide=False, range=None,
+        if_match=None, if_none_match=None, if_modified_since=None, if_unmodified_since=None):
+        """overide is forcing the local file to become exactly as the remote, even if it is
+        substantialy different
+        """
 
         self.assert_container()
 
         #retrieve object hashmap
-        hashmap = self.get_object_hashmap(obj, version=version)
+        hashmap = self.get_object_hashmap(obj, version=version, if_match=if_match,
+            if_none_match=if_none_match, if_modified_since=if_modified_since,
+            if_unmodified_since=if_unmodified_since)
         blocksize = int(hashmap['block_size'])
         blockhash = hashmap['block_hash']
         total_size = hashmap['bytes']
@@ -735,6 +741,21 @@ class PithosClient(StorageClient):
             map_dict[h] = True
         download_bars = len(map)
 
+        if range is not None:
+            try:
+                (custom_start, custom_end) = range.split('-')
+                (custom_start, custom_end) = (int(custom_start), int(custom_end))
+            except ValueError:
+                raise ClientError(message='Invalid range string', status=601)
+            if custom_start > custom_end or custom_start < 0:
+                raise ClientError(message='Negative range', status=601)
+            elif custom_start == custom_end:
+                return
+            elif custom_end > total_size:
+                raise ClientError(message='Range exceeds file size', status=601)
+        if total_size <= 0:
+            return
+
         #load progress bar
         if download_cb is not None:
             download_gen = download_cb(total_size/blocksize + 1)
@@ -743,22 +764,22 @@ class PithosClient(StorageClient):
         #load local file existing hashmap
         if not f.isatty():
             hash_dict = {}
-            index = 0
             from os import path
             if path.exists(f.name):
                 from binascii import hexlify
                 from .pithos_sh_lib.hashmap import HashMap
                 h = HashMap(blocksize, blockhash)
-                h.load(f)
-                for x in h:
+                with_progress_bar = False if download_cb is None else True
+                h.load(f, with_progress_bar)
+                for i, x in enumerate(h):
                     existing_hash = hexlify(x)
-                    if existing_hash not in map_dict:
+                    if existing_hash in map_dict:
+                        hash_dict[existing_hash] = i
+                        if download_cb:
+                            download_gen.next()
+                    elif not overide:
                         raise ClientError(message='Local file is substantialy different',
                             status=600)
-                    hash_dict[existing_hash] = index
-                    index += 1
-                    if download_cb:
-                        download_gen.next()
 
         #download and print
         for i, h in enumerate(map):
@@ -767,16 +788,36 @@ class PithosClient(StorageClient):
             if download_cb is not None:
                 download_gen.next()
             start = i*blocksize
+            if range is not None:
+                if start < custom_start:
+                    start = custom_start
+                elif start > custom_end:
+                    continue
             end = start + blocksize -1 if start+blocksize < total_size else total_size -1
+            if range is not None and end > custom_end:
+                end = custom_end
             data_range = 'bytes=%s-%s'%(start, end)
-            data = self.object_get(obj, data_range=data_range, success=(200, 206), version=version)
+            data = self.object_get(obj, data_range=data_range, success=(200, 206), version=version,
+                if_etag_match=if_match, if_etag_not_match=if_none_match,
+                if_modified_since=if_modified_since, if_unmodified_since=if_unmodified_since)
             if not f.isatty():
                 f.seek(start)
             f.write(data.text)
 
-    def get_object_hashmap(self, obj, version=None):
-        data_range = ('bytes='+range) if type(range) is str else None
-        r = self.object_get(obj, hashmap=True, version=version)
+        if overide and not f.isatty():
+            f.truncate(total_size)
+
+
+    def get_object_hashmap(self, obj, version=None, if_match=None, if_none_match=None,
+        if_modified_since=None, if_unmodified_since=None):
+        try:
+            r = self.object_get(obj, hashmap=True, version=version, if_etag_match=if_match,
+                if_etag_not_match=if_none_match, if_modified_since=if_modified_since,
+                if_unmodified_since=if_unmodified_since)
+        except ClientError as err:
+            if err.status == 304 or err.status == 412:
+                return {}
+            raise
         from json import loads
         return loads(r.text)
 

@@ -64,7 +64,10 @@ class Client(object):
 
     def raise_for_status(self, r):
         message = "%d %s" % (r.status_code, r.status)
-        details = r.text
+        try:
+            details = r.text
+        except:
+            details = ''
         raise ClientError(message, r.status_code, details)
 
     def set_header(self, name, value, iff=True):
@@ -77,9 +80,9 @@ class Client(object):
             return self._request(method, path, **kwargs)
         try:
             r = self._request(method, path, **kwargs)
-        except Exception as err:
+        except:
             self.headers = {}
-            raise err
+            raise
         self.headers = {}
         return r
 

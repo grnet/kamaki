@@ -122,7 +122,7 @@ class store_list(_store_container_command):
         super(self.__class__, self).update_parser(parser)
         parser.add_argument('-l', action='store_true', dest='detail', default=False,
             help='show detailed output')
-        parser.add_argument('-N', action='store', dest='show_size', default=21,
+        parser.add_argument('-N', action='store', dest='show_size', default=1000,
             help='print output in chunks of size N')
         parser.add_argument('-n', action='store', dest='limit', default=None,
             help='show limited output')
@@ -157,13 +157,13 @@ class store_list(_store_container_command):
             limit = int(limit)
         except AttributeError:
             pass
-        index = 0
-        for obj in object_list:
+        #index = 0
+        for index,obj in enumerate(object_list):
             if not obj.has_key('content_type'):
                 continue
             pretty_obj = obj.copy()
             index += 1
-            empty_space = ' '*(len(object_list)/10 - index/10)
+            empty_space = ' '*(len(str(len(object_list))) - len(str(index)))
             if obj['content_type'] == 'application/directory':
                 isDir = True
                 size = 'D'
@@ -530,9 +530,11 @@ class store_download(_store_container_command):
 
     def update_parser(self, parser):
         super(self.__class__, self).update_parser(parser)
+        parser.add_argument('--no-progress-bar', action='store_true', dest='no_progress_bar',
+            default=False, help='Dont display progress bars')
+        parser.add_argument('--overide', action='store_true', dest='overide', default=False,
+            help='Force download to overide an existing file')
         parser.add_argument('--range', action='store', dest='range', default=None,
-            help='show range of data')
-        parser.add_argument('--if-range', action='store', dest='if_range', default=None,
             help='show range of data')
         parser.add_argument('--if-match', action='store', dest='if_match', default=None,
             help='show output if ETags match')
@@ -553,15 +555,23 @@ class store_download(_store_container_command):
             out = stdout
         else:
             try:
-                out = open(local_path, 'a+')
+                if getattr(self.args, 'overide'):
+                    out = open(local_path, 'w+')
+                else:
+                    out = open(local_path, 'a+')
             except IOError as err:
                 raise CLIError(message='Cannot write to file %s - %s'%(local_path,unicode(err)),
                     importance=1)
-        download_cb = self.progress('Downloading')
+        download_cb = None if getattr(self.args, 'no_progress_bar') \
+            else self.progress('Downloading')
 
         try:
-            self.client.download_object(self.path, out, download_cb,
-                version=getattr(self.args,'object_version'))
+            self.client.download_object(self.path, out, download_cb, 
+                range=getattr(self.args, 'range'), version=getattr(self.args,'object_version'),
+                if_match=getattr(self.args, 'if_match'), overide=getattr(self.args, 'overide'),
+                if_none_match=getattr(self.args, 'if_none_match'),
+                if_modified_since=getattr(self.args, 'if_modified_since'),
+                if_unmodified_since=getattr(self.args, 'if_unmodified_since'))
         except ClientError as err:
             raiseCLIError(err)
         except KeyboardInterrupt:
@@ -575,14 +585,10 @@ class store_hashmap(_store_container_command):
 
     def update_parser(self, parser):
         super(self.__class__, self).update_parser(parser)
-        #parser.add_argument('--range', action='store', dest='range', default=None,
-        #    help='show range of data')
-        parser.add_argument('--if-range', action='store', dest='if_range', default=None,
-            help='show range of data')
         parser.add_argument('--if-match', action='store', dest='if_match', default=None,
             help='show output if ETags match')
         parser.add_argument('--if-none-match', action='store', dest='if_none_match', default=None,
-            help='show output if ETags don\'t match')
+            help='show output if ETags dont match')
         parser.add_argument('--if-modified-since', action='store', dest='if_modified_since',
             default=None, help='show output if modified since then')
         parser.add_argument('--if-unmodified-since', action='store', dest='if_unmodified_since',
@@ -594,7 +600,11 @@ class store_hashmap(_store_container_command):
         super(self.__class__, self).main(container___path, path_is_optional=False)
         try:
             data = self.client.get_object_hashmap(self.path,
-                version=getattr(self.args, 'object_version'))
+                version=getattr(self.args, 'object_version'),
+                if_match=getattr(self.args, 'if_match'),
+                if_none_match=getattr(self.args, 'if_none_match'),
+                if_modified_since=getattr(self.args, 'if_modified_since'),
+                if_unmodified_since=getattr(self.args, 'if_unmodified_since'))
         except ClientError as err:
             raiseCLIError(err)
         print_dict(data)

@@ -75,15 +75,20 @@ class HashMap(list):
             h = [self._hash_raw(h[x] + h[x + 1]) for x in range(0, len(h), 2)]
         return h[0]
     
-    def load(self, fp):
+    def load(self, fp, with_progress_bar=True):
         self.size = 0
         file_size = os.fstat(fp.fileno()).st_size
         nblocks = 1 + (file_size - 1) // self.blocksize
-        bar = IncrementalBar('Computing', max=nblocks)
-        bar.suffix = '%(percent).1f%% - %(eta)ds'
-        for block in bar.iter(file_read_iterator(fp, self.blocksize)):
-            self.append(self._hash_block(block))
-            self.size += len(block)
+        if with_progress_bar:
+            bar = IncrementalBar('Computing', max=nblocks)
+            bar.suffix = '%(percent).1f%% - %(eta)ds'
+            for block in bar.iter(file_read_iterator(fp, self.blocksize)):
+                self.append(self._hash_block(block))
+                self.size += len(block)
+        else:
+            for block in file_read_iterator(fp, self.blocksize):
+                self.append(self._hash_block(block))
+                self.size += len(block)
 
 
 def merkle(path, blocksize=4194304, blockhash='sha256'):
