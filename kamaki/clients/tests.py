@@ -836,11 +836,6 @@ class testPithos(unittest.TestCase):
         r = self.client.object_get(obj, success=(200, 404))
         self.assertEqual(r.status_code, 404)
 
-    def atest_large_file_operations(self):
-        """Test large file operations"""
-        self.client.container = self.c1
-        pass
-
     def create_large_file(self, size, name):
         """Create a large file at fs"""
         self.fname = name

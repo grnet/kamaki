@@ -86,13 +86,22 @@ class _store_account_command(_pithos_init):
 class _store_container_command(_store_account_command):
     """Base class for container level storage commands"""
 
+    def __init__(self):
+        self.container = None
+        self.path = None
+
     def update_parser(self, parser):
         super(_store_container_command, self).update_parser(parser)
-        parser.add_argument('--container', dest='container', metavar='NAME',
-                          help="Specify a container to use")
+        parser.add_argument('--container', dest='container', metavar='NAME', default=None,
+            help="Specify a container to use")
 
     def extract_container_and_path(self, container_with_path, path_is_optional=True):
         assert isinstance(container_with_path, str)
+        if ':' not in container_with_path:
+            self.path = container_with_path
+            if hasattr(self.args, 'container'):
+                self.container = getattr(self.args, 'container')
+            return
         cnp = container_with_path.split(':')
         self.container = cnp[0]
         try:
@@ -108,10 +117,9 @@ class _store_container_command(_store_account_command):
         if container_with_path is not None:
             self.extract_container_and_path(container_with_path, path_is_optional)
             self.client.container = self.container
-        elif hasattr(self.args, 'container') and self.args.container is not None:
-            self.client.container = self.args.container
-        else:
-            self.container = None
+        elif hasattr(self.args, 'container'):
+            self.client.container = getattr(self.args,'container')
+        self.container = self.client.container
 
 @command()
 class store_list(_store_container_command):
@@ -230,6 +238,13 @@ class store_list(_store_container_command):
             return meta.split(' ')
         return orelse
 
+    def getpath(self, orelse=None):
+        if self.path is not None:
+            return self.path
+        if hasattr(self.args, 'path'):
+            return getattr(self.args, 'path')
+        return orelse
+
     def main(self, container____path__=None):
         super(self.__class__, self).main(container____path__)
         try:
@@ -245,8 +260,7 @@ class store_list(_store_container_command):
                 r = self.client.container_get(limit=getattr(self.args, 'limit', None),
                     marker=getattr(self.args, 'marker', None),
                     prefix=getattr(self.args, 'prefix', None),
-                    delimiter=getattr(self.args, 'delimiter', None),
-                    path=getattr(self.args, 'path', None) if self.path is None else self.path,
+                    delimiter=getattr(self.args, 'delimiter', None), path=self.getpath(orelse=None),
                     if_modified_since=getattr(self.args, 'if_modified_since', None),
                     if_unmodified_since=getattr(self.args, 'if_unmodified_since', None),
                     until=self.getuntil(),

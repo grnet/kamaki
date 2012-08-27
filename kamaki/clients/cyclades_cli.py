@@ -238,12 +238,12 @@ class server_firewall(_init_cyclades):
             raise CLIError(message='Server id must be positive integer', importance=1)
 @command()
 class server_addr(_init_cyclades):
-    """List a server's addresses"""
+    """List a server's nic address"""
 
-    def main(self, server_id, network=None):
+    def main(self, server_id):
         super(self.__class__, self).main()
         try:
-            reply = self.client.list_server_nic_details(int(server_id), network)
+            reply = self.client.list_server_nics(int(server_id))
         except ClientError as err:
             raiseCLIError(err)
         except ValueError:
