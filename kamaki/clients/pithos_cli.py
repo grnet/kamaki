@@ -824,27 +824,32 @@ class store_meta(_store_container_command):
     def main(self, container____path__ = None):
         super(self.__class__, self).main(container____path__)
 
+        detail = getattr(self.args, 'detail')
         try:
             if self.container is None:
                 print(bold(self.client.account))
-                r = self.client.account_head(until=self.getuntil())
-                reply = r.headers if getattr(self.args, 'detail') \
-                    else pretty_keys(filter_in(r.headers, 'X-Account-Meta'), '-')
+                if detail:
+                    reply = self.client.get_account_info(until=self.getuntil())
+                else:
+                    reply = self.client.get_account_meta(until=self.getuntil())
+                    reply = pretty_keys(reply, '-')
             elif self.path is None:
                 print(bold(self.client.account+': '+self.container))
-                r = self.client.container_head(until=self.getuntil())
-                if getattr(self.args, 'detail'):
-                    reply = r.headers
+                if detail:
+                    reply = self.client.get_container_info(until = self.getuntil())
                 else:
-                    cmeta = 'container-meta'
-                    ometa = 'object-meta'
-                    reply = {cmeta:pretty_keys(filter_in(r.headers, 'X-Container-Meta'), '-'),
-                        ometa:pretty_keys(filter_in(r.headers, 'X-Container-Object-Meta'), '-')}
+                    cmeta = self.client.get_container_meta(until=self.getuntil())
+                    ometa = self.client.get_container_object_meta(until=self.getuntil())
+                    reply = {'container-meta':pretty_keys(cmeta, '-'),
+                        'object-meta':pretty_keys(ometa, '-')}
             else:
                 print(bold(self.client.account+': '+self.container+':'+self.path))
-                r = self.client.object_head(self.path, version=getattr(self.args, 'object_version'))
-                reply = r.headers if getattr(self.args, 'detail') \
-                    else pretty_keys(filter_in(r.headers, 'X-Object-Meta'), '-')
+                version=getattr(self.args, 'object_version')
+                if detail:
+                    reply = self.client.get_object_info(self.path, version = version)
+                else:
+                    reply = self.client.get_object_meta(self.path, version=version)
+                    reply = pretty_keys(pretty_keys(reply, '-'))
         except ClientError as err:
             raiseCLIError(err)
         print_dict(reply)

@@ -808,7 +808,6 @@ class PithosClient(StorageClient):
         if overide and not f.isatty():
             f.truncate(total_size)
 
-
     def get_object_hashmap(self, obj, version=None, if_match=None, if_none_match=None,
         if_modified_since=None, if_unmodified_since=None):
         try:
@@ -828,10 +827,9 @@ class PithosClient(StorageClient):
     def del_account_group(self, group):
         return self.account_post(update=True, groups={group:[]})
 
-    def get_account_info(self):
-        r = self.account_head()
+    def get_account_info(self, until=None):
         from datetime import datetime
-        r = self.account_head(if_modified_since=datetime.now())
+        r = self.account_head(until=until)
         if r.status_code == 401:
             raise ClientError("No authorization")
         return r.headers
@@ -842,8 +840,8 @@ class PithosClient(StorageClient):
     def get_account_versioning(self):
         return filter_in(self.get_account_info(), 'X-Account-Policy-Versioning', exactMatch = True)
 
-    def get_account_meta(self):
-        return filter_in(self.get_account_info(), 'X-Account-Meta-')
+    def get_account_meta(self, until=None):
+        return filter_in(self.get_account_info(until = until), 'X-Account-Meta-')
 
     def get_account_group(self):
         return filter_in(self.get_account_info(), 'X-Account-Group-')
@@ -879,11 +877,15 @@ class PithosClient(StorageClient):
     def get_container_quota(self, container):
         return filter_in(self.get_container_info(container), 'X-Container-Policy-Quota')
 
-    def get_container_meta(self, container):
-        return filter_in(self.get_container_info(container), 'X-Container-Meta-')
+    def get_container_info(self, until = None):
+        r = self.container_head(until=until)
+        return r.headers
 
-    def get_container_object_meta(self, container):
-        return filter_in(self.get_container_info(container), 'X-Container-Object-Meta')
+    def get_container_meta(self, until = None):
+        return filter_in(self.get_container_info(until=until), 'X-Container-Meta')
+
+    def get_container_object_meta(self, until = None):
+        return filter_in(self.get_container_info(until=until), 'X-Container-Object-Meta')
 
     def set_container_meta(self, metapairs):
         assert(type(metapairs) is dict)
@@ -914,6 +916,13 @@ class PithosClient(StorageClient):
 
     def unpublish_object(self, object):
         self.object_post(object, update=True, public=False)
+
+    def get_object_info(self, obj, version=None):
+        r = self.object_head(obj, version=version)
+        return r.headers
+
+    def get_object_meta(self, obj, version=None):
+        return filter_in(self.get_object_info(obj, version=version), 'X-Object-Meta')
 
     def get_object_sharing(self, object):
         r = filter_in(self.get_object_info(object), 'X-Object-Sharing', exactMatch = True)
