@@ -31,23 +31,30 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-class ClientResponse(object):
+class Connection(object):
 
     def __init__(self):
-        #Dict of response headers
-        self.headers = {}
-        #CLear text in the response
-        self.text = ''
-        #Json formated response
-        self.json = None
-        #xml formated response
-        self.xml = None
-        #Content in byte form
-        self.content = None
+    	pass
 
-    def load_request_object(self, request):
-        r.headers = request.headers
-        r.text = request.text
-        r.json = request.json
-        r.xml = request.xml
-        r.content = request.content
+    def headers(self):
+    	"""return a dict with response headers"""
+    	raise NotImplementedError
+
+    def text(self):
+    	"""return the content in text format"""
+       	raise NotImplementedError
+
+    def json(self):
+    	"""return the content in json format"""
+    	raise NotImplementedError
+
+    def xml(self):
+    	"""return the content in xml format"""
+       	raise NotImplementedError
+
+    def content(self):
+    	"""return the content in byte format"""
+    	raise NotImplementedError
+
+    def perform_request(self, method, url='', headers={}, params={}, **kwargs):
+    	raise NotImplementedError
