@@ -853,8 +853,13 @@ class store_meta(_store_container_command):
 class store_setmeta(_store_container_command):
     """Set a new metadatum for account [, container [or object]]"""
 
-    def main(self, metakey, metavalue, container____path__=None):
+    def main(self, metakey___metaval, container____path__=None):
         super(self.__class__, self).main(container____path__)
+        try:
+            metakey, metavalue = metakey___metaval.split(':')
+        except ValueError:
+            raise CLIError(message='Meta variables should be formated as metakey:metavalue',
+                importance=1)
         try:
             if self.container is None:
                 self.client.set_account_meta({metakey:metavalue})
