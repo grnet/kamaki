@@ -1,4 +1,4 @@
-# Copyright 2011 GRNET S.A. All rights reserved.
+#a Copyright 2011 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -151,7 +151,7 @@ class StorageClient(Client):
         path = path4url(self.account, self.container, object)
         r = self.get(path, raw=True, success=200)
         size = int(r.headers['content-length'])
-        return r.raw, size
+        return r.content, size
 
     def copy_object(self, src_container, src_object, dst_container, dst_object=False):
         self.assert_account()

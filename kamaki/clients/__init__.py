@@ -53,27 +53,6 @@ class ClientError(Exception):
         self.status = status
         self.details = details
 
-class ClientResponse(object):
-
-    def __init__(self):
-        #Dict of response headers
-        self.headers = {}
-        #CLear text in the response
-        self.text = ''
-        #Json formated response
-        self.json = None
-        #xml formated response
-        self.xml = None
-        #Content in byte form
-        self.content = None
-
-    def load_request_object(self, request):
-        r.headers = request.headers
-        r.text = request.text
-        r.json = request.json
-        r.xml = request.xml
-        r.content = request.content
-
 class Client(object):
 
     def __init__(self, base_url, token, http_client=None):

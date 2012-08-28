@@ -31,30 +31,70 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-class Connection(object):
+class HTTPResponse(object):
+	def __init__(self, content=None, text = None, json = None, headers = None)
+		self.content = content #content in bytes
+		self.text = text #content in text
+		self.json = json #content in json
+		self.headers = headers #content headers
 
-    def __init__(self):
-    	pass
+class HTTPConnectionError(Exception):
+    def __init__(self, message, status=0, details=''):
+        super(ClientError, self).__init__(message, status, details)
+        self.message = message
+        self.status = status
+        self.details = details
 
-    def headers(self):
-    	"""return a dict with response headers"""
-    	raise NotImplementedError
+class HTTPConnection(object):
 
-    def text(self):
-    	"""return the content in text format"""
-       	raise NotImplementedError
+    def __init__(self, method, url, params={}, headers={}):
+    	self.response = None
+    	self.headers = headers
+    	self.params = params
+    	self.url
+    	self.method = method
 
-    def json(self):
-    	"""return the content in json format"""
-    	raise NotImplementedError
+    def raise_for_status(self, r):
+        message = "%d %s" % (r.status_code, r.status)
+        try:
+            details = r.text
+        except:
+            details = ''
+        raise HTTPConnectionError(message, r.status_code, details)
 
-    def xml(self):
-    	"""return the content in xml format"""
-       	raise NotImplementedError
+    def set_header(self, name, value):
+    	self.headers[unicode(name)] = unicode(value)
 
-    def content(self):
-    	"""return the content in byte format"""
-    	raise NotImplementedError
+    def replace_headers(self, new_headers):
+    	self.headers = new_headers
 
-    def perform_request(self, method, url='', headers={}, params={}, **kwargs):
-    	raise NotImplementedError
+    def reset_headers(self):
+    	self.replace_headers({})
+
+    def set_param(self, name, value=None):
+    	self.params[name] = value
+
+    def replace_params(self, new_params):
+    	self.params = new_params
+
+    def reset_params(self):
+    	self.replace_params({})
+
+    def set_url(self, url):
+    	self.url = url
+
+    def set_method(self, method):
+    	self.method = method
+
+	def perform_request(self, method=None, url=None, params=None, headers=None, data=None):
+		"""named args offer the ability to reset a request or a part of the request
+		e.g. r = HTTPConnection(url='http://....', method='GET')
+			 r.perform_request()
+			 r.perform_request(method='POST')
+		will perform a GET request and later a POST request on the same URL
+		another example:
+			 r = HTTPConnection(url='http://....', params='format=json')
+			 r.perform_request(method='GET')
+			 r.perform_request(method='POST')
+		"""
+		 	raise NotImplementerError
