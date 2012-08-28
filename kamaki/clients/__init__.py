@@ -53,14 +53,37 @@ class ClientError(Exception):
         self.status = status
         self.details = details
 
+class ClientResponse(object):
+
+    def __init__(self):
+        #Dict of response headers
+        self.headers = {}
+        #CLear text in the response
+        self.text = ''
+        #Json formated response
+        self.json = None
+        #xml formated response
+        self.xml = None
+        #Content in byte form
+        self.content = None
+
+    def load_request_object(self, request):
+        r.headers = request.headers
+        r.text = request.text
+        r.json = request.json
+        r.xml = request.xml
+        r.content = request.content
+
 class Client(object):
-    def __init__(self, base_url, token):
+
+    def __init__(self, base_url, token, http_client=None):
         self.base_url = base_url
         self.token = token
         self.headers = {}
         self.DATE_FORMATS = ["%a %b %d %H:%M:%S %Y",
             "%A, %d-%b-%y %H:%M:%S GMT",
             "%a, %d %b %Y %H:%M:%S GMT"]
+        self.http_client = http_client
 
     def raise_for_status(self, r):
         message = "%d %s" % (r.status_code, r.status)
@@ -147,9 +170,3 @@ class Client(object):
     def move(self, path, **kwargs):
         return self.request('move', path, **kwargs)
 
-from .compute import ComputeClient as compute
-from .image import ImageClient as image
-from .storage import StorageClient as storage
-from .cyclades import CycladesClient as cyclades
-from .pithos import PithosClient as pithos
-from .astakos import AstakosClient as astakos

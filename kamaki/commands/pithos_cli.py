@@ -35,7 +35,7 @@ from kamaki.cli import command, set_api_description, CLIError
 from kamaki.clients.utils import filter_in
 from kamaki.utils import format_size
 set_api_description('store', 'Pithos+ storage commands')
-from .pithos import PithosClient, ClientError
+from kamaki.clients.pithos import PithosClient, ClientError
 from .cli_utils import raiseCLIError
 from kamaki.utils import print_dict, pretty_keys, print_list
 from colors import bold

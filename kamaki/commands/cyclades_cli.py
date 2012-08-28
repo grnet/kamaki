@@ -37,7 +37,7 @@ set_api_description('server', "Compute/Cyclades API server commands")
 set_api_description('flavor', "Compute/Cyclades API flavor commands")
 set_api_description('image', "Compute/Cyclades or Glance API image commands")
 set_api_description('network', "Compute/Cyclades API network commands")
-from .cyclades import CycladesClient, ClientError
+from kamaki.clients.cyclades import CycladesClient, ClientError
 from .cli_utils import raiseCLIError
 
 from colors import yellow

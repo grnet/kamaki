@@ -35,7 +35,7 @@
 
 from kamaki.cli import command, CLIError
 from kamaki.utils import print_list
-from .utils import dict2file, list2file
+from .cli_utils import dict2file, list2file
 from .pithos_cli import _store_container_command, _store_account_command
 from colors import bold
 
@@ -45,9 +45,9 @@ from colors import bold
 from sys import stdout#argv, exit, stdin, stdout
 #from datetime import datetime
 
-from .pithos_sh_lib.client import Pithos_Client, Fault
+from kamaki.clients.pithos_sh_lib.client import Pithos_Client, Fault
 #from .pithos_sh_lib.util import get_user, get_auth, get_url
-from .pithos_sh_lib.transfer import download, cat#,upload
+from kamaki.clients.pithos_sh_lib.transfer import download, cat#,upload
 
 #import json
 #import logging

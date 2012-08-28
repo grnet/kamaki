@@ -64,7 +64,7 @@ from .config import Config
 _commands = OrderedDict()
 
 GROUPS = {}
-CLI_LOCATIONS = ['', 'kamaki', 'kamaki.clients', 'kamaki.clis']
+CLI_LOCATIONS = ['', 'kamaki', 'kamaki.commands']
 
 class CLIError(Exception):
     def __init__(self, message, status=0, details='', importance=0):
@@ -165,7 +165,6 @@ def main():
 
     def load_groups(config):
         """load groups and import CLIs and Modules"""
-        #apis = set(['config']+config.apis())
         loaded_modules = {}
         for api in config.apis():
             api_cli = config.get(api, 'cli')

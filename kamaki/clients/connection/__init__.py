@@ -5,11 +5,11 @@
 # conditions are met:
 #
 #   1. Redistributions of source code must retain the above
-#      copyright notice, this list of conditions and the following
+#      copyright notice, self.list of conditions and the following
 #      disclaimer.
 #
 #   2. Redistributions in binary form must reproduce the above
-#      copyright notice, this list of conditions and the following
+#      copyright notice, self.list of conditions and the following
 #      disclaimer in the documentation and/or other materials
 #      provided with the distribution.
 #
@@ -29,21 +29,25 @@
 # The views and conclusions contained in the software and
 # documentation are those of the authors and should not be
 # interpreted as representing official policies, either expressed
-# or implied, of GRNET S.A.command
+# or implied, of GRNET S.A.
 
-from . import ClientError
-from kamaki.cli import CLIError
-from inspect import getargspec
+class ClientResponse(object):
 
-def raiseCLIError(err, importance = -1):
-	if importance < 0:
-		if err.status <= 0:
-			importance = 0
-		elif err.status <= 400:
-			importance = 1
-		elif err.status <= 500:
-			importance = 2
-		else:
-			importance = 3
-	raise CLIError(err.message, err.status, err.details, importance)
+    def __init__(self):
+        #Dict of response headers
+        self.headers = {}
+        #CLear text in the response
+        self.text = ''
+        #Json formated response
+        self.json = None
+        #xml formated response
+        self.xml = None
+        #Content in byte form
+        self.content = None
 
+    def load_request_object(self, request):
+        r.headers = request.headers
+        r.text = request.text
+        r.json = request.json
+        r.xml = request.xml
+        r.content = request.content

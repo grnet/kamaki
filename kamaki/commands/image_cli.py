@@ -34,7 +34,7 @@
 from kamaki.cli import command, set_api_description
 from kamaki.utils import print_dict, print_items
 set_api_description('image', "Compute/Cyclades or Glance API image commands")
-from .image import ImageClient, ClientError
+from kamaki.clients.image import ImageClient, ClientError
 from .cli_utils import raiseCLIError
 
 class _init_image(object):
