@@ -802,7 +802,8 @@ class PithosClient(StorageClient):
                 if_modified_since=if_modified_since, if_unmodified_since=if_unmodified_since)
             if not f.isatty():
                 f.seek(start)
-            f.write(data.text)
+            f.write(data.content)
+            #f.write(data.text.encode('utf-8'))
 
         if overide and not f.isatty():
             f.truncate(total_size)
@@ -960,9 +961,8 @@ class PithosClient(StorageClient):
         for i in range(nblocks):
             block = source_file.read(min(blocksize, filesize - offset))
             offset += len(block)
-            self.object_post(object, update=True,
-                content_range='bytes */*', content_type='application/octet-stream',
-                content_length=len(block), data=block)
+            self.object_post(object, update=True, content_range='bytes */*',
+                content_type='application/octet-stream', content_length=len(block), data=block)
             if upload_cb is not None:
                 upload_gen.next()
 

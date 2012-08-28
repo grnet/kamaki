@@ -98,9 +98,14 @@ class _store_container_command(_store_account_command):
     def extract_container_and_path(self, container_with_path, path_is_optional=True):
         assert isinstance(container_with_path, str)
         if ':' not in container_with_path:
-            self.path = container_with_path
             if hasattr(self.args, 'container'):
                 self.container = getattr(self.args, 'container')
+            else:
+                self.container = self.client.container
+            if self.container is None:
+                self.container = container_with_path
+            else:
+                self.path = container_with_path
             return
         cnp = container_with_path.split(':')
         self.container = cnp[0]
@@ -199,18 +204,22 @@ class store_list(_store_container_command):
             limit = int(limit)
         except AttributeError:
             pass
-        for container in container_list:
-            size = format_size(container['bytes'])
-            index = 1+container_list.index(container)
-            cname = '%s. %s'%(index, bold(container['name']))
+        for index,container in enumerate(container_list):
+            if container.has_key('bytes'):
+                size = format_size(container['bytes']) 
+            cname = '%s. %s'%(index+1, bold(container['name']))
             if getattr(self.args, 'detail'):
                 print(cname)
                 pretty_c = container.copy()
-                pretty_c['bytes'] = '%s (%s)'%(container['bytes'], size)
+                if container.has_key('bytes'):
+                    pretty_c['bytes'] = '%s (%s)'%(container['bytes'], size)
                 print_dict(pretty_keys(pretty_c), exclude=('name'))
                 print
             else:
-                print('%s (%s, %s objects)' % (cname, size, container['count']))
+                if container.has_key('count') and container.has_key('bytes'):
+                    print('%s (%s, %s objects)' % (cname, size, container['count']))
+                else:
+                    print(cname)
             if limit <= index < len(container_list) and index%limit == 0:
                 print('(press "enter" to continue)')
                 sys.stdin.read(1)
@@ -570,9 +579,9 @@ class store_download(_store_container_command):
         else:
             try:
                 if getattr(self.args, 'overide'):
-                    out = open(local_path, 'w+')
+                    out = open(local_path, 'wb+')
                 else:
-                    out = open(local_path, 'a+')
+                    out = open(local_path, 'ab+')
             except IOError as err:
                 raise CLIError(message='Cannot write to file %s - %s'%(local_path,unicode(err)),
                     importance=1)
@@ -592,6 +601,7 @@ class store_download(_store_container_command):
             print('\ndownload canceled by user')
             if local_path is not None:
                 print('re-run command to resume')
+        print
 
 @command()
 class store_hashmap(_store_container_command):
@@ -675,13 +685,12 @@ class store_delete(_store_container_command):
             raiseCLIError(err)
 
 @command()
-class store_purge(_store_account_command):
+class store_purge(_store_container_command):
     """Purge a container"""
     
     def main(self, container):
         super(self.__class__, self).main()
         try:
-            self.client.container = container
             self.client.purge_container()
         except ClientError as err:
             raiseCLIError(err)
@@ -724,8 +733,7 @@ class store_permitions(_store_container_command):
 class store_setpermitions(_store_container_command):
     """Set sharing permitions"""
 
-    def main(self, container___path, *permitions):
-        super(self.__class__, self).main(container___path, path_is_optional=False)
+    def format_permition_dict(self,permitions):
         read = False
         write = False
         for perms in permitions:
@@ -742,6 +750,11 @@ class store_setpermitions(_store_container_command):
         if not read and not write:
             raise CLIError(message='Usage:\tread=<groups,users> write=<groups,users>',
                 importance=0)
+        return (read,write)
+
+    def main(self, container___path, *permitions):
+        super(self.__class__, self).main(container___path, path_is_optional=False)
+        (read, write) = self.format_permition_dict(permitions)
         try:
             self.client.set_object_sharing(self.path,
                 read_permition=read, write_permition=write)

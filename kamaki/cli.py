@@ -53,7 +53,7 @@ try:
 except ImportError:
     from ordereddict import OrderedDict
 
-from colors import magenta, red, yellow
+from colors import magenta, red, yellow, bold
 #from progress.bar import IncrementalBar
 #from requests.exceptions import ConnectionError
 
@@ -284,6 +284,14 @@ def main():
 
     #check other args
     args, argv = parser.parse_known_args()
+    if group != argv[0]:
+        errmsg = red('Invalid command group '+argv[0])
+        print(errmsg, file=stderr)
+        exit(1)
+    if command != argv[1]:
+        errmsg = red('Invalid command "%s" in group "%s"'%(argv[1], argv[0]))
+        print(errmsg, file=stderr)
+        exit(1)
 
     if args.help:
         parser.print_help()
