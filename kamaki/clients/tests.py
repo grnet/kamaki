@@ -73,8 +73,7 @@ class testPithos(unittest.TestCase):
         self.makeNewObject(self.c2, 'test1')
         """Prepare an object to be shared - also its container"""
         self.client.container = self.c1
-        self.client.object_post('test', update=True,
-            permitions={'read':'someUser'})
+        self.client.object_post('test', update=True, permitions={'read':'someUser'})
         self.makeNewObject(self.c1, 'another.test')
 
     def makeNewObject(self, container, obj):
@@ -484,8 +483,8 @@ class testPithos(unittest.TestCase):
 
         """Check metadata"""
         r = self.client.get_object_meta(obj)
-        self.assertEqual(r['key1'], 'val1')
-        self.assertEqual(r['key2'], 'val2')
+        self.assertEqual(r['x-object-meta-key1'], 'val1')
+        self.assertEqual(r['x-object-meta-key2'], 'val2')
 
         """Check public and if_etag_match"""
         r = self.client.object_put(obj, if_etag_match=etag, data='b',
@@ -592,9 +591,9 @@ class testPithos(unittest.TestCase):
 
         """Check Metadata"""
         r = self.client.get_object_meta(obj)
-        self.assertEqual(r['mkey1'], 'mval1')
-        self.assertEqual(r['mkey2'], 'mval2a')
-        self.assertEqual(r['mkey3'], 'mval3')
+        self.assertEqual(r['x-object-meta-mkey1'], 'mval1')
+        self.assertEqual(r['x-object-meta-mkey2'], 'mval2a')
+        self.assertEqual(r['x-object-meta-mkey3'], 'mval3')
 
         """Check permitions"""
         r = self.client.get_object_sharing(obj)
@@ -658,9 +657,9 @@ class testPithos(unittest.TestCase):
 
         """Check Metadata"""
         r = self.client.get_object_meta(obj)
-        self.assertEqual(r['mkey1'], 'mval1')
-        self.assertEqual(r['mkey2'], 'mval2a')
-        self.assertEqual(r['mkey3'], 'mval3')
+        self.assertEqual(r['x-object-meta-mkey1'], 'mval1')
+        self.assertEqual(r['x-object-meta-mkey2'], 'mval2a')
+        self.assertEqual(r['x-object-meta-mkey3'], 'mval3')
 
         """Check permitions"""
         r = self.client.get_object_sharing(obj)
@@ -747,12 +746,12 @@ class testPithos(unittest.TestCase):
         """Check metadata"""
         self.client.set_object_meta(obj, {'mkey2':'mval2a', 'mkey3':'mval3'})
         r = self.client.get_object_meta(obj)
-        self.assertEqual(r['mkey1'], 'mval1')
-        self.assertEqual(r['mkey2'], 'mval2a')
-        self.assertEqual(r['mkey3'], 'mval3')
+        self.assertEqual(r['x-object-meta-mkey1'], 'mval1')
+        self.assertEqual(r['x-object-meta-mkey2'], 'mval2a')
+        self.assertEqual(r['x-object-meta-mkey3'], 'mval3')
         self.client.del_object_meta('mkey1', obj)
         r = self.client.get_object_meta(obj)
-        self.assertFalse(r.has_key('mkey1'))
+        self.assertFalse(r.has_key('x-object-meta-mkey1'))
 
         """Check permitions"""
         self.client.set_object_sharing(obj,
@@ -857,13 +856,6 @@ class testPithos(unittest.TestCase):
         print('\b\b\b100%')
         f.close()
         """"""
-
-class testCyclades(unittest.TestCase):
-    def setUp(self):
-        pass
-
-    def test_list_servers(self):
-        pass
 
 def suite():
     suite = unittest.TestSuite()

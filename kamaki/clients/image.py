@@ -32,10 +32,13 @@
 # or implied, of GRNET S.A.
 from . import Client, ClientError
 from .utils import path4url
-
+from .connection.request import HTTPRequest
 
 class ImageClient(Client):
     """OpenStack Image Service API 1.0 and GRNET Plankton client"""
+
+    def __init__(self, base_url, token):
+        super(ImageClient, self).__init__(base_url, token, http_client=HTTPRequest())
 
     def raise_for_status(self, r):
         if r.status_code == 404:
@@ -46,19 +49,17 @@ class ImageClient(Client):
 
     def list_public(self, detail=False, filters={}, order=''):
         path = path4url('images','detail') if detail else path4url('images/')
-        params = {}
-        params.update(filters)
 
+        if isinstance(filters, dict):
+            self.http_client.params.update(filters)
         if order.startswith('-'):
-            params['sort_dir'] = 'desc'
+            self.set_param('sort_dir', 'desc')
             order = order[1:]
         else:
-            params['sort_dir'] = 'asc'
+            self.set_param('sort_dir', 'asc')
+        self.set_param('sort_key', order, iff=order)
 
-        if order:
-            params['sort_key'] = order
-
-        r = self.get(path, params=params, success=200)
+        r = self.get(path, success=200)
         return r.json
 
     def get_meta(self, image_id):

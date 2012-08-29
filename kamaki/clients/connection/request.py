@@ -32,55 +32,18 @@
 # or implied, of GRNET S.A.
 
 import requests
-from . import HTTPResponse
+from . import HTTPConnection, HTTPResponse
 #from requests.auth import AuthBase
-
-
 
 class HTTPRequest(HTTPConnection):
 
-    def _request(self, method, path, **kwargs):
-        success = kwargs.pop('success', 200)
-
-        data = kwargs.pop('data', None)
-        self.headers.setdefault('X-Auth-Token', self.token)#this can go to Client
-
-        if 'json' in kwargs:
-            data = json.dumps(kwargs.pop('json'))
-            self.headers.setdefault('Content-Type', 'application/json')#this can go to Client
-        if data:
-            self.headers.setdefault('Content-Length', unicode(len(data)))#this can go to Client
-
-        url = self.url #+ path /// No, we don't need that anymore, let Client handle the addition
-        kwargs.setdefault('verify', False)  # Disable certificate verification - But why?
-        r = requests.request(method, url, headers=self.headers, data=data, **kwargs)
-
-        #url = self.base_url + path
-        """ Logging...
-        req = r.request
-        sendlog.info('%s %s', req.method, req.url)
-        for key, val in req.headers.items():
-            sendlog.info('%s: %s', key, val)
-        sendlog.info('')
-        if req.data:
-            sendlog.info('%s', req.data)
-
-        recvlog.info('%d %s', r.status_code, r.status)
-        for key, val in r.headers.items():
-            recvlog.info('%s: %s', key, val)
-        recvlog.info('')
-        if r.content:
-            recvlog.debug(r.content)
-        """
-
-        if success is not None:
-            # Success can either be an in or a collection
-            success = (success,) if isinstance(success, int) else success
-            if r.status_code not in success:
-                self.raise_for_status(r)
-        return r
-
 	def perform_request(self, method=None, url=None, params=None, headers=None, data=None):
+		"""perform a request
+		Example: method='PUT' url='https://my.server:8080/path/to/service'
+			params={'update':None, 'format':'json'} headers={'X-Auth-Token':'s0m3t0k3n=='}
+			data='The data body to put to server'
+		@return an HTTPResponse which is also stored as self.response
+		"""
 		if method is not None:
 			self.method = method
 		if url is not None:
@@ -90,12 +53,20 @@ class HTTPRequest(HTTPConnection):
 		if headers is not None:
 			self.headers = headers
 
-		for i,(key, val) in enumerate(params.items()):
+		for i,(key, val) in enumerate(self.params.items()):
 			param_str = ('?' if i == 0 else '&') + unicode(key) 
 			if val is not None:
 				param_str+= '='+unicode(val)
 			self.url += param_str
 
+		#print('RUN[ %s %s ]'%(self.method, self.url))
 		r = requests.request(self.method, self.url, headers=self.headers, data=data)
-		self.response = HTTPResponse(content = r.content, text = r.text, json = r.json,
-			headers = r.headers, status_code=r.status_code)
+
+		text = r.text if hasattr(r, 'text') else None
+		json = r.json if hasattr(r, 'json') else None
+		content = r.content if hasattr(r, 'content') else None
+		self.response = HTTPResponse(content = content, text = text, json = json,
+			headers = r.headers, status_code=r.status_code, status = r.status)
+		if hasattr(r, 'exception'):
+			self.response.exception = r.exception 
+		return self.response

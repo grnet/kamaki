@@ -126,6 +126,22 @@ class _store_container_command(_store_account_command):
             self.client.container = getattr(self.args,'container')
         self.container = self.client.container
 
+"""
+@command()
+class store_test(_store_container_command):
+    "Test various stuff"
+
+    def main(self):
+        super(self.__class__, self).main('pithos')
+        r = self.client.list_containers()
+        for item in r:
+            if item['name'].startswith('c1_') or item['name'].startswith('c2_') \
+            or item['name'].startswith('c3_'):
+                self.client.container = item['name']
+                self.client.del_container(delimiter='/')
+                self.client.del_container()
+"""
+
 @command()
 class store_list(_store_container_command):
     """List containers, object trees or objects in a directory

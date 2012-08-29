@@ -32,11 +32,15 @@
 # or implied, of GRNET S.A.
 
 from . import Client, ClientError
+from .connection.request import HTTPRequest
 from .utils import path4url
 
 
 class ComputeClient(Client):
     """OpenStack Compute API 1.1 client"""
+
+    def __init__(self, base_url, token):
+        super(ComputeClient, self).__init__(base_url, token, http_client=HTTPRequest())
     
     def raise_for_status(self, r):
         try:

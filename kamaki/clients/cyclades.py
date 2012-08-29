@@ -36,7 +36,7 @@ from .utils import path4url
 
 class CycladesClient(ComputeClient):
     """GRNet Cyclades API client"""
-    
+
     def start_server(self, server_id):
         """Submit a startup request for a server specified by id"""
         

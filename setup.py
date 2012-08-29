@@ -39,7 +39,7 @@ from sys import version_info
 import kamaki
 
 
-required = ['ansicolors==1.0.2', 'progress==1.0.1', 'requests==0.12.1']
+required = ['ansicolors==1.0.2', 'progress==1.0.1', 'requests==0.12.1', 'gevent']
 
 if version_info[0:2] < (2, 7):
     required.extend(['argparse', 'ordereddict'])
@@ -51,7 +51,7 @@ setup(
     long_description=open('README.rst').read(),
     url='http://code.grnet.gr/projects/kamaki',
     license='BSD',
-    packages=['kamaki', 'kamaki.clients'],
+    packages=['kamaki', 'kamaki.clients', 'kamaki.commands'],
     include_package_data=True,
     entry_points={
         'console_scripts': ['kamaki = kamaki.cli:main']

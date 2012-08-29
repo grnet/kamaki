@@ -32,11 +32,22 @@
 # or implied, of GRNET S.A.
 
 class HTTPResponse(object):
-	def __init__(self, content=None, text = None, json = None, headers = None)
+	def __init__(self, content=None, text = None, json = None, headers = None, status_code=0, status=''):
 		self.content = content #content in bytes
 		self.text = text #content in text
 		self.json = json #content in json
 		self.headers = headers #content headers
+		self.status_code = status_code
+		self.status = status
+
+	def pretty_print(self):
+		print(unicode(self)+':')
+		print('HEADERS:'+unicode(self.headers))
+		print('JSON:'+unicode(self.json))
+		print('TEXT:'+unicode(self.text))
+		print('STATUS:'+unicode(self.status))
+		print('STATUS_CODE:'+unicode(self.status_code))
+		print('CONTENT:'+unicode(self.content))
 
 class HTTPConnectionError(Exception):
     def __init__(self, message, status=0, details=''):
@@ -47,11 +58,11 @@ class HTTPConnectionError(Exception):
 
 class HTTPConnection(object):
 
-    def __init__(self, method, url, params={}, headers={}):
+    def __init__(self, method=None, url=None, params={}, headers={}):
     	self.response = None
     	self.headers = headers
     	self.params = params
-    	self.url
+    	self.url = url
     	self.method = method
 
     def raise_for_status(self, r):
@@ -65,6 +76,12 @@ class HTTPConnection(object):
     def set_header(self, name, value):
     	self.headers[unicode(name)] = unicode(value)
 
+    def remove_header(self, name):
+    	try:
+    		self.headers.pop(name)
+    	except KeyError:
+    		pass
+
     def replace_headers(self, new_headers):
     	self.headers = new_headers
 
@@ -73,6 +90,12 @@ class HTTPConnection(object):
 
     def set_param(self, name, value=None):
     	self.params[name] = value
+
+    def remove_param(self, name):
+    	try:
+    		self.params.pop(name)
+    	except KeyError:
+    		pass
 
     def replace_params(self, new_params):
     	self.params = new_params
@@ -87,7 +110,9 @@ class HTTPConnection(object):
     	self.method = method
 
 	def perform_request(self, method=None, url=None, params=None, headers=None, data=None):
-		"""named args offer the ability to reset a request or a part of the request
+		"""
+		@return an HTTPResponse (also in self.response of this object)
+		named args offer the ability to reset a request or a part of the request
 		e.g. r = HTTPConnection(url='http://....', method='GET')
 			 r.perform_request()
 			 r.perform_request(method='POST')
@@ -97,4 +122,4 @@ class HTTPConnection(object):
 			 r.perform_request(method='GET')
 			 r.perform_request(method='POST')
 		"""
-		 	raise NotImplementerError
+		raise NotImplementedError

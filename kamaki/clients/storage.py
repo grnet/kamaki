@@ -32,24 +32,25 @@
 # or implied, of GRNET S.A.
 
 from . import Client, ClientError
-from .utils import filter_in, filter_out, prefix_keys, path4url, params4url
+from .utils import filter_in, filter_out, prefix_keys, path4url
+from .connection.request import HTTPRequest
 
 class StorageClient(Client):
     """OpenStack Object Storage API 1.0 client"""
 
     def __init__(self, base_url, token, account=None, container=None):
-        super(StorageClient, self).__init__(base_url, token)
+        super(StorageClient, self).__init__(base_url, token, http_client=HTTPRequest())
         self.account = account
         self.container = container
 
     def assert_account(self):
         if not self.account:
-            raise ClientError("Please provide an account")
+            raise ClientError("No account provided")
 
     def assert_container(self):
         self.assert_account()
         if not self.container:
-            raise ClientError("Please provide a container")
+            raise ClientError("No container provided")
 
     def get_account_info(self):
         self.assert_account()
@@ -100,7 +101,8 @@ class StorageClient(Client):
 
     def list_containers(self):
         self.assert_account()
-        path = path4url(self.account)+params4url(dict(format='json'))
+        self.set_param('format', 'json')
+        path = path4url(self.account)
         r = self.get(path, success = (200, 204))
         return r.json
 
@@ -149,7 +151,7 @@ class StorageClient(Client):
     def get_object(self, object):
         self.assert_container()
         path = path4url(self.account, self.container, object)
-        r = self.get(path, raw=True, success=200)
+        r = self.get(path, success=200)
         size = int(r.headers['content-length'])
         return r.content, size
 
@@ -179,8 +181,8 @@ class StorageClient(Client):
     def list_objects(self):
         self.assert_container()
         path = path4url(self.account, self.container)
-        params = dict(format='json') #request parameters
-        r = self.get(path, params=params, success=(200, 204, 304, 404))
+        self.set_param('format', 'json')
+        r = self.get(path, success=(200, 204, 304, 404), )
         if r.status_code == 404:
             raise ClientError("Incorrect account (%s) for that container"%self.account, r.status_code)
         elif r.status_code == 304:
@@ -190,8 +192,9 @@ class StorageClient(Client):
     def list_objects_in_path(self, path_prefix):
         self.assert_container()
         path = path4url(self.account, self.container)
-        params = dict(format='json', path=path_prefix) #request parameters
-        r = self.get(path, params=params, success=(200, 204, 404))
+        self.set_param('format', 'json')
+        self.set_param('path', 'path_prefix')
+        r = self.get(path, success=(200, 204, 404))
         if r.status_code == 404:
             raise ClientError("Incorrect account (%s) for that container"%self.account, r.status_code)
         return r.json

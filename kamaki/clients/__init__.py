@@ -74,20 +74,68 @@ class Client(object):
 
     def set_header(self, name, value, iff=True):
         """Set a header 'name':'value' provided value is not None and iff is True"""
+        #if value is not None and iff:
+        #    self.headers[unicode(name)] = unicode(value)
         if value is not None and iff:
-            self.headers[unicode(name)] = unicode(value)
+            self.http_client.set_header(name, value)
+
+    def set_param(self, name, value=None, iff=True):
+        if iff:
+            self.http_client.set_param(name, value)
+
+    def set_default_header(self, name, value):
+        self.http_client.headers.setdefault(name, value)
 
     def request(self, method, path, reset_headers = True, **kwargs):
-        if not reset_headers:
-            return self._request(method, path, **kwargs)
         try:
-            r = self._request(method, path, **kwargs)
-        except:
-            self.headers = {}
-            raise
-        self.headers = {}
-        return r
+            #r = self._request(method, path, **kwargs)
+            success = kwargs.pop('success', 200)
 
+            data = kwargs.pop('data', None)
+            self.set_default_header('X-Auth-Token', self.token)
+
+            if 'json' in kwargs:
+                data = json.dumps(kwargs.pop('json'))
+                self.set_default_header('Content-Type', 'application/json')
+            if data:
+                self.set_default_header('Content-Length', unicode(len(data)))
+
+            #kwargs.setdefault('verify', False)  # Disable certificate verification
+            self.http_client.url = self.base_url + path
+            self.http_client.perform_request(method=method, data=data)
+            #r = requests.request(method, url, headers=self.headers, data=data, **kwargs)
+
+            req = self.http_client
+            sendlog.info('%s %s', req.method, req.url)
+            for key, val in req.headers.items():
+                sendlog.info('%s: %s', key, val)
+            sendlog.info('')
+            if data:
+                sendlog.info('%s', data)
+
+            r = self.http_client.response
+            recvlog.info('%d %s', r.status_code, r.status)
+            for key, val in r.headers.items():
+                recvlog.info('%s: %s', key, val)
+            recvlog.info('')
+            if r.content:
+                recvlog.debug(r.content)
+
+            if success is not None:
+                # Success can either be an in or a collection
+                success = (success,) if isinstance(success, int) else success
+                if r.status_code not in success:
+                    self.raise_for_status(r)
+        except:
+            if reset_headers:
+                self.http_client.reset_headers()
+                self.http_client.reset_params()
+            raise
+        if reset_headers:
+            self.http_client.reset_headers()
+            self.http_client.reset_params()
+        return r
+    """    
     def _request(self, method, path, **kwargs):
         raw = kwargs.pop('raw', False)
         success = kwargs.pop('success', 200)
@@ -127,6 +175,7 @@ class Client(object):
             if r.status_code not in success:
                 self.raise_for_status(r)
         return r
+    """
 
     def delete(self, path, **kwargs):
         return self.request('delete', path, **kwargs)
