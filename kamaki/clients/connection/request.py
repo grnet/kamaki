@@ -60,7 +60,7 @@ class HTTPRequest(HTTPConnection):
 			self.url += param_str
 
 		#print('RUN[ %s %s ]'%(self.method, self.url))
-		r = requests.request(self.method, self.url, headers=self.headers, data=data)
+		r = requests.request(self.method, self.url, headers=self.headers, data=data, verify=False)
 
 		text = r.text if hasattr(r, 'text') else None
 		json = r.json if hasattr(r, 'json') else None
