@@ -34,17 +34,15 @@
 import json
 import logging
 
-import requests
-
-from requests.auth import AuthBase
-
 sendlog = logging.getLogger('clients.send')
 recvlog = logging.getLogger('clients.recv')
 
+"""
 # Add a convenience status property to the responses
 def _status(self):
     return requests.status_codes._codes[self.status_code][0].upper()
 requests.Response.status = property(_status)
+"""
 
 class ClientError(Exception):
     def __init__(self, message, status=0, details=''):
@@ -135,47 +133,6 @@ class Client(object):
             self.http_client.reset_headers()
             self.http_client.reset_params()
         return r
-    """    
-    def _request(self, method, path, **kwargs):
-        raw = kwargs.pop('raw', False)
-        success = kwargs.pop('success', 200)
-
-        data = kwargs.pop('data', None)
-        self.headers.setdefault('X-Auth-Token', self.token)
-
-        if 'json' in kwargs:
-            data = json.dumps(kwargs.pop('json'))
-            self.headers.setdefault('Content-Type', 'application/json')
-        if data:
-            self.headers.setdefault('Content-Length', unicode(len(data)))
-
-        url = self.base_url + path
-        kwargs.setdefault('verify', False)  # Disable certificate verification
-        r = requests.request(method, url, headers=self.headers, data=data, **kwargs)
-
-        url = self.base_url + path
-        req = r.request
-        sendlog.info('%s %s', req.method, req.url)
-        for key, val in req.headers.items():
-            sendlog.info('%s: %s', key, val)
-        sendlog.info('')
-        if req.data:
-            sendlog.info('%s', req.data)
-
-        recvlog.info('%d %s', r.status_code, r.status)
-        for key, val in r.headers.items():
-            recvlog.info('%s: %s', key, val)
-        recvlog.info('')
-        if not raw and r.content:
-            recvlog.debug(r.content)
-
-        if success is not None:
-            # Success can either be an in or a collection
-            success = (success,) if isinstance(success, int) else success
-            if r.status_code not in success:
-                self.raise_for_status(r)
-        return r
-    """
 
     def delete(self, path, **kwargs):
         return self.request('delete', path, **kwargs)

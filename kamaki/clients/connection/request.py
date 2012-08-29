@@ -35,7 +35,15 @@ import requests
 from . import HTTPConnection, HTTPResponse
 #from requests.auth import AuthBase
 
+# Add a convenience status property to the responses
+def _status(self):
+    return requests.status_codes._codes[self.status_code][0].upper()
+requests.Response.status = property(_status)
+
 class HTTPRequest(HTTPConnection):
+
+	#Avoid certificate verification by default
+	verify = False
 
 	def perform_request(self, method=None, url=None, params=None, headers=None, data=None):
 		"""perform a request
@@ -60,7 +68,7 @@ class HTTPRequest(HTTPConnection):
 			self.url += param_str
 
 		#print('RUN[ %s %s ]'%(self.method, self.url))
-		r = requests.request(self.method, self.url, headers=self.headers, data=data, verify=False)
+		r = requests.request(self.method, self.url, headers=self.headers, data=data, verify=self.verify)
 
 		text = r.text if hasattr(r, 'text') else None
 		json = r.json if hasattr(r, 'json') else None
