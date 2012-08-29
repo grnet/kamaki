@@ -51,8 +51,7 @@ class ComputeClient(Client):
             details = val.get('details', '')
         except AttributeError:
             message = 'Request responded with error code '+unicode(r.status_code)
-            details = unicode(r.method)+' '+unicode(r.url)
-        raise ClientError(message, r.status_code, details)
+        raise ClientError(message, r.status_code, '')
     
     def list_servers(self, detail=False):
         """List servers, returned detailed output if detailed is True"""
