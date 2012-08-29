@@ -37,12 +37,6 @@ import logging
 sendlog = logging.getLogger('clients.send')
 recvlog = logging.getLogger('clients.recv')
 
-"""
-# Add a convenience status property to the responses
-def _status(self):
-    return requests.status_codes._codes[self.status_code][0].upper()
-requests.Response.status = property(_status)
-"""
 
 class ClientError(Exception):
     def __init__(self, message, status=0, details=''):
@@ -72,8 +66,6 @@ class Client(object):
 
     def set_header(self, name, value, iff=True):
         """Set a header 'name':'value' provided value is not None and iff is True"""
-        #if value is not None and iff:
-        #    self.headers[unicode(name)] = unicode(value)
         if value is not None and iff:
             self.http_client.set_header(name, value)
 
@@ -84,7 +76,7 @@ class Client(object):
     def set_default_header(self, name, value):
         self.http_client.headers.setdefault(name, value)
 
-    def request(self, method, path, reset_headers = True, **kwargs):
+    def request(self, method, path, **kwargs):
         try:
             #r = self._request(method, path, **kwargs)
             success = kwargs.pop('success', 200)
@@ -125,13 +117,12 @@ class Client(object):
                 if r.status_code not in success:
                     self.raise_for_status(r)
         except:
-            if reset_headers:
-                self.http_client.reset_headers()
-                self.http_client.reset_params()
-            raise
-        if reset_headers:
             self.http_client.reset_headers()
             self.http_client.reset_params()
+            raise
+
+        self.http_client.reset_headers()
+        self.http_client.reset_params()
         return r
 
     def delete(self, path, **kwargs):
