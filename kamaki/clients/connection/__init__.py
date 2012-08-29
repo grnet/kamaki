@@ -32,13 +32,15 @@
 # or implied, of GRNET S.A.
 
 class HTTPResponse(object):
-	def __init__(self, content=None, text = None, json = None, headers = None, status_code=0, status=''):
+	def __init__(self, content=None, text = None, json = None, headers = None, status_code=0, status='',
+		request=None):
 		self.content = content #content in bytes
 		self.text = text #content in text
 		self.json = json #content in json
 		self.headers = headers #content headers
 		self.status_code = status_code
 		self.status = status
+		self.request=request
 
 	def pretty_print(self):
 		print(unicode(self)+':')

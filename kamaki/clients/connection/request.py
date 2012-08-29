@@ -74,7 +74,7 @@ class HTTPRequest(HTTPConnection):
 		json = r.json if hasattr(r, 'json') else None
 		content = r.content if hasattr(r, 'content') else None
 		self.response = HTTPResponse(content = content, text = text, json = json,
-			headers = r.headers, status_code=r.status_code, status = r.status)
+			headers = r.headers, status_code=r.status_code, status = r.status, request=self)
 		if hasattr(r, 'exception'):
 			self.response.exception = r.exception 
 		return self.response

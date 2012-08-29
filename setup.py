@@ -51,7 +51,7 @@ setup(
     long_description=open('README.rst').read(),
     url='http://code.grnet.gr/projects/kamaki',
     license='BSD',
-    packages=['kamaki', 'kamaki.clients', 'kamaki.commands'],
+    packages=['kamaki', 'kamaki.clients', 'kamaki.clients.connection', 'kamaki.commands'],
     include_package_data=True,
     entry_points={
         'console_scripts': ['kamaki = kamaki.cli:main']
