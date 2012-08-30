@@ -129,7 +129,7 @@ class _store_container_command(_store_account_command):
 """
 @command()
 class store_test(_store_container_command):
-    "Test various stuff"
+    ""Test various stuff""
 
     def main(self):
         super(self.__class__, self).main('pithos')

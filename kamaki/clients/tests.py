@@ -35,12 +35,65 @@ import gevent.monkey
 #Monkey-patch everything for gevent early on
 gevent.monkey.patch_all()
 
+from argparse import ArgumentParser
 import unittest
 import time, datetime, os, sys
 from shutil import copyfile
 
 from kamaki.clients import ClientError
 from kamaki.clients.pithos import PithosClient as pithos
+from kamaki.clients.cyclades import CycladesClient as cyclades
+
+class testCyclades(unittest.TestCase):
+    """Set up a Cyclades thorough test"""
+    def setUp(self):
+        url='https://cyclades.okeanos.grnet.gr/api/v1.1'
+        token='MI6PT0yrXJ9Ji/x8l9Wmig=='
+        account='saxtouri@gmail.com'
+        self.img = '1395fdfb-51b4-419f-bb02-f7d632860611'
+        flavorid = 1
+
+        self.servers = {}
+
+        self.client = cyclades(url, token)
+        pass
+
+    def tearDown(self):
+        for servname, servobj in self.servers.items():
+            print('delete server '+servname)
+            self._delete_server(servobj['id'])
+
+    def _create_server(self, servername, flavorid, imageid, personality=None):
+        server = self.client.create_server(servername, flavorid, imageid, personality)
+        self.servers['servername'] = server
+        return server
+
+    def _delete_server(self, servid):
+        self.client.delete_server(servid)
+
+    def test_list_servers(self):
+        """Test list_servers"""
+
+        servers = self.client.list_servers()
+        dservers = self.client.list_servers(detail=True)
+
+        """detailed and simple are same size"""
+        self.assertEqual(len(dservers), len(servers))
+
+        """detailed and simple contain same names"""
+        names = sorted(map(lambda x: x["name"], servers))
+        dnames = sorted(map(lambda x: x["name"], dservers))
+        self.assertEqual(names, dnames)
+
+    def test_create_server(self):
+        """Test create_server"""
+
+        self._create_server('testserv', flavorid=1, imageid=self.img)
+
+        self.assertEqual(server["name"], 'testserv')
+        self.assertEqual(server["flavorRef"], 1)
+        self.assertEqual(server["imageRef"], self.img)
+        self.assertEqual(server["status"], "BUILD")
 
 class testPithos(unittest.TestCase):
     """Set up a Pithos+ thorough test"""
@@ -133,10 +186,14 @@ class testPithos(unittest.TestCase):
         r = self.client.account_get(limit=1)
         self.assertEqual(len(r.json), 1)
 
-        r = self.client.account_get(limit=3, marker='c2_')
-        conames = [container['name'] for container in r.json if container['name'].lower().startswith('c2_')]
-        self.assertTrue(self.c2 in conames)
-        self.assertFalse(self.c1 in conames)
+        r = self.client.account_get(marker='c2_')
+        temp_c0 = r.json[0]['name']
+        temp_c2 = r.json[2]['name']
+        r = self.client.account_get(limit=2, marker='c2_')
+        conames = [container['name'] for container in r.json \
+            if container['name'].lower().startswith('c2_')]
+        self.assertTrue(temp_c0 in conames)
+        self.assertFalse(temp_c2 in conames)
 
         r = self.client.account_get(show_only_shared=True)
         self.assertTrue(self.c1 in [c['name'] for c in r.json])
@@ -457,7 +514,7 @@ class testPithos(unittest.TestCase):
             self.assertNotEqual(r1.status_code, r2.status_code)
 
     def test_object_put(self):
-        """test object_PUT"""
+        """Test object_PUT"""
 
         self.client.container = self.c2
         obj='another.test'
@@ -857,36 +914,32 @@ class testPithos(unittest.TestCase):
         f.close()
         """"""
 
-def suite():
-    suite = unittest.TestSuite()
-    suite.addTest(unittest.makeSuite(testPithos))
-    #suite.addTest(unittest.makeSuite(testCyclades))
-    return suite
+def init_parser():
+    parser = ArgumentParser(add_help=False)
+    parser.add_argument('-h', '--help', dest='help', action='store_true', default=False,
+        help="Show this help message and exit")
+    return parser
 
 if __name__ == '__main__':
+    parser = init_parser()
+    args, argv = parser.parse_known_args()
+
+    if len(argv) > 2 or getattr(args,'help'):
+        raise Exception('\tusage: tests.py [group][command]')
     suiteFew = unittest.TestSuite()
 
-    #kamaki/pithos.py
-    suiteFew.addTest(testPithos('test_account_head'))
-    suiteFew.addTest(testPithos('test_account_get'))
-    suiteFew.addTest(testPithos('test_account_post'))
-    suiteFew.addTest(testPithos('test_container_head'))
-    suiteFew.addTest(testPithos('test_container_get'))
-    suiteFew.addTest(testPithos('test_container_put'))
-    suiteFew.addTest(testPithos('test_container_post'))
-    suiteFew.addTest(testPithos('test_container_delete'))
-    suiteFew.addTest(testPithos('test_object_head'))
-    suiteFew.addTest(testPithos('test_object_get'))
-    suiteFew.addTest(testPithos('test_object_put'))
-    suiteFew.addTest(testPithos('test_object_copy'))
-    suiteFew.addTest(testPithos('test_object_move'))
-    suiteFew.addTest(testPithos('test_object_post'))
-    suiteFew.addTest(testPithos('test_object_delete'))
-    """
-    suiteFew.addTest(testPithos('test_large_file_operations'))
-    """
+    if len(argv) == 0 or argv[0] == 'pithos':
+        if len(argv) == 1:
+            suiteFew.addTest(unittest.makeSuite(testPithos))
+        else:
+            suiteFew.addTest(testPithos('test_'+argv[1]))
+    if len(argv) == 0 or argv[0] == 'cyclades':
+        if len(argv) == 1:
+            suiteFew.addTest(unittest.makeSuite(testCyclades))
+        else:
+            suiteFew.addTest(testCyclades('test_'+argv[1]))
 
     #kamaki/cyclades.py
     #suiteFew.addTest(testCyclades('test_list_servers'))
 
-    unittest.TextTestRunner(verbosity = 2).run(suite())
+    unittest.TextTestRunner(verbosity = 2).run(suiteFew)

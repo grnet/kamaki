@@ -107,6 +107,7 @@ class ImageClient(Client):
 
     def list_shared(self, member):
         path = path4url('shared-images', member)
+        #self.set_param('format', 'json')
         r = self.get(path, success=200)
         return r.json['shared_images']
 

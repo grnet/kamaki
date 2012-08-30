@@ -72,15 +72,15 @@ class HTTPRequest(HTTPConnection):
 			r = requests.request(self.method, self.url, headers=self.headers, data=data,
 				verify=self.verify)
 		except requests.ConnectionError as err:
-			raise HTTPConnectionError(message='Connection error', status=651, details=err.message)
+			raise HTTPConnectionError('Connection error', status=651, details=err.message)
 		except requests.HTTPError as err:
-			raise HTTPConnectionError(message='HTTP error', status=652, details=err.message)
+			raise HTTPConnectionError('HTTP error', status=652, details=err.message)
 		except requests.Timeout as err:
-			raise HTTPConnectionError(message='Connection Timeout', status=408, details=err.message)
+			raise HTTPConnectionError('Connection Timeout', status=408, details=err.message)
 		except requests.URLRequired as err:
-			raise HTTPConnectionError(message='Invalid URL', status=404, details=err.message)
+			raise HTTPConnectionError('Invalid URL', status=404, details=err.message)
 		except requests.RequestException as err:
-			raise HTTPConnectionError(message='HTTP Request error', status=700, details=err.message)
+			raise HTTPConnectionError('HTTP Request error', status=700, details=err.message)
 
 		text = r.text if hasattr(r, 'text') else None
 		json = r.json if hasattr(r, 'json') else None
