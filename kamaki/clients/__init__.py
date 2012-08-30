@@ -33,6 +33,7 @@
 
 import json
 import logging
+from .connection import HTTPConnectionError
 
 sendlog = logging.getLogger('clients.send')
 recvlog = logging.getLogger('clients.recv')
@@ -116,9 +117,11 @@ class Client(object):
                 success = (success,) if isinstance(success, int) else success
                 if r.status_code not in success:
                     self.raise_for_status(r)
-        except:
+        except Exception as err:
             self.http_client.reset_headers()
             self.http_client.reset_params()
+            if isinstance(err, HTTPConnectionError):
+                raise ClientError(message=err.message, status=err.status, details=err.details)
             raise
 
         self.http_client.reset_headers()

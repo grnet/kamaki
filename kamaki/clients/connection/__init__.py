@@ -42,18 +42,9 @@ class HTTPResponse(object):
 		self.status = status
 		self.request=request
 
-	def pretty_print(self):
-		print(unicode(self)+':')
-		print('HEADERS:'+unicode(self.headers))
-		print('JSON:'+unicode(self.json))
-		print('TEXT:'+unicode(self.text))
-		print('STATUS:'+unicode(self.status))
-		print('STATUS_CODE:'+unicode(self.status_code))
-		print('CONTENT:'+unicode(self.content))
-
 class HTTPConnectionError(Exception):
     def __init__(self, message, status=0, details=''):
-        super(ClientError, self).__init__(message, status, details)
+    	super(HTTPConnectionError, self).__init__(message)
         self.message = message
         self.status = status
         self.details = details

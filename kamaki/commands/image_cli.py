@@ -40,8 +40,8 @@ from .cli_utils import raiseCLIError
 class _init_image(object):
     def main(self):
         try:
-            token = self.config.get('store', 'token') or self.config.get('global', 'token')
-            base_url = self.config.get('store', 'url') or self.config.get('global', 'url')
+            token = self.config.get('image', 'token') or self.config.get('global', 'token')
+            base_url = self.config.get('image', 'url') or self.config.get('global', 'url')
             self.client = ImageClient(base_url=base_url, token=token)
         except ClientError as err:
             raiseCLIError(err)
