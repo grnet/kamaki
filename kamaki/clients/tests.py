@@ -88,7 +88,7 @@ class testCyclades(unittest.TestCase):
     def test_create_server(self):
         """Test create_server"""
 
-        self._create_server('testserv', flavorid=1, imageid=self.img)
+        server = self._create_server('testserv', flavorid=1, imageid=self.img)
 
         self.assertEqual(server["name"], 'testserv')
         self.assertEqual(server["flavorRef"], 1)

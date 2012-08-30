@@ -31,6 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 from .cli import CLIError
+from colors import underline
 
 def pretty_keys(d, delim='_', recurcive=False):
     """Transform keys of a dict from the form

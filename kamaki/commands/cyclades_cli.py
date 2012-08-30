@@ -33,6 +33,7 @@
 
 from kamaki.cli import command, set_api_description, CLIError
 from kamaki.utils import print_dict, print_items, print_list, format_size
+from colors import bold
 set_api_description('server', "Compute/Cyclades API server commands")
 set_api_description('flavor', "Compute/Cyclades API flavor commands")
 set_api_description('image', "Compute/Cyclades or Glance API image commands")
@@ -52,6 +53,21 @@ class _init_cyclades(object):
 class server_list(_init_cyclades):
     """List servers"""
 
+    def print_servers(self, servers):
+        for server in servers:
+            sname = server.pop('name')
+            sid = server.pop('id')
+            print('%s (%s)'%(bold(sname), bold(unicode(sid))))
+            if len(server)>0:
+                addr_dict = {}
+                for addr in server['addresses']['values']:
+                    ips = addr.pop('values', [])
+                    for ip in ips:
+                        addr['IPv%s'%ip['version']] = ip['addr']
+                    addr_dict[addr['name']] = addr
+                server['addresses'] = addr_dict
+                print_dict(server, ident=12)
+
     def update_parser(self, parser):
         parser.add_argument('-l', dest='detail', action='store_true',
                 default=False, help='show detailed output')
@@ -60,7 +76,8 @@ class server_list(_init_cyclades):
         super(self.__class__, self).main()
         try:
             servers = self.client.list_servers(self.args.detail)
-            print_items(servers)
+            self.print_servers(servers)
+            #print_items(servers)
         except ClientError as err:
             raiseCLIError(err)
 
