@@ -60,9 +60,27 @@ class testCyclades(unittest.TestCase):
         token='0TpoyAXqJSPxLdDuZHiLOA=='
         account='saxtouri@admin.grnet.gr'
         self.img = '43cc8497-61c3-4c46-ae8d-3e33861f8527'
-
+        self.img_details= {
+            u'status': u'ACTIVE',
+            u'updated': u'2012-08-21T12:57:39+00:00',
+            u'name': u'Debian Base',
+            u'created': u'2012-08-21T12:56:53+00:00',
+            u'progress': 100,
+            u'id': u'43cc8497-61c3-4c46-ae8d-3e33861f8527',
+            u'metadata': {
+                u'values': {
+                    u'kernel': u'2.6.32',
+                    u'osfamily': u'linux', 
+                    u'users': u'root', 
+                    u'gui': u'No GUI', 
+                    u'sortorder': u'1', 
+                    u'os': u'debian', 
+                    u'root_partition': 
+                    u'1', u'description': 
+                    u'Debian Squeeze Base System'}
+                }
+            }
         flavorid = 1
-        self.pseudo = False
 
         self.servers = {}
         self.now = time.mktime(time.gmtime())
@@ -76,7 +94,7 @@ class testCyclades(unittest.TestCase):
 
     def tearDown(self):
         """Destoy servers used in testing"""
-        if self.pseudo:
+        if 0 >= len(self.servers):
             return
         there_are_servers_running = True
         deleted_servers = {}
@@ -87,14 +105,18 @@ class testCyclades(unittest.TestCase):
             there_are_servers_running = False
             if waitime > 0:
                 c = ['|','/','-','\\']
-                sys.stdout.write('\t. . . wait %s seconds . . .  '%waitime)
-                for i in range(waitime):
-                    sys.stdout.write('\b'+c[i%4])
+                suffix = ''
+                sys.stdout.write('\t. . . wait %s seconds: '%waitime)
+                for i in range(4*waitime):
+                    oldlen = len(suffix)
+                    suffix = '%ss %s'%(i/4, c[i%4])
+                    sys.stdout.write(oldlen*'\b'+suffix)
                     sys.stdout.flush()
-                    time.sleep(1)
-                sys.stdout.write('\b \n')
+                    time.sleep(0.25)
+                oldlen = len(': '+suffix)
+                print(oldlen*'\b'+oldlen*' ')
                 sys.stdout.flush()
-            waitime += 10
+            waitime += 7
             dservers = self.client.list_servers(detail=True)
             for server in dservers:
                 if server['name'] in self.servers.keys():
@@ -129,6 +151,21 @@ class testCyclades(unittest.TestCase):
     def _delete_server(self, servid):
         self.client.delete_server(servid)
 
+    def dont_test(self):
+        global TEST_ALL
+        if TEST_ALL:
+            return True
+        return False
+
+    def assert_dicts_are_deeply_equal(self, d1, d2):
+        for k,v in d1.items():
+            self.assertTrue(d2.has_key(k))
+            if isinstance(v, dict):
+                self.assert_dicts_are_deeply_equal(v, d2[k])
+            else:
+                self.assertEqual(unicode(v), unicode(d2[k]))
+
+
     def test_000(self):
         "Prepare a full Cyclades test scenario"
         global TEST_ALL
@@ -141,17 +178,19 @@ class testCyclades(unittest.TestCase):
         sys.stdout.write(' test create server')
         self._test_create_server()
         print('...ok')
+
         sys.stdout.write(' test list servers')
         self._test_list_servers()
         print('...ok')
 
+        sys.stdout.write(' test get server details')
+        self._test_get_server_details()
+        print('...ok')
 
-    def dont_test(self):
-        global TEST_ALL
-        if TEST_ALL:
-            self.pseudo = True
-            return True
-        return False
+        sys.stdout.write(' test get image details')
+        self._test_get_image_details()
+        print('...ok')
+
 
     def test_list_servers(self):
         """Test list servers"""
@@ -183,19 +222,38 @@ class testCyclades(unittest.TestCase):
         if self.dont_test():
             return
         self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
-        self.server2 = self._create_server(self.servname2, self.flavorid, self.img)
-        self._test_create_server(self)
+        self._test_create_server()
 
     def _test_create_server(self):
-
         self.assertEqual(self.server1["name"], self.servname1)
         self.assertEqual(self.server1["flavorRef"], self.flavorid)
         self.assertEqual(self.server1["imageRef"], self.img)
         self.assertEqual(self.server1["status"], "BUILD")
-        self.assertEqual(self.server2["name"], self.servname2)
-        self.assertEqual(self.server2["flavorRef"], self.flavorid)
-        self.assertEqual(self.server2["imageRef"], self.img)
-        self.assertEqual(self.server2["status"], "BUILD")
+
+    def test_get_server_details(self):
+        """Test get_server_details"""
+        if self.dont_test():
+            return
+        self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
+        self._test_get_server_details()
+
+    def _test_get_server_details(self):
+        r = self.client.get_server_details(self.server1['id'])
+        self.assertEqual(r["name"], self.servname1)
+        self.assertEqual(r["flavorRef"], self.flavorid)
+        self.assertEqual(r["imageRef"], self.img)
+        self.assertEqual(r["status"], "BUILD")
+
+    def test_get_image_details(self):
+        """Test get_image_details"""
+        if self.dont_test():
+            return
+        self._test_get_image_details()
+
+    def _test_get_image_details(self):
+        r = self.client.get_image_details(self.img)
+        d = self.img_details
+        self.assert_dicts_are_deeply_equal(r, d)
 
 class testPithos(unittest.TestCase):
     """Set up a Pithos+ thorough test"""
@@ -1037,7 +1095,8 @@ if __name__ == '__main__':
             suiteFew.addTest(testPithos('test_'+argv[1]))
     if len(argv) == 0 or argv[0] == 'cyclades':
         if len(argv) == 1:
-            suiteFew.addTest(unittest.makeSuite(testCyclades))
+            #suiteFew.addTest(unittest.makeSuite(testCyclades))
+            suiteFew.addTest(testCyclades('test_000'))
         else:
             suiteFew.addTest(testCyclades('test_'+argv[1]))
 
