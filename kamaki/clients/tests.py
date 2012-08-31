@@ -44,6 +44,8 @@ from kamaki.clients import ClientError
 from kamaki.clients.pithos import PithosClient as pithos
 from kamaki.clients.cyclades import CycladesClient as cyclades
 
+TEST_ALL = False
+
 class testCyclades(unittest.TestCase):
     """Set up a Cyclades thorough test"""
     def setUp(self):
@@ -53,32 +55,108 @@ class testCyclades(unittest.TestCase):
         self.img = '1395fdfb-51b4-419f-bb02-f7d632860611'
         flavorid = 1
 
+        #Don't let atomic tests create and destroy servers
+        #self.test_all = False
+
         self.servers = {}
+        self.now = time.mktime(time.gmtime())
+        self.servname1 = 'serv'+unicode(self.now)
+        self.servname2 = self.servname1+'_v2'
+        self.flavorid = 1
+        #servers have to be created at the begining...
 
         self.client = cyclades(url, token)
         pass
 
     def tearDown(self):
-        for servname, servobj in self.servers.items():
-            print('delete server '+servname)
-            self._delete_server(servobj['id'])
+        """Destoy servers used in testing"""
+        there_are_servers_running = True
+        deleted_servers = {}
+        waitime = 0
+        print
+        print('-> Found %s servers to delete'%len(self.servers))
+        while there_are_servers_running:
+            there_are_servers_running = False
+            if waitime > 0:
+                c = ['|','/','-','\\']
+                sys.stdout.write('\t. . . wait %s seconds . . .  '%waitime)
+                for i in range(waitime):
+                    sys.stdout.write('\b'+c[i%4])
+                    sys.stdout.flush()
+                    time.sleep(1)
+                sys.stdout.write('\b \n')
+                sys.stdout.flush()
+            waitime += 10
+            dservers = self.client.list_servers(detail=True)
+            for server in dservers:
+                if server['name'] in self.servers.keys():
+                    there_are_servers_running = True
+                    sys.stdout.write('\t%s status:%s '%(server['name'], server['status']))
+                    if server['status'] == 'BUILD':
+                        print('\twait...')
+                    else:
+                        print('\tDELETE %s'%server['name'])
+                        self._delete_server(server['id'])
+                        self.servers.pop(server['name'])
+                        deleted_servers[server['name']] = 0
+                        waitime =10 
+                elif server['name'] in deleted_servers.keys():
+                    there_are_servers_running = True
+                    sys.stdout.write('\t%s status:%s '%(server['name'], server['status']))
+                    retries = deleted_servers[server['name']]
+                    if retries > 10:
+                        print('\tretry DELETE %s'%server['name'])
+                        self._delete_server(server['id'])
+                        retries = 0
+                        waitime = 10
+                    else:
+                        print('\tnot deleted yet ...')
+                    deleted_servers[server['name']] = retries + 1
 
     def _create_server(self, servername, flavorid, imageid, personality=None):
         server = self.client.create_server(servername, flavorid, imageid, personality)
-        self.servers['servername'] = server
+        self.servers[servername] = server
         return server
 
     def _delete_server(self, servid):
         self.client.delete_server(servid)
 
+    def test_000(self):
+        "Prepare a full Cyclades test scenario"
+        global TEST_ALL
+        TEST_ALL = True
+
+        self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
+        self.server2 = self._create_server(self.servname2, self.flavorid, self.img)
+
+        print('testing')
+        print(' \tcreate server')
+        self._test_create_server()
+        print('\tlist servers')
+        self._test_list_servers()
+
     def test_list_servers(self):
         """Test list_servers"""
+        global TEST_ALL
+        if TEST_ALL:
+            return
+        self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
+        self.server2='serv1346410569.0_v2'
+        self.servers[self.server2] = None
+        #self.server2 = self._create_server(self.servname2, self.flavorid, self.img)
+        self._test_list_servers()
 
+    def _test_list_servers(self):
         servers = self.client.list_servers()
         dservers = self.client.list_servers(detail=True)
 
         """detailed and simple are same size"""
         self.assertEqual(len(dservers), len(servers))
+        for i in range(len(servers)):
+            for field in ['created', 'flavorRef', 'hostId', 'imageRef', 'progress',
+                'status', 'updated']:
+                self.assertFalse(servers[i].has_key(field))
+                self.assertTrue(dservers[i].has_key(field))
 
         """detailed and simple contain same names"""
         names = sorted(map(lambda x: x["name"], servers))
@@ -87,13 +165,24 @@ class testCyclades(unittest.TestCase):
 
     def test_create_server(self):
         """Test create_server"""
+        global TEST_ALL
+        if TEST_ALL:
+            return
+        print('run create server')
+        self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
+        self.server2 = self._create_server(self.servname2, self.flavorid, self.img)
+        self._test_create_server(self)
 
-        server = self._create_server('testserv', flavorid=1, imageid=self.img)
+    def _test_create_server(self):
 
-        self.assertEqual(server["name"], 'testserv')
-        self.assertEqual(server["flavorRef"], 1)
-        self.assertEqual(server["imageRef"], self.img)
-        self.assertEqual(server["status"], "BUILD")
+        self.assertEqual(self.server1["name"], self.servname1)
+        self.assertEqual(self.server1["flavorRef"], self.flavorid)
+        self.assertEqual(self.server1["imageRef"], self.img)
+        self.assertEqual(self.server1["status"], "BUILD")
+        self.assertEqual(self.server2["name"], self.servname2)
+        self.assertEqual(self.server2["flavorRef"], self.flavorid)
+        self.assertEqual(self.server2["imageRef"], self.img)
+        self.assertEqual(self.server2["status"], "BUILD")
 
 class testPithos(unittest.TestCase):
     """Set up a Pithos+ thorough test"""

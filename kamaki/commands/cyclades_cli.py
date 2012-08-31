@@ -60,12 +60,13 @@ class server_list(_init_cyclades):
             print('%s (%s)'%(bold(sname), bold(unicode(sid))))
             if len(server)>0:
                 addr_dict = {}
-                for addr in server['addresses']['values']:
-                    ips = addr.pop('values', [])
-                    for ip in ips:
-                        addr['IPv%s'%ip['version']] = ip['addr']
-                    addr_dict[addr['name']] = addr
-                server['addresses'] = addr_dict
+                if server.has_key('addresses'):
+                    for addr in server['addresses']['values']:
+                        ips = addr.pop('values', [])
+                        for ip in ips:
+                            addr['IPv%s'%ip['version']] = ip['addr']
+                        addr_dict[addr['name']] = addr
+                    server['addresses'] = addr_dict
                 print_dict(server, ident=12)
 
     def update_parser(self, parser):

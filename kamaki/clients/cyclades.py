@@ -73,6 +73,12 @@ class CycladesClient(ComputeClient):
         r = self.get(path, success=200)
         return r.json['addresses']['values']
     
+    def get_server_status(self, server_id):
+        path = path4url('servers', server_id, 'status')
+        r = self.get(path, success=200)
+        print(unicode(r.json))
+        return r.json['status']
+
     def get_server_stats(self, server_id):
         path = path4url('servers', server_id, 'stats')
         r = self.get(path, success=200)
