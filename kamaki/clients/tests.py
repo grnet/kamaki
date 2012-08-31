@@ -49,14 +49,20 @@ TEST_ALL = False
 class testCyclades(unittest.TestCase):
     """Set up a Cyclades thorough test"""
     def setUp(self):
+        """okeanos"""
         url='https://cyclades.okeanos.grnet.gr/api/v1.1'
         token='MI6PT0yrXJ9Ji/x8l9Wmig=='
         account='saxtouri@gmail.com'
         self.img = '1395fdfb-51b4-419f-bb02-f7d632860611'
-        flavorid = 1
 
-        #Don't let atomic tests create and destroy servers
-        #self.test_all = False
+        """okeanos.io"""
+        url = 'https://cyclades.okeanos.io/api/v1.1'
+        token='0TpoyAXqJSPxLdDuZHiLOA=='
+        account='saxtouri@admin.grnet.gr'
+        self.img = '43cc8497-61c3-4c46-ae8d-3e33861f8527'
+
+        flavorid = 1
+        self.pseudo = False
 
         self.servers = {}
         self.now = time.mktime(time.gmtime())
@@ -70,6 +76,8 @@ class testCyclades(unittest.TestCase):
 
     def tearDown(self):
         """Destoy servers used in testing"""
+        if self.pseudo:
+            return
         there_are_servers_running = True
         deleted_servers = {}
         waitime = 0
@@ -99,7 +107,7 @@ class testCyclades(unittest.TestCase):
                         self._delete_server(server['id'])
                         self.servers.pop(server['name'])
                         deleted_servers[server['name']] = 0
-                        waitime =10 
+                        waitime =0 
                 elif server['name'] in deleted_servers.keys():
                     there_are_servers_running = True
                     sys.stdout.write('\t%s status:%s '%(server['name'], server['status']))
@@ -108,7 +116,7 @@ class testCyclades(unittest.TestCase):
                         print('\tretry DELETE %s'%server['name'])
                         self._delete_server(server['id'])
                         retries = 0
-                        waitime = 10
+                        waitime = 0
                     else:
                         print('\tnot deleted yet ...')
                     deleted_servers[server['name']] = retries + 1
@@ -130,20 +138,27 @@ class testCyclades(unittest.TestCase):
         self.server2 = self._create_server(self.servname2, self.flavorid, self.img)
 
         print('testing')
-        print(' \tcreate server')
+        sys.stdout.write(' test create server')
         self._test_create_server()
-        print('\tlist servers')
+        print('...ok')
+        sys.stdout.write(' test list servers')
         self._test_list_servers()
+        print('...ok')
 
-    def test_list_servers(self):
-        """Test list_servers"""
+
+    def dont_test(self):
         global TEST_ALL
         if TEST_ALL:
+            self.pseudo = True
+            return True
+        return False
+
+    def test_list_servers(self):
+        """Test list servers"""
+        if self.dont_test():
             return
         self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
-        self.server2='serv1346410569.0_v2'
-        self.servers[self.server2] = None
-        #self.server2 = self._create_server(self.servname2, self.flavorid, self.img)
+        self.server2 = self._create_server(self.servname2, self.flavorid, self.img)
         self._test_list_servers()
 
     def _test_list_servers(self):
@@ -165,10 +180,8 @@ class testCyclades(unittest.TestCase):
 
     def test_create_server(self):
         """Test create_server"""
-        global TEST_ALL
-        if TEST_ALL:
+        if self.dont_test():
             return
-        print('run create server')
         self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
         self.server2 = self._create_server(self.servname2, self.flavorid, self.img)
         self._test_create_server(self)
