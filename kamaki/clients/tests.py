@@ -320,6 +320,9 @@ class testPithos(unittest.TestCase):
             pass
         self.client.container=''
 
+    def test_000(self):
+        """Perform a full Pithos+ kamaki support test"""
+
     def test_account_head(self):
         """Test account_HEAD"""
         r = self.client.account_head()
@@ -1089,18 +1092,15 @@ if __name__ == '__main__':
     suiteFew = unittest.TestSuite()
 
     if len(argv) == 0 or argv[0] == 'pithos':
-        if len(argv) == 1:
+        if len(argv) <= 1:
             suiteFew.addTest(unittest.makeSuite(testPithos))
         else:
             suiteFew.addTest(testPithos('test_'+argv[1]))
     if len(argv) == 0 or argv[0] == 'cyclades':
-        if len(argv) == 1:
+        if len(argv) <= 1:
             #suiteFew.addTest(unittest.makeSuite(testCyclades))
             suiteFew.addTest(testCyclades('test_000'))
         else:
             suiteFew.addTest(testCyclades('test_'+argv[1]))
-
-    #kamaki/cyclades.py
-    #suiteFew.addTest(testCyclades('test_list_servers'))
 
     unittest.TextTestRunner(verbosity = 2).run(suiteFew)
