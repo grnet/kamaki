@@ -1087,17 +1087,17 @@ if __name__ == '__main__':
     parser = init_parser()
     args, argv = parser.parse_known_args()
 
-    if len(argv) > 2 or getattr(args,'help'):
-        raise Exception('\tusage: tests.py [group][command]')
+    if len(argv) > 2 or getattr(args,'help') or len(argv) < 1:
+        raise Exception('\tusage: tests.py <group> [command]')
     suiteFew = unittest.TestSuite()
 
     if len(argv) == 0 or argv[0] == 'pithos':
-        if len(argv) <= 1:
+        if len(argv) == 1:
             suiteFew.addTest(unittest.makeSuite(testPithos))
         else:
             suiteFew.addTest(testPithos('test_'+argv[1]))
     if len(argv) == 0 or argv[0] == 'cyclades':
-        if len(argv) <= 1:
+        if len(argv) == 1:
             #suiteFew.addTest(unittest.makeSuite(testCyclades))
             suiteFew.addTest(testCyclades('test_000'))
         else:
