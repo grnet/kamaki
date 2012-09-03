@@ -444,22 +444,47 @@ class network_list(_init_cyclades):
         parser.add_argument('-l', dest='detail', action='store_true',
                 default=False, help='show detailed output')
 
+    def print_networks(self, nets):
+        for net in nets:
+            netname = bold(net.pop('name'))
+            netid = bold(unicode(net.pop('id')))
+            print('%s (%s)'%(netname, netid))
+            if getattr(self.args, 'detail'):
+                network_info.print_network(net)
+                print('- - -')
+
     def main(self):
         super(self.__class__, self).main()
         try:
             networks = self.client.list_networks(self.args.detail)
         except ClientError as err:
             raiseCLIError(err)
-        print_items(networks)
+        self.print_networks(networks)
 
 @command()
 class network_create(_init_cyclades):
     """Create a network"""
 
+    def update_parser(self, parser):
+        try:
+            super(self.__class__, self).update_parser(parser)
+        except AttributeError:
+            pass
+        parser.add_argument('--with-cidr', action='store', dest='cidr', default=False,
+            help='specific cidr for new network')
+        parser.add_argument('--with-gateway', action='store', dest='gateway', default=False,
+            help='specific getaway for new network')
+        parser.add_argument('--with-dhcp', action='store', dest='dhcp', default=False,
+            help='specific dhcp for new network')
+        parser.add_argument('--with-type', action='store', dest='type', default=False,
+            help='specific type for new network')
+
     def main(self, name):
         super(self.__class__, self).main()
         try:
-            reply = self.client.create_network(name)
+            reply = self.client.create_network(name, cidr=getattr(self.args, 'cidr'),
+                gateway=getattr(self.args, 'gateway'), dhcp=getattr(self.args, 'gateway'),
+                type=getattr(self.args, 'type'))
         except ClientError as err:
             raiseCLIError(err)
         print_dict(reply)
@@ -468,13 +493,20 @@ class network_create(_init_cyclades):
 class network_info(_init_cyclades):
     """Get network details"""
 
+    @classmethod
+    def print_network(self, net):
+        if net.has_key('attachments'):
+            att = net['attachments']['values']
+            net['attachments'] = att if len(att) > 0 else None
+        print_dict(net, ident=14)
+
     def main(self, network_id):
         super(self.__class__, self).main()
         try:
             network = self.client.get_network_details(network_id)
         except ClientError as err:
             raiseCLIError(err)
-        print_dict(network)
+        network_info.print_network(network)
 
 @command()
 class network_rename(_init_cyclades):

@@ -33,30 +33,101 @@
 
 from .compute import ComputeClient, ClientError
 from .utils import path4url
+import json
 
 class CycladesClient(ComputeClient):
     """GRNet Cyclades API client"""
 
+    def servers_get(self, server_id='', command='', **kwargs):
+        """GET base_url/servers[/server_id][/command] request
+        @param server_id or ''
+        @param command: can be 'ips', 'stats', or ''
+        """
+        path = path4url('servers', server_id, command)
+        success = kwargs.pop('success', 200)
+        return self.get(path, success=success, **kwargs)
+
+    def servers_post(self, server_id='', command='', json_data=None, **kwargs):
+        """POST base_url/servers[/server_id]/[command] request
+        @param server_id or ''
+        @param command: can be 'action' or ''
+        @param json_data: a json valid dict that will be send as data
+        """
+        data = json_data
+        if json_data is not None:
+            data = json.dumps(json_data)
+            self.set_header('Content-Type', 'application/json')
+            self.set_header('Content-Length', len(data))
+
+        path = path4url('servers', server_id, command)
+        success = kwargs.pop('success', 202)
+        return self.post(path, data=data, success=success, **kwargs)
+
+
+    def networks_get(self, network_id = '', command='', **kwargs):
+        """GET base_url/networks[/network_id][/command] request
+        @param network_id or ''
+        @param command can be 'detail', or ''
+        """
+        path=path4url('networks', network_id, command)
+        success = kwargs.pop('success', (200, 203))
+        return self.get(path, success=success, **kwargs)
+
+    def networks_delete(self, network_id = '', command='', **kwargs):
+        """DEL ETE base_url/networks[/network_id][/command] request
+        @param network_id or ''
+        @param command can be 'detail', or ''
+        """
+        path=path4url('networks', network_id, command)
+        success = kwargs.pop('success', 204)
+        return self.delete(path, success=success, **kwargs)
+
+    def networks_post(self, network_id = '', command='', json_data=None, **kwargs):
+        """POST base_url/servers[/server_id]/[command] request
+        @param server_id or ''
+        @param command: can be 'action' or ''
+        @param json_data: a json valid dict that will be send as data
+        """
+        data= json_data
+        if json_data is not None:
+            data = json.dumps(json_data)
+            self.set_header('Content-Type', 'application/json')
+            self.set_header('Content-Length', len(data))
+
+        path = path4url('networks', network_id, command)
+        success = kwargs.pop('success', 202)
+        return self.post(path, data=data, success=success, **kwargs)
+
+    def networks_put(self, network_id = '', command='', json_data=None, **kwargs):
+        """PUT base_url/servers[/server_id]/[command] request
+        @param server_id or ''
+        @param command: can be 'action' or ''
+        @param json_data: a json valid dict that will be send as data
+        """
+        data= json_data
+        if json_data is not None:
+            data = json.dumps(json_data)
+            self.set_header('Content-Type', 'application/json')
+            self.set_header('Content-Length', len(data))
+
+        path = path4url('networks', network_id, command)
+        success = kwargs.pop('success', 204)
+        return self.put(path, data=data, success=success, **kwargs)
+
     def start_server(self, server_id):
         """Submit a startup request for a server specified by id"""
-        
-        path = path4url('servers', server_id, 'action')
         req = {'start': {}}
-        self.post(path, json=req, success=202)
-    
+        self.servers_post(server_id, 'action', json_data=req, success=202)
+
     def shutdown_server(self, server_id):
         """Submit a shutdown request for a server specified by id"""
-        
-        path = path4url('servers', server_id, 'action')
         req = {'shutdown': {}}
-        self.post(path, json=req, success=202)
+        self.servers_post(server_id, 'action', json_data=req, success=202)
     
     def get_server_console(self, server_id):
         """Get a VNC connection to the console of a server specified by id"""
-        
-        path = path4url('servers', server_id, 'action')
         req = {'console': {'type': 'vnc'}}
-        r = self.post(path, json=req, success=200)
+        r = self.servers_post(server_id, 'action', json_data=req, success=200)
         return r.json['console']
     
     def set_firewall_profile(self, server_id, profile):
@@ -64,34 +135,26 @@ class CycladesClient(ComputeClient):
            The server is specified by id, the profile argument
            is one of (ENABLED, DISABLED, PROTECTED).
         """
-        path = path4url('servers', server_id, 'action')
         req = {'firewallProfile': {'profile': profile}}
-        self.post(path, json=req, success=202)
+        self.servers_post(server_id, 'action', json_data=req, success=202)
     
     def list_server_nics(self, server_id):
-        path = path4url('servers', server_id, 'ips')
-        r = self.get(path, success=200)
+        r = self.servers_get(server_id, 'ips')
         return r.json['addresses']['values']
-    
-    def get_server_status(self, server_id):
-        path = path4url('servers', server_id, 'status')
-        r = self.get(path, success=200)
-        print(unicode(r.json))
-        return r.json['status']
 
     def get_server_stats(self, server_id):
-        path = path4url('servers', server_id, 'stats')
-        r = self.get(path, success=200)
+        r = self.servers_get(server_id, 'stats')
         return r.json['stats']
     
     def list_networks(self, detail=False):
-        path = path4url('networks', 'detail') if detail else path4url('networks')
-        r = self.get(path, success=200)
+        detail = 'detail' if detail else ''
+        r = self.networks_get(command=detail)
         return r.json['networks']['values']
 
     def create_network(self, name, cidr=False, gateway=False, type=False, dhcp=False):
         """@params cidr, geteway, type and dhcp should be strings
         """
+        print('cidr[%s], type[%s]'%(cidr, type))
         net = dict(name=name)
         if cidr:
             net['cidr']=cidr
@@ -102,32 +165,29 @@ class CycladesClient(ComputeClient):
         if dhcp:
             net['dhcp']=dhcp
         req = dict(network=net)
-        r = self.post(path4url('networks'), json=req, success=202)
+        r = self.networks_post(json_data=req, success=202)
         return r.json['network']
 
     def get_network_details(self, network_id):
-        path = path4url('networks', network_id)
-        r = self.get(path, success=200)
+        r = self.networks_get(network_id=network_id)
         return r.json['network']
 
     def update_network_name(self, network_id, new_name):
-        path = path4url('networks', network_id)
         req = {'network': {'name': new_name}}
-        self.put(path, json=req, success=204)
+        self.networks_put(network_id=network_id, json_data=req)
 
     def delete_network(self, network_id):
-        path = path4url('networks', network_id)
-        self.delete(path, success=204)
+        self.networks_delete(network_id)
 
     def connect_server(self, server_id, network_id):
-        path = path4url('networks', network_id, 'action')
         req = {'add': {'serverRef': server_id}}
-        self.post(path, json=req, success=202)
+        self.networks_post(network_id, 'action', json_data=req)
 
     def disconnect_server(self, server_id, nic_id):
         server_nets = self.list_server_nics(server_id)
         nets = [(net['id'],net['network_id'])  for net in server_nets if nic_id == net['id']]
+        if len(nets) == 0:
+            continue
         for (nic_id, network_id) in nets:
-            path = path4url('networks', network_id, 'action')
-            req = dict(remove=dict(attachment=unicode(nic_id)))
-            self.post(path, json=req, success=202)
+            req={'remove':{'attachment':unicode(nic_id)}}
+            self.networks_post(network_id, 'action', json_data=req)

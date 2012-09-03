@@ -70,7 +70,16 @@ def path4url(*args):
     """
     path = ''
     for arg in args:
-        path = path + '/' + unicode(arg)
+        suffix=unicode(arg)
+        try:
+            while suffix[0] == '/':
+                suffix=suffix[1:]
+        except IndexError:
+            continue
+        if len(path) > 0 and path[-1] == '/':
+            path += suffix
+        else:
+            path += '/'+suffix
     return path
 
 def params4url(params):
