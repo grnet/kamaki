@@ -58,16 +58,9 @@ class server_list(_init_cyclades):
             sname = server.pop('name')
             sid = server.pop('id')
             print('%s (%s)'%(bold(sname), bold(unicode(sid))))
-            if len(server)>0:
-                addr_dict = {}
-                if server.has_key('addresses'):
-                    for addr in server['addresses']['values']:
-                        ips = addr.pop('values', [])
-                        for ip in ips:
-                            addr['IPv%s'%ip['version']] = ip['addr']
-                        addr_dict[addr['name']] = addr
-                    server['addresses'] = addr_dict
-                print_dict(server, ident=12)
+            if getattr(self.args, 'detail'):
+                server_info.print_server(server)
+            print('- - -')
 
     def update_parser(self, parser):
         parser.add_argument('-l', dest='detail', action='store_true',
@@ -86,6 +79,21 @@ class server_list(_init_cyclades):
 class server_info(_init_cyclades):
     """Get server details"""
 
+    @classmethod
+    def print_server(self,server):
+        addr_dict = {}
+        if server.has_key('addresses'):
+            for addr in server['addresses']['values']:
+                ips = addr.pop('values', [])
+                for ip in ips:
+                    addr['IPv%s'%ip['version']] = ip['addr']
+                if addr.has_key('firewallProfile'):
+                    addr['firewall'] = addr.pop('firewallProfile')
+                addr_dict[addr['name']] = addr
+            server['addresses'] = addr_dict
+        print_dict(server, ident=14)
+
+
     def main(self, server_id):
         super(self.__class__, self).main()
         try:
@@ -95,7 +103,7 @@ class server_info(_init_cyclades):
         except ValueError as err:
             raise CLIError(message='Server id must be positive integer',
                 importance=1)
-        print_dict(server)
+        self.print_server(server)
 
 @command()
 class server_create(_init_cyclades):

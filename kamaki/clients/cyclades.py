@@ -38,30 +38,6 @@ import json
 class CycladesClient(ComputeClient):
     """GRNet Cyclades API client"""
 
-    def servers_get(self, server_id='', command='', **kwargs):
-        """GET base_url/servers[/server_id][/command] request
-        @param server_id or ''
-        @param command: can be 'ips', 'stats', or ''
-        """
-        path = path4url('servers', server_id, command)
-        success = kwargs.pop('success', 200)
-        return self.get(path, success=success, **kwargs)
-
-    def servers_post(self, server_id='', command='', json_data=None, **kwargs):
-        """POST base_url/servers[/server_id]/[command] request
-        @param server_id or ''
-        @param command: can be 'action' or ''
-        @param json_data: a json valid dict that will be send as data
-        """
-        data = json_data
-        if json_data is not None:
-            data = json.dumps(json_data)
-            self.set_header('Content-Type', 'application/json')
-            self.set_header('Content-Length', len(data))
-
-        path = path4url('servers', server_id, command)
-        success = kwargs.pop('success', 202)
-        return self.post(path, data=data, success=success, **kwargs)
 
 
     def networks_get(self, network_id = '', command='', **kwargs):
@@ -187,7 +163,7 @@ class CycladesClient(ComputeClient):
         server_nets = self.list_server_nics(server_id)
         nets = [(net['id'],net['network_id'])  for net in server_nets if nic_id == net['id']]
         if len(nets) == 0:
-            continue
+            return
         for (nic_id, network_id) in nets:
             req={'remove':{'attachment':unicode(nic_id)}}
             self.networks_post(network_id, 'action', json_data=req)
