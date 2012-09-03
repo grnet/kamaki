@@ -161,9 +161,8 @@ class ComputeClient(Client):
         return r.json['meta'] if key != '' else r.json['metadata']['values']
     
     def create_server_metadata(self, server_id, key, val):
-        command = path4url('meta', key)
         req = {'meta': {key: val}}
-        r = self.servers_put(server_id, command, json_data=req, success=201)
+        r = self.servers_put(server_id, 'meta/'+key, json_data=req, success=201)
         return r.json['meta']
     
     def update_server_metadata(self, server_id, **metadata):
@@ -172,8 +171,7 @@ class ComputeClient(Client):
         return r.json['metadata']
     
     def delete_server_metadata(self, server_id, key):
-        command = path4url('meta', key)
-        self.servers_delete(server_id, command)
+        self.servers_delete(server_id, 'meta/'+key)
 
    
     def flavors_get(self, flavor_id='', command='', **kwargs):
@@ -263,9 +261,8 @@ class ComputeClient(Client):
         return r.json['meta'] if key != '' else r.json['metadata']['values']
     
     def create_image_metadata(self, image_id, key, val):
-        command = path4url('meta', key)
         req = {'meta': {key: val}}
-        r = self.images_put(image_id, command, json_data=req)
+        r = self.images_put(image_id, 'meta/'+key, json_data=req)
         return r.json['meta']
 
     def update_image_metadata(self, image_id, **metadata):
