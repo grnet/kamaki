@@ -182,7 +182,7 @@ class ComputeClient(Client):
         """
         path = path4url('flavors', flavor_id, command)
         success=kwargs.pop('success', 200)
-        return self.get(path, success=success**kwargs)
+        return self.get(path, success=success, **kwargs)
 
     def list_flavors(self, detail=False):
         detail = 'detail' if detail else ''
@@ -201,7 +201,7 @@ class ComputeClient(Client):
         """
         path = path4url('images', image_id, command)
         success=kwargs.pop('success', 200)
-        return self.get(path, success=success**kwargs)
+        return self.get(path, success=success, **kwargs)
 
     def images_delete(self, image_id='', command='', **kwargs):
         """DEL ETE base_url[/image_id][/command]
@@ -210,7 +210,7 @@ class ComputeClient(Client):
         """
         path = path4url('images', image_id, command)
         success=kwargs.pop('success', 204)
-        return self.delete(path, success=success**kwargs)
+        return self.delete(path, success=success, **kwargs)
 
     def images_post(self, image_id='', command='', json_data=None, **kwargs):
         """POST base_url/images[/image_id]/[command] request
@@ -245,7 +245,7 @@ class ComputeClient(Client):
         return self.put(path, data=data, success=success, **kwargs)
 
     def list_images(self, detail=False):
-        detail = 'detail' if details else ''
+        detail = 'detail' if detail else ''
         r = self.images_get(command=detail)
         return r.json['images']['values']
     
