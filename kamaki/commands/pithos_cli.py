@@ -106,6 +106,8 @@ class _store_container_command(_store_account_command):
                 self.container = container_with_path
             else:
                 self.path = container_with_path
+            if not path_is_optional and self.path is None:
+                raise CLIError(message="Object path is missing", status=11)
             return
         cnp = container_with_path.split(':')
         self.container = cnp[0]
@@ -299,10 +301,10 @@ class store_list(_store_container_command):
 class store_mkdir(_store_container_command):
     """Create a directory"""
 
-    def main(self, directory):
-        super(self.__class__, self).main()
+    def main(self, container___directory):
+        super(self.__class__, self).main(container___directory, path_is_optional=False)
         try:
-            self.client.create_directory(directory)
+            self.client.create_directory(self.path)
         except ClientError as err:
             raiseCLIError(err)
 

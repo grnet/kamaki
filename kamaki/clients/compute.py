@@ -34,6 +34,7 @@
 from . import Client, ClientError
 from .connection.request import HTTPRequest
 from .utils import path4url
+import json
 
 
 class ComputeClient(Client):
