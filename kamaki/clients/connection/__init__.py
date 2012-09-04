@@ -32,15 +32,59 @@
 # or implied, of GRNET S.A.
 
 class HTTPResponse(object):
-	def __init__(self, content=None, text = None, json = None, headers = None, status_code=0, status='',
-		request=None):
-		self.content = content #content in bytes
-		self.text = text #content in text
-		self.json = json #content in json
-		self.headers = headers #content headers
-		self.status_code = status_code
-		self.status = status
-		self.request=request
+
+    def __init__(self, content=None, text = None, json = None, headers = None, status_code=0, status='',
+        request=None):
+        self._content = content #content in bytes
+        self._text = text #content in text
+        self._json = json #content in json
+        self._headers = headers #content headers
+        self._status_code = status_code
+        self._status = status
+        self._request=request
+
+    @property 
+    def content(self):
+        return self._content
+    @content.setter 
+    def content(self, v):
+        self._content = v
+    @property 
+    def text(self):
+        return self._text
+    @text.setter 
+    def text(self, v):
+        self._text = v
+    @property 
+    def json(self):
+        return self._json
+    @json.setter 
+    def json(self, v):
+        self._json = v
+    @property 
+    def headers(self):
+        return self._headers
+    @headers.setter 
+    def headers(self, v):
+        self._headers = v
+    @property 
+    def status_code(self):
+        return self._status_code
+    @status_code.setter 
+    def status_code(self, v):
+        self._status_code = v
+    @property 
+    def status(self):
+        return self._status
+    @status.setter 
+    def status(self, v):
+        self._status = v
+    @property 
+    def request(self):
+        return self._request
+    @request.setter 
+    def request(self, v):
+        self._request = v
 
 class HTTPConnectionError(Exception):
     def __init__(self, message, status=0, details=''):
