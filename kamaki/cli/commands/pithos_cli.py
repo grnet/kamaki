@@ -129,17 +129,12 @@ class _store_container_command(_store_account_command):
 """
 @command()
 class store_test(_store_container_command):
-    ""Test various stuff""
+    ""Test stuff""
 
     def main(self):
         super(self.__class__, self).main('pithos')
-        r = self.client.list_containers()
-        for item in r:
-            if item['name'].startswith('c1_') or item['name'].startswith('c2_') \
-            or item['name'].startswith('c3_'):
-                self.client.container = item['name']
-                self.client.del_container(delimiter='/')
-                self.client.del_container()
+        r = self.client.container_get()
+        print(unicode(r.content)+' '+unicode(r.json))
 """
 
 @command()

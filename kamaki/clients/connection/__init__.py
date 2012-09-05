@@ -33,52 +33,74 @@
 
 class HTTPResponse(object):
 
-    def __init__(self, content=None, text = None, json = None, headers = None, status_code=0, status='',
-        request=None):
-        self._content = content #content in bytes
-        self._text = text #content in text
-        self._json = json #content in json
-        self._headers = headers #content headers
-        self._status_code = status_code
-        self._status = status
-        self._request=request
+    def __init__(self, request=None, prefetched=False):
+        self.request=request
+        if prefetched:
+            self = request.response
+        self.prefetched = prefetched
+
+    def _get_response(self):
+        """Wait for http response as late as possible: the first time needed"""
+        if self.prefetched:
+            return
+        self = self.request.response
+        self.prefetched = True
+
+    @property 
+    def prefetched(self):
+        return self._prefetched
+    @prefetched.setter
+    def prefetched(self, p):
+        self._prefetched = p
 
     @property 
     def content(self):
+        self._get_response()
         return self._content
     @content.setter 
     def content(self, v):
         self._content = v
+
     @property 
     def text(self):
+        self._get_response()
         return self._text
     @text.setter 
     def text(self, v):
         self._text = v
+
     @property 
     def json(self):
+        self._get_response()
         return self._json
     @json.setter 
     def json(self, v):
         self._json = v
+
     @property 
     def headers(self):
+        self._get_response()
         return self._headers
     @headers.setter 
     def headers(self, v):
         self._headers = v
+
     @property 
     def status_code(self):
+        self._get_response()
         return self._status_code
     @status_code.setter 
     def status_code(self, v):
         self._status_code = v
+
     @property 
     def status(self):
+        self._get_response()
         return self._status
     @status.setter 
     def status(self, v):
         self._status = v
+
     @property 
     def request(self):
         return self._request
@@ -96,7 +118,6 @@ class HTTPConnectionError(Exception):
 class HTTPConnection(object):
 
     def __init__(self, method=None, url=None, params={}, headers={}):
-    	self.response = None
     	self.headers = headers
     	self.params = params
     	self.url = url
@@ -160,3 +181,10 @@ class HTTPConnection(object):
 			 r.perform_request(method='POST')
 		"""
 		raise NotImplementedError
+
+    @property 
+    def response(self):
+        return self._response
+    @response.setter
+    def response(self, r):
+        self._response = r

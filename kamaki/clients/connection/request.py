@@ -32,6 +32,7 @@
 # or implied, of GRNET S.A.
 
 import requests
+from copy import deepcopy
 from . import HTTPConnection, HTTPResponse, HTTPConnectionError
 #from requests.auth import AuthBase
 
@@ -40,10 +41,43 @@ def _status(self):
     return requests.status_codes._codes[self.status_code][0].upper()
 requests.Response.status = property(_status)
 
+class HTTPRequestsResponse(HTTPResponse):
+
+	def __init__(self, requestsResponse, prefetched = False):
+		try:
+			self.headers = requestsResponse.headers
+			self.text = requestsResponse.text if hasattr(requestsResponse, 'text') else None
+			self.json = requestsResponse.json if hasattr(requestsResponse, 'json') else None
+			self.content = requestsResponse.content if hasattr(requestsResponse, 'content') else None
+			self.exception = requestsResponse.exception if hasattr(requestsResponse, 'exception') else None
+			self.status = requestsResponse.status
+			self.status_code = requestsResponse.status_code
+		except requests.ConnectionError as err:
+			raise HTTPConnectionError('Connection error', status=651, details=err.message)
+		except requests.HTTPError as err:
+			raise HTTPConnectionError('HTTP error', status=652, details=err.message)
+		except requests.Timeout as err:
+			raise HTTPConnectionError('Connection Timeout', status=408, details=err.message)
+		except requests.URLRequired as err:
+			raise HTTPConnectionError('Invalid URL', status=404, details=err.message)
+		except requests.RequestException as err:
+			raise HTTPConnectionError('HTTP Request error', status=700, details=err.message)
+
+	def _get_response(self):
+		"""requests object handles this automatically"""
+		pass
+
 class HTTPRequest(HTTPConnection):
 
 	#Avoid certificate verification by default
 	verify = False
+
+	def _copy_response(self):
+		req = HTTPRequest(deepcopy(self.method), deepcopy(self.url), deepcopy(self.params),
+			deepcopy(self.headers))
+		req._response_object = self._response_object
+		res = HTTPResponse(req)
+		return res
 
 	def perform_request(self, method=None, url=None, params=None, headers=None, data=None):
 		"""perform a request
@@ -67,26 +101,8 @@ class HTTPRequest(HTTPConnection):
 				param_str+= '='+unicode(val)
 			self.url += param_str
 
-		#print('RUN[ %s %s ]'%(self.method, self.url))
-		try:
-			r = requests.request(self.method, self.url, headers=self.headers, data=data,
-				verify=self.verify)
-		except requests.ConnectionError as err:
-			raise HTTPConnectionError('Connection error', status=651, details=err.message)
-		except requests.HTTPError as err:
-			raise HTTPConnectionError('HTTP error', status=652, details=err.message)
-		except requests.Timeout as err:
-			raise HTTPConnectionError('Connection Timeout', status=408, details=err.message)
-		except requests.URLRequired as err:
-			raise HTTPConnectionError('Invalid URL', status=404, details=err.message)
-		except requests.RequestException as err:
-			raise HTTPConnectionError('HTTP Request error', status=700, details=err.message)
-
-		text = r.text if hasattr(r, 'text') else None
-		json = r.json if hasattr(r, 'json') else None
-		content = r.content if hasattr(r, 'content') else None
-		self.response = HTTPResponse(content = content, text = text, json = json,
-			headers = r.headers, status_code=r.status_code, status = r.status, request=self)
-		if hasattr(r, 'exception'):
-			self.response.exception = r.exception 
-		return self.response
+		self._response_object = requests.request(self.method, self.url, headers=self.headers, data=data,
+			verify=self.verify, prefetch = False)
+		res  = HTTPRequestsResponse(self._response_object)
+		self.response = res
+		return res
