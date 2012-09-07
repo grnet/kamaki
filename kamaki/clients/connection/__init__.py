@@ -31,6 +31,25 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+from .pool import ObjectPool
+
+POOL_SIZE=8
+
+class HTTPResponsePool(ObjectPool):
+
+    def __init__(self, netloc, size=POOL_SIZE):
+        super(HTTPResponsePool, self).__init__(size=size)
+        self.netloc = netloc
+
+    def _pool_create(self):
+        resp = HTTPResponse()
+        resp._pool = self
+        return resp
+
+    def _pool_cleanup(self, resp):
+        resp._get_response()
+        return True
+
 class HTTPResponse(object):
 
     def __init__(self, request=None, prefetched=False):
@@ -45,6 +64,11 @@ class HTTPResponse(object):
             return
         self = self.request.response
         self.prefetched = True
+
+    def release(self):
+        """Release the connection.
+        Use this after finished using the response"""
+        raise NotImplementedError
 
     @property 
     def prefetched(self):
@@ -182,9 +206,11 @@ class HTTPConnection(object):
 		"""
 		raise NotImplementedError
 
+    """
     @property 
     def response(self):
         return self._response
     @response.setter
     def response(self, r):
         self._response = r
+    """

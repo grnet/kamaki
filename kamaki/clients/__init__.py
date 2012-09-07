@@ -34,6 +34,8 @@
 import json
 import logging
 from .connection import HTTPConnectionError
+from .connection.request import HTTPRequest
+#from .connection.kamakicon import KamakiHTTPConnection
 
 sendlog = logging.getLogger('clients.send')
 recvlog = logging.getLogger('clients.recv')
@@ -48,7 +50,7 @@ class ClientError(Exception):
 
 class Client(object):
 
-    def __init__(self, base_url, token, http_client=None):
+    def __init__(self, base_url, token, http_client=HTTPRequest()):
         self.base_url = base_url
         self.token = token
         self.headers = {}
@@ -57,7 +59,7 @@ class Client(object):
             "%a, %d %b %Y %H:%M:%S GMT"]
         self.http_client = http_client
 
-    def raise_for_status(self, r):
+    def _raise_for_status(self, r):
         message = "%d %s" % (r.status_code, r.status)
         try:
             details = r.text
@@ -84,6 +86,8 @@ class Client(object):
 
             data = kwargs.pop('data', None)
             self.set_default_header('X-Auth-Token', self.token)
+            #self.set_default_header('Accept', '*/*')
+            #self.set_default_header('Accept-Encoding', 'identity, deflate, compress, gzip')
 
             if 'json' in kwargs:
                 data = json.dumps(kwargs.pop('json'))
@@ -93,7 +97,7 @@ class Client(object):
 
             #kwargs.setdefault('verify', False)  # Disable certificate verification
             self.http_client.url = self.base_url + path
-            self.http_client.perform_request(method=method, data=data)
+            r = self.http_client.perform_request(method=method, data=data)
             #r = requests.request(method, url, headers=self.headers, data=data, **kwargs)
 
             req = self.http_client
@@ -104,7 +108,8 @@ class Client(object):
             if data:
                 sendlog.info('%s', data)
 
-            r = self.http_client.response
+            #r = self.http_client.response
+            #print('What is the case with r? %s'%unicode(r.content))
             recvlog.info('%d %s', r.status_code, r.status)
             for key, val in r.headers.items():
                 recvlog.info('%s: %s', key, val)
@@ -116,7 +121,7 @@ class Client(object):
                 # Success can either be an in or a collection
                 success = (success,) if isinstance(success, int) else success
                 if r.status_code not in success:
-                    self.raise_for_status(r)
+                    self._raise_for_status(r)
         except Exception as err:
             self.http_client.reset_headers()
             self.http_client.reset_params()

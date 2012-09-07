@@ -33,8 +33,9 @@
 
 import requests
 from copy import deepcopy
-from . import HTTPConnection, HTTPResponse, HTTPConnectionError
-#from requests.auth import AuthBase
+from . import HTTPConnection, HTTPResponse, HTTPConnectionError, HTTPResponsePool
+from .pool import ObjectPool
+from urlparse import urlparse
 
 # Add a convenience status property to the responses
 def _status(self):
@@ -43,15 +44,22 @@ requests.Response.status = property(_status)
 
 class HTTPRequestsResponse(HTTPResponse):
 
-	def __init__(self, requestsResponse, prefetched = False):
+	def _get_response(self):
+		if self.prefetched:
+			return
+		r = self.request.response
 		try:
-			self.headers = requestsResponse.headers
-			self.text = requestsResponse.text if hasattr(requestsResponse, 'text') else None
-			self.json = requestsResponse.json if hasattr(requestsResponse, 'json') else None
-			self.content = requestsResponse.content if hasattr(requestsResponse, 'content') else None
-			self.exception = requestsResponse.exception if hasattr(requestsResponse, 'exception') else None
-			self.status = requestsResponse.status
-			self.status_code = requestsResponse.status_code
+			self.headers = deepcopy(r.headers)
+			self.text = deepcopy(r.text) \
+			if hasattr(r, 'text') else None
+			self.json = deepcopy(r.json) \
+			if hasattr(r, 'json') else None
+			self.content = deepcopy(r.content) \
+			if hasattr(r, 'content') else None
+			self.exception = deepcopy(r.exception) \
+			if hasattr(r, 'exception') else None
+			self.status = deepcopy(r.status)
+			self.status_code = deepcopy(r.status_code)
 		except requests.ConnectionError as err:
 			raise HTTPConnectionError('Connection error', status=651, details=err.message)
 		except requests.HTTPError as err:
@@ -63,21 +71,38 @@ class HTTPRequestsResponse(HTTPResponse):
 		except requests.RequestException as err:
 			raise HTTPConnectionError('HTTP Request error', status=700, details=err.message)
 
-	def _get_response(self):
+	def release(self):
 		"""requests object handles this automatically"""
-		pass
+		if hasattr(self, '_pool'):
+			self._pool.pool_put(self)
+
+class HTTPRequestsResponsePool(HTTPResponsePool):
+
+	@classmethod
+	def key(self, full_url):
+		p = urlparse(full_url)
+		return '%s:%s:%s'%(p.scheme,p.netloc, p.port)
+
+	def _pool_create(self):
+		resp = HTTPRequestsResponse()
+		resp._pool = self
+		return resp
 
 class HTTPRequest(HTTPConnection):
+
+	_pools = {}
 
 	#Avoid certificate verification by default
 	verify = False
 
-	def _copy_response(self):
-		req = HTTPRequest(deepcopy(self.method), deepcopy(self.url), deepcopy(self.params),
-			deepcopy(self.headers))
-		req._response_object = self._response_object
-		res = HTTPResponse(req)
-		return res
+	def _get_response_object(self):
+		pool_key = HTTPRequestsResponsePool.key(self.url)
+		try:
+			respool = self._pools[pool_key]
+		except KeyError:
+			self._pools[pool_key] = HTTPRequestsResponsePool(pool_key)
+			respool = self._pools[pool_key]
+		return respool.pool_get()
 
 	def perform_request(self, method=None, url=None, params=None, headers=None, data=None):
 		"""perform a request
@@ -103,6 +128,6 @@ class HTTPRequest(HTTPConnection):
 
 		self._response_object = requests.request(self.method, self.url, headers=self.headers, data=data,
 			verify=self.verify, prefetch = False)
-		res  = HTTPRequestsResponse(self._response_object)
-		self.response = res
+		res = self._get_response_object()
+		res.request = self._response_object.request
 		return res

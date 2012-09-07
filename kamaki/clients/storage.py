@@ -33,13 +33,14 @@
 
 from . import Client, ClientError
 from .utils import filter_in, filter_out, prefix_keys, path4url
-from .connection.request import HTTPRequest
+from .connection.kamakicon import KamakiHTTPConnection
 
 class StorageClient(Client):
     """OpenStack Object Storage API 1.0 client"""
 
     def __init__(self, base_url, token, account=None, container=None):
-        super(StorageClient, self).__init__(base_url, token, http_client=HTTPRequest())
+        super(StorageClient, self).__init__(base_url, token)
+        #super(StorageClient, self).__init__(base_url, token, http_client=KamakiHTTPConnection())
         self.account = account
         self.container = container
 

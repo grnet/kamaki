@@ -647,6 +647,7 @@ class PithosClient(StorageClient):
         r = self.container_post(update=True, content_type='application/octet-stream',
             content_length=len(data), data=data, format='json')
         assert r.json[0] == hash, 'Local hash does not match server'
+        r.release()
 
     def create_object_by_manifestation(self, obj, etag=None, content_encoding=None,
         content_disposition=None, content_type=None, sharing=None, public=None):
@@ -709,6 +710,7 @@ class PithosClient(StorageClient):
             upload_gen.next()
 
         flying = []
+        r .release()
         for hash in missing:
             offset, bytes = map[hash]
             f.seek(offset)
@@ -718,6 +720,7 @@ class PithosClient(StorageClient):
             for r in flying:
                 if r.ready():
                     if r.exception:
+                        r.release()
                         raise r.exception
                     if upload_cb:
                         upload_gen.next()
