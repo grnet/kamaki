@@ -586,6 +586,7 @@ class store_download(_store_container_command):
         super(self.__class__, self).main(container___path, path_is_optional=False)
 
         #setup output stream
+        parallel = False
         if local_path is None:
             out = stdout
         else:
@@ -600,8 +601,9 @@ class store_download(_store_container_command):
         download_cb = None if getattr(self.args, 'no_progress_bar') \
             else self.progress('Downloading')
 
+
         try:
-            self.client.download_object(self.path, out, download_cb, 
+            self.client.download_object(self.path, out, download_cb,
                 range=getattr(self.args, 'range'), version=getattr(self.args,'object_version'),
                 if_match=getattr(self.args, 'if_match'), overide=getattr(self.args, 'overide'),
                 if_none_match=getattr(self.args, 'if_none_match'),

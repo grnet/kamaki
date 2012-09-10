@@ -32,7 +32,6 @@
 # or implied, of GRNET S.A.
 
 import requests
-from copy import deepcopy
 from . import HTTPConnection, HTTPResponse, HTTPConnectionError, HTTPResponsePool
 from .pool import ObjectPool
 from urlparse import urlparse
@@ -44,22 +43,20 @@ requests.Response.status = property(_status)
 
 class HTTPRequestsResponse(HTTPResponse):
 
+	_get_content_only=False
+
 	def _get_response(self):
 		if self.prefetched:
 			return
 		r = self.request.response
 		try:
-			self.headers = deepcopy(r.headers)
-			self.text = deepcopy(r.text) \
-			if hasattr(r, 'text') else None
-			self.json = deepcopy(r.json) \
-			if hasattr(r, 'json') else None
-			self.content = deepcopy(r.content) \
-			if hasattr(r, 'content') else None
-			self.exception = deepcopy(r.exception) \
-			if hasattr(r, 'exception') else None
-			self.status = deepcopy(r.status)
-			self.status_code = deepcopy(r.status_code)
+			self.headers = r.headers
+			self.status = r.status
+			self.status_code = r.status_code
+			self.content = r.content if hasattr(r, 'content') else None
+			self.text = None if self._get_content_only else r.text
+			self.json = None if self._get_content_only else r.json
+			self.exception = r.exception if hasattr(r, 'exception') else None
 		except requests.ConnectionError as err:
 			raise HTTPConnectionError('Connection error', status=651, details=err.message)
 		except requests.HTTPError as err:
@@ -70,6 +67,7 @@ class HTTPRequestsResponse(HTTPResponse):
 			raise HTTPConnectionError('Invalid URL', status=404, details=err.message)
 		except requests.RequestException as err:
 			raise HTTPConnectionError('HTTP Request error', status=700, details=err.message)
+		self.prefetched=True
 
 	def release(self):
 		"""requests object handles this automatically"""
@@ -104,7 +102,8 @@ class HTTPRequest(HTTPConnection):
 			respool = self._pools[pool_key]
 		return respool.pool_get()
 
-	def perform_request(self, method=None, url=None, params=None, headers=None, data=None):
+	def perform_request(self, method=None, url=None, params=None, headers=None, data=None,
+		binary=False):
 		"""perform a request
 		Example: method='PUT' url='https://my.server:8080/path/to/service'
 			params={'update':None, 'format':'json'} headers={'X-Auth-Token':'s0m3t0k3n=='}
@@ -131,4 +130,6 @@ class HTTPRequest(HTTPConnection):
 		self._response_object = requests.request(self.method, self.url, headers=self.headers, data=data,
 			verify=self.verify, prefetch = False)
 		res.request = self._response_object.request
+		if binary:
+			res._get_content_only = True
 		return res

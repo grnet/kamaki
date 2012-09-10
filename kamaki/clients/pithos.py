@@ -302,7 +302,7 @@ class PithosClient(StorageClient):
         success = kwargs.pop('success', 200)
         return self.head(path, *args, success=success, **kwargs)
 
-    def object_get(self, object, format='json', hashmap=False, version=None,
+    def object_get(self, object, format='json', hashmap=False, version=None, binary=False,
         data_range=None, if_range=False, if_etag_match=None, if_etag_not_match = None,
         if_modified_since = None, if_unmodified_since = None, *args, **kwargs):
         """ Full Pithos+ GET at object level
@@ -335,6 +335,8 @@ class PithosClient(StorageClient):
 
         path=path4url(self.account, self.container, object)
         success = kwargs.pop('success', 200)
+        if binary:
+            kwargs['binary'] = True
         return self.get(path, *args, success=success, **kwargs)
 
     def object_put(self, object, format='json', hashmap=False, delimiter = None, if_etag_match=None,
@@ -730,13 +732,15 @@ class PithosClient(StorageClient):
         self.object_put(object, format='json', hashmap=True, content_type=obj_content_type, 
             json=hashmap, success=201)
 
-    def download_object(self, obj, f, download_cb=None, version=None, overide=False, range=None,
-        if_match=None, if_none_match=None, if_modified_since=None, if_unmodified_since=None):
+    def download_object(self, obj, f, download_cb=None, version=None, overide=False,
+        range=None, if_match=None, if_none_match=None, if_modified_since=None,
+        if_unmodified_since=None):
         """overide is forcing the local file to become exactly as the remote, even if it is
         substantialy different
         """
 
         self.assert_container()
+        islocalfile = False if f.isatty() else True
 
         #retrieve object hashmap
         hashmap = self.get_object_hashmap(obj, version=version, if_match=if_match,
@@ -772,7 +776,7 @@ class PithosClient(StorageClient):
             download_gen.next()
 
         #load local file existing hashmap
-        if not f.isatty():
+        if islocalfile:
             hash_dict = {}
             from os import path
             if path.exists(f.name):
@@ -781,6 +785,7 @@ class PithosClient(StorageClient):
                 h = HashMap(blocksize, blockhash)
                 with_progress_bar = False if download_cb is None else True
                 h.load(f, with_progress_bar)
+                #resume if some blocks have been downloaded
                 for i, x in enumerate(h):
                     existing_hash = hexlify(x)
                     if existing_hash in map_dict:
@@ -791,9 +796,10 @@ class PithosClient(StorageClient):
                         raise ClientError(message='Local file is substantialy different',
                             status=600)
 
-        #download and print
+        #download and save/print
         for i, h in enumerate(map):
-            if not f.isatty() and h in hash_dict:
+            #if not islocalfile and h in hash_dict:
+            if h in hash_dict:
                 continue
             if download_cb is not None:
                 download_gen.next()
@@ -807,16 +813,19 @@ class PithosClient(StorageClient):
             if range is not None and end > custom_end:
                 end = custom_end
             data_range = 'bytes=%s-%s'%(start, end)
-            data = self.object_get(obj, data_range=data_range, success=(200, 206), version=version,
-                if_etag_match=if_match, if_etag_not_match=if_none_match,
+            r = self.object_get(obj, data_range=data_range, success=(200, 206), version=version,
+                if_etag_match=if_match, if_etag_not_match=if_none_match, binary=True,
                 if_modified_since=if_modified_since, if_unmodified_since=if_unmodified_since)
-            if not f.isatty():
+            if islocalfile:
                 f.seek(start)
-            f.write(data.content)
+            f.write(r.content)
+            f.flush()
+            r.release()
             #f.write(data.text.encode('utf-8'))
 
-        if overide and not f.isatty():
+        if overide and not islocalfile:
             f.truncate(total_size)
+
 
     def get_object_hashmap(self, obj, version=None, if_match=None, if_none_match=None,
         if_modified_since=None, if_unmodified_since=None):
@@ -828,8 +837,9 @@ class PithosClient(StorageClient):
             if err.status == 304 or err.status == 412:
                 return {}
             raise
-        from json import loads
-        return loads(r.text)
+        result = r.json
+        r.release()
+        return result
 
     def set_account_group(self, group, usernames):
         self.account_post(update=True, groups = {group:usernames})

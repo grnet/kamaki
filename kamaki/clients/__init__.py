@@ -84,6 +84,7 @@ class Client(object):
             #r = self._request(method, path, **kwargs)
             success = kwargs.pop('success', 200)
 
+            binary = kwargs.pop('binary', False)
             data = kwargs.pop('data', None)
             self.set_default_header('X-Auth-Token', self.token)
             #self.set_default_header('Accept', '*/*')
@@ -97,7 +98,7 @@ class Client(object):
 
             #kwargs.setdefault('verify', False)  # Disable certificate verification
             self.http_client.url = self.base_url + path
-            r = self.http_client.perform_request(method=method, data=data)
+            r = self.http_client.perform_request(method=method, data=data, binary=binary)
             #r = requests.request(method, url, headers=self.headers, data=data, **kwargs)
 
             req = self.http_client
