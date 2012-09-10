@@ -126,8 +126,9 @@ class HTTPRequest(HTTPConnection):
 				param_str+= '='+unicode(val)
 			self.url += param_str
 
+		#use pool before request, so that it will block if pool is full
+		res = self._get_response_object()
 		self._response_object = requests.request(self.method, self.url, headers=self.headers, data=data,
 			verify=self.verify, prefetch = False)
-		res = self._get_response_object()
 		res.request = self._response_object.request
 		return res

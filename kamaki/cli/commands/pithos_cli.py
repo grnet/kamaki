@@ -557,6 +557,7 @@ class store_upload(_store_container_command):
                     public=getattr(self.args, 'public'))
         except ClientError as err:
             raiseCLIError(err)
+        print 'Upload completed'
 
 @command()
 class store_download(_store_container_command):
