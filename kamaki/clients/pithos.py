@@ -39,6 +39,7 @@ gevent.monkey.patch_all()
 import hashlib, os, gevent.pool
 
 from time import time
+from datetime import datetime
 
 from .storage import StorageClient, ClientError
 from .utils import path4url, prefix_keys, filter_in, filter_out, list2str
@@ -604,7 +605,8 @@ class PithosClient(StorageClient):
         return self.delete(path, *args, success=success, **kwargs)
 
     def purge_container(self):
-        self.container_delete(until=unicode(time()))
+        r = self.container_delete(until=unicode(time()))
+        r.release()
 
     def upload_object_unchunked(self, obj, f, withHashFile = False, size=None, etag=None,
         content_encoding=None, content_disposition=None, content_type=None, sharing=None,
@@ -625,9 +627,10 @@ class PithosClient(StorageClient):
             from StringIO import StringIO
             f = StringIO(data)
         data = f.read(size) if size is not None else f.read()
-        self.object_put(obj, data=data, etag=etag, content_encoding=content_encoding,
+        r = self.object_put(obj, data=data, etag=etag, content_encoding=content_encoding,
             content_disposition=content_disposition, content_type=content_type, permitions=sharing,
             public=public, success=201)
+        r.release()
 
     def put_block_async(self, data, hash):
         class SilentGreenlet(gevent.Greenlet):
@@ -655,9 +658,10 @@ class PithosClient(StorageClient):
         content_disposition=None, content_type=None, sharing=None, public=None):
         self.assert_container()
         obj_content_type = 'application/octet-stream' if content_type is None else content_type
-        self.object_put(obj, content_length=0, etag=etag, content_encoding=content_encoding,
+        r = self.object_put(obj, content_length=0, etag=etag, content_encoding=content_encoding,
             content_disposition=content_disposition, content_type=content_type, permitions=sharing,
             public=public, manifest='%s/%s'%(self.container,obj))
+        r.release()
 
     def upload_object(self, object, f, size=None, hash_cb=None, upload_cb=None, etag=None,
         content_encoding=None, content_disposition=None, content_type=None, sharing=None,
@@ -674,7 +678,7 @@ class PithosClient(StorageClient):
         size = size if size is not None else os.fstat(f.fileno()).st_size
         nblocks = 1 + (size - 1) // blocksize
         hashes = []
-        map = {}
+        hmap = {}
 
         offset = 0
 
@@ -687,7 +691,7 @@ class PithosClient(StorageClient):
             bytes = len(block)
             hash = pithos_hash(block, blockhash)
             hashes.append(hash)
-            map[hash] = (offset, bytes)
+            hmap[hash] = (offset, bytes)
             offset += bytes
             if hash_cb:
                 hash_gen.next()
@@ -710,11 +714,11 @@ class PithosClient(StorageClient):
         if upload_cb:
             upload_gen = upload_cb(len(missing))
             upload_gen.next()
+        r .release()
 
         flying = []
-        r .release()
         for hash in missing:
-            offset, bytes = map[hash]
+            offset, bytes = hmap[hash]
             f.seek(offset)
             data = f.read(bytes)
             r = self.put_block_async(data, hash)
@@ -729,8 +733,9 @@ class PithosClient(StorageClient):
             flying = [r for r in flying if not r.ready()]
 
         gevent.joinall(flying)
-        self.object_put(object, format='json', hashmap=True, content_type=obj_content_type, 
+        r = self.object_put(object, format='json', hashmap=True, content_type=obj_content_type, 
             json=hashmap, success=201)
+        r.release()
 
     def download_object(self, obj, f, download_cb=None, version=None, overide=False,
         range=None, if_match=None, if_none_match=None, if_modified_since=None,
@@ -776,8 +781,8 @@ class PithosClient(StorageClient):
             download_gen.next()
 
         #load local file existing hashmap
+        hash_dict = {}
         if islocalfile:
-            hash_dict = {}
             from os import path
             if path.exists(f.name):
                 from binascii import hexlify
@@ -797,6 +802,7 @@ class PithosClient(StorageClient):
                             status=600)
 
         #download and save/print
+        flying = []
         for i, h in enumerate(map):
             #if not islocalfile and h in hash_dict:
             if h in hash_dict:
@@ -813,19 +819,75 @@ class PithosClient(StorageClient):
             if range is not None and end > custom_end:
                 end = custom_end
             data_range = 'bytes=%s-%s'%(start, end)
-            r = self.object_get(obj, data_range=data_range, success=(200, 206), version=version,
-                if_etag_match=if_match, if_etag_not_match=if_none_match, binary=True,
-                if_modified_since=if_modified_since, if_unmodified_since=if_unmodified_since)
+            result_array = []
             if islocalfile:
-                f.seek(start)
-            f.write(r.content)
-            f.flush()
-            r.release()
-            #f.write(data.text.encode('utf-8'))
+                handler = self._get_block_async(obj, data_range=data_range, version=version,
+                    if_etag_match=if_match, if_etag_not_match=if_none_match,
+                    if_modified_since=if_modified_since, if_unmodified_since=if_unmodified_since)
+                flying.append({'handler':handler, 'start':start})
+                newflying = []
+                for v in flying:
+                    h = v['handler']
+                    if h.ready():
+                        if h.exception:
+                            h.release()
+                            raise h.exception
+                        f.seek(v['start'])
+                        f.write(h.value.content)
+                        f.flush()
+                        h.value.release()
+                    else:
+                        newflying.append(v)
+                flying = newflying
+            else:
+                r = self._get_block(obj, data_range=data_range, version=version,
+                    if_etag_match=if_match, if_etag_not_match=if_none_match,
+                    if_modified_since=if_modified_since, if_unmodified_since=if_unmodified_since)
+                f.write(r.content)
+                f.flush()
+                r.release()
 
-        if overide and not islocalfile:
+        #write the last results and exit
+        if islocalfile:
+            from time import sleep
+            while len(flying) > 0:
+                result_array=[]
+                newflying = []
+                for v in flying:
+                    h = v['handler']
+                    if h.ready():
+                        if h.exception:
+                            h.release()
+                            raise h.exception
+                        f.seek(v['start'])
+                        f.write(h.value.content)
+                        f.flush()
+                        h.value.release()
+                    else:
+                        sleep(.2)
+                        newflying.append(v)
+                flying = newflying
             f.truncate(total_size)
 
+    def _get_block(self, obj, **kwargs):
+        r = self.object_get(obj, success=(200, 206), binary=True, **kwargs)
+        return r
+
+    def _get_block_async(self, obj, **kwargs):
+        class SilentGreenlet(gevent.Greenlet):
+            def _report_error(self, exc_info):
+                _stderr = sys._stderr
+                try:
+                    sys.stderr = StringIO()
+                    gevent.Greenlet._report_error(self, exc_info)
+                finally:
+                    sys.stderr = _stderr
+        POOL_SIZE = 5
+        if self.async_pool is None:
+            self.async_pool = gevent.pool.Pool(size=POOL_SIZE)
+        g = SilentGreenlet(self._get_block, obj, **kwargs)
+        self.async_pool.start(g)
+        return g
 
     def get_object_hashmap(self, obj, version=None, if_match=None, if_none_match=None,
         if_modified_since=None, if_unmodified_since=None):
@@ -834,6 +896,7 @@ class PithosClient(StorageClient):
                 if_etag_not_match=if_none_match, if_modified_since=if_modified_since,
                 if_unmodified_since=if_unmodified_since)
         except ClientError as err:
+            r.release()
             if err.status == 304 or err.status == 412:
                 return {}
             raise
@@ -842,17 +905,21 @@ class PithosClient(StorageClient):
         return result
 
     def set_account_group(self, group, usernames):
-        self.account_post(update=True, groups = {group:usernames})
+        r = self.account_post(update=True, groups = {group:usernames})
+        r.release()
 
     def del_account_group(self, group):
-        return self.account_post(update=True, groups={group:[]})
+        r = self.account_post(update=True, groups={group:[]})
+        r.release()
 
     def get_account_info(self, until=None):
-        from datetime import datetime
         r = self.account_head(until=until)
         if r.status_code == 401:
+            r.release()
             raise ClientError("No authorization")
-        return r.headers
+        reply = r.headers
+        r.release()
+        return reply
 
     def get_account_quota(self):
         return filter_in(self.get_account_info(), 'X-Account-Policy-Quota', exactMatch = True)
@@ -868,28 +935,37 @@ class PithosClient(StorageClient):
 
     def set_account_meta(self, metapairs):
         assert(type(metapairs) is dict)
-        self.account_post(update=True, metadata=metapairs)
+        r = self.account_post(update=True, metadata=metapairs)
+        r.release()
 
     def del_account_meta(self, metakey):
-        self.account_post(update=True, metadata={metakey:''})
+        r = self.account_post(update=True, metadata={metakey:''})
+        r.release()
 
     def set_account_quota(self, quota):
-        self.account_post(update=True, quota=quota)
+        r = self.account_post(update=True, quota=quota)
+        r.release()
 
     def set_account_versioning(self, versioning):
-        self.account_post(update=True, versioning = versioning)
+        r = self.account_post(update=True, versioning = versioning)
+        r.release()
 
     def list_containers(self):
         r = self.account_get()
-        return r.json
+        reply = r.json
+        r.release()
+        return reply
 
     def del_container(self, until=None, delimiter=None):
         self.assert_container()
         r = self.container_delete(until=until, delimiter=delimiter, success=(204, 404, 409))
         if r.status_code == 404:
+            r.release()
             raise ClientError('Container "%s" does not exist'%self.container, r.status_code)
         elif r.status_code == 409:
+            r.release()
             raise ClientError('Container "%s" is not empty'%self.container, r.status_code)
+        r.release()
 
     def get_container_versioning(self, container):
         self.container = container
@@ -901,6 +977,8 @@ class PithosClient(StorageClient):
 
     def get_container_info(self, until = None):
         r = self.container_head(until=until)
+        reply = r.headers
+        r.release()
         return r.headers
 
     def get_container_meta(self, until = None):
@@ -911,37 +989,48 @@ class PithosClient(StorageClient):
 
     def set_container_meta(self, metapairs):
         assert(type(metapairs) is dict)
-        self.container_post(update=True, metadata=metapairs)
+        r = self.container_post(update=True, metadata=metapairs)
+        r.release()
 
     def del_container_meta(self, metakey):
-        self.container_post(update=True, metadata={metakey:''})
+        r = self.container_post(update=True, metadata={metakey:''})
+        r.release()
 
     def set_container_quota(self, quota):
-        self.container_post(update=True, quota=quota)
+        r = self.container_post(update=True, quota=quota)
+        r.release()
 
     def set_container_versioning(self, versioning):
-        self.container_post(update=True, versioning=versioning)
+        r = self.container_post(update=True, versioning=versioning)
+        r.release()
 
     def del_object(self, obj, until=None, delimiter=None):
         self.assert_container()
-        self.object_delete(obj, until=until, delimiter=delimiter)
+        r = self.object_delete(obj, until=until, delimiter=delimiter)
+        r.release()
 
     def set_object_meta(self, object, metapairs):
         assert(type(metapairs) is dict)
-        self.object_post(object, update=True, metadata=metapairs)
+        r = self.object_post(object, update=True, metadata=metapairs)
+        r.release()
 
     def del_object_meta(self, metakey, object):
-        self.object_post(object, update=True, metadata={metakey:''})
+        r = self.object_post(object, update=True, metadata={metakey:''})
+        r.release()
 
     def publish_object(self, object):
-        self.object_post(object, update=True, public=True)
+        r = self.object_post(object, update=True, public=True)
+        r.release()
 
     def unpublish_object(self, object):
-        self.object_post(object, update=True, public=False)
+        r = self.object_post(object, update=True, public=False)
+        r.release()
 
     def get_object_info(self, obj, version=None):
         r = self.object_head(obj, version=version)
-        return r.headers
+        reply = r.headers
+        r.release()
+        return reply
 
     def get_object_meta(self, obj, version=None):
         return filter_in(self.get_object_info(obj, version=version), 'X-Object-Meta')
@@ -971,7 +1060,8 @@ class PithosClient(StorageClient):
         perms = {}
         perms['read'] = read_permition if isinstance(read_permition, list) else ''
         perms['write'] = write_permition if isinstance(write_permition, list) else ''
-        self.object_post(object, update=True, permitions=perms)
+        r = self.object_post(object, update=True, permitions=perms)
+        r.release()
 
     def del_object_sharing(self, object):
         self.set_object_sharing(object)
@@ -992,15 +1082,17 @@ class PithosClient(StorageClient):
         for i in range(nblocks):
             block = source_file.read(min(blocksize, filesize - offset))
             offset += len(block)
-            self.object_post(object, update=True, content_range='bytes */*',
+            r = self.object_post(object, update=True, content_range='bytes */*',
                 content_type='application/octet-stream', content_length=len(block), data=block)
+            r.release()
             if upload_cb is not None:
                 upload_gen.next()
 
     def truncate_object(self, object, upto_bytes):
-        self.object_post(object, update=True, content_range='bytes 0-%s/*'%upto_bytes,
+        r = self.object_post(object, update=True, content_range='bytes 0-%s/*'%upto_bytes,
             content_type='application/octet-stream', object_bytes=upto_bytes,
             source_object=path4url(self.container, object))
+        r.release()
 
     def overwrite_object(self, object, start, end, source_file, upload_cb=None):
         """Overwrite a part of an object with given source file
@@ -1019,8 +1111,9 @@ class PithosClient(StorageClient):
         for i in range(nblocks):
             block = source_file.read(min(blocksize, filesize - offset, datasize - offset))
             offset += len(block)
-            self.object_post(object, update=True, content_type='application/octet-stream', 
+            r = self.object_post(object, update=True, content_type='application/octet-stream', 
                 content_length=len(block), content_range='bytes %s-%s/*'%(start,end), data=block)
+            r.release()
             if upload_cb is not None:
                 upload_gen.next()
 
@@ -1030,9 +1123,10 @@ class PithosClient(StorageClient):
         self.container = dst_container
         dst_object = dst_object or src_object
         src_path = path4url(src_container, src_object)
-        self.object_put(dst_object, success=201, copy_from=src_path, content_length=0,
+        r = self.object_put(dst_object, success=201, copy_from=src_path, content_length=0,
             source_version=source_version, public=public, content_type=content_type,
             delimiter=delimiter)
+        r.release()
 
     def move_object(self, src_container, src_object, dst_container, dst_object=False,
         source_version = None, public=False, content_type=None, delimiter=None):
@@ -1040,6 +1134,7 @@ class PithosClient(StorageClient):
         self.container = dst_container
         dst_object = dst_object or src_object
         src_path = path4url(src_container, src_object)
-        self.object_put(dst_object, success=201, move_from=src_path, content_length=0,
+        r = self.object_put(dst_object, success=201, move_from=src_path, content_length=0,
             source_version=source_version, public=public, content_type=content_type,
             delimiter=delimiter)
+        r.release()

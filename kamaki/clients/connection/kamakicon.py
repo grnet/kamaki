@@ -35,6 +35,7 @@ from urlparse import urlparse
 from .pool.http import get_http_connection
 from . import HTTPConnection, HTTPResponse, HTTPConnectionError
 
+from json import loads
 
 from time import sleep
 from httplib import ResponseNotReady
@@ -42,25 +43,30 @@ from httplib import ResponseNotReady
 class KamakiHTTPResponse(HTTPResponse):
 
     def _get_response(self):
-        print('KamakiHTTPResponse:should I get response?')
         if self.prefetched:
-            print('\tKamakiHTTPResponse: no, I have already done that before')
             return
-        print('\tKamakiHTTPResponse: yes, pls')
-        r = self.request.getresponse()
+
+        ready = False
+        while not ready:
+            try:
+                r = self.request.getresponse()
+            except ResponseNotReady:
+                sleep(0.2)
+                continue
+            break
         self.prefetched = True
         headers = {}
         for k,v in r.getheaders():
             headers.update({k:v})
         self.headers = headers
-        self.content = r.read(r.length)
+        self.content = r.read()
         self.status_code = r.status
         self.status = r.reason
-        print('KamakiHTTPResponse: Niiiiice')
+        self.request.close()
 
     @property 
     def text(self):
-        _get_response()
+        self._get_response()
         return self._content
     @text.setter
     def test(self, v):
@@ -68,8 +74,7 @@ class KamakiHTTPResponse(HTTPResponse):
 
     @property 
     def json(self):
-        _get_response()
-        from json import loads
+        self._get_response()
         try:
             return loads(self._content)
         except ValueError as err:
@@ -78,65 +83,32 @@ class KamakiHTTPResponse(HTTPResponse):
     def json(self, v):
         pass
 
+    def release(self):
+        if not self.prefetched:
+            self.request.close()
+
+
 class KamakiHTTPConnection(HTTPConnection):
 
-    url         =   None
-    scheme      =   None
-    netloc      =   None
-    method      =   None
-    data        =   None
-    headers     =   None
+    def _retrieve_connection_info(self):
+        """ return (scheme, netloc, url?with&params) """
+        url = self.url
+        for i,(key, val) in enumerate(self.params.items()):
+            param_str = ('?' if i == 0 else '&') + unicode(key) 
+            if val is not None:
+                param_str+= '='+unicode(val)
+            url += param_str
 
-    scheme_ports = {
-            'http':     '80',
-            'https':    '443',
-    }
+        parsed = urlparse(self.url)
+        self.url = url
+        return (parsed.scheme, parsed.netloc)
 
-    def _load_connection_settings(self, url=None, scheme=None, params=None, headers=None, host=None,
-        port=None, method=None):
-        if params is not None:
-            self.params = params
-        if headers is not None:
-            self.headers = headers
-
-        if url is None:
-            url = self.url
-        if host is None or scheme is None:
-            p = urlparse(url)
-            netloc = p.netloc
-            if not netloc:
-                netloc = 'localhost'
-            scheme = p.scheme
-            if not scheme:
-                scheme = 'http'
-            param_str = ''
-            for i,(key, val) in enumerate(self.params.items()):
-                param_str = ('?' if i == 0 else '&') + unicode(key) 
-                if val is not None:
-                    param_str+= '='+unicode(val)
-            url = p.path + param_str
-        else:
-            host = host
-            port = port if port is not None else self.scheme_ports[scheme]
-            #NOTE: we force host:port as canonical form,
-            #      lest we have a cache miss 'host' vs 'host:80'
-            netloc = "%s%s" % (host, port)
-
-        self.netloc = netloc
-        self.url = url #if url in (None, '') or url[0] != '/' else url[1:]
-        self.scheme = scheme
-
-        if method is not None:
-            self.method = method
-
-    def perform_request(self, url=None, params=None, headers=None, method=None, host=None,
-        port=None, data=None):
-        self._load_connection_settings(url=url, params=params, headers=headers, host=host,
-            port=port, method=method)
-        print('---> %s %s %s %s %s'%(self.method, self.scheme, self.netloc, self.url, self.headers))
-        conn = get_http_connection(netloc=self.netloc, scheme=self.scheme)
+    def perform_request(self, method=None, data=None):
+        (scheme, netloc) = self._retrieve_connection_info()
+        #get connection from pool
+        conn = get_http_connection(netloc=netloc, scheme=scheme)
         try:
-            conn.request(self.method, self.url, headers=self.headers, body=data)
+            conn.request(method = method.upper(), url=self.url, headers=self.headers, body=data)
         except:
             conn.close()
             raise

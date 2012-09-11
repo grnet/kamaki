@@ -263,10 +263,15 @@ class testPithos(unittest.TestCase):
         token = 'C/yBXmz3XjTFBnujc2biAg=='
         token = 'ac0yH8cQMEZu3M3Mp1MWGA=='
         account = 'admin@adminland.com'
-        """
+
         url='https://pithos.okeanos.grnet.gr/v1'
         token='MI6PT0yrXJ9Ji/x8l9Wmig=='
         account='saxtouri@gmail.com'
+        """
+
+        url='https://pithos.okeanos.io/v1'
+        token='0TpoyAXqJSPxLdDuZHiLOA=='
+        account='saxtouri@admin.grnet.gr'
         
 
         self.fname = None
@@ -286,23 +291,26 @@ class testPithos(unittest.TestCase):
         self.makeNewObject(self.c2, 'test1')
         """Prepare an object to be shared - also its container"""
         self.client.container = self.c1
-        self.client.object_post('test', update=True, permitions={'read':'someUser'})
+        r = self.client.object_post('test', update=True, permitions={'read':'someUser'})
+        r.release()
         self.makeNewObject(self.c1, 'another.test')
 
     def makeNewObject(self, container, obj):
         self.client.container = container
-        self.client.object_put(obj, content_type='application/octet-stream',
+        r = self.client.object_put(obj, content_type='application/octet-stream',
             data= 'file '+obj+' that lives in '+container,
             metadata={'incontainer':container})
+        r.release()
 
     def forceDeleteContainer(self, container):
         self.client.container = container
         r = self.client.list_objects()
         for obj in r:
             name = obj['name']
-            self.client.object_delete(name)
-        self.client.container_delete()
+            self.client.del_object(name)
+        r = self.client.container_delete()
         self.container = ''
+        r.release()
 
     def tearDown(self):
         """Destroy test cases"""
@@ -327,8 +335,10 @@ class testPithos(unittest.TestCase):
         """Test account_HEAD"""
         r = self.client.account_head()
         self.assertEqual(r.status_code, 204)
+        r.release()
         r = self.client.account_head(until='1000000000')
         self.assertEqual(r.status_code, 204)
+        r.release()
         datestring = unicode(r.headers['x-account-until-timestamp'])
         self.assertEqual(u'Sun, 09 Sep 2001 01:46:40 GMT', datestring)
 
@@ -336,8 +346,12 @@ class testPithos(unittest.TestCase):
         for format in self.client.DATE_FORMATS:
             now_formated = self.now_unformated.strftime(format)
             r1 = self.client.account_head(if_modified_since=now_formated, success=(204, 304, 412))
+            sc1 = r1.status_code
+            r1.release()
             r2 = self.client.account_head(if_unmodified_since=now_formated, success=(204, 304, 412))
-            self.assertNotEqual(r1.status_code, r2.status_code)
+            sc2 = r2.status_code
+            r2.release()
+            self.assertNotEqual(sc1, sc2)
 
     def test_account_get(self):
         """Test account_GET"""
@@ -345,37 +359,48 @@ class testPithos(unittest.TestCase):
         self.assertEqual(r.status_code, 200)
         fullLen = len(r.json)
         self.assertTrue(fullLen > 2)
+        r.release()
 
         r = self.client.account_get(limit=1)
         self.assertEqual(len(r.json), 1)
+        r.release()
 
         r = self.client.account_get(marker='c2_')
         temp_c0 = r.json[0]['name']
         temp_c2 = r.json[2]['name']
+        r.release()
         r = self.client.account_get(limit=2, marker='c2_')
         conames = [container['name'] for container in r.json \
             if container['name'].lower().startswith('c2_')]
         self.assertTrue(temp_c0 in conames)
         self.assertFalse(temp_c2 in conames)
+        r.release()
 
         r = self.client.account_get(show_only_shared=True)
         self.assertTrue(self.c1 in [c['name'] for c in r.json])
+        r.release()
 
         r = self.client.account_get(until=1342609206)
         self.assertTrue(len(r.json) <= fullLen)
+        r.release()
 
         """Check if(un)modified_since"""
         for format in self.client.DATE_FORMATS:
             now_formated = self.now_unformated.strftime(format)
             r1 = self.client.account_get(if_modified_since=now_formated, success=(200, 304, 412))
+            sc1 = r1.status_code
+            r1.release()
             r2 = self.client.account_get(if_unmodified_since=now_formated, success=(200, 304, 412))
-            self.assertNotEqual(r1.status_code, r2.status_code)
+            sc2 = r2.status_code
+            r2.release()
+            self.assertNotEqual(sc1, sc2)
 
     def test_account_post(self):
         """Test account_POST"""
         r = self.client.account_post()
         self.assertEqual(r.status_code, 202)
         grpName = 'grp'+unicode(self.now)
+        r.release()
 
         """Method set/del_account_meta and set_account_groupcall use account_post internally
         """
@@ -410,17 +435,23 @@ class testPithos(unittest.TestCase):
 
         r = self.client.container_head()
         self.assertEqual(r.status_code, 204)
+        r.release()
 
         """Check until"""
         r = self.client.container_head(until=1000000, success=(204, 404))
         self.assertEqual(r.status_code, 404)
+        r.release()
 
         """Check and if(un)modified_since"""
         for format in self.client.DATE_FORMATS:
             now_formated = self.now_unformated.strftime(format)
             r1 = self.client.container_head(if_modified_since=now_formated, success=(204, 304, 412))
+            sc1=r1.status_code
+            r1.release()
             r2 = self.client.container_head(if_unmodified_since=now_formated, success=(204, 304, 412))
-            self.assertNotEqual(r1.status_code, r2.status_code)
+            sc2=r2.status_code
+            r2.release()
+            self.assertNotEqual(sc1, sc2)
 
     def test_container_get(self):
         """Test container_GET"""
@@ -429,48 +460,63 @@ class testPithos(unittest.TestCase):
         r = self.client.container_get()
         self.assertEqual(r.status_code, 200)
         fullLen = len(r.json)
+        r.release()
 
         r = self.client.container_get(prefix='test')
         lalobjects = [obj for obj in r.json if obj['name'].startswith('test')]
         self.assertTrue(len(r.json) > 1)
         self.assertEqual(len(r.json), len(lalobjects))
+        r.release()
 
         r = self.client.container_get(limit=1)
         self.assertEqual(len(r.json), 1)
+        r.release()
 
         r = self.client.container_get(marker='another')
         self.assertTrue(len(r.json) > 1)
         neobjects = [obj for obj in r.json if obj['name'] > 'another']
         self.assertEqual(len(r.json), len(neobjects))
+        r.release()
 
         r = self.client.container_get(prefix='another.test', delimiter='.')
         self.assertTrue(fullLen > len(r.json))
+        r.release()
 
         r = self.client.container_get(path='/')
         self.assertEqual(fullLen, len(r.json))
+        r.release()
 
         r = self.client.container_get(format='xml')
         self.assertEqual(r.text.split()[4], 'name="'+self.c1+'">')
+        r.release()
 
         r = self.client.container_get(meta=['incontainer'])
         self.assertTrue(len(r.json) > 0)
+        r.release()
 
         r = self.client.container_get(show_only_shared=True)
         self.assertTrue(len(r.json) < fullLen)
+        r.release()
 
         try:
             r = self.client.container_get(until=1000000000)
             datestring = unicode(r.headers['x-account-until-timestamp'])
             self.assertEqual(u'Sun, 09 Sep 2001 01:46:40 GMT', datestring)
-        except:#Normally, container wasn't created in that date...
+            r.release()
+        except ClientError:
+            r.release()
             pass
 
-        """Check and if(un)modified_since"""
+        """Check and if un/modified_since"""
         for format in self.client.DATE_FORMATS:
             now_formated = self.now_unformated.strftime(format)
             r1 = self.client.container_get(if_modified_since=now_formated, success=(200, 304, 412))
+            sc1 = r1.status_code
+            r1.release()
             r2 = self.client.container_get(if_unmodified_since=now_formated, success=(200, 304, 412))
-            self.assertNotEqual(r1.status_code, r2.status_code)
+            sc2 = r2.status_code
+            r2.release()
+            self.assertNotEqual(sc1, sc2)
        
     def test_container_put(self):
         """Test container_PUT"""
@@ -478,6 +524,7 @@ class testPithos(unittest.TestCase):
 
         r = self.client.container_put()
         self.assertEqual(r.status_code, 202)
+        r.release()
 
         r = self.client.get_container_quota(self.client.container)
         cquota = r.values()[0]
@@ -485,24 +532,28 @@ class testPithos(unittest.TestCase):
 
         r = self.client.container_put(quota=newquota)
         self.assertEqual(r.status_code, 202)
+        r.release()
         r = self.client.get_container_quota(self.client.container)
         xquota = int(r.values()[0])
         self.assertEqual(newquota, xquota)
 
         r = self.client.container_put(versioning='auto')
         self.assertEqual(r.status_code, 202)
+        r.release()
         r = self.client.get_container_versioning(self.client.container)
         nvers = r.values()[0]
         self.assertEqual('auto', nvers)
 
         r = self.client.container_put(versioning='none')
         self.assertEqual(r.status_code, 202)
+        r.release()
         r = self.client.get_container_versioning(self.client.container)
         nvers = r.values()[0]
         self.assertEqual('none', nvers)
 
         r = self.client.container_put(metadata={'m1':'v1', 'm2':'v2'})
         self.assertEqual(r.status_code, 202)
+        r.release()
         r = self.client.get_container_meta(self.client.container)
         self.assertTrue(r.has_key('x-container-meta-m1'))
         self.assertEqual(r['x-container-meta-m1'], 'v1')
@@ -511,6 +562,7 @@ class testPithos(unittest.TestCase):
 
         r = self.client.container_put(metadata={'m1':'', 'm2':'v2a'})
         self.assertEqual(r.status_code, 202)
+        r.release()
         r = self.client.get_container_meta(self.client.container)
         self.assertTrue(not r.has_key('x-container-meta-m1'))
         self.assertTrue(r.has_key('x-container-meta-m2'))
@@ -525,6 +577,7 @@ class testPithos(unittest.TestCase):
         """Simple post"""
         r = self.client.container_post()
         self.assertEqual(r.status_code, 202)
+        r.release()
 
         """post meta"""
         self.client.set_container_meta({'m1':'v1', 'm2':'v2'})
@@ -583,6 +636,7 @@ class testPithos(unittest.TestCase):
 
         """Check update=False"""
         r = self.client.object_post('test', update=False, metadata={'newmeta':'newval'})
+        r.release()
         r = self.client.get_object_info('test')
         self.assertTrue(r.has_key('x-object-meta-newmeta'))
         self.assertFalse(r.has_key('x-object-meta-incontainer'))
@@ -596,15 +650,18 @@ class testPithos(unittest.TestCase):
         self.client.container = self.c2
         r = self.client.container_delete(success=409)
         self.assertEqual(r.status_code, 409)
+        r.release()
 
         """Fail to delete c3 (empty) container"""
         self.client.container = self.c3
         r = self.client.container_delete(until='1000000000')
         self.assertEqual(r.status_code, 204)
+        r.release()
 
         """Delete c3 (empty) container"""
         r = self.client.container_delete()
         self.assertEqual(r.status_code, 204)
+        r.release()
 
     def test_object_head(self):
         """Test object_HEAD"""
@@ -614,24 +671,35 @@ class testPithos(unittest.TestCase):
         r = self.client.object_head(obj)
         self.assertEqual(r.status_code, 200)
         etag = r.headers['etag']
+        r.release()
 
         r = self.client.object_head(obj, version=40)
         self.assertEqual(r.headers['x-object-version'], '40')
+        r.release()
 
         r = self.client.object_head(obj, if_etag_match=etag)
         self.assertEqual(r.status_code, 200)
+        r.release()
         r = self.client.object_head(obj, if_etag_not_match=etag, success=(200, 412, 304))
         self.assertNotEqual(r.status_code, 200)
+        r.release()
 
         r = self.client.object_head(obj, version=40, if_etag_match=etag, success=412)
         self.assertEqual(r.status_code, 412)
+        r.release()
 
         """Check and if(un)modified_since"""
         for format in self.client.DATE_FORMATS:
             now_formated = self.now_unformated.strftime(format)
-            r1 = self.client.object_head(obj, if_modified_since=now_formated, success=(200, 304, 412))
-            r2 = self.client.object_head(obj, if_unmodified_since=now_formated, success=(200, 304, 412))
-            self.assertNotEqual(r1.status_code, r2.status_code)
+            r1 = self.client.object_head(obj, if_modified_since=now_formated,
+                success=(200, 304, 412))
+            sc1 = r1.status_code
+            r1.release()
+            r2 = self.client.object_head(obj, if_unmodified_since=now_formated,
+                success=(200, 304, 412))
+            sc2 = r2.status_code
+            r2.release()
+            self.assertNotEqual(sc1, sc2)
 
     def test_object_get(self):
         """Test object_GET"""
@@ -643,38 +711,50 @@ class testPithos(unittest.TestCase):
 
         osize = int(r.headers['content-length'])
         etag = r.headers['etag']
+        r.release()
 
         r = self.client.object_get(obj, hashmap=True)
         self.assertTrue(r.json.has_key('hashes') \
             and r.json.has_key('block_hash') \
             and r.json.has_key('block_size') \
             and r.json.has_key('bytes'))
+        r.release()
 
         r = self.client.object_get(obj, format='xml', hashmap=True)
         self.assertEqual(len(r.text.split('hash>')), 3)
+        r.release()
 
         rangestr = 'bytes=%s-%s'%(osize/3, osize/2)
         r = self.client.object_get(obj, data_range=rangestr, success=(200, 206))
         partsize = int(r.headers['content-length'])
         self.assertTrue(0 < partsize and partsize <= 1+osize/3)
+        r.release()
 
         rangestr = 'bytes=%s-%s'%(osize/3, osize/2)
         r = self.client.object_get(obj, data_range=rangestr, if_range=True, success=(200, 206))
         partsize = int(r.headers['content-length'])
         self.assertTrue(0 < partsize and partsize <= 1+osize/3)
+        r.release()
 
         r = self.client.object_get(obj, if_etag_match=etag)
         self.assertEqual(r.status_code, 200)
+        r.release()
 
         r = self.client.object_get(obj, if_etag_not_match=etag+'LALALA')
         self.assertEqual(r.status_code, 200)
+        r.release()
 
         """Check and if(un)modified_since"""
         for format in self.client.DATE_FORMATS:
             now_formated = self.now_unformated.strftime(format)
-            r1 = self.client.object_get(obj, if_modified_since=now_formated, success=(200, 304, 412))
+            r1 = self.client.object_get(obj, if_modified_since=now_formated,
+                success=(200, 304, 412))
+            sc1 = r1.status_code
+            r1.release()
             r2 = self.client.object_get(obj, if_unmodified_since=now_formated, success=(200, 304, 412))
-            self.assertNotEqual(r1.status_code, r2.status_code)
+            sc2 = r2.status_code
+            r2.release()
+            self.assertNotEqual(sc1, sc2)
 
     def test_object_put(self):
         """Test object_PUT"""
@@ -689,6 +769,7 @@ class testPithos(unittest.TestCase):
             content_disposition='attachment; filename="fname.ext"')
         self.assertEqual(r.status_code, 201)
         etag = r.headers['etag']
+        r.release()
 
         """Check content-disposition"""
         r = self.client.get_object_info(obj)
@@ -709,21 +790,25 @@ class testPithos(unittest.TestCase):
         """Check public and if_etag_match"""
         r = self.client.object_put(obj, if_etag_match=etag, data='b',
             content_type='application/octet-stream', public=True)
+        r.release()
         r = self.client.object_get(obj)
         self.assertTrue(r.headers.has_key('x-object-public'))
         vers2 = int(r.headers['x-object-version'])
         etag = r.headers['etag']
         self.assertEqual(r.text, 'b')
+        r.release()
 
         """Check if_etag_not_match"""
         r = self.client.object_put(obj, if_etag_not_match=etag, data='c',
             content_type='application/octet-stream', success=(201, 412))
         self.assertEqual(r.status_code, 412)
+        r.release()
 
         """Check content_type and content_length"""
         tmpdir = 'dir'+unicode(self.now)
         r = self.client.object_put(tmpdir, content_type='application/directory',
             content_length=0)
+        r.release()
         r = self.client.get_object_info(tmpdir)
         self.assertEqual(r['content-type'], 'application/directory')
 
@@ -734,6 +819,7 @@ class testPithos(unittest.TestCase):
             source_account=self.client.account,
             content_length=0, success=201)
         self.assertEqual(r.status_code, 201)
+        r.release()
 
         """Check cross-container copy_from, content_encoding"""
         self.client.container = self.c1
@@ -742,6 +828,7 @@ class testPithos(unittest.TestCase):
             content_encoding='application/octet-stream', 
             source_account=self.client.account,
             content_length=0, success=201)
+        r.release()
         self.assertEqual(r.status_code, 201)
         r = self.client.get_object_info(obj)
         self.assertEqual(r['etag'], etag)
@@ -754,6 +841,7 @@ class testPithos(unittest.TestCase):
             source_account='nonExistendAddress@NeverLand.com', 
             content_length=0, success=(201, 403))
         self.assertEqual(r.status_code, 403)
+        r.release()
 
         """Check cross-container move_from"""
         r = self.client.object_put(obj+'v0', format=None, 
@@ -761,6 +849,7 @@ class testPithos(unittest.TestCase):
             content_encoding='application/octet-stream', 
             content_length=0, success=201)
         self.assertEqual(r.status_code, 201)
+        r.release()
         r = self.client.get_object_info(obj+'v0')
         self.assertEqual(r['etag'], etag)
 
@@ -770,6 +859,7 @@ class testPithos(unittest.TestCase):
             source_version = vers2,
             content_encoding='application/octet-stream',
             content_length=0, success=201)
+        r.release()
 
         """Check manifest"""
         mobj = 'manifest.test'
@@ -777,12 +867,14 @@ class testPithos(unittest.TestCase):
         for i in range(10):
             txt += '%s'%i
             r = self.client.object_put('%s/%s'%(mobj, i), data='%s'%i,
-                content_encoding='application/octet-stream',
-                content_length=1, success=201)
-        self.client.object_put(mobj, content_length=0,
+                content_encoding='application/octet-stream', content_length=1, success=201)
+            r.release()
+        r = self.client.object_put(mobj, content_length=0, content_type='application/octet-stream',
             manifest='%s/%s'%(self.client.container, mobj))
+        r.release()
         r = self.client.object_get(mobj)
         self.assertEqual(r.text, txt)
+        r.release()
 
         """Some problems with transfer-encoding?"""
 
@@ -798,12 +890,14 @@ class testPithos(unittest.TestCase):
                 'read':['accX:groupA', 'u1', 'u2'],
                 'write':['u2', 'u3']},
             content_disposition='attachment; filename="fname.ext"')
+        r.release()
         r = self.client.object_copy(obj+'orig',
             destination = '/'+self.client.container+'/'+obj,
             ignore_content_type=False, content_type='application/json', 
             metadata={'mkey2':'mval2a', 'mkey3':'mval3'},
             permitions={'write':['u5', 'accX:groupB']})
         self.assertEqual(r.status_code, 201)
+        r.release()
 
         """Check content-disposition"""
         r = self.client.get_object_info(obj)
@@ -825,6 +919,7 @@ class testPithos(unittest.TestCase):
             content_type='application/json', destination_account='nonExistendAddress@NeverLand.com',
             success=(201, 403))
         self.assertEqual(r.status_code, 403)
+        r.release()
 
         """Check destination being another container
         and also content_type and content encoding"""
@@ -832,31 +927,37 @@ class testPithos(unittest.TestCase):
             content_encoding='utf8', content_type='application/json')
         self.assertEqual(r.status_code, 201)
         self.assertEqual(r.headers['content-type'], 'application/json; charset=UTF-8')
+        r.release()
 
         """Check ignore_content_type and content_type"""
         r = self.client.object_get(obj)
         etag = r.headers['etag']
         ctype = r.headers['content-type']
         self.assertEqual(ctype, 'application/json')
+        r.release()
         r = self.client.object_copy(obj+'orig',
             destination = '/'+self.client.container+'/'+obj+'0',
             ignore_content_type=True, content_type='application/json')
         self.assertEqual(r.status_code, 201)
         self.assertNotEqual(r.headers['content-type'], 'application/json')
+        r.release()
 
         """Check if_etag_(not_)match"""
         r = self.client.object_copy(obj,
             destination='/'+self.client.container+'/'+obj+'1', if_etag_match=etag)
         self.assertEqual(r.status_code, 201)
+        r.release()
         r = self.client.object_copy(obj,
             destination='/'+self.client.container+'/'+obj+'2', if_etag_not_match='lalala')
         self.assertEqual(r.status_code, 201)
         vers2 = r.headers['x-object-version']
+        r.release()
 
         """Check source_version, public and format """
         r = self.client.object_copy(obj+'2', destination='/'+self.client.container+'/'+obj+'3', source_version=vers2, format='xml', public=True)
         self.assertEqual(r.status_code, 201)
         self.assertTrue(r.headers['content-type'].index('xml') > 0)
+        r.release()
         r = self.client.get_object_info(obj+'3')
         self.assertTrue(r.has_key('x-object-public'))
 
@@ -869,11 +970,13 @@ class testPithos(unittest.TestCase):
         r = self.client.object_put(obj+'orig', content_type='application/octet-stream',
             data= data, metadata={'mkey1':'mval1', 'mkey2':'mval2'},
             permitions={'read':['accX:groupA', 'u1', 'u2'], 'write':['u2', 'u3']})
+        r.release()
         r = self.client.object_move(obj+'orig', destination = '/'+self.client.container+'/'+obj,
             ignore_content_type=False, content_type='application/json', 
             metadata={'mkey2':'mval2a', 'mkey3':'mval3'},
             permitions={'write':['u5', 'accX:groupB']})
         self.assertEqual(r.status_code, 201)
+        r.release()
 
         """Check Metadata"""
         r = self.client.get_object_meta(obj)
@@ -892,6 +995,7 @@ class testPithos(unittest.TestCase):
             content_type='application/json', destination_account='nonExistendAddress@NeverLand.com',
             success=(201, 403))
         self.assertEqual(r.status_code, 403)
+        r.release()
 
         """Check destination being another container and also
         content_type, content_disposition and content encoding"""
@@ -900,7 +1004,7 @@ class testPithos(unittest.TestCase):
             content_disposition='attachment; filename="fname.ext"')
         self.assertEqual(r.status_code, 201)
         self.assertEqual(r.headers['content-type'], 'application/json; charset=UTF-8')
-        r = self.client.container=self.c1
+        self.client.container=self.c1
         r = self.client.get_object_info(obj)
         self.assertTrue(r.has_key('content-disposition') and 'fname.ext' in r['content-disposition'])
         etag = r['etag']
@@ -912,21 +1016,25 @@ class testPithos(unittest.TestCase):
             ignore_content_type=True, content_type='application/json')
         self.assertEqual(r.status_code, 201)
         self.assertNotEqual(r.headers['content-type'], 'application/json')
+        r.release()
 
         """Check if_etag_(not_)match"""
-        r = self.client.container=self.c2
+        self.client.container=self.c2
         r = self.client.object_move(obj, destination='/'+self.client.container+'/'+obj+'0',
             if_etag_match=etag)
         self.assertEqual(r.status_code, 201)
+        r.release()
         r = self.client.object_move(obj+'0', destination='/'+self.client.container+'/'+obj+'1',
             if_etag_not_match='lalala')
         self.assertEqual(r.status_code, 201)
+        r.release()
 
         """Check public and format """
         r = self.client.object_move(obj+'1', destination='/'+self.client.container+'/'+obj+'2',
             format='xml', public=True)
         self.assertEqual(r.status_code, 201)
         self.assertTrue(r.headers['content-type'].index('xml') > 0)
+        r.release()
         r = self.client.get_object_info(obj+'2')
         self.assertTrue(r.has_key('x-object-public'))
 
@@ -943,12 +1051,14 @@ class testPithos(unittest.TestCase):
         r = self.client.object_put(obj, content_type='application/octet-stream',
             data= 'H', metadata={'mkey1':'mval1', 'mkey2':'mval2'},
             permitions={'read':['accX:groupA', 'u1', 'u2'], 'write':['u2', 'u3']})
+        r.release()
 
         """Append tests update, content_range, content_type, content_length"""
         newf = open(obj, 'r')
         self.client.append_object(obj, newf)
         r = self.client.object_get(obj)
         self.assertTrue(r.text.startswith('Hello!'))
+        r.release()
 
         """Overwrite tests update, content_type, content_length, content_range"""
         newf.seek(0)
@@ -956,12 +1066,14 @@ class testPithos(unittest.TestCase):
         r = self.client.object_get(obj)
         self.assertTrue(r.text.startswith('ello!'))
         newf.close()
+        r.release()
         
         """Truncate tests update, content_range, content_type,
         object_bytes and source_object"""
         r = self.client.truncate_object(obj, 5)
         r = self.client.object_get(obj)
         self.assertEqual(r.text, 'ello!')
+        r.release()
 
         """Check metadata"""
         self.client.set_object_meta(obj, {'mkey2':'mval2a', 'mkey3':'mval3'})
@@ -998,8 +1110,10 @@ class testPithos(unittest.TestCase):
         r = self.client.object_post(obj, update=True, public=True,
             if_etag_not_match=etag, success=(412,202,204))
         self.assertEqual(r.status_code, 412)
-        self.client.object_post(obj, update=True, public=True,
+        r.release()
+        r = self.client.object_post(obj, update=True, public=True,
             if_etag_match=etag, content_encoding='application/json')
+        r.release()
         r = self.client.get_object_info(obj)
         helloVersion = r['x-object-version']
         self.assertTrue(r.has_key('x-object-public'))
@@ -1011,14 +1125,17 @@ class testPithos(unittest.TestCase):
             source_account='thisAccountWillNeverExist@adminland.com',
             source_version=helloVersion, data='12345', success=(403, 202, 204))
         self.assertEqual(r.status_code, 403)
+        r.release()
         r = self.client.object_post(obj, update=True, content_type='application/octet-srteam',
             content_length=5, content_range='bytes 1-5/*', source_object='/%s/%s'%(self.c2,obj),
             source_account=self.client.account, source_version=helloVersion, data='12345',
             content_disposition='attachment; filename="fname.ext"')
+        r.release()
         r = self.client.object_get(obj)
         self.assertEqual(r.text, 'eello!')
         self.assertTrue(r.headers.has_key('content-disposition')
             and 'fname.ext' in r.headers['content-disposition'])
+        r.release()
 
         """Check manifest"""
         mobj = 'manifest.test'
@@ -1028,10 +1145,14 @@ class testPithos(unittest.TestCase):
             r = self.client.object_put('%s/%s'%(mobj, i), data='%s'%i,
                 content_encoding='application/octet-stream',
                 content_length=1, success=201)
-        self.client.object_put(mobj, content_length=0)
+            r.release()
+        r = self.client.object_put(mobj, content_length=0, content_type='application/octet-stream')
+        r.release()
         r = self.client.object_post(mobj, manifest='%s/%s'%(self.client.container, mobj))
+        r.release()
         r = self.client.object_get(mobj)
         self.assertEqual(r.text, txt)
+        r.release()
 
         """We need to check transfer_encoding """
 
@@ -1043,17 +1164,22 @@ class testPithos(unittest.TestCase):
         r = self.client.object_put(obj, content_type='application/octet-stream',
             data= 'H', metadata={'mkey1':'mval1', 'mkey2':'mval2'},
             permitions={'read':['accX:groupA', 'u1', 'u2'], 'write':['u2', 'u3']})
+        r.release()
 
         """Check with false until"""
         r = self.client.object_delete(obj, until=1000000)
+        r.release()
         r = self.client.object_get(obj, success=(200, 404))
         self.assertEqual(r.status_code, 200)
+        r.release()
 
         """Check normal case"""
         r = self.client.object_delete(obj)
         self.assertEqual(r.status_code, 204)
+        r.release()
         r = self.client.object_get(obj, success=(200, 404))
         self.assertEqual(r.status_code, 404)
+        r.release()
 
     def create_large_file(self, size, name):
         """Create a large file at fs"""

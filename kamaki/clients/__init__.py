@@ -34,8 +34,8 @@
 import json
 import logging
 from .connection import HTTPConnectionError
-from .connection.request import HTTPRequest
-#from .connection.kamakicon import KamakiHTTPConnection
+#from .connection.request import HTTPRequest
+from .connection.kamakicon import KamakiHTTPConnection
 
 sendlog = logging.getLogger('clients.send')
 recvlog = logging.getLogger('clients.recv')
@@ -50,7 +50,7 @@ class ClientError(Exception):
 
 class Client(object):
 
-    def __init__(self, base_url, token, http_client=HTTPRequest()):
+    def __init__(self, base_url, token, http_client=KamakiHTTPConnection()):
         self.base_url = base_url
         self.token = token
         self.headers = {}
@@ -98,11 +98,11 @@ class Client(object):
 
             #kwargs.setdefault('verify', False)  # Disable certificate verification
             self.http_client.url = self.base_url + path
-            r = self.http_client.perform_request(method=method, data=data, binary=binary)
+            r = self.http_client.perform_request(method=method, data=data)
             #r = requests.request(method, url, headers=self.headers, data=data, **kwargs)
 
             req = self.http_client
-            sendlog.info('%s %s', req.method, req.url)
+            sendlog.info('%s %s', method, req.url)
             for key, val in req.headers.items():
                 sendlog.info('%s: %s', key, val)
             sendlog.info('')

@@ -32,7 +32,7 @@
 # or implied, of GRNET S.A.
 
 import requests
-from . import HTTPConnection, HTTPResponse, HTTPConnectionError, HTTPResponsePool
+from . import HTTPConnection, HTTPResponse, HTTPConnectionError
 from .pool import ObjectPool
 from urlparse import urlparse
 
@@ -43,7 +43,10 @@ requests.Response.status = property(_status)
 
 class HTTPRequestsResponse(HTTPResponse):
 
-	_get_content_only=False
+    def __init__(self, request=None, prefetched=False):
+    	super(HTTPRequestsResponse, self).__init__(request=request, prefetched=prefetched)
+        if prefetched:
+            self = request.response
 
 	def _get_response(self):
 		if self.prefetched:
@@ -54,8 +57,12 @@ class HTTPRequestsResponse(HTTPResponse):
 			self.status = r.status
 			self.status_code = r.status_code
 			self.content = r.content if hasattr(r, 'content') else None
-			self.text = None if self._get_content_only else r.text
-			self.json = None if self._get_content_only else r.json
+			from json import loads
+			try:
+				self.json = loads(r.content)#None if self._get_content_only else r.json
+			except ValueError:
+				self.json = None
+			self.text = r.content#None if self._get_content_only else r.text
 			self.exception = r.exception if hasattr(r, 'exception') else None
 		except requests.ConnectionError as err:
 			raise HTTPConnectionError('Connection error', status=651, details=err.message)
@@ -74,7 +81,15 @@ class HTTPRequestsResponse(HTTPResponse):
 		if hasattr(self, '_pool'):
 			self._pool.pool_put(self)
 
-class HTTPRequestsResponsePool(HTTPResponsePool):
+POOL_SIZE=8
+class HTTPRequestsResponsePool(ObjectPool):
+    def __init__(self, netloc, size=POOL_SIZE):
+        super(ObjectPool, self).__init__(size=size)
+        self.netloc = netloc
+
+    def _pool_cleanup(self, resp):
+        resp._get_response()
+        return True
 
 	@classmethod
 	def key(self, full_url):
@@ -102,8 +117,7 @@ class HTTPRequest(HTTPConnection):
 			respool = self._pools[pool_key]
 		return respool.pool_get()
 
-	def perform_request(self, method=None, url=None, params=None, headers=None, data=None,
-		binary=False):
+	def perform_request(self, method=None, url=None, params=None, headers=None, data=None):
 		"""perform a request
 		Example: method='PUT' url='https://my.server:8080/path/to/service'
 			params={'update':None, 'format':'json'} headers={'X-Auth-Token':'s0m3t0k3n=='}
@@ -130,6 +144,4 @@ class HTTPRequest(HTTPConnection):
 		self._response_object = requests.request(self.method, self.url, headers=self.headers, data=data,
 			verify=self.verify, prefetch = False)
 		res.request = self._response_object.request
-		if binary:
-			res._get_content_only = True
 		return res

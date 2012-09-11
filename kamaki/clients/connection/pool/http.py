@@ -115,7 +115,13 @@ def get_http_connection(netloc=None, scheme='http'):
 
 def main():
     #cpool = HTTPConnectionPool('https', 'pithos.okeanos.io/v1', size=8)
+    headers={'X-Auth-Token':'0TpoyAXqJSPxLdDuZHiLOA=='}
     c = get_http_connection('pithos.okeanos.io', 'https')
+    c.request(method='get', url='https://pithos.okeanos.io/v1/saxtouri@admin.grnet.gr?format=json',
+        headers=headers)
+    r = c.getresponse()
+    print('HEADERS:'+unicode(r.getheaders()))
+    print('BODY:'+unicode(r.read()))
 
 
 if __name__ == '__main__':
