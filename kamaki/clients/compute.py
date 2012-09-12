@@ -41,7 +41,7 @@ class ComputeClient(Client):
     """OpenStack Compute API 1.1 client"""
 
     def __init__(self, base_url, token):
-        super(ComputeClient, self).__init__(base_url, token, http_client=HTTPRequest())
+        super(ComputeClient, self).__init__(base_url, token)
     
     def raise_for_status(self, r):
         try:

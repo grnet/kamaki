@@ -38,7 +38,7 @@ class ImageClient(Client):
     """OpenStack Image Service API 1.0 and GRNET Plankton client"""
 
     def __init__(self, base_url, token):
-        super(ImageClient, self).__init__(base_url, token, http_client=HTTPRequest())
+        super(ImageClient, self).__init__(base_url, token)
 
     def raise_for_status(self, r):
         if r.status_code == 404:

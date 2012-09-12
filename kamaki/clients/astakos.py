@@ -38,7 +38,7 @@ class AstakosClient(Client):
     """GRNet Astakos API client"""
 
     def __init__(self, base_url, token):
-        super(AstakosClient, self).__init__(base_url, token, http_client=HTTPRequest())
+        super(AstakosClient, self).__init__(base_url, token)
 
     def raise_for_status(self, r):
         msg = r.text.strip()
