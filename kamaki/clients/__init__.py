@@ -51,6 +51,7 @@ class ClientError(Exception):
 class Client(object):
 
     def __init__(self, base_url, token, http_client=KamakiHTTPConnection()):
+    #def __init__(self, base_url, token, http_client=HTTPRequest()):
         self.base_url = base_url
         self.token = token
         self.headers = {}
@@ -81,14 +82,11 @@ class Client(object):
 
     def request(self, method, path, **kwargs):
         try:
-            #r = self._request(method, path, **kwargs)
             success = kwargs.pop('success', 200)
 
             binary = kwargs.pop('binary', False)
             data = kwargs.pop('data', None)
             self.set_default_header('X-Auth-Token', self.token)
-            #self.set_default_header('Accept', '*/*')
-            #self.set_default_header('Accept-Encoding', 'identity, deflate, compress, gzip')
 
             if 'json' in kwargs:
                 data = json.dumps(kwargs.pop('json'))
@@ -96,10 +94,8 @@ class Client(object):
             if data:
                 self.set_default_header('Content-Length', unicode(len(data)))
 
-            #kwargs.setdefault('verify', False)  # Disable certificate verification
             self.http_client.url = self.base_url + path
             r = self.http_client.perform_request(method=method, data=data)
-            #r = requests.request(method, url, headers=self.headers, data=data, **kwargs)
 
             req = self.http_client
             sendlog.info('%s %s', method, req.url)
@@ -109,8 +105,6 @@ class Client(object):
             if data:
                 sendlog.info('%s', data)
 
-            #r = self.http_client.response
-            #print('What is the case with r? %s'%unicode(r.content))
             recvlog.info('%d %s', r.status_code, r.status)
             for key, val in r.headers.items():
                 recvlog.info('%s: %s', key, val)

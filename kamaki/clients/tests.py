@@ -866,8 +866,8 @@ class testPithos(unittest.TestCase):
         txt = ''
         for i in range(10):
             txt += '%s'%i
-            r = self.client.object_put('%s/%s'%(mobj, i), data='%s'%i,
-                content_encoding='application/octet-stream', content_length=1, success=201)
+            r = self.client.object_put('%s/%s'%(mobj, i), data='%s'%i, content_length=1, success=201,
+                content_type='application/octet-stream', content_encoding='application/octet-stream')
             r.release()
         r = self.client.object_put(mobj, content_length=0, content_type='application/octet-stream',
             manifest='%s/%s'%(self.client.container, mobj))
@@ -1142,9 +1142,8 @@ class testPithos(unittest.TestCase):
         txt = ''
         for i in range(10):
             txt += '%s'%i
-            r = self.client.object_put('%s/%s'%(mobj, i), data='%s'%i,
-                content_encoding='application/octet-stream',
-                content_length=1, success=201)
+            r = self.client.object_put('%s/%s'%(mobj, i), data='%s'%i, content_length=1, success=201,
+                content_encoding='application/octet-stream', content_type='application/octet-stream')
             r.release()
         r = self.client.object_put(mobj, content_length=0, content_type='application/octet-stream')
         r.release()

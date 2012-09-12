@@ -38,15 +38,15 @@ from urlparse import urlparse
 
 # Add a convenience status property to the responses
 def _status(self):
-    return requests.status_codes._codes[self.status_code][0].upper()
+	return requests.status_codes._codes[self.status_code][0].upper()
 requests.Response.status = property(_status)
 
 class HTTPRequestsResponse(HTTPResponse):
 
-    def __init__(self, request=None, prefetched=False):
-    	super(HTTPRequestsResponse, self).__init__(request=request, prefetched=prefetched)
-        if prefetched:
-            self = request.response
+	def __init__(self, request=None, prefetched=False):
+		super(HTTPRequestsResponse, self).__init__(request=request, prefetched=prefetched)
+		if prefetched:
+			self = request.response
 
 	def _get_response(self):
 		if self.prefetched:
@@ -83,13 +83,13 @@ class HTTPRequestsResponse(HTTPResponse):
 
 POOL_SIZE=8
 class HTTPRequestsResponsePool(ObjectPool):
-    def __init__(self, netloc, size=POOL_SIZE):
-        super(ObjectPool, self).__init__(size=size)
-        self.netloc = netloc
+	def __init__(self, netloc, size=POOL_SIZE):
+		super(HTTPRequestsResponsePool, self).__init__(size=size)
+		self.netloc = netloc
 
-    def _pool_cleanup(self, resp):
-        resp._get_response()
-        return True
+	def _pool_cleanup(self, resp):
+		resp._get_response()
+		return True
 
 	@classmethod
 	def key(self, full_url):

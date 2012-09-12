@@ -804,11 +804,13 @@ class PithosClient(StorageClient):
         #download and save/print
         flying = []
         for i, h in enumerate(map):
-            #if not islocalfile and h in hash_dict:
             if h in hash_dict:
                 continue
             if download_cb is not None:
-                download_gen.next()
+                try:
+                    download_gen.next()
+                except StopIteration:
+                    pass
             start = i*blocksize
             if range is not None:
                 if start < custom_start:
