@@ -567,8 +567,8 @@ class store_download(_store_container_command):
         super(self.__class__, self).update_parser(parser)
         parser.add_argument('--no-progress-bar', action='store_true', dest='no_progress_bar',
             default=False, help='Dont display progress bars')
-        parser.add_argument('--overide', action='store_true', dest='overide', default=False,
-            help='Force download to overide an existing file')
+        parser.add_argument('--resume', action='store_true', dest='resume', default=False,
+            help='Enable download resume (slower)')
         parser.add_argument('--range', action='store', dest='range', default=None,
             help='show range of data')
         parser.add_argument('--if-match', action='store', dest='if_match', default=None,
@@ -591,10 +591,10 @@ class store_download(_store_container_command):
             out = stdout
         else:
             try:
-                if getattr(self.args, 'overide'):
-                    out = open(local_path, 'wb+')
-                else:
+                if getattr(self.args, 'resume'):
                     out = open(local_path, 'ab+')
+                else:
+                    out = open(local_path, 'wb+')
             except IOError as err:
                 raise CLIError(message='Cannot write to file %s - %s'%(local_path,unicode(err)),
                     importance=1)
@@ -605,7 +605,7 @@ class store_download(_store_container_command):
         try:
             self.client.download_object(self.path, out, download_cb,
                 range=getattr(self.args, 'range'), version=getattr(self.args,'object_version'),
-                if_match=getattr(self.args, 'if_match'), overide=getattr(self.args, 'overide'),
+                if_match=getattr(self.args, 'if_match'), resume=getattr(self.args, 'resume'),
                 if_none_match=getattr(self.args, 'if_none_match'),
                 if_modified_since=getattr(self.args, 'if_modified_since'),
                 if_unmodified_since=getattr(self.args, 'if_unmodified_since'))
