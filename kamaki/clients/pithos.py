@@ -235,21 +235,6 @@ class PithosClient(PithosRestAPI):
             dst.write(r.content)
             dst.flush()
 
-    def _filter_out_downloaded_hashses(self, remote_hashes, local_file, blocksize, blockhash):
-        #load file hashmap
-        file_hashmap = HashMap(blocksize, blockhash)
-        file_hashmap.load(local_file, hasattr(self, 'progress_bar_gen'))
-
-        for i, x in enumerate(file_hashmap):
-            local_hash = hexlify(x)
-            if local_hash in remote_hashes:
-                blockid = remote_hashes.pop(local_hash)
-                self._cb_next()
-        del file_hashmap
-            #else:
-            #    continue
-            #    raise ClientError(message='Local file is substantialy different', status=600)
-
     def _get_block_async(self, obj, **restargs):
         class SilentGreenlet(gevent.Greenlet):
             def _report_error(self, exc_info):
@@ -281,13 +266,24 @@ class PithosClient(PithosRestAPI):
         local_file.flush()
         return finished
 
-    def _dump_blocks_async(self, obj, remote_hashes, blocksize, total_size, local_file, **restargs):
+    def _dump_blocks_async(self, obj, remote_hashes, blocksize, total_size, local_file,
+        blockhash=None, resume=False, **restargs):
+
+        file_size = fstat(local_file.fileno()).st_size if resume else 0
+        if resume:
+            file_hashtool = HashMap(blocksize, blockhash)
+
         flying_greenlets = {}
         finished_greenlets = []
         for block_hash, blockid in remote_hashes.items():
+            start = blocksize*blockid
+            if start < file_size:
+                existing_hash = hexlify(file_hashtool.get_hash(local_file, start, blocksize))
+                if existing_hash == block_hash:
+                    self._cb_next()
+                    continue
             if len(flying_greenlets) >= self.POOL_SIZE:
                 finished_greenlets += self._greenlet2file(flying_greenlets, local_file, **restargs)
-            start = blocksize*blockid
             end = total_size-1 if start+blocksize > total_size else start+blocksize-1
             restargs['async_headers'] = dict(range='bytes=%s-%s'%(start, end))
             flying_greenlets[start] = self._get_block_async(obj, **restargs)
@@ -326,9 +322,8 @@ class PithosClient(PithosRestAPI):
         if dst.isatty():
             self._dump_blocks_sync(obj, hash_list, blocksize, total_size, dst, **restargs)
         else:
-            if resume:
-                self._filter_out_downloaded_hashses(remote_hashes, dst, blocksize, blockhash)
-            self._dump_blocks_async(obj, remote_hashes, blocksize, total_size, dst, **restargs)
+            self._dump_blocks_async(obj, remote_hashes, blocksize, total_size, dst, blockhash,
+                resume, **restargs)
             dst.truncate(total_size)
 
         self._complete_cb()
