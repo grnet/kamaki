@@ -517,6 +517,8 @@ class store_upload(_store_container_command):
             help='define sharing object policy ( "read=user1,grp1,user2,... write=user1,grp2,...')
         parser.add_argument('--public', action='store_true', dest='public', default=False,
             help='make object publicly accessible')
+        parser.add_argument('--with-pool-size', action='store', dest='poolsize', default=None,
+            help='Set the greenlet pool size (advanced)')
 
     def getsharing(self, orelse={}):
         permstr = getattr(self.args, 'sharing')
@@ -538,6 +540,9 @@ class store_upload(_store_container_command):
     def main(self, local_path, container____path__):
         super(self.__class__, self).main(container____path__)
         remote_path = local_path if self.path is None else self.path
+        poolsize = getattr(self.args, 'poolsize')
+        if poolsize is not None:
+            self.POOL_SIZE = int(poolsize)
         try:
             with open(local_path) as f:
                 if getattr(self.args, 'unchunked'):
@@ -581,6 +586,8 @@ class store_download(_store_container_command):
             default=None, help='show output if not modified since then')
         parser.add_argument('--object-version', action='store', dest='object_version', default=None,
             help='get the specific version')
+        parser.add_argument('--with-pool-size', action='store', dest='poolsize', default=None,
+            help='Set the greenlet pool size (advanced)')
 
     def main(self, container___path, local_path=None):
         super(self.__class__, self).main(container___path, path_is_optional=False)
@@ -599,8 +606,10 @@ class store_download(_store_container_command):
                 raise CLIError(message='Cannot write to file %s - %s'%(local_path,unicode(err)),
                     importance=1)
         download_cb = None if getattr(self.args, 'no_progress_bar') \
-            else self.progress('Downloading')
-
+        else self.progress('Downloading')
+        poolsize = getattr(self.args, 'poolsize')
+        if poolsize is not None:
+            self.POOL_SIZE = int(poolsize)
 
         try:
             self.client.download_object(self.path, out, download_cb,
@@ -614,7 +623,7 @@ class store_download(_store_container_command):
         except KeyboardInterrupt:
             print('\ndownload canceled by user')
             if local_path is not None:
-                print('re-run command to resume')
+                print('to resume, re-run with --resume')
         print
 
 @command()

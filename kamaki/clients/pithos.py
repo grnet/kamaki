@@ -98,7 +98,7 @@ class PithosClient(PithosRestAPI):
                 finally:
                     if hasattr(sys, '_stderr'):
                         sys.stderr = _stderr
-        POOL_SIZE = 5
+        POOL_SIZE = self.POOL_SIZE if hasattr(self, 'POOL_SIZE') else 5
         if self.async_pool is None:
             self.async_pool = gevent.pool.Pool(size=POOL_SIZE)
         g = SilentGreenlet(self.put_block, data, hash)
@@ -245,6 +245,7 @@ class PithosClient(PithosRestAPI):
             if local_hash in remote_hashes:
                 blockid = remote_hashes.pop(local_hash)
                 self._cb_next()
+        del file_hashmap
             #else:
             #    continue
             #    raise ClientError(message='Local file is substantialy different', status=600)
