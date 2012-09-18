@@ -109,11 +109,11 @@ class KamakiHTTPConnection(HTTPConnection):
 
     def perform_request(self, method=None, data=None, async_headers={}, async_params={}):
         (scheme, netloc) = self._retrieve_connection_info(extra_params=async_params)
-        #get connection from pool
-        conn = get_http_connection(netloc=netloc, scheme=scheme)
         headers = dict(self.headers)
         for k,v in async_headers.items():
             headers[k] = v
+        #get connection from pool
+        conn = get_http_connection(netloc=netloc, scheme=scheme)
         try:
             conn.request(method = method.upper(), url=self.url, headers=headers, body=data)
         except:

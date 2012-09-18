@@ -90,6 +90,9 @@ class Client(object):
         E.g. in most queries the 'X-Auth-Token' header might be the same for all, but the
         'Range' header might be different from request to request.
         """
+        #from random import random
+        #localkey = int(1000*random())
+
         try:
             success = kwargs.pop('success', 200)
 
@@ -107,8 +110,11 @@ class Client(object):
 
             req = self.http_client
             sendlog.info('%s %s', method, req.url)
-            for key, val in req.headers.items():
-                sendlog.info('%s: %s', key, val)
+            headers = dict(req.headers)
+            headers.update(async_headers)
+
+            for key, val in headers.items():
+                sendlog.info('\t%s: %s', key, val)
             sendlog.info('')
             if data:
                 sendlog.info('%s', data)

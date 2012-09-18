@@ -49,6 +49,7 @@ from .pithos_sh_lib.hashmap import HashMap
 from .pithos_rest_api import PithosRestAPI
 from .storage import ClientError
 from .utils import path4url, filter_in
+from StringIO import StringIO
 
 def pithos_hash(block, blockhash):
     h = newhashlib(blockhash)
@@ -82,7 +83,6 @@ class PithosClient(PithosRestAPI):
                 raise ClientError(message='"%s" is not json-formated'%f.name, status=1)
             except SyntaxError:
                 raise ClientError(message='"%s" is not a valid hashmap file'%f.name, status=1)
-            from StringIO import StringIO
             f = StringIO(data)
         data = f.read(size) if size is not None else f.read()
         self.object_put(obj, data=data, etag=etag, content_encoding=content_encoding,
@@ -92,13 +92,12 @@ class PithosClient(PithosRestAPI):
     def put_block_async(self, data, hash):
         class SilentGreenlet(gevent.Greenlet):
             def _report_error(self, exc_info):
-                _stderr = None
                 try:
-                    _stderr = sys._stderr
                     sys.stderr = StringIO()
                     gevent.Greenlet._report_error(self, exc_info)
                 finally:
-                    sys.stderr = _stderr
+                    if hasattr(sys, '_stderr'):
+                        sys.stderr = _stderr
         POOL_SIZE = 5
         if self.async_pool is None:
             self.async_pool = gevent.pool.Pool(size=POOL_SIZE)
@@ -254,12 +253,12 @@ class PithosClient(PithosRestAPI):
     def _get_block_async(self, obj, **restargs):
         class SilentGreenlet(gevent.Greenlet):
             def _report_error(self, exc_info):
-                _stderr = sys._stderr
                 try:
                     sys.stderr = StringIO()
                     gevent.Greenlet._report_error(self, exc_info)
                 finally:
-                    sys.stderr = _stderr
+                    if hasattr(sys, '_stderr'):
+                        sys.stderr = sys._stderr
         if not hasattr(self, 'POOL_SIZE'):
             self.POOL_SIZE = 5
         if self.async_pool is None:
@@ -268,18 +267,13 @@ class PithosClient(PithosRestAPI):
         self.async_pool.start(g)
         return g
 
-    def _greenlet2file(self, flying_greenlets, local_file, broken={}, **restargs):
+    def _greenlet2file(self, flying_greenlets, local_file, **restargs):
         finished = []
         for start, g in flying_greenlets.items():
             if g.ready():
                 if g.exception:
                     raise g.exception
-                try:
-                    block = g.value.content
-                except AttributeError:
-                    broken[start] = flying_greenlets.pop(start)
-                    #g.spawn()
-                    continue
+                block = g.value.content
                 local_file.seek(start)
                 local_file.write(block)
                 self._cb_next()
@@ -290,11 +284,9 @@ class PithosClient(PithosRestAPI):
     def _dump_blocks_async(self, obj, remote_hashes, blocksize, total_size, local_file, **restargs):
         flying_greenlets = {}
         finished_greenlets = []
-        broken = {}
         for block_hash, blockid in remote_hashes.items():
             if len(flying_greenlets) >= self.POOL_SIZE:
-                finished_greenlets += self._greenlet2file(flying_greenlets, local_file, broken,
-                    **restargs)
+                finished_greenlets += self._greenlet2file(flying_greenlets, local_file, **restargs)
             start = blocksize*blockid
             end = total_size-1 if start+blocksize > total_size else start+blocksize-1
             restargs['async_headers'] = dict(range='bytes=%s-%s'%(start, end))
@@ -302,9 +294,8 @@ class PithosClient(PithosRestAPI):
 
         #check the greenlets
         while len(flying_greenlets) > 0:
-            sleep(0.1)
-            finished_greenlets += self._greenlet2file(flying_greenlets, local_file, broken,
-                **restargs)
+            sleep(0.001)
+            finished_greenlets += self._greenlet2file(flying_greenlets, local_file, **restargs)
 
         gevent.joinall(finished_greenlets)
 
