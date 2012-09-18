@@ -568,7 +568,7 @@ class store_download(_store_container_command):
         parser.add_argument('--no-progress-bar', action='store_true', dest='no_progress_bar',
             default=False, help='Dont display progress bars')
         parser.add_argument('--resume', action='store_true', dest='resume', default=False,
-            help='Enable download resume (slower)')
+            help='Resume a previous download instead of overwritting it')
         parser.add_argument('--range', action='store', dest='range', default=None,
             help='show range of data')
         parser.add_argument('--if-match', action='store', dest='if_match', default=None,
@@ -591,10 +591,10 @@ class store_download(_store_container_command):
             out = stdout
         else:
             try:
-                if getattr(self.args, 'resume'):
-                    out = open(local_path, 'ab+')
+                if hasattr(self.args, 'resume') and getattr(self.args, 'resume'):
+                    out=open(local_path, 'rwb+')
                 else:
-                    out = open(local_path, 'wb+')
+                    out=open(local_path, 'wb+')
             except IOError as err:
                 raise CLIError(message='Cannot write to file %s - %s'%(local_path,unicode(err)),
                     importance=1)

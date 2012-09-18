@@ -235,8 +235,7 @@ class PithosClient(PithosRestAPI):
             dst.write(r.content)
             dst.flush()
 
-    def _filter_out_downloaded_hashses(self, remote_hashes, hash_list, local_file, blocksize,
-        blockhash):
+    def _filter_out_downloaded_hashses(self, remote_hashes, local_file, blocksize, blockhash):
         #load file hashmap
         file_hashmap = HashMap(blocksize, blockhash)
         file_hashmap.load(local_file, hasattr(self, 'progress_bar_gen'))
@@ -245,10 +244,10 @@ class PithosClient(PithosRestAPI):
             local_hash = hexlify(x)
             if local_hash in remote_hashes:
                 blockid = remote_hashes.pop(local_hash)
-                hash_list[blockid] = None
                 self._cb_next()
-            else:
-                raise ClientError(message='Local file is substantialy different', status=600)
+            #else:
+            #    continue
+            #    raise ClientError(message='Local file is substantialy different', status=600)
 
     def _get_block_async(self, obj, **restargs):
         class SilentGreenlet(gevent.Greenlet):
@@ -304,7 +303,6 @@ class PithosClient(PithosRestAPI):
         range=None, if_match=None, if_none_match=None, if_modified_since=None,
         if_unmodified_since=None):
 
-        #init REST api args
         restargs=dict(version=version,
             data_range = None if range is None else 'bytes=%s'%range,
             if_match=if_match,
@@ -312,7 +310,6 @@ class PithosClient(PithosRestAPI):
             if_modified_since=if_modified_since,
             if_unmodified_since=if_unmodified_since)
 
-        #1. get remote object hash info
         (   blocksize,
             blockhash,
             total_size,
@@ -322,15 +319,14 @@ class PithosClient(PithosRestAPI):
         self.POOL_SIZE = 5
 
         if download_cb:
-            self.progress_bar_gen = download_cb(len(remote_hashes)+1)
+            self.progress_bar_gen = download_cb(len(remote_hashes))
             self._cb_next()
 
         if dst.isatty():
             self._dump_blocks_sync(obj, hash_list, blocksize, total_size, dst, **restargs)
-        elif resume:
-            self._filter_out_downloaded_hashses(remote_hashes, hash_list, dst, blocksize, blockhash)
-            self._dump_blocks_sync(obj, hash_list, blocksize, total_size, dst, **restargs)
         else:
+            if resume:
+                self._filter_out_downloaded_hashses(remote_hashes, dst, blocksize, blockhash)
             self._dump_blocks_async(obj, remote_hashes, blocksize, total_size, dst, **restargs)
             dst.truncate(total_size)
 
