@@ -44,7 +44,6 @@ from datetime import datetime
 import sys
 
 from binascii import hexlify
-from .pithos_sh_lib.hashmap import HashMap
 
 from .pithos_rest_api import PithosRestAPI
 from .storage import ClientError
@@ -252,6 +251,13 @@ class PithosClient(PithosRestAPI):
         self.async_pool.start(g)
         return g
 
+    def _hash_from_file(self, fp, start, size, blockhash):
+        fp.seek(start)
+        block = fp.read(size)
+        h = newhashlib(blockhash)
+        h.update(block.strip('\x00'))
+        return hexlify(h.digest())
+
     def _greenlet2file(self, flying_greenlets, local_file, **restargs):
         finished = []
         for start, g in flying_greenlets.items():
@@ -270,16 +276,12 @@ class PithosClient(PithosRestAPI):
         blockhash=None, resume=False, **restargs):
 
         file_size = fstat(local_file.fileno()).st_size if resume else 0
-        if resume:
-            file_hashtool = HashMap(blocksize, blockhash)
-
         flying_greenlets = {}
         finished_greenlets = []
         for block_hash, blockid in remote_hashes.items():
             start = blocksize*blockid
-            if start < file_size:
-                existing_hash = hexlify(file_hashtool.get_hash(local_file, start, blocksize))
-                if existing_hash == block_hash:
+            if start < file_size and block_hash == self._hash_from_file(local_file, 
+                start, blocksize, blockhash):
                     self._cb_next()
                     continue
             if len(flying_greenlets) >= self.POOL_SIZE:

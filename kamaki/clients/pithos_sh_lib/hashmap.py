@@ -93,7 +93,11 @@ class HashMap(list):
     def get_hash(self, fp, start, size):
         fp.seek(start)
         block = fp.read(size)
-        return self._hash_block(block)
+        h = hashlib.new(self.blockhash)
+        h.update(block.strip('\x00'))
+        return h.digest()
+        #r = self._hash_raw(block.strip('\x00'))
+        #return r
 
 
 def merkle(path, blocksize=4194304, blockhash='sha256'):
