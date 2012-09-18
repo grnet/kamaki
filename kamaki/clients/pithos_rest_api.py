@@ -282,7 +282,7 @@ class PithosRestAPI(StorageClient):
         success = kwargs.pop('success', 200)
         return self.head(path, *args, success=success, **kwargs)
 
-    def object_get(self, object, format='json', hashmap=False, version=None, binary=False,
+    def object_get(self, object, format='json', hashmap=False, version=None,
         data_range=None, if_range=False, if_etag_match=None, if_etag_not_match = None,
         if_modified_since = None, if_unmodified_since = None, *args, **kwargs):
         """ Full Pithos+ GET at object level
@@ -315,8 +315,6 @@ class PithosRestAPI(StorageClient):
 
         path=path4url(self.account, self.container, object)
         success = kwargs.pop('success', 200)
-        if binary:
-            kwargs['binary'] = True
         return self.get(path, *args, success=success, **kwargs)
 
     def object_put(self, object, format='json', hashmap=False, delimiter = None, if_etag_match=None,

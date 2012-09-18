@@ -170,7 +170,7 @@ class HTTPConnection(object):
     def set_method(self, method):
     	self.method = method
 
-	def perform_request(self, method=None, url=None, params=None, headers=None, data=None):
+	def perform_request(self, method=None, url=None, async_headers={}, async_params={}, data=None):
 		"""
 		@return an HTTPResponse (also in self.response of this object)
 		named args offer the ability to reset a request or a part of the request

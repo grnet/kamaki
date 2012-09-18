@@ -80,11 +80,19 @@ class Client(object):
     def set_default_header(self, name, value):
         self.http_client.headers.setdefault(name, value)
 
-    def request(self, method, path, **kwargs):
+    def request(self, method, path, async_headers={}, async_params={}, **kwargs):
+        """In threaded/asynchronous requests, headers and params are not safe
+        Therefore, the standard self.set_header/param system can be used only for 
+        headers and params that are common for all requests. All other params and
+        headers should passes as
+        @param async_headers
+        @async_params
+        E.g. in most queries the 'X-Auth-Token' header might be the same for all, but the
+        'Range' header might be different from request to request.
+        """
         try:
             success = kwargs.pop('success', 200)
 
-            binary = kwargs.pop('binary', False)
             data = kwargs.pop('data', None)
             self.set_default_header('X-Auth-Token', self.token)
 
@@ -95,7 +103,7 @@ class Client(object):
                 self.set_default_header('Content-Length', unicode(len(data)))
 
             self.http_client.url = self.base_url + path
-            r = self.http_client.perform_request(method=method, data=data)
+            r = self.http_client.perform_request(method, data, async_headers, async_params)
 
             req = self.http_client
             sendlog.info('%s %s', method, req.url)
@@ -108,9 +116,8 @@ class Client(object):
             recvlog.info('%d %s', r.status_code, r.status)
             for key, val in r.headers.items():
                 recvlog.info('%s: %s', key, val)
-            recvlog.info('')
-            if r.content:
-                recvlog.debug(r.content)
+            #if r.content:
+            #    recvlog.debug(r.content)
 
             if success is not None:
                 # Success can either be an in or a collection

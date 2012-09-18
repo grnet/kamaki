@@ -59,7 +59,9 @@ class KamakiHTTPResponse(HTTPResponse):
         for k,v in r.getheaders():
             headers.update({k:v})
         self.headers = headers
-        self.content = r.read()
+        from copy import copy
+        self.content = copy(r.read())
+        #print('%s %s INSIDE[%s]'%(self.request, self, self.content[1:10]))
         self.status_code = r.status
         self.status = r.reason
         self.request.close()
@@ -90,10 +92,13 @@ class KamakiHTTPResponse(HTTPResponse):
 
 class KamakiHTTPConnection(HTTPConnection):
 
-    def _retrieve_connection_info(self):
+    def _retrieve_connection_info(self, extra_params={}):
         """ return (scheme, netloc, url?with&params) """
         url = self.url
-        for i,(key, val) in enumerate(self.params.items()):
+        params = self.params
+        for k,v in extra_params.items():
+            params[k] = v
+        for i,(key, val) in enumerate(params.items()):
             param_str = ('?' if i == 0 else '&') + unicode(key) 
             if val is not None:
                 param_str+= '='+unicode(val)
@@ -103,13 +108,18 @@ class KamakiHTTPConnection(HTTPConnection):
         self.url = url
         return (parsed.scheme, parsed.netloc)
 
-    def perform_request(self, method=None, data=None):
-        (scheme, netloc) = self._retrieve_connection_info()
+    def perform_request(self, method=None, data=None, async_headers={}, async_params={}):
+        (scheme, netloc) = self._retrieve_connection_info(extra_params=async_params)
         #get connection from pool
         conn = get_http_connection(netloc=netloc, scheme=scheme)
+        headers = self.headers
+        for k,v in async_headers.items():
+            headers[k] = v
         try:
-            conn.request(method = method.upper(), url=self.url, headers=self.headers, body=data)
+            conn.request(method = method.upper(), url=self.url, headers=headers, body=data)
         except:
             conn.close()
             raise
         return KamakiHTTPResponse(conn)
+
+

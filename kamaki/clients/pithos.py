@@ -244,7 +244,6 @@ class PithosClient(PithosRestAPI):
         file_hashmap = HashMap(blocksize, blockhash)
         file_hashmap.load(local_file, hasattr(self, 'progress_bar_gen'))
 
-        #filter out blocks that are already downloaded
         for i, x in enumerate(file_hashmap):
             local_hash = hexlify(x)
             if local_hash in remote_hashes:
@@ -263,7 +262,8 @@ class PithosClient(PithosRestAPI):
                     gevent.Greenlet._report_error(self, exc_info)
                 finally:
                     sys.stderr = _stderr
-        self.POOL_SIZE = 5
+        if not hasattr(self, 'POOL_SIZE'):
+            self.POOL_SIZE = 5
         if self.async_pool is None:
             self.async_pool = gevent.pool.Pool(size=self.POOL_SIZE)
         g = SilentGreenlet(self.object_get, obj, success=(200, 206), **restargs)
@@ -273,16 +273,20 @@ class PithosClient(PithosRestAPI):
     def _greenlet2file(self, flying_greenlets, local_file, broken={}, **restargs):
         finished = []
         for start, g in flying_greenlets.items():
+            print('\tIs g ID(%s) ready? %s'%(self.mmaapp[start], g.ready()))
             if g.ready():
                 if g.exception:
-                    g.release()
                     raise g.exception
                 try:
                     block = g.value.content
                 except AttributeError:
                     broken[start] = flying_greenlets.pop(start)
+                    #g.spawn()
                     continue
                 local_file.seek(start)
+                print('\tID(%s) [%s...]\n\tg.value:%s\n\tg:%s\n'%(self.mmaapp[start], block[1:10],
+                    g.value, g))
+                print('\tID(%s): g.value.request: %s\n---'%(self.mmaapp[start], g.value.request))
                 local_file.write(block)
                 #local_file.flush()
                 self._cb_next()
@@ -291,19 +295,21 @@ class PithosClient(PithosRestAPI):
         return finished
 
     def _dump_blocks_async(self, obj, remote_hashes, blocksize, total_size, local_file, **restargs):
-
-        #let the fly
         flying_greenlets = {}
         finished_greenlets = []
         broken = {}
+        self.mmaapp = {}
         for block_hash, blockid in remote_hashes.items():
+            if len(flying_greenlets) >= self.POOL_SIZE:
+                finished_greenlets += self._greenlet2file(flying_greenlets, local_file, broken,
+                    **restargs)
             start = blocksize*blockid
+            self.mmaapp[start] = blockid
             end = total_size-1 if start+blocksize > total_size else start+blocksize-1
-            restargs['data_range'] = 'bytes=%s-%s'%(start, end)
-            #store info for relaunching greenlet if needed
+            restargs['async_headers'] = dict(data_range='bytes=%s-%s'%(start, end))
+            print('ID(%s) get_grnlt {'%blockid)
             flying_greenlets[start] = self._get_block_async(obj, **restargs)
-            finished_greenlets += self._greenlet2file(flying_greenlets, local_file, broken,
-                **restargs)
+            print('ID(%s) got_grnlt }'%blockid)
 
         #check the greenlets
         while len(flying_greenlets) > 0:
@@ -333,6 +339,7 @@ class PithosClient(PithosRestAPI):
             hash_list, 
             remote_hashes) = self._get_remote_blocks_info(obj, **restargs)
         assert total_size >= 0
+        self.POOL_SIZE = 5
 
         if download_cb:
             self.progress_bar_gen = download_cb(len(remote_hashes)+1)
