@@ -90,6 +90,11 @@ class HashMap(list):
                 self.append(self._hash_block(block))
                 self.size += len(block)
 
+    def get_hash(self, fp, start, size):
+        fp.seek(start)
+        block = fp.read(size)
+        return self._hash_block(block)
+
 
 def merkle(path, blocksize=4194304, blockhash='sha256'):
     hashes = HashMap(blocksize, blockhash)
