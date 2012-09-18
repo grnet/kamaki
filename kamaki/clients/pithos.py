@@ -218,8 +218,6 @@ class PithosClient(PithosRestAPI):
         blocksize = int(hashmap['block_size'])
         blockhash = hashmap['block_hash']
         total_size = hashmap['bytes']
-        print('total_size:%s, blocksize:%s, x/y:%s, len:%s'%(total_size, blocksize,
-            total_size/blocksize + 1, len(hashmap['hashes'])))
         #assert total_size/blocksize + 1 == len(hashmap['hashes'])
         map_dict = {}
         for i, h in enumerate(hashmap['hashes']):
@@ -273,7 +271,6 @@ class PithosClient(PithosRestAPI):
     def _greenlet2file(self, flying_greenlets, local_file, broken={}, **restargs):
         finished = []
         for start, g in flying_greenlets.items():
-            print('\tIs g ID(%s) ready? %s'%(self.mmaapp[start], g.ready()))
             if g.ready():
                 if g.exception:
                     raise g.exception
@@ -284,11 +281,7 @@ class PithosClient(PithosRestAPI):
                     #g.spawn()
                     continue
                 local_file.seek(start)
-                print('\tID(%s) [%s...]\n\tg.value:%s\n\tg:%s\n'%(self.mmaapp[start], block[1:10],
-                    g.value, g))
-                print('\tID(%s): g.value.request: %s\n---'%(self.mmaapp[start], g.value.request))
                 local_file.write(block)
-                #local_file.flush()
                 self._cb_next()
                 finished.append(flying_greenlets.pop(start))
         local_file.flush()
@@ -298,18 +291,14 @@ class PithosClient(PithosRestAPI):
         flying_greenlets = {}
         finished_greenlets = []
         broken = {}
-        self.mmaapp = {}
         for block_hash, blockid in remote_hashes.items():
             if len(flying_greenlets) >= self.POOL_SIZE:
                 finished_greenlets += self._greenlet2file(flying_greenlets, local_file, broken,
                     **restargs)
             start = blocksize*blockid
-            self.mmaapp[start] = blockid
             end = total_size-1 if start+blocksize > total_size else start+blocksize-1
-            restargs['async_headers'] = dict(data_range='bytes=%s-%s'%(start, end))
-            print('ID(%s) get_grnlt {'%blockid)
+            restargs['async_headers'] = dict(range='bytes=%s-%s'%(start, end))
             flying_greenlets[start] = self._get_block_async(obj, **restargs)
-            print('ID(%s) got_grnlt }'%blockid)
 
         #check the greenlets
         while len(flying_greenlets) > 0:

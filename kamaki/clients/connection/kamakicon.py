@@ -32,7 +32,8 @@
 # or implied, of GRNET S.A.
 
 from urlparse import urlparse
-from .pool.http import get_http_connection
+#from .pool.http import get_http_connection
+from synnefo.lib.pool.http import get_http_connection
 from . import HTTPConnection, HTTPResponse, HTTPConnectionError
 
 from json import loads
@@ -51,7 +52,7 @@ class KamakiHTTPResponse(HTTPResponse):
             try:
                 r = self.request.getresponse()
             except ResponseNotReady:
-                sleep(0.2)
+                sleep(0.001)
                 continue
             break
         self.prefetched = True
@@ -59,9 +60,7 @@ class KamakiHTTPResponse(HTTPResponse):
         for k,v in r.getheaders():
             headers.update({k:v})
         self.headers = headers
-        from copy import copy
-        self.content = copy(r.read())
-        #print('%s %s INSIDE[%s]'%(self.request, self, self.content[1:10]))
+        self.content = r.read()
         self.status_code = r.status
         self.status = r.reason
         self.request.close()
@@ -95,7 +94,7 @@ class KamakiHTTPConnection(HTTPConnection):
     def _retrieve_connection_info(self, extra_params={}):
         """ return (scheme, netloc, url?with&params) """
         url = self.url
-        params = self.params
+        params = dict(self.params)
         for k,v in extra_params.items():
             params[k] = v
         for i,(key, val) in enumerate(params.items()):
@@ -112,7 +111,7 @@ class KamakiHTTPConnection(HTTPConnection):
         (scheme, netloc) = self._retrieve_connection_info(extra_params=async_params)
         #get connection from pool
         conn = get_http_connection(netloc=netloc, scheme=scheme)
-        headers = self.headers
+        headers = dict(self.headers)
         for k,v in async_headers.items():
             headers[k] = v
         try:
@@ -121,5 +120,3 @@ class KamakiHTTPConnection(HTTPConnection):
             conn.close()
             raise
         return KamakiHTTPResponse(conn)
-
-
