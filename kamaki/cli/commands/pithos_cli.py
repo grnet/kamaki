@@ -1007,3 +1007,30 @@ class store_delgroup(_store_account_command):
             self.client.del_account_group(groupname)
         except ClientError as err:
             raiseCLIError(err)
+
+@command()
+class store_sharers(_store_account_command):
+    """List the accounts that share objects with default account"""
+
+    def update_parser(self, parser):
+        super(store_sharers, self).update_parser(parser)
+        parser.add_argument('-l', action='store_true', dest='detail', default=False,
+            help='show detailed output')
+        parser.add_argument('-n', action='store',  dest='limit', default=10000,
+            help='show limited output')
+        parser.add_argument('--marker', action='store', dest='marker', default=None,
+            help='show output greater then marker')
+
+    def main(self):
+        super(self.__class__, self).main()
+        try:
+            accounts = self.client.get_sharing_accounts(marker=getattr(self.args, 'marker'))
+        except ClientError as err:
+            raiseCLIError(err)
+
+        for acc in accounts:
+            stdout.write(bold(acc['name'])+' ')
+            if getattr(self.args, 'detail'):
+                print_dict(acc, exclude='name', ident=18)
+        if not getattr(self.args, 'detail'):
+            print

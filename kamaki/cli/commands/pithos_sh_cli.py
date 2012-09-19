@@ -84,9 +84,10 @@ class store_versions(_pithos_sh_container_command):
             vid = bold(unicode(vitem[0]))
             print('\t%s \t(%s)'%(vid, strftime('%d-%m-%Y %H:%M:%S', t)))
 
+"""
 @command()
 class store_sharers(_pithos_sh_account_command):
-    """list accounts who share objects with current account"""
+    ""list accounts who share objects with current account""
     
     def update_parser(self, parser):
         super(store_sharers, self).update_parser(parser)
@@ -107,3 +108,4 @@ class store_sharers(_pithos_sh_account_command):
             print_list(self.client.list_shared_by_others(**args))
         except Fault as err:
             raise CLIError(message=unicode(err), status=err.status, importance=err.status/100)
+"""

@@ -559,3 +559,16 @@ class PithosClient(PithosRestAPI):
         self.object_put(dst_object, success=201, move_from=src_path, content_length=0,
             source_version=source_version, public=public, content_type=content_type,
             delimiter=delimiter)
+
+    def get_sharing_accounts(self, limit=None, marker=None, *args, **kwargs):
+        """Get accounts that share with self.account"""
+        self.assert_account()
+
+        self.set_param('format','json')
+        self.set_param('limit',limit, iff = limit is not None)
+        self.set_param('marker',marker, iff = marker is not None)
+
+        path = ''
+        success = kwargs.pop('success', (200, 204))
+        r = self.get(path, *args, success = success, **kwargs)
+        return r.json
