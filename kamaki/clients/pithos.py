@@ -572,3 +572,8 @@ class PithosClient(PithosRestAPI):
         success = kwargs.pop('success', (200, 204))
         r = self.get(path, *args, success = success, **kwargs)
         return r.json
+
+    def get_object_versionlist(self, path):
+        self.assert_container()
+        r = self.object_get(path, format='json', version='list')
+        return r.json['versions']

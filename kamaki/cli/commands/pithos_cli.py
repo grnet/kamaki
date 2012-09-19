@@ -39,6 +39,7 @@ from kamaki.clients.pithos import PithosClient, ClientError
 from colors import bold
 from sys import stdout, exit
 import signal
+from time import localtime, strftime
 
 from progress.bar import IncrementalBar
 
@@ -1034,3 +1035,20 @@ class store_sharers(_store_account_command):
                 print_dict(acc, exclude='name', ident=18)
         if not getattr(self.args, 'detail'):
             print
+
+@command()
+class store_versions(_store_container_command):
+    """Get the version list of an object"""
+
+    def main(self, container___path):
+        super(store_versions, self).main(container___path)
+        try:
+            versions = self.client.get_object_versionlist(self.path)
+        except ClientError as err:
+            raise CLIError(err)
+
+        print('%s:%s versions'%(self.container,self.path))
+        for vitem in versions:
+            t = localtime(float(vitem[1]))
+            vid = bold(unicode(vitem[0]))
+            print('\t%s \t(%s)'%(vid, strftime('%d-%m-%Y %H:%M:%S', t)))
