@@ -55,6 +55,18 @@ def pithos_hash(block, blockhash):
     h.update(block.rstrip('\x00'))
     return h.hexdigest()
 
+def _range_up(start, end, a_range):
+    if a_range:
+        (rstart, rend) = a_range.split('-')
+        (rstart, rend) = (int(rstart), int(rend))
+        if rstart > end or rend < start:
+            return (0,0)
+        if rstart > start:
+            start = rstart
+        if rend < end:
+            end = rend
+    return (start, end)
+
 class PithosClient(PithosRestAPI):
     """GRNet Pithos API client"""
 
@@ -63,9 +75,11 @@ class PithosClient(PithosRestAPI):
             container = container)
         self.async_pool = None
 
+    #Untested
     def purge_container(self):
         self.container_delete(until=unicode(time()))
         
+    #Untested
     def upload_object_unchunked(self, obj, f, withHashFile = False, size=None, etag=None,
         content_encoding=None, content_disposition=None, content_type=None, sharing=None,
         public=None):
@@ -88,6 +102,7 @@ class PithosClient(PithosRestAPI):
             content_disposition=content_disposition, content_type=content_type, permitions=sharing,
             public=public, success=201)
         
+    #upload_* auxiliary methods 
     def put_block_async(self, data, hash):
         class SilentGreenlet(gevent.Greenlet):
             def _report_error(self, exc_info):
@@ -109,7 +124,7 @@ class PithosClient(PithosRestAPI):
             content_length=len(data), data=data, format='json')
         assert r.json[0] == hash, 'Local hash does not match server'
         
-
+    #Untested
     def create_object_by_manifestation(self, obj, etag=None, content_encoding=None,
         content_disposition=None, content_type=None, sharing=None, public=None):
         self.assert_container()
@@ -118,7 +133,6 @@ class PithosClient(PithosRestAPI):
             content_disposition=content_disposition, content_type=content_type, permitions=sharing,
             public=public, manifest='%s/%s'%(self.container,obj))
        
-    #upload_* auxiliary methods 
     def _get_file_block_info(self, fileobj, size=None):
         meta = self.get_container_info()
         blocksize = int(meta['x-container-block-size'])
@@ -210,9 +224,12 @@ class PithosClient(PithosRestAPI):
             json=hashmap, success=201)
     
     #download_* auxiliary methods
+    #ALl untested
     def _get_remote_blocks_info(self, obj, **restargs):
         #retrieve object hashmap
+        myrange = restargs.pop('data_range') if 'data_range' in restargs.keys() else None
         hashmap = self.get_object_hashmap(obj, **restargs)
+        restargs['data_range'] = myrange
         blocksize = int(hashmap['block_size'])
         blockhash = hashmap['block_hash']
         total_size = hashmap['bytes']
@@ -222,12 +239,15 @@ class PithosClient(PithosRestAPI):
             map_dict[h] = i
         return (blocksize, blockhash, total_size, hashmap['hashes'], map_dict)
 
-    def _dump_blocks_sync(self, obj, remote_hashes, blocksize, total_size, dst, **restargs):
+
+
+    def _dump_blocks_sync(self, obj, remote_hashes, blocksize, total_size, dst, range, **restargs):
         for blockid, blockhash in enumerate(remote_hashes):
             if blockhash == None:
                 continue
             start = blocksize*blockid
             end = total_size-1 if start+blocksize > total_size else start+blocksize-1
+            (start, end) = _range_up(start, end, range)
             restargs['data_range'] = 'bytes=%s-%s'%(start, end)
             r = self.object_get(obj, success=(200, 206), **restargs)
             self._cb_next()
@@ -297,7 +317,6 @@ class PithosClient(PithosRestAPI):
 
         gevent.joinall(finished_greenlets)
 
-
     def download_object(self, obj, dst, download_cb=None, version=None, overide=False, resume=False,
         range=None, if_match=None, if_none_match=None, if_modified_since=None,
         if_unmodified_since=None):
@@ -322,7 +341,7 @@ class PithosClient(PithosRestAPI):
             self._cb_next()
 
         if dst.isatty():
-            self._dump_blocks_sync(obj, hash_list, blocksize, total_size, dst, **restargs)
+            self._dump_blocks_sync(obj, hash_list, blocksize, total_size, dst, range, **restargs)
         else:
             self._dump_blocks_async(obj, remote_hashes, blocksize, total_size, dst, blockhash,
                 resume, **restargs)
