@@ -78,7 +78,6 @@ class PithosClient(PithosRestAPI):
     def purge_container(self):
         self.container_delete(until=unicode(time()))
         
-    #Untested
     def upload_object_unchunked(self, obj, f, withHashFile = False, size=None, etag=None,
         content_encoding=None, content_disposition=None, content_type=None, sharing=None,
         public=None):
@@ -392,18 +391,15 @@ class PithosClient(PithosRestAPI):
     def del_account_group(self, group):
         self.account_post(update=True, groups={group:[]})
 
-    #Untested
     def get_account_info(self, until=None):
         r = self.account_head(until=until)
         if r.status_code == 401:
             raise ClientError("No authorization")
         return r.headers
 
-    #Untested
     def get_account_quota(self):
         return filter_in(self.get_account_info(), 'X-Account-Policy-Quota', exactMatch = True)
 
-    #Untested
     def get_account_versioning(self):
         return filter_in(self.get_account_info(), 'X-Account-Policy-Versioning', exactMatch = True)
 
@@ -420,15 +416,12 @@ class PithosClient(PithosRestAPI):
     def del_account_meta(self, metakey):
         self.account_post(update=True, metadata={metakey:''})
 
-    #Untested
     def set_account_quota(self, quota):
         self.account_post(update=True, quota=quota)
 
-    #Untested
     def set_account_versioning(self, versioning):
         self.account_post(update=True, versioning = versioning)
 
-    #Untested
     def list_containers(self):
         r = self.account_get()
         return r.json
@@ -449,7 +442,6 @@ class PithosClient(PithosRestAPI):
         self.container = container
         return filter_in(self.get_container_info(), 'X-Container-Policy-Quota')
 
-    #Untested
     def get_container_info(self, until = None):
         r = self.container_head(until=until)
         return r.headers
@@ -457,7 +449,6 @@ class PithosClient(PithosRestAPI):
     def get_container_meta(self, until = None):
         return filter_in(self.get_container_info(until=until), 'X-Container-Meta')
 
-    #Untested
     def get_container_object_meta(self, until = None):
         return filter_in(self.get_container_info(until=until), 'X-Container-Object-Meta')
 
@@ -528,7 +519,6 @@ class PithosClient(PithosRestAPI):
     def del_object_sharing(self, object):
         self.set_object_sharing(object)
 
-    #Untested
     def append_object(self, object, source_file, upload_cb = None):
         """@param upload_db is a generator for showing progress of upload
             to caller application, e.g. a progress bar. Its next is called
@@ -579,7 +569,6 @@ class PithosClient(PithosRestAPI):
             if upload_cb is not None:
                 upload_gen.next()
 
-    #Untested
     def copy_object(self, src_container, src_object, dst_container, dst_object=False,
         source_version = None, public=False, content_type=None, delimiter=None):
         self.assert_account()
@@ -590,7 +579,6 @@ class PithosClient(PithosRestAPI):
             source_version=source_version, public=public, content_type=content_type,
             delimiter=delimiter)
 
-    #Untested
     def move_object(self, src_container, src_object, dst_container, dst_object=False,
         source_version = None, public=False, content_type=None, delimiter=None):
         self.assert_account()
@@ -601,7 +589,6 @@ class PithosClient(PithosRestAPI):
             source_version=source_version, public=public, content_type=content_type,
             delimiter=delimiter)
 
-    #Untested
     def get_sharing_accounts(self, limit=None, marker=None, *args, **kwargs):
         """Get accounts that share with self.account"""
         self.assert_account()
