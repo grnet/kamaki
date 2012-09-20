@@ -391,7 +391,6 @@ class testPithos(unittest.TestCase):
         r = self.client.account_get(until=1342609206)
         self.assertTrue(len(r.json) <= fullLen)
         
-
         """Check if(un)modified_since"""
         for format in self.client.DATE_FORMATS:
             now_formated = self.now_unformated.strftime(format)
@@ -402,6 +401,10 @@ class testPithos(unittest.TestCase):
             sc2 = r2.status_code
             r2.release()
             self.assertNotEqual(sc1, sc2)
+
+        """Check sharing_accounts"""
+        r = self.client.get_sharing_accounts()
+        self.assertTrue(len(r)>0)
 
     def test_account_post(self):
         """Test account_POST"""
@@ -847,6 +850,15 @@ class testPithos(unittest.TestCase):
             source_account=self.client.account,
             content_length=0, success=201)
         self.assertEqual(r.status_code, 201)
+
+        """Test copy_object for cross-conctainer copy"""
+        self.client.copy_object(src_container=self.c2, src_object='%s/%s'%(tmpdir, obj),
+            dst_container=self.c1, dst_object=obj)
+        self.client.container = self.c1
+        r1 = self.client.get_object_info(obj)
+        self.client.container = self.c2
+        r2 = self.client.get_object_info('%s/%s'%(tmpdir, obj))
+        self.assertEqual(r1['x-object-hash'],r2['x-object-hash'])
         
         """Check cross-container copy_from, content_encoding"""
         self.client.container = self.c1
@@ -870,14 +882,13 @@ class testPithos(unittest.TestCase):
         self.assertEqual(r.status_code, 403)
         
         """Check cross-container move_from"""
-        r = self.client.object_put(obj+'v0', format=None, 
-            move_from='/'+self.c1+'/'+obj, 
-            content_encoding='application/octet-stream', 
-            content_length=0, success=201)
-        self.assertEqual(r.status_code, 201)
-        
-        r = self.client.get_object_info(obj+'v0')
-        self.assertEqual(r['etag'], etag)
+        self.client.container = self.c1
+        r1 = self.client.get_object_info(obj)
+        self.client.container = self.c2
+        self.client.move_object(src_container=self.c1, src_object=obj, dst_container=self.c2,
+        dst_object=obj+'v0')
+        r0 = self.client.get_object_info(obj+'v0')
+        self.assertEqual(r1['x-object-hash'], r0['x-object-hash'])
 
         """Check move_from"""
         r = self.client.object_put(obj+'v1', format=None, 
