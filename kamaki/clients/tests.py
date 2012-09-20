@@ -340,9 +340,16 @@ class testPithos(unittest.TestCase):
         
         r = self.client.account_head(until='1000000000')
         self.assertEqual(r.status_code, 204)
-        
-        datestring = unicode(r.headers['x-account-until-timestamp'])
+       
+        r = self.client.get_account_info(until='1000000000') 
+        datestring = unicode(r['x-account-until-timestamp'])
         self.assertEqual(u'Sun, 09 Sep 2001 01:46:40 GMT', datestring)
+
+        r = self.client.get_account_quota()
+        self.assertTrue(r.has_key('x-account-policy-quota'))
+
+        r = self.client.get_account_versioning()
+        print(unicode(r))
 
         """Check if(un)modified_since"""
         for format in self.client.DATE_FORMATS:
