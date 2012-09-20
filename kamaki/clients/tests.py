@@ -784,7 +784,6 @@ class testPithos(unittest.TestCase):
         self.assertEqual(r.status_code, 201)
         etag = r.headers['etag']
         
-
         """Check content-disposition"""
         r = self.client.get_object_info(obj)
         self.assertTrue(r.has_key('content-disposition'))
@@ -811,7 +810,6 @@ class testPithos(unittest.TestCase):
         etag = r.headers['etag']
         self.assertEqual(r.text, 'b')
         
-
         """Check if_etag_not_match"""
         r = self.client.object_put(obj, if_etag_not_match=etag, data='c',
             content_type='application/octet-stream', success=(201, 412))
@@ -834,7 +832,6 @@ class testPithos(unittest.TestCase):
             content_length=0, success=201)
         self.assertEqual(r.status_code, 201)
         
-
         """Check cross-container copy_from, content_encoding"""
         self.client.container = self.c1
         fromstr = '/'+self.c2+'/'+tmpdir+'/'+obj
@@ -856,7 +853,6 @@ class testPithos(unittest.TestCase):
             content_length=0, success=(201, 403))
         self.assertEqual(r.status_code, 403)
         
-
         """Check cross-container move_from"""
         r = self.client.object_put(obj+'v0', format=None, 
             move_from='/'+self.c1+'/'+obj, 
@@ -874,7 +870,6 @@ class testPithos(unittest.TestCase):
             content_encoding='application/octet-stream',
             content_length=0, success=201)
         
-
         """Check manifest"""
         mobj = 'manifest.test'
         txt = ''
@@ -888,7 +883,15 @@ class testPithos(unittest.TestCase):
         
         r = self.client.object_get(mobj)
         self.assertEqual(r.text, txt)
-        
+       
+        """Upload a local file with one request"""
+        self.create_large_file(1024*10, 'l10K.'+unicode(self.now))
+        newf = open(self.fname, 'r')
+        self.client.upload_object('sample.file', newf)
+        newf.close()
+        """Check if file has been uploaded"""
+        r = self.client.get_object_info('sample.file')
+        self.assertEqual(int(r['content-length']), 10260)
 
         """Some problems with transfer-encoding?"""
 
@@ -912,7 +915,6 @@ class testPithos(unittest.TestCase):
             permitions={'write':['u5', 'accX:groupB']})
         self.assertEqual(r.status_code, 201)
         
-
         """Check content-disposition"""
         r = self.client.get_object_info(obj)
         self.assertTrue(r.has_key('content-disposition'))
