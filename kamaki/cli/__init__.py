@@ -308,7 +308,7 @@ def main():
     except CLIError as err:
         errmsg = 'CLI Error '
         errmsg += '(%s): '%err.status if err.status else ': '
-        errmsg += err.message if err.message else ''
+        errmsg += unicode(err.message) if err.message else ''
         if err.importance == 1:
             errmsg = yellow(errmsg)
         elif err.importance == 2:

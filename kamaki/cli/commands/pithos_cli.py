@@ -713,7 +713,7 @@ class store_purge(_store_container_command):
     """Purge a container"""
     
     def main(self, container):
-        super(self.__class__, self).main()
+        super(self.__class__, self).main(container)
         try:
             self.client.purge_container()
         except ClientError as err:
