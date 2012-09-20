@@ -452,12 +452,10 @@ class testPithos(unittest.TestCase):
         r = self.client.container_head()
         self.assertEqual(r.status_code, 204)
         
-
         """Check until"""
         r = self.client.container_head(until=1000000, success=(204, 404))
         self.assertEqual(r.status_code, 404)
         
-
         """Check and if(un)modified_since"""
         for format in self.client.DATE_FORMATS:
             now_formated = self.now_unformated.strftime(format)
@@ -468,6 +466,10 @@ class testPithos(unittest.TestCase):
             sc2=r2.status_code
             r2.release()
             self.assertNotEqual(sc1, sc2)
+
+        """Check container object meta"""
+        r = self.client.get_container_object_meta()
+        self.assertEqual(r['x-container-object-meta'], 'Incontainer')
 
     def test_container_get(self):
         """Test container_GET"""
