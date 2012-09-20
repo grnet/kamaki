@@ -349,7 +349,7 @@ class testPithos(unittest.TestCase):
         self.assertTrue(r.has_key('x-account-policy-quota'))
 
         r = self.client.get_account_versioning()
-        print(unicode(r))
+        self.assertTrue(r.has_key('x-account-policy-versioning'))
 
         """Check if(un)modified_since"""
         for format in self.client.DATE_FORMATS:
@@ -364,12 +364,12 @@ class testPithos(unittest.TestCase):
 
     def test_account_get(self):
         """Test account_GET"""
-        r = self.client.account_get()
-        self.assertEqual(r.status_code, 200)
-        fullLen = len(r.json)
+        #r = self.client.account_get()
+        #self.assertEqual(r.status_code, 200)
+        r = self.client.list_containers()
+        fullLen = len(r)
         self.assertTrue(fullLen > 2)
         
-
         r = self.client.account_get(limit=1)
         self.assertEqual(len(r.json), 1)
         
@@ -388,7 +388,6 @@ class testPithos(unittest.TestCase):
         r = self.client.account_get(show_only_shared=True)
         self.assertTrue(self.c1 in [c['name'] for c in r.json])
         
-
         r = self.client.account_get(until=1342609206)
         self.assertTrue(len(r.json) <= fullLen)
         
@@ -437,6 +436,14 @@ class testPithos(unittest.TestCase):
         """Missing testing for quota, versioning, because normally
         you don't have permitions to modify those at account level
         """
+
+        newquota=1000000
+        self.client.set_account_quota(newquota)
+        #r = self.client.get_account_info()
+        #print(unicode(r))
+        #r = self.client.get_account_quota()
+        #self.assertEqual(r['x-account-policy-quota'], newquota)
+        self.client.set_account_versioning('auto')
 
     def test_container_head(self):
         """Test container_HEAD"""
