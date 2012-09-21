@@ -35,7 +35,8 @@
 from kamaki.cli import command, set_api_description
 set_api_description('astakos', 'Astakos API commands')
 from kamaki.clients.astakos import AstakosClient, ClientError
-from kamaki.cli.utils import raiseCLIError, print_dict
+from kamaki.cli.utils import print_dict
+from kamaki.cli.errors import raiseCLIError
 
 class _astakos_init(object):
 	def main(self):

@@ -31,8 +31,9 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from kamaki.cli import command, set_api_description, CLIError
-from kamaki.cli.utils import print_dict, print_items, print_list, format_size, raiseCLIError
+from kamaki.cli import command, set_api_description
+from kamaki.cli.utils import print_dict, print_items, print_list, format_size
+from kamaki.cli.errors import CLIError, raiseCLIError
 from colors import bold
 set_api_description('server', "Compute/Cyclades API server commands")
 set_api_description('flavor', "Compute/Cyclades API flavor commands")

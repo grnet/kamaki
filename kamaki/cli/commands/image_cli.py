@@ -32,7 +32,8 @@
 # or implied, of GRNET S.A.command
 
 from kamaki.cli import command, set_api_description
-from kamaki.cli.utils import print_dict, print_items, raiseCLIError
+from kamaki.cli.errors import raiseCLIError
+from kamaki.cli.utils import print_dict, print_items
 set_api_description('image', "Compute/Cyclades or Glance API image commands")
 from kamaki.clients.image import ImageClient, ClientError
 
