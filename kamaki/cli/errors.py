@@ -52,12 +52,12 @@ class CLISyntaxError(CLIError):
 		super(CLISyntaxError, self).__init__(message, status, details, importance=1)
 
 class CLIUnknownCommand(CLIError):
-	def __init__(self, message, status=0, details=''):
+	def __init__(self, message, status=12, details=''):
 		super(CLIUnknownCommand, self).__init__(message, status, details, importance=0)
 
-class CLICmdSpecLoadError(CLIError):
-	def __init__(self, message, status=0, details=''):
-		super(CLICmdSpecLoadError, self).__init__(message, status, details, importance=0)
+class CLICmdSpecError(CLIError):
+	def __init__(self, message, status=13, details=''):
+		super(CLICmdSpecError, self).__init__(message, status, details, importance=0)
 
 def raiseCLIError(err, importance = -1):
     if importance < 0:

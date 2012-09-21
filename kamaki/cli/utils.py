@@ -32,7 +32,7 @@
 # or implied, of GRNET S.A.
 from .errors import CLIUnknownCommand, CLISyntaxError, CLICmdSpecError
 
-class Argument(Object):
+class Argument(object):
     """An argument that can be parsed from command line or otherwise"""
 
     def __init__(self, name, arity, help=None, parsed_name=None):
@@ -115,7 +115,7 @@ class Argument(Object):
         args, argv = parser.parse_known_args()
         print('args: %s\nargv: %s'%(args, argv))
 
-class CommandTree(Object):
+class CommandTree(object):
     """A tree of command terms usefull for fast commands checking
     None key is used to denote that its parent is a terminal symbol
     and also the command spec class
@@ -154,18 +154,19 @@ class CommandTree(Object):
             self._commands[unicode(cmd)] = None
 
     def _get_commands_from_prefix(self, prefix):
-        next_list = get_pathlist_from_prefix(prefix)
+        path = get_pathlist_from_prefix(prefix)
+        next_list = self._commands
         try:
-            for cmd in prefix:
+            for cmd in path:
                 next_list = next_list[unicode(cmd)]
         except TypeError, KeyError:
-            error_index = prefix.index(cmd)
-            raise CLIUnknownCommand(message='Unknown command',
-                details='Command %s not in path %s'%(unicode(cmd), unicode(prefix[:error_index)))
-        assert next_list is dict
+            error_index = path.index(cmd)
+            details='Command %s not in path %s'%(unicode(cmd), path[:error_index])
+            raise CLIUnknownCommand('Unknown command', details=details)
+        assert isinstance(next_list,dict)
         return next_list 
 
-    def list(prefix=[]):
+    def list(self, prefix=[]):
         """ List the commands after prefix
         @param prefix can be either cmd1_cmd2_... or ['cmd1', 'cmd2', ...]
         """
@@ -187,7 +188,8 @@ class CommandTree(Object):
             return True
         return False
 
-    def add(command, cmd_class):
+    def add(self, command, cmd_class):
+        """Add a command_path-->cmd_class relation to the path """
         path_list = get_pathlist_from_prefix(command)
         d = self._commands
         for cmd in path_list:
@@ -207,7 +209,7 @@ class CommandTree(Object):
             except ImportError:
                 pass
         if not loaded:
-            raise CLICmdSpecError(message='Cmd Spec Package %s load failed'%spec_package)
+            raise CLICmdSpecError('Cmd Spec Package %s load failed'%spec_package)
 
     def load_spec(self, spec_package, spec):
         """Load spec from a non nessecery loaded spec package"""
@@ -221,12 +223,11 @@ class CommandTree(Object):
                 break
             except ImportError:
                 pass
-        if not loaded
-            raise CLICmdSpecError(message='Cmd Spec %s load failed'%spec)
-
+        if not loaded:
+            raise CLICmdSpecError('Cmd Spec %s load failed'%spec)
 
 def get_pathlist_from_prefix(prefix):
-    return prefix if prefix is list else unicode(prefix).split('_')
+    return prefix if isinstance(prefix,list) else unicode(prefix).split('_')
 
 def pretty_keys(d, delim='_', recurcive=False):
     """Transform keys of a dict from the form
@@ -319,10 +320,10 @@ def format_size(size):
 def dict2file(d, f, depth = 0):
     for k, v in d.items():
         f.write('%s%s: '%('\t'*depth, k))
-        if type(v) is dict:
+        if isinstance(v,dict):
             f.write('\n')
             dict2file(v, f, depth+1)
-        elif type(v) is list:
+        elif isinstance(v,list):
             f.write('\n')
             list2file(v, f, depth+1)
         else:
@@ -330,9 +331,9 @@ def dict2file(d, f, depth = 0):
 
 def list2file(l, f, depth = 1):
     for item in l:
-        if type(item) is dict:
+        if isinstance(item,dict):
             dict2file(item, f, depth+1)
-        elif type(item) is list:
+        elif isinstance(item,list):
             list2file(item, f, depth+1)
         else:
             f.write('%s%s\n'%('\t'*depth, unicode(item)))
