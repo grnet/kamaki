@@ -30,88 +30,26 @@
 # documentation are those of the authors and should not be
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
-from .errors import CLIUnknownCommand, CLISyntaxError, CLICmdSpecError
+try:
+    from colors import magenta, red, yellow, bold
+except ImportError:
+    #No colours? No worries, use dummy foo instead
+    def bold(val):
+        return val
+    red = yellow = magenta = bold
 
-class Argument(object):
-    """An argument that can be parsed from command line or otherwise"""
+from .errors import CLIUnknownCommand, CLICmdSpecError, CLIError
 
-    def __init__(self, arity, help=None, parsed_name=None, default=None):
-        self.arity = int(arity)
-
-        if help is not None:
-            self.help = help
-        if parsed_name is not None:
-            self.parsed_name = parsed_name
-        if default is not None:
-            self.default = default
-
-    @property 
-    def parsed_name(self):
-        return getattr(self, '_parsed_name', None)
-    @parsed_name.setter
-    def parsed_name(self, newname):
-        self._parsed_name = getattr(self, '_parsed_name', [])
-        if isinstance(newname, list) or isinstance(newname, tuple):
-            self._parsed_name += list(newname)
-        else:
-            self._parsed_name.append(unicode(newname))
-
-    @property 
-    def help(self):
-        return getattr(self, '_help', None)
-    @help.setter
-    def help(self, newhelp):
-        self._help = unicode(newhelp)
-
-    @property 
-    def arity(self):
-        return getattr(self, '_arity', None)
-    @arity.setter
-    def arity(self, newarity):
-        newarity = int(newarity)
-        assert newarity >= 0
-        self._arity = newarity
-
-    @property 
-    def default(self):
-        if not hasattr(self, '_default'):
-            self._default = False if self.arity == 0 else None
-        return self._default
-    @default.setter
-    def default(self, newdefault):
-        self._default = newdefault
-
-    @property 
-    def value(self):
-        return getattr(self, '_value', self.default)
-    @value.setter
-    def value(self, newvalue):
-        self._value = newvalue
-
-    def update_parser(self, parser, name):
-        """Update an argument parser with this argument info"""
-        action = 'store_true' if self.arity==0 else 'store'
-        parser.add_argument(*self.parsed_name, dest=name, action=action,
-            default=self.default, help=self.help)
-
-    def main(self):
-        """Overide this method to give functionality to ur args"""
-        raise NotImplementedError
-
-    @classmethod
-    def test(self):
-        h = Argument(arity=0, help='Display a help massage', parsed_name=('--help', '-h'))
-        b = Argument(arity=1, help='This is a bbb', parsed_name='--bbb')
-        c = Argument(arity=2, help='This is a ccc', parsed_name='--ccc')
-
-        from argparse import ArgumentParser
-        parser = ArgumentParser(add_help=False)
-        h.update_parser(parser, 'hee')
-        b.update_parser(parser, 'bee')
-        c.update_parser(parser, 'cee')
-
-        args, argv = parser.parse_known_args()
-        print('args: %s\nargv: %s'%(args, argv))
+"""
+def magenta(val):
+    return magenta(val)
+def red(val):
+    return red(val)
+def yellow(val):
+    return yellow(val)
+def bold(val):
+    return bold(val)
+"""
 
 class CommandTree(object):
     """A tree of command terms usefull for fast commands checking

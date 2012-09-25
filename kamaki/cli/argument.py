@@ -34,25 +34,91 @@ import gevent.monkey
 #Monkey-patch everything for gevent early on
 gevent.monkey.patch_all()
 
-from sys import argv, exit
+from sys import exit
 
-from inspect import getargspec
-from os.path import basename
-from argparse import ArgumentParser
-
-from .utils import CommandTree, Argument
 from .config import Config
-from .errors import CLIError, CLISyntaxError
+from .errors import CLISyntaxError
 
-try:
-	from colors import magenta, red, yellow, bold
-except ImportError:
-	#No colours? No worries, use dummy foo instead
-	def bold(val):
-		return val
-	red = yellow = magenta = bold
+class Argument(object):
+    """An argument that can be parsed from command line or otherwise"""
 
-_commands = CommandTree()
+    def __init__(self, arity, help=None, parsed_name=None, default=None):
+        self.arity = int(arity)
+
+        if help is not None:
+            self.help = help
+        if parsed_name is not None:
+            self.parsed_name = parsed_name
+        if default is not None:
+            self.default = default
+
+    @property 
+    def parsed_name(self):
+        return getattr(self, '_parsed_name', None)
+    @parsed_name.setter
+    def parsed_name(self, newname):
+        self._parsed_name = getattr(self, '_parsed_name', [])
+        if isinstance(newname, list) or isinstance(newname, tuple):
+            self._parsed_name += list(newname)
+        else:
+            self._parsed_name.append(unicode(newname))
+
+    @property 
+    def help(self):
+        return getattr(self, '_help', None)
+    @help.setter
+    def help(self, newhelp):
+        self._help = unicode(newhelp)
+
+    @property 
+    def arity(self):
+        return getattr(self, '_arity', None)
+    @arity.setter
+    def arity(self, newarity):
+        newarity = int(newarity)
+        assert newarity >= 0
+        self._arity = newarity
+
+    @property 
+    def default(self):
+        if not hasattr(self, '_default'):
+            self._default = False if self.arity == 0 else None
+        return self._default
+    @default.setter
+    def default(self, newdefault):
+        self._default = newdefault
+
+    @property 
+    def value(self):
+        return getattr(self, '_value', self.default)
+    @value.setter
+    def value(self, newvalue):
+        self._value = newvalue
+
+    def update_parser(self, parser, name):
+        """Update an argument parser with this argument info"""
+        action = 'store_true' if self.arity==0 else 'store'
+        parser.add_argument(*self.parsed_name, dest=name, action=action,
+            default=self.default, help=self.help)
+
+    def main(self):
+        """Overide this method to give functionality to ur args"""
+        raise NotImplementedError
+
+    @classmethod
+    def test(self):
+        h = Argument(arity=0, help='Display a help massage', parsed_name=('--help', '-h'))
+        b = Argument(arity=1, help='This is a bbb', parsed_name='--bbb')
+        c = Argument(arity=2, help='This is a ccc', parsed_name='--ccc')
+
+        from argparse import ArgumentParser
+        parser = ArgumentParser(add_help=False)
+        h.update_parser(parser, 'hee')
+        b.update_parser(parser, 'bee')
+        c.update_parser(parser, 'cee')
+
+        args, argv = parser.parse_known_args()
+        print('args: %s\nargv: %s'%(args, argv))
 
 class VersionArgument(Argument):
 	@property 
@@ -67,10 +133,6 @@ class VersionArgument(Argument):
 		if self.value:
 			import kamaki
 			print('kamaki %s'%kamaki.__version__)
-			self._exit(0)
-
-	def _exit(self, num):
-			pass
 
 class ConfigArgument(Argument):
 	@property 
@@ -112,59 +174,10 @@ _arguments = dict(config = _config_arg,
 	options = CmdLineConfigArgument(_config_arg, 'Override a config value', ('-o', '--options'))
 )
 
-def command():
-	"""Class decorator that registers a class as a CLI command"""
-
-	def decorator(cls):
-		"""Any class with name of the form cmd1_cmd2_cmd3_... is accepted"""
-		cls.description, sep, cls.long_description = cls.__doc__.partition('\n')
-
-		# Generate a syntax string based on main's arguments
-		spec = getargspec(cls.main.im_func)
-		args = spec.args[1:]
-		n = len(args) - len(spec.defaults or ())
-		required = ' '.join('<%s>' % x.replace('____', '[:').replace('___', ':').replace('__',']').\
-			replace('_', ' ') for x in args[:n])
-		optional = ' '.join('[%s]' % x.replace('____', '[:').replace('___', ':').replace('__', ']').\
-			replace('_', ' ') for x in args[n:])
-		cls.syntax = ' '.join(x for x in [required, optional] if x)
-		if spec.varargs:
-			cls.syntax += ' <%s ...>' % spec.varargs
-
-		_commands.add(cls.__name__, cls)
-		return cls
-	return decorator
-
-def _init_parser(exe):
-	parser = ArgumentParser(add_help=True)
-	parser.prog='%s <cmd_group> [<cmd_subbroup> ...] <cmd>'%exe
-	for name, argument in _arguments.items():
-		argument.update_parser(parser, name)
-	return parser
-
 def parse_known_args(parser):
 	parsed, unparsed = parser.parse_known_args()
 	for name, arg in _arguments.items():
 		arg.value = getattr(parsed, name, arg.value)
 	return parsed, unparsed
 
-def one_command():
-	exe = basename(argv[0])
-	parser = _init_parser(exe)
-	parsed, unparsed = parse_known_args(parser)
-
-
-def run_one_command():
-	try:
-		one_command()
-	except CLIError as err:
-		errmsg = '%s'%unicode(err) +' (%s)'%err.status if err.status else ' '
-		font_color = yellow if err.importance <= 1 else magenta if err.importance <=2 else red
-		from sys import stdout
-		stdout.write(font_color(errmsg))
-		if err.details is not None and len(err.details) > 0:
-			print(': %s'%err.details)
-		else:
-			print
-		exit(1)
 
