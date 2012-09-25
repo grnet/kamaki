@@ -142,6 +142,12 @@ class ConfigArgument(Argument):
 	def value(self, config_file):
 		self._value = Config(config_file) if config_file is not None else Config()
 
+	def get_groups(self):
+		return self.value.apis()
+
+
+_config_arg = ConfigArgument(1, 'Path to configuration file', '--config')
+
 class CmdLineConfigArgument(Argument):
 	def __init__(self, config_arg, help='', parsed_name=None, default=None):
 		super(self.__class__, self).__init__(1, help, parsed_name, default)
@@ -164,7 +170,6 @@ class CmdLineConfigArgument(Argument):
 				raise CLISyntaxError(details='Missing . between section and key: -o section.key=val')
 		self._config_arg.value.override(section.strip(), key.strip(), val.strip())
 
-_config_arg = ConfigArgument(1, 'Path to configuration file', '--config')
 _arguments = dict(config = _config_arg,
 	debug = Argument(0, 'Include debug output', ('-d', '--debug')),
 	include = Argument(0, 'Include protocol headers in the output', ('-i', '--include')),

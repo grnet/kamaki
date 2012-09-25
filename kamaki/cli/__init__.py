@@ -53,15 +53,14 @@ except ImportError:
     from ordereddict import OrderedDict
 
 #from kamaki import clients
-from .errors import CLIError
+from .errors import CLIError, CLISyntaxError, CLICmdIncompleteError
 from .config import Config #TO BE REMOVED
-from .utils import magenta, red, yellow, CommandTree
+from .utils import bold, magenta, red, yellow, CommandTree, print_list
 from argument import _arguments, parse_known_args
 
 _commands = CommandTree()
 
-GROUPS={}
-CLI_LOCATIONS = ['kamaki.cli.commands', 'kamaki.commands', 'kamaki.cli', 'kamaki', '']
+#basic command groups
 
 def command():
     """Class decorator that registers a class as a CLI command"""
@@ -112,6 +111,36 @@ def _print_error_message(cli_err):
     else:
         print
 
+def _expand_cmd(cmd_prefix, unparsed):
+    if len(unparsed) == 0:
+        return None
+    prefix = (cmd_prefix+'_') if len(cmd_prefix) > 0 else ''
+    for term in _commands.list(cmd_prefix):
+        try:
+            unparsed.remove(term)
+        except ValueError:
+            continue
+        return prefix+term
+    return None
+
+def _retrieve_cmd(unparsed):
+    cmd_str = None
+    cur_cmd = _expand_cmd('', unparsed)
+    while cur_cmd is not None:
+        cmd_str = cur_cmd
+        cur_cmd = _expand_cmd(cur_cmd, unparsed)
+    if cmd_str is None:
+        print(bold('Command groups:'))
+        print_list(_commands.get_groups(), ident=14)
+        print
+        return None
+    try:
+        return _commands.get_class(cmd_str)
+    except CLICmdIncompleteError:
+        print(bold('%s:'%cmd_str))
+        print_list(_commands.list(cmd_str))
+    return None
+
 def one_command():
     try:
         exe = basename(argv[0])
@@ -119,6 +148,13 @@ def one_command():
         parsed, unparsed = parse_known_args(parser)
         if _arguments['version'].value:
             exit(0)
+        _commands.set_groups(_arguments['config'].get_groups())
+        cmd = _retrieve_cmd(unparsed)
+
+        if cmd is None:
+            parser.print_help()
+            exit(0)
+
     except CLIError as err:
         _print_error_message(err)
         exit(1)

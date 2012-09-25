@@ -38,7 +38,7 @@ except ImportError:
         return val
     red = yellow = magenta = bold
 
-from .errors import CLIUnknownCommand, CLICmdSpecError, CLIError
+from .errors import CLIUnknownCommand, CLICmdIncompleteError, CLICmdSpecError, CLIError
 
 """
 def magenta(val):
@@ -88,7 +88,16 @@ class CommandTree(object):
     def __init__(self):
         self._commands = {}
 
+    def set_groups(self, groups):
+        for grp in groups:
+            self._commands[grp] = {}
+
+    def get_groups(self):
+        return self._commands.keys()
+
     def _get_commands_from_prefix(self, prefix):
+        if len(prefix) == 0:
+            return self._commands
         path = get_pathlist_from_prefix(prefix)
         next_list = self._commands
         try:
@@ -116,7 +125,7 @@ class CommandTree(object):
         except ValueError:
             return ret
 
-    def is_full_command(self, command):
+    def get_class(self, command):
         """ Check if a command exists as a full/terminal command
         e.g. store_list is full, store is partial, stort is not existing
         @param command can either be a cmd1_cmd2_... str or a ['cmd1, cmd2, ...'] list
@@ -124,9 +133,10 @@ class CommandTree(object):
         @raise CLIUnknownCommand if command is unknown to this tree
         """
         next_level = self._get_commands_from_prefix(command)
-        if '_class' in next_level.keys():
-            return True
-        return False
+        try:
+            return next_level['_class']
+        except KeyError:
+            raise CLICmdIncompleteError(details='Cmd %s is not a full cmd'%command)
 
     def add(self, command, cmd_class):
         """Add a command_path-->cmd_class relation to the path """
@@ -146,8 +156,9 @@ class CommandTree(object):
             try:
                 cmds = cmds[cmd]
             except KeyError:
-                raise CLIUnknownCommand('set_description to cmd %s failed: cmd not found'%command)
+                raise CLIUnknownCommand(details='set_description to cmd %s failed: cmd not found'%command)
         cmds['_description'] = description
+
     def load_spec_package(self, spec_package):
         loaded = False
         for location in self.cmd_spec_locations:
@@ -159,7 +170,7 @@ class CommandTree(object):
             except ImportError:
                 pass
         if not loaded:
-            raise CLICmdSpecError('Cmd Spec Package %s load failed'%spec_package)
+            raise CLICmdSpecError(details='Cmd Spec Package %s load failed'%spec_package)
 
     def load_spec(self, spec_package, spec):
         """Load spec from a non nessecery loaded spec package"""
@@ -177,7 +188,11 @@ class CommandTree(object):
             raise CLICmdSpecError('Cmd Spec %s load failed'%spec)
 
 def get_pathlist_from_prefix(prefix):
-    return prefix if isinstance(prefix,list) else unicode(prefix).split('_')
+    if isinstance(prefix, list):
+        return prefix
+    if len(prefix) == 0:
+        return []
+    return unicode(prefix).split('_')
 
 def pretty_keys(d, delim='_', recurcive=False):
     """Transform keys of a dict from the form
