@@ -30,7 +30,6 @@
 # documentation are those of the authors and should not be
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
-from . import CLIError
 
 class CLIError(Exception):
     def __init__(self, message, status=0, details='', importance=0):
@@ -48,15 +47,15 @@ class CLIError(Exception):
         return unicode(self.message)
 
 class CLISyntaxError(CLIError):
-	def __init__(self, message, status=0, details=''):
+	def __init__(self, message='Syntax Error', status=10, details=''):
 		super(CLISyntaxError, self).__init__(message, status, details, importance=1)
 
 class CLIUnknownCommand(CLIError):
-	def __init__(self, message, status=12, details=''):
+	def __init__(self, message='Unknown Command', status=12, details=''):
 		super(CLIUnknownCommand, self).__init__(message, status, details, importance=0)
 
 class CLICmdSpecError(CLIError):
-	def __init__(self, message, status=13, details=''):
+	def __init__(self, message='Command Specification Error', status=13, details=''):
 		super(CLICmdSpecError, self).__init__(message, status, details, importance=0)
 
 def raiseCLIError(err, importance = -1):

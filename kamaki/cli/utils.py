@@ -35,21 +35,15 @@ from .errors import CLIUnknownCommand, CLISyntaxError, CLICmdSpecError
 class Argument(object):
     """An argument that can be parsed from command line or otherwise"""
 
-    def __init__(self, name, arity, help=None, parsed_name=None):
-        self.name = name
+    def __init__(self, arity, help=None, parsed_name=None, default=None):
         self.arity = int(arity)
 
         if help is not None:
             self.help = help
         if parsed_name is not None:
             self.parsed_name = parsed_name
-
-    @property 
-    def name(self):
-        return getattr(self, '_name', None)
-    @name.setter
-    def name(self, newname):
-        self._name = unicode(newname)
+        if default is not None:
+            self.default = default
 
     @property 
     def parsed_name(self):
@@ -57,8 +51,8 @@ class Argument(object):
     @parsed_name.setter
     def parsed_name(self, newname):
         self._parsed_name = getattr(self, '_parsed_name', [])
-        if isinstance(newname, list):
-            self._parsed_name += newname
+        if isinstance(newname, list) or isinstance(newname, tuple):
+            self._parsed_name += list(newname)
         else:
             self._parsed_name.append(unicode(newname))
 
@@ -94,23 +88,27 @@ class Argument(object):
     def value(self, newvalue):
         self._value = newvalue
 
-    def update_parser(self, parser):
+    def update_parser(self, parser, name):
         """Update an argument parser with this argument info"""
-        action = 'store_true' if self.arity == 0 else 'store'
-        parser.add_argument(*(self.parsed_name), dest=self.name, action=action,
+        action = 'store_true' if self.arity==0 else 'store'
+        parser.add_argument(*self.parsed_name, dest=name, action=action,
             default=self.default, help=self.help)
+
+    def main(self):
+        """Overide this method to give functionality to ur args"""
+        raise NotImplementedError
 
     @classmethod
     def test(self):
-        h = Argument('heelp', 0, help='Display a help massage', parsed_name=['--help', '-h'])
-        b = Argument('bbb', 1, help='This is a bbb', parsed_name='--bbb')
-        c = Argument('ccc', 3, help='This is a ccc', parsed_name='--ccc')
+        h = Argument(arity=0, help='Display a help massage', parsed_name=('--help', '-h'))
+        b = Argument(arity=1, help='This is a bbb', parsed_name='--bbb')
+        c = Argument(arity=2, help='This is a ccc', parsed_name='--ccc')
 
         from argparse import ArgumentParser
         parser = ArgumentParser(add_help=False)
-        h.update_parser(parser)
-        b.update_parser(parser)
-        c.update_parser(parser)
+        h.update_parser(parser, 'hee')
+        b.update_parser(parser, 'bee')
+        c.update_parser(parser, 'cee')
 
         args, argv = parser.parse_known_args()
         print('args: %s\nargv: %s'%(args, argv))
@@ -123,19 +121,20 @@ class CommandTree(object):
         {'store': {
             'list': {
                 'all': {
-                    '_spec':<store_list_all class>
+                    '_class':<store_list_all class>
                 }
             }
         }
     then add(store_list) and store_info will create this:
         {'store': {
             'list': {
-                None: <store_list class>
+                '_class': <store_list class>
                 'all': {
-                    None: <store_list_all class>
+                    '_description': 'detail list of all containers in account'
+                    '_class': <store_list_all class>
                 },
             'info': {
-                None: <store_info class>
+                '_class': <store_info class>
                 }
             }
         }
@@ -148,10 +147,8 @@ class CommandTree(object):
         'kamaki',
         '']
 
-    def __init__(self, zero_level_commands = []):
+    def __init__(self):
         self._commands = {}
-        for cmd in zero_level_commands:
-            self._commands[unicode(cmd)] = None
 
     def _get_commands_from_prefix(self, prefix):
         path = get_pathlist_from_prefix(prefix)
@@ -171,10 +168,15 @@ class CommandTree(object):
         @param prefix can be either cmd1_cmd2_... or ['cmd1', 'cmd2', ...]
         """
         next_list =  self._get_commands_from_prefix(prefix)
+        ret = next_list.keys()
         try:
-            return next_list.keys().remove(None)
+            ret = ret.remove('_description')
         except ValueError:
-            return next_list.keys()
+            pass
+        try:
+            return ret.remove('_class')
+        except ValueError:
+            return ret
 
     def is_full_command(self, command):
         """ Check if a command exists as a full/terminal command
@@ -184,20 +186,30 @@ class CommandTree(object):
         @raise CLIUnknownCommand if command is unknown to this tree
         """
         next_level = self._get_commands_from_prefix(command)
-        if None in next_level.keys():
+        if '_class' in next_level.keys():
             return True
         return False
 
     def add(self, command, cmd_class):
         """Add a command_path-->cmd_class relation to the path """
         path_list = get_pathlist_from_prefix(command)
-        d = self._commands
+        cmds = self._commands
         for cmd in path_list:
-            if not d.has_key(cmd):
-                d[cmd] = {}
-            d = d[cmd]
-        d[None] = cmd_class #make it terminal
+            if not cmds.has_key(cmd):
+                cmds[cmd] = {}
+            cmds = cmds[cmd]
+        cmds['_class'] = cmd_class #make it terminal
 
+    def set_description(self, command, description):
+        """Add a command_path-->description to the path"""
+        path_list = get_pathlist_from_prefix(command)
+        cmds = self._commands
+        for cmd in path_list:
+            try:
+                cmds = cmds[cmd]
+            except KeyError:
+                raise CLIUnknownCommand('set_description to cmd %s failed: cmd not found'%command)
+        cmds['_description'] = description
     def load_spec_package(self, spec_package):
         loaded = False
         for location in self.cmd_spec_locations:

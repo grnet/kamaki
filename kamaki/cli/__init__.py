@@ -56,27 +56,13 @@ except ImportError:
 from colors import magenta, red, yellow, bold
 
 from kamaki import clients
+from .errors import CLIError
 from .config import Config
 
 _commands = OrderedDict()
 
 GROUPS = {}
 CLI_LOCATIONS = ['kamaki.cli.commands', 'kamaki.commands', 'kamaki.cli', 'kamaki', '']
-
-class CLIError(Exception):
-    def __init__(self, message, status=0, details='', importance=0):
-        """importance is set by the raiser
-        0 is the lowest possible importance
-        Suggested values: 0, 1, 2, 3
-        """
-        super(CLIError, self).__init__(message, status, details)
-        self.message = message
-        self.status = status
-        self.details = details
-        self.importance = importance
-
-    def __unicode__(self):
-        return unicode(self.message)
 
 def command(group=None, name=None, syntax=None):
     """Class decorator that registers a class as a CLI command."""

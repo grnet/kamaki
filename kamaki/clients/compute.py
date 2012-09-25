@@ -186,7 +186,7 @@ class ComputeClient(Client):
 
     def list_flavors(self, detail=False):
         detail = 'detail' if detail else ''
-        r.self.flavors_get(command='detail')
+        r = self.flavors_get(command='detail')
         return r.json['flavors']['values']
 
     def get_flavor_details(self, flavor_id):

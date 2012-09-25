@@ -54,7 +54,7 @@ setup(
     packages=['kamaki', 'kamaki.cli', 'kamaki.clients', 'kamaki.clients.connection', 'kamaki.cli.commands'],
     include_package_data=True,
     entry_points={
-        'console_scripts': ['kamaki = kamaki.cli:main']
+        'console_scripts': ['kamaki = kamaki.cli:main', 'newmaki = kamaki.cli.argument:run_one_command']
     },
     install_requires=required
 )
