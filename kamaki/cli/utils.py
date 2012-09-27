@@ -40,152 +40,78 @@ except ImportError:
 
 from .errors import CLIUnknownCommand, CLICmdIncompleteError, CLICmdSpecError, CLIError
 
-"""
-def magenta(val):
-    return magenta(val)
-def red(val):
-    return red(val)
-def yellow(val):
-    return yellow(val)
-def bold(val):
-    return bold(val)
-"""
-
 class CommandTree(object):
     """A tree of command terms usefull for fast commands checking
-    None key is used to denote that its parent is a terminal symbol
-    and also the command spec class
-    e.g. add(store_list_all) will result to this:
-        {'store': {
-            'list': {
-                'all': {
-                    '_class':<store_list_all class>
-                }
-            }
-        }
-    then add(store_list) and store_info will create this:
-        {'store': {
-            'list': {
-                '_class': <store_list class>
-                'all': {
-                    '_description': 'detail list of all containers in account'
-                    '_class': <store_list_all class>
-                },
-            'info': {
-                '_class': <store_info class>
-                }
-            }
-        }
     """
 
-    cmd_spec_locations = [
-        'kamaki.cli.commands',
-        'kamaki.commands',
-        'kamaki.cli',
-        'kamaki',
-        '']
+    def __init__(self, run_class=None, description='', commands={}):
+        self.run_class = run_class
+        self.description = description
+        self.commands = commands
+                
+    def get_command_names(self, prefix=[]):
+        cmd = self.get_command(prefix)
+        return cmd.commands.keys()
 
-    def __init__(self):
-        self._commands = {}
+    def get_terminal_commands(self, prefix=''):
+        cmd = self.get_command(prefix)
+        terminal_cmds = [prefix] if cmd.is_command() else []
+        prefix = '' if len(prefix) == 0 else '%s_'%prefix
+        for term, tree in cmd.commands.items():
+            xtra = self.get_terminal_commands(prefix+term)
+            terminal_cmds.append(*xtra)
+        return terminal_cmds
 
-    def set_groups(self, groups):
-        for grp in groups:
-            self._commands[grp] = {}
-
-    def get_groups(self):
-        return self._commands.keys()
-
-    def _get_commands_from_prefix(self, prefix):
-        if len(prefix) == 0:
-            return self._commands
-        path = get_pathlist_from_prefix(prefix)
-        next_list = self._commands
+    def add_command(self, new_command, new_descr='', new_class=None):
+        cmd_list = new_command.split('_')
+        cmd = self.get_command(cmd_list[:-1])
         try:
-            for cmd in path:
-                next_list = next_list[unicode(cmd)]
-        except TypeError, KeyError:
-            error_index = path.index(cmd)
-            details='Command %s not in path %s'%(unicode(cmd), path[:error_index])
-            raise CLIUnknownCommand('Unknown command', details=details)
-        assert isinstance(next_list,dict)
-        return next_list 
+            existing = cmd.get_command(cmd_list[-1])
+            if new_class is not None:
+                existing.run_class = new_class
+            if new_descr not in (None, ''):
+                existing.description = new_descr
+        except CLIUnknownCommand:
+            cmd.commands[new_command] = CommandTree(new_class,new_descr,{})
 
-    def list(self, prefix=[]):
-        """ List the commands after prefix
-        @param prefix can be either cmd1_cmd2_... or ['cmd1', 'cmd2', ...]
+    def is_command(self, command=''):
+        if self.get_command(command).run_class is None:
+            return False
+        return True
+
+    def get_class(self, command=''):
+        cmd = self.get_command(command)
+        return cmd.run_class
+    def set_class(self, command, new_class):
+        cmd = self.get_command(command)
+        cmd.run_class = new_class
+
+    def get_description(self, command):
+        cmd = self.get_command(command)
+        return cmd.description
+    def set_description(self, command, new_descr):
+        cmd = self.get_command(command)
+        cmd.description = new_descr
+
+    def copy_command(self, prefix=''):
+        cmd = self.get_command(prefix)
+        from copy import deepcopy
+        return deepcopy(cmd)
+
+    def get_command(self, command):
         """
-        next_list =  self._get_commands_from_prefix(prefix)
-        ret = next_list.keys()
-        try:
-            ret = ret.remove('_description')
-        except ValueError:
-            pass
-        try:
-            return ret.remove('_class')
-        except ValueError:
-            return ret
-
-    def get_class(self, command):
-        """ Check if a command exists as a full/terminal command
-        e.g. store_list is full, store is partial, stort is not existing
-        @param command can either be a cmd1_cmd2_... str or a ['cmd1, cmd2, ...'] list
-        @return True if this command is in this Command Tree, False otherwise
-        @raise CLIUnknownCommand if command is unknown to this tree
+        @return a tuple of the form (cls_object, 'description text', {term1':(...), 'term2':(...)})
         """
-        next_level = self._get_commands_from_prefix(command)
+        path = get_pathlist_from_prefix(command)
+        cmd = self
         try:
-            return next_level['_class']
+            for term in path:
+                cmd = cmd.commands[term]
         except KeyError:
-            raise CLICmdIncompleteError(details='Cmd %s is not a full cmd'%command)
-
-    def add(self, command, cmd_class):
-        """Add a command_path-->cmd_class relation to the path """
-        path_list = get_pathlist_from_prefix(command)
-        cmds = self._commands
-        for cmd in path_list:
-            if not cmds.has_key(cmd):
-                cmds[cmd] = {}
-            cmds = cmds[cmd]
-        cmds['_class'] = cmd_class #make it terminal
-
-    def set_description(self, command, description):
-        """Add a command_path-->description to the path"""
-        path_list = get_pathlist_from_prefix(command)
-        cmds = self._commands
-        for cmd in path_list:
-            try:
-                cmds = cmds[cmd]
-            except KeyError:
-                raise CLIUnknownCommand(details='set_description to cmd %s failed: cmd not found'%command)
-        cmds['_description'] = description
-
-    def load_spec_package(self, spec_package):
-        loaded = False
-        for location in self.cmd_spec_locations:
-            location += spec_package if location == '' else '.%s'%spec_package
-            try:
-                __import__(location) #a class decorator will put evetyrhing in place
-                loaded = True
-                break
-            except ImportError:
-                pass
-        if not loaded:
-            raise CLICmdSpecError(details='Cmd Spec Package %s load failed'%spec_package)
-
-    def load_spec(self, spec_package, spec):
-        """Load spec from a non nessecery loaded spec package"""
-
-        loaded = False
-        for location in self.cmd_spec_locations:
-            location += spec_package if location == '' else '.%s'%spec_package
-            try:
-                __import__(location, fromlist=[spec])
-                loaded = True
-                break
-            except ImportError:
-                pass
-        if not loaded:
-            raise CLICmdSpecError('Cmd Spec %s load failed'%spec)
+            error_index = path.index(term)
+            details='Command term %s not in path %s'%(unicode(term), path[:error_index])
+            raise CLIUnknownCommand('Unknown command', details=details)
+        return cmd
 
 def get_pathlist_from_prefix(prefix):
     if isinstance(prefix, list):

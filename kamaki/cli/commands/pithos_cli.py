@@ -31,11 +31,12 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-from kamaki.cli import command, set_api_description
+from kamaki.cli import command#, set_api_description
 from kamaki.clients.utils import filter_in
 from kamaki.cli.errors import CLIError, raiseCLIError
 from kamaki.cli.utils import format_size, print_dict, pretty_keys, print_list
-set_api_description('store', 'Pithos+ storage commands')
+#set_api_description('store', 'Pithos+ storage commands')
+API_DESCRIPTION = {'store':'Pithos+ storage commands'}
 from kamaki.clients.pithos import PithosClient, ClientError
 from colors import bold
 from sys import stdout, exit

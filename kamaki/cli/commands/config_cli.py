@@ -31,8 +31,9 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from kamaki.cli import command, set_api_description
-set_api_description('config', 'Configuration commands')
+from kamaki.cli import command#, set_api_description
+#set_api_description('config', 'Configuration commands')
+API_DESCRIPTION = {'config':'Configuration commands'}
 
 @command()
 class config_list(object):

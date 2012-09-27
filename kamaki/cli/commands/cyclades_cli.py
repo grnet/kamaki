@@ -31,14 +31,17 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from kamaki.cli import command, set_api_description
-from kamaki.cli.utils import print_dict, print_items, print_list, format_size
+from kamaki.cli import command#, set_api_description
+from kamaki.cli.utils import print_dict, print_items, print_list, format_size, bold
 from kamaki.cli.errors import CLIError, raiseCLIError
-from colors import bold
-set_api_description('server', "Compute/Cyclades API server commands")
-set_api_description('flavor', "Compute/Cyclades API flavor commands")
-set_api_description('image', "Compute/Cyclades or Glance API image commands")
-set_api_description('network', "Compute/Cyclades API network commands")
+#set_api_description('server', "Compute/Cyclades API server commands")
+#set_api_description('flavor', "'Compute/Cyclades API flavor commands'")
+#set_api_description('image', "Compute/Cyclades or Glance API image commands")
+#set_api_description('network', "Compute/Cyclades API network commands")
+API_DESCRIPTION = {'server':'Compute/Cyclades API server commands',
+    'flavor':'Compute/Cyclades API flavor commands',
+    'image':'Compute/Cyclades or Glance API image commands',
+    'network': 'Compute/Cyclades API network commands'}
 from kamaki.clients.cyclades import CycladesClient, ClientError
 
 class _init_cyclades(object):

@@ -32,8 +32,9 @@
 # or implied, of GRNET S.A.command
 
 
-from kamaki.cli import command, set_api_description
-set_api_description('astakos', 'Astakos API commands')
+from kamaki.cli import command#, set_api_description
+#set_api_description('astakos', 'Astakos API commands')
+API_DESCRIPTION = {'astakos':'Astakos API commands'}
 from kamaki.clients.astakos import AstakosClient, ClientError
 from kamaki.cli.utils import print_dict
 from kamaki.cli.errors import raiseCLIError

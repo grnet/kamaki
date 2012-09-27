@@ -52,7 +52,7 @@ class CLISyntaxError(CLIError):
 
 class CLIUnknownCommand(CLIError):
 	def __init__(self, message='Unknown Command', status=12, details=''):
-		super(CLIUnknownCommand, self).__init__(message, status, details, importance=0)
+		super(CLIUnknownCommand, self).__init__(message, status, details, importance=1)
 
 class CLICmdSpecError(CLIError):
 	def __init__(self, message='Command Specification Error', status=13, details='', importance=1):
