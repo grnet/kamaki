@@ -129,10 +129,16 @@ class _store_container_command(_store_account_command):
             self.client.container = getattr(self.args,'container')
         self.container = self.client.container
 
+@command()
+class store_list_again(_store_container_command):
+    """Test stuff"""
+    def main(self):
+        pass
+
 """
 @command()
 class store_test(_store_container_command):
-    ""Test stuff""
+    "Test stuff something""
 
     def main(self):
         super(self.__class__, self).main('pithos')

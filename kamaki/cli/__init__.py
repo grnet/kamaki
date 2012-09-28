@@ -69,37 +69,74 @@ _commands = CommandTree(description='A command line tool for poking clouds')
 #If empty, all commands are loaded, if not empty, only commands in this list
 #e.g. [store, lele, list, lolo] is good to load store_list but not list_store
 #First arg should always refer to a group
-candidate_command_terms = [None]
+candidate_command_terms = []
+do_no_load_commands = False
+put_subclass_signatures_in_commands = False
+
+def _put_subclass_signatures_in_commands(cls):
+    global candidate_command_terms
+
+    part_name = '_'.join(candidate_command_terms)
+    try:
+        empty, same, rest = cls.__name__.partition(part_name)
+    except ValueError:
+        return False
+    if len(empty) != 0:
+        return False
+    if len(rest) == 0:
+        _commands.add_path(cls.__name__, (cls.__doc__.partition('\n'))[0])
+    else:
+        rest_terms = rest[1:].split('_')
+        new_name = part_name+'_'+rest_terms[0]
+        desc = cls.__doc__.partition('\n')[0] if new_name == cls.__name__ else ''
+        _commands.add_path(new_name, desc)
+    return True
+
+
+def _put_class_path_in_commands(cls):
+    #Maybe I should apologise for the globals, but they are used in a smart way, so...
+    global candidate_command_terms
+    term_list = cls.__name__.split('_')
+
+    tmp_tree = _commands
+    if len(candidate_command_terms) > 0:
+        #This is the case of a one-command execution: discard if not requested
+        if term_list[0] != candidate_command_terms[0]:
+            return False
+        i = 0
+        for term in term_list:
+            #check if the term is requested by user
+            if term not in candidate_command_terms[i:]:
+                return False
+            i = 1+candidate_command_terms.index(term)
+            #now, put the term in the tree
+            if term not in tmp_tree.get_command_names():
+                tmp_tree.add_command(term)
+            tmp_tree = tmp_tree.get_command(term)
+    else:
+        #Just insert everything in the tree
+        for term in term_list:
+            if term not in tmp_tree.get_command_names():
+                tmp_tree.add_command(term)
+            tmp_tree = tmp_tree.get_command()
+    return True
 
 def command():
     """Class decorator that registers a class as a CLI command"""
 
     def decorator(cls):
         """Any class with name of the form cmd1_cmd2_cmd3_... is accepted"""
-        term_list = cls.__name__.split('_')
-        global candidate_command_terms
+        global do_no_load_commands
+        if do_no_load_commands:
+            return cls
 
-        tmp_tree = _commands
-        if len(candidate_command_terms) > 0:
-            #This is the case of a one-command execution: discard if not requested
-            if term_list[0] != candidate_command_terms[0]:
-                return cls
-            i = 0
-            for term in term_list:
-                #check if the term is requested by used
-                if term not in candidate_command_terms[i:]:
-                    return cls
-                i = 1+candidate_command_terms.index(term)
-                #now, put the term in the tree
-                if term not in tmp_tree.get_command_names():
-                    tmp_tree.add_command(term)
-                tmp_tree = tmp_tree.get_command(term)
-        else:
-            #Just insert everything in the tree
-            for term in term_list:
-                if term not in tmp_tree.get_command_names():
-                    tmp_tree.add_command(term)
-                tmp_tree = tmp_tree.get_command()
+        global put_subclass_signatures_in_commands
+        if put_subclass_signatures_in_commands:
+            _put_subclass_signatures_in_commands(cls)
+            return cls
+
+        if not _put_class_path_in_commands(cls):
+            return cls
 
         cls.description, sep, cls.long_description = cls.__doc__.partition('\n')
 
@@ -121,7 +158,7 @@ def command():
     return decorator
 
 def _init_parser(exe):
-    parser = ArgumentParser(add_help=True)
+    parser = ArgumentParser(add_help=False)
     parser.prog='%s <cmd_group> [<cmd_subbroup> ...] <cmd>'%exe
     for name, argument in _arguments.items():
         argument.update_parser(parser, name)
@@ -185,10 +222,10 @@ def _order_in_list(list1, list2):
         order += len(list2)*i*list2.index(term)
     return order
 
-def load_command(group, unparsed):
+def load_command(group, unparsed, reload_package=False):
     global candidate_command_terms
     candidate_command_terms = [group] + unparsed
-    pkg = load_group_package(group)
+    pkg = load_group_package(group, reload_package)
 
     #From all possible parsed commands, chose one
     final_cmd = group
@@ -198,7 +235,10 @@ def load_command(group, unparsed):
         if len(next_names) == 1:
             final_cmd+='_'+next_names[0]
         else:#choose the first in user string
-            pos = unparsed.index(next_names[0])
+            try:
+                pos = unparsed.index(next_names[0])
+            except ValueError:
+                return final_cmd
             choice = 0
             for i, name in enumerate(next_names[1:]):
                 tmp_index = unparsed.index(name)
@@ -207,17 +247,24 @@ def load_command(group, unparsed):
                     choice = i+1
             final_cmd+='_'+next_names[choice]
         next_names = _commands.get_command_names(final_cmd)
-    cli = _commands.get_class(final_cmd)
-    if cli is None:
-        raise CLICmdIncompleteError(details='%s'%final_cmd)
-    return cli
+    return final_cmd
 
+def shallow_load():
+    """Load only group names and descriptions"""
+    global do_no_load_commands
+    do_no_load_commands = True#load only descriptions
+    for grp in _arguments['config'].get_groups():
+        load_group_package(grp)
+    do_no_load_commands = False
 
-def load_group_descriptions(spec_pkg):
+def load_group_package(group, reload_package=False):
+    spec_pkg = _arguments['config'].value.get(group, 'cli')
     for location in cmd_spec_locations:
         location += spec_pkg if location == '' else ('.'+spec_pkg)
         try:
             package = __import__(location, fromlist=['API_DESCRIPTION'])
+            if reload_package:
+                reload(package)
         except ImportError:
             continue
         for grp, descr in package.API_DESCRIPTION.items():
@@ -225,50 +272,64 @@ def load_group_descriptions(spec_pkg):
         return package
     raise CLICmdSpecError(details='Cmd Spec Package %s load failed'%spec_pkg)
 
-def shallow_load_groups():
-    """Load only group names and descriptions"""
-    for grp in _arguments['config'].get_groups():
-        spec_pkg = _arguments['config'].value.get(grp, 'cli')
-        load_group_descriptions(spec_pkg)
-
-def load_group_package(group):
-    spec_pkg = _arguments['config'].value.get(group, 'cli')
-    for location in cmd_spec_locations:
-        location += spec_pkg if location == '' else ('.'+spec_pkg)
-        try:
-            package = __import__(location)
-        except ImportError:
-            continue
-        return package
-    raise CLICmdSpecError(details='Cmd Spec Package %s load failed'%spec_pkg)
-
-def print_commands(prefix=[]):
-    grps = {}
-    for grp in _commands.get_command_names(prefix):
-        grps[grp] = _commands.get_description(grp)
+def print_commands(prefix=[], full_tree=False):
+    cmd = _commands.get_command(prefix)
+    grps = {' . ':cmd.description} if cmd.is_command else {}
+    for grp in cmd.get_command_names():
+        grps[grp] = cmd.get_description(grp)
+    print('\nOptions:')
     print_dict(grps, ident=12)
+    if full_tree:
+        _commands.print_tree(level=-1)
 
 def one_command():
     _debug = False
+    _help = False
     try:
         exe = basename(argv[0])
         parser = _init_parser(exe)
         parsed, unparsed = parse_known_args(parser)
-        if _arguments['debug'].value:
-            _debug = True
+        _debug = _arguments['debug'].value
+        _help = _arguments['help'].value
         if _arguments['version'].value:
             exit(0)
 
         group = get_command_group(unparsed)
         if group is None:
             parser.print_help()
-            shallow_load_groups()
-            print('\nCommand groups:')
-            print_commands()
+            shallow_load()
+            print_commands(full_tree=_arguments['verbose'].value)
+            print()
             exit(0)
 
-        cli = load_command(group, unparsed)
-        print('And this is how I get my command! YEAAAAAAH! %s'%cli)
+        command_path = load_command(group, unparsed)
+        cli = _commands.get_class(command_path)
+        if cli is None or _help: #Not a complete command
+            parser.description = _commands.closest_description(command_path)
+            parser.prog = '%s '%exe
+            for term in command_path.split('_'):
+                parser.prog += '%s '%term
+            if cli is None:
+                parser.prog += '<...>'
+            else:
+                cli().update_parser(parser)
+            parser.print_help()
+
+            #Shuuuut, we now have to load one more level just to see what is missing
+            global put_subclass_signatures_in_commands
+            put_subclass_signatures_in_commands = True
+            load_command(group, command_path.split('_')[1:], reload_package=True)
+
+            print_commands(command_path, full_tree=_arguments['verbose'].value)
+            exit(0)
+
+        #Now, load the cmd
+        cmd = cli()
+        cmd.update_parser(parser)
+        parser, unparsed = parse_known_args(parser)
+        for term in command_path.split('_'):
+            unparsed.remove(term)
+        cmd.main(unparsed)
 
     except CLIError as err:
         if _debug:

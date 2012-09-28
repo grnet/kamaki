@@ -62,6 +62,17 @@ class CommandTree(object):
             terminal_cmds.append(*xtra)
         return terminal_cmds
 
+    def add_path(self, command, description):
+        path = get_pathlist_from_prefix(command)
+        tmp = self
+        for term in path:
+            try:
+                tmp = tmp.get_command(term)
+            except CLIUnknownCommand:
+                tmp.add_command(term)
+                tmp = tmp.get_command(term)
+        tmp.description = description
+
     def add_command(self, new_command, new_descr='', new_class=None):
         cmd_list = new_command.split('_')
         cmd = self.get_command(cmd_list[:-1])
@@ -93,6 +104,26 @@ class CommandTree(object):
         cmd = self.get_command(command)
         cmd.description = new_descr
 
+    def closest_complete_command(self, command):
+        path = get_pathlist_from_prefix(command)
+        tmp = self
+        choice = self
+        for term in path:
+            tmp = tmp.get_command(term)
+            if tmp.is_command():
+                choice = tmp
+        return choice
+
+    def closest_description(self, command):
+        path = get_pathlist_from_prefix(command)
+        desc = self.description
+        tmp = self
+        for term in path:
+            tmp = tmp.get_command(term)
+            if tmp.description not in [None, '']:
+                desc = tmp.description
+        return desc
+
     def copy_command(self, prefix=''):
         cmd = self.get_command(prefix)
         from copy import deepcopy
@@ -112,6 +143,15 @@ class CommandTree(object):
             details='Command term %s not in path %s'%(unicode(term), path[:error_index])
             raise CLIUnknownCommand('Unknown command', details=details)
         return cmd
+
+    def print_tree(self, command=[], level = 0, tabs=0):
+        cmd = self.get_command(command)
+        command_str = '_'.join(command) if isinstance(command, list) else command
+        print('   '*tabs+command_str+': '+cmd.description)
+        if level != 0:
+            for name in cmd.get_command_names():
+                new_level = level if level < 0 else (level-1)
+                cmd.print_tree(name, new_level, tabs+1)
 
 def get_pathlist_from_prefix(prefix):
     if isinstance(prefix, list):

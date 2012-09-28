@@ -170,7 +170,7 @@ class CmdLineConfigArgument(Argument):
 				raise CLISyntaxError(details='Missing . between section and key: -o section.key=val')
 		self._config_arg.value.override(section.strip(), key.strip(), val.strip())
 
-_arguments = dict(config = _config_arg,
+_arguments = dict(config = _config_arg, help = Argument(0, 'Show help message', ('-h', '--help')),
 	debug = Argument(0, 'Include debug output', ('-d', '--debug')),
 	include = Argument(0, 'Include protocol headers in the output', ('-i', '--include')),
 	silent = Argument(0, 'Do not output anything', ('-s', '--silent')),
