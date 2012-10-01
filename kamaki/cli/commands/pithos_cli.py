@@ -42,10 +42,32 @@ from kamaki.clients.pithos import PithosClient, ClientError
 from colors import bold
 from sys import stdout, exit
 import signal
-from time import localtime, strftime
+from time import localtime, strftime, strptime, mktime
 
 from progress.bar import IncrementalBar
 
+class UntilArgument(ValueArgument):
+    @property 
+    def value(self):
+        if self._value is None:
+            return self.default
+        format = self.get_argument('format')
+        try:
+            t = time.strptime(until, format)
+        except ValueError as err:
+            raise CLIError(message='in --until: '+unicode(err), importance=1)
+        return int(mktime(t))
+
+class MetaArgument(ValueArgument):
+    @property 
+    def value(self):
+        if self._value is None:
+            return self.default
+        metadict = dict()
+        for metastr in self._value.split('_'):
+            (key,val) = metastr.split(':')
+            metadict[key]=val
+        return metadict
 
 class ProgressBar(IncrementalBar):
     #suffix = '%(percent)d%% - %(eta)ds'
@@ -54,7 +76,10 @@ class ProgressBar(IncrementalBar):
 class _pithos_init(object):
     def __init__(self, arguments={}):
         self.arguments = arguments
-        self.config = self.get_argument('config')
+        try:
+            self.config = self.get_argument('config')
+        except KeyError:
+            pass
 
     def get_argument(self, arg_name):
         return self.arguments[arg_name].value
@@ -74,10 +99,6 @@ class _store_account_command(_pithos_init):
     def __init__(self, arguments={}):
         super(_store_account_command, self).__init__(arguments)
         self.arguments['account'] = ValueArgument('Specify the account', '--account')
-
-    def update_parser(self, parser):
-        parser.add_argument('--account', dest='account', metavar='NAME',
-                          help="Specify an account to use")
 
     def progress(self, message):
         """Return a generator function to be used for progress tracking"""
@@ -105,11 +126,6 @@ class _store_container_command(_store_account_command):
         self.arguments['container'] = ValueArgument('Specify the container name', '--container')
         self.container = None
         self.path = None
-
-    def update_parser(self, parser):
-        super(_store_container_command, self).update_parser(parser)
-        parser.add_argument('--container', dest='container', metavar='NAME', default=None,
-            help="Specify a container to use")
 
     def extract_container_and_path(self, container_with_path, path_is_optional=True):
         assert isinstance(container_with_path, str)
@@ -160,6 +176,7 @@ class store_list(_store_container_command):
     """List containers, object trees or objects in a directory
     """
 
+
     def __init__(self, arguments = {}):
         super(store_list, self).__init__(arguments)
         self.arguments['detail'] = FlagArgument('show detailed output', '-l')
@@ -175,43 +192,11 @@ class store_list(_store_container_command):
             '--if-modified-since')
         self.arguments['if_unmodified_since'] = ValueArgument('show output not modified since then',
             '--if-unmodified-since')
-        self.arguments['until'] = ValueArgument('show metadata until then', '--until')
+        self.arguments['until'] = UntilArgument('show metadata until then', '--until')
         self.arguments['format'] = ValueArgument('format to parse until data (default: d/m/Y H:M:S',
             '--format')
         self.arguments['shared'] = FlagArgument('show only shared', '--shared')
         self.arguments['public'] = FlagArgument('show only public', '--public')
-
-    def update_parser(self, parser):
-        super(self.__class__, self).update_parser(parser)
-        parser.add_argument('-l', action='store_true', dest='detail', default=False,
-            help='show detailed output')
-        parser.add_argument('-N', action='store', dest='show_size', default=1000,
-            help='print output in chunks of size N')
-        parser.add_argument('-n', action='store', dest='limit', default=None,
-            help='show limited output')
-        parser.add_argument('--marker', action='store', dest='marker', default=None,
-            help='show output greater then marker')
-        parser.add_argument('--prefix', action='store', dest='prefix', default=None,
-            help='show output starting with prefix')
-        parser.add_argument('--delimiter', action='store', dest='delimiter', default=None, 
-            help='show output up to the delimiter')
-        parser.add_argument('--path', action='store', dest='path', default=None, 
-            help='show output starting with prefix up to /')
-        parser.add_argument('--meta', action='store', dest='meta', default=None, 
-            help='show output having the specified meta keys (e.g. --meta "meta1 meta2 ..."')
-        parser.add_argument('--if-modified-since', action='store', dest='if_modified_since', 
-            default=None, help='show output if modified since then')
-        parser.add_argument('--if-unmodified-since', action='store', dest='if_unmodified_since',
-            default=None, help='show output if not modified since then')
-        parser.add_argument('--until', action='store', dest='until', default=None,
-            help='show metadata until that date')
-        dateformat = '%d/%m/%Y %H:%M:%S'
-        parser.add_argument('--format', action='store', dest='format', default=dateformat,
-            help='format to parse until date (default: d/m/Y H:M:S)')
-        parser.add_argument('--shared', action='store_true', dest='shared', default=False,
-            help='show only shared')
-        parser.add_argument('--public', action='store_true', dest='public', default=False,
-            help='show only public')
 
     def print_objects(self, object_list):
         import sys
@@ -274,19 +259,6 @@ class store_list(_store_container_command):
                 print('(press "enter" to continue)')
                 sys.stdin.read(1)
 
-    def getuntil(self, orelse=None):
-        if self.get_argument('until'):
-            until = self.get_argument('until')
-            if until is None:
-                return None
-            format = self.get_argument('format')
-            #except TypeError:
-            try:
-                t = time.strptime(until, format)
-            except ValueError as err:
-                raise CLIError(message='in --until: '+unicode(err), importance=1)
-            return int(time.mktime(t))
-        return orelse
 
     def main(self, container____path__=None):
         super(self.__class__, self).main(container____path__)
@@ -296,7 +268,7 @@ class store_list(_store_container_command):
                     marker=self.get_argument('marker'),
                     if_modified_since=self.get_argument('if_modified_since'),
                     if_unmodified_since=self.get_argument('if_unmodified_since'),
-                    until=self.getuntil(),
+                    until=self.get_argument('until'),
                     show_only_shared=self.get_argument('shared'))
                 self.print_containers(r.json)
             else:
@@ -305,7 +277,7 @@ class store_list(_store_container_command):
                     delimiter=self.get_argument('delimiter'), path=self.get_argument('path'),
                     if_modified_since=self.get_argument('if_modified_since'),
                     if_unmodified_since=self.get_argument('if_unmodified_since'),
-                    until=self.getuntil(),
+                    until=self.get_argument('until'),
                     meta=self.get_argument('meta'), show_only_shared=self.get_argument('shared'))
                 self.print_objects(r.json)
         except ClientError as err:
@@ -326,33 +298,21 @@ class store_mkdir(_store_container_command):
 class store_create(_store_container_command):
     """Create a container or a directory object"""
 
-    def update_parser(self, parser):
-        super(self.__class__, self).update_parser(parser)
-        parser.add_argument('--versioning', action='store', dest='versioning', default=None,
-            help='set container versioning (auto/none)')
-        parser.add_argument('--quota', action='store', dest='quota', default=None,
-            help='set default container quota')
-        parser.add_argument('--meta', action='store', dest='meta', default=None,
-            help='set container metadata ("key1:val1 key2:val2 ...")')
 
-    def getmeta(self, orelse=None):
-        try:
-            meta = getattr(self.args,'meta')
-            metalist = meta.split(' ')
-        except AttributeError:
-            return orelse
-        metadict = {}
-        for metastr in metalist:
-            (key,val) = metastr.split(':')
-            metadict[key] = val
-        return metadict
+    def __init__(self, arguments={}):
+        super(self.__class__, self).__init__(arguments)
+        self.arguments['versioning'] = ValueArgument('set container versioning (auto/none)',
+            '--versioning')
+        self.arguments['quota'] = ValueArgument('set default container quota', '--quota')
+        self.arguments['meta'] = MetaArgument('set container metadata', '---meta')
 
     def main(self, container____directory__):
         super(self.__class__, self).main(container____directory__)
         try:
             if self.path is None:
-                self.client.container_put(quota=getattr(self.args, 'quota'),
-                    versioning=getattr(self.args, 'versioning'), metadata=self.getmeta())
+                self.client.container_put(quota=self.get_argument('quota'),
+                    versioning=self.get_argument('versioning'),
+                    metadata=self.get_argument('metadata'))
             else:
                 self.client.create_directory(self.path)
         except ClientError as err:

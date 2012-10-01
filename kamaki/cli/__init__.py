@@ -42,7 +42,7 @@ gevent.monkey.patch_all()
 import logging
 
 from inspect import getargspec
-from argparse import ArgumentParser
+from argparse import ArgumentParser, ArgumentError
 from base64 import b64encode
 from os.path import abspath, basename, exists
 from sys import exit, stdout, stderr, argv
@@ -158,8 +158,11 @@ def command():
     return decorator
 
 def _update_parser(parser, arguments):
-    for name, argument in arguments.items():
-        argument.update_parser(parser, name)
+    try:
+        for name, argument in arguments.items():
+            argument.update_parser(parser, name)
+    except ArgumentError:
+        pass
 
 def _init_parser(exe):
     parser = ArgumentParser(add_help=False)
@@ -307,15 +310,12 @@ def one_command():
 
         command_path = load_command(group, unparsed)
         cli = _commands.get_class(command_path)
-        if cli is None or _help: #Not a complete command
+        if cli is None or _help: #Not a complete command or help
             parser.description = _commands.closest_description(command_path)
-            parser.prog = '%s '%exe
-            for term in command_path.split('_'):
-                parser.prog += '%s '%term
+            parser.prog = '%s %s '%(exe, command_path.replace('_', ' '))
             if cli is None:
                 parser.prog += '<...>'
             else:
-                print(unicode(cli().syntax))
                 parser.prog += cli.syntax
                 _update_parser(parser, cli().arguments)
             parser.print_help()
@@ -330,7 +330,8 @@ def one_command():
 
         #Now, load the cmd
         cmd = cli(_arguments)
-        parser = _init_parser(cmd.arguments)
+        _update_parser(parser, cmd.arguments)
+        parser.prog = '%s %s %s'%(exe, command_path.replace('_', ' '), cli.syntax)
         parsed, unparsed = parse_known_args(parser)
         for term in command_path.split('_'):
             unparsed.remove(term)
@@ -343,7 +344,6 @@ def one_command():
                 exit(1)
             else:
                 raise
-
     except CLIError as err:
         if _debug:
             raise
