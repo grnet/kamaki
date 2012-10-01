@@ -157,11 +157,14 @@ def command():
         return cls
     return decorator
 
+def _update_parser(parser, arguments):
+    for name, argument in arguments.items():
+        argument.update_parser(parser, name)
+
 def _init_parser(exe):
     parser = ArgumentParser(add_help=False)
     parser.prog='%s <cmd_group> [<cmd_subbroup> ...] <cmd>'%exe
-    for name, argument in _arguments.items():
-        argument.update_parser(parser, name)
+    _update_parser(parser, _arguments)
     return parser
 
 def _print_error_message(cli_err):
@@ -312,7 +315,9 @@ def one_command():
             if cli is None:
                 parser.prog += '<...>'
             else:
-                cli().update_parser(parser)
+                print(unicode(cli().syntax))
+                parser.prog += cli.syntax
+                _update_parser(parser, cli().arguments)
             parser.print_help()
 
             #Shuuuut, we now have to load one more level just to see what is missing
@@ -324,12 +329,20 @@ def one_command():
             exit(0)
 
         #Now, load the cmd
-        cmd = cli()
-        cmd.update_parser(parser)
-        parser, unparsed = parse_known_args(parser)
+        cmd = cli(_arguments)
+        parser = _init_parser(cmd.arguments)
+        parsed, unparsed = parse_known_args(parser)
         for term in command_path.split('_'):
             unparsed.remove(term)
-        cmd.main(unparsed)
+        try:
+            ret = cmd.main(*unparsed)
+            exit(ret)
+        except TypeError as e:
+            if e.args and e.args[0].startswith('main()'):
+                parser.print_help()
+                exit(1)
+            else:
+                raise
 
     except CLIError as err:
         if _debug:

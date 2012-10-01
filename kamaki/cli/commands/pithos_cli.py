@@ -35,6 +35,7 @@ from kamaki.cli import command#, set_api_description
 from kamaki.clients.utils import filter_in
 from kamaki.cli.errors import CLIError, raiseCLIError
 from kamaki.cli.utils import format_size, print_dict, pretty_keys, print_list
+from kamaki.cli.argument import FlagArgument, ValueArgument
 #set_api_description('store', 'Pithos+ storage commands')
 API_DESCRIPTION = {'store':'Pithos+ storage commands'}
 from kamaki.clients.pithos import PithosClient, ClientError
@@ -51,16 +52,28 @@ class ProgressBar(IncrementalBar):
     suffix = '%(percent)d%%'
 
 class _pithos_init(object):
+    def __init__(self, arguments={}):
+        self.arguments = arguments
+        self.config = self.get_argument('config')
+
+    def get_argument(self, arg_name):
+        return self.arguments[arg_name].value
+
     def main(self):
         self.token = self.config.get('store', 'token') or self.config.get('global', 'token')
         self.base_url = self.config.get('store', 'url') or self.config.get('global', 'url')
         self.account = self.config.get('store', 'account') or self.config.get('global', 'account')
-        self.container = self.config.get('store', 'container') or self.config.get('global', 'container')
+        self.container = self.config.get('store', 'container') or self.config.get('global',
+            'container')
         self.client = PithosClient(base_url=self.base_url, token=self.token, account=self.account,
             container=self.container)
 
 class _store_account_command(_pithos_init):
     """Base class for account level storage commands"""
+
+    def __init__(self, arguments={}):
+        super(_store_account_command, self).__init__(arguments)
+        self.arguments['account'] = ValueArgument('Specify the account', '--account')
 
     def update_parser(self, parser):
         parser.add_argument('--account', dest='account', metavar='NAME',
@@ -81,13 +94,15 @@ class _store_account_command(_pithos_init):
 
     def main(self):
         super(_store_account_command, self).main()
-        if hasattr(self.args, 'account') and self.args.account is not None:
-            self.client.account = self.args.account
+        if self.arguments['account'].value is not None:
+            self.client.account = self.arguments['account'].value
 
 class _store_container_command(_store_account_command):
     """Base class for container level storage commands"""
 
-    def __init__(self):
+    def __init__(self, arguments={}):
+        super(_store_container_command, self).__init__(arguments)
+        self.arguments['container'] = ValueArgument('Specify the container name', '--container')
         self.container = None
         self.path = None
 
@@ -99,8 +114,8 @@ class _store_container_command(_store_account_command):
     def extract_container_and_path(self, container_with_path, path_is_optional=True):
         assert isinstance(container_with_path, str)
         if ':' not in container_with_path:
-            if hasattr(self.args, 'container'):
-                self.container = getattr(self.args, 'container')
+            if self.get_argument('container') is not None:
+                self.container = self.get_argument('container')
             else:
                 self.container = self.client.container
             if self.container is None:
@@ -125,15 +140,9 @@ class _store_container_command(_store_account_command):
         if container_with_path is not None:
             self.extract_container_and_path(container_with_path, path_is_optional)
             self.client.container = self.container
-        elif hasattr(self.args, 'container'):
-            self.client.container = getattr(self.args,'container')
+        elif self.get_argument('container') is not None:
+            self.client.container = self.get_argument('container')
         self.container = self.client.container
-
-@command()
-class store_list_again(_store_container_command):
-    """Test stuff"""
-    def main(self):
-        pass
 
 """
 @command()
@@ -150,6 +159,27 @@ class store_test(_store_container_command):
 class store_list(_store_container_command):
     """List containers, object trees or objects in a directory
     """
+
+    def __init__(self, arguments = {}):
+        super(store_list, self).__init__(arguments)
+        self.arguments['detail'] = FlagArgument('show detailed output', '-l')
+        self.arguments['show_size'] = ValueArgument('print output in chunks of size N', '-N')
+        self.arguments['limit'] = ValueArgument('show limited output', '-n')
+        self.arguments['marker'] = ValueArgument('show output greater that marker', '--marker')
+        self.arguments['prefix'] = ValueArgument('show output staritng with prefix', '--prefix')
+        self.arguments['delimiter'] = ValueArgument('show output up to delimiter', '--delimiter')
+        self.arguments['path'] = ValueArgument('show output starting with prefix up to /', '--path')
+        self.arguments['meta'] = ValueArgument('show output haviung the specified meta keys',
+            '---meta', default=[])
+        self.arguments['if_modified_since'] = ValueArgument('show output modified since then',
+            '--if-modified-since')
+        self.arguments['if_unmodified_since'] = ValueArgument('show output not modified since then',
+            '--if-unmodified-since')
+        self.arguments['until'] = ValueArgument('show metadata until then', '--until')
+        self.arguments['format'] = ValueArgument('format to parse until data (default: d/m/Y H:M:S',
+            '--format')
+        self.arguments['shared'] = FlagArgument('show only shared', '--shared')
+        self.arguments['public'] = FlagArgument('show only public', '--public')
 
     def update_parser(self, parser):
         super(self.__class__, self).update_parser(parser)
@@ -186,7 +216,7 @@ class store_list(_store_container_command):
     def print_objects(self, object_list):
         import sys
         try:
-            limit = getattr(self.args, 'show_size')
+            limit = self.get_argument('show_size')
             limit = int(limit)
         except AttributeError:
             pass
@@ -205,7 +235,7 @@ class store_list(_store_container_command):
                 size = format_size(obj['bytes'])
                 pretty_obj['bytes'] = '%s (%s)'%(obj['bytes'],size)
             oname = bold(obj['name'])
-            if getattr(self.args, 'detail'):
+            if self.get_argument('detail'):
                 print('%s%s. %s'%(empty_space, index, oname))
                 print_dict(pretty_keys(pretty_obj), exclude=('name'))
                 print
@@ -220,7 +250,7 @@ class store_list(_store_container_command):
     def print_containers(self, container_list):
         import sys
         try:
-            limit = getattr(self.args, 'show_size')
+            limit = self.get_argument('show_size')
             limit = int(limit)
         except AttributeError:
             pass
@@ -228,7 +258,7 @@ class store_list(_store_container_command):
             if container.has_key('bytes'):
                 size = format_size(container['bytes']) 
             cname = '%s. %s'%(index+1, bold(container['name']))
-            if getattr(self.args, 'detail'):
+            if self.get_argument('detail'):
                 print(cname)
                 pretty_c = container.copy()
                 if container.has_key('bytes'):
@@ -245,12 +275,11 @@ class store_list(_store_container_command):
                 sys.stdin.read(1)
 
     def getuntil(self, orelse=None):
-        if hasattr(self.args, 'until'):
-            import time
-            until = getattr(self.args, 'until')
+        if self.get_argument('until'):
+            until = self.get_argument('until')
             if until is None:
                 return None
-            format = getattr(self.args, 'format')
+            format = self.get_argument('format')
             #except TypeError:
             try:
                 t = time.strptime(until, format)
@@ -258,43 +287,26 @@ class store_list(_store_container_command):
                 raise CLIError(message='in --until: '+unicode(err), importance=1)
             return int(time.mktime(t))
         return orelse
-   
-    def getmeta(self, orelse=[]):
-        if hasattr(self.args, 'meta'):
-            meta = getattr(self.args, 'meta')
-            if meta is None:
-                return []
-            return meta.split(' ')
-        return orelse
-
-    def getpath(self, orelse=None):
-        if self.path is not None:
-            return self.path
-        if hasattr(self.args, 'path'):
-            return getattr(self.args, 'path')
-        return orelse
 
     def main(self, container____path__=None):
         super(self.__class__, self).main(container____path__)
         try:
             if self.container is None:
-                r = self.client.account_get(limit=getattr(self.args, 'limit', None),
-                    marker=getattr(self.args, 'marker', None),
-                    if_modified_since=getattr(self.args, 'if_modified_since', None),
-                    if_unmodified_since=getattr(self.args, 'if_unmodified_since', None),
+                r = self.client.account_get(limit=self.get_argument('limit'),
+                    marker=self.get_argument('marker'),
+                    if_modified_since=self.get_argument('if_modified_since'),
+                    if_unmodified_since=self.get_argument('if_unmodified_since'),
                     until=self.getuntil(),
-                    show_only_shared=getattr(self.args, 'shared', False))
+                    show_only_shared=self.get_argument('shared'))
                 self.print_containers(r.json)
             else:
-                r = self.client.container_get(limit=getattr(self.args, 'limit', None),
-                    marker=getattr(self.args, 'marker', None),
-                    prefix=getattr(self.args, 'prefix', None),
-                    delimiter=getattr(self.args, 'delimiter', None), path=self.getpath(orelse=None),
-                    if_modified_since=getattr(self.args, 'if_modified_since', None),
-                    if_unmodified_since=getattr(self.args, 'if_unmodified_since', None),
+                r = self.client.container_get(limit=self.get_argument('limit'),
+                    marker=self.get_argument('marker'), prefix=self.get_argument('prefix'),
+                    delimiter=self.get_argument('delimiter'), path=self.get_argument('path'),
+                    if_modified_since=self.get_argument('if_modified_since'),
+                    if_unmodified_since=self.get_argument('if_unmodified_since'),
                     until=self.getuntil(),
-                    meta=self.getmeta(),
-                    show_only_shared=getattr(self.args, 'shared', False))
+                    meta=self.get_argument('meta'), show_only_shared=self.get_argument('shared'))
                 self.print_objects(r.json)
         except ClientError as err:
             raiseCLIError(err)
