@@ -91,9 +91,28 @@ class MetaArgument(ValueArgument):
             metadict[key]=val
         return metadict
 
-class ProgressBar(IncrementalBar):
-    #suffix = '%(percent)d%% - %(eta)ds'
-    suffix = '%(percent)d%%'
+class ProgressBarArgument(FlagArgument, IncrementalBar):
+
+    def __init__(self, help='', parsed_name='', default=True):
+        self.suffix = '%(percent)d%%'
+        super(ProgressBarArgument, self).__init__(help, parsed_name, default)
+
+    @property 
+    def value(self):
+        return getattr(self, '_value', self.default)
+    @value.setter 
+    def value(self, newvalue):
+        """By default, it is on (True)"""
+        self._value = not newvalue
+
+    def get_generator(self, message):
+        _message_len = 25
+        def progress_gen(n):
+            msg = message.ljust(_message_len)
+            for i in self.iter(range(n)):
+                yield
+            yield
+        return progress_gen
 
 class _pithos_init(object):
     def __init__(self, arguments={}):
@@ -122,18 +141,8 @@ class _store_account_command(_pithos_init):
         super(_store_account_command, self).__init__(arguments)
         self.arguments['account'] = ValueArgument('Specify the account', '--account')
 
-    def progress(self, message):
-        """Return a generator function to be used for progress tracking"""
-
-        MESSAGE_LENGTH = 25
-
-        def progress_gen(n):
-            msg = message.ljust(MESSAGE_LENGTH)
-            for i in ProgressBar(msg).iter(range(n)):
-                yield
-            yield
-
-        return progress_gen
+    def generator(self, message):
+       return None 
 
     def main(self):
         super(_store_account_command, self).main()
@@ -352,24 +361,6 @@ class store_copy(_store_container_command):
             help = u'mass copy objects with path staring with src_object + delimiter')
         self.arguments['recursive']=FlagArgument('mass copy with delimiter /', ('-r','--recursive'))
 
-    def update_parser(self, parser):
-        super(store_copy, self).update_parser(parser)
-        parser.add_argument('--source-version', action='store', dest='source_version', default=None,
-            help='copy specific version')
-        parser.add_argument('--public', action='store_true', dest='public', default=False,
-            help='make object publicly accessible')
-        parser.add_argument('--content-type', action='store', dest='content_type', default=None,
-            help='change object\'s content type')
-        parser.add_argument('--delimiter', action='store', dest='delimiter', default=None,
-            help=u'mass copy objects with path staring with src_object + delimiter')
-        parser.add_argument('-r', action='store_true', dest='recursive', default=False,
-            help='mass copy with delimiter /')
-
-    def getdelimiter(self):
-        if getattr(self.args, 'recursive'):
-            return '/'
-        return getattr(self.args, 'delimiter')
-
     def main(self, source_container___path, destination_container____path__):
         super(self.__class__, self).main(source_container___path, path_is_optional=False)
         try:
@@ -389,23 +380,16 @@ class store_copy(_store_container_command):
 class store_move(_store_container_command):
     """Copy an object"""
 
-    def update_parser(self, parser):
-        super(store_move, self).update_parser(parser)
-        parser.add_argument('--source-version', action='store', dest='source_version', default=None,
-            help='copy specific version')
-        parser.add_argument('--public', action='store_true', dest='public', default=False,
-            help='make object publicly accessible')
-        parser.add_argument('--content-type', action='store', dest='content_type', default=None,
-            help='change object\'s content type')
-        parser.add_argument('--delimiter', action='store', dest='delimiter', default=None,
-            help=u'mass copy objects with path staring with src_object + delimiter')
-        parser.add_argument('-r', action='store_true', dest='recursive', default=False,
-            help='mass copy with delimiter /')
+    def __init__(self, arguments={}):
+        super(self.__class__, self).__init(arguments)
 
-    def getdelimiter(self):
-        if getattr(self.args, 'recursive'):
-            return '/'
-        return getattr(self.args, 'delimiter')
+        self.arguments['source_version']=ValueArgument('copy specific version', '--source-version')
+        self.arguments['public']=ValueArgument('make object publicly accessible', '--public')
+        self.arguments['content_type']=ValueArgument('change object\'s content type',
+            '--content-type')
+        self.arguments['delimiter']=DelimiterArgument(self, parsed_name='--delimiter',
+            help = u'mass copy objects with path staring with src_object + delimiter')
+        self.arguments['recursive']=FlagArgument('mass copy with delimiter /', ('-r','--recursive'))
 
     def main(self, source_container___path, destination_container____path__):
         super(self.__class__, self).main(source_container___path, path_is_optional=False)
@@ -415,9 +399,10 @@ class store_move(_store_container_command):
             dst_path = dst[1] if len(dst) > 1 else False
             self.client.move_object(src_container = self.container, src_object = self.path,
                 dst_container = dst_cont, dst_object = dst_path,
-                source_version=getattr(self.args, 'source_version'),
-                public=getattr(self.args, 'public'),
-                content_type=getattr(self.args,'content_type'), delimiter=self.getdelimiter())
+                source_version=self.get_argument('source_version'),
+                public=self.get_argument('public'),
+                content_type=self.get_argument('content_type'),
+                delimiter=self.get_argument('delimiter'))
         except ClientError as err:
             raiseCLIError(err)
 
@@ -425,11 +410,16 @@ class store_move(_store_container_command):
 class store_append(_store_container_command):
     """Append local file to (existing) remote object"""
 
+    def __init__(self, arguments={}):
+        super(self.__class__, self).__init__(arguments)
+        self.arguments['progress_bar'] = ProgressBarArgument('do not show progress bar',
+            '--no-progress-bar')
+
     def main(self, local_path, container___path):
         super(self.__class__, self).main(container___path, path_is_optional=False)
         try:
             f = open(local_path, 'r')
-            upload_cb = self.progress('Appending blocks')
+            upload_cb = self.arguments['progress_bar'].get_generator('Appending blocks')
             self.client.append_object(object=self.path, source_file = f, upload_cb = upload_cb)
         except ClientError as err:
             raiseCLIError(err)
@@ -438,7 +428,6 @@ class store_append(_store_container_command):
 class store_truncate(_store_container_command):
     """Truncate remote file up to a size"""
 
-    
     def main(self, container___path, size=0):
         super(self.__class__, self).main(container___path, path_is_optional=False)
         try:
@@ -450,60 +439,72 @@ class store_truncate(_store_container_command):
 class store_overwrite(_store_container_command):
     """Overwrite part (from start to end) of a remote file"""
 
+    def __init__(self, arguments={}):
+        super(self.__class__, self).__init__(arguments)
+        self.arguments['progress_bar'] = ProgressBarArgument('do not show progress bar',
+            '--no-progress-bar')
+
     def main(self, local_path, container___path, start, end):
         super(self.__class__, self).main(container___path, path_is_optional=False)
         try:
             f = open(local_path, 'r')
-            upload_cb = self.progress('Overwritting blocks')
+            upload_cb = self.arguments['progress_bar'].get_generator('Overwritting blocks')
             self.client.overwrite_object(object=self.path, start=start, end=end,
                 source_file=f, upload_cb = upload_cb)
         except ClientError as err:
             raiseCLIError(err)
 
-@command()
-class store_manifest(_store_container_command):
-    """Create a remote file with uploaded parts by manifestation"""
-
-    def update_parser(self, parser):
-        super(self.__class__, self).update_parser(parser)
-        parser.add_argument('--etag', action='store', dest='etag', default=None,
-            help='check written data')
-        parser.add_argument('--content-encoding', action='store', dest='content_encoding',
-            default=None, help='provide the object MIME content type')
-        parser.add_argument('--content-disposition', action='store', dest='content_disposition',
-            default=None, help='provide the presentation style of the object')
-        parser.add_argument('--content-type', action='store', dest='content_type', default=None,
-            help='create object with specific content type')
-        parser.add_argument('--sharing', action='store', dest='sharing', default=None,
-            help='define sharing object policy ( "read=user1,grp1,user2,... write=user1,grp2,...')
-        parser.add_argument('--public', action='store_true', dest='public', default=False,
-            help='make object publicly accessible')
-
-    def getsharing(self, orelse={}):
-        permstr = getattr(self.args, 'sharing')
-        if permstr is None:
-            return orelse
+class SharingArgument(ValueArgument):
+    @property 
+    def value(self):
+        return getattr(self, '_value', self.default)
+    @value.setter
+    def value(self, newvalue):
         perms = {}
-        for p in permstr.split(' '):
-            (key, val) = p.split('=')
+        try:
+            permlist = newvalue.split(' ')
+        except AttributeError:
+            return
+        for p in permlist:
+            try:
+                (key,val) = p.split('=')
+            except ValueError:
+                raise CLIError(message='Error in --sharing', details='Incorrect format', importance=1)
             if key.lower() not in ('read', 'write'):
-                raise CLIError(message='in --sharing: Invalid permition key', importance=1)
+                raise CLIError(message='Error in --sharing', details='Invalid permition key %s'%key, importance=1)
             val_list = val.split(',')
             if not perms.has_key(key):
                 perms[key]=[]
             for item in val_list:
                 if item not in perms[key]:
                     perms[key].append(item)
-        return perms
+        self._value = perms
+
+@command()
+class store_manifest(_store_container_command):
+    """Create a remote file with uploaded parts by manifestation"""
+
+    def __init__(self, arguments={}):
+        super(self.__class__, self).__init__(arguments)
+        self.arguments['etag'] = ValueArgument('check written data', '--etag')
+        self.arguments['content_encoding']=ValueArgument('provide the object MIME content type',
+            '--content-encoding')
+        self.arguments['content_disposition'] = ValueArgument('provide the presentation style of the object',
+            '--content-disposition')
+        self.arguments['content_type']=ValueArgument('create object with specific content type',
+            '--content-type')
+        self.arguments['sharing']=SharingArgument(parsed_name='--sharing',
+            help='define sharing object policy ( "read=user1,grp1,user2,... write=user1,grp2,...')
+        self.arguments['public']=ValueArgument('make object publicly accessible', '--public')
         
     def main(self, container___path):
         super(self.__class__, self).main(container___path, path_is_optional=False)
         try:
             self.client.create_object_by_manifestation(self.path,
-                content_encoding=getattr(self.args, 'content_encoding'),
-                content_disposition=getattr(self.args, 'content_disposition'),
-                content_type=getattr(self.args, 'content_type'), sharing=self.getsharing(),
-                public=getattr(self.args, 'public'))
+                content_encoding=self.get_argument('content_encoding'),
+                content_disposition=self.get_argument('content_disposition'),
+                content_type=self.get_argument('content_type'),
+                sharing=self.get_argument('sharing'), public=self.get_argument('public'))
         except ClientError as err:
             raiseCLIError(err)
 

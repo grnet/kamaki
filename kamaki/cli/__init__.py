@@ -171,7 +171,7 @@ def _init_parser(exe):
     return parser
 
 def _print_error_message(cli_err):
-    errmsg = '%s'%unicode(cli_err) +' (%s)'%cli_err.status if cli_err.status else ' '
+    errmsg = unicode(cli_err) + (' (%s)'%cli_err.status if cli_err.status else ' ')
     if cli_err.importance == 1:
         errmsg = magenta(errmsg)
     elif cli_err.importance == 2:
@@ -182,7 +182,7 @@ def _print_error_message(cli_err):
     if cli_err.details is not None and len(cli_err.details) > 0:
         print(': %s'%cli_err.details)
     else:
-        print
+        print()
 
 def _expand_cmd(cmd_prefix, unparsed):
     if len(unparsed) == 0:
