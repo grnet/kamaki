@@ -158,11 +158,11 @@ def command():
     return decorator
 
 def _update_parser(parser, arguments):
-    try:
-        for name, argument in arguments.items():
+    for name, argument in arguments.items():
+        try:
             argument.update_parser(parser, name)
-    except ArgumentError:
-        pass
+        except ArgumentError:
+            pass
 
 def _init_parser(exe):
     parser = ArgumentParser(add_help=False)

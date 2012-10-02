@@ -46,17 +46,39 @@ from time import localtime, strftime, strptime, mktime
 
 from progress.bar import IncrementalBar
 
-class UntilArgument(ValueArgument):
+class DelimiterArgument(ValueArgument):
+    def __init__(self, caller_obj, help='', parsed_name=None, default=None):
+        super(DelimiterArgument, self).__init__(help, parsed_name, default)
+        self.caller_obj = caller_obj
+
     @property 
     def value(self):
-        if self._value is None:
-            return self.default
-        format = self.get_argument('format')
+        if self.caller_obj.get_argument('recursive'):
+            return '/'
+        return getattr(self, '_value', self.default)
+    @value.setter 
+    def value(self, newvalue):
+        self._value = newvalue
+
+class UntilArgument(ValueArgument):
+    def __init__(self, caller_obj, help='', parsed_name=None, default=None):
+        super(UntilArgument, self).__init__(help, parsed_name, default)
+        self.caller_obj = caller_obj
+
+    @property 
+    def value(self):
+        _value = getattr(self, '_value', self.default)
+        if _value is None:
+            return None
+        format = self.caller_obj.get_argument('format')
         try:
-            t = time.strptime(until, format)
+            t = strptime(_value, format)
         except ValueError as err:
             raise CLIError(message='in --until: '+unicode(err), importance=1)
         return int(mktime(t))
+    @value.setter 
+    def value(self, newvalue):
+        self._value = newvalue
 
 class MetaArgument(ValueArgument):
     @property 
@@ -176,7 +198,6 @@ class store_list(_store_container_command):
     """List containers, object trees or objects in a directory
     """
 
-
     def __init__(self, arguments = {}):
         super(store_list, self).__init__(arguments)
         self.arguments['detail'] = FlagArgument('show detailed output', '-l')
@@ -192,7 +213,7 @@ class store_list(_store_container_command):
             '--if-modified-since')
         self.arguments['if_unmodified_since'] = ValueArgument('show output not modified since then',
             '--if-unmodified-since')
-        self.arguments['until'] = UntilArgument('show metadata until then', '--until')
+        self.arguments['until'] = UntilArgument(self, 'show metadata until then', '--until')
         self.arguments['format'] = ValueArgument('format to parse until data (default: d/m/Y H:M:S',
             '--format')
         self.arguments['shared'] = FlagArgument('show only shared', '--shared')
@@ -259,7 +280,6 @@ class store_list(_store_container_command):
                 print('(press "enter" to continue)')
                 sys.stdin.read(1)
 
-
     def main(self, container____path__=None):
         super(self.__class__, self).main(container____path__)
         try:
@@ -322,6 +342,16 @@ class store_create(_store_container_command):
 class store_copy(_store_container_command):
     """Copy an object"""
 
+    def __init__(self, arguments={}):
+        super(self.__class__, self).__init__(arguments)
+        self.arguments['source_version']=ValueArgument('copy specific version', '--source-version')
+        self.arguments['public']=ValueArgument('make object publicly accessible', '--public')
+        self.arguments['content_type']=ValueArgument('change object\'s content type',
+            '--content-type')
+        self.arguments['delimiter']=DelimiterArgument(self, parsed_name='--delimiter',
+            help = u'mass copy objects with path staring with src_object + delimiter')
+        self.arguments['recursive']=FlagArgument('mass copy with delimiter /', ('-r','--recursive'))
+
     def update_parser(self, parser):
         super(store_copy, self).update_parser(parser)
         parser.add_argument('--source-version', action='store', dest='source_version', default=None,
@@ -348,9 +378,10 @@ class store_copy(_store_container_command):
             dst_path = dst[1] if len(dst) > 1 else False
             self.client.copy_object(src_container = self.container, src_object = self.path,
                 dst_container = dst_cont, dst_object = dst_path,
-                source_version=getattr(self.args, 'source_version'),
-                public=getattr(self.args, 'public'),
-                content_type=getattr(self.args,'content_type'), delimiter=self.getdelimiter())
+                source_version=self.get_argument('source_version'),
+                public=self.get_argument('public'),
+                content_type=self.get_argument('content_type'),
+                delimiter=self.get_argument('delimiter'))
         except ClientError as err:
             raiseCLIError(err)
 

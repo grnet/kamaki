@@ -119,7 +119,6 @@ class ConfigArgument(Argument):
     def get_groups(self):
         return self.value.apis()
 
-
 _config_arg = ConfigArgument(1, 'Path to configuration file', '--config')
 
 class CmdLineConfigArgument(Argument):
@@ -178,7 +177,6 @@ _arguments = dict(config = _config_arg, help = Argument(0, 'Show help message', 
 def parse_known_args(parser):
     parsed, unparsed = parser.parse_known_args()
     for name, arg in _arguments.items():
-        arg.value = getattr(parsed, name, arg.value)
+        lala = getattr(parsed, name, arg.default)
+        arg.value = lala
     return parsed, unparsed
-
-
