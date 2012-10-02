@@ -151,6 +151,20 @@ class ValueArgument(Argument):
     def __init__(self, help='', parsed_name=None, default=None):
         super(ValueArgument, self).__init__(1, help, parsed_name, default)
 
+class IntArgument(ValueArgument):
+    @property 
+    def value(self):
+        return getattr(self, '_value', self.default)
+    @value.setter
+    def value(self, newvalue):
+        if newvalue == self.default:
+            self._value = self.default
+            return
+        try:
+            self._value = int(newvalue)
+        except ValueError:
+            raise CLISyntaxError('IntArgument Error', details='Value %s not an int'%newvalue)
+
 class VersionArgument(FlagArgument):
     @property 
     def value(self):

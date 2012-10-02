@@ -35,7 +35,7 @@ from kamaki.cli import command#, set_api_description
 from kamaki.clients.utils import filter_in
 from kamaki.cli.errors import CLIError, raiseCLIError
 from kamaki.cli.utils import format_size, print_dict, pretty_keys, print_list
-from kamaki.cli.argument import FlagArgument, ValueArgument
+from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
 #set_api_description('store', 'Pithos+ storage commands')
 API_DESCRIPTION = {'store':'Pithos+ storage commands'}
 from kamaki.clients.pithos import PithosClient, ClientError
@@ -43,6 +43,7 @@ from colors import bold
 from sys import stdout, exit
 import signal
 from time import localtime, strftime, strptime, mktime
+from datetime import datetime as dtm
 
 from progress.bar import IncrementalBar
 
@@ -56,26 +57,6 @@ class DelimiterArgument(ValueArgument):
         if self.caller_obj.get_argument('recursive'):
             return '/'
         return getattr(self, '_value', self.default)
-    @value.setter 
-    def value(self, newvalue):
-        self._value = newvalue
-
-class UntilArgument(ValueArgument):
-    def __init__(self, caller_obj, help='', parsed_name=None, default=None):
-        super(UntilArgument, self).__init__(help, parsed_name, default)
-        self.caller_obj = caller_obj
-
-    @property 
-    def value(self):
-        _value = getattr(self, '_value', self.default)
-        if _value is None:
-            return None
-        format = self.caller_obj.get_argument('format')
-        try:
-            t = strptime(_value, format)
-        except ValueError as err:
-            raise CLIError(message='in --until: '+unicode(err), importance=1)
-        return int(mktime(t))
     @value.setter 
     def value(self, newvalue):
         self._value = newvalue
@@ -113,6 +94,72 @@ class ProgressBarArgument(FlagArgument, IncrementalBar):
                 yield
             yield
         return progress_gen
+
+class SharingArgument(ValueArgument):
+    @property 
+    def value(self):
+        return getattr(self, '_value', self.default)
+    @value.setter
+    def value(self, newvalue):
+        perms = {}
+        try:
+            permlist = newvalue.split(' ')
+        except AttributeError:
+            return
+        for p in permlist:
+            try:
+                (key,val) = p.split('=')
+            except ValueError:
+                raise CLIError(message='Error in --sharing', details='Incorrect format', importance=1)
+            if key.lower() not in ('read', 'write'):
+                raise CLIError(message='Error in --sharing', details='Invalid permition key %s'%key, importance=1)
+            val_list = val.split(',')
+            if not perms.has_key(key):
+                perms[key]=[]
+            for item in val_list:
+                if item not in perms[key]:
+                    perms[key].append(item)
+        self._value = perms
+
+class RangeArgument(ValueArgument):
+    @property 
+    def value(self):
+        return getattr(self, '_value', self.default)
+    @value.setter
+    def value(self, newvalue):
+        if newvalue is None:
+            self._value = self.default
+            return
+        (start, end) = newvalue.split('_')
+        (start, end) = (int(start), int(end))
+        self._value = '%s-%s'%(start, end)
+
+class DateArgument(ValueArgument):
+    DATE_FORMATS = ["%a %b %d %H:%M:%S %Y",
+        "%A, %d-%b-%y %H:%M:%S GMT",
+        "%a, %d %b %Y %H:%M:%S GMT"]
+
+    INPUT_FORMATS = DATE_FORMATS + ["%d-%m-%Y", "%H:%M:%S %d-%m-%Y"]
+
+    @property 
+    def value(self):
+        return getattr(self, '_value', self.default)
+    @value.setter
+    def value(self, newvalue):
+        if newvalue is None:
+            return
+        self._value = self.format_date(newvalue)
+
+    def format_date(self, datestr):
+        for format in self.INPUT_FORMATS:
+            try:
+                t = dtm.strptime(datestr, format)
+            except ValueError:
+                continue
+            self._value = t.strftime(self.DATE_FORMATS[0])
+            return
+        raise CLIError('Date Argument Error',
+            details='%s not a valid date. correct formats:\n\t%s'%(datestr, self.INPUT_FORMATS))
 
 class _pithos_init(object):
     def __init__(self, arguments={}):
@@ -211,7 +258,7 @@ class store_list(_store_container_command):
         super(store_list, self).__init__(arguments)
         self.arguments['detail'] = FlagArgument('show detailed output', '-l')
         self.arguments['show_size'] = ValueArgument('print output in chunks of size N', '-N')
-        self.arguments['limit'] = ValueArgument('show limited output', '-n')
+        self.arguments['limit'] = IntArgument('show limited output', '-n')
         self.arguments['marker'] = ValueArgument('show output greater that marker', '--marker')
         self.arguments['prefix'] = ValueArgument('show output staritng with prefix', '--prefix')
         self.arguments['delimiter'] = ValueArgument('show output up to delimiter', '--delimiter')
@@ -222,7 +269,7 @@ class store_list(_store_container_command):
             '--if-modified-since')
         self.arguments['if_unmodified_since'] = ValueArgument('show output not modified since then',
             '--if-unmodified-since')
-        self.arguments['until'] = UntilArgument(self, 'show metadata until then', '--until')
+        self.arguments['until'] = DateArgument('show metadata until then', '--until')
         self.arguments['format'] = ValueArgument('format to parse until data (default: d/m/Y H:M:S',
             '--format')
         self.arguments['shared'] = FlagArgument('show only shared', '--shared')
@@ -332,7 +379,7 @@ class store_create(_store_container_command):
         super(self.__class__, self).__init__(arguments)
         self.arguments['versioning'] = ValueArgument('set container versioning (auto/none)',
             '--versioning')
-        self.arguments['quota'] = ValueArgument('set default container quota', '--quota')
+        self.arguments['quota'] = IntArgument('set default container quota', '--quota')
         self.arguments['meta'] = MetaArgument('set container metadata', '---meta')
 
     def main(self, container____directory__):
@@ -381,10 +428,10 @@ class store_move(_store_container_command):
     """Copy an object"""
 
     def __init__(self, arguments={}):
-        super(self.__class__, self).__init(arguments)
+        super(self.__class__, self).__init__(arguments)
 
         self.arguments['source_version']=ValueArgument('copy specific version', '--source-version')
-        self.arguments['public']=ValueArgument('make object publicly accessible', '--public')
+        self.arguments['public']=FlagArgument('make object publicly accessible', '--public')
         self.arguments['content_type']=ValueArgument('change object\'s content type',
             '--content-type')
         self.arguments['delimiter']=DelimiterArgument(self, parsed_name='--delimiter',
@@ -454,32 +501,6 @@ class store_overwrite(_store_container_command):
         except ClientError as err:
             raiseCLIError(err)
 
-class SharingArgument(ValueArgument):
-    @property 
-    def value(self):
-        return getattr(self, '_value', self.default)
-    @value.setter
-    def value(self, newvalue):
-        perms = {}
-        try:
-            permlist = newvalue.split(' ')
-        except AttributeError:
-            return
-        for p in permlist:
-            try:
-                (key,val) = p.split('=')
-            except ValueError:
-                raise CLIError(message='Error in --sharing', details='Incorrect format', importance=1)
-            if key.lower() not in ('read', 'write'):
-                raise CLIError(message='Error in --sharing', details='Invalid permition key %s'%key, importance=1)
-            val_list = val.split(',')
-            if not perms.has_key(key):
-                perms[key]=[]
-            for item in val_list:
-                if item not in perms[key]:
-                    perms[key].append(item)
-        self._value = perms
-
 @command()
 class store_manifest(_store_container_command):
     """Create a remote file with uploaded parts by manifestation"""
@@ -495,7 +516,7 @@ class store_manifest(_store_container_command):
             '--content-type')
         self.arguments['sharing']=SharingArgument(parsed_name='--sharing',
             help='define sharing object policy ( "read=user1,grp1,user2,... write=user1,grp2,...')
-        self.arguments['public']=ValueArgument('make object publicly accessible', '--public')
+        self.arguments['public']=FlagArgument('make object publicly accessible', '--public')
         
     def main(self, container___path):
         super(self.__class__, self).main(container___path, path_is_optional=False)
@@ -512,67 +533,48 @@ class store_manifest(_store_container_command):
 class store_upload(_store_container_command):
     """Upload a file"""
 
-    def update_parser(self, parser):
-        super(self.__class__, self).update_parser(parser)
-        parser.add_argument('--use_hashes', action='store_true', dest='use_hashes', default=False,
-            help='provide hashmap file instead of data')
-        parser.add_argument('--unchunked', action='store_true', dest='unchunked', default=False,
-            help='avoid chunked transfer mode')
-        parser.add_argument('--etag', action='store', dest='etag', default=None,
-            help='check written data')
-        parser.add_argument('--content-encoding', action='store', dest='content_encoding',
-            default=None, help='provide the object MIME content type')
-        parser.add_argument('--content-disposition', action='store', dest='content_disposition',
-            default=None, help='provide the presentation style of the object')
-        parser.add_argument('--content-type', action='store', dest='content_type', default=None,
-            help='create object with specific content type')
-        parser.add_argument('--sharing', action='store', dest='sharing', default=None,
+    def __init__(self, arguments={}):
+        super(self.__class__, self).__init__(arguments)
+        self.arguments['use_hashes'] = FlagArgument('provide hashmap file instead of data',
+            '--use-hashes')
+        self.arguments['etag'] = ValueArgument('check written data', '--etag')
+        self.arguments['unchunked'] = FlagArgument('avoid chunked transfer mode', '--unchunked')
+        self.arguments['content_encoding']=ValueArgument('provide the object MIME content type',
+            '--content-encoding')
+        self.arguments['content_disposition'] = ValueArgument('provide the presentation style of the object',
+            '--content-disposition')
+        self.arguments['content_type']=ValueArgument('create object with specific content type',
+            '--content-type')
+        self.arguments['sharing']=SharingArgument(parsed_name='--sharing',
             help='define sharing object policy ( "read=user1,grp1,user2,... write=user1,grp2,...')
-        parser.add_argument('--public', action='store_true', dest='public', default=False,
-            help='make object publicly accessible')
-        parser.add_argument('--with-pool-size', action='store', dest='poolsize', default=None,
-            help='Set the greenlet pool size (advanced)')
-
-    def getsharing(self, orelse={}):
-        permstr = getattr(self.args, 'sharing')
-        if permstr is None:
-            return orelse
-        perms = {}
-        for p in permstr.split(' '):
-            (key, val) = p.split('=')
-            if key.lower() not in ('read', 'write'):
-                raise CLIError(message='in --sharing: Invalid permition key', importance=1)
-            val_list = val.split(',')
-            if not perms.has_key(key):
-                perms[key]=[]
-            for item in val_list:
-                if item not in perms[key]:
-                    perms[key].append(item)
-        return perms
+        self.arguments['public']=FlagArgument('make object publicly accessible', '--public')
+        self.arguments['poolsize']=IntArgument('set pool size', '--with-pool-size')
+        self.arguments['progress_bar'] = ProgressBarArgument('do not show progress bar',
+            '--no-progress-bar')
 
     def main(self, local_path, container____path__):
         super(self.__class__, self).main(container____path__)
         remote_path = local_path if self.path is None else self.path
-        poolsize = getattr(self.args, 'poolsize')
+        poolsize = self.get_argument('poolsize')
         if poolsize is not None:
-            self.POOL_SIZE = int(poolsize)
+            self.POOL_SIZE = poolsize
         try:
             with open(local_path) as f:
-                if getattr(self.args, 'unchunked'):
+                if self.get_argument('unchunked'):
                     self.client.upload_object_unchunked(remote_path, f,
-                    etag=getattr(self.args, 'etag'), withHashFile=getattr(self.args, 'use_hashes'),
-                    content_encoding=getattr(self.args, 'content_encoding'),
-                    content_disposition=getattr(self.args, 'content_disposition'),
-                    content_type=getattr(self.args, 'content_type'), sharing=self.getsharing(),
-                    public=getattr(self.args, 'public'))
+                    etag=self.get_argument('etag'), withHashFile=self.get_argument('use_hashes'),
+                    content_encoding=self.get_argument('content_encoding'),
+                    content_disposition=self.get_argument('content_disposition'),
+                    content_type=self.get_argument('content_type'),
+                    sharing=self.get_argument('sharing'), public=self.get_argument('public'))
                 else:
-                    hash_cb = self.progress('Calculating block hashes')
-                    upload_cb = self.progress('Uploading blocks')
+                    hash_cb=self.arguments['progress_bar'].get_generator('Calculating block hashes')
+                    upload_cb=self.arguments['progress_bar'].get_generator('Uploading')
                     self.client.upload_object(remote_path, f, hash_cb=hash_cb, upload_cb=upload_cb,
-                    content_encoding=getattr(self.args, 'content_encoding'),
-                    content_disposition=getattr(self.args, 'content_disposition'),
-                    content_type=getattr(self.args, 'content_type'), sharing=self.getsharing(),
-                    public=getattr(self.args, 'public'))
+                    content_encoding=self.get_argument('content_encoding'),
+                    content_disposition=self.get_argument('content_disposition'),
+                    content_type=self.get_argument('content_type'),
+                    sharing=self.get_argument('sharing'), public=self.get_argument('public'))
         except ClientError as err:
             raiseCLIError(err)
         print 'Upload completed'
@@ -581,26 +583,23 @@ class store_upload(_store_container_command):
 class store_download(_store_container_command):
     """Download a file"""
 
-    def update_parser(self, parser):
-        super(self.__class__, self).update_parser(parser)
-        parser.add_argument('--no-progress-bar', action='store_true', dest='no_progress_bar',
-            default=False, help='Dont display progress bars')
-        parser.add_argument('--resume', action='store_true', dest='resume', default=False,
-            help='Resume a previous download instead of overwritting it')
-        parser.add_argument('--range', action='store', dest='range', default=None,
-            help='show range of data')
-        parser.add_argument('--if-match', action='store', dest='if_match', default=None,
-            help='show output if ETags match')
-        parser.add_argument('--if-none-match', action='store', dest='if_none_match', default=None,
-            help='show output if ETags don\'t match')
-        parser.add_argument('--if-modified-since', action='store', dest='if_modified_since',
-            default=None, help='show output if modified since then')
-        parser.add_argument('--if-unmodified-since', action='store', dest='if_unmodified_since',
-            default=None, help='show output if not modified since then')
-        parser.add_argument('--object-version', action='store', dest='object_version', default=None,
-            help='get the specific version')
-        parser.add_argument('--with-pool-size', action='store', dest='poolsize', default=None,
-            help='Set the greenlet pool size (advanced)')
+    def __init__(self, arguments={}):
+        super(self.__class__, self).__init__(arguments)
+        self.arguments['resume'] = FlagArgument(parsed_name='--resume',
+            help = 'Resume a previous download instead of overwritting it')
+        self.arguments['range'] = RangeArgument('show range of data', '--range')
+        self.arguments['if_match'] = ValueArgument('show output if ETags match', '--if-match')
+        self.arguments['if_none_match'] = ValueArgument('show output if ETags match',
+            '--if-none-match')
+        self.arguments['if_modified_since'] = DateArgument('show output modified since then',
+            '--if-modified-since')
+        self.arguments['if_unmodified_since'] = DateArgument('show output unmodified since then',
+            '--if-unmodified-since')
+        self.arguments['object_version'] = ValueArgument('get the specific version',
+            '--object-version')
+        self.arguments['poolsize']=IntArgument('set pool size', '--with-pool-size')
+        self.arguments['progress_bar'] = ProgressBarArgument('do not show progress bar',
+            '--no-progress-bar')
 
     def main(self, container___path, local_path=None):
         super(self.__class__, self).main(container___path, path_is_optional=False)
@@ -611,26 +610,25 @@ class store_download(_store_container_command):
             out = stdout
         else:
             try:
-                if hasattr(self.args, 'resume') and getattr(self.args, 'resume'):
+                if self.get_argument('resume'):
                     out=open(local_path, 'rwb+')
                 else:
                     out=open(local_path, 'wb+')
             except IOError as err:
                 raise CLIError(message='Cannot write to file %s - %s'%(local_path,unicode(err)),
                     importance=1)
-        download_cb = None if getattr(self.args, 'no_progress_bar') \
-        else self.progress('Downloading')
-        poolsize = getattr(self.args, 'poolsize')
+        download_cb = self.arguments['progress_bar'].get_generator('Downloading')
+        poolsize = self.get_argument('poolsize')
         if poolsize is not None:
             self.POOL_SIZE = int(poolsize)
 
         try:
             self.client.download_object(self.path, out, download_cb,
-                range=getattr(self.args, 'range'), version=getattr(self.args,'object_version'),
-                if_match=getattr(self.args, 'if_match'), resume=getattr(self.args, 'resume'),
-                if_none_match=getattr(self.args, 'if_none_match'),
-                if_modified_since=getattr(self.args, 'if_modified_since'),
-                if_unmodified_since=getattr(self.args, 'if_unmodified_since'))
+                range=self.get_argument('range'), version=self.get_argument('object_version'),
+                if_match=self.get_argument('if_match'), resume=self.get_argument('resume'),
+                if_none_match=self.get_argument('if_none_match'),
+                if_modified_since=self.get_argument('if_modified_since'),
+                if_unmodified_since=self.get_argument('if_unmodified_since'))
         except ClientError as err:
             raiseCLIError(err)
         except KeyboardInterrupt:
@@ -643,28 +641,27 @@ class store_download(_store_container_command):
 class store_hashmap(_store_container_command):
     """Get the hashmap of an object"""
 
-    def update_parser(self, parser):
-        super(self.__class__, self).update_parser(parser)
-        parser.add_argument('--if-match', action='store', dest='if_match', default=None,
-            help='show output if ETags match')
-        parser.add_argument('--if-none-match', action='store', dest='if_none_match', default=None,
-            help='show output if ETags dont match')
-        parser.add_argument('--if-modified-since', action='store', dest='if_modified_since',
-            default=None, help='show output if modified since then')
-        parser.add_argument('--if-unmodified-since', action='store', dest='if_unmodified_since',
-            default=None, help='show output if not modified since then')
-        parser.add_argument('--object-version', action='store', dest='object_version', default=None,
-            help='get the specific version')
+    def __init__(self, arguments={}):
+        super(self.__class__, self).__init__(arguments)
+        self.arguments['if_match'] = ValueArgument('show output if ETags match', '--if-match')
+        self.arguments['if_none_match'] = ValueArgument('show output if ETags match',
+            '--if-none-match')
+        self.arguments['if_modified_since'] = DateArgument('show output modified since then',
+            '--if-modified-since')
+        self.arguments['if_unmodified_since'] = DateArgument('show output unmodified since then',
+            '--if-unmodified-since')
+        self.arguments['object_version'] = ValueArgument('get the specific version',
+            '--object-version')
 
     def main(self, container___path):
         super(self.__class__, self).main(container___path, path_is_optional=False)
         try:
             data = self.client.get_object_hashmap(self.path,
-                version=getattr(self.args, 'object_version'),
-                if_match=getattr(self.args, 'if_match'),
-                if_none_match=getattr(self.args, 'if_none_match'),
-                if_modified_since=getattr(self.args, 'if_modified_since'),
-                if_unmodified_since=getattr(self.args, 'if_unmodified_since'))
+                version=self.arguments('object_version'),
+                if_match=self.arguments('if_match'),
+                if_none_match=self.arguments('if_none_match'),
+                if_modified_since=self.arguments('if_modified_since'),
+                if_unmodified_since=self.arguments('if_unmodified_since'))
         except ClientError as err:
             raiseCLIError(err)
         print_dict(data)
@@ -673,50 +670,24 @@ class store_hashmap(_store_container_command):
 class store_delete(_store_container_command):
     """Delete a container [or an object]"""
 
-    def update_parser(self, parser):
-        super(self.__class__, self).update_parser(parser)
-        parser.add_argument('--until', action='store', dest='until', default=None,
-            help='remove history until that date')
-        parser.add_argument('--format', action='store', dest='format', default='%d/%m/%Y %H:%M:%S',
-            help='format to parse until date (default: d/m/Y H:M:S)')
-        parser.add_argument('--delimiter', action='store', dest='delimiter',
-            default=None, 
-            help='mass delete objects with path staring with <object><delimiter>')
-        parser.add_argument('-r', action='store_true', dest='recursive', default=False,
-            help='empty dir or container and delete (if dir)')
-    
-    def getuntil(self, orelse=None):
-        if hasattr(self.args, 'until'):
-            import time
-            until = getattr(self.args, 'until')
-            if until is None:
-                return None
-            format = getattr(self.args, 'format')
-            try:
-                t = time.strptime(until, format)
-            except ValueError as err:
-                raise CLIError(message='in --until: '+unicode(err), importance=1)
-            return int(time.mktime(t))
-        return orelse
-
-    def getdelimiter(self, orelse=None):
-        try:
-            dlm = getattr(self.args, 'delimiter')
-            if dlm is None:
-                return '/' if getattr(self.args, 'recursive') else orelse
-        except AttributeError:
-            return orelse
-        return dlm
+    def __init__(self, arguments={}):
+        super(self.__class__, self).__init__(arguments)
+        self.arguments['until'] = DateArgument('remove history until that date', '--until')
+        self.arguments['recursive'] = FlagArgument('empty dir or container and delete (if dir)',
+            '--recursive')
+        self.arguments['delimiter'] = DelimiterArgument(self, parsed_name='--delimiter',
+            help = 'mass delete objects with path staring with <object><delimiter>')
 
     def main(self, container____path__):
         super(self.__class__, self).main(container____path__)
         try:
             if self.path is None:
-                self.client.del_container(until=self.getuntil(), delimiter=self.getdelimiter())
+                self.client.del_container(until=self.get_argument('until'),
+                    delimiter=self.get_argument('delimiter'))
             else:
                 #self.client.delete_object(self.path)
-                self.client.del_object(self.path, until=self.getuntil(),
-                    delimiter=self.getdelimiter())
+                self.client.del_object(self.path, until=self.get_argument('until'),
+                    delimiter=self.get_argument('delimiter'))
         except ClientError as err:
             raiseCLIError(err)
 
@@ -830,57 +801,37 @@ class store_info(_store_container_command):
 class store_meta(_store_container_command):
     """Get custom meta-content for account [, container [or object]]"""
 
-    def update_parser(self, parser):
-        super(self.__class__, self).update_parser(parser)
-        parser.add_argument('-l', action='store_true', dest='detail', default=False,
-            help='show detailed output')
-        parser.add_argument('--until', action='store', dest='until', default=None,
-            help='show metadata until that date')
-        dateformat='%d/%m/%Y %H:%M:%S'
-        parser.add_argument('--format', action='store', dest='format', default=dateformat,
-            help='format to parse until date (default: "d/m/Y H:M:S")')
-        parser.add_argument('--object_version', action='store', dest='object_version', default=None,
+    def __init__(self, arguments = {}):
+        super(self.__class__, self).__init__(arguments)
+        self.arguments['detail'] = FlagArgument('show detailed output', '-l')
+        self.arguments['until'] = DateArgument('show metadata until then', '--until')
+        self.arguments['object_version'] = ValueArgument(parsed_name='--object-version',
             help='show specific version \ (applies only for objects)')
-
-    def getuntil(self, orelse=None):
-        if hasattr(self.args, 'until'):
-            import time
-            until = getattr(self.args, 'until')
-            if until is None:
-                return None
-            format = getattr(self.args, 'format')
-            #except TypeError:
-            try:
-                t = time.strptime(until, format)
-            except ValueError as err:
-                raise CLIError(message='in --until: '+unicode(err), importance=1)
-            return int(time.mktime(t))
-        return orelse
 
     def main(self, container____path__ = None):
         super(self.__class__, self).main(container____path__)
 
-        detail = getattr(self.args, 'detail')
+        detail = self.get_argument('detail')
         try:
             if self.container is None:
                 print(bold(self.client.account))
                 if detail:
-                    reply = self.client.get_account_info(until=self.getuntil())
+                    reply = self.client.get_account_info(until=self.get_argument('until'))
                 else:
-                    reply = self.client.get_account_meta(until=self.getuntil())
+                    reply = self.client.get_account_meta(until=self.get_argument('until'))
                     reply = pretty_keys(reply, '-')
             elif self.path is None:
                 print(bold(self.client.account+': '+self.container))
                 if detail:
-                    reply = self.client.get_container_info(until = self.getuntil())
+                    reply = self.client.get_container_info(until = self.get_argument('until'))
                 else:
-                    cmeta = self.client.get_container_meta(until=self.getuntil())
-                    ometa = self.client.get_container_object_meta(until=self.getuntil())
+                    cmeta = self.client.get_container_meta(until=self.get_argument('until'))
+                    ometa = self.client.get_container_object_meta(until=self.get_argument('until'))
                     reply = {'container-meta':pretty_keys(cmeta, '-'),
                         'object-meta':pretty_keys(ometa, '-')}
             else:
                 print(bold(self.client.account+': '+self.container+':'+self.path))
-                version=getattr(self.args, 'object_version')
+                version=self.get_argument('object_version')
                 if detail:
                     reply = self.client.get_object_info(self.path, version = version)
                 else:
@@ -1025,27 +976,24 @@ class store_delgroup(_store_account_command):
 class store_sharers(_store_account_command):
     """List the accounts that share objects with default account"""
 
-    def update_parser(self, parser):
-        super(store_sharers, self).update_parser(parser)
-        parser.add_argument('-l', action='store_true', dest='detail', default=False,
-            help='show detailed output')
-        parser.add_argument('-n', action='store',  dest='limit', default=10000,
-            help='show limited output')
-        parser.add_argument('--marker', action='store', dest='marker', default=None,
-            help='show output greater then marker')
+    def __init__(self, arguments = {}):
+        super(self.__class__, self).__init__(arguments)
+        self.arguments['detail'] = FlagArgument('show detailed output', '-l')
+        self.arguments['limit'] = IntArgument('show limited output', '--n', default=1000)
+        self.arguments['marker'] = ValueArgument('show output greater then marker', '--marker')
 
     def main(self):
         super(self.__class__, self).main()
         try:
-            accounts = self.client.get_sharing_accounts(marker=getattr(self.args, 'marker'))
+            accounts = self.client.get_sharing_accounts(marker=self.get_argument('marker'))
         except ClientError as err:
             raiseCLIError(err)
 
         for acc in accounts:
             stdout.write(bold(acc['name'])+' ')
-            if getattr(self.args, 'detail'):
+            if self.get_argument('detail'):
                 print_dict(acc, exclude='name', ident=18)
-        if not getattr(self.args, 'detail'):
+        if not self.get_argument('detail'):
             print
 
 @command()

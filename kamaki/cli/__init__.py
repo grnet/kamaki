@@ -53,7 +53,7 @@ except ImportError:
     from ordereddict import OrderedDict
 
 #from kamaki import clients
-from .errors import CLIError, CLISyntaxError, CLICmdIncompleteError
+from .errors import CLIError, CLISyntaxError, CLICmdIncompleteError, CLICmdSpecError
 from .config import Config #TO BE REMOVED
 from .utils import bold, magenta, red, yellow, CommandTree, print_list, print_dict
 from argument import _arguments, parse_known_args
