@@ -47,6 +47,7 @@ from datetime import datetime as dtm
 
 from progress.bar import IncrementalBar
 
+#Argument functionality
 class DelimiterArgument(ValueArgument):
     def __init__(self, caller_obj, help='', parsed_name=None, default=None):
         super(DelimiterArgument, self).__init__(help, parsed_name, default)
@@ -161,6 +162,7 @@ class DateArgument(ValueArgument):
         raise CLIError('Date Argument Error',
             details='%s not a valid date. correct formats:\n\t%s'%(datestr, self.INPUT_FORMATS))
 
+#Command specs
 class _pithos_init(object):
     def __init__(self, arguments={}):
         self.arguments = arguments
