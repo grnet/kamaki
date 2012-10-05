@@ -32,26 +32,38 @@
 # or implied, of GRNET S.A.
 
 from kamaki.cli import command#, set_api_description
+from kamaki.cli.argument import FlagArgument
 #set_api_description('config', 'Configuration commands')
 API_DESCRIPTION = {'config':'Configuration commands'}
 
+class _config_init(object):
+    def __init__(self, arguments={}):
+        self.arguments=arguments
+        try:
+            self.config = self.get_argument('config')
+        except KeyError:
+            pass
+
+    def get_argument(self, arg_name):
+        return self.arguments[arg_name].value
+
 @command()
-class config_list(object):
+class config_list(_config_init):
     """List configuration options"""
 
-    def update_parser(self, parser):
-        parser.add_argument('-a', dest='all', action='store_true',
-                          default=False, help='include default values')
+    def __init__(self, arguments={}):
+        super(config_list, self).__init__(arguments)
+        self.arguments['all'] = FlagArgument('include default values', '-a')
 
     def main(self):
-        include_defaults = self.args.all
+        include_defaults = self.get_argument('all')
         for section in sorted(self.config.sections()):
             items = self.config.items(section, include_defaults)
             for key, val in sorted(items):
                 print('%s.%s = %s' % (section, key, val))
 
 @command()
-class config_get(object):
+class config_get(_config_init):
     """Show a configuration option"""
 
     def main(self, option):
@@ -62,7 +74,7 @@ class config_get(object):
             print(value)
 
 @command()
-class config_set(object):
+class config_set(_config_init):
     """Set a configuration option"""
 
     def main(self, option, value):
@@ -72,7 +84,7 @@ class config_set(object):
         self.config.write()
 
 @command()
-class config_delete(object):
+class config_delete(_config_init):
     """Delete a configuration option (and use the default value)"""
 
     def main(self, option):

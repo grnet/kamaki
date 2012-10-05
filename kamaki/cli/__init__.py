@@ -267,7 +267,8 @@ def one_command():
         executable = cli(_arguments)
         _update_parser(parser, executable.arguments)
         parser.prog = '%s %s %s'%(exe, cmd.path.replace('_', ' '), cli.syntax)
-        parse_known_args(parser)
+        parsed, new_unparsed = parse_known_args(parser)
+        unparsed = [term for term in unparsed if term in new_unparsed]
         try:
             ret = executable.main(*unparsed)
             exit(ret)

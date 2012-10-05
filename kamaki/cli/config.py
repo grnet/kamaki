@@ -102,7 +102,10 @@ class Config(RawConfigParser):
             pass
 
     def items(self, section, include_defaults=False):
-        d = dict(DEFAULTS[section]) if include_defaults else {}
+        try:
+            d = dict(DEFAULTS[section]) if include_defaults else {}
+        except KeyError:
+            d = {}
         try:
             d.update(RawConfigParser.items(self, section))
         except NoSectionError:
