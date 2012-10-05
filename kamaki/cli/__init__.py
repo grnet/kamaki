@@ -89,8 +89,8 @@ def _allow_class_in_cmd_tree(cls):
     for term in candidate_command_terms:
         try:
             index += 1 if term_list[index] == term else 0
-        except IndexError:
-            return False
+        except IndexError: #Whole term list matched!
+            return True
     if allow_subclass_signatures:
         if index == len(candidate_command_terms) and len(term_list) > index:
             try: #is subterm already in _commands?
