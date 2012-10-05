@@ -40,21 +40,29 @@ from kamaki.cli.utils import print_dict
 from kamaki.cli.errors import raiseCLIError
 
 class _astakos_init(object):
-	def main(self):
-		token = self.config.get('astakos', 'token') or self.config.get('global', 'token')
-		base_url = self.config.get('astakos', 'url') or self.config.get('global', 'url')
-		if base_url is None:
-			raise ClientError('no URL for astakos')
-		self.client = AstakosClient(base_url=base_url, token=token)
+
+    def __init__(self, arguments={}):
+        self.arguments = arguments
+        try:
+            self.config = self.arguments['config'].value
+        except KeyError:
+            pass
+
+    def main(self):
+        token = self.config.get('astakos', 'token') or self.config.get('global', 'token')
+        base_url = self.config.get('astakos', 'url') or self.config.get('global', 'url')
+        if base_url is None:
+            raise ClientError('no URL for astakos')
+        self.client = AstakosClient(base_url=base_url, token=token)
 
 @command()
 class astakos_authenticate(_astakos_init):
     """Authenticate a user"""
 
     def main(self):
-    	super(astakos_authenticate, self).main()
-    	try:
-        	reply = self.client.authenticate()
+        super(astakos_authenticate, self).main()
+        try:
+            reply = self.client.authenticate()
         except ClientError as err:
-        	raiseCLIError(err)
+            raiseCLIError(err)
         print_dict(reply)
