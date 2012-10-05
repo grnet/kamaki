@@ -56,7 +56,7 @@ except ImportError:
 from .errors import CLIError, CLISyntaxError, CLICmdIncompleteError, CLICmdSpecError
 from .config import Config #TO BE REMOVED
 from .utils import bold, magenta, red, yellow, print_list, print_dict
-from .command import CommandTree
+from .command_tree import CommandTree
 from argument import _arguments, parse_known_args
 
 cmd_spec_locations = [
