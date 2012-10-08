@@ -179,13 +179,35 @@ class VersionArgument(FlagArgument):
             import kamaki
             print('kamaki %s'%kamaki.__version__)
 
+class HistoryArgument(FlagArgument):
+    user_history_file=None
+    def __init__(self, help='', parsed_name=None, default=False):
+        super(HistoryArgument, self).__init__(help, parsed_name, default)
+
+    def add(self, command_string):
+        if self.user_history_file:
+            f = open(self.user_history_file, 'a+')
+            f.write(command_string)
+            f.flush()
+            f.close()
+
+    def get(self, prefix='', limit=0):
+        lines = []
+        if self.user_history_file:
+            for line in open(self.user_history_file):
+                line = line.trim()
+                if len(line) > 0 and line.startswith(prefix):
+                    lines.append(line)
+        return lines
+
 _arguments = dict(config = _config_arg, help = Argument(0, 'Show help message', ('-h', '--help')),
     debug = FlagArgument('Include debug output', ('-d', '--debug')),
     include = FlagArgument('Include protocol headers in the output', ('-i', '--include')),
     silent = FlagArgument('Do not output anything', ('-s', '--silent')),
     verbose = FlagArgument('More info at response', ('-v', '--verbose')),
     version = VersionArgument('Print current version', ('-V', '--version')),
-    options = CmdLineConfigArgument(_config_arg, 'Override a config value', ('-o', '--options'))
+    options = CmdLineConfigArgument(_config_arg, 'Override a config vale', ('-o', '--options')),
+    history = HistoryArgument('Show user (prefixed) history', '--history')
 )
 
 def parse_known_args(parser):

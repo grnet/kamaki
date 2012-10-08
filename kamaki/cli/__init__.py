@@ -142,7 +142,7 @@ def _init_parser(exe):
     _update_parser(parser, _arguments)
     return parser
 
-def _print_error_message(cli_err):
+def _print_error_message(cli_err, verbose=False):
     errmsg = unicode(cli_err) + (' (%s)'%cli_err.status if cli_err.status else ' ')
     if cli_err.importance == 1:
         errmsg = magenta(errmsg)
@@ -151,7 +151,7 @@ def _print_error_message(cli_err):
     elif cli_err.importance > 2:
         errmsg = red(errmsg)
     stdout.write(errmsg)
-    if cli_err.details is not None and len(cli_err.details) > 0:
+    if verbose and cli_err.details is not None and len(cli_err.details) > 0:
         print(': %s'%cli_err.details)
     else:
         print()
@@ -216,14 +216,48 @@ def print_commands(prefix=None, full_depth=False):
     if full_depth:
         _commands.pretty_print()
 
+def setup_logging(silent=False, debug=False, verbose=False, include=False):
+    """handle logging for clients package"""
+
+    def add_handler(name, level, prefix=''):
+        h = logging.StreamHandler()
+        fmt = logging.Formatter(prefix + '%(message)s')
+        h.setFormatter(fmt)
+        logger = logging.getLogger(name)
+        logger.addHandler(h)
+        logger.setLevel(level)
+
+    if silent:
+        add_handler('', logging.CRITICAL)
+    elif debug:
+        add_handler('requests', logging.INFO, prefix='* ')
+        add_handler('clients.send', logging.DEBUG, prefix='> ')
+        add_handler('clients.recv', logging.DEBUG, prefix='< ')
+    elif verbose:
+        add_handler('requests', logging.INFO, prefix='* ')
+        add_handler('clients.send', logging.INFO, prefix='> ')
+        add_handler('clients.recv', logging.INFO, prefix='< ')
+    elif include:
+        add_handler('clients.recv', logging.INFO)
+    else:
+        add_handler('', logging.WARNING)
+
 def one_command():
     _debug = False
     _help = False
     _verbose = False
     try:
+
         exe = basename(argv[0])
         parser = _init_parser(exe)
         parsed, unparsed = parse_known_args(parser)
+        _history = _arguments['history']
+        if _history.value:
+            cmd_list = [term for term in argv if term not in _history.parsed_name]
+            print_list(_history.get(' '.join(cmd_list)))
+            _arguments['history'].add(' '.join(argv))
+            exit(0)
+        _arguments['history'].add(' '.join(argv))
         _debug = _arguments['debug'].value
         _help = _arguments['help'].value
         _verbose = _arguments['verbose'].value
@@ -263,6 +297,8 @@ def one_command():
             print_commands(cmd.path, full_depth=_verbose)
             exit(0)
 
+        setup_logging(silent=_arguments['silent'].value, debug=_debug, verbose=_verbose,
+            include=_arguments['include'].value)
         cli = cmd.get_class()
         executable = cli(_arguments)
         _update_parser(parser, executable.arguments)
@@ -281,5 +317,5 @@ def one_command():
     except CLIError as err:
         if _debug:
             raise
-        _print_error_message(err)
+        _print_error_message(err, verbose=_verbose)
         exit(1)
