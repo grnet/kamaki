@@ -31,46 +31,60 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from kamaki.cli import command#, set_api_description
-from kamaki.cli.utils import print_dict, print_items, print_list, format_size, bold
-from kamaki.cli.errors import CLIError, raiseCLIError
-#set_api_description('server', "Compute/Cyclades API server commands")
-#set_api_description('flavor', "'Compute/Cyclades API flavor commands'")
-#set_api_description('image', "Compute/Cyclades or Glance API image commands")
-#set_api_description('network', "Compute/Cyclades API network commands")
 API_DESCRIPTION = {'server':'Compute/Cyclades API server commands',
     'flavor':'Compute/Cyclades API flavor commands',
     'image':'Compute/Cyclades or Glance API image commands',
     'network': 'Compute/Cyclades API network commands'}
+
+from kamaki.cli import command
+from kamaki.cli.utils import print_dict, print_items, print_list, format_size, bold
+from kamaki.cli.errors import CLIError, raiseCLIError
 from kamaki.clients.cyclades import CycladesClient, ClientError
+from kamaki.cli.argument import FlagArgument, ValueArgument
+from base64 import b64encode
+from os.path import abspath, exists
 
 class _init_cyclades(object):
-    def main(self):
-        token = self.config.get('compute', 'token') or self.config.get('global', 'token')
-        base_url = self.config.get('compute', 'url') or self.config.get('global', 'url')
+    def __init__(self, arguments={}):
+        self.arguments=arguments
+        try:
+            self.config = self.get_argument('config')
+        except KeyError:
+            pass
+
+    def get_argument(self, argterm):
+        return self.arguments[argterm].value
+
+    def main(self, service='compute'):
+        token = self.config.get(service, 'token') or self.config.get('global', 'token')
+        base_url = self.config.get(service, 'url') or self.config.get('global', 'url')
         self.client = CycladesClient(base_url=base_url, token=token)
+
+class _init_server(_init_cyclades):
+    def main(self):
+        super(_init_server, self).main('server')
 
 @command()
 class server_list(_init_cyclades):
     """List servers"""
+
+    def __init__(self, arguments={}):
+        super(server_list, self).__init__(arguments)
+        self.arguments['detail'] = FlagArgument('show detailed output', '-l')
 
     def _print(self, servers):
         for server in servers:
             sname = server.pop('name')
             sid = server.pop('id')
             print('%s (%s)'%(bold(sname), bold(unicode(sid))))
-            if getattr(self.args, 'detail'):
+            if self.get_argument('detail'):
                 server_info._print(server)
                 print('- - -')
-
-    def update_parser(self, parser):
-        parser.add_argument('-l', dest='detail', action='store_true',
-                default=False, help='show detailed output')
 
     def main(self):
         super(self.__class__, self).main()
         try:
-            servers = self.client.list_servers(self.args.detail)
+            servers = self.client.list_servers(self.get_argument('detail'))
             self._print(servers)
             #print_items(servers)
         except ClientError as err:
@@ -107,9 +121,38 @@ class server_info(_init_cyclades):
                 importance=1)
         self._print(server)
 
+class PersonalityArgument(ValueArgument):
+    @property 
+    def value(self):
+        return [self._value] if hasattr(self, '_value') else []
+    @value.setter 
+    def value(self, newvalue):
+        if newvalue == self.default:
+            return self.value
+        termlist = newvalue.split()
+        if len(termlist) > 4:
+                raise CLISyntaxError(details='Wrong number of personality terms ("PATH [OWNER [GROUP [MODE]]]"')
+        path = termlist[0]
+        self._value = dict(path=path)
+        if not exists(path):
+            raise CLIError(message="File %s does not exist" % path, importance=1)
+        with open(path) as f:
+            self._value['contents'] = b64encode(f.read())
+        try:
+            self._value['owner'] = termlist[1]
+            self._value['group'] = termlist[2]
+            self._value['mode'] = termlist[3]
+        except IndexError:
+            pass
+
 @command()
 class server_create(_init_cyclades):
     """Create a server"""
+
+    def __init__(self, arguments={}):
+        super(server_create, self).__init__(arguments)
+        self.arguments['personality'] = PersonalityArgument(parsed_name='--personality',
+            help='add a personality file ( "PATH [OWNER [GROUP [MODE]]]" )')
 
     def update_parser(self, parser):
         parser.add_argument('--personality', dest='personalities',
@@ -119,33 +162,9 @@ class server_create(_init_cyclades):
 
     def main(self, name, flavor_id, image_id):
         super(self.__class__, self).main()
-        personalities = []
-        for personality in self.args.personalities:
-            p = personality.split(',')
-            p.extend([None] * (5 - len(p)))     # Fill missing fields with None
-
-            path = p[0]
-
-            if not path:
-                raise CLIError(message='Invalid personality argument %s'%p, importance=1)
-            if not exists(path):
-                raise CLIError(message="File %s does not exist" % path, importance=1)
-
-            with open(path) as f:
-                contents = b64encode(f.read())
-
-            d = {'path': p[1] or abspath(path), 'contents': contents}
-            if p[2]:
-                d['owner'] = p[2]
-            if p[3]:
-                d['group'] = p[3]
-            if p[4]:
-                d['mode'] = int(p[4])
-            personalities.append(d)
-
         try:
             reply = self.client.create_server(name, int(flavor_id), image_id,
-                personalities)
+                self.get_argument('personality'))
         except ClientError as err:
             raiseCLIError(err)
         print_dict(reply)
@@ -180,14 +199,14 @@ class server_delete(_init_cyclades):
 class server_reboot(_init_cyclades):
     """Reboot a server"""
 
-    def update_parser(self, parser):
-        parser.add_argument('-f', dest='hard', action='store_true',
-                default=False, help='perform a hard reboot')
+    def __init__(self, arguments={}):
+        super(server_reboot, self).__init__(arguments)
+        self.arguments['hard'] = FlagArgument('perform a hard reboot', '-f')
 
     def main(self, server_id):
         super(self.__class__, self).main()
         try:
-            self.client.reboot_server(int(server_id), self.args.hard)
+            self.client.reboot_server(int(server_id), self.get_argument('hard'))
         except ClientError as err:
             raiseCLIError(err)
         except ValueError:
@@ -245,6 +264,7 @@ class server_firewall(_init_cyclades):
             raiseCLIError(err)
         except ValueError:
             raise CLIError(message='Server id must be positive integer', importance=1)
+
 @command()
 class server_addr(_init_cyclades):
     """List a server's nic address"""
@@ -333,14 +353,14 @@ class server_stats(_init_cyclades):
 class flavor_list(_init_cyclades):
     """List flavors"""
 
-    def update_parser(self, parser):
-        parser.add_argument('-l', dest='detail', action='store_true',
-                default=False, help='show detailed output')
+    def __init__(self, arguments={}):
+        super(flavor_list, self).__init__(arguments)
+        self.arguments['detail'] = FlagArgument('show detailed output', '-l')
 
     def main(self):
         super(self.__class__, self).main()
         try:
-            flavors = self.client.list_flavors(self.args.detail)
+            flavors = self.client.list_flavors(self.get_argument('detail'))
         except ClientError as err:
             raiseCLIError(err)
         print_items(flavors)
@@ -360,129 +380,25 @@ class flavor_info(_init_cyclades):
         print_dict(flavor)
 
 @command()
-class image_list(_init_cyclades):
-    """List images"""
-
-    def update_parser(self, parser):
-        parser.add_argument('-l', dest='detail', action='store_true',
-                default=False, help='show detailed output')
-
-    def _print(self, images):
-        for img in images:
-            iname = img.pop('name')
-            iid = img.pop('id')
-            print('%s (%s)'%(bold(iname), bold(unicode(iid))))
-            if getattr(self.args, 'detail'):
-                image_info._print(img)
-                print('- - -')
-
-    def main(self):
-        super(self.__class__, self).main()
-        try:
-            images = self.client.list_images(self.args.detail)
-        except ClientError as err:
-            raiseCLIError(err)
-        #print_items(images)
-        self._print(images)
-
-@command()
-class image_info(_init_cyclades):
-    """Get image details"""
-
-    @classmethod
-    def _print(self, image):
-        if image.has_key('metadata'):
-            image['metadata'] = image['metadata']['values']
-        print_dict(image, ident=14)
-
-    def main(self, image_id):
-        super(self.__class__, self).main()
-        try:
-            image = self.client.get_image_details(image_id)
-        except ClientError as err:
-            raiseCLIError(err)
-        self._print(image)
-
-@command()
-class image_delete(_init_cyclades):
-    """Delete image"""
-
-    def main(self, image_id):
-        super(self.__class__, self).main()
-        try:
-            self.client.delete_image(image_id)
-        except ClientError as err:
-            raiseCLIError(err)
-
-@command()
-class image_properties(_init_cyclades):
-    """Get image properties"""
-
-    def main(self, image_id, key=None):
-        super(self.__class__, self).main()
-        try:
-            reply = self.client.get_image_metadata(image_id, key)
-        except ClientError as err:
-            raiseCLIError(err)
-        print_dict(reply)
-
-@command()
-class image_addproperty(_init_cyclades):
-    """Add an image property"""
-
-    def main(self, image_id, key, val):
-        super(self.__class__, self).main()
-        try:
-            reply = self.client.create_image_metadata(image_id, key, val)
-        except ClientError as err:
-            raiseCLIError(err)
-        print_dict(reply)
-
-@command()
-class image_setproperty(_init_cyclades):
-    """Update an image property"""
-
-    def main(self, image_id, key, val):
-        super(self.__class__, self).main()
-        metadata = {key: val}
-        try:
-            reply = self.client.update_image_metadata(image_id, **metadata)
-        except ClientError as err:
-            raiseCLIError(err)
-        print_dict(reply)
-
-@command()
-class image_delproperty(_init_cyclades):
-    """Delete an image property"""
-
-    def main(self, image_id, key):
-        super(self.__class__, self).main()
-        try:
-            self.client.delete_image_metadata(image_id, key)
-        except ClientError as err:
-            raiseCLIError(err)
-
-@command()
 class network_list(_init_cyclades):
     """List networks"""
 
-    def update_parser(self, parser):
-        parser.add_argument('-l', dest='detail', action='store_true',
-                default=False, help='show detailed output')
+    def __init__(self, arguments={}):
+        super(network_list, self).__init__(arguments)
+        self.arguments['detail'] = FlagArgument('show detailed output', '-l')
 
     def print_networks(self, nets):
         for net in nets:
             netname = bold(net.pop('name'))
             netid = bold(unicode(net.pop('id')))
             print('%s (%s)'%(netname, netid))
-            if getattr(self.args, 'detail'):
+            if self.get_argument('detail'):
                 network_info.print_network(net)
-                print('- - -')
 
     def main(self):
         super(self.__class__, self).main()
         try:
-            networks = self.client.list_networks(self.args.detail)
+            networks = self.client.list_networks(self.get_argument('detail'))
         except ClientError as err:
             raiseCLIError(err)
         self.print_networks(networks)
@@ -491,26 +407,20 @@ class network_list(_init_cyclades):
 class network_create(_init_cyclades):
     """Create a network"""
 
-    def update_parser(self, parser):
-        try:
-            super(self.__class__, self).update_parser(parser)
-        except AttributeError:
-            pass
-        parser.add_argument('--with-cidr', action='store', dest='cidr', default=False,
-            help='specific cidr for new network')
-        parser.add_argument('--with-gateway', action='store', dest='gateway', default=False,
-            help='specific getaway for new network')
-        parser.add_argument('--with-dhcp', action='store', dest='dhcp', default=False,
-            help='specific dhcp for new network')
-        parser.add_argument('--with-type', action='store', dest='type', default=False,
-            help='specific type for new network')
+    def __init__(self, arguments={}):
+        super(network_create, self).__init__(arguments)
+        self.arguments['cidr'] = ValueArgument('specific cidr for new network', '--with-cidr')
+        self.arguments['gateway'] = ValueArgument('specific gateway for new network',
+            '--with-gateway')
+        self.arguments['dhcp'] = ValueArgument('specific dhcp for new network', '--with-dhcp')
+        self.arguments['type'] = ValueArgument('specific type for new network', '--with-type')
 
     def main(self, name):
         super(self.__class__, self).main()
         try:
-            reply = self.client.create_network(name, cidr=getattr(self.args, 'cidr'),
-                gateway=getattr(self.args, 'gateway'), dhcp=getattr(self.args, 'gateway'),
-                type=getattr(self.args, 'type'))
+            reply = self.client.create_network(name, cidr= self.get_argument('cidr'),
+                gateway=self.get_argument('gateway'), dhcp=self.get_argument('dhcp'),
+                type=self.get_argument('type'))
         except ClientError as err:
             raiseCLIError(err)
         print_dict(reply)

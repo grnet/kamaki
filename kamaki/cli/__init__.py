@@ -43,8 +43,7 @@ import logging
 
 from inspect import getargspec
 from argparse import ArgumentParser, ArgumentError
-from base64 import b64encode
-from os.path import abspath, basename, exists
+from os.path import basename
 from sys import exit, stdout, stderr, argv
 
 try:
@@ -268,7 +267,7 @@ def one_command():
         if group is None:
             parser.print_help()
             shallow_load()
-            print_commands(full_depth=_verbose)
+            print_commands(full_depth=_debug)
             exit(0)
 
         cmd = load_command(group, unparsed)
@@ -294,7 +293,7 @@ def one_command():
             allow_subclass_signatures = True
             load_command(group, cmd.path.split('_')[1:], reload_package=True)
 
-            print_commands(cmd.path, full_depth=_verbose)
+            print_commands(cmd.path, full_depth=_debug)
             exit(0)
 
         setup_logging(silent=_arguments['silent'].value, debug=_debug, verbose=_verbose,

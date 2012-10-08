@@ -200,13 +200,33 @@ class HistoryArgument(FlagArgument):
                     lines.append(line)
         return lines
 
+class KeyValueArgument(ValueArgument):
+    def __init__(self, help='', parsed_name=None, default={}):
+        super(KeyValueArgument,self).__init__(help, parsed_name, default)
+
+    @property 
+    def value(self):
+        return super(KeyValueArgument, self).value
+    @value.setter 
+    def value(self, keyvalue_pairs):
+        if keyvalue_pairs == self.default:
+            return
+        if isinstance(keyvalue_pairs, str):
+            keyvalue_pairs = keyvalue_pairs.trim().split(' ')
+        self._value = self.default
+        for pair in keyvalue_pairs:
+            key,sep,val = pair.partition('=')
+            if not sep:
+                raise CLISyntaxError(details='Missing "="" ( "key1=val1 key2=val2 ..."')
+            self._value[key.trim()] = val.trim()
+
 _arguments = dict(config = _config_arg, help = Argument(0, 'Show help message', ('-h', '--help')),
     debug = FlagArgument('Include debug output', ('-d', '--debug')),
     include = FlagArgument('Include protocol headers in the output', ('-i', '--include')),
     silent = FlagArgument('Do not output anything', ('-s', '--silent')),
     verbose = FlagArgument('More info at response', ('-v', '--verbose')),
     version = VersionArgument('Print current version', ('-V', '--version')),
-    options = CmdLineConfigArgument(_config_arg, 'Override a config vale', ('-o', '--options')),
+    options = CmdLineConfigArgument(_config_arg, 'Override a config value', ('-o', '--options')),
     history = HistoryArgument('Show user (prefixed) history', '--history')
 )
 

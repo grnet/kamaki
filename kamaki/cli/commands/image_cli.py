@@ -31,15 +31,26 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-from kamaki.cli import command#, set_api_description
+API_DESCRIPTION = {'image':'Compute/Cyclades or Glance API image commands'}
+
+from kamaki.cli import command
 from kamaki.cli.errors import raiseCLIError
 from kamaki.cli.utils import print_dict, print_items
-#set_api_description('image', "Compute/Cyclades or Glance API image commands")
-API_DESCRIPTION = {'image':'Compute/Cyclades or Glance API image commands'}
 from kamaki.clients.image import ImageClient, ClientError
-
+from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument, IntArgument
+from .cyclades_cli import _init_cyclades
 
 class _init_image(object):
+    def __init__(self, arguments={}):
+        self.arguments=arguments
+        try:
+            self.config = self.get_argument('config')
+        except KeyError:
+            pass
+
+    def get_argument(self, arg_name):
+        return self.arguments[arg_name].value
+
     def main(self):
         try:
             token = self.config.get('image', 'token') or self.config.get('global', 'token')
@@ -52,37 +63,31 @@ class _init_image(object):
 class image_public(_init_image):
     """List public images"""
 
-    def update_parser(self, parser):
-        parser.add_argument('-l', dest='detail', action='store_true',
-                default=False, help='show detailed output')
-        parser.add_argument('--container-format', dest='container_format',
-                metavar='FORMAT', help='filter by container format')
-        parser.add_argument('--disk-format', dest='disk_format',
-                metavar='FORMAT', help='filter by disk format')
-        parser.add_argument('--name', dest='name', metavar='NAME',
-                help='filter by name')
-        parser.add_argument('--size-min', dest='size_min', metavar='BYTES',
-                help='filter by minimum size')
-        parser.add_argument('--size-max', dest='size_max', metavar='BYTES',
-                help='filter by maximum size')
-        parser.add_argument('--status', dest='status', metavar='STATUS',
-                help='filter by status')
-        parser.add_argument('--order', dest='order', metavar='FIELD',
-                help='order by FIELD (use a - prefix to reverse order)')
+    def __init__(self, arguments={}):
+        super(image_public, self).__init__(arguments)
+        self.arguments['detail'] = FlagArgument('show detailed output', '-l')
+        self.arguments['container_format'] = ValueArgument('filter by container format',
+            '--container-format')
+        self.arguments['disk_format'] = ValueArgument('filter by disk format', '--disk-format')
+        self.arguments['name'] = ValueArgument('filter by name', '--name')
+        self.arguments['size_min'] = IntArgument('filter by minimum size', '--size-min')
+        self.arguments['size_max'] = IntArgument('filter by maximum size', '--size-max')
+        self.arguments['status'] = ValueArgument('filter by status', '--status')
+        self.arguments['order'] = ValueArgument('order by FIELD (use a - prefix to reverse order)',
+            '--order', default='')
 
     def main(self):
-    	super(self.__class__, self).main()
+        super(self.__class__, self).main()
         filters = {}
-        for filter in ('container_format', 'disk_format', 'name', 'size_min',
-                       'size_max', 'status'):
-            val = getattr(self.args, filter, None)
+        for arg in ('container_format', 'disk_format', 'name', 'size_min', 'size_max', 'status'):
+            val = self.get_argument(arg)
             if val is not None:
-                filters[filter] = val
+                filters[arg] = val
 
-        order = self.args.order or ''
+        order = self.get_argument('order')
         try:
-            images = self.client.list_public(self.args.detail,
-                filters=filters, order=order)
+            images = self.client.list_public(self.get_argument('detail'), filters=filters,
+                order=order)
         except ClientError as err:
             raiseCLIError(err)
         print_items(images, title=('name',))
@@ -92,7 +97,7 @@ class image_meta(_init_image):
     """Get image metadata"""
 
     def main(self, image_id):
-    	super(self.__class__, self).main()
+        super(self.__class__, self).main()
         try:
             image = self.client.get_meta(image_id)
         except ClientError as err:
@@ -103,55 +108,40 @@ class image_meta(_init_image):
 class image_register(_init_image):
     """Register an image"""
 
-    def update_parser(self, parser):
-        parser.add_argument('--checksum', dest='checksum', metavar='CHECKSUM',
-                help='set image checksum')
-        parser.add_argument('--container-format', dest='container_format',
-                metavar='FORMAT', help='set container format')
-        parser.add_argument('--disk-format', dest='disk_format',
-                metavar='FORMAT', help='set disk format')
-        parser.add_argument('--id', dest='id',
-                metavar='ID', help='set image ID')
-        parser.add_argument('--owner', dest='owner',
-                metavar='USER', help='set image owner (admin only)')
-        parser.add_argument('--property', dest='properties', action='append',
-                metavar='KEY=VAL',
-                help='add a property (can be used multiple times)')
-        parser.add_argument('--public', dest='is_public', action='store_true',
-                help='mark image as public')
-        parser.add_argument('--size', dest='size', metavar='SIZE',
-                help='set image size')
+    def __init__(self, arguments={}):
+        super(image_register, self).__init__(arguments)
+        self.arguments['checksum'] = ValueArgument('set image checksum', '--checksum')
+        self.arguments['container_format'] = ValueArgument('set container format',
+            '--container-format')
+        self.arguments['disk_format'] = ValueArgument('set disk format', '--disk-format')
+        self.arguments['id'] = ValueArgument('set image ID', '--id')
+        self.arguments['owner'] = ValueArgument('set image owner (admin only)', '--owner')
+        self.arguments['properties'] = KeyValueArgument(parsed_name='--properties',
+            help = 'add properties in the form "key1=val1 key2=val2 ..."')
+        self.arguments['is_public'] = FlagArgument('mark image as public', '--public')
+        self.arguments['size'] = IntArgument('set image size', '--size')
 
     def main(self, name, location):
-    	super(self.__class__, self).main()
+        super(self.__class__, self).main()
         if not location.startswith('pithos://'):
-            account = self.config.get('storage', 'account').split()[0]
+            account = self.config.get('store', 'account') \
+                or self.config.get('global', 'account')
             if account[-1] == '/':
                 account = account[:-1]
-            container = self.config.get('storage', 'container')
+            container = self.config.get('store', 'container') \
+                or self.config.get('global', 'container')
             location = 'pithos://%s/%s'%(account, location) \
                 if container is None or len(container) == 0 \
                 else 'pithos://%s/%s/%s' % (account, container, location)
 
         params = {}
-        for key in ('checksum', 'container_format', 'disk_format', 'id',
-                    'owner', 'size'):
-            val = getattr(self.args, key)
+        for key in ('checksum','container_format','disk_format','id','owner','size','is_public'):
+            val = self.get_argument(key)
             if val is not None:
                 params[key] = val
 
-        if self.args.is_public:
-            params['is_public'] = 'true'
-
-        properties = {}
-        for property in self.args.properties or []:
-            key, sep, val = property.partition('=')
-            if not sep:
-                raise CLIError(message="Invalid property '%s'" % property, importance=1)
-            properties[key.strip()] = val.strip()
-
         try:
-            self.client.register(name, location, params, properties)
+            self.client.register(name, location, params, self.get_argument('properties'))
         except ClientError as err:
             raiseCLIError(err)
 
@@ -160,7 +150,7 @@ class image_members(_init_image):
     """Get image members"""
 
     def main(self, image_id):
-    	super(self.__class__, self).main()
+        super(self.__class__, self).main()
         try:
             members = self.client.list_members(image_id)
         except ClientError as err:
@@ -173,7 +163,7 @@ class image_shared(_init_image):
     """List shared images"""
 
     def main(self, member):
-    	super(self.__class__, self).main()
+        super(self.__class__, self).main()
         try:
             images = self.client.list_shared(member)
         except ClientError as err:
@@ -186,7 +176,7 @@ class image_addmember(_init_image):
     """Add a member to an image"""
 
     def main(self, image_id, member):
-    	super(self.__class__, self).main()
+        super(self.__class__, self).main()
         try:
             self.client.add_member(image_id, member)
         except ClientError as err:
@@ -211,5 +201,107 @@ class image_setmembers(_init_image):
         super(self.__class__, self).main()
         try:
             self.client.set_members(image_id, member)
+        except ClientError as err:
+            raiseCLIError(err)
+
+
+@command()
+class image_list(_init_cyclades):
+    """List images"""
+
+    def __init__(self, arguments={}):
+        super(image_list, self).__init__(arguments)
+        self.arguments['detail'] = FlagArgument('show detailed output', '-l')
+
+    def _print(self, images):
+        for img in images:
+            iname = img.pop('name')
+            iid = img.pop('id')
+            print('%s (%s)'%(bold(iname), bold(unicode(iid))))
+            if self.get_argument('detail'):
+                image_info._print(img)
+
+    def main(self):
+        super(self.__class__, self).main()
+        try:
+            images = self.client.list_images(self.get_argument('detail'))
+        except ClientError as err:
+            raiseCLIError(err)
+        self._print(images)
+
+@command()
+class image_info(_init_cyclades):
+    """Get image details"""
+
+    @classmethod
+    def _print(self, image):
+        if image.has_key('metadata'):
+            image['metadata'] = image['metadata']['values']
+        print_dict(image, ident=14)
+
+    def main(self, image_id):
+        super(self.__class__, self).main()
+        try:
+            image = self.client.get_image_details(image_id)
+        except ClientError as err:
+            raiseCLIError(err)
+        self._print(image)
+
+@command()
+class image_delete(_init_cyclades):
+    """Delete image"""
+
+    def main(self, image_id):
+        super(self.__class__, self).main()
+        try:
+            self.client.delete_image(image_id)
+        except ClientError as err:
+            raiseCLIError(err)
+
+@command()
+class image_properties(_init_cyclades):
+    """Get image properties"""
+
+    def main(self, image_id, key=None):
+        super(self.__class__, self).main()
+        try:
+            reply = self.client.get_image_metadata(image_id, key)
+        except ClientError as err:
+            raiseCLIError(err)
+        print_dict(reply)
+
+@command()
+class image_addproperty(_init_cyclades):
+    """Add an image property"""
+
+    def main(self, image_id, key, val):
+        super(self.__class__, self).main()
+        try:
+            reply = self.client.create_image_metadata(image_id, key, val)
+        except ClientError as err:
+            raiseCLIError(err)
+        print_dict(reply)
+
+@command()
+class image_setproperty(_init_cyclades):
+    """Update an image property"""
+
+    def main(self, image_id, key, val):
+        super(self.__class__, self).main()
+        metadata = {key: val}
+        try:
+            reply = self.client.update_image_metadata(image_id, **metadata)
+        except ClientError as err:
+            raiseCLIError(err)
+        print_dict(reply)
+
+@command()
+class image_delproperty(_init_cyclades):
+    """Delete an image property"""
+
+    def main(self, image_id, key):
+        super(self.__class__, self).main()
+        try:
+            self.client.delete_image_metadata(image_id, key)
         except ClientError as err:
             raiseCLIError(err)
