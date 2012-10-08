@@ -57,6 +57,7 @@ from .config import Config #TO BE REMOVED
 from .utils import bold, magenta, red, yellow, print_list, print_dict
 from .command_tree import CommandTree
 from argument import _arguments, parse_known_args
+from .history import History
 
 cmd_spec_locations = [
     'kamaki.cli.commands',
@@ -187,6 +188,8 @@ def shallow_load():
 
 def load_group_package(group, reload_package=False):
     spec_pkg = _arguments['config'].value.get(group, 'cli')
+    if spec_pkg is None:
+        return None
     for location in cmd_spec_locations:
         location += spec_pkg if location == '' else ('.'+spec_pkg)
         try:
@@ -246,17 +249,11 @@ def one_command():
     _help = False
     _verbose = False
     try:
-
         exe = basename(argv[0])
         parser = _init_parser(exe)
         parsed, unparsed = parse_known_args(parser)
-        _history = _arguments['history']
-        if _history.value:
-            cmd_list = [term for term in argv if term not in _history.parsed_name]
-            print_list(_history.get(' '.join(cmd_list)))
-            _arguments['history'].add(' '.join(argv))
-            exit(0)
-        _arguments['history'].add(' '.join(argv))
+        _history = History(_arguments['config'].get('history', 'file'))
+        _history.add(' '.join([exe]+argv[1:]))
         _debug = _arguments['debug'].value
         _help = _arguments['help'].value
         _verbose = _arguments['verbose'].value

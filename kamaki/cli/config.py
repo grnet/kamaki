@@ -60,6 +60,10 @@ DEFAULTS = {
     'config': {
         'cli': 'config_cli',
         'description': 'Configuration commands'
+    },
+    'history':{
+        'cli':'history_cli',
+        'file':'.kamaki.history'
     }
 }
 

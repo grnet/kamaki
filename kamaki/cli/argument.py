@@ -205,8 +205,7 @@ _arguments = dict(config = _config_arg, help = Argument(0, 'Show help message', 
     silent = FlagArgument('Do not output anything', ('-s', '--silent')),
     verbose = FlagArgument('More info at response', ('-v', '--verbose')),
     version = VersionArgument('Print current version', ('-V', '--version')),
-    options = CmdLineConfigArgument(_config_arg, 'Override a config value', ('-o', '--options')),
-    history = HistoryArgument('Show user (prefixed) history', '--history')
+    options = CmdLineConfigArgument(_config_arg, 'Override a config value', ('-o', '--options'))
 )
 
 def parse_known_args(parser):

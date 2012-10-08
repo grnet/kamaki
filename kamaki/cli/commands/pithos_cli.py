@@ -37,7 +37,7 @@ from kamaki.cli.errors import CLIError, raiseCLIError
 from kamaki.cli.utils import format_size, print_dict, pretty_keys, print_list
 from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
 #set_api_description('store', 'Pithos+ storage commands')
-API_DESCRIPTION = {'store':'Pithos+ storage commands'}
+API_DESCRIPTION = dict(store='Pithos+ storage commands')
 from kamaki.clients.pithos import PithosClient, ClientError
 from colors import bold
 from sys import stdout, exit
