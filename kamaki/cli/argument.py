@@ -179,27 +179,6 @@ class VersionArgument(FlagArgument):
             import kamaki
             print('kamaki %s'%kamaki.__version__)
 
-class HistoryArgument(FlagArgument):
-    user_history_file=None
-    def __init__(self, help='', parsed_name=None, default=False):
-        super(HistoryArgument, self).__init__(help, parsed_name, default)
-
-    def add(self, command_string):
-        if self.user_history_file:
-            f = open(self.user_history_file, 'a+')
-            f.write(command_string)
-            f.flush()
-            f.close()
-
-    def get(self, prefix='', limit=0):
-        lines = []
-        if self.user_history_file:
-            for line in open(self.user_history_file):
-                line = line.trim()
-                if len(line) > 0 and line.startswith(prefix):
-                    lines.append(line)
-        return lines
-
 class KeyValueArgument(ValueArgument):
     def __init__(self, help='', parsed_name=None, default={}):
         super(KeyValueArgument,self).__init__(help, parsed_name, default)
