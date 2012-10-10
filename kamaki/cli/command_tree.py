@@ -237,10 +237,11 @@ class Shell(cmd.Cmd):
 	def do_EOF(self, line):
 		return True
 
-#sh = Shell()
-#sh.prompt = 'lala_$ '
-#sh.cmdloop()
+if __name__ == '__main__':
+	sh = Shell()
+	sh.prompt = 'lala_$ '
+	sh.cmdloop()
 
-#import sys
-#sh.onecmd(' '.join(sys.argv[1:]))
-#test_CommandTree()
+	#import sys
+	#sh.onecmd(' '.join(sys.argv[1:]))
+	#test_CommandTree()

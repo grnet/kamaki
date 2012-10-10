@@ -58,6 +58,7 @@ from .utils import bold, magenta, red, yellow, print_list, print_dict
 from .command_tree import CommandTree
 from argument import _arguments, parse_known_args
 from .history import History
+import cmd
 
 cmd_spec_locations = [
     'kamaki.cli.commands',
@@ -316,3 +317,32 @@ def one_command():
         _print_error_message(err, verbose=_verbose)
         exit(1)
 
+class Shell(cmd.Cmd):
+    """Kamaki interactive shell"""
+
+    def greet(self, version):
+        print('kamaki v%s - Interactive Shell\n\t(exit or ^D to exit)\n'%version)
+    def set_prompt(self, new_prompt):
+        self.prompt = '[%s]:'%new_prompt
+
+    def do_exit(self, line):
+        return True
+
+shell = None
+
+def _start_shell():
+    shell = Shell()
+    shell.set_prompt(basename(argv[0]))
+    from kamaki import __version__ as version
+    shell.greet(version)
+    shell.do_EOF = shell.do_exit
+    shell.cmdloop()
+
+def shell():
+    _start_shell()
+
+def main():
+    if len(argv) <= 1:
+        shell()
+    else:
+        one_command()
