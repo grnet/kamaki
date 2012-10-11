@@ -75,6 +75,7 @@ candidate_command_terms = []
 allow_no_commands = False
 allow_all_commands = False
 allow_subclass_signatures = False
+load2shell = False
 
 def _allow_class_in_cmd_tree(cls):
     global allow_all_commands
@@ -127,6 +128,17 @@ def command():
 
         #store each term, one by one, first
         _commands.add_command(cls.__name__, cls.description, cls)
+        if load2shell:
+            global shell
+            name = cls.__name__.split()[-1]
+            def do_method(self, line):
+                cls.main(line.split())
+            do_method.__name__ = 'do_%s'%name
+            setattr(shell, do_method.__name__, do_method)
+            def help_method(self):
+                print(cls.description)
+            help_method.__name__ = 'help_'%name
+            setattr(shell, help_method.__name__, help_method)
         return cls
     return decorator
 
@@ -186,6 +198,7 @@ def shallow_load():
     for grp in _arguments['config'].get_groups():
         load_group_package(grp)
     allow_no_commands = False
+
 
 def load_group_package(group, reload_package=False):
     spec_pkg = _arguments['config'].value.get(group, 'cli')
@@ -329,20 +342,28 @@ class Shell(cmd.Cmd):
         return True
 
 shell = None
-
 def _start_shell():
+    global shell
     shell = Shell()
     shell.set_prompt(basename(argv[0]))
     from kamaki import __version__ as version
     shell.greet(version)
     shell.do_EOF = shell.do_exit
-    shell.cmdloop()
 
-def shell():
+def run_shell():
+    global shell
     _start_shell()
+    _config = _arguments['config']
+    _config.value = None
+    for grp in _config.get_groups():
+        global load2shell
+        load2shell = True
+        load_group_package(grp)
+        shell.do_store()
+    shell.cmdloop()
 
 def main():
     if len(argv) <= 1:
-        shell()
+        run_shell()
     else:
         one_command()

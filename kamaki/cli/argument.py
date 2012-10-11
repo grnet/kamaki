@@ -211,6 +211,5 @@ _arguments = dict(config = _config_arg, help = Argument(0, 'Show help message', 
 def parse_known_args(parser):
     parsed, unparsed = parser.parse_known_args()
     for name, arg in _arguments.items():
-        lala = getattr(parsed, name, arg.default)
-        arg.value = lala
+        arg.value = getattr(parsed, name, arg.default)
     return parsed, unparsed

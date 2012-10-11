@@ -56,30 +56,30 @@ class testCyclades(unittest.TestCase):
         self.img = '1395fdfb-51b4-419f-bb02-f7d632860611'
 
         """okeanos.io"""
-        url = 'https://cyclades.okeanos.io/api/v1.1'
-        token='0TpoyAXqJSPxLdDuZHiLOA=='
-        account='saxtouri@admin.grnet.gr'
-        self.img = '43cc8497-61c3-4c46-ae8d-3e33861f8527'
-        self.img_details= {
-            u'status': u'ACTIVE',
-            u'updated': u'2012-08-21T12:57:39+00:00',
-            u'name': u'Debian Base',
-            u'created': u'2012-08-21T12:56:53+00:00',
-            u'progress': 100,
-            u'id': u'43cc8497-61c3-4c46-ae8d-3e33861f8527',
-            u'metadata': {
-                u'values': {
-                    u'kernel': u'2.6.32',
-                    u'osfamily': u'linux', 
-                    u'users': u'root', 
-                    u'gui': u'No GUI', 
-                    u'sortorder': u'1', 
-                    u'os': u'debian', 
-                    u'root_partition': 
-                    u'1', u'description': 
-                    u'Debian Squeeze Base System'}
-                }
-            }
+        #url = 'https://cyclades.okeanos.io/api/v1.1'
+        #token='0TpoyAXqJSPxLdDuZHiLOA=='
+        #account='saxtouri@admin.grnet.gr'
+        #self.img = '43cc8497-61c3-4c46-ae8d-3e33861f8527'
+        #self.img_details= {
+        #    u'status': u'ACTIVE',
+        #    u'updated': u'2012-08-21T12:57:39+00:00',
+        #    u'name': u'Debian Base',
+        #    u'created': u'2012-08-21T12:56:53+00:00',
+        #    u'progress': 100,
+        #    u'id': u'43cc8497-61c3-4c46-ae8d-3e33861f8527',
+        #    u'metadata': {
+        #        u'values': {
+        #            u'kernel': u'2.6.32',
+        #            u'osfamily': u'linux', 
+        #            u'users': u'root', 
+        #            u'gui': u'No GUI', 
+        #            u'sortorder': u'1', 
+        #            u'os': u'debian', 
+        #            u'root_partition': 
+        #            u'1', u'description': 
+        #            u'Debian Squeeze Base System'}
+        #        }
+        #    }
         flavorid = 1
 
         self.servers = {}
@@ -263,15 +263,34 @@ class testPithos(unittest.TestCase):
         token = 'C/yBXmz3XjTFBnujc2biAg=='
         token = 'ac0yH8cQMEZu3M3Mp1MWGA=='
         account = 'admin@adminland.com'
+        """
 
         url='https://pithos.okeanos.grnet.gr/v1'
-        token='MI6PT0yrXJ9Ji/x8l9Wmig=='
-        account='saxtouri@gmail.com'
+
+        token='Kn+G9dfmlPLR2WFnhfBOow=='
+        account='saxtouri@grnet.gr'
         """
 
         url='https://pithos.okeanos.io/v1'
         token='0TpoyAXqJSPxLdDuZHiLOA=='
         account='saxtouri@admin.grnet.gr'
+        """
+        
+        """
+        def add_handler(name, level, prefix=''):
+            h = logging.StreamHandler()
+            fmt = logging.Formatter(prefix + '%(message)s')
+            h.setFormatter(fmt)
+            logger = logging.getLogger(name)
+            logger.addHandler(h)
+            logger.setLevel(level)
+        import logging
+        sendlog = logging.getLogger('clients.send')
+        recvlog = logging.getLogger('clients.recv')
+        add_handler('requests', logging.INFO, prefix='* ')
+        add_handler('clients.send', logging.INFO, prefix='> ')
+        add_handler('clients.recv', logging.INFO, prefix='< ')
+        """
         
         self.fname = None
         container=None
@@ -280,6 +299,8 @@ class testPithos(unittest.TestCase):
         self.c1 = 'c1_'+unicode(self.now)
         self.c2 = 'c2_'+unicode(self.now)
         self.c3 = 'c3_'+unicode(self.now)
+
+
         self.client.create_container(self.c1)
         self.client.create_container(self.c2)
         self.client.create_container(self.c3)
@@ -299,7 +320,6 @@ class testPithos(unittest.TestCase):
         r = self.client.object_put(obj, content_type='application/octet-stream',
             data= 'file '+obj+' that lives in '+container,
             metadata={'incontainer':container})
-        
 
     def forceDeleteContainer(self, container):
         self.client.container = container
@@ -312,7 +332,6 @@ class testPithos(unittest.TestCase):
             self.client.del_object(name)
         r = self.client.container_delete()
         self.container = ''
-        
 
     def tearDown(self):
         """Destroy test cases"""

@@ -72,12 +72,20 @@ class MetaArgument(ValueArgument):
             (key,val) = metastr.split(':')
             metadict[key]=val
         return metadict
+    @value.setter
+    def value(self, newvalue):
+        if newvalue is None:
+            self._value = self.default
+        self._value = newvalue
 
-class ProgressBarArgument(FlagArgument, IncrementalBar):
+
+
+class ProgressBarArgument(FlagArgument):
 
     def __init__(self, help='', parsed_name='', default=True):
         self.suffix = '%(percent)d%%'
         super(ProgressBarArgument, self).__init__(help, parsed_name, default)
+        self.bar = IncrementalBar()
 
     @property 
     def value(self):
@@ -86,11 +94,14 @@ class ProgressBarArgument(FlagArgument, IncrementalBar):
     def value(self, newvalue):
         """By default, it is on (True)"""
         self._value = not newvalue
+    def get_generator(self, message, message_len=25):
+        bar = ProgressBar()
+        return bar.get_generator(message, message_len)
 
-    def get_generator(self, message):
-        _message_len = 25
+class ProgressBar(IncrementalBar):
+    def get_generator(self, message, message_len):
         def progress_gen(n):
-            msg = message.ljust(_message_len)
+            self.msg = message.ljust(message_len)
             for i in self.iter(range(n)):
                 yield
             yield
@@ -282,8 +293,8 @@ class store_list(_store_container_command):
         try:
             limit = self.get_argument('show_size')
             limit = int(limit)
-        except AttributeError:
-            pass
+        except (AttributeError, TypeError):
+            limit = len(object_list) + 1
         #index = 0
         for index,obj in enumerate(object_list):
             if not obj.has_key('content_type'):
@@ -316,8 +327,8 @@ class store_list(_store_container_command):
         try:
             limit = self.get_argument('show_size')
             limit = int(limit)
-        except AttributeError:
-            pass
+        except (AttributeError, TypeError):
+            limit = len(container_list)+1
         for index,container in enumerate(container_list):
             if container.has_key('bytes'):
                 size = format_size(container['bytes']) 
@@ -390,7 +401,7 @@ class store_create(_store_container_command):
             if self.path is None:
                 self.client.container_put(quota=self.get_argument('quota'),
                     versioning=self.get_argument('versioning'),
-                    metadata=self.get_argument('metadata'))
+                    metadata=self.get_argument('meta'))
             else:
                 self.client.create_directory(self.path)
         except ClientError as err:
@@ -461,8 +472,7 @@ class store_append(_store_container_command):
 
     def __init__(self, arguments={}):
         super(self.__class__, self).__init__(arguments)
-        self.arguments['progress_bar'] = ProgressBarArgument('do not show progress bar',
-            '--no-progress-bar')
+        self.arguments['progress_bar'] = ProgressBarArgument('do not show progress bar', '--no-progress-bar')
 
     def main(self, local_path, container___path):
         super(self.__class__, self).main(container___path, path_is_optional=False)
@@ -551,8 +561,7 @@ class store_upload(_store_container_command):
             help='define sharing object policy ( "read=user1,grp1,user2,... write=user1,grp2,...')
         self.arguments['public']=FlagArgument('make object publicly accessible', '--public')
         self.arguments['poolsize']=IntArgument('set pool size', '--with-pool-size')
-        self.arguments['progress_bar'] = ProgressBarArgument('do not show progress bar',
-            '--no-progress-bar')
+        self.arguments['progress_bar'] = ProgressBarArgument('do not show progress bar', '--no-progress-bar')
 
     def main(self, local_path, container____path__):
         super(self.__class__, self).main(container____path__)
