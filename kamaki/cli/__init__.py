@@ -351,9 +351,12 @@ class Shell(cmd.Cmd):
                 instance = cls(_arguments)
                 args = line.split()
                 instance.main(*unparsed)
-            else:
-                print('should go next level, man!')
         self._register_method(do_method, method_name)
+
+        method_name = 'complete_%s'%command.name
+        def complete_method(self, line, begidx, endidx):
+            return command.get_subnames()
+        self._register_method(complete_method, method_name)
 
     def kamaki_loop(self,command,prefix=''):
         #setup prompt
@@ -366,6 +369,8 @@ class Shell(cmd.Cmd):
         self._defaultnames = command.get_subnames()
         for cmd in command.get_subcommands():
             self._register_command(cmd)
+            for subcmd in cmd.get_subcommands():
+                self._register_command(subcmd)
 
         self.cmdloop()
 

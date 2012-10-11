@@ -35,7 +35,7 @@ API_DESCRIPTION = {'image':'Compute/Cyclades or Glance API image commands'}
 
 from kamaki.cli import command
 from kamaki.cli.errors import raiseCLIError
-from kamaki.cli.utils import print_dict, print_items
+from kamaki.cli.utils import print_dict, print_items, bold
 from kamaki.clients.image import ImageClient, ClientError
 from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument, IntArgument
 from .cyclades_cli import _init_cyclades

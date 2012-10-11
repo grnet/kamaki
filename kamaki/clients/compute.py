@@ -134,7 +134,13 @@ class ComputeClient(Client):
         if personality:
             req['server']['personality'] = personality
         
-        r = self.servers_post(json_data=req)
+        try:
+            r = self.servers_post(json_data=req)
+        except ClientError as err:
+            try:
+                err.message = err.details.split(',')[0].split(':')[2].split('"')[1]
+            finally:
+                raise err
         return r.json['server']
     
     def update_server_name(self, server_id, new_name):
