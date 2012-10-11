@@ -154,10 +154,12 @@ class CommandTree(object):
 	def get_class(self, path):
 		return self._all_commands[path].get_class()
 
-	def get_subnames(self, path):
-		return self._all_commands[path].get_subnames()
-	def get_subcommands(self, path):
-		return self._all_commands[path].get_subcommands()
+	def get_subnames(self, path=None):
+		return self.get_group_names() if path in (None, '') \
+		else self._all_commands[path].get_subnames()
+	def get_subcommands(self, path=None):
+		return self.get_groups() if path in (None, '') \
+		else self._all_commands[path].get_subcommands()
 	def get_parent(self, path):
 		if '_' not in path:
 			return None

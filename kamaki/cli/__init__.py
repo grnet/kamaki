@@ -42,6 +42,7 @@ gevent.monkey.patch_all()
 import logging
 
 from inspect import getargspec
+import new
 from argparse import ArgumentParser, ArgumentError
 from os.path import basename
 from sys import exit, stdout, stderr, argv
@@ -75,7 +76,6 @@ candidate_command_terms = []
 allow_no_commands = False
 allow_all_commands = False
 allow_subclass_signatures = False
-load2shell = False
 
 def _allow_class_in_cmd_tree(cls):
     global allow_all_commands
@@ -128,19 +128,10 @@ def command():
 
         #store each term, one by one, first
         _commands.add_command(cls.__name__, cls.description, cls)
-        if load2shell:
-            global shell
-            name = cls.__name__.split()[-1]
-            def do_method(self, line):
-                cls.main(line.split())
-            do_method.__name__ = 'do_%s'%name
-            setattr(shell, do_method.__name__, do_method)
-            def help_method(self):
-                print(cls.description)
-            help_method.__name__ = 'help_'%name
-            setattr(shell, help_method.__name__, help_method)
+
         return cls
     return decorator
+
 
 def _update_parser(parser, arguments):
     for name, argument in arguments.items():
@@ -332,6 +323,9 @@ def one_command():
 
 class Shell(cmd.Cmd):
     """Kamaki interactive shell"""
+    _prefix = '['
+    _suffix = ']:'
+    _defaultnames = []
 
     def greet(self, version):
         print('kamaki v%s - Interactive Shell\n\t(exit or ^D to exit)\n'%version)
@@ -341,28 +335,70 @@ class Shell(cmd.Cmd):
     def do_exit(self, line):
         return True
 
-shell = None
+    @classmethod
+    def _register_method(self, method, name):
+        self.__dict__[name] = method
+        #self._tmp_method = new.instancemethod(method, name, self)
+        #setattr(self, name, self._tmp_method)
+        #del self._tmp_method
+
+    def _register_command(self, command):
+        method_name = 'do_%s'%command.name
+        def do_method(self, line):
+            if command.is_command:
+                cls = command.get_class()
+                parsed, unparsed = parse_known_args(_init_parser(argv))
+                instance = cls(_arguments)
+                args = line.split()
+                instance.main(*unparsed)
+            else:
+                print('should go next level, man!')
+        self._register_method(do_method, method_name)
+
+    def kamaki_loop(self,command,prefix=''):
+        #setup prompt
+        if prefix in (None, ''):
+            self.prompt = '%s%s%s'%(self._prefix, command.name, self._suffix)
+        else:
+            cmd_str = ' '.join(command.path.split())
+            self.prompt = '%s%s%s'%(self._prefix, cmd_str, self._suffix)
+
+        self._defaultnames = command.get_subnames()
+        for cmd in command.get_subcommands():
+            self._register_command(cmd)
+
+        self.cmdloop()
+
 def _start_shell():
-    global shell
     shell = Shell()
     shell.set_prompt(basename(argv[0]))
     from kamaki import __version__ as version
     shell.greet(version)
     shell.do_EOF = shell.do_exit
+    return shell
 
 def run_shell():
-    global shell
-    _start_shell()
+    shell = _start_shell()
     _config = _arguments['config']
     _config.value = None
     for grp in _config.get_groups():
-        global load2shell
-        load2shell = True
+        global allow_all_commands
+        allow_all_commands = True
         load_group_package(grp)
-        shell.do_store()
-    shell.cmdloop()
+
+    shell.kamaki_loop(_commands)
 
 def main():
+
+    """
+    def do_lala(self):
+        print('do lalalala')
+    _start_shell()
+    setattr(shell, 'do_lala_lele', do_lala)
+    shell.cmdloop()
+    return
+    """
+
     if len(argv) <= 1:
         run_shell()
     else:
