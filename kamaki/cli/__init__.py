@@ -333,6 +333,7 @@ class Shell(cmd.Cmd):
         self.prompt = '[%s]:'%new_prompt
 
     def do_exit(self, line):
+        print()
         return True
 
     @classmethod
@@ -351,26 +352,36 @@ class Shell(cmd.Cmd):
                 instance = cls(_arguments)
                 args = line.split()
                 instance.main(*unparsed)
+            else:
+                newshell = Shell()
+                newshell.set_prompt(' '.join(command.path.split('_')))
+                newshell.do_EOF = newshell.do_exit
+                newshell.kamaki_loop(command, command.path)
         self._register_method(do_method, method_name)
 
+        method_name = 'help_%s'%command.name
+        def help_method(self):
+            if command.has_description:
+                print(command.description)
+            else:
+                print('(no description))') 
+        self._register_method(help_method, method_name)
+
         method_name = 'complete_%s'%command.name
-        def complete_method(self, line, begidx, endidx):
+        def complete_method(self, text, line, begidx, endidx):
             return command.get_subnames()
         self._register_method(complete_method, method_name)
 
     def kamaki_loop(self,command,prefix=''):
         #setup prompt
         if prefix in (None, ''):
-            self.prompt = '%s%s%s'%(self._prefix, command.name, self._suffix)
+            self.set_prompt(command.name)
         else:
-            cmd_str = ' '.join(command.path.split())
-            self.prompt = '%s%s%s'%(self._prefix, cmd_str, self._suffix)
+            self.set_prompt(' '.join(command.path.split()))
 
         self._defaultnames = command.get_subnames()
         for cmd in command.get_subcommands():
             self._register_command(cmd)
-            for subcmd in cmd.get_subcommands():
-                self._register_command(subcmd)
 
         self.cmdloop()
 
@@ -394,15 +405,6 @@ def run_shell():
     shell.kamaki_loop(_commands)
 
 def main():
-
-    """
-    def do_lala(self):
-        print('do lalalala')
-    _start_shell()
-    setattr(shell, 'do_lala_lele', do_lala)
-    shell.cmdloop()
-    return
-    """
 
     if len(argv) <= 1:
         run_shell()
