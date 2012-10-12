@@ -208,8 +208,9 @@ _arguments = dict(config = _config_arg, help = Argument(0, 'Show help message', 
     options = CmdLineConfigArgument(_config_arg, 'Override a config value', ('-o', '--options'))
 )
 
-def parse_known_args(parser):
+def parse_known_args(parser, arguments=None):
     parsed, unparsed = parser.parse_known_args()
-    for name, arg in _arguments.items():
+    for name, arg in arguments.items():
         arg.value = getattr(parsed, name, arg.default)
+        print('I have just set %s to arg %s'%(arg.value, name))
     return parsed, unparsed

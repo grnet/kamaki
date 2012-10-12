@@ -256,7 +256,7 @@ def one_command():
     try:
         exe = basename(argv[0])
         parser = _init_parser(exe)
-        parsed, unparsed = parse_known_args(parser)
+        parsed, unparsed = parse_known_args(parser, _arguments)
         _history = History(_arguments['config'].get('history', 'file'))
         _history.add(' '.join([exe]+argv[1:]))
         _debug = _arguments['debug'].value
@@ -304,7 +304,7 @@ def one_command():
         executable = cli(_arguments)
         _update_parser(parser, executable.arguments)
         parser.prog = '%s %s %s'%(exe, cmd.path.replace('_', ' '), cli.syntax)
-        parsed, new_unparsed = parse_known_args(parser)
+        parsed, new_unparsed = parse_known_args(parser, _arguments)
         unparsed = [term for term in unparsed if term in new_unparsed]
         try:
             ret = executable.main(*unparsed)
@@ -347,11 +347,28 @@ class Shell(cmd.Cmd):
         method_name = 'do_%s'%command.name
         def do_method(self, line):
             if command.is_command:
+
                 cls = command.get_class()
-                parsed, unparsed = parse_known_args(_init_parser(argv))
                 instance = cls(_arguments)
-                args = line.split()
-                instance.main(*unparsed)
+
+                cmd_parser = ArgumentParser(command.name, add_help=False)
+                _update_parser(cmd_parser, instance.arguments)
+                parsed, unparsed = cmd_parser.parse_known_args(line.split())
+                for name, arg in instance.arguments.items():
+                    arg.value = getattr(parsed, name, arg.default)
+
+                try:
+                    instance.main(*unparsed)
+                except TypeError as e:
+                    if e.args and e.args[0].startswith('main()'):
+                        print(magenta('Syntax error'))
+                        if instance.get_argument('verbose'):
+                            print(unicode(e))
+                        cmd_parser.print_help()
+                    else:
+                        raise
+                except CLIError as err:
+                    _print_error_message(err, instance.get_argument('verbose'))
             else:
                 newshell = Shell()
                 newshell.set_prompt(' '.join(command.path.split('_')))
@@ -397,6 +414,8 @@ def run_shell():
     shell = _start_shell()
     _config = _arguments['config']
     _config.value = None
+    _arguments.pop('version', None)
+    _arguments.pop('options', None)
     for grp in _config.get_groups():
         global allow_all_commands
         allow_all_commands = True
