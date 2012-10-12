@@ -146,7 +146,7 @@ def _init_parser(exe):
     _update_parser(parser, _arguments)
     return parser
 
-def _print_error_message(cli_err, verbose=False):
+def _print_error_message(cli_err):
     errmsg = unicode(cli_err) + (' (%s)'%cli_err.status if cli_err.status else ' ')
     if cli_err.importance == 1:
         errmsg = magenta(errmsg)
@@ -155,7 +155,7 @@ def _print_error_message(cli_err, verbose=False):
     elif cli_err.importance > 2:
         errmsg = red(errmsg)
     stdout.write(errmsg)
-    if verbose and cli_err.details is not None and len(cli_err.details) > 0:
+    if cli_err.details is not None and len(cli_err.details) > 0:
         print(': %s'%cli_err.details)
     else:
         print()
@@ -318,7 +318,7 @@ def one_command():
     except CLIError as err:
         if _debug:
             raise
-        _print_error_message(err, verbose=_verbose)
+        _print_error_message(err)
         exit(1)
 
 class Shell(cmd.Cmd):
@@ -368,7 +368,7 @@ class Shell(cmd.Cmd):
                     else:
                         raise
                 except CLIError as err:
-                    _print_error_message(err, instance.get_argument('verbose'))
+                    _print_error_message(err)
             else:
                 newshell = Shell()
                 newshell.set_prompt(' '.join(command.path.split('_')))
