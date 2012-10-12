@@ -212,5 +212,4 @@ def parse_known_args(parser, arguments=None):
     parsed, unparsed = parser.parse_known_args()
     for name, arg in arguments.items():
         arg.value = getattr(parsed, name, arg.default)
-        print('I have just set %s to arg %s'%(arg.value, name))
     return parsed, unparsed
