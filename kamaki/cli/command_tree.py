@@ -84,12 +84,25 @@ class Command(object):
 	def get_class(self):
 		return self.cmd_class
 
+	def has_subname(self, subname):
+		return self.subcommands.has_key(subname)	
 	def get_subnames(self):
 		return self.subcommands.keys()
 	def get_subcommands(self):
 		return self.subcommands.values()
 	def sublen(self):
 		return len(self.subcommands)
+
+	def parse_out(self, args):
+		cmd = self
+		index = 0
+		for term in args:
+			try:
+				cmd = cmd.subcommands[term]
+			except KeyError:
+				break
+			index += 1
+		return cmd, args[index:]
 
 	def pretty_print(self, recursive=False):
 		print('Path: %s (Name: %s) is_cmd: %s\n\thelp: %s'%(self.path, self.name,

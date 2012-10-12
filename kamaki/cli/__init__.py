@@ -343,20 +343,32 @@ class Shell(cmd.Cmd):
         #setattr(self, name, self._tmp_method)
         #del self._tmp_method
 
-    def _register_command(self, command):
-        method_name = 'do_%s'%command.name
-        def do_method(self, line):
-            if command.is_command:
+    def _get_last_subcommand(self, parent, cmd_argv):
+        cmd = parent
+        while len(cmd_argv) > 0:
+            try:
+                cmd = cmd.subcommands[cmd_argv[0]]
+            except KeyError:
+                break
+            cmd_argv = cmd_argv[1:]
+        return cmd, cmd_argv
 
-                cls = command.get_class()
+    def _register_command(self, cmd):
+        method_name = 'do_%s'%cmd.name
+        def do_method(self, line):
+            cmd_argv = line.split()
+            subcmd, cmd_argv = cmd.parse_out(cmd_argv)
+            if subcmd.is_command:
+
+                cls = subcmd.get_class()
                 instance = cls(_arguments)
 
-                cmd_parser = ArgumentParser(command.name, add_help=False)
+                subname = subcmd.name if cmd == subcmd else subcmd.path
+                cmd_parser = ArgumentParser(subname, add_help=False)
                 _update_parser(cmd_parser, instance.arguments)
-                parsed, unparsed = cmd_parser.parse_known_args(line.split())
+                parsed, unparsed = cmd_parser.parse_known_args(cmd_argv)
                 for name, arg in instance.arguments.items():
                     arg.value = getattr(parsed, name, arg.default)
-
                 try:
                     instance.main(*unparsed)
                 except TypeError as e:
@@ -364,6 +376,7 @@ class Shell(cmd.Cmd):
                         print(magenta('Syntax error'))
                         if instance.get_argument('verbose'):
                             print(unicode(e))
+                        print(subcmd.description)
                         cmd_parser.print_help()
                     else:
                         raise
@@ -371,22 +384,23 @@ class Shell(cmd.Cmd):
                     _print_error_message(err)
             else:
                 newshell = Shell()
-                newshell.set_prompt(' '.join(command.path.split('_')))
+                newshell.set_prompt(' '.join(cmd.path.split('_')))
                 newshell.do_EOF = newshell.do_exit
-                newshell.kamaki_loop(command, command.path)
+                newshell.kamaki_loop(cmd, cmd.path)
+
         self._register_method(do_method, method_name)
 
-        method_name = 'help_%s'%command.name
+        method_name = 'help_%s'%cmd.name
         def help_method(self):
-            if command.has_description:
-                print(command.description)
+            if cmd.has_description:
+                print(cmd.description)
             else:
                 print('(no description))') 
         self._register_method(help_method, method_name)
 
-        method_name = 'complete_%s'%command.name
+        method_name = 'complete_%s'%cmd.name
         def complete_method(self, text, line, begidx, endidx):
-            return command.get_subnames()
+            return cmd.get_subnames()
         self._register_method(complete_method, method_name)
 
     def kamaki_loop(self,command,prefix=''):
