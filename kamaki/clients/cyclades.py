@@ -38,8 +38,6 @@ import json
 class CycladesClient(ComputeClient):
     """GRNet Cyclades API client"""
 
-
-
     def networks_get(self, network_id = '', command='', **kwargs):
         """GET base_url/networks[/network_id][/command] request
         @param network_id or ''

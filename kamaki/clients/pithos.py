@@ -32,9 +32,9 @@
 # or implied, of GRNET S.A.
 
 import gevent
-import gevent.monkey
+#import gevent.monkey
 # Monkey-patch everything for gevent early on
-gevent.monkey.patch_all()
+#gevent.monkey.patch_all()
 import gevent.pool
 
 from os import fstat, path
