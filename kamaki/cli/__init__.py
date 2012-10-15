@@ -42,7 +42,6 @@ gevent.monkey.patch_all()
 import logging
 
 from inspect import getargspec
-import new
 from argparse import ArgumentParser, ArgumentError
 from os.path import basename
 from sys import exit, stdout, stderr, argv
@@ -57,9 +56,8 @@ from .errors import CLIError, CLISyntaxError, CLICmdIncompleteError, CLICmdSpecE
 from .config import Config #TO BE REMOVED
 from .utils import bold, magenta, red, yellow, print_list, print_dict
 from .command_tree import CommandTree
-from argument import _arguments, parse_known_args
+from .argument import _arguments, parse_known_args
 from .history import History
-import cmd
 
 cmd_spec_locations = [
     'kamaki.cli.commands',
@@ -132,7 +130,6 @@ def command():
         return cls
     return decorator
 
-
 def _update_parser(parser, arguments):
     for name, argument in arguments.items():
         try:
@@ -189,7 +186,6 @@ def shallow_load():
     for grp in _arguments['config'].get_groups():
         load_group_package(grp)
     allow_no_commands = False
-
 
 def load_group_package(group, reload_package=False):
     spec_pkg = _arguments['config'].value.get(group, 'cli')
@@ -321,100 +317,7 @@ def one_command():
         _print_error_message(err)
         exit(1)
 
-class Shell(cmd.Cmd):
-    """Kamaki interactive shell"""
-    _prefix = '['
-    _suffix = ']:'
-    _defaultnames = []
-
-    def greet(self, version):
-        print('kamaki v%s - Interactive Shell\n\t(exit or ^D to exit)\n'%version)
-    def set_prompt(self, new_prompt):
-        self.prompt = '[%s]:'%new_prompt
-
-    def do_exit(self, line):
-        print()
-        return True
-
-    @classmethod
-    def _register_method(self, method, name):
-        self.__dict__[name] = method
-        #self._tmp_method = new.instancemethod(method, name, self)
-        #setattr(self, name, self._tmp_method)
-        #del self._tmp_method
-
-    def _get_last_subcommand(self, parent, cmd_argv):
-        cmd = parent
-        while len(cmd_argv) > 0:
-            try:
-                cmd = cmd.subcommands[cmd_argv[0]]
-            except KeyError:
-                break
-            cmd_argv = cmd_argv[1:]
-        return cmd, cmd_argv
-
-    def _register_command(self, cmd):
-        method_name = 'do_%s'%cmd.name
-        def do_method(self, line):
-            cmd_argv = line.split()
-            subcmd, cmd_argv = cmd.parse_out(cmd_argv)
-            if subcmd.is_command:
-
-                cls = subcmd.get_class()
-                instance = cls(_arguments)
-
-                subname = subcmd.name if cmd == subcmd else subcmd.path
-                cmd_parser = ArgumentParser(subname, add_help=False)
-                _update_parser(cmd_parser, instance.arguments)
-                parsed, unparsed = cmd_parser.parse_known_args(cmd_argv)
-                for name, arg in instance.arguments.items():
-                    arg.value = getattr(parsed, name, arg.default)
-                try:
-                    instance.main(*unparsed)
-                except TypeError as e:
-                    if e.args and e.args[0].startswith('main()'):
-                        print(magenta('Syntax error'))
-                        if instance.get_argument('verbose'):
-                            print(unicode(e))
-                        print(subcmd.description)
-                        cmd_parser.print_help()
-                    else:
-                        raise
-                except CLIError as err:
-                    _print_error_message(err)
-            else:
-                newshell = Shell()
-                newshell.set_prompt(' '.join(cmd.path.split('_')))
-                newshell.do_EOF = newshell.do_exit
-                newshell.kamaki_loop(cmd, cmd.path)
-
-        self._register_method(do_method, method_name)
-
-        method_name = 'help_%s'%cmd.name
-        def help_method(self):
-            if cmd.has_description:
-                print(cmd.description)
-            else:
-                print('(no description))') 
-        self._register_method(help_method, method_name)
-
-        method_name = 'complete_%s'%cmd.name
-        def complete_method(self, text, line, begidx, endidx):
-            return cmd.get_subnames()
-        self._register_method(complete_method, method_name)
-
-    def kamaki_loop(self,command,prefix=''):
-        #setup prompt
-        if prefix in (None, ''):
-            self.set_prompt(command.name)
-        else:
-            self.set_prompt(' '.join(command.path.split()))
-
-        self._defaultnames = command.get_subnames()
-        for cmd in command.get_subcommands():
-            self._register_command(cmd)
-
-        self.cmdloop()
+from command_shell import Shell, _fix_arguments
 
 def _start_shell():
     shell = Shell()
@@ -425,11 +328,10 @@ def _start_shell():
     return shell
 
 def run_shell():
+    _fix_arguments()
     shell = _start_shell()
     _config = _arguments['config']
     _config.value = None
-    _arguments.pop('version', None)
-    _arguments.pop('options', None)
     for grp in _config.get_groups():
         global allow_all_commands
         allow_all_commands = True

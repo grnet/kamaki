@@ -1,4 +1,4 @@
-# Copyright 2011 GRNET S.A. All rights reserved.
+# Copyright 2012 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -229,34 +229,3 @@ def test_CommandTree():
 		print('nonexisting_list_command closest parent is %s'%tree.get_closest_ancestor_command('nonexisting_list_command').path)
 	except KeyError:
 		print('Aparrently nonexisting_list_command is nonexisting ')
-
-class Shell(cmd.Cmd):
-	"""Simple command processor example."""
-
-	def do_greet(self, line):
-		"""Hello [cmd]
-			@line some line"""
-		print "hello"
-
-	def do_lala(self, lala):
-		print('This is what I got: %s'%lala)
-	def help_lala(self):
-		print('This is SPAAARTAAAAAAA')
-
-	def do_lalum(self, args):
-		print('lalum')
-	def complete_lalum(self, text, line, begidx, endidx):
-		completions = ['lala']
-		return completions
-
-	def do_EOF(self, line):
-		return True
-
-if __name__ == '__main__':
-	sh = Shell()
-	sh.prompt = 'lala_$ '
-	sh.cmdloop()
-
-	#import sys
-	#sh.onecmd(' '.join(sys.argv[1:]))
-	#test_CommandTree()
