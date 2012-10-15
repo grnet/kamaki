@@ -38,16 +38,9 @@ API_DESCRIPTION = {'astakos':'Astakos API commands'}
 from kamaki.clients.astakos import AstakosClient, ClientError
 from kamaki.cli.utils import print_dict
 from kamaki.cli.errors import raiseCLIError
+from . import _command_init
 
-class _astakos_init(object):
-
-    def __init__(self, arguments={}):
-        self.arguments = arguments
-        try:
-            self.config = self.arguments['config'].value
-        except KeyError:
-            pass
-
+class _astakos_init(_command_init):
     def main(self):
         token = self.config.get('astakos', 'token') or self.config.get('global', 'token')
         base_url = self.config.get('astakos', 'url') or self.config.get('global', 'url')

@@ -41,28 +41,16 @@ from kamaki.cli.utils import print_dict, print_items, print_list, format_size, b
 from kamaki.cli.errors import CLIError, raiseCLIError
 from kamaki.clients.cyclades import CycladesClient, ClientError
 from kamaki.cli.argument import FlagArgument, ValueArgument
+from . import _command_init
+
 from base64 import b64encode
 from os.path import abspath, exists
 
-class _init_cyclades(object):
-    def __init__(self, arguments={}):
-        self.arguments=arguments
-        try:
-            self.config = self.get_argument('config')
-        except KeyError:
-            pass
-
-    def get_argument(self, argterm):
-        return self.arguments[argterm].value
-
+class _init_cyclades(_command_init):
     def main(self, service='compute'):
         token = self.config.get(service, 'token') or self.config.get('global', 'token')
         base_url = self.config.get(service, 'url') or self.config.get('global', 'url')
         self.client = CycladesClient(base_url=base_url, token=token)
-
-class _init_server(_init_cyclades):
-    def main(self):
-        super(_init_server, self).main('server')
 
 @command()
 class server_list(_init_cyclades):

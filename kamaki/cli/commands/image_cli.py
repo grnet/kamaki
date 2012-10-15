@@ -39,18 +39,9 @@ from kamaki.cli.utils import print_dict, print_items, bold
 from kamaki.clients.image import ImageClient, ClientError
 from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument, IntArgument
 from .cyclades_cli import _init_cyclades
+from . import _command_init
 
-class _init_image(object):
-    def __init__(self, arguments={}):
-        self.arguments=arguments
-        try:
-            self.config = self.get_argument('config')
-        except KeyError:
-            pass
-
-    def get_argument(self, arg_name):
-        return self.arguments[arg_name].value
-
+class _init_image(_command_init):
     def main(self):
         try:
             token = self.config.get('image', 'token') or self.config.get('global', 'token')

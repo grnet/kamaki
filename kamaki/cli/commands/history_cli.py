@@ -39,18 +39,9 @@ from kamaki.cli.argument import IntArgument, ValueArgument, FlagArgument
 from kamaki.cli.history import History
 from kamaki.cli.utils import print_list
 from kamaki.cli import command
+from . import _command_init
 
-class _init_history(object):
-	def __init__(self, arguments={}):
-		self.arguments=arguments
-		try:
-			self.config = self.get_argument('config')
-		except KeyError:
-			pass
-
-	def get_argument(self, argterm):
-		return self.arguments[argterm].value
-
+class _init_history(_command_init):
 	def main(self):
 		self.history = History(self.config.get('history', 'file'))
 

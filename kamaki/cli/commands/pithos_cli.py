@@ -36,6 +36,7 @@ from kamaki.clients.utils import filter_in
 from kamaki.cli.errors import CLIError, raiseCLIError
 from kamaki.cli.utils import format_size, print_dict, pretty_keys, print_list
 from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
+from . import _command_init
 #set_api_description('store', 'Pithos+ storage commands')
 API_DESCRIPTION = dict(store='Pithos+ storage commands')
 from kamaki.clients.pithos import PithosClient, ClientError
@@ -77,8 +78,6 @@ class MetaArgument(ValueArgument):
         if newvalue is None:
             self._value = self.default
         self._value = newvalue
-
-
 
 class ProgressBarArgument(FlagArgument):
 
@@ -174,17 +173,7 @@ class DateArgument(ValueArgument):
             details='%s not a valid date. correct formats:\n\t%s'%(datestr, self.INPUT_FORMATS))
 
 #Command specs
-class _pithos_init(object):
-    def __init__(self, arguments={}):
-        self.arguments = arguments
-        try:
-            self.config = self.get_argument('config')
-        except KeyError:
-            pass
-
-    def get_argument(self, arg_name):
-        return self.arguments[arg_name].value
-
+class _pithos_init(_command_init):
     def main(self):
         self.token = self.config.get('store', 'token') or self.config.get('global', 'token')
         self.base_url = self.config.get('store', 'url') or self.config.get('global', 'url')

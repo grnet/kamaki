@@ -33,22 +33,12 @@
 
 from kamaki.cli import command#, set_api_description
 from kamaki.cli.argument import FlagArgument
+from . import _command_init
 #set_api_description('config', 'Configuration commands')
 API_DESCRIPTION = {'config':'Configuration commands'}
 
-class _config_init(object):
-    def __init__(self, arguments={}):
-        self.arguments=arguments
-        try:
-            self.config = self.get_argument('config')
-        except KeyError:
-            pass
-
-    def get_argument(self, arg_name):
-        return self.arguments[arg_name].value
-
 @command()
-class config_list(_config_init):
+class config_list(_command_init):
     """List configuration options"""
 
     def __init__(self, arguments={}):
@@ -63,7 +53,7 @@ class config_list(_config_init):
                 print('%s.%s = %s' % (section, key, val))
 
 @command()
-class config_get(_config_init):
+class config_get(_command_init):
     """Show a configuration option"""
 
     def main(self, option):
@@ -74,7 +64,7 @@ class config_get(_config_init):
             print(value)
 
 @command()
-class config_set(_config_init):
+class config_set(_command_init):
     """Set a configuration option"""
 
     def main(self, option, value):
@@ -84,7 +74,7 @@ class config_set(_config_init):
         self.config.write()
 
 @command()
-class config_delete(_config_init):
+class config_delete(_command_init):
     """Delete a configuration option (and use the default value)"""
 
     def main(self, option):
