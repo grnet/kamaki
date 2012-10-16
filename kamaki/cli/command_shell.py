@@ -77,25 +77,12 @@ class Shell(Cmd):
 	def _register_method(self, method, name):
 		self.__dict__[name]=method
 
-	@classmethod
-	def _unregister_method(self, name):
-		try:
-			#delattr(self, name)
-			self.__dict__.pop(name)
-		except KeyError:
-			pass
-
 	@classmethod 
 	def _backup(self):
 		return dict(self.__dict__)
 	@classmethod
 	def _restore(self, oldcontext):
 		self.__dict__= oldcontext
-
-	def _roll_command(self, cmd_path):
-		for subname in self.cmd_tree.get_subnames(cmd_path):
-			self._unregister_method('do_%s'%subname)
-			self._unregister_method('help_%s'%subname)
 
 	def _push_in_command(self, cmd_path):
 		cmd = self.cmd_tree.get_command(cmd_path)

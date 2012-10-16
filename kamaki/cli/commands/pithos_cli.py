@@ -94,13 +94,13 @@ class ProgressBarArgument(FlagArgument):
         """By default, it is on (True)"""
         self._value = not newvalue
     def get_generator(self, message, message_len=25):
-        bar = ProgressBar()
-        return bar.get_generator(message, message_len)
+        bar = ProgressBar(message.ljust(message_len))
+        return bar.get_generator()
 
 class ProgressBar(IncrementalBar):
-    def get_generator(self, message, message_len):
+    suffix = '%(percent)d%% - %(eta)ds'
+    def get_generator(self):
         def progress_gen(n):
-            self.msg = message.ljust(message_len)
             for i in self.iter(range(n)):
                 yield
             yield
@@ -674,7 +674,7 @@ class store_delete(_store_container_command):
         super(self.__class__, self).__init__(arguments)
         self.arguments['until'] = DateArgument('remove history until that date', '--until')
         self.arguments['recursive'] = FlagArgument('empty dir or container and delete (if dir)',
-            '--recursive')
+            ('-r','--recursive'))
         self.arguments['delimiter'] = DelimiterArgument(self, parsed_name='--delimiter',
             help = 'mass delete objects with path staring with <object><delimiter>')
 
