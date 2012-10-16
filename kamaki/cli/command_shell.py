@@ -78,15 +78,17 @@ class Shell(Cmd):
 	@classmethod
 	def _register_method(self, method, name):
 		self.__dict__[name]=method
-
+	@classmethod
+	def _unregister_method(self, name):
+		try:
+			self.__dict__.pop(name)
+		except KeyError:
+			pass
 	def _roll_command(self, cmd_path):
 		for subname in self.cmd_tree.get_subnames(cmd_path):
-			try:
-				self.__dict__.pop('do_%s'%subname)
-				self.__dict__.pop('complete_%s'%subname)
-				self.__dict__.pop('help_%s'%subname)
-			except KeyError:
-				pass
+			self._unregister_method('do_%s'%subname)
+			self._unregister_method('complete_%s'%subname)
+			self._unregister_method('help_%s'%subname)
 
 	@classmethod 
 	def _backup(self):
@@ -117,7 +119,7 @@ class Shell(Cmd):
 			#exec command or change context
 			if subcmd.is_command:#exec command
 				cls = subcmd.get_class()
-				instance = cls(_arguments)
+				instance = cls(dict(_arguments))
 				cmd_parser.prog= cmd_parser.prog.replace('_', ' ')+' '+cls.syntax
 				_update_parser(cmd_parser, instance.arguments)
 				if '-h' in cmd_args or '--help' in cmd_args:
@@ -138,8 +140,8 @@ class Shell(Cmd):
 			else:#change context
 				new_context = self
 				backup_context = self._backup()
-				new_context._roll_command(cmd.parent_path)
 				old_prompt = self.prompt
+				new_context._roll_command(cmd.parent_path)
 				new_context.set_prompt(subcmd.path.replace('_',' '))
 				newcmds = [subcmd for subcmd in subcmd.get_subcommands()]
 				for subcmd in newcmds:
@@ -158,7 +160,7 @@ class Shell(Cmd):
 			subcmd, cmd_args = cmd.parse_out(line.split()[1:])
 			if subcmd.is_command:
 				cls = subcmd.get_class()
-				instance = cls({})
+				instance = cls(dict(_arguments))
 				empty, sep, subname = subcmd.path.partition(cmd.path)
 				cmd_name = '%s %s'%(cmd.name,subname.replace('_',' '))
 				print('\n%s\nSyntax:\t%s %s'%(cls.description,cmd_name,cls.syntax))
