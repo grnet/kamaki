@@ -40,6 +40,7 @@ from .errors import CLIError
 from .argument import _arguments
 from .utils import magenta, print_dict
 from sys import stdout
+from .history import History
 
 def _fix_arguments():
 	_arguments.pop('version', None)
@@ -51,6 +52,7 @@ class Shell(Cmd):
 	_prefix = '['
 	_suffix = ']:'
 	cmd_tree = None
+	_history = None
 
 	def greet(self, version):
 		print('kamaki v%s - Interactive Shell\n\t(exit or ^D to exit)\n'%version)
@@ -77,6 +79,15 @@ class Shell(Cmd):
 	def _register_method(self, method, name):
 		self.__dict__[name]=method
 
+	def _roll_command(self, cmd_path):
+		for subname in self.cmd_tree.get_subnames(cmd_path):
+			try:
+				self.__dict__.pop('do_%s'%subname)
+				self.__dict__.pop('complete_%s'%subname)
+				self.__dict__.pop('help_%s'%subname)
+			except KeyError:
+				pass
+
 	@classmethod 
 	def _backup(self):
 		return dict(self.__dict__)
@@ -87,6 +98,7 @@ class Shell(Cmd):
 	def _push_in_command(self, cmd_path):
 		cmd = self.cmd_tree.get_command(cmd_path)
 		_cmd_tree = self.cmd_tree
+		_history = self._history
 
 		def do_method(self, line):
 			""" Template for all cmd.Cmd methods of the form do_<cmd name>
@@ -94,6 +106,8 @@ class Shell(Cmd):
 				<cmd> <term> <term> <args> is always parsed to the most specific cmd path
 				even if cmd_term_term is not a terminal path
 			"""
+			if _history:
+				_history.add(' '.join([cmd.path.replace('_',' '), line]))
 			subcmd, cmd_args = cmd.parse_out(line.split())
 			active_terms = [cmd.name]+subcmd.path.split('_')[len(cmd.path.split('_')):]
 			subname = '_'.join(active_terms)
@@ -144,7 +158,7 @@ class Shell(Cmd):
 			subcmd, cmd_args = cmd.parse_out(line.split()[1:])
 			if subcmd.is_command:
 				cls = subcmd.get_class()
-				instance = cls(_arguments)
+				instance = cls({})
 				empty, sep, subname = subcmd.path.partition(cmd.path)
 				cmd_name = '%s %s'%(cmd.name,subname.replace('_',' '))
 				print('\n%s\nSyntax:\t%s %s'%(cls.description,cmd_name,cls.syntax))
@@ -157,6 +171,7 @@ class Shell(Cmd):
 		self._register_method(complete_method, 'complete_%s'%cmd.name)
 
 	def run(self, path=''):
+		self._history = History(_arguments['config'].get('history', 'file'))
 		if len(path):
 			cmd = self.cmd_tree.get_command(path)
 			intro = cmd.path.replace('_', ' ')
