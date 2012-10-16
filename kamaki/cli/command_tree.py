@@ -31,9 +31,6 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-import cmd
-#from .errors import CLIUnknownCommand, CLICmdIncompleteError, CLICmdSpecError, CLIError
-
 class Command(object):
 	"""Store a command and the next-level commands as well - no deep tree here"""
 	_name = None
@@ -78,6 +75,10 @@ class Command(object):
 	@property 
 	def description(self):
 		return self.help
+	@property 
+	def parent_path(self):
+		parentpath, sep, name = self.path.rpartition('_')
+		return parentpath
 
 	def set_class(self, cmd_class):
 		self.cmd_class = cmd_class
@@ -109,14 +110,6 @@ class Command(object):
 			self.is_command, self.help))
 		for cmd in self.get_subcommands():
 			cmd.pretty_print(recursive)
-
-def test_Command():
-	cmd = Command('store', 'A store thingy')
-	cmd.add_subcmd(Command('store_list'))
-	tmp = cmd.get_subcmd('list')
-	tmp.add_subcmd(Command('store_list_all', 'List everything'))
-	tmp.add_subcmd(Command('store_list_one', 'List just one stuff'))
-	cmd.pretty_print(True)
 
 class CommandTree(object):
 
@@ -205,27 +198,3 @@ class CommandTree(object):
 				self.pretty_print(group)
 		else:
 			self.groups[group].pretty_print(recursive=True)
-
-def test_CommandTree():
-	tree = CommandTree('kamaki', 'the kamaki tools')
-	tree.add_command('store', 'A storage thingy')
-	tree.add_command('server_list_lala', description='A testing server list', cmd_class=Shell)
-	tree.add_command('store_list_all', 'List all things', cmd_class=Command)
-	tree.add_command('store_list', 'List smthing pls', cmd_class=Shell)
-	tree.add_command('server_list', description='A server list subgrp')
-	tree.add_command('server', description='A server is a SERVER', cmd_class=CommandTree)
-	tree.set_class('server', None)
-	tree.set_description('server_list', '')
-	if tree.get_class('server_list_lala') is Shell:
-		print('server_list_lala is Shell')
-	else:
-		print('server_list_lala is not Shell')
-	tree.pretty_print()
-	print('store_list_all closest parent command is %s'%tree.get_closest_ancestor_command('store_list_all').path)
-	tree.set_class('store', tree.get_command('store_list').get_class())
-	tree.set_class('store_list', None)
-	print('store_list_all closest parent command is %s'%tree.get_closest_ancestor_command('store_list_all').path)
-	try:
-		print('nonexisting_list_command closest parent is %s'%tree.get_closest_ancestor_command('nonexisting_list_command').path)
-	except KeyError:
-		print('Aparrently nonexisting_list_command is nonexisting ')

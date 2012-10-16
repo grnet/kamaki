@@ -266,7 +266,7 @@ class store_list(_store_container_command):
         self.arguments['delimiter'] = ValueArgument('show output up to delimiter', '--delimiter')
         self.arguments['path'] = ValueArgument('show output starting with prefix up to /', '--path')
         self.arguments['meta'] = ValueArgument('show output haviung the specified meta keys',
-            '---meta', default=[])
+            '--meta', default=[])
         self.arguments['if_modified_since'] = ValueArgument('show output modified since then',
             '--if-modified-since')
         self.arguments['if_unmodified_since'] = ValueArgument('show output not modified since then',
@@ -382,7 +382,7 @@ class store_create(_store_container_command):
         self.arguments['versioning'] = ValueArgument('set container versioning (auto/none)',
             '--versioning')
         self.arguments['quota'] = IntArgument('set default container quota', '--quota')
-        self.arguments['meta'] = MetaArgument('set container metadata', '---meta')
+        self.arguments['meta'] = MetaArgument('set container metadata', '--meta')
 
     def main(self, container____directory__):
         super(self.__class__, self).main(container____directory__)

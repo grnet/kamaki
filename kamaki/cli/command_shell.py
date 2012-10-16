@@ -35,19 +35,22 @@ from cmd import Cmd
 from new import instancemethod
 from os import popen
 from argparse import ArgumentParser
-from . import _update_parser
+from . import _update_parser, _exec_cmd
 from .errors import CLIError
 from .argument import _arguments
-from .utils import magenta
+from .utils import magenta, print_dict
+from sys import stdout
 
 def _fix_arguments():
 	_arguments.pop('version', None)
 	_arguments.pop('options', None)
+	_arguments.pop('history', None)
 
 class Shell(Cmd):
 	"""Kamaki interactive shell"""
 	_prefix = '['
 	_suffix = ']:'
+	cmd_tree = None
 
 	def greet(self, version):
 		print('kamaki v%s - Interactive Shell\n\t(exit or ^D to exit)\n'%version)
@@ -55,87 +58,126 @@ class Shell(Cmd):
 		self.prompt = '[%s]:'%new_prompt
 
 	def do_exit(self, line):
-		print
+		print('')
 		return True
 
 	def do_shell(self, line):
 		output = popen(line).read()
-		print output
+		print(output)
 	def help_shell(self):
 		print('Execute OS shell commands')
 
+	@property 
+	def path(self):
+		if self._cmd:
+			return _cmd.path
+		return ''
+
 	@classmethod
 	def _register_method(self, method, name):
-		#self.__dict__[name] = method
-		self._tmp_method = instancemethod(method, name, self)
-		setattr(self, name, self._tmp_method)
-		del self._tmp_method
+		self.__dict__[name]=method
 
-	def _register_command(self, cmd):
-		method_name = 'do_%s'%cmd.name
+	@classmethod
+	def _unregister_method(self, name):
+		try:
+			#delattr(self, name)
+			self.__dict__.pop(name)
+		except KeyError:
+			pass
+
+	@classmethod 
+	def _backup(self):
+		return dict(self.__dict__)
+	@classmethod
+	def _restore(self, oldcontext):
+		self.__dict__= oldcontext
+
+	def _roll_command(self, cmd_path):
+		for subname in self.cmd_tree.get_subnames(cmd_path):
+			self._unregister_method('do_%s'%subname)
+			self._unregister_method('help_%s'%subname)
+
+	def _push_in_command(self, cmd_path):
+		cmd = self.cmd_tree.get_command(cmd_path)
+		_cmd_tree = self.cmd_tree
+
 		def do_method(self, line):
-			subcmd, cmd_argv = cmd.parse_out(line.split())
-
-			subname = subcmd.name if cmd == subcmd else subcmd.path
+			""" Template for all cmd.Cmd methods of the form do_<cmd name>
+				Parse cmd + args and decide to execute or change context
+				<cmd> <term> <term> <args> is always parsed to the most specific cmd path
+				even if cmd_term_term is not a terminal path
+			"""
+			subcmd, cmd_args = cmd.parse_out(line.split())
+			active_terms = [cmd.name]+subcmd.path.split('_')[len(cmd.path.split('_')):]
+			subname = '_'.join(active_terms)
 			cmd_parser = ArgumentParser(subname, add_help=False)
-			if subcmd.is_command:
+			cmd_parser.description = subcmd.help
+
+			#exec command or change context
+			if subcmd.is_command:#exec command
 				cls = subcmd.get_class()
 				instance = cls(_arguments)
+				cmd_parser.prog= cmd_parser.prog.replace('_', ' ')+' '+cls.syntax
 				_update_parser(cmd_parser, instance.arguments)
-				cmd_parser.prog += ' '+cls.syntax
-			if '-h' in cmd_argv or '--help'in cmd_argv:
-				cmd_parser.description = subcmd.help
-				cmd_parser.print_help()
-				return
-
-			if subcmd.is_command:
-				parsed, unparsed = cmd_parser.parse_known_args(cmd_argv)
+				if '-h' in cmd_args or '--help' in cmd_args:
+					cmd_parser.print_help()
+					return
+				parsed, unparsed = cmd_parser.parse_known_args(cmd_args)
 
 				for name, arg in instance.arguments.items():
 					arg.value = getattr(parsed, name, arg.default)
-				try:
-					instance.main(*unparsed)
-				except TypeError as e:
-					if e.args and e.args[0].startswith('main()'):
-						print(magenta('Syntax error'))
-						if instance.get_argument('verbose'):
-							print(unicode(e))
-						print(subcmd.description)
-						cmd_parser.print_help()
-					else:
-						raise
-				except CLIError as err:
-					_print_error_message(err)
-			else:
-				newshell = Shell()
-				newshell.set_prompt(' '.join(cmd.path.split('_')))
-				newshell.do_EOF = newshell.do_exit
-				newshell.kamaki_loop(cmd, cmd.path)
-		self._register_method(do_method, method_name)
+				_exec_cmd(instance, unparsed, cmd_parser.print_help)
+			elif ('-h' in cmd_args or '--help' in cmd_args) \
+			or len(cmd_args):#print options
+				print('%s: %s'%(subname, subcmd.help))
+				options = {}
+				for sub in subcmd.get_subcommands():
+					options[sub.name] = sub.help
+				print_dict(options)
+			else:#change context
+				new_context = self
+				backup_context = self._backup()
+				new_context._roll_command(cmd.parent_path)
+				old_prompt = self.prompt
+				new_context.set_prompt(subcmd.path.replace('_',' '))
+				newcmds = [subcmd for subcmd in subcmd.get_subcommands()]
+				for subcmd in newcmds:
+					new_context._push_in_command(subcmd.path)
+				new_context.cmdloop()
+				self.prompt = old_prompt
+				#when new context is over, roll back to the old one
+				self._restore(backup_context)
+		self._register_method(do_method, 'do_%s'%cmd.name)
 
-		method_name = 'help_%s'%cmd.name
 		def help_method(self):
-			if cmd.has_description:
-				print(cmd.description)
-			else:
-				print('(no description)')
-		self._register_method(help_method, method_name)
+			print('%s (%s -h for more options)'%(cmd.help, cmd.name))
+		self._register_method(help_method, 'help_%s'%cmd.name)
 
-		method_name = 'complete_%s'%cmd.name
 		def complete_method(self, text, line, begidx, endidx):
-			print('Complete 0% FAT')
-			return cmd.get_subnames()
-		self._register_method(complete_method, method_name)
-		print('Registed %s as %s'%(complete_method, method_name))
+			subcmd, cmd_args = cmd.parse_out(line.split()[1:])
+			if subcmd.is_command:
+				cls = subcmd.get_class()
+				instance = cls(_arguments)
+				empty, sep, subname = subcmd.path.partition(cmd.path)
+				cmd_name = '%s %s'%(cmd.name,subname.replace('_',' '))
+				print('\n%s\nSyntax:\t%s %s'%(cls.description,cmd_name,cls.syntax))
+				cmd_args={}
+				for arg in instance.arguments.values():
+					cmd_args[','.join(arg.parsed_name)]=arg.help
+				print_dict(cmd_args, ident=14)
+				stdout.write('%s %s'%(self.prompt,line))
+			return subcmd.get_subnames()
+		self._register_method(complete_method, 'complete_%s'%cmd.name)
 
-	def kamaki_loop(self,command,prefix=''):
-		#setup prompt
-		if prefix in (None, ''):
-			self.set_prompt(command.name)
+	def run(self, path=''):
+		if len(path):
+			cmd = self.cmd_tree.get_command(path)
+			intro = cmd.path.replace('_', ' ')
 		else:
-			self.set_prompt(' '.join(command.path.split()))
+			intro = self.cmd_tree.name
 
-		for cmd in command.get_subcommands():
-			self._register_command(cmd)
+		for subcmd in self.cmd_tree.get_subcommands(path):
+			self._push_in_command(subcmd.path)
 
+		self.set_prompt(intro)
 		self.cmdloop()
