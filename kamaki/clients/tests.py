@@ -320,7 +320,7 @@ class testCyclades(unittest.TestCase):
 
 	@if_not_all
 	def test_reboot_server(self):
-		"""Test reboot_server"""
+		"""Test reboot server"""
 		self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
 		self.server2 = self._create_server(self.servname2, self.flavorid, self.img)
 		self._test_reboot_server()
@@ -337,13 +337,13 @@ class testCyclades(unittest.TestCase):
 
 	@if_not_all
 	def test_get_server_metadata(self):
-		"""Test get_server_metadata"""
+		"""Test get server_metadata"""
 		self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
 		self._test_get_server_metadata()
 	def _test_get_server_metadata(self):
 		self.client.create_server_metadata(self.server1['id'], 'mymeta_0', 'val_0')
 		r = self.client.get_server_metadata(self.server1['id'], 'mymeta_0')
-		self.assertEqual(r['mymeta_0',  'val_0')
+		self.assertEqual(r['mymeta_0'], 'val_0')
 
 	@if_not_all
 	def test_create_server_metadata(self):
