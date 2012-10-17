@@ -108,9 +108,9 @@ class ComputeClient(Client):
         r = self.servers_get(command=detail)
         return r.json['servers']['values']
     
-    def get_server_details(self, server_id):
+    def get_server_details(self, server_id, **kwargs):
         """Return detailed output on a server specified by its id"""
-        r = self.servers_get(server_id)
+        r = self.servers_get(server_id, **kwargs)
         return r.json['server']
     
     def create_server(self, name, flavor_id, image_id, personality=None):
