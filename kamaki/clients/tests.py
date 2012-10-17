@@ -216,6 +216,33 @@ class testCyclades(unittest.TestCase):
 		self._test_update_server_name()
 		print('...ok')
 
+		sys.stdout.write(' test reboot_server')
+		self._test_reboot_server()
+		print('...ok')
+
+		sys.stdout.write(' test create_server_metadata')
+		self._test_create_server_metadata()
+		print('...ok')
+
+		sys.stdout.write(' test get_server_metadata')
+		self._test_get_server_metadata()
+		print('...ok')
+
+	def _has_status(self, servid, status):
+		r = self.client.get_server_details(servid)
+		return r['status'] == status
+	def _wait_for_status(self, servid, status):
+		wait = 0
+		c=['|','/','-','\\']
+		while self._has_status(servid, status):
+			if wait:
+				sys.stdout.write('\tServer %s in %s. Wait %ss  '%(servid, status, wait))
+				for i in range(4*wait):
+					sys.stdout.write('\b%s'%c[i%4])
+					sys.stdout.flush()
+					time.sleep(0.25)
+				print('')
+			wait = (wait + 7) if wait<60 else 0
 
 	@if_not_all
 	def test_list_servers(self):
@@ -291,6 +318,44 @@ class testCyclades(unittest.TestCase):
 		changed['name'] = new_name
 		self.servers[new_name] = changed
 
+	@if_not_all
+	def test_reboot_server(self):
+		"""Test reboot_server"""
+		self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
+		self.server2 = self._create_server(self.servname2, self.flavorid, self.img)
+		self._test_reboot_server()
+
+	def _test_reboot_server(self):
+		self._wait_for_status(self.server1['id'], 'BUILD')
+		self.client.reboot_server(self.server1['id'])
+		self.assertTrue(self._has_status(self.server1['id'], 'REBOOT'))
+		self._wait_for_status(self.server2['id'], 'BUILD')
+		self.client.reboot_server(self.server2['id'], hard=True)
+		self.assertTrue(self._has_status(self.server2['id'], 'REBOOT'))
+		self._wait_for_status(self.server1['id'], 'REBOOT')
+		self._wait_for_status(self.server2['id'], 'REBOOT')
+
+	@if_not_all
+	def test_get_server_metadata(self):
+		"""Test get_server_metadata"""
+		self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
+		self._test_get_server_metadata()
+	def _test_get_server_metadata(self):
+		self.client.create_server_metadata(self.server1['id'], 'mymeta_0', 'val_0')
+		r = self.client.get_server_metadata(self.server1['id'], 'mymeta_0')
+		self.assertEqual(r['mymeta_0',  'val_0')
+
+	@if_not_all
+	def test_create_server_metadata(self):
+		"""Test create_server_metadata"""
+		self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
+		self._test_create_server_metadata()
+
+	def _test_create_server_metadata(self):
+		r1 = self.client.create_server_metadata(self.server1['id'], 'mymeta', 'mymeta val')
+		self.assertTrue(r1.has_key('mymeta'))
+		r2 = self.client.get_server_metadata(self.server1['id'], 'mymeta')
+		self.assert_dicts_are_deeply_equal(r1, r2)
 
 class testPithos(unittest.TestCase):
 	"""Set up a Pithos+ thorough test"""
