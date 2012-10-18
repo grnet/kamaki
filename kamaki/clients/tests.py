@@ -228,6 +228,18 @@ class testCyclades(unittest.TestCase):
 		self._test_get_server_metadata()
 		print('...ok')
 
+		sys.stdout.write(' test update_server_metadata')
+		self._test_update_server_metadata()
+		print('...ok')
+
+		sys.stdout.write(' test delete_server_metadata')
+		self._test_delete_server_metadata()
+		print('...ok')
+
+		sys.stdout.write(' test test_list_flavors')
+		self._test_list_flavors()
+		print('...ok')
+
 	def _has_status(self, servid, status):
 		r = self.client.get_server_details(servid)
 		return r['status'] == status
@@ -357,6 +369,45 @@ class testCyclades(unittest.TestCase):
 		r2 = self.client.get_server_metadata(self.server1['id'], 'mymeta')
 		self.assert_dicts_are_deeply_equal(r1, r2)
 
+	@if_not_all
+	def test_update_server_metadata(self):
+		"""Test update_server_metadata"""
+		self.server1=self._create_server(self.servname1, self.flavorid, self.img)
+		self._test_update_server_metadata()
+
+	def _test_update_server_metadata(self):
+		r1 = self.client.create_server_metadata(self.server1['id'], 'mymeta3', 'val2')
+		self.assertTrue(r1.has_key('mymeta3'))
+		r2 = self.client.update_server_metadata(self.server1['id'], mymeta3='val3')
+		self.assertTrue(r2['mymeta3'], 'val3')
+
+	@if_not_all
+	def test_delete_server_metadata(self):
+		"""Test delete_server_metadata"""
+		self.server1=self._create_server(self.servname1, self.flavorid, self.img)
+		self._test_delete_server_metadata()
+
+	def _test_delete_server_metadata(self):
+		r1 = self.client.create_server_metadata(self.server1['id'], 'mymeta', 'val')
+		self.assertTrue(r1.has_key('mymeta'))
+		self.client.delete_server_metadata(self.server1['id'], 'mymeta')
+		try:
+			r2 = self.client.get_server_metadata(self.server1['id'], 'mymeta')
+			raise ClientError('Wrong Error', status=100)
+		except ClientError as err:
+			self.assertEqual(err.status, 404)
+
+	@if_not_all
+	def test_list_flavors(self):
+		"""Test flavors_get"""
+		self._test_list_flavors()
+
+	def _test_list_flavors(self):
+		r = self.client.list_flavors()
+		self.assertTrue(len(r) > 1)
+		r = self.client.list_flavors(detail=True)
+		self.assertTrue(r[0].has_key('SNF:disk_template'))
+
 class testPithos(unittest.TestCase):
 	"""Set up a Pithos+ thorough test"""
 	def setUp(self):
@@ -371,8 +422,8 @@ class testPithos(unittest.TestCase):
 
 		token='Kn+G9dfmlPLR2WFnhfBOow=='
 		account='saxtouri@grnet.gr'
-		"""
 
+		"""
 		url='https://pithos.okeanos.io/v1'
 		token='0TpoyAXqJSPxLdDuZHiLOA=='
 		account='saxtouri@admin.grnet.gr'
