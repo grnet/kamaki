@@ -76,6 +76,12 @@ class testCyclades(unittest.TestCase):
 					u'partition_table': u'msdos'}
 				}
 			}
+		self.flavor_details =  {u'name': u'C1R1024D20',
+			u'ram': 1024,
+			u'id': 1,
+			u'SNF:disk_template': u'drbd',
+			u'disk': 20,
+			u'cpu': 1}
 
 		"""okeanos.io"""
 		#url = 'https://cyclades.okeanos.io/api/v1.1'
@@ -238,6 +244,10 @@ class testCyclades(unittest.TestCase):
 
 		sys.stdout.write(' test test_list_flavors')
 		self._test_list_flavors()
+		print('...ok')
+
+		sys.stdout.write(' test test_get_flavor_details')
+		self._test_get_flavor_details()
 		print('...ok')
 
 	def _has_status(self, servid, status):
@@ -407,6 +417,15 @@ class testCyclades(unittest.TestCase):
 		self.assertTrue(len(r) > 1)
 		r = self.client.list_flavors(detail=True)
 		self.assertTrue(r[0].has_key('SNF:disk_template'))
+
+	@if_not_all
+	def test_get_flavor_details(self):
+		"""Test test_get_flavor_details"""
+		self._test_get_flavor_details()
+
+	def _test_get_flavor_details(self):
+		r = self.client.get_flavor_details(self.flavorid)
+		self.assert_dicts_are_deeply_equal(self.flavor_details, r)
 
 class testPithos(unittest.TestCase):
 	"""Set up a Pithos+ thorough test"""
