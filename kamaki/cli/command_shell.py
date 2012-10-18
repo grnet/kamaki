@@ -65,7 +65,6 @@ class Shell(Cmd):
 		return True
 
 	def do_shell(self, line):
-		output = popen(line).read()
 		print(output)
 
 	@property 
