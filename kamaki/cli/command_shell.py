@@ -64,10 +64,7 @@ class Shell(Cmd):
 		return True
 
 	def do_shell(self, line):
-		output = popen(line).read()
 		print(output)
-	def help_shell(self):
-		print('Execute OS shell commands')
 
 	@property 
 	def path(self):
@@ -171,6 +168,11 @@ class Shell(Cmd):
 				stdout.write('%s %s'%(self.prompt,line))
 			return subcmd.get_subnames()
 		self._register_method(complete_method, 'complete_%s'%cmd.name)
+
+	@property 
+	def doc_header(self):
+		hdr = self.prompt.partition(self._prefix)[2].partition(self._suffix)[0].strip()
+		return '%s commands:'%hdr
 
 	def run(self, path=''):
 		self._history = History(_arguments['config'].get('history', 'file'))
