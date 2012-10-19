@@ -252,9 +252,13 @@ class ComputeClient(Client):
         r = self.images_get(command=detail)
         return r.json['images']['values']
     
-    def get_image_details(self, image_id):
-        r = self.images_get(image_id)
-        return r.json['image']
+    def get_image_details(self, image_id, **kwargs):
+        r = self.images_get(image_id, **kwargs)
+        try:
+            return r.json['image']
+        except KeyError:
+            raise ClientError('Image not available', 404,
+                details='Image %d not found or not accessible')
     
     def delete_image(self, image_id):
         self.images_delete(image_id)

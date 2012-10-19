@@ -199,7 +199,7 @@ class testCyclades(unittest.TestCase):
 		TEST_ALL = True
 
 		self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
-		self.server2 = self._create_server(self.servname2, self.flavorid, self.img)
+		self.server2 = self._create_server(self.servname2, self.flavorid+1, self.img)
 
 		print('testing')
 		sys.stdout.write(' test create server')
@@ -242,13 +242,48 @@ class testCyclades(unittest.TestCase):
 		self._test_delete_server_metadata()
 		print('...ok')
 
-		sys.stdout.write(' test test_list_flavors')
+		sys.stdout.write(' test list_flavors')
 		self._test_list_flavors()
 		print('...ok')
 
-		sys.stdout.write(' test test_get_flavor_details')
+		sys.stdout.write(' test get_flavor_details')
 		self._test_get_flavor_details()
 		print('...ok')
+
+		sys.stdout.write(' test list_images')
+		self._test_list_images()
+		print('...ok')
+
+		sys.stdout.write(' test get_image_details')
+		self._test_get_image_details()
+		print('...ok')
+
+		sys.stdout.write(' test get_image_metadata')
+		self._test_get_image_metadata()
+		print('...ok')
+
+		sys.stdout.write(' test shutdown/start_server')
+		self._test_shutdown_start_server()
+		print('...ok')
+
+		sys.stdout.write(' test get_server_console')
+		self._test_get_server_console()	
+		print('...ok')
+
+		"""Don't have auth for these:
+		sys.stdout.write(' test delete_image')
+		self._test_delete_image()
+		print('...ok')
+		sys.stdout.write(' test create_image_metadata')
+		self._test_create_image_metadata()
+		print('...ok')
+		sys.stdout.write(' test update_image_metadata')
+		self._test_update_image_metadata()
+		print('...ok')
+		sys.stdout.write(' test delete_image_metadata')
+		self._test_delete_image_metadata()
+		print('...ok')
+		"""
 
 	def _has_status(self, servid, status):
 		r = self.client.get_server_details(servid)
@@ -270,7 +305,7 @@ class testCyclades(unittest.TestCase):
 	def test_list_servers(self):
 		"""Test list servers"""
 		self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
-		self.server2 = self._create_server(self.servname2, self.flavorid, self.img)
+		self.server2 = self._create_server(self.servname2, self.flavorid+1, self.img)
 		self._test_list_servers()
 
 	def _test_list_servers(self):
@@ -344,7 +379,7 @@ class testCyclades(unittest.TestCase):
 	def test_reboot_server(self):
 		"""Test reboot server"""
 		self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
-		self.server2 = self._create_server(self.servname2, self.flavorid, self.img)
+		self.server2 = self._create_server(self.servname2, self.flavorid+1, self.img)
 		self._test_reboot_server()
 
 	def _test_reboot_server(self):
@@ -426,6 +461,120 @@ class testCyclades(unittest.TestCase):
 	def _test_get_flavor_details(self):
 		r = self.client.get_flavor_details(self.flavorid)
 		self.assert_dicts_are_deeply_equal(self.flavor_details, r)
+
+	@if_not_all
+	def test_list_images(self):
+		"""Test list_images"""
+		self._test_list_images()
+
+	def _test_list_images(self):
+		r = self.client.list_images()
+		self.assertTrue(len(r) > 1)
+		r = self.client.list_images(detail=True)
+		for detailed_img in r:
+			if detailed_img['id'] == self.img:
+				break
+		self.assert_dicts_are_deeply_equal(r[1], self.img_details)
+
+	@if_not_all
+	def test_image_details(self):
+		"""Test image_details"""
+		self._test_get_image_details
+
+	def _test_get_image_details(self):
+		r = self.client.get_image_details(self.img)
+		self.assert_dicts_are_deeply_equal(r, self.img_details)
+
+	@if_not_all
+	def test_get_image_metadata(self):
+		"""Test get_image_metadata"""
+		self._test_get_image_metadata()
+
+	def _test_get_image_metadata(self):
+		r = self.client.get_image_metadata(self.img)
+		self.assert_dicts_are_deeply_equal(self.img_details['metadata']['values'], r)
+		for key,val in self.img_details['metadata']['values'].items():
+			r = self.client.get_image_metadata(self.img, key)
+			self.assertEqual(r[key], val)
+
+	@if_not_all
+	def test_start_server(self):
+		"""Test start_server"""
+		self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
+		self._test_shutdown_start_server()
+	@if_not_all
+	def test_shutdown_server(self):
+		"""Test shutdown_server"""
+		self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
+		self._test_shutdown_start_server()
+
+	def _test_shutdown_start_server(self):
+		self._wait_for_status(self.server1['id'], 'BUILD')
+		print('Shutdown Server %s'%self.server1['id'])
+		self.client.shutdown_server(self.server1['id'])
+		self._wait_for_status(self.server1['id'], 'ACTIVE')
+		r = self.client.get_server_details(self.server1['id'])
+		self.assertEqual(r['status'], 'STOPPED')
+		print('Start Server %s'%self.server1['id'])
+		self.client.start_server(self.server1['id'])
+		self._wait_for_status(self.server1['id'], 'STOPPED')
+		r = self.client.get_server_details(self.server1['id'])
+		self.assertEqual(r['status'], 'ACTIVE')
+
+	@if_not_all
+	def test_get_server_console(self):
+		"""Test get_server_console"""
+		self.server2 = self._create_server(self.servname2, self.flavorid, self.img)
+		self._test_get_server_console()
+
+	def _test_get_server_console(self):
+		self._wait_for_status(self.server2['id'], 'BUILD')
+		r = self.client.get_server_console(self.server2['id'])
+		self.assertTrue(r.has_key('host'))
+		self.assertTrue(r.has_key('password'))
+		self.assertTrue(r.has_key('port'))
+		self.assertTrue(r.has_key('type'))
+
+	""" Don't have auth to test this
+	@if_not_all
+	def test_delete_image(self):
+		""Test delete_image""
+		self._test_delete_image()
+	def _test_delete_image(self):
+		images = self.client.list_images()
+		self.client.delete_image(images[2]['id'])
+		try:
+			r = self.client.get_image_details(images[2]['id'], success=(400))
+		except ClientError as err:
+			self.assertEqual(err.status, 404)
+
+	@if_not_all
+	def test_create_image_metadata(self):
+		""Test create_image_metadata""
+		self._test_create_image_metadata()
+	def _test_create_image_metadata(self):
+		r = self.client.create_image_metadata(self.img, 'mykey', 'myval')
+		self.assertEqual(r['mykey'], 'myval')
+
+	@if_not_all
+	def test_update_image_metadata(self):
+		""Test update_image_metadata""
+		self._test_update_image_metadata()
+	def _test_update_image_metadata(self):
+		r = self.client.create_image_metadata(self.img, 'mykey0', 'myval')
+		r = self.client.update_image_metadata(self.img, 'mykey0', 'myval0')
+		self.assertEqual(r['mykey0'], 'myval0')
+
+	@if_not_all
+	def test_delete_image_metadata(self):
+		""Test delete_image_metadata""
+		self._test_delete_image_metadata()
+	def _test_delete_image_metadata(self):
+		self.client.create_image_metadata(self.img, 'mykey1', 'myval1')
+		self.client.delete_image_metadata(self.img, 'mykey1')
+		r = self.client.get_image_metadata(self.img)
+		self.assertNotEqual(r.has_key('mykey1'))
+	"""
 
 class testPithos(unittest.TestCase):
 	"""Set up a Pithos+ thorough test"""
