@@ -604,6 +604,20 @@ class testCyclades(unittest.TestCase):
 				print('\b ')
 				fprofile = self.client.get_firewall_profile(self.server1['id'])
 
+	@if_not_all
+	def test_list_server_nics(self):
+		"""Test list_server_nics"""
+		self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
+		newnet = self.client.create_network('mynet')
+		self.client.connect_server(self.server1['id'], newnet['id'])
+		self._test_list_server_nics()
+		self.client.delete_network(newnet['id'])
+
+	def _test_list_server_nics(self):
+		r = self.client.list_server_nics(self.server1['id'])
+		print('NOT READY YET')
+
+
 	""" Don't have auth to test this
 	@if_not_all
 	def test_delete_image(self):
