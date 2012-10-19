@@ -103,7 +103,15 @@ class CycladesClient(ComputeClient):
         req = {'console': {'type': 'vnc'}}
         r = self.servers_post(server_id, 'action', json_data=req, success=200)
         return r.json['console']
-    
+
+    def get_firewall_profile(self, server_id):
+        r = self.get_server_details(server_id)
+        try:
+            return r['addresses']['values'][0]['firewallProfile']
+        except KeyError:
+            raise ClientError('No Firewall Profile', 520,
+                details='Server %s is missing a firewall profile'%server_id)
+
     def set_firewall_profile(self, server_id, profile):
         """Set the firewall profile for the public interface of a server
            The server is specified by id, the profile argument

@@ -82,6 +82,7 @@ class testCyclades(unittest.TestCase):
 			u'SNF:disk_template': u'drbd',
 			u'disk': 20,
 			u'cpu': 1}
+		self.PROFILES=('ENABLED', 'DISABLED', 'PROTECTED')
 
 		"""okeanos.io"""
 		#url = 'https://cyclades.okeanos.io/api/v1.1'
@@ -270,6 +271,14 @@ class testCyclades(unittest.TestCase):
 		self._test_get_server_console()	
 		print('...ok')
 
+		sys.stdout.write(' test get_firewall_profile')
+		self._test_get_firewall_profile()	
+		print('...ok')
+
+		sys.stdout.write(' test set_firewall_profile')
+		self._test_set_firewall_profile()	
+		print('...ok')
+
 		"""Don't have auth for these:
 		sys.stdout.write(' test delete_image')
 		self._test_delete_image()
@@ -298,7 +307,7 @@ class testCyclades(unittest.TestCase):
 					sys.stdout.write('\b%s'%c[i%4])
 					sys.stdout.flush()
 					time.sleep(0.25)
-				print('')
+				print('\b ')
 			wait = (wait + 7) if wait<60 else 0
 
 	@if_not_all
@@ -385,9 +394,11 @@ class testCyclades(unittest.TestCase):
 	def _test_reboot_server(self):
 		self._wait_for_status(self.server1['id'], 'BUILD')
 		self.client.reboot_server(self.server1['id'])
+		print('Reboot %s'%self.server1['id'])
 		self.assertTrue(self._has_status(self.server1['id'], 'REBOOT'))
 		self._wait_for_status(self.server2['id'], 'BUILD')
 		self.client.reboot_server(self.server2['id'], hard=True)
+		print('Reboot %s'%self.server2['id'])
 		self.assertTrue(self._has_status(self.server2['id'], 'REBOOT'))
 		self._wait_for_status(self.server1['id'], 'REBOOT')
 		self._wait_for_status(self.server2['id'], 'REBOOT')
@@ -524,7 +535,7 @@ class testCyclades(unittest.TestCase):
 	@if_not_all
 	def test_get_server_console(self):
 		"""Test get_server_console"""
-		self.server2 = self._create_server(self.servname2, self.flavorid, self.img)
+		self.server2 = self._create_server(self.servname2, self.flavorid+1, self.img)
 		self._test_get_server_console()
 
 	def _test_get_server_console(self):
@@ -534,6 +545,43 @@ class testCyclades(unittest.TestCase):
 		self.assertTrue(r.has_key('password'))
 		self.assertTrue(r.has_key('port'))
 		self.assertTrue(r.has_key('type'))
+
+	@if_not_all
+	def test_get_firewall_profile(self):
+		"""Test get_firewall_profile"""
+		self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
+		self._test_get_firewall_profile()
+
+	def _test_get_firewall_profile(self):
+		self._wait_for_status(self.server1['id'], 'BUILD')
+		fprofile = self.client.get_firewall_profile(self.server1['id'])
+		self.assertTrue(fprofile in self.PROFILES)
+
+	@if_not_all
+	def test_set_firewall_profile(self):
+		"""Test set_firewall_profile"""
+		self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
+		self._test_set_firewall_profile()
+
+	def _test_set_firewall_profile(self):
+		def next_profile(cur_profile):
+			index = self.PROFILES.index(cur_profile)
+			new_index = 0 if index == len(self.PROFILES) else index+1
+			return self.PROFILES[new_index]
+
+		self._wait_for_status(self.server1['id'], 'BUILD')
+		fprofile = self.client.get_firewall_profile(self.server1['id'])
+		nprofile = next_profile(fprofile)
+		self.client.set_firewall_profile(self.server1['id'], nprofile)
+		wait = 7
+		c=['|','/','-','\\']
+		while fprofile != nprofile:
+			sys.stdout.write('Profile %s not yet %s, wait %ss  '%(fprofile, nprofile, wait))
+			for i in range(4*wait):
+				sys.stdout.write('\b%s'%c[i%4])
+				time.sleep(0.25)
+			print('\b ')
+			fprofile = self.client.get_firewall_profile(self.server1['id'])
 
 	""" Don't have auth to test this
 	@if_not_all
