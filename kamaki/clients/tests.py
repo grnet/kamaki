@@ -145,7 +145,7 @@ class testCyclades(unittest.TestCase):
 				oldlen = len(': '+suffix)
 				print(oldlen*'\b'+oldlen*' ')
 				sys.stdout.flush()
-			waitime += 7
+			waitime += 3
 			dservers = self.client.list_servers(detail=True)
 			for server in dservers:
 				if server['name'] in self.servers.keys():
@@ -211,6 +211,9 @@ class testCyclades(unittest.TestCase):
 		self._test_list_servers()
 		print('...ok')
 
+		self._wait_for_status(self.server1['id'], 'BUILD')
+		self._wait_for_status(self.server2['id'], 'BUILD')
+
 		sys.stdout.write(' test get server details')
 		self._test_get_server_details()
 		print('...ok')
@@ -223,9 +226,13 @@ class testCyclades(unittest.TestCase):
 		self._test_update_server_name()
 		print('...ok')
 
+
 		sys.stdout.write(' test reboot_server')
 		self._test_reboot_server()
 		print('...ok')
+
+		self._wait_for_status(self.server1['id'], 'REBOOT')
+		self._wait_for_status(self.server2['id'], 'REBOOT')
 
 		sys.stdout.write(' test create_server_metadata')
 		self._test_create_server_metadata()
@@ -263,8 +270,12 @@ class testCyclades(unittest.TestCase):
 		self._test_get_image_metadata()
 		print('...ok')
 
-		sys.stdout.write(' test shutdown/start_server')
-		self._test_shutdown_start_server()
+		sys.stdout.write(' test shutdown_server')
+		self._test_shutdown_server()
+		print('...ok')
+
+		sys.stdout.write(' test start_server')
+		self._test_start_server()
 		print('...ok')
 
 		sys.stdout.write(' test get_server_console')
@@ -308,7 +319,7 @@ class testCyclades(unittest.TestCase):
 					sys.stdout.flush()
 					time.sleep(0.25)
 				print('\b ')
-			wait = (wait + 7) if wait<60 else 0
+			wait = (wait + 3) if wait<60 else 0
 
 	@if_not_all
 	def test_list_servers(self):
@@ -338,6 +349,7 @@ class testCyclades(unittest.TestCase):
 	def test_create_server(self):
 		"""Test create_server"""
 		self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
+		self._wait_for_status(self.server1['id'], 'BUILD')
 		self._test_create_server()
 
 	def _test_create_server(self):
@@ -350,6 +362,7 @@ class testCyclades(unittest.TestCase):
 	def test_get_server_details(self):
 		"""Test get_server_details"""
 		self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
+		self._wait_for_status(self.server1['id'], 'BUILD')
 		self._test_get_server_details()
 
 	def _test_get_server_details(self):
@@ -357,7 +370,7 @@ class testCyclades(unittest.TestCase):
 		self.assertEqual(r["name"], self.servname1)
 		self.assertEqual(r["flavorRef"], self.flavorid)
 		self.assertEqual(r["imageRef"], self.img)
-		self.assertEqual(r["status"], "BUILD")
+		self.assertEqual(r["status"], "ACTIVE")
 
 	@if_not_all
 	def test_get_image_details(self):
@@ -388,20 +401,18 @@ class testCyclades(unittest.TestCase):
 	def test_reboot_server(self):
 		"""Test reboot server"""
 		self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
-		self.server2 = self._create_server(self.servname2, self.flavorid+1, self.img)
-		self._test_reboot_server()
-
-	def _test_reboot_server(self):
 		self._wait_for_status(self.server1['id'], 'BUILD')
-		self.client.reboot_server(self.server1['id'])
-		print('Reboot %s'%self.server1['id'])
-		self.assertTrue(self._has_status(self.server1['id'], 'REBOOT'))
+		self.server2 = self._create_server(self.servname2, self.flavorid+1, self.img)
 		self._wait_for_status(self.server2['id'], 'BUILD')
-		self.client.reboot_server(self.server2['id'], hard=True)
-		print('Reboot %s'%self.server2['id'])
-		self.assertTrue(self._has_status(self.server2['id'], 'REBOOT'))
+		self._test_reboot_server()
 		self._wait_for_status(self.server1['id'], 'REBOOT')
 		self._wait_for_status(self.server2['id'], 'REBOOT')
+
+	def _test_reboot_server(self):
+		self.client.reboot_server(self.server1['id'])
+		self.assertTrue(self._has_status(self.server1['id'], 'REBOOT'))
+		self.client.reboot_server(self.server2['id'], hard=True)
+		self.assertTrue(self._has_status(self.server2['id'], 'REBOOT'))
 
 	@if_not_all
 	def test_get_server_metadata(self):
@@ -512,25 +523,29 @@ class testCyclades(unittest.TestCase):
 	def test_start_server(self):
 		"""Test start_server"""
 		self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
-		self._test_shutdown_start_server()
-	@if_not_all
-	def test_shutdown_server(self):
-		"""Test shutdown_server"""
-		self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
-		self._test_shutdown_start_server()
-
-	def _test_shutdown_start_server(self):
 		self._wait_for_status(self.server1['id'], 'BUILD')
-		print('Shutdown Server %s'%self.server1['id'])
 		self.client.shutdown_server(self.server1['id'])
 		self._wait_for_status(self.server1['id'], 'ACTIVE')
-		r = self.client.get_server_details(self.server1['id'])
-		self.assertEqual(r['status'], 'STOPPED')
-		print('Start Server %s'%self.server1['id'])
+		self._test_start_server()
+
+	def _test_start_server(self):
 		self.client.start_server(self.server1['id'])
 		self._wait_for_status(self.server1['id'], 'STOPPED')
 		r = self.client.get_server_details(self.server1['id'])
 		self.assertEqual(r['status'], 'ACTIVE')
+
+	@if_not_all
+	def test_shutdown_server(self):
+		"""Test shutdown_server"""
+		self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
+		self._wait_for_status(self.server1['id'], 'BUILD')
+		self._test_shutdown_server()
+
+	def _test_shutdown_server(self):
+		self.client.shutdown_server(self.server1['id'])
+		self._wait_for_status(self.server1['id'], 'ACTIVE')
+		r = self.client.get_server_details(self.server1['id'])
+		self.assertEqual(r['status'], 'STOPPED')
 
 	@if_not_all
 	def test_get_server_console(self):
@@ -566,22 +581,28 @@ class testCyclades(unittest.TestCase):
 	def _test_set_firewall_profile(self):
 		def next_profile(cur_profile):
 			index = self.PROFILES.index(cur_profile)
-			new_index = 0 if index == len(self.PROFILES) else index+1
+			new_index = 0 if index >= len(self.PROFILES)-1 else (index+1)
 			return self.PROFILES[new_index]
 
 		self._wait_for_status(self.server1['id'], 'BUILD')
 		fprofile = self.client.get_firewall_profile(self.server1['id'])
-		nprofile = next_profile(fprofile)
-		self.client.set_firewall_profile(self.server1['id'], nprofile)
-		wait = 7
-		c=['|','/','-','\\']
-		while fprofile != nprofile:
-			sys.stdout.write('Profile %s not yet %s, wait %ss  '%(fprofile, nprofile, wait))
-			for i in range(4*wait):
-				sys.stdout.write('\b%s'%c[i%4])
-				time.sleep(0.25)
-			print('\b ')
-			fprofile = self.client.get_firewall_profile(self.server1['id'])
+		for counter in range(1,1+len(self.PROFILES)):
+			nprofile = next_profile(fprofile)
+			start=fprofile
+			print('\tProfile swap %s: %s -> %s'%(counter, fprofile, nprofile))
+			self.client.set_firewall_profile(self.server1['id'], nprofile)
+			wait = 3
+			c=['|','/','-','\\']
+			while fprofile != nprofile:
+				self.assertEqual(fprofile, start)
+				sys.stdout.write('\t   profile is %s, wait %ss  '%(fprofile, wait))
+				for i in range(4*wait):
+					sys.stdout.write('\b%s'%c[i%4])
+					sys.stdout.flush()
+					time.sleep(0.25)
+				wait += 3
+				print('\b ')
+				fprofile = self.client.get_firewall_profile(self.server1['id'])
 
 	""" Don't have auth to test this
 	@if_not_all
