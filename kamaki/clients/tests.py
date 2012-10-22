@@ -327,10 +327,18 @@ class testCyclades(unittest.TestCase):
 		self._test_get_server_stats()	
 		print('...ok')
 
+		self.network1 = self._create_network(self.netname1)
+
+		sys.stdout.write(' test create_network')
+		self._test_create_network()	
+		print('...ok')
+
 		sys.stdout.write(' test connect_server')
 		self._test_connect_server()	
 		print('...ok')
 
+		self.network2 = self._create_network(self.netname2)
+		
 		sys.stdout.write(' test list_server_nics')
 		self._test_list_server_nics()	
 		print('...ok')
@@ -665,6 +673,7 @@ class testCyclades(unittest.TestCase):
 
 	@if_not_all
 	def test_list_networks(self):
+		"""Test list_network"""
 		self.network1 = self._create_network(self.netname1)
 		self._test_list_networks()
 
@@ -689,14 +698,19 @@ class testCyclades(unittest.TestCase):
 
 	@if_not_all
 	def test_create_network(self):
+		"""Test create_network"""
+		self.network1 = self._create_network(self.netname1)
 		self._test_create_network()
 
 	def _test_create_network(self):
-		self.network1 = self._create_network(self.netname1)
+		nets = self.client.list_networks(self.network1['id'])
+		chosen = [net for net in nets if net['id'] == self.network1['id']]
+		self.assertTrue(len(chosen)>0)
+		self.assert_dicts_are_deeply_equal(chosen[0], self.network1)
 
-	#untested tests from here:
 	@if_not_all
 	def test_connect_server(self):
+		"""Test connect_server"""
 		self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
 		self.network1 = self._create_network(self.netname1)
 		self._wait_for_status(self.server1['id'], 'BUILD')
