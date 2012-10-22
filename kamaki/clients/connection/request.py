@@ -33,7 +33,7 @@
 
 import requests
 from . import HTTPConnection, HTTPResponse, HTTPConnectionError
-from .pool import ObjectPool
+from kamaki.clients.connection.pool import ObjectPool
 from urlparse import urlparse
 
 # Add a convenience status property to the responses
