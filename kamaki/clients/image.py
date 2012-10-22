@@ -32,7 +32,6 @@
 # or implied, of GRNET S.A.
 from . import Client, ClientError
 from .utils import path4url
-from .connection.request import HTTPRequest
 
 class ImageClient(Client):
     """OpenStack Image Service API 1.0 and GRNET Plankton client"""

@@ -174,7 +174,7 @@ class testCyclades(unittest.TestCase):
 						print('\tnot deleted yet ...')
 					deleted_servers[server['name']] = retries + 1
 		for netid in self.networks.keys():
-			self.client.delete_network(netid)
+			self.client._delete_network(netid)
 
 	def _create_server(self, servername, flavorid, imageid, personality=None):
 		server = self.client.create_server(servername, flavorid, imageid, personality)
@@ -190,6 +190,7 @@ class testCyclades(unittest.TestCase):
 		return net
 
 	def _delete_network(self, netid):
+		print('Delete network %s'%netid)
 		self.client.delete_network(netid)
 
 	def if_not_all(foo):
