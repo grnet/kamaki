@@ -136,7 +136,6 @@ class CycladesClient(ComputeClient):
     def create_network(self, name, cidr=False, gateway=False, type=False, dhcp=False):
         """@params cidr, geteway, type and dhcp should be strings
         """
-        print('cidr[%s], type[%s]'%(cidr, type))
         net = dict(name=name)
         if cidr:
             net['cidr']=cidr

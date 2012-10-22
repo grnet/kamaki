@@ -171,6 +171,8 @@ class testCyclades(unittest.TestCase):
 					else:
 						print('\tnot deleted yet ...')
 					deleted_servers[server['name']] = retries + 1
+		for netid in self.networks.keys():
+			self.client.delete_network(netid)
 
 	def _create_server(self, servername, flavorid, imageid, personality=None):
 		server = self.client.create_server(servername, flavorid, imageid, personality)
@@ -179,6 +181,14 @@ class testCyclades(unittest.TestCase):
 
 	def _delete_server(self, servid):
 		self.client.delete_server(servid)
+
+	def _create_network(self, netname, **kwargs):
+		net = self.client.create_network(netname, **kwargs)
+		self.networks[net['id']] = net
+		return net
+
+	def _delete_network(self, netid)
+		self.client.delete_network(netid)
 
 	def if_not_all(foo):
 		global TEST_ALL
@@ -288,6 +298,14 @@ class testCyclades(unittest.TestCase):
 
 		sys.stdout.write(' test set_firewall_profile')
 		self._test_set_firewall_profile()	
+		print('...ok')
+
+		sys.stdout.write(' test connect_server')
+		self._test_connect_server()	
+		print('...ok')
+
+		sys.stdout.write(' test list_server_nics')
+		self._test_list_server_nics()	
 		print('...ok')
 
 		"""Don't have auth for these:
@@ -604,18 +622,34 @@ class testCyclades(unittest.TestCase):
 				print('\b ')
 				fprofile = self.client.get_firewall_profile(self.server1['id'])
 
+	#untested tests from here:
+	@if_not_all
+	def test_connect_server(self):
+		self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
+		self._test_connect_server()
+
+	def _test_connect_server(self):
+		newnet = self._create_network('mynet')
+		self.client.connect_server(self.server1['id'], newnet['id'])
+		s1nics = self.list_server_nics(self.server1['id'])
+		self.assertTrue(newnet['id'] in s1nics['id'])
+
 	@if_not_all
 	def test_list_server_nics(self):
 		"""Test list_server_nics"""
 		self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
-		newnet = self.client.create_network('mynet')
-		self.client.connect_server(self.server1['id'], newnet['id'])
 		self._test_list_server_nics()
-		self.client.delete_network(newnet['id'])
 
 	def _test_list_server_nics(self):
 		r = self.client.list_server_nics(self.server1['id'])
-		print('NOT READY YET')
+		len0 = len(r)
+		self.assertTrue(len0>0)
+		self.assertTrue('public' in [net['id'] for net in r])
+
+		newnet = self._create_network('mynet_list_nics')
+		self.client.connect_server(self.server1['id'], newnet['id'])
+		r = self.client.list_server_nics(self.server1['id'])
+		self.assertTrue(len(r)>len0)
 
 
 	""" Don't have auth to test this
