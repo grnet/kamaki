@@ -203,7 +203,7 @@ class testCyclades(unittest.TestCase):
 			for net in nics:
 				if net['id'] == netid:
 					return True
-			sys.stdout.write('\twait nic %d to connect to %s: %ss  '%(netid, servid, wait))
+			sys.stdout.write('\twait nic %s to connect to %s: %ss  '%(netid, servid, wait))
 			for i in range(wait*4):
 				sys.stdout.write('\b%s'%c[i%4])
 				sys.stdout.flush()
@@ -337,6 +337,10 @@ class testCyclades(unittest.TestCase):
 		self._test_connect_server()	
 		print('...ok')
 
+		sys.stdout.write(' test disconnect_server')
+		self._test_disconnect_server()	
+		print('...ok')
+
 		self.network2 = self._create_network(self.netname2)
 
 		sys.stdout.write(' test list_server_nics')
@@ -349,6 +353,10 @@ class testCyclades(unittest.TestCase):
 
 		sys.stdout.write(' test get_network_details')
 		self._test_get_network_details()	
+		print('...ok')
+
+		sys.stdout.write(' test update_network_name')
+		self._test_update_network_name()	
 		print('...ok')
 
 		"""Don't have auth for these:
@@ -725,6 +733,15 @@ class testCyclades(unittest.TestCase):
 		self.assertTrue(self._wait_for_nic(self.network1['id'], self.server1['id']))
 
 	@if_not_all
+	def test_disconnect_server(self):
+		"""Test disconnect_server"""
+		self.test_connect_server()
+		self._test_disconnect_server()
+
+	def _test_disconnect_server(self):
+		pass
+
+	@if_not_all
 	def test_list_server_nics(self):
 		"""Test list_server_nics"""
 		self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
@@ -752,6 +769,31 @@ class testCyclades(unittest.TestCase):
 	def _test_get_network_details(self):
 		r = self.client.get_network_details(self.network1['id'])
 		self.assert_dicts_are_deeply_equal(self.network1, r)
+
+	@if_not_all
+	def test_update_network_name(self):
+		self.network2 = self._create_network(self.netname2)
+		self._test_update_network_name()
+
+	def _test_update_network_name(self):
+		updated_name = self.netname2+'_upd'
+		self.client.update_network_name(self.network2['id'], updated_name)
+		wait = 3
+		c=['|','/','-','\\']
+		r = self.client.get_network_details(self.network2['id'])
+		while wait < 50:
+			if r['name'] == updated_name:
+				break
+			sys.stdout.write('\twait for %s renaming (%s->%s) %ss  '%(self.network2['id'],
+				self.network2['name'], updated_name, wait))
+			for i in range(4*wait):
+				sys.stdout.write('\b%s'%c[i%4])
+				sys.stdout.flush()
+				time.sleep(0.25)
+			print('')
+			wait += 3
+			r = self.client.get_network_details(self.network2['id'])
+		self.assertEqual(r['name'], updated_name)
 
 	""" Don't have auth to test this
 	@if_not_all
