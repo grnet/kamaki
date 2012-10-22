@@ -117,6 +117,8 @@ class testCyclades(unittest.TestCase):
 		self.servname2 = self.servname1+'_v2'
 		self.flavorid = 1
 		#servers have to be created at the begining...
+		self.networks={}
+		self.netname1 = 'net'+unicode(self.now)
 
 		self.client = cyclades(url, token)
 		pass
@@ -187,7 +189,7 @@ class testCyclades(unittest.TestCase):
 		self.networks[net['id']] = net
 		return net
 
-	def _delete_network(self, netid)
+	def _delete_network(self, netid):
 		self.client.delete_network(netid)
 
 	def if_not_all(foo):
@@ -300,6 +302,16 @@ class testCyclades(unittest.TestCase):
 		self._test_set_firewall_profile()	
 		print('...ok')
 
+		sys.stdout.write(' test get_server_stats')
+		self._test_get_server_stats()	
+		print('...ok')
+
+		self.network1 = self._create_network(self.netname1)
+
+		sys.stdout.write(' test list_networks')
+		self._test_list_networks()	
+		print('...ok')
+
 		sys.stdout.write(' test connect_server')
 		self._test_connect_server()	
 		print('...ok')
@@ -307,6 +319,7 @@ class testCyclades(unittest.TestCase):
 		sys.stdout.write(' test list_server_nics')
 		self._test_list_server_nics()	
 		print('...ok')
+
 
 		"""Don't have auth for these:
 		sys.stdout.write(' test delete_image')
@@ -622,22 +635,57 @@ class testCyclades(unittest.TestCase):
 				print('\b ')
 				fprofile = self.client.get_firewall_profile(self.server1['id'])
 
+	@if_not_all
+	def test_get_server_stats(self):
+		self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
+		self._test_get_server_stats()
+
+	def _test_get_server_stats(self):
+		r = self.client.get_server_stats(self.server1['id'])
+		for term in ('cpuBar', 'cpuTimeSeries', 'netBar', 'netTimeSeries', 'refresh'):
+			self.assertTrue(r.has_key(term))
+
+	@if_not_all
+	def test_list_networks(self):
+		self.network1 = self._create_network(self.netname1)
+		self._test_list_networks()
+
+	def _test_list_networks(self):
+		r = self.client.list_networks()
+		self.assertTrue(len(r)>1)
+		ids = [net['id'] for net in r]
+		names = [net['name'] for net in r]
+		self.assertTrue('public' in ids)
+		self.assertTrue('public' in names)
+		self.assertTrue(self.network1['id'] in ids)
+		self.assertTrue(self.network1['name'] in names)
+
+		r = self.client.list_networks(detail=True)
+		ids = [net['id'] for net in r]
+		names = [net['name'] for net in r]
+		for net in r:
+			self.assertTrue(net['id'] in ids)
+			self.assertTrue(net['name'] in names)
+			for term in ('status', 'updated', 'created', 'servers'):
+				self.assertTrue(term in net.keys())
+
 	#untested tests from here:
 	@if_not_all
 	def test_connect_server(self):
 		self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
+		self.network1 = self._create_network(self.netname1)
 		self._test_connect_server()
 
 	def _test_connect_server(self):
-		newnet = self._create_network('mynet')
-		self.client.connect_server(self.server1['id'], newnet['id'])
+		self.client.connect_server(self.server1['id'], self.network1['id'])
 		s1nics = self.list_server_nics(self.server1['id'])
-		self.assertTrue(newnet['id'] in s1nics['id'])
+		self.assertTrue(self.network1['id'] in s1nics['id'])
 
 	@if_not_all
 	def test_list_server_nics(self):
 		"""Test list_server_nics"""
 		self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
+		self.network1 = self._create_network(self.netname1)
 		self._test_list_server_nics()
 
 	def _test_list_server_nics(self):
@@ -646,10 +694,10 @@ class testCyclades(unittest.TestCase):
 		self.assertTrue(len0>0)
 		self.assertTrue('public' in [net['id'] for net in r])
 
-		newnet = self._create_network('mynet_list_nics')
-		self.client.connect_server(self.server1['id'], newnet['id'])
+		self.client.connect_server(self.server1['id'], self.network1['id'])
 		r = self.client.list_server_nics(self.server1['id'])
 		self.assertTrue(len(r)>len0)
+
 
 
 	""" Don't have auth to test this
