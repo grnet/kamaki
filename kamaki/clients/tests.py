@@ -203,7 +203,7 @@ class testCyclades(unittest.TestCase):
 			for net in nics:
 				if net['id'] == netid:
 					return True
-			sys.stdout.write('\twait nic to connect %ss  '%wait)
+			sys.stdout.write('\twait nic %d to connect to %s: %ss  '%(netid, servid, wait))
 			for i in range(wait*4):
 				sys.stdout.write('\b%s'%c[i%4])
 				sys.stdout.flush()
@@ -338,13 +338,17 @@ class testCyclades(unittest.TestCase):
 		print('...ok')
 
 		self.network2 = self._create_network(self.netname2)
-		
+
 		sys.stdout.write(' test list_server_nics')
 		self._test_list_server_nics()	
 		print('...ok')
 
 		sys.stdout.write(' test list_networks')
 		self._test_list_networks()	
+		print('...ok')
+
+		sys.stdout.write(' test get_network_details')
+		self._test_get_network_details()	
 		print('...ok')
 
 		"""Don't have auth for these:
@@ -738,6 +742,16 @@ class testCyclades(unittest.TestCase):
 		self.assertTrue(self._wait_for_nic(self.network2['id'], self.server1['id']))
 		r = self.client.list_server_nics(self.server1['id'])
 		self.assertTrue(len(r)>len0)
+
+	@if_not_all
+	def test_get_network_details(self):
+		"""Test get_network_details"""
+		self.network1 = self._create_network(self.netname1)
+		self._test_get_network_details()
+
+	def _test_get_network_details(self):
+		r = self.client.get_network_details(self.network1['id'])
+		self.assert_dicts_are_deeply_equal(self.network1, r)
 
 	""" Don't have auth to test this
 	@if_not_all
