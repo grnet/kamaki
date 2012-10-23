@@ -194,16 +194,18 @@ class testCyclades(unittest.TestCase):
 		print('\tDelete network %s'%netid)
 		self.client.delete_network(netid)
 
-	def _wait_for_nic(self, netid, servid):
+	def _wait_for_nic(self, netid, servid, in_creation=True):
 		c=['|','/','-','\\']
 		limit = 50
 		wait=3
 		while wait < limit:
 			nics = self.client.list_server_nics(servid)
 			for net in nics:
-				if net['id'] == netid:
+				found_nic = net['id'] == netid
+				if (in_creation and found_nic) or not (in_creation or found_nic):
 					return True
-			sys.stdout.write('\twait nic %s to connect to %s: %ss  '%(netid, servid, wait))
+			dis = '' if in_creation else 'dis'
+			sys.stdout.write('\twait nic %s to %sconnect to %s: %ss  '%(netid, dis, servid, wait))
 			for i in range(wait*4):
 				sys.stdout.write('\b%s'%c[i%4])
 				sys.stdout.flush()
@@ -739,7 +741,10 @@ class testCyclades(unittest.TestCase):
 		self._test_disconnect_server()
 
 	def _test_disconnect_server(self):
-		pass
+		self.client.disconnect_server(self.server1['id'], self.network1['id'])
+		self.assertTrue(self._wait_for_nic(self.network1['id'], self.server1['id'],
+			in_creation=False))
+
 
 	@if_not_all
 	def test_list_server_nics(self):
