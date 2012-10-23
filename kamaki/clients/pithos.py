@@ -196,8 +196,8 @@ class PithosClient(PithosRestAPI):
         gevent.joinall(flying)
 
         failures = [r for r in flying if r.exception]
-        if len(flying):
-            details = ', '.join(['%s.%s'%(i,r) for i,r in enumerate(failures)])
+        if len(failures):
+            details = ', '.join(['(%s).%s'%(i,r.exception) for i,r in enumerate(failures)])
             raise ClientError(message="Block uploading failed", status=505, details=details)
 
     def upload_object(self, obj, f, size=None, hash_cb=None, upload_cb=None, etag=None,
