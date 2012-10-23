@@ -321,9 +321,8 @@ class testCyclades(unittest.TestCase):
 		print('...ok')
 
 		sys.stdout.write(' test set_firewall_profile')
-		#self._test_set_firewall_profile()	
-		print('...S K I P')
-		#print('...ok')
+		self._test_set_firewall_profile()	
+		print('...ok')
 
 		sys.stdout.write(' test get_server_stats')
 		self._test_get_server_stats()	
