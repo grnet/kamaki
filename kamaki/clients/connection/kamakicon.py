@@ -112,10 +112,20 @@ class KamakiHTTPConnection(HTTPConnection):
         headers = dict(self.headers)
         for k,v in async_headers.items():
             headers[k] = v
+
+        #de-unicode headers to prepare them for http
+        http_headers = {}
+        for k,v in headers.items():
+            http_headers[str(k)] = str(v)
+
         #get connection from pool
         conn = get_http_connection(netloc=netloc, scheme=scheme)
         try:
-            conn.request(method = method.upper(), url=self.url, headers=headers, body=data)
+            #Be carefull, all non-body variables should not be unicode
+            conn.request(method = str(method.upper()),
+                url=str(self.url),
+                headers=http_headers,
+                body=data)
         except:
             conn.close()
             raise

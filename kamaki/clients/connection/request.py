@@ -132,6 +132,9 @@ class HTTPRequest(HTTPConnection):
 			self.params = params
 		if headers is not None:
 			self.headers = headers
+		http_headers = {}
+		for k,v in self.headers.items():
+			http_headers[str(k)] = str(v)
 
 		for i,(key, val) in enumerate(self.params.items()):
 			param_str = ('?' if i == 0 else '&') + unicode(key) 
@@ -141,7 +144,8 @@ class HTTPRequest(HTTPConnection):
 
 		#use pool before request, so that it will block if pool is full
 		res = self._get_response_object()
-		self._response_object = requests.request(self.method, self.url, headers=self.headers, data=data,
+		self._response_object = requests.request(str(self.method),
+			str(self.url), headers=http_headers, data=data,
 			verify=self.verify, prefetch = False)
 		res.request = self._response_object.request
 		return res
