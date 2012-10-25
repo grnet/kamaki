@@ -147,17 +147,20 @@ class ComputeClient(Client):
         internally.
         """
         req = {'server': {'name': new_name}}
-        self.servers_put(server_id, json_data=req)
+        r = self.servers_put(server_id, json_data=req)
+        r.release()
     
     def delete_server(self, server_id):
         """Submit a deletion request for a server specified by id"""
-        self.servers_delete(server_id)
-    
+        r = self.servers_delete(server_id)
+        r.release()
+
     def reboot_server(self, server_id, hard=False):
         """Submit a reboot request for a server specified by id"""
         type = 'HARD' if hard else 'SOFT'
         req = {'reboot': {'type': type}}
-        self.servers_post(server_id, 'action', json_data=req)
+        r = self.servers_post(server_id, 'action', json_data=req)
+        r.release()
     
     def get_server_metadata(self, server_id, key=''):
         command = path4url('meta', key)
@@ -175,7 +178,8 @@ class ComputeClient(Client):
         return r.json['metadata']
     
     def delete_server_metadata(self, server_id, key):
-        self.servers_delete(server_id, 'meta/'+key)
+        r = self.servers_delete(server_id, 'meta/'+key)
+        r.release()
 
    
     def flavors_get(self, flavor_id='', command='', **kwargs):
@@ -261,7 +265,8 @@ class ComputeClient(Client):
                 details='Image %d not found or not accessible')
     
     def delete_image(self, image_id):
-        self.images_delete(image_id)
+        r = self.images_delete(image_id)
+        r.release()
 
     def get_image_metadata(self, image_id, key=''):
         command = path4url('meta', key)
@@ -280,4 +285,5 @@ class ComputeClient(Client):
 
     def delete_image_metadata(self, image_id, key):
         command = path4url('meta', key)
-        self.images_delete(image_id, command)
+        r = self.images_delete(image_id, command)
+        r.release()

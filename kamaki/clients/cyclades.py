@@ -91,12 +91,14 @@ class CycladesClient(ComputeClient):
     def start_server(self, server_id):
         """Submit a startup request for a server specified by id"""
         req = {'start': {}}
-        self.servers_post(server_id, 'action', json_data=req, success=202)
+        r = self.servers_post(server_id, 'action', json_data=req, success=202)
+        r.release()
 
     def shutdown_server(self, server_id):
         """Submit a shutdown request for a server specified by id"""
         req = {'shutdown': {}}
-        self.servers_post(server_id, 'action', json_data=req, success=202)
+        r = self.servers_post(server_id, 'action', json_data=req, success=202)
+        r.release()
     
     def get_server_console(self, server_id):
         """Get a VNC connection to the console of a server specified by id"""
@@ -118,7 +120,8 @@ class CycladesClient(ComputeClient):
            is one of (ENABLED, DISABLED, PROTECTED).
         """
         req = {'firewallProfile': {'profile': profile}}
-        self.servers_post(server_id, 'action', json_data=req, success=202)
+        r = self.servers_post(server_id, 'action', json_data=req, success=202)
+        r.release()
     
     def list_server_nics(self, server_id):
         r = self.servers_get(server_id, 'ips')
@@ -155,14 +158,17 @@ class CycladesClient(ComputeClient):
 
     def update_network_name(self, network_id, new_name):
         req = {'network': {'name': new_name}}
-        self.networks_put(network_id=network_id, json_data=req)
+        r = self.networks_put(network_id=network_id, json_data=req)
+        r.release()
 
     def delete_network(self, network_id):
-        self.networks_delete(network_id)
+        r = self.networks_delete(network_id)
+        r.release()
 
     def connect_server(self, server_id, network_id):
         req = {'add': {'serverRef': server_id}}
-        self.networks_post(network_id, 'action', json_data=req)
+        r = self.networks_post(network_id, 'action', json_data=req)
+        r.release()
 
     def disconnect_server(self, server_id, nic_id):
         server_nets = self.list_server_nics(server_id)
@@ -171,4 +177,5 @@ class CycladesClient(ComputeClient):
             return
         for (nic_id, network_id) in nets:
             req={'remove':{'attachment':unicode(nic_id)}}
-            self.networks_post(network_id, 'action', json_data=req)
+            r = self.networks_post(network_id, 'action', json_data=req)
+            r.release()

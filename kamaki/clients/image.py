@@ -112,13 +112,16 @@ class ImageClient(Client):
 
     def add_member(self, image_id, member):
         path = path4url('images', image_id, 'members', member)
-        self.put(path, success=204)
+        r = self.put(path, success=204)
+        r.release()
 
     def remove_member(self, image_id, member):
         path = path4url('images', image_id, 'members', member)
-        self.delete(path, success=204)
+        r = self.delete(path, success=204)
+        r.release()
 
     def set_members(self, image_id, members):
         path = path4url('images', image_id, 'members')
         req = {'memberships': [{'member_id': member} for member in members]}
-        self.put(path, json=req, success=204)
+        r = self.put(path, json=req, success=204)
+        r.release()

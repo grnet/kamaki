@@ -76,7 +76,8 @@ class PithosClient(PithosRestAPI):
         self.async_pool = None
 
     def purge_container(self):
-        self.container_delete(until=unicode(time()))
+        r = self.container_delete(until=unicode(time()))
+        r.release()
         
     def upload_object_unchunked(self, obj, f, withHashFile = False, size=None, etag=None,
         content_encoding=None, content_disposition=None, content_type=None, sharing=None,
@@ -96,9 +97,10 @@ class PithosClient(PithosRestAPI):
                 raise ClientError(message='"%s" is not a valid hashmap file'%f.name, status=1)
             f = StringIO(data)
         data = f.read(size) if size is not None else f.read()
-        self.object_put(obj, data=data, etag=etag, content_encoding=content_encoding,
+        r = self.object_put(obj, data=data, etag=etag, content_encoding=content_encoding,
             content_disposition=content_disposition, content_type=content_type, permitions=sharing,
             public=public, success=201)
+        r.release()
         
     #upload_* auxiliary methods 
     def put_block_async(self, data, hash):
@@ -126,9 +128,10 @@ class PithosClient(PithosRestAPI):
         content_disposition=None, content_type=None, sharing=None, public=None):
         self.assert_container()
         obj_content_type = 'application/octet-stream' if content_type is None else content_type
-        self.object_put(obj, content_length=0, etag=etag, content_encoding=content_encoding,
+        r = self.object_put(obj, content_length=0, etag=etag, content_encoding=content_encoding,
             content_disposition=content_disposition, content_type=content_type, permitions=sharing,
             public=public, manifest='%s/%s'%(self.container,obj))
+        r.release()
        
     def _get_file_block_info(self, fileobj, size=None):
         meta = self.get_container_info()
@@ -146,6 +149,7 @@ class PithosClient(PithosRestAPI):
             content_disposition=content_disposition, permitions=permitions, public=public,
             success=success)
         if r.status_code == 201:
+            r.release()
             return None
         return r.json
 
@@ -222,8 +226,9 @@ class PithosClient(PithosRestAPI):
             return
         self._upload_missing_blocks(missing, hmap, f, upload_cb=upload_cb)
 
-        self.object_put(obj, format='json', hashmap=True, content_type=content_type, 
+        r = self.object_put(obj, format='json', hashmap=True, content_type=content_type, 
             json=hashmap, success=201)
+        r.release()
     
     #download_* auxiliary methods
     #ALl untested
@@ -391,10 +396,12 @@ class PithosClient(PithosRestAPI):
         return r.json
 
     def set_account_group(self, group, usernames):
-        self.account_post(update=True, groups = {group:usernames})
+        r = self.account_post(update=True, groups = {group:usernames})
+        r.release()
 
     def del_account_group(self, group):
-        self.account_post(update=True, groups={group:[]})
+        r = self.account_post(update=True, groups={group:[]})
+        r.release()
 
     def get_account_info(self, until=None):
         r = self.account_head(until=until)
@@ -416,16 +423,20 @@ class PithosClient(PithosRestAPI):
 
     def set_account_meta(self, metapairs):
         assert(type(metapairs) is dict)
-        self.account_post(update=True, metadata=metapairs)
+        r = self.account_post(update=True, metadata=metapairs)
+        r.release()
 
     def del_account_meta(self, metakey):
-        self.account_post(update=True, metadata={metakey:''})
+        r = self.account_post(update=True, metadata={metakey:''})
+        r.release()
 
     def set_account_quota(self, quota):
-        self.account_post(update=True, quota=quota)
+        r = self.account_post(update=True, quota=quota)
+        r.release()
 
     def set_account_versioning(self, versioning):
-        self.account_post(update=True, versioning = versioning)
+        r = self.account_post(update=True, versioning = versioning)
+        r.release()
 
     def list_containers(self):
         r = self.account_get()
@@ -434,6 +445,7 @@ class PithosClient(PithosRestAPI):
     def del_container(self, until=None, delimiter=None):
         self.assert_container()
         r = self.container_delete(until=until, delimiter=delimiter, success=(204, 404, 409))
+        r.release()
         if r.status_code == 404:
             raise ClientError('Container "%s" does not exist'%self.container, r.status_code)
         elif r.status_code == 409:
@@ -459,33 +471,42 @@ class PithosClient(PithosRestAPI):
 
     def set_container_meta(self, metapairs):
         assert(type(metapairs) is dict)
-        self.container_post(update=True, metadata=metapairs)
+        r = self.container_post(update=True, metadata=metapairs)
+        r.release()
         
     def del_container_meta(self, metakey):
-        self.container_post(update=True, metadata={metakey:''})
+        r = self.container_post(update=True, metadata={metakey:''})
+        r.release()
 
     def set_container_quota(self, quota):
-        self.container_post(update=True, quota=quota)
+        r = self.container_post(update=True, quota=quota)
+        r.release()
 
     def set_container_versioning(self, versioning):
-        self.container_post(update=True, versioning=versioning)
+        r = self.container_post(update=True, versioning=versioning)
+        r.release()
 
     def del_object(self, obj, until=None, delimiter=None):
         self.assert_container()
-        self.object_delete(obj, until=until, delimiter=delimiter)
+        r = self.object_delete(obj, until=until, delimiter=delimiter)
+        r.release()
 
     def set_object_meta(self, object, metapairs):
         assert(type(metapairs) is dict)
-        self.object_post(object, update=True, metadata=metapairs)
+        r = self.object_post(object, update=True, metadata=metapairs)
+        r.release()
 
     def del_object_meta(self, metakey, object):
-        self.object_post(object, update=True, metadata={metakey:''})
+        r = self.object_post(object, update=True, metadata={metakey:''})
+        r.release()
 
     def publish_object(self, object):
-        self.object_post(object, update=True, public=True)
+        r = self.object_post(object, update=True, public=True)
+        r.release()
 
     def unpublish_object(self, object):
-        self.object_post(object, update=True, public=False)
+        r = self.object_post(object, update=True, public=False)
+        r.release()
 
     def get_object_info(self, obj, version=None):
         r = self.object_head(obj, version=version)
@@ -519,7 +540,8 @@ class PithosClient(PithosRestAPI):
         perms = {}
         perms['read'] = read_permition if isinstance(read_permition, list) else ''
         perms['write'] = write_permition if isinstance(write_permition, list) else ''
-        self.object_post(object, update=True, permitions=perms)
+        r = self.object_post(object, update=True, permitions=perms)
+        r.release()
 
     def del_object_sharing(self, object):
         self.set_object_sharing(object)
@@ -540,16 +562,18 @@ class PithosClient(PithosRestAPI):
         for i in range(nblocks):
             block = source_file.read(min(blocksize, filesize - offset))
             offset += len(block)
-            self.object_post(object, update=True, content_range='bytes */*',
+            r = self.object_post(object, update=True, content_range='bytes */*',
                 content_type='application/octet-stream', content_length=len(block), data=block)
+            r.release()
             
             if upload_cb is not None:
                 upload_gen.next()
 
     def truncate_object(self, object, upto_bytes):
-        self.object_post(object, update=True, content_range='bytes 0-%s/*'%upto_bytes,
+        r = self.object_post(object, update=True, content_range='bytes 0-%s/*'%upto_bytes,
             content_type='application/octet-stream', object_bytes=upto_bytes,
             source_object=path4url(self.container, object))
+        r.release()
 
     def overwrite_object(self, object, start, end, source_file, upload_cb=None):
         """Overwrite a part of an object with given source file
@@ -568,8 +592,9 @@ class PithosClient(PithosRestAPI):
         for i in range(nblocks):
             block = source_file.read(min(blocksize, filesize - offset, datasize - offset))
             offset += len(block)
-            self.object_post(object, update=True, content_type='application/octet-stream', 
+            r = self.object_post(object, update=True, content_type='application/octet-stream', 
                 content_length=len(block), content_range='bytes %s-%s/*'%(start,end), data=block)
+            r.release()
             
             if upload_cb is not None:
                 upload_gen.next()
@@ -580,9 +605,10 @@ class PithosClient(PithosRestAPI):
         self.container = dst_container
         dst_object = dst_object or src_object
         src_path = path4url(src_container, src_object)
-        self.object_put(dst_object, success=201, copy_from=src_path, content_length=0,
+        r = self.object_put(dst_object, success=201, copy_from=src_path, content_length=0,
             source_version=source_version, public=public, content_type=content_type,
             delimiter=delimiter)
+        r.release()
 
     def move_object(self, src_container, src_object, dst_container, dst_object=False,
         source_version = None, public=False, content_type=None, delimiter=None):
@@ -590,9 +616,10 @@ class PithosClient(PithosRestAPI):
         self.container = dst_container
         dst_object = dst_object or src_object
         src_path = path4url(src_container, src_object)
-        self.object_put(dst_object, success=201, move_from=src_path, content_length=0,
+        r = self.object_put(dst_object, success=201, move_from=src_path, content_length=0,
             source_version=source_version, public=public, content_type=content_type,
             delimiter=delimiter)
+        r.release()
 
     def get_sharing_accounts(self, limit=None, marker=None, *args, **kwargs):
         """Get accounts that share with self.account"""

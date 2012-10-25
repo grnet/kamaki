@@ -40,7 +40,6 @@ from .connection.kamakicon import KamakiHTTPConnection
 sendlog = logging.getLogger('clients.send')
 recvlog = logging.getLogger('clients.recv')
 
-
 class ClientError(Exception):
     def __init__(self, message, status=0, details=''):
         super(ClientError, self).__init__(message, status, details)
@@ -80,7 +79,12 @@ class Client(object):
     def set_default_header(self, name, value):
         self.http_client.headers.setdefault(name, value)
 
-    def request(self, method, path, async_headers={}, async_params={}, **kwargs):
+    def request(self,
+        method,
+        path,
+        async_headers={},
+        async_params={},
+        **kwargs):
         """In threaded/asynchronous requests, headers and params are not safe
         Therefore, the standard self.set_header/param system can be used only for 
         headers and params that are common for all requests. All other params and
@@ -90,8 +94,6 @@ class Client(object):
         E.g. in most queries the 'X-Auth-Token' header might be the same for all, but the
         'Range' header might be different from request to request.
         """
-        #from random import random
-        #localkey = int(1000*random())
 
         try:
             success = kwargs.pop('success', 200)
