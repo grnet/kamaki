@@ -53,7 +53,7 @@ class testCyclades(unittest.TestCase):
 		url='https://cyclades.okeanos.grnet.gr/api/v1.1'
 		token='MI6PT0yrXJ9Ji/x8l9Wmig=='
 		token='Kn+G9dfmlPLR2WFnhfBOow=='
-		account='saxtouri@gmail.com'
+		#account='saxtouri@gmail.com'
 		account='saxtouri@grnet.gr'
 		self.img = 'b2dffe52-64a4-48c3-8a4c-8214cc3165cf'
 		self.img_details= {
@@ -234,7 +234,7 @@ class testCyclades(unittest.TestCase):
 		TEST_ALL = True
 
 		self.server1 = self._create_server(self.servname1, self.flavorid, self.img)
-		self.server2 = self._create_server(self.servname2, self.flavorid+1, self.img)
+		self.server2 = self._create_server(self.servname2, self.flavorid+2, self.img)
 
 		print('testing')
 		sys.stdout.write(' test create server')

@@ -107,7 +107,7 @@ class CycladesClient(ComputeClient):
     def get_firewall_profile(self, server_id):
         r = self.get_server_details(server_id)
         try:
-            return r['addresses']['values'][0]['firewallProfile']
+            return r['attachments']['values'][0]['firewallProfile']
         except KeyError:
             raise ClientError('No Firewall Profile', 520,
                 details='Server %s is missing a firewall profile'%server_id)
