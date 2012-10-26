@@ -191,8 +191,19 @@ class testCyclades(unittest.TestCase):
 		return net
 
 	def _delete_network(self, netid):
-		print('\tDelete network %s'%netid)
-		self.client.delete_network(netid)
+		sys.stdout.write('\tDelete network %s '%netid)
+		wait = 3
+		while True:
+			try:
+				self.client.delete_network(netid)
+				break
+			except ClientError as err:
+				self.assertEqual(err.status_code, 421)
+				#HERE I MUST DISCONNECT NICS
+				time.sleep(wait)
+				wait += 3
+				sys.stdout.write('.')
+
 
 	def if_not_all(foo):
 		global TEST_ALL
