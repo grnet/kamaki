@@ -35,7 +35,7 @@ from cmd import Cmd
 from new import instancemethod
 from os import popen
 from argparse import ArgumentParser
-from . import _update_parser, _exec_cmd
+from kamaki.cli import _update_parser, _exec_cmd
 from .errors import CLIError
 from .argument import _arguments
 from .utils import magenta, print_dict

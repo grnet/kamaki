@@ -45,9 +45,9 @@ import sys
 
 from binascii import hexlify
 
-from .pithos_rest_api import PithosRestAPI
-from .storage import ClientError
-from .utils import path4url, filter_in
+from kamaki.clients.pithos_rest_api import PithosRestAPI
+from kamaki.clients.storage import ClientError
+from kamaki.clients.utils import path4url, filter_in
 from StringIO import StringIO
 
 def pithos_hash(block, blockhash):

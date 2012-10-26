@@ -31,8 +31,8 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from . import Client, ClientError
-from .utils import filter_in, filter_out, prefix_keys, path4url
+from kamaki.clients import Client, ClientError
+from kamaki.clients.utils import filter_in, filter_out, prefix_keys, path4url
 #from .connection.kamakicon import KamakiHTTPConnection
 
 class StorageClient(Client):

@@ -31,9 +31,9 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from . import Client, ClientError
-from .connection.request import HTTPRequest
-from .utils import path4url
+from kamaki.clients import Client, ClientError
+from kamaki.clients.connection.request import HTTPRequest
+from kamaki.clients.utils import path4url
 import json
 
 

@@ -31,8 +31,8 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from .compute import ComputeClient, ClientError
-from .utils import path4url
+from kamaki.clients.compute import ComputeClient, ClientError
+from kamaki.clients.utils import path4url
 import json
 
 class CycladesClient(ComputeClient):

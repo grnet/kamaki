@@ -30,8 +30,8 @@
 # documentation are those of the authors and should not be
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
-from . import Client, ClientError
-from .utils import path4url
+from kamaki.clients import Client, ClientError
+from kamaki.clients.utils import path4url
 
 class ImageClient(Client):
     """OpenStack Image Service API 1.0 and GRNET Plankton client"""

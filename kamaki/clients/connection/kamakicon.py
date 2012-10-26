@@ -34,7 +34,7 @@
 from urlparse import urlparse
 #from .pool.http import get_http_connection
 from synnefo.lib.pool.http import get_http_connection
-from . import HTTPConnection, HTTPResponse, HTTPConnectionError
+from kamaki.clients.connection import HTTPConnection, HTTPResponse, HTTPConnectionError
 
 from json import loads
 

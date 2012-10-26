@@ -32,7 +32,7 @@
 # or implied, of GRNET S.A.
 
 import requests
-from . import HTTPConnection, HTTPResponse, HTTPConnectionError
+from kamaki.clients.connection import HTTPConnection, HTTPResponse, HTTPConnectionError
 from kamaki.clients.connection.pool import ObjectPool
 from urlparse import urlparse
 

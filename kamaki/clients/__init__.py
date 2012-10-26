@@ -33,9 +33,9 @@
 
 import json
 import logging
-from .connection import HTTPConnectionError
+from kamaki.clients.connection import HTTPConnectionError
 #from .connection.request import HTTPRequest
-from .connection.kamakicon import KamakiHTTPConnection
+from kamaki.clients.connection.kamakicon import KamakiHTTPConnection
 
 sendlog = logging.getLogger('clients.send')
 recvlog = logging.getLogger('clients.recv')

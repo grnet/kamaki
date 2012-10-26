@@ -33,8 +33,8 @@
 
 from sys import exit
 
-from .config import Config
-from .errors import CLISyntaxError
+from kamaki.cli.config import Config
+from kamaki.cli.errors import CLISyntaxError
 
 class Argument(object):
     """An argument that can be parsed from command line or otherwise"""
