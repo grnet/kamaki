@@ -34,7 +34,7 @@
 from kamaki.clients.quotaholder import QuotaHolderClient
 from kamaki.cli import command
 API_DESCRIPTION=dict(quotaholder='Quota Holder commands')
-from . import _command_init
+from kamaki.cli.commands import _command_init
 
 class _quotaholder_init(_command_init):
 	def main(self):

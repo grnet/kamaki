@@ -41,7 +41,7 @@ from kamaki.cli.utils import print_dict, print_items, print_list, format_size, b
 from kamaki.cli.errors import CLIError, raiseCLIError
 from kamaki.clients.cyclades import CycladesClient, ClientError
 from kamaki.cli.argument import FlagArgument, ValueArgument
-from . import _command_init
+from kamaki.cli.commands import _command_init
 
 from base64 import b64encode
 from os.path import abspath, exists

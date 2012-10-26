@@ -38,8 +38,8 @@ from kamaki.cli.errors import raiseCLIError
 from kamaki.cli.utils import print_dict, print_items, bold
 from kamaki.clients.image import ImageClient, ClientError
 from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument, IntArgument
-from .cyclades_cli import _init_cyclades
-from . import _command_init
+from kamaki.cli.commands.cyclades_cli import _init_cyclades
+from kamaki.cli.commands import _command_init
 
 class _init_image(_command_init):
     def main(self):

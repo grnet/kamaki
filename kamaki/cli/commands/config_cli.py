@@ -33,7 +33,7 @@
 
 from kamaki.cli import command#, set_api_description
 from kamaki.cli.argument import FlagArgument
-from . import _command_init
+from kamaki.cli.commands import _command_init
 #set_api_description('config', 'Configuration commands')
 API_DESCRIPTION = {'config':'Configuration commands'}
 

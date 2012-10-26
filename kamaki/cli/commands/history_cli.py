@@ -39,7 +39,7 @@ from kamaki.cli.argument import IntArgument, ValueArgument, FlagArgument
 from kamaki.cli.history import History
 from kamaki.cli.utils import print_list
 from kamaki.cli import command
-from . import _command_init
+from kamaki.cli.commands import _command_init
 
 class _init_history(_command_init):
 	def main(self):
