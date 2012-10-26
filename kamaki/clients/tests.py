@@ -382,7 +382,7 @@ class testCyclades(unittest.TestCase):
 		while wait < limit:
 			nics = self.client.list_server_nics(servid)
 			for net in nics:
-				found_nic = net['id'] == netid
+				found_nic = net['network_id'] == netid
 				if (in_creation and found_nic) or not (in_creation or found_nic):
 					return True
 			dis = '' if in_creation else 'dis'
@@ -788,6 +788,7 @@ class testCyclades(unittest.TestCase):
 		self.assertTrue('1' in [net['network_id'] for net in r])
 
 		self.client.connect_server(self.server1['id'], self.network2['id'])
+		print('self.network2[id] %s'%self.network2)
 		self.assertTrue(self._wait_for_nic(self.network2['id'], self.server1['id']))
 		r = self.client.list_server_nics(self.server1['id'])
 		self.assertTrue(len(r)>len0)

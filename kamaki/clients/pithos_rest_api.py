@@ -31,8 +31,8 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from .storage import StorageClient, ClientError
-from .utils import path4url, list2str
+from kamaki.clients.storage import StorageClient, ClientError
+from kamaki.clients.utils import path4url, list2str
 
 class PithosRestAPI(StorageClient):
 

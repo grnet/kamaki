@@ -577,6 +577,8 @@ class store_upload(_store_container_command):
                     sharing=self.get_argument('sharing'), public=self.get_argument('public'))
         except ClientError as err:
             raiseCLIError(err)
+        except IOError as err:
+            raise CLIError(message='Failed to read form file %s'%local_path, importance=2, details=unicode(err))
         print 'Upload completed'
 
 @command()
