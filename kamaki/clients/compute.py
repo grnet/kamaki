@@ -32,7 +32,6 @@
 # or implied, of GRNET S.A.
 
 from kamaki.clients import Client, ClientError
-from kamaki.clients.connection.request import HTTPRequest
 from kamaki.clients.utils import path4url
 import json
 

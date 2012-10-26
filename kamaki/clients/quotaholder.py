@@ -31,8 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-from . import Client, ClientError
-from .connection.request import HTTPRequest
+from kamaki.clients import Client, ClientError
 
 class QuotaHolderClient(Client):
 	"""Quota Holder client"""

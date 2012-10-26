@@ -34,7 +34,6 @@
 import json
 import logging
 from kamaki.clients.connection import HTTPConnectionError
-#from .connection.request import HTTPRequest
 from kamaki.clients.connection.kamakicon import KamakiHTTPConnection
 
 sendlog = logging.getLogger('clients.send')
@@ -50,7 +49,6 @@ class ClientError(Exception):
 class Client(object):
 
     def __init__(self, base_url, token, http_client=KamakiHTTPConnection()):
-    #def __init__(self, base_url, token, http_client=HTTPRequest()):
         self.base_url = base_url
         self.token = token
         self.headers = {}
