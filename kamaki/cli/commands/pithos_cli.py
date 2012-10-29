@@ -40,7 +40,7 @@ from kamaki.cli.commands import _command_init
 #set_api_description('store', 'Pithos+ storage commands')
 API_DESCRIPTION = dict(store='Pithos+ storage commands')
 from kamaki.clients.pithos import PithosClient, ClientError
-from colors import bold
+from kamaki.cli.utils import bold
 from sys import stdout, exit
 import signal
 from time import localtime, strftime, strptime, mktime

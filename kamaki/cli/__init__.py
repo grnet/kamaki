@@ -53,8 +53,7 @@ except ImportError:
 
 #from kamaki import clients
 from .errors import CLIError, CLISyntaxError, CLICmdIncompleteError, CLICmdSpecError
-from .config import Config #TO BE REMOVED
-from .utils import bold, magenta, red, yellow, print_list, print_dict
+from .utils import bold, magenta, red, yellow, print_list, print_dict, remove_colors
 from .command_tree import CommandTree
 from .argument import _arguments, parse_known_args
 from .history import History
@@ -270,6 +269,9 @@ def one_command():
 		exe = basename(argv[0])
 		parser = _init_parser(exe)
 		parsed, unparsed = parse_known_args(parser, _arguments)
+		_colors = _arguments['config'].get('global', 'colors')
+		if _colors!='on':
+			remove_colors()
 		_history = History(_arguments['config'].get('history', 'file'))
 		_history.add(' '.join([exe]+argv[1:]))
 		_debug = _arguments['debug'].value

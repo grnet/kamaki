@@ -69,7 +69,7 @@ class config_set(_command_init):
 
     def main(self, option, value):
         section, sep, key = option.rpartition('.')
-        section = section or 'globail'
+        section = section or 'global'
         self.config.set(section, key, value)
         self.config.write()
 

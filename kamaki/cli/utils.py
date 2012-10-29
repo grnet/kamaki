@@ -38,7 +38,11 @@ except ImportError:
         return val
     red = yellow = magenta = bold
 
-
+def remove_colors():
+    global bold
+    def dummy(val):
+        return val
+    bold = dummy
 
 def pretty_keys(d, delim='_', recurcive=False):
     """Transform keys of a dict from the form
