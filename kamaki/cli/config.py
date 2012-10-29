@@ -67,7 +67,7 @@ DEFAULTS = {
     },
     'store': {
         'cli': 'pithos_cli',
-        'url': 'https://pithos.okeanos.grnet.gr'
+        'url': 'https://pithos.okeanos.grnet.gr/v1'
     },
     'compute': {
         'url': 'https://cyclades.okeanos.grnet.gr/api/v1.1'
@@ -76,6 +76,9 @@ DEFAULTS = {
         'cli':'cyclades_cli'
     },
     'flavor': {
+        'cli':'cyclades_cli'
+    },
+    'network': {
         'cli':'cyclades_cli'
     },
     'image': {
