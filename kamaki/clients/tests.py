@@ -197,6 +197,7 @@ class testCyclades(unittest.TestCase):
 		while True:
 			try:
 				self.client.delete_network(netid)
+				print('\n\tSUCCESFULL COMMIT delete network %s'%netid)
 				break
 			except ClientError as err:
 				self.assertEqual(err.status, 421)
@@ -204,8 +205,6 @@ class testCyclades(unittest.TestCase):
 				time.sleep(wait)
 				wait += 3
 				sys.stdout.write('.')
-		print(' OK')
-
 
 	def if_not_all(foo):
 		global TEST_ALL
@@ -318,7 +317,7 @@ class testCyclades(unittest.TestCase):
 		print('...ok')
 
 		sys.stdout.write(' test set_firewall_profile')
-		#self._test_set_firewall_profile()	
+		self._test_set_firewall_profile()	
 		print('...ok')
 
 		sys.stdout.write(' test get_server_stats')
@@ -331,7 +330,7 @@ class testCyclades(unittest.TestCase):
 		self._test_create_network()	
 		print('...ok')
 
-		print('- wait for netowrk to be activated')
+		print('- wait for netowork to be activated')
 		self._wait_for_network(self.network1['id'], 'ACTIVE')
 		print('- ok')
 
@@ -344,7 +343,7 @@ class testCyclades(unittest.TestCase):
 		print('...ok')
 
 		self.network2 = self._create_network(self.netname2)
-		print('- wait for netowrk to be activated')
+		print('- wait for netowork to be activated')
 		self._wait_for_network(self.network2['id'], 'ACTIVE')
 		print('- ok')
 
@@ -383,7 +382,7 @@ class testCyclades(unittest.TestCase):
 		wait = 3
 		limit = 50
 		c=['|','/','-','\\']
-		sys.stdout.write(' Wait for net %s to be %s  '%(netid, status))
+		sys.stdout.write('\tWait for net %s to be %s  '%(netid, status))
 		while wait < limit:
 			r = self.client.get_network_details(netid)
 			if r['status'] == status:
@@ -697,17 +696,18 @@ class testCyclades(unittest.TestCase):
 		self._test_set_firewall_profile()
 
 	def _test_set_firewall_profile(self):
-		def next_profile(cur_profile):
-			index = self.PROFILES.index(cur_profile)
-			new_index = 0 if index >= len(self.PROFILES)-1 else (index+1)
-			return self.PROFILES[new_index]
+		#def next_profile(cur_profile):
+		#	index = self.PROFILES.index(cur_profile)
+		#	new_index = 0 if index >= len(self.PROFILES)-1 else (index+1)
+		#	return self.PROFILES[new_index]
 
 		self._wait_for_status(self.server1['id'], 'BUILD')
 		fprofile = self.client.get_firewall_profile(self.server1['id'])
-		for counter in range(1,1+len(self.PROFILES)):
-			nprofile = next_profile(fprofile)
+		#for counter in range(1,1+len(self.PROFILES)):
+		#	nprofile = next_profile(fprofile)
+		for counter, fprofile in enumerate(self.PROFILES):
 			start=fprofile
-			print('\tProfile swap %s: %s -> %s'%(counter, fprofile, nprofile))
+			print('\tProfile swap %s: %s -> %s'%((counter+1), fprofile, nprofile))
 			self.client.set_firewall_profile(self.server1['id'], nprofile)
 			wait = 3
 			c=['|','/','-','\\']

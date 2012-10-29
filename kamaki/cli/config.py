@@ -44,6 +44,7 @@ except ImportError:
 
 # Path to the file that stores the configuration
 CONFIG_PATH = os.path.expanduser('~/.kamakirc')
+HISTORY_PATH = os.path.expanduser('~/.kamaki.history')
 
 # Name of a shell variable to bypass the CONFIG_PATH value
 CONFIG_ENV = 'KAMAKI_CONFIG'
@@ -63,7 +64,7 @@ DEFAULTS = {
     },
     'history':{
         'cli': 'history_cli',
-        'file':'.kamaki.history'
+        'file':HISTORY_PATH
     },
     'store': {
         'cli': 'pithos_cli',
