@@ -271,14 +271,14 @@ class server_addr(_init_cyclades):
 class server_meta(_init_cyclades):
     """Get a server's metadata"""
 
-    def main(self, server_id, key=None):
+    def main(self, server_id, key=''):
         super(self.__class__, self).main()
         try:
             reply = self.client.get_server_metadata(int(server_id), key)
-        except ClientError as err:
-            raiseCLIError(err)
         except ValueError:
             raise CLIError(message='Server id must be positive integer', importance=1)
+        except ClientError as err:
+            raiseCLIError(err)
         print_dict(reply)
 
 @command()

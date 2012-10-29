@@ -129,6 +129,7 @@ class Client(object):
                 # Success can either be an in or a collection
                 success = (success,) if isinstance(success, int) else success
                 if r.status_code not in success:
+                    r.release()
                     self._raise_for_status(r)
         except Exception as err:
             self.http_client.reset_headers()

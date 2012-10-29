@@ -136,6 +136,11 @@ class CycladesClient(ComputeClient):
         r = self.networks_get(command=detail)
         return r.json['networks']['values']
 
+    #NEW
+    def list_network_nics(self, network_id):
+        r = self.networks_get(network_id=network_id)
+        return r.json['network']['attachments']['values']
+
     def create_network(self, name, cidr=False, gateway=False, type=False, dhcp=False):
         """@params cidr, geteway, type and dhcp should be strings
         """
@@ -162,7 +167,12 @@ class CycladesClient(ComputeClient):
         r.release()
 
     def delete_network(self, network_id):
-        r = self.networks_delete(network_id)
+        try:
+            r = self.networks_delete(network_id)
+        except ClientError as err:
+            if err.status == 421:
+                err.details='Network may be still connected to at least one server'
+            raise err
         r.release()
 
     def connect_server(self, server_id, network_id):
@@ -179,3 +189,10 @@ class CycladesClient(ComputeClient):
             req={'remove':{'attachment':unicode(nic_id)}}
             r = self.networks_post(network_id, 'action', json_data=req)
             r.release()
+
+    #NEW
+    def disconnect_network_nics(self, netid):
+        r = self.list_network_nics(netid)
+        for nic in r:
+            req = dict(remove=dict(attachment=nic))
+            r = self.networks_post(netid, 'action', json_data=req)
