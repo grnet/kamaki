@@ -696,18 +696,15 @@ class testCyclades(unittest.TestCase):
 		self._test_set_firewall_profile()
 
 	def _test_set_firewall_profile(self):
-		#def next_profile(cur_profile):
-		#	index = self.PROFILES.index(cur_profile)
-		#	new_index = 0 if index >= len(self.PROFILES)-1 else (index+1)
-		#	return self.PROFILES[new_index]
 
 		self._wait_for_status(self.server1['id'], 'BUILD')
+		PROFILES=['DISABLED', 'ENABLED', 'DISABLED', 'PROTECTED']
 		fprofile = self.client.get_firewall_profile(self.server1['id'])
-		#for counter in range(1,1+len(self.PROFILES)):
-		#	nprofile = next_profile(fprofile)
-		for counter, fprofile in enumerate(self.PROFILES):
+		for counter, fprofile in enumerate(PROFILES):
 			start=fprofile
-			print('\tProfile swap %s: %s -> %s'%((counter+1), fprofile, nprofile))
+			npos = counter + 1
+			nprofile = PROFILES[npos] if npos<len(PROFILES) else PROFILES[0]
+			print('\tprofile swap %s: %s -> %s'%(counter, fprofile, nprofile))
 			self.client.set_firewall_profile(self.server1['id'], nprofile)
 			wait = 3
 			c=['|','/','-','\\']
