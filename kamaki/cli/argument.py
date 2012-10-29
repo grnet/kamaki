@@ -188,13 +188,13 @@ class KeyValueArgument(ValueArgument):
         if keyvalue_pairs == self.default:
             return
         if isinstance(keyvalue_pairs, str):
-            keyvalue_pairs = keyvalue_pairs.trim().split(' ')
+            keyvalue_pairs = keyvalue_pairs.strip().split(' ')
         self._value = self.default
         for pair in keyvalue_pairs:
             key,sep,val = pair.partition('=')
             if not sep:
                 raise CLISyntaxError(details='Missing "="" ( "key1=val1 key2=val2 ..."')
-            self._value[key.trim()] = val.trim()
+            self._value[key.strip()] = val.strip()
 
 _arguments = dict(config = _config_arg, help = Argument(0, 'Show help message', ('-h', '--help')),
     debug = FlagArgument('Include debug output', ('-d', '--debug')),

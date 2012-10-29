@@ -201,7 +201,6 @@ class testCyclades(unittest.TestCase):
 			except ClientError as err:
 				self.assertEqual(err.status, 421)
 				r = self.client.get_network_details(netid)
-				print(r)
 				time.sleep(wait)
 				wait += 3
 				sys.stdout.write('.')
@@ -239,8 +238,10 @@ class testCyclades(unittest.TestCase):
 		self._test_list_servers()
 		print('...ok')
 
+		print('- wait for test servers to build')
 		self._wait_for_status(self.server1['id'], 'BUILD')
 		self._wait_for_status(self.server2['id'], 'BUILD')
+		print('- ok')
 
 		sys.stdout.write(' test get server details')
 		self._test_get_server_details()
@@ -259,8 +260,10 @@ class testCyclades(unittest.TestCase):
 		self._test_reboot_server()
 		print('...ok')
 
+		print('- wait for test servers to boot')
 		self._wait_for_status(self.server1['id'], 'REBOOT')
 		self._wait_for_status(self.server2['id'], 'REBOOT')
+		print('- ok')
 
 		sys.stdout.write(' test create_server_metadata')
 		self._test_create_server_metadata()
@@ -328,6 +331,10 @@ class testCyclades(unittest.TestCase):
 		self._test_create_network()	
 		print('...ok')
 
+		print('- wait for netowrk to be activated')
+		self._wait_for_network(self.network1['id'], 'ACTIVE')
+		print('- ok')
+
 		sys.stdout.write(' test connect_server')
 		self._test_connect_server()	
 		print('...ok')
@@ -337,6 +344,9 @@ class testCyclades(unittest.TestCase):
 		print('...ok')
 
 		self.network2 = self._create_network(self.netname2)
+		print('- wait for netowrk to be activated')
+		self._wait_for_network(self.network2['id'], 'ACTIVE')
+		print('- ok')
 
 		sys.stdout.write(' test list_server_nics')
 		self._test_list_server_nics()	
@@ -379,7 +389,7 @@ class testCyclades(unittest.TestCase):
 			if r['status'] == status:
 				print('\tOK')
 				return True
-			print('\tit is now %s, wait %ss  '%(r['status'], wait))
+			sys.stdout.write('\tit is now %s, wait %ss  '%(r['status'], wait))
 			for i in range(wait*4):
 				sys.stdout.write('\b%s'%c[i%4])
 				sys.stdout.flush()
@@ -389,6 +399,7 @@ class testCyclades(unittest.TestCase):
 		return False
 
 	def _wait_for_nic(self, netid, servid, in_creation=True):
+		self._wait_for_network(netid, 'ACTIVE')
 		c=['|','/','-','\\']
 		limit = 50
 		wait=3
@@ -798,11 +809,9 @@ class testCyclades(unittest.TestCase):
 		r = self.client.list_server_nics(self.server1['id'])
 		len0 = len(r)
 		self.assertTrue(len0>0)
-		print(r)
 		self.assertTrue('1' in [net['network_id'] for net in r])
 
 		self.client.connect_server(self.server1['id'], self.network2['id'])
-		print('self.network2[id] %s'%self.network2)
 		self.assertTrue(self._wait_for_nic(self.network2['id'], self.server1['id']))
 		r = self.client.list_server_nics(self.server1['id'])
 		self.assertTrue(len(r)>len0)
