@@ -108,7 +108,7 @@ class image_register(_init_image):
         self.arguments['id'] = ValueArgument('set image ID', '--id')
         self.arguments['owner'] = ValueArgument('set image owner (admin only)', '--owner')
         self.arguments['properties'] = KeyValueArgument(parsed_name='--properties',
-            help = 'add properties in the form "key1=val1 key2=val2 ..."')
+            help = 'add properties in the form key1=val1,key2=val2,...')
         self.arguments['is_public'] = FlagArgument('mark image as public', '--public')
         self.arguments['size'] = IntArgument('set image size', '--size')
 

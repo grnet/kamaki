@@ -383,7 +383,7 @@ class testCyclades(unittest.TestCase):
 		wait = 3
 		limit = 50
 		c=['|','/','-','\\']
-		sys.stdout.write('Wait for net %s to be %s  '%(netid, status))
+		sys.stdout.write(' Wait for net %s to be %s  '%(netid, status))
 		while wait < limit:
 			r = self.client.get_network_details(netid)
 			if r['status'] == status:
@@ -736,6 +736,7 @@ class testCyclades(unittest.TestCase):
 	def test_list_networks(self):
 		"""Test list_network"""
 		self.network1 = self._create_network(self.netname1)
+		self._wait_for_network(self.network1['id'], 'ACTIVE')
 		self._test_list_networks()
 
 	def _test_list_networks(self):
@@ -743,7 +744,7 @@ class testCyclades(unittest.TestCase):
 		self.assertTrue(len(r)>1)
 		ids = [net['id'] for net in r]
 		names = [net['name'] for net in r]
-		self.assertTrue('public' in ids)
+		self.assertTrue('1' in ids)
 		self.assertTrue('public' in names)
 		self.assertTrue(self.network1['id'] in ids)
 		self.assertTrue(self.network1['name'] in names)
@@ -754,7 +755,7 @@ class testCyclades(unittest.TestCase):
 		for net in r:
 			self.assertTrue(net['id'] in ids)
 			self.assertTrue(net['name'] in names)
-			for term in ('status', 'updated', 'created', 'servers'):
+			for term in ('status', 'updated', 'created'):
 				self.assertTrue(term in net.keys())
 
 	@if_not_all
@@ -824,7 +825,20 @@ class testCyclades(unittest.TestCase):
 
 	def _test_get_network_details(self):
 		r = self.client.get_network_details(self.network1['id'])
-		self.assert_dicts_are_deeply_equal(self.network1, r)
+		net1 = dict(self.network1)
+		net1.pop('status')
+		self.assert_dicts_are_deeply_equal(net1, r)
+		net1.pop('updated')
+		net1.pop('attachments')
+		r.pop('status')
+		r.pop('updated')
+		r.pop('attachments')
+		print('\nNOW COMPARE THE FOLLOWING\n')
+		print(net1)
+		print('\n')
+		print(r)
+		print('\n')
+		self.assert_dicts_are_deeply_equal(net1, r)
 
 	@if_not_all
 	def test_update_network_name(self):
