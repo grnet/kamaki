@@ -827,10 +827,10 @@ class testCyclades(unittest.TestCase):
 		r = self.client.get_network_details(self.network1['id'])
 		net1 = dict(self.network1)
 		net1.pop('status')
-		net1.pop('updated')
+		net1.pop('updated', None)
 		net1.pop('attachments')
 		r.pop('status')
-		r.pop('updated')
+		r.pop('updated', None)
 		r.pop('attachments')
 		self.assert_dicts_are_deeply_equal(net1, r)
 
