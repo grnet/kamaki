@@ -634,7 +634,10 @@ class store_download(_store_container_command):
             except IOError as err:
                 raise CLIError(message='Cannot write to file %s - %s'%(local_path,unicode(err)),
                     importance=1)
-        download_cb = self.arguments['progress_bar'].get_generator('Downloading')
+        try:
+            download_cb = self.arguments['progress_bar'].get_generator('Downloading')
+        except Exception:
+            download_cb = None
         poolsize = self.get_argument('poolsize')
         if poolsize is not None:
             self.POOL_SIZE = int(poolsize)
