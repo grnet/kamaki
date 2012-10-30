@@ -31,8 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-import gevent.monkey
-#Monkey-patch everything for gevent early on
+import gevent.monkey #Monkey-patch everything for gevent early on
 gevent.monkey.patch_all()
 
 from argparse import ArgumentParser
@@ -69,16 +68,73 @@ class testAstakos(unittest.TestCase):
 
 class testImage(unittest.TestCase):
 	def setUp(self):
-		url = 'https://plankton.okeanos.grnet.gr'
+		url = 'https://cyclades.okeanos.grnet.gr/plankton'
 		token = 'Kn+G9dfmlPLR2WFnhfBOow=='
 		self.client = image(url, token)
 
 	def tearDown(self):
 		pass
 
+	def assert_dicts_are_deeply_equal(self, d1, d2):
+		for k,v in d1.items():
+			self.assertTrue(d2.has_key(k))
+			if isinstance(v, dict):
+				self.assert_dicts_are_deeply_equal(v, d2[k])
+			else:
+				self.assertEqual(unicode(v), unicode(d2[k]))	
+
 	def test_list_public(self):
+		"""Test list_public"""
 		r = self.client.list_public()
-		print(r)
+		r0 = self.client.list_public(order='-')
+		self.assertTrue(len(r)>0)
+		for img in r:
+			for term in ('status',
+				'name', 
+				'container_format', 
+				'disk_format', 
+				'id', 
+				'size'):
+				self.assertTrue(img.has_key(term))
+		self.assertTrue(len(r), len(r0))
+		r0.reverse()
+		for i, img in enumerate(r):
+			self.assert_dicts_are_deeply_equal(img, r0[i])
+		r1 = self.client.list_public(detail=True)
+		for img in r1:
+			for term in ('status',
+				'name',
+				'checksum',
+				'created_at',
+				'disk_format',
+				'updated_at',
+				'id',
+				'location',
+				'container_format',
+				'owner',
+				'is_public',
+				'deleted_at',
+				'properties',
+				'size'):
+				self.assertTrue(img.has_key(term))
+				for interm in ('kernel',
+					'osfamily',
+					'users',
+					'gui',
+					'sortorder',
+					'os',
+					'root_partition',
+					'description'):
+					self.assertTrue(img['properties'].has_key(interm))
+		size_max = 1000000000
+		r2 = self.client.list_public(filters=dict(size_max=size_max))
+		self.assertTrue(len(r2) <= len(r))
+		for img in r2:
+			self.assertTrue(int(img['size'])<=size_max)
+
+	def test_get_meta(self):
+		"""Test get_meta"""
+		pass
 
 class testCyclades(unittest.TestCase):
 	"""Set up a Cyclades thorough test"""
