@@ -70,6 +70,7 @@ class testImage(unittest.TestCase):
 	def setUp(self):
 		url = 'https://cyclades.okeanos.grnet.gr/plankton'
 		token = 'Kn+G9dfmlPLR2WFnhfBOow=='
+		self.imgid = 'b2dffe52-64a4-48c3-8a4c-8214cc3165cf'
 		self.client = image(url, token)
 
 	def tearDown(self):
@@ -134,7 +135,30 @@ class testImage(unittest.TestCase):
 
 	def test_get_meta(self):
 		"""Test get_meta"""
-		pass
+		r= self.client.get_meta(self.imgid)
+		self.assertEqual(r['id'], self.imgid)
+		for term in ('status',
+			'name',
+			'checksum',
+			'updated-at',
+			'created-at',
+			'deleted-at',
+			'location',
+			'is-public',
+			'owner',
+			'disk-format',
+			'size',
+			'container-format'):
+			self.assertTrue(r.has_key(term))
+			for interm in ('kernel',
+				'osfamily',
+				'users',
+				'partition-table',
+				'gui', 'sortorder',
+				'root-partition',
+				'os',
+				'description'):
+				self.assertTrue(r['properties'].has_key(interm))
 
 class testCyclades(unittest.TestCase):
 	"""Set up a Cyclades thorough test"""
@@ -2029,11 +2053,11 @@ if __name__ == '__main__':
 		if len(argv) == 1:
 			suiteFew.addTest(unittest.makeSuite(testImage))
 		else:
-			suiteFew.addTest(testImage('test'+argv[1]))
+			suiteFew.addTest(testImage('test_'+argv[1]))
 	if len(argv) == 0 or argv[0] == 'astakos':
 		if len(argv) == 1:
 			suiteFew.addTest(unittest.makeSuite(testAstakos))
 		else:
-			suiteFew.addTest(testAstakos('test'+argv[1]))
+			suiteFew.addTest(testAstakos('test_'+argv[1]))
 
 	unittest.TextTestRunner(verbosity = 2).run(suiteFew)
