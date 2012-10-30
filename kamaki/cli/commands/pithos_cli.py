@@ -103,14 +103,17 @@ class ProgressBarArgument(FlagArgument):
         bar = ProgressBar(message.ljust(message_len))
         return bar.get_generator()
 
-class ProgressBar(IncrementalBar):
-    suffix = '%(percent)d%% - %(eta)ds'
-    def get_generator(self):
-        def progress_gen(n):
-            for i in self.iter(range(n)):
+try:
+    class ProgressBar(IncrementalBar):
+        suffix = '%(percent)d%% - %(eta)ds'
+        def get_generator(self):
+            def progress_gen(n):
+                for i in self.iter(range(n)):
+                    yield
                 yield
-            yield
-        return progress_gen
+            return progress_gen
+except NameError:
+    pass
 
 class SharingArgument(ValueArgument):
     @property 
