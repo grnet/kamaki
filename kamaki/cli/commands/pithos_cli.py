@@ -46,7 +46,10 @@ import signal
 from time import localtime, strftime, strptime, mktime
 from datetime import datetime as dtm
 
-from progress.bar import IncrementalBar
+try:
+    from progress.bar import IncrementalBar
+except ImportError:
+    print('Warning: progress package not installed')
 
 #Argument functionality
 class DelimiterArgument(ValueArgument):
@@ -84,7 +87,10 @@ class ProgressBarArgument(FlagArgument):
     def __init__(self, help='', parsed_name='', default=True):
         self.suffix = '%(percent)d%%'
         super(ProgressBarArgument, self).__init__(help, parsed_name, default)
-        self.bar = IncrementalBar()
+        try:
+            self.bar = IncrementalBar()
+        except NameError:
+            print('Waring: no progress bar functionality')
 
     @property 
     def value(self):
@@ -467,7 +473,10 @@ class store_append(_store_container_command):
         super(self.__class__, self).main(container___path, path_is_optional=False)
         try:
             f = open(local_path, 'r')
-            upload_cb = self.arguments['progress_bar'].get_generator('Appending blocks')
+            try:
+                upload_cb = self.arguments['progress_bar'].get_generator('Appending blocks')
+            except Exception:
+                upload_cb=None
             self.client.append_object(object=self.path, source_file = f, upload_cb = upload_cb)
         except ClientError as err:
             raiseCLIError(err)
@@ -496,7 +505,10 @@ class store_overwrite(_store_container_command):
         super(self.__class__, self).main(container___path, path_is_optional=False)
         try:
             f = open(local_path, 'r')
-            upload_cb = self.arguments['progress_bar'].get_generator('Overwritting blocks')
+            try:
+                upload_cb = self.arguments['progress_bar'].get_generator('Overwritting blocks')
+            except Exception:
+                upload_cb = None
             self.client.overwrite_object(object=self.path, start=start, end=end,
                 source_file=f, upload_cb = upload_cb)
         except ClientError as err:
