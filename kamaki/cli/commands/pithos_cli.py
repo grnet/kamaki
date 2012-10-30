@@ -49,7 +49,8 @@ from datetime import datetime as dtm
 try:
     from progress.bar import IncrementalBar
 except ImportError:
-    print('Warning: progress package not installed')
+    #progress not installed - pls, pip install progress
+    pass
 
 #Argument functionality
 class DelimiterArgument(ValueArgument):
@@ -100,7 +101,11 @@ class ProgressBarArgument(FlagArgument):
         """By default, it is on (True)"""
         self._value = not newvalue
     def get_generator(self, message, message_len=25):
-        bar = ProgressBar(message.ljust(message_len))
+        try:
+            bar = ProgressBar(message.ljust(message_len))
+        except NameError:
+            print('Warning: no progress bar\n\t(pip install progress to get it)')
+            return None
         return bar.get_generator()
 
 try:
@@ -634,10 +639,7 @@ class store_download(_store_container_command):
             except IOError as err:
                 raise CLIError(message='Cannot write to file %s - %s'%(local_path,unicode(err)),
                     importance=1)
-        try:
-            download_cb = self.arguments['progress_bar'].get_generator('Downloading')
-        except Exception:
-            download_cb = None
+        download_cb = self.arguments['progress_bar'].get_generator('Downloading')
         poolsize = self.get_argument('poolsize')
         if poolsize is not None:
             self.POOL_SIZE = int(poolsize)
