@@ -43,8 +43,42 @@ from shutil import copyfile
 from kamaki.clients import ClientError
 from kamaki.clients.pithos import PithosClient as pithos
 from kamaki.clients.cyclades import CycladesClient as cyclades
+from kamaki.clients.image import ImageClient as image
+from kamaki.clients.astakos import AstakosClient as astakos
 
 TEST_ALL = False
+
+class testAstakos(unittest.TestCase):
+	def setUp(self):
+		url='https://accounts.okeanos.grnet.gr'
+		token = 'Kn+G9dfmlPLR2WFnhfBOow=='
+		self.client = astakos(url, token)
+	def tearDown(self):
+		pass
+	def test_authenticate(self):
+		r = self.client.authenticate()
+		for term in ('username',
+			'auth_token_expires',
+			'auth_token',
+			'auth_token_created', 
+			'groups',
+			'uniq',
+			'has_credits',
+			'has_signed_terms'):
+			self.assertTrue(r.has_key(term))
+
+class testImage(unittest.TestCase):
+	def setUp(self):
+		url = 'https://plankton.okeanos.grnet.gr'
+		token = 'Kn+G9dfmlPLR2WFnhfBOow=='
+		self.client = image(url, token)
+
+	def tearDown(self):
+		pass
+
+	def test_list_public(self):
+		r = self.client.list_public()
+		print(r)
 
 class testCyclades(unittest.TestCase):
 	"""Set up a Cyclades thorough test"""
@@ -1935,5 +1969,15 @@ if __name__ == '__main__':
 			suiteFew.addTest(testCyclades('test_000'))
 		else:
 			suiteFew.addTest(testCyclades('test_'+argv[1]))
+	if len(argv) == 0 or argv[0] == 'image':
+		if len(argv) == 1:
+			suiteFew.addTest(unittest.makeSuite(testImage))
+		else:
+			suiteFew.addTest(testImage('test'+argv[1]))
+	if len(argv) == 0 or argv[0] == 'astakos':
+		if len(argv) == 1:
+			suiteFew.addTest(unittest.makeSuite(testAstakos))
+		else:
+			suiteFew.addTest(testAstakos('test'+argv[1]))
 
 	unittest.TextTestRunner(verbosity = 2).run(suiteFew)

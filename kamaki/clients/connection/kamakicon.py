@@ -35,6 +35,7 @@ from urlparse import urlparse
 #from .pool.http import get_http_connection
 from synnefo.lib.pool.http import get_http_connection
 from kamaki.clients.connection import HTTPConnection, HTTPResponse, HTTPConnectionError
+from gevent.dns import DNSError
 
 from json import loads
 
@@ -126,7 +127,10 @@ class KamakiHTTPConnection(HTTPConnection):
                 url=str(self.url),
                 headers=http_headers,
                 body=data)
-        except:
+        except Exception as err:
             conn.close()
+            if isinstance(err, DNSError):
+                raise HTTPConnectionError('Cannot connect to %s'%self.url, status=701,
+                    details='%s: %s'%(type(err),unicode(err)))
             raise
         return KamakiHTTPResponse(conn)

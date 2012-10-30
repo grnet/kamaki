@@ -134,9 +134,10 @@ class Client(object):
         except Exception as err:
             self.http_client.reset_headers()
             self.http_client.reset_params()
-            if isinstance(err, HTTPConnectionError):
-                raise ClientError(message=err.message, status=err.status, details=err.details)
-            raise
+            errmsg = getattr(err, 'message', unicode(err))
+            errdetails = getattr(err, 'details', '')+' (%s)'%type(err)
+            errstatus = getattr(err, 'status', 0)
+            raise ClientError(message=errmsg,status=errstatus,details=errdetails)
 
         self.http_client.reset_headers()
         self.http_client.reset_params()

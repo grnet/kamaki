@@ -88,7 +88,7 @@ DEFAULTS = {
     },
     'astakos': {
         'cli': 'astakos_cli',
-        'url': 'url = https://accounts.okeanos.grnet.gr'
+        'url': 'https://accounts.okeanos.grnet.gr'
     }
 }
 
