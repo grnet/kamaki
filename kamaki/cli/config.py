@@ -83,8 +83,8 @@ DEFAULTS = {
         'cli':'cyclades_cli'
     },
     'image': {
-        'cli':'image_cli',
-        'url': 'https://plankton.okeanos.grnet.gr'
+        'cli': 'image_cli',
+        'url': 'https://cyclades.okeanos.grnet.gr/plankton'
     },
     'astakos': {
         'cli': 'astakos_cli',
