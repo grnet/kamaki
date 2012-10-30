@@ -58,12 +58,13 @@ class Client(object):
         self.http_client = http_client
 
     def _raise_for_status(self, r):
-        message = "%d %s" % (r.status_code, r.status)
+        message = "%s" % r.status
         try:
             details = r.text
         except:
             details = ''
-        raise ClientError(message, r.status_code, details)
+        print('RAISE?')
+        raise ClientError(message=message, status=r.status_code, details=details)
 
     def set_header(self, name, value, iff=True):
         """Set a header 'name':'value' provided value is not None and iff is True"""

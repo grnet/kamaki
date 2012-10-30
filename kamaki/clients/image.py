@@ -97,7 +97,17 @@ class ImageClient(Client):
         for key, val in properties.items():
             self.set_header('X-Image-Meta-Property-'+key, val)
 
-        self.post(path, success=200)
+        try:
+            r = self.post(path, success=200)
+        except ClientError as err:
+            try:
+                prefix, suffix = err.details.split('File not found')
+                details = '%s Location %s not found %s'%(prefix, location, suffix)
+                raise ClientError(err.message, err.status, details)
+            except ValueError:
+                pass
+            raise
+        r.release()
 
     def list_members(self, image_id):
         path = path4url('images',image_id,'members')

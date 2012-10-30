@@ -68,13 +68,29 @@ class testAstakos(unittest.TestCase):
 
 class testImage(unittest.TestCase):
 	def setUp(self):
+		cyclades_url = 'https://cyclades.okeanos.grnet.gr/api/v1.1'
 		url = 'https://cyclades.okeanos.grnet.gr/plankton'
 		token = 'Kn+G9dfmlPLR2WFnhfBOow=='
 		self.imgid = 'b2dffe52-64a4-48c3-8a4c-8214cc3165cf'
+		self.now = time.mktime(time.gmtime())
+		self.imgname = 'img_%s'%self.now
+		self.imglocation = 'pithos://saxtouri@grnet.gr/pithos/my.img'
 		self.client = image(url, token)
+		self.cyclades = cyclades(cyclades_url, token)
+
+		self._imglist={}
 
 	def tearDown(self):
-		pass
+		for img in self._imglist.values():
+			print('\tDelete img %s (%s)'%(img['name'], img['id']))
+			self.cyclades.delete_image(img['id'])
+
+	def _get_img_by_name(self, name):
+		r = self.cyclades.list_images()
+		for img in r:
+			if img['name'] == name:
+				return img
+		return None
 
 	def assert_dicts_are_deeply_equal(self, d1, d2):
 		for k,v in d1.items():
@@ -159,6 +175,14 @@ class testImage(unittest.TestCase):
 				'os',
 				'description'):
 				self.assertTrue(r['properties'].has_key(interm))
+
+	def test_register(self):
+		"""Test register"""
+		print('// register %s %s --public'%(self.imgname, self.imglocation))
+		self.client.register(self.imgname, self.imglocation, params=dict(is_public=True))
+		img = self._get_img_by_name(self.imgname)
+		self.assertTrue(img != None)
+		self._imglist[self.imgname]=img
 
 class testCyclades(unittest.TestCase):
 	"""Set up a Cyclades thorough test"""
