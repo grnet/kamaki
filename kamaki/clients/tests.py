@@ -382,7 +382,7 @@ class testCyclades(unittest.TestCase):
 		wait = 3
 		limit = 50
 		c=['|','/','-','\\']
-		sys.stdout.write('\tWait for net %s to be %s  '%(netid, status))
+		sys.stdout.write('\t- make net %s %s  '%(netid, status))
 		while wait < limit:
 			r = self.client.get_network_details(netid)
 			if r['status'] == status:
@@ -700,15 +700,18 @@ class testCyclades(unittest.TestCase):
 		self._wait_for_status(self.server1['id'], 'BUILD')
 		PROFILES=['DISABLED', 'ENABLED', 'DISABLED', 'PROTECTED']
 		fprofile = self.client.get_firewall_profile(self.server1['id'])
+		print('')
 		for counter, fprofile in enumerate(PROFILES):
 			start=fprofile
 			npos = counter + 1
 			nprofile = PROFILES[npos] if npos<len(PROFILES) else PROFILES[0]
-			print('\tprofile swap %s: %s -> %s'%(counter, fprofile, nprofile))
+			print('\tprofile swap %s: %s -> %s'%(npos, fprofile, nprofile))
 			self.client.set_firewall_profile(self.server1['id'], nprofile)
 			wait = 3
 			c=['|','/','-','\\']
 			while fprofile != nprofile:
+				if wait%10 == 0:
+					self.client.set_firewall_profile(self.server1['id'], nprofile)
 				self.assertEqual(fprofile, start)
 				sys.stdout.write('\t   profile is %s, wait %ss  '%(fprofile, wait))
 				for i in range(4*wait):
