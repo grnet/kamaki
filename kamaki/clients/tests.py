@@ -70,19 +70,31 @@ class testImage(unittest.TestCase):
 	def setUp(self):
 		cyclades_url = 'https://cyclades.okeanos.grnet.gr/api/v1.1'
 		url = 'https://cyclades.okeanos.grnet.gr/plankton'
-		token = 'Kn+G9dfmlPLR2WFnhfBOow=='
+		self.token = 'Kn+G9dfmlPLR2WFnhfBOow=='
 		self.imgid = 'b2dffe52-64a4-48c3-8a4c-8214cc3165cf'
 		self.now = time.mktime(time.gmtime())
 		self.imgname = 'img_%s'%self.now
 		self.imglocation = 'pithos://saxtouri@grnet.gr/pithos/my.img'
-		self.client = image(url, token)
-		self.cyclades = cyclades(cyclades_url, token)
-
+		self.client = image(url, self.token)
+		self.cyclades = cyclades(cyclades_url, self.token)
 		self._imglist={}
+
+	def _prepare_img(self):
+		imglocalpath = '/home/saxtouri/src/kamaki-settings/files/centos.diskdump'
+		f = open(imglocalpath, 'rb')
+		pithcli = pithos('https://pithos.okeanos.grnet.gr/v1',
+			self.token,
+			'saxtouri@grnet.gr',
+			'pithos')
+		pithcli.upload_object('my.img', f)
+		f.close()
+
+		self.client.register(self.imgname, self.imglocation, params=dict(is_public=True))
+		img = self._get_img_by_name(self.imgname)
+		self._imglist[self.imgname]=img
 
 	def tearDown(self):
 		for img in self._imglist.values():
-			print('\tDelete img %s (%s)'%(img['name'], img['id']))
 			self.cyclades.delete_image(img['id'])
 
 	def _get_img_by_name(self, name):
@@ -178,11 +190,28 @@ class testImage(unittest.TestCase):
 
 	def test_register(self):
 		"""Test register"""
-		print('// register %s %s --public'%(self.imgname, self.imglocation))
-		self.client.register(self.imgname, self.imglocation, params=dict(is_public=True))
-		img = self._get_img_by_name(self.imgname)
-		self.assertTrue(img != None)
-		self._imglist[self.imgname]=img
+		self._prepare_img()
+		self.assertTrue(len(self._imglist)>0)
+		for img in self._imglist.values():
+			self.assertTrue(img != None)
+
+	def test_set_members(self):
+		"""Test set_members"""
+		self._prepare_img()
+		members=['%s@fake.net'%self.now]
+		for img in self._imglist.values():
+			self.client.set_members(img['id'], members)
+			r = self.client.list_members(img['id'])
+			self.assertEqual(r[0]['member_id'], members[0])
+
+	def test_list_members(self):
+		"""Test list_members"""
+		self.test_set_members()
+
+	def test_list_shared(self):
+		"""Test list_shared"""
+		#No way to test this, if I dont have member images
+		pass
 
 class testCyclades(unittest.TestCase):
 	"""Set up a Cyclades thorough test"""

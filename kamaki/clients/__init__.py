@@ -63,7 +63,6 @@ class Client(object):
             details = r.text
         except:
             details = ''
-        print('RAISE?')
         raise ClientError(message=message, status=r.status_code, details=details)
 
     def set_header(self, name, value, iff=True):
