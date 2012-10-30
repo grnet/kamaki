@@ -208,8 +208,22 @@ class testImage(unittest.TestCase):
 		"""Test list_members"""
 		self.test_set_members()
 
+	def test_remove_members(self):
+		"""Test remove_members - NO CHECK"""
+		return
+		self._prepare_img()
+		members=['%s@fake.net'%self.now, '%s_v2@fake.net'%self.now]
+		for img in self._imglist.values():
+			self.client.set_members(img['id'], members)
+			r = self.client.list_members(img['id'])
+			self.assertTrue(len(r)>1)
+			self.client.remove_member(img['id'], members[0])
+			r0 = self.client.list_members(img['id'])
+			self.assertEqual(len(r), 1+len(r0))
+			self.assertEqual(r0[0]['member_id'], members[1])
+
 	def test_list_shared(self):
-		"""Test list_shared"""
+		"""Test list_shared - NOT CHECKED"""
 		#No way to test this, if I dont have member images
 		pass
 
