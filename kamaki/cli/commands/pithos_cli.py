@@ -104,7 +104,6 @@ class ProgressBarArgument(FlagArgument):
         try:
             bar = ProgressBar(message.ljust(message_len))
         except NameError:
-            print('Warning: no progress bar\n\t(pip install progress to get it)')
             return None
         return bar.get_generator()
 
