@@ -638,3 +638,4 @@ class PithosClient(PithosRestAPI):
         self.assert_container()
         r = self.object_get(path, format='json', version='list')
         return r.json['versions']
+

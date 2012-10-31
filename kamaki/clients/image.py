@@ -135,3 +135,4 @@ class ImageClient(Client):
         req = {'memberships': [{'member_id': member} for member in members]}
         r = self.put(path, json=req, success=204)
         r.release()
+

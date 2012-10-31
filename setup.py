@@ -34,12 +34,24 @@
 # or implied, of GRNET S.A.
 
 from setuptools import setup
+<<<<<<< HEAD
 #from sys import version_info
 
 import kamaki
 
 optional = ['ansicolors==1.0.2', 'progress==1.0.1']
 required = ['gevent==0.13.6', 'snf-common>=0.10', 'argparse']
+=======
+from sys import version_info
+
+import kamaki
+
+
+required = ['ansicolors==1.0.2', 'progress==1.0.1', 'requests==0.12.1']
+
+if version_info[0:2] < (2, 7):
+    required.extend(['argparse', 'ordereddict'])
+>>>>>>> a8f25c942b7d547f1622c92291ff9037719f454d
 
 setup(
     name='kamaki',

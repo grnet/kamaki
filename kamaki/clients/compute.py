@@ -35,7 +35,6 @@ from kamaki.clients import Client, ClientError
 from kamaki.clients.utils import path4url
 import json
 
-
 class ComputeClient(Client):
     """OpenStack Compute API 1.1 client"""
 

@@ -163,4 +163,3 @@ class Client(object):
 
     def move(self, path, **kwargs):
         return self.request('move', path, **kwargs)
-
