@@ -106,7 +106,7 @@ class ImageClient(Client):
                 raise ClientError(err.message, err.status, details)
             except ValueError:
                 pass
-            raise
+            raise err
         r.release()
 
     def list_members(self, image_id):

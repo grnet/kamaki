@@ -38,8 +38,9 @@ from setuptools import setup
 
 import kamaki
 
-optional = ['ansicolors==1.0.2', 'progress==1.0.1']
-required = ['gevent==0.13.6', 'snf-common>=0.10', 'argparse']
+#Suggested packages can be installed manually later, but it is not nessecary
+suggested = ['ansicolors==1.0.2', 'progress==1.0.1']
+required = ['gevent>=0.13.6', 'snf-common>=0.10', 'argparse']
 
 setup(
     name='kamaki',
