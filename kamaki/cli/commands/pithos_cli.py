@@ -154,7 +154,7 @@ class RangeArgument(ValueArgument):
         if newvalue is None:
             self._value = self.default
             return
-        (start, end) = newvalue.split('_')
+        (start, end) = newvalue.split('-')
         (start, end) = (int(start), int(end))
         self._value = '%s-%s'%(start, end)
 
@@ -601,6 +601,33 @@ class store_upload(_store_container_command):
         print 'Upload completed'
 
 @command()
+class store_cat(_store_container_command):
+    """Print a file to console"""
+
+    def __init__(self, arguments={}):
+        super(self.__class__, self).__init__(arguments)
+        self.arguments['range'] = RangeArgument('show range of data', '--range')
+        self.arguments['if_match'] = ValueArgument('show output if ETags match', '--if-match')
+        self.arguments['if_none_match'] = ValueArgument('show output if ETags match',
+            '--if-none-match')
+        self.arguments['if_modified_since'] = DateArgument('show output modified since then',
+            '--if-modified-since')
+        self.arguments['if_unmodified_since'] = DateArgument('show output unmodified since then',
+            '--if-unmodified-since')
+        self.arguments['object_version'] = ValueArgument('get the specific version',
+            '--object-version')
+
+    def main(self, container___path):
+        super(self.__class__, self).main(container___path, path_is_optional=False)
+        self.client.download_object(self.path, stdout,
+            range=self.get_argument('range'),
+            version=self.get_argument('object_version'),
+            if_match=self.get_argument('if_match'),
+            if_none_match=self.get_argument('if_none_match'),
+            if_modified_since=self.get_argument('if_modified_since'),
+            if_unmodified_since=self.get_argument('if_unmodified_since'))
+
+@command()
 class store_download(_store_container_command):
     """Download a file"""
 
@@ -622,7 +649,7 @@ class store_download(_store_container_command):
         self.arguments['progress_bar'] = ProgressBarArgument('do not show progress bar',
             '--no-progress-bar')
 
-    def main(self, container___path, local_path=None):
+    def main(self, container___path, local_path):
         super(self.__class__, self).main(container___path, path_is_optional=False)
 
         #setup output stream
