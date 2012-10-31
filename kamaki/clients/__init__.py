@@ -135,7 +135,7 @@ class Client(object):
             self.http_client.reset_headers()
             self.http_client.reset_params()
             errmsg = getattr(err, 'message', unicode(err))
-            errdetails = getattr(err, 'details', '')+' (%s)'%type(err)
+            errdetails ='%s %s'%(type(err), getattr(err, 'details', ''))
             errstatus = getattr(err, 'status', 0)
             raise ClientError(message=errmsg,status=errstatus,details=errdetails)
 
