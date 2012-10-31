@@ -47,10 +47,13 @@ from kamaki.clients.astakos import AstakosClient as astakos
 
 TEST_ALL = False
 
+global_username='XXXXXXXX'
+token='XXXXXXXX=='
+
 class testAstakos(unittest.TestCase):
 	def setUp(self):
 		url='https://accounts.okeanos.grnet.gr'
-		token = 'Kn+G9dfmlPLR2WFnhfBOow=='
+		global token
 		self.client = astakos(url, token)
 	def tearDown(self):
 		pass
@@ -70,21 +73,24 @@ class testImage(unittest.TestCase):
 	def setUp(self):
 		cyclades_url = 'https://cyclades.okeanos.grnet.gr/api/v1.1'
 		url = 'https://cyclades.okeanos.grnet.gr/plankton'
-		self.token = 'Kn+G9dfmlPLR2WFnhfBOow=='
+		global token
+		self.token = token
 		self.imgid = 'b2dffe52-64a4-48c3-8a4c-8214cc3165cf'
 		self.now = time.mktime(time.gmtime())
 		self.imgname = 'img_%s'%self.now
-		self.imglocation = 'pithos://saxtouri@grnet.gr/pithos/my.img'
+		global global_username
+		self.imglocation = 'pithos://%s@grnet.gr/pithos/my.img'%global_username
 		self.client = image(url, self.token)
 		self.cyclades = cyclades(cyclades_url, self.token)
 		self._imglist={}
 
 	def _prepare_img(self):
-		imglocalpath = '/home/saxtouri/src/kamaki-settings/files/centos.diskdump'
+		global global_username
+		imglocalpath = '/home/%s/src/kamaki-settings/files/centos.diskdump'%global_username
 		f = open(imglocalpath, 'rb')
 		pithcli = pithos('https://pithos.okeanos.grnet.gr/v1',
 			self.token,
-			'saxtouri@grnet.gr',
+			global_username,
 			'pithos')
 		pithcli.upload_object('my.img', f)
 		f.close()
@@ -232,10 +238,9 @@ class testCyclades(unittest.TestCase):
 	def setUp(self):
 		"""okeanos"""
 		url='https://cyclades.okeanos.grnet.gr/api/v1.1'
-		token='MI6PT0yrXJ9Ji/x8l9Wmig=='
-		token='Kn+G9dfmlPLR2WFnhfBOow=='
-		#account='saxtouri@gmail.com'
-		account='saxtouri@grnet.gr'
+		global token
+		global global_username
+		account='%s@grnet.gr'%global_username
 		self.img = 'b2dffe52-64a4-48c3-8a4c-8214cc3165cf'
 		self.img_details= {
 			u'status': u'ACTIVE',
@@ -267,8 +272,8 @@ class testCyclades(unittest.TestCase):
 
 		"""okeanos.io"""
 		#url = 'https://cyclades.okeanos.io/api/v1.1'
-		#token='0TpoyAXqJSPxLdDuZHiLOA=='
-		#account='saxtouri@admin.grnet.gr'
+		#global token
+		#account='%s@grnet.gr'%global_username
 		#self.img = '43cc8497-61c3-4c46-ae8d-3e33861f8527'
 		#self.img_details= {
 		#	u'status': u'ACTIVE',
@@ -1086,20 +1091,18 @@ class testPithos(unittest.TestCase):
 	def setUp(self):
 		"""
 		url = 'http://127.0.0.1:8000/v1'
-		token = 'C/yBXmz3XjTFBnujc2biAg=='
-		token = 'ac0yH8cQMEZu3M3Mp1MWGA=='
+		global token
 		account = 'admin@adminland.com'
 		"""
 
 		url='https://pithos.okeanos.grnet.gr/v1'
 
-		token='Kn+G9dfmlPLR2WFnhfBOow=='
-		account='saxtouri@grnet.gr'
+		global token
+		global global_username
+		account='%s@grnet.gr'%global_username
 
 		"""
 		url='https://pithos.okeanos.io/v1'
-		token='0TpoyAXqJSPxLdDuZHiLOA=='
-		account='saxtouri@admin.grnet.gr'
 		"""
 		
 		"""
