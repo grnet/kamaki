@@ -128,7 +128,6 @@ class KamakiHTTPConnection(HTTPConnection):
                 url=str(self.url),
                 headers=http_headers,
                 body=data)
-            print('WIIIII')
         except Exception as err:
             conn.close()
             if isinstance(err, DNSError) or isinstance(err, gaierror):
