@@ -36,6 +36,7 @@ from sys import exit
 from kamaki.cli.config import Config
 from kamaki.cli.errors import CLISyntaxError
 
+
 class Argument(object):
     """An argument that can be parsed from command line or otherwise"""
 
@@ -49,9 +50,10 @@ class Argument(object):
         if default is not None:
             self.default = default
 
-    @property 
+    @property
     def parsed_name(self):
         return getattr(self, '_parsed_name', None)
+
     @parsed_name.setter
     def parsed_name(self, newname):
         self._parsed_name = getattr(self, '_parsed_name', [])
@@ -60,41 +62,45 @@ class Argument(object):
         else:
             self._parsed_name.append(unicode(newname))
 
-    @property 
+    @property
     def help(self):
         return getattr(self, '_help', None)
+
     @help.setter
     def help(self, newhelp):
         self._help = unicode(newhelp)
 
-    @property 
+    @property
     def arity(self):
         return getattr(self, '_arity', None)
+
     @arity.setter
     def arity(self, newarity):
         newarity = int(newarity)
         assert newarity >= 0
         self._arity = newarity
 
-    @property 
+    @property
     def default(self):
         if not hasattr(self, '_default'):
             self._default = False if self.arity == 0 else None
         return self._default
+
     @default.setter
     def default(self, newdefault):
         self._default = newdefault
 
-    @property 
+    @property
     def value(self):
         return getattr(self, '_value', self.default)
+
     @value.setter
     def value(self, newvalue):
         self._value = newvalue
 
     def update_parser(self, parser, name):
         """Update an argument parser with this argument info"""
-        action = 'store_true' if self.arity==0 else 'store'
+        action = 'store_true' if self.arity == 0 else 'store'
         parser.add_argument(*self.parsed_name, dest=name, action=action,
             default=self.default, help=self.help)
 
@@ -102,13 +108,15 @@ class Argument(object):
         """Overide this method to give functionality to ur args"""
         raise NotImplementedError
 
+
 class ConfigArgument(Argument):
-    @property 
+    @property
     def value(self):
         return super(self.__class__, self).value
+
     @value.setter
     def value(self, config_file):
-        self._value = Config(config_file) if config_file is not None else Config()
+        self._value = Config(config_file) if config_file else Config()
 
     def get(self, group, term):
         return self.value.get(group, term)
@@ -118,40 +126,51 @@ class ConfigArgument(Argument):
 
 _config_arg = ConfigArgument(1, 'Path to configuration file', '--config')
 
+
 class CmdLineConfigArgument(Argument):
     def __init__(self, config_arg, help='', parsed_name=None, default=None):
         super(self.__class__, self).__init__(1, help, parsed_name, default)
         self._config_arg = config_arg
 
-    @property 
+    @property
     def value(self):
         return super(self.__class__, self).value
+
     @value.setter
     def value(self, options):
         if options == self.default:
             return
-        options = [unicode(options)] if not isinstance(options, list) else options
+        if not isinstance(options, list):
+            options = [unicode(options)]
         for option in options:
             keypath, sep, val = option.partition('=')
             if not sep:
-                raise CLISyntaxError(details='Missing = between key and value: -o section.key=val')
+                raise CLISyntaxError(
+                    details='Missing = (usage: -o section.key=val)')
             section, sep, key = keypath.partition('.')
             if not sep:
-                raise CLISyntaxError(details='Missing . between section and key: -o section.key=val')
-        self._config_arg.value.override(section.strip(), key.strip(), val.strip())
+                raise CLISyntaxError(
+                    details='Missing . (usage: -o section.key=val)')
+        self._config_arg.value.override(section.strip(),
+            key.strip(),
+            val.strip())
+
 
 class FlagArgument(Argument):
     def __init__(self, help='', parsed_name=None, default=None):
         super(FlagArgument, self).__init__(0, help, parsed_name, default)
 
+
 class ValueArgument(Argument):
     def __init__(self, help='', parsed_name=None, default=None):
         super(ValueArgument, self).__init__(1, help, parsed_name, default)
 
+
 class IntArgument(ValueArgument):
-    @property 
+    @property
     def value(self):
         return getattr(self, '_value', self.default)
+
     @value.setter
     def value(self, newvalue):
         if newvalue == self.default:
@@ -160,12 +179,15 @@ class IntArgument(ValueArgument):
         try:
             self._value = int(newvalue)
         except ValueError:
-            raise CLISyntaxError('IntArgument Error', details='Value %s not an int'%newvalue)
+            raise CLISyntaxError('IntArgument Error',
+                details='Value %s not an int' % newvalue)
+
 
 class VersionArgument(FlagArgument):
-    @property 
+    @property
     def value(self):
         return super(self.__class__, self).value
+
     @value.setter
     def value(self, newvalue):
         self._value = newvalue
@@ -174,16 +196,18 @@ class VersionArgument(FlagArgument):
     def main(self):
         if self.value:
             import kamaki
-            print('kamaki %s'%kamaki.__version__)
+            print('kamaki %s' % kamaki.__version__)
+
 
 class KeyValueArgument(ValueArgument):
     def __init__(self, help='', parsed_name=None, default={}):
-        super(KeyValueArgument,self).__init__(help, parsed_name, default)
+        super(KeyValueArgument, self).__init__(help, parsed_name, default)
 
-    @property 
+    @property
     def value(self):
         return super(KeyValueArgument, self).value
-    @value.setter 
+
+    @value.setter
     def value(self, keyvalue_pairs):
         if keyvalue_pairs == self.default:
             return
@@ -191,19 +215,25 @@ class KeyValueArgument(ValueArgument):
             keyvalue_pairs = keyvalue_pairs.strip().split(',')
         self._value = self.default
         for pair in keyvalue_pairs:
-            key,sep,val = pair.partition('=')
+            key, sep, val = pair.partition('=')
             if not sep:
-                raise CLISyntaxError(details='Missing "="" ( key1=val1,key2=val2 ...')
+                raise CLISyntaxError(
+                    details='Missing "="" (usage: key1=val1,key2=val2 ... )')
             self._value[key.strip()] = val.strip()
 
-_arguments = dict(config = _config_arg, help = Argument(0, 'Show help message', ('-h', '--help')),
-    debug = FlagArgument('Include debug output', ('-d', '--debug')),
-    include = FlagArgument('Include protocol headers in the output', ('-i', '--include')),
-    silent = FlagArgument('Do not output anything', ('-s', '--silent')),
-    verbose = FlagArgument('More info at response', ('-v', '--verbose')),
-    version = VersionArgument('Print current version', ('-V', '--version')),
-    options = CmdLineConfigArgument(_config_arg, 'Override a config value', ('-o', '--options'))
+_arguments = dict(config=_config_arg,
+    help=Argument(0, 'Show help message', ('-h', '--help')),
+    debug=FlagArgument('Include debug output', ('-d', '--debug')),
+    include=FlagArgument('Include protocol headers in the output',
+        ('-i', '--include')),
+    silent=FlagArgument('Do not output anything', ('-s', '--silent')),
+    verbose=FlagArgument('More info at response', ('-v', '--verbose')),
+    version=VersionArgument('Print current version', ('-V', '--version')),
+    options=CmdLineConfigArgument(_config_arg,
+        'Override a config value',
+        ('-o', '--options'))
 )
+
 
 def parse_known_args(parser, arguments=None):
     parsed, unparsed = parser.parse_known_args()

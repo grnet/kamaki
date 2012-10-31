@@ -35,39 +35,41 @@
 
 from os.path import exists
 
+
 def order_free_contains(containing, contained):
-	superset = containing.split()
-	for term in contained.split():
-		if term not in superset:
-			return False
-	return True
+    superset = containing.split()
+    for term in contained.split():
+        if term not in superset:
+            return False
+    return True
+
 
 class History(object):
-	def __init__(self, filepath):
-		self.filepath=filepath
+    def __init__(self, filepath):
+        self.filepath = filepath
 
-	@classmethod
-	def _match(self,line, match_terms):
-		if match_terms is None:
-			return True
-		for term in match_terms.split():
-			if term not in line:
-				return False
-		return True
+    @classmethod
+    def _match(self, line, match_terms):
+        if match_terms is None:
+            return True
+        for term in match_terms.split():
+            if term not in line:
+                return False
+        return True
 
-	def get(self, match_terms=None, limit=0):
-		f = open(self.filepath, 'r')
-		result = ['%s.  \t%s'%(index+1,line) \
-			for index,line in enumerate(f.readlines()) \
-			if self._match(line, match_terms)]
-		offset = len(result)-limit if limit and len(result) > limit else 0
-		return result[offset:]
+    def get(self, match_terms=None, limit=0):
+        f = open(self.filepath, 'r')
+        result = ['%s.  \t%s' % (index + 1, line)\
+            for index, line in enumerate(f.readlines())\
+            if self._match(line, match_terms)]
+        offset = len(result) - limit if limit and len(result) > limit else 0
+        return result[offset:]
 
-	def add(self, line):
-		f = open(self.filepath, 'a+')
-		f.write(line+'\n')
-		f.close()
+    def add(self, line):
+        f = open(self.filepath, 'a+')
+        f.write(line + '\n')
+        f.close()
 
-	def clean(self):
-		f = open(self.filepath, 'w')
-		f.close()
+    def clean(self):
+        f = open(self.filepath, 'w')
+        f.close()
