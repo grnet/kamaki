@@ -31,6 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
+
 class _command_init(object):
     def __init__(self, arguments={}):
         self.arguments = arguments
@@ -40,4 +41,4 @@ class _command_init(object):
             pass
 
     def get_argument(self, argterm):
-    	return self.arguments[argterm].value
+        return self.arguments[argterm].value

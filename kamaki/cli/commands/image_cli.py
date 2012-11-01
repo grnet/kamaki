@@ -1,4 +1,4 @@
-# Copyright 2011-2012 GRNET S.A. All rights reserved.
+# Copyright 2012 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -31,24 +31,32 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-API_DESCRIPTION = {'image':'Compute/Cyclades or Glance API image commands'}
-
 from kamaki.cli import command
 from kamaki.cli.errors import raiseCLIError
 from kamaki.cli.utils import print_dict, print_items, bold
 from kamaki.clients.image import ImageClient, ClientError
-from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument, IntArgument
+from kamaki.cli.argument import\
+    FlagArgument, ValueArgument, KeyValueArgument, IntArgument
 from kamaki.cli.commands.cyclades_cli import _init_cyclades
 from kamaki.cli.commands import _command_init
+
+
+API_DESCRIPTION = {'image': 'Compute/Cyclades or Glance API image commands'}
+
 
 class _init_image(_command_init):
     def main(self):
         try:
-            token = self.config.get('image', 'token') or self.config.get('global', 'token')
-            base_url = self.config.get('image', 'url') or self.config.get('global', 'url')
+            token = self.config.get('image', 'token')\
+                or self.config.get('compute', 'token')\
+                or self.config.get('global', 'token')
+            base_url = self.config.get('image', 'url')\
+                or self.config.get('compute', 'url')\
+                or self.config.get('global', 'url')
             self.client = ImageClient(base_url=base_url, token=token)
         except ClientError as err:
             raiseCLIError(err)
+
 
 @command()
 class image_public(_init_image):
@@ -57,31 +65,42 @@ class image_public(_init_image):
     def __init__(self, arguments={}):
         super(image_public, self).__init__(arguments)
         self.arguments['detail'] = FlagArgument('show detailed output', '-l')
-        self.arguments['container_format'] = ValueArgument('filter by container format',
-            '--container-format')
-        self.arguments['disk_format'] = ValueArgument('filter by disk format', '--disk-format')
+        self.arguments['container_format'] =\
+            ValueArgument('filter by container format', '--container-format')
+        self.arguments['disk_format'] =\
+            ValueArgument('filter by disk format', '--disk-format')
         self.arguments['name'] = ValueArgument('filter by name', '--name')
-        self.arguments['size_min'] = IntArgument('filter by minimum size', '--size-min')
-        self.arguments['size_max'] = IntArgument('filter by maximum size', '--size-max')
-        self.arguments['status'] = ValueArgument('filter by status', '--status')
-        self.arguments['order'] = ValueArgument('order by FIELD (use a - prefix to reverse order)',
+        self.arguments['size_min'] =\
+            IntArgument('filter by minimum size', '--size-min')
+        self.arguments['size_max'] =\
+            IntArgument('filter by maximum size', '--size-max')
+        self.arguments['status'] =\
+            ValueArgument('filter by status', '--status')
+        self.arguments['order'] =\
+            ValueArgument('order by FIELD (use a - prefix to reverse order)',
             '--order', default='')
 
     def main(self):
         super(self.__class__, self).main()
         filters = {}
-        for arg in ('container_format', 'disk_format', 'name', 'size_min', 'size_max', 'status'):
+        for arg in ('container_format',
+            'disk_format',
+            'name',
+            'size_min',
+            'size_max',
+            'status'):
             val = self.get_argument(arg)
             if val is not None:
                 filters[arg] = val
 
         order = self.get_argument('order')
+        detail = self.get_argument('detail')
         try:
-            images = self.client.list_public(self.get_argument('detail'), filters=filters,
-                order=order)
+            images = self.client.list_public(detail, filters, order)
         except ClientError as err:
             raiseCLIError(err)
         print_items(images, title=('name',))
+
 
 @command()
 class image_meta(_init_image):
@@ -95,21 +114,27 @@ class image_meta(_init_image):
             raiseCLIError(err)
         print_dict(image)
 
+
 @command()
 class image_register(_init_image):
     """Register an image"""
 
     def __init__(self, arguments={}):
         super(image_register, self).__init__(arguments)
-        self.arguments['checksum'] = ValueArgument('set image checksum', '--checksum')
-        self.arguments['container_format'] = ValueArgument('set container format',
-            '--container-format')
-        self.arguments['disk_format'] = ValueArgument('set disk format', '--disk-format')
+        self.arguments['checksum'] =\
+            ValueArgument('set image checksum', '--checksum')
+        self.arguments['container_format'] =\
+            ValueArgument('set container format', '--container-format')
+        self.arguments['disk_format'] =\
+            ValueArgument('set disk format', '--disk-format')
         self.arguments['id'] = ValueArgument('set image ID', '--id')
-        self.arguments['owner'] = ValueArgument('set image owner (admin only)', '--owner')
-        self.arguments['properties'] = KeyValueArgument(parsed_name='--properties',
-            help = 'add properties in the form key1=val1,key2=val2,...')
-        self.arguments['is_public'] = FlagArgument('mark image as public', '--public')
+        self.arguments['owner'] =\
+            ValueArgument('set image owner (admin only)', '--owner')
+        self.arguments['properties'] =\
+            KeyValueArgument(parsed_name='--properties',
+            help='add properties in the form key1=val1,key2=val2,...')
+        self.arguments['is_public'] =\
+            FlagArgument('mark image as public', '--public')
         self.arguments['size'] = IntArgument('set image size', '--size')
 
     def main(self, name, location):
@@ -121,20 +146,30 @@ class image_register(_init_image):
                 account = account[:-1]
             container = self.config.get('store', 'container') \
                 or self.config.get('global', 'container')
-            location = 'pithos://%s/%s'%(account, location) \
-                if container is None or len(container) == 0 \
-                else 'pithos://%s/%s/%s' % (account, container, location)
+            if container is None or len(container) == 0:
+                location = 'pithos://%s/%s' % (account, location)
+            else:
+                location = 'pithos://%s/%s/%s' % (account, container, location)
 
         params = {}
-        for key in ('checksum','container_format','disk_format','id','owner','size','is_public'):
+        for key in ('checksum',
+            'container_format',
+            'disk_format', 'id',
+            'owner',
+            'size',
+            'is_public'):
             val = self.get_argument(key)
             if val is not None:
                 params[key] = val
 
         try:
-            self.client.register(name, location, params, self.get_argument('properties'))
+            self.client.register(name,
+                location,
+                params,
+                self.get_argument('properties'))
         except ClientError as err:
             raiseCLIError(err)
+
 
 @command()
 class image_members(_init_image):
@@ -149,6 +184,7 @@ class image_members(_init_image):
         for member in members:
             print(member['member_id'])
 
+
 @command()
 class image_shared(_init_image):
     """List shared images"""
@@ -162,6 +198,7 @@ class image_shared(_init_image):
         for image in images:
             print(image['image_id'])
 
+
 @command()
 class image_addmember(_init_image):
     """Add a member to an image"""
@@ -173,6 +210,7 @@ class image_addmember(_init_image):
         except ClientError as err:
             raiseCLIError(err)
 
+
 @command()
 class image_delmember(_init_image):
     """Remove a member from an image"""
@@ -183,6 +221,7 @@ class image_delmember(_init_image):
             self.client.remove_member(image_id, member)
         except ClientError as err:
             raiseCLIError(err)
+
 
 @command()
 class image_setmembers(_init_image):
@@ -208,7 +247,7 @@ class image_list(_init_cyclades):
         for img in images:
             iname = img.pop('name')
             iid = img.pop('id')
-            print('%s (%s)'%(bold(iname), bold(unicode(iid))))
+            print('%s (%s)' % (bold(iname), bold(unicode(iid))))
             if self.get_argument('detail'):
                 image_info._print(img)
 
@@ -220,13 +259,14 @@ class image_list(_init_cyclades):
             raiseCLIError(err)
         self._print(images)
 
+
 @command()
 class image_info(_init_cyclades):
     """Get image details"""
 
     @classmethod
     def _print(self, image):
-        if image.has_key('metadata'):
+        if 'metadata' in image:
             image['metadata'] = image['metadata']['values']
         print_dict(image, ident=14)
 
@@ -238,6 +278,7 @@ class image_info(_init_cyclades):
             raiseCLIError(err)
         self._print(image)
 
+
 @command()
 class image_delete(_init_cyclades):
     """Delete image"""
@@ -248,6 +289,7 @@ class image_delete(_init_cyclades):
             self.client.delete_image(image_id)
         except ClientError as err:
             raiseCLIError(err)
+
 
 @command()
 class image_properties(_init_cyclades):
@@ -261,6 +303,7 @@ class image_properties(_init_cyclades):
             raiseCLIError(err)
         print_dict(reply)
 
+
 @command()
 class image_addproperty(_init_cyclades):
     """Add an image property"""
@@ -272,6 +315,7 @@ class image_addproperty(_init_cyclades):
         except ClientError as err:
             raiseCLIError(err)
         print_dict(reply)
+
 
 @command()
 class image_setproperty(_init_cyclades):
@@ -285,6 +329,7 @@ class image_setproperty(_init_cyclades):
         except ClientError as err:
             raiseCLIError(err)
         print_dict(reply)
+
 
 @command()
 class image_delproperty(_init_cyclades):
