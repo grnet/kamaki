@@ -1,7 +1,7 @@
 Source: kamaki
 Section: python
 Priority: optional
-Maintainer: Vangelis Koukis <vkoukis@grnet.gr>
+Maintainer: Stavros Sachtouris <saxtouri@grnet.gr>
 Build-Depends: debhelper (>= 8), python-all (>= 2.5)
 Standards-Version: 3.9.2
 XS-Python-Version: >= 2.6
@@ -9,7 +9,7 @@ Homepage: https://code.grnet.gr/projects/kamaki
 
 Package: kamaki
 Architecture: all
-Depends: ${misc:Depends}, ${python:Depends}, python-setuptools, python-requests (>= 0.12)
+Depends: ${misc:Depends}, ${python:Depends}, python-setuptools, python-gevent (>= 0.13.6), snf-common (>= 0.11)
 XB-Python-Version: ${python:Versions}
 Description: Simple, yet intuitive, command-line tool for managing clouds.
              It is an initial implementation of the OpenStack Compute API, 
