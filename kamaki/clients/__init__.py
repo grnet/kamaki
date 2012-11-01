@@ -5,11 +5,11 @@
 # conditions are met:
 #
 #   1. Redistributions of source code must retain the above
-#      copyright notice, this list of conditions and the following
+#      copyright notice, self.list of conditions and the following
 #      disclaimer.
 #
 #   2. Redistributions in binary form must reproduce the above
-#      copyright notice, this list of conditions and the following
+#      copyright notice, self.list of conditions and the following
 #      disclaimer in the documentation and/or other materials
 #      provided with the distribution.
 #
@@ -33,21 +33,11 @@
 
 import json
 import logging
-
-import requests
-
-from requests.auth import AuthBase
-
+from kamaki.clients.connection import HTTPConnectionError
+from kamaki.clients.connection.kamakicon import KamakiHTTPConnection
 
 sendlog = logging.getLogger('clients.send')
 recvlog = logging.getLogger('clients.recv')
-
-
-# Add a convenience status property to the responses
-def _status(self):
-    return requests.status_codes._codes[self.status_code][0].upper()
-requests.Response.status = property(_status)
-
 
 class ClientError(Exception):
     def __init__(self, message, status=0, details=''):
@@ -56,57 +46,101 @@ class ClientError(Exception):
         self.status = status
         self.details = details
 
-
 class Client(object):
-    def __init__(self, base_url, token):
+
+    def __init__(self, base_url, token, http_client=KamakiHTTPConnection()):
         self.base_url = base_url
         self.token = token
+        self.headers = {}
+        self.DATE_FORMATS = ["%a %b %d %H:%M:%S %Y",
+            "%A, %d-%b-%y %H:%M:%S GMT",
+            "%a, %d %b %Y %H:%M:%S GMT"]
+        self.http_client = http_client
 
-    def raise_for_status(self, r):
-        message = "%d %s" % (r.status_code, r.status)
-        details = r.text
-        raise ClientError(message, r.status_code, details)
+    def _raise_for_status(self, r):
+        message = "%s" % r.status
+        try:
+            details = r.text
+        except:
+            details = ''
+        raise ClientError(message=message, status=r.status_code, details=details)
 
-    def request(self, method, path, **kwargs):
-        raw = kwargs.pop('raw', False)
-        success = kwargs.pop('success', 200)
+    def set_header(self, name, value, iff=True):
+        """Set a header 'name':'value' provided value is not None and iff is True"""
+        if value is not None and iff:
+            self.http_client.set_header(name, value)
 
-        data = kwargs.pop('data', None)
-        headers = kwargs.pop('headers', {})
-        headers.setdefault('X-Auth-Token', self.token)
+    def set_param(self, name, value=None, iff=True):
+        if iff:
+            self.http_client.set_param(name, value)
 
-        if 'json' in kwargs:
-            data = json.dumps(kwargs.pop('json'))
-            headers.setdefault('Content-Type', 'application/json')
+    def set_default_header(self, name, value):
+        self.http_client.headers.setdefault(name, value)
 
-        if data:
-            headers.setdefault('Content-Length', str(len(data)))
+    def request(self,
+        method,
+        path,
+        async_headers={},
+        async_params={},
+        **kwargs):
+        """In threaded/asynchronous requests, headers and params are not safe
+        Therefore, the standard self.set_header/param system can be used only for 
+        headers and params that are common for all requests. All other params and
+        headers should passes as
+        @param async_headers
+        @async_params
+        E.g. in most queries the 'X-Auth-Token' header might be the same for all, but the
+        'Range' header might be different from request to request.
+        """
 
-        url = self.base_url + path
-        kwargs.setdefault('verify', False)  # Disable certificate verification
-        r = requests.request(method, url, headers=headers, data=data, **kwargs)
+        try:
+            success = kwargs.pop('success', 200)
 
-        req = r.request
-        sendlog.info('%s %s', req.method, req.url)
-        for key, val in req.headers.items():
-            sendlog.info('%s: %s', key, val)
-        sendlog.info('')
-        if req.data:
-            sendlog.info('%s', req.data)
+            data = kwargs.pop('data', None)
+            self.set_default_header('X-Auth-Token', self.token)
 
-        recvlog.info('%d %s', r.status_code, r.status)
-        for key, val in r.headers.items():
-            recvlog.info('%s: %s', key, val)
-        recvlog.info('')
-        if not raw and r.content:
-            recvlog.debug(r.content)
+            if 'json' in kwargs:
+                data = json.dumps(kwargs.pop('json'))
+                self.set_default_header('Content-Type', 'application/json')
+            if data:
+                self.set_default_header('Content-Length', unicode(len(data)))
 
-        if success is not None:
-            # Success can either be an in or a collection
-            success = (success,) if isinstance(success, int) else success
-            if r.status_code not in success:
-                self.raise_for_status(r)
+            self.http_client.url = self.base_url + path
+            r = self.http_client.perform_request(method, data, async_headers, async_params)
 
+            req = self.http_client
+            sendlog.info('%s %s', method, req.url)
+            headers = dict(req.headers)
+            headers.update(async_headers)
+
+            for key, val in headers.items():
+                sendlog.info('\t%s: %s', key, val)
+            sendlog.info('')
+            if data:
+                sendlog.info('%s', data)
+
+            recvlog.info('%d %s', r.status_code, r.status)
+            for key, val in r.headers.items():
+                recvlog.info('%s: %s', key, val)
+            #if r.content:
+            #    recvlog.debug(r.content)
+
+            if success is not None:
+                # Success can either be an in or a collection
+                success = (success,) if isinstance(success, int) else success
+                if r.status_code not in success:
+                    r.release()
+                    self._raise_for_status(r)
+        except Exception as err:
+            self.http_client.reset_headers()
+            self.http_client.reset_params()
+            errmsg = getattr(err, 'message', unicode(err))
+            errdetails ='%s %s'%(type(err), getattr(err, 'details', ''))
+            errstatus = getattr(err, 'status', 0)
+            raise ClientError(message=errmsg,status=errstatus,details=errdetails)
+
+        self.http_client.reset_headers()
+        self.http_client.reset_params()
         return r
 
     def delete(self, path, **kwargs):
@@ -124,10 +158,8 @@ class Client(object):
     def put(self, path, **kwargs):
         return self.request('put', path, **kwargs)
 
+    def copy(self, path, **kwargs):
+        return self.request('copy', path, **kwargs)
 
-from .compute import ComputeClient as compute
-from .image import ImageClient as image
-from .storage import StorageClient as storage
-from .cyclades import CycladesClient as cyclades
-from .pithos import PithosClient as pithos
-from .astakos import AstakosClient as astakos
+    def move(self, path, **kwargs):
+        return self.request('move', path, **kwargs)

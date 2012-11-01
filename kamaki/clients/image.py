@@ -30,13 +30,14 @@
 # documentation are those of the authors and should not be
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
-
-
-from . import Client, ClientError
-
+from kamaki.clients import Client, ClientError
+from kamaki.clients.utils import path4url
 
 class ImageClient(Client):
     """OpenStack Image Service API 1.0 and GRNET Plankton client"""
+
+    def __init__(self, base_url, token):
+        super(ImageClient, self).__init__(base_url, token)
 
     def raise_for_status(self, r):
         if r.status_code == 404:
@@ -46,24 +47,22 @@ class ImageClient(Client):
         super(ImageClient, self).raise_for_status(r)
 
     def list_public(self, detail=False, filters={}, order=''):
-        path = '/images/detail' if detail else '/images/'
-        params = {}
-        params.update(filters)
+        path = path4url('images','detail') if detail else path4url('images/')
 
+        if isinstance(filters, dict):
+            self.http_client.params.update(filters)
         if order.startswith('-'):
-            params['sort_dir'] = 'desc'
+            self.set_param('sort_dir', 'desc')
             order = order[1:]
         else:
-            params['sort_dir'] = 'asc'
+            self.set_param('sort_dir', 'asc')
+        self.set_param('sort_key', order, iff=order)
 
-        if order:
-            params['sort_key'] = order
-
-        r = self.get(path, params=params, success=200)
+        r = self.get(path, success=200)
         return r.json
 
     def get_meta(self, image_id):
-        path = '/images/%s' % (image_id,)
+        path=path4url('images', image_id)
         r = self.head(path, success=200)
 
         reply = {}
@@ -85,41 +84,55 @@ class ImageClient(Client):
         return reply
 
     def register(self, name, location, params={}, properties={}):
-        path = '/images/'
-        headers = {}
-        headers['x-image-meta-name'] = name
-        headers['x-image-meta-location'] = location
+        path = path4url('images/')
+        self.set_header('X-Image-Meta-Name', name)
+        self.set_header('X-Image-Meta-Location', location)
 
         for key, val in params.items():
             if key in ('id', 'store', 'disk_format', 'container_format',
                        'size', 'checksum', 'is_public', 'owner'):
                 key = 'x-image-meta-' + key.replace('_', '-')
-                headers[key] = val
+                self.set_header(key, val)
 
         for key, val in properties.items():
-            headers['x-image-meta-property-' + key] = val
+            self.set_header('X-Image-Meta-Property-'+key, val)
 
-        self.post(path, headers=headers, success=200)
+        try:
+            r = self.post(path, success=200)
+        except ClientError as err:
+            try:
+                prefix, suffix = err.details.split('File not found')
+                details = '%s Location %s not found %s'%(prefix, location, suffix)
+                raise ClientError(err.message, err.status, details)
+            except ValueError:
+                pass
+            raise err
+        r.release()
 
     def list_members(self, image_id):
-        path = '/images/%s/members' % (image_id,)
+        path = path4url('images',image_id,'members')
         r = self.get(path, success=200)
         return r.json['members']
 
     def list_shared(self, member):
-        path = '/shared-images/%s' % (member,)
+        path = path4url('shared-images', member)
+        #self.set_param('format', 'json')
         r = self.get(path, success=200)
         return r.json['shared_images']
 
     def add_member(self, image_id, member):
-        path = '/images/%s/members/%s' % (image_id, member)
-        self.put(path, success=204)
+        path = path4url('images', image_id, 'members', member)
+        r = self.put(path, success=204)
+        r.release()
 
     def remove_member(self, image_id, member):
-        path = '/images/%s/members/%s' % (image_id, member)
-        self.delete(path, success=204)
+        path = path4url('images', image_id, 'members', member)
+        r = self.delete(path, success=204)
+        r.release()
 
     def set_members(self, image_id, members):
-        path = '/images/%s/members' % image_id
+        path = path4url('images', image_id, 'members')
         req = {'memberships': [{'member_id': member} for member in members]}
-        self.put(path, json=req, success=204)
+        r = self.put(path, json=req, success=204)
+        r.release()
+

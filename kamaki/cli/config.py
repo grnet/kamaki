@@ -44,6 +44,7 @@ except ImportError:
 
 # Path to the file that stores the configuration
 CONFIG_PATH = os.path.expanduser('~/.kamakirc')
+HISTORY_PATH = os.path.expanduser('~/.kamaki.history')
 
 # Name of a shell variable to bypass the CONFIG_PATH value
 CONFIG_ENV = 'KAMAKI_CONFIG'
@@ -57,29 +58,37 @@ DEFAULTS = {
         'colors': 'on',
         'token': ''
     },
+    'config': {
+        'cli': 'config_cli',
+        'description': 'Configuration commands'
+    },
+    'history':{
+        'cli': 'history_cli',
+        'file':HISTORY_PATH
+    },
+    'store': {
+        'cli': 'pithos_cli',
+        'url': 'https://pithos.okeanos.grnet.gr/v1'
+    },
     'compute': {
-        'enable': 'on',
-        'cyclades_extensions': 'on',
-        'url': 'https://cyclades.okeanos.grnet.gr/api/v1.1',
-        'token': ''
+        'url': 'https://cyclades.okeanos.grnet.gr/api/v1.1'
+    },
+    'server': {
+        'cli':'cyclades_cli'
+    },
+    'flavor': {
+        'cli':'cyclades_cli'
+    },
+    'network': {
+        'cli':'cyclades_cli'
     },
     'image': {
-        'enable': 'on',
-        'url': 'https://cyclades.okeanos.grnet.gr/plankton',
-        'token': ''
-    },
-    'storage': {
-        'enable': 'on',
-        'pithos_extensions': 'on',
-        'url': 'https://pithos.okeanos.grnet.gr/v1',
-        'account': '',
-        'container': '',
-        'token': ''
+        'cli': 'image_cli',
+        'url': 'https://cyclades.okeanos.grnet.gr/plankton'
     },
     'astakos': {
-        'enable': 'on',
-        'url': 'https://astakos.okeanos.grnet.gr',
-        'token': ''
+        'cli': 'astakos_cli',
+        'url': 'https://accounts.okeanos.grnet.gr'
     }
 }
 
@@ -89,10 +98,16 @@ class Config(RawConfigParser):
         RawConfigParser.__init__(self, dict_type=OrderedDict)
         self.path = path or os.environ.get(CONFIG_ENV, CONFIG_PATH)
         self._overrides = defaultdict(dict)
+        self._load_defaults()
         self.read(self.path)
 
-    def sections(self):
-        return DEFAULTS.keys()
+    def _load_defaults(self):
+        for section, options in DEFAULTS.items():
+            for option, val in options.items():
+                self.set(section, option, val)
+
+    def apis(self):
+        return [api for api in self.sections() if api != 'global']
 
     def get(self, section, option):
         value = self._overrides.get(section, {}).get(option)
@@ -116,7 +131,10 @@ class Config(RawConfigParser):
             pass
 
     def items(self, section, include_defaults=False):
-        d = dict(DEFAULTS[section]) if include_defaults else {}
+        try:
+            d = dict(DEFAULTS[section]) if include_defaults else {}
+        except KeyError:
+            d = {}
         try:
             d.update(RawConfigParser.items(self, section))
         except NoSectionError:

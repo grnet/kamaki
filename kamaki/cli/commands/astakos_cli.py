@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-
-# Copyright 2011 GRNET S.A. All rights reserved.
+# Copyright 2011-2012 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -31,32 +29,33 @@
 # The views and conclusions contained in the software and
 # documentation are those of the authors and should not be
 # interpreted as representing official policies, either expressed
-# or implied, of GRNET S.A.
+# or implied, of GRNET S.A.command
 
-from setuptools import setup
-#from sys import version_info
 
-import kamaki
+from kamaki.cli import command#, set_api_description
+#set_api_description('astakos', 'Astakos API commands')
+API_DESCRIPTION = {'astakos':'Astakos API commands'}
+from kamaki.clients.astakos import AstakosClient, ClientError
+from kamaki.cli.utils import print_dict
+from kamaki.cli.errors import raiseCLIError
+from kamaki.cli.commands import _command_init
 
-#Suggested packages can be installed manually later, but it is not nessecary
-suggested = ['ansicolors==1.0.2', 'progress==1.0.1']
-required = ['gevent>=0.13.6', 'snf-common>=0.10', 'argparse']
+class _astakos_init(_command_init):
+    def main(self):
+        token = self.config.get('astakos', 'token') or self.config.get('global', 'token')
+        base_url = self.config.get('astakos', 'url') or self.config.get('global', 'url')
+        if base_url is None:
+            raise ClientError('no URL for astakos')
+        self.client = AstakosClient(base_url=base_url, token=token)
 
-setup(
-    name='kamaki',
-    version=kamaki.__version__,
-    description='A command-line tool for poking clouds',
-    long_description=open('README.rst').read(),
-    url='http://code.grnet.gr/projects/kamaki',
-    license='BSD',
-    packages=['kamaki',
-        'kamaki.cli',
-        'kamaki.clients',
-        'kamaki.clients.connection',
-        'kamaki.cli.commands'],
-    include_package_data=True,
-    entry_points={
-        'console_scripts': ['kamaki = kamaki.cli:main']
-    },
-    install_requires=required
-)
+@command()
+class astakos_authenticate(_astakos_init):
+    """Authenticate a user"""
+
+    def main(self):
+        super(astakos_authenticate, self).main()
+        try:
+            reply = self.client.authenticate()
+        except ClientError as err:
+            raiseCLIError(err)
+        print_dict(reply)

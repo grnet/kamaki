@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright 2011 GRNET S.A. All rights reserved.
+# Copyright 2012 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -33,30 +33,41 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from setuptools import setup
-#from sys import version_info
+from os.path import exists
 
-import kamaki
+def order_free_contains(containing, contained):
+	superset = containing.split()
+	for term in contained.split():
+		if term not in superset:
+			return False
+	return True
 
-#Suggested packages can be installed manually later, but it is not nessecary
-suggested = ['ansicolors==1.0.2', 'progress==1.0.1']
-required = ['gevent>=0.13.6', 'snf-common>=0.10', 'argparse']
+class History(object):
+	def __init__(self, filepath):
+		self.filepath=filepath
 
-setup(
-    name='kamaki',
-    version=kamaki.__version__,
-    description='A command-line tool for poking clouds',
-    long_description=open('README.rst').read(),
-    url='http://code.grnet.gr/projects/kamaki',
-    license='BSD',
-    packages=['kamaki',
-        'kamaki.cli',
-        'kamaki.clients',
-        'kamaki.clients.connection',
-        'kamaki.cli.commands'],
-    include_package_data=True,
-    entry_points={
-        'console_scripts': ['kamaki = kamaki.cli:main']
-    },
-    install_requires=required
-)
+	@classmethod
+	def _match(self,line, match_terms):
+		if match_terms is None:
+			return True
+		for term in match_terms.split():
+			if term not in line:
+				return False
+		return True
+
+	def get(self, match_terms=None, limit=0):
+		f = open(self.filepath, 'r')
+		result = ['%s.  \t%s'%(index+1,line) \
+			for index,line in enumerate(f.readlines()) \
+			if self._match(line, match_terms)]
+		offset = len(result)-limit if limit and len(result) > limit else 0
+		return result[offset:]
+
+	def add(self, line):
+		f = open(self.filepath, 'a+')
+		f.write(line+'\n')
+		f.close()
+
+	def clean(self):
+		f = open(self.filepath, 'w')
+		f.close()

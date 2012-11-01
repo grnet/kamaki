@@ -31,11 +31,13 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from . import Client, ClientError
-
+from kamaki.clients import Client, ClientError
 
 class AstakosClient(Client):
     """GRNet Astakos API client"""
+
+    def __init__(self, base_url, token):
+        super(AstakosClient, self).__init__(base_url, token)
 
     def raise_for_status(self, r):
         msg = r.text.strip()
