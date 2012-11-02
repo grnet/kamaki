@@ -31,6 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+
 def matches(val1, val2, exactMath=True):
     """Case Insenstive match"""
     if exactMath:
@@ -38,31 +39,37 @@ def matches(val1, val2, exactMath=True):
     else:
         return True if val1.lower().startswith(val2.lower()) else False
 
-def filter_out(d, prefix, exactMatch = False):
-    """@return a dict that contains the entries of d that are NOT prefixed with prefic
+
+def filter_out(d, prefix, exactMatch=False):
+    """@return a dict that contains the entries of d
+        that are NOT prefixed with prefic
     """
     ret = {}
     for key, val in d.items():
-        if not matches(key, prefix, exactMath = exactMatch):
+        if not matches(key, prefix, exactMath=exactMatch):
             ret[key] = val
     return ret
 
-def filter_in(d, prefix, exactMatch = False):
-    """@return a dict that contains only the entries of d that are prefixed with prefix
+
+def filter_in(d, prefix, exactMatch=False):
+    """@return a dict that contains only the entries of d
+        that are prefixed with prefix
     """
     ret = {}
     for key, val in d.items():
-        if matches(key, prefix, exactMath = exactMatch):
+        if matches(key, prefix, exactMath=exactMatch):
             ret[key] = val
     return ret
-    
+
+
 def prefix_keys(d, prefix):
     """@return a sallow copy of d with all its keys prefixed with prefix
     """
     ret = {}
     for key, val in d.items():
-        ret[prefix+key] = val
+        ret[prefix + key] = val
     return ret
+
 
 def path4url(*args):
     """@return a string with all args in the form /arg1/arg2/...
@@ -70,17 +77,18 @@ def path4url(*args):
     """
     path = ''
     for arg in args:
-        suffix=unicode(arg)
+        suffix = unicode(arg)
         try:
             while suffix[0] == '/':
-                suffix=suffix[1:]
+                suffix = suffix[1:]
         except IndexError:
             continue
         if len(path) > 0 and path[-1] == '/':
             path += suffix
         else:
-            path += '/'+suffix
+            path += '/' + suffix
     return path
+
 
 def params4url(params):
     """@return a string with all params in the form ?key1=val1&key2=val2&...
@@ -89,7 +97,7 @@ def params4url(params):
             will return
                 ?key1=val1&key2&key3=val3
        @param should be a dict.
-            Use params['somekey']=None for params that will apear without 
+            Use params['somekey']=None for params that will apear without
             a value at the final string
     """
     assert(type(params) is dict)
@@ -97,9 +105,10 @@ def params4url(params):
     dlmtr = '?'
     for name in params:
         result = result + dlmtr + name
-        result = result + '=' + unicode(params[name]) if params[name] is not None else result
+        result += '=%s' % params[name] if params[name] else result
         dlmtr = '&'
     return result
+
 
 def list2str(alist, seperator=','):
     """@return a string of comma seperated elements of the list"""
@@ -109,27 +118,28 @@ def list2str(alist, seperator=','):
         if 0 == slist.index(item):
             ret = unicode(item)
         else:
-            ret += seperator+unicode(item)
+            ret += seperator + unicode(item)
     return ret
 
-def dict2file(d, f, depth = 0):
+
+def dict2file(d, f, depth=0):
     for k, v in d.items():
-        f.write('%s%s: '%('\t'*depth, k))
+        f.write('%s%s: ' % ('\t' * depth, k))
         if type(v) is dict:
             f.write('\n')
-            dict2file(v, f, depth+1)
+            dict2file(v, f, depth + 1)
         elif type(v) is list:
             f.write('\n')
-            list2file(v, f, depth+1)
+            list2file(v, f, depth + 1)
         else:
-            f.write(' %s\n'%unicode(v))
+            f.write(' %s\n' % unicode(v))
 
-def list2file(l, f, depth = 1):
+
+def list2file(l, f, depth=1):
     for item in l:
         if type(item) is dict:
-            dict2file(item, f, depth+1)
+            dict2file(item, f, depth + 1)
         elif type(item) is list:
-            list2file(item, f, depth+1)
+            list2file(item, f, depth + 1)
         else:
-            f.write('%s%s\n'%('\t'*depth, unicode(item)))
-
+            f.write('%s%s\n' % ('\t' * depth, unicode(item)))

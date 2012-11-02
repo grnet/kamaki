@@ -33,8 +33,6 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from os.path import exists
-
 
 def order_free_contains(containing, contained):
     superset = containing.split()

@@ -43,18 +43,10 @@ import logging
 from inspect import getargspec
 from argparse import ArgumentParser, ArgumentError
 from os.path import basename
-from sys import exit, stdout, stderr, argv
+from sys import exit, stdout, argv
 
-try:
-    from collections import OrderedDict
-except ImportError:
-    from ordereddict import OrderedDict
-
-#from kamaki import clients
-from kamaki.cli.errors import CLIError, CLISyntaxError,\
-    CLICmdIncompleteError, CLICmdSpecError
-from kamaki.cli.utils import bold, magenta, red, yellow,\
-    print_list, print_dict, remove_colors
+from kamaki.cli.errors import CLIError, CLICmdSpecError
+from kamaki.cli.utils import magenta, red, yellow, print_dict, remove_colors
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.argument import _arguments, parse_known_args
 from kamaki.cli.history import History
@@ -183,7 +175,7 @@ def get_command_group(unparsed):
 def load_command(group, unparsed, reload_package=False):
     global candidate_command_terms
     candidate_command_terms = [group] + unparsed
-    pkg = load_group_package(group, reload_package)
+    load_group_package(group, reload_package)
 
     #From all possible parsed commands, chose the first match in user string
     final_cmd = _commands.get_command(group)
@@ -230,7 +222,7 @@ def print_commands(prefix=None, full_depth=False):
         if subcmd.sublen() > 0:
             sublen_str = '( %s more terms ... )' % subcmd.sublen()
             cmds[subcmd.name] = [subcmd.help, sublen_str]\
-                if subcmd.has_description else subcmd_str
+                if subcmd.has_description else sublen_str
         else:
             cmds[subcmd.name] = subcmd.help
     if len(cmds) > 0:

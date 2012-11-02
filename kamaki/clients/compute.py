@@ -35,6 +35,7 @@ from kamaki.clients import Client, ClientError
 from kamaki.clients.utils import path4url
 import json
 
+
 class ComputeClient(Client):
     """OpenStack Compute API 1.1 client"""
 
@@ -46,10 +47,12 @@ class ComputeClient(Client):
             message = '%s: %s' % (key, val.get('message', ''))
             details = val.get('details', '')
         except AttributeError:
-            message = 'Request responded with error code '+unicode(r.status_code)
-            details = unicode(r.request.method)+' '+unicode(r.request.url)
+            message = 'Request responded with error code %s' %\
+                unicode(r.status_code)
+            details = '%s %s' %\
+                (unicode(r.request.method), unicode(r.request.url))
         raise ClientError(message, r.status_code, details)
-    
+
     def servers_get(self, server_id='', command='', **kwargs):
         """GET base_url/servers[/server_id][/command] request
         @param server_id or ''
@@ -105,12 +108,12 @@ class ComputeClient(Client):
         detail = 'detail' if detail else ''
         r = self.servers_get(command=detail)
         return r.json['servers']['values']
-    
+
     def get_server_details(self, server_id, **kwargs):
         """Return detailed output on a server specified by its id"""
         r = self.servers_get(server_id, **kwargs)
         return r.json['server']
-    
+
     def create_server(self, name, flavor_id, image_id, personality=None):
         """Submit request to create a new server
 
@@ -128,16 +131,19 @@ class ComputeClient(Client):
                           'imageRef': image_id}}
         if personality:
             req['server']['personality'] = personality
-        
+
         try:
             r = self.servers_post(json_data=req)
         except ClientError as err:
             try:
-                err.message = err.details.split(',')[0].split(':')[2].split('"')[1]
+                tmp_err = err.details.split(',')
+                tmp_err = tmp_err[0].split(':')
+                tmp_err = tmp_err[2].split('"')
+                err.message = tmp_err[1]
             finally:
                 raise err
         return r.json['server']
-    
+
     def update_server_name(self, server_id, new_name):
         """Update the name of the server as reported by the API.
 
@@ -147,7 +153,7 @@ class ComputeClient(Client):
         req = {'server': {'name': new_name}}
         r = self.servers_put(server_id, json_data=req)
         r.release()
-    
+
     def delete_server(self, server_id):
         """Submit a deletion request for a server specified by id"""
         r = self.servers_delete(server_id)
@@ -159,34 +165,36 @@ class ComputeClient(Client):
         req = {'reboot': {'type': type}}
         r = self.servers_post(server_id, 'action', json_data=req)
         r.release()
-    
+
     def get_server_metadata(self, server_id, key=''):
         command = path4url('meta', key)
         r = self.servers_get(server_id, command)
         return r.json['meta'] if key != '' else r.json['metadata']['values']
-    
+
     def create_server_metadata(self, server_id, key, val):
         req = {'meta': {key: val}}
-        r = self.servers_put(server_id, 'meta/'+key, json_data=req, success=201)
+        r = self.servers_put(server_id,
+            'meta/' + key,
+            json_data=req,
+            success=201)
         return r.json['meta']
-    
+
     def update_server_metadata(self, server_id, **metadata):
         req = {'metadata': metadata}
         r = self.servers_post(server_id, 'meta', json_data=req, success=201)
         return r.json['metadata']
-    
+
     def delete_server_metadata(self, server_id, key):
-        r = self.servers_delete(server_id, 'meta/'+key)
+        r = self.servers_delete(server_id, 'meta/' + key)
         r.release()
 
-   
     def flavors_get(self, flavor_id='', command='', **kwargs):
         """GET base_url[/flavor_id][/command]
         @param flavor_id
         @param command
         """
         path = path4url('flavors', flavor_id, command)
-        success=kwargs.pop('success', 200)
+        success = kwargs.pop('success', 200)
         return self.get(path, success=success, **kwargs)
 
     def list_flavors(self, detail=False):
@@ -197,7 +205,6 @@ class ComputeClient(Client):
     def get_flavor_details(self, flavor_id):
         r = self.flavors_get(flavor_id)
         return r.json['flavor']
-    
 
     def images_get(self, image_id='', command='', **kwargs):
         """GET base_url[/image_id][/command]
@@ -205,7 +212,7 @@ class ComputeClient(Client):
         @param command
         """
         path = path4url('images', image_id, command)
-        success=kwargs.pop('success', 200)
+        success = kwargs.pop('success', 200)
         return self.get(path, success=success, **kwargs)
 
     def images_delete(self, image_id='', command='', **kwargs):
@@ -214,7 +221,7 @@ class ComputeClient(Client):
         @param command
         """
         path = path4url('images', image_id, command)
-        success=kwargs.pop('success', 204)
+        success = kwargs.pop('success', 204)
         return self.delete(path, success=success, **kwargs)
 
     def images_post(self, image_id='', command='', json_data=None, **kwargs):
@@ -253,7 +260,7 @@ class ComputeClient(Client):
         detail = 'detail' if detail else ''
         r = self.images_get(command=detail)
         return r.json['images']['values']
-    
+
     def get_image_details(self, image_id, **kwargs):
         r = self.images_get(image_id, **kwargs)
         try:
@@ -261,7 +268,7 @@ class ComputeClient(Client):
         except KeyError:
             raise ClientError('Image not available', 404,
                 details='Image %d not found or not accessible')
-    
+
     def delete_image(self, image_id):
         r = self.images_delete(image_id)
         r.release()
@@ -270,15 +277,15 @@ class ComputeClient(Client):
         command = path4url('meta', key)
         r = self.images_get(image_id, command)
         return r.json['meta'] if key != '' else r.json['metadata']['values']
-    
+
     def create_image_metadata(self, image_id, key, val):
         req = {'meta': {key: val}}
-        r = self.images_put(image_id, 'meta/'+key, json_data=req)
+        r = self.images_put(image_id, 'meta/' + key, json_data=req)
         return r.json['meta']
 
     def update_image_metadata(self, image_id, **metadata):
         req = {'metadata': metadata}
-        r - self.images_post(image_id, 'meta', json_data=req)
+        r = self.images_post(image_id, 'meta', json_data=req)
         return r.json['metadata']
 
     def delete_image_metadata(self, image_id, key):

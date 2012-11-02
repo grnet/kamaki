@@ -202,7 +202,7 @@ class CommandTree(object):
 
         if '_' not in path:
             return None
-        terms = terms[:-1]
+        terms = path.split()[:-1]
         while len(terms) > 0:
             tmp_path = '_'.join(terms)
             cmd = self._all_commands[tmp_path]

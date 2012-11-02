@@ -30,21 +30,26 @@
 # documentation are those of the authors and should not be
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
+
+from .errors import CLIError
+
 try:
     from colors import magenta, red, yellow, bold
 except ImportError:
-    #No colours? No worries, use dummy foo instead
+    # No colours? No worries, use dummy foo instead
     def bold(val):
         return val
-    red = yellow = magenta = bold
 
 
 def remove_colors():
     global bold
+    global red
+    global yellow
+    global magenta
 
     def dummy(val):
         return val
-    bold = dummy
+    red = yellow = magenta = bold = dummy
 
 
 def pretty_keys(d, delim='_', recurcive=False):

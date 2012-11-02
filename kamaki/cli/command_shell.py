@@ -32,13 +32,11 @@
 # or implied, of GRNET S.A.
 
 from cmd import Cmd
-from new import instancemethod
 from os import popen
 from argparse import ArgumentParser
 from kamaki.cli import _update_parser, _exec_cmd
-from .errors import CLIError
 from .argument import _arguments
-from .utils import magenta, print_dict
+from .utils import print_dict
 from sys import stdout
 from .history import History
 
@@ -75,7 +73,7 @@ class Shell(Cmd):
     @property
     def path(self):
         if self._cmd:
-            return _cmd.path
+            return self._cmd.path
         return ''
 
     @classmethod
@@ -105,7 +103,7 @@ class Shell(Cmd):
 
     def _push_in_command(self, cmd_path):
         cmd = self.cmd_tree.get_command(cmd_path)
-        _cmd_tree = self.cmd_tree
+        self.cmd_tree = self.cmd_tree
         _history = self._history
 
         def do_method(self, line):

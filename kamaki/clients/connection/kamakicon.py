@@ -34,7 +34,8 @@
 from urlparse import urlparse
 #from .pool.http import get_http_connection
 from synnefo.lib.pool.http import get_http_connection
-from kamaki.clients.connection import HTTPConnection, HTTPResponse, HTTPConnectionError
+from kamaki.clients.connection import HTTPConnection, HTTPResponse,\
+    HTTPConnectionError
 from gevent.dns import DNSError
 from socket import gaierror
 
@@ -42,6 +43,7 @@ from json import loads
 
 from time import sleep
 from httplib import ResponseNotReady
+
 
 class KamakiHTTPResponse(HTTPResponse):
 
@@ -59,29 +61,33 @@ class KamakiHTTPResponse(HTTPResponse):
             break
         self.prefetched = True
         headers = {}
-        for k,v in r.getheaders():
-            headers.update({k:v})
+        for k, v in r.getheaders():
+            headers.update({k: v})
         self.headers = headers
         self.content = r.read()
         self.status_code = r.status
         self.status = r.reason
         self.request.close()
 
-    @property 
+    @property
     def text(self):
         self._get_response()
         return self._content
+
     @text.setter
     def test(self, v):
         pass
 
-    @property 
+    @property
     def json(self):
         self._get_response()
         try:
             return loads(self._content)
         except ValueError as err:
-            HTTPConnectionError('Response not formated in JSON', details=unicode(err), status=702)
+            HTTPConnectionError('Response not formated in JSON',
+                details=unicode(err),
+                status=702)
+
     @json.setter
     def json(self, v):
         pass
@@ -97,41 +103,47 @@ class KamakiHTTPConnection(HTTPConnection):
         """ return (scheme, netloc, url?with&params) """
         url = self.url
         params = dict(self.params)
-        for k,v in extra_params.items():
+        for k, v in extra_params.items():
             params[k] = v
-        for i,(key, val) in enumerate(params.items()):
-            param_str = ('?' if i == 0 else '&') + unicode(key) 
+        for i, (key, val) in enumerate(params.items()):
+            param_str = ('?' if i == 0 else '&') + unicode(key)
             if val is not None:
-                param_str+= '='+unicode(val)
+                param_str += '=' + unicode(val)
             url += param_str
 
         parsed = urlparse(self.url)
         self.url = url
         return (parsed.scheme, parsed.netloc)
 
-    def perform_request(self, method=None, data=None, async_headers={}, async_params={}):
-        (scheme, netloc) = self._retrieve_connection_info(extra_params=async_params)
+    def perform_request(self,
+        method=None,
+        data=None,
+        async_headers={},
+        async_params={}):
+        (scheme, netloc) = self._retrieve_connection_info(
+            extra_params=async_params)
         headers = dict(self.headers)
-        for k,v in async_headers.items():
+        for k, v in async_headers.items():
             headers[k] = v
 
         #de-unicode headers to prepare them for http
         http_headers = {}
-        for k,v in headers.items():
+        for k, v in headers.items():
             http_headers[str(k)] = str(v)
 
         #get connection from pool
         conn = get_http_connection(netloc=netloc, scheme=scheme)
         try:
             #Be carefull, all non-body variables should not be unicode
-            conn.request(method = str(method.upper()),
+            conn.request(method=str(method.upper()),
                 url=str(self.url),
                 headers=http_headers,
                 body=data)
         except Exception as err:
             conn.close()
             if isinstance(err, DNSError) or isinstance(err, gaierror):
-                raise HTTPConnectionError('Cannot connect to %s'%self.url, status=701,
-                    details='%s: %s'%(type(err),unicode(err)))
+                raise HTTPConnectionError('Cannot connect to %s' % self.url,
+                    status=701,
+                    details='%s: %s' % (type(err), unicode(err)))
             raise
         return KamakiHTTPResponse(conn)

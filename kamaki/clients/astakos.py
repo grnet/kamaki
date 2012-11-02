@@ -33,6 +33,7 @@
 
 from kamaki.clients import Client, ClientError
 
+
 class AstakosClient(Client):
     """GRNet Astakos API client"""
 

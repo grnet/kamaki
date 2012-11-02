@@ -31,8 +31,6 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from sys import exit
-
 from kamaki.cli.config import Config
 from kamaki.cli.errors import CLISyntaxError
 

@@ -31,10 +31,11 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-from kamaki.clients import Client, ClientError
+from kamaki.clients import Client
+
 
 class QuotaHolderClient(Client):
-	"""Quota Holder client"""
+    """Quota Holder client"""
 
-	def test_quota(self):
-		return self.get('')
+    def test_quota(self):
+        return self.get('')

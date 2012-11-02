@@ -899,8 +899,8 @@ class store_unpublish(_store_container_command):
 
 
 @command()
-class store_permitions(_store_container_command):
-    """Get object read/write permitions"""
+class store_permissions(_store_container_command):
+    """Get object read/write permissions """
 
     def main(self, container___path):
         super(self.__class__,
@@ -913,13 +913,13 @@ class store_permitions(_store_container_command):
 
 
 @command()
-class store_setpermitions(_store_container_command):
-    """Set sharing permitions"""
+class store_setpermissions(_store_container_command):
+    """Set sharing permissions """
 
-    def format_permition_dict(self, permitions):
+    def format_permition_dict(self, permissions):
         read = False
         write = False
-        for perms in permitions:
+        for perms in permissions:
             splstr = perms.split('=')
             if 'read' == splstr[0]:
                 read = [user_or_group.strip() \
@@ -935,10 +935,10 @@ class store_setpermitions(_store_container_command):
                 message='Usage:\tread=<groups,users> write=<groups,users>')
         return (read, write)
 
-    def main(self, container___path, *permitions):
+    def main(self, container___path, *permissions):
         super(self.__class__,
             self).main(container___path, path_is_optional=False)
-        (read, write) = self.format_permition_dict(permitions)
+        (read, write) = self.format_permition_dict(permissions)
         try:
             self.client.set_object_sharing(self.path,
                 read_permition=read, write_permition=write)
@@ -947,8 +947,8 @@ class store_setpermitions(_store_container_command):
 
 
 @command()
-class store_delpermitions(_store_container_command):
-    """Delete all sharing permitions"""
+class store_delpermissions(_store_container_command):
+    """Delete all sharing permissions"""
 
     def main(self, container___path):
         super(self.__class__,

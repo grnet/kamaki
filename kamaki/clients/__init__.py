@@ -33,11 +33,11 @@
 
 import json
 import logging
-from kamaki.clients.connection import HTTPConnectionError
 from kamaki.clients.connection.kamakicon import KamakiHTTPConnection
 
 sendlog = logging.getLogger('clients.send')
 recvlog = logging.getLogger('clients.recv')
+
 
 class ClientError(Exception):
     def __init__(self, message, status=0, details=''):
@@ -45,6 +45,7 @@ class ClientError(Exception):
         self.message = message
         self.status = status
         self.details = details
+
 
 class Client(object):
 
@@ -63,10 +64,12 @@ class Client(object):
             details = r.text
         except:
             details = ''
-        raise ClientError(message=message, status=r.status_code, details=details)
+        raise ClientError(message=message,
+            status=r.status_code,
+            details=details)
 
     def set_header(self, name, value, iff=True):
-        """Set a header 'name':'value' provided value is not None and iff is True"""
+        """Set a header 'name':'value'"""
         if value is not None and iff:
             self.http_client.set_header(name, value)
 
@@ -84,13 +87,13 @@ class Client(object):
         async_params={},
         **kwargs):
         """In threaded/asynchronous requests, headers and params are not safe
-        Therefore, the standard self.set_header/param system can be used only for 
-        headers and params that are common for all requests. All other params and
-        headers should passes as
+        Therefore, the standard self.set_header/param system can be used only
+        for headers and params that are common for all requests. All other
+        params and headers should passes as
         @param async_headers
         @async_params
-        E.g. in most queries the 'X-Auth-Token' header might be the same for all, but the
-        'Range' header might be different from request to request.
+        E.g. in most queries the 'X-Auth-Token' header might be the same for
+        all, but the 'Range' header might be different from request to request.
         """
 
         try:
@@ -106,7 +109,10 @@ class Client(object):
                 self.set_default_header('Content-Length', unicode(len(data)))
 
             self.http_client.url = self.base_url + path
-            r = self.http_client.perform_request(method, data, async_headers, async_params)
+            r = self.http_client.perform_request(method,
+                data,
+                async_headers,
+                async_params)
 
             req = self.http_client
             sendlog.info('%s %s', method, req.url)
@@ -135,9 +141,11 @@ class Client(object):
             self.http_client.reset_headers()
             self.http_client.reset_params()
             errmsg = getattr(err, 'message', unicode(err))
-            errdetails ='%s %s'%(type(err), getattr(err, 'details', ''))
+            errdetails = '%s %s' % (type(err), getattr(err, 'details', ''))
             errstatus = getattr(err, 'status', 0)
-            raise ClientError(message=errmsg,status=errstatus,details=errdetails)
+            raise ClientError(message=errmsg,
+                status=errstatus,
+                details=errdetails)
 
         self.http_client.reset_headers()
         self.http_client.reset_params()
