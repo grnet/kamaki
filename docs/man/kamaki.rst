@@ -6,20 +6,35 @@ kamaki tool manual page
 Synopsis
 --------
 
-**kamaki** <*group*> <*command*> [*options*]
+**kamaki** [*group*] [*command*] [...] [*options*]
 
 
 Description
 -----------
 
 :program:`kamaki` is a simple, yet intuitive, command-line tool for managing 
-clouds.
+clouds. It can be used in three forms: as an interactive shell, as a command line tool or as a clients API for other applications.
 
-List of available groups:
+To run kamaki as an interactive shell, type
+
+    kamaki
+
+To run kamaki as tool type
+
+    kamaki <group> <command> [...] [options]
+
+The kamaki clients API can be imported in python applications as kamaki.clients
+
+
+List of available command groups:
 
 config
 
     Edit configuration options. Config options are stored in ~/.kamakirc file.
+
+history
+
+    Access kamaki user history, which is stored in ~/.kamaki.history file.
 
 server
 
@@ -29,17 +44,13 @@ flavor
 
     Manage compute API flavors.
 
-image
-
-    Manage compute API images.
-
 network
 
     Manage compute API networks.
 
-glance
+image 
 
-    Manage Glance API images.
+    Manage compute API and glance images.
 
 store
 
@@ -49,7 +60,7 @@ store
 Options
 -------
 
---help                  Show help message and exit.
+--help, -h              Show help message and exit.
 -v                      Use verbose output.
 -d                      Use debug output.
 -o KEY=VAL              Override a config value (can be used multiple times)
@@ -66,6 +77,13 @@ config commands
 * set        set a configuration option
 * del        delete a configuration option
 
+
+history commands
+****************
+
+Show command user history, as stored in ~/.kamaki.history
+
+* clean     clean up history
 
 
 server commands
@@ -99,14 +117,21 @@ flavor commands
 image commands and options
 **************************
 
-* list       list images
-* info       get image details
-* delete     delete image
-* meta       get image metadata
-* addmeta    add image metadata
-* setmeta    update image metadata
-* delmeta    delete image metadata
-
+* list        list images
+* info        get image details
+* public      list public images
+* shared      list shared images
+* delete      delete image
+* register    register an image
+* meta        get image metadata
+* members     get image members
+* addmember   add a member to an image
+* delmember   remove a member from an image
+* setmembers  set the members of an image
+* properties  get image properties
+* setproperty update an image property
+* addproperty add an image property
+* delproperty delete an image property
 
 network commands
 ****************
@@ -118,19 +143,6 @@ network commands
 * delete     delete a network
 * connect    connect a server to a network
 * disconnect disconnect a server from a network
-
-
-glance commands
-***************
-
-* list       list images
-* meta       get image metadata
-* register   register an image
-* members    get image members
-* shared     list shared images
-* addmember  add a member to an image
-* delmember  remove a member from an image
-* setmembers set the members of an image
 
 
 store commands
