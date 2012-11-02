@@ -31,10 +31,6 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-import gevent.monkey
-# Monkey-patch everything for gevent early on
-gevent.monkey.patch_all()
-
 from argparse import ArgumentParser
 import unittest
 import time

@@ -34,26 +34,22 @@
 # or implied, of GRNET S.A.
 
 from setuptools import setup
-#from sys import version_info
+from sys import version_info
 
 import kamaki
 
-#Suggested packages can be installed manually later, but it is not nessecary
-suggested = ['ansicolors==1.0.2', 'progress==1.0.1']
-required = ['gevent>=0.13.6', 'snf-common>=0.10', 'argparse']
+
+optional = ['ansicolors', 'progress']
+required = ['snf-common>=0.10', 'argparse']
 
 setup(
     name='kamaki',
     version=kamaki.__version__,
-    description='A command-line tool for poking clouds',
+    description='A command-line tool for managing clouds',
     long_description=open('README.rst').read(),
     url='http://code.grnet.gr/projects/kamaki',
     license='BSD',
-    packages=['kamaki',
-        'kamaki.cli',
-        'kamaki.clients',
-        'kamaki.clients.connection',
-        'kamaki.cli.commands'],
+    packages=['kamaki', 'kamaki.clients', 'kamaki.clients.connection', 'kamaki.cli', 'kamaki.cli.commands'],
     include_package_data=True,
     entry_points={
         'console_scripts': ['kamaki = kamaki.cli:main']

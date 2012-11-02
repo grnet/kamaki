@@ -31,12 +31,6 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-import gevent
-import gevent.monkey
-# Monkey-patch everything for gevent early on
-gevent.monkey.patch_all()
-import gevent.pool
-
 import unittest
 import sys
 from StringIO import StringIO
@@ -68,6 +62,7 @@ class testKamakiCon(unittest.TestCase):
     def tearDown(self):
         pass
 
+    """
     def _get_async_content(self, con, **kwargs):
         class SilentGreenlet(gevent.Greenlet):
             def _report_error(self, exc_info):
@@ -84,6 +79,7 @@ class testKamakiCon(unittest.TestCase):
         g = SilentGreenlet(self._get_content_len, con, **kwargs)
         self.async_pool.start(g)
         return g
+    """
 
     def _get_content_len(self, con, **kwargs):
         r = con.perform_request('GET', **kwargs)
@@ -112,8 +108,6 @@ class testKamakiCon(unittest.TestCase):
         self.assertEqual(r1, r5)
         self.assertNotEqual(r2, r4)
         #print('1:%s 2:%s 3:%s 4:%s 5:%s'%(r1, r2, r3, r4, r5))
-
-        gevent.joinall([h1, h2, h3, h4, h5])
 
 if __name__ == '__main__':
     suiteFew = unittest.TestSuite()

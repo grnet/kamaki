@@ -34,10 +34,6 @@
 
 from __future__ import print_function
 
-import gevent.monkey
-#Monkey-patch everything for gevent early on
-gevent.monkey.patch_all()
-
 import logging
 
 from inspect import getargspec
