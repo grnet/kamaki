@@ -46,8 +46,8 @@ from kamaki.clients.astakos import AstakosClient as astakos
 
 TEST_ALL = False
 
-global_username = 'saxtouri'
-token = 'Kn+G9dfmlPLR2WFnhfBOow=='
+global_username = 'USERNAME'
+token = 'T0k3n=='
 
 
 class testAstakos(unittest.TestCase):
@@ -2254,7 +2254,7 @@ class testPithos(unittest.TestCase):
         random.seed(self.now)
         rf = open('/dev/urandom', 'r')
         f = open(self.fname, 'w')
-        sys.stdout.write(' create random file %s of size %s   ' % (name, size))
+        sys.stdout.write(' create random file %s of size %s      ' % (name, size))
         for hobyte_id in range(size / 8):
             #sss = 'hobt%s' % random.randint(1000, 9999)
             f.write(rf.read(8))
@@ -2262,12 +2262,12 @@ class testPithos(unittest.TestCase):
                 f.write('\n')
                 f.flush()
                 prs = (hobyte_id * 800) // size
+                sys.stdout.write('\b\b')
                 if prs > 10:
                     sys.stdout.write('\b')
-                sys.stdout.write('%s' % prs + '%')
+                sys.stdout.write('%s%%' % prs)
                 sys.stdout.flush()
-                sys.stdout.write('\b%s' % '\b' * len(str(prs)))
-        print('\b100%')
+        print('\b\b\b100%')
         f.flush()
         rf.close()
         f.close()
