@@ -2224,13 +2224,15 @@ class testPithos(unittest.TestCase):
         self.fname = name
         import random
         random.seed(self.now)
+        rf = open('/dev/urandom', 'r')
         f = open(self.fname, 'w')
-        sys.stdout.write(' create random file %s of size %s ' % (name, size))
+        sys.stdout.write(' create random file %s of size %s   ' % (name, size))
         for hobyte_id in range(size / 8):
-            sss = 'hobt%s' % random.randint(1000, 9999)
-            f.write(sss)
+            #sss = 'hobt%s' % random.randint(1000, 9999)
+            f.write(rf.read(8))
             if 0 == (hobyte_id * 800) % size:
                 f.write('\n')
+                f.flush()
                 sys.stdout.write('\b\b')
                 prs = (hobyte_id * 800) // size
                 if prs > 10:
@@ -2238,6 +2240,8 @@ class testPithos(unittest.TestCase):
                 sys.stdout.write('%s' % prs + '%')
                 sys.stdout.flush()
         print('\b\b\b100%')
+        f.flush()
+        rf.close()
         f.close()
         """"""
 
