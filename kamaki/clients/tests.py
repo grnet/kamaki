@@ -1717,6 +1717,34 @@ class testPithos(unittest.TestCase):
             r2.release()
             self.assertNotEqual(sc1, sc2)
 
+        """Upload an object to download"""
+        src_fname = '/tmp/localfile1_%s' % self.now
+        dnl_fname = '/tmp/localfile2_%s' % self.now
+        trg_fname = 'remotefile_%s' % self.now
+        f_size = 59247824
+        self.create_large_file(f_size, src_fname)
+        src_f = open(src_fname, 'rb+')
+        print('\tUploading...')
+        self.client.upload_object(trg_fname, src_f)
+        src_f.close()
+        print('\tDownloading...')
+        dnl_f = open(dnl_fname, 'wb+')
+        self.client.download_object(trg_fname, dnl_f)
+        dnl_f.close()
+
+        print('\tCheck if files match...')
+        src_f = open(src_fname)
+        dnl_f = open(dnl_fname)
+        for pos in (0, f_size / 2, f_size - 20):
+            src_f.seek(pos)
+            dnl_f.seek(pos)
+            self.assertEqual(src_f.read(10), dnl_f.read(10))
+        src_f.close()
+        dnl_f.close()
+
+        os.remove(src_fname)
+        os.remove(dnl_fname)
+
     def test_object_put(self):
         """Test object_PUT"""
 
@@ -2233,13 +2261,13 @@ class testPithos(unittest.TestCase):
             if 0 == (hobyte_id * 800) % size:
                 f.write('\n')
                 f.flush()
-                sys.stdout.write('\b\b')
                 prs = (hobyte_id * 800) // size
                 if prs > 10:
                     sys.stdout.write('\b')
                 sys.stdout.write('%s' % prs + '%')
                 sys.stdout.flush()
-        print('\b\b\b100%')
+                sys.stdout.write('\b%s' % '\b' * len(str(prs)))
+        print('\b100%')
         f.flush()
         rf.close()
         f.close()

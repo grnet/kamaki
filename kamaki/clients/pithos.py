@@ -450,7 +450,6 @@ class PithosClient(PithosRestAPI):
 
         for thread in flying.values():
             thread.join()
-        print('Any downloing yet?')
         finished += self._thread2file(flying, local_file, offset, **restargs)
 
     def download_object(self,
