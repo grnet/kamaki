@@ -37,8 +37,9 @@ try:
     from colors import magenta, red, yellow, bold
 except ImportError:
     # No colours? No worries, use dummy foo instead
-    def bold(val):
+    def dummy(val):
         return val
+    red = yellow = magenta = bold = dummy
 
 
 def remove_colors():

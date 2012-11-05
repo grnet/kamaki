@@ -46,8 +46,8 @@ from kamaki.clients.astakos import AstakosClient as astakos
 
 TEST_ALL = False
 
-global_username = 'saxtouri'
-token = 'Kn+G9dfmlPLR2WFnhfBOow=='
+global_username = 'USERNAME'
+token = 'T0k3n=='
 
 
 class testAstakos(unittest.TestCase):
@@ -1717,6 +1717,34 @@ class testPithos(unittest.TestCase):
             r2.release()
             self.assertNotEqual(sc1, sc2)
 
+        """Upload an object to download"""
+        src_fname = '/tmp/localfile1_%s' % self.now
+        dnl_fname = '/tmp/localfile2_%s' % self.now
+        trg_fname = 'remotefile_%s' % self.now
+        f_size = 59247824
+        self.create_large_file(f_size, src_fname)
+        src_f = open(src_fname, 'rb+')
+        print('\tUploading...')
+        self.client.upload_object(trg_fname, src_f)
+        src_f.close()
+        print('\tDownloading...')
+        dnl_f = open(dnl_fname, 'wb+')
+        self.client.download_object(trg_fname, dnl_f)
+        dnl_f.close()
+
+        print('\tCheck if files match...')
+        src_f = open(src_fname)
+        dnl_f = open(dnl_fname)
+        for pos in (0, f_size / 2, f_size - 20):
+            src_f.seek(pos)
+            dnl_f.seek(pos)
+            self.assertEqual(src_f.read(10), dnl_f.read(10))
+        src_f.close()
+        dnl_f.close()
+
+        os.remove(src_fname)
+        os.remove(dnl_fname)
+
     def test_object_put(self):
         """Test object_PUT"""
 
@@ -2224,20 +2252,24 @@ class testPithos(unittest.TestCase):
         self.fname = name
         import random
         random.seed(self.now)
+        rf = open('/dev/urandom', 'r')
         f = open(self.fname, 'w')
-        sys.stdout.write(' create random file %s of size %s' % (name, size))
+        sys.stdout.write(' create random file %s of size %s      ' % (name, size))
         for hobyte_id in range(size / 8):
-            sss = 'hobt%s' % random.randint(1000, 9999)
-            f.write(sss)
+            #sss = 'hobt%s' % random.randint(1000, 9999)
+            f.write(rf.read(8))
             if 0 == (hobyte_id * 800) % size:
                 f.write('\n')
-                sys.stdout.write('\b\b')
+                f.flush()
                 prs = (hobyte_id * 800) // size
+                sys.stdout.write('\b\b')
                 if prs > 10:
                     sys.stdout.write('\b')
-                sys.stdout.write('%s' % prs + '%')
+                sys.stdout.write('%s%%' % prs)
                 sys.stdout.flush()
         print('\b\b\b100%')
+        f.flush()
+        rf.close()
         f.close()
         """"""
 
