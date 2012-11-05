@@ -34,8 +34,9 @@
 from urlparse import urlparse
 #from .pool.http import get_http_connection
 from synnefo.lib.pool.http import get_http_connection
-from kamaki.clients.connection import HTTPConnection, HTTPResponse,\
-    HTTPConnectionError
+from kamaki.clients.connection import HTTPConnection, HTTPResponse
+from kamaki.clients.connection.errors import HTTPConnectionError
+from kamaki.clients.connection.errors import HTTPResponseFormatError
 from socket import gaierror
 
 from json import loads
@@ -83,9 +84,9 @@ class KamakiHTTPResponse(HTTPResponse):
         try:
             return loads(self._content)
         except ValueError as err:
-            HTTPConnectionError('Response not formated in JSON',
-                details=unicode(err),
-                status=702)
+            HTTPResponseFormatError(
+                'Response not formated in JSON',
+                details=unicode(err))
 
     @json.setter
     def json(self, v):

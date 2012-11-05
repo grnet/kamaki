@@ -34,6 +34,7 @@
 import json
 import logging
 from kamaki.clients.connection.kamakicon import KamakiHTTPConnection
+from kamaki.clients.connection.errors import HTTPConnectionError
 
 sendlog = logging.getLogger('clients.send')
 recvlog = logging.getLogger('clients.recv')
@@ -65,7 +66,7 @@ class Client(object):
         except:
             details = ''
         raise ClientError(message=message,
-            status=r.status_code,
+            status=r.status,
             details=details)
 
     def set_header(self, name, value, iff=True):
@@ -138,6 +139,8 @@ class Client(object):
                 if r.status_code not in success:
                     r.release()
                     self._raise_for_status(r)
+        except HTTPConnectionError as err:
+            _raise_for_status(err)
         except Exception as err:
             self.http_client.reset_headers()
             self.http_client.reset_params()

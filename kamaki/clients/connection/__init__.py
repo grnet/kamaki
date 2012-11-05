@@ -31,6 +31,8 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+from kamaki.clients.connection.errors import HTTPConnectionError
+
 
 class HTTPResponse(object):
 
@@ -119,14 +121,6 @@ class HTTPResponse(object):
     @request.setter
     def request(self, v):
         self._request = v
-
-
-class HTTPConnectionError(Exception):
-    def __init__(self, message, status=0, details=''):
-        super(HTTPConnectionError, self).__init__(message)
-        self.message = message
-        self.status = status
-        self.details = details
 
 
 class HTTPConnection(object):
