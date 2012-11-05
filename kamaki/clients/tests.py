@@ -2225,7 +2225,7 @@ class testPithos(unittest.TestCase):
         import random
         random.seed(self.now)
         f = open(self.fname, 'w')
-        sys.stdout.write(' create random file %s of size %s' % (name, size))
+        sys.stdout.write(' create random file %s of size %s ' % (name, size))
         for hobyte_id in range(size / 8):
             sss = 'hobt%s' % random.randint(1000, 9999)
             f.write(sss)

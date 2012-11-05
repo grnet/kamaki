@@ -32,6 +32,7 @@
 # or implied, of GRNET S.A.
 
 from threading import Thread
+from threading import enumerate as activethreads
 
 from os import fstat
 from hashlib import new as newhashlib
@@ -97,7 +98,7 @@ class PithosClient(PithosRestAPI):
 
     def __init__(self, base_url, token, account=None, container=None):
         super(PithosClient, self).__init__(base_url, token, account, container)
-        self.async_pool = None
+        self.POOL_SIZE = 5
 
     def purge_container(self):
         r = self.container_delete(until=unicode(time()))
@@ -246,18 +247,15 @@ class PithosClient(PithosRestAPI):
             r = self.put_block_async(data, hash)
             flying.append(r)
             unfinished = []
-            for thread in flying:
+            for i, thread in enumerate(flying):
+                if i % self.POOL_SIZE == 0:
+                    thread.join(0.1)
                 if thread.isAlive() or thread.exception:
                     unfinished.append(thread)
                 else:
                     if upload_cb:
                         upload_gen.next()
             flying = unfinished
-        while upload_cb:
-            try:
-                upload_gen.next()
-            except StopIteration:
-                break
 
         for thread in flying:
             thread.join()
@@ -269,6 +267,12 @@ class PithosClient(PithosRestAPI):
             raise ClientError(message="Block uploading failed",
                 status=505,
                 details=details)
+
+        while upload_cb:
+            try:
+                upload_gen.next()
+            except StopIteration:
+                break
 
     def upload_object(self, obj, f,
         size=None,
@@ -307,9 +311,18 @@ class PithosClient(PithosRestAPI):
 
         if missing is None:
             return
-        self._upload_missing_blocks(missing, hmap, f, upload_cb=upload_cb)
+        if len(missing) > self.POOL_SIZE:
+            self.POOL_SIZE = len(missing) // 10
+        try:
+            self._upload_missing_blocks(missing, hmap, f, upload_cb=upload_cb)
+        except KeyboardInterrupt:
+            print('- - - wait for threads to finish')
+            for thread in activethreads():
+                thread.join()
+            raise
 
-        r = self.object_put(obj,
+        r = self.object_put(
+            obj,
             format='json',
             hashmap=True,
             content_type=content_type,
@@ -317,8 +330,7 @@ class PithosClient(PithosRestAPI):
             success=201)
         r.release()
 
-    #download_* auxiliary methods
-    #ALl untested
+    # download_* auxiliary methods
     def _get_remote_blocks_info(self, obj, **restargs):
         #retrieve object hashmap
         myrange = restargs.pop('data_range', None)
@@ -379,7 +391,9 @@ class PithosClient(PithosRestAPI):
             - e.g. if the range is 10-100, all
         blocks will be written to normal_position - 10"""
         finished = []
-        for start, g in flying.items():
+        for i, (start, g) in enumerate(flying.items()):
+            if i % self.POOL_SIZE == 0:
+                g.join(0.1)
             if not g.isAlive():
                 if g.exception:
                     raise g.exception
@@ -409,20 +423,22 @@ class PithosClient(PithosRestAPI):
         if filerange is not None:
             rstart = int(filerange.split('-')[0])
             offset = rstart if blocksize > rstart else rstart % blocksize
+
         for block_hash, blockid in remote_hashes.items():
             start = blocksize * blockid
             if start < file_size\
-            and block_hash == self._hash_from_file(local_file,
-                start,
-                blocksize,
-                blockhash):
+            and block_hash == self._hash_from_file(
+                    local_file,
+                    start,
+                    blocksize,
+                    blockhash):
                 self._cb_next()
                 continue
-            if len(flying) >= self.POOL_SIZE:
-                finished += self._thread2file(flying,
-                    local_file,
-                    offset,
-                    **restargs)
+            finished += self._thread2file(
+                flying,
+                local_file,
+                offset,
+                **restargs)
             end = total_size - 1 if start + blocksize > total_size\
                 else start + blocksize - 1
             (start, end) = _range_up(start, end, filerange)
@@ -434,6 +450,7 @@ class PithosClient(PithosRestAPI):
 
         for thread in flying.values():
             thread.join()
+        print('Any downloing yet?')
         finished += self._thread2file(flying, local_file, offset, **restargs)
 
     def download_object(self,
@@ -462,7 +479,6 @@ class PithosClient(PithosRestAPI):
             hash_list,
             remote_hashes) = self._get_remote_blocks_info(obj, **restargs)
         assert total_size >= 0
-        self.POOL_SIZE = 5
 
         if download_cb:
             self.progress_bar_gen = download_cb(len(remote_hashes))
@@ -477,6 +493,8 @@ class PithosClient(PithosRestAPI):
                 range,
                 **restargs)
         else:
+            if len(remote_hashes) > self.POOL_SIZE:
+                self.POOL_SIZE = len(remote_hashes) // 10
             self._dump_blocks_async(obj,
                 remote_hashes,
                 blocksize,

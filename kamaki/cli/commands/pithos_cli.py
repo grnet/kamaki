@@ -98,16 +98,9 @@ class ProgressBarArgument(FlagArgument):
         except NameError:
             print('Waring: no progress bar functionality')
 
-    @property
-    def value(self):
-        return getattr(self, '_value', self.default)
-
-    @value.setter
-    def value(self, newvalue):
-        """By default, it is on (True)"""
-        self._value = not newvalue
-
     def get_generator(self, message, message_len=25):
+        if self.value:
+            return None
         try:
             bar = ProgressBar(message.ljust(message_len))
         except NameError:
@@ -538,7 +531,7 @@ class store_append(_store_container_command):
     def __init__(self, arguments={}):
         super(self.__class__, self).__init__(arguments)
         self.arguments['progress_bar'] = ProgressBarArgument(\
-            'do not show progress bar', '--no-progress-bar')
+            'do not show progress bar', '--no-progress-bar', False)
 
     def main(self, local_path, container___path):
         super(self.__class__,
@@ -577,7 +570,7 @@ class store_overwrite(_store_container_command):
     def __init__(self, arguments={}):
         super(self.__class__, self).__init__(arguments)
         self.arguments['progress_bar'] = ProgressBarArgument(\
-            'do not show progress bar', '--no-progress-bar')
+            'do not show progress bar', '--no-progress-bar', False)
 
     def main(self, local_path, container___path, start, end):
         super(self.__class__,
@@ -636,6 +629,7 @@ class store_manifest(_store_container_command):
 class store_upload(_store_container_command):
     """Upload a file"""
 
+
     def __init__(self, arguments={}):
         super(self.__class__, self).__init__(arguments)
         self.arguments['use_hashes'] = FlagArgument(\
@@ -658,7 +652,7 @@ class store_upload(_store_container_command):
         self.arguments['poolsize'] = IntArgument(\
             'set pool size', '--with-pool-size')
         self.arguments['progress_bar'] = ProgressBarArgument(\
-            'do not show progress bar', '--no-progress-bar')
+            'do not show progress bar', '--no-progress-bar', False)
 
     def main(self, local_path, container____path__):
         super(self.__class__, self).main(container____path__)
@@ -752,7 +746,7 @@ class store_download(_store_container_command):
         self.arguments['poolsize'] = IntArgument(\
             'set pool size', '--with-pool-size')
         self.arguments['progress_bar'] = ProgressBarArgument(\
-            'do not show progress bar', '--no-progress-bar')
+            'do not show progress bar', '--no-progress-bar', False)
 
     def main(self, container___path, local_path):
         super(self.__class__,
@@ -790,6 +784,15 @@ class store_download(_store_container_command):
         except ClientError as err:
             raiseCLIError(err)
         except KeyboardInterrupt:
+            from threading import enumerate as activethreads
+            stdout.write('\nFinishing active threads ')
+            for thread in activethreads():
+                stdout.flush()
+                try:
+                    thread.join()
+                    stdout.write('.')
+                except RuntimeError:
+                    continue
             print('\ndownload canceled by user')
             if local_path is not None:
                 print('to resume, re-run with --resume')
