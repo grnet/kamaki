@@ -1,30 +1,5 @@
-kamaki (0.5.1-4) stable; urgency=low
+kamaki (0.6-1ubuntu1) precise; urgency=low
 
-  * Revert python-requests version fix patch 
+  * Ubuntu package for 0.6
 
- -- Kostas Papadimitriou <kpap@grnet.gr>  Thu, 21 Jun 2012 14:59:28 +0300
-
-kamaki (0.5.1-3) stable; urgency=low
-
-  * Fix python-requests dependency version
-
- -- Kostas Papadimitriou <kpap@grnet.gr>  Thu, 21 Jun 2012 14:35:11 +0300
-
-kamaki (0.5.1-2) stable; urgency=low
-
-  * Fix package dependencies
-
- -- Kostas Papadimitriou <kpap@grnet.gr>  Mon, 11 Jun 2012 19:41:45 +0300
-
-kamaki (0.5.1-1) stable; urgency=low
-
-  * New upstream version
-
- -- Kostas Papadimitriou <kpap@grnet.gr>  Mon, 11 Jun 2012 19:16:21 +0300
-
-kamaki (0.3.0-1) stable; urgency=low
-
-  * New upstream version 
-
- -- Kostas Papadimitriou <kpap@grnet.gr>  Thu, 03 May 2012 14:06:49 +0300
-
+ -- Nikos Skalkotos <skalkoto@grnet.gr>  Mon, 05 Nov 2012 18:04:09 +0200

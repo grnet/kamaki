@@ -9,11 +9,10 @@ Homepage: https://code.grnet.gr/projects/kamaki
 
 Package: kamaki
 Architecture: all
-Depends: ${misc:Depends}, ${python:Depends}, python-setuptools, python-gevent (>= 0.13.6), snf-common (>= 0.11)
+Depends: ${misc:Depends}, ${python:Depends}, python-setuptools, snf-common (>= 0.11)
 XB-Python-Version: ${python:Versions}
 Description: Simple, yet intuitive, command-line tool for managing clouds.
              It is an initial implementation of the OpenStack Compute API, 
              v1.1, with custom extensions specific to the Synnefo IaaS cloud 
              management software.
-
 
