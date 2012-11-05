@@ -966,6 +966,12 @@ class store_delpermissions(_store_container_command):
 class store_info(_store_container_command):
     """Get information for account [, container [or object]]"""
 
+    def __init__(self, arguments={}):
+        super(self.__class__, self).__init__(arguments)
+        self.arguments['object_version'] =\
+            ValueArgument(parsed_name='--object-version',
+            help='show specific version \ (applies only for objects)')
+
     def main(self, container____path__=None):
         super(self.__class__, self).main(container____path__)
         try:
@@ -974,7 +980,8 @@ class store_info(_store_container_command):
             elif self.path is None:
                 reply = self.client.get_container_info(self.container)
             else:
-                reply = self.client.get_object_info(self.path)
+                reply = self.client.get_object_info(self.path,
+                    version=self.get_argument('object_version'))
         except ClientError as err:
             raiseCLIError(err)
         print_dict(reply)
