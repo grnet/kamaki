@@ -100,7 +100,12 @@ class KamakiHTTPConnection(HTTPConnection):
 
     def _retrieve_connection_info(self, extra_params={}):
         """ return (scheme, netloc, url?with&params) """
-        url = self.url
+        if self.url:
+            url = self.url if self.url[-1] == '/' else (self.url + '/')
+        else:
+            url = 'localhost://'
+        if self.path:
+            url += self.path[1:] if self.path[0] == '/' else self.path
         params = dict(self.params)
         for k, v in extra_params.items():
             params[k] = v
@@ -110,8 +115,10 @@ class KamakiHTTPConnection(HTTPConnection):
                 param_str += '=' + unicode(val)
             url += param_str
 
-        parsed = urlparse(self.url)
+        parsed = urlparse(url)
         self.url = url
+        self.path = parsed.path if parsed.path else '/'
+        self.path += '?%s' % parsed.query if parsed.query else ''
         return (parsed.scheme, parsed.netloc)
 
     def perform_request(self,
@@ -135,7 +142,7 @@ class KamakiHTTPConnection(HTTPConnection):
         try:
             #Be carefull, all non-body variables should not be unicode
             conn.request(method=str(method.upper()),
-                url=str(self.url),
+                url=str(self.path),
                 headers=http_headers,
                 body=data)
         except Exception as err:

@@ -135,6 +135,7 @@ class HTTPConnection(object):
         self.headers = headers
         self.params = params
         self.url = url
+        self.path = ''
         self.method = method
 
     def raise_for_status(self, r):
@@ -177,6 +178,9 @@ class HTTPConnection(object):
 
     def set_url(self, url):
         self.url = url
+
+    def set_path(self, path):
+        self.path = path
 
     def set_method(self, method):
         self.method = method

@@ -43,16 +43,19 @@ from kamaki.clients.pithos import PithosClient as pithos
 from kamaki.clients.cyclades import CycladesClient as cyclades
 from kamaki.clients.image import ImageClient as image
 from kamaki.clients.astakos import AstakosClient as astakos
+from kamaki.cli.config import Config
 
 TEST_ALL = False
 
-global_username = 'USERNAME'
-token = 'T0k3n=='
+cnf = Config('/home/saxtouri/.kamakirc')
+global_username = cnf.get('global', 'account')
+token = cnf.get('global', 'token')
 
 
 class testAstakos(unittest.TestCase):
     def setUp(self):
-        url = 'https://accounts.okeanos.grnet.gr'
+        global cnf
+        url = cnf.get('astakos', 'url')
         global token
         self.client = astakos(url, token)
 
@@ -74,31 +77,35 @@ class testAstakos(unittest.TestCase):
 
 class testImage(unittest.TestCase):
     def setUp(self):
-        cyclades_url = 'https://cyclades.okeanos.grnet.gr/api/v1.1'
-        url = 'https://cyclades.okeanos.grnet.gr/plankton'
+        global cnf
+        cyclades_url = cnf.get('compute', 'url')
+        url = cnf.get('image', 'url')
         global token
         self.token = token
         self.imgid = 'b2dffe52-64a4-48c3-8a4c-8214cc3165cf'
         self.now = time.mktime(time.gmtime())
         self.imgname = 'img_%s' % self.now
         global global_username
-        self.imglocation = 'pithos://%s@grnet.gr/pithos/my.img'\
+        self.imglocation = 'pithos://%s/pithos/my.img'\
         % global_username
         self.client = image(url, self.token)
         self.cyclades = cyclades(cyclades_url, self.token)
         self._imglist = {}
 
     def _prepare_img(self):
+        global cnf
         global global_username
-        username = '%s@grnet.gr' % global_username
-        imglocalpath = '/home/%s/src/kamaki-settings/files/centos.diskdump'\
-        % global_username
+        username = global_username.split('@')[0]
+        imglocalpath =\
+        '/home/%s/src/kamaki-settings/files/centos.diskdump' % username
         f = open(imglocalpath, 'rb')
-        pithcli = pithos('https://pithos.okeanos.grnet.gr/v1',
+        pithcli = pithos(cnf.get('store', 'url'),
             self.token,
-            username,
+            global_username,
             'pithos')
+        print('\t- Upload an image at %s...' % imglocalpath)
         pithcli.upload_object('my.img', f)
+        print('\t- ok')
         f.close()
 
         self.client.register(self.imgname,
@@ -160,11 +167,9 @@ class testImage(unittest.TestCase):
                 'properties',
                 'size'):
                 self.assertTrue(term in img)
-                for interm in ('kernel',
+                for interm in (
                     'osfamily',
                     'users',
-                    'gui',
-                    'sortorder',
                     'os',
                     'root_partition',
                     'description'):
@@ -249,7 +254,6 @@ class testCyclades(unittest.TestCase):
         url = 'https://cyclades.okeanos.grnet.gr/api/v1.1'
         global token
         global global_username
-        #account = '%s@grnet.gr' % global_username
         self.img = 'b2dffe52-64a4-48c3-8a4c-8214cc3165cf'
         self.img_details = {
             u'status': u'ACTIVE',
@@ -282,7 +286,6 @@ class testCyclades(unittest.TestCase):
         """okeanos.io"""
         #url = 'https://cyclades.okeanos.io/api/v1.1'
         #global token
-        #account='%s@grnet.gr'%global_username
         #self.img = '43cc8497-61c3-4c46-ae8d-3e33861f8527'
         #self.img_details= {
         #    u'status': u'ACTIVE',
@@ -533,7 +536,7 @@ class testCyclades(unittest.TestCase):
         self._test_create_network()
         print('...ok')
 
-        print('- wait for netowork to be activated')
+        print('- wait for network to be activated')
         self._wait_for_network(self.network1['id'], 'ACTIVE')
         print('- ok')
 
@@ -546,7 +549,7 @@ class testCyclades(unittest.TestCase):
         print('...ok')
 
         self.network2 = self._create_network(self.netname2)
-        print('- wait for netowork to be activated')
+        print('- wait for network to be activated')
         self._wait_for_network(self.network2['id'], 'ACTIVE')
         print('- ok')
 
@@ -1173,11 +1176,12 @@ class testPithos(unittest.TestCase):
         account = 'admin@adminland.com'
         """
 
-        url = 'https://pithos.okeanos.grnet.gr/v1'
+        global cnf
+        url = cnf.get('store', 'url')
 
         global token
         global global_username
-        account = '%s@grnet.gr' % global_username
+        account = global_username
 
         """
         url='https://pithos.okeanos.io/v1'
@@ -1368,8 +1372,7 @@ class testPithos(unittest.TestCase):
         self.assertTrue('x-account-meta-' + mprefix + '2' not in r)
 
         """Missing testing for quota, versioning, because normally
-        you don't have permissions
- to modify those at account level
+        you don't have permissions to modify those at account level
         """
 
         newquota = 1000000
@@ -1768,8 +1771,7 @@ class testPithos(unittest.TestCase):
         r = self.client.get_object_info(obj)
         self.assertTrue('content-disposition' in r)
 
-        """Check permissions
-"""
+        """Check permissions"""
         r = self.client.get_object_sharing(obj)
         self.assertTrue('accx:groupa' in r['read'])
         self.assertTrue('u1' in r['read'])
@@ -2021,8 +2023,7 @@ class testPithos(unittest.TestCase):
         self.assertEqual(r['x-object-meta-mkey2'], 'mval2a')
         self.assertEqual(r['x-object-meta-mkey3'], 'mval3')
 
-        """Check permissions
-"""
+        """Check permissions"""
         r = self.client.get_object_sharing(obj)
         self.assertFalse('read' in r)
         self.assertTrue('u5' in r['write'])
@@ -2135,8 +2136,7 @@ class testPithos(unittest.TestCase):
         r = self.client.get_object_meta(obj)
         self.assertFalse('x-object-meta-mkey1' in r)
 
-        """Check permissions
-"""
+        """Check permissions"""
         self.client.set_object_sharing(obj,
             read_permition=['u4', 'u5'], write_permition=['u4'])
         r = self.client.get_object_sharing(obj)
@@ -2158,9 +2158,14 @@ class testPithos(unittest.TestCase):
 
         """Check if_etag_(not)match"""
         etag = r['etag']
-        #r = self.client.object_post(obj, update=True, public=True,
-        #    if_etag_not_match=etag, success=(412,202,204))
-        #self.assertEqual(r.status_code, 412)
+        """
+        r = self.client.object_post(obj,
+            update=True,
+            public=True,
+            if_etag_not_match=etag,
+            success=(412, 202, 204))
+        self.assertEqual(r.status_code, 412)
+        """
 
         r = self.client.object_post(obj, update=True, public=True,
             if_etag_match=etag, content_encoding='application/json')
@@ -2254,7 +2259,8 @@ class testPithos(unittest.TestCase):
         random.seed(self.now)
         rf = open('/dev/urandom', 'r')
         f = open(self.fname, 'w')
-        sys.stdout.write(' create random file %s of size %s      ' % (name, size))
+        sys.stdout.write(
+            ' create random file %s of size %s      ' % (name, size))
         for hobyte_id in range(size / 8):
             #sss = 'hobt%s' % random.randint(1000, 9999)
             f.write(rf.read(8))

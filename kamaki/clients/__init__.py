@@ -108,7 +108,8 @@ class Client(object):
             if data:
                 self.set_default_header('Content-Length', unicode(len(data)))
 
-            self.http_client.url = self.base_url + path
+            self.http_client.url = self.base_url
+            self.http_client.path = path
             r = self.http_client.perform_request(method,
                 data,
                 async_headers,
