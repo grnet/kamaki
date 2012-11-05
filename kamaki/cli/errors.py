@@ -31,6 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+
 class CLIError(Exception):
     def __init__(self, message, status=0, details='', importance=0):
         """importance is set by the raiser
@@ -46,23 +47,39 @@ class CLIError(Exception):
     def __unicode__(self):
         return unicode(self.message)
 
+
 class CLISyntaxError(CLIError):
-	def __init__(self, message='Syntax Error', status=10, details=''):
-		super(CLISyntaxError, self).__init__(message, status, details, importance=1)
+    def __init__(self, message='Syntax Error', status=10, details=''):
+        super(CLISyntaxError,
+            self).__init__(message, status, details, importance=1)
+
 
 class CLIUnknownCommand(CLIError):
-	def __init__(self, message='Unknown Command', status=12, details=''):
-		super(CLIUnknownCommand, self).__init__(message, status, details, importance=1)
+    def __init__(self, message='Unknown Command', status=12, details=''):
+        super(CLIUnknownCommand,
+            self).__init__(message, status, details, importance=1)
+
 
 class CLICmdSpecError(CLIError):
-	def __init__(self, message='Command Specification Error', status=13, details='', importance=1):
-		super(CLICmdSpecError, self).__init__(message, status, details, importance=0)
+    def __init__(self,
+        message='Command Specification Error',
+        status=13,
+        details='',
+        importance=1):
+        super(CLICmdSpecError,
+            self).__init__(message, status, details, importance=0)
+
 
 class CLICmdIncompleteError(CLICmdSpecError):
-    def __init__(self, message='Incomplete Command Error', status=14, details=''):
-        super(CLICmdSpecError, self).__init__(message, status, details, importance=1)
+    def __init__(self,
+        message='Incomplete Command Error',
+        status=14,
+        details=''):
+        super(CLICmdSpecError,
+            self).__init__(message, status, details, importance=1)
 
-def raiseCLIError(err, importance = -1):
+
+def raiseCLIError(err, importance=-1):
     if importance < 0:
         if err.status <= 0:
             importance = 0

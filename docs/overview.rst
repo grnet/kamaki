@@ -7,45 +7,35 @@ History
 Here, at the
 `Greek Research and Technology Network <http://grnet.gr/default.asp?pid=1&la=2>`_,
 we have been developing an IaaS cloud management software called **synnefo**
-(or **+nefo**) that is accessed and managed via the OpenStack Compute API v1.1.
-We have also recently deployed synnefo in one of our datacenters to provide the
-`~okeanos <http://okeanos.grnet.gr/>`_ IaaS service to the Greek Research and
-Academic Community (currenty in alpha testing phase).
+(or **+nefo**) that is accessed and managed via an extended OpenStack Compute API v1.1. Synnefo has been deployed in many enviroments to cover multiple needs. For example, the `~okeanos <http://okeanos.grnet.gr/>`_ IaaS service, running in our datacenters, is used to offer services for the Greek Research and Academic Community.
 
-From the early start, we needed a simple command-line tool to test the OpenStack API.
-That's why we developed ./kamaki, which proved to be powerful and intuitive enough,
-to be used not only for testing purposes but also as a complete Openstack Compute API v1.1
-client, able to manage our cloud from the command line.
+From the early start, we needed a simple command-line tool to test the OpenStack API. That's why we developed *kamaki*, which proved to be powerful and intuitive enough, to be used not only for testing purposes but also as a complete Openstack Compute API v1.1 client, able to manage our cloud from the command line.
 
-Once it proved so useful to us, we decided to open the source, so the community can benefit
-from it, and ./kamaki can benefit from the community too.
+Once it proved so useful to us, we decided to open the source, so the community can benefit from it, and *kamaki* can benefit from the community too.
 
 
-Who uses ./kamaki?
+Who uses *kamaki*?
 ------------------
 
-./kamaki is currently used internally in GRNET by the development team to test the synnefo
-software, by the deployment team who operates the ~okeanos service and by all the alpha 
-testers using the ~okeanos service and want to access the service from the command line.
+*kamaki* is currently used internally in GRNET by the development team to test the synnefo software, by the deployment team who operates the ~okeanos service and by the testers using the ~okeanos service and want to access the service from the command line.
+
+What's more, *kamaki* clients API is used in synnefo as an API for accessing remote services as well as for building manager tools of various synnefo functions (e.g. admin image registration).
 
 
 Contributing and helping out
 ----------------------------
 
-For the ./kamaki to improve and be useful to others too, your help is very important.
-Any contributions and bug reports will be highly appreciated. Using ./kamaki and sending
-us feedback is also a good start.
+The *kamaki* development team values your help and depends on community feedback for feature evolution. Any contributions and bug reports will be highly appreciated. Using *kamaki* and sending us feedback is also a good start.
 
 
 Community & Support
 -------------------
 
-For any problems you may bump into while using ./kamaki or for help from the development
-team please contact us at:
+For any problems you may bump into while using *kamaki* or for help from the development team please contact us at:
 
 * synnefo@lists.grnet.gr
 
 Please be sure to have read the Documentation and check the known
-`issues <https://code.grnet.gr/projects/kamaki/issues>`_ before contacting the
+`issues <https://code.grnet.gr/project*kamaki*/issues>`_ before contacting the
 team.
 

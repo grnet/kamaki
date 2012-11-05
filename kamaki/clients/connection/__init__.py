@@ -31,10 +31,11 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+
 class HTTPResponse(object):
 
     def __init__(self, request=None, prefetched=False):
-        self.request=request
+        self.request = request
         self.prefetched = prefetched
 
     def _get_response(self):
@@ -49,82 +50,92 @@ class HTTPResponse(object):
         Use this after finished using the response"""
         raise NotImplementedError
 
-    @property 
+    @property
     def prefetched(self):
         return self._prefetched
+
     @prefetched.setter
     def prefetched(self, p):
         self._prefetched = p
 
-    @property 
+    @property
     def content(self):
         self._get_response()
         return self._content
-    @content.setter 
+
+    @content.setter
     def content(self, v):
         self._content = v
 
-    @property 
+    @property
     def text(self):
         self._get_response()
         return self._text
-    @text.setter 
+
+    @text.setter
     def text(self, v):
         self._text = v
 
-    @property 
+    @property
     def json(self):
         self._get_response()
         return self._json
-    @json.setter 
+
+    @json.setter
     def json(self, v):
         self._json = v
 
-    @property 
+    @property
     def headers(self):
         self._get_response()
         return self._headers
-    @headers.setter 
+
+    @headers.setter
     def headers(self, v):
         self._headers = v
 
-    @property 
+    @property
     def status_code(self):
         self._get_response()
         return self._status_code
-    @status_code.setter 
+
+    @status_code.setter
     def status_code(self, v):
         self._status_code = v
 
-    @property 
+    @property
     def status(self):
         self._get_response()
         return self._status
-    @status.setter 
+
+    @status.setter
     def status(self, v):
         self._status = v
 
-    @property 
+    @property
     def request(self):
         return self._request
-    @request.setter 
+
+    @request.setter
     def request(self, v):
         self._request = v
 
+
 class HTTPConnectionError(Exception):
     def __init__(self, message, status=0, details=''):
-    	super(HTTPConnectionError, self).__init__(message)
+        super(HTTPConnectionError, self).__init__(message)
         self.message = message
         self.status = status
         self.details = details
 
+
 class HTTPConnection(object):
 
     def __init__(self, method=None, url=None, params={}, headers={}):
-    	self.headers = headers
-    	self.params = params
-    	self.url = url
-    	self.method = method
+        self.headers = headers
+        self.params = params
+        self.url = url
+        self.method = method
 
     def raise_for_status(self, r):
         message = "%d %s" % (r.status_code, r.status)
@@ -135,58 +146,64 @@ class HTTPConnection(object):
         raise HTTPConnectionError(message, r.status_code, details)
 
     def set_header(self, name, value):
-    	self.headers[unicode(name)] = unicode(value)
+        self.headers[unicode(name)] = unicode(value)
 
     def remove_header(self, name):
-    	try:
-    		self.headers.pop(name)
-    	except KeyError:
-    		pass
+        try:
+            self.headers.pop(name)
+        except KeyError:
+            pass
 
     def replace_headers(self, new_headers):
-    	self.headers = new_headers
+        self.headers = new_headers
 
     def reset_headers(self):
-    	self.replace_headers({})
+        self.replace_headers({})
 
     def set_param(self, name, value=None):
-    	self.params[name] = value
+        self.params[name] = value
 
     def remove_param(self, name):
-    	try:
-    		self.params.pop(name)
-    	except KeyError:
-    		pass
+        try:
+            self.params.pop(name)
+        except KeyError:
+            pass
 
     def replace_params(self, new_params):
-    	self.params = new_params
+        self.params = new_params
 
     def reset_params(self):
-    	self.replace_params({})
+        self.replace_params({})
 
     def set_url(self, url):
-    	self.url = url
+        self.url = url
 
     def set_method(self, method):
-    	self.method = method
+        self.method = method
 
-	def perform_request(self, method=None, url=None, async_headers={}, async_params={}, data=None):
-		"""
-		@return an HTTPResponse (also in self.response of this object)
-		named args offer the ability to reset a request or a part of the request
-		e.g. r = HTTPConnection(url='http://....', method='GET')
-			 r.perform_request()
-			 r.perform_request(method='POST')
-		will perform a GET request and later a POST request on the same URL
-		another example:
-			 r = HTTPConnection(url='http://....', params='format=json')
-			 r.perform_request(method='GET')
-			 r.perform_request(method='POST')
-		"""
-		raise NotImplementedError
+    def perform_request(self,
+        method=None,
+        url=None,
+        async_headers={},
+        async_params={},
+        data=None):
+        """
+        @return an HTTPResponse (also in self.response of this object)
+        named args offer the ability to reset a request or a part of the
+        request
+        e.g. r = HTTPConnection(url='http://....', method='GET')
+             r.perform_request()
+             r.perform_request(method='POST')
+        will perform a GET request and later a POST request on the same URL
+        another example:
+             r = HTTPConnection(url='http://....', params='format=json')
+             r.perform_request(method='GET')
+             r.perform_request(method='POST')
+        """
+        raise NotImplementedError
 
     """
-    @property 
+    @property
     def response(self):
         return self._response
     @response.setter

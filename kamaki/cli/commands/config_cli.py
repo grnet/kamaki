@@ -31,11 +31,13 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from kamaki.cli import command#, set_api_description
+from kamaki.cli import command
 from kamaki.cli.argument import FlagArgument
 from kamaki.cli.commands import _command_init
-#set_api_description('config', 'Configuration commands')
-API_DESCRIPTION = {'config':'Configuration commands'}
+
+
+API_DESCRIPTION = {'config': 'Configuration commands'}
+
 
 @command()
 class config_list(_command_init):
@@ -52,6 +54,7 @@ class config_list(_command_init):
             for key, val in sorted(items):
                 print('%s.%s = %s' % (section, key, val))
 
+
 @command()
 class config_get(_command_init):
     """Show a configuration option"""
@@ -63,6 +66,7 @@ class config_get(_command_init):
         if value is not None:
             print(value)
 
+
 @command()
 class config_set(_command_init):
     """Set a configuration option"""
@@ -72,6 +76,7 @@ class config_set(_command_init):
         section = section or 'global'
         self.config.set(section, key, value)
         self.config.write()
+
 
 @command()
 class config_delete(_command_init):

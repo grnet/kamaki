@@ -31,66 +31,93 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from kamaki.clients.storage import StorageClient, ClientError
+from kamaki.clients.storage import StorageClient
 from kamaki.clients.utils import path4url, list2str
+
 
 class PithosRestAPI(StorageClient):
 
-    def account_head(self, until = None,
-        if_modified_since=None, if_unmodified_since=None, *args, **kwargs):
+    def account_head(self,
+        until=None,
+        if_modified_since=None,
+        if_unmodified_since=None,
+        *args,
+        **kwargs):
         """ Full Pithos+ HEAD at account level
         --- request parameters ---
         @param until (string): optional timestamp
         --- --- optional request headers ---
-        @param if_modified_since (string): Retrieve if account has changed since provided timestamp
-        @param if_unmodified_since (string): Retrieve if account has not changed since provided timestamp
+        @param if_modified_since (string): Retrieve if account has changed
+            since provided timestamp
+        @param if_unmodified_since (string): Retrieve if account has not
+            change since provided timestamp
         """
         self.assert_account()
         path = path4url(self.account)
 
-        self.set_param('until', until, iff = until is not None)
+        self.set_param('until', until, iff=until is not None)
         self.set_header('If-Modified-Since', if_modified_since)
         self.set_header('If-Unmodified-Since', if_unmodified_since)
 
         success = kwargs.pop('success', 204)
         return self.head(path, *args, success=success, **kwargs)
 
-    def account_get(self, limit=None, marker=None, format='json', show_only_shared=False, until=None,
-        if_modified_since=None, if_unmodified_since=None, *args, **kwargs):
+    def account_get(self,
+        limit=None,
+        marker=None,
+        format='json',
+        show_only_shared=False,
+        until=None,
+        if_modified_since=None,
+        if_unmodified_since=None,
+        *args,
+        **kwargs):
         """  Full Pithos+ GET at account level
         --- request parameters ---
-        @param limit (integer): The amount of results requested (server will use default value if None)
-        @param marker (string): Return containers with name lexicographically after marker
-        @param format (string): reply format can be json or xml (default: json)
-        @param shared (bool): If true, only shared containers will be included in results
+        @param limit (integer): The amount of results requested
+            (server will use default value if None)
+        @param marker (string): Return containers with name
+            lexicographically after marker
+        @param format (string): reply format can be json or xml
+            (default: json)
+        @param shared (bool): If true, only shared containers will be
+            included in results
         @param until (string): optional timestamp
         --- --- optional request headers ---
-        @param if_modified_since (string): Retrieve if account has changed since provided timestamp
-        @param if_unmodified_since (string): Retrieve if account has not changed since provided timestamp
+        @param if_modified_since (string): Retrieve if account has changed
+            since provided timestamp
+        @param if_unmodified_since (string): Retrieve if account has not
+            changed since provided timestamp
         """
         self.assert_account()
 
-        self.set_param('format',format, iff = format is not None)
-        self.set_param('limit',limit, iff = limit is not None)
-        self.set_param('marker',marker, iff = marker is not None)
-        self.set_param('shared', iff = show_only_shared)
-        self.set_param('until',until, iff = until is not None)
+        self.set_param('format', format, iff=format is not None)
+        self.set_param('limit', limit, iff=limit is not None)
+        self.set_param('marker', marker, iff=marker is not None)
+        self.set_param('shared', iff=show_only_shared)
+        self.set_param('until', until, iff=until is not None)
 
         self.set_header('If-Modified-Since', if_modified_since)
         self.set_header('If-Unmodified-Since', if_unmodified_since)
 
         path = path4url(self.account)
         success = kwargs.pop('success', (200, 204))
-        return self.get(path, *args, success = success, **kwargs)
+        return self.get(path, *args, success=success, **kwargs)
 
-    def account_post(self, update=True,
-        groups={}, metadata=None, quota=None, versioning=None, *args, **kwargs):
+    def account_post(self,
+        update=True,
+        groups={},
+        metadata=None,
+        quota=None,
+        versioning=None,
+        *args,
+        **kwargs):
         """ Full Pithos+ POST at account level
         --- request parameters ---
         @param update (bool): if True, Do not replace metadata/groups
         --- request headers ---
         @groups (dict): Optional user defined groups in the form
-                    {   'group1':['user1', 'user2', ...], 
+                    {   'group1':['user1', 'user2', ...],
                         'group2':['userA', 'userB', ...], ...
                     }
         @metadata (dict): Optional user defined metadata in the form
@@ -103,7 +130,7 @@ class PithosRestAPI(StorageClient):
         """
         self.assert_account()
 
-        self.set_param('update', iff = update)
+        self.set_param('update', iff=update)
 
         for group, usernames in groups.items():
             userstr = ''
@@ -111,10 +138,10 @@ class PithosRestAPI(StorageClient):
             for user in usernames:
                 userstr = userstr + dlm + user
                 dlm = ','
-            self.set_header('X-Account-Group-'+group, userstr)
+            self.set_header('X-Account-Group-' + group, userstr)
         if metadata is not None:
             for metaname, metaval in metadata.items():
-                self.set_header('X-Account-Meta-'+metaname, metaval)
+                self.set_header('X-Account-Meta-' + metaname, metaval)
         self.set_header('X-Account-Policy-Quota', quota)
         self.set_header('X-Account-Policy-Versioning', versioning)
 
@@ -127,9 +154,11 @@ class PithosRestAPI(StorageClient):
         """ Full Pithos+ HEAD at container level
         --- request params ---
         @param until (string): optional timestamp
-        --- optional request headers --- 
-        @param if_modified_since (string): Retrieve if account has changed since provided timestamp
-        @param if_unmodified_since (string): Retrieve if account has not changed since provided timestamp
+        --- optional request headers ---
+        @param if_modified_since (string): Retrieve if account has changed
+            since provided timestamp
+        @param if_unmodified_since (string): Retrieve if account has not
+            changed since provided timestamp
         """
         self.assert_container()
 
@@ -142,26 +171,43 @@ class PithosRestAPI(StorageClient):
         success = kwargs.pop('success', 204)
         return self.head(path, *args, success=success, **kwargs)
 
-    def container_get(self, limit = None, marker = None, prefix=None, delimiter=None, path = None,
-        format='json', meta=[], show_only_shared=False, until=None,
-        if_modified_since=None, if_unmodified_since=None, *args, **kwargs):
+    def container_get(self,
+        limit=None,
+        marker=None,
+        prefix=None,
+        delimiter=None,
+        path=None,
+        format='json',
+        meta=[],
+        show_only_shared=False,
+        until=None,
+        if_modified_since=None,
+        if_unmodified_since=None,
+        *args,
+        **kwargs):
         """ Full Pithos+ GET at container level
         --- request parameters ---
-        @param limit (integer): The amount of results requested (server qill use default value if None)
-        @param marker (string): Return containers with name lexicographically after marker
+        @param limit (integer): The amount of results requested
+            (server qill use default value if None)
+        @param marker (string): Return containers with name lexicographically
+            after marker
         @param prefix (string): Return objects starting with prefix
         @param delimiter (string): Return objects up to the delimiter
-        @param path (string): assume prefix = path and delimiter = / (overwrites prefix
-        and delimiter)
-        @param format (string): reply format can be json or xml (default: json)
-        @param meta (list): Return objects that satisfy the key queries in the specified
-        comma separated list (use <key>, !<key> for existence queries, <key><op><value>
-        for value queries, where <op> can be one of =, !=, <=, >=, <, >)
-        @param shared (bool): If true, only shared containers will be included in results
+        @param path (string): assume prefix = path and delimiter = /
+            (overwrites prefix and delimiter)
+        @param format (string): reply format can be json or xml (default:json)
+        @param meta (list): Return objects that satisfy the key queries in
+            the specified comma separated list (use <key>, !<key> for
+            existence queries, <key><op><value> for value queries, where <op>
+            can be one of =, !=, <=, >=, <, >)
+        @param shared (bool): If true, only shared containers will be included
+        in results
         @param until (string): optional timestamp
         --- --- optional request headers ---
-        @param if_modified_since (string): Retrieve if account has changed since provided timestamp
-        @param if_unmodified_since (string): Retrieve if account has not changed since provided timestamp
+        @param if_modified_since (string): Retrieve if account has changed
+            since provided timestamp
+        @param if_unmodified_since (string): Retrieve if account has not
+            changed since provided timestamp
         """
         self.assert_container()
 
@@ -174,7 +220,9 @@ class PithosRestAPI(StorageClient):
         else:
             self.set_param('path', path)
         self.set_param('shared', iff=show_only_shared)
-        self.set_param('meta', list2str(meta), iff=meta is not None and len(meta) > 0)
+        self.set_param('meta',
+            list2str(meta),
+            iff=meta is not None and len(meta) > 0)
         self.set_param('until', until, iff=until is not None)
 
         self.set_header('If-Modified-Since', if_modified_since)
@@ -184,7 +232,12 @@ class PithosRestAPI(StorageClient):
         success = kwargs.pop('success', 200)
         return self.get(path, *args, success=success, **kwargs)
 
-    def container_put(self, quota=None, versioning=None, metadata=None, *args, **kwargs):
+    def container_put(self,
+        quota=None,
+        versioning=None,
+        metadata=None,
+        *args,
+        **kwargs):
         """ Full Pithos+ PUT at container level
         --- request headers ---
         @param quota (integer): Size limit in KB
@@ -198,17 +251,25 @@ class PithosRestAPI(StorageClient):
 
         if metadata is not None:
             for metaname, metaval in metadata.items():
-                self.set_header('X-Container-Meta-'+metaname, metaval)
+                self.set_header('X-Container-Meta-' + metaname, metaval)
         self.set_header('X-Container-Policy-Quota', quota)
         self.set_header('X-Container-Policy-Versioning', versioning)
 
         path = path4url(self.account, self.container)
-        success = kwargs.pop('success',(201, 202))
+        success = kwargs.pop('success', (201, 202))
         return self.put(path, *args, success=success, **kwargs)
 
-    def container_post(self, update=True, format='json',
-        quota=None, versioning=None, metadata=None, content_type=None, content_length=None,
-        transfer_encoding=None, *args, **kwargs):
+    def container_post(self,
+        update=True,
+        format='json',
+        quota=None,
+        versioning=None,
+        metadata=None,
+        content_type=None,
+        content_length=None,
+        transfer_encoding=None,
+        *args,
+        **kwargs):
         """ Full Pithos+ POST at container level
         --- request params ---
         @param update (bool):  if True, Do not replace metadata/groups
@@ -231,7 +292,7 @@ class PithosRestAPI(StorageClient):
 
         if metadata is not None:
             for metaname, metaval in metadata.items():
-                self.set_header('X-Container-Meta-'+metaname, metaval)
+                self.set_header('X-Container-Meta-' + metaname, metaval)
         self.set_header('X-Container-Policy-Quota', quota)
         self.set_header('X-Container-Policy-Versioning', versioning)
         self.set_header('Content-Type', content_type)
@@ -245,19 +306,26 @@ class PithosRestAPI(StorageClient):
     def container_delete(self, until=None, delimiter=None, *args, **kwargs):
         """ Full Pithos+ DELETE at container level
         --- request parameters ---
-        @param until (timestamp string): if defined, container is purged up to that time
+        @param until (timestamp string): if defined, container is purged up to
+            that time
         """
-        self.assert_container()        
+        self.assert_container()
 
         self.set_param('until', until, iff=until is not None)
         self.set_param('delimiter', delimiter, iff=delimiter is not None)
 
-        path=path4url(self.account, self.container)
+        path = path4url(self.account, self.container)
         success = kwargs.pop('success', 204)
         return self.delete(path, success=success)
 
-    def object_head(self, object, version=None, if_etag_match=None, if_etag_not_match = None,
-        if_modified_since = None, if_unmodified_since = None, *args, **kwargs):
+    def object_head(self, object,
+        version=None,
+        if_etag_match=None,
+        if_etag_not_match=None,
+        if_modified_since=None,
+        if_unmodified_since=None,
+        *args,
+        **kwargs):
         """ Full Pithos+ HEAD at object level
         --- request parameters ---
         @param version (string): optional version identified
@@ -266,8 +334,10 @@ class PithosRestAPI(StorageClient):
                 with etag matching with this
         @param if_etag_not_match (string): if provided, return only results
                 with etag not matching with this
-        @param if_modified_since (string): Retrieve if account has changed since provided timestamp
-        @param if_unmodified_since (string): Retrieve if account has not changed since provided timestamp
+        @param if_modified_since (string): Retrieve if account has changed
+            since provided timestamp
+        @param if_unmodified_since (string): Retrieve if account has not
+            changed since provided timestamp
         """
         self.assert_container()
 
@@ -278,13 +348,22 @@ class PithosRestAPI(StorageClient):
         self.set_header('If-Modified-Since', if_modified_since)
         self.set_header('If-Unmodified-Since', if_unmodified_since)
 
-        path=path4url(self.account, self.container, object)
+        path = path4url(self.account, self.container, object)
         success = kwargs.pop('success', 200)
         return self.head(path, *args, success=success, **kwargs)
 
-    def object_get(self, object, format='json', hashmap=False, version=None,
-        data_range=None, if_range=False, if_etag_match=None, if_etag_not_match = None,
-        if_modified_since = None, if_unmodified_since = None, *args, **kwargs):
+    def object_get(self, object,
+        format='json',
+        hashmap=False,
+        version=None,
+        data_range=None,
+        if_range=False,
+        if_etag_match=None,
+        if_etag_not_match=None,
+        if_modified_since=None,
+        if_unmodified_since=None,
+        *args,
+        **kwargs):
         """ Full Pithos+ GET at object level
         --- request parameters ---
         @param format (string): json (default) or xml
@@ -292,13 +371,15 @@ class PithosRestAPI(StorageClient):
         @param version (string): optional version identified
         --- request headers ---
         @param data_range (string): Optional range of data to retrieve
-        @param if_range (bool): 
+        @param if_range (bool):
         @param if_etag_match (string): if provided, return only results
                 with etag matching with this
         @param if_etag_not_match (string): if provided, return only results
                 with etag not matching with this
-        @param if_modified_since (string): Retrieve if account has changed since provided timestamp
-        @param if_unmodified_since (string): Retrieve if account has not changed since provided timestamp
+        @param if_modified_since (string): Retrieve if account has changed
+            since provided timestamp
+        @param if_unmodified_since (string): Retrieve if account has not
+            changed since provided timestamp
         """
         self.assert_container()
 
@@ -307,21 +388,39 @@ class PithosRestAPI(StorageClient):
         self.set_param('hashmap', hashmap, iff=hashmap)
 
         self.set_header('Range', data_range)
-        self.set_header('If-Range', '', if_range is True and data_range is not None)
+        self.set_header('If-Range', '',
+            if_range is True and data_range is not None)
         self.set_header('If-Match', if_etag_match, )
         self.set_header('If-None-Match', if_etag_not_match)
         self.set_header('If-Modified-Since', if_modified_since)
         self.set_header('If-Unmodified-Since', if_unmodified_since)
 
-        path=path4url(self.account, self.container, object)
+        path = path4url(self.account, self.container, object)
         success = kwargs.pop('success', 200)
         return self.get(path, *args, success=success, **kwargs)
 
-    def object_put(self, object, format='json', hashmap=False, delimiter = None, if_etag_match=None,
-        if_etag_not_match = None, etag=None, content_length = None, content_type=None,
-        transfer_encoding=None, copy_from=None, move_from=None, source_account=None,
-        source_version=None, content_encoding = None, content_disposition=None, manifest = None,
-        permitions =None, public = None, metadata=None, *args, **kwargs):
+    def object_put(self, object,
+        format='json',
+        hashmap=False,
+        delimiter=None,
+        if_etag_match=None,
+        if_etag_not_match=None,
+        etag=None,
+        content_length=None,
+        content_type=None,
+        transfer_encoding=None,
+        copy_from=None,
+        move_from=None,
+        source_account=None,
+        source_version=None,
+        content_encoding=None,
+        content_disposition=None,
+        manifest=None,
+        permissions=None,
+        public=None,
+        metadata=None,
+        *args,
+        **kwargs):
         """ Full Pithos+ PUT at object level
         --- request parameters ---
         @param format (string): json (default) or xml
@@ -331,20 +430,29 @@ class PithosRestAPI(StorageClient):
                 with etag matching with this
         @param if_etag_not_match (string): if provided, return only results
                 with etag not matching with this
-        @param etag (string): The MD5 hash of the object (optional to check written data)
+        @param etag (string): The MD5 hash of the object (optional to check
+            written data)
         @param content_length (integer): The size of the data written
         @param content_type (string): The MIME content type of the object
-        @param transfer_encoding (string): Set to chunked to specify incremental uploading (if used, Content-Length is ignored)
-        @param copy_from (string): The source path in the form /<container>/<object>
-        @param move_from (string): The source path in the form /<container>/<object>
+        @param transfer_encoding (string): Set to chunked to specify
+            incremental uploading (if used, Content-Length is ignored)
+        @param copy_from (string): The source path in the form
+            /<container>/<object>
+        @param move_from (string): The source path in the form
+            /<container>/<object>
         @param source_account (string): The source account to copy/move from
         @param source_version (string): The source version to copy from
         @param conent_encoding (string): The encoding of the object
-        @param content_disposition (string): The presentation style of the object
-        @param manifest (string): Object parts prefix in /<container>/<object> form
-        @param permitions (dict): Object permissions in the form (all fields are optional)
-                {'read':[user1, group1, user2, ...], 'write':['user3, group2, group3, ...]}
-        @param public (bool): If true, Object is publicly accessible, if false, not
+        @param content_disposition (string): Presentation style of the object
+        @param manifest (string): Object parts prefix in
+            /<container>/<object> form
+        @param permissions (dict): Object permissions in the form (all fields
+            are optional)
+            {   'read':[user1, group1, user2, ...],
+                'write':['user3, group2, group3, ...]
+            }
+        @param public (bool): If true, Object is publicly accessible,
+            if false, not
         @param metadata (dict): Optional user defined metadata in the form
                 {'meta-key-1':'meta-value-1', 'meta-key-2':'meta-value-2', ...}
         """
@@ -368,28 +476,41 @@ class PithosRestAPI(StorageClient):
         self.set_header('Content-Disposition', content_disposition)
         self.set_header('X-Object-Manifest', manifest)
         perms = None
-        if permitions is not None:
-            for permition_type, permition_list in permitions.items():
+        if permissions:
+            for permission_type, permission_list in permissions.items():
                 if perms is None:
-                    perms = '' #Remove permitions
-                if len(permition_list) == 0:
+                    perms = ''  # Remove permissions
+                if len(permission_list) == 0:
                     continue
-                perms += ';'+permition_type if len(perms) > 0 else permition_type
-                perms += '='+list2str(permition_list, seperator=',')
+                if len(perms):
+                    perms += ';'
+                perms += '%s=%s'\
+                % (permission_type, list2str(permission_list, seperator=','))
         self.set_header('X-Object-Sharing', perms)
         self.set_header('X-Object-Public', public)
         if metadata is not None:
             for key, val in metadata.items():
-                self.set_header('X-Object-Meta-'+key, val)
+                self.set_header('X-Object-Meta-' + key, val)
 
-        path=path4url(self.account, self.container, object)
+        path = path4url(self.account, self.container, object)
         success = kwargs.pop('success', 201)
         return self.put(path, *args, success=success, **kwargs)
 
-    def object_copy(self, object, destination, format='json', ignore_content_type=False,
-        if_etag_match=None, if_etag_not_match=None, destination_account=None,
-        content_type=None, content_encoding=None, content_disposition=None, source_version=None,
-        permitions=None, public=False, metadata=None, *args, **kwargs):
+    def object_copy(self, object, destination,
+        format='json',
+        ignore_content_type=False,
+        if_etag_match=None,
+        if_etag_not_match=None,
+        destination_account=None,
+        content_type=None,
+        content_encoding=None,
+        content_disposition=None,
+        source_version=None,
+        permissions=None,
+        public=False,
+        metadata=None,
+        *args,
+        **kwargs):
         """ Full Pithos+ COPY at object level
         --- request parameters ---
         @param format (string): json (default) or xml
@@ -399,20 +520,25 @@ class PithosRestAPI(StorageClient):
                 with etag matching with this
         @param if_etag_not_match (string): if provided, copy only results
                 with etag not matching with this
-        @param destination (string): The destination path in the form /<container>/<object>
+        @param destination (string): The destination path in the form
+            /<container>/<object>
         @param destination_account (string): The destination account to copy to
         @param content_type (string): The MIME content type of the object
         @param content_encoding (string): The encoding of the object
-        @param content_disposition (string): The presentation style of the object
+        @param content_disposition (string): Object resentation style
         @param source_version (string): The source version to copy from
-        @param permitions (dict): Object permissions in the form (all fields are optional)
-                {'read':[user1, group1, user2, ...], 'write':['user3, group2, group3, ...]}
-                permitions override source permitions, removing any old permitions
-        @param public (bool): If true, Object is publicly accessible, if else, not
+        @param permissions (dict): Object permissions in the form
+            (all fields are optional)
+            {   'read':[user1, group1, user2, ...],
+                'write':['user3, group2, group3, ...]
+            }
+            permissions override source permissions,
+            removing any old permissions
+        @param public (bool): If true, Object is publicly accessible
         @param metadata (dict): Optional user defined metadata in the form
-                {'meta-key-1':'meta-value-1', 'meta-key-2':'meta-value-2', ...}
-                Metadata are appended to the source metadata. In case of same keys, they
-                replace the old metadata
+            {'meta-key-1':'meta-value-1', 'meta-key-2':'meta-value-2', ...}
+            Metadata are appended to the source metadata. In case of same
+            keys, they replace the old metadata
         """
         self.assert_container()
 
@@ -428,28 +554,41 @@ class PithosRestAPI(StorageClient):
         self.set_header('Content-Disposition', content_disposition)
         self.set_header('X-Source-Version', source_version)
         perms = None
-        if permitions is not None:
-            for permition_type, permition_list in permitions.items():
+        if permissions:
+            for permission_type, permission_list in permissions.items():
                 if perms is None:
-                    perms = '' #Remove permitions
-                if len(permition_list) == 0:
+                    perms = ''  # Remove permissions
+                if len(permission_list) == 0:
                     continue
-                perms += ';'+permition_type if len(perms) > 0 else permition_type
-                perms += '='+list2str(permition_list, seperator=',')
+                if len(perms):
+                    perms += ';'
+                perms += '%s=%s'\
+                % (permission_type, list2str(permission_list, seperator=','))
         self.set_header('X-Object-Sharing', perms)
         self.set_header('X-Object-Public', public)
         if metadata is not None:
             for key, val in metadata.items():
-                self.set_header('X-Object-Meta-'+key, val)
+                self.set_header('X-Object-Meta-' + key, val)
 
         path = path4url(self.account, self.container, object)
         success = kwargs.pop('success', 201)
         return self.copy(path, *args, success=success, **kwargs)
 
-    def object_move(self, object, format='json', ignore_content_type=False,
-        if_etag_match=None, if_etag_not_match=None, destination=None, destination_account=None,
-        content_type=None, content_encoding=None, content_disposition=None, permitions={},
-        public=False, metadata={}, *args, **kwargs):
+    def object_move(self, object,
+        format='json',
+        ignore_content_type=False,
+        if_etag_match=None,
+        if_etag_not_match=None,
+        destination=None,
+        destination_account=None,
+        content_type=None,
+        content_encoding=None,
+        content_disposition=None,
+        permissions={},
+        public=False,
+        metadata={},
+        *args,
+        **kwargs):
         """ Full Pithos+ COPY at object level
         --- request parameters ---
         @param format (string): json (default) or xml
@@ -459,15 +598,19 @@ class PithosRestAPI(StorageClient):
                 with etag matching with this
         @param if_etag_not_match (string): if provided, return only results
                 with etag not matching with this
-        @param destination (string): The destination path in the form /<container>/<object>
+        @param destination (string): The destination path in the form
+            /<container>/<object>
         @param destination_account (string): The destination account to copy to
         @param content_type (string): The MIME content type of the object
         @param content_encoding (string): The encoding of the object
-        @param content_disposition (string): The presentation style of the object
+        @param content_disposition (string): Object presentation style
         @param source_version (string): The source version to copy from
-        @param permitions (dict): Object permissions in the form (all fields are optional)
-                {'read':[user1, group1, user2, ...], 'write':['user3, group2, group3, ...]}
-        @param public (bool): If true, Object is publicly accessible, if false, not
+        @param permissions (dict): Object permissions in the form
+            (all fields are optional)
+            {   'read':[user1, group1, user2, ...],
+                'write':['user3, group2, group3, ...]
+            }
+        @param public (bool): If true, Object is publicly accessible
         @param metadata (dict): Optional user defined metadata in the form
                 {'meta-key-1':'meta-value-1', 'meta-key-2':'meta-value-2', ...}
         """
@@ -484,27 +627,45 @@ class PithosRestAPI(StorageClient):
         self.set_header('Content-Encoding', content_encoding)
         self.set_header('Content-Disposition', content_disposition)
         perms = None
-        for permition_type, permition_list in permitions.items():
+        for permission_type, permission_list in permissions.items():
             if perms is None:
-                perms = '' #Remove permitions
-            if len(permition_list) == 0:
+                perms = ''  # Remove permissions
+            if len(permission_list) == 0:
                 continue
-            perms += ';'+permition_type if len(perms) > 0 else permition_type
-            perms += '='+list2str(permition_list, seperator=',')
+            if len(perms):
+                perms += ';'
+            perms += '%s=%s'\
+            % (permission_type, list2str(permission_list, seperator=','))
         self.set_header('X-Object-Sharing', perms)
         self.set_header('X-Object-Public', public)
         for key, val in metadata.items():
-            self.set_header('X-Object-Meta-'+key, val)
+            self.set_header('X-Object-Meta-' + key, val)
 
         path = path4url(self.account, self.container, object)
         success = kwargs.pop('success', 201)
         return self.move(path, *args, success=success, **kwargs)
 
-    def object_post(self, object, format='json', update=True,
-        if_etag_match=None, if_etag_not_match=None, content_length=None, content_type=None,
-        content_range=None, transfer_encoding=None, content_encoding=None, content_disposition=None,
-        source_object=None, source_account=None, source_version=None, object_bytes=None,
-        manifest=None, permitions={}, public=False, metadata={}, *args, **kwargs):
+    def object_post(self, object,
+        format='json',
+        update=True,
+        if_etag_match=None,
+        if_etag_not_match=None,
+        content_length=None,
+        content_type=None,
+        content_range=None,
+        transfer_encoding=None,
+        content_encoding=None,
+        content_disposition=None,
+        source_object=None,
+        source_account=None,
+        source_version=None,
+        object_bytes=None,
+        manifest=None,
+        permissions={},
+        public=False,
+        metadata={},
+        *args,
+        **kwargs):
         """ Full Pithos+ POST at object level
         --- request parameters ---
         @param format (string): json (default) or xml
@@ -517,29 +678,35 @@ class PithosRestAPI(StorageClient):
         @param content_length (string): The size of the data written
         @param content_type (string): The MIME content type of the object
         @param content_range (string): The range of data supplied
-        @param transfer_encoding (string): Set to chunked to specify incremental uploading
-                (if used, Content-Length is ignored)
+        @param transfer_encoding (string): Set to chunked to specify
+            incremental uploading (if used, Content-Length is ignored)
         @param content_encoding (string): The encoding of the object
-        @param content_disposition (string): The presentation style of the object
-        @param source_object (string): Update with data from the object at path /<container>/<object>
+        @param content_disposition (string): Object presentation style
+        @param source_object (string): Update with data from the object at
+            path /<container>/<object>
         @param source_account (string): The source account to update from
         @param source_version (string): The source version to copy from
         @param object_bytes (integer): The updated objects final size
-        @param manifest (string): Object parts prefix in /<container>/<object> form
-        @param permitions (dict): Object permissions in the form (all fields are optional)
-                {'read':[user1, group1, user2, ...], 'write':['user3, group2, group3, ...]}
-        @param public (bool): If true, Object is publicly accessible, if false, not
+        @param manifest (string): Object parts prefix as /<container>/<object>
+        @param permissions (dict): Object permissions in the form (all fields
+            are optional)
+            {   'read':[user1, group1, user2, ...],
+                'write':['user3, group2, group3, ...]
+            }
+        @param public (bool): If true, Object is publicly accessible
         @param metadata (dict): Optional user defined metadata in the form
                 {'meta-key-1':'meta-value-1', 'meta-key-2':'meta-value-2', ...}
         """
         self.assert_container()
 
         self.set_param('format', format, iff=format is not None)
-        self.set_param('update', iff = update)
+        self.set_param('update', iff=update)
 
         self.set_header('If-Match', if_etag_match)
         self.set_header('If-None-Match', if_etag_not_match)
-        self.set_header('Content-Length', content_length, iff=transfer_encoding is None)
+        self.set_header('Content-Length',
+            content_length,
+            iff=transfer_encoding is None)
         self.set_header('Content-Type', content_type)
         self.set_header('Content-Range', content_range)
         self.set_header('Transfer-Encoding', transfer_encoding)
@@ -551,25 +718,31 @@ class PithosRestAPI(StorageClient):
         self.set_header('X-Object-Bytes', object_bytes)
         self.set_header('X-Object-Manifest', manifest)
         perms = None
-        for permition_type, permition_list in permitions.items():
+        for permission_type, permission_list in permissions.items():
             if perms is None:
-                perms = '' #Remove permitions
-            if len(permition_list) == 0:
+                perms = ''  # Remove permissions
+            if len(permission_list) == 0:
                 continue
-            perms += ';'+permition_type if len(perms) > 0 else permition_type
-            perms += '='+list2str(permition_list, seperator=',')
+            if len(perms):
+                perms += ';'
+            perms += '%s=%s'\
+            % (permission_type, list2str(permission_list, seperator=','))
         self.set_header('X-Object-Sharing', perms)
         self.set_header('X-Object-Public', public)
         for key, val in metadata.items():
-            self.set_header('X-Object-Meta-'+key, val)
+            self.set_header('X-Object-Meta-' + key, val)
 
         path = path4url(self.account, self.container, object)
-        success=kwargs.pop('success', (202, 204))
+        success = kwargs.pop('success', (202, 204))
         return self.post(path, *args, success=success, **kwargs)
-       
-    def object_delete(self, object, until=None, delimiter=None, *args, **kwargs):
+
+    def object_delete(self, object,
+        until=None,
+        delimiter=None,
+        *args,
+        **kwargs):
         """ Full Pithos+ DELETE at object level
-        --- request parameters --- 
+        --- request parameters ---
         @param until (string): Optional timestamp
         """
         self.assert_container()

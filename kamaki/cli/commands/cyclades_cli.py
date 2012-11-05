@@ -31,26 +31,31 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-API_DESCRIPTION = {'server':'Compute/Cyclades API server commands',
-    'flavor':'Compute/Cyclades API flavor commands',
-    'image':'Compute/Cyclades or Glance API image commands',
-    'network': 'Compute/Cyclades API network commands'}
-
 from kamaki.cli import command
-from kamaki.cli.utils import print_dict, print_items, print_list, format_size, bold
-from kamaki.cli.errors import CLIError, raiseCLIError
+from kamaki.cli.utils import print_dict, print_items, print_list, bold
+from kamaki.cli.errors import CLIError, raiseCLIError, CLISyntaxError
 from kamaki.clients.cyclades import CycladesClient, ClientError
 from kamaki.cli.argument import FlagArgument, ValueArgument
 from kamaki.cli.commands import _command_init
 
 from base64 import b64encode
-from os.path import abspath, exists
+from os.path import exists
+
+
+API_DESCRIPTION = {'server': 'Compute/Cyclades API server commands',
+    'flavor': 'Compute/Cyclades API flavor commands',
+    'image': 'Compute/Cyclades or Glance API image commands',
+    'network': 'Compute/Cyclades API network commands'}
+
 
 class _init_cyclades(_command_init):
     def main(self, service='compute'):
-        token = self.config.get(service, 'token') or self.config.get('global', 'token')
-        base_url = self.config.get(service, 'url') or self.config.get('global', 'url')
+        token = self.config.get(service, 'token')\
+            or self.config.get('global', 'token')
+        base_url = self.config.get(service, 'url')\
+            or self.config.get('global', 'url')
         self.client = CycladesClient(base_url=base_url, token=token)
+
 
 @command()
 class server_list(_init_cyclades):
@@ -64,7 +69,7 @@ class server_list(_init_cyclades):
         for server in servers:
             sname = server.pop('name')
             sid = server.pop('id')
-            print('%s (%s)'%(bold(sname), bold(unicode(sid))))
+            print('%s (%s)' % (bold(sname), bold(unicode(sid))))
             if self.get_argument('detail'):
                 server_info._print(server)
                 print('- - -')
@@ -78,23 +83,24 @@ class server_list(_init_cyclades):
         except ClientError as err:
             raiseCLIError(err)
 
+
 @command()
 class server_info(_init_cyclades):
     """Get server details"""
 
     @classmethod
-    def _print(self,server):
+    def _print(self, server):
         addr_dict = {}
-        if server.has_key('attachments'):
+        if 'attachments' in server:
             for addr in server['attachments']['values']:
                 ips = addr.pop('values', [])
                 for ip in ips:
-                    addr['IPv%s'%ip['version']] = ip['addr']
-                if addr.has_key('firewallProfile'):
+                    addr['IPv%s' % ip['version']] = ip['addr']
+                if 'firewallProfile' in addr:
                     addr['firewall'] = addr.pop('firewallProfile')
                 addr_dict[addr.pop('id')] = addr
             server['attachments'] = addr_dict if addr_dict is not {} else None
-        if server.has_key('metadata'):
+        if 'metadata' in server:
             server['metadata'] = server['metadata']['values']
         print_dict(server, ident=14)
 
@@ -109,21 +115,25 @@ class server_info(_init_cyclades):
                 importance=1)
         self._print(server)
 
+
 class PersonalityArgument(ValueArgument):
-    @property 
+    @property
     def value(self):
         return [self._value] if hasattr(self, '_value') else []
-    @value.setter 
+
+    @value.setter
     def value(self, newvalue):
         if newvalue == self.default:
             return self.value
         termlist = newvalue.split()
         if len(termlist) > 4:
-                raise CLISyntaxError(details='Wrong number of personality terms ("PATH [OWNER [GROUP [MODE]]]"')
+                raise CLISyntaxError(details='Wrong number of terms'\
+                    + ' ("PATH [OWNER [GROUP [MODE]]]"')
         path = termlist[0]
         self._value = dict(path=path)
         if not exists(path):
-            raise CLIError(message="File %s does not exist" % path, importance=1)
+            raise CLIError(message="File %s does not exist" % path,
+                importance=1)
         with open(path) as f:
             self._value['contents'] = b64encode(f.read())
         try:
@@ -133,14 +143,16 @@ class PersonalityArgument(ValueArgument):
         except IndexError:
             pass
 
+
 @command()
 class server_create(_init_cyclades):
     """Create a server"""
 
     def __init__(self, arguments={}):
         super(server_create, self).__init__(arguments)
-        self.arguments['personality'] = PersonalityArgument(parsed_name='--personality',
-            help='add a personality file ( "PATH [OWNER [GROUP [MODE]]]" )')
+        self.arguments['personality'] = PersonalityArgument(\
+            help='add a personality file ( "PATH [OWNER [GROUP [MODE]]]" )',
+            parsed_name='--personality')
 
     def update_parser(self, parser):
         parser.add_argument('--personality', dest='personalities',
@@ -151,11 +163,14 @@ class server_create(_init_cyclades):
     def main(self, name, flavor_id, image_id):
         super(self.__class__, self).main()
         try:
-            reply = self.client.create_server(name, int(flavor_id), image_id,
+            reply = self.client.create_server(name,
+                int(flavor_id),
+                image_id,
                 self.get_argument('personality'))
         except ClientError as err:
             raiseCLIError(err)
         print_dict(reply)
+
 
 @command()
 class server_rename(_init_cyclades):
@@ -168,7 +183,9 @@ class server_rename(_init_cyclades):
         except ClientError as err:
             raiseCLIError(err)
         except ValueError:
-            raise CLIError(message='Server id must be positive integer', importance=1)
+            raise CLIError(message='Server id must be positive integer',
+                importance=1)
+
 
 @command()
 class server_delete(_init_cyclades):
@@ -181,7 +198,9 @@ class server_delete(_init_cyclades):
         except ClientError as err:
             raiseCLIError(err)
         except ValueError:
-            raise CLIError(message='Server id must be positive integer', importance=1)
+            raise CLIError(message='Server id must be positive integer',
+                importance=1)
+
 
 @command()
 class server_reboot(_init_cyclades):
@@ -194,11 +213,14 @@ class server_reboot(_init_cyclades):
     def main(self, server_id):
         super(self.__class__, self).main()
         try:
-            self.client.reboot_server(int(server_id), self.get_argument('hard'))
+            self.client.reboot_server(int(server_id),
+                self.get_argument('hard'))
         except ClientError as err:
             raiseCLIError(err)
         except ValueError:
-            raise CLIError(message='Server id must be positive integer', importance=1)
+            raise CLIError(message='Server id must be positive integer',
+                importance=1)
+
 
 @command()
 class server_start(_init_cyclades):
@@ -211,7 +233,9 @@ class server_start(_init_cyclades):
         except ClientError as err:
             raiseCLIError(err)
         except ValueError:
-            raise CLIError(message='Server id must be positive integer', importance=1)
+            raise CLIError(message='Server id must be positive integer',
+                importance=1)
+
 
 @command()
 class server_shutdown(_init_cyclades):
@@ -224,7 +248,9 @@ class server_shutdown(_init_cyclades):
         except ClientError as err:
             raiseCLIError(err)
         except ValueError:
-            raise CLIError(message='Server id must be positive integer', importance=1)
+            raise CLIError(message='Server id must be positive integer',
+                importance=1)
+
 
 @command()
 class server_console(_init_cyclades):
@@ -237,8 +263,10 @@ class server_console(_init_cyclades):
         except ClientError as err:
             raiseCLIError(err)
         except ValueError:
-            raise CLIError(message='Server id must be positive integer', importance=1)
+            raise CLIError(message='Server id must be positive integer',
+                importance=1)
         print_dict(reply)
+
 
 @command()
 class server_firewall(_init_cyclades):
@@ -251,7 +279,9 @@ class server_firewall(_init_cyclades):
         except ClientError as err:
             raiseCLIError(err)
         except ValueError:
-            raise CLIError(message='Server id must be positive integer', importance=1)
+            raise CLIError(message='Server id must be positive integer',
+                importance=1)
+
 
 @command()
 class server_addr(_init_cyclades):
@@ -264,8 +294,10 @@ class server_addr(_init_cyclades):
         except ClientError as err:
             raiseCLIError(err)
         except ValueError:
-            raise CLIError(message='Server id must be positive integer', importance=1)
+            raise CLIError(message='Server id must be positive integer',
+                importance=1)
         print_list(reply)
+
 
 @command()
 class server_meta(_init_cyclades):
@@ -276,10 +308,12 @@ class server_meta(_init_cyclades):
         try:
             reply = self.client.get_server_metadata(int(server_id), key)
         except ValueError:
-            raise CLIError(message='Server id must be positive integer', importance=1)
+            raise CLIError(message='Server id must be positive integer',
+                importance=1)
         except ClientError as err:
             raiseCLIError(err)
         print_dict(reply)
+
 
 @command()
 class server_addmeta(_init_cyclades):
@@ -288,12 +322,15 @@ class server_addmeta(_init_cyclades):
     def main(self, server_id, key, val):
         super(self.__class__, self).main()
         try:
-            reply = self.client.create_server_metadata(int(server_id), key, val)
+            reply = self.client.create_server_metadata(\
+                int(server_id), key, val)
         except ClientError as err:
             raiseCLIError(err)
         except ValueError:
-            raise CLIError(message='Server id must be positive integer', importance=1)
+            raise CLIError(message='Server id must be positive integer',
+                importance=1)
         print_dict(reply)
+
 
 @command()
 class server_setmeta(_init_cyclades):
@@ -303,12 +340,15 @@ class server_setmeta(_init_cyclades):
         super(self.__class__, self).main()
         metadata = {key: val}
         try:
-            reply = self.client.update_server_metadata(int(server_id), **metadata)
+            reply = self.client.update_server_metadata(int(server_id),
+                **metadata)
         except ClientError as err:
             raiseCLIError(err)
         except ValueError:
-            raise CLIError(message='Server id must be positive integer', importance=1)
+            raise CLIError(message='Server id must be positive integer',
+                importance=1)
         print_dict(reply)
+
 
 @command()
 class server_delmeta(_init_cyclades):
@@ -321,7 +361,9 @@ class server_delmeta(_init_cyclades):
         except ClientError as err:
             raiseCLIError(err)
         except ValueError:
-            raise CLIError(message='Server id must be positive integer', importance=1)
+            raise CLIError(message='Server id must be positive integer',
+                importance=1)
+
 
 @command()
 class server_stats(_init_cyclades):
@@ -334,8 +376,10 @@ class server_stats(_init_cyclades):
         except ClientError as err:
             raiseCLIError(err)
         except ValueError:
-            raise CLIError(message='Server id must be positive integer', importance=1)
+            raise CLIError(message='Server id must be positive integer',
+                importance=1)
         print_dict(reply, exclude=('serverRef',))
+
 
 @command()
 class flavor_list(_init_cyclades):
@@ -353,6 +397,7 @@ class flavor_list(_init_cyclades):
             raiseCLIError(err)
         print_items(flavors)
 
+
 @command()
 class flavor_info(_init_cyclades):
     """Get flavor details"""
@@ -364,8 +409,10 @@ class flavor_info(_init_cyclades):
         except ClientError as err:
             raiseCLIError(err)
         except ValueError:
-            raise CLIError(message='Server id must be positive integer', importance=1)
+            raise CLIError(message='Server id must be positive integer',
+                importance=1)
         print_dict(flavor)
+
 
 @command()
 class network_list(_init_cyclades):
@@ -379,7 +426,7 @@ class network_list(_init_cyclades):
         for net in nets:
             netname = bold(net.pop('name'))
             netid = bold(unicode(net.pop('id')))
-            print('%s (%s)'%(netname, netid))
+            print('%s (%s)' % (netname, netid))
             if self.get_argument('detail'):
                 network_info.print_network(net)
 
@@ -391,27 +438,34 @@ class network_list(_init_cyclades):
             raiseCLIError(err)
         self.print_networks(networks)
 
+
 @command()
 class network_create(_init_cyclades):
     """Create a network"""
 
     def __init__(self, arguments={}):
         super(network_create, self).__init__(arguments)
-        self.arguments['cidr'] = ValueArgument('specific cidr for new network', '--with-cidr')
-        self.arguments['gateway'] = ValueArgument('specific gateway for new network',
-            '--with-gateway')
-        self.arguments['dhcp'] = ValueArgument('specific dhcp for new network', '--with-dhcp')
-        self.arguments['type'] = ValueArgument('specific type for new network', '--with-type')
+        self.arguments['cidr'] =\
+            ValueArgument('specific cidr for new network', '--with-cidr')
+        self.arguments['gateway'] =\
+            ValueArgument('specific gateway for new network', '--with-gateway')
+        self.arguments['dhcp'] =\
+            ValueArgument('specific dhcp for new network', '--with-dhcp')
+        self.arguments['type'] =\
+            ValueArgument('specific type for new network', '--with-type')
 
     def main(self, name):
         super(self.__class__, self).main()
         try:
-            reply = self.client.create_network(name, cidr= self.get_argument('cidr'),
-                gateway=self.get_argument('gateway'), dhcp=self.get_argument('dhcp'),
+            reply = self.client.create_network(name,
+                cidr=self.get_argument('cidr'),
+                gateway=self.get_argument('gateway'),
+                dhcp=self.get_argument('dhcp'),
                 type=self.get_argument('type'))
         except ClientError as err:
             raiseCLIError(err)
         print_dict(reply)
+
 
 @command()
 class network_info(_init_cyclades):
@@ -419,7 +473,7 @@ class network_info(_init_cyclades):
 
     @classmethod
     def print_network(self, net):
-        if net.has_key('attachments'):
+        if 'attachments' in net:
             att = net['attachments']['values']
             net['attachments'] = att if len(att) > 0 else None
         print_dict(net, ident=14)
@@ -432,6 +486,7 @@ class network_info(_init_cyclades):
             raiseCLIError(err)
         network_info.print_network(network)
 
+
 @command()
 class network_rename(_init_cyclades):
     """Update network name"""
@@ -442,6 +497,7 @@ class network_rename(_init_cyclades):
             self.client.update_network_name(network_id, new_name)
         except ClientError as err:
             raiseCLIError(err)
+
 
 @command()
 class network_delete(_init_cyclades):
@@ -454,6 +510,7 @@ class network_delete(_init_cyclades):
         except ClientError as err:
             raiseCLIError(err)
 
+
 @command()
 class network_connect(_init_cyclades):
     """Connect a server to a network"""
@@ -464,6 +521,7 @@ class network_connect(_init_cyclades):
             self.client.connect_server(server_id, network_id)
         except ClientError as err:
             raiseCLIError(err)
+
 
 @command()
 class network_disconnect(_init_cyclades):

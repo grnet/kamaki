@@ -33,21 +33,27 @@
 
 from kamaki.clients.quotaholder import QuotaHolderClient
 from kamaki.cli import command
-API_DESCRIPTION=dict(quotaholder='Quota Holder commands')
 from kamaki.cli.commands import _command_init
 
+
+API_DESCRIPTION = dict(quotaholder='Quota Holder commands')
+
+
 class _quotaholder_init(_command_init):
-	def main(self):
-		self.token = self.config.get('quotaholder', 'token') or self.config.get('global', 'token')
-		self.base_url = self.config.get('quotaholder', 'url') or self.config.get('global', 'url')
-		self.client = QuotaHolderClient(self.base_url, self.token)
+    def main(self):
+        self.token = self.config.get('quotaholder', 'token')\
+            or self.config.get('global', 'token')
+        self.base_url = self.config.get('quotaholder', 'url')\
+            or self.config.get('global', 'url')
+        self.client = QuotaHolderClient(self.base_url, self.token)
+
 
 @command()
 class quotaholder_test(_quotaholder_init):
-	"""Test quota holder commands - devel/testing only"""
+    """Test quota holder commands - devel/testing only"""
 
-	def main(self):
-		super(self.__class__, self).main()
-		print('We will test quota holder stuff')
-		r = self.client.test_quota()
-		print('That is what we got {%s}'%r)
+    def main(self):
+        super(self.__class__, self).main()
+        print('We will test quota holder stuff')
+        r = self.client.test_quota()
+        print('That is what we got {%s}' % r)

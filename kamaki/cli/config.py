@@ -62,9 +62,9 @@ DEFAULTS = {
         'cli': 'config_cli',
         'description': 'Configuration commands'
     },
-    'history':{
+    'history': {
         'cli': 'history_cli',
-        'file':HISTORY_PATH
+        'file': HISTORY_PATH
     },
     'store': {
         'cli': 'pithos_cli',
@@ -74,13 +74,13 @@ DEFAULTS = {
         'url': 'https://cyclades.okeanos.grnet.gr/api/v1.1'
     },
     'server': {
-        'cli':'cyclades_cli'
+        'cli': 'cyclades_cli'
     },
     'flavor': {
-        'cli':'cyclades_cli'
+        'cli': 'cyclades_cli'
     },
     'network': {
-        'cli':'cyclades_cli'
+        'cli': 'cyclades_cli'
     },
     'image': {
         'cli': 'image_cli',

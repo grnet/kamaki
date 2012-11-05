@@ -31,22 +31,26 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-
-from kamaki.cli import command#, set_api_description
-#set_api_description('astakos', 'Astakos API commands')
-API_DESCRIPTION = {'astakos':'Astakos API commands'}
+from kamaki.cli import command
 from kamaki.clients.astakos import AstakosClient, ClientError
 from kamaki.cli.utils import print_dict
 from kamaki.cli.errors import raiseCLIError
 from kamaki.cli.commands import _command_init
 
+
+API_DESCRIPTION = {'astakos': 'Astakos API commands'}
+
+
 class _astakos_init(_command_init):
     def main(self):
-        token = self.config.get('astakos', 'token') or self.config.get('global', 'token')
-        base_url = self.config.get('astakos', 'url') or self.config.get('global', 'url')
+        token = self.config.get('astakos', 'token')\
+            or self.config.get('global', 'token')
+        base_url = self.config.get('astakos', 'url')\
+            or self.config.get('global', 'url')
         if base_url is None:
             raise ClientError('no URL for astakos')
         self.client = AstakosClient(base_url=base_url, token=token)
+
 
 @command()
 class astakos_authenticate(_astakos_init):

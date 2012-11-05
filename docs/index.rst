@@ -2,7 +2,7 @@
    sphinx-quickstart on Tue Nov 29 15:15:50 2011.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
-
+ 
 Kamaki project documentation
 ============================
 
@@ -16,17 +16,15 @@ extensions specific to the Synnefo IaaS cloud management software.
 
 ./kamaki is open source and released under a 2-clause BSD Licence.
 
-**Warning:** Kamaki is still a work in progress and can not yet authenticate
-with *Nova*.
-
 
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    
    overview
    clients
+   cli
 
 
 

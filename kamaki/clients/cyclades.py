@@ -35,34 +35,39 @@ from kamaki.clients.compute import ComputeClient, ClientError
 from kamaki.clients.utils import path4url
 import json
 
+
 class CycladesClient(ComputeClient):
     """GRNet Cyclades API client"""
 
-    def networks_get(self, network_id = '', command='', **kwargs):
+    def networks_get(self, network_id='', command='', **kwargs):
         """GET base_url/networks[/network_id][/command] request
         @param network_id or ''
         @param command can be 'detail', or ''
         """
-        path=path4url('networks', network_id, command)
+        path = path4url('networks', network_id, command)
         success = kwargs.pop('success', (200, 203))
         return self.get(path, success=success, **kwargs)
 
-    def networks_delete(self, network_id = '', command='', **kwargs):
+    def networks_delete(self, network_id='', command='', **kwargs):
         """DEL ETE base_url/networks[/network_id][/command] request
         @param network_id or ''
         @param command can be 'detail', or ''
         """
-        path=path4url('networks', network_id, command)
+        path = path4url('networks', network_id, command)
         success = kwargs.pop('success', 204)
         return self.delete(path, success=success, **kwargs)
 
-    def networks_post(self, network_id = '', command='', json_data=None, **kwargs):
+    def networks_post(self,
+        network_id='',
+        command='',
+        json_data=None,
+        **kwargs):
         """POST base_url/servers[/server_id]/[command] request
         @param server_id or ''
         @param command: can be 'action' or ''
         @param json_data: a json valid dict that will be send as data
         """
-        data= json_data
+        data = json_data
         if json_data is not None:
             data = json.dumps(json_data)
             self.set_header('Content-Type', 'application/json')
@@ -72,13 +77,17 @@ class CycladesClient(ComputeClient):
         success = kwargs.pop('success', 202)
         return self.post(path, data=data, success=success, **kwargs)
 
-    def networks_put(self, network_id = '', command='', json_data=None, **kwargs):
+    def networks_put(self,
+        network_id='',
+        command='',
+        json_data=None,
+        **kwargs):
         """PUT base_url/servers[/server_id]/[command] request
         @param server_id or ''
         @param command: can be 'action' or ''
         @param json_data: a json valid dict that will be send as data
         """
-        data= json_data
+        data = json_data
         if json_data is not None:
             data = json.dumps(json_data)
             self.set_header('Content-Type', 'application/json')
@@ -99,7 +108,7 @@ class CycladesClient(ComputeClient):
         req = {'shutdown': {}}
         r = self.servers_post(server_id, 'action', json_data=req, success=202)
         r.release()
-    
+
     def get_server_console(self, server_id):
         """Get a VNC connection to the console of a server specified by id"""
         req = {'console': {'type': 'vnc'}}
@@ -112,7 +121,7 @@ class CycladesClient(ComputeClient):
             return r['attachments']['values'][0]['firewallProfile']
         except KeyError:
             raise ClientError('No Firewall Profile', 520,
-                details='Server %s is missing a firewall profile'%server_id)
+                details='Server %s is missing a firewall profile' % server_id)
 
     def set_firewall_profile(self, server_id, profile):
         """Set the firewall profile for the public interface of a server
@@ -122,7 +131,7 @@ class CycladesClient(ComputeClient):
         req = {'firewallProfile': {'profile': profile}}
         r = self.servers_post(server_id, 'action', json_data=req, success=202)
         r.release()
-    
+
     def list_server_nics(self, server_id):
         r = self.servers_get(server_id, 'ips')
         return r.json['addresses']['values']
@@ -130,7 +139,7 @@ class CycladesClient(ComputeClient):
     def get_server_stats(self, server_id):
         r = self.servers_get(server_id, 'stats')
         return r.json['stats']
-    
+
     def list_networks(self, detail=False):
         detail = 'detail' if detail else ''
         r = self.networks_get(command=detail)
@@ -141,18 +150,23 @@ class CycladesClient(ComputeClient):
         r = self.networks_get(network_id=network_id)
         return r.json['network']['attachments']['values']
 
-    def create_network(self, name, cidr=False, gateway=False, type=False, dhcp=False):
+    def create_network(self,
+        name,
+        cidr=False,
+        gateway=False,
+        type=False,
+        dhcp=False):
         """@params cidr, geteway, type and dhcp should be strings
         """
         net = dict(name=name)
         if cidr:
-            net['cidr']=cidr
+            net['cidr'] = cidr
         if gateway:
-            net['gateway']=gateway
+            net['gateway'] = gateway
         if type:
-            net['type']=type
+            net['type'] = type
         if dhcp:
-            net['dhcp']=dhcp
+            net['dhcp'] = dhcp
         req = dict(network=net)
         r = self.networks_post(json_data=req, success=202)
         return r.json['network']
@@ -171,7 +185,8 @@ class CycladesClient(ComputeClient):
             r = self.networks_delete(network_id)
         except ClientError as err:
             if err.status == 421:
-                err.details='Network may be still connected to at least one server'
+                err.details =\
+                'Network may be still connected to at least one server'
             raise err
         r.release()
 
@@ -182,11 +197,12 @@ class CycladesClient(ComputeClient):
 
     def disconnect_server(self, server_id, nic_id):
         server_nets = self.list_server_nics(server_id)
-        nets = [(net['id'],net['network_id'])  for net in server_nets if nic_id == net['id']]
+        nets = [(net['id'], net['network_id']) for net in server_nets\
+            if nic_id == net['id']]
         if len(nets) == 0:
             return
         for (nic_id, network_id) in nets:
-            req={'remove':{'attachment':unicode(nic_id)}}
+            req = {'remove': {'attachment': unicode(nic_id)}}
             r = self.networks_post(network_id, 'action', json_data=req)
             r.release()
 

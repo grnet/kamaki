@@ -30,19 +30,27 @@
 # documentation are those of the authors and should not be
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
+
+from .errors import CLIError
+
 try:
     from colors import magenta, red, yellow, bold
 except ImportError:
-    #No colours? No worries, use dummy foo instead
+    # No colours? No worries, use dummy foo instead
     def bold(val):
         return val
-    red = yellow = magenta = bold
+
 
 def remove_colors():
     global bold
+    global red
+    global yellow
+    global magenta
+
     def dummy(val):
         return val
-    bold = dummy
+    red = yellow = magenta = bold = dummy
+
 
 def pretty_keys(d, delim='_', recurcive=False):
     """Transform keys of a dict from the form
@@ -53,13 +61,14 @@ def pretty_keys(d, delim='_', recurcive=False):
     for key, val in d.items():
         new_key = key.split(delim)[-1]
         if recurcive and isinstance(val, dict):
-            new_val = pretty_keys(val, delim, recurcive) 
+            new_val = pretty_keys(val, delim, recurcive)
         else:
             new_val = val
         new_d[new_key] = new_val
     return new_d
 
-def print_dict(d, exclude=(), ident= 0):
+
+def print_dict(d, exclude=(), ident=0):
     if not isinstance(d, dict):
         raise CLIError(message='Cannot dict_print a non-dict object')
     try:
@@ -75,17 +84,18 @@ def print_dict(d, exclude=(), ident= 0):
             continue
         print_str = '%s:' % unicode(key).strip()
         if isinstance(val, dict):
-            print(print_str.rjust(margin)+' {')
-            print_dict(val, exclude = exclude, ident = margin + 6)
+            print(print_str.rjust(margin) + ' {')
+            print_dict(val, exclude=exclude, ident=margin + 6)
             print '}'.rjust(margin)
         elif isinstance(val, list):
-            print(print_str.rjust(margin)+' [')
-            print_list(val, exclude = exclude, ident = margin + 6)
+            print(print_str.rjust(margin) + ' [')
+            print_list(val, exclude=exclude, ident=margin + 6)
             print ']'.rjust(margin)
         else:
-            print print_str.rjust(margin)+' '+unicode(val).strip()
+            print print_str.rjust(margin) + ' ' + unicode(val).strip()
 
-def print_list(l, exclude=(), ident = 0):
+
+def print_list(l, exclude=(), ident=0):
     if not isinstance(l, list):
         raise CLIError(message='Cannot list_print a non-list object')
     try:
@@ -101,28 +111,31 @@ def print_list(l, exclude=(), ident = 0):
             continue
         if isinstance(item, dict):
             print('{'.rjust(margin))
-            print_dict(item, exclude = exclude, ident = margin + 6)
+            print_dict(item, exclude=exclude, ident=margin + 6)
             print '}'.rjust(margin)
         elif isinstance(item, list):
             print '['.rjust(margin)
-            print_list(item, exclude = exclude, ident = margin + 6)
+            print_list(item, exclude=exclude, ident=margin + 6)
             print ']'.rjust(margin)
         else:
             print unicode(item).rjust(margin)
 
+
 def print_items(items, title=('id', 'name')):
     for item in items:
         if isinstance(item, dict) or isinstance(item, list):
-            print ' '.join(unicode(item.pop(key)) for key in title if key in item)
+            print ' '.join(unicode(item.pop(key))\
+                for key in title if key in item)
         if isinstance(item, dict):
             print_dict(item)
+
 
 def format_size(size):
     units = ('B', 'K', 'M', 'G', 'T')
     try:
         size = float(size)
     except ValueError:
-        raise CLIError(message='Cannot format %s in bytes'%size)
+        raise CLIError(message='Cannot format %s in bytes' % size)
     for unit in units:
         if size < 1024:
             break
@@ -132,23 +145,25 @@ def format_size(size):
         s = s[:-2]
     return s + unit
 
-def dict2file(d, f, depth = 0):
-    for k, v in d.items():
-        f.write('%s%s: '%('\t'*depth, k))
-        if isinstance(v,dict):
-            f.write('\n')
-            dict2file(v, f, depth+1)
-        elif isinstance(v,list):
-            f.write('\n')
-            list2file(v, f, depth+1)
-        else:
-            f.write(' %s\n'%unicode(v))
 
-def list2file(l, f, depth = 1):
-    for item in l:
-        if isinstance(item,dict):
-            dict2file(item, f, depth+1)
-        elif isinstance(item,list):
-            list2file(item, f, depth+1)
+def dict2file(d, f, depth=0):
+    for k, v in d.items():
+        f.write('%s%s: ' % ('\t' * depth, k))
+        if isinstance(v, dict):
+            f.write('\n')
+            dict2file(v, f, depth + 1)
+        elif isinstance(v, list):
+            f.write('\n')
+            list2file(v, f, depth + 1)
         else:
-            f.write('%s%s\n'%('\t'*depth, unicode(item)))
+            f.write(' %s\n' % unicode(v))
+
+
+def list2file(l, f, depth=1):
+    for item in l:
+        if isinstance(item, dict):
+            dict2file(item, f, depth + 1)
+        elif isinstance(item, list):
+            list2file(item, f, depth + 1)
+        else:
+            f.write('%s%s\n' % ('\t' * depth, unicode(item)))
