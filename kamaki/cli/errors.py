@@ -89,4 +89,4 @@ def raiseCLIError(err, importance=-1):
             importance = 2
         else:
             importance = 3
-    raise CLIError(err.message, err.status, err.details, importance)
+    raise CLIError('%s' % err, err.status, err.details, importance)

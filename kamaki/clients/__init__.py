@@ -34,16 +34,16 @@
 import json
 import logging
 from kamaki.clients.connection.kamakicon import KamakiHTTPConnection
-from kamaki.clients.connection.errors import HTTPConnectionError
 
 sendlog = logging.getLogger('clients.send')
 recvlog = logging.getLogger('clients.recv')
 
 
 class ClientError(Exception):
+    """Error in clients
+    """
     def __init__(self, message, status=0, details=''):
-        super(ClientError, self).__init__(message, status, details)
-        self.message = message
+        super(ClientError, self).__init__(message)
         self.status = status
         self.details = details
 
@@ -60,14 +60,11 @@ class Client(object):
         self.http_client = http_client
 
     def _raise_for_status(self, r):
-        message = "%s" % r.status
         try:
             details = r.text
         except:
             details = ''
-        raise ClientError(message=message,
-            status=r.status,
-            details=details)
+        raise ClientError('%s' % r, status=r.status, details=details)
 
     def set_header(self, name, value, iff=True):
         """Set a header 'name':'value'"""
@@ -139,17 +136,12 @@ class Client(object):
                 if r.status_code not in success:
                     r.release()
                     self._raise_for_status(r)
-        except HTTPConnectionError as err:
-            _raise_for_status(err)
+        except ClientError:
+            raise
         except Exception as err:
             self.http_client.reset_headers()
             self.http_client.reset_params()
-            errmsg = getattr(err, 'message', unicode(err))
-            errdetails = '%s %s' % (type(err), getattr(err, 'details', ''))
-            errstatus = getattr(err, 'status', 0)
-            raise ClientError(message=errmsg,
-                status=errstatus,
-                details=errdetails)
+            raise ClientError('%s' % err, status=getattr(err, 'status', 0))
 
         self.http_client.reset_headers()
         self.http_client.reset_params()

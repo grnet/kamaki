@@ -132,14 +132,6 @@ class HTTPConnection(object):
         self.path = ''
         self.method = method
 
-    def raise_for_status(self, r):
-        message = "%d %s" % (r.status_code, r.status)
-        try:
-            details = r.text
-        except:
-            details = ''
-        raise HTTPConnectionError(message, r.status_code, details)
-
     def set_header(self, name, value):
         self.headers[unicode(name)] = unicode(value)
 

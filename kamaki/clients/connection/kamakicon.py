@@ -84,9 +84,7 @@ class KamakiHTTPResponse(HTTPResponse):
         try:
             return loads(self._content)
         except ValueError as err:
-            HTTPResponseFormatError(
-                'Response not formated in JSON',
-                details=unicode(err))
+            HTTPResponseFormatError('Response not formated in JSON - %s' % err)
 
     @json.setter
     def json(self, v):
@@ -104,7 +102,7 @@ class KamakiHTTPConnection(HTTPConnection):
         if self.url:
             url = self.url if self.url[-1] == '/' else (self.url + '/')
         else:
-            url = 'localhost://'
+            url = 'http://127.0.0.1'
         if self.path:
             url += self.path[1:] if self.path[0] == '/' else self.path
         params = dict(self.params)
@@ -149,8 +147,8 @@ class KamakiHTTPConnection(HTTPConnection):
         except Exception as err:
             conn.close()
             if isinstance(err, gaierror):
-                raise HTTPConnectionError('Cannot connect to %s' % self.url,
-                    status=701,
-                    details='%s: %s' % (type(err), unicode(err)))
+                raise HTTPConnectionError(
+                    'Cannot connect to %s - %s' % (self.url, err),
+                    status=701)
             raise
         return KamakiHTTPResponse(conn)
