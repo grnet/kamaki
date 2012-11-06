@@ -31,7 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-import json
+from json import dumps as json_dumps
 import logging
 from kamaki.clients.connection.kamakicon import KamakiHTTPConnection
 
@@ -40,8 +40,6 @@ recvlog = logging.getLogger('clients.recv')
 
 
 class ClientError(Exception):
-    """Error in clients
-    """
     def __init__(self, message, status=0, details=''):
         super(ClientError, self).__init__(message)
         self.status = status
@@ -49,7 +47,6 @@ class ClientError(Exception):
 
 
 class Client(object):
-
     def __init__(self, base_url, token, http_client=KamakiHTTPConnection()):
         self.base_url = base_url
         self.token = token
@@ -101,7 +98,7 @@ class Client(object):
             self.set_default_header('X-Auth-Token', self.token)
 
             if 'json' in kwargs:
-                data = json.dumps(kwargs.pop('json'))
+                data = json_dumps(kwargs.pop('json'))
                 self.set_default_header('Content-Type', 'application/json')
             if data:
                 self.set_default_header('Content-Length', unicode(len(data)))
@@ -127,8 +124,8 @@ class Client(object):
             recvlog.info('%d %s', r.status_code, r.status)
             for key, val in r.headers.items():
                 recvlog.info('%s: %s', key, val)
-            #if r.content:
-            #    recvlog.debug(r.content)
+            if r.content:
+                recvlog.debug(r.content)
 
             if success is not None:
                 # Success can either be an in or a collection
@@ -139,6 +136,8 @@ class Client(object):
         except ClientError:
             raise
         except Exception as err:
+            from traceback import print_stack
+            recvlog.debug(print_stack)
             self.http_client.reset_headers()
             self.http_client.reset_params()
             raise ClientError('%s' % err, status=getattr(err, 'status', 0))
