@@ -31,7 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from json import dumps as json_dumps
+from json import dumps, loads
 import logging
 from kamaki.clients.connection.kamakicon import KamakiHTTPConnection
 
@@ -41,9 +41,28 @@ recvlog = logging.getLogger('clients.recv')
 
 class ClientError(Exception):
     def __init__(self, message, status=0, details=[]):
+        try:
+            json_msg = loads(message)
+            key = json_msg.keys()[0]
+            json_msg = json_msg[key]
+            message = '%s (%s)\n' % (key, json_msg['message'])\
+                if 'message' in json_msg else '%s' % key
+            if 'code' in json_msg:
+                status = json_msg['code']
+            if 'details' in json_msg:
+                if not details:
+                    details = []
+                elif not isinstance(details, list):
+                    details = [details]
+                if json_msg['details']:
+                    details.append(json_msg['details'])
+        except:
+            pass
+
         super(ClientError, self).__init__(message)
         self.status = status
         self.details = details
+
 
 
 class Client(object):
@@ -98,7 +117,7 @@ class Client(object):
             self.set_default_header('X-Auth-Token', self.token)
 
             if 'json' in kwargs:
-                data = json_dumps(kwargs.pop('json'))
+                data = dumps(kwargs.pop('json'))
                 self.set_default_header('Content-Type', 'application/json')
             if data:
                 self.set_default_header('Content-Length', unicode(len(data)))

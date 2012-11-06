@@ -31,6 +31,8 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+from json import loads
+
 
 class CLIError(Exception):
     def __init__(self, message, details=[], importance=0):
@@ -74,7 +76,7 @@ class CLICmdIncompleteError(CLICmdSpecError):
 def raiseCLIError(err, importance=0):
     message = '%s' % err
     if err.status:
-        message = '(%s) %s' % (err.status, message)
+        message = '(%s) %s' % (err.status, err)
         try:
             status = int(err.status)
         except ValueError:
