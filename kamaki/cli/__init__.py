@@ -42,7 +42,8 @@ from os.path import basename
 from sys import exit, stdout, argv
 
 from kamaki.cli.errors import CLIError, CLICmdSpecError
-from kamaki.cli.utils import magenta, red, yellow, print_dict, remove_colors
+from kamaki.cli.utils import magenta, red, yellow, print_dict, print_list,\
+    remove_colors
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.argument import _arguments, parse_known_args
 from kamaki.cli.history import History
@@ -145,7 +146,7 @@ def _init_parser(exe):
 
 
 def _print_error_message(cli_err):
-    errmsg = '%s (%s)' % (cli_err, cli_err.status if cli_err.status else ' ')
+    errmsg = '%s' % cli_err
     if cli_err.importance == 1:
         errmsg = magenta(errmsg)
     elif cli_err.importance == 2:
@@ -153,10 +154,7 @@ def _print_error_message(cli_err):
     elif cli_err.importance > 2:
         errmsg = red(errmsg)
     stdout.write(errmsg)
-    if cli_err.details is not None and len(cli_err.details) > 0:
-        print(': %s' % cli_err.details)
-    else:
-        print()
+    print_list(cli_err.details)
 
 
 def get_command_group(unparsed):

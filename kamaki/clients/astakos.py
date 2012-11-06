@@ -48,6 +48,8 @@ class AstakosClient(Client):
             # Fallback to the default
             super(AstakosClient, self).raise_for_status(r)
 
-    def authenticate(self):
+    def authenticate(self, token=None):
+        if token:
+            self.token = token
         r = self.get('/im/authenticate')
         return r.json

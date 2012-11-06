@@ -40,7 +40,7 @@ recvlog = logging.getLogger('clients.recv')
 
 
 class ClientError(Exception):
-    def __init__(self, message, status=0, details=''):
+    def __init__(self, message, status=0, details=[]):
         super(ClientError, self).__init__(message)
         self.status = status
         self.details = details
@@ -58,10 +58,10 @@ class Client(object):
 
     def _raise_for_status(self, r):
         try:
-            details = r.text
+            message = r.text
         except:
-            details = ''
-        raise ClientError('%s' % r, status=r.status, details=details)
+            message = '%s' % r
+        raise ClientError(message, status=r.status)
 
     def set_header(self, name, value, iff=True):
         """Set a header 'name':'value'"""
@@ -127,15 +127,8 @@ class Client(object):
             if r.content:
                 recvlog.debug(r.content)
 
-            if success is not None:
-                # Success can either be an in or a collection
-                success = (success,) if isinstance(success, int) else success
-                if r.status_code not in success:
-                    r.release()
-                    self._raise_for_status(r)
-        except ClientError:
-            raise
         except Exception as err:
+            print('WTF? !!!!!!!')
             from traceback import print_stack
             recvlog.debug(print_stack)
             self.http_client.reset_headers()
@@ -144,6 +137,13 @@ class Client(object):
 
         self.http_client.reset_headers()
         self.http_client.reset_params()
+
+        if success is not None:
+            # Success can either be an in or a collection
+            success = (success,) if isinstance(success, int) else success
+            if r.status_code not in success:
+                r.release()
+                self._raise_for_status(r)
         return r
 
     def delete(self, path, **kwargs):

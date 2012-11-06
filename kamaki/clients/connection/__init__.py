@@ -31,8 +31,6 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from kamaki.clients.connection.errors import HTTPConnectionError
-
 
 class HTTPResponse(object):
 

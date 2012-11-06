@@ -56,10 +56,10 @@ class _astakos_init(_command_init):
 class astakos_authenticate(_astakos_init):
     """Authenticate a user"""
 
-    def main(self):
+    def main(self, custom_token=None):
         super(astakos_authenticate, self).main()
         try:
-            reply = self.client.authenticate()
+            reply = self.client.authenticate(custom_token)
         except ClientError as err:
             raiseCLIError(err)
         print_dict(reply)

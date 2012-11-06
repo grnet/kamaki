@@ -714,13 +714,16 @@ class store_cat(_store_container_command):
     def main(self, container___path):
         super(self.__class__,
             self).main(container___path, path_is_optional=False)
-        self.client.download_object(self.path, stdout,
+        try:
+            self.client.download_object(self.path, stdout,
             range=self.get_argument('range'),
             version=self.get_argument('object_version'),
             if_match=self.get_argument('if_match'),
             if_none_match=self.get_argument('if_none_match'),
             if_modified_since=self.get_argument('if_modified_since'),
             if_unmodified_since=self.get_argument('if_unmodified_since'))
+        except ClientError as err:
+            raiseCLIError(err)
 
 
 @command()

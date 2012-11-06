@@ -33,17 +33,10 @@
 
 
 class HTTPConnectionError(Exception):
-    """
-        700: Generic connection error
-        701: Cannot connect to server
-        702: Response format error
-    """
-    def __init__(self, message, status=700):
+    def __init__(self, message):
         super(HTTPConnectionError, self).__init__(message)
-        self.status = status
 
 
-class HTTPResponseFormatError(HTTPConnectionError):
-
-    def __init__(self, message, details=''):
-        super(HTTPResponseFormatError, self).__init__(message, status=702)
+class HTTPResponseError(Exception):
+    def __init__(self, message):
+        super(HTTPResponseError, self).__init__(message)
