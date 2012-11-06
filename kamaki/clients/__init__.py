@@ -64,7 +64,6 @@ class ClientError(Exception):
         self.details = details
 
 
-
 class Client(object):
     def __init__(self, base_url, token, http_client=KamakiHTTPConnection()):
         self.base_url = base_url
@@ -76,11 +75,13 @@ class Client(object):
         self.http_client = http_client
 
     def _raise_for_status(self, r):
+        status_msg = getattr(r, 'status', '')
         try:
-            message = r.text
+            message = '%s %s\n' % (status_msg, r.text)
         except:
-            message = '%s' % r
-        raise ClientError(message, status=r.status)
+            message = '%s %s\n' % (status_msg, r)
+        status = getattr(r, 'status_code', getattr(r, 'status', 0))
+        raise ClientError(message, status=status)
 
     def set_header(self, name, value, iff=True):
         """Set a header 'name':'value'"""
@@ -147,7 +148,6 @@ class Client(object):
                 recvlog.debug(r.content)
 
         except Exception as err:
-            print('WTF? !!!!!!!')
             from traceback import print_stack
             recvlog.debug(print_stack)
             self.http_client.reset_headers()
