@@ -75,7 +75,6 @@ class Argument(object):
     @arity.setter
     def arity(self, newarity):
         newarity = int(newarity)
-        assert newarity >= 0
         self._arity = newarity
 
     @property
@@ -98,7 +97,9 @@ class Argument(object):
 
     def update_parser(self, parser, name):
         """Update an argument parser with this argument info"""
-        action = 'store_true' if self.arity == 0 else 'store'
+        action = 'append' if self.arity < 0\
+            else 'store_true' if self.arity == 0\
+            else 'store'
         parser.add_argument(*self.parsed_name, dest=name, action=action,
             default=self.default, help=self.help)
 
@@ -143,13 +144,15 @@ class CmdLineConfigArgument(Argument):
         for option in options:
             keypath, sep, val = option.partition('=')
             if not sep:
-                raise CLISyntaxError(
-                    details='Missing = (usage: -o section.key=val)')
+                raise CLISyntaxError('Argument Syntax Error ',
+                    details='%s is missing a "="" (usage: -o section.key=val)'\
+                        % option)
             section, sep, key = keypath.partition('.')
-            if not sep:
-                raise CLISyntaxError(
-                    details='Missing . (usage: -o section.key=val)')
-        self._config_arg.value.override(section.strip(),
+        if not sep:
+            key = section
+            section = 'global'
+        self._config_arg.value.override(
+            section.strip(),
             key.strip(),
             val.strip())
 
@@ -197,9 +200,9 @@ class VersionArgument(FlagArgument):
             print('kamaki %s' % kamaki.__version__)
 
 
-class KeyValueArgument(ValueArgument):
-    def __init__(self, help='', parsed_name=None, default={}):
-        super(KeyValueArgument, self).__init__(help, parsed_name, default)
+class KeyValueArgument(Argument):
+    def __init__(self, help='', parsed_name=None, default=[]):
+        super(KeyValueArgument, self).__init__(-1, help, parsed_name, default)
 
     @property
     def value(self):
@@ -207,16 +210,12 @@ class KeyValueArgument(ValueArgument):
 
     @value.setter
     def value(self, keyvalue_pairs):
-        if keyvalue_pairs == self.default:
-            return
-        if isinstance(keyvalue_pairs, str):
-            keyvalue_pairs = keyvalue_pairs.strip().split(',')
-        self._value = self.default
+        self._value = {}
         for pair in keyvalue_pairs:
             key, sep, val = pair.partition('=')
             if not sep:
-                raise CLISyntaxError(
-                    details='Missing "="" (usage: key1=val1,key2=val2 ... )')
+                raise CLISyntaxError('Argument syntax error ',
+                    details='%s is missing a "=" (usage: key1=val1 )\n' % pair)
             self._value[key.strip()] = val.strip()
 
 _arguments = dict(config=_config_arg,

@@ -116,6 +116,19 @@ class image_meta(_init_image):
 
 
 @command()
+class image_test(_init_image):
+    """Test stuff"""
+
+    def __init__(self, arguments={}):
+        super(self.__class__, self).__init__(arguments)
+        self.arguments['props'] = KeyValueArgument('prop', '--prop')
+
+    def main(self):
+        print self.get_argument('props')
+        print('OK...')
+
+
+@command()
 class image_register(_init_image):
     """Register an image"""
 
@@ -131,8 +144,8 @@ class image_register(_init_image):
         self.arguments['owner'] =\
             ValueArgument('set image owner (admin only)', '--owner')
         self.arguments['properties'] =\
-            KeyValueArgument(parsed_name='--properties',
-            help='add properties in the form key1=val1,key2=val2,...')
+            KeyValueArgument(parsed_name='--property',
+            help='add property in key=value form (can be repeated)')
         self.arguments['is_public'] =\
             FlagArgument('mark image as public', '--public')
         self.arguments['size'] = IntArgument('set image size', '--size')
