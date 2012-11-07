@@ -18,14 +18,15 @@ extensions specific to the Synnefo IaaS cloud management software.
 
 
 Contents:
+*********
 
 .. toctree::
    :maxdepth: 3
    
    overview
+   setup
    clients
    cli
-
 
 
 Indices and tables

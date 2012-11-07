@@ -13,7 +13,6 @@ From the early start, we needed a simple command-line tool to test the OpenStack
 
 Once it proved so useful to us, we decided to open the source, so the community can benefit from it, and *kamaki* can benefit from the community too.
 
-
 Who uses *kamaki*?
 ------------------
 
