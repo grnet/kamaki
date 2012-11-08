@@ -34,6 +34,12 @@
 from kamaki.cli.config import Config
 from kamaki.cli.errors import CLISyntaxError
 
+try:
+    from progress.bar import IncrementalBar
+except ImportError:
+    # progress not installed - pls, pip install progress
+    pass
+
 
 class Argument(object):
     """An argument that can be parsed from command line or otherwise"""
@@ -217,6 +223,40 @@ class KeyValueArgument(Argument):
                 raise CLISyntaxError('Argument syntax error ',
                     details='%s is missing a "=" (usage: key1=val1 )\n' % pair)
             self._value[key.strip()] = val.strip()
+
+
+class ProgressBarArgument(FlagArgument):
+
+    def __init__(self, help='', parsed_name='', default=True):
+        self.suffix = '%(percent)d%%'
+        super(ProgressBarArgument, self).__init__(help, parsed_name, default)
+        try:
+            self.bar = IncrementalBar()
+        except NameError:
+            print('Waring: no progress bar functionality')
+
+    def get_generator(self, message, message_len=25):
+        if self.value:
+            return None
+        try:
+            bar = ProgressBar(message.ljust(message_len))
+        except NameError:
+            return None
+        return bar.get_generator()
+
+
+try:
+    class ProgressBar(IncrementalBar):
+        suffix = '%(percent)d%% - %(eta)ds'
+
+        def get_generator(self):
+            def progress_gen(n):
+                for i in self.iter(range(int(n))):
+                    yield
+                yield
+            return progress_gen
+except NameError:
+    pass
 
 _arguments = dict(config=_config_arg,
     help=Argument(0, 'Show help message', ('-h', '--help')),

@@ -35,6 +35,7 @@ from kamaki.cli import command
 from kamaki.cli.errors import CLIError, raiseCLIError
 from kamaki.cli.utils import format_size, print_dict, pretty_keys
 from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
+from kamaki.cli.argument import ProgressBarArgument
 from kamaki.cli.commands import _command_init
 from kamaki.clients.pithos import PithosClient, ClientError
 from kamaki.cli.utils import bold
@@ -45,11 +46,6 @@ from datetime import datetime as dtm
 
 API_DESCRIPTION = dict(store='Pithos+ storage commands')
 
-try:
-    from progress.bar import IncrementalBar
-except ImportError:
-    # progress not installed - pls, pip install progress
-    pass
 
 # Argument functionality
 
@@ -86,40 +82,6 @@ class MetaArgument(ValueArgument):
         if newvalue is None:
             self._value = self.default
         self._value = newvalue
-
-
-class ProgressBarArgument(FlagArgument):
-
-    def __init__(self, help='', parsed_name='', default=True):
-        self.suffix = '%(percent)d%%'
-        super(ProgressBarArgument, self).__init__(help, parsed_name, default)
-        try:
-            self.bar = IncrementalBar()
-        except NameError:
-            print('Waring: no progress bar functionality')
-
-    def get_generator(self, message, message_len=25):
-        if self.value:
-            return None
-        try:
-            bar = ProgressBar(message.ljust(message_len))
-        except NameError:
-            return None
-        return bar.get_generator()
-
-
-try:
-    class ProgressBar(IncrementalBar):
-        suffix = '%(percent)d%% - %(eta)ds'
-
-        def get_generator(self):
-            def progress_gen(n):
-                for i in self.iter(range(n)):
-                    yield
-                yield
-            return progress_gen
-except NameError:
-    pass
 
 
 class SharingArgument(ValueArgument):
@@ -259,7 +221,7 @@ class _store_container_command(_store_account_command):
             else:
                 self.path = container_with_path
             if not path_is_optional and self.path is None:
-                raise CLIError(message="Object path is missing", status=11)
+                raise CLIError('Object path is missing\n', importance=1)
             return
         cnp = container_with_path.split(':')
         self.container = cnp[0]
@@ -269,7 +231,7 @@ class _store_container_command(_store_account_command):
             if path_is_optional:
                 self.path = None
             else:
-                raise CLIError(message="Object path is missing", status=11)
+                raise CLIError('Object path is missing\n', importance=1)
 
     def main(self, container_with_path=None, path_is_optional=True):
         super(_store_container_command, self).main()
@@ -628,7 +590,6 @@ class store_manifest(_store_container_command):
 @command()
 class store_upload(_store_container_command):
     """Upload a file"""
-
 
     def __init__(self, arguments={}):
         super(self.__class__, self).__init__(arguments)

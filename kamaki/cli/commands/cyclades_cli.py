@@ -36,6 +36,7 @@ from kamaki.cli.utils import print_dict, print_items, print_list, bold
 from kamaki.cli.errors import CLIError, raiseCLIError, CLISyntaxError
 from kamaki.clients.cyclades import CycladesClient, ClientError
 from kamaki.cli.argument import FlagArgument, ValueArgument
+from kamaki.cli.argument import ProgressBarArgument
 from kamaki.cli.commands import _command_init
 
 from base64 import b64encode
@@ -169,6 +170,12 @@ class server_create(_init_cyclades):
                 self.get_argument('personality'))
         except ClientError as err:
             raiseCLIError(err)
+        except ValueError as err:
+            raise CLIError('Invalid flavor id %s ' % flavor_id,
+                details='Flavor id must be a positive integer',
+                importance=1)
+        except Exception as err:
+            raise CLIError('Syntax error: %s\n' % err, importance=1)
         print_dict(reply)
 
 
@@ -183,7 +190,8 @@ class server_rename(_init_cyclades):
         except ClientError as err:
             raiseCLIError(err)
         except ValueError:
-            raise CLIError(message='Server id must be positive integer',
+            raise CLIError('Invalid server id %s ' % server_id,
+                details='Server id must be positive integer\n',
                 importance=1)
 
 
@@ -379,6 +387,32 @@ class server_stats(_init_cyclades):
             raise CLIError(message='Server id must be positive integer',
                 importance=1)
         print_dict(reply, exclude=('serverRef',))
+
+
+@command()
+class server_wait(_init_cyclades):
+    """Wait for server to finish [BUILD, STOPPED, REBOOT, ACTIVE]"""
+
+    def __init__(self, arguments={}):
+        super(self.__class__, self).__init__(arguments)
+        self.arguments['progress_bar'] = ProgressBarArgument(\
+            'do not show progress bar', '--no-progress-bar', False)
+
+    def main(self, server_id, currect_status='BUILD'):
+        super(self.__class__, self).main()
+        try:
+            progress_bar = self.arguments['progress_bar']
+            wait_cb = progress_bar.get_generator(\
+                'Server %s still in %s mode' % (server_id, currect_status))
+        except Exception:
+            wait_cb = None
+        new_mode = self.client.wait_server(server_id,
+            currect_status,
+            wait_cb=wait_cb)
+        if new_mode:
+            print('\nServer %s is now in %s mode' % (server_id, new_mode))
+        else:
+            print('\nTime out')
 
 
 @command()
