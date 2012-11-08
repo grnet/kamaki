@@ -1,29 +1,12 @@
 Commands
 ========
 
-Command specifications for the kamaki.cli
-
-compute_cli
------------
-
-.. automodule:: kamaki.cli.commands.compute_cli
-    :members:
-    :show-inheritance:
-    :undoc-members:
+Command specifications for kamaki.cli
 
 cyclades_cli
 ------------
 
 .. automodule:: kamaki.cli.commands.cyclades_cli
-    :members:
-    :show-inheritance:
-    :undoc-members:
-
-
-storage_cli
------------
-
-.. automodule:: kamaki.cli.commands.storage_cli
     :members:
     :show-inheritance:
     :undoc-members:

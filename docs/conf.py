@@ -16,10 +16,8 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 
 import sys, os
-sys.path.append("gevent.monkey")
-sys.path.append("~/src/synnefo/snf-common")
-sys.path.append("snf-common")
-sys.path.append("../")
+sys.path.append("/home/saxtouri/src/synnefo/snf-common")
+sys.path.append('../')
 
 # -- General configuration -----------------------------------------------------
 

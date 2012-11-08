@@ -1,7 +1,7 @@
-Set up
-======
+Setup
+=====
 
-Kamaki is easy to install from source or as a package. Some ui features are optional and can be install seperately. Kamaki behavior can be configured in the kamaki config file.
+Kamaki is easy to install from source or as a package. Some ui features are optional and can be install separately. Kamaki behavior can be configured in the kamaki config file.
 
 Requirements
 ------------
@@ -31,7 +31,7 @@ Configuration options
 
 Kamaki comes with preset default values to all configuration options. All vital configurion options are set to use the okeanos.grnet.gr cloud services. User information is not included and should be provided either through the kamaki config command or by editing the configuration file.
 
-Kamaki configuration options are vital for correct Kamaki behavior. An incorrect option may render some command groups disfunctional. There are two ways of managing configuration options: edit the config file or use the kamaki config command.
+Kamaki configuration options are vital for correct Kamaki behavior. An incorrect option may render some command groups dysfunctional. There are two ways of managing configuration options: edit the config file or use the kamaki config command.
 
 Using multiple setups
 ^^^^^^^^^^^^^^^^^^^^^
@@ -83,7 +83,7 @@ A simple way to create the configuration file is to set a configuration option u
 
 In the above example, if the kamaki configuration file does not exist, it will be created with all the default values plus the *global.account* option set to *myusername@mydomain.com* value.
 
-The configuration file is formated so that it can be parsed by the python Config Parser module. It consists of command sections that are denoted with brackets. Every section contains variables with values. For example:
+The configuration file is formatted so that it can be parsed by the python ConfigParser module. It consists of command sections that are denoted with brackets. Every section contains variables with values. For example:
 
 *[store]*
 *url=https://okeanos.grnet.gr/pithos*
@@ -94,15 +94,15 @@ two configuration options are created: *store.url* and *store.account*. These va
 Available options
 ^^^^^^^^^^^^^^^^^
 
-The [global] group is treated by kamaki as a generic group for arbitary options, and it is used as a super-group for vital Kamaki options like account, token, or url. For example if global.account option is set and store.account option is not set, store services will use the global.account option instead. In case of conflict, the most specific options overide the global ones.
+The [global] group is treated by kamaki as a generic group for arbitrary options, and it is used as a supergroup for vital Kamaki options like account, token, or url. For example if global.account option is set and store.account option is not set, store services will use the global.account option instead. In case of conflict, the most specific options override the global ones.
 
 * global.colors <on|off>
-    enable/dissable colors in command line based uis. Requires ansicolors, otherwise it is ignored
+    enable/disable colors in command line based uis. Requires ansicolors, otherwise it is ignored
 
 * global.account <account name>
-    the username or user email that is user to connect to the cloud service. It can be ommited if provided as a service-specific option
+    the username or user email that is user to connect to the cloud service. It can be omitted if provided as a service-specific option
 
-* global.token <user authedication token>
+* global.token <user authentication token>
 
 * store.cli <UI command specifications for store>
     a special package that is used to load storage commands to kamaki UIs. Don't touch this unless if you know what you are doing.
@@ -111,7 +111,7 @@ The [global] group is treated by kamaki as a generic group for arbitary options,
     the url of the OOS storage or Pithos+ service. Set to Okeanos.grnet.gr Pithos+ storage service by default. Users should set a different value if they need to use a different storage service.
 
 * store.account <account name>
-    if set, it overides possible global.account option for store level commands.
+    if set, it overrides possible global.account option for store level commands.
 
 * compute.url <OOS compute or Cyclades service url>
     the url of the OOS compute or Cyclades service. Set to Okeanos.grnet.gr Cyclades IaaS service by default. Users should set a different value if they need to use a different IaaS service.

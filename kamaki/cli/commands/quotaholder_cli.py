@@ -31,7 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-from kamaki.clients.quotaholder import QuotaHolderClient
+#from kamaki.clients.quotaholder import QuotaHolderClient
 from kamaki.cli import command
 from kamaki.cli.commands import _command_init
 
@@ -63,8 +63,8 @@ class quotaholder_test_all(_quotaholder_init):
         super(self.__class__, self).main()
 
 @command()
-class quotaholder_test_me(_quotaholder_init):
-    """quotaholder test"""
+class quotaholder_manage(_quotaholder_init):
+    """quotaholder manage"""
 
-    def main(self, who='you'):
+    def main(self):
         super(self.__class__, self).main()
