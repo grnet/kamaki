@@ -298,13 +298,21 @@ def one_command():
             exit(0)
 
         cmd = load_command(group, unparsed)
+        # Find the most specific subcommand
+        for term in list(unparsed):
+            if cmd.is_command:
+                break
+            if cmd.contains(term):
+                cmd = cmd.get_subcmd(term)
+                unparsed.remove(term)
+
         if _help or not cmd.is_command:
             if cmd.has_description:
                 parser.description = cmd.help
             else:
                 try:
-                    parser.description\
-                        = _commands.get_closest_ancestor_command(cmd.path).help
+                    parser.description =\
+                        _commands.get_closest_ancestor_command(cmd.path).help
                 except KeyError:
                     parser.description = ' '
             parser.prog = '%s %s ' % (exe, cmd.path.replace('_', ' '))

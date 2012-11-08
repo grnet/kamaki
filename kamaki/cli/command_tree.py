@@ -167,7 +167,7 @@ class CommandTree(object):
     def set_description(self, path, description):
         self._all_commands[path].help = description
 
-    def get_descitpion(self, path):
+    def get_description(self, path):
         return self._all_commands[path].help
 
     def set_class(self, path, cmd_class):
