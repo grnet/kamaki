@@ -47,6 +47,25 @@ class _quotaholder_init(_command_init):
             or self.config.get('global', 'url')
         self.client = QuotaHolderClient(self.base_url, self.token)
 
+@command()
+class quotaholder_test_specific(_quotaholder_init):
+    """Test quota holder commands - devel/testing only"""
+
+    def main(self):
+        super(self.__class__, self).main()
+        print('We will test quota holder stuff')
+        r = self.client.test_quota()
+        print('That is what we got {%s}' % r)
+
+@command()
+class quotaholder_test_all(_quotaholder_init):
+    """Test quota holder commands - devel/testing only"""
+
+    def main(self):
+        super(self.__class__, self).main()
+        print('We will test quota holder stuff')
+        r = self.client.test_quota()
+        print('That is what we got {%s}' % r)
 
 @command()
 class quotaholder_test(_quotaholder_init):

@@ -229,20 +229,20 @@ class CycladesClient(ComputeClient):
         r = self.get_server_details(server_id)
         if r['status'] != current_status:
             return r['status']
-        total_wait = 1
-        old_wait = total_wait
+        old_wait = total_wait = 0
 
         if current_status == 'BUILD':
-            max_wait = delay * 100
+            max_wait = 100 * delay
 
         if wait_cb:
             wait_gen = wait_cb(1 + max_wait // delay)
+            wait_gen.next()
 
         while r['status'] == current_status and total_wait <= max_wait:
             if current_status == 'BUILD':
-                total_wait = r['progress']
+                total_wait = int(r['progress']) * delay
                 if wait_cb:
-                    for i in range(old_wait, total_wait):
+                    for i in range(int(old_wait), int(total_wait)):
                         wait_gen.next()
                     old_wait = total_wait
             else:
@@ -252,11 +252,12 @@ class CycladesClient(ComputeClient):
             sleep(delay)
             r = self.get_server_details(server_id)
 
-        if wait_cb and r['status'] != current_status:
-            try:
-                while True:
-                    wait_gen.next()
-            except:
-                pass
+        if r['status'] != current_status:
+            if wait_cb:
+                try:
+                    while True:
+                        wait_gen.next()
+                except:
+                    pass
             return r['status']
         return False
