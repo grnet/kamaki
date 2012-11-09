@@ -34,11 +34,20 @@
 from sys import argv
 from os.path import basename
 from kamaki.cli.argument import _arguments, parse_known_args, init_parser
+from kamaki.cli.history import History
+from kamaki.cli.utils import print_dict
 
 _help = False
 _debug = False
 _verbose = False
 _colors = False
+
+cmd_spec_locations = [
+    'kamaki.cli.commands',
+    'kamaki.commands',
+    'kamaki.cli',
+    'kamaki',
+    '']
 
 
 def _init_session(arguments):
@@ -52,8 +61,58 @@ def _init_session(arguments):
     _colors = arguments['config'].get('global', 'colors')
 
 
-def one_cmd():
-    print('ONE COMMAND')
+def get_command_group(unparsed, arguments):
+    groups = arguments['config'].get_groups()
+    for grp_candidate in unparsed:
+        if grp_candidate in groups:
+            unparsed.remove(grp_candidate)
+            return grp_candidate
+    return None
+
+
+def _load_spec_module(spec, arguments, module):
+    spec_name = arguments['config'].get(spec, 'cli')
+    pkg = None
+    if spec_name is None:
+        spec_name = '%s_cli' % spec
+    for location in cmd_spec_locations:
+        location += spec_name if location == '' else '.%s' % spec_name
+        try:
+            pkg = __import__(location, fromlist=[module])
+        except ImportError:
+            continue
+    return pkg
+
+
+def _groups_help(arguments):
+    global _debug
+    descriptions = {}
+    for spec in arguments['config'].get_groups():
+        pkg = _load_spec_module(spec, arguments, '_commands')
+        if pkg:
+            cmds = None
+            try:
+                cmds = getattr(pkg, '_commands')
+            except AttributeError:
+                if _debug:
+                    print('Warning: No description for %s' % spec)
+            try:
+                for cmd in cmds:
+                    descriptions[cmd.name] = cmd.description
+            except TypeError:
+                if _debug:
+                    print('Warning: no cmd specs in module %s' % spec)
+        elif _debug:
+            print('Warning: Loading of %s cmd spec failed' % spec)
+    print('\nOptions:\n - - - -')
+    print_dict(descriptions)
+
+
+def one_cmd(parser, unparsed, arguments):
+    group = get_command_group(unparsed, arguments)
+    if not group:
+        parser.print_help()
+        _groups_help(arguments)
 
 
 def interactive_shell():
@@ -64,6 +123,7 @@ def main():
     exe = basename(argv[0])
     parser = init_parser(exe, _arguments)
     parsed, unparsed = parse_known_args(parser, _arguments)
+    print('PARSED: %s\nUNPARSED: %s' % parsed, unparsed)
 
     if _arguments['version'].value:
         exit(0)
@@ -71,7 +131,9 @@ def main():
     _init_session(_arguments)
 
     if unparsed:
-        one_cmd()
+        _history = History(_arguments['config'].get('history', 'file'))
+        _history.add(' '.join([exe] + argv[1:]))
+        one_cmd(parser, unparsed, _arguments)
     elif _help:
         parser.print_help()
     else:

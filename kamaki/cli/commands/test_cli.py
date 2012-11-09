@@ -31,14 +31,17 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-from kamaki.cli import command
+#from kamaki.cli import command
 from kamaki.cli.commands import _command_init
 from kamaki.cli.command_tree import CommandTree
 
 
-API_DESCRIPTION = dict(test='Test sample')
+#API_DESCRIPTION = dict(test='Test sample')
 
-_commands = CommandTree('test', 'Test sample')
+_commands = [
+    CommandTree('sample', 'Sample commands for developing your own'),
+    CommandTree('test', 'Test commands for testing clients')
+]
 
 
 class _test_init(_command_init):
@@ -46,21 +49,44 @@ class _test_init(_command_init):
         print(self.__class__)
 
 
-@command()
+#@command()
+class sample_cmd0(_test_init):
+    """ test cmd"""
+
+    def main(self, mant):
+        super(self.__class__, self).main()
+
+
+#@command()
+class sample_cmd_all(_test_init):
+    """test cmd all"""
+
+    def main(self):
+        super(self.__class__, self).main()
+
+
+#@command()
+class sample_cmd_some(_test_init):
+    """test_cmd_some"""
+
+    def main(self, opt='lala'):
+        super(self.__class__, self).main()
+
+
 class test_cmd0(_test_init):
     """ test cmd"""
 
     def main(self, mant):
         super(self.__class__, self).main()
 
-@command()
+
 class test_cmd_all(_test_init):
     """test cmd all"""
 
     def main(self):
         super(self.__class__, self).main()
 
-@command()
+
 class test_cmd_some(_test_init):
     """test_cmd_some"""
 
