@@ -345,9 +345,13 @@ def one_command():
         unparsed = [term for term in unparsed if term in new_unparsed]
         ret = _exec_cmd(executable, unparsed, parser.print_help)
         exit(ret)
-    except CLIError as err:
+    except Exception as err:
         if _debug:
+            from traceback import print_stack
+            print_stack()
             raise
+        err = err if isinstance(err, CLIError)\
+            else CLIError('Unexpected Error (%s): %s' % type(err), err)
         _print_error_message(err)
         exit(1)
 

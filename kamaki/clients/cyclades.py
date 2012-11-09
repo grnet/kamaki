@@ -232,15 +232,15 @@ class CycladesClient(ComputeClient):
         old_wait = total_wait = 0
 
         if current_status == 'BUILD':
-            max_wait = 100 * delay
-
-        if wait_cb:
+            max_wait = 100
+            wait_gen = wait_cb(max_wait)
+        elif wait_cb:
             wait_gen = wait_cb(1 + max_wait // delay)
             wait_gen.next()
 
         while r['status'] == current_status and total_wait <= max_wait:
             if current_status == 'BUILD':
-                total_wait = int(r['progress']) * delay
+                total_wait = int(r['progress'])
                 if wait_cb:
                     for i in range(int(old_wait), int(total_wait)):
                         wait_gen.next()
