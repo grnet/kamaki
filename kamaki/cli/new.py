@@ -31,40 +31,48 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-#from kamaki.clients.quotaholder import QuotaHolderClient
-from kamaki.cli import command
-from kamaki.cli.commands import _command_init
+from sys import argv
+from os.path import basename
+from kamaki.cli.argument import _arguments, parse_known_args, init_parser
+
+_help = False
+_debug = False
+_verbose = False
+_colors = False
 
 
-API_DESCRIPTION = dict(quotaholder='Quota Holder commands')
+def _init_session(arguments):
+    global _help
+    _help = arguments['help'].value
+    global _debug
+    _debug = arguments['debug'].value
+    global _verbose
+    _verbose = arguments['verbose'].value
+    global _colors
+    _colors = arguments['config'].get('global', 'colors')
 
 
-class _quotaholder_init(_command_init):
-    def main(self):
-        self.token = self.config.get('quotaholder', 'token')\
-            or self.config.get('global', 'token')
-        self.base_url = self.config.get('quotaholder', 'url')\
-            or self.config.get('global', 'url')
-        #self.client = QuotaHolderClient(self.base_url, self.token)
-        print(self.__class__)
+def one_cmd():
+    print('ONE COMMAND')
 
-@command()
-class quotaholder_test_specific(_quotaholder_init):
-    """quotaholder test specific"""
 
-    def main(self, specify):
-        super(self.__class__, self).main()
+def interactive_shell():
+    print('INTERACTIVE SHELL')
 
-@command()
-class quotaholder_test_all(_quotaholder_init):
-    """quotaholder test all"""
 
-    def main(self):
-        super(self.__class__, self).main()
+def main():
+    exe = basename(argv[0])
+    parser = init_parser(exe, _arguments)
+    parsed, unparsed = parse_known_args(parser, _arguments)
 
-@command()
-class quotaholder_manage(_quotaholder_init):
-    """quotaholder manage"""
+    if _arguments['version'].value:
+        exit(0)
 
-    def main(self):
-        super(self.__class__, self).main()
+    _init_session(_arguments)
+
+    if unparsed:
+        one_cmd()
+    elif _help:
+        parser.print_help()
+    else:
+        interactive_shell()

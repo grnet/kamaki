@@ -31,11 +31,38 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-from kamaki.clients import Client
+from kamaki.cli import command
+from kamaki.cli.commands import _command_init
+from kamaki.cli.command_tree import CommandTree
 
 
-class QuotaHolderClient(Client):
-    """Quota Holder client"""
+API_DESCRIPTION = dict(test='Test sample')
 
-    def test_quota(self):
-        return self.get('')
+_commands = CommandTree('test', 'Test sample')
+
+
+class _test_init(_command_init):
+    def main(self, *args, **kwargs):
+        print(self.__class__)
+
+
+@command()
+class test_cmd0(_test_init):
+    """ test cmd"""
+
+    def main(self, mant):
+        super(self.__class__, self).main()
+
+@command()
+class test_cmd_all(_test_init):
+    """test cmd all"""
+
+    def main(self):
+        super(self.__class__, self).main()
+
+@command()
+class test_cmd_some(_test_init):
+    """test_cmd_some"""
+
+    def main(self, opt='lala'):
+        super(self.__class__, self).main()

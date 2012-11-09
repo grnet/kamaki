@@ -32,7 +32,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from __future__ import print_function
+#from __future__ import print_function
 
 import logging
 

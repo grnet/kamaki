@@ -33,6 +33,7 @@
 
 from kamaki.cli.config import Config
 from kamaki.cli.errors import CLISyntaxError
+from argparse import ArgumentParser, ArgumentError
 
 try:
     from progress.bar import IncrementalBar
@@ -277,3 +278,18 @@ def parse_known_args(parser, arguments=None):
     for name, arg in arguments.items():
         arg.value = getattr(parsed, name, arg.default)
     return parsed, unparsed
+
+
+def init_parser(exe, arguments):
+    parser = ArgumentParser(add_help=False)
+    parser.prog = '%s <cmd_group> [<cmd_subbroup> ...] <cmd>' % exe
+    update_arguments(parser, arguments)
+    return parser
+
+
+def update_arguments(parser, arguments):
+    for name, argument in arguments.items():
+        try:
+            argument.update_parser(parser, name)
+        except ArgumentError:
+            pass
