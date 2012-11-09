@@ -42,11 +42,14 @@ recvlog = logging.getLogger('clients.recv')
 class ClientError(Exception):
     def __init__(self, message, status=0, details=[]):
         try:
-            json_msg = loads(message)
+            serv_stat, sep, new_msg = message.partition('{')
+            new_msg = sep + new_msg
+            json_msg = loads(new_msg)
             key = json_msg.keys()[0]
+
             json_msg = json_msg[key]
-            message = '%s (%s)\n' % (key, json_msg['message'])\
-                if 'message' in json_msg else '%s' % key
+            message = '%s %s (%s)\n' % (serv_stat, key, json_msg['message'])\
+                if 'message' in json_msg else '%s %s' % (serv_stat, key)
             if 'code' in json_msg:
                 status = json_msg['code']
             if 'details' in json_msg:

@@ -351,7 +351,7 @@ def one_command():
             print_stack()
             raise
         err = err if isinstance(err, CLIError)\
-            else CLIError('Unexpected Error (%s): %s' % type(err), err)
+            else CLIError('Unexpected Error (%s): %s' % (type(err), err))
         _print_error_message(err)
         exit(1)
 
