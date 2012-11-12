@@ -278,6 +278,7 @@ def parse_known_args(parser, arguments=None):
     for name, arg in arguments.items():
         arg.value = getattr(parsed, name, arg.default)
     return parsed, unparsed
+    # ['"%s"' % s if ' ' in s else s for s in unparsed]
 
 
 def init_parser(exe, arguments):

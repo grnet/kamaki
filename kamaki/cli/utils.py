@@ -69,31 +69,42 @@ def pretty_keys(d, delim='_', recurcive=False):
     return new_d
 
 
-def print_dict(d, exclude=(), ident=0):
+def print_dict(d, exclude=(), ident=0, rjust=True):
     if not isinstance(d, dict):
         raise CLIError(message='Cannot dict_print a non-dict object')
-    try:
-        margin = max(
-            1 + max(len(unicode(key).strip()) for key in d.keys() \
-                if not isinstance(key, dict) and not isinstance(key, list)),
-            ident)
-    except ValueError:
+    if rjust:
+        try:
+            margin = max(
+                1 + max(len(unicode(key).strip()) for key in d.keys() \
+                    if not (isinstance(key, dict) or isinstance(key, list))),
+                ident)
+        except ValueError:
+            margin = ident
+    else:
         margin = ident
 
     for key, val in sorted(d.items()):
         if key in exclude:
             continue
-        print_str = '%s:' % unicode(key).strip()
+        print_str = '%s:\t' % unicode(key).strip()
+        print_str = print_str.rjust(margin) if rjust\
+        else '%s%s' % (' ' * margin, print_str)
         if isinstance(val, dict):
-            print(print_str.rjust(margin) + ' {')
-            print_dict(val, exclude=exclude, ident=margin + 6)
-            print '}'.rjust(margin)
+            print(print_str + ' {')
+            print_dict(val, exclude=exclude, ident=margin + 6, rjust=rjust)
+            if rjust:
+                print '}'.rjust(margin)
+            else:
+                print '}'
         elif isinstance(val, list):
-            print(print_str.rjust(margin) + ' [')
-            print_list(val, exclude=exclude, ident=margin + 6)
-            print ']'.rjust(margin)
+            print(print_str + ' [')
+            print_list(val, exclude=exclude, ident=margin + 6, rjust=rjust)
+            if rjust:
+                print ']'.rjust(margin)
+            else:
+                print']'
         else:
-            print print_str.rjust(margin) + ' ' + unicode(val).strip()
+            print print_str + ' ' + unicode(val).strip()
 
 
 def print_list(l, exclude=(), ident=0):

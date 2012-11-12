@@ -155,6 +155,9 @@ class CommandTree(object):
         if description is not None:
             cmd.help = description
 
+    def has_command(self, path):
+        return path in self._all_commands
+
     def get_command(self, path):
         return self._all_commands[path]
 
