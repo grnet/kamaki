@@ -31,6 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
+import logging
 from sys import argv, exit, stdout
 from os.path import basename
 from inspect import getargspec
@@ -162,6 +163,33 @@ cmd_spec_locations = [
     '']
 
 
+def _setup_logging(silent=False, debug=False, verbose=False, include=False):
+    """handle logging for clients package"""
+
+    def add_handler(name, level, prefix=''):
+        h = logging.StreamHandler()
+        fmt = logging.Formatter(prefix + '%(message)s')
+        h.setFormatter(fmt)
+        logger = logging.getLogger(name)
+        logger.addHandler(h)
+        logger.setLevel(level)
+
+    if silent:
+        add_handler('', logging.CRITICAL)
+    elif debug:
+        add_handler('requests', logging.INFO, prefix='* ')
+        add_handler('clients.send', logging.DEBUG, prefix='> ')
+        add_handler('clients.recv', logging.DEBUG, prefix='< ')
+    elif verbose:
+        add_handler('requests', logging.INFO, prefix='* ')
+        add_handler('clients.send', logging.INFO, prefix='> ')
+        add_handler('clients.recv', logging.INFO, prefix='< ')
+    elif include:
+        add_handler('clients.recv', logging.INFO)
+    else:
+        add_handler('', logging.WARNING)
+
+
 def _init_session(arguments):
     global _help
     _help = arguments['help'].value
@@ -171,6 +199,9 @@ def _init_session(arguments):
     _verbose = arguments['verbose'].value
     global _colors
     _colors = arguments['config'].get('global', 'colors')
+    _silent = arguments['silent'].value
+    _include = arguments['include'].value
+    _setup_logging(_silent, _debug, _verbose, _include)
 
 
 def get_command_group(unparsed, arguments):
@@ -336,6 +367,43 @@ def one_cmd(parser, unparsed, arguments):
     _exec_cmd(executable, unparsed, parser.print_help)
 
 
+from command_shell import _fix_arguments, Shell
+
+
+def _start_shell():
+    shell = Shell()
+    shell.set_prompt(basename(argv[0]))
+    from kamaki import __version__ as version
+    shell.greet(version)
+    shell.do_EOF = shell.do_exit
+    return shell
+
+
+def run_shell(arguments):
+    _fix_arguments()
+    shell = _start_shell()
+    _config = _arguments['config']
+    #_config.value = None
+    from kamaki.cli.command_tree import CommandTree
+    shell.cmd_tree = CommandTree(
+        'kamaki', 'A command line tool for poking clouds')
+    for spec in [spec for spec in _config.get_groups()\
+            if arguments['config'].get(spec, 'cli')]:
+        try:
+            print('TRY(%s)' % spec)
+            spec_module = _load_spec_module(spec, arguments, '_commands')
+            print('\t- %s' % spec_module)
+            spec_commands = getattr(spec_module, '_commands')
+            print('\t- %s' % spec_commands)
+        except AttributeError:
+            if _debug:
+                print('Warning: No valid description for %s' % spec)
+            continue
+        for spec_tree in spec_commands:
+            shell.cmd_tree.add_tree(spec_tree)
+    shell.run()
+
+
 def main():
     exe = basename(argv[0])
     parser = init_parser(exe, _arguments)
@@ -345,6 +413,7 @@ def main():
         exit(0)
 
     _init_session(_arguments)
+    print(_arguments['config'].value.sections())
 
     if unparsed:
         _history = History(_arguments['config'].get('history', 'file'))
@@ -354,4 +423,4 @@ def main():
         parser.print_help()
         _groups_help(_arguments)
     else:
-        print('KAMAKI SHELL IS DOWN FOR MAINTENANCE')
+        run_shell(_arguments)

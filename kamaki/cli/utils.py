@@ -107,7 +107,7 @@ def print_dict(d, exclude=(), ident=0, rjust=True):
             print print_str + ' ' + unicode(val).strip()
 
 
-def print_list(l, exclude=(), ident=0):
+def print_list(l, exclude=(), ident=0, rjust=True):
     if not isinstance(l, list):
         raise CLIError(message='Cannot list_print a non-list object')
     try:
@@ -122,15 +122,15 @@ def print_list(l, exclude=(), ident=0):
         if item in exclude:
             continue
         if isinstance(item, dict):
-            print('{'.rjust(margin))
+            print '{'.rjust(margin) if rjust else '{'
             print_dict(item, exclude=exclude, ident=margin + 6)
-            print '}'.rjust(margin)
+            print '}'.rjust(margin) if rjust else '}'
         elif isinstance(item, list):
-            print '['.rjust(margin)
+            print '['.rjust(margin) if rjust else ']'
             print_list(item, exclude=exclude, ident=margin + 6)
-            print ']'.rjust(margin)
+            print ']'.rjust(margin) if rjust else ']'
         else:
-            print unicode(item).rjust(margin)
+            print unicode(item).rjust(margin) if rjust else unicode(item)
 
 
 def print_items(items, title=('id', 'name')):

@@ -155,6 +155,13 @@ class CommandTree(object):
         if description is not None:
             cmd.help = description
 
+    def add_tree(self, new_tree):
+        tname = new_tree.name
+        tdesc = new_tree.description
+        self.groups.update(new_tree.groups)
+        self._all_commands.update(new_tree._all_commands)
+        self.set_description(tname, tdesc)
+
     def has_command(self, path):
         return path in self._all_commands
 
