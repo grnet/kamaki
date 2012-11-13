@@ -47,13 +47,6 @@ _verbose = False
 _colors = False
 
 
-def command(*args, **kwargs):
-    """Dummy command decorator - replace it with UI-specific decorator"""
-    def wrap(cls):
-        return cls
-    return wrap
-
-
 def _construct_command_syntax(cls):
         spec = getargspec(cls.main.im_func)
         args = spec.args[1:]
@@ -114,7 +107,7 @@ def _update_best_match(name_terms, prefix=[]):
     return False
 
 
-def _command_load_best_match(cmd_tree_list, prefix='', descedants_depth=1):
+def command(cmd_tree_list, prefix='', descedants_depth=1):
     """Load a class as a command
         spec_cmd0_cmd1 will be command spec cmd0
         @cmd_tree_list is initialized in cmd_spec file and is the structure
@@ -154,6 +147,12 @@ def _command_load_best_match(cmd_tree_list, prefix='', descedants_depth=1):
         cmd_tree.add_command(cls_name, cls.description, cls)
         return cls
     return wrap
+
+
+def get_cmd_terms():
+    global command
+    return [term for term in command.func_defaults[0]\
+        if not term.startswith('-')]
 
 cmd_spec_locations = [
     'kamaki.cli.commands',
@@ -264,20 +263,32 @@ def _print_error_message(cli_err):
     print_list(cli_err.details)
 
 
+def _get_best_match_from_cmd_tree(cmd_tree, unparsed):
+    matched = [term for term in unparsed if not term.startswith('-')]
+    while matched:
+        try:
+            return cmd_tree.get_command('_'.join(matched))
+        except KeyError:
+            matched = matched[:-1]
+    return None
+
+
 def _exec_cmd(instance, cmd_args, help_method):
     try:
         return instance.main(*cmd_args)
     except TypeError as err:
         if err.args and err.args[0].startswith('main()'):
             print(magenta('Syntax error'))
-            if instance.get_argument('verbose'):
+            if _debug:
+                raise err
+            if _verbose:
                 print(unicode(err))
             help_method()
         else:
             raise
     except CLIError as err:
-        if instance.get_argument('debug'):
-            raise
+        if _debug:
+            raise err
         _print_error_message(err)
     return 1
 
@@ -290,8 +301,6 @@ def one_cmd(parser, unparsed, arguments):
         exit(0)
 
     global command
-    global _command_load
-    command = _command_load_best_match
     def_params = list(command.func_defaults)
     def_params[0] = unparsed
     command.func_defaults = tuple(def_params)
@@ -302,7 +311,15 @@ def one_cmd(parser, unparsed, arguments):
 
     cmd_tree = _get_cmd_tree_from_spec(group, spec_module._commands)
 
-    cmd = cmd_tree.get_command('_'.join(_best_match))
+    if _best_match:
+        cmd = cmd_tree.get_command('_'.join(_best_match))
+    else:
+        cmd = _get_best_match_from_cmd_tree(cmd_tree, unparsed)
+        _best_match = cmd.path.split('_')
+    if cmd is None:
+        if _debug or _verbose:
+            print('Unexpected error: failed to load command')
+        exit(1)
 
     _update_parser_help(parser, cmd)
 

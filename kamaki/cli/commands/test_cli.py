@@ -31,7 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-#from kamaki.cli.new import command
+from kamaki.cli.new import get_cmd_terms  # , command
 from kamaki.cli.commands import _command_init
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.argument import FlagArgument
@@ -44,22 +44,15 @@ _commands = [
 ]
 
 
-def command(cmd_tree_list, prefix='', descedants_depth=1):
-    """Load a class as a command
-        spec_cmd0_cmd1 will be command spec cmd0
-        @cmd_tree_list is initialized in cmd_spec file and is the structure
-            where commands are loaded. Var name should be _commands
-        @param prefix if given, load only commands prefixed with prefix,
-        @param descedants_depth is the depth of the tree descedants of the
-            prefix command. It is used ONLY if prefix and if prefix is not
-            a terminal command
-    """
+print('Command Terms: ', get_cmd_terms())
 
+
+def command(cmd_tree_list, prefix='', descedants_depth=1):
     def wrap(cls):
         cls_name = cls.__name__
 
-        spec = cls_name.split('_')[0]
-        cmd_tree = _commands[0] if spec == 'sample' else _commands[1]
+        cmd_tree = _commands[0] if cls_name.startswith('sample')\
+            else _commands[1]
         if not cmd_tree:
             return cls
 
@@ -79,7 +72,7 @@ class _test_init(_command_init):
         print(self.__class__)
         for v in args:
             print('\t\targ: %s' % v)
-        for k, v in kwargs:
+        for k, v in kwargs.items():
             print('\t\tkwarg: %s: %s' % (k, v))
 
 
