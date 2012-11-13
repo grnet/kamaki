@@ -32,15 +32,14 @@
 # or implied, of GRNET S.A.
 
 from kamaki.clients import Client, ClientError
-from kamaki.clients.utils import filter_in, filter_out, prefix_keys, path4url
-#from .connection.kamakicon import KamakiHTTPConnection
+from kamaki.clients.utils import filter_in, filter_out, path4url
+
 
 class StorageClient(Client):
     """OpenStack Object Storage API 1.0 client"""
 
     def __init__(self, base_url, token, account=None, container=None):
         super(StorageClient, self).__init__(base_url, token)
-        #super(StorageClient, self).__init__(base_url, token, http_client=KamakiHTTPConnection())
         self.account = account
         self.container = container
 
@@ -65,17 +64,21 @@ class StorageClient(Client):
     def replace_account_meta(self, metapairs):
         self.assert_account()
         path = path4url(self.account)
-        for key, val in  metapairs:
-            self.set_header('X-Account-Meta-'+key, val)
+        for key, val in metapairs:
+            self.set_header('X-Account-Meta-' + key, val)
         r = self.post(path, success=202)
+        r.release()
 
     def del_account_meta(self, metakey):
         headers = self.get_account_info()
-        self.headers = filter_out(headers, 'X-Account-Meta-'+metakey, exactMatch = True)
+        self.headers = filter_out(headers,
+            'X-Account-Meta-' + metakey,
+            exactMatch=True)
         if len(self.headers) == len(headers):
             raise ClientError('X-Account-Meta-%s not found' % metakey, 404)
         path = path4url(self.account)
-        r = self.post(path, success = 202)
+        r = self.post(path, success=202)
+        r.release()
 
     def create_container(self, container):
         self.assert_account()
@@ -106,7 +109,7 @@ class StorageClient(Client):
         self.assert_account()
         self.set_param('format', 'json')
         path = path4url(self.account)
-        r = self.get(path, success = (200, 204))
+        r = self.get(path, success=(200, 204))
         reply = r.json
         return reply
 
@@ -117,6 +120,7 @@ class StorageClient(Client):
         path = path4url(self.account, self.container, object)
         data = f.read(size) if size is not None else f.read()
         r = self.put(path, data=data, success=201)
+        r.release()
 
     def create_directory(self, object):
         self.assert_container()
@@ -124,6 +128,7 @@ class StorageClient(Client):
         self.set_header('Content-Type', 'application/directory')
         self.set_header('Content-length', '0')
         r = self.put(path, success=201)
+        r.release()
 
     def get_object_info(self, object):
         self.assert_container()
@@ -142,16 +147,18 @@ class StorageClient(Client):
 
     def del_object_meta(self, metakey, object):
         self.assert_container()
-        self.set_header('X-Object-Meta-'+metakey, '')
+        self.set_header('X-Object-Meta-' + metakey, '')
         path = path4url(self.account, self.container, object)
-        r = self.post(path, success = 202)
+        r = self.post(path, success=202)
+        r.release()
 
     def replace_object_meta(self, metapairs):
         self.assert_container()
-        path=path4url(self.account, self.container)
+        path = path4url(self.account, self.container)
         for key, val in metapairs:
-            self.set_header('X-Object-Meta-'+key, val)
+            self.set_header('X-Object-Meta-' + key, val)
         r = self.post(path, success=202)
+        r.release()
 
     def get_object(self, object):
         self.assert_container()
@@ -161,36 +168,42 @@ class StorageClient(Client):
         cnt = r.content
         return cnt, size
 
-    def copy_object(self, src_container, src_object, dst_container, dst_object=False):
+    def copy_object(self, src_container, src_object, dst_container,
+        dst_object=False):
         self.assert_account()
         dst_object = dst_object or src_object
         dst_path = path4url(self.account, dst_container, dst_object)
         self.set_header('X-Copy-From', path4url(src_container, src_object))
         self.set_header('Content-Length', 0)
         r = self.put(dst_path, success=201)
+        r.release()
 
-    def move_object(self, src_container, src_object, dst_container, dst_object=False):
+    def move_object(self, src_container, src_object, dst_container,
+        dst_object=False):
         self.assert_account()
         dst_object = dst_object or src_object
         dst_path = path4url(self.account, dst_container, dst_object)
         self.set_header('X-Move-From', path4url(src_container, src_object))
         self.set_header('Content-Length', 0)
         r = self.put(dst_path, success=201)
+        r.release()
 
     def delete_object(self, object):
         self.assert_container()
         path = path4url(self.account, self.container, object)
         r = self.delete(path, success=(204, 404))
         if r.status_code == 404:
-            raise ClientError("Object %s not found" %object, r.status_code)
-       
+            raise ClientError("Object %s not found" % object, r.status_code)
+
     def list_objects(self):
         self.assert_container()
         path = path4url(self.account, self.container)
         self.set_param('format', 'json')
         r = self.get(path, success=(200, 204, 304, 404), )
         if r.status_code == 404:
-            raise ClientError("Incorrect account (%s) for that container"%self.account, r.status_code)
+            raise ClientError(\
+                "Incorrect account (%s) for that container" % self.account,
+                r.status_code)
         elif r.status_code == 304:
             return []
         reply = r.json
@@ -203,8 +216,8 @@ class StorageClient(Client):
         self.set_param('path', 'path_prefix')
         r = self.get(path, success=(200, 204, 404))
         if r.status_code == 404:
-            raise ClientError("Incorrect account (%s) for that container"%self.account, r.status_code)
+            raise ClientError(\
+                "Incorrect account (%s) for that container" % self.account,
+                r.status_code)
         reply = r.json
         return reply
-
-

@@ -1,6 +1,10 @@
 Clients lib
 ===========
 
+.. toctree::
+
+    connection
+
 compute
 -------
 
@@ -8,6 +12,8 @@ compute
     :members:
     :show-inheritance:
     :undoc-members:
+
+Compute stuff. This is what we do here in GRNet. We are compute people, after all!
 
 
 cyclades
@@ -36,6 +42,14 @@ pithos
     :show-inheritance:
     :undoc-members:
 
+pithos_rest_api
+---------------
+
+.. automodule:: kamaki.clients.pithos_rest_api
+    :members:
+    :show-inheritance:
+    :undoc-members:
+
 
 image
 -----
@@ -55,3 +69,10 @@ astakos
     :undoc-members:
 
 
+utils
+-----
+
+.. automodule:: kamaki.clients.utils
+    :members:
+    :show-inheritance:
+    :undoc-members:

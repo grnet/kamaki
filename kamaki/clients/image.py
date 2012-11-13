@@ -33,6 +33,7 @@
 from kamaki.clients import Client, ClientError
 from kamaki.clients.utils import path4url
 
+
 class ImageClient(Client):
     """OpenStack Image Service API 1.0 and GRNET Plankton client"""
 
@@ -47,7 +48,7 @@ class ImageClient(Client):
         super(ImageClient, self).raise_for_status(r)
 
     def list_public(self, detail=False, filters={}, order=''):
-        path = path4url('images','detail') if detail else path4url('images/')
+        path = path4url('images', 'detail') if detail else path4url('images/')
 
         if isinstance(filters, dict):
             self.http_client.params.update(filters)
@@ -62,7 +63,7 @@ class ImageClient(Client):
         return r.json
 
     def get_meta(self, image_id):
-        path=path4url('images', image_id)
+        path = path4url('images', image_id)
         r = self.head(path, success=200)
 
         reply = {}
@@ -95,14 +96,15 @@ class ImageClient(Client):
                 self.set_header(key, val)
 
         for key, val in properties.items():
-            self.set_header('X-Image-Meta-Property-'+key, val)
+            self.set_header('X-Image-Meta-Property-%s' % key, val)
 
         try:
             r = self.post(path, success=200)
         except ClientError as err:
             try:
                 prefix, suffix = err.details.split('File not found')
-                details = '%s Location %s not found %s'%(prefix, location, suffix)
+                details = '%s Location %s not found %s' %\
+                    (prefix, location, suffix)
                 raise ClientError(err.message, err.status, details)
             except ValueError:
                 pass
@@ -110,7 +112,7 @@ class ImageClient(Client):
         r.release()
 
     def list_members(self, image_id):
-        path = path4url('images',image_id,'members')
+        path = path4url('images', image_id, 'members')
         r = self.get(path, success=200)
         return r.json['members']
 
@@ -135,4 +137,3 @@ class ImageClient(Client):
         req = {'memberships': [{'member_id': member} for member in members]}
         r = self.put(path, json=req, success=204)
         r.release()
-
