@@ -224,7 +224,10 @@ def _load_spec_module(spec, arguments, module):
     for location in cmd_spec_locations:
         location += spec_name if location == '' else '.%s' % spec_name
         try:
+            print('\t-- %s' % location)
             pkg = __import__(location, fromlist=[module])
+            print('SO COOL')
+            return pkg
         except ImportError:
             continue
     return pkg
@@ -324,6 +327,19 @@ def _exec_cmd(instance, cmd_args, help_method):
     return 1
 
 
+def set_command_param(param, value):
+    if param == 'prefix':
+        pos = 0
+    elif param == 'descedants_depth':
+        pos = 1
+    else:
+        return
+    global command
+    def_params = list(command.func_defaults)
+    def_params[pos] = value
+    command.func_defaults = tuple(def_params)
+
+
 def one_cmd(parser, unparsed, arguments):
     group = get_command_group(list(unparsed), arguments)
     if not group:
@@ -331,10 +347,10 @@ def one_cmd(parser, unparsed, arguments):
         _groups_help(arguments)
         exit(0)
 
-    global command
-    def_params = list(command.func_defaults)
-    def_params[0] = unparsed
-    command.func_defaults = tuple(def_params)
+    set_command_param(
+        'prefix',
+        [term for term in unparsed if not term.startswith('-')]
+    )
     global _best_match
     _best_match = []
 
@@ -383,24 +399,26 @@ def run_shell(arguments):
     _fix_arguments()
     shell = _start_shell()
     _config = _arguments['config']
-    #_config.value = None
     from kamaki.cli.command_tree import CommandTree
     shell.cmd_tree = CommandTree(
         'kamaki', 'A command line tool for poking clouds')
     for spec in [spec for spec in _config.get_groups()\
             if arguments['config'].get(spec, 'cli')]:
+        print('SPEC NAME: %s' % spec)
         try:
-            print('TRY(%s)' % spec)
+            print('\t1')
             spec_module = _load_spec_module(spec, arguments, '_commands')
-            print('\t- %s' % spec_module)
+            print('\t2 %s' % spec_module)
             spec_commands = getattr(spec_module, '_commands')
-            print('\t- %s' % spec_commands)
+            print('\t3')
         except AttributeError:
             if _debug:
                 print('Warning: No valid description for %s' % spec)
             continue
         for spec_tree in spec_commands:
-            shell.cmd_tree.add_tree(spec_tree)
+            if spec_tree.name == spec:
+                shell.cmd_tree.add_tree(spec_tree)
+                break
     shell.run()
 
 
