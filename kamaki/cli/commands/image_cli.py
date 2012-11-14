@@ -32,6 +32,7 @@
 # or implied, of GRNET S.A.command
 
 from kamaki.cli import command
+from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import raiseCLIError
 from kamaki.cli.utils import print_dict, print_items, bold
 from kamaki.clients.image import ImageClient, ClientError
@@ -41,7 +42,9 @@ from kamaki.cli.commands.cyclades_cli import _init_cyclades
 from kamaki.cli.commands import _command_init
 
 
-API_DESCRIPTION = {'image': 'Compute/Cyclades or Glance API image commands'}
+image_cmds = CommandTree('image',
+    'Compute/Cyclades or Glance API image commands')
+_commands = [image_cmds]
 
 
 class _init_image(_command_init):
@@ -58,7 +61,7 @@ class _init_image(_command_init):
             raiseCLIError(err)
 
 
-@command()
+@command(image_cmds)
 class image_public(_init_image):
     """List public images"""
 
@@ -102,7 +105,7 @@ class image_public(_init_image):
         print_items(images, title=('name',))
 
 
-@command()
+@command(image_cmds)
 class image_meta(_init_image):
     """Get image metadata"""
 
@@ -115,7 +118,7 @@ class image_meta(_init_image):
         print_dict(image)
 
 
-@command()
+@command(image_cmds)
 class image_test(_init_image):
     """Test stuff"""
 
@@ -128,7 +131,7 @@ class image_test(_init_image):
         print('OK...')
 
 
-@command()
+@command(image_cmds)
 class image_register(_init_image):
     """Register an image"""
 
@@ -184,7 +187,7 @@ class image_register(_init_image):
             raiseCLIError(err)
 
 
-@command()
+@command(image_cmds)
 class image_members(_init_image):
     """Get image members"""
 
@@ -198,7 +201,7 @@ class image_members(_init_image):
             print(member['member_id'])
 
 
-@command()
+@command(image_cmds)
 class image_shared(_init_image):
     """List shared images"""
 
@@ -212,7 +215,7 @@ class image_shared(_init_image):
             print(image['image_id'])
 
 
-@command()
+@command(image_cmds)
 class image_addmember(_init_image):
     """Add a member to an image"""
 
@@ -224,7 +227,7 @@ class image_addmember(_init_image):
             raiseCLIError(err)
 
 
-@command()
+@command(image_cmds)
 class image_delmember(_init_image):
     """Remove a member from an image"""
 
@@ -236,7 +239,7 @@ class image_delmember(_init_image):
             raiseCLIError(err)
 
 
-@command()
+@command(image_cmds)
 class image_setmembers(_init_image):
     """Set the members of an image"""
 
@@ -248,7 +251,7 @@ class image_setmembers(_init_image):
             raiseCLIError(err)
 
 
-@command()
+@command(image_cmds)
 class image_list(_init_cyclades):
     """List images"""
 
@@ -273,7 +276,7 @@ class image_list(_init_cyclades):
         self._print(images)
 
 
-@command()
+@command(image_cmds)
 class image_info(_init_cyclades):
     """Get image details"""
 
@@ -292,7 +295,7 @@ class image_info(_init_cyclades):
         self._print(image)
 
 
-@command()
+@command(image_cmds)
 class image_delete(_init_cyclades):
     """Delete image"""
 
@@ -304,7 +307,7 @@ class image_delete(_init_cyclades):
             raiseCLIError(err)
 
 
-@command()
+@command(image_cmds)
 class image_properties(_init_cyclades):
     """Get image properties"""
 
@@ -317,7 +320,7 @@ class image_properties(_init_cyclades):
         print_dict(reply)
 
 
-@command()
+@command(image_cmds)
 class image_addproperty(_init_cyclades):
     """Add an image property"""
 
@@ -330,7 +333,7 @@ class image_addproperty(_init_cyclades):
         print_dict(reply)
 
 
-@command()
+@command(image_cmds)
 class image_setproperty(_init_cyclades):
     """Update an image property"""
 
@@ -344,7 +347,7 @@ class image_setproperty(_init_cyclades):
         print_dict(reply)
 
 
-@command()
+@command(image_cmds)
 class image_delproperty(_init_cyclades):
     """Delete an image property"""
 

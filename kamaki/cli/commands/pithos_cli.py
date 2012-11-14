@@ -32,6 +32,7 @@
 # or implied, of GRNET S.A.command
 
 from kamaki.cli import command
+from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import CLIError, raiseCLIError
 from kamaki.cli.utils import format_size, print_dict, pretty_keys
 from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
@@ -44,7 +45,8 @@ from time import localtime, strftime
 from datetime import datetime as dtm
 
 
-API_DESCRIPTION = dict(store='Pithos+ storage commands')
+pithos_cmds = CommandTree('store', 'Pithos+ storage commands')
+_commands = [pithos_cmds]
 
 
 # Argument functionality
@@ -244,7 +246,7 @@ class _store_container_command(_store_account_command):
         self.container = self.client.container
 
 
-@command()
+@command(pithos_cmds)
 class store_list(_store_container_command):
     """List containers, object trees or objects in a directory
     """
@@ -371,7 +373,7 @@ class store_list(_store_container_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_mkdir(_store_container_command):
     """Create a directory"""
 
@@ -384,7 +386,7 @@ class store_mkdir(_store_container_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_create(_store_container_command):
     """Create a container or a directory object"""
 
@@ -411,7 +413,7 @@ class store_create(_store_container_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_copy(_store_container_command):
     """Copy an object"""
 
@@ -448,7 +450,7 @@ class store_copy(_store_container_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_move(_store_container_command):
     """Copy an object"""
 
@@ -486,7 +488,7 @@ class store_move(_store_container_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_append(_store_container_command):
     """Append local file to (existing) remote object"""
 
@@ -512,7 +514,7 @@ class store_append(_store_container_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_truncate(_store_container_command):
     """Truncate remote file up to a size"""
 
@@ -525,7 +527,7 @@ class store_truncate(_store_container_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_overwrite(_store_container_command):
     """Overwrite part (from start to end) of a remote file"""
 
@@ -553,7 +555,7 @@ class store_overwrite(_store_container_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_manifest(_store_container_command):
     """Create a remote file with uploaded parts by manifestation"""
 
@@ -587,7 +589,7 @@ class store_manifest(_store_container_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_upload(_store_container_command):
     """Upload a file"""
 
@@ -651,7 +653,7 @@ class store_upload(_store_container_command):
         print 'Upload completed'
 
 
-@command()
+@command(pithos_cmds)
 class store_cat(_store_container_command):
     """Print a file to console"""
 
@@ -687,7 +689,7 @@ class store_cat(_store_container_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_download(_store_container_command):
     """Download a file"""
 
@@ -763,7 +765,7 @@ class store_download(_store_container_command):
         print
 
 
-@command()
+@command(pithos_cmds)
 class store_hashmap(_store_container_command):
     """Get the hashmap of an object"""
 
@@ -797,7 +799,7 @@ class store_hashmap(_store_container_command):
         print_dict(data)
 
 
-@command()
+@command(pithos_cmds)
 class store_delete(_store_container_command):
     """Delete a container [or an object]"""
 
@@ -827,7 +829,7 @@ class store_delete(_store_container_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_purge(_store_container_command):
     """Purge a container"""
 
@@ -839,7 +841,7 @@ class store_purge(_store_container_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_publish(_store_container_command):
     """Publish an object"""
 
@@ -852,7 +854,7 @@ class store_publish(_store_container_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_unpublish(_store_container_command):
     """Unpublish an object"""
 
@@ -865,7 +867,7 @@ class store_unpublish(_store_container_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_permissions(_store_container_command):
     """Get object read/write permissions """
 
@@ -879,7 +881,7 @@ class store_permissions(_store_container_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_setpermissions(_store_container_command):
     """Set sharing permissions """
 
@@ -913,7 +915,7 @@ class store_setpermissions(_store_container_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_delpermissions(_store_container_command):
     """Delete all sharing permissions"""
 
@@ -926,7 +928,7 @@ class store_delpermissions(_store_container_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_info(_store_container_command):
     """Get information for account [, container [or object]]"""
 
@@ -951,7 +953,7 @@ class store_info(_store_container_command):
         print_dict(reply)
 
 
-@command()
+@command(pithos_cmds)
 class store_meta(_store_container_command):
     """Get custom meta-content for account [, container [or object]]"""
 
@@ -970,16 +972,16 @@ class store_meta(_store_container_command):
 
         detail = self.get_argument('detail')
         try:
+            until = self.get_argument('until')
             if self.container is None:
                 print(bold(self.client.account))
-                until = self.get_argument('until')
                 if detail:
                     reply = self.client.get_account_info(until=until)
                 else:
                     reply = self.client.get_account_meta(until=until)
                     reply = pretty_keys(reply, '-')
             elif self.path is None:
-                print(bold('%s: %s' % self.client.account, self.container))
+                print(bold('%s: %s' % (self.client.account, self.container)))
                 if detail:
                     reply = self.client.get_container_info(until=until)
                 else:
@@ -988,8 +990,8 @@ class store_meta(_store_container_command):
                     reply = {'container-meta': pretty_keys(cmeta, '-'),
                         'object-meta': pretty_keys(ometa, '-')}
             else:
-                print('%s: %s:%s'\
-                % (bold(self.client.account, self.container, self.path)))
+                print(bold('%s: %s:%s'\
+                    % (self.client.account, self.container, self.path)))
                 version = self.get_argument('object_version')
                 if detail:
                     reply = self.client.get_object_info(self.path,
@@ -1003,7 +1005,7 @@ class store_meta(_store_container_command):
         print_dict(reply)
 
 
-@command()
+@command(pithos_cmds)
 class store_setmeta(_store_container_command):
     """Set a new metadatum for account [, container [or object]]"""
 
@@ -1024,7 +1026,7 @@ class store_setmeta(_store_container_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_delmeta(_store_container_command):
     """Delete an existing metadatum of account [, container [or object]]"""
 
@@ -1041,7 +1043,7 @@ class store_delmeta(_store_container_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_quota(_store_account_command):
     """Get  quota for account [or container]"""
 
@@ -1057,7 +1059,7 @@ class store_quota(_store_account_command):
         print_dict(reply)
 
 
-@command()
+@command(pithos_cmds)
 class store_setquota(_store_account_command):
     """Set new quota (in KB) for account [or container]"""
 
@@ -1073,7 +1075,7 @@ class store_setquota(_store_account_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_versioning(_store_account_command):
     """Get  versioning for account [or container ]"""
 
@@ -1089,7 +1091,7 @@ class store_versioning(_store_account_command):
         print_dict(reply)
 
 
-@command()
+@command(pithos_cmds)
 class store_setversioning(_store_account_command):
     """Set new versioning (auto, none) for account [or container]"""
 
@@ -1105,7 +1107,7 @@ class store_setversioning(_store_account_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_group(_store_account_command):
     """Get user groups details for account"""
 
@@ -1118,7 +1120,7 @@ class store_group(_store_account_command):
         print_dict(reply)
 
 
-@command()
+@command(pithos_cmds)
 class store_setgroup(_store_account_command):
     """Create/update a new user group on account"""
 
@@ -1130,7 +1132,7 @@ class store_setgroup(_store_account_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_delgroup(_store_account_command):
     """Delete a user group on an account"""
 
@@ -1142,7 +1144,7 @@ class store_delgroup(_store_account_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_sharers(_store_account_command):
     """List the accounts that share objects with default account"""
 
@@ -1171,7 +1173,7 @@ class store_sharers(_store_account_command):
             print
 
 
-@command()
+@command(pithos_cmds)
 class store_versions(_store_container_command):
     """Get the version list of an object"""
 

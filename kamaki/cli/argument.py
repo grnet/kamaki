@@ -118,6 +118,7 @@ class Argument(object):
 class ConfigArgument(Argument):
     @property
     def value(self):
+        super(self.__class__, self).value
         return super(self.__class__, self).value
 
     @value.setter

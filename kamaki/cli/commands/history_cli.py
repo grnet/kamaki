@@ -33,13 +33,14 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.argument import IntArgument, ValueArgument
 from kamaki.cli.history import History
 from kamaki.cli import command
 from kamaki.cli.commands import _command_init
 
 
-API_DESCRIPTION = {'history': 'Command history'}
+history_cmds = CommandTree('history', 'Command history')
 
 
 class _init_history(_command_init):
@@ -47,7 +48,7 @@ class _init_history(_command_init):
         self.history = History(self.config.get('history', 'file'))
 
 
-@command()
+@command(history_cmds)
 class history(_init_history):
     """Show history [containing terms...]"""
 
@@ -65,7 +66,7 @@ class history(_init_history):
         print(''.join(ret))
 
 
-@command()
+@command(history_cmds)
 class history_clean(_init_history):
     """Clean up history"""
 

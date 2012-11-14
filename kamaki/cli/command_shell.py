@@ -33,12 +33,13 @@
 
 from cmd import Cmd
 from os import popen
-from argparse import ArgumentParser
-from kamaki.cli import _update_parser, _exec_cmd
-from .argument import _arguments
-from .utils import print_dict
 from sys import stdout
-from .history import History
+from argparse import ArgumentParser
+
+from kamaki.cli import _exec_cmd
+from kamaki.cli.argument import _arguments, update_arguments
+from kamaki.cli.utils import print_dict
+from kamaki.cli.history import History
 
 
 def _fix_arguments():
@@ -127,7 +128,8 @@ class Shell(Cmd):
                 instance = cls(dict(_arguments))
                 cmd_parser.prog = '%s %s' % (cmd_parser.prog.replace('_', ' '),
                     cls.syntax)
-                _update_parser(cmd_parser, instance.arguments)
+                update_arguments(cmd_parser, instance.arguments)
+                #_update_parser(cmd_parser, instance.arguments)
                 if '-h' in cmd_args or '--help' in cmd_args:
                     cmd_parser.print_help()
                     return

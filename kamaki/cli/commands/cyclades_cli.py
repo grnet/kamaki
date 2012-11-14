@@ -32,6 +32,7 @@
 # or implied, of GRNET S.A.
 
 from kamaki.cli import command
+from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.utils import print_dict, print_items, print_list, bold
 from kamaki.cli.errors import CLIError, raiseCLIError, CLISyntaxError
 from kamaki.clients.cyclades import CycladesClient, ClientError
@@ -43,10 +44,15 @@ from base64 import b64encode
 from os.path import exists
 
 
-API_DESCRIPTION = {'server': 'Compute/Cyclades API server commands',
-    'flavor': 'Compute/Cyclades API flavor commands',
-    'image': 'Compute/Cyclades or Glance API image commands',
-    'network': 'Compute/Cyclades API network commands'}
+server_cmds = CommandTree('server',
+    'Compute/Cyclades API server commands')
+flavor_cmds = CommandTree('flavor',
+    'Compute/Cyclades API flavor commands')
+image_cmds = CommandTree('image',
+    'Compute/Cyclades or Glance API image commands')
+network_cmds = CommandTree('network',
+    'Compute/Cyclades API network commands')
+_commands = [server_cmds, flavor_cmds, image_cmds, network_cmds]
 
 
 class _init_cyclades(_command_init):
@@ -58,7 +64,7 @@ class _init_cyclades(_command_init):
         self.client = CycladesClient(base_url=base_url, token=token)
 
 
-@command()
+@command(server_cmds)
 class server_list(_init_cyclades):
     """List servers"""
 
@@ -85,7 +91,7 @@ class server_list(_init_cyclades):
             raiseCLIError(err)
 
 
-@command()
+@command(server_cmds)
 class server_info(_init_cyclades):
     """Get server details"""
 
@@ -145,7 +151,7 @@ class PersonalityArgument(ValueArgument):
             pass
 
 
-@command()
+@command(server_cmds)
 class server_create(_init_cyclades):
     """Create a server"""
 
@@ -179,7 +185,7 @@ class server_create(_init_cyclades):
         print_dict(reply)
 
 
-@command()
+@command(server_cmds)
 class server_rename(_init_cyclades):
     """Update a server's name"""
 
@@ -195,7 +201,7 @@ class server_rename(_init_cyclades):
                 importance=1)
 
 
-@command()
+@command(server_cmds)
 class server_delete(_init_cyclades):
     """Delete a server"""
 
@@ -210,7 +216,7 @@ class server_delete(_init_cyclades):
                 importance=1)
 
 
-@command()
+@command(server_cmds)
 class server_reboot(_init_cyclades):
     """Reboot a server"""
 
@@ -230,7 +236,7 @@ class server_reboot(_init_cyclades):
                 importance=1)
 
 
-@command()
+@command(server_cmds)
 class server_start(_init_cyclades):
     """Start a server"""
 
@@ -245,7 +251,7 @@ class server_start(_init_cyclades):
                 importance=1)
 
 
-@command()
+@command(server_cmds)
 class server_shutdown(_init_cyclades):
     """Shutdown a server"""
 
@@ -260,7 +266,7 @@ class server_shutdown(_init_cyclades):
                 importance=1)
 
 
-@command()
+@command(server_cmds)
 class server_console(_init_cyclades):
     """Get a VNC console"""
 
@@ -276,7 +282,7 @@ class server_console(_init_cyclades):
         print_dict(reply)
 
 
-@command()
+@command(server_cmds)
 class server_firewall(_init_cyclades):
     """Set the server's firewall profile"""
 
@@ -291,7 +297,7 @@ class server_firewall(_init_cyclades):
                 importance=1)
 
 
-@command()
+@command(server_cmds)
 class server_addr(_init_cyclades):
     """List a server's nic address"""
 
@@ -307,7 +313,7 @@ class server_addr(_init_cyclades):
         print_list(reply)
 
 
-@command()
+@command(server_cmds)
 class server_meta(_init_cyclades):
     """Get a server's metadata"""
 
@@ -323,7 +329,7 @@ class server_meta(_init_cyclades):
         print_dict(reply)
 
 
-@command()
+@command(server_cmds)
 class server_addmeta(_init_cyclades):
     """Add server metadata"""
 
@@ -340,7 +346,7 @@ class server_addmeta(_init_cyclades):
         print_dict(reply)
 
 
-@command()
+@command(server_cmds)
 class server_setmeta(_init_cyclades):
     """Update server's metadata"""
 
@@ -358,7 +364,7 @@ class server_setmeta(_init_cyclades):
         print_dict(reply)
 
 
-@command()
+@command(server_cmds)
 class server_delmeta(_init_cyclades):
     """Delete server metadata"""
 
@@ -373,7 +379,7 @@ class server_delmeta(_init_cyclades):
                 importance=1)
 
 
-@command()
+@command(server_cmds)
 class server_stats(_init_cyclades):
     """Get server statistics"""
 
@@ -389,7 +395,7 @@ class server_stats(_init_cyclades):
         print_dict(reply, exclude=('serverRef',))
 
 
-@command()
+@command(server_cmds)
 class server_wait(_init_cyclades):
     """Wait for server to finish [BUILD, STOPPED, REBOOT, ACTIVE]"""
 
@@ -421,7 +427,7 @@ class server_wait(_init_cyclades):
             print('\nTime out')
 
 
-@command()
+@command(flavor_cmds)
 class flavor_list(_init_cyclades):
     """List flavors"""
 
@@ -438,7 +444,7 @@ class flavor_list(_init_cyclades):
         print_items(flavors)
 
 
-@command()
+@command(flavor_cmds)
 class flavor_info(_init_cyclades):
     """Get flavor details"""
 
@@ -454,7 +460,7 @@ class flavor_info(_init_cyclades):
         print_dict(flavor)
 
 
-@command()
+@command(network_cmds)
 class network_list(_init_cyclades):
     """List networks"""
 
@@ -479,7 +485,7 @@ class network_list(_init_cyclades):
         self.print_networks(networks)
 
 
-@command()
+@command(network_cmds)
 class network_create(_init_cyclades):
     """Create a network"""
 
@@ -507,7 +513,7 @@ class network_create(_init_cyclades):
         print_dict(reply)
 
 
-@command()
+@command(network_cmds)
 class network_info(_init_cyclades):
     """Get network details"""
 
@@ -527,7 +533,7 @@ class network_info(_init_cyclades):
         network_info.print_network(network)
 
 
-@command()
+@command(network_cmds)
 class network_rename(_init_cyclades):
     """Update network name"""
 
@@ -539,7 +545,7 @@ class network_rename(_init_cyclades):
             raiseCLIError(err)
 
 
-@command()
+@command(network_cmds)
 class network_delete(_init_cyclades):
     """Delete a network"""
 
@@ -551,7 +557,7 @@ class network_delete(_init_cyclades):
             raiseCLIError(err)
 
 
-@command()
+@command(network_cmds)
 class network_connect(_init_cyclades):
     """Connect a server to a network"""
 
@@ -563,7 +569,7 @@ class network_connect(_init_cyclades):
             raiseCLIError(err)
 
 
-@command()
+@command(network_cmds)
 class network_disconnect(_init_cyclades):
     """Disconnect a nic that connects a server to a network"""
 

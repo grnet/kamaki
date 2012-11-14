@@ -34,12 +34,13 @@
 from kamaki.cli import command
 from kamaki.cli.argument import FlagArgument
 from kamaki.cli.commands import _command_init
+from kamaki.cli.command_tree import CommandTree
+
+config_cmds = CommandTree('config', 'Configuration commands')
+_command = [config_cmds]
 
 
-API_DESCRIPTION = {'config': 'Configuration commands'}
-
-
-@command()
+@command(config_cmds)
 class config_list(_command_init):
     """List configuration options"""
 
@@ -55,7 +56,7 @@ class config_list(_command_init):
                 print('%s.%s = %s' % (section, key, val))
 
 
-@command()
+@command(config_cmds)
 class config_get(_command_init):
     """Show a configuration option"""
 
@@ -67,7 +68,7 @@ class config_get(_command_init):
             print(value)
 
 
-@command()
+@command(config_cmds)
 class config_set(_command_init):
     """Set a configuration option"""
 
@@ -78,7 +79,7 @@ class config_set(_command_init):
         self.config.write()
 
 
-@command()
+@command(config_cmds)
 class config_delete(_command_init):
     """Delete a configuration option (and use the default value)"""
 

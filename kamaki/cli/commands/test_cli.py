@@ -31,39 +31,21 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-from kamaki.cli.new import get_cmd_terms  # , command
+from kamaki.cli import get_cmd_terms, command
 from kamaki.cli.commands import _command_init
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.argument import FlagArgument
 
-#API_DESCRIPTION = dict(test='Test sample')
-
-_commands = [
-    CommandTree('sample', 'Sample commands for developing your own'),
-    CommandTree('test', 'Test commands for testing clients')
-]
+sample_cmds = CommandTree(
+    'sample',
+    'Sample commands for developing your own')
+test_cmds = CommandTree(
+    'test',
+    'Test commands for testing clients')
+_commands = [sample_cmds, test_cmds]
 
 
 print('Command Terms: ', get_cmd_terms())
-
-
-def command(cmd_tree_list, prefix='', descedants_depth=1):
-    def wrap(cls):
-        cls_name = cls.__name__
-
-        cmd_tree = _commands[0] if cls_name.startswith('sample')\
-            else _commands[1]
-        if not cmd_tree:
-            return cls
-
-        cls.description, sep, cls.long_description\
-        = cls.__doc__.partition('\n')
-        from kamaki.cli.new import _construct_command_syntax
-        _construct_command_syntax(cls)
-
-        cmd_tree.add_command(cls_name, cls.description, cls)
-        return cls
-    return wrap
 
 
 class _test_init(_command_init):
@@ -76,7 +58,7 @@ class _test_init(_command_init):
             print('\t\tkwarg: %s: %s' % (k, v))
 
 
-@command(cmd_tree_list=_commands)
+@command(sample_cmds)
 class sample_cmd0(_test_init):
     """ test cmd
     This is the zero command test and this is the long description of it
@@ -86,7 +68,7 @@ class sample_cmd0(_test_init):
         super(self.__class__, self).main(mant)
 
 
-@command(cmd_tree_list=_commands)
+@command(sample_cmds)
 class sample_cmd_all(_test_init):
     """test cmd all"""
 
@@ -94,7 +76,7 @@ class sample_cmd_all(_test_init):
         super(self.__class__, self).main()
 
 
-@command(cmd_tree_list=_commands)
+@command(sample_cmds)
 class sample_cmd_some(_test_init):
     """test_cmd_some"""
 
@@ -102,7 +84,7 @@ class sample_cmd_some(_test_init):
         super(self.__class__, self).main(opt=opt)
 
 
-@command(cmd_tree_list=_commands)
+@command(test_cmds)
 class test_cmd0(_test_init):
     """ test cmd"""
 
@@ -110,7 +92,7 @@ class test_cmd0(_test_init):
         super(self.__class__, self).main(mant)
 
 
-@command(cmd_tree_list=_commands)
+@command(test_cmds)
 class test_cmd_all(_test_init):
     """test cmd all"""
 
@@ -122,7 +104,7 @@ class test_cmd_all(_test_init):
         super(self.__class__, self).main()
 
 
-@command(cmd_tree_list=_commands)
+@command(test_cmds)
 class test_cmdion(_test_init):
     """test_cmd_some"""
 
@@ -130,7 +112,7 @@ class test_cmdion(_test_init):
         super(self.__class__, self).main(opt=opt)
 
 
-@command(cmd_tree_list=_commands)
+@command(test_cmds)
 class test_cmd_cmdion_comedian(_test_init):
     """test_cmd_some"""
 
