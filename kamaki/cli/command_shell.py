@@ -57,6 +57,21 @@ class Shell(Cmd):
     _history = None
     undoc_header = 'interactive shell commands:'
 
+    def precmd(self, line):
+        if line.startswith('/'):
+            print('NEED TO GO TOP')
+            print('\tsave context')
+            print('\tload initial context')
+            print('\treturn line')
+            print('\tMaybe postcmd can do the trick')
+        elif line.startswith('../'):
+            print('NEED TO DO STUFF')
+            print('\tsave context')
+            print('\tload initial context')
+            print('\treturn line')
+            print('\tMaybe postcmd can do the trick')
+        return line
+
     def greet(self, version):
         print('kamaki v%s - Interactive Shell\n\t(exit or ^D to exit)\n'\
             % version)
