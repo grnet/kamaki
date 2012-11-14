@@ -320,10 +320,6 @@ def _exec_cmd(instance, cmd_args, help_method):
             help_method()
         else:
             raise
-    except CLIError as err:
-        if _debug:
-            raise err
-        _print_error_message(err)
     return 1
 
 
@@ -419,21 +415,31 @@ def run_shell(arguments):
 
 
 def main():
-    exe = basename(argv[0])
-    parser = init_parser(exe, _arguments)
-    parsed, unparsed = parse_known_args(parser, _arguments)
+    try:
+        exe = basename(argv[0])
+        parser = init_parser(exe, _arguments)
+        parsed, unparsed = parse_known_args(parser, _arguments)
 
-    if _arguments['version'].value:
-        exit(0)
+        if _arguments['version'].value:
+            exit(0)
 
-    _init_session(_arguments)
+        _init_session(_arguments)
 
-    if unparsed:
-        _history = History(_arguments['config'].get('history', 'file'))
-        _history.add(' '.join([exe] + argv[1:]))
-        one_cmd(parser, unparsed, _arguments)
-    elif _help:
-        parser.print_help()
-        _groups_help(_arguments)
-    else:
-        run_shell(_arguments)
+        if unparsed:
+            _history = History(_arguments['config'].get('history', 'file'))
+            _history.add(' '.join([exe] + argv[1:]))
+            one_cmd(parser, unparsed, _arguments)
+        elif _help:
+            parser.print_help()
+            _groups_help(_arguments)
+        else:
+            run_shell(_arguments)
+    except CLIError as err:
+        if _debug:
+            raise err
+        _print_error_message(err)
+        exit(1)
+    except Exception as err:
+        if _debug:
+            raise err
+        print('Unknown Error: %s' % err)

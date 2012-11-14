@@ -153,7 +153,7 @@ class CmdLineConfigArgument(Argument):
             keypath, sep, val = option.partition('=')
             if not sep:
                 raise CLISyntaxError('Argument Syntax Error ',
-                    details='%s is missing a "="" (usage: -o section.key=val)'\
+                    details='%s is missing a "=" (usage: -o section.key=val)'\
                         % option)
             section, sep, key = keypath.partition('.')
         if not sep:
