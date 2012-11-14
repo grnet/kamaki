@@ -72,21 +72,35 @@ class server_list(_init_cyclades):
         super(server_list, self).__init__(arguments)
         self.arguments['detail'] = FlagArgument('show detailed output', '-l')
 
+    def _info_print(self, server):
+        addr_dict = {}
+        if 'attachments' in server:
+            for addr in server['attachments']['values']:
+                ips = addr.pop('values', [])
+                for ip in ips:
+                    addr['IPv%s' % ip['version']] = ip['addr']
+                if 'firewallProfile' in addr:
+                    addr['firewall'] = addr.pop('firewallProfile')
+                addr_dict[addr.pop('id')] = addr
+            server['attachments'] = addr_dict if addr_dict is not {} else None
+        if 'metadata' in server:
+            server['metadata'] = server['metadata']['values']
+        print_dict(server, ident=2)
+
     def _print(self, servers):
         for server in servers:
             sname = server.pop('name')
             sid = server.pop('id')
-            print('%s (%s)' % (bold(sname), bold(unicode(sid))))
+            print('%s (%s)' % (sid, bold(sname)))
             if self.get_argument('detail'):
-                server_info._print(server)
-                print('- - -')
+                self._info_print(server)
+                print(' ')
 
     def main(self):
         super(self.__class__, self).main()
         try:
             servers = self.client.list_servers(self.get_argument('detail'))
             self._print(servers)
-            #print_items(servers)
         except ClientError as err:
             raiseCLIError(err)
 
@@ -109,7 +123,7 @@ class server_info(_init_cyclades):
             server['attachments'] = addr_dict if addr_dict is not {} else None
         if 'metadata' in server:
             server['metadata'] = server['metadata']['values']
-        print_dict(server, ident=14)
+        print_dict(server, ident=2)
 
     def main(self, server_id):
         super(self.__class__, self).main()
@@ -435,13 +449,21 @@ class flavor_list(_init_cyclades):
         super(flavor_list, self).__init__(arguments)
         self.arguments['detail'] = FlagArgument('show detailed output', '-l')
 
+    @classmethod
+    def _print(self, flist):
+        for i, flavor in enumerate(flist):
+            print(bold('%s. %s' % (i, flavor['name'])))
+            print_dict(flavor, exclude=('name'), ident=2)
+            print(' ')
+
     def main(self):
         super(self.__class__, self).main()
         try:
             flavors = self.client.list_flavors(self.get_argument('detail'))
         except ClientError as err:
             raiseCLIError(err)
-        print_items(flavors)
+        #print_list(flavors)
+        self._print(flavors)
 
 
 @command(flavor_cmds)
@@ -522,7 +544,7 @@ class network_info(_init_cyclades):
         if 'attachments' in net:
             att = net['attachments']['values']
             net['attachments'] = att if len(att) > 0 else None
-        print_dict(net, ident=14)
+        print_dict(net, ident=2)
 
     def main(self, network_id):
         super(self.__class__, self).main()

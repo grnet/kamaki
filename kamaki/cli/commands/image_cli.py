@@ -263,9 +263,12 @@ class image_list(_init_cyclades):
         for img in images:
             iname = img.pop('name')
             iid = img.pop('id')
-            print('%s (%s)' % (bold(iname), bold(unicode(iid))))
+            print('%s (%s)' % (unicode(iid), bold(iname)))
             if self.get_argument('detail'):
-                image_info._print(img)
+                if 'metadata' in img:
+                    img['metadata'] = img['metadata']['values']
+                print_dict(img, ident=2)
+            print(' ')
 
     def main(self):
         super(self.__class__, self).main()
@@ -284,7 +287,7 @@ class image_info(_init_cyclades):
     def _print(self, image):
         if 'metadata' in image:
             image['metadata'] = image['metadata']['values']
-        print_dict(image, ident=14)
+        print_dict(image)
 
     def main(self, image_id):
         super(self.__class__, self).main()

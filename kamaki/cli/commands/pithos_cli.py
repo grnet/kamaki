@@ -1168,7 +1168,7 @@ class store_sharers(_store_account_command):
         for acc in accounts:
             stdout.write(bold(acc['name']) + ' ')
             if self.get_argument('detail'):
-                print_dict(acc, exclude='name', ident=18)
+                print_dict(acc, exclude='name', ident=4)
         if not self.get_argument('detail'):
             print
 

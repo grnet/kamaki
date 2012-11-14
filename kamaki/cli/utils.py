@@ -69,68 +69,46 @@ def pretty_keys(d, delim='_', recurcive=False):
     return new_d
 
 
-def print_dict(d, exclude=(), ident=0, rjust=True):
+def print_dict(d, exclude=(), ident=0):
     if not isinstance(d, dict):
         raise CLIError(message='Cannot dict_print a non-dict object')
-    if rjust:
-        try:
-            margin = max(
-                1 + max(len(unicode(key).strip()) for key in d.keys() \
-                    if not (isinstance(key, dict) or isinstance(key, list))),
-                ident)
-        except ValueError:
-            margin = ident
-    else:
-        margin = ident
+
+    margin = max(len(unicode(key).strip())\
+        for key in d.keys() if key not in exclude)
 
     for key, val in sorted(d.items()):
         if key in exclude:
             continue
-        print_str = '%s:\t' % unicode(key).strip()
-        print_str = print_str.rjust(margin) if rjust\
-        else '%s%s' % (' ' * margin, print_str)
+        print_str = ' ' * ident
+        print_str += ('%s' % key).strip()
+        print_str += ' ' * (margin - len(unicode(key).strip()))
+        print_str += ': '
         if isinstance(val, dict):
-            print(print_str + ' {')
-            print_dict(val, exclude=exclude, ident=margin + 6, rjust=rjust)
-            if rjust:
-                print '}'.rjust(margin)
-            else:
-                print '}'
+            print(print_str)
+            print_dict(val, exclude=exclude, ident=margin + ident)
         elif isinstance(val, list):
-            print(print_str + ' [')
-            print_list(val, exclude=exclude, ident=margin + 6, rjust=rjust)
-            if rjust:
-                print ']'.rjust(margin)
-            else:
-                print']'
+            print(print_str)
+            print_list(val, exclude=exclude, ident=margin + ident)
         else:
             print print_str + ' ' + unicode(val).strip()
 
 
-def print_list(l, exclude=(), ident=0, rjust=True):
+def print_list(l, exclude=(), ident=0):
     if not isinstance(l, list):
         raise CLIError(message='Cannot list_print a non-list object')
-    try:
-        margin = max(
-            1 + max(len(unicode(item).strip()) for item in l \
-                if not isinstance(item, dict) and not isinstance(item, list)),
-            ident)
-    except ValueError:
-        margin = ident
+
+    margin = max(len(unicode(item).strip())\
+        for item in l if item not in exclude)
 
     for item in sorted(l):
         if item in exclude:
             continue
         if isinstance(item, dict):
-            print '{'.rjust(margin) if rjust else '{'
-            print_dict(item, exclude=exclude, ident=margin + 6)
-            print '}'.rjust(margin) if rjust else '}'
+            print_dict(item, exclude=exclude, ident=margin + ident)
         elif isinstance(item, list):
-            print '['.rjust(margin) if rjust else ']'
-            print_list(item, exclude=exclude, ident=margin + 6)
-            print ']'.rjust(margin) if rjust else ']'
+            print_list(item, exclude=exclude, ident=margin + ident)
         else:
-            print unicode(item).rjust(margin) if rjust else unicode(item)
+            print ' ' * ident + unicode(item)
 
 
 def print_items(items, title=('id', 'name')):
