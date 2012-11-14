@@ -197,7 +197,7 @@ def _init_session(arguments):
     _verbose = arguments['verbose'].value
     global _colors
     _colors = arguments['config'].get('global', 'colors')
-    if _colors != 'on':
+    if not (stdout.isatty() and _colors == 'on'):
         from kamaki.cli.utils import remove_colors
         remove_colors()
     _silent = arguments['silent'].value
