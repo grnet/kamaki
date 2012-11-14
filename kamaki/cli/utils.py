@@ -73,8 +73,9 @@ def print_dict(d, exclude=(), ident=0):
     if not isinstance(d, dict):
         raise CLIError(message='Cannot dict_print a non-dict object')
 
-    margin = max(len(unicode(key).strip())\
-        for key in d.keys() if key not in exclude)
+    if d:
+        margin = max(len(unicode(key).strip())\
+            for key in d.keys() if key not in exclude)
 
     for key, val in sorted(d.items()):
         if key in exclude:
@@ -97,8 +98,9 @@ def print_list(l, exclude=(), ident=0):
     if not isinstance(l, list):
         raise CLIError(message='Cannot list_print a non-list object')
 
-    margin = max(len(unicode(item).strip())\
-        for item in l if item not in exclude)
+    if l:
+        margin = max(len(unicode(item).strip())\
+            for item in l if item not in exclude)
 
     for item in sorted(l):
         if item in exclude:

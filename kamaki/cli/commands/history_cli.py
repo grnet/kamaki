@@ -41,6 +41,7 @@ from kamaki.cli.commands import _command_init
 
 
 history_cmds = CommandTree('history', 'Command history')
+_commands = [history_cmds]
 
 
 class _init_history(_command_init):

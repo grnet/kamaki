@@ -36,10 +36,11 @@ from os import popen
 from sys import stdout
 from argparse import ArgumentParser
 
-from kamaki.cli import _exec_cmd
+from kamaki.cli import _exec_cmd, _print_error_message
 from kamaki.cli.argument import _arguments, update_arguments
 from kamaki.cli.utils import print_dict
 from kamaki.cli.history import History
+from kamaki.cli.errors import CLIError
 
 
 def _fix_arguments():
@@ -137,7 +138,10 @@ class Shell(Cmd):
 
                 for name, arg in instance.arguments.items():
                     arg.value = getattr(parsed, name, arg.default)
-                _exec_cmd(instance, unparsed, cmd_parser.print_help)
+                try:
+                    _exec_cmd(instance, unparsed, cmd_parser.print_help)
+                except CLIError as err:
+                    _print_error_message(err)
             elif ('-h' in cmd_args or '--help' in cmd_args) \
             or len(cmd_args):  # print options
                 print('%s: %s' % (subname, subcmd.help))
@@ -190,7 +194,7 @@ class Shell(Cmd):
 
     def run(self, path=''):
         self._history = History(_arguments['config'].get('history', 'file'))
-        if len(path):
+        if path:
             cmd = self.cmd_tree.get_command(path)
             intro = cmd.path.replace('_', ' ')
         else:
@@ -200,4 +204,5 @@ class Shell(Cmd):
             self._push_in_command(subcmd.path)
 
         self.set_prompt(intro)
+
         self.cmdloop()
