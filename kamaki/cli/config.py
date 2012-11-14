@@ -55,7 +55,7 @@ HEADER = """
 
 DEFAULTS = {
     'global': {
-        'colors': 'on',
+        'colors': 'off',
         'token': ''
     },
     'config': {

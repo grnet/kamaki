@@ -197,6 +197,9 @@ def _init_session(arguments):
     _verbose = arguments['verbose'].value
     global _colors
     _colors = arguments['config'].get('global', 'colors')
+    if _colors != 'on':
+        from kamaki.cli.utils import remove_colors
+        remove_colors()
     _silent = arguments['silent'].value
     _include = arguments['include'].value
     _setup_logging(_silent, _debug, _verbose, _include)
@@ -259,7 +262,8 @@ def _groups_help(arguments):
 def _print_subcommands_help(cmd):
     printout = {}
     for subcmd in cmd.get_subcommands():
-        printout[subcmd.path.replace('_', ' ')] = subcmd.description
+        spec, sep, print_path = subcmd.path.partition('_')
+        printout[print_path.replace('_', ' ')] = subcmd.description
     if printout:
         print('\nOptions:\n - - - -')
         print_dict(printout)
