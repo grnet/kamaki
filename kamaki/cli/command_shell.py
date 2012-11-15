@@ -72,8 +72,8 @@ class Shell(Cmd):
 
     def precmd(self, line):
         if line.startswith('/'):
-            if self.prompt != self.cmd_tree.name:
-                cur_cmd_path = self.prompt.replace(' ', '_')[1:-2]
+            cur_cmd_path = self.prompt.replace(' ', '_')[1:-2]
+            if cur_cmd_path != self.cmd_tree.name:
                 cur_cmd = self.cmd_tree.get_command(cur_cmd_path)
 
                 self._context_stack.append(self._backup())
