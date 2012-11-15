@@ -34,87 +34,68 @@
 from kamaki.cli import get_cmd_terms, command
 from kamaki.cli.commands import _command_init
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.argument import FlagArgument
+from kamaki.clients import tests
 
-sample_cmds = CommandTree(
-    'sample',
-    'Sample commands for developing your own')
-test_cmds = CommandTree(
-    'test',
-    'Test commands for testing clients')
-_commands = [sample_cmds, test_cmds]
+test_cmds = CommandTree('test', 'Unitest clients')
+_commands = [test_cmds]
 
 
-print('Command Terms: ', get_cmd_terms())
+#print('Command Terms: ', get_cmd_terms())
 
 
 class _test_init(_command_init):
 
-    def main(self, *args, **kwargs):
-        print(self.__class__)
-        for v in args:
-            print('\t\targ: %s' % v)
-        for k, v in kwargs.items():
-            print('\t\tkwarg: %s: %s' % (k, v))
+    def main(self, client, method=None):
+        if method:
+            tests.main([client, method])
+        else:
+            tests.main([client])
 
 
-@command(sample_cmds)
-class sample_cmd0(_test_init):
-    """ test cmd
-    This is the zero command test and this is the long description of it
-    """
-
-    def main(self, mant):
-        super(self.__class__, self).main(mant)
-
-
-@command(sample_cmds)
-class sample_cmd_all(_test_init):
-    """test cmd all"""
+@command(test_cmds)
+class test_all(_test_init):
+    """test all clients"""
 
     def main(self):
-        super(self.__class__, self).main()
-
-
-@command(sample_cmds)
-class sample_cmd_some(_test_init):
-    """test_cmd_some"""
-
-    def main(self, opt='lala'):
-        super(self.__class__, self).main(opt=opt)
+        for client in ('pithos', 'cyclades', 'image', 'astakos'):
+            super(self.__class__, self).main(client)
 
 
 @command(test_cmds)
-class test_cmd0(_test_init):
-    """ test cmd"""
+class test_pithos(_test_init):
+    """ test Pithos client"""
 
-    def main(self, mant):
-        super(self.__class__, self).main(mant)
-
-
-@command(test_cmds)
-class test_cmd_all(_test_init):
-    """test cmd all"""
-
-    def __init__(self, arguments={}):
-        super(self.__class__, self).__init__(arguments)
-        self.arguments['testarg'] = FlagArgument('a test arg', '--test')
-
-    def main(self):
-        super(self.__class__, self).main()
+    def main(self, method=None):
+        super(self.__class__, self).main('pithos', method)
 
 
 @command(test_cmds)
-class test_cmdion(_test_init):
-    """test_cmd_some"""
+class test_cyclades(_test_init):
+    """ test Cyclades client"""
 
-    def main(self, opt='lala'):
-        super(self.__class__, self).main(opt=opt)
+    def main(self, method=None):
+        super(self.__class__, self).main('cyclades', method)
 
 
 @command(test_cmds)
-class test_cmd_cmdion_comedian(_test_init):
-    """test_cmd_some"""
+class test_image(_test_init):
+    """ test Image client"""
 
-    def main(self, opt='lala'):
-        super(self.__class__, self).main(opt=opt)
+    def main(self, method=None):
+        super(self.__class__, self).main('image', method)
+
+
+@command(test_cmds)
+class test_astakos(_test_init):
+    """ test Astakos client"""
+
+    def main(self, method=None):
+        super(self.__class__, self).main('astakos', method)
+
+
+@command(test_cmds)
+class test_lala_lele(_test_init):
+    """test lala lele"""
+
+    def main(self, *args):
+        print('Do smth')

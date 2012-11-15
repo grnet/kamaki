@@ -912,12 +912,12 @@ class testCyclades(unittest.TestCase):
     def test_get_server_console(self):
         """Test get_server_console"""
         self.server2 = self._create_server(self.servname2,
-            self.flavorid + 1,
+            self.flavorid + 2,
             self.img)
+        self._wait_for_status(self.server2['id'], 'BUILD')
         self._test_get_server_console()
 
     def _test_get_server_console(self):
-        self._wait_for_status(self.server2['id'], 'BUILD')
         r = self.client.get_server_console(self.server2['id'])
         self.assertTrue('host' in r)
         self.assertTrue('password' in r)
@@ -1073,6 +1073,7 @@ class testCyclades(unittest.TestCase):
         r = self.client.list_server_nics(self.server1['id'])
         len0 = len(r)
         self.assertTrue(len0 > 0)
+        print(' ' + net)
         self.assertTrue('1' in [net['network_id'] for net in r])
 
         self.client.connect_server(self.server1['id'], self.network2['id'])
@@ -2289,14 +2290,10 @@ def init_parser():
         help="Show this help message and exit")
     return parser
 
-if __name__ == '__main__':
-    parser = init_parser()
-    args, argv = parser.parse_known_args()
 
-    if len(argv) > 2 or getattr(args, 'help') or len(argv) < 1:
-        raise Exception('\tusage: tests.py <group> [command]')
+def main(argv):
+
     suiteFew = unittest.TestSuite()
-
     if len(argv) == 0 or argv[0] == 'pithos':
         if len(argv) == 1:
             suiteFew.addTest(unittest.makeSuite(testPithos))
@@ -2320,3 +2317,10 @@ if __name__ == '__main__':
             suiteFew.addTest(testAstakos('test_' + argv[1]))
 
     unittest.TextTestRunner(verbosity=2).run(suiteFew)
+
+if __name__ == '__main__':
+    parser = init_parser()
+    args, argv = parser.parse_known_args()
+    if len(argv) > 2 or getattr(args, 'help') or len(argv) < 1:
+        raise Exception('\tusage: tests.py <group> [command]')
+    main(argv)

@@ -43,10 +43,19 @@ from kamaki.cli.history import History
 from kamaki.cli.errors import CLIError
 
 
-def _fix_arguments():
-    _arguments.pop('version', None)
-    _arguments.pop('options', None)
-    _arguments.pop('history', None)
+def _init_shell(exe_string, arguments):
+    arguments.pop('version', None)
+    arguments.pop('options', None)
+    arguments.pop('history', None)
+    shell = Shell()
+    shell.set_prompt(exe_string)
+    from kamaki import __version__ as version
+    shell.greet(version)
+    shell.do_EOF = shell.do_exit
+    from kamaki.cli.command_tree import CommandTree
+    shell.cmd_tree = CommandTree(
+        'kamaki', 'A command line tool for poking clouds')
+    return shell
 
 
 class Shell(Cmd):

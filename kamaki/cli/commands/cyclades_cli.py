@@ -113,14 +113,15 @@ class server_info(_init_cyclades):
     def _print(self, server):
         addr_dict = {}
         if 'attachments' in server:
-            for addr in server['attachments']['values']:
+            atts = server.pop('attachments')
+            for addr in atts['values']:
                 ips = addr.pop('values', [])
                 for ip in ips:
                     addr['IPv%s' % ip['version']] = ip['addr']
                 if 'firewallProfile' in addr:
                     addr['firewall'] = addr.pop('firewallProfile')
                 addr_dict[addr.pop('id')] = addr
-            server['attachments'] = addr_dict if addr_dict is not {} else None
+            server['attachments'] = addr_dict if addr_dict else None
         if 'metadata' in server:
             server['metadata'] = server['metadata']['values']
         print_dict(server, ident=2)
