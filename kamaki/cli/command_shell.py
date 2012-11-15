@@ -64,10 +64,26 @@ class Shell(Cmd):
     _suffix = ']:'
     cmd_tree = None
     _history = None
+    _arguments = None
+    _context_stack = []
+    _prompt_stack = []
+
     undoc_header = 'interactive shell commands:'
 
     def precmd(self, line):
-        print('SHELL: START')
+        if line.startswith('/'):
+            if self.prompt != self.cmd_tree.name:
+                cur_cmd_path = self.prompt.replace(' ', '_')[1:-2]
+                cur_cmd = self.cmd_tree.get_command(cur_cmd_path)
+
+                self._context_stack.append(self._backup())
+                self._prompt_stack.append(self.prompt)
+                new_context = self
+                new_context._roll_command(cur_cmd_path)
+                new_context.set_prompt(self.cmd_tree.name)
+                for grp_cmd in self.cmd_tree.get_subcommands():
+                    self._register_command(grp_cmd.path)
+            return line[1:]
         return line
 
     def greet(self, version):
@@ -108,6 +124,7 @@ class Shell(Cmd):
             self._unregister_method('complete_%s' % subname)
             self._unregister_method('help_%s' % subname)
 
+
     @classmethod
     def _backup(self):
         return dict(self.__dict__)
@@ -118,31 +135,27 @@ class Shell(Cmd):
 
     def _register_command(self, cmd_path):
         cmd = self.cmd_tree.get_command(cmd_path)
-        _history = self._history
+        arguments = self._arguments
 
-        def do_method(self, line):
+        def do_method(new_context, line):
             """ Template for all cmd.Cmd methods of the form do_<cmd name>
                 Parse cmd + args and decide to execute or change context
                 <cmd> <term> <term> <args> is always parsed to most specific
                 even if cmd_term_term is not a terminal path
             """
-            if _history:
-                _history.add(' '.join([cmd.path.replace('_', ' '), line]))
             subcmd, cmd_args = cmd.parse_out(line.split())
-            active_terms = [cmd.name] +\
-                subcmd.path.split('_')[len(cmd.path.split('_')):]
-            subname = '_'.join(active_terms)
-            cmd_parser = ArgumentParser(subname, add_help=False)
+            if self._history:
+                self._history.add(' '.join([cmd.path.replace('_', ' '), line]))
+            cmd_parser = ArgumentParser(cmd.name, add_help=False)
             cmd_parser.description = subcmd.help
 
             # exec command or change context
             if subcmd.is_command:  # exec command
                 cls = subcmd.get_class()
-                instance = cls(dict(_arguments))
+                instance = cls(dict(arguments))
                 cmd_parser.prog = '%s %s' % (cmd_parser.prog.replace('_', ' '),
                     cls.syntax)
                 update_arguments(cmd_parser, instance.arguments)
-                #_update_parser(cmd_parser, instance.arguments)
                 if '-h' in cmd_args or '--help' in cmd_args:
                     cmd_parser.print_help()
                     return
@@ -156,13 +169,13 @@ class Shell(Cmd):
                     _print_error_message(err)
             elif ('-h' in cmd_args or '--help' in cmd_args) \
             or len(cmd_args):  # print options
-                print('%s: %s' % (subname, subcmd.help))
+                print('%s: %s' % (cmd.name, subcmd.help))
                 options = {}
                 for sub in subcmd.get_subcommands():
                     options[sub.name] = sub.help
                 print_dict(options)
             else:  # change context
-                new_context = self
+                #new_context = this
                 backup_context = self._backup()
                 old_prompt = self.prompt
                 new_context._roll_command(cmd.parent_path)
@@ -184,7 +197,7 @@ class Shell(Cmd):
             subcmd, cmd_args = cmd.parse_out(line.split()[1:])
             if subcmd.is_command:
                 cls = subcmd.get_class()
-                instance = cls(dict(_arguments))
+                instance = cls(dict(arguments))
                 empty, sep, subname = subcmd.path.partition(cmd.path)
                 cmd_name = '%s %s' % (cmd.name, subname.replace('_', ' '))
                 print('\n%s\nSyntax:\t%s %s'\
@@ -204,8 +217,9 @@ class Shell(Cmd):
         hdr = tmp_partition[0].strip()
         return '%s commands:' % hdr
 
-    def run(self, path=''):
-        self._history = History(_arguments['config'].get('history', 'file'))
+    def run(self, arguments, path=''):
+        self._history = History(arguments['config'].get('history', 'file'))
+        self._arguments = arguments
         if path:
             cmd = self.cmd_tree.get_command(path)
             intro = cmd.path.replace('_', ' ')

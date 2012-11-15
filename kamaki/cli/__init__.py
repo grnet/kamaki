@@ -400,7 +400,7 @@ def run_shell(exe_string, arguments):
     from command_shell import _init_shell
     shell = _init_shell(exe_string, arguments)
     _load_all_commands(shell.cmd_tree, arguments)
-    shell.run()
+    shell.run(arguments)
 
 
 def main():
