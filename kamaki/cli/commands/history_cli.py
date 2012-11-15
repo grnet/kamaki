@@ -50,18 +50,18 @@ class _init_history(_command_init):
 
 
 @command(history_cmds)
-class history(_init_history):
+class history_show(_init_history):
     """Show history [containing terms...]"""
 
     def __init__(self, arguments={}):
-        super(history, self).__init__(arguments)
+        super(self.__class__, self).__init__(arguments)
         self.arguments['limit'] =\
             IntArgument('number of lines to show', '-n', default=0)
         self.arguments['match'] =\
             ValueArgument('show lines that match all given terms', '--match')
 
     def main(self):
-        super(history, self).main()
+        super(self.__class__, self).main()
         ret = self.history.get(match_terms=self.get_argument('match'),
             limit=self.get_argument('limit'))
         print(''.join(ret))
@@ -72,5 +72,5 @@ class history_clean(_init_history):
     """Clean up history"""
 
     def main(self):
-        super(history_clean, self).main()
+        super(self.__class__, self).main()
         self.history.clean()

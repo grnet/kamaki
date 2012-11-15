@@ -1073,7 +1073,6 @@ class testCyclades(unittest.TestCase):
         r = self.client.list_server_nics(self.server1['id'])
         len0 = len(r)
         self.assertTrue(len0 > 0)
-        print(' ' + net)
         self.assertTrue('1' in [net['network_id'] for net in r])
 
         self.client.connect_server(self.server1['id'], self.network2['id'])

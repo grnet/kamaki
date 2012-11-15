@@ -67,18 +67,7 @@ class Shell(Cmd):
     undoc_header = 'interactive shell commands:'
 
     def precmd(self, line):
-        if line.startswith('/'):
-            print('NEED TO GO TOP')
-            print('\tsave context')
-            print('\tload initial context')
-            print('\treturn line')
-            print('\tMaybe postcmd can do the trick')
-        elif line.startswith('../'):
-            print('NEED TO DO STUFF')
-            print('\tsave context')
-            print('\tload initial context')
-            print('\treturn line')
-            print('\tMaybe postcmd can do the trick')
+        print('SHELL: START')
         return line
 
     def greet(self, version):
@@ -127,9 +116,8 @@ class Shell(Cmd):
     def _restore(self, oldcontext):
         self.__dict__ = oldcontext
 
-    def _push_in_command(self, cmd_path):
+    def _register_command(self, cmd_path):
         cmd = self.cmd_tree.get_command(cmd_path)
-        self.cmd_tree = self.cmd_tree
         _history = self._history
 
         def do_method(self, line):
@@ -181,7 +169,7 @@ class Shell(Cmd):
                 new_context.set_prompt(subcmd.path.replace('_', ' '))
                 newcmds = [subcmd for subcmd in subcmd.get_subcommands()]
                 for subcmd in newcmds:
-                    new_context._push_in_command(subcmd.path)
+                    new_context._register_command(subcmd.path)
                 new_context.cmdloop()
                 self.prompt = old_prompt
                 #when new context is over, roll back to the old one
@@ -225,7 +213,7 @@ class Shell(Cmd):
             intro = self.cmd_tree.name
 
         for subcmd in self.cmd_tree.get_subcommands(path):
-            self._push_in_command(subcmd.path)
+            self._register_command(subcmd.path)
 
         self.set_prompt(intro)
 

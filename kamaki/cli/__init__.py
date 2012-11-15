@@ -379,10 +379,7 @@ def one_cmd(parser, unparsed, arguments):
     _exec_cmd(executable, unparsed, parser.print_help)
 
 
-def run_shell(exe_string, arguments):
-    from command_shell import _init_shell
-    shell = _init_shell(exe_string, arguments)
-    #  Load all commands in shell CommandTree
+def _load_all_commands(cmd_tree, arguments):
     _config = arguments['config']
     for spec in [spec for spec in _config.get_groups()\
             if _config.get(spec, 'cli')]:
@@ -395,8 +392,14 @@ def run_shell(exe_string, arguments):
             continue
         for spec_tree in spec_commands:
             if spec_tree.name == spec:
-                shell.cmd_tree.add_tree(spec_tree)
+                cmd_tree.add_tree(spec_tree)
                 break
+
+
+def run_shell(exe_string, arguments):
+    from command_shell import _init_shell
+    shell = _init_shell(exe_string, arguments)
+    _load_all_commands(shell.cmd_tree, arguments)
     shell.run()
 
 
