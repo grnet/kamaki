@@ -239,6 +239,10 @@ class PithosClient(PithosRestAPI):
             upload_gen = upload_cb(len(missing))
             upload_gen.next()
 
+        thread_limit = 1
+        elapsed_old = 0.0
+        elapsed_new = 0.0
+
         flying = []
         for hash in missing:
             offset, bytes = hmap[hash]
@@ -248,8 +252,24 @@ class PithosClient(PithosRestAPI):
             flying.append(r)
             unfinished = []
             for i, thread in enumerate(flying):
-                if i % self.POOL_SIZE == 0:
-                    thread.join(0.1)
+
+                if elapsed_old:
+                    if elapsed_old >= elapsed_new\
+                    and thread_limit < self.POOL_SIZE:
+                        thread_limit += 1
+                    elif elapsed_old < elapsed_new and thread_limit > 1:
+                        thread_limit -= 1
+
+                if len(unfinished) >= thread_limit:
+                    elapsed_old = elapsed_new
+                    elapsed_new = 0.0
+                    for unf in unfinished:
+                        begin_time = time()
+                        unf.join()
+                        elapsed_new += time() - begin_time
+                    elapsed_new = elapsed_new / len(unfinished)
+                    unfinished = []
+
                 if thread.isAlive() or thread.exception:
                     unfinished.append(thread)
                 else:
@@ -311,8 +331,6 @@ class PithosClient(PithosRestAPI):
 
         if missing is None:
             return
-        if len(missing) > self.POOL_SIZE:
-            self.POOL_SIZE = len(missing) // 10
         try:
             self._upload_missing_blocks(missing, hmap, f, upload_cb=upload_cb)
         except KeyboardInterrupt:
