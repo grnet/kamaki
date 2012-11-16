@@ -622,7 +622,7 @@ class store_upload(_store_container_command):
         remote_path = local_path if self.path is None else self.path
         poolsize = self.get_argument('poolsize')
         if poolsize is not None:
-            self.POOL_SIZE = poolsize
+            self.client.POOL_SIZE = int(poolsize)
         params = dict(content_encoding=self.get_argument('content_encoding'),
             content_type=self.get_argument('content_type'),
             content_disposition=self.get_argument('content_disposition'),
@@ -735,7 +735,7 @@ class store_download(_store_container_command):
         download_cb = progress_bar.get_generator('Downloading')
         poolsize = self.get_argument('poolsize')
         if poolsize is not None:
-            self.POOL_SIZE = int(poolsize)
+            self.client.POOL_SIZE = int(poolsize)
 
         try:
             self.client.download_object(self.path, out,

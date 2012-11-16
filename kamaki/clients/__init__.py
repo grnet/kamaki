@@ -69,7 +69,7 @@ class ClientError(Exception):
 
 
 class Client(object):
-    POOL_SIZE = 5
+    POOL_SIZE = 7
 
     def __init__(self, base_url, token, http_client=KamakiHTTPConnection()):
         self.base_url = base_url

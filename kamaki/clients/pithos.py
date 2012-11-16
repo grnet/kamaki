@@ -392,8 +392,6 @@ class PithosClient(PithosRestAPI):
         blocks will be written to normal_position - 10"""
         finished = []
         for i, (start, g) in enumerate(flying.items()):
-            #if i % self.POOL_SIZE == 0:
-            #    g.join(0.1)
             if not g.isAlive():
                 if g.exception:
                     raise g.exception
@@ -494,8 +492,6 @@ class PithosClient(PithosRestAPI):
                 range,
                 **restargs)
         else:
-            if len(remote_hashes) > self.POOL_SIZE:
-                self.POOL_SIZE = len(remote_hashes) // 10
             self._dump_blocks_async(obj,
                 remote_hashes,
                 blocksize,
