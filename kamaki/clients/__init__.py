@@ -32,6 +32,7 @@
 # or implied, of GRNET S.A.
 
 from json import dumps, loads
+from time import time
 import logging
 from kamaki.clients.connection.kamakicon import KamakiHTTPConnection
 
@@ -68,6 +69,8 @@ class ClientError(Exception):
 
 
 class Client(object):
+    POOL_SIZE = 5
+
     def __init__(self, base_url, token, http_client=KamakiHTTPConnection()):
         self.base_url = base_url
         self.token = token
@@ -76,6 +79,29 @@ class Client(object):
             "%A, %d-%b-%y %H:%M:%S GMT",
             "%a, %d %b %Y %H:%M:%S GMT"]
         self.http_client = http_client
+
+    def _init_thread_limit(self, limit=1):
+        self._thread_limit = limit
+        self._elapsed_old = 0.0
+        self._elapsed_new = 0.0
+
+    def _watch_thread_limit(self, threadlist):
+        if self._elapsed_old > self._elapsed_new\
+        and self._thread_limit < self.POOL_SIZE:
+            self._thread_limit += 1
+        elif self._elapsed_old < self._elapsed_new and self._thread_limit > 1:
+            self._thread_limit -= 1
+
+        self._elapsed_old = self._elapsed_new
+        if len(threadlist) >= self._thread_limit:
+            self._elapsed_new = 0.0
+            for thread in threadlist:
+                begin_time = time()
+                thread.join()
+                self._elapsed_new += time() - begin_time
+            self._elapsed_new = self._elapsed_new / len(threadlist)
+            return []
+        return threadlist
 
     def _raise_for_status(self, r):
         status_msg = getattr(r, 'status', '')

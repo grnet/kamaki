@@ -98,7 +98,6 @@ class PithosClient(PithosRestAPI):
 
     def __init__(self, base_url, token, account=None, container=None):
         super(PithosClient, self).__init__(base_url, token, account, container)
-        self.POOL_SIZE = 5
 
     def purge_container(self):
         r = self.container_delete(until=unicode(time()))
@@ -239,9 +238,7 @@ class PithosClient(PithosRestAPI):
             upload_gen = upload_cb(len(missing))
             upload_gen.next()
 
-        thread_limit = 1
-        elapsed_old = 0.0
-        elapsed_new = 0.0
+        self._init_thread_limit()
 
         flying = []
         for hash in missing:
@@ -253,22 +250,7 @@ class PithosClient(PithosRestAPI):
             unfinished = []
             for i, thread in enumerate(flying):
 
-                if elapsed_old:
-                    if elapsed_old >= elapsed_new\
-                    and thread_limit < self.POOL_SIZE:
-                        thread_limit += 1
-                    elif elapsed_old < elapsed_new and thread_limit > 1:
-                        thread_limit -= 1
-
-                if len(unfinished) >= thread_limit:
-                    elapsed_old = elapsed_new
-                    elapsed_new = 0.0
-                    for unf in unfinished:
-                        begin_time = time()
-                        unf.join()
-                        elapsed_new += time() - begin_time
-                    elapsed_new = elapsed_new / len(unfinished)
-                    unfinished = []
+                unfinished = self._watch_thread_limit(unfinished)
 
                 if thread.isAlive() or thread.exception:
                     unfinished.append(thread)
@@ -410,8 +392,8 @@ class PithosClient(PithosRestAPI):
         blocks will be written to normal_position - 10"""
         finished = []
         for i, (start, g) in enumerate(flying.items()):
-            if i % self.POOL_SIZE == 0:
-                g.join(0.1)
+            #if i % self.POOL_SIZE == 0:
+            #    g.join(0.1)
             if not g.isAlive():
                 if g.exception:
                     raise g.exception
@@ -442,6 +424,7 @@ class PithosClient(PithosRestAPI):
             rstart = int(filerange.split('-')[0])
             offset = rstart if blocksize > rstart else rstart % blocksize
 
+        self._init_thread_limit()
         for block_hash, blockid in remote_hashes.items():
             start = blocksize * blockid
             if start < file_size\
@@ -452,6 +435,7 @@ class PithosClient(PithosRestAPI):
                     blockhash):
                 self._cb_next()
                 continue
+            self._watch_thread_limit(flying.values())
             finished += self._thread2file(
                 flying,
                 local_file,

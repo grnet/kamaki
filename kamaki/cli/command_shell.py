@@ -133,7 +133,6 @@ class Shell(Cmd):
             self._unregister_method('complete_%s' % subname)
             self._unregister_method('help_%s' % subname)
 
-
     @classmethod
     def _backup(self):
         return dict(self.__dict__)
