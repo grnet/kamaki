@@ -77,6 +77,7 @@ class config_set(_command_init):
         section = section or 'global'
         self.config.set(section, key, value)
         self.config.write()
+        self.config.reload()
 
 
 @command(config_cmds)
@@ -88,3 +89,4 @@ class config_delete(_command_init):
         section = section or 'global'
         self.config.remove_option(section, key)
         self.config.write()
+        self.config.reload()
