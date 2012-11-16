@@ -73,8 +73,8 @@ class Shell(Cmd):
     def postcmd(self, post, line):
         if self._context_stack:
             self._roll_command()
-            self.set_prompt(self._prompt_stack.pop()[1:-2])
             self._restore(self._context_stack.pop())
+            self.set_prompt(self._prompt_stack.pop()[1:-2])
 
         return Cmd.postcmd(self, post, line)
 
@@ -86,7 +86,7 @@ class Shell(Cmd):
                 self._context_stack.append(self._backup())
                 self._prompt_stack.append(self.prompt)
                 new_context = self
-                new_context._roll_command(cur_cmd.parent_path)
+                self._roll_command(cur_cmd.path)
                 new_context.set_prompt(self.cmd_tree.name)
                 for grp_cmd in self.cmd_tree.get_subcommands():
                     self._register_command(grp_cmd.path)
@@ -102,6 +102,8 @@ class Shell(Cmd):
 
     def do_exit(self, line):
         print('')
+        if self.prompt[1:-2] == self.cmd_tree.name:
+            exit(0)
         return True
 
     def do_shell(self, line):
