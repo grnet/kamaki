@@ -100,6 +100,8 @@ def _update_best_match(name_terms, prefix=[]):
 
     num_of_matching_terms = _num_of_matching_terms(name_terms, pref_list)
     global _best_match
+    if not prefix:
+        _best_match = []
 
     if num_of_matching_terms and len(_best_match) <= num_of_matching_terms:
         if len(_best_match) < num_of_matching_terms:
@@ -129,6 +131,8 @@ def command(cmd_tree, prefix='', descedants_depth=1):
 
         name_terms = cls_name.split('_')
         if not _update_best_match(name_terms, prefix):
+            if _debug:
+                print('Warning: %s failed to update_best_match' % cls_name)
             return None
 
         global _best_match
@@ -137,6 +141,8 @@ def command(cmd_tree, prefix='', descedants_depth=1):
             partial = '_'.join(name_terms[:max_len])
             if not cmd_tree.has_command(partial):  # add partial path
                 cmd_tree.add_command(partial)
+            if _debug:
+                print('Warning: %s failed max_len test' % cls_name)
             return None
 
         cls.description, sep, cls.long_description\
