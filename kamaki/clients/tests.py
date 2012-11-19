@@ -322,53 +322,6 @@ class testCyclades(unittest.TestCase):
         self.client = cyclades(url, token)
         pass
 
-    @if_not_all
-    def test_parallel_creation(self):
-        """test create with multiple threads"""
-        from kamaki.clients import SilentEvent
-        c1 = SilentEvent(self._create_server,
-            self.servname1,
-            self.flavorid,
-            self.img)
-        c2 = SilentEvent(self._create_server,
-            self.servname2,
-            self.flavorid + 2,
-            self.img)
-        c3 = SilentEvent(self._create_server,
-            self.servname1,
-            self.flavorid,
-            self.img)
-        c4 = SilentEvent(self._create_server,
-            self.servname2,
-            self.flavorid + 2,
-            self.img)
-        c5 = SilentEvent(self._create_server,
-            self.servname1,
-            self.flavorid,
-            self.img)
-        c6 = SilentEvent(self._create_server,
-            self.servname2,
-            self.flavorid + 2,
-            self.img)
-        c7 = SilentEvent(self._create_server,
-            self.servname1,
-            self.flavorid,
-            self.img)
-        c8 = SilentEvent(self._create_server,
-            self.servname2,
-            self.flavorid + 2,
-            self.img)
-        print('START THREADS')
-        c1.start()
-        c2.start()
-        c3.start()
-        c4.start()
-        c5.start()
-        c6.start()
-        c7.start()
-        c8.start()
-        print('KEWL')
-
     def tearDown(self):
         """Destoy servers used in testing"""
         print
@@ -461,6 +414,53 @@ class testCyclades(unittest.TestCase):
         if TEST_ALL:
             return None
         return foo
+
+    @if_not_all
+    def test_parallel_creation(self):
+        """test create with multiple threads"""
+        from kamaki.clients import SilentEvent
+        c1 = SilentEvent(self._create_server,
+            self.servname1,
+            self.flavorid,
+            self.img)
+        c2 = SilentEvent(self._create_server,
+            self.servname2,
+            self.flavorid + 2,
+            self.img)
+        c3 = SilentEvent(self._create_server,
+            self.servname1,
+            self.flavorid,
+            self.img)
+        c4 = SilentEvent(self._create_server,
+            self.servname2,
+            self.flavorid + 2,
+            self.img)
+        c5 = SilentEvent(self._create_server,
+            self.servname1,
+            self.flavorid,
+            self.img)
+        c6 = SilentEvent(self._create_server,
+            self.servname2,
+            self.flavorid + 2,
+            self.img)
+        c7 = SilentEvent(self._create_server,
+            self.servname1,
+            self.flavorid,
+            self.img)
+        c8 = SilentEvent(self._create_server,
+            self.servname2,
+            self.flavorid + 2,
+            self.img)
+        print('START THREADS')
+        c1.start()
+        c2.start()
+        c3.start()
+        c4.start()
+        c5.start()
+        c6.start()
+        c7.start()
+        c8.start()
+        print('KEWL')
 
     def assert_dicts_are_deeply_equal(self, d1, d2):
         for k, v in d1.items():
