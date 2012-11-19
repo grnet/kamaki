@@ -116,6 +116,8 @@ class Argument(object):
 
 
 class ConfigArgument(Argument):
+    _config_file = None
+
     @property
     def value(self):
         super(self.__class__, self).value
@@ -123,7 +125,13 @@ class ConfigArgument(Argument):
 
     @value.setter
     def value(self, config_file):
-        self._value = Config(config_file) if config_file else Config()
+        if config_file:
+            self._value = Config(config_file)
+            self._config_file = config_file
+        elif self._config_file:
+            self._value = Config(self._config_file)
+        else:
+            self._value = Config()
 
     def get(self, group, term):
         return self.value.get(group, term)

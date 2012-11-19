@@ -37,7 +37,7 @@ from kamaki.cli.commands import _command_init
 from kamaki.cli.command_tree import CommandTree
 
 config_cmds = CommandTree('config', 'Configuration commands')
-_command = [config_cmds]
+_commands = [config_cmds]
 
 
 @command(config_cmds)

@@ -419,6 +419,7 @@ def main():
             exit(0)
 
         _init_session(_arguments)
+        print('ICN[%s]' % _arguments['config'].value)
 
         if unparsed:
             _history = History(_arguments['config'].get('history', 'file'))

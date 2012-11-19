@@ -37,7 +37,7 @@ from sys import stdout
 from argparse import ArgumentParser
 
 from kamaki.cli import _exec_cmd, _print_error_message
-from kamaki.cli.argument import _arguments, update_arguments
+from kamaki.cli.argument import update_arguments
 from kamaki.cli.utils import print_dict
 from kamaki.cli.history import History
 from kamaki.cli.errors import CLIError
@@ -47,6 +47,7 @@ def _init_shell(exe_string, arguments):
     arguments.pop('version', None)
     arguments.pop('options', None)
     arguments.pop('history', None)
+    print('SHELL? [%s]' % arguments['config'].value)
     shell = Shell()
     shell.set_prompt(exe_string)
     from kamaki import __version__ as version
