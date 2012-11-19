@@ -31,6 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+from threading import Thread
 from json import dumps, loads
 from time import time
 import logging
@@ -67,6 +68,31 @@ class ClientError(Exception):
         self.status = status
         self.details = details
 
+
+class SilentEvent(Thread):
+    """ Thread-run method(*args, **kwargs)
+        put exception in exception_bucket
+    """
+    def __init__(self, method, *args, **kwargs):
+        super(self.__class__, self).__init__()
+        self.method = method
+        self.args = args
+        self.kwargs = kwargs
+
+    @property
+    def exception(self):
+        return getattr(self, '_exception', False)
+
+    @property
+    def value(self):
+        return getattr(self, '_value', None)
+
+    def run(self):
+        try:
+            self._value = self.method(*(self.args), **(self.kwargs))
+        except Exception as e:
+            print('______\n%s\n_______' % e)
+            self._exception = e
 
 class Client(object):
     POOL_SIZE = 7

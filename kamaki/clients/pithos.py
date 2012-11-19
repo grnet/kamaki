@@ -31,7 +31,6 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from threading import Thread
 from threading import enumerate as activethreads
 
 from os import fstat
@@ -40,6 +39,7 @@ from time import time
 
 from binascii import hexlify
 
+from kamaki.clients import SilentEvent
 from kamaki.clients.pithos_rest_api import PithosRestAPI
 from kamaki.clients.storage import ClientError
 from kamaki.clients.utils import path4url, filter_in
@@ -63,32 +63,6 @@ def _range_up(start, end, a_range):
         if rend < end:
             end = rend
     return (start, end)
-
-
-class SilentEvent(Thread):
-    """ Thread-run method(*args, **kwargs)
-        put exception in exception_bucket
-    """
-    def __init__(self, method, *args, **kwargs):
-        super(self.__class__, self).__init__()
-        self.method = method
-        self.args = args
-        self.kwargs = kwargs
-
-    @property
-    def exception(self):
-        return getattr(self, '_exception', False)
-
-    @property
-    def value(self):
-        return getattr(self, '_value', None)
-
-    def run(self):
-        try:
-            self._value = self.method(*(self.args), **(self.kwargs))
-        except Exception as e:
-            print('______\n%s\n_______' % e)
-            self._exception = e
 
 
 class PithosClient(PithosRestAPI):
@@ -232,7 +206,7 @@ class PithosClient(PithosRestAPI):
         assert offset == size
 
     def _upload_missing_blocks(self, missing, hmap, fileobj, upload_cb=None):
-        """upload missing blocks asynchronously. Use greenlets to avoid waiting
+        """upload missing blocks asynchronously. 
         """
         if upload_cb:
             upload_gen = upload_cb(len(missing))
