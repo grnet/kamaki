@@ -233,32 +233,41 @@ class ProgressBarArgument(FlagArgument):
         self.suffix = '%(percent)d%%'
         super(ProgressBarArgument, self).__init__(help, parsed_name, default)
         try:
-            self.bar = IncrementalBar()
+            IncrementalBar
         except NameError:
             print('Waring: no progress bar functionality')
+
+    def clone(self):
+        newarg = ProgressBarArgument(
+            self.help,
+            self.parsed_name,
+            self.default)
+        newarg._value = self._value
+        return newarg
 
     def get_generator(self, message, message_len=25):
         if self.value:
             return None
+        self.bar = IncrementalBar()
         try:
-            bar = ProgressBar(message.ljust(message_len))
+            self.bar.message = message.ljust(message_len)
         except NameError:
-            return None
-        return bar.get_generator()
+            pass
+        self.bar.suffix = '%(percent)d%% - %(eta)ds'
 
-
-try:
-    class ProgressBar(IncrementalBar):
-        suffix = '%(percent)d%% - %(eta)ds'
-
-        def get_generator(self):
-            def progress_gen(n):
-                for i in self.iter(range(int(n))):
-                    yield
+        def progress_gen(n):
+            for i in self.bar.iter(range(int(n))):
                 yield
-            return progress_gen
-except NameError:
-    pass
+            yield
+        return progress_gen
+
+    def finish(self):
+        if self.value:
+            return
+        mybar = getattr(self, 'bar', None)
+        if mybar:
+            mybar.finish()
+
 
 _arguments = dict(config=_config_arg,
     help=Argument(0, 'Show help message', ('-h', '--help')),

@@ -431,10 +431,13 @@ class server_wait(_init_cyclades):
             new_mode = self.client.wait_server(server_id,
                 currect_status,
                 wait_cb=wait_cb)
+            progress_bar.finish()
         except KeyboardInterrupt:
             print('\nCanceled')
+            progress_bar.finish()
             return
         except ClientError as err:
+            progress_bar.finish()
             raiseCLIError(err)
         if new_mode:
             print('\nServer %s is now in %s mode' % (server_id, new_mode))
