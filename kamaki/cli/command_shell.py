@@ -43,6 +43,25 @@ from kamaki.cli.history import History
 from kamaki.cli.errors import CLIError
 
 
+def _split_input(line):
+    """Use regular expressions to split a line correctly
+    """
+    line = ' %s ' % line
+    import re
+    pattern = '[ ]["].*?["][ ]'
+    re_parser = re.compile(pattern)
+    trivial_parts = re_parser.split(line)
+    interesting_parts = re_parser.findall(line)
+    print('Trivial parts: %s' % trivial_parts)
+    print('Interesting parts: %s ' % interesting_parts)
+    terms = []
+    for i, ipart in enumerate(interesting_parts):
+        terms += trivial_parts[i].split()
+        terms.append(ipart[2:-2])
+    terms += trivial_parts[-1].split()
+    return terms
+
+
 def _init_shell(exe_string, arguments):
     arguments.pop('version', None)
     arguments.pop('options', None)
@@ -151,7 +170,7 @@ class Shell(Cmd):
                 <cmd> <term> <term> <args> is always parsed to most specific
                 even if cmd_term_term is not a terminal path
             """
-            subcmd, cmd_args = cmd.parse_out(line.split())
+            subcmd, cmd_args = cmd.parse_out(_split_input(line))
             if self._history:
                 self._history.add(' '.join([cmd.path.replace('_', ' '), line]))
             cmd_parser = ArgumentParser(cmd.name, add_help=False)
@@ -202,7 +221,7 @@ class Shell(Cmd):
         self._register_method(help_method, 'help_%s' % cmd.name)
 
         def complete_method(self, text, line, begidx, endidx):
-            subcmd, cmd_args = cmd.parse_out(line.split()[1:])
+            subcmd, cmd_args = cmd.parse_out(_split_input(line)[1:])
             if subcmd.is_command:
                 cls = subcmd.get_class()
                 instance = cls(dict(arguments))
