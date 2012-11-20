@@ -132,17 +132,10 @@ class image_test(_init_image):
 
 
 @command(image_cmds)
-class image_rere(_init_image):
-    """Re-Register an image, dude"""
-
-    def main(self, location):
-        super(self.__class__, self).main()
-        self.client.reregister(location)
-
-
-@command(image_cmds)
 class image_register(_init_image):
-    """Register an image"""
+    """(Re)Register an image
+        call with --update or without an image name to update image properties
+    """
 
     def __init__(self, arguments={}):
         super(image_register, self).__init__(arguments)
@@ -161,8 +154,10 @@ class image_register(_init_image):
         self.arguments['is_public'] =\
             FlagArgument('mark image as public', '--public')
         self.arguments['size'] = IntArgument('set image size', '--size')
+        self.arguments['update'] = FlagArgument(
+            'update an existing image properties', '--update')
 
-    def main(self, name, location):
+    def main(self, location, name=None):
         super(self.__class__, self).main()
         if not location.startswith('pithos://'):
             account = self.config.get('store', 'account') \
@@ -187,11 +182,13 @@ class image_register(_init_image):
             if val is not None:
                 params[key] = val
 
+        update = self.get_argument('update')
+        properties = self.get_argument('properties')
         try:
-            self.client.register(name,
-                location,
-                params,
-                self.get_argument('properties'))
+            if name and not update:
+                self.client.register(name, location, params, properties)
+            else:
+                self.client.reregister(location, name, params, properties)
         except ClientError as err:
             raiseCLIError(err)
 
