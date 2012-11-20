@@ -35,6 +35,7 @@ from cmd import Cmd
 from os import popen
 from sys import stdout
 from argparse import ArgumentParser
+from re import compile as regex_compile
 
 from kamaki.cli import _exec_cmd, _print_error_message
 from kamaki.cli.argument import update_arguments
@@ -43,22 +44,31 @@ from kamaki.cli.history import History
 from kamaki.cli.errors import CLIError
 
 
+def _parse_with_regex(line, regex):
+    re_parser = regex_compile(regex)
+    return (re_parser.split(line), re_parser.findall(line))
+
+
 def _split_input(line):
     """Use regular expressions to split a line correctly
     """
     line = ' %s ' % line
-    import re
-    pattern = '[ ]["].*?["][ ]'
-    re_parser = re.compile(pattern)
-    trivial_parts = re_parser.split(line)
-    interesting_parts = re_parser.findall(line)
-    print('Trivial parts: %s' % trivial_parts)
-    print('Interesting parts: %s ' % interesting_parts)
+    (trivial_parts, interesting_parts) = _parse_with_regex(line, ' \'.*?\' ')
     terms = []
     for i, ipart in enumerate(interesting_parts):
-        terms += trivial_parts[i].split()
+        tpart = trivial_parts[i]
+        (sub_trivials, sub_interesting) = _parse_with_regex(tpart, ' ".*?" ')
+        for subi, subipart in enumerate(sub_interesting):
+            terms += sub_trivials[subi].split()
+            terms.append(subipart[2:-2])
+        terms += sub_trivials[-1].split()
         terms.append(ipart[2:-2])
-    terms += trivial_parts[-1].split()
+    tpart = trivial_parts[-1]
+    (sub_trivials, sub_interesting) = _parse_with_regex(tpart, ' ".*?" ')
+    for subi, subipart in enumerate(sub_interesting):
+        terms += sub_trivials[subi].split()
+        terms.append(subipart[2:-2])
+    terms += sub_trivials[-1].split()
     return terms
 
 
