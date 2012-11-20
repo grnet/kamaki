@@ -113,14 +113,15 @@ class server_info(_init_cyclades):
     def _print(self, server):
         addr_dict = {}
         if 'attachments' in server:
-            for addr in server['attachments']['values']:
+            atts = server.pop('attachments')
+            for addr in atts['values']:
                 ips = addr.pop('values', [])
                 for ip in ips:
                     addr['IPv%s' % ip['version']] = ip['addr']
                 if 'firewallProfile' in addr:
                     addr['firewall'] = addr.pop('firewallProfile')
                 addr_dict[addr.pop('id')] = addr
-            server['attachments'] = addr_dict if addr_dict is not {} else None
+            server['attachments'] = addr_dict if addr_dict else None
         if 'metadata' in server:
             server['metadata'] = server['metadata']['values']
         print_dict(server, ident=2)
@@ -430,10 +431,13 @@ class server_wait(_init_cyclades):
             new_mode = self.client.wait_server(server_id,
                 currect_status,
                 wait_cb=wait_cb)
+            progress_bar.finish()
         except KeyboardInterrupt:
             print('\nCanceled')
+            progress_bar.finish()
             return
         except ClientError as err:
+            progress_bar.finish()
             raiseCLIError(err)
         if new_mode:
             print('\nServer %s is now in %s mode' % (server_id, new_mode))
@@ -494,7 +498,7 @@ class network_list(_init_cyclades):
         for net in nets:
             netname = bold(net.pop('name'))
             netid = bold(unicode(net.pop('id')))
-            print('%s (%s)' % (netname, netid))
+            print('%s (%s)' % (netid, netname))
             if self.get_argument('detail'):
                 network_info.print_network(net)
 

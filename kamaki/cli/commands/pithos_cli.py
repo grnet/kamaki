@@ -502,8 +502,8 @@ class store_append(_store_container_command):
             self).main(container___path, path_is_optional=False)
         try:
             f = open(local_path, 'r')
+            progress_bar = self.arguments['progress_bar']
             try:
-                progress_bar = self.arguments['progress_bar']
                 upload_cb = progress_bar.get_generator('Appending blocks')
             except Exception:
                 upload_cb = None
@@ -511,7 +511,10 @@ class store_append(_store_container_command):
                 source_file=f,
                 upload_cb=upload_cb)
         except ClientError as err:
+            progress_bar.finish()
             raiseCLIError(err)
+        finally:
+            progress_bar.finish()
 
 
 @command(pithos_cmds)
@@ -541,8 +544,8 @@ class store_overwrite(_store_container_command):
             self).main(container___path, path_is_optional=False)
         try:
             f = open(local_path, 'r')
+            progress_bar = self.arguments['progress_bar']
             try:
-                progress_bar = self.arguments['progress_bar']
                 upload_cb = progress_bar.get_generator('Overwritting blocks')
             except Exception:
                 upload_cb = None
@@ -552,7 +555,10 @@ class store_overwrite(_store_container_command):
                 source_file=f,
                 upload_cb=upload_cb)
         except ClientError as err:
+            progress_bar.finish()
             raiseCLIError(err)
+        finally:
+            progress_bar.finish()
 
 
 @command(pithos_cmds)
@@ -622,13 +628,15 @@ class store_upload(_store_container_command):
         remote_path = local_path if self.path is None else self.path
         poolsize = self.get_argument('poolsize')
         if poolsize is not None:
-            self.POOL_SIZE = poolsize
+            self.client.POOL_SIZE = int(poolsize)
         params = dict(content_encoding=self.get_argument('content_encoding'),
             content_type=self.get_argument('content_type'),
             content_disposition=self.get_argument('content_disposition'),
             sharing=self.get_argument('sharing'),
             public=self.get_argument('public'))
         try:
+            progress_bar = self.arguments['progress_bar']
+            hash_bar = progress_bar.clone()
             with open(local_path) as f:
                 if self.get_argument('unchunked'):
                     self.client.upload_object_unchunked(remote_path, f,
@@ -636,18 +644,24 @@ class store_upload(_store_container_command):
                     withHashFile=self.get_argument('use_hashes'),
                     **params)
                 else:
-                    progress_bar = self.arguments['progress_bar']
-                    hash_cb = progress_bar.get_generator(\
+                    hash_cb = hash_bar.get_generator(\
                         'Calculating block hashes')
                     upload_cb = progress_bar.get_generator('Uploading')
                     self.client.upload_object(remote_path, f,
-                    hash_cb=hash_cb,
-                    upload_cb=upload_cb,
-                    **params)
+                        hash_cb=hash_cb,
+                        upload_cb=upload_cb,
+                        **params)
+                    progress_bar.finish()
+                    hash_bar.finish()
         except ClientError as err:
+            progress_bar.finish()
+            hash_bar.finish()
             raiseCLIError(err)
         except IOError as err:
-            raise CLIError(message='Failed to read form file %s' % local_path,
+            progress_bar.finish()
+            hash_bar.finish()
+            raise CLIError(
+                message='Failed to read form file %s' % local_path,
                 importance=2,
                 details=unicode(err))
         print 'Upload completed'
@@ -731,13 +745,13 @@ class store_download(_store_container_command):
                 raise CLIError(message='Cannot write to file %s - %s'\
                     % (local_path, unicode(err)),
                     importance=1)
-        progress_bar = self.arguments['progress_bar']
-        download_cb = progress_bar.get_generator('Downloading')
         poolsize = self.get_argument('poolsize')
         if poolsize is not None:
-            self.POOL_SIZE = int(poolsize)
+            self.client.POOL_SIZE = int(poolsize)
 
         try:
+            progress_bar = self.arguments['progress_bar']
+            download_cb = progress_bar.get_generator('Downloading')
             self.client.download_object(self.path, out,
                 download_cb=download_cb,
                 range=self.get_argument('range'),
@@ -747,7 +761,9 @@ class store_download(_store_container_command):
                 if_none_match=self.get_argument('if_none_match'),
                 if_modified_since=self.get_argument('if_modified_since'),
                 if_unmodified_since=self.get_argument('if_unmodified_since'))
+            progress_bar.finish()
         except ClientError as err:
+            progress_bar.finish()
             raiseCLIError(err)
         except KeyboardInterrupt:
             from threading import enumerate as activethreads
@@ -759,9 +775,13 @@ class store_download(_store_container_command):
                     stdout.write('.')
                 except RuntimeError:
                     continue
+            progress_bar.finish()
             print('\ndownload canceled by user')
             if local_path is not None:
                 print('to resume, re-run with --resume')
+        except Exception as e:
+            progress_bar.finish()
+            raise e
         print
 
 

@@ -37,7 +37,7 @@ from kamaki.cli.commands import _command_init
 from kamaki.cli.command_tree import CommandTree
 
 config_cmds = CommandTree('config', 'Configuration commands')
-_command = [config_cmds]
+_commands = [config_cmds]
 
 
 @command(config_cmds)
@@ -77,6 +77,7 @@ class config_set(_command_init):
         section = section or 'global'
         self.config.set(section, key, value)
         self.config.write()
+        self.config.reload()
 
 
 @command(config_cmds)
@@ -88,3 +89,4 @@ class config_delete(_command_init):
         section = section or 'global'
         self.config.remove_option(section, key)
         self.config.write()
+        self.config.reload()

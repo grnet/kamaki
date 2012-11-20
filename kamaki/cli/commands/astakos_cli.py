@@ -31,7 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-from kamaki.cli.new import command
+from kamaki.cli import command
 from kamaki.clients.astakos import AstakosClient, ClientError
 from kamaki.cli.utils import print_dict
 from kamaki.cli.errors import raiseCLIError

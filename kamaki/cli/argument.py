@@ -116,6 +116,8 @@ class Argument(object):
 
 
 class ConfigArgument(Argument):
+    _config_file = None
+
     @property
     def value(self):
         super(self.__class__, self).value
@@ -123,7 +125,13 @@ class ConfigArgument(Argument):
 
     @value.setter
     def value(self, config_file):
-        self._value = Config(config_file) if config_file else Config()
+        if config_file:
+            self._value = Config(config_file)
+            self._config_file = config_file
+        elif self._config_file:
+            self._value = Config(self._config_file)
+        else:
+            self._value = Config()
 
     def get(self, group, term):
         return self.value.get(group, term)
@@ -233,32 +241,41 @@ class ProgressBarArgument(FlagArgument):
         self.suffix = '%(percent)d%%'
         super(ProgressBarArgument, self).__init__(help, parsed_name, default)
         try:
-            self.bar = IncrementalBar()
+            IncrementalBar
         except NameError:
             print('Waring: no progress bar functionality')
+
+    def clone(self):
+        newarg = ProgressBarArgument(
+            self.help,
+            self.parsed_name,
+            self.default)
+        newarg._value = self._value
+        return newarg
 
     def get_generator(self, message, message_len=25):
         if self.value:
             return None
+        self.bar = IncrementalBar()
         try:
-            bar = ProgressBar(message.ljust(message_len))
+            self.bar.message = message.ljust(message_len)
         except NameError:
-            return None
-        return bar.get_generator()
+            pass
+        self.bar.suffix = '%(percent)d%% - %(eta)ds'
 
-
-try:
-    class ProgressBar(IncrementalBar):
-        suffix = '%(percent)d%% - %(eta)ds'
-
-        def get_generator(self):
-            def progress_gen(n):
-                for i in self.iter(range(int(n))):
-                    yield
+        def progress_gen(n):
+            for i in self.bar.iter(range(int(n))):
                 yield
-            return progress_gen
-except NameError:
-    pass
+            yield
+        return progress_gen
+
+    def finish(self):
+        if self.value:
+            return
+        mybar = getattr(self, 'bar', None)
+        if mybar:
+            mybar.finish()
+
 
 _arguments = dict(config=_config_arg,
     help=Argument(0, 'Show help message', ('-h', '--help')),
@@ -278,8 +295,8 @@ def parse_known_args(parser, arguments=None):
     parsed, unparsed = parser.parse_known_args()
     for name, arg in arguments.items():
         arg.value = getattr(parsed, name, arg.default)
+    unparsed = ['"%s"' % s if ' ' in s else s for s in unparsed]
     return parsed, unparsed
-    # ['"%s"' % s if ' ' in s else s for s in unparsed]
 
 
 def init_parser(exe, arguments):

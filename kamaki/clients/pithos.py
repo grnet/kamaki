@@ -31,7 +31,6 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from threading import Thread
 from threading import enumerate as activethreads
 
 from os import fstat
@@ -40,6 +39,7 @@ from time import time
 
 from binascii import hexlify
 
+from kamaki.clients import SilentEvent
 from kamaki.clients.pithos_rest_api import PithosRestAPI
 from kamaki.clients.storage import ClientError
 from kamaki.clients.utils import path4url, filter_in
@@ -65,32 +65,6 @@ def _range_up(start, end, a_range):
     return (start, end)
 
 
-class SilentEvent(Thread):
-    """ Thread-run method(*args, **kwargs)
-        put exception in exception_bucket
-    """
-    def __init__(self, method, *args, **kwargs):
-        super(self.__class__, self).__init__()
-        self.method = method
-        self.args = args
-        self.kwargs = kwargs
-
-    @property
-    def exception(self):
-        return getattr(self, '_exception', False)
-
-    @property
-    def value(self):
-        return getattr(self, '_value', None)
-
-    def run(self):
-        try:
-            self._value = self.method(*(self.args), **(self.kwargs))
-        except Exception as e:
-            print('______\n%s\n_______' % e)
-            self._exception = e
-
-
 class PithosClient(PithosRestAPI):
     """GRNet Pithos API client"""
 
@@ -98,7 +72,6 @@ class PithosClient(PithosRestAPI):
 
     def __init__(self, base_url, token, account=None, container=None):
         super(PithosClient, self).__init__(base_url, token, account, container)
-        self.POOL_SIZE = 5
 
     def purge_container(self):
         r = self.container_delete(until=unicode(time()))
@@ -233,11 +206,13 @@ class PithosClient(PithosRestAPI):
         assert offset == size
 
     def _upload_missing_blocks(self, missing, hmap, fileobj, upload_cb=None):
-        """upload missing blocks asynchronously. Use greenlets to avoid waiting
+        """upload missing blocks asynchronously. 
         """
         if upload_cb:
             upload_gen = upload_cb(len(missing))
             upload_gen.next()
+
+        self._init_thread_limit()
 
         flying = []
         for hash in missing:
@@ -248,8 +223,9 @@ class PithosClient(PithosRestAPI):
             flying.append(r)
             unfinished = []
             for i, thread in enumerate(flying):
-                if i % self.POOL_SIZE == 0:
-                    thread.join(0.1)
+
+                unfinished = self._watch_thread_limit(unfinished)
+
                 if thread.isAlive() or thread.exception:
                     unfinished.append(thread)
                 else:
@@ -311,8 +287,6 @@ class PithosClient(PithosRestAPI):
 
         if missing is None:
             return
-        if len(missing) > self.POOL_SIZE:
-            self.POOL_SIZE = len(missing) // 10
         try:
             self._upload_missing_blocks(missing, hmap, f, upload_cb=upload_cb)
         except KeyboardInterrupt:
@@ -392,8 +366,6 @@ class PithosClient(PithosRestAPI):
         blocks will be written to normal_position - 10"""
         finished = []
         for i, (start, g) in enumerate(flying.items()):
-            if i % self.POOL_SIZE == 0:
-                g.join(0.1)
             if not g.isAlive():
                 if g.exception:
                     raise g.exception
@@ -424,6 +396,7 @@ class PithosClient(PithosRestAPI):
             rstart = int(filerange.split('-')[0])
             offset = rstart if blocksize > rstart else rstart % blocksize
 
+        self._init_thread_limit()
         for block_hash, blockid in remote_hashes.items():
             start = blocksize * blockid
             if start < file_size\
@@ -434,6 +407,7 @@ class PithosClient(PithosRestAPI):
                     blockhash):
                 self._cb_next()
                 continue
+            self._watch_thread_limit(flying.values())
             finished += self._thread2file(
                 flying,
                 local_file,
@@ -492,8 +466,6 @@ class PithosClient(PithosRestAPI):
                 range,
                 **restargs)
         else:
-            if len(remote_hashes) > self.POOL_SIZE:
-                self.POOL_SIZE = len(remote_hashes) // 10
             self._dump_blocks_async(obj,
                 remote_hashes,
                 blocksize,

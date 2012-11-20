@@ -38,6 +38,8 @@ import datetime
 import os
 import sys
 
+from progress.bar import IncrementalBar
+
 from kamaki.clients import ClientError
 from kamaki.clients.pithos import PithosClient as pithos
 from kamaki.clients.cyclades import CycladesClient as cyclades
@@ -200,7 +202,6 @@ class testImage(unittest.TestCase):
             for interm in ('kernel',
                 'osfamily',
                 'users',
-                'partition-table',
                 'gui', 'sortorder',
                 'root-partition',
                 'os',
@@ -257,7 +258,7 @@ class testCyclades(unittest.TestCase):
         self.img = 'b2dffe52-64a4-48c3-8a4c-8214cc3165cf'
         self.img_details = {
             u'status': u'ACTIVE',
-            u'updated': u'2012-10-16T09:04:17+00:00',
+            u'updated': u'2012-11-19T13:52:16+00:00',
             u'name': u'Debian Base',
             u'created': u'2012-10-16T09:03:12+00:00',
             u'progress': 100,
@@ -271,8 +272,7 @@ class testCyclades(unittest.TestCase):
                     u'sortorder': u'1',
                     u'os': u'debian',
                     u'root_partition': u'1',
-                    u'description': u'Debian 6.0.6 (Squeeze) Base System',
-                    u'partition_table': u'msdos'}
+                    u'description': u'Debian 6.0.6 (Squeeze) Base System'}
                 }
             }
         self.flavor_details = {u'name': u'C1R1024D20',
@@ -584,6 +584,51 @@ class testCyclades(unittest.TestCase):
         print('...ok')
         """
 
+    @if_not_all
+    def test_parallel_creation(self):
+        """test create with multiple threads"""
+        from kamaki.clients import SilentEvent
+        c1 = SilentEvent(self._create_server,
+            self.servname1,
+            self.flavorid,
+            self.img)
+        c2 = SilentEvent(self._create_server,
+            self.servname2,
+            self.flavorid + 2,
+            self.img)
+        c3 = SilentEvent(self._create_server,
+            self.servname1,
+            self.flavorid,
+            self.img)
+        c4 = SilentEvent(self._create_server,
+            self.servname2,
+            self.flavorid + 2,
+            self.img)
+        c5 = SilentEvent(self._create_server,
+            self.servname1,
+            self.flavorid,
+            self.img)
+        c6 = SilentEvent(self._create_server,
+            self.servname2,
+            self.flavorid + 2,
+            self.img)
+        c7 = SilentEvent(self._create_server,
+            self.servname1,
+            self.flavorid,
+            self.img)
+        c8 = SilentEvent(self._create_server,
+            self.servname2,
+            self.flavorid + 2,
+            self.img)
+        c1.start()
+        c2.start()
+        c3.start()
+        c4.start()
+        c5.start()
+        c6.start()
+        c7.start()
+        c8.start()
+
     def _wait_for_network(self, netid, status):
         wait = 3
         limit = 50
@@ -636,18 +681,16 @@ class testCyclades(unittest.TestCase):
         return r['status'] == status
 
     def _wait_for_status(self, servid, status):
-        wait = 0
-        c = ['|', '/', '-', '\\']
-        while self._has_status(servid, status):
-            if wait:
-                sys.stdout.write('\tServer %s in %s. Wait %ss  '\
-                    % (servid, status, wait))
-                for i in range(4 * wait):
-                    sys.stdout.write('\b%s' % c[i % 4])
-                    sys.stdout.flush()
-                    time.sleep(0.25)
-                print('\b ')
-            wait = (wait + 3) if wait < 60 else 0
+        wait_bar = IncrementalBar('\tServer[%s] in %s ' % (servid, status))
+        wait_bar.start()
+
+        def progress_gen(n):
+            for i in wait_bar.iter(range(int(n))):
+                yield
+            yield
+
+        self.client.wait_server(servid, status, wait_cb=progress_gen)
+        wait_bar.finish()
 
     @if_not_all
     def test_list_servers(self):
@@ -852,15 +895,16 @@ class testCyclades(unittest.TestCase):
         for detailed_img in r:
             if detailed_img['id'] == self.img:
                 break
-        self.assert_dicts_are_deeply_equal(r[1], self.img_details)
+        self.assert_dicts_are_deeply_equal(detailed_img, self.img_details)
 
     @if_not_all
-    def test_image_details(self):
+    def test_get_image_details(self):
         """Test image_details"""
-        self._test_get_image_details
+        self._test_get_image_details()
 
     def _test_get_image_details(self):
         r = self.client.get_image_details(self.img)
+        r.pop('updated')
         self.assert_dicts_are_deeply_equal(r, self.img_details)
 
     @if_not_all
@@ -912,12 +956,12 @@ class testCyclades(unittest.TestCase):
     def test_get_server_console(self):
         """Test get_server_console"""
         self.server2 = self._create_server(self.servname2,
-            self.flavorid + 1,
+            self.flavorid + 2,
             self.img)
+        self._wait_for_status(self.server2['id'], 'BUILD')
         self._test_get_server_console()
 
     def _test_get_server_console(self):
-        self._wait_for_status(self.server2['id'], 'BUILD')
         r = self.client.get_server_console(self.server2['id'])
         self.assertTrue('host' in r)
         self.assertTrue('password' in r)
@@ -1072,8 +1116,6 @@ class testCyclades(unittest.TestCase):
     def _test_list_server_nics(self):
         r = self.client.list_server_nics(self.server1['id'])
         len0 = len(r)
-        self.assertTrue(len0 > 0)
-        self.assertTrue('1' in [net['network_id'] for net in r])
 
         self.client.connect_server(self.server1['id'], self.network2['id'])
         self.assertTrue(self._wait_for_nic(self.network2['id'],
@@ -2289,14 +2331,10 @@ def init_parser():
         help="Show this help message and exit")
     return parser
 
-if __name__ == '__main__':
-    parser = init_parser()
-    args, argv = parser.parse_known_args()
 
-    if len(argv) > 2 or getattr(args, 'help') or len(argv) < 1:
-        raise Exception('\tusage: tests.py <group> [command]')
+def main(argv):
+
     suiteFew = unittest.TestSuite()
-
     if len(argv) == 0 or argv[0] == 'pithos':
         if len(argv) == 1:
             suiteFew.addTest(unittest.makeSuite(testPithos))
@@ -2320,3 +2358,10 @@ if __name__ == '__main__':
             suiteFew.addTest(testAstakos('test_' + argv[1]))
 
     unittest.TextTestRunner(verbosity=2).run(suiteFew)
+
+if __name__ == '__main__':
+    parser = init_parser()
+    args, argv = parser.parse_known_args()
+    if len(argv) > 2 or getattr(args, 'help') or len(argv) < 1:
+        raise Exception('\tusage: tests.py <group> [command]')
+    main(argv)

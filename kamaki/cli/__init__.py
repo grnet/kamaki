@@ -79,7 +79,7 @@ _best_match = []
 
 def _num_of_matching_terms(basic_list, attack_list):
     if not attack_list:
-        return 1
+        return len(basic_list)
 
     matching_terms = 0
     for i, term in enumerate(basic_list):
@@ -100,6 +100,8 @@ def _update_best_match(name_terms, prefix=[]):
 
     num_of_matching_terms = _num_of_matching_terms(name_terms, pref_list)
     global _best_match
+    if not prefix:
+        _best_match = []
 
     if num_of_matching_terms and len(_best_match) <= num_of_matching_terms:
         if len(_best_match) < num_of_matching_terms:
@@ -129,6 +131,8 @@ def command(cmd_tree, prefix='', descedants_depth=1):
 
         name_terms = cls_name.split('_')
         if not _update_best_match(name_terms, prefix):
+            if _debug:
+                print('Warning: %s failed to update_best_match' % cls_name)
             return None
 
         global _best_match
@@ -137,6 +141,8 @@ def command(cmd_tree, prefix='', descedants_depth=1):
             partial = '_'.join(name_terms[:max_len])
             if not cmd_tree.has_command(partial):  # add partial path
                 cmd_tree.add_command(partial)
+            if _debug:
+                print('Warning: %s failed max_len test' % cls_name)
             return None
 
         cls.description, sep, cls.long_description\
@@ -379,27 +385,10 @@ def one_cmd(parser, unparsed, arguments):
     _exec_cmd(executable, unparsed, parser.print_help)
 
 
-from command_shell import _fix_arguments, Shell
-
-
-def _start_shell():
-    shell = Shell()
-    shell.set_prompt(basename(argv[0]))
-    from kamaki import __version__ as version
-    shell.greet(version)
-    shell.do_EOF = shell.do_exit
-    return shell
-
-
-def run_shell(arguments):
-    _fix_arguments()
-    shell = _start_shell()
-    _config = _arguments['config']
-    from kamaki.cli.command_tree import CommandTree
-    shell.cmd_tree = CommandTree(
-        'kamaki', 'A command line tool for poking clouds')
+def _load_all_commands(cmd_tree, arguments):
+    _config = arguments['config']
     for spec in [spec for spec in _config.get_groups()\
-            if arguments['config'].get(spec, 'cli')]:
+            if _config.get(spec, 'cli')]:
         try:
             spec_module = _load_spec_module(spec, arguments, '_commands')
             spec_commands = getattr(spec_module, '_commands')
@@ -409,9 +398,15 @@ def run_shell(arguments):
             continue
         for spec_tree in spec_commands:
             if spec_tree.name == spec:
-                shell.cmd_tree.add_tree(spec_tree)
+                cmd_tree.add_tree(spec_tree)
                 break
-    shell.run()
+
+
+def run_shell(exe_string, arguments):
+    from command_shell import _init_shell
+    shell = _init_shell(exe_string, arguments)
+    _load_all_commands(shell.cmd_tree, arguments)
+    shell.run(arguments)
 
 
 def main():
@@ -433,7 +428,7 @@ def main():
             parser.print_help()
             _groups_help(_arguments)
         else:
-            run_shell(_arguments)
+            run_shell(exe, _arguments)
     except CLIError as err:
         if _debug:
             raise err
