@@ -132,6 +132,15 @@ class image_test(_init_image):
 
 
 @command(image_cmds)
+class image_rere(_init_image):
+    """Re-Register an image, dude"""
+
+    def main(self, location):
+        super(self.__class__, self).main()
+        self.client.reregister(location)
+
+
+@command(image_cmds)
 class image_register(_init_image):
     """Register an image"""
 

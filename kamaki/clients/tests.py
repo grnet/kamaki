@@ -202,7 +202,6 @@ class testImage(unittest.TestCase):
             for interm in ('kernel',
                 'osfamily',
                 'users',
-                'partition-table',
                 'gui', 'sortorder',
                 'root-partition',
                 'os',
