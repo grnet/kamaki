@@ -117,10 +117,14 @@ def print_list(l, exclude=(), ident=0):
 def print_items(items, title=('id', 'name')):
     for item in items:
         if isinstance(item, dict) or isinstance(item, list):
-            print ' '.join(unicode(item.pop(key))\
+            header = ' '.join(unicode(item.pop(key))\
                 for key in title if key in item)
+            print(' ')
+            print(bold(header))
         if isinstance(item, dict):
-            print_dict(item)
+            print_dict(item, ident=2)
+        elif isinstance(item, list):
+            print_list(item, ident=2)
 
 
 def format_size(size):
