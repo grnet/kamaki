@@ -498,7 +498,7 @@ class network_list(_init_cyclades):
         for net in nets:
             netname = bold(net.pop('name'))
             netid = bold(unicode(net.pop('id')))
-            print('%s (%s)' % (netname, netid))
+            print('%s (%s)' % (netid, netname))
             if self.get_argument('detail'):
                 network_info.print_network(net)
 
