@@ -31,6 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+from re import compile as regex_compile
 from .errors import CLIError
 
 try:
@@ -159,3 +160,33 @@ def list2file(l, f, depth=1):
             list2file(item, f, depth + 1)
         else:
             f.write('%s%s\n' % ('\t' * depth, unicode(item)))
+
+# Split input auxiliary
+
+
+def _parse_with_regex(line, regex):
+    re_parser = regex_compile(regex)
+    return (re_parser.split(line), re_parser.findall(line))
+
+
+def _sub_split(line):
+    terms = []
+    (sub_trivials, sub_interesting) = _parse_with_regex(line, ' ".*?" ')
+    for subi, subipart in enumerate(sub_interesting):
+        terms += sub_trivials[subi].split()
+        terms.append(subipart[2:-2])
+    terms += sub_trivials[-1].split()
+    return terms
+
+
+def split_input(line):
+    """Use regular expressions to split a line correctly
+    """
+    line = ' %s ' % line
+    (trivial_parts, interesting_parts) = _parse_with_regex(line, ' \'.*?\' ')
+    terms = []
+    for i, ipart in enumerate(interesting_parts):
+        terms += _sub_split(trivial_parts[i])
+        terms.append(ipart[2:-2])
+    terms += _sub_split(trivial_parts[-1])
+    return terms

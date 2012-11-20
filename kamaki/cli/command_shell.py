@@ -35,41 +35,12 @@ from cmd import Cmd
 from os import popen
 from sys import stdout
 from argparse import ArgumentParser
-from re import compile as regex_compile
 
 from kamaki.cli import _exec_cmd, _print_error_message
 from kamaki.cli.argument import update_arguments
-from kamaki.cli.utils import print_dict
+from kamaki.cli.utils import print_dict, split_input
 from kamaki.cli.history import History
 from kamaki.cli.errors import CLIError
-
-
-def _parse_with_regex(line, regex):
-    re_parser = regex_compile(regex)
-    return (re_parser.split(line), re_parser.findall(line))
-
-
-def _split_input(line):
-    """Use regular expressions to split a line correctly
-    """
-    line = ' %s ' % line
-    (trivial_parts, interesting_parts) = _parse_with_regex(line, ' \'.*?\' ')
-    terms = []
-    for i, ipart in enumerate(interesting_parts):
-        tpart = trivial_parts[i]
-        (sub_trivials, sub_interesting) = _parse_with_regex(tpart, ' ".*?" ')
-        for subi, subipart in enumerate(sub_interesting):
-            terms += sub_trivials[subi].split()
-            terms.append(subipart[2:-2])
-        terms += sub_trivials[-1].split()
-        terms.append(ipart[2:-2])
-    tpart = trivial_parts[-1]
-    (sub_trivials, sub_interesting) = _parse_with_regex(tpart, ' ".*?" ')
-    for subi, subipart in enumerate(sub_interesting):
-        terms += sub_trivials[subi].split()
-        terms.append(subipart[2:-2])
-    terms += sub_trivials[-1].split()
-    return terms
 
 
 def _init_shell(exe_string, arguments):
@@ -180,7 +151,7 @@ class Shell(Cmd):
                 <cmd> <term> <term> <args> is always parsed to most specific
                 even if cmd_term_term is not a terminal path
             """
-            subcmd, cmd_args = cmd.parse_out(_split_input(line))
+            subcmd, cmd_args = cmd.parse_out(split_input(line))
             if self._history:
                 self._history.add(' '.join([cmd.path.replace('_', ' '), line]))
             cmd_parser = ArgumentParser(cmd.name, add_help=False)
@@ -231,7 +202,7 @@ class Shell(Cmd):
         self._register_method(help_method, 'help_%s' % cmd.name)
 
         def complete_method(self, text, line, begidx, endidx):
-            subcmd, cmd_args = cmd.parse_out(_split_input(line)[1:])
+            subcmd, cmd_args = cmd.parse_out(split_input(line)[1:])
             if subcmd.is_command:
                 cls = subcmd.get_class()
                 instance = cls(dict(arguments))
