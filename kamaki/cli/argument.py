@@ -256,11 +256,12 @@ class ProgressBarArgument(FlagArgument):
     def get_generator(self, message, message_len=25):
         if self.value:
             return None
-        self.bar = IncrementalBar()
         try:
-            self.bar.message = message.ljust(message_len)
+            self.bar = IncrementalBar()
         except NameError:
-            pass
+            self.value = None
+            return self.value
+        self.bar.message = message.ljust(message_len)
         self.bar.suffix = '%(percent)d%% - %(eta)ds'
 
         def progress_gen(n):

@@ -81,8 +81,9 @@ config commands
 history commands
 ****************
 
-Show command user history, as stored in ~/.kamaki.history
+Command user history, as stored in ~/.kamaki.history
 
+* all       show user history
 * clean     clean up history
 
 
@@ -105,7 +106,7 @@ server commands
 * setmeta    update server metadata
 * delmeta    delete server metadata
 * stats      get server statistics
-* wait: Wait for server to finish [BUILD, STOPPED, REBOOT, ACTIVE]
+* wait       wait for server to finish [BUILD, STOPPED, REBOOT, ACTIVE]
 
 
 flavor commands
@@ -124,6 +125,7 @@ image commands and options
 * shared      list shared images
 * delete      delete image
 * register    register an image
+* reregister  re-register an image (preserve and update properties)
 * meta        get image metadata
 * members     get image members
 * addmember   add a member to an image

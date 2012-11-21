@@ -20,9 +20,10 @@ Optional features
     * Can be switched on/off in kamaki configuration file: colors=on/off
     * Installation: pip install ansicolors
 
-* progressbar
-    * Attach progressbars to various kamaki commands (e.g. kamaki store upload)
+* progress 
+    * Attach progress bars to various kamaki commands (e.g. kamaki store upload)
     * Installation: pip install progressbar
+    * Since version 0.6.1 kamaki "requires" progress version 1.0.2 or better
 
 Any of the above features can be installed at any time before or after kamaki installation.
 
@@ -51,7 +52,7 @@ All kamaki commands can be used with the -o option in order to overide configura
 
 *kamaki store list -o global.account=anotheraccount -o global.token=aT0k3n==*
 
-will call *kamaki store list* with the specified options, but the initial global.account and global.token values will be restored afterwards.
+will invoke *kamaki store list* with the specified options, but the initial global.account and global.token values will be restored to initial values afterwards.
 
 Editing options
 ^^^^^^^^^^^^^^^
@@ -67,7 +68,7 @@ Kamaki config command allows users to see and manage all configuration options.
 * kamaki config set <group.option> <value>
     set the group.option to value
 
-*kamaki config delete <group.option>
+* kamaki config delete <group.option>
     delete a configuration option
 
 The above commands cause option values to be permanently stored in the Kamaki configuration file.
@@ -75,7 +76,7 @@ The above commands cause option values to be permanently stored in the Kamaki co
 Editing the configuration file
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The configuration file is a simple text file that can be created by the user.d
+The configuration file is a simple text file that can be created by the user.
 
 A simple way to create the configuration file is to set a configuration option using the kamaki config command. For example:
 
@@ -94,7 +95,7 @@ two configuration options are created: *store.url* and *store.account*. These va
 Available options
 ^^^^^^^^^^^^^^^^^
 
-The [global] group is treated by kamaki as a generic group for arbitrary options, and it is used as a supergroup for vital Kamaki options like account, token, or url. For example if global.account option is set and store.account option is not set, store services will use the global.account option instead. In case of conflict, the most specific options override the global ones.
+The [global] group is treated by kamaki as a generic group for arbitrary options, and it is used as a supergroup for vital Kamaki options, namely account, token, url, cli. This feature does not work for types of configuration options. For example if global.account option is set and store.account option is not set, store services will use the global.account option instead. In case of conflict, the most specific options override the global ones.
 
 * global.colors <on|off>
     enable/disable colors in command line based uis. Requires ansicolors, otherwise it is ignored
@@ -136,3 +137,13 @@ The [global] group is treated by kamaki as a generic group for arbitrary options
 
 * astakos.cli <UI command specifications for Astakos authentication service>
     a special package that is used to load astakos-related commands to kamaki UIs. Don't touch this unless you know what you are doing.
+
+Hidden features
+^^^^^^^^^^^^^^^
+
+Since version 0.6.1 kamaki contains a test suite for the kamaki.clients API. The test suite can be activated with the following option on the configuration file:
+
+[test]
+cli=test_cli
+
+After that, users can run "kamaki test" commands to unittest the prepackaged client APIs. Unittests are still experimental and there is a high probability of false alarms due to some of the expected values being hard-coded in the testing code.

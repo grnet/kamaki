@@ -39,7 +39,7 @@ from sys import version_info
 import kamaki
 
 
-optional = ['ansicolors', 'progress']
+optional = ['ansicolors', 'progress>=1.0.2']
 required = ['snf-common>=0.10']
 
 setup(
