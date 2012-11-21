@@ -119,19 +119,6 @@ class image_meta(_init_image):
 
 
 @command(image_cmds)
-class image_test(_init_image):
-    """Test stuff"""
-
-    def __init__(self, arguments={}):
-        super(self.__class__, self).__init__(arguments)
-        self.arguments['props'] = KeyValueArgument('prop', '--prop')
-
-    def main(self):
-        print self.get_argument('props')
-        print('OK...')
-
-
-@command(image_cmds)
 class image_register(_init_image):
     """(Re)Register an image
         call with --update or without an image name to update image properties
