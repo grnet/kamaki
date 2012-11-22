@@ -16,8 +16,14 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 
 import sys, os
-#sys.path.append('/home/saxtouri/src/synnefo/snf-common/')
-sys.path.append('../')
+
+try:
+    from synnefo import lib
+except ImportError:
+    sys.stderr.write("`snf-common` package is required to build kamaki docs.\n")
+    exit()
+
+sys.path.append(os.path.join(os.path.abspath(os.path.dirname(__file__)),'..'))
 
 # -- General configuration -----------------------------------------------------
 
