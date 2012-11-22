@@ -175,26 +175,4 @@ class HTTPConnection(object):
         async_headers={},
         async_params={},
         data=None):
-        """
-        @return an HTTPResponse (also in self.response of this object)
-        named args offer the ability to reset a request or a part of the
-        request
-        e.g. r = HTTPConnection(url='http://....', method='GET')
-             r.perform_request()
-             r.perform_request(method='POST')
-        will perform a GET request and later a POST request on the same URL
-        another example:
-             r = HTTPConnection(url='http://....', params='format=json')
-             r.perform_request(method='GET')
-             r.perform_request(method='POST')
-        """
         raise NotImplementedError
-
-    """
-    @property
-    def response(self):
-        return self._response
-    @response.setter
-    def response(self, r):
-        self._response = r
-    """
