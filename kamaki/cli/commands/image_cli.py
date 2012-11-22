@@ -121,7 +121,7 @@ class image_meta(_init_image):
 @command(image_cmds)
 class image_register(_init_image):
     """(Re)Register an image
-        call with --update or without an image name to update image properties
+        call with --update to update image properties
     """
 
     def __init__(self, arguments={}):
@@ -144,7 +144,7 @@ class image_register(_init_image):
         self.arguments['update'] = FlagArgument(
             'update an existing image properties', '--update')
 
-    def main(self, location, name=None):
+    def main(self, name, location):
         super(self.__class__, self).main()
         if not location.startswith('pithos://'):
             account = self.config.get('store', 'account') \
@@ -161,7 +161,8 @@ class image_register(_init_image):
         params = {}
         for key in ('checksum',
             'container_format',
-            'disk_format', 'id',
+            'disk_format',
+            'id',
             'owner',
             'size',
             'is_public'):
@@ -172,10 +173,10 @@ class image_register(_init_image):
         update = self.get_argument('update')
         properties = self.get_argument('properties')
         try:
-            if name and not update:
-                self.client.register(name, location, params, properties)
-            else:
+            if update:
                 self.client.reregister(location, name, params, properties)
+            else:
+                self.client.register(name, location, params, properties)
         except ClientError as err:
             raiseCLIError(err)
 
