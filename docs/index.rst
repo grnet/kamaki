@@ -24,7 +24,9 @@ Contents:
    :maxdepth: 3
    
    overview
+   installation
    setup
+   usage
    clients
    cli
 
