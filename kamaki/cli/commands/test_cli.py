@@ -31,7 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-from kamaki.cli import get_cmd_terms, command
+from kamaki.cli import command
 from kamaki.cli.commands import _command_init
 from kamaki.cli.command_tree import CommandTree
 from kamaki.clients import tests
@@ -50,6 +50,14 @@ class _test_init(_command_init):
             tests.main([client, method])
         else:
             tests.main([client])
+
+
+@command(test_cmds)
+class test_args(_test_init):
+    """Test how arguments are treated by kamaki"""
+
+    def main(self, *args):
+        print(args)
 
 
 @command(test_cmds)
@@ -91,11 +99,3 @@ class test_astakos(_test_init):
 
     def main(self, method=None):
         super(self.__class__, self).main('astakos', method)
-
-
-@command(test_cmds)
-class test_lala_lele(_test_init):
-    """test lala lele"""
-
-    def main(self, *args):
-        print('Do smth')

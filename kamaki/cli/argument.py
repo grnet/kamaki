@@ -33,6 +33,8 @@
 
 from kamaki.cli.config import Config
 from kamaki.cli.errors import CLISyntaxError
+from kamaki.cli.utils import split_input
+
 from argparse import ArgumentParser, ArgumentError
 
 try:
@@ -296,8 +298,10 @@ def parse_known_args(parser, arguments=None):
     parsed, unparsed = parser.parse_known_args()
     for name, arg in arguments.items():
         arg.value = getattr(parsed, name, arg.default)
-    unparsed = ['"%s"' % s if ' ' in s else s for s in unparsed]
-    return parsed, unparsed
+    newparsed = []
+    for term in unparsed:
+        newparsed += split_input(' \'%s\' ' % term)
+    return parsed, newparsed
 
 
 def init_parser(exe, arguments):
