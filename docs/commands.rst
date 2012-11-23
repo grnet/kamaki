@@ -8,7 +8,6 @@ cyclades_cli
 
 .. automodule:: kamaki.cli.commands.cyclades_cli
     :members:
-    :show-inheritance:
     :undoc-members:
 
 
@@ -34,7 +33,6 @@ astakos_cli
 
 .. automodule:: kamaki.cli.commands.astakos_cli
     :members:
-    :show-inheritance:
     :undoc-members:
 
 config_cli
@@ -42,7 +40,6 @@ config_cli
 
 .. automodule:: kamaki.cli.commands.config_cli
     :members:
-    :show-inheritance:
     :undoc-members:
 
 history_cli
@@ -50,5 +47,4 @@ history_cli
 
 .. automodule:: kamaki.cli.commands.history_cli
     :members:
-    :show-inheritance:
     :undoc-members:

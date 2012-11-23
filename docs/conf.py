@@ -17,6 +17,7 @@
 
 import sys, os
 
+sys.path.append('/home/saxtouri/src/synnefo/snf-common')
 try:
     from synnefo import lib
 except ImportError:

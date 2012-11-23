@@ -56,8 +56,8 @@ def remove_colors():
 
 def pretty_keys(d, delim='_', recurcive=False):
     """Transform keys of a dict from the form
-    str1_str2_..._strN to the form strN
-    where _ is the delimeter
+        str1_str2_..._strN to the form strN
+        where _ is the delimeter
     """
     new_d = {}
     for key, val in d.items():
