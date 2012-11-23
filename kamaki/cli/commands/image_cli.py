@@ -307,7 +307,7 @@ class image_delete(_init_cyclades):
 class image_properties(_init_cyclades):
     """Get image properties"""
 
-    def main(self, image_id, key=None):
+    def main(self, image_id, key=''):
         super(self.__class__, self).main()
         try:
             reply = self.client.get_image_metadata(image_id, key)
