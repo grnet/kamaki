@@ -138,6 +138,9 @@ The [global] group is treated by kamaki as a generic group for arbitrary options
 * astakos.cli <UI command specifications for Astakos authentication service>
     a special package that is used to load astakos-related commands to kamaki UIs. Don't touch this unless you know what you are doing.
 
+* history.file <history file path>
+    the path of a simple file for inter-session kamaki history. Make sure kamaki is executed in a context where this file is accessible for reading and writting. Kamaki automatically creates the file if it doesn't exist
+
 Hidden features
 ^^^^^^^^^^^^^^^
 
