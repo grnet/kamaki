@@ -262,7 +262,6 @@ class image_list(_init_cyclades):
                 if 'metadata' in img:
                     img['metadata'] = img['metadata']['values']
                 print_dict(img, ident=2)
-            print(' ')
 
     def main(self):
         super(self.__class__, self).main()
