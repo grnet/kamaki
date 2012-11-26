@@ -121,29 +121,14 @@ class HTTPResponse(object):
         self._request = v
 
 
-class HTTPConnectionError(Exception):
-    def __init__(self, message, status=0, details=''):
-        super(HTTPConnectionError, self).__init__(message)
-        self.message = message
-        self.status = status
-        self.details = details
-
-
 class HTTPConnection(object):
 
     def __init__(self, method=None, url=None, params={}, headers={}):
         self.headers = headers
         self.params = params
         self.url = url
+        self.path = ''
         self.method = method
-
-    def raise_for_status(self, r):
-        message = "%d %s" % (r.status_code, r.status)
-        try:
-            details = r.text
-        except:
-            details = ''
-        raise HTTPConnectionError(message, r.status_code, details)
 
     def set_header(self, name, value):
         self.headers[unicode(name)] = unicode(value)
@@ -178,6 +163,9 @@ class HTTPConnection(object):
     def set_url(self, url):
         self.url = url
 
+    def set_path(self, path):
+        self.path = path
+
     def set_method(self, method):
         self.method = method
 
@@ -187,26 +175,4 @@ class HTTPConnection(object):
         async_headers={},
         async_params={},
         data=None):
-        """
-        @return an HTTPResponse (also in self.response of this object)
-        named args offer the ability to reset a request or a part of the
-        request
-        e.g. r = HTTPConnection(url='http://....', method='GET')
-             r.perform_request()
-             r.perform_request(method='POST')
-        will perform a GET request and later a POST request on the same URL
-        another example:
-             r = HTTPConnection(url='http://....', params='format=json')
-             r.perform_request(method='GET')
-             r.perform_request(method='POST')
-        """
         raise NotImplementedError
-
-    """
-    @property
-    def response(self):
-        return self._response
-    @response.setter
-    def response(self, r):
-        self._response = r
-    """

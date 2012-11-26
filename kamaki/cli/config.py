@@ -55,7 +55,7 @@ HEADER = """
 
 DEFAULTS = {
     'global': {
-        'colors': 'on',
+        'colors': 'off',
         'token': ''
     },
     'config': {
@@ -106,6 +106,9 @@ class Config(RawConfigParser):
             for option, val in options.items():
                 self.set(section, option, val)
 
+    def reload(self):
+        self = self.__init__(self.path)
+
     def apis(self):
         return [api for api in self.sections() if api != 'global']
 
@@ -148,4 +151,5 @@ class Config(RawConfigParser):
         with open(self.path, 'w') as f:
             os.chmod(self.path, 0600)
             f.write(HEADER.lstrip())
+            f.flush()
             RawConfigParser.write(self, f)

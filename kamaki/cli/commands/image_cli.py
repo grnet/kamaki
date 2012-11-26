@@ -32,6 +32,7 @@
 # or implied, of GRNET S.A.command
 
 from kamaki.cli import command
+from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import raiseCLIError
 from kamaki.cli.utils import print_dict, print_items, bold
 from kamaki.clients.image import ImageClient, ClientError
@@ -41,7 +42,9 @@ from kamaki.cli.commands.cyclades_cli import _init_cyclades
 from kamaki.cli.commands import _command_init
 
 
-API_DESCRIPTION = {'image': 'Compute/Cyclades or Glance API image commands'}
+image_cmds = CommandTree('image',
+    'Compute/Cyclades or Glance API image commands')
+_commands = [image_cmds]
 
 
 class _init_image(_command_init):
@@ -58,7 +61,7 @@ class _init_image(_command_init):
             raiseCLIError(err)
 
 
-@command()
+@command(image_cmds)
 class image_public(_init_image):
     """List public images"""
 
@@ -102,7 +105,7 @@ class image_public(_init_image):
         print_items(images, title=('name',))
 
 
-@command()
+@command(image_cmds)
 class image_meta(_init_image):
     """Get image metadata"""
 
@@ -115,9 +118,11 @@ class image_meta(_init_image):
         print_dict(image)
 
 
-@command()
+@command(image_cmds)
 class image_register(_init_image):
-    """Register an image"""
+    """(Re)Register an image
+        call with --update to update image properties
+    """
 
     def __init__(self, arguments={}):
         super(image_register, self).__init__(arguments)
@@ -131,11 +136,13 @@ class image_register(_init_image):
         self.arguments['owner'] =\
             ValueArgument('set image owner (admin only)', '--owner')
         self.arguments['properties'] =\
-            KeyValueArgument(parsed_name='--properties',
-            help='add properties in the form key1=val1,key2=val2,...')
+            KeyValueArgument(parsed_name='--property',
+            help='add property in key=value form (can be repeated)')
         self.arguments['is_public'] =\
             FlagArgument('mark image as public', '--public')
         self.arguments['size'] = IntArgument('set image size', '--size')
+        self.arguments['update'] = FlagArgument(
+            'update an existing image properties', '--update')
 
     def main(self, name, location):
         super(self.__class__, self).main()
@@ -154,7 +161,8 @@ class image_register(_init_image):
         params = {}
         for key in ('checksum',
             'container_format',
-            'disk_format', 'id',
+            'disk_format',
+            'id',
             'owner',
             'size',
             'is_public'):
@@ -162,16 +170,18 @@ class image_register(_init_image):
             if val is not None:
                 params[key] = val
 
+        update = self.get_argument('update')
+        properties = self.get_argument('properties')
         try:
-            self.client.register(name,
-                location,
-                params,
-                self.get_argument('properties'))
+            if update:
+                self.client.reregister(location, name, params, properties)
+            else:
+                self.client.register(name, location, params, properties)
         except ClientError as err:
             raiseCLIError(err)
 
 
-@command()
+@command(image_cmds)
 class image_members(_init_image):
     """Get image members"""
 
@@ -185,7 +195,7 @@ class image_members(_init_image):
             print(member['member_id'])
 
 
-@command()
+@command(image_cmds)
 class image_shared(_init_image):
     """List shared images"""
 
@@ -199,7 +209,7 @@ class image_shared(_init_image):
             print(image['image_id'])
 
 
-@command()
+@command(image_cmds)
 class image_addmember(_init_image):
     """Add a member to an image"""
 
@@ -211,7 +221,7 @@ class image_addmember(_init_image):
             raiseCLIError(err)
 
 
-@command()
+@command(image_cmds)
 class image_delmember(_init_image):
     """Remove a member from an image"""
 
@@ -223,7 +233,7 @@ class image_delmember(_init_image):
             raiseCLIError(err)
 
 
-@command()
+@command(image_cmds)
 class image_setmembers(_init_image):
     """Set the members of an image"""
 
@@ -235,7 +245,7 @@ class image_setmembers(_init_image):
             raiseCLIError(err)
 
 
-@command()
+@command(image_cmds)
 class image_list(_init_cyclades):
     """List images"""
 
@@ -247,9 +257,12 @@ class image_list(_init_cyclades):
         for img in images:
             iname = img.pop('name')
             iid = img.pop('id')
-            print('%s (%s)' % (bold(iname), bold(unicode(iid))))
+            print('%s (%s)' % (unicode(iid), bold(iname)))
             if self.get_argument('detail'):
-                image_info._print(img)
+                if 'metadata' in img:
+                    img['metadata'] = img['metadata']['values']
+                print_dict(img, ident=2)
+            print(' ')
 
     def main(self):
         super(self.__class__, self).main()
@@ -260,7 +273,7 @@ class image_list(_init_cyclades):
         self._print(images)
 
 
-@command()
+@command(image_cmds)
 class image_info(_init_cyclades):
     """Get image details"""
 
@@ -268,7 +281,7 @@ class image_info(_init_cyclades):
     def _print(self, image):
         if 'metadata' in image:
             image['metadata'] = image['metadata']['values']
-        print_dict(image, ident=14)
+        print_dict(image)
 
     def main(self, image_id):
         super(self.__class__, self).main()
@@ -279,7 +292,7 @@ class image_info(_init_cyclades):
         self._print(image)
 
 
-@command()
+@command(image_cmds)
 class image_delete(_init_cyclades):
     """Delete image"""
 
@@ -291,7 +304,7 @@ class image_delete(_init_cyclades):
             raiseCLIError(err)
 
 
-@command()
+@command(image_cmds)
 class image_properties(_init_cyclades):
     """Get image properties"""
 
@@ -304,7 +317,7 @@ class image_properties(_init_cyclades):
         print_dict(reply)
 
 
-@command()
+@command(image_cmds)
 class image_addproperty(_init_cyclades):
     """Add an image property"""
 
@@ -317,7 +330,7 @@ class image_addproperty(_init_cyclades):
         print_dict(reply)
 
 
-@command()
+@command(image_cmds)
 class image_setproperty(_init_cyclades):
     """Update an image property"""
 
@@ -331,7 +344,7 @@ class image_setproperty(_init_cyclades):
         print_dict(reply)
 
 
-@command()
+@command(image_cmds)
 class image_delproperty(_init_cyclades):
     """Delete an image property"""
 

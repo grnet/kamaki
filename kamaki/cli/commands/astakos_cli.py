@@ -36,9 +36,10 @@ from kamaki.clients.astakos import AstakosClient, ClientError
 from kamaki.cli.utils import print_dict
 from kamaki.cli.errors import raiseCLIError
 from kamaki.cli.commands import _command_init
+from kamaki.cli.command_tree import CommandTree
 
-
-API_DESCRIPTION = {'astakos': 'Astakos API commands'}
+astakos_cmds = CommandTree('astakos', 'Astakos API commands')
+_commands = [astakos_cmds]
 
 
 class _astakos_init(_command_init):
@@ -52,14 +53,14 @@ class _astakos_init(_command_init):
         self.client = AstakosClient(base_url=base_url, token=token)
 
 
-@command()
+@command(astakos_cmds)
 class astakos_authenticate(_astakos_init):
     """Authenticate a user"""
 
-    def main(self):
-        super(astakos_authenticate, self).main()
+    def main(self, custom_token=None):
+        super(self.__class__, self).main()
         try:
-            reply = self.client.authenticate()
+            reply = self.client.authenticate(custom_token)
         except ClientError as err:
             raiseCLIError(err)
         print_dict(reply)

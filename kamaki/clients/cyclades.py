@@ -34,6 +34,7 @@
 from kamaki.clients.compute import ComputeClient, ClientError
 from kamaki.clients.utils import path4url
 import json
+from time import sleep
 
 
 class CycladesClient(ComputeClient):
@@ -212,3 +213,51 @@ class CycladesClient(ComputeClient):
         for nic in r:
             req = dict(remove=dict(attachment=nic))
             r = self.networks_post(netid, 'action', json_data=req)
+
+    def wait_server(self, server_id,
+        current_status='BUILD',
+        delay=0.5,
+        max_wait=128,
+        wait_cb=None):
+        """Wait for server to reach a status different from current_status
+            @return the new mode if succesfull, False if timed out
+            @server_id
+            @current_status
+            @delay time interval between retries
+            @wait_cb if set a progressbar is used to show progress
+        """
+        r = self.get_server_details(server_id)
+        if r['status'] != current_status:
+            return r['status']
+        old_wait = total_wait = 0
+
+        if current_status == 'BUILD':
+            max_wait = 100
+            wait_gen = wait_cb(max_wait)
+        elif wait_cb:
+            wait_gen = wait_cb(1 + max_wait // delay)
+            wait_gen.next()
+
+        while r['status'] == current_status and total_wait <= max_wait:
+            if current_status == 'BUILD':
+                total_wait = int(r['progress'])
+                if wait_cb:
+                    for i in range(int(old_wait), int(total_wait)):
+                        wait_gen.next()
+                    old_wait = total_wait
+            else:
+                if wait_cb:
+                    wait_gen.next()
+                total_wait += delay
+            sleep(delay)
+            r = self.get_server_details(server_id)
+
+        if r['status'] != current_status:
+            if wait_cb:
+                try:
+                    while True:
+                        wait_gen.next()
+                except:
+                    pass
+            return r['status']
+        return False

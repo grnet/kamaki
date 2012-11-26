@@ -98,18 +98,19 @@ class ImageClient(Client):
         for key, val in properties.items():
             self.set_header('X-Image-Meta-Property-%s' % key, val)
 
-        try:
-            r = self.post(path, success=200)
-        except ClientError as err:
-            try:
-                prefix, suffix = err.details.split('File not found')
-                details = '%s Location %s not found %s' %\
-                    (prefix, location, suffix)
-                raise ClientError(err.message, err.status, details)
-            except ValueError:
-                pass
-            raise err
+        r = self.post(path, success=200)
         r.release()
+
+    def reregister(self, location, name=None, params={}, properties={}):
+        path = path4url('images', 'detail')
+        r = self.get(path, success=200)
+        imgs = [img for img in r.json if img['location'] == location]
+        for img in imgs:
+            img_name = name if name else img['name']
+            img_properties = img['properties']
+            for k, v in properties.items():
+                img_properties[k] = v
+            self.register(img_name, location, params, img_properties)
 
     def list_members(self, image_id):
         path = path4url('images', image_id, 'members')

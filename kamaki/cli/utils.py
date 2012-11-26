@@ -31,6 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+from re import compile as regex_compile
 from .errors import CLIError
 
 try:
@@ -55,8 +56,8 @@ def remove_colors():
 
 def pretty_keys(d, delim='_', recurcive=False):
     """Transform keys of a dict from the form
-    str1_str2_..._strN to the form strN
-    where _ is the delimeter
+        str1_str2_..._strN to the form strN
+        where _ is the delimeter
     """
     new_d = {}
     for key, val in d.items():
@@ -72,63 +73,58 @@ def pretty_keys(d, delim='_', recurcive=False):
 def print_dict(d, exclude=(), ident=0):
     if not isinstance(d, dict):
         raise CLIError(message='Cannot dict_print a non-dict object')
-    try:
-        margin = max(
-            1 + max(len(unicode(key).strip()) for key in d.keys() \
-                if not isinstance(key, dict) and not isinstance(key, list)),
-            ident)
-    except ValueError:
-        margin = ident
+
+    if d:
+        margin = max(len(unicode(key).strip())\
+            for key in d.keys() if key not in exclude)
 
     for key, val in sorted(d.items()):
         if key in exclude:
             continue
-        print_str = '%s:' % unicode(key).strip()
+        print_str = ' ' * ident
+        print_str += ('%s' % key).strip()
+        print_str += ' ' * (margin - len(unicode(key).strip()))
+        print_str += ': '
         if isinstance(val, dict):
-            print(print_str.rjust(margin) + ' {')
-            print_dict(val, exclude=exclude, ident=margin + 6)
-            print '}'.rjust(margin)
+            print(print_str)
+            print_dict(val, exclude=exclude, ident=margin + ident)
         elif isinstance(val, list):
-            print(print_str.rjust(margin) + ' [')
-            print_list(val, exclude=exclude, ident=margin + 6)
-            print ']'.rjust(margin)
+            print(print_str)
+            print_list(val, exclude=exclude, ident=margin + ident)
         else:
-            print print_str.rjust(margin) + ' ' + unicode(val).strip()
+            print print_str + ' ' + unicode(val).strip()
 
 
 def print_list(l, exclude=(), ident=0):
     if not isinstance(l, list):
         raise CLIError(message='Cannot list_print a non-list object')
-    try:
-        margin = max(
-            1 + max(len(unicode(item).strip()) for item in l \
-                if not isinstance(item, dict) and not isinstance(item, list)),
-            ident)
-    except ValueError:
-        margin = ident
+
+    if l:
+        margin = max(len(unicode(item).strip())\
+            for item in l if item not in exclude)
 
     for item in sorted(l):
         if item in exclude:
             continue
         if isinstance(item, dict):
-            print('{'.rjust(margin))
-            print_dict(item, exclude=exclude, ident=margin + 6)
-            print '}'.rjust(margin)
+            print_dict(item, exclude=exclude, ident=margin + ident)
         elif isinstance(item, list):
-            print '['.rjust(margin)
-            print_list(item, exclude=exclude, ident=margin + 6)
-            print ']'.rjust(margin)
+            print_list(item, exclude=exclude, ident=margin + ident)
         else:
-            print unicode(item).rjust(margin)
+            print ' ' * ident + unicode(item)
 
 
 def print_items(items, title=('id', 'name')):
     for item in items:
         if isinstance(item, dict) or isinstance(item, list):
-            print ' '.join(unicode(item.pop(key))\
+            header = ' '.join(unicode(item.pop(key))\
                 for key in title if key in item)
+            print(' ')
+            print(bold(header))
         if isinstance(item, dict):
-            print_dict(item)
+            print_dict(item, ident=2)
+        elif isinstance(item, list):
+            print_list(item, ident=2)
 
 
 def format_size(size):
@@ -168,3 +164,33 @@ def list2file(l, f, depth=1):
             list2file(item, f, depth + 1)
         else:
             f.write('%s%s\n' % ('\t' * depth, unicode(item)))
+
+# Split input auxiliary
+
+
+def _parse_with_regex(line, regex):
+    re_parser = regex_compile(regex)
+    return (re_parser.split(line), re_parser.findall(line))
+
+
+def _sub_split(line):
+    terms = []
+    (sub_trivials, sub_interesting) = _parse_with_regex(line, ' ".*?" ')
+    for subi, subipart in enumerate(sub_interesting):
+        terms += sub_trivials[subi].split()
+        terms.append(subipart[2:-2])
+    terms += sub_trivials[-1].split()
+    return terms
+
+
+def split_input(line):
+    """Use regular expressions to split a line correctly
+    """
+    line = ' %s ' % line
+    (trivial_parts, interesting_parts) = _parse_with_regex(line, ' \'.*?\' ')
+    terms = []
+    for i, ipart in enumerate(interesting_parts):
+        terms += _sub_split(trivial_parts[i])
+        terms.append(ipart[2:-2])
+    terms += _sub_split(trivial_parts[-1])
+    return terms

@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# Copyright 2011-2012 GRNET S.A. All rights reserved.
+# Copyright 2012-2013 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -30,81 +29,26 @@
 # The views and conclusions contained in the software and
 # documentation are those of the authors and should not be
 # interpreted as representing official policies, either expressed
-# or implied, of GRNET S.A.
-
-from __future__ import print_function
+# or implied, of GRNET S.A.command
 
 import logging
-
-from inspect import getargspec
-from argparse import ArgumentParser, ArgumentError
+from sys import argv, exit, stdout
 from os.path import basename
-from sys import exit, stdout, argv
+from inspect import getargspec
 
-from kamaki.cli.errors import CLIError, CLICmdSpecError
-from kamaki.cli.utils import magenta, red, yellow, print_dict, remove_colors
-from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.argument import _arguments, parse_known_args
+from kamaki.cli.argument import _arguments, parse_known_args, init_parser,\
+    update_arguments
 from kamaki.cli.history import History
+from kamaki.cli.utils import print_dict, print_list, red, magenta, yellow
+from kamaki.cli.errors import CLIError
 
-cmd_spec_locations = [
-    'kamaki.cli.commands',
-    'kamaki.commands',
-    'kamaki.cli',
-    'kamaki',
-    '']
-_commands = CommandTree(name='kamaki',
-    description='A command line tool for poking clouds')
-
-# If empty, all commands are loaded, if not empty, only commands in this list
-# e.g. [store, lele, list, lolo] is good to load store_list but not list_store
-# First arg should always refer to a group
-candidate_command_terms = []
-allow_no_commands = False
-allow_all_commands = False
-allow_subclass_signatures = False
+_help = False
+_debug = False
+_verbose = False
+_colors = False
 
 
-def _allow_class_in_cmd_tree(cls):
-    global allow_all_commands
-    if allow_all_commands:
-        return True
-    global allow_no_commands
-    if allow_no_commands:
-        return False
-
-    term_list = cls.__name__.split('_')
-    global candidate_command_terms
-    index = 0
-    for term in candidate_command_terms:
-        try:
-            index += 1 if term_list[index] == term else 0
-        except IndexError:  # Whole term list matched!
-            return True
-    if allow_subclass_signatures:
-        if index == len(candidate_command_terms) and len(term_list) > index:
-            try:  # is subterm already in _commands?
-                _commands.get_command('_'.join(term_list[:index + 1]))
-            except KeyError:  # No, so it must be placed there
-                return True
-        return False
-
-    return True if index == len(term_list) else False
-
-
-def command():
-    """Class decorator that registers a class as a CLI command"""
-
-    def decorator(cls):
-        """Any class with name of the form cmd1_cmd2_cmd3_... is accepted"""
-
-        if not _allow_class_in_cmd_tree(cls):
-            return cls
-
-        cls.description, sep, cls.long_description\
-            = cls.__doc__.partition('\n')
-
-        # Generate a syntax string based on main's arguments
+def _construct_command_syntax(cls):
         spec = getargspec(cls.main.im_func)
         args = spec.args[1:]
         n = len(args) - len(spec.defaults or ())
@@ -122,113 +66,108 @@ def command():
         if spec.varargs:
             cls.syntax += ' <%s ...>' % spec.varargs
 
-        # store each term, one by one, first
-        _commands.add_command(cls.__name__, cls.description, cls)
 
-        return cls
-    return decorator
-
-
-def _update_parser(parser, arguments):
-    for name, argument in arguments.items():
-        try:
-            argument.update_parser(parser, name)
-        except ArgumentError:
-            pass
-
-
-def _init_parser(exe):
-    parser = ArgumentParser(add_help=False)
-    parser.prog = '%s <cmd_group> [<cmd_subbroup> ...] <cmd>' % exe
-    _update_parser(parser, _arguments)
-    return parser
-
-
-def _print_error_message(cli_err):
-    errmsg = '%s (%s)' % (cli_err, cli_err.status if cli_err.status else ' ')
-    if cli_err.importance == 1:
-        errmsg = magenta(errmsg)
-    elif cli_err.importance == 2:
-        errmsg = yellow(errmsg)
-    elif cli_err.importance > 2:
-        errmsg = red(errmsg)
-    stdout.write(errmsg)
-    if cli_err.details is not None and len(cli_err.details) > 0:
-        print(': %s' % cli_err.details)
-    else:
-        print()
-
-
-def get_command_group(unparsed):
-    groups = _arguments['config'].get_groups()
-    for grp_candidate in unparsed:
-        if grp_candidate in groups:
-            unparsed.remove(grp_candidate)
-            return grp_candidate
+def _get_cmd_tree_from_spec(spec, cmd_tree_list):
+    for tree in cmd_tree_list:
+        if tree.name == spec:
+            return tree
     return None
 
 
-def load_command(group, unparsed, reload_package=False):
-    global candidate_command_terms
-    candidate_command_terms = [group] + unparsed
-    load_group_package(group, reload_package)
-
-    #From all possible parsed commands, chose the first match in user string
-    final_cmd = _commands.get_command(group)
-    for term in unparsed:
-        cmd = final_cmd.get_subcmd(term)
-        if cmd is not None:
-            final_cmd = cmd
-            unparsed.remove(cmd.name)
-    return final_cmd
+_best_match = []
 
 
-def shallow_load():
-    """Load only group names and descriptions"""
-    global allow_no_commands
-    allow_no_commands = True  # load only descriptions
-    for grp in _arguments['config'].get_groups():
-        load_group_package(grp)
-    allow_no_commands = False
+def _num_of_matching_terms(basic_list, attack_list):
+    if not attack_list:
+        return len(basic_list)
 
-
-def load_group_package(group, reload_package=False):
-    spec_pkg = _arguments['config'].value.get(group, 'cli')
-    if spec_pkg is None:
-        return None
-    for location in cmd_spec_locations:
-        location += spec_pkg if location == '' else ('.' + spec_pkg)
+    matching_terms = 0
+    for i, term in enumerate(basic_list):
         try:
-            package = __import__(location, fromlist=['API_DESCRIPTION'])
-        except ImportError:
-            continue
-        if reload_package:
-            reload(package)
-        for grp, descr in package.API_DESCRIPTION.items():
-            _commands.add_command(grp, descr)
-        return package
-    raise CLICmdSpecError(details='Cmd Spec Package %s load failed' % spec_pkg)
+            if term != attack_list[i]:
+                break
+        except IndexError:
+            break
+        matching_terms += 1
+    return matching_terms
 
 
-def print_commands(prefix=None, full_depth=False):
-    cmd_list = _commands.get_groups() if prefix is None\
-        else _commands.get_subcommands(prefix)
-    cmds = {}
-    for subcmd in cmd_list:
-        if subcmd.sublen() > 0:
-            sublen_str = '( %s more terms ... )' % subcmd.sublen()
-            cmds[subcmd.name] = [subcmd.help, sublen_str]\
-                if subcmd.has_description else sublen_str
-        else:
-            cmds[subcmd.name] = subcmd.help
-    if len(cmds) > 0:
-        print('\nOptions:')
-        print_dict(cmds, ident=12)
-    if full_depth:
-        _commands.pretty_print()
+def _update_best_match(name_terms, prefix=[]):
+    if prefix:
+        pref_list = prefix if isinstance(prefix, list) else prefix.split('_')
+    else:
+        pref_list = []
+
+    num_of_matching_terms = _num_of_matching_terms(name_terms, pref_list)
+    global _best_match
+    if not prefix:
+        _best_match = []
+
+    if num_of_matching_terms and len(_best_match) <= num_of_matching_terms:
+        if len(_best_match) < num_of_matching_terms:
+            _best_match = name_terms[:num_of_matching_terms]
+        return True
+    return False
 
 
-def setup_logging(silent=False, debug=False, verbose=False, include=False):
+def command(cmd_tree, prefix='', descedants_depth=1):
+    """Load a class as a command
+        spec_cmd0_cmd1 will be command spec cmd0
+        @cmd_tree is initialized in cmd_spec file and is the structure
+            where commands are loaded. Var name should be _commands
+        @param prefix if given, load only commands prefixed with prefix,
+        @param descedants_depth is the depth of the tree descedants of the
+            prefix command. It is used ONLY if prefix and if prefix is not
+            a terminal command
+    """
+
+    def wrap(cls):
+        cls_name = cls.__name__
+
+        if not cmd_tree:
+            if _debug:
+                print('Warning: command %s found but not loaded' % cls_name)
+            return cls
+
+        name_terms = cls_name.split('_')
+        if not _update_best_match(name_terms, prefix):
+            if _debug:
+                print('Warning: %s failed to update_best_match' % cls_name)
+            return None
+
+        global _best_match
+        max_len = len(_best_match) + descedants_depth
+        if len(name_terms) > max_len:
+            partial = '_'.join(name_terms[:max_len])
+            if not cmd_tree.has_command(partial):  # add partial path
+                cmd_tree.add_command(partial)
+            if _debug:
+                print('Warning: %s failed max_len test' % cls_name)
+            return None
+
+        cls.description, sep, cls.long_description\
+        = cls.__doc__.partition('\n')
+        _construct_command_syntax(cls)
+
+        cmd_tree.add_command(cls_name, cls.description, cls)
+        return cls
+    return wrap
+
+
+def get_cmd_terms():
+    global command
+    return [term for term in command.func_defaults[0]\
+        if not term.startswith('-')]
+
+cmd_spec_locations = [
+    'kamaki.cli.commands',
+    'kamaki.commands',
+    'kamaki.cli',
+    'kamaki',
+    '']
+
+
+def _setup_logging(silent=False, debug=False, verbose=False, include=False):
     """handle logging for clients package"""
 
     def add_handler(name, level, prefix=''):
@@ -255,128 +194,247 @@ def setup_logging(silent=False, debug=False, verbose=False, include=False):
         add_handler('', logging.WARNING)
 
 
+def _init_session(arguments):
+    global _help
+    _help = arguments['help'].value
+    global _debug
+    _debug = arguments['debug'].value
+    global _verbose
+    _verbose = arguments['verbose'].value
+    global _colors
+    _colors = arguments['config'].get('global', 'colors')
+    if not (stdout.isatty() and _colors == 'on'):
+        from kamaki.cli.utils import remove_colors
+        remove_colors()
+    _silent = arguments['silent'].value
+    _include = arguments['include'].value
+    _setup_logging(_silent, _debug, _verbose, _include)
+
+
+def get_command_group(unparsed, arguments):
+    groups = arguments['config'].get_groups()
+    for term in unparsed:
+        if term.startswith('-'):
+            continue
+        if term in groups:
+            unparsed.remove(term)
+            return term
+        return None
+    return None
+
+
+def _load_spec_module(spec, arguments, module):
+    spec_name = arguments['config'].get(spec, 'cli')
+    if spec_name is None:
+        return None
+    pkg = None
+    for location in cmd_spec_locations:
+        location += spec_name if location == '' else '.%s' % spec_name
+        try:
+            pkg = __import__(location, fromlist=[module])
+            return pkg
+        except ImportError:
+            continue
+    return pkg
+
+
+def _groups_help(arguments):
+    global _debug
+    descriptions = {}
+    for spec in arguments['config'].get_groups():
+        pkg = _load_spec_module(spec, arguments, '_commands')
+        if pkg:
+            cmds = None
+            try:
+                cmds = [
+                    cmd for cmd in getattr(pkg, '_commands')\
+                    if arguments['config'].get(cmd.name, 'cli')
+                ]
+            except AttributeError:
+                if _debug:
+                    print('Warning: No description for %s' % spec)
+            try:
+                for cmd in cmds:
+                    descriptions[cmd.name] = cmd.description
+            except TypeError:
+                if _debug:
+                    print('Warning: no cmd specs in module %s' % spec)
+        elif _debug:
+            print('Warning: Loading of %s cmd spec failed' % spec)
+    print('\nOptions:\n - - - -')
+    print_dict(descriptions)
+
+
+def _print_subcommands_help(cmd):
+    printout = {}
+    for subcmd in cmd.get_subcommands():
+        spec, sep, print_path = subcmd.path.partition('_')
+        printout[print_path.replace('_', ' ')] = subcmd.description
+    if printout:
+        print('\nOptions:\n - - - -')
+        print_dict(printout)
+
+
+def _update_parser_help(parser, cmd):
+    global _best_match
+    parser.prog = parser.prog.split('<')[0]
+    parser.prog += ' '.join(_best_match)
+
+    if cmd.is_command:
+        cls = cmd.get_class()
+        parser.prog += ' ' + cls.syntax
+        arguments = cls().arguments
+        update_arguments(parser, arguments)
+    else:
+        parser.prog += ' <...>'
+    if cmd.has_description:
+        parser.description = cmd.help
+
+
+def _print_error_message(cli_err):
+    errmsg = '%s' % cli_err
+    if cli_err.importance == 1:
+        errmsg = magenta(errmsg)
+    elif cli_err.importance == 2:
+        errmsg = yellow(errmsg)
+    elif cli_err.importance > 2:
+        errmsg = red(errmsg)
+    stdout.write(errmsg)
+    print_list(cli_err.details)
+
+
+def _get_best_match_from_cmd_tree(cmd_tree, unparsed):
+    matched = [term for term in unparsed if not term.startswith('-')]
+    while matched:
+        try:
+            return cmd_tree.get_command('_'.join(matched))
+        except KeyError:
+            matched = matched[:-1]
+    return None
+
+
 def _exec_cmd(instance, cmd_args, help_method):
     try:
         return instance.main(*cmd_args)
     except TypeError as err:
         if err.args and err.args[0].startswith('main()'):
             print(magenta('Syntax error'))
-            if instance.get_argument('verbose'):
+            if _debug:
+                raise err
+            if _verbose:
                 print(unicode(err))
             help_method()
         else:
             raise
-    except CLIError as err:
-        if instance.get_argument('debug'):
-            raise
-        _print_error_message(err)
     return 1
 
 
-def one_command():
-    _debug = False
-    _help = False
-    _verbose = False
-    try:
-        exe = basename(argv[0])
-        parser = _init_parser(exe)
-        parsed, unparsed = parse_known_args(parser, _arguments)
-        _colors = _arguments['config'].get('global', 'colors')
-        if _colors != 'on':
-            remove_colors()
-        _history = History(_arguments['config'].get('history', 'file'))
-        _history.add(' '.join([exe] + argv[1:]))
-        _debug = _arguments['debug'].value
-        _help = _arguments['help'].value
-        _verbose = _arguments['verbose'].value
-        if _arguments['version'].value:
-            exit(0)
+def set_command_param(param, value):
+    if param == 'prefix':
+        pos = 0
+    elif param == 'descedants_depth':
+        pos = 1
+    else:
+        return
+    global command
+    def_params = list(command.func_defaults)
+    def_params[pos] = value
+    command.func_defaults = tuple(def_params)
 
-        group = get_command_group(unparsed)
-        if group is None:
-            parser.print_help()
-            shallow_load()
-            print_commands(full_depth=_debug)
-            exit(0)
 
-        cmd = load_command(group, unparsed)
-        if _help or not cmd.is_command:
-            if cmd.has_description:
-                parser.description = cmd.help
-            else:
-                try:
-                    parser.description\
-                        = _commands.get_closest_ancestor_command(cmd.path).help
-                except KeyError:
-                    parser.description = ' '
-            parser.prog = '%s %s ' % (exe, cmd.path.replace('_', ' '))
-            if cmd.is_command:
-                cli = cmd.get_class()
-                parser.prog += cli.syntax
-                _update_parser(parser, cli().arguments)
-            else:
-                parser.prog += '[...]'
-            parser.print_help()
+def one_cmd(parser, unparsed, arguments):
+    group = get_command_group(list(unparsed), arguments)
+    if not group:
+        parser.print_help()
+        _groups_help(arguments)
+        exit(0)
 
-            # load one more level just to see what is missing
-            global allow_subclass_signatures
-            allow_subclass_signatures = True
-            load_command(group, cmd.path.split('_')[1:], reload_package=True)
+    set_command_param(
+        'prefix',
+        [term for term in unparsed if not term.startswith('-')]
+    )
+    global _best_match
+    _best_match = []
 
-            print_commands(cmd.path, full_depth=_debug)
-            exit(0)
+    spec_module = _load_spec_module(group, arguments, '_commands')
 
-        setup_logging(silent=_arguments['silent'].value,
-            debug=_debug,
-            verbose=_verbose,
-            include=_arguments['include'].value)
-        cli = cmd.get_class()
-        executable = cli(_arguments)
-        _update_parser(parser, executable.arguments)
-        parser.prog = '%s %s %s'\
-            % (exe, cmd.path.replace('_', ' '), cli.syntax)
-        parsed, new_unparsed = parse_known_args(parser, _arguments)
-        unparsed = [term for term in unparsed if term in new_unparsed]
-        ret = _exec_cmd(executable, unparsed, parser.print_help)
-        exit(ret)
-    except CLIError as err:
-        if _debug:
-            raise
-        _print_error_message(err)
+    cmd_tree = _get_cmd_tree_from_spec(group, spec_module._commands)
+
+    if _best_match:
+        cmd = cmd_tree.get_command('_'.join(_best_match))
+    else:
+        cmd = _get_best_match_from_cmd_tree(cmd_tree, unparsed)
+        _best_match = cmd.path.split('_')
+    if cmd is None:
+        if _debug or _verbose:
+            print('Unexpected error: failed to load command')
         exit(1)
 
-from command_shell import _fix_arguments, Shell
+    _update_parser_help(parser, cmd)
+
+    if _help or not cmd.is_command:
+        parser.print_help()
+        _print_subcommands_help(cmd)
+        exit(0)
+
+    cls = cmd.get_class()
+    executable = cls(arguments)
+    parsed, unparsed = parse_known_args(parser, executable.arguments)
+    for term in _best_match:
+        unparsed.remove(term)
+    _exec_cmd(executable, unparsed, parser.print_help)
 
 
-def _start_shell():
-    shell = Shell()
-    shell.set_prompt(basename(argv[0]))
-    from kamaki import __version__ as version
-    shell.greet(version)
-    shell.do_EOF = shell.do_exit
-    return shell
+def _load_all_commands(cmd_tree, arguments):
+    _config = arguments['config']
+    for spec in [spec for spec in _config.get_groups()\
+            if _config.get(spec, 'cli')]:
+        try:
+            spec_module = _load_spec_module(spec, arguments, '_commands')
+            spec_commands = getattr(spec_module, '_commands')
+        except AttributeError:
+            if _debug:
+                print('Warning: No valid description for %s' % spec)
+            continue
+        for spec_tree in spec_commands:
+            if spec_tree.name == spec:
+                cmd_tree.add_tree(spec_tree)
+                break
 
 
-def run_shell():
-    _fix_arguments()
-    shell = _start_shell()
-    _config = _arguments['config']
-    _config.value = None
-    for grp in _config.get_groups():
-        global allow_all_commands
-        allow_all_commands = True
-        load_group_package(grp)
-    setup_logging(silent=_arguments['silent'].value,
-        debug=_arguments['debug'].value,
-        verbose=_arguments['verbose'].value,
-        include=_arguments['include'].value)
-    shell.cmd_tree = _commands
-    shell.run()
+def run_shell(exe_string, arguments):
+    from command_shell import _init_shell
+    shell = _init_shell(exe_string, arguments)
+    _load_all_commands(shell.cmd_tree, arguments)
+    shell.run(arguments)
 
 
 def main():
+    try:
+        exe = basename(argv[0])
+        parser = init_parser(exe, _arguments)
+        parsed, unparsed = parse_known_args(parser, _arguments)
 
-    if len(argv) <= 1:
-        run_shell()
-    else:
-        one_command()
+        if _arguments['version'].value:
+            exit(0)
+
+        _init_session(_arguments)
+
+        if unparsed:
+            _history = History(_arguments['config'].get('history', 'file'))
+            _history.add(' '.join([exe] + argv[1:]))
+            one_cmd(parser, unparsed, _arguments)
+        elif _help:
+            parser.print_help()
+            _groups_help(_arguments)
+        else:
+            run_shell(exe, _arguments)
+    except CLIError as err:
+        if _debug:
+            raise err
+        _print_error_message(err)
+        exit(1)
+    except Exception as err:
+        if _debug:
+            raise err
+        print('Unknown Error: %s' % err)

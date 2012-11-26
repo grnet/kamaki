@@ -31,7 +31,9 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-import json
+from threading import Thread
+from json import dumps, loads
+from time import time
 import logging
 from kamaki.clients.connection.kamakicon import KamakiHTTPConnection
 
@@ -40,14 +42,60 @@ recvlog = logging.getLogger('clients.recv')
 
 
 class ClientError(Exception):
-    def __init__(self, message, status=0, details=''):
-        super(ClientError, self).__init__(message, status, details)
-        self.message = message
+    def __init__(self, message, status=0, details=[]):
+        try:
+            serv_stat, sep, new_msg = message.partition('{')
+            new_msg = sep + new_msg
+            json_msg = loads(new_msg)
+            key = json_msg.keys()[0]
+
+            json_msg = json_msg[key]
+            message = '%s %s (%s)\n' % (serv_stat, key, json_msg['message'])\
+                if 'message' in json_msg else '%s %s' % (serv_stat, key)
+            if 'code' in json_msg:
+                status = json_msg['code']
+            if 'details' in json_msg:
+                if not details:
+                    details = []
+                elif not isinstance(details, list):
+                    details = [details]
+                if json_msg['details']:
+                    details.append(json_msg['details'])
+        except:
+            pass
+
+        super(ClientError, self).__init__(message)
         self.status = status
         self.details = details
 
 
+class SilentEvent(Thread):
+    """ Thread-run method(*args, **kwargs)
+        put exception in exception_bucket
+    """
+    def __init__(self, method, *args, **kwargs):
+        super(self.__class__, self).__init__()
+        self.method = method
+        self.args = args
+        self.kwargs = kwargs
+
+    @property
+    def exception(self):
+        return getattr(self, '_exception', False)
+
+    @property
+    def value(self):
+        return getattr(self, '_value', None)
+
+    def run(self):
+        try:
+            self._value = self.method(*(self.args), **(self.kwargs))
+        except Exception as e:
+            print('______\n%s\n_______' % e)
+            self._exception = e
+
 class Client(object):
+    POOL_SIZE = 7
 
     def __init__(self, base_url, token, http_client=KamakiHTTPConnection()):
         self.base_url = base_url
@@ -58,15 +106,37 @@ class Client(object):
             "%a, %d %b %Y %H:%M:%S GMT"]
         self.http_client = http_client
 
+    def _init_thread_limit(self, limit=1):
+        self._thread_limit = limit
+        self._elapsed_old = 0.0
+        self._elapsed_new = 0.0
+
+    def _watch_thread_limit(self, threadlist):
+        if self._elapsed_old > self._elapsed_new\
+        and self._thread_limit < self.POOL_SIZE:
+            self._thread_limit += 1
+        elif self._elapsed_old < self._elapsed_new and self._thread_limit > 1:
+            self._thread_limit -= 1
+
+        self._elapsed_old = self._elapsed_new
+        if len(threadlist) >= self._thread_limit:
+            self._elapsed_new = 0.0
+            for thread in threadlist:
+                begin_time = time()
+                thread.join()
+                self._elapsed_new += time() - begin_time
+            self._elapsed_new = self._elapsed_new / len(threadlist)
+            return []
+        return threadlist
+
     def _raise_for_status(self, r):
-        message = "%s" % r.status
+        status_msg = getattr(r, 'status', '')
         try:
-            details = r.text
+            message = '%s %s\n' % (status_msg, r.text)
         except:
-            details = ''
-        raise ClientError(message=message,
-            status=r.status_code,
-            details=details)
+            message = '%s %s\n' % (status_msg, r)
+        status = getattr(r, 'status_code', getattr(r, 'status', 0))
+        raise ClientError(message, status=status)
 
     def set_header(self, name, value, iff=True):
         """Set a header 'name':'value'"""
@@ -103,12 +173,13 @@ class Client(object):
             self.set_default_header('X-Auth-Token', self.token)
 
             if 'json' in kwargs:
-                data = json.dumps(kwargs.pop('json'))
+                data = dumps(kwargs.pop('json'))
                 self.set_default_header('Content-Type', 'application/json')
             if data:
                 self.set_default_header('Content-Length', unicode(len(data)))
 
-            self.http_client.url = self.base_url + path
+            self.http_client.url = self.base_url
+            self.http_client.path = path
             r = self.http_client.perform_request(method,
                 data,
                 async_headers,
@@ -128,27 +199,25 @@ class Client(object):
             recvlog.info('%d %s', r.status_code, r.status)
             for key, val in r.headers.items():
                 recvlog.info('%s: %s', key, val)
-            #if r.content:
-            #    recvlog.debug(r.content)
+            if r.content:
+                recvlog.debug(r.content)
 
-            if success is not None:
-                # Success can either be an in or a collection
-                success = (success,) if isinstance(success, int) else success
-                if r.status_code not in success:
-                    r.release()
-                    self._raise_for_status(r)
         except Exception as err:
+            from traceback import print_stack
+            recvlog.debug(print_stack)
             self.http_client.reset_headers()
             self.http_client.reset_params()
-            errmsg = getattr(err, 'message', unicode(err))
-            errdetails = '%s %s' % (type(err), getattr(err, 'details', ''))
-            errstatus = getattr(err, 'status', 0)
-            raise ClientError(message=errmsg,
-                status=errstatus,
-                details=errdetails)
+            raise ClientError('%s' % err, status=getattr(err, 'status', 0))
 
         self.http_client.reset_headers()
         self.http_client.reset_params()
+
+        if success is not None:
+            # Success can either be an in or a collection
+            success = (success,) if isinstance(success, int) else success
+            if r.status_code not in success:
+                r.release()
+                self._raise_for_status(r)
         return r
 
     def delete(self, path, **kwargs):

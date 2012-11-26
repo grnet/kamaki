@@ -39,8 +39,8 @@ from sys import version_info
 import kamaki
 
 
-optional = ['ansicolors', 'progress']
-required = ['snf-common>=0.10', 'argparse']
+optional = ['ansicolors', 'progress>=1.0.2']
+required = ['snf-common>=0.10']
 
 setup(
     name='kamaki',

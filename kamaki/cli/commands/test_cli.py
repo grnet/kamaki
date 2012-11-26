@@ -31,11 +31,71 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-from kamaki.clients import Client
+from kamaki.cli import command
+from kamaki.cli.commands import _command_init
+from kamaki.cli.command_tree import CommandTree
+from kamaki.clients import tests
+
+test_cmds = CommandTree('test', 'Unitest clients')
+_commands = [test_cmds]
 
 
-class QuotaHolderClient(Client):
-    """Quota Holder client"""
+#print('Command Terms: ', get_cmd_terms())
 
-    def test_quota(self):
-        return self.get('')
+
+class _test_init(_command_init):
+
+    def main(self, client, method=None):
+        if method:
+            tests.main([client, method])
+        else:
+            tests.main([client])
+
+
+@command(test_cmds)
+class test_args(_test_init):
+    """Test how arguments are treated by kamaki"""
+
+    def main(self, *args):
+        print(args)
+
+
+@command(test_cmds)
+class test_all(_test_init):
+    """test all clients"""
+
+    def main(self):
+        for client in ('pithos', 'cyclades', 'image', 'astakos'):
+            super(self.__class__, self).main(client)
+
+
+@command(test_cmds)
+class test_pithos(_test_init):
+    """ test Pithos client"""
+
+    def main(self, method=None):
+        super(self.__class__, self).main('pithos', method)
+
+
+@command(test_cmds)
+class test_cyclades(_test_init):
+    """ test Cyclades client"""
+
+    def main(self, method=None):
+        super(self.__class__, self).main('cyclades', method)
+
+
+@command(test_cmds)
+class test_image(_test_init):
+    """ test Image client"""
+
+    def main(self, method=None):
+        super(self.__class__, self).main('image', method)
+
+
+@command(test_cmds)
+class test_astakos(_test_init):
+    """ test Astakos client"""
+
+    def main(self, method=None):
+        super(self.__class__, self).main('astakos', method)

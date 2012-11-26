@@ -34,8 +34,9 @@
 from urlparse import urlparse
 #from .pool.http import get_http_connection
 from synnefo.lib.pool.http import get_http_connection
-from kamaki.clients.connection import HTTPConnection, HTTPResponse,\
-    HTTPConnectionError
+from kamaki.clients.connection import HTTPConnection, HTTPResponse
+from kamaki.clients.connection.errors import HTTPConnectionError
+from kamaki.clients.connection.errors import HTTPResponseError
 from socket import gaierror
 
 from json import loads
@@ -83,9 +84,7 @@ class KamakiHTTPResponse(HTTPResponse):
         try:
             return loads(self._content)
         except ValueError as err:
-            HTTPConnectionError('Response not formated in JSON',
-                details=unicode(err),
-                status=702)
+            HTTPResponseError('Response not formated in JSON - %s' % err)
 
     @json.setter
     def json(self, v):
@@ -100,7 +99,12 @@ class KamakiHTTPConnection(HTTPConnection):
 
     def _retrieve_connection_info(self, extra_params={}):
         """ return (scheme, netloc, url?with&params) """
-        url = self.url
+        if self.url:
+            url = self.url if self.url[-1] == '/' else (self.url + '/')
+        else:
+            url = 'http://127.0.0.1'
+        if self.path:
+            url += self.path[1:] if self.path[0] == '/' else self.path
         params = dict(self.params)
         for k, v in extra_params.items():
             params[k] = v
@@ -110,8 +114,10 @@ class KamakiHTTPConnection(HTTPConnection):
                 param_str += '=' + unicode(val)
             url += param_str
 
-        parsed = urlparse(self.url)
+        parsed = urlparse(url)
         self.url = url
+        self.path = parsed.path if parsed.path else '/'
+        self.path += '?%s' % parsed.query if parsed.query else ''
         return (parsed.scheme, parsed.netloc)
 
     def perform_request(self,
@@ -135,14 +141,13 @@ class KamakiHTTPConnection(HTTPConnection):
         try:
             #Be carefull, all non-body variables should not be unicode
             conn.request(method=str(method.upper()),
-                url=str(self.url),
+                url=str(self.path),
                 headers=http_headers,
                 body=data)
         except Exception as err:
             conn.close()
             if isinstance(err, gaierror):
-                raise HTTPConnectionError('Cannot connect to %s' % self.url,
-                    status=701,
-                    details='%s: %s' % (type(err), unicode(err)))
+                raise HTTPConnectionError(
+                    'Cannot connect to %s - %s' % (self.url, err))
             raise
         return KamakiHTTPResponse(conn)

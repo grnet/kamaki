@@ -31,62 +31,55 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+from json import loads
+
 
 class CLIError(Exception):
-    def __init__(self, message, status=0, details='', importance=0):
-        """importance is set by the raiser
-        0 is the lowest possible importance
-        Suggested values: 0, 1, 2, 3
+    def __init__(self, message, details=[], importance=0):
         """
-        super(CLIError, self).__init__(message, status, details)
-        self.message = message
-        self.status = status
-        self.details = details
-        self.importance = importance
-
-    def __unicode__(self):
-        return unicode(self.message)
+        @message is the main message of the Error
+        @detauls is a list of previous errors
+        @importance of the output for the user
+            Suggested values: 0, 1, 2, 3
+        """
+        super(CLIError, self).__init__(message)
+        self.details = details if isinstance(details, list)\
+            else [] if details is None else ['%s' % details]
+        try:
+            self.importance = int(importance)
+        except ValueError:
+            self.importance = 0
 
 
 class CLISyntaxError(CLIError):
-    def __init__(self, message='Syntax Error', status=10, details=''):
-        super(CLISyntaxError,
-            self).__init__(message, status, details, importance=1)
+    def __init__(self, message='Syntax Error', details=[], importance=1):
+        super(CLISyntaxError, self).__init__(message, details, importance)
 
 
 class CLIUnknownCommand(CLIError):
-    def __init__(self, message='Unknown Command', status=12, details=''):
-        super(CLIUnknownCommand,
-            self).__init__(message, status, details, importance=1)
+    def __init__(self, message='Unknown Command', details=[], importance=1):
+        super(CLIUnknownCommand, self).__init__(message, details, importance)
 
 
 class CLICmdSpecError(CLIError):
     def __init__(self,
-        message='Command Specification Error',
-        status=13,
-        details='',
-        importance=1):
-        super(CLICmdSpecError,
-            self).__init__(message, status, details, importance=0)
+        message='Command Specification Error', details=[], importance=0):
+        super(CLICmdSpecError, self).__init__(message, details, importance)
 
 
 class CLICmdIncompleteError(CLICmdSpecError):
     def __init__(self,
-        message='Incomplete Command Error',
-        status=14,
-        details=''):
-        super(CLICmdSpecError,
-            self).__init__(message, status, details, importance=1)
+        message='Incomplete Command Error', details=[], importance=1):
+        super(CLICmdSpecError, self).__init__(message, details, importance)
 
 
-def raiseCLIError(err, importance=-1):
-    if importance < 0:
-        if err.status <= 0:
-            importance = 0
-        elif err.status <= 400:
-            importance = 1
-        elif err.status <= 500:
-            importance = 2
-        else:
-            importance = 3
-    raise CLIError(err.message, err.status, err.details, importance)
+def raiseCLIError(err, importance=0):
+    message = '%s' % err
+    if err.status:
+        message = '(%s) %s' % (err.status, err)
+        try:
+            status = int(err.status)
+        except ValueError:
+            raise CLIError(message, err.details, importance)
+        importance = status // 100
+    raise CLIError(message, err.details, importance)

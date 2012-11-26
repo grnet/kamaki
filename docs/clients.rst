@@ -2,7 +2,6 @@ Clients lib
 ===========
 
 .. toctree::
-
     connection
 
 compute
@@ -12,8 +11,6 @@ compute
     :members:
     :show-inheritance:
     :undoc-members:
-
-Compute stuff. This is what we do here in GRNet. We are compute people, after all!
 
 
 cyclades
