@@ -34,6 +34,7 @@
 
 def matches(val1, val2, exactMath=True):
     """Case Insenstive match"""
+
     if exactMath:
         return True if val1.lower() == val2.lower() else False
     else:
@@ -44,6 +45,7 @@ def filter_out(d, prefix, exactMatch=False):
     """@return a dict that contains the entries of d
         that are NOT prefixed with prefic
     """
+
     ret = {}
     for key, val in d.items():
         if not matches(key, prefix, exactMath=exactMatch):
@@ -55,6 +57,7 @@ def filter_in(d, prefix, exactMatch=False):
     """@return a dict that contains only the entries of d
         that are prefixed with prefix
     """
+
     ret = {}
     for key, val in d.items():
         if matches(key, prefix, exactMath=exactMatch):
@@ -65,6 +68,7 @@ def filter_in(d, prefix, exactMatch=False):
 def prefix_keys(d, prefix):
     """@return a sallow copy of d with all its keys prefixed with prefix
     """
+
     ret = {}
     for key, val in d.items():
         ret[prefix + key] = val
@@ -75,6 +79,7 @@ def path4url(*args):
     """@return a string with all args in the form /arg1/arg2/...
        @param args must be strings
     """
+
     path = ''
     for arg in args:
         suffix = unicode(arg)
@@ -92,14 +97,9 @@ def path4url(*args):
 
 def params4url(params):
     """@return a string with all params in the form ?key1=val1&key2=val2&...
-            e.g. input
-                {'key1':'val1', 'key2':None, 'key3':'val3'}
-            will return
-                ?key1=val1&key2&key3=val3
        @param should be a dict.
-            Use params['somekey']=None for params that will apear without
-            a value at the final string
     """
+
     assert(type(params) is dict)
     result = ''
     dlmtr = '?'
@@ -112,6 +112,7 @@ def params4url(params):
 
 def list2str(alist, seperator=','):
     """@return a string of comma seperated elements of the list"""
+
     ret = ''
     slist = sorted(alist)
     for item in slist:

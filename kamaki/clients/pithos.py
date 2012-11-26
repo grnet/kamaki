@@ -670,17 +670,15 @@ class PithosClient(PithosRestAPI):
         read_permition=False,
         write_permition=False):
         """Give read/write permisions to an object.
-           @param object is the object to change sharing permissions
- onto
-           @param read_permition is a list of users and user groups that
-                get read permition for this object
-                False means all previous read permissions
- will be removed
-           @param write_perimition is a list of users and user groups to
-                get write permition for this object
-                False means all previous read permissions
- will be removed
+           @param object is the object to change sharing permissions onto
+           @param read_permition is a list of users and user groups that get
+           read permition for this object False means all previous read
+           permissions will be removed
+           @param write_perimition is a list of users and user groups to get
+           write permition for this object False means all previous read
+           permissions will be removed
         """
+
         perms = dict(read='' if not read_permition else read_permition,
             write='' if not write_permition else write_permition)
         r = self.object_post(object, update=True, permissions=perms)
@@ -694,6 +692,7 @@ class PithosClient(PithosRestAPI):
             to caller application, e.g. a progress bar. Its next is called
             whenever a block is uploaded
         """
+
         self.assert_container()
         meta = self.get_container_info()
         blocksize = int(meta['x-container-block-size'])
@@ -732,10 +731,11 @@ class PithosClient(PithosRestAPI):
         source_file,
         upload_cb=None):
         """Overwrite a part of an object with given source file
-           @start the part of the remote object to start overwriting from,
-                in bytes
+           @start the part of the remote object to start overwriting from, in
+           bytes
            @end the part of the remote object to stop overwriting to, in bytes
         """
+
         self.assert_container()
         meta = self.get_container_info()
         blocksize = int(meta['x-container-block-size'])

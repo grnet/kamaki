@@ -12,7 +12,7 @@ Installing from source (git repos.)
 Ubuntu and Debian packages
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Max OS
+Mac OS
 ------
 
 Windows

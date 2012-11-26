@@ -60,10 +60,12 @@ store
 Options
 -------
 
---help, -h              Show help message and exit.
--v                      Use verbose output.
--d                      Use debug output.
--o KEY=VAL              Override a config value (can be used multiple times)
+.. code-block:: console
+
+    --help, -h              Show help message and exit.
+    -v                      Use verbose output.
+    -d                      Use debug output.
+    -o KEY=VAL              Override a config value (can be used multiple times)
 
 
 Commands

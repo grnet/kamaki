@@ -107,7 +107,7 @@ Typically, commands consist of a group name (e.g. store for storage commands) on
     $ kamaki store list mycontainer
 
 
-    Example 3.1.1: List stored files in container mycontainer
+    Example 3.1.1: List stored files in container mycontainer.
 
 Example 2.3.2 showcases a command without parameters (the group is "server", the command is "list").
 
@@ -118,7 +118,7 @@ The "server" command group is also refered in the following example.
     $ kamaki server info 42
 
 
-    Example 3.1.2: Show information about a user-managed VM with id 42
+    Example 3.1.2 Show information about a user-managed VM with id 42
 
 Client commands can feature an arbitarry number of terms:
 
@@ -134,7 +134,7 @@ The following pattern applies to all client commands up to version 0.6.1:
 
     kamaki <group> <command> [arguments]
 
-The commands supported in version 0.6.1 are described bellow, grouped by service. The examples showcase a sample set of group commands and were run in the kamaki interactive shell:
+The commands supported in version 0.6.1 are described bellow, grouped by service. The examples showcase a sample set of group commands. The kamaki interactive shell has been chosen as the execution enviroment:
 
 astakos (Identity Manager)
 """"""""""""""""""""""""""
@@ -146,7 +146,7 @@ astakos (Identity Manager)
 Showcase: get user information, provided the token was set
 
 .. code-block:: console
-    :emphasize-lines: 1, 2, 12
+    :emphasize-lines: 3-11
 
     [kamaki]:astakos
     [astakos]:authenticate
@@ -172,7 +172,7 @@ flavor (Compute/Cyclades)
 Showcase: show details for flavor with id 43
 
 .. code-block:: console
-    :emphasize-lines: 1, 2, 9
+    :emphasize-lines: 3-8
 
     [kamaki]: flavor
     [flavor]: info 43
@@ -208,7 +208,7 @@ image (Compute/Cyclades + Glance)
 Showcase: show a list of public images, list the properties of Debian Base
 
 .. code-block:: console
-    :emphasize-lines: 1, 2, 14, 23
+    :emphasize-lines: 3-13,15-22
 
     [kamaki]:image
     [image]:list
@@ -260,7 +260,7 @@ server (Compute/Cyclades)
 Showcase: Create a server: Show create help, find a flavor and an image make a server. Wait for server to be build, get server details. Note that the progress bar feature is optional (see )
 
 .. code-block:: console
-    :emphasize-lines: 1, 2, 17, 34, 41, 57, 60, 67
+    :emphasize-lines: 3-16,18-33,35-40,42-56,58,59,61-66
 
     [kamaki]:server
     [server]:create -h
@@ -279,22 +279,17 @@ Showcase: Create a server: Show create help, find a flavor and an image make a s
       --config CONFIG       Path to configuration file
       -s, --silent          Do not output anything
     [server]:/image list
-    1395fdfb-51b4-419f-bb02-f7d632860611 (Ubuntu Desktop LTS (Long Term Support))
-
+    1395fdfb-51b4-419f-bb02-f7d632860611 (Ubuntu Desktop LTS)
     1580deb4-edb3-4496-a27f-7a246c4c0528 (Ubuntu Desktop)
-
-    18a82962-43eb-4b32-8e28-8f8880af89d7 (Kubuntu LTS (Long Term Support))
-
-    6aa6eafd-dccb-422d-a904-67fe2bdde87e (Debian Desktop)
-
-    6b5681e4-7502-46ae-b1e9-9fd837932095 (maelstrom)
-
-    78262ee7-949e-4d70-af3a-85360c3de57a (Windows Server 2012)
-    86bc2414-0fb3-4898-a637-240292243302 (Fedora)
-    926ab1c5-2d85-49d4-aebe-0fce712789b9 (Windows Server 2008)
-    b2dffe52-64a4-48c3-8a4c-8214cc3165cf (Debian Base)
-    baf2321c-57a0-4a69-825d-49f49cea163a (CentOS)
-    c1d27b46-d875-4f5c-b7f1-f39b5af62905 (Kubuntu)
+    |18a82962-43eb-4b32-8e28-8f8880af89d7 (Kubuntu LTS)
+    |6aa6eafd-dccb-422d-a904-67fe2bdde87e (Debian Desktop)
+    |6b5681e4-7502-46ae-b1e9-9fd837932095 (maelstrom)
+    |78262ee7-949e-4d70-af3a-85360c3de57a (Windows Server 2012)
+    |86bc2414-0fb3-4898-a637-240292243302 (Fedora)
+    |926ab1c5-2d85-49d4-aebe-0fce712789b9 (Windows Server 2008)
+    |b2dffe52-64a4-48c3-8a4c-8214cc3165cf (Debian Base)
+    |baf2321c-57a0-4a69-825d-49f49cea163a (CentOS)
+    |c1d27b46-d875-4f5c-b7f1-f39b5af62905 (Kubuntu)
     [server]:/flavor info 1
     SNF:disk_template:  drbd
     cpu              :  1

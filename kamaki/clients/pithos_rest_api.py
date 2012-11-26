@@ -48,10 +48,11 @@ class PithosRestAPI(StorageClient):
         @param until (string): optional timestamp
         --- --- optional request headers ---
         @param if_modified_since (string): Retrieve if account has changed
-            since provided timestamp
+        since provided timestamp
         @param if_unmodified_since (string): Retrieve if account has not
-            change since provided timestamp
+        change since provided timestamp
         """
+
         self.assert_account()
         path = path4url(self.account)
 
@@ -75,20 +76,21 @@ class PithosRestAPI(StorageClient):
         """  Full Pithos+ GET at account level
         --- request parameters ---
         @param limit (integer): The amount of results requested
-            (server will use default value if None)
+        (server will use default value if None)
         @param marker (string): Return containers with name
-            lexicographically after marker
+        lexicographically after marker
         @param format (string): reply format can be json or xml
-            (default: json)
+        (default: json)
         @param shared (bool): If true, only shared containers will be
-            included in results
+        included in results
         @param until (string): optional timestamp
         --- --- optional request headers ---
         @param if_modified_since (string): Retrieve if account has changed
-            since provided timestamp
+        since provided timestamp
         @param if_unmodified_since (string): Retrieve if account has not
-            changed since provided timestamp
+        changed since provided timestamp
         """
+
         self.assert_account()
 
         self.set_param('format', format, iff=format is not None)
@@ -117,17 +119,15 @@ class PithosRestAPI(StorageClient):
         @param update (bool): if True, Do not replace metadata/groups
         --- request headers ---
         @groups (dict): Optional user defined groups in the form
-                    {   'group1':['user1', 'user2', ...],
-                        'group2':['userA', 'userB', ...], ...
-                    }
+        { 'group1':['user1', 'user2', ...],
+        'group2':['userA', 'userB', ...], }
         @metadata (dict): Optional user defined metadata in the form
-                    {   'name1': 'value1',
-                        'name2': 'value2', ...
-                    }
+        { 'name1': 'value1', 'name2': 'value2', ... }
         @param quota(integer): If supported, sets the Account quota
         @param versioning(string): If supported, sets the Account versioning
-                    to 'auto' or some other supported versioning string
+        to 'auto' or some other supported versioning string
         """
+
         self.assert_account()
 
         self.set_param('update', iff=update)
@@ -156,10 +156,11 @@ class PithosRestAPI(StorageClient):
         @param until (string): optional timestamp
         --- optional request headers ---
         @param if_modified_since (string): Retrieve if account has changed
-            since provided timestamp
+        since provided timestamp
         @param if_unmodified_since (string): Retrieve if account has not
-            changed since provided timestamp
+        changed since provided timestamp
         """
+
         self.assert_container()
 
         self.set_param('until', until, iff=until is not None)
@@ -188,27 +189,28 @@ class PithosRestAPI(StorageClient):
         """ Full Pithos+ GET at container level
         --- request parameters ---
         @param limit (integer): The amount of results requested
-            (server qill use default value if None)
+        (server qill use default value if None)
         @param marker (string): Return containers with name lexicographically
-            after marker
+        after marker
         @param prefix (string): Return objects starting with prefix
         @param delimiter (string): Return objects up to the delimiter
         @param path (string): assume prefix = path and delimiter = /
-            (overwrites prefix and delimiter)
+        (overwrites prefix and delimiter)
         @param format (string): reply format can be json or xml (default:json)
         @param meta (list): Return objects that satisfy the key queries in
-            the specified comma separated list (use <key>, !<key> for
-            existence queries, <key><op><value> for value queries, where <op>
-            can be one of =, !=, <=, >=, <, >)
+        the specified comma separated list (use <key>, !<key> for
+        existence queries, <key><op><value> for value queries, where <op>
+        can be one of =, !=, <=, >=, <, >)
         @param shared (bool): If true, only shared containers will be included
         in results
         @param until (string): optional timestamp
         --- --- optional request headers ---
         @param if_modified_since (string): Retrieve if account has changed
-            since provided timestamp
+        since provided timestamp
         @param if_unmodified_since (string): Retrieve if account has not
-            changed since provided timestamp
+        changed since provided timestamp
         """
+
         self.assert_container()
 
         self.set_param('format', format, iff=format is not None)
@@ -307,8 +309,9 @@ class PithosRestAPI(StorageClient):
         """ Full Pithos+ DELETE at container level
         --- request parameters ---
         @param until (timestamp string): if defined, container is purged up to
-            that time
+        that time
         """
+
         self.assert_container()
 
         self.set_param('until', until, iff=until is not None)
@@ -331,14 +334,15 @@ class PithosRestAPI(StorageClient):
         @param version (string): optional version identified
         --- request headers ---
         @param if_etag_match (string): if provided, return only results
-                with etag matching with this
+        with etag matching with this
         @param if_etag_not_match (string): if provided, return only results
-                with etag not matching with this
+        with etag not matching with this
         @param if_modified_since (string): Retrieve if account has changed
-            since provided timestamp
+        since provided timestamp
         @param if_unmodified_since (string): Retrieve if account has not
-            changed since provided timestamp
+        changed since provided timestamp
         """
+
         self.assert_container()
 
         self.set_param('version', version, iff=version is not None)
@@ -373,14 +377,15 @@ class PithosRestAPI(StorageClient):
         @param data_range (string): Optional range of data to retrieve
         @param if_range (bool):
         @param if_etag_match (string): if provided, return only results
-                with etag matching with this
+        with etag matching with this
         @param if_etag_not_match (string): if provided, return only results
-                with etag not matching with this
+        with etag not matching with this
         @param if_modified_since (string): Retrieve if account has changed
-            since provided timestamp
+        since provided timestamp
         @param if_unmodified_since (string): Retrieve if account has not
-            changed since provided timestamp
+        changed since provided timestamp
         """
+
         self.assert_container()
 
         self.set_param('format', format, iff=format is not None)
@@ -427,35 +432,35 @@ class PithosRestAPI(StorageClient):
         @param hashmap (bool): Optional hashmap provided instead of data
         --- request headers ---
         @param if_etag_match (string): if provided, return only results
-                with etag matching with this
+        with etag matching with this
         @param if_etag_not_match (string): if provided, return only results
-                with etag not matching with this
+        with etag not matching with this
         @param etag (string): The MD5 hash of the object (optional to check
-            written data)
+        written data)
         @param content_length (integer): The size of the data written
         @param content_type (string): The MIME content type of the object
         @param transfer_encoding (string): Set to chunked to specify
-            incremental uploading (if used, Content-Length is ignored)
+        incremental uploading (if used, Content-Length is ignored)
         @param copy_from (string): The source path in the form
-            /<container>/<object>
+        /<container>/<object>
         @param move_from (string): The source path in the form
-            /<container>/<object>
+        /<container>/<object>
         @param source_account (string): The source account to copy/move from
         @param source_version (string): The source version to copy from
         @param conent_encoding (string): The encoding of the object
         @param content_disposition (string): Presentation style of the object
         @param manifest (string): Object parts prefix in
-            /<container>/<object> form
+        /<container>/<object> form
         @param permissions (dict): Object permissions in the form (all fields
-            are optional)
-            {   'read':[user1, group1, user2, ...],
-                'write':['user3, group2, group3, ...]
-            }
+        are optional)
+        { 'read':[user1, group1, user2, ...],
+        'write':['user3, group2, group3, ...] }
         @param public (bool): If true, Object is publicly accessible,
-            if false, not
+        if false, not
         @param metadata (dict): Optional user defined metadata in the form
-                {'meta-key-1':'meta-value-1', 'meta-key-2':'meta-value-2', ...}
+        {'meta-key-1':'meta-value-1', 'meta-key-2':'meta-value-2', ...}
         """
+
         self.assert_container()
 
         self.set_param('format', format, iff=format is not None)
@@ -516,30 +521,29 @@ class PithosRestAPI(StorageClient):
         @param format (string): json (default) or xml
         @param ignore_content_type (bool): Ignore the supplied Content-Type
         --- request headers ---
-         @param if_etag_match (string): if provided, copy only results
-                with etag matching with this
+        @param if_etag_match (string): if provided, copy only results
+        with etag matching with this
         @param if_etag_not_match (string): if provided, copy only results
-                with etag not matching with this
+        with etag not matching with this
         @param destination (string): The destination path in the form
-            /<container>/<object>
+        /<container>/<object>
         @param destination_account (string): The destination account to copy to
         @param content_type (string): The MIME content type of the object
         @param content_encoding (string): The encoding of the object
         @param content_disposition (string): Object resentation style
         @param source_version (string): The source version to copy from
         @param permissions (dict): Object permissions in the form
-            (all fields are optional)
-            {   'read':[user1, group1, user2, ...],
-                'write':['user3, group2, group3, ...]
-            }
-            permissions override source permissions,
-            removing any old permissions
+        (all fields are optional)
+        { 'read':[user1, group1, user2, ...],
+        'write':['user3, group2, group3, ...] }
+        @permissions override source permissions, removing any old permissions
         @param public (bool): If true, Object is publicly accessible
         @param metadata (dict): Optional user defined metadata in the form
-            {'meta-key-1':'meta-value-1', 'meta-key-2':'meta-value-2', ...}
-            Metadata are appended to the source metadata. In case of same
-            keys, they replace the old metadata
+        {'meta-key-1':'meta-value-1', 'meta-key-2':'meta-value-2', ...}
+        Metadata are appended to the source metadata. In case of same keys,
+        they replace the old metadata
         """
+
         self.assert_container()
 
         self.set_param('format', format, iff=format is not None)
@@ -594,26 +598,26 @@ class PithosRestAPI(StorageClient):
         @param format (string): json (default) or xml
         @param ignore_content_type (bool): Ignore the supplied Content-Type
         --- request headers ---
-         @param if_etag_match (string): if provided, return only results
-                with etag matching with this
+        @param if_etag_match (string): if provided, return only results
+        with etag matching with this
         @param if_etag_not_match (string): if provided, return only results
-                with etag not matching with this
+        with etag not matching with this
         @param destination (string): The destination path in the form
-            /<container>/<object>
+        /<container>/<object>
         @param destination_account (string): The destination account to copy to
         @param content_type (string): The MIME content type of the object
         @param content_encoding (string): The encoding of the object
         @param content_disposition (string): Object presentation style
         @param source_version (string): The source version to copy from
         @param permissions (dict): Object permissions in the form
-            (all fields are optional)
-            {   'read':[user1, group1, user2, ...],
-                'write':['user3, group2, group3, ...]
-            }
+        (all fields are optional)
+        { 'read':[user1, group1, user2, ...],
+        'write':['user3, group2, group3, ...] }
         @param public (bool): If true, Object is publicly accessible
         @param metadata (dict): Optional user defined metadata in the form
-                {'meta-key-1':'meta-value-1', 'meta-key-2':'meta-value-2', ...}
+        {'meta-key-1':'meta-value-1', 'meta-key-2':'meta-value-2', ...}
         """
+
         self.assert_container()
 
         self.set_param('format', format, iff=format is not None)
@@ -672,31 +676,31 @@ class PithosRestAPI(StorageClient):
         @param update (bool): Do not replace metadata
         --- request headers ---
         @param if_etag_match (string): if provided, return only results
-                with etag matching with this
+        with etag matching with this
         @param if_etag_not_match (string): if provided, return only results
-                with etag not matching with this
+        with etag not matching with this
         @param content_length (string): The size of the data written
         @param content_type (string): The MIME content type of the object
         @param content_range (string): The range of data supplied
         @param transfer_encoding (string): Set to chunked to specify
-            incremental uploading (if used, Content-Length is ignored)
+        incremental uploading (if used, Content-Length is ignored)
         @param content_encoding (string): The encoding of the object
         @param content_disposition (string): Object presentation style
         @param source_object (string): Update with data from the object at
-            path /<container>/<object>
+        path /<container>/<object>
         @param source_account (string): The source account to update from
         @param source_version (string): The source version to copy from
         @param object_bytes (integer): The updated objects final size
         @param manifest (string): Object parts prefix as /<container>/<object>
         @param permissions (dict): Object permissions in the form (all fields
-            are optional)
-            {   'read':[user1, group1, user2, ...],
-                'write':['user3, group2, group3, ...]
-            }
+        are optional)
+        { 'read':[user1, group1, user2, ...],
+        'write':['user3, group2, group3, ...] }
         @param public (bool): If true, Object is publicly accessible
         @param metadata (dict): Optional user defined metadata in the form
-                {'meta-key-1':'meta-value-1', 'meta-key-2':'meta-value-2', ...}
+        {'meta-key-1':'meta-value-1', 'meta-key-2':'meta-value-2', ...}
         """
+
         self.assert_container()
 
         self.set_param('format', format, iff=format is not None)
