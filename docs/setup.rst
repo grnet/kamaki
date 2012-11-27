@@ -16,7 +16,7 @@ Optional features
 -----------------
 
 * ansicolors
-    * Make command line / console user interface responses pretier with text formating (colors, bold, etc.)
+    * Make command line / console user interface responses prettier with text formating (colors, bold, etc.)
     * Can be switched on/off in kamaki configuration file: colors=on/off
     * Installation: pip install ansicolors
 
@@ -30,7 +30,7 @@ Any of the above features can be installed at any time before or after kamaki in
 Configuration options
 ---------------------
 
-Kamaki comes with preset default values to all configuration options. All vital configurion options are set to use the okeanos.grnet.gr cloud services. User information is not included and should be provided either through the kamaki config command or by editing the configuration file.
+Kamaki comes with preset default values to all configuration options. All vital configuration options are set to use the okeanos.grnet.gr cloud services. User information is not included and should be provided either through the kamaki config command or by editing the configuration file.
 
 Kamaki configuration options are vital for correct Kamaki behavior. An incorrect option may render some command groups dysfunctional. There are two ways of managing configuration options: edit the config file or use the kamaki config command.
 
@@ -39,7 +39,7 @@ Using multiple setups
 
 Kamaki setups are stored in configuration files. By default, a Kamaki installation stores options in *.kamakirc* file located at the user home directory.
 
-If a user needs to switch between different setups, Kamaki can explicitely load configuration files with the --config option:
+If a user needs to switch between different setups, Kamaki can explicitly load configuration files with the --config option:
 
 *kamaki --config <custom_config_file_path> [other options]*
 
@@ -48,9 +48,9 @@ Using many different configuration files for different cloud services is encoura
 Modifying options at runtime
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-All kamaki commands can be used with the -o option in order to overide configuration options at runtime. For example:
+All kamaki commands can be used with the -o option in order to override configuration options at runtime. For example::
 
-*kamaki store list -o global.account=anotheraccount -o global.token=aT0k3n==*
+    kamaki store list -o global.account=anotheraccount -o global.token=aT0k3n==
 
 will invoke *kamaki store list* with the specified options, but the initial global.account and global.token values will be restored to initial values afterwards.
 
@@ -78,27 +78,27 @@ Editing the configuration file
 
 The configuration file is a simple text file that can be created by the user.
 
-A simple way to create the configuration file is to set a configuration option using the kamaki config command. For example:
+A simple way to create the configuration file is to set a configuration option using the kamaki config command. For example::
 
-*kamaki config set account myusername@mydomain.com*
+    kamaki config set account myusername@mydomain.com
 
 In the above example, if the kamaki configuration file does not exist, it will be created with all the default values plus the *global.account* option set to *myusername@mydomain.com* value.
 
-The configuration file is formatted so that it can be parsed by the python ConfigParser module. It consists of command sections that are denoted with brackets. Every section contains variables with values. For example:
+The configuration file is formatted so that it can be parsed by the python ConfigParser module. It consists of command sections that are denoted with brackets. Every section contains variables with values. For example::
 
-*[store]*
-*url=https://okeanos.grnet.gr/pithos*
-*account=myaccount@mydomain.com*
+    [store]
+    url=https://okeanos.grnet.gr/pithos
+    account=myaccount@mydomain.com
 
 two configuration options are created: *store.url* and *store.account*. These values will be loaded at every future kamaki execution.
 
 Available options
 ^^^^^^^^^^^^^^^^^
 
-The [global] group is treated by kamaki as a generic group for arbitrary options, and it is used as a supergroup for vital Kamaki options, namely account, token, url, cli. This feature does not work for types of configuration options. For example if global.account option is set and store.account option is not set, store services will use the global.account option instead. In case of conflict, the most specific options override the global ones.
+The [global] group is treated by kamaki as a generic group for arbitrary options, and it is used as a super-group for vital Kamaki options, namely account, token, url, cli. This feature does not work for types of configuration options. For example if global.account option is set and store.account option is not set, store services will use the global.account option instead. In case of conflict, the most specific options override the global ones.
 
 * global.colors <on|off>
-    enable/disable colors in command line based uis. Requires ansicolors, otherwise it is ignored
+    enable / disable colors in command line based uis. Requires ansicolors, otherwise it is ignored
 
 * global.account <account name>
     the username or user email that is user to connect to the cloud service. It can be omitted if provided as a service-specific option
@@ -139,7 +139,7 @@ The [global] group is treated by kamaki as a generic group for arbitrary options
     a special package that is used to load astakos-related commands to kamaki UIs. Don't touch this unless you know what you are doing.
 
 * history.file <history file path>
-    the path of a simple file for inter-session kamaki history. Make sure kamaki is executed in a context where this file is accessible for reading and writting. Kamaki automatically creates the file if it doesn't exist
+    the path of a simple file for inter-session kamaki history. Make sure kamaki is executed in a context where this file is accessible for reading and writing. Kamaki automatically creates the file if it doesn't exist
 
 Hidden features
 ^^^^^^^^^^^^^^^
@@ -149,4 +149,4 @@ Since version 0.6.1 kamaki contains a test suite for the kamaki.clients API. The
 [test]
 cli=test_cli
 
-After that, users can run "kamaki test" commands to unittest the prepackaged client APIs. Unittests are still experimental and there is a high probability of false alarms due to some of the expected values being hard-coded in the testing code.
+After that, users can run "kamaki test" commands to unit-test the prepackaged client APIs. Unit-tests are still experimental and there is a high probability of false alarms due to some of the expected values being hard-coded in the testing code.

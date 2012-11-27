@@ -1,7 +1,7 @@
 Installation
 ============
 
-This guide describes the standard installation proccess for kamaki, with the aspiration of covering as much cases as possible. Although kamaki was initially targeted to advanced Linux/Unix-like users, it should be quite straigh forward to install and have it up and running in most popular platforms.
+This guide describes the standard installation process for kamaki, with the aspiration of covering as much cases as possible. Although kamaki was initially targeted to advanced Linux/Unix-like users, it should be quite straightforward to install and have it up and running in most popular platforms.
 
 Linux and Unix-like enviroments
 -------------------------------

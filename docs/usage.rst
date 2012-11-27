@@ -3,12 +3,12 @@ Usage
 
 Kamaki offers command line interfaces that implement specific command specifications. A detailed list of the command specifications can be found in `Commands <commands.html>`_ section. This guide covers the generic usage of both interfaces.
 
-What's more, kamaki offers a clients API that allows the developement of external applications for synnefo. The clients API is listed in the `Clients lib <clients.html>`_ section. The recomended method of utilizing this API is explained in the present.
+What's more, kamaki offers a clients API that allows the development of external applications for synnefo. The clients API is listed in the `Clients lib <clients.html>`_ section. The recommended method of utilizing this API is explained in the present.
 
 Setup
 -----
 
-Kamaki interfaces rely on a list of configuration options. In the initial state, kamaki is configured to communicate with the Okenos IaaS. A detailed guide for setting up kamaki can be found in the `Setup <setup.html>`_ section.
+Kamaki interfaces rely on a list of configuration options. In the initial state, kamaki is configured to communicate with the Okeanos IaaS. A detailed guide for setting up kamaki can be found in the `Setup <setup.html>`_ section.
 
 Quick guide
 ^^^^^^^^^^^
@@ -22,7 +22,7 @@ It is essential for users to get a configuration token (to get in Okeanos.grnet.
 
     $ kamaki set token myt0k3n==
 
-To use the storage service, a user should also provide the corresponding username:
+To use the storage service, a user should also provide the corresponding user-name:
 
 .. code-block:: console
     :emphasize-lines: 1
@@ -31,17 +31,15 @@ To use the storage service, a user should also provide the corresponding usernam
 
     $ kamaki set account user@domain.com
 
-Command line interfaces
------------------------
-Kamaki users can access synnefo services through either the interactive shell or the one-command behaviors. In practice, both systems relly on the same command set implementations and API clients, with identical responses and error messages. Still, there are some differenses.
-
 Shell vs one-command
-^^^^^^^^^^^^^^^^^^^^
+--------------------
+Kamaki users can access synnefo services through either the interactive shell or the one-command behaviors. In practice, both systems rely on the same command set implementations and API clients, with identical responses and error messages. Still, there are some differences.
+
 In favor of interactive shell behavior:
 
 * tab completion for commands
-* session history with "up"/"down" keys
-* shorter commants with command namespace switching
+* session history with "up" / "down" keys
+* shorter commands with command context switching
 
 In favor of one-command behavior:
 
@@ -50,7 +48,7 @@ In favor of one-command behavior:
 * prints debug and verbose messages if needed
 
 Run as shell
-""""""""""""
+^^^^^^^^^^^^
 To use kamaki as a shell, run:
 
 * without any parameters or arguments
@@ -73,7 +71,7 @@ To use kamaki as a shell, run:
 
 
 Run as one-command
-""""""""""""""""""
+^^^^^^^^^^^^^^^^^^
 To use kamaki as an one-command tool, run:
 
 * with the '-h' or '--help' arguments (help for kamaki one-command)
@@ -95,7 +93,7 @@ To use kamaki as an one-command tool, run:
     $ kamaki server list
 
 Commands
-^^^^^^^^
+--------
 
 Client commands are grouped by service (see example 3.1.1 on how to list available groups). Commands behavior is as uniform as possible, but there are still differences between groups due to the special nature of each service and server-side implementation.
 
@@ -110,7 +108,7 @@ Typically, commands consist of a group name (e.g. store for storage commands) on
 
 Example 2.3.2 showcases a command without parameters (the group is "server", the command is "list").
 
-The "server" command group is also refered in the following example.
+The "server" command group is also referred in the following example.
 
 .. code-block:: console
     :emphasize-lines: 1
@@ -119,13 +117,13 @@ The "server" command group is also refered in the following example.
 
     $ kamaki server info 42
 
-Client commands can feature an arbitarry number of terms:
+Client commands can feature an arbitrary number of terms:
 
 .. code-block:: text
 
     kamaki <group> <cmd term 1> <cmd term 2> ... <cmd term N> [arguments]
 
-Although there are no multi-termed client commands until version 0.6.1 , the feature is supported and might be used in feature extentions.
+Although there are no multi-termed client commands until version 0.6.1 , the feature is supported and might be used in feature extensions.
 
 The following pattern applies to all client commands up to version 0.6.1:
 
@@ -133,10 +131,10 @@ The following pattern applies to all client commands up to version 0.6.1:
 
     kamaki <group> <command> [arguments]
 
-The commands supported in version 0.6.1 are described bellow, grouped by service. The examples showcase a sample set of group commands. The kamaki interactive shell has been chosen as the execution enviroment:
+The commands supported in version 0.6.1 are described bellow, grouped by service. The examples showcase a sample set of group commands. The kamaki interactive shell has been chosen as the execution environment:
 
 astakos (Identity Manager)
-""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: text
 
@@ -163,7 +161,7 @@ Showcase: get user information, provided the token was set
     username          :  4215th3b357num9323v32
 
 flavor (Compute/Cyclades)
-"""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: text
 
@@ -188,7 +186,7 @@ Showcase: show details for flavor with id 43
     ram              :  2048
 
 image (Compute/Cyclades + Glance)
-""""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: text
 
@@ -242,7 +240,7 @@ Showcase: Pick an image and list the properties
     users         :  root
 
 server (Compute/Cyclades)
-"""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: text
 
@@ -338,7 +336,7 @@ Showcase: Create a server.
 .. Note:: In kamaki shell, / is used to access top-level command groups while working in command group contexts
 
 network (Compute/Cyclades)
-""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: text
 
@@ -415,7 +413,7 @@ Showcase: Connect a network to a VM
 .. Note:: In kamaki shell, / is used to access top-level command groups while working in command group contexts
 
 store (Storage/Pithos+)
-"""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: text
 
@@ -517,7 +515,7 @@ Showcase: Upload and download a file.
     1.    20M rndm_remote.file
 
 
-    * Download pasted file to local filesystem *
+    * Download pasted file to local file system *
     [store]:download mycont1:rndm_remote.file rndm_remote.file
 
 
@@ -530,12 +528,12 @@ Showcase: Upload and download a file.
 .. Note:: In kamaki shell, ! is used to execute OS shell commands (bash in the above)
 
 One-command interface
-^^^^^^^^^^^^^^^^^^^^^
+---------------------
 
 Kamaki usage as a one-command tool is detailed in this section
 
 Using help
-""""""""""
+^^^^^^^^^^
 
 Kamaki help is used to see available commands, with description, syntax and their corresponding optional arguments.
 
@@ -576,7 +574,7 @@ To see the command groups, users should use -h or --help like in example 1.3.1. 
 .. code-block:: console
     :emphasize-lines: 1
 
-    Example 4.1.2: Cyclades help contains all first-level commands of cyclades command group
+    Example 4.1.2: Cyclades help contains all first-level commands of Cyclades command group
 
 
     $ kamaki cyclades -h
@@ -617,7 +615,7 @@ To see the command groups, users should use -h or --help like in example 1.3.1. 
 .. code-block:: console
     :emphasize-lines: 1
 
-    Example 4.1.3: Help for command "server list" with syntax, description and avaiable user options
+    Example 4.1.3: Help for command "server list" with syntax, description and available user options
 
 
     $ kamaki server list -h
@@ -640,7 +638,7 @@ To see the command groups, users should use -h or --help like in example 1.3.1. 
 .. _using-history-ref:
 
 Using history
-"""""""""""""
+^^^^^^^^^^^^^
 
 Kamaki command history is stored in a file at user home (".kamaki.history" by default). To set a custom history file path users must set the history.file config option (see `available config options <setup.html#editing-options>`_).
 
@@ -676,21 +674,21 @@ The following example showcases how to use history in kamaki
     3. kamaki history show --match server
 
 Debug
-"""""
+^^^^^
 
-In case of errors, kamaki in debug mode shows usefull debug information, like the stack trace, instead of a user-friendly error message. Kamaki also suppresses various warning messages that are also allowed in debug mode.
+In case of errors, kamaki in debug mode shows useful debug information, like the stack trace, instead of a user-friendly error message. Kamaki also suppresses various warning messages that are also allowed in debug mode.
 
 To run kamaki in debug mode use the -d or --debug option
 
 Verbose
 """""""
 
-Most kamaki commands are translated into http requests. Kamaki clients API translated the semantics to REST and handles the response. Users who need to have access to these commands can use the verbose mode that presentes the HTTP Request details as well as the full server response.
+Most kamaki commands are translated into http requests. Kamaki clients API translated the semantics to REST and handles the response. Users who need to have access to these commands can use the verbose mode that presents the HTTP Request details as well as the full server response.
 
 To run kamaki in verbose mode use the -v or --verbose option
 
 One-command features
-""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^
 
 Kamaki commands can be used along with advanced shell features.
 
@@ -703,31 +701,31 @@ Kamaki commands can be used along with advanced shell features.
     $ kamaki astakos authenticate -o token=us3rt0k3n== | grep uniq
     uniq        : user@synnefo.org
 
-The -o argument can be used to overide temporarily various (set or unset) options. In one command, all -o options are forgoten just after the command had been completed, and the previous settings are restored (the configuration file is not modified).
+The -o argument can be used to override temporarily various (set or unset) options. In one command, all -o options are forgotten just after the command had been completed, and the previous settings are restored (the configuration file is not modified).
 
-The astakos-authenticate command in example 4.4.1 run against an explicitly provided token, which temporarily overode the token provided in the configuration file.
+The astakos-authenticate command in example 4.4.1 run against an explicitly provided token, which temporarily overrode the token provided in the configuration file.
 
 Interactive shell
-^^^^^^^^^^^^^^^^^
+-----------------
 
 Kamaki interactive shell is details in this section
 
 Command Contexts
-""""""""""""""""
+^^^^^^^^^^^^^^^^
 
-The kamaki interactive shell implements the notion of command contexts. Each command group is also a context where the users can **enter** by typing the group name. If the context switch is succesful, the kamaki shell prompt changes to present the new context ("store" in example 5.1.1).
+The kamaki interactive shell implements the notion of command contexts. Each command group is also a context where the users can **enter** by typing the group name. If the context switch is successful, the kamaki shell prompt changes to present the new context ("store" in example 5.1.1).
 
 .. code-block:: console
     :emphasize-lines: 1
 
-    Example 5.1.1: Enter store commands context/group
+    Example 5.1.1: Enter store commands context / group
 
 
     $ kamaki
     [kamaki]:store
     [store]:
 
-Type **exit** or **ctrl-D** to exit a context and return to the context of origin. If already at the top context (kamaki), an exit is equivalent to exiting the programm.
+Type **exit** or **ctrl-D** to exit a context and return to the context of origin. If already at the top context (kamaki), an exit is equivalent to exiting the program.
 
 .. code-block:: console
     :emphasize-lines: 1
@@ -776,8 +774,8 @@ Users have the option to avoid switching between contexts: all commands can run 
     ... (VMs listing) ...
     [kamaki]:
 
-Help
-""""
+Using Help
+^^^^^^^^^^
 
 There are two help mechanisms: a context-level and a command-level.
 
@@ -829,7 +827,7 @@ The context-level help results change from context to context
     [config]:help set
     Set a configuration option (set -h for more options)
 
-In context-level, there is a distinction between kamaki-commands and interactive shell commands. The former are available in one-command mode and are releated to the cloud client setup and use, while the later are context-shell functions.
+In context-level, there is a distinction between kamaki-commands and interactive shell commands. The former are available in one-command mode and are related to the cloud client setup and use, while the later are context-shell functions.
 
 **Command-level help** prints the syntax, arguments and description of a specific (terminal) command
 
@@ -841,7 +839,7 @@ Command-level help syntax::
 
     <description>
 
-    <arguments and possible extentions>
+    <arguments and possible extensions>
 
 Command-level help mechanism is exactly the same as the one used in one-command mode. For example, it is invoked by using the -h or --help parameter at any point.
 
@@ -891,9 +889,9 @@ There are many ways of producing a help message, as shown in example 5.2.3
 .. _accessing-top-level-commands-ref:
 
 Accessing top-level commands
-""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-When working in a context, it is often usefull to access other contexts or top-level commands. Kamaki offers access to top-level commands by using the / prefix, as shown bellow::
+When working in a context, it is often useful to access other contexts or top-level commands. Kamaki offers access to top-level commands by using the / prefix, as shown bellow::
 
     * access a command "anothercontext cmd1 cmd2 ... cmdN"
     [context]:/anothercontext cmd1 cmd2 ... cmdN
@@ -904,7 +902,7 @@ An example (5.3.1) that showcases how top-level access improves user experience 
 * the flavor id
 * the image id
 
-It is often the case that a user who works in the context command, needs to create a new VM, but doesn't know the flavor or image id of preference. Therefore, it is nessecary to list all available flavors (flavor-list) or images (image-list. Both commands belong to different contexts.
+It is often the case that a user who works in the context command, needs to create a new VM, but doesn't know the flavor or image id of preference. Therefore, it is necessary to list all available flavors (flavor-list) or images (image-list. Both commands belong to different contexts.
 
 .. code-block:: console
     :emphasize-lines: 1
@@ -933,7 +931,7 @@ It is often the case that a user who works in the context command, needs to crea
     [server]:create 'my debian' 43 6aa6eafd-dccb-67fe2bdde87e
     ...
 
-An other example (5.3.2) showcases how to aquire and modify configuration settings from a different context. In this scenario, the user token expires at server side while the user is working. When that happens, the system responds with an *(401) UNAUTHORIZED* message. The user can aquires a new token (with a browser) which has to be set to kamaki.
+An other example (5.3.2) showcases how to acquire and modify configuration settings from a different context. In this scenario, the user token expires at server side while the user is working. When that happens, the system responds with an *(401) UNAUTHORIZED* message. The user can acquires a new token (with a browser) which has to be set to kamaki.
 
 .. code-block:: console
     :emphasize-lines: 1
@@ -998,16 +996,16 @@ The following example compares some equivalent calls that run *astakos-authentic
 
 .. hint:: To exit kamaki shell while in a context, try */exit*
 
-Config
-""""""
+Using config
+^^^^^^^^^^^^
 
-The configuration mechanism of kamaki is detailed at the `setup section <setup.html>`_ and it is common for both interaction modes. In specific, the configuration mechanism is implemented as a command group, namely *config*. Using the config commands is as straighforward as any other kamaki commands.
+The configuration mechanism of kamaki is detailed at the `setup section <setup.html>`_ and it is common for both interaction modes. In specific, the configuration mechanism is implemented as a command group, namely *config*. Using the config commands is as straightforward as any other kamaki commands.
 
-It is often usefull to set, delete or update a value. This can be managed either inside the config context or from any commant context by using the / detour.
+It is often useful to set, delete or update a value. This can be managed either inside the config context or from any command context by using the / detour.
 
 .. Note:: config updates in kamaki shell persist even after the session is over. All setting changes affects the physical kamaki config file (automatically created, if not set manually)
 
-In example 5.4.1 the user is going to work with only one storage container. The store commands use the container:path syntax, but if the user could set a container as a defaul, the container name could be ommited in most cases. This is possible by setting a store.container setting.
+In example 5.4.1 the user is going to work with only one storage container. The store commands use the container:path syntax, but if the user could set a container as a default, the container name could be omitted in most cases. This is possible by setting a store.container setting.
 
 .. code-block:: console
     :emphasize-lines: 1
@@ -1045,24 +1043,24 @@ After a while, the user needs to work with multiple containers, therefore a defa
     2.  pithos (0B, 0 objects)
     3.  trash (2MB, 1 objects)
 
-.. warning:: In some cases, the config setting updates are not immidiately effective. If that is the case, they will be after the next command run, whatever that command is.
+.. warning:: In some cases, the config setting updates are not immediately effective. If that is the case, they will be after the next command run, whatever that command is.
 
-History
-"""""""
+Using history
+^^^^^^^^^^^^^
 
 There are two history modes: session and permanent. Session history keeps record of all actions in a kamaki shell session, while permanent history appends all commands to an accessible history file.
 
-Session history is only available in interactive shell mode. Users can iterrate through past commands in the same session by with the *up*and *down* keys. Session history is not stored, although syntactically correct commands are recorded through the permanent history mechanism
+Session history is only available in interactive shell mode. Users can iterate through past commands in the same session by with the *up* and *down* keys. Session history is not stored, although syntactically correct commands are recorded through the permanent history mechanism
 
 Permanent history is implemented as a command group and is common to both the one-command and shell interfaces. In specific, every syntactically correct command is appended in a history file (configured as *history.file* in settings, see `setup section <setup.html>`_ for details). Commands executed in one-command mode are mixed with the ones run in kamaki shell (also see :ref:`using-history-ref` section on this guide).
 
 Tab completion
-""""""""""""""
+^^^^^^^^^^^^^^
 
 Kamaki shell features tab completion for the first level of command terms of the current context. Tab completion pool changes dynamically when the context is switched. Currently, tab completion is not supported when the / detour is used (see :ref:accessing-top-level-commands-ref ).
 
 OS Shell integration
-""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^
 
 Kamaki shell features the ability to execute OS-shell commands from any context. This can be achieved by typing *!* or *shell*::
 
@@ -1109,6 +1107,3 @@ Kamaki shell commits command strings to the outside shell and prints the results
 
     [kamaki]:shell pwd
     /home/username
-
-Creating applications with the Clients API
-------------------------------------------

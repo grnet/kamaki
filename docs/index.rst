@@ -14,7 +14,7 @@ it without arguments to see a list of available commands.
 It is an initial implementation of the OpenStack Compute API, v1.1, with custom
 extensions specific to the Synnefo IaaS cloud management software.
 
-./kamaki is open source and released under a 2-clause BSD Licence.
+./kamaki is open source and released under a 2-clause BSD License.
 
 
 Contents:
