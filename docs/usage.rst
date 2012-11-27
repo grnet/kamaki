@@ -637,6 +637,8 @@ To see the command groups, users should use -h or --help like in example 1.3.1. 
       -h, --help            Show help message
       -l                    show detailed output
 
+.. _using-history-ref:
+
 Using history
 """""""""""""
 
@@ -663,7 +665,7 @@ The following example showcases how to use history in kamaki
     Example 4.2.2: Clean up everything, run a kamaki command, show full and filtered history
     
 
-    $ kamaki history clean --match clean
+    $ kamaki history clean
     $ kamaki server list
     ...
     $ kamaki history show
@@ -886,6 +888,8 @@ There are many ways of producing a help message, as shown in example 5.2.3
     [store]:/config set -h
     [server]:/config set --help
 
+.. _accessing-top-level-commands-ref:
+
 Accessing top-level commands
 """"""""""""""""""""""""""""
 
@@ -958,7 +962,7 @@ An other example (5.3.2) showcases how to aquire and modify configuration settin
 The following example compares some equivalent calls that run *astakos-authenticate* after a *store-list* 401 failure.
 
 .. code-block:: console
-    :emphasize-lines: 1,3,10,17,28
+    :emphasize-lines: 1,3,10,17,26
 
     Example 5.3.3: Equivalent astakos-authenticate calls after a store-list 401 failure
 
@@ -992,17 +996,119 @@ The following example compares some equivalent calls that run *astakos-authentic
     ...
     [store]:
 
+.. hint:: To exit kamaki shell while in a context, try */exit*
+
 Config
 """"""
+
+The configuration mechanism of kamaki is detailed at the `setup section <setup.html>`_ and it is common for both interaction modes. In specific, the configuration mechanism is implemented as a command group, namely *config*. Using the config commands is as straighforward as any other kamaki commands.
+
+It is often usefull to set, delete or update a value. This can be managed either inside the config context or from any commant context by using the / detour.
+
+.. Note:: config updates in kamaki shell persist even after the session is over. All setting changes affects the physical kamaki config file (automatically created, if not set manually)
+
+In example 5.4.1 the user is going to work with only one storage container. The store commands use the container:path syntax, but if the user could set a container as a defaul, the container name could be ommited in most cases. This is possible by setting a store.container setting.
+
+.. code-block:: console
+    :emphasize-lines: 1
+
+    Example 5.4.1: Set default storage container
+
+
+    [store]:list
+    1.  mycontainer (32MB, 2 objects)
+    2.  pithos (0B, 0 objects)
+    3.  trash (2MB, 1 objects)
+
+    [store]:list mycontainer
+    1.  D mydir/
+    2.  20M mydir/rndm_local.file
+    
+    [store]:/config set store.container mycontainer
+
+    [store]: list
+    1.  D mydir/
+    2.  20M mydir/rndm_local.file
+
+After a while, the user needs to work with multiple containers, therefore a default container is not longer needed. The store.container setting can be deleted, as shown in example 5.4.2 .
+
+.. code-block:: console
+    :emphasize-lines: 1
+
+    Example 5.4.2: Delete a setting option
+
+
+    [store]:/config delete store.container
+
+    [store]:list
+    1.  mycontainer (32MB, 2 objects)
+    2.  pithos (0B, 0 objects)
+    3.  trash (2MB, 1 objects)
+
+.. warning:: In some cases, the config setting updates are not immidiately effective. If that is the case, they will be after the next command run, whatever that command is.
 
 History
 """""""
 
+There are two history modes: session and permanent. Session history keeps record of all actions in a kamaki shell session, while permanent history appends all commands to an accessible history file.
+
+Session history is only available in interactive shell mode. Users can iterrate through past commands in the same session by with the *up*and *down* keys. Session history is not stored, although syntactically correct commands are recorded through the permanent history mechanism
+
+Permanent history is implemented as a command group and is common to both the one-command and shell interfaces. In specific, every syntactically correct command is appended in a history file (configured as *history.file* in settings, see `setup section <setup.html>`_ for details). Commands executed in one-command mode are mixed with the ones run in kamaki shell (also see :ref:`using-history-ref` section on this guide).
+
 Tab completion
 """"""""""""""
 
+Kamaki shell features tab completion for the first level of command terms of the current context. Tab completion pool changes dynamically when the context is switched. Currently, tab completion is not supported when the / detour is used (see :ref:accessing-top-level-commands-ref ).
+
 OS Shell integration
 """"""""""""""""""""
+
+Kamaki shell features the ability to execute OS-shell commands from any context. This can be achieved by typing *!* or *shell*::
+
+    [kamaki_context]:!<OS shell command>
+    ... OS shell command output ...
+
+    [kamaki_context]:shell <OS shell command>
+    ... OS shell command output ...
+
+.. code-block:: console
+    :emphasize-lines: 1
+
+    Example 5.7.1: Run unix-style shell commands from kamaki shell
+
+
+    [kamaki]:!ls -al
+    total 16
+    drwxrwxr-x 2 saxtouri saxtouri 4096 Nov 27 16:47 .
+    drwxrwxr-x 7 saxtouri saxtouri 4096 Nov 27 16:47 ..
+    -rw-rw-r-- 1 saxtouri saxtouri 8063 Jun 28 14:48 kamaki-logo.png
+
+    [kamaki]:shell cp kamaki-logo.png logo-copy.png
+
+    [kamaki]:shell ls -al
+    total 24
+    drwxrwxr-x 2 saxtouri saxtouri 4096 Nov 27 16:47 .
+    drwxrwxr-x 7 saxtouri saxtouri 4096 Nov 27 16:47 ..
+    -rw-rw-r-- 1 saxtouri saxtouri 8063 Jun 28 14:48 kamaki-logo.png
+    -rw-rw-r-- 1 saxtouri saxtouri 8063 Jun 28 14:48 logo-copy.png
+
+
+Kamaki shell commits command strings to the outside shell and prints the results, without interacting with it. After a command is finished, kamaki shell returns to its initial state, which involves the current directory, as show in example 5.7.2 .
+
+.. code-block:: console
+    :emphasize-lines: 1
+
+    Example 5.7.2: Attempt (and fail) to change working directory
+
+
+    [kamaki]:!pwd
+    /home/username
+
+    [kamaki]:!cd ..
+
+    [kamaki]:shell pwd
+    /home/username
 
 Creating applications with the Clients API
 ------------------------------------------

@@ -176,7 +176,7 @@ class server_create(_init_cyclades):
     def __init__(self, arguments={}):
         super(server_create, self).__init__(arguments)
         self.arguments['personality'] = PersonalityArgument(\
-            'add a personality file ( ' +\
+            'add one or more personality files ( ' +\
             '"PATH,[SERVER_PATH,[OWNER,[GROUP,[MODE]]]]" )',
             parsed_name='--personality')
 
