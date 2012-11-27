@@ -27,8 +27,8 @@ Contents:
    installation
    setup
    usage
+   commands
    clients
-   cli
 
 
 Indices and tables

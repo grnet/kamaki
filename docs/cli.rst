@@ -1,10 +1,6 @@
 Command Line Interfaces
 ===========================
 
-.. toctree::
-
-    commands
-
 argument
 --------
 
