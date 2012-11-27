@@ -147,10 +147,10 @@ class PersonalityArgument(ValueArgument):
     def value(self, newvalue):
         if newvalue == self.default:
             return self.value
-        termlist = newvalue.split()
-        if len(termlist) > 4:
+        termlist = newvalue.split(',')
+        if len(termlist) > 5:
                 raise CLISyntaxError(details='Wrong number of terms'\
-                    + ' ("PATH [OWNER [GROUP [MODE]]]"')
+                    + ' ("PATH,[SERVER_PATH,[OWNER,[GROUP,[MODE]]]]"')
         path = termlist[0]
         self._value = dict(path=path)
         if not exists(path):
@@ -173,17 +173,15 @@ class server_create(_init_cyclades):
     def __init__(self, arguments={}):
         super(server_create, self).__init__(arguments)
         self.arguments['personality'] = PersonalityArgument(\
-            help='add a personality file ( "PATH [OWNER [GROUP [MODE]]]" )',
+            'add a personality file ( ' +\
+            '"PATH,[SERVER_PATH,[OWNER,[GROUP,[MODE]]]]" )',
             parsed_name='--personality')
-
-    def update_parser(self, parser):
-        parser.add_argument('--personality', dest='personalities',
-                          action='append', default=[],
-                          metavar='PATH[,SERVER PATH[,OWNER[,GROUP,[MODE]]]]',
-                          help='add a personality file')
 
     def main(self, name, flavor_id, image_id):
         super(self.__class__, self).main()
+
+        print('PERSONLITY: ' % self.get_argument('personality'))
+
         try:
             reply = self.client.create_server(name,
                 int(flavor_id),

@@ -929,7 +929,7 @@ It is often the case that a user who works in the context command, needs to crea
     [server]:create 'my debian' 43 6aa6eafd-dccb-67fe2bdde87e
     ...
 
-An other example (5.3.2) showcases how to aquire and modify configuration settings from a different context. In this case, user token changes while the user is working, so a token modification is needed.
+An other example (5.3.2) showcases how to aquire and modify configuration settings from a different context. In this scenario, the user token expires at server side while the user is working. When that happens, the system responds with an *(401) UNAUTHORIZED* message. The user can aquires a new token (with a browser) which has to be set to kamaki.
 
 .. code-block:: console
     :emphasize-lines: 1
@@ -955,14 +955,14 @@ An other example (5.3.2) showcases how to aquire and modify configuration settin
     1.  pithos (10MB, 2 objects)
     2.  trash (0B, 0 objects)
 
-The following example presents some equivalent calls that call *astakos-authenticate* after a *store-list* 401 failure.
+The following example compares some equivalent calls that run *astakos-authenticate* after a *store-list* 401 failure.
 
 .. code-block:: console
     :emphasize-lines: 1,3,10,17,28
 
     Example 5.3.3: Equivalent astakos-authenticate calls after a store-list 401 failure
 
-    * one-command *
+    * without kamaki interactive shell *
     $ kamaki store list
     (401) UNAUTHORIZED Access denied
     $ kamaki astakos authenticate
@@ -983,9 +983,7 @@ The following example presents some equivalent calls that call *astakos-authenti
     [kamaki]:astakos
     [astakos]:authenticate
     ...
-    [astakos]:exit
-    [kamaki]:store
-    [store]:
+    [astakos]:
 
     * minimum typing *
     [store]: list
