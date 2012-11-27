@@ -33,10 +33,10 @@
 
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.utils import print_dict, print_items, print_list, bold
+from kamaki.cli.utils import print_dict, print_list, bold
 from kamaki.cli.errors import CLIError, raiseCLIError, CLISyntaxError
 from kamaki.clients.cyclades import CycladesClient, ClientError
-from kamaki.cli.argument import FlagArgument, ValueArgument
+from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
 from kamaki.cli.argument import ProgressBarArgument
 from kamaki.cli.commands import _command_init
 
@@ -138,32 +138,35 @@ class server_info(_init_cyclades):
         self._print(server)
 
 
-class PersonalityArgument(ValueArgument):
+class PersonalityArgument(KeyValueArgument):
     @property
     def value(self):
-        return [self._value] if hasattr(self, '_value') else []
+        return self._value if hasattr(self, '_value') else []
 
     @value.setter
     def value(self, newvalue):
         if newvalue == self.default:
             return self.value
-        termlist = newvalue.split(',')
-        if len(termlist) > 5:
+        self._value = []
+        for i, terms in enumerate(newvalue):
+            termlist = terms.split(',')
+            if len(termlist) > 5:
                 raise CLISyntaxError(details='Wrong number of terms'\
-                    + ' ("PATH,[SERVER_PATH,[OWNER,[GROUP,[MODE]]]]"')
-        path = termlist[0]
-        self._value = dict(path=path)
-        if not exists(path):
-            raise CLIError(message="File %s does not exist" % path,
+                + ' ("PATH,[SERVER_PATH,[OWNER,[GROUP,[MODE]]]]"')
+            path = termlist[0]
+            if not exists(path):
+                raise CLIError(message="File %s does not exist" % path,
                 importance=1)
-        with open(path) as f:
-            self._value['contents'] = b64encode(f.read())
-        try:
-            self._value['owner'] = termlist[1]
-            self._value['group'] = termlist[2]
-            self._value['mode'] = termlist[3]
-        except IndexError:
-            pass
+            self._value.append(dict(path=path))
+            with open(path) as f:
+                self._value[i]['contents'] = b64encode(f.read())
+            try:
+                self._value[i]['path'] = termlist[1]
+                self._value[i]['owner'] = termlist[2]
+                self._value[i]['group'] = termlist[3]
+                self._value[i]['mode'] = termlist[4]
+            except IndexError:
+                pass
 
 
 @command(server_cmds)
@@ -179,8 +182,6 @@ class server_create(_init_cyclades):
 
     def main(self, name, flavor_id, image_id):
         super(self.__class__, self).main()
-
-        print('PERSONLITY: ' % self.get_argument('personality'))
 
         try:
             reply = self.client.create_server(name,
