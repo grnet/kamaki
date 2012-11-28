@@ -1,19 +1,20 @@
-Commands
-========
-
 List of commands
-----------------
+================
 
-The commands described bellow are grouped by service. The examples showcase a sample set of group commands. The kamaki interactive shell (check `Usage section <usage.html#interactive-shell>`_ for details) is chosen as the execution environment:
+The commands described bellow are grouped by service. The examples showcase a sample set of group commands. The kamaki interactive shell (check `Usage section <usage.html#interactive-shell>`_ for details) is chosen as the execution environment.
+
 
 astakos (Identity Manager)
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+--------------------------
 
 .. code-block:: text
 
     authenticate:  Authenticate a user
 
-Showcase: get user information, provided the token was set
+Showcase: get user information
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In the following, the token has been set in a previous step (see `setup section <setup.html>`_ or the `quick setup guide <usage.html#quick-setup>`_)
 
 .. code-block:: console
     :emphasize-lines: 1,4
@@ -34,7 +35,7 @@ Showcase: get user information, provided the token was set
     username          :  4215th3b357num9323v32
 
 flavor (Compute/Cyclades)
-^^^^^^^^^^^^^^^^^^^^^^^^^
+-------------------------
 
 .. code-block:: text
 
@@ -42,6 +43,7 @@ flavor (Compute/Cyclades)
     list:  List flavors
 
 Showcase: show details for flavor with id 43
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: console
     :emphasize-lines: 1,4
@@ -59,7 +61,7 @@ Showcase: show details for flavor with id 43
     ram              :  2048
 
 image (Compute/Cyclades + Glance)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+---------------------------------
 
 .. code-block:: text
 
@@ -80,6 +82,7 @@ image (Compute/Cyclades + Glance)
     shared     :  List shared images
 
 Showcase: Pick an image and list the properties
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: console
     :emphasize-lines: 1,4,18
@@ -113,7 +116,7 @@ Showcase: Pick an image and list the properties
     users         :  root
 
 server (Compute/Cyclades)
-^^^^^^^^^^^^^^^^^^^^^^^^^
+-------------------------
 
 .. code-block:: text
 
@@ -135,7 +138,8 @@ server (Compute/Cyclades)
     stats   :  Get server statistics
     wait    :  Wait for server to finish
 
-Showcase: Create a server.
+Showcase: Create a server
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: console
     :emphasize-lines: 1,4,21,35,44,62
@@ -209,7 +213,7 @@ Showcase: Create a server.
 .. Note:: In kamaki shell, / is used to access top-level command groups while working in command group contexts
 
 network (Compute/Cyclades)
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+--------------------------
 
 .. code-block:: text
 
@@ -222,6 +226,7 @@ network (Compute/Cyclades)
     rename    :  Update network name
 
 Showcase: Connect a network to a VM
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: console
     :emphasize-lines: 1,4,9,24,27,44
@@ -286,7 +291,7 @@ Showcase: Connect a network to a VM
 .. Note:: In kamaki shell, / is used to access top-level command groups while working in command group contexts
 
 store (Storage/Pithos+)
-^^^^^^^^^^^^^^^^^^^^^^^
+-----------------------
 
 .. code-block:: text
 
@@ -324,7 +329,8 @@ store (Storage/Pithos+)
     versioning    :  Get  versioning for account [or container ]
     versions      :  Get the version list of an object
 
-Showcase: Upload and download a file.
+Showcase: Upload and download a file
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: console
     :emphasize-lines: 1,7,11,16,21,29,33,37,41,44,51,55,60,64
@@ -399,53 +405,3 @@ Showcase: Upload and download a file.
     [store]:!diff rndm_local.file rndm_remote.file
 
 .. Note:: In kamaki shell, ! is used to execute OS shell commands (bash in the above)
-
-
-Command specifications
-----------------------
-
-cyclades_cli
-^^^^^^^^^^^^
-
-.. automodule:: kamaki.cli.commands.cyclades_cli
-    :members:
-    :undoc-members:
-
-
-pithos_cli
-^^^^^^^^^^
-
-.. automodule:: kamaki.cli.commands.pithos_cli
-    :members:
-    :show-inheritance:
-    :undoc-members:
-
-image_cli
-^^^^^^^^^
-
-.. automodule:: kamaki.cli.commands.image_cli
-    :members:
-    :show-inheritance:
-    :undoc-members:
-
-
-astakos_cli
-^^^^^^^^^^^
-
-.. automodule:: kamaki.cli.commands.astakos_cli
-    :members:
-    :undoc-members:
-
-config_cli
-^^^^^^^^^^
-
-.. automodule:: kamaki.cli.commands.config_cli
-    :members:
-    :undoc-members:
-
-history_cli
-^^^^^^^^^^^
-
-.. automodule:: kamaki.cli.commands.history_cli
-    :members:
-    :undoc-members:

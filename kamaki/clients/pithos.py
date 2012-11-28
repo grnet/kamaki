@@ -206,7 +206,7 @@ class PithosClient(PithosRestAPI):
         assert offset == size
 
     def _upload_missing_blocks(self, missing, hmap, fileobj, upload_cb=None):
-        """upload missing blocks asynchronously. 
+        """upload missing blocks asynchronously.
         """
         if upload_cb:
             upload_gen = upload_cb(len(missing))

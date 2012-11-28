@@ -5,20 +5,17 @@ Kamaki offers command line interfaces that implement specific command specificat
 
 What's more, kamaki offers a clients API that allows the development of external applications for synnefo. The clients API is listed in the `Clients lib <clients.html>`_ section. The recommended method of utilizing this API is explained in the present.
 
-Setup
------
+Quick Setup
+-----------
 
 Kamaki interfaces rely on a list of configuration options. In the initial state, kamaki is configured to communicate with the Okeanos IaaS. A detailed guide for setting up kamaki can be found in the `Setup <setup.html>`_ section.
 
-Quick guide
-^^^^^^^^^^^
-
-It is essential for users to get a configuration token (to get in Okeanos.grnet.gr log `here <https://accounts.okeanos.grnet.gr/im/>`_) and provide it to kamaki:
+It is essential for users to get a configuration token (okeanos.grnet.gr users go `here <https://accounts.okeanos.grnet.gr/im/>`_) and provide it to kamaki:
 
 .. code-block:: console
     :emphasize-lines: 1
 
-    Example 1.1.1: Set user token to myt0k3n==
+    Example 1.1: Set user token to myt0k3n==
 
     $ kamaki set token myt0k3n==
 
@@ -27,7 +24,7 @@ To use the storage service, a user should also provide the corresponding user-na
 .. code-block:: console
     :emphasize-lines: 1
 
-    Example 1.1.2: Set user name to user@domain.com
+    Example 1.2: Set user name to user@domain.com
 
     $ kamaki set account user@domain.com
 

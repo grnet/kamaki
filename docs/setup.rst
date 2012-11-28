@@ -6,23 +6,30 @@ Kamaki is easy to install from source or as a package. Some ui features are opti
 Requirements
 ------------
 
-* python 2.6 or better
+Essential:
 
-* snf-common 0.10 or better
+ * Python 2.6 or better [http://www.python.org/]
+ * snf-common 0.10 or better [https://code.grnet.gr/projects/synnefo]
+
+Optional:
+
+ * ANSI colors for Python [http://pypi.python.org/pypi/ansicolors]
+ * progress [http://pypi.python.org/pypi/progress]
+
 
 The snf-common package is part of the Synnefo project of the Greek Research and Development Network and is available from the same official sources as Kamaki (e.g. http://apt.dev.grnet.gr ).
 
 Optional features
 -----------------
 
+For installing any all of the following, consult the `kamaki installation guide <installation.html#install-progress-and-or-ansicolors-optional>`_
+
 * ansicolors
     * Make command line / console user interface responses prettier with text formating (colors, bold, etc.)
     * Can be switched on/off in kamaki configuration file: colors=on/off
-    * Installation: pip install ansicolors
 
 * progress 
     * Attach progress bars to various kamaki commands (e.g. kamaki store upload)
-    * Installation: pip install progressbar
     * Since version 0.6.1 kamaki "requires" progress version 1.0.2 or better
 
 Any of the above features can be installed at any time before or after kamaki installation.

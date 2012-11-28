@@ -16,6 +16,18 @@ Linux and Unix-like enviroments
 Installing from source (git repos.)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Requirements
+""""""""""""
+
+Essential:
+
+ * Python 2.6 or better [http://www.python.org]
+ * Python setuptools [http://pypi.python.org/pypi/setuptools]
+
+Optional:
+
+ * VirtualEnv (python-virtualenv) [http://www.virtualenv.org]
+
 1. Setup a virtual enviroment (optional)
 """"""""""""""""""""""""""""""""""""""""
 
@@ -27,12 +39,12 @@ With virtualenv users can setup kamaki and synnefo services in a sandbox environ
 
     $ source kamaki-env/bin/activate
 
-.. hint:: More about virtualenv: `<http://www.virtualenv.org>`_
+A more detailed example of using virtual env can be found at the `snf-image-creator setup guide <http://docs.dev.grnet.gr/snf-image-creator/latest/install.html#python-virtual-environment>`_
 
-2. Install snf-common from synnefo project (required since v0.6.0)
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+2. Install snf-common
+"""""""""""""""""""""
 
-Package snf-common is required since kamaki 0.6.0.
+Package snf-common is part of the synnefo project and is a kamaki dependency since version 0.6.0.
 
 .. code-block:: console
 
