@@ -622,7 +622,7 @@ Permanent history is implemented as a command group and is common to both the on
 Tab completion
 ^^^^^^^^^^^^^^
 
-Kamaki shell features tab completion for the first level of command terms of the current context. Tab completion pool changes dynamically when the context is switched. Currently, tab completion is not supported when the / detour is used (see :ref:accessing-top-level-commands-ref ).
+Kamaki shell features tab completion for the first level of command terms of the current context. Tab completion pool changes dynamically when the context is switched. Currently, tab completion is not supported when the / detour is used (see :ref:`accessing-top-level-commands-ref` ).
 
 OS Shell integration
 ^^^^^^^^^^^^^^^^^^^^
