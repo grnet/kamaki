@@ -38,7 +38,11 @@ import datetime
 import os
 import sys
 
-from progress.bar import IncrementalBar
+try:
+    from progress.bar import FillingCirclesBar as IncrementalBar
+except ImportError:
+    print('No progress bars in testing!')
+    pass
 
 from kamaki.clients import ClientError
 from kamaki.clients.pithos import PithosClient as pithos
@@ -49,7 +53,7 @@ from kamaki.cli.config import Config
 
 TEST_ALL = False
 
-cnf = Config('/home/saxtouri/.kamakirc')
+cnf = Config()
 global_username = cnf.get('global', 'account')
 token = cnf.get('global', 'token')
 
@@ -214,6 +218,12 @@ class testImage(unittest.TestCase):
         self.assertTrue(len(self._imglist) > 0)
         for img in self._imglist.values():
             self.assertTrue(img != None)
+
+    def test_reregister(self):
+        """Test reregister"""
+        self._prepare_img()
+        self.client.reregister(self.imglocation,
+            properties=dict(my_property='some_value'))
 
     def test_set_members(self):
         """Test set_members"""

@@ -111,6 +111,7 @@ class ImageClient(Client):
             for k, v in properties.items():
                 img_properties[k] = v
             self.register(img_name, location, params, img_properties)
+        r.release()
 
     def list_members(self, image_id):
         path = path4url('images', image_id, 'members')
