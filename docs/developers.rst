@@ -110,6 +110,127 @@ The following example concatenates examples 1.1 and 1.2 plus error handling
             for detail in e.details:
                 print('- %s' % detail)
 
+Adding Commands
+---------------
+
+Architecture
+^^^^^^^^^^^^
+
+Kamaki commands are implemented as python classes, decorated with a special decorator called *command*. This decorator is a method of kamaki.cli that adds a new command in a CommandTree structure (kamaki.cli.commant_tree). The later is used by interfaces to manage kamaki commands.
+
+The CommandTree structure
+"""""""""""""""""""""""""
+
+CommandTree manages a command by its path. Each command is stored in multiple nodes on the tree, so that the last term is a leaf and the route from root to that leaf represents the command path. For example the commands *store upload*, *store list* and *store info* are stored together as shown bellow::
+
+    - store
+    ''''''''|- info
+            |- list
+            |- upload
+
+Each command group should be stored on a different CommandTree. For that reason, command specification modules should contain a list of CommandTree objects, named *_commands*
+
+A command group information (name, description) is provided at CommandTree structure initialization::
+
+    _mygrp_commands = CommandTree('mygrp', 'My Group Commands')
+
+The command decorator
+"""""""""""""""""""""
+
+The *command* decorator mines all the information necessary to build a command specification which is inserted in a CommanTree instance::
+
+    class code  --->  command()  -->  updated CommandTree structure
+
+Kamaki interfaces make use of this CommandTree structure. Optimizations are possible by using special parameters on the command decorator method.
+
+.. code-block:: python
+
+    def command(cmd_tree, prefix='', descedants_depth=None):
+    """Load a class as a command
+        @cmd_tree is the CommandTree to be updated with a new command
+        @prefix of the commands allowed to be inserted ('' for all)
+        @descedants_depth is the depth of the tree descedants of the
+            prefix command.
+    """
+
+Creating a new command specification set
+""""""""""""""""""""""""""""""""""""""""
+
+A command specification developer should create a new module (python file) with as many classes as the command specifications to be offered. Each class should be decorated with *command*.
+
+A list of CommandTree structures must exist in the module scope, with the name _commands. Different CommandTree objects correspond to different command groups.
+
+Declare run-time argument
+"""""""""""""""""""""""""
+
+The argument mechanism allows the definition of run-time arguments. Some basic argument types are defined at the `argument module <cli.html#module-kamaki.cli.argument>`_, but it is not uncommon to extent these classes in order to achieve specialized type checking and syntax control (e.g. at `pithos_cli module <cli.html#module-kamaki.cli.commands.pithos_cli>`_).
+
+Putting them all together
+"""""""""""""""""""""""""
+
+The information that can be mined by *command* for each individual command are presented in the following, for a sample command:
+
+.. code-block:: python
+
+    @command(_mygrp_commands)
+    class mygrp_cmd1_cmd2(object):
+        """Command Description"""
+
+        def __init__(self, arguments={}):
+            arguments['arg1'] = FlagArgument(
+                'Run with arg1 on',
+                --arg1',
+                False)
+
+            self.arguments = arguments
+
+        def main(self, obligatory_param1, obligatory_param2,
+            optional_param1=None, optional_param2=None):
+            ...
+            command code here
+            ...
+
+This will load the following information on the CommandTree::
+
+    Syntax: mygrp cmd1 cmd2 <objigatory param1> <obligatory param2>
+        [optional_param1] [optional_param2] [--arg1]
+    Description: Command Description
+    Arguments help: --arg1: Run with arg1 on
+
+Letting kamaki know
+"""""""""""""""""""
+
+Kamaki will load a command specification *only* if it is set as a configurable option. To demonstrate this, let a commands module grps be implemented in the file *grps.py* where there are two command groups defined: mygrp1 mygrp2.
+
+Move grps.py to kamaki/cli/commands, the default place for command specifications
+
+In the configuration file, add:
+
+.. code-block:: console
+
+    [mygrp1]
+    cli=grps
+
+    [mygrp2]
+    cli=grps
+
+or alternatively
+
+.. code-block:: console
+
+    $ kamaki config set mygrp1.cli = grps
+    $ kamaki config set mygrp2.cli = grps
+
+Command modules don't have to live in kamaki/cli/commands, although this is suggested for uniformity. If a command module exist in another path::
+
+    [mygrp]
+    cli=/another/path/grps.py
+
+Developing a Command Specification Set
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+TODO
+
 Extending kamaki.clients
 ------------------------
 

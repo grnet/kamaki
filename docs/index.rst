@@ -28,7 +28,7 @@ Contents:
    setup
    usage
    commands
-   clients
+   developers
 
 
 Indices and tables
