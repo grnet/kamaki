@@ -3,22 +3,6 @@ Setup
 
 Kamaki is easy to install from source or as a package. Some ui features are optional and can be install separately. Kamaki behavior can be configured in the kamaki config file.
 
-Requirements
-------------
-
-Essential:
-
- * Python 2.6 or better [http://www.python.org/]
- * snf-common 0.10 or better [https://code.grnet.gr/projects/synnefo]
-
-Optional:
-
- * ANSI colors for Python [http://pypi.python.org/pypi/ansicolors]
- * progress [http://pypi.python.org/pypi/progress]
-
-
-The snf-common package is part of the Synnefo project of the Greek Research and Development Network and is available from the same official sources as Kamaki (e.g. http://apt.dev.grnet.gr ).
-
 Optional features
 -----------------
 
