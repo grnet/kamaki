@@ -36,6 +36,7 @@ from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import CLIError, raiseCLIError
 from kamaki.cli.utils import format_size, print_dict, pretty_keys
 from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
+from kamaki.cli.argument import KeyValueArgument
 from kamaki.cli.argument import ProgressBarArgument
 from kamaki.cli.commands import _command_init
 from kamaki.clients.pithos import PithosClient, ClientError
@@ -53,6 +54,9 @@ _commands = [pithos_cmds]
 
 
 class DelimiterArgument(ValueArgument):
+    """Set a custom delimiter, default is '/'
+    """
+
     def __init__(self, caller_obj, help='', parsed_name=None, default=None):
         super(DelimiterArgument, self).__init__(help, parsed_name, default)
         self.caller_obj = caller_obj
@@ -67,8 +71,6 @@ class DelimiterArgument(ValueArgument):
     def value(self, newvalue):
         self._value = newvalue
 
-
-class MetaArgument(ValueArgument):
     @property
     def value(self):
         if self._value is None:
@@ -398,7 +400,9 @@ class store_create(_store_container_command):
         self.arguments['quota'] =\
             IntArgument('set default container quota', '--quota')
         self.arguments['meta'] =\
-            MetaArgument('set container metadata', '--meta')
+            KeyValueArgument(
+                'set container metadata (can be repeated)', '--meta')
+            #  MetaArgument('set container metadata', '--meta')
 
     def main(self, container____directory__):
         super(self.__class__, self).main(container____directory__)

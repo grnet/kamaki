@@ -36,7 +36,6 @@ With virtualenv users can setup kamaki and synnefo services in a sandbox environ
 .. code-block:: console
 
     $ virtualenv kamaki-env
-
     $ source kamaki-env/bin/activate
 
 A more detailed example of using virtual env can be found at the `snf-image-creator setup guide <http://docs.dev.grnet.gr/snf-image-creator/latest/install.html#python-virtual-environment>`_
@@ -49,11 +48,8 @@ Package snf-common is part of the synnefo project and is a kamaki dependency sin
 .. code-block:: console
 
     $ git clone http://code.grnet.gr/git/synnefo
-
     $ cd synnefo/snf-common
-
     $ ./setup build install
-
     $ cd -
 
 3. Install kamaki
@@ -62,9 +58,7 @@ Package snf-common is part of the synnefo project and is a kamaki dependency sin
 .. code-block:: console
 
     $ git clone http://code.grnet.gr/git/kamaki
-
     $ cd kamaki
-
     $ ./setup build install
 
 4. Install progress and/or ansicolors (optional)
@@ -77,7 +71,6 @@ ansicolors: color kamaki output (can switched on and off in `setup <setup.html>`
 .. code-block:: console
 
     $ pip install progress
-
     $ pip install ansicolors
 
 Ubuntu and Debian packages
@@ -122,7 +115,6 @@ Since version 0.6.0, the package snf-common (available at synnefo apt repository
 .. code-block:: console
 
     $ sudo apt-get install python-ansicolors
-
     $ sudo apt-get install python-progress
 
 Mac OS X
