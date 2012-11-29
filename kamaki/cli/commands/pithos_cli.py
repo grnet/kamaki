@@ -54,7 +54,9 @@ _commands = [pithos_cmds]
 
 
 class DelimiterArgument(ValueArgument):
-    """Set a custom delimiter, default is '/'
+    """
+    :value type: string
+    :value returns: given string or /
     """
 
     def __init__(self, caller_obj, help='', parsed_name=None, default=None):
@@ -71,24 +73,16 @@ class DelimiterArgument(ValueArgument):
     def value(self, newvalue):
         self._value = newvalue
 
-    @property
-    def value(self):
-        if self._value is None:
-            return self.default
-        metadict = dict()
-        for metastr in self._value.split('_'):
-            (key, val) = metastr.split(':')
-            metadict[key] = val
-        return metadict
-
-    @value.setter
-    def value(self, newvalue):
-        if newvalue is None:
-            self._value = self.default
-        self._value = newvalue
-
 
 class SharingArgument(ValueArgument):
+    """Set sharing (read and/or write) groups
+
+    :value type: "read=term1,term2,... write=term1,term2,..."
+
+    :value returns: {'read':['term1', 'term2', ...],
+        'write':['term1', 'term2', ...]}
+    """
+
     @property
     def value(self):
         return getattr(self, '_value', self.default)
@@ -121,6 +115,13 @@ class SharingArgument(ValueArgument):
 
 
 class RangeArgument(ValueArgument):
+    """
+    :value type: string of the form <start>-<end>
+        where <start> and <end> are integers
+
+    :value returns: the input string, after type checking <start> and <end>
+    """
+
     @property
     def value(self):
         return getattr(self, '_value', self.default)
@@ -136,6 +137,12 @@ class RangeArgument(ValueArgument):
 
 
 class DateArgument(ValueArgument):
+    """
+    :value type: a string formated in an acceptable date format
+
+    :value returns: same date in first of DATE_FORMATS
+    """
+
     DATE_FORMATS = ["%a %b %d %H:%M:%S %Y",
         "%A, %d-%b-%y %H:%M:%S GMT",
         "%a, %d %b %Y %H:%M:%S GMT"]
@@ -169,6 +176,8 @@ class DateArgument(ValueArgument):
 
 
 class _pithos_init(_command_init):
+    """Initialize a pithos+ kamaki client"""
+
     def main(self):
         self.token = self.config.get('store', 'token')\
             or self.config.get('global', 'token')
@@ -893,7 +902,7 @@ class store_unpublish(_store_container_command):
 
 @command(pithos_cmds)
 class store_permissions(_store_container_command):
-    """Get object read/write permissions """
+    """Get object read / write permissions """
 
     def main(self, container___path):
         super(self.__class__,
