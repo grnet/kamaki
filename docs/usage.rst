@@ -3,7 +3,7 @@ Usage
 
 Kamaki offers command line interfaces that implement specific command specifications. A detailed list of the command specifications can be found in `Commands <commands.html>`_ section. This guide covers the generic usage of both interfaces.
 
-What's more, kamaki offers a clients API that allows the development of external applications for synnefo. The clients API is listed in the `Clients lib <clients.html>`_ section. The recommended method of utilizing this API is explained in the present.
+What's more, kamaki offers a clients API that allows the development of external applications for synnefo. The clients API is listed in the `Clients lib <developers/code.html#the-clients-api>`_ section. The recommended method of utilizing this API is explained in the present.
 
 Quick Setup
 -----------
