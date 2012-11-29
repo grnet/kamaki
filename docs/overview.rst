@@ -29,7 +29,7 @@ Community & Support
 
 For any problems you may bump into while using *kamaki* or for help from the development team please contact us at:
 
-* synnefo@lists.grnet.gr
+* Users list: synnefo@googlegroups.com
+* Developers list: synnefo-devel@googlegroups.com
 
-Please be sure to have read the Documentation and check the known issues before contacting the team.
-
+Bug reports and feedback are also highly appreciated.

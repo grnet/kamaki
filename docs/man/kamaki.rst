@@ -192,5 +192,5 @@ store commands
 Author
 ------
 
-GRNET development team <synnefo@lists.grnet.gr>.
+GRNET development team <synnefo-devel@googlegroups.com>.
 
