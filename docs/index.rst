@@ -22,13 +22,15 @@ Contents:
 
 .. toctree::
    :maxdepth: 2
+   :numbered:
+   :glob:
    
    overview
    installation
    setup
    usage
    commands
-   developers
+   devguide
 
 
 Indices and tables
@@ -37,4 +39,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-

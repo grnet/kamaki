@@ -133,4 +133,4 @@ Kamaki can be installed on Mac OS X systems from source, by following the steps 
 Windows
 -------
 
-It has proven possible (and not too tricky) to install kamaki on Windows console using some auxiliary applications, but Windows users are not the target audience for the time being.
+Although it is proven not too tricky to install kamaki on Windows console using `git for windows <http://git-scm.com/downloads>`_, Windows environments are not supported at the time being.
