@@ -45,11 +45,12 @@ except ImportError:
 
 
 class Argument(object):
-    """An argument that can be parsed from command line or otherwise"""
+    """An argument that can be parsed from command line or otherwise.
+    This is the general Argument class. It is suggested to extent this
+    class into more specific argument types.
+    """
 
     def __init__(self, arity, help=None, parsed_name=None, default=None):
-        self.arity = int(arity)
-
         if help is not None:
             self.help = help
         if parsed_name is not None:
@@ -59,6 +60,9 @@ class Argument(object):
 
     @property
     def parsed_name(self):
+        """the string which will be recognised by the parser as an instance
+            of this argument
+        """
         return getattr(self, '_parsed_name', None)
 
     @parsed_name.setter
@@ -71,6 +75,7 @@ class Argument(object):
 
     @property
     def help(self):
+        """a user friendly help message"""
         return getattr(self, '_help', None)
 
     @help.setter
@@ -79,6 +84,7 @@ class Argument(object):
 
     @property
     def arity(self):
+        """negative for repeating, 0 for flag, 1 or more for values"""
         return getattr(self, '_arity', None)
 
     @arity.setter
@@ -88,6 +94,7 @@ class Argument(object):
 
     @property
     def default(self):
+        """the value of this argument when not set"""
         if not hasattr(self, '_default'):
             self._default = False if self.arity == 0 else None
         return self._default
@@ -98,6 +105,7 @@ class Argument(object):
 
     @property
     def value(self):
+        """the value of the argument"""
         return getattr(self, '_value', self.default)
 
     @value.setter
@@ -105,7 +113,7 @@ class Argument(object):
         self._value = newvalue
 
     def update_parser(self, parser, name):
-        """Update an argument parser with this argument info"""
+        """Update argument parser with self info"""
         action = 'append' if self.arity < 0\
             else 'store_true' if self.arity == 0\
             else 'store'
@@ -113,12 +121,15 @@ class Argument(object):
             default=self.default, help=self.help)
 
     def main(self):
-        """Overide this method to give functionality to ur args"""
+        """Overide this method to give functionality to your args"""
         raise NotImplementedError
 
 
 class ConfigArgument(Argument):
+    """Manage a kamaki configuration file"""
+
     _config_file = None
+    """The configuration file"""
 
     @property
     def value(self):
@@ -145,6 +156,8 @@ _config_arg = ConfigArgument(1, 'Path to configuration file', '--config')
 
 
 class CmdLineConfigArgument(Argument):
+    """Set a run-time setting option (not persistent)"""
+
     def __init__(self, config_arg, help='', parsed_name=None, default=None):
         super(self.__class__, self).__init__(1, help, parsed_name, default)
         self._config_arg = config_arg
@@ -176,16 +189,31 @@ class CmdLineConfigArgument(Argument):
 
 
 class FlagArgument(Argument):
+    """
+    :value type: accepts no values from user
+    :value returns: true if argument is set, false otherwise
+    """
+
     def __init__(self, help='', parsed_name=None, default=None):
         super(FlagArgument, self).__init__(0, help, parsed_name, default)
 
 
 class ValueArgument(Argument):
+    """
+    :value type: string
+    :value returns: given value or default
+    """
+
     def __init__(self, help='', parsed_name=None, default=None):
         super(ValueArgument, self).__init__(1, help, parsed_name, default)
 
 
 class IntArgument(ValueArgument):
+    """
+    :value type: integer (type checking occurs)
+    :value returns: an integer
+    """
+
     @property
     def value(self):
         return getattr(self, '_value', self.default)
@@ -203,6 +231,8 @@ class IntArgument(ValueArgument):
 
 
 class VersionArgument(FlagArgument):
+    """A flag argument with that prints current version"""
+
     @property
     def value(self):
         return super(self.__class__, self).value
@@ -219,6 +249,11 @@ class VersionArgument(FlagArgument):
 
 
 class KeyValueArgument(Argument):
+    """A Value Argument that can be repeated
+
+    --<argument> key1=value1 --<argument> key2=value2 ...
+    """
+
     def __init__(self, help='', parsed_name=None, default=[]):
         super(KeyValueArgument, self).__init__(-1, help, parsed_name, default)
 
