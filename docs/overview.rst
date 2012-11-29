@@ -27,7 +27,7 @@ The *kamaki* development team values your help and depends on community feedback
 Community & Support
 -------------------
 
-For any problems you may bump into while using *kamaki* or for help from the development team please contact us at:
+For any problems you may bump into while using *kamaki* or for help from the development team please contact us at::
 
 * Users list: synnefo@googlegroups.com
 * Developers list: synnefo-devel@googlegroups.com

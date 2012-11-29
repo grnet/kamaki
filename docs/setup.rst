@@ -32,7 +32,9 @@ Kamaki setups are stored in configuration files. By default, a Kamaki installati
 
 If a user needs to switch between different setups, Kamaki can explicitly load configuration files with the --config option:
 
-*kamaki --config <custom_config_file_path> [other options]*
+.. code-block:: console
+
+    $ kamaki --config <custom_config_file_path> [other options]
 
 Using many different configuration files for different cloud services is encouraged.
 
@@ -41,7 +43,9 @@ Modifying options at runtime
 
 All kamaki commands can be used with the -o option in order to override configuration options at runtime. For example::
 
-    kamaki store list -o global.account=anotheraccount -o global.token=aT0k3n==
+.. code-block:: console
+
+    $ kamaki store list -o global.account=anotheraccount -o global.token=aT0k3n==
 
 will invoke *kamaki store list* with the specified options, but the initial global.account and global.token values will be restored to initial values afterwards.
 
@@ -69,9 +73,11 @@ Editing the configuration file
 
 The configuration file is a simple text file that can be created by the user.
 
-A simple way to create the configuration file is to set a configuration option using the kamaki config command. For example::
+A simple way to create the configuration file is to set a configuration option using the kamaki config command. For example:
 
-    kamaki config set account myusername@mydomain.com
+.. code-block:: console
+
+    $ kamaki config set account myusername@mydomain.com
 
 In the above example, if the kamaki configuration file does not exist, it will be created with all the default values plus the *global.account* option set to *myusername@mydomain.com* value.
 
@@ -135,9 +141,9 @@ The [global] group is treated by kamaki as a generic group for arbitrary options
 Hidden features
 ^^^^^^^^^^^^^^^
 
-Since version 0.6.1 kamaki contains a test suite for the kamaki.clients API. The test suite can be activated with the following option on the configuration file:
+Since version 0.6.1 kamaki contains a test suite for the kamaki.clients API. The test suite can be activated with the following option on the configuration file::
 
-[test]
-cli=test_cli
+    [test]
+    cli=test_cli
 
 After that, users can run "kamaki test" commands to unit-test the prepackaged client APIs. Unit-tests are still experimental and there is a high probability of false alarms due to some of the expected values being hard-coded in the testing code.
