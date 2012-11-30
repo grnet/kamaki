@@ -837,7 +837,7 @@ class PithosClient(PithosRestAPI):
 
         :param metakey: (str) metadatum key
         """
-        r = self.object_post(object, update=True, metadata={metakey: ''})
+        r = self.object_post(obj, update=True, metadata={metakey: ''})
         r.release()
 
     def publish_object(self, obj):
