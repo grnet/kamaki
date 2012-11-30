@@ -46,7 +46,7 @@ from kamaki.clients.utils import path4url, filter_in
 from StringIO import StringIO
 
 
-def pithos_hash(block, blockhash):
+def _pithos_hash(block, blockhash):
     h = newhashlib(blockhash)
     h.update(block.rstrip('\x00'))
     return h.hexdigest()
@@ -74,6 +74,8 @@ class PithosClient(PithosRestAPI):
         super(PithosClient, self).__init__(base_url, token, account, container)
 
     def purge_container(self):
+        """Delete an empty container and destroy associated blocks
+        """
         r = self.container_delete(until=unicode(time()))
         r.release()
 
@@ -86,6 +88,28 @@ class PithosClient(PithosRestAPI):
         content_type=None,
         sharing=None,
         public=None):
+        """
+        :param obj: (str) remote object path
+
+        :param f: open file descriptor
+
+        :param withHashFile: (bool)
+
+        :param size: (int) size of data to upload
+
+        :param etag: (str)
+
+        :param content_encoding: (str)
+
+        :param content_disposition: (str)
+
+        :param content_type: (str)
+
+        :param sharing: {'read':[user and/or grp names],
+            'write':[usr and/or grp names]}
+
+        :param public: (bool)
+        """
         self.assert_container()
 
         if withHashFile:
@@ -112,20 +136,6 @@ class PithosClient(PithosRestAPI):
             success=201)
         r.release()
 
-    # upload_* auxiliary methods
-    def put_block_async(self, data, hash):
-        event = SilentEvent(method=self.put_block, data=data, hash=hash)
-        event.start()
-        return event
-
-    def put_block(self, data, hash):
-        r = self.container_post(update=True,
-            content_type='application/octet-stream',
-            content_length=len(data),
-            data=data,
-            format='json')
-        assert r.json[0] == hash, 'Local hash does not match server'
-
     def create_object_by_manifestation(self, obj,
         etag=None,
         content_encoding=None,
@@ -133,6 +143,22 @@ class PithosClient(PithosRestAPI):
         content_type=None,
         sharing=None,
         public=None):
+        """
+        :param obj: (str) remote object path
+
+        :param etag: (str)
+
+        :param content_encoding: (str)
+
+        :param content_disposition: (str)
+
+        :param content_type: (str)
+
+        :param sharing: {'read':[user and/or grp names],
+            'write':[usr and/or grp names]}
+
+        :param public: (bool)
+        """
         self.assert_container()
         r = self.object_put(obj,
             content_length=0,
@@ -144,6 +170,20 @@ class PithosClient(PithosRestAPI):
             public=public,
             manifest='%s/%s' % (self.container, obj))
         r.release()
+
+    # upload_* auxiliary methods
+    def _put_block_async(self, data, hash):
+        event = SilentEvent(method=self._put_block, data=data, hash=hash)
+        event.start()
+        return event
+
+    def _put_block(self, data, hash):
+        r = self.container_post(update=True,
+            content_type='application/octet-stream',
+            content_length=len(data),
+            data=data,
+            format='json')
+        assert r.json[0] == hash, 'Local hash does not match server'
 
     def _get_file_block_info(self, fileobj, size=None):
         meta = self.get_container_info()
@@ -197,7 +237,7 @@ class PithosClient(PithosRestAPI):
         for i in range(nblocks):
             block = fileobj.read(min(blocksize, size - offset))
             bytes = len(block)
-            hash = pithos_hash(block, blockhash)
+            hash = _pithos_hash(block, blockhash)
             hashes.append(hash)
             hmap[hash] = (offset, bytes)
             offset += bytes
@@ -219,7 +259,7 @@ class PithosClient(PithosRestAPI):
             offset, bytes = hmap[hash]
             fileobj.seek(offset)
             data = fileobj.read(bytes)
-            r = self.put_block_async(data, hash)
+            r = self._put_block_async(data, hash)
             flying.append(r)
             unfinished = []
             for i, thread in enumerate(flying):
@@ -260,6 +300,29 @@ class PithosClient(PithosRestAPI):
         content_type=None,
         sharing=None,
         public=None):
+        """Upload an object using multiple connections (threads)
+
+        :param obj: (str) remote object path
+
+        :param f: open file descriptor (rb)
+
+        :param hash_cb: optional progress.bar object for calculating hashes
+
+        :param upload_cb: optional progress.bar object for uploading
+
+        :param etag: (str)
+
+        :param content_encoding: (str)
+
+        :param content_disposition: (str)
+
+        :param content_type: (str)
+
+        :param sharing: {'read':[user and/or grp names],
+            'write':[usr and/or grp names]}
+
+        :param public: (bool)
+        """
         self.assert_container()
 
         #init
@@ -308,7 +371,7 @@ class PithosClient(PithosRestAPI):
     def _get_remote_blocks_info(self, obj, **restargs):
         #retrieve object hashmap
         myrange = restargs.pop('data_range', None)
-        hashmap = self.get_object_hashmap(obj, **restargs)
+        hashmap = self.get_object_hashmapp(obj, **restargs)
         restargs['data_range'] = myrange
         blocksize = int(hashmap['block_size'])
         blockhash = hashmap['block_hash']
@@ -431,13 +494,36 @@ class PithosClient(PithosRestAPI):
         dst,
         download_cb=None,
         version=None,
-        overide=False,
         resume=False,
         range=None,
         if_match=None,
         if_none_match=None,
         if_modified_since=None,
         if_unmodified_since=None):
+        """Download an object using multiple connections (threads) and
+            writing to random parts of the file
+
+        :param obj: (str) remote object path
+
+        :param dst: open file descriptor (wb+)
+
+        :param download_cb: optional progress.bar object for downloading
+
+        :param version: (str) file version
+
+        :param resume: (bool) if set, preserve already downloaded file parts
+
+        :param range: (str) from-to where from and to are integers denoting
+            file positions in bytes
+
+        :param if_match: (str)
+
+        :param if_none_match: (str)
+
+        :param if_modified_since: (str) formated date
+
+        :param if_unmodified_since: (str) formated date
+        """
 
         restargs = dict(version=version,
             data_range=None if range is None else 'bytes=%s' % range,
@@ -495,14 +581,29 @@ class PithosClient(PithosRestAPI):
             except:
                 break
 
-    # Untested - except is download_object is tested first
-    def get_object_hashmap(self, obj,
+    def get_object_hashmapp(self, obj,
         version=None,
         if_match=None,
         if_none_match=None,
         if_modified_since=None,
         if_unmodified_since=None,
         data_range=None):
+        """
+        :param obj: (str) remote object path
+
+        :param if_match: (str)
+
+        :param if_none_match: (str)
+
+        :param if_modified_since: (str) formated date
+
+        :param if_unmodified_since: (str) formated date
+
+        :param data_range: (str) from-to where from and to are integers
+            denoting file positions in bytes
+
+        :returns: (list)
+        """
         try:
             r = self.object_get(obj,
                 hashmap=True,
@@ -519,57 +620,108 @@ class PithosClient(PithosRestAPI):
         return r.json
 
     def set_account_group(self, group, usernames):
+        """
+        :param group: (str)
+
+        :param usernames: (list)
+        """
         r = self.account_post(update=True, groups={group: usernames})
         r.release()
 
     def del_account_group(self, group):
+        """
+        :param group: (str)
+        """
         r = self.account_post(update=True, groups={group: []})
         r.release()
 
     def get_account_info(self, until=None):
+        """
+        :param until: (str) formated date
+
+        :returns: (dict)
+        """
         r = self.account_head(until=until)
         if r.status_code == 401:
             raise ClientError("No authorization")
         return r.headers
 
     def get_account_quota(self):
+        """
+        :returns: (dict)
+        """
         return filter_in(self.get_account_info(),
             'X-Account-Policy-Quota',
             exactMatch=True)
 
     def get_account_versioning(self):
+        """
+        :returns: (dict)
+        """
         return filter_in(self.get_account_info(),
             'X-Account-Policy-Versioning',
             exactMatch=True)
 
     def get_account_meta(self, until=None):
+        """
+        :meta until: (str) formated date
+
+        :returns: (dict)
+        """
         return filter_in(self.get_account_info(until=until), 'X-Account-Meta-')
 
     def get_account_group(self):
+        """
+        :returns: (dict)
+        """
         return filter_in(self.get_account_info(), 'X-Account-Group-')
 
     def set_account_meta(self, metapairs):
+        """
+        :param metapairs: (dict) {key1:val1, key2:val2, ...}
+        """
         assert(type(metapairs) is dict)
         r = self.account_post(update=True, metadata=metapairs)
         r.release()
 
     def del_account_meta(self, metakey):
+        """
+        :param metakey: (str) metadatum key
+        """
         r = self.account_post(update=True, metadata={metakey: ''})
         r.release()
 
     def set_account_quota(self, quota):
+        """
+        :param quota: (int)
+        """
         r = self.account_post(update=True, quota=quota)
         r.release()
 
     def set_account_versioning(self, versioning):
+        """
+        "param versioning: (str)
+        """
         r = self.account_post(update=True, versioning=versioning)
         r.release()
 
     def list_containers(self):
+        """
+        :returns: (dict)
+        """
         r = self.account_get()
         return r.json
 
     def del_container(self, until=None, delimiter=None):
+        """
+        :param until: (str) formated date
+
+        :param delimiter: (str)
+
+        :raises ClientError: 404 Container does not exist
+
+        :raises ClientError: 409 Container is not empty
+        """
         self.assert_container()
         r = self.container_delete(until=until,
             delimiter=delimiter,
@@ -583,54 +735,108 @@ class PithosClient(PithosRestAPI):
                 r.status_code)
 
     def get_container_versioning(self, container):
+        """
+        :param container: (str)
+
+        :returns: (dict)
+        """
         self.container = container
         return filter_in(self.get_container_info(),
             'X-Container-Policy-Versioning')
 
     def get_container_quota(self, container):
+        """
+        :param container: (str)
+
+        :returns: (dict)
+        """
         self.container = container
         return filter_in(self.get_container_info(), 'X-Container-Policy-Quota')
 
     def get_container_info(self, until=None):
+        """
+        :param until: (str) formated date
+
+        :returns: (dict)
+        """
         r = self.container_head(until=until)
         return r.headers
 
     def get_container_meta(self, until=None):
+        """
+        :param until: (str) formated date
+
+        :returns: (dict)
+        """
         return filter_in(self.get_container_info(until=until),
             'X-Container-Meta')
 
     def get_container_object_meta(self, until=None):
+        """
+        :param until: (str) formated date
+
+        :returns: (dict)
+        """
         return filter_in(self.get_container_info(until=until),
             'X-Container-Object-Meta')
 
     def set_container_meta(self, metapairs):
+        """
+        :param metapairs: (dict) {key1:val1, key2:val2, ...}
+        """
         assert(type(metapairs) is dict)
         r = self.container_post(update=True, metadata=metapairs)
         r.release()
 
     def del_container_meta(self, metakey):
+        """
+        :param metakey: (str) metadatum key
+        """
         r = self.container_post(update=True, metadata={metakey: ''})
         r.release()
 
     def set_container_quota(self, quota):
+        """
+        :param quota: (int)
+        """
         r = self.container_post(update=True, quota=quota)
         r.release()
 
     def set_container_versioning(self, versioning):
+        """
+        :param versioning: (str)
+        """
         r = self.container_post(update=True, versioning=versioning)
         r.release()
 
     def del_object(self, obj, until=None, delimiter=None):
+        """
+        :param obj: (str) remote object path
+
+        :param until: (str) formated date
+
+        :param delimiter: (str)
+        """
         self.assert_container()
         r = self.object_delete(obj, until=until, delimiter=delimiter)
         r.release()
 
-    def set_object_meta(self, object, metapairs):
+    def set_object_meta(self, obj, metapairs):
+        """
+        :param obj: (str) remote object path
+
+        :param metapairs: (dict) {key1:val1, key2:val2, ...}
+        """
         assert(type(metapairs) is dict)
-        r = self.object_post(object, update=True, metadata=metapairs)
+        r = self.object_post(obj, update=True, metadata=metapairs)
         r.release()
 
-    def del_object_meta(self, metakey, object):
+    def del_object_meta(self, metakey, obj):
+        """
+        :param metakey: (str) metadatum key
+
+        :param obj: (str) remote object path
+        """
         r = self.object_post(object, update=True, metadata={metakey: ''})
         r.release()
 

@@ -145,10 +145,10 @@ class StorageClient(Client):
             reply[metakey] = val
         return reply
 
-    def del_object_meta(self, metakey, object):
+    def del_object_meta(self, obj, metakey):
         self.assert_container()
         self.set_header('X-Object-Meta-' + metakey, '')
-        path = path4url(self.account, self.container, object)
+        path = path4url(self.account, self.container, obj)
         r = self.post(path, success=202)
         r.release()
 

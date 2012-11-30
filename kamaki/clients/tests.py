@@ -2184,7 +2184,7 @@ class testPithos(unittest.TestCase):
         self.assertEqual(r['x-object-meta-mkey1'], 'mval1')
         self.assertEqual(r['x-object-meta-mkey2'], 'mval2a')
         self.assertEqual(r['x-object-meta-mkey3'], 'mval3')
-        self.client.del_object_meta('mkey1', obj)
+        self.client.del_object_meta(obj, 'mkey1')
         r = self.client.get_object_meta(obj)
         self.assertFalse('x-object-meta-mkey1' in r)
 
