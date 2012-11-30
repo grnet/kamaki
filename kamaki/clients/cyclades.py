@@ -31,72 +31,13 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from kamaki.clients.compute import ComputeClient, ClientError
-from kamaki.clients.utils import path4url
-import json
+from kamaki.clients.cyclades_rest_api import CycladesClientApi
+from kamaki.clients import ClientError
 from time import sleep
 
 
-class CycladesClient(ComputeClient):
+class CycladesClient(CycladesClientApi):
     """GRNet Cyclades API client"""
-
-    def networks_get(self, network_id='', command='', **kwargs):
-        """GET base_url/networks[/network_id][/command] request
-        @param network_id or ''
-        @param command can be 'detail', or ''
-        """
-        path = path4url('networks', network_id, command)
-        success = kwargs.pop('success', (200, 203))
-        return self.get(path, success=success, **kwargs)
-
-    def networks_delete(self, network_id='', command='', **kwargs):
-        """DEL ETE base_url/networks[/network_id][/command] request
-        @param network_id or ''
-        @param command can be 'detail', or ''
-        """
-        path = path4url('networks', network_id, command)
-        success = kwargs.pop('success', 204)
-        return self.delete(path, success=success, **kwargs)
-
-    def networks_post(self,
-        network_id='',
-        command='',
-        json_data=None,
-        **kwargs):
-        """POST base_url/servers[/server_id]/[command] request
-        @param server_id or ''
-        @param command: can be 'action' or ''
-        @param json_data: a json valid dict that will be send as data
-        """
-        data = json_data
-        if json_data is not None:
-            data = json.dumps(json_data)
-            self.set_header('Content-Type', 'application/json')
-            self.set_header('Content-Length', len(data))
-
-        path = path4url('networks', network_id, command)
-        success = kwargs.pop('success', 202)
-        return self.post(path, data=data, success=success, **kwargs)
-
-    def networks_put(self,
-        network_id='',
-        command='',
-        json_data=None,
-        **kwargs):
-        """PUT base_url/servers[/server_id]/[command] request
-        @param server_id or ''
-        @param command: can be 'action' or ''
-        @param json_data: a json valid dict that will be send as data
-        """
-        data = json_data
-        if json_data is not None:
-            data = json.dumps(json_data)
-            self.set_header('Content-Type', 'application/json')
-            self.set_header('Content-Length', len(data))
-
-        path = path4url('networks', network_id, command)
-        success = kwargs.pop('success', 204)
-        return self.put(path, data=data, success=success, **kwargs)
 
     def start_server(self, server_id):
         """Submit a startup request for a server specified by id"""
