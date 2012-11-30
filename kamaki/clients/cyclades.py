@@ -40,24 +40,41 @@ class CycladesClient(CycladesClientApi):
     """GRNet Cyclades API client"""
 
     def start_server(self, server_id):
-        """Submit a startup request for a server specified by id"""
+        """Submit a startup request
+
+        :param server_id: integer (str or int)
+        """
         req = {'start': {}}
         r = self.servers_post(server_id, 'action', json_data=req, success=202)
         r.release()
 
     def shutdown_server(self, server_id):
-        """Submit a shutdown request for a server specified by id"""
+        """Submit a shutdown request
+
+        :param server_id: integer (str or int)
+        """
         req = {'shutdown': {}}
         r = self.servers_post(server_id, 'action', json_data=req, success=202)
         r.release()
 
     def get_server_console(self, server_id):
-        """Get a VNC connection to the console of a server specified by id"""
+        """
+        :param server_id: integer (str or int)
+
+        :returns: (dict) info to set a VNC connection to VM
+        """
         req = {'console': {'type': 'vnc'}}
         r = self.servers_post(server_id, 'action', json_data=req, success=200)
         return r.json['console']
 
     def get_firewall_profile(self, server_id):
+        """
+        :param server_id: integer (str or int)
+
+        :returns: (str) ENABLED | DISABLED | PROTECTED
+
+        :raises ClientError: 520 No Firewall Profile
+        """
         r = self.get_server_details(server_id)
         try:
             return r['attachments']['values'][0]['firewallProfile']
@@ -67,38 +84,66 @@ class CycladesClient(CycladesClientApi):
 
     def set_firewall_profile(self, server_id, profile):
         """Set the firewall profile for the public interface of a server
-           The server is specified by id, the profile argument
-           is one of (ENABLED, DISABLED, PROTECTED).
+
+        :param server_id: integer (str or int)
+
+        :param profile: (str) ENABLED | DISABLED | PROTECTED
         """
         req = {'firewallProfile': {'profile': profile}}
         r = self.servers_post(server_id, 'action', json_data=req, success=202)
         r.release()
 
     def list_server_nics(self, server_id):
+        """
+        :param server_id: integer (str or int)
+
+        :returns: (dict) network interface connections
+        """
         r = self.servers_get(server_id, 'ips')
         return r.json['addresses']['values']
 
     def get_server_stats(self, server_id):
+        """
+        :param server_id: integer (str or int)
+
+        :returns: (dict) auto-generated graphs of statistics (urls)
+        """
         r = self.servers_get(server_id, 'stats')
         return r.json['stats']
 
     def list_networks(self, detail=False):
+        """
+        :param detail: (bool)
+
+        :returns: (list) id,name if not detail else full info per network
+        """
         detail = 'detail' if detail else ''
         r = self.networks_get(command=detail)
         return r.json['networks']['values']
 
-    #NEW
     def list_network_nics(self, network_id):
+        """
+        :param network_id: integer (str or int)
+
+        :returns: (list)
+        """
         r = self.networks_get(network_id=network_id)
         return r.json['network']['attachments']['values']
 
     def create_network(self,
-        name,
-        cidr=False,
-        gateway=False,
-        type=False,
-        dhcp=False):
-        """@params cidr, geteway, type and dhcp should be strings
+        name, cidr=None, gateway=None, type=None, dhcp=None):
+        """
+        :param name: (str)
+
+        :param cidr: (str)
+
+        :param geteway: (str)
+
+        :param type: (str)
+
+        :param dhcp: (str)
+
+        :returns: (dict) network detailed info
         """
         net = dict(name=name)
         if cidr:
@@ -114,15 +159,30 @@ class CycladesClient(CycladesClientApi):
         return r.json['network']
 
     def get_network_details(self, network_id):
+        """
+        :param network_id: integer (str or int)
+
+        :returns: (dict)
+        """
         r = self.networks_get(network_id=network_id)
         return r.json['network']
 
     def update_network_name(self, network_id, new_name):
+        """
+        :param network_id: integer (str or int)
+
+        :param new_name: (str)
+        """
         req = {'network': {'name': new_name}}
         r = self.networks_put(network_id=network_id, json_data=req)
         r.release()
 
     def delete_network(self, network_id):
+        """
+        :param network_id: integer (str or int)
+
+        :raises ClientError: 421 Network in use
+        """
         try:
             r = self.networks_delete(network_id)
         except ClientError as err:
@@ -133,39 +193,55 @@ class CycladesClient(CycladesClientApi):
         r.release()
 
     def connect_server(self, server_id, network_id):
+        """ Connect a server to a network
+
+        :param server_id: integer (str or int)
+
+        :param network_id: integer (str or int)
+        """
         req = {'add': {'serverRef': server_id}}
         r = self.networks_post(network_id, 'action', json_data=req)
         r.release()
 
     def disconnect_server(self, server_id, nic_id):
+        """
+        :param server_id: integer (str or int)
+
+        :param nic_id: (str)
+        """
         server_nets = self.list_server_nics(server_id)
         nets = [(net['id'], net['network_id']) for net in server_nets\
             if nic_id == net['id']]
-        if len(nets) == 0:
-            return
         for (nic_id, network_id) in nets:
             req = {'remove': {'attachment': unicode(nic_id)}}
             r = self.networks_post(network_id, 'action', json_data=req)
             r.release()
 
-    #NEW
     def disconnect_network_nics(self, netid):
-        r = self.list_network_nics(netid)
-        for nic in r:
+        """
+        :param netid: integer (str or int)
+        """
+        for nic in self.list_network_nics(netid):
             req = dict(remove=dict(attachment=nic))
             r = self.networks_post(netid, 'action', json_data=req)
+            r.release()
 
     def wait_server(self, server_id,
         current_status='BUILD',
         delay=0.5,
         max_wait=128,
         wait_cb=None):
-        """Wait for server to reach a status different from current_status
-            @return the new mode if succesfull, False if timed out
-            @server_id
-            @current_status
-            @delay time interval between retries
-            @wait_cb if set a progressbar is used to show progress
+        """Wait for server while its status is current_status
+
+        :param server_id: integer (str or int)
+
+        :param current_status: (str) BUILD|ACTIVE|STOPPED|DELETED|REBOOT
+
+        :param delay: time interval between retries
+
+        :param wait_cb: if set a progressbar is used to show progress
+
+        :returns: (str) the new mode if succesfull, (bool) False if timed out
         """
         r = self.get_server_details(server_id)
         if r['status'] != current_status:

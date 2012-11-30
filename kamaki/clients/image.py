@@ -30,7 +30,7 @@
 # documentation are those of the authors and should not be
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
-from kamaki.clients import Client, ClientError
+from kamaki.clients import Client
 from kamaki.clients.utils import path4url
 
 
@@ -40,14 +40,16 @@ class ImageClient(Client):
     def __init__(self, base_url, token):
         super(ImageClient, self).__init__(base_url, token)
 
-    def raise_for_status(self, r):
-        if r.status_code == 404:
-            raise ClientError("Image not found", r.status_code)
-
-        # Fallback to the default
-        super(ImageClient, self).raise_for_status(r)
-
     def list_public(self, detail=False, filters={}, order=''):
+        """
+        :param detail: (bool)
+
+        :param filters: (dict) request filters
+
+        :param order: (str) sort_dir|desc
+
+        :returns: (list) id,name + full image info if detail
+        """
         path = path4url('images', 'detail') if detail else path4url('images/')
 
         if isinstance(filters, dict):
