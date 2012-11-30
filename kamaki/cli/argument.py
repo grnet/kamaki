@@ -51,13 +51,14 @@ class Argument(object):
     """
 
     def __init__(self, arity, help=None, parsed_name=None, default=None):
+        self.arity = int(arity)
+
         if help is not None:
             self.help = help
         if parsed_name is not None:
             self.parsed_name = parsed_name
         if default is not None:
             self.default = default
-        self.arity = arity
 
     @property
     def parsed_name(self):

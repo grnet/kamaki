@@ -31,79 +31,14 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from kamaki.clients import Client, ClientError
+from kamaki.clients import ClientError
+from kamaki.clients.compute_rest_api import ComputeClientApi
 from kamaki.clients.utils import path4url
 import json
 
 
-class ComputeClient(Client):
+class ComputeClient(ComputeClientApi):
     """OpenStack Compute API 1.1 client"""
-
-    """
-    def _raise_for_status(self, r):
-        try:
-            d = r.json
-            key = d.keys()[0]
-            val = d[key]
-            message = '%s: %s' % (key, val.get('message', ''))
-            details = val.get('details', '')
-        except AttributeError:
-            message = 'Request responded with error code %s' %\
-                unicode(r.status_code)
-            details = '%s %s' %\
-                (unicode(r.request.method), unicode(r.request.url))
-        raise ClientError(message, r.status_code, details)
-    """
-
-    def servers_get(self, server_id='', command='', **kwargs):
-        """GET base_url/servers[/server_id][/command] request
-        @param server_id or ''
-        @param command: can be 'ips', 'stats', or ''
-        """
-        path = path4url('servers', server_id, command)
-        success = kwargs.pop('success', 200)
-        return self.get(path, success=success, **kwargs)
-
-    def servers_delete(self, server_id='', command='', **kwargs):
-        """DEL ETE base_url/servers[/server_id][/command] request
-        @param server_id or ''
-        @param command: can be 'ips', 'stats', or ''
-        """
-        path = path4url('servers', server_id, command)
-        success = kwargs.pop('success', 204)
-        return self.delete(path, success=success, **kwargs)
-
-    def servers_post(self, server_id='', command='', json_data=None, **kwargs):
-        """POST base_url/servers[/server_id]/[command] request
-        @param server_id or ''
-        @param command: can be 'action' or ''
-        @param json_data: a json valid dict that will be send as data
-        """
-        data = json_data
-        if json_data is not None:
-            data = json.dumps(json_data)
-            self.set_header('Content-Type', 'application/json')
-            self.set_header('Content-Length', len(data))
-
-        path = path4url('servers', server_id, command)
-        success = kwargs.pop('success', 202)
-        return self.post(path, data=data, success=success, **kwargs)
-
-    def servers_put(self, server_id='', command='', json_data=None, **kwargs):
-        """PUT base_url/servers[/server_id]/[command] request
-        @param server_id or ''
-        @param command: can be 'action' or ''
-        @param json_data: a json valid dict that will be send as data
-        """
-        data = json_data
-        if json_data is not None:
-            data = json.dumps(json_data)
-            self.set_header('Content-Type', 'application/json')
-            self.set_header('Content-Length', len(data))
-
-        path = path4url('servers', server_id, command)
-        success = kwargs.pop('success', 204)
-        return self.put(path, data=data, success=success, **kwargs)
 
     def list_servers(self, detail=False):
         """List servers, returned detailed output if detailed is True"""
