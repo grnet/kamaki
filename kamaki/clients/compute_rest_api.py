@@ -119,3 +119,101 @@ class ComputeClientApi(Client):
 
         path = path4url('servers', server_id, command)
         return self.put(path, data=data, success=success, **kwargs)
+
+    def flavors_get(self, flavor_id='', command='', success=200, **kwargs):
+        """GET base_url[/flavor_id][/command]
+
+        :param flavor_id: integer (str or int)
+
+        :param command: flavor service command
+
+        :param success: success code or list or tupple of accepted success
+            codes. if server response code is not in this list, a ClientError
+            raises
+
+        :returns: request response
+        """
+        path = path4url('flavors', flavor_id, command)
+        return self.get(path, success=success, **kwargs)
+
+    def images_get(self, image_id='', command='', success=200, **kwargs):
+        """GET base_url[/image_id][/command]
+
+        :param image_id: string
+
+        :param command: image server command
+
+        :param success: success code or list or tupple of accepted success
+            codes. if server response code is not in this list, a ClientError
+            raises
+
+        :returns: request response
+        """
+        path = path4url('images', image_id, command)
+        return self.get(path, success=success, **kwargs)
+
+    def images_delete(self, image_id='', command='', success=204, **kwargs):
+        """DELETE base_url[/image_id][/command]
+
+        :param image_id: string
+
+        :param command: image server command
+
+        :param success: success code or list or tuple of accepted success
+            codes. if server response code is not in this list, a ClientError
+            raises
+
+        :returns: request response
+        """
+        path = path4url('images', image_id, command)
+        return self.delete(path, success=success, **kwargs)
+
+    def images_post(self,
+        image_id='', command='', json_data=None, success=201, **kwargs):
+        """POST base_url/images[/image_id]/[command] request
+
+        :param image_id: string
+
+        :param command: image server command
+
+        :param json_data: (dict) will be send as data
+
+        :param success: success code or list or tuple of accepted success
+            codes. if server response code is not in this list, a ClientError
+            raises
+
+        :returns: request response
+        """
+        data = json_data
+        if json_data is not None:
+            data = json.dumps(json_data)
+            self.set_header('Content-Type', 'application/json')
+            self.set_header('Content-Length', len(data))
+
+        path = path4url('images', image_id, command)
+        return self.post(path, data=data, success=success, **kwargs)
+
+    def images_put(self,
+        image_id='', command='', json_data=None, success=201, **kwargs):
+        """PUT base_url/images[/image_id]/[command] request
+
+        :param image_id: string
+
+        :param command: image server command
+
+        :param json_data: (dict) will be send as data
+
+        :param success: success code or list or tuple of accepted success
+            codes. if server response code is not in this list, a ClientError
+            raises
+
+        :returns: request response
+        """
+        data = json_data
+        if json_data is not None:
+            data = json.dumps(json_data)
+            self.set_header('Content-Type', 'application/json')
+            self.set_header('Content-Length', len(data))
+
+        path = path4url('images', image_id, command)
+        return self.put(path, data=data, success=success, **kwargs)

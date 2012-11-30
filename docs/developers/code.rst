@@ -130,6 +130,15 @@ Imports
 Modules list
 ^^^^^^^^^^^^
 
+compute_rest_api
+^^^^^^^^^^^^^^^^
+
+.. automodule:: kamaki.clients.compute_rest_api
+    :members:
+    :show-inheritance:
+    :undoc-members:
+
+
 compute
 ^^^^^^^
 
