@@ -126,13 +126,13 @@ class Argument(object):
 
 
 class ConfigArgument(Argument):
-    """Manage a kamaki configuration file"""
+    """Manage a kamaki configuration (file)"""
 
     _config_file = None
-    """The configuration file"""
 
     @property
     def value(self):
+        """A Config object"""
         super(self.__class__, self).value
         return super(self.__class__, self).value
 
@@ -147,6 +147,7 @@ class ConfigArgument(Argument):
             self._value = Config()
 
     def get(self, group, term):
+        """Get a configuration setting from the Config object"""
         return self.value.get(group, term)
 
     def get_groups(self):
@@ -164,6 +165,7 @@ class CmdLineConfigArgument(Argument):
 
     @property
     def value(self):
+        """A key=val option"""
         return super(self.__class__, self).value
 
     @value.setter
@@ -190,8 +192,7 @@ class CmdLineConfigArgument(Argument):
 
 class FlagArgument(Argument):
     """
-    :value type: accepts no values from user
-    :value returns: true if argument is set, false otherwise
+    :value: true if set, false otherwise
     """
 
     def __init__(self, help='', parsed_name=None, default=None):
@@ -209,13 +210,10 @@ class ValueArgument(Argument):
 
 
 class IntArgument(ValueArgument):
-    """
-    :value type: integer (type checking occurs)
-    :value returns: an integer
-    """
 
     @property
     def value(self):
+        """integer (type checking)"""
         return getattr(self, '_value', self.default)
 
     @value.setter
@@ -235,6 +233,7 @@ class VersionArgument(FlagArgument):
 
     @property
     def value(self):
+        """bool"""
         return super(self.__class__, self).value
 
     @value.setter
@@ -243,6 +242,7 @@ class VersionArgument(FlagArgument):
         self.main()
 
     def main(self):
+        """Print current version"""
         if self.value:
             import kamaki
             print('kamaki %s' % kamaki.__version__)
@@ -251,7 +251,7 @@ class VersionArgument(FlagArgument):
 class KeyValueArgument(Argument):
     """A Value Argument that can be repeated
 
-    --<argument> key1=value1 --<argument> key2=value2 ...
+    :syntax: --<arg> key1=value1 --<arg> key2=value2 ...
     """
 
     def __init__(self, help='', parsed_name=None, default=[]):
@@ -259,6 +259,10 @@ class KeyValueArgument(Argument):
 
     @property
     def value(self):
+        """
+        :input: key=value
+        :output: {'key1':'value1', 'key2':'value2', ...}
+        """
         return super(KeyValueArgument, self).value
 
     @value.setter
@@ -273,6 +277,7 @@ class KeyValueArgument(Argument):
 
 
 class ProgressBarArgument(FlagArgument):
+    """Manage a progress bar"""
 
     def __init__(self, help='', parsed_name='', default=True):
         self.suffix = '%(percent)d%%'
@@ -280,9 +285,10 @@ class ProgressBarArgument(FlagArgument):
         try:
             IncrementalBar
         except NameError:
-            print('Waring: no progress bar functionality')
+            print('Warning: no progress bar functionality')
 
     def clone(self):
+        """Get a modifiable copy of this bar"""
         newarg = ProgressBarArgument(
             self.help,
             self.parsed_name,
@@ -291,6 +297,7 @@ class ProgressBarArgument(FlagArgument):
         return newarg
 
     def get_generator(self, message, message_len=25):
+        """Get a generator to handle progress of the bar (gen.next())"""
         if self.value:
             return None
         try:
@@ -308,6 +315,7 @@ class ProgressBarArgument(FlagArgument):
         return progress_gen
 
     def finish(self):
+        """Stop progress bar, return terminal cursor to user"""
         if self.value:
             return
         mybar = getattr(self, 'bar', None)
@@ -327,9 +335,30 @@ _arguments = dict(config=_config_arg,
         'Override a config value',
         ('-o', '--options'))
 )
+"""Initial command line interface arguments"""
+
+
+"""
+Mechanism:
+    init_parser
+    parse_known_args
+    manage top-level user arguments input
+    find user-requested command
+    add command-specific arguments to dict
+    update_arguments
+"""
+
+
+def init_parser(exe, arguments):
+    """Create and initialize an ArgumentParser object"""
+    parser = ArgumentParser(add_help=False)
+    parser.prog = '%s <cmd_group> [<cmd_subbroup> ...] <cmd>' % exe
+    update_arguments(parser, arguments)
+    return parser
 
 
 def parse_known_args(parser, arguments=None):
+    """Fill in arguments from user input"""
     parsed, unparsed = parser.parse_known_args()
     for name, arg in arguments.items():
         arg.value = getattr(parsed, name, arg.default)
@@ -339,14 +368,10 @@ def parse_known_args(parser, arguments=None):
     return parsed, newparsed
 
 
-def init_parser(exe, arguments):
-    parser = ArgumentParser(add_help=False)
-    parser.prog = '%s <cmd_group> [<cmd_subbroup> ...] <cmd>' % exe
-    update_arguments(parser, arguments)
-    return parser
-
-
 def update_arguments(parser, arguments):
+    """Update arguments dict from user input
+
+    """
     for name, argument in arguments.items():
         try:
             argument.update_parser(parser, name)
