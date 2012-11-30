@@ -1071,7 +1071,7 @@ class store_delmeta(_store_container_command):
             elif self.path is None:
                 self.client.del_container_meta(metakey)
             else:
-                self.client.del_object_meta(metakey, self.path)
+                self.client.del_object_meta(self.path, metakey)
         except ClientError as err:
             raiseCLIError(err)
 

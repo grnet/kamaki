@@ -831,33 +831,58 @@ class PithosClient(PithosRestAPI):
         r = self.object_post(obj, update=True, metadata=metapairs)
         r.release()
 
-    def del_object_meta(self, metakey, obj):
+    def del_object_meta(self, obj, metakey):
         """
-        :param metakey: (str) metadatum key
-
         :param obj: (str) remote object path
+
+        :param metakey: (str) metadatum key
         """
         r = self.object_post(object, update=True, metadata={metakey: ''})
         r.release()
 
-    def publish_object(self, object):
-        r = self.object_post(object, update=True, public=True)
+    def publish_object(self, obj):
+        """
+        :param obj: (str) remote object path
+        """
+        r = self.object_post(obj, update=True, public=True)
         r.release()
 
-    def unpublish_object(self, object):
-        r = self.object_post(object, update=True, public=False)
+    def unpublish_object(self, obj):
+        """
+        :param obj: (str) remote object path
+        """
+        r = self.object_post(obj, update=True, public=False)
         r.release()
 
     def get_object_info(self, obj, version=None):
+        """
+        :param obj: (str) remote object path
+
+        :param version: (str)
+
+        :returns: (dict)
+        """
         r = self.object_head(obj, version=version)
         return r.headers
 
     def get_object_meta(self, obj, version=None):
+        """
+        :param obj: (str) remote object path
+
+        :param version: (str)
+
+        :returns: (dict)
+        """
         return filter_in(self.get_object_info(obj, version=version),
             'X-Object-Meta')
 
-    def get_object_sharing(self, object):
-        r = filter_in(self.get_object_info(object),
+    def get_object_sharing(self, obj):
+        """
+        :param obj: (str) remote object path
+
+        :returns: (dict)
+        """
+        r = filter_in(self.get_object_info(obj),
             'X-Object-Sharing',
             exactMatch=True)
         reply = {}
@@ -872,31 +897,40 @@ class PithosClient(PithosRestAPI):
                 reply[key] = val
         return reply
 
-    def set_object_sharing(self, object,
+    def set_object_sharing(self, obj,
         read_permition=False,
         write_permition=False):
         """Give read/write permisions to an object.
-           @param object is the object to change sharing permissions onto
-           @param read_permition is a list of users and user groups that get
-           read permition for this object False means all previous read
-           permissions will be removed
-           @param write_perimition is a list of users and user groups to get
-           write permition for this object False means all previous read
+
+        :param obj: (str) remote object path
+
+        :param read_permition: (list - bool) users and user groups that get
+            read permition for this object - False means all previous read
+            permissions will be removed
+
+        :param write_perimition: (list - bool) of users and user groups to get
+           write permition for this object - False means all previous write
            permissions will be removed
         """
 
         perms = dict(read='' if not read_permition else read_permition,
             write='' if not write_permition else write_permition)
-        r = self.object_post(object, update=True, permissions=perms)
+        r = self.object_post(obj, update=True, permissions=perms)
         r.release()
 
-    def del_object_sharing(self, object):
-        self.set_object_sharing(object)
+    def del_object_sharing(self, obj):
+        """
+        :param obj: (str) remote object path
+        """
+        self.set_object_sharing(obj)
 
-    def append_object(self, object, source_file, upload_cb=None):
-        """@param upload_db is a generator for showing progress of upload
-            to caller application, e.g. a progress bar. Its next is called
-            whenever a block is uploaded
+    def append_object(self, obj, source_file, upload_cb=None):
+        """
+        :param obj: (str) remote object path
+
+        :param source_file: open file descriptor
+
+        :param upload_db: progress.bar for uploading
         """
 
         self.assert_container()
@@ -910,7 +944,7 @@ class PithosClient(PithosRestAPI):
         for i in range(nblocks):
             block = source_file.read(min(blocksize, filesize - offset))
             offset += len(block)
-            r = self.object_post(object,
+            r = self.object_post(obj,
                 update=True,
                 content_range='bytes */*',
                 content_type='application/octet-stream',
@@ -921,25 +955,37 @@ class PithosClient(PithosRestAPI):
             if upload_cb is not None:
                 upload_gen.next()
 
-    def truncate_object(self, object, upto_bytes):
-        r = self.object_post(object,
+    def truncate_object(self, obj, upto_bytes):
+        """
+        :param obj: (str) remote object path
+
+        :param upto_bytes: max number of bytes to leave on file
+        """
+        r = self.object_post(obj,
             update=True,
             content_range='bytes 0-%s/*' % upto_bytes,
             content_type='application/octet-stream',
             object_bytes=upto_bytes,
-            source_object=path4url(self.container, object))
+            source_object=path4url(self.container, obj))
         r.release()
 
     def overwrite_object(self,
-        object,
+        obj,
         start,
         end,
         source_file,
         upload_cb=None):
-        """Overwrite a part of an object with given source file
-           @start the part of the remote object to start overwriting from, in
-           bytes
-           @end the part of the remote object to stop overwriting to, in bytes
+        """Overwrite a part of an object from local source file
+
+        :param obj: (str) remote object path
+
+        :param start: (int) position in bytes to start overwriting from
+
+        :param end: (int) position in bytes to stop overwriting at
+
+        :param source_file: open file descriptor
+
+        :param upload_db: progress.bar for uploading
         """
 
         self.assert_container()
@@ -956,7 +1002,7 @@ class PithosClient(PithosRestAPI):
                 filesize - offset,
                 datasize - offset))
             offset += len(block)
-            r = self.object_post(object,
+            r = self.object_post(obj,
                 update=True,
                 content_type='application/octet-stream',
                 content_length=len(block),
@@ -973,6 +1019,23 @@ class PithosClient(PithosRestAPI):
         public=False,
         content_type=None,
         delimiter=None):
+        """
+        :param src_container: (str) source container
+
+        :param src_object: (str) source object path
+
+        :param dst_container: (str) destination container
+
+        :param dst_object: (str) destination object path
+
+        :param source_version: (str) source object version
+
+        :param public: (bool)
+
+        :param content_type: (str)
+
+        :param delimiter: (str)
+        """
         self.assert_account()
         self.container = dst_container
         dst_object = dst_object or src_object
@@ -993,6 +1056,23 @@ class PithosClient(PithosRestAPI):
         public=False,
         content_type=None,
         delimiter=None):
+        """
+        :param src_container: (str) source container
+
+        :param src_object: (str) source object path
+
+        :param dst_container: (str) destination container
+
+        :param dst_object: (str) destination object path
+
+        :param source_version: (str) source object version
+
+        :param public: (bool)
+
+        :param content_type: (str)
+
+        :param delimiter: (str)
+        """
         self.assert_account()
         self.container = dst_container
         dst_object = dst_object or src_object
@@ -1008,7 +1088,14 @@ class PithosClient(PithosRestAPI):
         r.release()
 
     def get_sharing_accounts(self, limit=None, marker=None, *args, **kwargs):
-        """Get accounts that share with self.account"""
+        """Get accounts that share with self.account
+
+        :param limit: (str)
+
+        :param marker: (str)
+
+        :returns: (dict)
+        """
         self.assert_account()
 
         self.set_param('format', 'json')
@@ -1020,7 +1107,12 @@ class PithosClient(PithosRestAPI):
         r = self.get(path, *args, success=success, **kwargs)
         return r.json
 
-    def get_object_versionlist(self, path):
+    def get_object_versionlist(self, obj):
+        """
+        :param obj: (str) remote object path
+
+        :returns: (list)
+        """
         self.assert_container()
-        r = self.object_get(path, format='json', version='list')
+        r = self.object_get(obj, format='json', version='list')
         return r.json['versions']
