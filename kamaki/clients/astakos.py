@@ -40,15 +40,12 @@ class AstakosClient(Client):
     def __init__(self, base_url, token):
         super(AstakosClient, self).__init__(base_url, token)
 
-    def raise_for_status(self, r):
-        msg = r.text.strip()
-        if msg:
-            raise ClientError(msg, r.status_code)
-        else:
-            # Fallback to the default
-            super(AstakosClient, self).raise_for_status(r)
-
     def authenticate(self, token=None):
+        """
+        :param token: (str) custom token to authenticate
+
+        :returns: (dict) authentication information
+        """
         if token:
             self.token = token
         r = self.get('/im/authenticate')
