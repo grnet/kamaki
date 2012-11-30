@@ -57,6 +57,7 @@ class Argument(object):
             self.parsed_name = parsed_name
         if default is not None:
             self.default = default
+        self.arity = arity
 
     @property
     def parsed_name(self):
@@ -195,7 +196,7 @@ class FlagArgument(Argument):
     :value: true if set, false otherwise
     """
 
-    def __init__(self, help='', parsed_name=None, default=None):
+    def __init__(self, help='', parsed_name=None, default=False):
         super(FlagArgument, self).__init__(0, help, parsed_name, default)
 
 

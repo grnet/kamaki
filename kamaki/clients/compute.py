@@ -39,7 +39,8 @@ import json
 class ComputeClient(Client):
     """OpenStack Compute API 1.1 client"""
 
-    def raise_for_status(self, r):
+    """
+    def _raise_for_status(self, r):
         try:
             d = r.json
             key = d.keys()[0]
@@ -52,6 +53,7 @@ class ComputeClient(Client):
             details = '%s %s' %\
                 (unicode(r.request.method), unicode(r.request.url))
         raise ClientError(message, r.status_code, details)
+    """
 
     def servers_get(self, server_id='', command='', **kwargs):
         """GET base_url/servers[/server_id][/command] request
