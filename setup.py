@@ -41,7 +41,7 @@ import kamaki
 
 optional = ['ansicolors',
             'progress>=1.0.2']
-requires = ['snf-common>=0.10',
+requires = ['pool',
             'ordereddict',
             'argparse']
 

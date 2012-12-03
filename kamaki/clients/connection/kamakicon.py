@@ -33,7 +33,7 @@
 
 from urlparse import urlparse
 #from .pool.http import get_http_connection
-from synnefo.lib.pool.http import get_http_connection
+from pool.http import get_http_connection
 from kamaki.clients.connection import HTTPConnection, HTTPResponse
 from kamaki.clients.connection.errors import HTTPConnectionError
 from kamaki.clients.connection.errors import HTTPResponseError
