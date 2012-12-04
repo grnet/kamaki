@@ -601,7 +601,7 @@ class PithosRestAPI(StorageClient):
                 if len(perms):
                     perms += ';'
                 perms += '%s=%s'\
-                % (permission_type, list2str(permission_list, seperator=','))
+                % (permission_type, list2str(permission_list, separator=','))
         self.set_header('X-Object-Sharing', perms)
         self.set_header('X-Object-Public', public)
         if metadata is not None:
@@ -696,7 +696,7 @@ class PithosRestAPI(StorageClient):
                 if len(perms):
                     perms += ';'
                 perms += '%s=%s'\
-                % (permission_type, list2str(permission_list, seperator=','))
+                % (permission_type, list2str(permission_list, separator=','))
         self.set_header('X-Object-Sharing', perms)
         self.set_header('X-Object-Public', public)
         if metadata is not None:
@@ -785,7 +785,7 @@ class PithosRestAPI(StorageClient):
             if len(perms):
                 perms += ';'
             perms += '%s=%s'\
-            % (permission_type, list2str(permission_list, seperator=','))
+            % (permission_type, list2str(permission_list, separator=','))
         self.set_header('X-Object-Sharing', perms)
         self.set_header('X-Object-Public', public)
         for key, val in metadata.items():
@@ -898,7 +898,7 @@ class PithosRestAPI(StorageClient):
             if len(perms):
                 perms += ';'
             perms += '%s=%s'\
-            % (permission_type, list2str(permission_list, seperator=','))
+            % (permission_type, list2str(permission_list, separator=','))
         self.set_header('X-Object-Sharing', perms)
         self.set_header('X-Object-Public', public)
         for key, val in metadata.items():
