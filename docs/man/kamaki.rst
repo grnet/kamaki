@@ -50,7 +50,7 @@ network
 
 image 
 
-    Manage compute API and glance images.
+    Manage compute API and Plankton images.
 
 store
 
