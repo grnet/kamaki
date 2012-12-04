@@ -54,15 +54,26 @@ from kamaki.cli.config import Config
 TEST_ALL = False
 
 cnf = Config()
-global_username = cnf.get('global', 'account')
-token = cnf.get('global', 'token')
+global_username = None
+token = None
+
+
+def _init_cnf():
+    global cnf
+    global global_username
+    global_username = cnf.get('test', 'account') or\
+        cnf.get('global', 'account')
+    global token
+    token = cnf.get('test', 'token') or cnf.get('global', 'token')
 
 
 class testAstakos(unittest.TestCase):
     def setUp(self):
+        _init_cnf()
         global cnf
-        url = cnf.get('astakos', 'url')
+        url = cnf.get('test', 'astakos_url') or cnf.get('astakos', 'url')
         global token
+        print('init a client with %s and %s' % (url, token))
         self.client = astakos(url, token)
 
     def tearDown(self):
@@ -83,6 +94,7 @@ class testAstakos(unittest.TestCase):
 
 class testImage(unittest.TestCase):
     def setUp(self):
+        _init_cnf()
         global cnf
         cyclades_url = cnf.get('compute', 'url')
         url = cnf.get('image', 'url')
@@ -262,7 +274,9 @@ class testCyclades(unittest.TestCase):
     """Set up a Cyclades thorough test"""
     def setUp(self):
         """okeanos"""
-        url = 'https://cyclades.okeanos.grnet.gr/api/v1.1'
+        _init_cnf()
+        global cnf
+        url = cnf.get('compute', 'url')
         global token
         global global_username
         self.img = 'b2dffe52-64a4-48c3-8a4c-8214cc3165cf'
@@ -272,7 +286,7 @@ class testCyclades(unittest.TestCase):
             u'name': u'Debian Base',
             u'created': u'2012-10-16T09:03:12+00:00',
             u'progress': 100,
-            u'id': 'b2dffe52-64a4-48c3-8a4c-8214cc3165cf',
+            u'id': self.img,
             u'metadata': {
                 u'values': {
                     u'kernel': u'2.6.32',
@@ -294,30 +308,28 @@ class testCyclades(unittest.TestCase):
         self.PROFILES = ('ENABLED', 'DISABLED', 'PROTECTED')
 
         """okeanos.io"""
-        #url = 'https://cyclades.okeanos.io/api/v1.1'
-        #global token
-        #self.img = '43cc8497-61c3-4c46-ae8d-3e33861f8527'
-        #self.img_details= {
-        #    u'status': u'ACTIVE',
-        #    u'updated': u'2012-08-21T12:57:39+00:00',
-        #    u'name': u'Debian Base',
-        #    u'created': u'2012-08-21T12:56:53+00:00',
-        #    u'progress': 100,
-        #    u'id': u'43cc8497-61c3-4c46-ae8d-3e33861f8527',
-        #    u'metadata': {
-        #        u'values': {
-        #            u'kernel': u'2.6.32',
-        #            u'osfamily': u'linux',
-        #            u'users': u'root',
-        #            u'gui': u'No GUI',
-        #            u'sortorder': u'1',
-        #            u'os': u'debian',
-        #            u'root_partition':
-        #            u'1', u'description':
-        #            u'Debian Squeeze Base System'}
-        #        }
-        #    }
-        #flavorid = 1
+        """
+        self.img = 'b3e68235-3abd-4d60-adfe-1379a4f8d3fe'
+        self.img_details = {
+            u'status': u'ACTIVE',
+            u'updated': u'2012-11-19T15:29:51+00:00',
+            u'name': u'Debian Base',
+            u'created': u'2012-11-19T14:54:57+00:00',
+            u'progress': 100,
+            u'id': self.img,
+            u'metadata': {
+                u'values': {
+                    u'kernel': u'2.6.32',
+                    u'osfamily': u'linux',
+                    u'users': u'root',
+                    u'gui': u'No GUI',
+                    u'sortorder': u'1',
+                    u'os': u'debian',
+                    u'root_partition': u'1',
+                    u'description': u'Debian 6.0.6 (Squeeze) Base System'}
+                }
+            }
+        """
 
         self.servers = {}
         self.now = time.mktime(time.gmtime())
@@ -339,54 +351,9 @@ class testCyclades(unittest.TestCase):
             self._delete_network(netid)
         if 0 >= len(self.servers):
             return
-        there_are_servers_running = True
-        deleted_servers = {}
-        waitime = 0
         print('-> Found %s servers to delete' % len(self.servers))
-        while there_are_servers_running:
-            there_are_servers_running = False
-            if waitime > 0:
-                c = ['|', '/', '-', '\\']
-                suffix = ''
-                sys.stdout.write('\t. . . wait %s seconds: ' % waitime)
-                for i in range(4 * waitime):
-                    oldlen = len(suffix)
-                    suffix = '%ss %s' % (i / 4, c[i % 4])
-                    sys.stdout.write(oldlen * '\b' + suffix)
-                    sys.stdout.flush()
-                    time.sleep(0.25)
-                oldlen = len(': ' + suffix)
-                print(oldlen * '\b' + oldlen * ' ')
-                sys.stdout.flush()
-            waitime += 3
-            dservers = self.client.list_servers(detail=True)
-            for server in dservers:
-                if server['name'] in self.servers.keys():
-                    there_are_servers_running = True
-                    sys.stdout.write('\t%s status:%s '\
-                        % (server['name'], server['status']))
-                    if server['status'] == 'BUILD':
-                        print('\twait...')
-                    else:
-                        print('\tDELETE %s' % server['name'])
-                        self._delete_server(server['id'])
-                        self.servers.pop(server['name'])
-                        deleted_servers[server['name']] = 0
-                        waitime = 0
-                elif server['name'] in deleted_servers.keys():
-                    there_are_servers_running = True
-                    sys.stdout.write('\t%s status:%s '\
-                        % (server['name'], server['status']))
-                    retries = deleted_servers[server['name']]
-                    if retries > 10:
-                        print('\tretry DELETE %s'\
-                            % server['name'])
-                        self._delete_server(server['id'])
-                        retries = 0
-                        waitime = 0
-                    else:
-                        print('\tnot deleted yet ...')
-                    deleted_servers[server['name']] = retries + 1
+        for server in self.servers.values():
+            self._delete_server(server['id'])
 
     def _create_server(self, servername, flavorid, imageid, personality=None):
         server = self.client.create_server(servername,
@@ -397,7 +364,15 @@ class testCyclades(unittest.TestCase):
         return server
 
     def _delete_server(self, servid):
+        try:
+            current_state = self.client.get_server_details(servid)
+            current_state = current_state['status']
+            if current_state == 'DELETED':
+                return
+        except:
+            return
         self.client.delete_server(servid)
+        self._wait_for_status(servid, current_state)
 
     def _create_network(self, netname, **kwargs):
         net = self.client.create_network(netname, **kwargs)
@@ -699,6 +674,7 @@ class testCyclades(unittest.TestCase):
                 yield
             yield
 
+        time.sleep(0.5)
         self.client.wait_server(servid, status, wait_cb=progress_gen)
         wait_bar.finish()
 
@@ -1002,31 +978,33 @@ class testCyclades(unittest.TestCase):
     def _test_set_firewall_profile(self):
 
         self._wait_for_status(self.server1['id'], 'BUILD')
-        PROFILES = ['DISABLED', 'ENABLED', 'DISABLED', 'PROTECTED']
+        PROFILES = ['DISABLED', 'ENABLED', 'PROTECTED']
         fprofile = self.client.get_firewall_profile(self.server1['id'])
         print('')
+        count_success = 0
         for counter, fprofile in enumerate(PROFILES):
-            start = fprofile
             npos = counter + 1
-            nprofile = PROFILES[npos] if npos < len(PROFILES) else PROFILES[0]
+            try:
+                nprofile = PROFILES[npos]
+            except IndexError:
+                nprofile = PROFILES[0]
             print('\tprofile swap %s: %s -> %s' % (npos, fprofile, nprofile))
             self.client.set_firewall_profile(self.server1['id'], nprofile)
-            wait = 3
-            c = ['|', '/', '-', '\\']
-            while fprofile != nprofile:
-                if wait % 10 == 0:
-                    self.client.set_firewall_profile(self.server1['id'],
-                        nprofile)
-                self.assertEqual(fprofile, start)
-                sys.stdout.write('\t   profile is %s, wait %ss  '\
-                    % (fprofile, wait))
-                for i in range(4 * wait):
-                    sys.stdout.write('\b%s' % c[i % 4])
-                    sys.stdout.flush()
-                    time.sleep(0.25)
-                wait += 3
-                print('\b ')
-                fprofile = self.client.get_firewall_profile(self.server1['id'])
+            time.sleep(0.5)
+            self.client.reboot_server(self.server1['id'], hard=True)
+            time.sleep(1)
+            self._wait_for_status(self.server1['id'], 'REBOOT')
+            time.sleep(0.5)
+            changed = self.client.get_firewall_profile(self.server1['id'])
+            try:
+                self.assertEqual(changed, nprofile)
+            except AssertionError as err:
+                if count_success:
+                    print('\tFAIL in swap #%s' % npos)
+                    break
+                else:
+                    raise err
+            count_success += 1
 
     @if_not_all
     def test_get_server_stats(self):
@@ -1057,7 +1035,7 @@ class testCyclades(unittest.TestCase):
         ids = [net['id'] for net in r]
         names = [net['name'] for net in r]
         self.assertTrue('1' in ids)
-        self.assertTrue('public' in names)
+        #self.assertTrue('public' in names)
         self.assertTrue(self.network1['id'] in ids)
         self.assertTrue(self.network1['name'] in names)
 
@@ -1222,12 +1200,7 @@ class testCyclades(unittest.TestCase):
 class testPithos(unittest.TestCase):
     """Set up a Pithos+ thorough test"""
     def setUp(self):
-        """
-        url = 'http://127.0.0.1:8000/v1'
-        global token
-        account = 'admin@adminland.com'
-        """
-
+        _init_cnf()
         global cnf
         url = cnf.get('store', 'url')
 
