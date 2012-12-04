@@ -128,7 +128,7 @@ To see the command groups, users should use -h or --help like in example 1.3.1. 
     config :  Configuration commands
     flavor :  Compute/Cyclades API flavor commands
     history:  Command history
-    image  :  Compute/Cyclades or Glance API image commands
+    image  :  Compute/Cyclades or Plankton API image commands
     network:  Compute/Cyclades API network commands
     server :  Compute/Cyclades API server commands
     store  :  Pithos+ storage commands

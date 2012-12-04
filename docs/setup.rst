@@ -123,10 +123,10 @@ The [global] group is treated by kamaki as a generic group for arbitrary options
 * network.cli <UI command specifications for virtual networks>
     a special package that is used to load cyclades virtual network commands to kamaki UIs. Don't touch this unless you know what you are doing.
 
-* image.url <Glance image service url>
-    the url of the Glance service. Set to Okeanos.grnet.gr Plankton service be default. Users should set a different value if they need to use a different service.
+* image.url <Plankton image service url>
+    the url of the Plankton service. Set to Okeanos.grnet.gr Plankton service be default. Users should set a different value if they need to use a different service.
 
-* image.cli <UI command specifications for Glance and Cyclades image service>
+* image.cli <UI command specifications for Plankton and Cyclades image service>
     a special package that is used to load image-related commands to kamaki UIs. Don't touch this unless you know what you are doing.
 
 * astakos.url <Astakos authentication service url>

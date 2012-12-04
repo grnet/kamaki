@@ -43,17 +43,20 @@ class StorageClient(Client):
         self.account = account
         self.container = container
 
-    def assert_account(self):
+    def _assert_account(self):
         if not self.account:
             raise ClientError("No account provided")
 
-    def assert_container(self):
-        self.assert_account()
+    def _assert_container(self):
+        self._assert_account()
         if not self.container:
             raise ClientError("No container provided")
 
     def get_account_info(self):
-        self.assert_account()
+        """
+        :returns: (dict)
+        """
+        self._assert_account()
         path = path4url(self.account)
         r = self.head(path, success=(204, 401))
         if r.status_code == 401:
@@ -62,7 +65,10 @@ class StorageClient(Client):
         return reply
 
     def replace_account_meta(self, metapairs):
-        self.assert_account()
+        """
+        :param metapais: (dict) key:val metadata pairs
+        """
+        self._assert_account()
         path = path4url(self.account)
         for key, val in metapairs:
             self.set_header('X-Account-Meta-' + key, val)
@@ -70,6 +76,9 @@ class StorageClient(Client):
         r.release()
 
     def del_account_meta(self, metakey):
+        """
+        :param metakey: (str) metadatum key
+        """
         headers = self.get_account_info()
         self.headers = filter_out(headers,
             'X-Account-Meta-' + metakey,
@@ -81,14 +90,27 @@ class StorageClient(Client):
         r.release()
 
     def create_container(self, container):
-        self.assert_account()
+        """
+        :param container: (str)
+
+        :raises ClientError: 202 Container already exists
+        """
+        self._assert_account()
         path = path4url(self.account, container)
         r = self.put(path, success=(201, 202))
+        r.release()
         if r.status_code == 202:
             raise ClientError("Container already exists", r.status_code)
 
     def get_container_info(self, container):
-        self.assert_account()
+        """
+        :param container: (str)
+
+        :returns: (dict)
+
+        :raises ClientError: 404 Container does not exist
+        """
+        self._assert_account()
         path = path4url(self.account, container)
         r = self.head(path, success=(204, 404))
         if r.status_code == 404:
@@ -97,7 +119,13 @@ class StorageClient(Client):
         return reply
 
     def delete_container(self, container):
-        self.assert_account()
+        """
+        :param container: (str)
+
+        :raises ClientError: 404 Container does not exist
+        :raises ClientError: 409 Container not empty
+        """
+        self._assert_account()
         path = path4url(self.account, container)
         r = self.delete(path, success=(204, 404, 409))
         if r.status_code == 404:
@@ -106,39 +134,61 @@ class StorageClient(Client):
             raise ClientError("Container is not empty", r.status_code)
 
     def list_containers(self):
-        self.assert_account()
+        """
+        :returns: (dict)
+        """
+        self._assert_account()
         self.set_param('format', 'json')
         path = path4url(self.account)
         r = self.get(path, success=(200, 204))
         reply = r.json
         return reply
 
-    def upload_object(self, object, f, size=None):
-        # This is a naive implementation, it loads the whole file in memory
-        #Look in pithos for a nice implementation
-        self.assert_container()
-        path = path4url(self.account, self.container, object)
+    def upload_object(self, obj, f, size=None):
+        """ A simple (naive) implementation.
+
+        :param obj: (str)
+
+        :param f: an open for reading file descriptor
+
+        :param size: (int) number of bytes to upload
+        """
+        self._assert_container()
+        path = path4url(self.account, self.container, obj)
         data = f.read(size) if size is not None else f.read()
         r = self.put(path, data=data, success=201)
         r.release()
 
-    def create_directory(self, object):
-        self.assert_container()
-        path = path4url(self.account, self.container, object)
+    def create_directory(self, obj):
+        """
+        :param obj: (str) directory-object name
+        """
+        self._assert_container()
+        path = path4url(self.account, self.container, obj)
         self.set_header('Content-Type', 'application/directory')
         self.set_header('Content-length', '0')
         r = self.put(path, success=201)
         r.release()
 
-    def get_object_info(self, object):
-        self.assert_container()
-        path = path4url(self.account, self.container, object)
+    def get_object_info(self, obj):
+        """
+        :param obj: (str)
+
+        :returns: (dict)
+        """
+        self._assert_container()
+        path = path4url(self.account, self.container, obj)
         r = self.head(path, success=200)
         reply = r.headers
         return reply
 
-    def get_object_meta(self, object):
-        r = filter_in(self.get_object_info(object), 'X-Object-Meta-')
+    def get_object_meta(self, obj):
+        """
+        :param obj: (str)
+
+        :returns: (dict)
+        """
+        r = filter_in(self.get_object_info(obj), 'X-Object-Meta-')
         reply = {}
         for (key, val) in r.items():
             metakey = key.split('-')[-1]
@@ -146,23 +196,36 @@ class StorageClient(Client):
         return reply
 
     def del_object_meta(self, obj, metakey):
-        self.assert_container()
+        """
+        :param obj: (str)
+
+        :param metakey: (str) the metadatum key
+        """
+        self._assert_container()
         self.set_header('X-Object-Meta-' + metakey, '')
         path = path4url(self.account, self.container, obj)
         r = self.post(path, success=202)
         r.release()
 
     def replace_object_meta(self, metapairs):
-        self.assert_container()
+        """
+        :param metapairs: (dict) key:val metadata
+        """
+        self._assert_container()
         path = path4url(self.account, self.container)
         for key, val in metapairs:
             self.set_header('X-Object-Meta-' + key, val)
         r = self.post(path, success=202)
         r.release()
 
-    def get_object(self, object):
-        self.assert_container()
-        path = path4url(self.account, self.container, object)
+    def get_object(self, obj):
+        """
+        :param obj: (str)
+
+        :returns: (int, int) # of objects, size in bytes
+        """
+        self._assert_container()
+        path = path4url(self.account, self.container, obj)
         r = self.get(path, success=200)
         size = int(r.headers['content-length'])
         cnt = r.content
@@ -170,7 +233,18 @@ class StorageClient(Client):
 
     def copy_object(self, src_container, src_object, dst_container,
         dst_object=False):
-        self.assert_account()
+        """Copy an objects from src_contaier:src_object to
+            dst_container[:dst_object]
+
+        :param src_container: (str)
+
+        :param src_object: (str)
+
+        :param dst_container: (str)
+
+        :param dst_object: (str)
+        """
+        self._assert_account()
         dst_object = dst_object or src_object
         dst_path = path4url(self.account, dst_container, dst_object)
         self.set_header('X-Copy-From', path4url(src_container, src_object))
@@ -180,7 +254,18 @@ class StorageClient(Client):
 
     def move_object(self, src_container, src_object, dst_container,
         dst_object=False):
-        self.assert_account()
+        """Move an objects from src_contaier:src_object to
+            dst_container[:dst_object]
+
+        :param src_container: (str)
+
+        :param src_object: (str)
+
+        :param dst_container: (str)
+
+        :param dst_object: (str)
+        """
+        self._assert_account()
         dst_object = dst_object or src_object
         dst_path = path4url(self.account, dst_container, dst_object)
         self.set_header('X-Move-From', path4url(src_container, src_object))
@@ -188,21 +273,31 @@ class StorageClient(Client):
         r = self.put(dst_path, success=201)
         r.release()
 
-    def delete_object(self, object):
-        self.assert_container()
-        path = path4url(self.account, self.container, object)
+    def delete_object(self, obj):
+        """
+        :param obj: (str)
+
+        :raises ClientError: 404 Object not found
+        """
+        self._assert_container()
+        path = path4url(self.account, self.container, obj)
         r = self.delete(path, success=(204, 404))
         if r.status_code == 404:
-            raise ClientError("Object %s not found" % object, r.status_code)
+            raise ClientError("Object %s not found" % obj, r.status_code)
 
     def list_objects(self):
-        self.assert_container()
+        """
+        :returns: (dict)
+
+        :raises ClientError: 404 Invalid account
+        """
+        self._assert_container()
         path = path4url(self.account, self.container)
         self.set_param('format', 'json')
         r = self.get(path, success=(200, 204, 304, 404), )
         if r.status_code == 404:
             raise ClientError(\
-                "Incorrect account (%s) for that container" % self.account,
+                "Invalid account (%s) for that container" % self.account,
                 r.status_code)
         elif r.status_code == 304:
             return []
@@ -210,14 +305,21 @@ class StorageClient(Client):
         return reply
 
     def list_objects_in_path(self, path_prefix):
-        self.assert_container()
+        """
+        :param path_prefix: (str)
+
+        :raises ClientError: 404 Invalid account
+
+        :returns: (dict)
+        """
+        self._assert_container()
         path = path4url(self.account, self.container)
         self.set_param('format', 'json')
         self.set_param('path', 'path_prefix')
         r = self.get(path, success=(200, 204, 404))
         if r.status_code == 404:
             raise ClientError(\
-                "Incorrect account (%s) for that container" % self.account,
+                "Invalid account (%s) for that container" % self.account,
                 r.status_code)
         reply = r.json
         return reply

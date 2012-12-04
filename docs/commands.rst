@@ -60,8 +60,8 @@ Showcase: show details for flavor with id 43
     name             :  C4R2048D10
     ram              :  2048
 
-image (Compute/Cyclades + Glance)
----------------------------------
+image (Compute/Cyclades + Plankton)
+-----------------------------------
 
 .. code-block:: text
 

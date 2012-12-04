@@ -6,7 +6,7 @@ Kamaki features a clients API for building third-party client applications that 
 
 A good example of an application build on kamaki.clients is kamaki.cli, the command line interface of kamaki. 
 
-Since synnefo services are build as OpenStack extensions, an inheritance approach has been chosen for implementing clients for both. In specific, the *compute*, *storage* and *image* modules are clients of the OS compute, OS storage and Glance APIs, respectively. On the contrary, all the other modules are Synnefo extensions (*cyclades* extents *compute*, *pithos* and *pithos_rest_api* extent *storage*) or novel synnefo services (e.g. *astakos*).
+Since synnefo services are build as OpenStack extensions, an inheritance approach has been chosen for implementing clients for both. In specific, the *compute*, *storage* and *image* modules are clients of the OS compute, OS storage, respectively. On the contrary, all the other modules are Synnefo extensions (*cyclades* extents *compute*, *pithos* and *pithos_rest_api* extent *storage*) or novel synnefo services (e.g. *astakos*, *image* for *plankton*).
 
 Setup a client instance
 -----------------------

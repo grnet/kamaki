@@ -60,7 +60,7 @@ class PithosRestAPI(StorageClient):
         :returns: ConnectionResponse
         """
 
-        self.assert_account()
+        self._assert_account()
         path = path4url(self.account)
 
         self.set_param('until', until, iff=until is not None)
@@ -109,7 +109,7 @@ class PithosRestAPI(StorageClient):
         :returns: ConnectionResponse
         """
 
-        self.assert_account()
+        self._assert_account()
 
         self.set_param('format', format, iff=format is not None)
         self.set_param('limit', limit, iff=limit is not None)
@@ -155,7 +155,7 @@ class PithosRestAPI(StorageClient):
         :returns: ConnectionResponse
         """
 
-        self.assert_account()
+        self._assert_account()
 
         self.set_param('update', iff=update)
 
@@ -195,7 +195,7 @@ class PithosRestAPI(StorageClient):
         :returns: ConnectionResponse
         """
 
-        self.assert_container()
+        self._assert_container()
 
         self.set_param('until', until, iff=until is not None)
 
@@ -260,7 +260,7 @@ class PithosRestAPI(StorageClient):
         :returns: ConnectionResponse
         """
 
-        self.assert_container()
+        self._assert_container()
 
         self.set_param('format', format, iff=format is not None)
         self.set_param('limit', limit, iff=limit is not None)
@@ -302,7 +302,7 @@ class PithosRestAPI(StorageClient):
 
         :returns: ConnectionResponse
         """
-        self.assert_container()
+        self._assert_container()
 
         if metadata is not None:
             for metaname, metaval in metadata.items():
@@ -350,7 +350,7 @@ class PithosRestAPI(StorageClient):
 
         :returns: ConnectionResponse
         """
-        self.assert_container()
+        self._assert_container()
 
         self.set_param('format', format, iff=format is not None)
         self.set_param('update', iff=update)
@@ -379,7 +379,7 @@ class PithosRestAPI(StorageClient):
         :returns: ConnectionResponse
         """
 
-        self.assert_container()
+        self._assert_container()
 
         self.set_param('until', until, iff=until is not None)
         self.set_param('delimiter', delimiter, iff=delimiter is not None)
@@ -419,7 +419,7 @@ class PithosRestAPI(StorageClient):
         :returns: ConnectionResponse
         """
 
-        self.assert_container()
+        self._assert_container()
 
         self.set_param('version', version, iff=version is not None)
 
@@ -475,7 +475,7 @@ class PithosRestAPI(StorageClient):
         :returns: ConnectionResponse
         """
 
-        self.assert_container()
+        self._assert_container()
 
         self.set_param('format', format, iff=format is not None)
         self.set_param('version', version, iff=version is not None)
@@ -572,7 +572,7 @@ class PithosRestAPI(StorageClient):
         :returns: ConnectionResponse
         """
 
-        self.assert_container()
+        self._assert_container()
 
         self.set_param('format', format, iff=format is not None)
         self.set_param('hashmap', hashmap, iff=hashmap)
@@ -673,7 +673,7 @@ class PithosRestAPI(StorageClient):
         :returns: ConnectionResponse
         """
 
-        self.assert_container()
+        self._assert_container()
 
         self.set_param('format', format, iff=format is not None)
         self.set_param('ignore_content_type', iff=ignore_content_type)
@@ -764,7 +764,7 @@ class PithosRestAPI(StorageClient):
         :returns: ConnectionResponse
         """
 
-        self.assert_container()
+        self._assert_container()
 
         self.set_param('format', format, iff=format is not None)
         self.set_param('ignore_content_type', iff=ignore_content_type)
@@ -869,7 +869,7 @@ class PithosRestAPI(StorageClient):
         :returns: ConnectionResponse
         """
 
-        self.assert_container()
+        self._assert_container()
 
         self.set_param('format', format, iff=format is not None)
         self.set_param('update', iff=update)
@@ -921,7 +921,7 @@ class PithosRestAPI(StorageClient):
 
         :returns: ConnectionResponse
         """
-        self.assert_container()
+        self._assert_container()
 
         self.set_param('until', until, iff=until is not None)
         self.set_param('delimiter', delimiter, iff=delimiter is not None)
