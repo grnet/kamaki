@@ -716,7 +716,7 @@ class PithosClient(PithosRestAPI):
         """
         :param until: (str) formated date
 
-        :param delimiter: (str)
+        :param delimiter: (str) with / empty container
 
         :raises ClientError: 404 Container does not exist
 
