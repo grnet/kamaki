@@ -666,17 +666,27 @@ class testCyclades(unittest.TestCase):
         return r['status'] == status
 
     def _wait_for_status(self, servid, status):
-        wait_bar = IncrementalBar('\tServer[%s] in %s ' % (servid, status))
-        wait_bar.start()
+        withbar = True
+        try:
+            wait_bar = IncrementalBar('\tServer[%s] in %s ' % (servid, status))
+        except NameError:
+            withbar = False
 
-        def progress_gen(n):
-            for i in wait_bar.iter(range(int(n))):
+        wait_cb = None
+        if withbar:
+            wait_bar.start()
+
+            def progress_gen(n):
+                for i in wait_bar.iter(range(int(n))):
+                    yield
                 yield
-            yield
+
+            wait_cb = progress_gen
 
         time.sleep(0.5)
-        self.client.wait_server(servid, status, wait_cb=progress_gen)
-        wait_bar.finish()
+        self.client.wait_server(servid, status, wait_cb=wait_cb)
+        if withbar:
+            wait_bar.finish()
 
     @if_not_all
     def test_list_servers(self):

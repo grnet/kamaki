@@ -41,7 +41,6 @@ import kamaki
 
 optional = ['ansicolors', 'progress>=1.0.2']
 required = ['snf-common>=0.10']
-trequired = ['progress>=1.0.2']
 
 setup(
     name='kamaki',
@@ -56,5 +55,4 @@ setup(
         'console_scripts': ['kamaki = kamaki.cli:main']
     },
     install_requires=required,
-    tests_require=trequired
 )
