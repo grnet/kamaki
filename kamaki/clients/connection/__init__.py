@@ -46,8 +46,9 @@ class HTTPResponse(object):
         self.prefetched = True
 
     def release(self):
-        """Release the connection.
-        Use this after finished using the response"""
+        """Release the connection. Should always be called if the response
+        content hasn't been used.
+        """
         raise NotImplementedError
 
     @property

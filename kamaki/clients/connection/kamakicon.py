@@ -71,6 +71,9 @@ class KamakiHTTPResponse(HTTPResponse):
 
     @property
     def text(self):
+        """
+        :returns: (str) content
+        """
         self._get_response()
         return self._content
 
@@ -80,6 +83,11 @@ class KamakiHTTPResponse(HTTPResponse):
 
     @property
     def json(self):
+        """
+        :returns: (dict) the json-formated content
+
+        :raises HTTPResponseError: if content is not json formated
+        """
         self._get_response()
         try:
             return loads(self._content)
@@ -91,6 +99,9 @@ class KamakiHTTPResponse(HTTPResponse):
         pass
 
     def release(self):
+        """ Release the connection. Should always be called if the response
+        content hasn't been used.
+        """
         if not self.prefetched:
             self.request.close()
 
