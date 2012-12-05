@@ -504,11 +504,13 @@ class testCyclades(unittest.TestCase):
         print('...ok')
 
         sys.stdout.write(' test get_firewall_profile')
-        self._test_get_firewall_profile()
+        print('\tSKIP')
+        #self._test_get_firewall_profile()
         print('...ok')
 
         sys.stdout.write(' test set_firewall_profile')
-        self._test_set_firewall_profile()
+        print('\tSKIP')
+        #self._test_set_firewall_profile()
         print('...ok')
 
         sys.stdout.write(' test get_server_stats')
@@ -2296,7 +2298,7 @@ class testPithos(unittest.TestCase):
         f = open(self.fname, 'w')
         sys.stdout.write(
             ' create random file %s of size %s      ' % (name, size))
-        for hobyte_id in range(size / 8):
+        for hobyte_id in xrange(size / 8):
             #sss = 'hobt%s' % random.randint(1000, 9999)
             f.write(rf.read(8))
             if 0 == (hobyte_id * 800) % size:
