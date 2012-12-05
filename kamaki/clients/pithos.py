@@ -172,9 +172,11 @@ class PithosClient(PithosRestAPI):
         r.release()
 
     # upload_* auxiliary methods
-    def _put_block_async(self, data, hash):
+    def _put_block_async(self, data, hash, upload_gen=None):
         event = SilentEvent(method=self._put_block, data=data, hash=hash)
         event.start()
+        if upload_gen:
+            upload_gen.next()
         return event
 
     def _put_block(self, data, hash):
@@ -251,6 +253,8 @@ class PithosClient(PithosRestAPI):
         if upload_cb:
             upload_gen = upload_cb(len(missing))
             upload_gen.next()
+        else:
+            upload_gen = None
 
         self._init_thread_limit()
 
@@ -259,7 +263,7 @@ class PithosClient(PithosRestAPI):
             offset, bytes = hmap[hash]
             fileobj.seek(offset)
             data = fileobj.read(bytes)
-            r = self._put_block_async(data, hash)
+            r = self._put_block_async(data, hash, upload_gen)
             flying.append(r)
             unfinished = []
             for i, thread in enumerate(flying):
@@ -268,13 +272,14 @@ class PithosClient(PithosRestAPI):
 
                 if thread.isAlive() or thread.exception:
                     unfinished.append(thread)
-                else:
-                    if upload_cb:
-                        upload_gen.next()
+                #else:
+                    #if upload_cb:
+                    #    upload_gen.next()
             flying = unfinished
 
         for thread in flying:
             thread.join()
+            #upload_gen.next()
 
         failures = [r for r in flying if r.exception]
         if len(failures):
@@ -283,12 +288,6 @@ class PithosClient(PithosRestAPI):
             raise ClientError(message="Block uploading failed",
                 status=505,
                 details=details)
-
-        while upload_cb:
-            try:
-                upload_gen.next()
-            except StopIteration:
-                break
 
     def upload_object(self, obj, f,
         size=None,
@@ -350,6 +349,7 @@ class PithosClient(PithosRestAPI):
 
         if missing is None:
             return
+
         try:
             self._upload_missing_blocks(missing, hmap, f, upload_cb=upload_cb)
         except KeyboardInterrupt:

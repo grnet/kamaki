@@ -38,7 +38,8 @@ from kamaki.cli.utils import split_input
 from argparse import ArgumentParser, ArgumentError
 
 try:
-    from progress.bar import IncrementalBar
+    from progress.bar import FillingCirclesBar as KamakiProgressBar
+    #  IncrementalBar
 except ImportError:
     # progress not installed - pls, pip install progress
     pass
@@ -285,7 +286,7 @@ class ProgressBarArgument(FlagArgument):
         self.suffix = '%(percent)d%%'
         super(ProgressBarArgument, self).__init__(help, parsed_name, default)
         try:
-            IncrementalBar
+            KamakiProgressBar
         except NameError:
             print('Warning: no progress bar functionality')
 
@@ -303,7 +304,7 @@ class ProgressBarArgument(FlagArgument):
         if self.value:
             return None
         try:
-            self.bar = IncrementalBar()
+            self.bar = KamakiProgressBar()
         except NameError:
             self.value = None
             return self.value
