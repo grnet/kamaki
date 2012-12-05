@@ -33,6 +33,9 @@
 
 
 class HTTPResponse(object):
+    """An abstract HTTP Response object to handle a performed HTTPRequest.
+    Subclass implementation required
+    """
 
     def __init__(self, request=None, prefetched=False):
         self.request = request
@@ -46,13 +49,13 @@ class HTTPResponse(object):
         self.prefetched = True
 
     def release(self):
-        """Release the connection. Should always be called if the response
-        content hasn't been used.
+        """Release the connection.
         """
         raise NotImplementedError
 
     @property
     def prefetched(self):
+        """flag to avoid downloading more than nessecary"""
         return self._prefetched
 
     @prefetched.setter
@@ -61,6 +64,7 @@ class HTTPResponse(object):
 
     @property
     def content(self):
+        """(binary) request response content (data)"""
         self._get_response()
         return self._content
 
@@ -70,6 +74,7 @@ class HTTPResponse(object):
 
     @property
     def text(self):
+        """(str)"""
         self._get_response()
         return self._text
 
@@ -79,6 +84,7 @@ class HTTPResponse(object):
 
     @property
     def json(self):
+        """(dict)"""
         self._get_response()
         return self._json
 
@@ -88,6 +94,7 @@ class HTTPResponse(object):
 
     @property
     def headers(self):
+        """(dict)"""
         self._get_response()
         return self._headers
 
@@ -97,6 +104,7 @@ class HTTPResponse(object):
 
     @property
     def status_code(self):
+        """(int) optional"""
         self._get_response()
         return self._status_code
 
@@ -106,6 +114,7 @@ class HTTPResponse(object):
 
     @property
     def status(self):
+        """(str) useful in server error responses"""
         self._get_response()
         return self._status
 
@@ -115,6 +124,7 @@ class HTTPResponse(object):
 
     @property
     def request(self):
+        """(HTTPConnection) the source of this response object"""
         return self._request
 
     @request.setter
@@ -123,6 +133,8 @@ class HTTPResponse(object):
 
 
 class HTTPConnection(object):
+    """An abstract HTTP Connection mechanism. Subclass implementation required
+    """
 
     def __init__(self, method=None, url=None, params={}, headers={}):
         self.headers = headers

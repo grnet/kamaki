@@ -75,7 +75,7 @@ class KamakiHTTPResponse(HTTPResponse):
         :returns: (str) content
         """
         self._get_response()
-        return self._content
+        return unicode(self._content)
 
     @text.setter
     def test(self, v):
@@ -140,6 +140,23 @@ class KamakiHTTPConnection(HTTPConnection):
         data=None,
         async_headers={},
         async_params={}):
+        """
+        :param method: (str) http method ('get', 'post', etc.)
+
+        :param data: (binary object)
+
+        :param async_headers: (dict) key:val headers that are used only for one
+            request instance as opposed to self.headers, which remain to be
+            used by following or parallel requests
+
+        :param async_params: (dict) key:val url parameters that are used only
+            for one request instance as opposed to self.params, which remain to
+            be used by following or parallel requests
+
+        :returns: (KamakiHTTPResponse) a response object
+
+        :raises HTTPConnectionError: Connection failures
+        """
         (scheme, netloc) = self._retrieve_connection_info(
             extra_params=async_params)
         headers = dict(self.headers)
