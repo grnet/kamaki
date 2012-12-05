@@ -309,6 +309,7 @@ class ProgressBarArgument(FlagArgument):
             return self.value
         self.bar.message = message.ljust(message_len)
         self.bar.suffix = '%(percent)d%% - %(eta)ds'
+        self.bar.start()
 
         def progress_gen(n):
             for i in self.bar.iter(range(int(n))):
