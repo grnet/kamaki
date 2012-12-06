@@ -73,7 +73,6 @@ class testAstakos(unittest.TestCase):
         global cnf
         url = cnf.get('test', 'astakos_url') or cnf.get('astakos', 'url')
         global token
-        print('init a client with %s and %s' % (url, token))
         self.client = astakos(url, token)
 
     def tearDown(self):
