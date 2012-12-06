@@ -36,7 +36,7 @@ from sys import argv, exit, stdout
 from os.path import basename
 from inspect import getargspec
 
-from kamaki.cli.argument import _arguments, parse_known_args, update_arguments
+from kamaki.cli.argument import ArgumentParseManager
 from kamaki.cli.history import History
 from kamaki.cli.utils import print_dict, print_list, red, magenta, yellow
 from kamaki.cli.errors import CLIError
@@ -406,9 +406,6 @@ def run_shell(exe_string, arguments):
     shell = _init_shell(exe_string, arguments)
     _load_all_commands(shell.cmd_tree, arguments)
     shell.run(arguments)
-
-
-from kamaki.cli.argument import ArgumentParseManager
 
 
 def main():

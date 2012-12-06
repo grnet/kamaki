@@ -448,17 +448,6 @@ class ArgumentParseManager(object):
         self._parser_modified = False
 
 
-def parse_known_args(parser, arguments=None):
-    """Fill in arguments from user input"""
-    parsed, unparsed = parser.parse_known_args()
-    for name, arg in arguments.items():
-        arg.value = getattr(parsed, name, arg.default)
-    newparsed = []
-    for term in unparsed:
-        newparsed += split_input(' \'%s\' ' % term)
-    return parsed, newparsed
-
-
 def update_arguments(parser, arguments):
     """Update arguments dict from user input
 
