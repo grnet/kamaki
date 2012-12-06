@@ -437,9 +437,12 @@ class ArgumentParseManager(object):
             self._arguments.update(new_arguments)
             self.update_parser()
 
-    def parse(self):
+    def parse(self, new_args=None):
         """Do parse user input"""
-        self._parsed, unparsed = self.parser.parse_known_args()
+        if new_args:
+            self._parsed, unparsed = self.parser.parse_known_args(new_args)
+        else:
+            self._parsed, unparsed = self.parser.parse_known_args()
         for name, arg in self.arguments.items():
             arg.value = getattr(self._parsed, name, arg.default)
         self._unparsed = []
