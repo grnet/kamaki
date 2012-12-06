@@ -36,8 +36,8 @@ from sys import argv, exit, stdout
 from os.path import basename
 from inspect import getargspec
 
-from kamaki.cli.argument import _arguments, parse_known_args, init_parser,\
-    update_arguments
+from kamaki.cli.argument import _arguments, parse_known_args, update_arguments
+# init_parser,
 from kamaki.cli.history import History
 from kamaki.cli.utils import print_dict, print_list, red, magenta, yellow
 from kamaki.cli.errors import CLIError
@@ -409,11 +409,15 @@ def run_shell(exe_string, arguments):
     shell.run(arguments)
 
 
+from kamaki.cli.argument import ArgumentParseManager
+
+
 def main():
     try:
         exe = basename(argv[0])
-        parser = init_parser(exe, _arguments)
-        parsed, unparsed = parse_known_args(parser, _arguments)
+        #parser = init_parser(exe, _arguments)
+        parser = ArgumentParseManager(exe)
+        parsed, unparsed = parse_known_args(parser.parser, parser.arguments)
 
         if _arguments['version'].value:
             exit(0)
@@ -423,9 +427,9 @@ def main():
         if unparsed:
             _history = History(_arguments['config'].get('history', 'file'))
             _history.add(' '.join([exe] + argv[1:]))
-            one_cmd(parser, unparsed, _arguments)
+            one_cmd(parser.parser, unparsed, parser.arguments)
         elif _help:
-            parser.print_help()
+            parser.parser.print_help()
             _groups_help(_arguments)
         else:
             run_shell(exe, _arguments)

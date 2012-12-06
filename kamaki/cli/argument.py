@@ -353,12 +353,59 @@ Mechanism:
 """
 
 
+class ArgumentParseManager():
+    """Manage (initialize and update) an ArgumentParser object"""
+
+    parser = ArgumentParser(add_help=False)
+    arguments = None
+
+    def __init__(self, exe, arguments=None):
+        """
+        :param exe: (str) the basic command (e.g. 'kamaki')
+
+        :param arguments: (dict) if given, overrides the global _argument as
+            the parsers arguments specification
+        """
+        if arguments:
+            self.arguments = arguments
+        else:
+            global _arguments
+            self.arguments = _arguments
+
+        self.syntax = '%s <cmd_group> [<cmd_subbroup> ...] <cmd>' % exe
+        self.update_parser()
+
+    @property
+    def syntax(self):
+        return self.parser.prog
+
+    @syntax.setter
+    def syntax(self, new_syntax):
+        self.parser.prog = new_syntax
+
+    def update_parser(self, arguments=None):
+        """Load argument specifications to parser
+
+        :param arguments: if not given, update self.arguments instead
+        """
+        if not arguments:
+            arguments = self.arguments
+
+        for name, arg in arguments.items():
+            try:
+                arg.update_parser(self.parser, name)
+            except ArgumentError:
+                pass
+
+
+"""
 def init_parser(exe, arguments):
-    """Create and initialize an ArgumentParser object"""
+    ""Create and initialize an ArgumentParser object""
     parser = ArgumentParser(add_help=False)
     parser.prog = '%s <cmd_group> [<cmd_subbroup> ...] <cmd>' % exe
     update_arguments(parser, arguments)
     return parser
+"""
 
 
 def parse_known_args(parser, arguments=None):
