@@ -166,6 +166,7 @@ class Shell(Cmd):
                 if '-h' in cmd_args or '--help' in cmd_args:
                     cmd_parser.parser.print_help()
                     return
+                cmd_parser.parse(cmd_args)
 
                 for name, arg in instance.arguments.items():
                     arg.value = getattr(cmd_parser.parsed, name, arg.default)
