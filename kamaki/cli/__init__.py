@@ -415,17 +415,19 @@ def main():
     try:
         exe = basename(argv[0])
         parser = ArgumentParseManager(exe)
-        parsed, unparsed = parse_known_args(parser.parser, parser.arguments)
+        arguments = parser.arguments
+        #parsed, unparsed = parse_known_args(parser.parser, parser.arguments)
 
-        if _arguments['version'].value:
+        if arguments['version'].value:
             exit(0)
 
-        _init_session(_arguments)
+        _init_session(arguments)
 
-        if unparsed:
-            _history = History(_arguments['config'].get('history', 'file'))
+        if parser.unparsed:
+            _history = History(arguments['config'].get('history', 'file'))
             _history.add(' '.join([exe] + argv[1:]))
-            one_cmd(parser.parser, unparsed, parser.arguments)
+            #one_cmd(parser.parser, unparsed, parser.arguments)
+            one_cmd(parser)
         elif _help:
             parser.parser.print_help()
             _groups_help(_arguments)

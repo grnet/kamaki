@@ -357,7 +357,10 @@ class ArgumentParseManager():
     """Manage (initialize and update) an ArgumentParser object"""
 
     parser = ArgumentParser(add_help=False)
-    arguments = None
+    _arguments = None
+    _parser_modified = False
+    _parsed = None
+    _unparsed = None
 
     def __init__(self, exe, arguments=None):
         """
@@ -366,22 +369,48 @@ class ArgumentParseManager():
         :param arguments: (dict) if given, overrides the global _argument as
             the parsers arguments specification
         """
+        self.syntax = '%s <cmd_group> [<cmd_subbroup> ...] <cmd>' % exe
         if arguments:
             self.arguments = arguments
         else:
             global _arguments
             self.arguments = _arguments
 
-        self.syntax = '%s <cmd_group> [<cmd_subbroup> ...] <cmd>' % exe
-        self.update_parser()
 
     @property
     def syntax(self):
+        """The command syntax (useful for help messages, descriptions, etc)"""
         return self.parser.prog
 
     @syntax.setter
     def syntax(self, new_syntax):
         self.parser.prog = new_syntax
+
+    @property
+    def arguments(self):
+        """(dict) arguments the parser should be aware of"""
+        return self._arguments
+
+    @arguments.setter
+    def arguments(self, new_arguments):
+        if new_arguments:
+            assert isinstance(new_arguments, dict)
+        self._arguments = new_arguments
+        self.update_parser()
+
+    @property 
+    def parsed(self):
+        """(ArgumentList) parser-matched terms"""
+        if self._parser_modified:
+            self.parse()
+        return self._parsed
+
+    @property
+    def unparsed(self):
+        """(list) parser-unmatched terms"""
+        if self._parser_modified:
+            self.parse()
+        return self._unparsed
 
     def update_parser(self, arguments=None):
         """Load argument specifications to parser
@@ -389,13 +418,23 @@ class ArgumentParseManager():
         :param arguments: if not given, update self.arguments instead
         """
         if not arguments:
-            arguments = self.arguments
+            arguments = self._arguments
 
         for name, arg in arguments.items():
             try:
                 arg.update_parser(self.parser, name)
+                self._parser_modified = True
             except ArgumentError:
                 pass
+
+    def parse(self):
+        self._parsed, unparsed = self.parser.parse_known_args()
+        for name, arg in self.arguments.items():
+            arg.value = getattr(self._parsed, name, arg.default)
+        self._unparsed = []
+        for term in unparsed:
+            self._unparsed += split_input(' \'%s\' ' % term)
+        self._parser_modified = False
 
 
 def parse_known_args(parser, arguments=None):
