@@ -401,38 +401,33 @@ def _load_all_commands(cmd_tree, arguments):
                 break
 
 
-def run_shell(exe_string, arguments):
+def run_shell(exe_string, parser):
     from command_shell import _init_shell
-    shell = _init_shell(exe_string, arguments)
-    _load_all_commands(shell.cmd_tree, arguments)
-    shell.run(arguments)
+    shell = _init_shell(exe_string, parser)
+    _load_all_commands(shell.cmd_tree, parser.arguments)
+    shell.run(parser)
 
 
 def main():
     try:
         exe = basename(argv[0])
         parser = ArgumentParseManager(exe)
-        arguments = parser.arguments
-        #parsed, unparsed = parse_known_args(parser.parser, arguments)
 
-        #print('\tparsed: %s' % parsed)
-        #print('\tunparsed: %s' % unparsed)
-
-        if arguments['version'].value:
+        if parser.arguments['version'].value:
             exit(0)
 
-        _init_session(arguments)
+        _init_session(parser.arguments)
 
         if parser.unparsed:
-            _history = History(arguments['config'].get('history', 'file'))
+            _history = History(
+                parser.arguments['config'].get('history', 'file'))
             _history.add(' '.join([exe] + argv[1:]))
-            #one_cmd(parser.parser, unparsed, parser.arguments)
             one_cmd(parser)
         elif _help:
             parser.parser.print_help()
-            _groups_help(arguments)
+            _groups_help(parser.arguments)
         else:
-            run_shell(exe, arguments)
+            run_shell(exe, parser)
     except CLIError as err:
         if _debug:
             raise err
