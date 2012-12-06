@@ -276,18 +276,19 @@ def _print_subcommands_help(cmd):
 
 def _update_parser_help(parser, cmd):
     global _best_match
-    parser.prog = parser.prog.split('<')[0]
-    parser.prog += ' '.join(_best_match)
+    parser.syntax = parser.syntax.split('<')[0]
+    parser.syntax += ' '.join(_best_match)
 
     if cmd.is_command:
         cls = cmd.get_class()
-        parser.prog += ' ' + cls.syntax
-        arguments = cls().arguments
-        update_arguments(parser, arguments)
+        parser.syntax += ' ' + cls.syntax
+        parser.update_arguments(cls().arguments)
+        # arguments = cls().arguments
+        # update_arguments(parser, arguments)
     else:
-        parser.prog += ' <...>'
+        parser.syntax += ' <...>'
     if cmd.has_description:
-        parser.description = cmd.help
+        parser.parser.description = cmd.help
 
 
 def _print_error_message(cli_err):
@@ -328,41 +329,39 @@ def _exec_cmd(instance, cmd_args, help_method):
     return 1
 
 
-def set_command_param(param, value):
-    if param == 'prefix':
-        pos = 0
-    elif param == 'descedants_depth':
-        pos = 1
-    else:
-        return
+def set_command_params(parameters):
+    """Add a parameters list to a command
+
+    :param paramters: (list of str) a list of parameters
+    """
     global command
     def_params = list(command.func_defaults)
-    def_params[pos] = value
+    def_params[0] = parameters
     command.func_defaults = tuple(def_params)
 
 
-def one_cmd(parser, unparsed, arguments):
-    group = get_command_group(list(unparsed), arguments)
+#def one_cmd(parser, unparsed, arguments):
+def one_cmd(parser):
+    group = get_command_group(list(parser.unparsed), parser.arguments)
     if not group:
-        parser.print_help()
-        _groups_help(arguments)
+        parser.parser.print_help()
+        _groups_help(parser.arguments)
         exit(0)
 
-    set_command_param(
-        'prefix',
-        [term for term in unparsed if not term.startswith('-')]
-    )
+    nonargs = [term for term in parser.unparsed if not term.startswith('-')]
+    set_command_params(nonargs)
+
     global _best_match
     _best_match = []
 
-    spec_module = _load_spec_module(group, arguments, '_commands')
+    spec_module = _load_spec_module(group, parser.arguments, '_commands')
 
     cmd_tree = _get_cmd_tree_from_spec(group, spec_module._commands)
 
     if _best_match:
         cmd = cmd_tree.get_command('_'.join(_best_match))
     else:
-        cmd = _get_best_match_from_cmd_tree(cmd_tree, unparsed)
+        cmd = _get_best_match_from_cmd_tree(cmd_tree, parser.unparsed)
         _best_match = cmd.path.split('_')
     if cmd is None:
         if _debug or _verbose:
@@ -372,16 +371,17 @@ def one_cmd(parser, unparsed, arguments):
     _update_parser_help(parser, cmd)
 
     if _help or not cmd.is_command:
-        parser.print_help()
+        parser.parser.print_help()
         _print_subcommands_help(cmd)
         exit(0)
 
     cls = cmd.get_class()
-    executable = cls(arguments)
-    parsed, unparsed = parse_known_args(parser, executable.arguments)
+    executable = cls(parser.arguments)
+    parser.update_arguments(executable.arguments)
+    #parsed, unparsed = parse_known_args(parser, executable.arguments)
     for term in _best_match:
-        unparsed.remove(term)
-    _exec_cmd(executable, unparsed, parser.print_help)
+        parser.unparsed.remove(term)
+    _exec_cmd(executable, parser.unparsed, parser.parser.print_help)
 
 
 def _load_all_commands(cmd_tree, arguments):
@@ -416,7 +416,10 @@ def main():
         exe = basename(argv[0])
         parser = ArgumentParseManager(exe)
         arguments = parser.arguments
-        #parsed, unparsed = parse_known_args(parser.parser, parser.arguments)
+        #parsed, unparsed = parse_known_args(parser.parser, arguments)
+
+        #print('\tparsed: %s' % parsed)
+        #print('\tunparsed: %s' % unparsed)
 
         if arguments['version'].value:
             exit(0)
@@ -430,9 +433,9 @@ def main():
             one_cmd(parser)
         elif _help:
             parser.parser.print_help()
-            _groups_help(_arguments)
+            _groups_help(arguments)
         else:
-            run_shell(exe, _arguments)
+            run_shell(exe, arguments)
     except CLIError as err:
         if _debug:
             raise err

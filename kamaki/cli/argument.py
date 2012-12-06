@@ -353,11 +353,11 @@ Mechanism:
 """
 
 
-class ArgumentParseManager():
+class ArgumentParseManager(object):
     """Manage (initialize and update) an ArgumentParser object"""
 
     parser = ArgumentParser(add_help=False)
-    _arguments = None
+    _arguments = {}
     _parser_modified = False
     _parsed = None
     _unparsed = None
@@ -375,7 +375,7 @@ class ArgumentParseManager():
         else:
             global _arguments
             self.arguments = _arguments
-
+        self.parse()
 
     @property
     def syntax(self):
@@ -398,9 +398,9 @@ class ArgumentParseManager():
         self._arguments = new_arguments
         self.update_parser()
 
-    @property 
+    @property
     def parsed(self):
-        """(ArgumentList) parser-matched terms"""
+        """(Namespace) parser-matched terms"""
         if self._parser_modified:
             self.parse()
         return self._parsed
@@ -427,7 +427,18 @@ class ArgumentParseManager():
             except ArgumentError:
                 pass
 
+    def update_arguments(self, new_arguments):
+        """Add to / update existing arguments
+
+        :param new_arguments: (dict)
+        """
+        if new_arguments:
+            assert isinstance(new_arguments, dict)
+            self._arguments.update(new_arguments)
+            self.update_parser()
+
     def parse(self):
+        """Do parse user input"""
         self._parsed, unparsed = self.parser.parse_known_args()
         for name, arg in self.arguments.items():
             arg.value = getattr(self._parsed, name, arg.default)
