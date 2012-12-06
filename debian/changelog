@@ -1,3 +1,9 @@
+kamaki (0.6.1-2) stable; urgency=low
+
+  * Add missing python-argparse dependency
+
+ -- Nikos Skalkotos <skalkoto@grnet.gr>  Thu, 06 Dec 2012 16:37:07 +0200
+
 kamaki (0.6.1-1) stable; urgency=low
 
   * New upstream version
