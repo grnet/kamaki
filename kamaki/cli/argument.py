@@ -398,16 +398,6 @@ class ArgumentParseManager():
                 pass
 
 
-"""
-def init_parser(exe, arguments):
-    ""Create and initialize an ArgumentParser object""
-    parser = ArgumentParser(add_help=False)
-    parser.prog = '%s <cmd_group> [<cmd_subbroup> ...] <cmd>' % exe
-    update_arguments(parser, arguments)
-    return parser
-"""
-
-
 def parse_known_args(parser, arguments=None):
     """Fill in arguments from user input"""
     parsed, unparsed = parser.parse_known_args()

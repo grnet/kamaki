@@ -37,7 +37,6 @@ from os.path import basename
 from inspect import getargspec
 
 from kamaki.cli.argument import _arguments, parse_known_args, update_arguments
-# init_parser,
 from kamaki.cli.history import History
 from kamaki.cli.utils import print_dict, print_list, red, magenta, yellow
 from kamaki.cli.errors import CLIError
@@ -415,7 +414,6 @@ from kamaki.cli.argument import ArgumentParseManager
 def main():
     try:
         exe = basename(argv[0])
-        #parser = init_parser(exe, _arguments)
         parser = ArgumentParseManager(exe)
         parsed, unparsed = parse_known_args(parser.parser, parser.arguments)
 
