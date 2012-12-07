@@ -99,8 +99,8 @@ def raiseCLIError(err, message='', importance=0, details=[]):
     except KeyError:
         recvlog.debug('\n   < '.join(stack))
 
-    if details and not isinstance(details, list):
-        details = ['%s' % details]
+    details = ['%s' % details] if not isinstance(details, list)\
+        else list(details)
 
     if err:
         origerr = '%s' % err
@@ -108,7 +108,7 @@ def raiseCLIError(err, message='', importance=0, details=[]):
     else:
         origerr = stack[0]
 
-    message = message if message else origerr
+    message = unicode(message) if message else unicode(origerr)
 
     try:
         status = err.status
