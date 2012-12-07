@@ -57,7 +57,7 @@ class _init_image(_command_init):
                 or self.config.get('compute', 'url')\
                 or self.config.get('global', 'url')
             self.client = ImageClient(base_url=base_url, token=token)
-        except ClientError as err:
+        except Exception as err:
             raiseCLIError(err)
 
 
@@ -100,7 +100,7 @@ class image_public(_init_image):
         detail = self.get_argument('detail')
         try:
             images = self.client.list_public(detail, filters, order)
-        except ClientError as err:
+        except Exception as err:
             raiseCLIError(err)
         print_items(images, title=('name',))
 
@@ -177,7 +177,7 @@ class image_register(_init_image):
                 self.client.reregister(location, name, params, properties)
             else:
                 self.client.register(name, location, params, properties)
-        except ClientError as err:
+        except Exception as err:
             raiseCLIError(err)
 
 
@@ -189,7 +189,7 @@ class image_members(_init_image):
         super(self.__class__, self).main()
         try:
             members = self.client.list_members(image_id)
-        except ClientError as err:
+        except Exception as err:
             raiseCLIError(err)
         for member in members:
             print(member['member_id'])
@@ -203,7 +203,7 @@ class image_shared(_init_image):
         super(self.__class__, self).main()
         try:
             images = self.client.list_shared(member)
-        except ClientError as err:
+        except Exception as err:
             raiseCLIError(err)
         for image in images:
             print(image['image_id'])
@@ -217,7 +217,7 @@ class image_addmember(_init_image):
         super(self.__class__, self).main()
         try:
             self.client.add_member(image_id, member)
-        except ClientError as err:
+        except Exception as err:
             raiseCLIError(err)
 
 
@@ -229,7 +229,7 @@ class image_delmember(_init_image):
         super(self.__class__, self).main()
         try:
             self.client.remove_member(image_id, member)
-        except ClientError as err:
+        except Exception as err:
             raiseCLIError(err)
 
 
@@ -241,7 +241,7 @@ class image_setmembers(_init_image):
         super(self.__class__, self).main()
         try:
             self.client.set_members(image_id, member)
-        except ClientError as err:
+        except Exception as err:
             raiseCLIError(err)
 
 
@@ -267,7 +267,7 @@ class image_list(_init_cyclades):
         super(self.__class__, self).main()
         try:
             images = self.client.list_images(self.get_argument('detail'))
-        except ClientError as err:
+        except Exception as err:
             raiseCLIError(err)
         self._print(images)
 
@@ -286,7 +286,7 @@ class image_info(_init_cyclades):
         super(self.__class__, self).main()
         try:
             image = self.client.get_image_details(image_id)
-        except ClientError as err:
+        except Exception as err:
             raiseCLIError(err)
         self._print(image)
 
@@ -299,7 +299,7 @@ class image_delete(_init_cyclades):
         super(self.__class__, self).main()
         try:
             self.client.delete_image(image_id)
-        except ClientError as err:
+        except Exception as err:
             raiseCLIError(err)
 
 
@@ -311,7 +311,7 @@ class image_properties(_init_cyclades):
         super(self.__class__, self).main()
         try:
             reply = self.client.get_image_metadata(image_id, key)
-        except ClientError as err:
+        except Exception as err:
             raiseCLIError(err)
         print_dict(reply)
 
@@ -324,7 +324,7 @@ class image_addproperty(_init_cyclades):
         super(self.__class__, self).main()
         try:
             reply = self.client.create_image_metadata(image_id, key, val)
-        except ClientError as err:
+        except Exception as err:
             raiseCLIError(err)
         print_dict(reply)
 
@@ -338,7 +338,7 @@ class image_setproperty(_init_cyclades):
         metadata = {key: val}
         try:
             reply = self.client.update_image_metadata(image_id, **metadata)
-        except ClientError as err:
+        except Exception as err:
             raiseCLIError(err)
         print_dict(reply)
 
@@ -351,5 +351,5 @@ class image_delproperty(_init_cyclades):
         super(self.__class__, self).main()
         try:
             self.client.delete_image_metadata(image_id, key)
-        except ClientError as err:
+        except Exception as err:
             raiseCLIError(err)

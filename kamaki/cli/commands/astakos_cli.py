@@ -32,7 +32,7 @@
 # or implied, of GRNET S.A.command
 
 from kamaki.cli import command
-from kamaki.clients.astakos import AstakosClient, ClientError
+from kamaki.clients.astakos import AstakosClient
 from kamaki.cli.utils import print_dict
 from kamaki.cli.errors import raiseCLIError
 from kamaki.cli.commands import _command_init
@@ -49,7 +49,7 @@ class _astakos_init(_command_init):
         base_url = self.config.get('astakos', 'url')\
             or self.config.get('global', 'url')
         if base_url is None:
-            raise ClientError('no URL for astakos')
+            raiseCLIError(None, 'Missing astakos server URL')
         self.client = AstakosClient(base_url=base_url, token=token)
 
 
@@ -61,6 +61,6 @@ class astakos_authenticate(_astakos_init):
         super(self.__class__, self).main()
         try:
             reply = self.client.authenticate(custom_token)
-        except ClientError as err:
+        except Exception as err:
             raiseCLIError(err)
         print_dict(reply)

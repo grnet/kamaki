@@ -98,12 +98,11 @@ class SharingArgument(ValueArgument):
             try:
                 (key, val) = p.split('=')
             except ValueError as err:
-                raiseCLIError(err,
-                    message='Error in --sharing',
+                raiseCLIError(err, 'Error in --sharing',
                     details='Incorrect format',
                     importance=1)
             if key.lower() not in ('read', 'write'):
-                raiseCLIError(err, message='Error in --sharing',
+                raiseCLIError(err, 'Error in --sharing',
                     details='Invalid permission key %s' % key,
                     importance=1)
             val_list = val.split(',')
@@ -678,9 +677,7 @@ class store_upload(_store_container_command):
         except IOError as err:
             progress_bar.finish()
             hash_bar.finish()
-            raiseCLIError(err,
-                message='Failed to read form file %s' % local_path,
-                importance=2)
+            raiseCLIError(err, 'Failed to read form file %s' % local_path, 2)
         print 'Upload completed'
 
 
@@ -759,9 +756,7 @@ class store_download(_store_container_command):
                 else:
                     out = open(local_path, 'wb+')
             except IOError as err:
-                raiseCLIError(err,
-                    message='Cannot write to file %s' % local_path,
-                    importance=1)
+                raiseCLIError(err, 'Cannot write to file %s' % local_path, 1)
         poolsize = self.get_argument('poolsize')
         if poolsize is not None:
             self.client.POOL_SIZE = int(poolsize)
@@ -937,8 +932,8 @@ class store_setpermissions(_store_container_command):
                 read = False
                 write = False
         if not read and not write:
-            raiseCLIError(None, importance=0,
-                message='Usage:\tread=<groups,users> write=<groups,users>')
+            raiseCLIError(None,
+            'Usage:\tread=<groups,users> write=<groups,users>')
         return (read, write)
 
     def main(self, container___path, *permissions):
