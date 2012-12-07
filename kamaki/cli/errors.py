@@ -78,11 +78,31 @@ class CLICmdIncompleteError(CLICmdSpecError):
 
 
 def raiseCLIError(err, message='', importance=0, details=[]):
-    from traceback import format_stack
-    recvlog.debug('\n'.join(['%s' % type(err)] + format_stack()))
+    """
+    :param err: (Exception) the original error message, if None, a new
+        CLIError is born which is conceptually bind to raiser
 
-    origerr = '%s' % err
-    origerr = origerr if origerr else '%s' % type(err)
+    :param message: (str) a custom error message that overrides err's
+
+    :param importance: (int) instruction to called application (e.g. for
+        coloring printed error messages)
+
+    :param details: (list) various information on the error
+
+    :raises CLIError: it is the purpose of this method
+    """
+    from traceback import format_stack
+    stack = ['%s' % type(err)] if err else ['<kamaki.cli.errors.CLIError>']
+    recvlog.debug('\n'.join(stack + format_stack()))
+
+    if details and not isinstance(details, list):
+        details = ['%s' % details]
+
+    if err:
+        origerr = '%s' % err
+        origerr = origerr if origerr else '%s' % type(err)
+    else:
+        origerr = stack
 
     if message:
         details.append(origerr)

@@ -33,7 +33,7 @@
 
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.errors import CLIError, raiseCLIError
+from kamaki.cli.errors import raiseCLIError
 from kamaki.cli.utils import format_size, print_dict, pretty_keys
 from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
 from kamaki.cli.argument import KeyValueArgument
@@ -97,13 +97,14 @@ class SharingArgument(ValueArgument):
         for p in permlist:
             try:
                 (key, val) = p.split('=')
-            except ValueError:
-                raise CLIError(message='Error in --sharing',
+            except ValueError as err:
+                raiseCLIError(err,
+                    message='Error in --sharing',
                     details='Incorrect format',
                     importance=1)
             if key.lower() not in ('read', 'write'):
-                raise CLIError(message='Error in --sharing',
-                    details='Invalid permition key %s' % key,
+                raiseCLIError(err, message='Error in --sharing',
+                    details='Invalid permission key %s' % key,
                     importance=1)
             val_list = val.split(',')
             if not key in perms:
@@ -167,7 +168,8 @@ class DateArgument(ValueArgument):
                 continue
             self._value = t.strftime(self.DATE_FORMATS[0])
             return
-        raise CLIError('Date Argument Error',
+        raiseCLIError(None,
+            'Date Argument Error',
             details='%s not a valid date. correct formats:\n\t%s'\
             % (datestr, self.INPUT_FORMATS))
 
@@ -223,7 +225,10 @@ class _store_container_command(_store_account_command):
     def extract_container_and_path(self,
         container_with_path,
         path_is_optional=True):
-        assert isinstance(container_with_path, str)
+        try:
+            assert isinstance(container_with_path, str)
+        except AssertionError as err:
+            raiseCLIError(err)
         if ':' not in container_with_path:
             if self.get_argument('container') is not None:
                 self.container = self.get_argument('container')
@@ -234,17 +239,17 @@ class _store_container_command(_store_account_command):
             else:
                 self.path = container_with_path
             if not path_is_optional and self.path is None:
-                raise CLIError('Object path is missing\n', importance=1)
+                raiseCLIError(None, 'Object path is missing\n', importance=1)
             return
         cnp = container_with_path.split(':')
         self.container = cnp[0]
         try:
             self.path = cnp[1]
-        except IndexError:
+        except IndexError as err:
             if path_is_optional:
                 self.path = None
             else:
-                raise CLIError('Object path is missing\n', importance=1)
+                raiseCLIError(err, 'Object path is missing\n', importance=1)
 
     def main(self, container_with_path=None, path_is_optional=True):
         super(_store_container_command, self).main()
@@ -669,7 +674,7 @@ class store_upload(_store_container_command):
         except ClientError as err:
             progress_bar.finish()
             hash_bar.finish()
-            raiseCLIError(err)
+            raiseCLIError(err, '"%s" not accessible' % container____path__)
         except IOError as err:
             progress_bar.finish()
             hash_bar.finish()
@@ -754,8 +759,8 @@ class store_download(_store_container_command):
                 else:
                     out = open(local_path, 'wb+')
             except IOError as err:
-                raise CLIError(message='Cannot write to file %s - %s'\
-                    % (local_path, unicode(err)),
+                raiseCLIError(err,
+                    message='Cannot write to file %s' % local_path,
                     importance=1)
         poolsize = self.get_argument('poolsize')
         if poolsize is not None:
@@ -793,7 +798,7 @@ class store_download(_store_container_command):
                 print('to resume, re-run with --resume')
         except Exception as e:
             progress_bar.finish()
-            raise e
+            raiseCLIError(e)
         print
 
 
@@ -932,7 +937,7 @@ class store_setpermissions(_store_container_command):
                 read = False
                 write = False
         if not read and not write:
-            raise CLIError(importance=0,
+            raiseCLIError(None, importance=0,
                 message='Usage:\tread=<groups,users> write=<groups,users>')
         return (read, write)
 
@@ -1045,8 +1050,8 @@ class store_setmeta(_store_container_command):
         super(self.__class__, self).main(container____path__)
         try:
             metakey, metavalue = metakey___metaval.split(':')
-        except ValueError:
-            raise CLIError(message='Usage:  metakey:metavalue', importance=1)
+        except ValueError as err:
+            raiseCLIError(err, 'Usage:  metakey:metavalue', importance=1)
         try:
             if self.container is None:
                 self.client.set_account_meta({metakey: metavalue})
@@ -1214,7 +1219,7 @@ class store_versions(_store_container_command):
         try:
             versions = self.client.get_object_versionlist(self.path)
         except ClientError as err:
-            raise CLIError(err)
+            raiseCLIError(err)
 
         print('%s:%s versions' % (self.container, self.path))
         for vitem in versions:
