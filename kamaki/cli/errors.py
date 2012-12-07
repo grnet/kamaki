@@ -108,7 +108,7 @@ def raiseCLIError(err, message='', importance=0, details=[]):
     else:
         origerr = stack[0]
 
-    message = message if message else stack[0]
+    message = message if message else origerr
 
     try:
         status = err.status
