@@ -32,7 +32,6 @@
 # or implied, of GRNET S.A.
 
 from urlparse import urlparse
-#from objpool.http import get_http_connection
 from objpool.http import get_http_connection
 from kamaki.clients.connection import HTTPConnection, HTTPResponse
 from kamaki.clients.connection.errors import HTTPConnectionError
@@ -177,6 +176,9 @@ class KamakiHTTPConnection(HTTPConnection):
                 headers=http_headers,
                 body=data)
         except Exception as err:
+            from traceback import format_stack
+            from kamaki.clients import recvlog
+            recvlog.debug('\n'.join(['%s' % type(err)] + format_stack()))
             conn.close()
             if isinstance(err, gaierror):
                 raise HTTPConnectionError(
