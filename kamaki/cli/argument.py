@@ -32,7 +32,7 @@
 # or implied, of GRNET S.A.
 
 from kamaki.cli.config import Config
-from kamaki.cli.errors import CLISyntaxError
+from kamaki.cli.errors import CLISyntaxError, raiseCLIError
 from kamaki.cli.utils import split_input
 
 from argparse import ArgumentParser, ArgumentError
@@ -180,9 +180,10 @@ class CmdLineConfigArgument(Argument):
         for option in options:
             keypath, sep, val = option.partition('=')
             if not sep:
-                raise CLISyntaxError('Argument Syntax Error ',
-                    details='%s is missing a "=" (usage: -o section.key=val)'\
-                        % option)
+                raiseCLIError(CLISyntaxError('Argument Syntax Error '),
+                    details=['%s is missing a "="',
+                    ' (usage: -o section.key=val)' % option]
+                )
             section, sep, key = keypath.partition('.')
         if not sep:
             key = section
@@ -227,7 +228,7 @@ class IntArgument(ValueArgument):
         try:
             self._value = int(newvalue)
         except ValueError:
-            raise CLISyntaxError('IntArgument Error',
+            raiseCLIError(CLISyntaxError('IntArgument Error'),
                 details='Value %s not an int' % newvalue)
 
 
@@ -274,7 +275,7 @@ class KeyValueArgument(Argument):
         for pair in keyvalue_pairs:
             key, sep, val = pair.partition('=')
             if not sep:
-                raise CLISyntaxError('Argument syntax error ',
+                raiseCLIError(CLISyntaxError('Argument syntax error '),
                     details='%s is missing a "=" (usage: key1=val1 )\n' % pair)
             self._value[key.strip()] = val.strip()
 
