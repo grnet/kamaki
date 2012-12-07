@@ -32,7 +32,7 @@
 # or implied, of GRNET S.A.
 
 from re import compile as regex_compile
-from .errors import CLIError
+from kamaki.cli.errors import raiseCLIError
 
 try:
     from colors import magenta, red, yellow, bold
@@ -70,7 +70,7 @@ def pretty_keys(d, delim='_', recurcive=False):
 
 def print_dict(d, exclude=(), ident=0):
     if not isinstance(d, dict):
-        raise CLIError(message='Cannot dict_print a non-dict object')
+        raiseCLIError(TypeError('Cannot dict_print a non-dict object'))
 
     if d:
         margin = max(len(unicode(key).strip())\
@@ -95,7 +95,7 @@ def print_dict(d, exclude=(), ident=0):
 
 def print_list(l, exclude=(), ident=0):
     if not isinstance(l, list):
-        raise CLIError(message='Cannot list_print a non-list object')
+        raiseCLIError(TypeError('Cannot list_print a non-list object'))
 
     if l:
         margin = max(len(unicode(item).strip())\
@@ -129,8 +129,8 @@ def format_size(size):
     units = ('B', 'K', 'M', 'G', 'T')
     try:
         size = float(size)
-    except ValueError:
-        raise CLIError(message='Cannot format %s in bytes' % size)
+    except ValueError as err:
+        raiseCLIError(err, 'Cannot format %s in bytes' % size)
     for unit in units:
         if size < 1024:
             break
