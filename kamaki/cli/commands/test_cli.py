@@ -54,6 +54,20 @@ class _test_init(_command_init):
 
 
 @command(test_cmds)
+class test_error(_test_init):
+    """Create an error message with optional message"""
+
+    def main(self, errmsg='', importance=0, index=0):
+        from kamaki.cli.errors import raiseCLIError
+        l = [1, 2]
+        try:
+            l[int(index)]
+        except Exception as err:
+            raiseCLIError(err, errmsg, importance)
+        raiseCLIError(None, errmsg, importance)
+
+
+@command(test_cmds)
 class test_args(_test_init):
     """Test how arguments are treated by kamaki"""
 

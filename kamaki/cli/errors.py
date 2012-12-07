@@ -93,7 +93,11 @@ def raiseCLIError(err, message='', importance=0, details=[]):
     """
     from traceback import format_stack
     stack = ['%s' % type(err)] if err else ['<kamaki.cli.errors.CLIError>']
-    recvlog.debug('\n'.join(stack + format_stack()))
+    stack += format_stack()
+    try:
+        stack = [e for e in stack if e != stack[1]]
+    except KeyError:
+        recvlog.debug('\n   < '.join(stack))
 
     if details and not isinstance(details, list):
         details = ['%s' % details]
@@ -102,23 +106,23 @@ def raiseCLIError(err, message='', importance=0, details=[]):
         origerr = '%s' % err
         origerr = origerr if origerr else '%s' % type(err)
     else:
-        origerr = stack
+        origerr = stack[0]
 
-    if message:
-        details.append(origerr)
-    else:
-        message = origerr
+    message = message if message else stack[0]
 
     try:
         status = err.status
     except AttributeError:
         status = None
 
+    if origerr not in details + [message]:
+        details.append(origerr)
     try:
         details.append(err.details)
     except AttributeError:
         pass
 
+    message += '' if message and message[-1] == '\n' else '\n'
     if status:
         message = '(%s) %s' % (err.status, message)
         try:
