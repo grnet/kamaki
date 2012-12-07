@@ -881,9 +881,10 @@ class store_publish(_store_container_command):
         super(self.__class__,
             self).main(container___path, path_is_optional=False)
         try:
-            self.client.publish_object(self.path)
+            url = self.client.publish_object(self.path)
         except ClientError as err:
             raiseCLIError(err)
+        print(url)
 
 
 @command(pithos_cmds)
