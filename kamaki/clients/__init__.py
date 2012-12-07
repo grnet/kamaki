@@ -97,6 +97,7 @@ class SilentEvent(Thread):
             print('______\n%s\n_______' % e)
             self._exception = e
 
+
 class Client(object):
     POOL_SIZE = 7
 

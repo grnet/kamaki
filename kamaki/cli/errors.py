@@ -31,7 +31,10 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from json import loads
+import logging
+
+sendlog = logging.getLogger('clients.send')
+recvlog = logging.getLogger('clients.recv')
 
 
 class CLIError(Exception):
@@ -42,6 +45,7 @@ class CLIError(Exception):
         @importance of the output for the user
             Suggested values: 0, 1, 2, 3
         """
+        message += '' if message and message[-1] == '\n' else '\n'
         super(CLIError, self).__init__(message)
         self.details = details if isinstance(details, list)\
             else [] if details is None else ['%s' % details]
@@ -73,13 +77,33 @@ class CLICmdIncompleteError(CLICmdSpecError):
         super(CLICmdSpecError, self).__init__(message, details, importance)
 
 
-def raiseCLIError(err, importance=0):
-    message = '%s' % err
-    if err.status:
-        message = '(%s) %s' % (err.status, err)
+def raiseCLIError(err, message='', importance=0, details=[]):
+    from traceback import format_stack
+    recvlog.debug('\n'.join(['%s' % type(err)] + format_stack()))
+
+    origerr = '%s' % err
+    origerr = origerr if origerr else '%s' % type(err)
+
+    if message:
+        details.append(origerr)
+    else:
+        message = origerr
+
+    try:
+        status = err.status
+    except AttributeError:
+        status = None
+
+    try:
+        details.append(err.details)
+    except AttributeError:
+        pass
+
+    if status:
+        message = '(%s) %s' % (err.status, message)
         try:
             status = int(err.status)
         except ValueError:
-            raise CLIError(message, err.details, importance)
+            raise CLIError(message, details, importance)
         importance = status // 100
-    raise CLIError(message, err.details, importance)
+    raise CLIError(message, details, importance)

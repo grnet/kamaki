@@ -429,11 +429,12 @@ def main():
         else:
             run_shell(exe, parser)
     except CLIError as err:
-        if _debug:
-            raise err
         _print_error_message(err)
-        exit(1)
-    except Exception as err:
         if _debug:
             raise err
-        print('Unknown Error: %s' % err)
+        exit(1)
+    except Exception as er:
+        print('Unknown Error: %s' % er)
+        if _debug:
+            raise
+        exit(1)

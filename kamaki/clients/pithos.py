@@ -39,7 +39,7 @@ from time import time
 
 from binascii import hexlify
 
-from kamaki.clients import SilentEvent
+from kamaki.clients import SilentEvent, sendlog
 from kamaki.clients.pithos_rest_api import PithosRestAPI
 from kamaki.clients.storage import ClientError
 from kamaki.clients.utils import path4url, filter_in
@@ -353,7 +353,7 @@ class PithosClient(PithosRestAPI):
         try:
             self._upload_missing_blocks(missing, hmap, f, upload_cb=upload_cb)
         except KeyboardInterrupt:
-            print('- - - wait for threads to finish')
+            sendlog.info('- - - wait for threads to finish')
             for thread in activethreads():
                 thread.join()
             raise

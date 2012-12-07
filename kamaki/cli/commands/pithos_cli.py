@@ -673,10 +673,9 @@ class store_upload(_store_container_command):
         except IOError as err:
             progress_bar.finish()
             hash_bar.finish()
-            raise CLIError(
+            raiseCLIError(err,
                 message='Failed to read form file %s' % local_path,
-                importance=2,
-                details=unicode(err))
+                importance=2)
         print 'Upload completed'
 
 
