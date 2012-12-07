@@ -241,4 +241,8 @@ class Shell(Cmd):
 
         self.set_prompt(intro)
 
-        self.cmdloop()
+        try:
+            self.cmdloop()
+        except Exception:
+            from traceback import print_stack
+            print_stack()
