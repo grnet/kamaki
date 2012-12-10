@@ -33,7 +33,7 @@
 
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.utils import print_dict, print_list, bold
+from kamaki.cli.utils import print_dict, bold
 from kamaki.cli.errors import raiseCLIError, CLISyntaxError
 from kamaki.clients.cyclades import CycladesClient, ClientError
 from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
@@ -307,6 +307,13 @@ class server_firewall(_init_cyclades):
 class server_addr(_init_cyclades):
     """List a server's nic address"""
 
+    def _print(self, nics):
+        d = {}
+        for nic in nics:
+            nicid = nic['id']
+            d[nicid] = nic
+        print_dict(d)
+
     def main(self, server_id):
         super(self.__class__, self).main()
         try:
@@ -315,7 +322,7 @@ class server_addr(_init_cyclades):
             raiseCLIError(err, 'Server id must be positive integer', 1)
         except Exception as err:
             raiseCLIError(err)
-        print_list(reply)
+        self._print(reply)
 
 
 @command(server_cmds)
