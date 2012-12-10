@@ -85,7 +85,7 @@ class server_list(_init_cyclades):
             server['attachments'] = addr_dict if addr_dict is not {} else None
         if 'metadata' in server:
             server['metadata'] = server['metadata']['values']
-        print_dict(server, ident=2)
+        print_dict(server, ident=1)
 
     def _print(self, servers):
         for server in servers:
@@ -124,7 +124,7 @@ class server_info(_init_cyclades):
             server['attachments'] = addr_dict if addr_dict else None
         if 'metadata' in server:
             server['metadata'] = server['metadata']['values']
-        print_dict(server, ident=2)
+        print_dict(server, ident=1)
 
     def main(self, server_id):
         super(self.__class__, self).main()
@@ -442,7 +442,7 @@ class flavor_list(_init_cyclades):
     def _print(self, flist):
         for i, flavor in enumerate(flist):
             print(bold('%s. %s' % (i, flavor['name'])))
-            print_dict(flavor, exclude=('name'), ident=2)
+            print_dict(flavor, exclude=('name'), ident=1)
             print(' ')
 
     def main(self):
@@ -531,7 +531,7 @@ class network_info(_init_cyclades):
         if 'attachments' in net:
             att = net['attachments']['values']
             net['attachments'] = att if len(att) > 0 else None
-        print_dict(net, ident=2)
+        print_dict(net, ident=1)
 
     def main(self, network_id):
         super(self.__class__, self).main()

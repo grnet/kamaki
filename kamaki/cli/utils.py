@@ -31,6 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+from sys import stdout
 from re import compile as regex_compile
 from kamaki.cli.errors import raiseCLIError
 
@@ -104,15 +105,19 @@ def print_list(l, exclude=(), ident=0):
                 or isinstance(item, list)\
                 or item in exclude))
         except ValueError:
-            margin = 0
+            margin = 1
 
     for item in sorted(l):
         if item in exclude:
             continue
         if isinstance(item, dict):
+            print(' ' * ident + '{')
             print_dict(item, exclude=exclude, ident=margin + ident)
+            print(' ' * ident + '}')
         elif isinstance(item, list):
+            print(' ' * ident + '[')
             print_list(item, exclude=exclude, ident=margin + ident)
+            print(' ' * ident + ']')
         else:
             print ' ' * ident + unicode(item)
 
@@ -125,9 +130,9 @@ def print_items(items, title=('id', 'name')):
             print(' ')
             print(bold(header))
         if isinstance(item, dict):
-            print_dict(item, ident=2)
+            print_dict(item, ident=1)
         elif isinstance(item, list):
-            print_list(item, ident=2)
+            print_list(item, ident=1)
 
 
 def format_size(size):
