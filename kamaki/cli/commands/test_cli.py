@@ -114,3 +114,27 @@ class test_astakos(_test_init):
 
     def main(self, method=None):
         super(self.__class__, self).main('astakos', method)
+
+
+@command(test_cmds)
+class test_prints(_test_init):
+    """ user-test print methods for lists and dicts"""
+
+    d1 = {'key0a': 'val0a', 'key0b': 'val0b', 'key0c': 'val0c'}
+
+    l1 = [1, 'string', '3', 'many (2 or 3) numbers and strings combined', 5]
+
+    d2 = {'key1a': 'val0a', 'key1b': d1, 'key1c': l1}
+
+    l2 = [d2, l1, d1]
+
+    def main(self):
+        from utils import print_dict, print_list
+        print('- - -\nTest simple dict')
+        print_dict(self.d1)
+        print('\n- - -\nTest simple list')
+        print_list(self.l1)
+        print('- - -\nTest 2-level dict')
+        print_dict(self.d1)
+        print('\n- - -\nTest non-trivial list')
+        print_list(self.l1)
