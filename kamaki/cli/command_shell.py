@@ -44,6 +44,11 @@ from kamaki.cli.errors import CLIError
 
 def _init_shell(exe_string, parser):
     parser.arguments.pop('version', None)
+    parser.arguments.pop('options', None)
+    parser.arguments.pop('debug', None)
+    parser.arguments.pop('verbose', None)
+    parser.arguments.pop('include', None)
+    parser.arguments.pop('silent', None)
     shell = Shell()
     shell.set_prompt(exe_string)
     from kamaki import __version__ as version
