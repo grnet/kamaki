@@ -168,6 +168,9 @@ class Shell(Cmd):
                 cmd_parser.syntax = '%s %s' % (
                     subcmd.path.replace('_', ' '), cls.syntax)
                 cmd_parser.update_arguments(instance.arguments)
+                instance.arguments.pop('config')
+                cmd_parser = ArgumentParseManager(cmd_parser.syntax,
+                    instance.arguments)
                 if '-h' in cmd_args or '--help' in cmd_args:
                     cmd_parser.parser.print_help()
                     return
