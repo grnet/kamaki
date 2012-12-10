@@ -821,11 +821,11 @@ class store_hashmap(_store_container_command):
             self).main(container___path, path_is_optional=False)
         try:
             data = self.client.get_object_hashmap(self.path,
-                version=self.arguments('object_version'),
-                if_match=self.arguments('if_match'),
-                if_none_match=self.arguments('if_none_match'),
-                if_modified_since=self.arguments('if_modified_since'),
-                if_unmodified_since=self.arguments('if_unmodified_since'))
+                version=self.get_argument('object_version'),
+                if_match=self.get_argument('if_match'),
+                if_none_match=self.get_argument('if_none_match'),
+                if_modified_since=self.get_argument('if_modified_since'),
+                if_unmodified_since=self.get_argument('if_unmodified_since'))
         except ClientError as err:
             raiseCLIError(err)
         print_dict(data)
