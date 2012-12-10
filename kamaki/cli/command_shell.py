@@ -37,7 +37,7 @@ from sys import stdout
 
 from kamaki.cli import _exec_cmd, _print_error_message
 from kamaki.cli.argument import ArgumentParseManager
-from kamaki.cli.utils import print_dict, split_input
+from kamaki.cli.utils import print_dict, split_input, print_items
 from kamaki.cli.history import History
 from kamaki.cli.errors import CLIError
 
@@ -165,14 +165,15 @@ class Shell(Cmd):
             if subcmd.is_command:  # exec command
                 cls = subcmd.get_class()
                 instance = cls(dict(cmd_parser.arguments))
-                cmd_parser.syntax = '%s %s' % (
-                    subcmd.path.replace('_', ' '), cls.syntax)
                 cmd_parser.update_arguments(instance.arguments)
                 instance.arguments.pop('config')
-                cmd_parser = ArgumentParseManager(cmd_parser.syntax,
+                cmd_parser = ArgumentParseManager(subcmd.path,
                     instance.arguments)
+                cmd_parser.syntax = '%s %s' % (
+                    subcmd.path.replace('_', ' '), cls.syntax)
                 if '-h' in cmd_args or '--help' in cmd_args:
                     cmd_parser.parser.print_help()
+                    print('\n%s' % subcmd.help)
                     return
                 cmd_parser.parse(cmd_args)
 
@@ -208,6 +209,26 @@ class Shell(Cmd):
 
         def help_method(self):
             print('%s (%s -h for more options)' % (cmd.help, cmd.name))
+            if cmd.is_command:
+                cls = cmd.get_class()
+                #_construct_command_syntax(cls)
+                plist = self.prompt[len(self._prefix):-len(self._suffix)]
+                plist = plist.split(' ')
+                clist = cmd.path.split('_')
+                upto = 0
+                for i, term in enumerate(plist):
+                    try:
+                        if clist[i] == term:
+                            upto += 1
+                    except IndexError:
+                        break
+                print('Syntax: %s %s' % (' '.join(clist[upto:]), cls.syntax))
+            else:
+                options = dict(name='Options:')
+                for sub in cmd.get_subcommands():
+                    options[sub.name] = sub.help
+                print_items([options])
+
         self._register_method(help_method, 'help_%s' % cmd.name)
 
         def complete_method(self, text, line, begidx, endidx):

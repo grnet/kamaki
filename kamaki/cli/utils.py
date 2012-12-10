@@ -191,12 +191,13 @@ def print_list(l,
             print('%s%s' % (prefix, item))
 
 
-def print_items(items, title=('id', 'name')):
-    for item in items:
+def print_items(items, title=('id', 'name'), with_enumeration=False):
+    for i, item in enumerate(items):
         if isinstance(item, dict) or isinstance(item, list):
             header = ' '.join(unicode(item.pop(key))\
                 for key in title if key in item)
-            print(' ')
+            if with_enumeration:
+                stdout.write('%s. ' % (i + 1))
             print(bold(header))
         if isinstance(item, dict):
             print_dict(item, ident=1)

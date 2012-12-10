@@ -102,7 +102,7 @@ class image_public(_init_image):
             images = self.client.list_public(detail, filters, order)
         except Exception as err:
             raiseCLIError(err)
-        print_items(images, title=('name',))
+        print_items(images, title=('name',), with_enumeration=True)
 
 
 @command(image_cmds)
