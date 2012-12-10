@@ -33,7 +33,7 @@
 
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.errors import raiseCLIError
+from kamaki.cli.errors import raiseCLIError, CLISyntaxError
 from kamaki.cli.utils import format_size, print_dict, pretty_keys
 from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
 from kamaki.cli.argument import KeyValueArgument
@@ -228,27 +228,38 @@ class _store_container_command(_store_account_command):
             assert isinstance(container_with_path, str)
         except AssertionError as err:
             raiseCLIError(err)
-        if ':' not in container_with_path:
-            if self.get_argument('container') is not None:
-                self.container = self.get_argument('container')
-            else:
-                self.container = self.client.container
-            if self.container is None:
-                self.container = container_with_path
-            else:
-                self.path = container_with_path
-            if not path_is_optional and self.path is None:
-                raiseCLIError(None, 'Object path is missing\n', importance=1)
-            return
-        cnp = container_with_path.split(':')
-        self.container = cnp[0]
-        try:
-            self.path = cnp[1]
-        except IndexError as err:
-            if path_is_optional:
+
+        cont, sep, path = container_with_path.partition(':')
+
+        if sep:
+            if not cont:
+                raiseCLIError(None, 'Container is missing\n', importance=1)
+            alt_cont = self.get_argument('container')
+            if alt_cont and cont != alt_cont:
+                raiseCLIError(None,
+                    'Conflict: 2 containers (%s, %s)' % (cont, alt_cont),
+                    importance=1)
+            self.container = cont
+            if not path:
+                raiseCLIError(None,
+                    'Path is missing for object in container %s' % cont,
+                    importance=1,
+                    details='Usage: <container>:<object path>')
+            self.path = path
+        else:
+            alt_cont = self.get_argument('container') or self.client.container
+            if alt_cont:
+                self.container = alt_cont
+                self.path = cont
+            elif path_is_optional:
+                self.container = cont
                 self.path = None
             else:
-                raiseCLIError(err, 'Object path is missing\n', importance=1)
+                self.container = cont
+                raiseCLIError(CLISyntaxError(
+                    'Syntax error: container and path are both required',
+                    importance=1,
+                    details='Usage: <container>:<object path>'))
 
     def main(self, container_with_path=None, path_is_optional=True):
         super(_store_container_command, self).main()
