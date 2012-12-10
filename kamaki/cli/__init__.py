@@ -292,6 +292,7 @@ def _update_parser_help(parser, cmd):
 
 
 def _print_error_message(cli_err):
+    print('> > >')
     errmsg = '%s' % cli_err
     if cli_err.importance == 1:
         errmsg = magenta(errmsg)

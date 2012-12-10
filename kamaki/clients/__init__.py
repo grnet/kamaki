@@ -44,7 +44,7 @@ recvlog = logging.getLogger('clients.recv')
 
 
 class ClientError(Exception):
-    def __init__(self, message, status=0, details=[]):
+    def __init__(self, message, status=0, details=None):
         try:
             message += '' if message and message[-1] == '\n' else '\n'
             serv_stat, sep, new_msg = message.partition('{')
@@ -69,7 +69,7 @@ class ClientError(Exception):
 
         super(ClientError, self).__init__(message)
         self.status = status
-        self.details = details
+        self.details = details if details else []
 
 
 class SilentEvent(Thread):
