@@ -149,3 +149,10 @@ class test_prints(_test_init):
         print('\nTest extreme dict:\n- - -')
         print_dict(self.d3)
         print('- - -\n')
+
+        print('\nTest simple enumerated list:\n- - -')
+        print_list(self.l1, enumerate=True)
+        print('- - -\n')
+        print('\nTest non-trivial enumerated list:\n- - -')
+        print_list(self.l2, enumerate=True)
+        print('- - -')

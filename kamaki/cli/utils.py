@@ -94,7 +94,7 @@ def print_dict(d, exclude=(), ident=0):
             print print_str + ' ' + unicode(val).strip()
 
 
-def print_list(l, exclude=(), ident=0):
+def print_list(l, exclude=(), ident=0, enumerate=False):
     if not isinstance(l, list):
         raiseCLIError(TypeError('Cannot list_print a non-list object'))
 
@@ -105,21 +105,27 @@ def print_list(l, exclude=(), ident=0):
                 or isinstance(item, list)\
                 or item in exclude))
         except ValueError:
-            margin = 1
+            margin = (2 + len(unicode(len(l)))) if enumerate else 1
 
+    counter = 1
+    prefix = ''
     for item in sorted(l):
         if item in exclude:
             continue
-        if isinstance(item, dict):
-            print(' ' * ident + '{')
-            print_dict(item, exclude=exclude, ident=margin + ident)
-            print(' ' * ident + '}')
-        elif isinstance(item, list):
-            print(' ' * ident + '[')
-            print_list(item, exclude=exclude, ident=margin + ident)
-            print(' ' * ident + ']')
+        elif enumerate:
+            prefix = '%s. ' % counter
+            counter += 1
+            prefix = '%s%s' % (' ' * (ident - len(prefix)), prefix)
         else:
-            print ' ' * ident + unicode(item)
+            prefix = ' ' * ident
+        if isinstance(item, dict):
+            print('%s' % prefix)
+            print_dict(item, exclude=exclude, ident=margin + ident)
+        elif isinstance(item, list):
+            print('%s' % prefix)
+            print_list(item, exclude=exclude, ident=margin + ident)
+        else:
+            print('%s%s' % (prefix, item))
 
 
 def print_items(items, title=('id', 'name')):
