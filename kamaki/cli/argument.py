@@ -357,7 +357,7 @@ Mechanism:
 class ArgumentParseManager(object):
     """Manage (initialize and update) an ArgumentParser object"""
 
-    parser = ArgumentParser(add_help=False)
+    parser = None
     _arguments = {}
     _parser_modified = False
     _parsed = None
@@ -370,6 +370,7 @@ class ArgumentParseManager(object):
         :param arguments: (dict) if given, overrides the global _argument as
             the parsers arguments specification
         """
+        self.parser = ArgumentParser(add_help=False)
         self.syntax = '%s <cmd_group> [<cmd_subbroup> ...] <cmd>' % exe
         if arguments:
             self.arguments = arguments
