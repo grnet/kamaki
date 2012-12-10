@@ -758,8 +758,14 @@ class PithosClient(PithosRestAPI):
         :param until: (str) formated date
 
         :returns: (dict)
+
+        :raises ClientError: 404 Container not found
         """
-        r = self.container_head(until=until)
+        try:
+            r = self.container_head(until=until)
+        except ClientError as err:
+            err.details.append('for container %s' % self.container)
+            raise err
         return r.headers
 
     def get_container_meta(self, until=None):

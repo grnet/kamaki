@@ -98,8 +98,13 @@ def print_list(l, exclude=(), ident=0):
         raiseCLIError(TypeError('Cannot list_print a non-list object'))
 
     if l:
-        margin = max(len(unicode(item).strip())\
-            for item in l if item not in exclude)
+        try:
+            margin = max(len(unicode(item).strip()) for item in l\
+                if not (isinstance(item, dict)\
+                or isinstance(item, list)\
+                or item in exclude))
+        except ValueError:
+            margin = 0
 
     for item in sorted(l):
         if item in exclude:

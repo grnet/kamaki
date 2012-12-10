@@ -128,13 +128,24 @@ class test_prints(_test_init):
 
     l2 = [d2, l1, d1]
 
+    d3 = {'dict 1': d1, 'dict 2': d2, 'list2': l2,
+        'long key of size 75 characters is used to' +\
+        ' check the effects on total result': l1}
+
     def main(self):
-        from utils import print_dict, print_list
-        print('- - -\nTest simple dict')
+        from kamaki.cli.utils import print_dict, print_list
+        print('Test simple dict:\n- - -')
         print_dict(self.d1)
-        print('\n- - -\nTest simple list')
+        print('- - -\n')
+        print('\nTest simple list:\n- - -')
         print_list(self.l1)
-        print('- - -\nTest 2-level dict')
-        print_dict(self.d1)
-        print('\n- - -\nTest non-trivial list')
-        print_list(self.l1)
+        print('- - -\n')
+        print('\nTest 2-level dict:\n- - -')
+        print_dict(self.d2)
+        print('- - -\n')
+        print('\nTest non-trivial list:\n- - -')
+        print_list(self.l2)
+        print('- - -')
+        print('\nTest extreme dict:\n- - -')
+        print_dict(self.d3)
+        print('- - -\n')
