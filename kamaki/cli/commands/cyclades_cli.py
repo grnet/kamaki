@@ -315,7 +315,7 @@ class server_addr(_init_cyclades):
             raiseCLIError(err, 'Server id must be positive integer', 1)
         except Exception as err:
             raiseCLIError(err)
-        print_list(reply, enumerate=True)
+        print_list(reply, with_enumeration=True)
 
 
 @command(server_cmds)

@@ -69,7 +69,27 @@ def pretty_keys(d, delim='_', recurcive=False):
     return new_d
 
 
-def print_dict(d, exclude=(), ident=0):
+def print_dict(d,
+    exclude=(),
+    ident=0,
+    with_enumeration=False,
+    recursive_enumeration=False):
+    """
+    Pretty-print a dictionary object
+
+    :param d: (dict) the input
+
+    :param excelude: (set or list) keys to exclude from printing
+
+    :param ident: (int) initial indentation (recursive)
+
+    :param with_enumeration: (bool) enumerate each 1st level key if true
+
+    :recursive_enumeration: (bool) recursively enumerate dicts and lists of
+        2nd level or deeper
+
+    :raises CLIError: (TypeError wrapper) non-dict input
+    """
     if not isinstance(d, dict):
         raiseCLIError(TypeError('Cannot dict_print a non-dict object'))
 
@@ -77,24 +97,57 @@ def print_dict(d, exclude=(), ident=0):
         margin = max(len(unicode(key).strip())\
             for key in d.keys() if key not in exclude)
 
+    counter = 1
     for key, val in sorted(d.items()):
         if key in exclude:
             continue
-        print_str = ' ' * ident
+        print_str = ''
+        if with_enumeration:
+            print_str = '%s. ' % counter
+            counter += 1
+        print_str = '%s%s' % (' ' * (ident - len(print_str)), print_str)
         print_str += ('%s' % key).strip()
         print_str += ' ' * (margin - len(unicode(key).strip()))
         print_str += ': '
         if isinstance(val, dict):
             print(print_str)
-            print_dict(val, exclude=exclude, ident=margin + ident)
+            print_dict(val,
+                exclude=exclude,
+                ident=margin + ident,
+                with_enumeration=recursive_enumeration,
+                recursive_enumeration=recursive_enumeration)
         elif isinstance(val, list):
             print(print_str)
-            print_list(val, exclude=exclude, ident=margin + ident)
+            print_list(val,
+                exclude=exclude,
+                ident=margin + ident,
+                with_enumeration=recursive_enumeration,
+                recursive_enumeration=recursive_enumeration)
         else:
             print print_str + ' ' + unicode(val).strip()
 
 
-def print_list(l, exclude=(), ident=0, enumerate=False):
+def print_list(l,
+    exclude=(),
+    ident=0,
+    with_enumeration=False,
+    recursive_enumeration=False):
+    """
+    Pretty-print a list object
+
+    :param l: (list) the input
+
+    :param excelude: (object - anytype) values to exclude from printing
+
+    :param ident: (int) initial indentation (recursive)
+
+    :param with_enumeration: (bool) enumerate each 1st level value if true
+
+    :recursive_enumeration: (bool) recursively enumerate dicts and lists of
+        2nd level or deeper
+
+    :raises CLIError: (TypeError wrapper) non-list input
+    """
     if not isinstance(l, list):
         raiseCLIError(TypeError('Cannot list_print a non-list object'))
 
@@ -112,7 +165,7 @@ def print_list(l, exclude=(), ident=0, enumerate=False):
     for item in sorted(l):
         if item in exclude:
             continue
-        elif enumerate:
+        elif with_enumeration:
             prefix = '%s. ' % counter
             counter += 1
             prefix = '%s%s' % (' ' * (ident - len(prefix)), prefix)
@@ -120,10 +173,18 @@ def print_list(l, exclude=(), ident=0, enumerate=False):
             prefix = ' ' * ident
         if isinstance(item, dict):
             print('%s' % prefix)
-            print_dict(item, exclude=exclude, ident=margin + ident)
+            print_dict(item,
+                exclude=exclude,
+                ident=margin + ident,
+                with_enumeration=recursive_enumeration,
+                recursive_enumeration=recursive_enumeration)
         elif isinstance(item, list):
             print('%s' % prefix)
-            print_list(item, exclude=exclude, ident=margin + ident)
+            print_list(item,
+                exclude=exclude,
+                ident=margin + ident,
+                with_enumeration=recursive_enumeration,
+                recursive_enumeration=recursive_enumeration)
         else:
             print('%s%s' % (prefix, item))
 
