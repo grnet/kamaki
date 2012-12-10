@@ -371,7 +371,7 @@ class PithosClient(PithosRestAPI):
     def _get_remote_blocks_info(self, obj, **restargs):
         #retrieve object hashmap
         myrange = restargs.pop('data_range', None)
-        hashmap = self.get_object_hashmapp(obj, **restargs)
+        hashmap = self.get_object_hashmap(obj, **restargs)
         restargs['data_range'] = myrange
         blocksize = int(hashmap['block_size'])
         blockhash = hashmap['block_hash']
@@ -581,7 +581,7 @@ class PithosClient(PithosRestAPI):
             except:
                 break
 
-    def get_object_hashmapp(self, obj,
+    def get_object_hashmap(self, obj,
         version=None,
         if_match=None,
         if_none_match=None,
