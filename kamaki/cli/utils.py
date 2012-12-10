@@ -172,14 +172,16 @@ def print_list(l,
         else:
             prefix = ' ' * ident
         if isinstance(item, dict):
-            print('%s' % prefix)
+            if with_enumeration:
+                print(prefix)
             print_dict(item,
                 exclude=exclude,
                 ident=margin + ident,
                 with_enumeration=recursive_enumeration,
                 recursive_enumeration=recursive_enumeration)
         elif isinstance(item, list):
-            print('%s' % prefix)
+            if with_enumeration:
+                print(prefix)
             print_list(item,
                 exclude=exclude,
                 ident=margin + ident,

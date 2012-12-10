@@ -94,7 +94,6 @@ class server_list(_init_cyclades):
             print('%s (%s)' % (sid, bold(sname)))
             if self.get_argument('detail'):
                 self._info_print(server)
-                print(' ')
 
     def main(self):
         super(self.__class__, self).main()
@@ -315,7 +314,7 @@ class server_addr(_init_cyclades):
             raiseCLIError(err, 'Server id must be positive integer', 1)
         except Exception as err:
             raiseCLIError(err)
-        print_list(reply, with_enumeration=True)
+        print_list(reply, with_enumeration=len(reply) > 1)
 
 
 @command(server_cmds)
@@ -443,7 +442,6 @@ class flavor_list(_init_cyclades):
         for i, flavor in enumerate(flist):
             print(bold('%s. %s' % (i, flavor['name'])))
             print_dict(flavor, exclude=('name'), ident=1)
-            print(' ')
 
     def main(self):
         super(self.__class__, self).main()
@@ -467,6 +465,27 @@ class flavor_info(_init_cyclades):
         except Exception as err:
             raiseCLIError(err)
         print_dict(flavor)
+
+
+@command(network_cmds)
+class network_info(_init_cyclades):
+    """Get network details"""
+
+    @classmethod
+    def print_network(self, net):
+        if 'attachments' in net:
+            att = net['attachments']['values']
+            count = len(att)
+            net['attachments'] = att if count else None
+        print_dict(net, ident=1)
+
+    def main(self, network_id):
+        super(self.__class__, self).main()
+        try:
+            network = self.client.get_network_details(network_id)
+        except Exception as err:
+            raiseCLIError(err)
+        network_info.print_network(network)
 
 
 @command(network_cmds)
@@ -520,26 +539,6 @@ class network_create(_init_cyclades):
         except Exception as err:
             raiseCLIError(err)
         print_dict(reply)
-
-
-@command(network_cmds)
-class network_info(_init_cyclades):
-    """Get network details"""
-
-    @classmethod
-    def print_network(self, net):
-        if 'attachments' in net:
-            att = net['attachments']['values']
-            net['attachments'] = att if len(att) > 0 else None
-        print_dict(net, ident=1)
-
-    def main(self, network_id):
-        super(self.__class__, self).main()
-        try:
-            network = self.client.get_network_details(network_id)
-        except Exception as err:
-            raiseCLIError(err)
-        network_info.print_network(network)
 
 
 @command(network_cmds)
