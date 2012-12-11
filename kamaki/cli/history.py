@@ -78,8 +78,9 @@ class History(object):
 
         :returns: (str) the stored command record without the id
         """
+        cmd_id = int(cmd_id)
         with open(self.filepath) as f:
-            for line in f.readlines():
-                if line.startswith('%s ' % cmd_id):
-                    return line[4:]
-        return None
+            try:
+                return f.readlines()[cmd_id - 1]
+            except IndexError:
+                return None

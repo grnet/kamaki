@@ -74,3 +74,12 @@ class history_clean(_init_history):
     def main(self):
         super(self.__class__, self).main()
         self.history.clean()
+
+@command(history_cmds)
+class history_recall(_init_history):
+    """Re-call a previously called command"""
+
+    def main(self, commandid):
+        super(self.__class__, self).main()
+        r = self.history.retrieve(commandid)
+        print(r)
