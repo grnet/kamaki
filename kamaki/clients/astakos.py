@@ -32,6 +32,7 @@
 # or implied, of GRNET S.A.
 
 from kamaki.clients import Client, ClientError
+from kamaki.clients.utils import path4url
 
 
 class AstakosClient(Client):
@@ -59,7 +60,7 @@ class AstakosClient(Client):
         r = self.get('/im/authenticate')
         return r.json
 
-    def get_user_by_email(self, email, token=None):
+    def get_user_by_email(self, email, admin=False, token=None):
         """
         :param email: (str)
 
@@ -76,10 +77,12 @@ class AstakosClient(Client):
         if token:
             self.token = token
         self.set_param('email', email)
-        r = self.get('/im/admin/api/2.0/users/')
+
+        path = path4url('im', 'admin' if admin else 'service', 'api/2.0/users')
+        r = self.get(path)
         return r.json
 
-    def get_user_by_username(self, username, token=None):
+    def get_user_by_username(self, username, admin=False, token=None):
         """
         :param username: (str)
 
@@ -93,5 +96,6 @@ class AstakosClient(Client):
         """
         if token:
             self.token = token
-        r = self.get('/im/admin/api/2.0/users/{%s}' % username)
+        path = path4url('im', 'admin' if admin else 'service', 'api/2.0/users')
+        r = self.get('%s/{%s}' % (path, username))
         return r.json

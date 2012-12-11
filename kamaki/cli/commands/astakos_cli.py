@@ -34,9 +34,10 @@
 from kamaki.cli import command
 from kamaki.clients.astakos import AstakosClient
 from kamaki.cli.utils import print_dict
-from kamaki.cli.errors import raiseCLIError
+from kamaki.cli.errors import raiseCLIError, CLISyntaxError
 from kamaki.cli.commands import _command_init
 from kamaki.cli.command_tree import CommandTree
+from kamaki.cli.argument import ValueArgument
 
 astakos_cmds = CommandTree('astakos', 'Astakos API commands')
 _commands = [astakos_cmds]
@@ -67,26 +68,78 @@ class astakos_authenticate(_astakos_init):
 
 
 @command(astakos_cmds)
-class astakos_user_byemail(_astakos_init):
-    """Get user by e-mail"""
+class astakos_admin_userinfo(_astakos_init):
+    """Get user info, provided you have admin privileges"""
 
-    def main(self, email, token=None):
+    def __init__(self, arguments={}):
+        super(self.__class__, self).__init__(arguments)
+        self.arguments['email'] = ValueArgument('target user email', '--email')
+        self.arguments['username'] = ValueArgument('target username',
+            '--username')
+
+    def main(self, admin_token=None):
         super(self.__class__, self).main()
+        email = self.get_argument('email')
+        username = self.get_argument('username')
         try:
-            reply = self.client.get_user_by_email(email, token)
+            if email and username:
+                raise CLISyntaxError(
+                    'Arguments %s and %s are mutually exclusive' % (
+                        self.arguments['email'].parsed_name,
+                        self.arguments['username'].parsed_name
+                        ), importance=1)
+            elif email:
+                reply = self.client.get_user_by_email(email,
+                    admin=True,
+                    token=admin_token)
+            elif username:
+                reply = self.client.get_user_by_username(username,
+                    admin=True,
+                    token=admin_token)
+            else:
+                raise CLISyntaxError(
+                    'Exactly one of %s or %s is obligatory' % (
+                        self.arguments['email'].parsed_name,
+                        self.arguments['username'].parsed_name
+                        ), importance=1)
         except Exception as err:
             raiseCLIError(err)
         print_dict(reply)
 
 
 @command(astakos_cmds)
-class astakos_user_byusername(_astakos_init):
-    """Get user by e-mail"""
+class astakos_service_userinfo(_astakos_init):
+    """Get user by e-mail (with service token)"""
 
-    def main(self, username, token=None):
+    def __init__(self, arguments={}):
+        super(self.__class__, self).__init__(arguments)
+        self.arguments['email'] = ValueArgument('target user email', '--email')
+        self.arguments['username'] = ValueArgument('target username',
+            '--username')
+
+    def main(self, service_token=None):
         super(self.__class__, self).main()
+        email = self.get_argument('email')
+        username = self.get_argument('username')
         try:
-            reply = self.client.get_user_by_username(username, token)
+            if email and username:
+                raise CLISyntaxError(
+                    'Arguments %s and %s are mutually exclusive' % (
+                        self.arguments['email'].parsed_name,
+                        self.arguments['username'].parsed_name
+                        ), importance=1)
+            elif email:
+                reply = self.client.get_user_by_email(email,
+                    token=service_token)
+            elif username:
+                reply = self.client.get_user_by_username(username,
+                    token=service_token)
+            else:
+                raise CLISyntaxError(
+                    'Exactly one of %s or %s is obligatory' % (
+                        self.arguments['email'].parsed_name,
+                        self.arguments['username'].parsed_name
+                        ), importance=1)
         except Exception as err:
             raiseCLIError(err)
         print_dict(reply)
