@@ -139,7 +139,7 @@ To see the command groups, users should use -h or --help like in example 1.3.1. 
     Example 3.1.2: Cyclades help contains all first-level commands of Cyclades command group
 
 
-    $ kamaki cyclades -h
+    $ kamaki server -h
     usage: kamaki server <...> [-v] [-s] [-V] [-d] [-i] [--config CONFIG]
                                [-o OPTIONS] [-h]
 

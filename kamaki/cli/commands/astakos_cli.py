@@ -109,7 +109,7 @@ class astakos_admin_userinfo(_astakos_init):
 
 @command(astakos_cmds)
 class astakos_service_userinfo(_astakos_init):
-    """Get user by e-mail (with service token)"""
+    """Get user info with service token"""
 
     def __init__(self, arguments={}):
         super(self.__class__, self).__init__(arguments)
