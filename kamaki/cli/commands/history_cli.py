@@ -75,11 +75,21 @@ class history_clean(_init_history):
         super(self.__class__, self).main()
         self.history.clean()
 
+
 @command(history_cmds)
 class history_recall(_init_history):
     """Re-call a previously called command"""
 
+    _cmd_tree = None
+
+    def __init__(self, arguments={}, cmd_tree=None):
+        super(self.__class__, self).__init__(arguments)
+        self._cmd_tree = cmd_tree
+
     def main(self, commandid):
         super(self.__class__, self).main()
         r = self.history.retrieve(commandid)
-        print(r)
+        if self._cmd_tree:
+            raise NotImplemented('Sorry, recall is not implemented yet')
+        else:
+            print(r)
