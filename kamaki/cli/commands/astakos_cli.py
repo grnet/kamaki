@@ -146,10 +146,10 @@ class astakos_service_userinfo(_astakos_init):
 
 
 @command(astakos_cmds)
-class astakos_listservices(_astakos_init):
+class astakos_service_list(_astakos_init):
     """List cloud services associated with astakos"""
 
     def main(self, token=None):
         super(self.__class__, self).main()
-        reply = self.client.get_services(token)
+        reply = self.client.list_services(token)
         print_items(reply)

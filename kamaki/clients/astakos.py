@@ -107,7 +107,7 @@ class AstakosClient(Client):
         r = self.get('%s/{%s}' % (path, username))
         return r.json
 
-    def get_services(self, token=None):
+    def list_services(self, token=None):
         """
         :param token: (str) token to authenticate, if not given, read it from
             config object

@@ -90,6 +90,12 @@ class testAstakos(unittest.TestCase):
             'has_signed_terms'):
             self.assertTrue(term in r)
 
+    def test_list_services(self):
+        r = self.client.list_services()
+        self.assertTrue(len(r) > 1)
+        for service in r:
+            self.assertTrue(set(('id', 'name')).issubset(service.keys()))
+
 
 class testImage(unittest.TestCase):
     def setUp(self):
