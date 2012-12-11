@@ -40,13 +40,58 @@ class AstakosClient(Client):
     def __init__(self, base_url, token):
         super(AstakosClient, self).__init__(base_url, token)
 
+    def _is_email(self, a_str):
+        if isinstance(a_str, str):
+            username, sep, domain = a_str.partition('@')
+            if username and domain:
+                return True
+        return False
+
     def authenticate(self, token=None):
         """
-        :param token: (str) custom token to authenticate
+        :param token: (str) token to authenticate, if not given, read it from
+            config object
 
         :returns: (dict) authentication information
         """
         if token:
             self.token = token
         r = self.get('/im/authenticate')
+        return r.json
+
+    def get_user_by_email(self, email, token=None):
+        """
+        :param email: (str)
+
+        :param token: (str) token to authenticate, if not given, read it from
+            config object
+
+        :returns: a json formatted dictionary containing information about a
+            specific user
+
+        :raises ClientError: (600) if not formated as email
+        """
+        if not self._is_email(email):
+            raise ClientError('%s is not formated as email' % email, 600)
+        if token:
+            self.token = token
+        self.set_param('email', email)
+        r = self.get('/im/admin/api/2.0/users/')
+        return r.json
+
+    def get_user_by_username(self, username, token=None):
+        """
+        :param username: (str)
+
+        :param token: (str) token to authenticate, if not given, read it from
+            config object
+
+        :returns: a json formatted dictionary containing information about a
+            specific user
+
+        :raises ClientError: (600) if not formated as email
+        """
+        if token:
+            self.token = token
+        r = self.get('/im/admin/api/2.0/users/{%s}' % username)
         return r.json

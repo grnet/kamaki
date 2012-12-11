@@ -256,6 +256,7 @@ class Shell(Cmd):
         return '%s commands:' % hdr
 
     def run(self, parser, path=''):
+        print('> > >')
         self._parser = parser
         self._history = History(
             parser.arguments['config'].get('history', 'file'))
@@ -269,6 +270,7 @@ class Shell(Cmd):
             self._register_command(subcmd.path)
 
         self.set_prompt(intro)
+        print('< < <')
 
         try:
             self.cmdloop()

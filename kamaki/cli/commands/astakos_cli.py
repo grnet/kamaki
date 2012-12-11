@@ -55,12 +55,38 @@ class _astakos_init(_command_init):
 
 @command(astakos_cmds)
 class astakos_authenticate(_astakos_init):
-    """Authenticate a user"""
+    """Authenticate a user, show user information"""
 
-    def main(self, custom_token=None):
+    def main(self, token=None):
         super(self.__class__, self).main()
         try:
-            reply = self.client.authenticate(custom_token)
+            reply = self.client.authenticate(token)
+        except Exception as err:
+            raiseCLIError(err)
+        print_dict(reply)
+
+
+@command(astakos_cmds)
+class astakos_user_byemail(_astakos_init):
+    """Get user by e-mail"""
+
+    def main(self, email, token=None):
+        super(self.__class__, self).main()
+        try:
+            reply = self.client.get_user_by_email(email, token)
+        except Exception as err:
+            raiseCLIError(err)
+        print_dict(reply)
+
+
+@command(astakos_cmds)
+class astakos_user_byusername(_astakos_init):
+    """Get user by e-mail"""
+
+    def main(self, username, token=None):
+        super(self.__class__, self).main()
+        try:
+            reply = self.client.get_user_by_username(username, token)
         except Exception as err:
             raiseCLIError(err)
         print_dict(reply)
