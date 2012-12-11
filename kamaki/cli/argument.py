@@ -451,15 +451,3 @@ class ArgumentParseManager(object):
         for term in unparsed:
             self._unparsed += split_input(' \'%s\' ' % term)
         self._parser_modified = False
-
-"""
-def update_arguments(parser, arguments):
-    ""Update arguments dict from user input
-
-    ""
-    for name, argument in arguments.items():
-        try:
-            argument.update_parser(parser, name)
-        except ArgumentError:
-            pass
-"""
