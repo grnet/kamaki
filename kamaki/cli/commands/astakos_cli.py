@@ -33,7 +33,7 @@
 
 from kamaki.cli import command
 from kamaki.clients.astakos import AstakosClient
-from kamaki.cli.utils import print_dict
+from kamaki.cli.utils import print_dict, print_items
 from kamaki.cli.errors import raiseCLIError, CLISyntaxError
 from kamaki.cli.commands import _command_init
 from kamaki.cli.command_tree import CommandTree
@@ -143,3 +143,13 @@ class astakos_service_userinfo(_astakos_init):
         except Exception as err:
             raiseCLIError(err)
         print_dict(reply)
+
+
+@command(astakos_cmds)
+class astakos_listservices(_astakos_init):
+    """List cloud services associated with astakos"""
+
+    def main(self, token=None):
+        super(self.__class__, self).main()
+        reply = self.client.get_services(token)
+        print_items(reply)

@@ -48,6 +48,14 @@ class AstakosClient(Client):
                 return True
         return False
 
+    def _assert_token(self, token=None):
+        if token:
+            self.token = token
+        elif not hasattr(self, 'token'):
+            raise ClientError('Token is missing',
+                details='Hint: [kamaki] config set token',
+                importance=3)
+
     def authenticate(self, token=None):
         """
         :param token: (str) token to authenticate, if not given, read it from
@@ -55,8 +63,7 @@ class AstakosClient(Client):
 
         :returns: (dict) authentication information
         """
-        if token:
-            self.token = token
+        self._assert_token(token)
         r = self.get('/im/authenticate')
         return r.json
 
@@ -64,18 +71,18 @@ class AstakosClient(Client):
         """
         :param email: (str)
 
+        :param admin: (bool) if true, get info as admin, otherwise as service
+
         :param token: (str) token to authenticate, if not given, read it from
             config object
 
-        :returns: a json formatted dictionary containing information about a
-            specific user
+        :returns: (dict) json with info on specific user
 
         :raises ClientError: (600) if not formated as email
         """
+        self._assert_token(token)
         if not self._is_email(email):
             raise ClientError('%s is not formated as email' % email, 600)
-        if token:
-            self.token = token
         self.set_param('email', email)
 
         path = path4url('im', 'admin' if admin else 'service', 'api/2.0/users')
@@ -86,16 +93,28 @@ class AstakosClient(Client):
         """
         :param username: (str)
 
+        :param admin: (bool) if true, get info as admin, otherwise as service
+
         :param token: (str) token to authenticate, if not given, read it from
             config object
 
-        :returns: a json formatted dictionary containing information about a
-            specific user
+        :returns: (dict) json with info on specific user
 
         :raises ClientError: (600) if not formated as email
         """
-        if token:
-            self.token = token
+        self._assert_token(token)
         path = path4url('im', 'admin' if admin else 'service', 'api/2.0/users')
         r = self.get('%s/{%s}' % (path, username))
         return r.json
+
+    def get_services(self, token=None):
+        """
+        :param token: (str) token to authenticate, if not given, read it from
+            config object
+
+        :returns: (list of dicts) services managed by this I.M.
+            [{'name':'serv name', 'id':<serv id>}, 'url':'/serv/url', ..}, ..]
+        """
+        self._assert_token(token)
+        r = self.get('/im/get_services')
+        return(r.json)
