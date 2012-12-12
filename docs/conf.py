@@ -19,13 +19,13 @@
 from sys import path, stderr
 import os
 
-path.append('/home/saxtouri/src/synnefo/snf-common')
+path.append('/home/saxtouri/src/objpool')
 try:
-    from synnefo import lib
-    lib
+    from objpool import http
+    http
 except ImportError:
-    stderr.write("`snf-common` package is required to build kamaki docs.\n")
-    exit()
+    stderr.write("`objpool` package is required to build kamaki docs.\n")
+    #exit()
 
 path.append(os.path.join(os.path.abspath(os.path.dirname(__file__)), '..'))
 

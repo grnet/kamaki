@@ -71,8 +71,11 @@ class KamakiHTTPResponse(HTTPResponse):
 
     @property
     def text(self):
+        """
+        :returns: (str) content
+        """
         self._get_response()
-        return self._content
+        return unicode(self._content)
 
     @text.setter
     def test(self, v):
@@ -80,6 +83,11 @@ class KamakiHTTPResponse(HTTPResponse):
 
     @property
     def json(self):
+        """
+        :returns: (dict) the json-formated content
+
+        :raises HTTPResponseError: if content is not json formated
+        """
         self._get_response()
         try:
             return loads(self._content)
@@ -91,6 +99,9 @@ class KamakiHTTPResponse(HTTPResponse):
         pass
 
     def release(self):
+        """ Release the connection. Should always be called if the response
+        content hasn't been used.
+        """
         if not self.prefetched:
             self.request.close()
 
@@ -98,7 +109,11 @@ class KamakiHTTPResponse(HTTPResponse):
 class KamakiHTTPConnection(HTTPConnection):
 
     def _retrieve_connection_info(self, extra_params={}):
-        """ return (scheme, netloc, url?with&params) """
+        """
+        :param extra_params: (dict) key:val for url parameters
+
+        :returns: (scheme, netloc, url?with&params)
+        """
         if self.url:
             url = self.url if self.url[-1] == '/' else (self.url + '/')
         else:
@@ -125,6 +140,23 @@ class KamakiHTTPConnection(HTTPConnection):
         data=None,
         async_headers={},
         async_params={}):
+        """
+        :param method: (str) http method ('get', 'post', etc.)
+
+        :param data: (binary object)
+
+        :param async_headers: (dict) key:val headers that are used only for one
+            request instance as opposed to self.headers, which remain to be
+            used by following or parallel requests
+
+        :param async_params: (dict) key:val url parameters that are used only
+            for one request instance as opposed to self.params, which remain to
+            be used by following or parallel requests
+
+        :returns: (KamakiHTTPResponse) a response object
+
+        :raises HTTPConnectionError: Connection failures
+        """
         (scheme, netloc) = self._retrieve_connection_info(
             extra_params=async_params)
         headers = dict(self.headers)

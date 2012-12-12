@@ -36,8 +36,7 @@ from sys import argv, exit, stdout
 from os.path import basename
 from inspect import getargspec
 
-from kamaki.cli.argument import _arguments, parse_known_args, init_parser,\
-    update_arguments
+from kamaki.cli.argument import ArgumentParseManager
 from kamaki.cli.history import History
 from kamaki.cli.utils import print_dict, print_list, red, magenta, yellow
 from kamaki.cli.errors import CLIError
@@ -277,18 +276,19 @@ def _print_subcommands_help(cmd):
 
 def _update_parser_help(parser, cmd):
     global _best_match
-    parser.prog = parser.prog.split('<')[0]
-    parser.prog += ' '.join(_best_match)
+    parser.syntax = parser.syntax.split('<')[0]
+    parser.syntax += ' '.join(_best_match)
 
     if cmd.is_command:
         cls = cmd.get_class()
-        parser.prog += ' ' + cls.syntax
-        arguments = cls().arguments
-        update_arguments(parser, arguments)
+        parser.syntax += ' ' + cls.syntax
+        parser.update_arguments(cls().arguments)
+        # arguments = cls().arguments
+        # update_arguments(parser, arguments)
     else:
-        parser.prog += ' <...>'
+        parser.syntax += ' <...>'
     if cmd.has_description:
-        parser.description = cmd.help
+        parser.parser.description = cmd.help
 
 
 def _print_error_message(cli_err):
@@ -329,41 +329,39 @@ def _exec_cmd(instance, cmd_args, help_method):
     return 1
 
 
-def set_command_param(param, value):
-    if param == 'prefix':
-        pos = 0
-    elif param == 'descedants_depth':
-        pos = 1
-    else:
-        return
+def set_command_params(parameters):
+    """Add a parameters list to a command
+
+    :param paramters: (list of str) a list of parameters
+    """
     global command
     def_params = list(command.func_defaults)
-    def_params[pos] = value
+    def_params[0] = parameters
     command.func_defaults = tuple(def_params)
 
 
-def one_cmd(parser, unparsed, arguments):
-    group = get_command_group(list(unparsed), arguments)
+#def one_cmd(parser, unparsed, arguments):
+def one_cmd(parser):
+    group = get_command_group(list(parser.unparsed), parser.arguments)
     if not group:
-        parser.print_help()
-        _groups_help(arguments)
+        parser.parser.print_help()
+        _groups_help(parser.arguments)
         exit(0)
 
-    set_command_param(
-        'prefix',
-        [term for term in unparsed if not term.startswith('-')]
-    )
+    nonargs = [term for term in parser.unparsed if not term.startswith('-')]
+    set_command_params(nonargs)
+
     global _best_match
     _best_match = []
 
-    spec_module = _load_spec_module(group, arguments, '_commands')
+    spec_module = _load_spec_module(group, parser.arguments, '_commands')
 
     cmd_tree = _get_cmd_tree_from_spec(group, spec_module._commands)
 
     if _best_match:
         cmd = cmd_tree.get_command('_'.join(_best_match))
     else:
-        cmd = _get_best_match_from_cmd_tree(cmd_tree, unparsed)
+        cmd = _get_best_match_from_cmd_tree(cmd_tree, parser.unparsed)
         _best_match = cmd.path.split('_')
     if cmd is None:
         if _debug or _verbose:
@@ -373,16 +371,17 @@ def one_cmd(parser, unparsed, arguments):
     _update_parser_help(parser, cmd)
 
     if _help or not cmd.is_command:
-        parser.print_help()
+        parser.parser.print_help()
         _print_subcommands_help(cmd)
         exit(0)
 
     cls = cmd.get_class()
-    executable = cls(arguments)
-    parsed, unparsed = parse_known_args(parser, executable.arguments)
+    executable = cls(parser.arguments)
+    parser.update_arguments(executable.arguments)
+    #parsed, unparsed = parse_known_args(parser, executable.arguments)
     for term in _best_match:
-        unparsed.remove(term)
-    _exec_cmd(executable, unparsed, parser.print_help)
+        parser.unparsed.remove(term)
+    _exec_cmd(executable, parser.unparsed, parser.parser.print_help)
 
 
 def _load_all_commands(cmd_tree, arguments):
@@ -402,33 +401,33 @@ def _load_all_commands(cmd_tree, arguments):
                 break
 
 
-def run_shell(exe_string, arguments):
+def run_shell(exe_string, parser):
     from command_shell import _init_shell
-    shell = _init_shell(exe_string, arguments)
-    _load_all_commands(shell.cmd_tree, arguments)
-    shell.run(arguments)
+    shell = _init_shell(exe_string, parser)
+    _load_all_commands(shell.cmd_tree, parser.arguments)
+    shell.run(parser)
 
 
 def main():
     try:
         exe = basename(argv[0])
-        parser = init_parser(exe, _arguments)
-        parsed, unparsed = parse_known_args(parser, _arguments)
+        parser = ArgumentParseManager(exe)
 
-        if _arguments['version'].value:
+        if parser.arguments['version'].value:
             exit(0)
 
-        _init_session(_arguments)
+        _init_session(parser.arguments)
 
-        if unparsed:
-            _history = History(_arguments['config'].get('history', 'file'))
+        if parser.unparsed:
+            _history = History(
+                parser.arguments['config'].get('history', 'file'))
             _history.add(' '.join([exe] + argv[1:]))
-            one_cmd(parser, unparsed, _arguments)
+            one_cmd(parser)
         elif _help:
-            parser.print_help()
-            _groups_help(_arguments)
+            parser.parser.print_help()
+            _groups_help(parser.arguments)
         else:
-            run_shell(exe, _arguments)
+            run_shell(exe, parser)
     except CLIError as err:
         if _debug:
             raise err

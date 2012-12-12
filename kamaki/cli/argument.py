@@ -38,7 +38,8 @@ from kamaki.cli.utils import split_input
 from argparse import ArgumentParser, ArgumentError
 
 try:
-    from progress.bar import IncrementalBar
+    from progress.bar import FillingCirclesBar as KamakiProgressBar
+    #  IncrementalBar
 except ImportError:
     # progress not installed - pls, pip install progress
     pass
@@ -285,7 +286,7 @@ class ProgressBarArgument(FlagArgument):
         self.suffix = '%(percent)d%%'
         super(ProgressBarArgument, self).__init__(help, parsed_name, default)
         try:
-            IncrementalBar
+            KamakiProgressBar
         except NameError:
             print('Warning: no progress bar functionality')
 
@@ -303,12 +304,13 @@ class ProgressBarArgument(FlagArgument):
         if self.value:
             return None
         try:
-            self.bar = IncrementalBar()
+            self.bar = KamakiProgressBar()
         except NameError:
             self.value = None
             return self.value
         self.bar.message = message.ljust(message_len)
         self.bar.suffix = '%(percent)d%% - %(eta)ds'
+        self.bar.start()
 
         def progress_gen(n):
             for i in self.bar.iter(range(int(n))):
@@ -351,23 +353,102 @@ Mechanism:
 """
 
 
-def init_parser(exe, arguments):
-    """Create and initialize an ArgumentParser object"""
+class ArgumentParseManager(object):
+    """Manage (initialize and update) an ArgumentParser object"""
+
     parser = ArgumentParser(add_help=False)
-    parser.prog = '%s <cmd_group> [<cmd_subbroup> ...] <cmd>' % exe
-    update_arguments(parser, arguments)
-    return parser
+    _arguments = {}
+    _parser_modified = False
+    _parsed = None
+    _unparsed = None
 
+    def __init__(self, exe, arguments=None):
+        """
+        :param exe: (str) the basic command (e.g. 'kamaki')
 
-def parse_known_args(parser, arguments=None):
-    """Fill in arguments from user input"""
-    parsed, unparsed = parser.parse_known_args()
-    for name, arg in arguments.items():
-        arg.value = getattr(parsed, name, arg.default)
-    newparsed = []
-    for term in unparsed:
-        newparsed += split_input(' \'%s\' ' % term)
-    return parsed, newparsed
+        :param arguments: (dict) if given, overrides the global _argument as
+            the parsers arguments specification
+        """
+        self.syntax = '%s <cmd_group> [<cmd_subbroup> ...] <cmd>' % exe
+        if arguments:
+            self.arguments = arguments
+        else:
+            global _arguments
+            self.arguments = _arguments
+        self.parse()
+
+    @property
+    def syntax(self):
+        """The command syntax (useful for help messages, descriptions, etc)"""
+        return self.parser.prog
+
+    @syntax.setter
+    def syntax(self, new_syntax):
+        self.parser.prog = new_syntax
+
+    @property
+    def arguments(self):
+        """(dict) arguments the parser should be aware of"""
+        return self._arguments
+
+    @arguments.setter
+    def arguments(self, new_arguments):
+        if new_arguments:
+            assert isinstance(new_arguments, dict)
+        self._arguments = new_arguments
+        self.update_parser()
+
+    @property
+    def parsed(self):
+        """(Namespace) parser-matched terms"""
+        if self._parser_modified:
+            self.parse()
+        return self._parsed
+
+    @property
+    def unparsed(self):
+        """(list) parser-unmatched terms"""
+        if self._parser_modified:
+            self.parse()
+        return self._unparsed
+
+    def update_parser(self, arguments=None):
+        """Load argument specifications to parser
+
+        :param arguments: if not given, update self.arguments instead
+        """
+        if not arguments:
+            arguments = self._arguments
+
+        for name, arg in arguments.items():
+            try:
+                arg.update_parser(self.parser, name)
+                self._parser_modified = True
+            except ArgumentError:
+                pass
+
+    def update_arguments(self, new_arguments):
+        """Add to / update existing arguments
+
+        :param new_arguments: (dict)
+        """
+        if new_arguments:
+            assert isinstance(new_arguments, dict)
+            self._arguments.update(new_arguments)
+            self.update_parser()
+
+    def parse(self, new_args=None):
+        """Do parse user input"""
+        if new_args:
+            self._parsed, unparsed = self.parser.parse_known_args(new_args)
+        else:
+            self._parsed, unparsed = self.parser.parse_known_args()
+        for name, arg in self.arguments.items():
+            arg.value = getattr(self._parsed, name, arg.default)
+        self._unparsed = []
+        for term in unparsed:
+            self._unparsed += split_input(' \'%s\' ' % term)
+        self._parser_modified = False
 
 
 def update_arguments(parser, arguments):

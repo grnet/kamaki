@@ -439,9 +439,9 @@ class server_wait(_init_cyclades):
             progress_bar.finish()
             raiseCLIError(err)
         if new_mode:
-            print('\nServer %s is now in %s mode' % (server_id, new_mode))
+            print('Server %s is now in %s mode' % (server_id, new_mode))
         else:
-            print('\nTime out')
+            print('Time out')
 
 
 @command(flavor_cmds)

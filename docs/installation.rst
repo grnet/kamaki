@@ -40,15 +40,28 @@ With virtualenv users can setup kamaki and synnefo services in a sandbox environ
 
 A more detailed example of using virtual env can be found at the `snf-image-creator setup guide <http://docs.dev.grnet.gr/snf-image-creator/latest/install.html#python-virtual-environment>`_
 
-2. Install snf-common
-"""""""""""""""""""""
+2. Install objpool (was: snf-common)
+""""""""""""""""""""""""""""""""""""""""""
 
-Package snf-common is part of the synnefo project and is a kamaki dependency since version 0.6.0.
+.. note:: **versions 0.6.0 - 0.6.1**
+
+    Package snf-common is part of the synnefo project and used to be a kamaki dependency in versions from 0.6.0 to 0.6.1 to provide a connection pooling mechanism. Users who still run 0.6.0 or 0.6.1 may need to manually install the snf-common package:
+
+    .. code-block:: console
+
+        $ git clone http://code.grnet.gr/git/synnefo
+        $ cd synnefo/snf-common
+        $ ./setup build install
+        $ cd -
+
+**Version 0.6.2 and on:**
+
+Since 0.6.2, kamaki is based on objpool (hence the snf-common dependency is now obsolete). The objpool package is easy to install from source, even on windows platforms:
 
 .. code-block:: console
 
-    $ git clone http://code.grnet.gr/git/synnefo
-    $ cd synnefo/snf-common
+    $ git clone http://code.grnet.gr/git/objpool
+    $ cd objpool
     $ ./setup build install
     $ cd -
 
@@ -103,7 +116,13 @@ The following steps describe a command-line approach, but any graphic package ma
 3. Install kamaki
 """""""""""""""""
 
-Since version 0.6.0, the package snf-common (available at synnefo apt repository) will be automatically installed as a dependency.
+.. note:: **versions 0.6.0 - 0.6.1:**
+
+    The *snf-common* package (available at synnefo apt repository) will be automatically installed as a dependency.
+
+.. note:: **versions 0.6.2 and on:**
+
+    Since version 0.6.2, *objpool* replaces *snf-common*. The objpool package is also available at synnefo repository and is automatically installed as a dependency. The *snf-common* dependency is removed.
 
 .. code-block:: console
 
