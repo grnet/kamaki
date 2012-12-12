@@ -52,7 +52,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Kamaki'
-copyright = u'2012, GRNet'
+copyright = u'2012, GRNET'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -197,7 +197,7 @@ latex_elements = {
 # [howto/manual]).
 latex_documents = [
   ('index', 'Kamaki.tex', u'Kamaki Documentation',
-   u'GRNet', 'manual'),
+   u'GRNET', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -240,7 +240,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
   ('index', 'Kamaki', u'Kamaki Documentation',
-   u'GRNet', 'Kamaki', 'One line description of project.',
+   u'GRNET', 'Kamaki', 'One line description of project.',
    'Miscellaneous'),
 ]
 
