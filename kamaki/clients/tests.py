@@ -2293,7 +2293,7 @@ class testPithos(unittest.TestCase):
         f = open(self.fname, 'w')
         sys.stdout.write(
             ' create random file %s of size %s      ' % (name, size))
-        for hobyte_id in range(size / 8):
+        for hobyte_id in xrange(size / 8):
             random_bytes = os.urandom(8)
             f.write(random_bytes)
             if 0 == (hobyte_id * 800) % size:
