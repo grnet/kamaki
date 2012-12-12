@@ -32,8 +32,8 @@
 # or implied, of GRNET S.A.
 
 from urlparse import urlparse
-#from .pool.http import get_http_connection
-from pool.http import get_http_connection
+#from objpool.http import get_http_connection
+from objpool.http import get_http_connection
 from kamaki.clients.connection import HTTPConnection, HTTPResponse
 from kamaki.clients.connection.errors import HTTPConnectionError
 from kamaki.clients.connection.errors import HTTPResponseError

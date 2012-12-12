@@ -110,7 +110,7 @@ class PithosClient(PithosRestAPI):
 
         :param public: (bool)
         """
-        self.assert_container()
+        self._assert_container()
 
         if withHashFile:
             data = f.read()
@@ -159,7 +159,7 @@ class PithosClient(PithosRestAPI):
 
         :param public: (bool)
         """
-        self.assert_container()
+        self._assert_container()
         r = self.object_put(obj,
             content_length=0,
             etag=etag,
@@ -328,7 +328,7 @@ class PithosClient(PithosRestAPI):
 
         :param public: (bool)
         """
-        self.assert_container()
+        self._assert_container()
 
         #init
         block_info = (blocksize, blockhash, size, nblocks) =\
@@ -727,7 +727,7 @@ class PithosClient(PithosRestAPI):
 
         :raises ClientError: 409 Container is not empty
         """
-        self.assert_container()
+        self._assert_container()
         r = self.container_delete(until=until,
             delimiter=delimiter,
             success=(204, 404, 409))
@@ -822,7 +822,7 @@ class PithosClient(PithosRestAPI):
 
         :param delimiter: (str)
         """
-        self.assert_container()
+        self._assert_container()
         r = self.object_delete(obj, until=until, delimiter=delimiter)
         r.release()
 
@@ -938,7 +938,7 @@ class PithosClient(PithosRestAPI):
         :param upload_db: progress.bar for uploading
         """
 
-        self.assert_container()
+        self._assert_container()
         meta = self.get_container_info()
         blocksize = int(meta['x-container-block-size'])
         filesize = fstat(source_file.fileno()).st_size
@@ -993,7 +993,7 @@ class PithosClient(PithosRestAPI):
         :param upload_db: progress.bar for uploading
         """
 
-        self.assert_container()
+        self._assert_container()
         meta = self.get_container_info()
         blocksize = int(meta['x-container-block-size'])
         filesize = fstat(source_file.fileno()).st_size
@@ -1041,7 +1041,7 @@ class PithosClient(PithosRestAPI):
 
         :param delimiter: (str)
         """
-        self.assert_account()
+        self._assert_account()
         self.container = dst_container
         dst_object = dst_object or src_object
         src_path = path4url(src_container, src_object)
@@ -1078,7 +1078,7 @@ class PithosClient(PithosRestAPI):
 
         :param delimiter: (str)
         """
-        self.assert_account()
+        self._assert_account()
         self.container = dst_container
         dst_object = dst_object or src_object
         src_path = path4url(src_container, src_object)
@@ -1101,7 +1101,7 @@ class PithosClient(PithosRestAPI):
 
         :returns: (dict)
         """
-        self.assert_account()
+        self._assert_account()
 
         self.set_param('format', 'json')
         self.set_param('limit', limit, iff=limit is not None)
@@ -1118,6 +1118,6 @@ class PithosClient(PithosRestAPI):
 
         :returns: (list)
         """
-        self.assert_container()
+        self._assert_container()
         r = self.object_get(obj, format='json', version='list')
         return r.json['versions']

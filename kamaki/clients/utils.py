@@ -32,8 +32,8 @@
 # or implied, of GRNET S.A.
 
 
-def matches(val1, val2, exactMath=True):
-    """Case Insenstive match"""
+def _matches(val1, val2, exactMath=True):
+    """Case Insensitive match"""
 
     if exactMath:
         return True if val1.lower() == val2.lower() else False
@@ -42,42 +42,49 @@ def matches(val1, val2, exactMath=True):
 
 
 def filter_out(d, prefix, exactMatch=False):
-    """@return a dict that contains the entries of d
-        that are NOT prefixed with prefic
+    """Remove entries that are prefixed with prefix (case insensitive)
+
+    :param d: (dict) input
+
+    :param prefix: (str) prefix to match input keys against
+
+    :param exactMatch: (bool) key should fully match if True, just prefixed
+        with prefix if False
+
+    :returns: (dict) the updated d
     """
 
     ret = {}
     for key, val in d.items():
-        if not matches(key, prefix, exactMath=exactMatch):
+        if not _matches(key, prefix, exactMath=exactMatch):
             ret[key] = val
     return ret
 
 
 def filter_in(d, prefix, exactMatch=False):
-    """@return a dict that contains only the entries of d
-        that are prefixed with prefix
-    """
+    """Keep only entries of d prefixed with prefix
 
+    :param d: (dict) input
+
+    :param prefix: (str) prefix to match input keys against
+
+    :param exactMatch: (bool) key should fully match if True, just prefixed
+        with prefix if False
+
+    :returns: (dict) the updated d
+    """
     ret = {}
     for key, val in d.items():
-        if matches(key, prefix, exactMath=exactMatch):
+        if _matches(key, prefix, exactMath=exactMatch):
             ret[key] = val
     return ret
 
 
-def prefix_keys(d, prefix):
-    """@return a sallow copy of d with all its keys prefixed with prefix
-    """
-
-    ret = {}
-    for key, val in d.items():
-        ret[prefix + key] = val
-    return ret
-
-
 def path4url(*args):
-    """@return a string with all args in the form /arg1/arg2/...
-       @param args must be strings
+    """
+    :param args: (list of str)
+
+    :returns: (str) a path in the form /args[0]/args[1]/...
     """
 
     path = ''
@@ -96,8 +103,11 @@ def path4url(*args):
 
 
 def params4url(params):
-    """@return a string with all params in the form ?key1=val1&key2=val2&...
-       @param should be a dict.
+    """{'key1':'val1', 'key2':None, 'key3':15} --> "?key1=val1&key2&key3=15"
+
+    :param params: (dict) request parameters in the form key:val
+
+    :returns: (str) http-request friendly in the form ?key1=val1&key2=val2&...
     """
 
     assert(type(params) is dict)
@@ -110,8 +120,13 @@ def params4url(params):
     return result
 
 
-def list2str(alist, seperator=','):
-    """@return a string of comma seperated elements of the list"""
+def list2str(alist, separator=','):
+    """[val1, val2, val3] --> "val1,val2,val3"
+
+    :param separator: (str)
+
+    :returns: (str) all list elements separated by separator
+    """
 
     ret = ''
     slist = sorted(alist)
@@ -119,28 +134,5 @@ def list2str(alist, seperator=','):
         if 0 == slist.index(item):
             ret = unicode(item)
         else:
-            ret += seperator + unicode(item)
+            ret += separator + unicode(item)
     return ret
-
-
-def dict2file(d, f, depth=0):
-    for k, v in d.items():
-        f.write('%s%s: ' % ('\t' * depth, k))
-        if type(v) is dict:
-            f.write('\n')
-            dict2file(v, f, depth + 1)
-        elif type(v) is list:
-            f.write('\n')
-            list2file(v, f, depth + 1)
-        else:
-            f.write(' %s\n' % unicode(v))
-
-
-def list2file(l, f, depth=1):
-    for item in l:
-        if type(item) is dict:
-            dict2file(item, f, depth + 1)
-        elif type(item) is list:
-            list2file(item, f, depth + 1)
-        else:
-            f.write('%s%s\n' % ('\t' * depth, unicode(item)))
