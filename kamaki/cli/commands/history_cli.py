@@ -56,7 +56,7 @@ class _init_history(_command_init):
 
 @command(history_cmds)
 class history_show(_init_history):
-    """Show history [containing terms...]"""
+    """Show history [commandid | <commandid1> - <commandid2>]"""
 
     def __init__(self, arguments={}):
         super(self.__class__, self).__init__(arguments)
@@ -65,11 +65,23 @@ class history_show(_init_history):
         self.arguments['match'] =\
             ValueArgument('show lines that match all given terms', '--match')
 
-    def main(self):
+    def main(self, cmd_id=None):
         super(self.__class__, self).main()
         ret = self.history.get(match_terms=self.get_argument('match'),
             limit=self.get_argument('limit'))
-        print(''.join(ret))
+        if cmd_id:
+            num1, sep, num2 = cmd_id.partition('-')
+            try:
+                num1 = int(num1) - 1
+                num2 = int(num2) if sep else num1
+                for i in range(num1, num2):
+                    print(ret[int(i)][:-1])
+            except ValueError as e1:
+                raiseCLIError(e1, 'Invalid history id %s' % cmd_id)
+            except IndexError as e2:
+                raiseCLIError(e2, 'Command id out of 1-%s range' % len(ret))
+        else:
+            print(''.join(ret))
 
 
 @command(history_cmds)
@@ -125,7 +137,7 @@ class history_load(_init_history):
                 else:
                     cmd_id_list.append(int(cmd_str))
             except ValueError:
-                raiseCLIError('Invalid history id %s' % cmd_str)
+                raiseCLIError(None, 'Invalid history id %s' % cmd_str)
         return cmd_id_list
 
     def main(self, *command_ids):
