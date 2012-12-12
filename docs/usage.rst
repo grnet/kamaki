@@ -605,8 +605,6 @@ After a while, the user needs to work with multiple containers, therefore a defa
     2.  pithos (0B, 0 objects)
     3.  trash (2MB, 1 objects)
 
-.. warning:: In some cases, the config setting updates are not immediately effective. If that is the case, they will be after the next command run, whatever that command is.
-
 Using history
 ^^^^^^^^^^^^^
 
