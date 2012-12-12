@@ -40,7 +40,7 @@ from kamaki.cli.history import History
 from kamaki.cli import command
 from kamaki.cli.commands import _command_init
 from kamaki.cli import _exec_cmd, _print_error_message
-from kamaki.cli.errors import CLIError, raiseCLIError
+from kamaki.cli.errors import CLIError, CLISyntaxError, raiseCLIError
 from kamaki.cli.utils import split_input
 from kamaki.clients import ClientError
 
@@ -83,7 +83,7 @@ class history_clean(_init_history):
 
 @command(history_cmds)
 class history_load(_init_history):
-    """Re-call a previously called command"""
+    """Run previously executed command(s)"""
 
     _cmd_tree = None
 
@@ -112,6 +112,9 @@ class history_load(_init_history):
             print('\t%s' % e)
 
     def _get_cmd_ids(self, cmd_ids):
+        if not cmd_ids:
+            raise CLISyntaxError('Usage: <id1> [id2] ... [id3-id4] ...',
+                details=' where id* are for commands in history')
         cmd_id_list = []
         for cmd_str in cmd_ids:
             num1, sep, num2 = cmd_str.partition('-')

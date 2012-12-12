@@ -87,6 +87,7 @@ Command user history, as stored in ~/.kamaki.history
 
 * all       show user history
 * clean     clean up history
+* load      Run previously executed command(s)
 
 
 server commands

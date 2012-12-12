@@ -616,6 +616,57 @@ Session history is only available in interactive shell mode. Users can iterate t
 
 Permanent history is implemented as a command group and is common to both the one-command and shell interfaces. In specific, every syntactically correct command is appended in a history file (configured as *history.file* in settings, see `setup section <setup.html>`_ for details). Commands executed in one-command mode are mixed with the ones run in kamaki shell (also see :ref:`using-history-ref` section on this guide).
 
+Scripting
+^^^^^^^^^
+
+Since version 6.2, the history-load feature allows the sequential execution of previously run kamaki commands in kamaki shell.
+
+The following kamaki sequence copies and downloads a file from mycontainer1, uploads it to mycontainer2, then undo the proccess and repeats it with history-load
+
+.. code-block:: console
+    :emphasize-lines: 1,12,19,32
+
+    * Download mycontainer1:myfile and upload it to mycontainer2:myfile
+    [kamaki]: store
+
+    [store]: copy mycontainer1:somefile mycontainer1:myfile
+
+    [store]: download mycontainer1:myfile mylocalfile
+    Download completed
+
+    [store]: upload mylocalfile mycontainer2:myfile
+    Upload completed
+
+    * undo the process *
+    [store]: !rm mylocalfile
+
+    [store]: delete mycontainer1:myfile
+ 
+    [store]: delete mycontainer2:myfile
+
+    * check history entries *
+    [store]: exit
+
+    [kamaki]: history
+
+    [history]: show
+    1.  store
+    2.  store copy mycontainer1:somefile mycontainer1:myfile
+    3.  store download mycontainer1:myfile mylocalfile
+    4.  store upload mylocalfile mycontainer2:myfile
+    5.  history
+    6.  history show
+
+    *repeat the process *
+    [history]: load 2-4
+    store copy mycontainer1:somefile mycontainer1:myfile
+    store download mycontainer1:myfile mylocalfile
+    Download completed
+    store upload mylocalfile mycontainer2:myfile
+    Upload completed
+
+The above strategy is still very primitive. Users are advised to take advantage of their os shell scripting capabilities and combine them with kamaki one-command for powerful scripting. Still, the history-load functionality might prove handy for kamaki shell users.
+
 Tab completion
 ^^^^^^^^^^^^^^
 
@@ -654,12 +705,12 @@ Kamaki shell features the ability to execute OS-shell commands from any context.
     -rw-rw-r-- 1 saxtouri saxtouri 8063 Jun 28 14:48 logo-copy.png
 
 
-Kamaki shell commits command strings to the outside shell and prints the results, without interacting with it. After a command is finished, kamaki shell returns to its initial state, which involves the current directory, as show in example 4.7.2 .
+Kamaki shell commits command strings to the outside shell and prints the results, without interacting with it. After a command is finished, kamaki shell returns to its initial state, which involves the current directory, as show in example 4.8.2 .
 
 .. code-block:: console
     :emphasize-lines: 1
 
-    Example 4.7.2: Attempt (and fail) to change working directory
+    Example 4.8.2: Attempt (and fail) to change working directory
 
 
     [kamaki]:!pwd
