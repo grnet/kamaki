@@ -243,7 +243,12 @@ class PithosClient(PithosRestAPI):
             offset += bytes
             if hash_cb:
                 hash_gen.next()
-        assert offset == size
+        if offset != size:
+            print("Size is %i" % size)
+            print("Offset is %i" % offset)
+            assert offset == size, \
+                   "Failed to calculate uploaded blocks: " \
+                    "Offset and object size do not match"
 
     def _upload_missing_blocks(self, missing, hmap, fileobj, upload_cb=None):
         """upload missing blocks asynchronously.
