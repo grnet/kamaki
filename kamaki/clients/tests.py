@@ -1634,7 +1634,7 @@ class testPithos(unittest.TestCase):
         r = self.client.get_object_info('/dir/sample.file')
         self.assertTrue(int(r['content-length']) > 100000000)
 
-        """WTF is tranfer_encoding? What should I check about th** s**t? """
+        """What is tranfer_encoding? What should I check about it? """
         #TODO
 
         """Check update=False"""
