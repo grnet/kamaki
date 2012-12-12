@@ -40,6 +40,7 @@ from kamaki.cli.argument import ArgumentParseManager
 from kamaki.cli.utils import print_dict, split_input, print_items
 from kamaki.cli.history import History
 from kamaki.cli.errors import CLIError
+from kamaki.clients import ClientError
 
 
 def _init_shell(exe_string, parser):
@@ -164,7 +165,10 @@ class Shell(Cmd):
             # exec command or change context
             if subcmd.is_command:  # exec command
                 cls = subcmd.get_class()
-                instance = cls(dict(cmd_parser.arguments))
+                if subcmd.path == 'history_load':
+                    instance = cls(dict(cmd_parser.arguments), self.cmd_tree)
+                else:
+                    instance = cls(dict(cmd_parser.arguments))
                 cmd_parser.update_arguments(instance.arguments)
                 instance.arguments.pop('config')
                 #cmd_parser = ArgumentParseManager(subcmd.path,
@@ -180,11 +184,12 @@ class Shell(Cmd):
 
                 for name, arg in instance.arguments.items():
                     arg.value = getattr(cmd_parser.parsed, name, arg.default)
+
                 try:
                     _exec_cmd(instance,
                         cmd_parser.unparsed,
                         cmd_parser.parser.print_help)
-                except CLIError as err:
+                except (ClientError, CLIError) as err:
                     _print_error_message(err)
             elif ('-h' in cmd_args or '--help' in cmd_args) \
             or len(cmd_args):  # print options

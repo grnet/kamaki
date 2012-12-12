@@ -35,9 +35,14 @@
 
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.argument import IntArgument, ValueArgument
+from kamaki.cli.argument import ArgumentParseManager
 from kamaki.cli.history import History
 from kamaki.cli import command
 from kamaki.cli.commands import _command_init
+from kamaki.cli import _exec_cmd, _print_error_message
+from kamaki.cli.errors import CLIError, CLISyntaxError, raiseCLIError
+from kamaki.cli.utils import split_input
+from kamaki.clients import ClientError
 
 
 history_cmds = CommandTree('history', 'Command history')
@@ -74,3 +79,61 @@ class history_clean(_init_history):
     def main(self):
         super(self.__class__, self).main()
         self.history.clean()
+
+
+@command(history_cmds)
+class history_load(_init_history):
+    """Run previously executed command(s)"""
+
+    _cmd_tree = None
+
+    def __init__(self, arguments={}, cmd_tree=None):
+        super(self.__class__, self).__init__(arguments)
+        self._cmd_tree = cmd_tree
+
+    def _run_from_line(self, line):
+        terms = split_input(line)
+        cmd, args = self._cmd_tree.find_best_match(terms)
+        if not cmd.is_command:
+            return
+        try:
+            instance = cmd.get_class()(self.arguments)
+            instance.config = self.config
+            prs = ArgumentParseManager(cmd.path.split(),
+                dict(instance.arguments))
+            prs.syntax = '%s %s' % (cmd.path.replace('_', ' '),
+                cmd.get_class().syntax)
+            prs.parse(args)
+            _exec_cmd(instance, prs.unparsed, prs.parser.print_help)
+        except (CLIError, ClientError) as err:
+            _print_error_message(err)
+        except Exception as e:
+            print('Execution of [ %s ] failed' % line)
+            print('\t%s' % e)
+
+    def _get_cmd_ids(self, cmd_ids):
+        if not cmd_ids:
+            raise CLISyntaxError('Usage: <id1> [id2] ... [id3-id4] ...',
+                details=' where id* are for commands in history')
+        cmd_id_list = []
+        for cmd_str in cmd_ids:
+            num1, sep, num2 = cmd_str.partition('-')
+            try:
+                if sep:
+                    for i in range(int(num1), int(num2) + 1):
+                        cmd_id_list.append(i)
+                else:
+                    cmd_id_list.append(int(cmd_str))
+            except ValueError:
+                raiseCLIError('Invalid history id %s' % cmd_str)
+        return cmd_id_list
+
+    def main(self, *command_ids):
+        super(self.__class__, self).main()
+        cmd_list = self._get_cmd_ids(command_ids)
+        for cmd_id in cmd_list:
+            r = self.history.retrieve(cmd_id)
+            print(r[:-1])
+            if self._cmd_tree:
+                r = r[len('kamaki '):-1] if r.startswith('kamaki ') else r[:-1]
+                self._run_from_line(r)
