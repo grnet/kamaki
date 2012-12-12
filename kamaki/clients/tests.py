@@ -2317,15 +2317,12 @@ class testPithos(unittest.TestCase):
     def create_large_file(self, size, name):
         """Create a large file at fs"""
         self.fname = name
-        import random
-        random.seed(self.now)
-        rf = open('/dev/urandom', 'r')
         f = open(self.fname, 'w')
         sys.stdout.write(
             ' create random file %s of size %s      ' % (name, size))
         for hobyte_id in range(size / 8):
-            #sss = 'hobt%s' % random.randint(1000, 9999)
-            f.write(rf.read(8))
+            random_bytes = os.urandom(8)
+            f.write(random_bytes)
             if 0 == (hobyte_id * 800) % size:
                 f.write('\n')
                 f.flush()
@@ -2337,7 +2334,6 @@ class testPithos(unittest.TestCase):
                 sys.stdout.flush()
         print('\b\b\b100%')
         f.flush()
-        rf.close()
         f.close()
         """"""
 
