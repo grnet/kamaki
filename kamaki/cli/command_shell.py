@@ -165,7 +165,7 @@ class Shell(Cmd):
             # exec command or change context
             if subcmd.is_command:  # exec command
                 cls = subcmd.get_class()
-                if subcmd.path == 'history_recall':
+                if subcmd.path == 'history_load':
                     instance = cls(dict(cmd_parser.arguments), self.cmd_tree)
                 else:
                     instance = cls(dict(cmd_parser.arguments))

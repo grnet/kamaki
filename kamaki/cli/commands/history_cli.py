@@ -40,7 +40,7 @@ from kamaki.cli.history import History
 from kamaki.cli import command
 from kamaki.cli.commands import _command_init
 from kamaki.cli import _exec_cmd, _print_error_message
-from kamaki.cli.errors import CLIError
+from kamaki.cli.errors import CLIError, raiseCLIError
 from kamaki.cli.utils import split_input
 from kamaki.clients import ClientError
 
@@ -82,7 +82,7 @@ class history_clean(_init_history):
 
 
 @command(history_cmds)
-class history_recall(_init_history):
+class history_load(_init_history):
     """Re-call a previously called command"""
 
     _cmd_tree = None
@@ -111,10 +111,26 @@ class history_recall(_init_history):
             print('Execution of [ %s ] failed' % line)
             print('\t%s' % e)
 
-    def main(self, commandid):
+    def _get_cmd_ids(self, cmd_ids):
+        cmd_id_list = []
+        for cmd_str in cmd_ids:
+            num1, sep, num2 = cmd_str.partition('-')
+            try:
+                if sep:
+                    for i in range(int(num1), int(num2) + 1):
+                        cmd_id_list.append(i)
+                else:
+                    cmd_id_list.append(int(cmd_str))
+            except ValueError:
+                raiseCLIError('Invalid history id %s' % cmd_str)
+        return cmd_id_list
+
+    def main(self, *command_ids):
         super(self.__class__, self).main()
-        r = self.history.retrieve(commandid)
-        print(r[:-1])
-        if self._cmd_tree:
-            r = r[len('kamaki '):-1] if r.startswith('kamaki ') else r[:-1]
-            self._run_from_line(r)
+        cmd_list = self._get_cmd_ids(command_ids)
+        for cmd_id in cmd_list:
+            r = self.history.retrieve(cmd_id)
+            print(r[:-1])
+            if self._cmd_tree:
+                r = r[len('kamaki '):-1] if r.startswith('kamaki ') else r[:-1]
+                self._run_from_line(r)
