@@ -503,13 +503,11 @@ class testCyclades(unittest.TestCase):
         print('...ok')
 
         sys.stdout.write(' test get_firewall_profile')
-        print('\tSKIP')
-        #self._test_get_firewall_profile()
+        self._test_get_firewall_profile()
         print('...ok')
 
         sys.stdout.write(' test set_firewall_profile')
-        print('\tSKIP')
-        #self._test_set_firewall_profile()
+        self._test_set_firewall_profile()
         print('...ok')
 
         sys.stdout.write(' test get_server_stats')
@@ -989,7 +987,7 @@ class testCyclades(unittest.TestCase):
     def _test_set_firewall_profile(self):
 
         self._wait_for_status(self.server1['id'], 'BUILD')
-        PROFILES = ['DISABLED', 'ENABLED', 'PROTECTED']
+        PROFILES = ['DISABLED', 'ENABLED', 'DISABLED', 'PROTECTED']
         fprofile = self.client.get_firewall_profile(self.server1['id'])
         print('')
         count_success = 0
