@@ -650,7 +650,7 @@ class store_upload(_store_container_command):
         try:
             progress_bar = self.arguments['progress_bar']
             hash_bar = progress_bar.clone()
-            with open(local_path) as f:
+            with open(local_path, 'rb') as f:
                 if self.get_argument('unchunked'):
                     self.client.upload_object_unchunked(remote_path, f,
                     etag=self.get_argument('etag'),

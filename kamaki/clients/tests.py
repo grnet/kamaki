@@ -1625,7 +1625,7 @@ class testPithos(unittest.TestCase):
         self.create_large_file(1024 * 1024 * 100, 'l100M.' + unicode(self.now))
         """Upload it at a directory in container"""
         self.client.create_directory('dir')
-        newf = open(self.fname, 'r')
+        newf = open(self.fname, 'rb')
         self.client.upload_object('/dir/sample.file', newf)
         newf.close()
         """Check if file has been uploaded"""
@@ -1946,7 +1946,7 @@ class testPithos(unittest.TestCase):
 
         """Upload a local file with one request"""
         self.create_large_file(1024 * 10, 'l10K.' + unicode(self.now))
-        newf = open(self.fname, 'r')
+        newf = open(self.fname, 'rb')
         self.client.upload_object('sample.file', newf)
         newf.close()
         """Check if file has been uploaded"""
