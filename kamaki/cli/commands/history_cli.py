@@ -35,9 +35,14 @@
 
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.argument import IntArgument, ValueArgument
+from kamaki.cli.argument import ArgumentParseManager
 from kamaki.cli.history import History
 from kamaki.cli import command
 from kamaki.cli.commands import _command_init
+from kamaki.cli import _exec_cmd, _print_error_message
+from kamaki.cli.errors import CLIError
+from kamaki.cli.utils import split_input
+from kamaki.clients import ClientError
 
 
 history_cmds = CommandTree('history', 'Command history')
@@ -86,10 +91,30 @@ class history_recall(_init_history):
         super(self.__class__, self).__init__(arguments)
         self._cmd_tree = cmd_tree
 
+    def _run_from_line(self, line):
+        terms = split_input(line)
+        cmd, args = self._cmd_tree.find_best_match(terms)
+        if not cmd.is_command:
+            return
+        try:
+            instance = cmd.get_class()(self.arguments)
+            instance.config = self.config
+            prs = ArgumentParseManager(cmd.path.split(),
+                dict(instance.arguments))
+            prs.syntax = '%s %s' % (cmd.path.replace('_', ' '),
+                cmd.get_class().syntax)
+            prs.parse(args)
+            _exec_cmd(instance, prs.unparsed, prs.parser.print_help)
+        except (CLIError, ClientError) as err:
+            _print_error_message(err)
+        except Exception as e:
+            print('Execution of [ %s ] failed' % line)
+            print('\t%s' % e)
+
     def main(self, commandid):
         super(self.__class__, self).main()
         r = self.history.retrieve(commandid)
+        print(r[:-1])
         if self._cmd_tree:
-            raise NotImplemented('Sorry, recall is not implemented yet')
-        else:
-            print(r)
+            r = r[len('kamaki '):-1] if r.startswith('kamaki ') else r[:-1]
+            self._run_from_line(r)
