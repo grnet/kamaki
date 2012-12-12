@@ -1623,7 +1623,8 @@ class testPithos(unittest.TestCase):
         """put_block uses content_type and content_length to
         post blocks of data 2 container. All that in upload_object"""
         """Change a file at fs"""
-        self.create_large_file(1024 * 1024 * 100, 'l100M.' + unicode(self.now))
+        self.fname = 'l100M.' + unicode(self.now)
+        self.create_large_file(1024 * 1024 * 100, self.fname)
         """Upload it at a directory in container"""
         self.client.create_directory('dir')
         newf = open(self.fname, 'rb')
@@ -1953,7 +1954,8 @@ class testPithos(unittest.TestCase):
         self.assertEqual(r.text, txt)
 
         """Upload a local file with one request"""
-        self.create_large_file(1024 * 10, 'l10K.' + unicode(self.now))
+        self.fname = 'l10K.' + unicode(self.now)
+        self.create_large_file(1024 * 10, self.fname)
         newf = open(self.fname, 'rb')
         self.client.upload_object('sample.file', newf)
         newf.close()
