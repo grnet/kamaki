@@ -689,18 +689,18 @@ Kamaki shell features the ability to execute OS-shell commands from any context.
 
     [kamaki]:!ls -al
     total 16
-    drwxrwxr-x 2 saxtouri saxtouri 4096 Nov 27 16:47 .
-    drwxrwxr-x 7 saxtouri saxtouri 4096 Nov 27 16:47 ..
-    -rw-rw-r-- 1 saxtouri saxtouri 8063 Jun 28 14:48 kamaki-logo.png
+    drwxrwxr-x 2 username username 4096 Nov 27 16:47 .
+    drwxrwxr-x 7 username username 4096 Nov 27 16:47 ..
+    -rw-rw-r-- 1 username username 8063 Jun 28 14:48 kamaki-logo.png
 
     [kamaki]:shell cp kamaki-logo.png logo-copy.png
 
     [kamaki]:shell ls -al
     total 24
-    drwxrwxr-x 2 saxtouri saxtouri 4096 Nov 27 16:47 .
-    drwxrwxr-x 7 saxtouri saxtouri 4096 Nov 27 16:47 ..
-    -rw-rw-r-- 1 saxtouri saxtouri 8063 Jun 28 14:48 kamaki-logo.png
-    -rw-rw-r-- 1 saxtouri saxtouri 8063 Jun 28 14:48 logo-copy.png
+    drwxrwxr-x 2 username username 4096 Nov 27 16:47 .
+    drwxrwxr-x 7 username username 4096 Nov 27 16:47 ..
+    -rw-rw-r-- 1 username username 8063 Jun 28 14:48 kamaki-logo.png
+    -rw-rw-r-- 1 username username 8063 Jun 28 14:48 logo-copy.png
 
 
 Kamaki shell commits command strings to the outside shell and prints the results, without interacting with it. After a command is finished, kamaki shell returns to its initial state, which involves the current directory, as show in example 4.8.2 .
