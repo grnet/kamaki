@@ -1,4 +1,13 @@
+docs/commands.rst
+docs/developers/adding-commands.rst
+docs/developers/clients-api.rst
+docs/developers/code.rst
+docs/developers/connection.rst
+docs/developers/extending-clients-api.rst
+docs/devguide.rst
 docs/index.rst
+docs/installation.rst
 docs/overview.rst
-docs/clients.rst
+docs/setup.rst
+docs/usage.rst
 docs/images/*

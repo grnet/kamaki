@@ -1,3 +1,9 @@
+kamaki (0.6.1.1-1) stable; urgency=low
+
+  * Documentation updates, bug fixes
+
+ -- Stavros Sachtouris <saxtouri@grnet.gr>  Thu, 13 Dex 2012 18:29:33 +0200
+
 kamaki (0.6.1-2) stable; urgency=low
 
   * Add missing python-argparse dependency
