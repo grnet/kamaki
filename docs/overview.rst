@@ -4,7 +4,7 @@ Overview
 History
 -------
 
-Here, at the *Greek Research and Technology Network*, we have been developing an IaaS cloud management software called **synnefo** (or **+nefo**) that is accessed and managed via an extended OpenStack Compute API v1.1. Synnefo has been deployed in many environments to cover multiple needs. For example, the `~okeanos `_ IaaS service, running in our datacenters, is used to offer services for the Greek Research and Academic Community.
+Here, at the *Greek Research and Technology Network*, we have been developing an IaaS cloud management software called **synnefo** (or **+nefo**) that is accessed and managed via an extended OpenStack Compute API v1.1. Synnefo has been deployed in many environments to cover multiple needs. For example, the `~okeanos <http://okeanos.grnet.gr>`_ IaaS service, running in our data centers, is used to offer services for the Greek Research and Academic Community.
 
 From the early start, we needed a simple command-line tool to test the OpenStack API. That's why we developed *kamaki*, which proved to be powerful and intuitive enough, to be used not only for testing purposes but also as a complete Openstack Compute API v1.1 client, able to manage our cloud from the command line.
 
@@ -27,9 +27,9 @@ The *kamaki* development team values your help and depends on community feedback
 Community & Support
 -------------------
 
-For any problems you may bump into while using *kamaki* or for help from the development team please contact us at:
+For any problems you may bump into while using *kamaki* or for help from the development team please contact us at::
 
-* synnefo@lists.grnet.gr
+* Users list: synnefo@googlegroups.com
+* Developers list: synnefo-devel@googlegroups.com
 
-Please be sure to have read the Documentation and check the known issues before contacting the team.
-
+Bug reports and feedback are also highly appreciated.
