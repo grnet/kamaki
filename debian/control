@@ -1,7 +1,7 @@
 Source: kamaki
 Section: python
 Priority: optional
-Maintainer: Stavros Sachtouris <saxtouri@grnet.gr>
+Maintainer: Stavros Sachtouris <saxtouri@admin.grnet.gr>
 Build-Depends: debhelper (>= 8), python-all (>= 2.5)
 Standards-Version: 3.9.2
 XS-Python-Version: >= 2.6
