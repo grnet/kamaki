@@ -113,7 +113,7 @@ The following steps describe a command-line approach, but any graphic package ma
 
     .. code-block:: console
 
-        $ curl https://okeanos.io/files/apt-grnetdev.pub|apt-key add -
+        $ curl https://dev.grnet.gr/files/apt-grnetdev.pub|apt-key add -
 
     otherwise *apt-get update* will produce GPG warnings.
 
