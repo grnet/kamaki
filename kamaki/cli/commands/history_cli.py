@@ -49,6 +49,29 @@ history_cmds = CommandTree('history', 'Command history')
 _commands = [history_cmds]
 
 
+def _get_num_list(num_str):
+    if num_str.startswith('-'):
+        num1, sep, num2 = num_str[1:].partition('-')
+        num1 = '-%s' % num1
+    else:
+        num1, sep, num2 = num_str.partition('-')
+    (num1, num2) = (num1.strip(), num2.strip())
+    try:
+        num1 = (-int(num1[1:])) if num1.startswith('-') else int(num1)
+        if num1 > 0:
+            num1 -= 1
+    except ValueError as e:
+        raiseCLIError(e, 'Invalid id %s' % num1)
+    if sep:
+        try:
+            num2 = (-int(num2[1:])) if num2.startswith('-') else int(num2)
+        except ValueError as e:
+            raiseCLIError(e, 'Invalid id %s' % num2)
+    else:
+        num2 = (1 + num1) if num1 else 0
+    return [i for i in range(num1, num2)]
+
+
 class _init_history(_command_init):
     def main(self):
         self.history = History(self.config.get('history', 'file'))
@@ -56,7 +79,7 @@ class _init_history(_command_init):
 
 @command(history_cmds)
 class history_show(_init_history):
-    """Show history [commandid | <commandid1> - <commandid2>]"""
+    """Show history [[-]commandid1[-[-]commandid2] ..."""
 
     def __init__(self, arguments={}):
         super(self.__class__, self).__init__(arguments)
@@ -65,23 +88,24 @@ class history_show(_init_history):
         self.arguments['match'] =\
             ValueArgument('show lines that match all given terms', '--match')
 
-    def main(self, cmd_id=None):
+    def main(self, *cmd_ids):
         super(self.__class__, self).main()
         ret = self.history.get(match_terms=self.get_argument('match'),
             limit=self.get_argument('limit'))
-        if cmd_id:
-            num1, sep, num2 = cmd_id.partition('-')
+
+        if not cmd_ids:
+            print(''.join(ret))
+            return
+
+        num_list = []
+        for num_str in cmd_ids:
+            num_list += _get_num_list(num_str)
+
+        for cmd_id in num_list:
             try:
-                num1 = int(num1) - 1
-                num2 = int(num2) if sep else num1
-                for i in range(num1, num2):
-                    print(ret[int(i)][:-1])
-            except ValueError as e1:
-                raiseCLIError(e1, 'Invalid history id %s' % cmd_id)
+                print(ret[int(cmd_id)][:-1])
             except IndexError as e2:
                 raiseCLIError(e2, 'Command id out of 1-%s range' % len(ret))
-        else:
-            print(''.join(ret))
 
 
 @command(history_cmds)
@@ -129,15 +153,7 @@ class history_load(_init_history):
                 details=' where id* are for commands in history')
         cmd_id_list = []
         for cmd_str in cmd_ids:
-            num1, sep, num2 = cmd_str.partition('-')
-            try:
-                if sep:
-                    for i in range(int(num1), int(num2) + 1):
-                        cmd_id_list.append(i)
-                else:
-                    cmd_id_list.append(int(cmd_str))
-            except ValueError:
-                raiseCLIError(None, 'Invalid history id %s' % cmd_str)
+            cmd_id_list += _get_num_list(cmd_str)
         return cmd_id_list
 
     def main(self, *command_ids):
@@ -145,7 +161,10 @@ class history_load(_init_history):
         cmd_list = self._get_cmd_ids(command_ids)
         for cmd_id in cmd_list:
             r = self.history.retrieve(cmd_id)
-            print(r[:-1])
+            try:
+                print('< %s >' % r[:-1])
+            except (TypeError, KeyError):
+                return
             if self._cmd_tree:
                 r = r[len('kamaki '):-1] if r.startswith('kamaki ') else r[:-1]
                 self._run_from_line(r)
