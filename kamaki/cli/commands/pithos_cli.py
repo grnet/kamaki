@@ -529,7 +529,7 @@ class store_append(_store_container_command):
         super(self.__class__,
             self).main(container___path, path_is_optional=False)
         try:
-            f = open(local_path, 'r')
+            f = open(local_path, 'rb')
             progress_bar = self.arguments['progress_bar']
             try:
                 upload_cb = progress_bar.get_generator('Appending blocks')
@@ -571,7 +571,7 @@ class store_overwrite(_store_container_command):
         super(self.__class__,
             self).main(container___path, path_is_optional=False)
         try:
-            f = open(local_path, 'r')
+            f = open(local_path, 'rb')
             progress_bar = self.arguments['progress_bar']
             try:
                 upload_cb = progress_bar.get_generator('Overwritting blocks')
@@ -665,7 +665,7 @@ class store_upload(_store_container_command):
         try:
             progress_bar = self.arguments['progress_bar']
             hash_bar = progress_bar.clone()
-            with open(local_path) as f:
+            with open(local_path, 'rb') as f:
                 if self.get_argument('unchunked'):
                     self.client.upload_object_unchunked(remote_path, f,
                     etag=self.get_argument('etag'),
