@@ -63,7 +63,7 @@ def _init_shell(exe_string, parser):
 class Shell(Cmd):
     """Kamaki interactive shell"""
     _prefix = '['
-    _suffix = ']:'
+    _suffix = ']: '
     cmd_tree = None
     _history = None
     _context_stack = []
@@ -76,13 +76,15 @@ class Shell(Cmd):
         if self._context_stack:
             self._roll_command()
             self._restore(self._context_stack.pop())
-            self.set_prompt(self._prompt_stack.pop()[1:-2])
+            self.set_prompt(
+                self._prompt_stack.pop()[len(self._prefix):-len(self._suffix)])
 
         return Cmd.postcmd(self, post, line)
 
     def precmd(self, line):
         if line.startswith('/'):
-            cur_cmd_path = self.prompt.replace(' ', '_')[1:-2]
+            cur_cmd_path = self.prompt.replace(' ',
+                '_')[len(self._prefix):-len(self._suffix)]
             if cur_cmd_path != self.cmd_tree.name:
                 cur_cmd = self.cmd_tree.get_command(cur_cmd_path)
                 self._context_stack.append(self._backup())
@@ -100,11 +102,12 @@ class Shell(Cmd):
             % version)
 
     def set_prompt(self, new_prompt):
-        self.prompt = '[%s]:' % new_prompt
+        self.prompt = '%s%s%s' % (self._prefix, new_prompt, self._suffix)
 
     def do_exit(self, line):
         print('')
-        if self.prompt[1:-2] == self.cmd_tree.name:
+        if self.prompt[len(self._prefix):-len(self._suffix)]\
+        == self.cmd_tree.name:
             exit(0)
         return True
 
