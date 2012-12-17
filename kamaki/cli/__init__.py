@@ -179,18 +179,21 @@ def _setup_logging(silent=False, debug=False, verbose=False, include=False):
 
     if silent:
         add_handler('', logging.CRITICAL)
-    elif debug:
+        return
+
+    if debug:
         add_handler('requests', logging.INFO, prefix='* ')
         add_handler('clients.send', logging.DEBUG, prefix='> ')
         add_handler('clients.recv', logging.DEBUG, prefix='< ')
+        add_handler('kamaki', logging.DEBUG, prefix='[DEBUG]: ')
     elif verbose:
         add_handler('requests', logging.INFO, prefix='* ')
         add_handler('clients.send', logging.INFO, prefix='> ')
         add_handler('clients.recv', logging.INFO, prefix='< ')
+        add_handler('kamaki', logging.INFO, prefix='[INFO]: ')
     elif include:
         add_handler('clients.recv', logging.INFO)
-    else:
-        add_handler('', logging.WARNING)
+    add_handler('kamaki', logging.WARNING, prefix='[WARNING]: ')
 
 
 def _init_session(arguments):
