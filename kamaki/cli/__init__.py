@@ -45,6 +45,7 @@ _help = False
 _debug = False
 _verbose = False
 _colors = False
+kloger = None
 
 
 def _construct_command_syntax(cls):
@@ -185,15 +186,17 @@ def _setup_logging(silent=False, debug=False, verbose=False, include=False):
         add_handler('requests', logging.INFO, prefix='* ')
         add_handler('clients.send', logging.DEBUG, prefix='> ')
         add_handler('clients.recv', logging.DEBUG, prefix='< ')
-        add_handler('kamaki', logging.DEBUG, prefix='[DEBUG]: ')
+        add_handler('kamaki', logging.DEBUG, prefix='DEBUG: ')
     elif verbose:
         add_handler('requests', logging.INFO, prefix='* ')
         add_handler('clients.send', logging.INFO, prefix='> ')
         add_handler('clients.recv', logging.INFO, prefix='< ')
-        add_handler('kamaki', logging.INFO, prefix='[INFO]: ')
+        add_handler('kamaki', logging.INFO, prefix='INFO: ')
     elif include:
         add_handler('clients.recv', logging.INFO)
-    add_handler('kamaki', logging.WARNING, prefix='[WARNING]: ')
+    add_handler('kamaki', logging.WARNING, prefix='WARNING: ')
+    global kloger
+    kloger = logging.getLogger('kamaki.warning')
 
 
 def _init_session(arguments):
@@ -242,6 +245,7 @@ def _load_spec_module(spec, arguments, module):
 
 def _groups_help(arguments):
     global _debug
+    global kloger
     descriptions = {}
     for spec in arguments['config'].get_groups():
         pkg = _load_spec_module(spec, arguments, '_commands')
@@ -254,15 +258,15 @@ def _groups_help(arguments):
                 ]
             except AttributeError:
                 if _debug:
-                    print('Warning: No description for %s' % spec)
+                    kloger.warning('No description for %s' % spec)
             try:
                 for cmd in cmds:
                     descriptions[cmd.name] = cmd.description
             except TypeError:
                 if _debug:
-                    print('Warning: no cmd specs in module %s' % spec)
+                    kloger.warning('no cmd specs in module %s' % spec)
         elif _debug:
-            print('Warning: Loading of %s cmd spec failed' % spec)
+            kloger.warning('Loading of %s cmd spec failed' % spec)
     print('\nOptions:\n - - - -')
     print_dict(descriptions)
 
@@ -396,7 +400,8 @@ def _load_all_commands(cmd_tree, arguments):
             spec_commands = getattr(spec_module, '_commands')
         except AttributeError:
             if _debug:
-                print('Warning: No valid description for %s' % spec)
+                global kloger
+                kloger.warning('No valid description for %s' % spec)
             continue
         for spec_tree in spec_commands:
             if spec_tree.name == spec:

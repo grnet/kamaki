@@ -45,7 +45,7 @@ except ImportError:
     # progress not installed - pls, pip install progress
     pass
 
-kloger = logging.getLogger('kamaki.warning')
+kloger = getLogger('kamaki.warning')
 
 
 class Argument(object):

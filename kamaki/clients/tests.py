@@ -37,11 +37,14 @@ import time
 import datetime
 import os
 import sys
+from logging import getLogger
+
+kloger = getLogger('kamaki')
 
 try:
     from progress.bar import FillingCirclesBar as IncrementalBar
 except ImportError:
-    print('No progress bars in testing!')
+    kloger.warning('No progress bars in testing!')
     pass
 
 from kamaki.clients import ClientError
