@@ -38,8 +38,7 @@ from kamaki.cli.utils import split_input
 from argparse import ArgumentParser, ArgumentError
 
 try:
-    from progress.bar import FillingCirclesBar as KamakiProgressBar
-    #  IncrementalBar
+    from progress.bar import ShadyBar as KamakiProgressBar
 except ImportError:
     # progress not installed - pls, pip install progress
     pass
