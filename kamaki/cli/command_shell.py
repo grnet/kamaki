@@ -188,7 +188,6 @@ class Shell(Cmd):
                 for name, arg in instance.arguments.items():
                     arg.value = getattr(cmd_parser.parsed, name, arg.default)
 
-                print('prr: %s' % cmd_parser.unparsed)
                 try:
                     _exec_cmd(instance,
                         cmd_parser.unparsed,
