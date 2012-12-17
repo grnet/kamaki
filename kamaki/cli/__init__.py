@@ -112,27 +112,31 @@ def _update_best_match(name_terms, prefix=[]):
 
 def command(cmd_tree, prefix='', descedants_depth=1):
     """Load a class as a command
-        spec_cmd0_cmd1 will be command spec cmd0
-        @cmd_tree is initialized in cmd_spec file and is the structure
+        e.g. spec_cmd0_cmd1 will be command spec cmd0
+
+        :param cmd_tree: is initialized in cmd_spec file and is the structure
             where commands are loaded. Var name should be _commands
-        @param prefix if given, load only commands prefixed with prefix,
-        @param descedants_depth is the depth of the tree descedants of the
+        :param prefix: if given, load only commands prefixed with prefix,
+        :param descedants_depth: is the depth of the tree descedants of the
             prefix command. It is used ONLY if prefix and if prefix is not
             a terminal command
+
+        :returns: the specified class object
     """
 
     def wrap(cls):
+        global kloger
         cls_name = cls.__name__
 
         if not cmd_tree:
             if _debug:
-                print('Warning: command %s found but not loaded' % cls_name)
+                kloger.warning('command %s found but not loaded' % cls_name)
             return cls
 
         name_terms = cls_name.split('_')
         if not _update_best_match(name_terms, prefix):
             if _debug:
-                print('Warning: %s failed to update_best_match' % cls_name)
+                kloger.warning('%s failed to update_best_match' % cls_name)
             return None
 
         global _best_match
@@ -142,7 +146,7 @@ def command(cmd_tree, prefix='', descedants_depth=1):
             if not cmd_tree.has_command(partial):  # add partial path
                 cmd_tree.add_command(partial)
             if _debug:
-                print('Warning: %s failed max_len test' % cls_name)
+                kloger.warning('%s failed max_len test' % cls_name)
             return None
 
         cls.description, sep, cls.long_description\

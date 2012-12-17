@@ -45,11 +45,6 @@ from kamaki.clients import ClientError
 
 def _init_shell(exe_string, parser):
     parser.arguments.pop('version', None)
-    parser.arguments.pop('options', None)
-    parser.arguments.pop('debug', None)
-    parser.arguments.pop('verbose', None)
-    parser.arguments.pop('include', None)
-    parser.arguments.pop('silent', None)
     shell = Shell()
     shell.set_prompt(exe_string)
     from kamaki import __version__ as version
@@ -162,6 +157,11 @@ class Shell(Cmd):
             cmd_parser = ArgumentParseManager(
                 cmd.name,
                 dict(self._parser.arguments))
+            cmd_parser.arguments.pop('options', None)
+            cmd_parser.arguments.pop('debug', None)
+            cmd_parser.arguments.pop('verbose', None)
+            cmd_parser.arguments.pop('include', None)
+            cmd_parser.arguments.pop('silent', None)
 
             cmd_parser.parser.description = subcmd.help
 
@@ -188,6 +188,7 @@ class Shell(Cmd):
                 for name, arg in instance.arguments.items():
                     arg.value = getattr(cmd_parser.parsed, name, arg.default)
 
+                print('prr: %s' % cmd_parser.unparsed)
                 try:
                     _exec_cmd(instance,
                         cmd_parser.unparsed,

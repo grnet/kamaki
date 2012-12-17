@@ -44,7 +44,9 @@ from kamaki.cli.utils import bold
 from sys import stdout
 from time import localtime, strftime
 from datetime import datetime as dtm
+from logging import getLogger
 
+kloger = getLogger('kamaki')
 
 pithos_cmds = CommandTree('store', 'Pithos+ storage commands')
 _commands = [pithos_cmds]
