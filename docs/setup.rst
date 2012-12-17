@@ -3,6 +3,29 @@ Setup
 
 Kamaki is easy to install from source or as a package. Some ui features are optional and can be install separately. Kamaki behavior can be configured in the kamaki config file.
 
+Quick Setup
+-----------
+
+The set up settings of the present paragraph are the only ones needed to have kamaki up and running all its client services.
+
+It is essential for users to get a configuration token (okeanos.grnet.gr users go `here <https://accounts.okeanos.grnet.gr/im/>`_) and provide it to kamaki:
+
+.. code-block:: console
+    :emphasize-lines: 1
+
+    Example 1.1: Set user token to myt0k3n==
+
+    $ kamaki set token myt0k3n==
+
+To use the storage service, a user should also provide the corresponding user-name:
+
+.. code-block:: console
+    :emphasize-lines: 1
+
+    Example 1.2: Set user name to user@domain.com
+
+    $ kamaki set account user@domain.com
+
 Optional features
 -----------------
 
