@@ -35,9 +35,9 @@ from cmd import Cmd
 from os import popen
 from sys import stdout
 
-from kamaki.cli import _exec_cmd, _print_error_message
+from kamaki.cli import exec_cmd, print_error_message, print_subcommands_help
 from kamaki.cli.argument import ArgumentParseManager
-from kamaki.cli.utils import print_dict, split_input, print_items
+from kamaki.cli.utils import print_dict, split_input
 from kamaki.cli.history import History
 from kamaki.cli.errors import CLIError
 from kamaki.clients import ClientError
@@ -189,18 +189,14 @@ class Shell(Cmd):
                     arg.value = getattr(cmd_parser.parsed, name, arg.default)
 
                 try:
-                    _exec_cmd(instance,
+                    exec_cmd(instance,
                         cmd_parser.unparsed,
                         cmd_parser.parser.print_help)
                 except (ClientError, CLIError) as err:
-                    _print_error_message(err)
+                    print_error_message(err)
             elif ('-h' in cmd_args or '--help' in cmd_args) \
             or len(cmd_args):  # print options
-                print('%s: %s' % (cmd.name, subcmd.help))
-                options = {}
-                for sub in subcmd.get_subcommands():
-                    options[sub.name] = sub.help
-                print_dict(options)
+                print_subcommands_help(cmd)
             else:  # change context
                 #new_context = this
                 backup_context = self._backup()
@@ -233,10 +229,7 @@ class Shell(Cmd):
                         break
                 print('Syntax: %s %s' % (' '.join(clist[upto:]), cls.syntax))
             else:
-                options = dict(name='Options:')
-                for sub in cmd.get_subcommands():
-                    options[sub.name] = sub.help
-                print_items([options])
+                print_subcommands_help(cmd)
 
         self._register_method(help_method, 'help_%s' % cmd.name)
 

@@ -40,9 +40,6 @@ test_cmds = CommandTree('test', 'Unitest clients')
 _commands = [test_cmds]
 
 
-#print('Command Terms: ', get_cmd_terms())
-
-
 class _test_init(_command_init):
 
     def main(self, client, method=None):

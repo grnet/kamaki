@@ -39,7 +39,7 @@ from kamaki.cli.argument import ArgumentParseManager
 from kamaki.cli.history import History
 from kamaki.cli import command
 from kamaki.cli.commands import _command_init
-from kamaki.cli import _exec_cmd, _print_error_message
+from kamaki.cli import exec_cmd, print_error_message
 from kamaki.cli.errors import CLIError, CLISyntaxError, raiseCLIError
 from kamaki.cli.utils import split_input
 from kamaki.clients import ClientError
@@ -145,9 +145,9 @@ class history_run(_init_history):
             prs.syntax = '%s %s' % (cmd.path.replace('_', ' '),
                 cmd.get_class().syntax)
             prs.parse(args)
-            _exec_cmd(instance, prs.unparsed, prs.parser.print_help)
+            exec_cmd(instance, prs.unparsed, prs.parser.print_help)
         except (CLIError, ClientError) as err:
-            _print_error_message(err)
+            print_error_message(err)
         except Exception as e:
             print('Execution of [ %s ] failed' % line)
             print('\t%s' % e)

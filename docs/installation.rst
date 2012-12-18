@@ -162,11 +162,11 @@ Since version 0.6.2 kamaki can run on Windows, either on standard Windows consol
 Requirements
 ^^^^^^^^^^^^
 
-* Python 2.7 or better (Official versions `here <http://www.python.org/getit>`_)
+* Python 2.7 or better (`Official versions <http://www.python.org/getit>`_)
 
 * Git (download `windows version <http://git-scm.com/download/win>`_)
 
-* Setuptools (Official versions and workarrounds `here <http://pypi.python.org/pypi/setuptools>`_)
+* Setuptools (`Official versions and workarounds <http://pypi.python.org/pypi/setuptools>`_)
 
 Installation from source
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -185,22 +185,22 @@ The following will allow users to run python and python scripts from command lin
 
 * Select **System** from the Control Panel, select the **Advanced** tab, the **Environment Variables** button and then find the **PATH** (user or system) and **edit**
 
-* Without removing existing values, append the following to PATH:
+* Without removing existing values, append the following to PATH::
 
     C:\Python;C:\Python\Scripts
 
-    .. note:: Path values are separated by a semicolons
+.. note:: Path values are separated by semicolons
 
-    .. warning:: C:\Python should be replaced with the actual python path in the system, e.g. C:\Python27
+.. warning:: C:\\Python should be replaced with the actual python path in the system, e.g. C:\\Python27
 
 Install setuptools
 """"""""""""""""""
 
-According to the corresponding `python.org page <http://pypi.python.org/pypi/setuptools>`_, the setuptools installer doesn't currently work on 64bit machines.
+According to the corresponding `python org page <http://pypi.python.org/pypi/setuptools>`_, the setuptools installer doesn't currently work on 64bit machines.
 
 * Users with 32-bit operating systems should download and run the graphic installer
 
-* Users with 64-bit machines should download the `ez_setup.py <http://peak.telecommunity.com/dist/ez_setup.py>`_ script and install it from a command shell. In the following, the script is downloaded at C:\Downloads::
+* Users with 64-bit machines should download the `ez_setup.py <http://peak.telecommunity.com/dist/ez_setup.py>`_ script and install it from a command shell. In the following example, the script was downloaded at C:\\Downloads::
 
     C:\> cd Downloads
     C:\Downloads\> python ez_setup.py
@@ -211,7 +211,7 @@ According to the corresponding `python.org page <http://pypi.python.org/pypi/set
 Install GIT
 """""""""""
 
-Download GIT from `here <http://git-scm.com/download/win>`_ and run the graphic installer. During the installation, users will be able to modify some installation options. The present guide is tested with the default selections.
+`Download GIT <http://git-scm.com/download/win>`_ and run the graphic installer. During the installation, users will be able to modify some installation options. The present guide is tested with the default selections.
 
 After the installation is completed, a GIT standalone shell will be installed (a desktop shortcut is created, by default). Users are advised to run kamaki through this shell.
 
@@ -220,30 +220,30 @@ Install kamaki
 
 * Run the GIT standalone shell
 
-* Enter the location where kamaki will be installed, e.g. *C\:*
+* Enter the location where kamaki will be installed, e.g. **C:\\**
 
-.. code-block:: console
+    .. code-block:: console
 
-    $ cd /c/
+        $ cd /c/
 
 * Download source from GRNET repository
 
-.. code-block:: console
+    .. code-block:: console
 
-    $ git clone http://code.grnet.gr/git/kamaki
-    Cloning into 'kamaki'...
-    Receiving objects: ...
-    Resolving Deltas: ...
+        $ git clone http://code.grnet.gr/git/kamaki
+        Cloning into 'kamaki'...
+        Receiving objects: ...
+        Resolving Deltas: ...
 
 * Enter source and install kamaki
 
-.. code-block:: console
+    .. code-block:: console
 
-    $ cd kamaki
-    $ python setup.py install
-    running install
-    ...
-    Finished processing dependencies for kamaki==0.6.2
+        $ cd kamaki
+        $ python setup.py install
+        running install
+        ...
+        Finished processing dependencies for kamaki==0.6.2
 
 .. warning:: kamaki version should be 0.6.2 or better, otherwise it will not function. Users can test that by running::
 
