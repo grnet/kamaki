@@ -291,16 +291,18 @@ def update_parser_help(parser, cmd):
     parser.syntax = parser.syntax.split('<')[0]
     parser.syntax += ' '.join(_best_match)
 
+    description = ''
     if cmd.is_command:
         cls = cmd.get_class()
         parser.syntax += ' ' + cls.syntax
         parser.update_arguments(cls().arguments)
-        # arguments = cls().arguments
-        # update_arguments(parser, arguments)
+        description = getattr(cls, 'long_description', '')
+        description = description.strip()
     else:
         parser.syntax += ' <...>'
     if cmd.has_description:
-        parser.parser.description = cmd.help
+        parser.parser.description = cmd.help\
+        + ((' . . . %s' % description) if description else '')
 
 
 def print_error_message(cli_err):

@@ -196,6 +196,7 @@ class Shell(Cmd):
                     print_error_message(err)
             elif ('-h' in cmd_args or '--help' in cmd_args) \
             or len(cmd_args):  # print options
+                print('%s' % cmd.help)
                 print_subcommands_help(cmd)
             else:  # change context
                 #new_context = this
