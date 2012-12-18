@@ -37,13 +37,10 @@ import time
 import datetime
 import os
 import sys
-<<<<<<< HEAD
 import tempfile
-=======
 from logging import getLogger
 
 kloger = getLogger('kamaki')
->>>>>>> origin/develop
 
 try:
     from progress.bar import FillingCirclesBar as IncrementalBar
