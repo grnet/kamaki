@@ -120,7 +120,11 @@ class history_clean(_init_history):
 
 @command(history_cmds)
 class history_run(_init_history):
-    """Run previously executed command(s)"""
+    """Run previously executed command(s)
+    run <order id> for a command with <order id>
+    run <from>-<to> for a set of commands, where <from> and <to> are order ids
+    Get order ids for commands by using history show
+    """
 
     _cmd_tree = None
 
@@ -160,7 +164,6 @@ class history_run(_init_history):
     def main(self, *command_ids):
         super(self.__class__, self).main()
         cmd_list = self._get_cmd_ids(command_ids)
-        print('RANGE: %s' % cmd_list)
         for cmd_id in cmd_list:
             r = self.history.retrieve(cmd_id)
             try:
