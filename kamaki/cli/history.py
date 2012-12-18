@@ -74,13 +74,17 @@ class History(object):
 
     def retrieve(self, cmd_id):
         """
-        :param cmd_id: (int) the id of the command to retrieve
+        :param cmd_id: (int) the id of the command to retrieve can be positive
+            or negative, zero values are ignored
 
         :returns: (str) the stored command record without the id
         """
         cmd_id = int(cmd_id)
+        if not cmd_id:
+            return None
         with open(self.filepath) as f:
             try:
-                return f.readlines()[cmd_id - 1]
+                lala = f.readlines()
+                return lala[cmd_id - (1 if cmd_id > 0 else 0)]
             except IndexError:
                 return None

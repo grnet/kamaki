@@ -58,13 +58,12 @@ def _get_num_list(num_str):
     (num1, num2) = (num1.strip(), num2.strip())
     try:
         num1 = (-int(num1[1:])) if num1.startswith('-') else int(num1)
-        if num1 > 0:
-            num1 -= 1
     except ValueError as e:
         raiseCLIError(e, 'Invalid id %s' % num1)
     if sep:
         try:
             num2 = (-int(num2[1:])) if num2.startswith('-') else int(num2)
+            num2 += 1 if num2 > 0 else 0
         except ValueError as e:
             raiseCLIError(e, 'Invalid id %s' % num2)
     else:
@@ -103,7 +102,9 @@ class history_show(_init_history):
 
         for cmd_id in num_list:
             try:
-                print(ret[int(cmd_id)][:-1])
+                cur_id = int(cmd_id)
+                if cur_id:
+                    print(ret[cur_id - (1 if cur_id > 0 else 0)][:-1])
             except IndexError as e2:
                 raiseCLIError(e2, 'Command id out of 1-%s range' % len(ret))
 
@@ -118,7 +119,7 @@ class history_clean(_init_history):
 
 
 @command(history_cmds)
-class history_load(_init_history):
+class history_run(_init_history):
     """Run previously executed command(s)"""
 
     _cmd_tree = None
@@ -159,12 +160,13 @@ class history_load(_init_history):
     def main(self, *command_ids):
         super(self.__class__, self).main()
         cmd_list = self._get_cmd_ids(command_ids)
+        print('RANGE: %s' % cmd_list)
         for cmd_id in cmd_list:
             r = self.history.retrieve(cmd_id)
             try:
                 print('< %s >' % r[:-1])
             except (TypeError, KeyError):
-                return
+                continue
             if self._cmd_tree:
                 r = r[len('kamaki '):-1] if r.startswith('kamaki ') else r[:-1]
                 self._run_from_line(r)
