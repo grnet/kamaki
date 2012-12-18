@@ -39,7 +39,7 @@ from time import time
 
 from binascii import hexlify
 
-from kamaki.clients import SilentEvent
+from kamaki.clients import SilentEvent, sendlog
 from kamaki.clients.pithos_rest_api import PithosRestAPI
 from kamaki.clients.storage import ClientError
 from kamaki.clients.utils import path4url, filter_in
@@ -358,7 +358,7 @@ class PithosClient(PithosRestAPI):
         try:
             self._upload_missing_blocks(missing, hmap, f, upload_cb=upload_cb)
         except KeyboardInterrupt:
-            print('- - - wait for threads to finish')
+            sendlog.info('- - - wait for threads to finish')
             for thread in activethreads():
                 thread.join()
             raise
@@ -376,7 +376,7 @@ class PithosClient(PithosRestAPI):
     def _get_remote_blocks_info(self, obj, **restargs):
         #retrieve object hashmap
         myrange = restargs.pop('data_range', None)
-        hashmap = self.get_object_hashmapp(obj, **restargs)
+        hashmap = self.get_object_hashmap(obj, **restargs)
         restargs['data_range'] = myrange
         blocksize = int(hashmap['block_size'])
         blockhash = hashmap['block_hash']
@@ -586,7 +586,7 @@ class PithosClient(PithosRestAPI):
             except:
                 break
 
-    def get_object_hashmapp(self, obj,
+    def get_object_hashmap(self, obj,
         version=None,
         if_match=None,
         if_none_match=None,
@@ -763,8 +763,14 @@ class PithosClient(PithosRestAPI):
         :param until: (str) formated date
 
         :returns: (dict)
+
+        :raises ClientError: 404 Container not found
         """
-        r = self.container_head(until=until)
+        try:
+            r = self.container_head(until=until)
+        except ClientError as err:
+            err.details.append('for container %s' % self.container)
+            raise err
         return r.headers
 
     def get_container_meta(self, until=None):
@@ -848,9 +854,14 @@ class PithosClient(PithosRestAPI):
     def publish_object(self, obj):
         """
         :param obj: (str) remote object path
+
+        :returns: (str) access url
         """
         r = self.object_post(obj, update=True, public=True)
         r.release()
+        info = self.get_object_info(obj)
+        newurl = path4url(self.base_url, info['x-object-public'])
+        return newurl[1:]
 
     def unpublish_object(self, obj):
         """

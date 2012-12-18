@@ -36,14 +36,17 @@ from json import dumps, loads
 from time import time
 import logging
 from kamaki.clients.connection.kamakicon import KamakiHTTPConnection
+from kamaki.clients.connection.errors import HTTPConnectionError
+from kamaki.clients.connection.errors import HTTPResponseError
 
 sendlog = logging.getLogger('clients.send')
 recvlog = logging.getLogger('clients.recv')
 
 
 class ClientError(Exception):
-    def __init__(self, message, status=0, details=[]):
+    def __init__(self, message, status=0, details=None):
         try:
+            message += '' if message and message[-1] == '\n' else '\n'
             serv_stat, sep, new_msg = message.partition('{')
             new_msg = sep + new_msg
             json_msg = loads(new_msg)
@@ -66,7 +69,7 @@ class ClientError(Exception):
 
         super(ClientError, self).__init__(message)
         self.status = status
-        self.details = details
+        self.details = details if details else []
 
 
 class SilentEvent(Thread):
@@ -93,6 +96,7 @@ class SilentEvent(Thread):
         except Exception as e:
             print('______\n%s\n_______' % e)
             self._exception = e
+
 
 class Client(object):
     POOL_SIZE = 7
@@ -194,7 +198,7 @@ class Client(object):
                 sendlog.info('\t%s: %s', key, val)
             sendlog.info('')
             if data:
-                sendlog.info('%s', data)
+                sendlog.debug('%s', data)
 
             recvlog.info('%d %s', r.status_code, r.status)
             for key, val in r.headers.items():
@@ -202,12 +206,16 @@ class Client(object):
             if r.content:
                 recvlog.debug(r.content)
 
-        except Exception as err:
-            from traceback import print_stack
-            recvlog.debug(print_stack)
+        except (HTTPResponseError, HTTPConnectionError) as err:
+            from traceback import format_stack
+            recvlog.debug('\n'.join(['%s' % type(err)] + format_stack()))
             self.http_client.reset_headers()
             self.http_client.reset_params()
-            raise ClientError('%s' % err, status=getattr(err, 'status', 0))
+            errstr = '%s' % err
+            if not errstr:
+                errstr = ('%s' % type(err))[7:-2]
+            raise ClientError('%s\n' % errstr,
+                status=getattr(err, 'status', 0))
 
         self.http_client.reset_headers()
         self.http_client.reset_params()

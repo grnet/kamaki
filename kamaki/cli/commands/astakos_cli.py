@@ -1,4 +1,4 @@
-# Copyright 2011 GRNET S.A. All rights reserved.
+# Copyright 2011-2012 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -29,6 +29,38 @@
 # The views and conclusions contained in the software and
 # documentation are those of the authors and should not be
 # interpreted as representing official policies, either expressed
-# or implied, of GRNET S.A.
+# or implied, of GRNET S.A.command
 
-__version__ = '0.6.2'
+from kamaki.cli import command
+from kamaki.clients.astakos import AstakosClient
+from kamaki.cli.utils import print_dict
+from kamaki.cli.errors import raiseCLIError
+from kamaki.cli.commands import _command_init
+from kamaki.cli.command_tree import CommandTree
+
+astakos_cmds = CommandTree('astakos', 'Astakos API commands')
+_commands = [astakos_cmds]
+
+
+class _astakos_init(_command_init):
+    def main(self):
+        token = self.config.get('astakos', 'token')\
+            or self.config.get('global', 'token')
+        base_url = self.config.get('astakos', 'url')\
+            or self.config.get('global', 'url')
+        if base_url is None:
+            raiseCLIError(None, 'Missing astakos server URL')
+        self.client = AstakosClient(base_url=base_url, token=token)
+
+
+@command(astakos_cmds)
+class astakos_authenticate(_astakos_init):
+    """Authenticate a user"""
+
+    def main(self, custom_token=None):
+        super(self.__class__, self).main()
+        try:
+            reply = self.client.authenticate(custom_token)
+        except Exception as err:
+            raiseCLIError(err)
+        print_dict(reply)

@@ -109,9 +109,13 @@ The following steps describe a command-line approach, but any graphic package ma
 
     $ sudo apt-get update
 
-.. note:: Safely ignore a signature verification error like the following, if it emerges:
+.. note:: Don't forget to get the GPG public key for the GRNET dev team:
 
-    .. warning:: GPG error: http://apt.dev.grnet.gr precise/sid InRelease: The following signatures couldn't be verified because the public key is not available: NO_PUBKEY XXXXXXXX
+    .. code-block:: console
+
+        $ curl https://dev.grnet.gr/files/apt-grnetdev.pub|apt-key add -
+
+    otherwise *apt-get update* will produce GPG warnings.
 
 3. Install kamaki
 """""""""""""""""
