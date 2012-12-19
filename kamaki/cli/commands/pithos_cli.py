@@ -216,7 +216,8 @@ class _store_container_command(_store_account_command):
     def __init__(self, arguments={}):
         super(_store_container_command, self).__init__(arguments)
         self.arguments['container'] =\
-            ValueArgument('Set container to operate on (not permanent)', '--container')
+            ValueArgument('Set container to work with (temporary)',
+                '--container')
         self.container = None
         self.path = None
 
@@ -228,27 +229,27 @@ class _store_container_command(_store_account_command):
         except AssertionError as err:
             raiseCLIError(err)
 
+        generic_details = ['Choose one of the following options:',
+        '  1. Set store.container variable (permanent)',
+        '     /config set store.container <container>',
+        '  2. --container=<container> (temporary, overrides 1)',
+        '  3. Use <container>:<path> (temporary, overrides all)']
         cont, sep, path = container_with_path.partition(':')
 
         if sep:
             if not cont:
-                raiseCLIError(None, 'Container is missing\n', importance=1,
-                    details=['Choose one of the following options:',
-                    '  1. Set store.container variable (permanent)',
-                    '     /config set store.container <container>',
-                    '  2. --container=<container> (temporary, overrides 1)',
-                    '  3. Use <container>:<path> (temporary, overides all)'])
+                raiseCLIError(CLISyntaxError('Container is missing\n',
+                    details=generic_details))
             alt_cont = self.get_argument('container')
             if alt_cont and cont != alt_cont:
-                raiseCLIError(None,
+                raiseCLIError(CLISyntaxError(
                     'Conflict: 2 containers (%s, %s)' % (cont, alt_cont),
-                    importance=1)
+                    details=generic_details))
             self.container = cont
             if not path:
-                raiseCLIError(None,
+                raiseCLIError(CLISyntaxError(
                     'Path is missing for object in container %s' % cont,
-                    importance=1,
-                    details='Usage: <container>:<object path>')
+                    details=generic_details))
             self.path = path
         else:
             alt_cont = self.get_argument('container') or self.client.container
@@ -261,9 +262,8 @@ class _store_container_command(_store_account_command):
             else:
                 self.container = cont
                 raiseCLIError(CLISyntaxError(
-                    'Syntax error: container and path are both required',
-                    importance=1,
-                    details='Usage: <container>:<object path>'))
+                    'Both container and path are required',
+                    details=generic_details))
 
     def main(self, container_with_path=None, path_is_optional=True):
         super(_store_container_command, self).main()
