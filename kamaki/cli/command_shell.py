@@ -154,14 +154,13 @@ class Shell(Cmd):
             """
             subcmd, cmd_args = cmd.parse_out(split_input(line))
             self._history.add(' '.join([cmd.path.replace('_', ' '), line]))
-            cmd_parser = ArgumentParseManager(
-                cmd.name,
-                dict(self._parser.arguments))
-            cmd_parser.arguments.pop('options', None)
-            cmd_parser.arguments.pop('debug', None)
-            cmd_parser.arguments.pop('verbose', None)
-            cmd_parser.arguments.pop('include', None)
-            cmd_parser.arguments.pop('silent', None)
+            tmp_args = dict(self._parser.arguments)
+            tmp_args.pop('options', None)
+            tmp_args.pop('debug', None)
+            tmp_args.pop('verbose', None)
+            tmp_args.pop('include', None)
+            tmp_args.pop('silent', None)
+            cmd_parser = ArgumentParseManager(cmd.name, dict(tmp_args))
 
             cmd_parser.parser.description = subcmd.help
 
@@ -193,7 +192,8 @@ class Shell(Cmd):
                             arg.default)
 
                     exec_cmd(instance,
-                        cmd_parser.unparsed,
+                        [term for term in cmd_parser.unparsed\
+                            if not term.startswith('-')],
                         cmd_parser.parser.print_help)
                 except (ClientError, CLIError) as err:
                     print_error_message(err)
