@@ -213,6 +213,12 @@ class _store_account_command(_pithos_init):
 class _store_container_command(_store_account_command):
     """Base class for container level storage commands"""
 
+    generic_err_details = ['Choose one of the following options:',
+    '  1. Set store.container variable (permanent)',
+    '     /config set store.container <container>',
+    '  2. --container=<container> (temporary, overrides 1)',
+    '  3. Use <container>:<path> (temporary, overrides all)']
+
     def __init__(self, arguments={}):
         super(_store_container_command, self).__init__(arguments)
         self.arguments['container'] =\
@@ -229,27 +235,22 @@ class _store_container_command(_store_account_command):
         except AssertionError as err:
             raiseCLIError(err)
 
-        generic_details = ['Choose one of the following options:',
-        '  1. Set store.container variable (permanent)',
-        '     /config set store.container <container>',
-        '  2. --container=<container> (temporary, overrides 1)',
-        '  3. Use <container>:<path> (temporary, overrides all)']
         cont, sep, path = container_with_path.partition(':')
 
         if sep:
             if not cont:
                 raiseCLIError(CLISyntaxError('Container is missing\n',
-                    details=generic_details))
+                    details=self.generic_err_details))
             alt_cont = self.get_argument('container')
             if alt_cont and cont != alt_cont:
                 raiseCLIError(CLISyntaxError(
                     'Conflict: 2 containers (%s, %s)' % (cont, alt_cont),
-                    details=generic_details))
+                    details=self.generic_err_details))
             self.container = cont
             if not path:
                 raiseCLIError(CLISyntaxError(
                     'Path is missing for object in container %s' % cont,
-                    details=generic_details))
+                    details=self.generic_err_details))
             self.path = path
         else:
             alt_cont = self.get_argument('container') or self.client.container
@@ -263,7 +264,7 @@ class _store_container_command(_store_account_command):
                 self.container = cont
                 raiseCLIError(CLISyntaxError(
                     'Both container and path are required',
-                    details=generic_details))
+                    details=self.generic_err_details))
 
     def main(self, container_with_path=None, path_is_optional=True):
         super(_store_container_command, self).main()
@@ -319,7 +320,6 @@ class store_list(_store_container_command):
             limit = int(limit)
         except (AttributeError, TypeError):
             limit = len(object_list) + 1
-        #index = 0
         for index, obj in enumerate(object_list):
             if 'content_type' not in obj:
                 continue
@@ -387,9 +387,11 @@ class store_list(_store_container_command):
                     show_only_shared=self.get_argument('shared'))
                 self.print_containers(r.json)
             else:
+                prefix = self.path if self.path\
+                else self.get_argument('prefix')
                 r = self.client.container_get(limit=self.get_argument('limit'),
                     marker=self.get_argument('marker'),
-                    prefix=self.get_argument('prefix'),
+                    prefix=prefix,
                     delimiter=self.get_argument('delimiter'),
                     path=self.get_argument('path'),
                     if_modified_since=self.get_argument('if_modified_since'),
@@ -400,6 +402,11 @@ class store_list(_store_container_command):
                     show_only_shared=self.get_argument('shared'))
                 self.print_objects(r.json)
         except ClientError as err:
+            if err.status == 404\
+            and 'Container does not exist' in getattr(err, 'message', ''):
+                raiseCLIError(err, 'No container %s in account %s' % (
+                    self.container, self.account),
+                    details=self.generic_err_details)
             raiseCLIError(err)
 
 
