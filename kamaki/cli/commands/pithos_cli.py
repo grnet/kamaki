@@ -202,10 +202,7 @@ class _store_account_command(_pithos_init):
     def __init__(self, arguments={}):
         super(_store_account_command, self).__init__(arguments)
         self.arguments['account'] =\
-            ValueArgument('Specify the account', '--account')
-
-    def generator(self, message):
-        return None
+            ValueArgument('Set user account (not permanent)', '--account')
 
     def main(self):
         super(_store_account_command, self).main()
@@ -219,7 +216,7 @@ class _store_container_command(_store_account_command):
     def __init__(self, arguments={}):
         super(_store_container_command, self).__init__(arguments)
         self.arguments['container'] =\
-            ValueArgument('Specify the container name', '--container')
+            ValueArgument('Set container to operate on (not permanent)', '--container')
         self.container = None
         self.path = None
 
@@ -235,7 +232,12 @@ class _store_container_command(_store_account_command):
 
         if sep:
             if not cont:
-                raiseCLIError(None, 'Container is missing\n', importance=1)
+                raiseCLIError(None, 'Container is missing\n', importance=1,
+                    details=['Choose one of the following options:',
+                    '  1. Set store.container variable (permanent)',
+                    '     /config set store.container <container>',
+                    '  2. --container=<container> (temporary, overrides 1)',
+                    '  3. Use <container>:<path> (temporary, overides all)'])
             alt_cont = self.get_argument('container')
             if alt_cont and cont != alt_cont:
                 raiseCLIError(None,

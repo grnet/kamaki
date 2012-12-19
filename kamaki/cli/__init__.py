@@ -316,7 +316,8 @@ def print_error_message(cli_err):
     elif cli_err.importance > 2:
         errmsg = red(errmsg)
     stdout.write(errmsg)
-    print_list(cli_err.details)
+    for errmsg in cli_err.details:
+        print('| %s' % errmsg)
 
 
 def exec_cmd(instance, cmd_args, help_method):
