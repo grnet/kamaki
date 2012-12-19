@@ -168,20 +168,21 @@ class Shell(Cmd):
             # exec command or change context
             if subcmd.is_command:  # exec command
                 cls = subcmd.get_class()
+                ldescr = getattr(cls, 'long_description', '')
                 if subcmd.path == 'history_run':
                     instance = cls(dict(cmd_parser.arguments), self.cmd_tree)
                 else:
                     instance = cls(dict(cmd_parser.arguments))
                 cmd_parser.update_arguments(instance.arguments)
                 instance.arguments.pop('config')
-                #cmd_parser = ArgumentParseManager(subcmd.path,
-                #    instance.arguments)
                 cmd_parser.arguments = instance.arguments
                 cmd_parser.syntax = '%s %s' % (
                     subcmd.path.replace('_', ' '), cls.syntax)
                 if '-h' in cmd_args or '--help' in cmd_args:
                     cmd_parser.parser.print_help()
-                    print('\n%s' % subcmd.help)
+                    if ldescr:
+                        print('\nDetails:')
+                        print('%s' % ldescr)
                     return
                 cmd_parser.parse(cmd_args)
 
@@ -217,11 +218,14 @@ class Shell(Cmd):
             print('%s (%s -h for more options)' % (cmd.help, cmd.name))
             if cmd.is_command:
                 cls = cmd.get_class()
+                ldescr = getattr(cls, 'long_description', '')
                 #_construct_command_syntax(cls)
                 plist = self.prompt[len(self._prefix):-len(self._suffix)]
                 plist = plist.split(' ')
                 clist = cmd.path.split('_')
                 upto = 0
+                if ldescr:
+                    print('%s' % ldescr)
                 for i, term in enumerate(plist):
                     try:
                         if clist[i] == term:

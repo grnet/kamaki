@@ -303,6 +303,8 @@ def update_parser_help(parser, cmd):
     if cmd.has_description:
         parser.parser.description = cmd.help\
         + ((' . . . %s' % description) if description else '')
+    else:
+        parser.parser.description = description
 
 
 def print_error_message(cli_err):
