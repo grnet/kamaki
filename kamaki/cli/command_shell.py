@@ -167,29 +167,31 @@ class Shell(Cmd):
 
             # exec command or change context
             if subcmd.is_command:  # exec command
-                cls = subcmd.get_class()
-                ldescr = getattr(cls, 'long_description', '')
-                if subcmd.path == 'history_run':
-                    instance = cls(dict(cmd_parser.arguments), self.cmd_tree)
-                else:
-                    instance = cls(dict(cmd_parser.arguments))
-                cmd_parser.update_arguments(instance.arguments)
-                instance.arguments.pop('config')
-                cmd_parser.arguments = instance.arguments
-                cmd_parser.syntax = '%s %s' % (
-                    subcmd.path.replace('_', ' '), cls.syntax)
-                if '-h' in cmd_args or '--help' in cmd_args:
-                    cmd_parser.parser.print_help()
-                    if ldescr:
-                        print('\nDetails:')
-                        print('%s' % ldescr)
-                    return
-                cmd_parser.parse(cmd_args)
-
-                for name, arg in instance.arguments.items():
-                    arg.value = getattr(cmd_parser.parsed, name, arg.default)
-
                 try:
+                    cls = subcmd.get_class()
+                    ldescr = getattr(cls, 'long_description', '')
+                    if subcmd.path == 'history_run':
+                        instance = cls(dict(cmd_parser.arguments),
+                            self.cmd_tree)
+                    else:
+                        instance = cls(dict(cmd_parser.arguments))
+                    cmd_parser.update_arguments(instance.arguments)
+                    instance.arguments.pop('config')
+                    cmd_parser.arguments = instance.arguments
+                    cmd_parser.syntax = '%s %s' % (
+                        subcmd.path.replace('_', ' '), cls.syntax)
+                    if '-h' in cmd_args or '--help' in cmd_args:
+                        cmd_parser.parser.print_help()
+                        if ldescr.strip():
+                            print('\nDetails:')
+                            print('%s' % ldescr)
+                        return
+                    cmd_parser.parse(cmd_args)
+
+                    for name, arg in instance.arguments.items():
+                        arg.value = getattr(cmd_parser.parsed, name,
+                            arg.default)
+
                     exec_cmd(instance,
                         cmd_parser.unparsed,
                         cmd_parser.parser.print_help)

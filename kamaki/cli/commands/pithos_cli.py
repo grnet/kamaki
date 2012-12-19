@@ -402,11 +402,15 @@ class store_list(_store_container_command):
                     show_only_shared=self.get_argument('shared'))
                 self.print_objects(r.json)
         except ClientError as err:
-            if err.status == 404\
-            and 'Container does not exist' in getattr(err, 'message', ''):
-                raiseCLIError(err, 'No container %s in account %s' % (
-                    self.container, self.account),
-                    details=self.generic_err_details)
+            if err.status == 404:
+                if 'Container does not exist' in ('%s' % err):
+                    raiseCLIError(err, 'No container %s in account %s'\
+                        % (self.container, self.account),
+                        details=self.generic_err_details)
+                elif 'Object does not exist' in ('%s' % err):
+                    raiseCLIError(err, 'No object %s in %s\'s container %s'\
+                        % (self.path, self.account, self.container),
+                        details=self.generic_err_details)
             raiseCLIError(err)
 
 

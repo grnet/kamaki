@@ -231,8 +231,8 @@ class IntArgument(ValueArgument):
         try:
             self._value = int(newvalue)
         except ValueError:
-            raiseCLIError(CLISyntaxError('IntArgument Error'),
-                details='Value %s not an int' % newvalue)
+            raiseCLIError(CLISyntaxError('IntArgument Error',
+                details=['Value %s not an int' % newvalue]))
 
 
 class VersionArgument(FlagArgument):
@@ -444,10 +444,14 @@ class ArgumentParseManager(object):
 
     def parse(self, new_args=None):
         """Do parse user input"""
-        if new_args:
-            self._parsed, unparsed = self.parser.parse_known_args(new_args)
-        else:
-            self._parsed, unparsed = self.parser.parse_known_args()
+        try:
+            if new_args:
+                self._parsed, unparsed = self.parser.parse_known_args(new_args)
+            else:
+                self._parsed, unparsed = self.parser.parse_known_args()
+        except SystemExit:
+            # deal with the fact that argparse error system is STUPID
+            raiseCLIError(CLISyntaxError('Argument Syntax Error'))
         for name, arg in self.arguments.items():
             arg.value = getattr(self._parsed, name, arg.default)
         self._unparsed = []

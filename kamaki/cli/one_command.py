@@ -97,5 +97,5 @@ def run(parser, _help):
     parser.update_arguments(executable.arguments)
     #parsed, unparsed = parse_known_args(parser, executable.arguments)
     for term in _best_match:
-        parser.unparsed.remove(term)
+            parser.unparsed.remove(term)
     exec_cmd(executable, parser.unparsed, parser.parser.print_help)
