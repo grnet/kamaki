@@ -37,11 +37,15 @@ import time
 import datetime
 import os
 import sys
+import tempfile
+from logging import getLogger
+
+kloger = getLogger('kamaki')
 
 try:
     from progress.bar import FillingCirclesBar as IncrementalBar
 except ImportError:
-    print('No progress bars in testing!')
+    kloger.warning('No progress bars in testing!')
     pass
 
 from kamaki.clients import ClientError
@@ -306,7 +310,7 @@ class testCyclades(unittest.TestCase):
             u'cpu': 1}
         self.PROFILES = ('ENABLED', 'DISABLED', 'PROTECTED')
 
-        """okeanos.io"""
+        """okeanos.io """
         """
         self.img = 'b3e68235-3abd-4d60-adfe-1379a4f8d3fe'
         self.img_details = {
@@ -328,7 +332,7 @@ class testCyclades(unittest.TestCase):
                     u'description': u'Debian 6.0.6 (Squeeze) Base System'}
                 }
             }
-        """
+            """
 
         self.servers = {}
         self.now = time.mktime(time.gmtime())
@@ -1604,17 +1608,18 @@ class testPithos(unittest.TestCase):
         """put_block uses content_type and content_length to
         post blocks of data 2 container. All that in upload_object"""
         """Change a file at fs"""
-        self.create_large_file(1024 * 1024 * 100, 'l100M.' + unicode(self.now))
+        self.fname = 'l100M.' + unicode(self.now)
+        self.create_large_file(1024 * 1024 * 100, self.fname)
         """Upload it at a directory in container"""
         self.client.create_directory('dir')
-        newf = open(self.fname, 'r')
+        newf = open(self.fname, 'rb')
         self.client.upload_object('/dir/sample.file', newf)
         newf.close()
         """Check if file has been uploaded"""
         r = self.client.get_object_info('/dir/sample.file')
         self.assertTrue(int(r['content-length']) > 100000000)
 
-        """WTF is tranfer_encoding? What should I check about th** s**t? """
+        """What is tranfer_encoding? What should I check about it? """
         #TODO
 
         """Check update=False"""
@@ -1755,8 +1760,15 @@ class testPithos(unittest.TestCase):
             self.assertNotEqual(sc1, sc2)
 
         """Upload an object to download"""
-        src_fname = '/tmp/localfile1_%s' % self.now
-        dnl_fname = '/tmp/localfile2_%s' % self.now
+        src_file = tempfile.NamedTemporaryFile(delete=False)
+        dnl_file = tempfile.NamedTemporaryFile(delete=False)
+        
+        src_fname = src_file.name
+        dnl_fname = dnl_file.name
+        
+        src_file.close()
+        dnl_file.close()
+        
         trg_fname = 'remotefile_%s' % self.now
         f_size = 59247824
         self.create_large_file(f_size, src_fname)
@@ -1927,8 +1939,9 @@ class testPithos(unittest.TestCase):
         self.assertEqual(r.text, txt)
 
         """Upload a local file with one request"""
-        self.create_large_file(1024 * 10, 'l10K.' + unicode(self.now))
-        newf = open(self.fname, 'r')
+        self.fname = 'l10K.' + unicode(self.now)
+        self.create_large_file(1024 * 10, self.fname)
+        newf = open(self.fname, 'rb')
         self.client.upload_object('sample.file', newf)
         newf.close()
         """Check if file has been uploaded"""
@@ -2289,15 +2302,12 @@ class testPithos(unittest.TestCase):
     def create_large_file(self, size, name):
         """Create a large file at fs"""
         self.fname = name
-        import random
-        random.seed(self.now)
-        rf = open('/dev/urandom', 'r')
         f = open(self.fname, 'w')
         sys.stdout.write(
             ' create random file %s of size %s      ' % (name, size))
         for hobyte_id in xrange(size / 8):
-            #sss = 'hobt%s' % random.randint(1000, 9999)
-            f.write(rf.read(8))
+            random_bytes = os.urandom(8)
+            f.write(random_bytes)
             if 0 == (hobyte_id * 800) % size:
                 f.write('\n')
                 f.flush()
@@ -2309,7 +2319,6 @@ class testPithos(unittest.TestCase):
                 sys.stdout.flush()
         print('\b\b\b100%')
         f.flush()
-        rf.close()
         f.close()
         """"""
 

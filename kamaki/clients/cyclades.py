@@ -187,8 +187,8 @@ class CycladesClient(CycladesClientApi):
             r = self.networks_delete(network_id)
         except ClientError as err:
             if err.status == 421:
-                err.details =\
-                'Network may be still connected to at least one server'
+                err.details = [
+                'Network may be still connected to at least one server']
             raise err
         r.release()
 

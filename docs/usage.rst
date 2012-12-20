@@ -656,7 +656,7 @@ The following kamaki sequence copies and downloads a file from mycontainer1, upl
     6.  history show
 
     *repeat the process *
-    [history]: load 2-4
+    [history]: run 2-4
     store copy mycontainer1:somefile mycontainer1:myfile
     store download mycontainer1:myfile mylocalfile
     Download completed

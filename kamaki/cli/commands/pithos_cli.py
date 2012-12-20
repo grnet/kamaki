@@ -44,7 +44,9 @@ from kamaki.cli.utils import bold
 from sys import stdout
 from time import localtime, strftime
 from datetime import datetime as dtm
+from logging import getLogger
 
+kloger = getLogger('kamaki')
 
 pithos_cmds = CommandTree('store', 'Pithos+ storage commands')
 _commands = [pithos_cmds]
@@ -200,10 +202,7 @@ class _store_account_command(_pithos_init):
     def __init__(self, arguments={}):
         super(_store_account_command, self).__init__(arguments)
         self.arguments['account'] =\
-            ValueArgument('Specify the account', '--account')
-
-    def generator(self, message):
-        return None
+            ValueArgument('Set user account (not permanent)', '--account')
 
     def main(self):
         super(_store_account_command, self).main()
@@ -214,10 +213,17 @@ class _store_account_command(_pithos_init):
 class _store_container_command(_store_account_command):
     """Base class for container level storage commands"""
 
+    generic_err_details = ['Choose one of the following options:',
+    '  1. Set store.container variable (permanent)',
+    '     /config set store.container <container>',
+    '  2. --container=<container> (temporary, overrides 1)',
+    '  3. Use <container>:<path> (temporary, overrides all)']
+
     def __init__(self, arguments={}):
         super(_store_container_command, self).__init__(arguments)
         self.arguments['container'] =\
-            ValueArgument('Specify the container name', '--container')
+            ValueArgument('Set container to work with (temporary)',
+                '--container')
         self.container = None
         self.path = None
 
@@ -233,18 +239,18 @@ class _store_container_command(_store_account_command):
 
         if sep:
             if not cont:
-                raiseCLIError(None, 'Container is missing\n', importance=1)
+                raiseCLIError(CLISyntaxError('Container is missing\n',
+                    details=self.generic_err_details))
             alt_cont = self.get_argument('container')
             if alt_cont and cont != alt_cont:
-                raiseCLIError(None,
+                raiseCLIError(CLISyntaxError(
                     'Conflict: 2 containers (%s, %s)' % (cont, alt_cont),
-                    importance=1)
+                    details=self.generic_err_details))
             self.container = cont
             if not path:
-                raiseCLIError(None,
+                raiseCLIError(CLISyntaxError(
                     'Path is missing for object in container %s' % cont,
-                    importance=1,
-                    details='Usage: <container>:<object path>')
+                    details=self.generic_err_details))
             self.path = path
         else:
             alt_cont = self.get_argument('container') or self.client.container
@@ -257,9 +263,8 @@ class _store_container_command(_store_account_command):
             else:
                 self.container = cont
                 raiseCLIError(CLISyntaxError(
-                    'Syntax error: container and path are both required',
-                    importance=1,
-                    details='Usage: <container>:<object path>'))
+                    'Both container and path are required',
+                    details=self.generic_err_details))
 
     def main(self, container_with_path=None, path_is_optional=True):
         super(_store_container_command, self).main()
@@ -275,6 +280,11 @@ class _store_container_command(_store_account_command):
 @command(pithos_cmds)
 class store_list(_store_container_command):
     """List containers, object trees or objects in a directory
+    Use with:
+    1 no parameters : containers in set account
+    2. one parameter (container) or --container : contents of container
+    3. <container>:<prefix> or --container=<container> <prefix>: objects in
+        container starting with prefix
     """
 
     def __init__(self, arguments={}):
@@ -315,7 +325,6 @@ class store_list(_store_container_command):
             limit = int(limit)
         except (AttributeError, TypeError):
             limit = len(object_list) + 1
-        #index = 0
         for index, obj in enumerate(object_list):
             if 'content_type' not in obj:
                 continue
@@ -383,9 +392,11 @@ class store_list(_store_container_command):
                     show_only_shared=self.get_argument('shared'))
                 self.print_containers(r.json)
             else:
+                prefix = self.path if self.path\
+                else self.get_argument('prefix')
                 r = self.client.container_get(limit=self.get_argument('limit'),
                     marker=self.get_argument('marker'),
-                    prefix=self.get_argument('prefix'),
+                    prefix=prefix,
                     delimiter=self.get_argument('delimiter'),
                     path=self.get_argument('path'),
                     if_modified_since=self.get_argument('if_modified_since'),
@@ -396,6 +407,15 @@ class store_list(_store_container_command):
                     show_only_shared=self.get_argument('shared'))
                 self.print_objects(r.json)
         except ClientError as err:
+            if err.status == 404:
+                if 'Container does not exist' in ('%s' % err):
+                    raiseCLIError(err, 'No container %s in account %s'\
+                        % (self.container, self.account),
+                        details=self.generic_err_details)
+                elif 'Object does not exist' in ('%s' % err):
+                    raiseCLIError(err, 'No object %s in %s\'s container %s'\
+                        % (self.path, self.account, self.container),
+                        details=self.generic_err_details)
             raiseCLIError(err)
 
 
@@ -529,7 +549,7 @@ class store_append(_store_container_command):
         super(self.__class__,
             self).main(container___path, path_is_optional=False)
         try:
-            f = open(local_path, 'r')
+            f = open(local_path, 'rb')
             progress_bar = self.arguments['progress_bar']
             try:
                 upload_cb = progress_bar.get_generator('Appending blocks')
@@ -571,7 +591,7 @@ class store_overwrite(_store_container_command):
         super(self.__class__,
             self).main(container___path, path_is_optional=False)
         try:
-            f = open(local_path, 'r')
+            f = open(local_path, 'rb')
             progress_bar = self.arguments['progress_bar']
             try:
                 upload_cb = progress_bar.get_generator('Overwritting blocks')
@@ -665,7 +685,7 @@ class store_upload(_store_container_command):
         try:
             progress_bar = self.arguments['progress_bar']
             hash_bar = progress_bar.clone()
-            with open(local_path) as f:
+            with open(local_path, 'rb') as f:
                 if self.get_argument('unchunked'):
                     self.client.upload_object_unchunked(remote_path, f,
                     etag=self.get_argument('etag'),

@@ -191,18 +191,36 @@ def print_list(l,
             print('%s%s' % (prefix, item))
 
 
-def print_items(items, title=('id', 'name'), with_enumeration=False):
+def print_items(items,
+    title=('id', 'name'),
+    with_enumeration=False,
+    with_redundancy=False):
+    """print dict or list items in a list, using some values as title
+    Objects of next level don't inherit enumeration (default: off) or titles
+
+    :param items: (list) items are lists or dict
+    :param title: (tuple) keys to use their values as title
+    :param with_enumeration: (boolean) enumerate items (order id on title)
+    :param with_redundancy: (boolean) values in title also appear on body
+    """
     for i, item in enumerate(items):
-        if isinstance(item, dict) or isinstance(item, list):
-            header = ' '.join(unicode(item.pop(key))\
-                for key in title if key in item)
-            if with_enumeration:
-                stdout.write('%s. ' % (i + 1))
+        if with_enumeration:
+            stdout.write('%s. ' % (i + 1))
+        if isinstance(item, dict):
+            title = sorted(set(title).intersection(item.keys()))
+            if with_redundancy:
+                header = ' '.join(unicode(item[key]) for key in title)
+            else:
+                header = ' '.join(unicode(item.pop(key)) for key in title)
             print(bold(header))
+        else:
+            print('- - -')
         if isinstance(item, dict):
             print_dict(item, ident=1)
         elif isinstance(item, list):
             print_list(item, ident=1)
+        else:
+            print(' %s' % item)
 
 
 def format_size(size):

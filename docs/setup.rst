@@ -10,6 +10,7 @@ Kamaki interfaces rely on a list of configuration options. Be default, they are 
 
 .. note:: It is essential for users to get a configuration token (okeanos.grnet.gr users go `here <https://accounts.okeanos.grnet.gr/im/>`_) and provide it to kamaki:
 
+
 .. code-block:: console
     :emphasize-lines: 1
 
