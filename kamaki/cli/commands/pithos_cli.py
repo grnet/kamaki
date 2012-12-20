@@ -280,6 +280,9 @@ class _store_container_command(_store_account_command):
 @command(pithos_cmds)
 class store_list(_store_container_command):
     """List containers, object trees or objects in a directory
+    without parameters for a list of containers,
+    with one parameter (container) for the contents of a container,
+    with <container>:<prefix> for all contents starting with prefix
     """
 
     def __init__(self, arguments={}):

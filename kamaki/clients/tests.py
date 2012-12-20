@@ -310,7 +310,7 @@ class testCyclades(unittest.TestCase):
             u'cpu': 1}
         self.PROFILES = ('ENABLED', 'DISABLED', 'PROTECTED')
 
-        """okeanos.io"""
+        """okeanos.io """
         """
         self.img = 'b3e68235-3abd-4d60-adfe-1379a4f8d3fe'
         self.img_details = {
@@ -332,7 +332,7 @@ class testCyclades(unittest.TestCase):
                     u'description': u'Debian 6.0.6 (Squeeze) Base System'}
                 }
             }
-        """
+            """
 
         self.servers = {}
         self.now = time.mktime(time.gmtime())
