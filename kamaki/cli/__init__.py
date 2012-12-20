@@ -302,7 +302,7 @@ def update_parser_help(parser, cmd):
         parser.syntax += ' <...>'
     if cmd.has_description:
         parser.parser.description = cmd.help\
-        + ((' . . . %s' % description) if description else '')
+        + (('\n%s' % description) if description else '')
     else:
         parser.parser.description = description
 

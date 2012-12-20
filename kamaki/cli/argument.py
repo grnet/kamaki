@@ -38,6 +38,7 @@ from logging import getLogger
 
 
 from argparse import ArgumentParser, ArgumentError
+from argparse import RawDescriptionHelpFormatter
 
 try:
     from progress.bar import ShadyBar as KamakiProgressBar
@@ -373,7 +374,8 @@ class ArgumentParseManager(object):
         :param arguments: (dict) if given, overrides the global _argument as
             the parsers arguments specification
         """
-        self.parser = ArgumentParser(add_help=False)
+        self.parser = ArgumentParser(add_help=False,
+            formatter_class=RawDescriptionHelpFormatter)
         self.syntax = '%s <cmd_group> [<cmd_subbroup> ...] <cmd>' % exe
         if arguments:
             self.arguments = arguments
