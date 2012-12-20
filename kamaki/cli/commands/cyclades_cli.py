@@ -1,4 +1,4 @@
-# Copyright 2012 GRNET S.A. All rights reserved.
+# Copyright 2011-2013 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -33,7 +33,7 @@
 
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.utils import print_dict, print_list, bold
+from kamaki.cli.utils import print_dict, print_list, print_items, bold
 from kamaki.cli.errors import raiseCLIError, CLISyntaxError
 from kamaki.clients.cyclades import CycladesClient, ClientError
 from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
@@ -437,19 +437,13 @@ class flavor_list(_init_cyclades):
         super(flavor_list, self).__init__(arguments)
         self.arguments['detail'] = FlagArgument('show detailed output', '-l')
 
-    @classmethod
-    def _print(self, flist):
-        for i, flavor in enumerate(flist):
-            print(bold('%s. %s' % (i, flavor['name'])))
-            print_dict(flavor, exclude=('name'), ident=1)
-
     def main(self):
         super(self.__class__, self).main()
         try:
             flavors = self.client.list_flavors(self.get_argument('detail'))
         except Exception as err:
             raiseCLIError(err)
-        self._print(flavors)
+        print_items(flavors, with_redundancy=self.get_argument('detail'))
 
 
 @command(flavor_cmds)
