@@ -26,7 +26,7 @@ To use the storage service, a user should also provide the corresponding user-na
 
     Example 1.2: Set user name to user@domain.com
 
-    $ kamaki set account user@domain.com
+    $ kamaki set account store.user@domain.com
 
 Shell vs one-command
 --------------------
