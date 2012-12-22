@@ -70,7 +70,7 @@ class server_list(_init_cyclades):
 
     def __init__(self, arguments={}):
         super(server_list, self).__init__(arguments)
-        self.arguments['detail'] = FlagArgument('show detailed output', '-l')
+        self['detail'] = FlagArgument('show detailed output', '-l')
 
     def _info_print(self, server):
         addr_dict = {}
