@@ -39,11 +39,11 @@ recvlog = logging.getLogger('clients.recv')
 
 class _command_init(object):
     def __init__(self, arguments={}):
-        if not hasattr(self, 'arguments'):
-            self.arguments = {}
-        self.arguments.update(arguments)
+        if hasattr(self, 'arguments'):
+            arguments.update(self.arguments)
+        self.arguments = dict(arguments)
         try:
-            self.config = self['config'].value
+            self.config = self['config']
             #self.config = self.get_argument('config')
         except KeyError:
             pass
@@ -89,4 +89,4 @@ class _command_init(object):
 
         :raises KeyError: if argterm not in self.arguments of this object
         """
-        return self.arguments[argterm]
+        return self[argterm]

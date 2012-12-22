@@ -68,9 +68,12 @@ class _init_cyclades(_command_init):
 class server_list(_init_cyclades):
     """List servers"""
 
+    arguments = dict(
+        detail=FlagArgument('show detailed output', '-l')
+    )
+
     def __init__(self, arguments={}):
         super(server_list, self).__init__(arguments)
-        self['detail'] = FlagArgument('show detailed output', '-l')
 
     def _info_print(self, server):
         addr_dict = {}
@@ -92,13 +95,13 @@ class server_list(_init_cyclades):
             sname = server.pop('name')
             sid = server.pop('id')
             print('%s (%s)' % (sid, bold(sname)))
-            if self.get_argument('detail'):
+            if self['detail']:
                 self._info_print(server)
 
     def main(self):
         super(self.__class__, self).main()
         try:
-            servers = self.client.list_servers(self.get_argument('detail'))
+            servers = self.client.list_servers(self['detail'])
             self._print(servers)
         except Exception as err:
             raiseCLIError(err)
