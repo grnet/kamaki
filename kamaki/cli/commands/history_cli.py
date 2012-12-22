@@ -93,17 +93,14 @@ class history_show(_init_history):
             -5--2 means : the last 5 commands except the last 2
     """
 
-    def __init__(self, arguments={}):
-        super(self.__class__, self).__init__(arguments)
-        self.arguments['limit'] =\
-            IntArgument('number of lines to show', '-n', default=0)
-        self.arguments['match'] =\
-            ValueArgument('show lines that match all given terms', '--match')
+    arguments = dict(
+        limit=IntArgument('number of lines to show', '-n', default=0),
+        match=ValueArgument('show lines that match given terms', '--match')
+    )
 
     def main(self, *cmd_ids):
         super(self.__class__, self).main()
-        ret = self.history.get(match_terms=self.get_argument('match'),
-            limit=self.get_argument('limit'))
+        ret = self.history.get(match_terms=self['match'], limit=self['limit'])
 
         if not cmd_ids:
             print(''.join(ret))
