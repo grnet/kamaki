@@ -72,9 +72,6 @@ class server_list(_init_cyclades):
         detail=FlagArgument('show detailed output', '-l')
     )
 
-    def __init__(self, arguments={}):
-        super(server_list, self).__init__(arguments)
-
     def _info_print(self, server):
         addr_dict = {}
         if 'attachments' in server:
@@ -173,21 +170,23 @@ class PersonalityArgument(KeyValueArgument):
 class server_create(_init_cyclades):
     """Create a server"""
 
-    def __init__(self, arguments={}):
-        super(server_create, self).__init__(arguments)
-        self.arguments['personality'] = PersonalityArgument(\
+    arguments = dict(
+        personality=PersonalityArgument(
             'add one or more personality files ( ' +\
-            '"PATH,[SERVER_PATH,[OWNER,[GROUP,[MODE]]]]" )',
+                '"PATH,[SERVER_PATH,[OWNER,[GROUP,[MODE]]]]" )',
             parsed_name='--personality')
+    )
 
     def main(self, name, flavor_id, image_id):
         super(self.__class__, self).main()
 
         try:
-            reply = self.client.create_server(name,
-                int(flavor_id),
-                image_id,
-                self.get_argument('personality'))
+            reply = self.client.create_server(
+                        name,
+                        int(flavor_id),
+                        image_id,
+                        self['personality']
+                    )
         except ClientError as err:
             raiseCLIError(err)
         except ValueError as err:
@@ -232,16 +231,15 @@ class server_delete(_init_cyclades):
 @command(server_cmds)
 class server_reboot(_init_cyclades):
     """Reboot a server"""
-
-    def __init__(self, arguments={}):
-        super(server_reboot, self).__init__(arguments)
-        self.arguments['hard'] = FlagArgument('perform a hard reboot', '-f')
+    
+    arguments = dict(
+        hard=FlagArgument('perform a hard reboot', '-f')
+    )
 
     def main(self, server_id):
         super(self.__class__, self).main()
         try:
-            self.client.reboot_server(int(server_id),
-                self.get_argument('hard'))
+            self.client.reboot_server(int(server_id), self['hard'])
         except ValueError as err:
             raiseCLIError(err, 'Server id must be positive integer', 1)
         except Exception as err:
@@ -401,10 +399,13 @@ class server_stats(_init_cyclades):
 class server_wait(_init_cyclades):
     """Wait for server to finish [BUILD, STOPPED, REBOOT, ACTIVE]"""
 
-    def __init__(self, arguments={}):
-        super(self.__class__, self).__init__(arguments)
-        self.arguments['progress_bar'] = ProgressBarArgument(\
-            'do not show progress bar', '--no-progress-bar', False)
+    arguments = dict(
+        progress_bar=ProgressBarArgument(
+            'do not show progress bar',
+            '--no-progress-bar',
+            False
+        )
+    )
 
     def main(self, server_id, currect_status='BUILD'):
         super(self.__class__, self).main()
@@ -436,17 +437,17 @@ class server_wait(_init_cyclades):
 class flavor_list(_init_cyclades):
     """List flavors"""
 
-    def __init__(self, arguments={}):
-        super(flavor_list, self).__init__(arguments)
-        self.arguments['detail'] = FlagArgument('show detailed output', '-l')
+    arguments = dict(
+        detail=FlagArgument('show detailed output', '-l')
+    )
 
     def main(self):
         super(self.__class__, self).main()
         try:
-            flavors = self.client.list_flavors(self.get_argument('detail'))
+            flavors = self.client.list_flavors(self['detail'])
         except Exception as err:
             raiseCLIError(err)
-        print_items(flavors, with_redundancy=self.get_argument('detail'))
+        print_items(flavors, with_redundancy=self['detail'])
 
 
 @command(flavor_cmds)
@@ -489,22 +490,22 @@ class network_info(_init_cyclades):
 class network_list(_init_cyclades):
     """List networks"""
 
-    def __init__(self, arguments={}):
-        super(network_list, self).__init__(arguments)
-        self.arguments['detail'] = FlagArgument('show detailed output', '-l')
+    arguments = dict(
+        detail=FlagArgument('show detailed output', '-l')
+    )
 
     def print_networks(self, nets):
         for net in nets:
             netname = bold(net.pop('name'))
             netid = bold(unicode(net.pop('id')))
             print('%s (%s)' % (netid, netname))
-            if self.get_argument('detail'):
+            if self['detail']:
                 network_info.print_network(net)
 
     def main(self):
         super(self.__class__, self).main()
         try:
-            networks = self.client.list_networks(self.get_argument('detail'))
+            networks = self.client.list_networks(self['detail'])
         except Exception as err:
             raiseCLIError(err)
         self.print_networks(networks)
@@ -514,25 +515,21 @@ class network_list(_init_cyclades):
 class network_create(_init_cyclades):
     """Create a network"""
 
-    def __init__(self, arguments={}):
-        super(network_create, self).__init__(arguments)
-        self.arguments['cidr'] =\
-            ValueArgument('specific cidr for new network', '--with-cidr')
-        self.arguments['gateway'] =\
-            ValueArgument('specific gateway for new network', '--with-gateway')
-        self.arguments['dhcp'] =\
-            ValueArgument('specific dhcp for new network', '--with-dhcp')
-        self.arguments['type'] =\
-            ValueArgument('specific type for new network', '--with-type')
+    arguments = dict(
+        cidr=ValueArgument('specify cidr', '--with-cidr'),
+        gateway=ValueArgument('specify gateway', '--with-gateway'),
+        dhcp=ValueArgument('specify dhcp', '--with-dhcp'),
+        type=ValueArgument('specify type', '--with-type')
+    )
 
     def main(self, name):
         super(self.__class__, self).main()
         try:
             reply = self.client.create_network(name,
-                cidr=self.get_argument('cidr'),
-                gateway=self.get_argument('gateway'),
-                dhcp=self.get_argument('dhcp'),
-                type=self.get_argument('type'))
+                cidr=self['cidr'],
+                gateway=self['gateway'],
+                dhcp=self['dhcp'],
+                type=self['type'])
         except Exception as err:
             raiseCLIError(err)
         print_dict(reply)
