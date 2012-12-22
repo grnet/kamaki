@@ -42,7 +42,8 @@ from kamaki.cli.commands.cyclades_cli import _init_cyclades
 from kamaki.cli.commands import _command_init
 
 
-image_cmds = CommandTree('image',
+image_cmds = CommandTree(
+    'image',
     'Compute/Cyclades or Glance API image commands')
 _commands = [image_cmds]
 
@@ -65,39 +66,38 @@ class _init_image(_command_init):
 class image_public(_init_image):
     """List public images"""
 
-    def __init__(self, arguments={}):
-        super(image_public, self).__init__(arguments)
-        self.arguments['detail'] = FlagArgument('show detailed output', '-l')
-        self.arguments['container_format'] =\
-            ValueArgument('filter by container format', '--container-format')
-        self.arguments['disk_format'] =\
-            ValueArgument('filter by disk format', '--disk-format')
-        self.arguments['name'] = ValueArgument('filter by name', '--name')
-        self.arguments['size_min'] =\
-            IntArgument('filter by minimum size', '--size-min')
-        self.arguments['size_max'] =\
-            IntArgument('filter by maximum size', '--size-max')
-        self.arguments['status'] =\
-            ValueArgument('filter by status', '--status')
-        self.arguments['order'] =\
-            ValueArgument('order by FIELD (use a - prefix to reverse order)',
-            '--order', default='')
+    arguments = dict(
+        detail=FlagArgument('show detailed output', '-l'),
+        container_format=ValueArgument(
+            'filter by container format',
+            '--container-format'),
+        disk_format=ValueArgument('filter by disk format', '--disk-format'),
+        name=ValueArgument('filter by name', '--name'),
+        size_min=IntArgument('filter by minimum size', '--size-min'),
+        size_max=IntArgument('filter by maximum size', '--size-max'),
+        status=ValueArgument('filter by status', '--status'),
+        order=ValueArgument(
+            'order by FIELD ( - to reverse order)',
+            '--order',
+            default='')
+    )
 
     def main(self):
         super(self.__class__, self).main()
         filters = {}
-        for arg in ('container_format',
-            'disk_format',
-            'name',
-            'size_min',
-            'size_max',
-            'status'):
-            val = self.get_argument(arg)
-            if val is not None:
-                filters[arg] = val
+        for arg in set(
+            [
+                'container_format',
+                'disk_format',
+                'name',
+                'size_min',
+                'size_max',
+                'status'
+            ]).intersection(self.arguments):
+            filters[arg] = self[arg]
 
-        order = self.get_argument('order')
-        detail = self.get_argument('detail')
+        order = self['order']
+        detail = self['detail']
         try:
             images = self.client.list_public(detail, filters, order)
         except Exception as err:
@@ -124,25 +124,21 @@ class image_register(_init_image):
         call with --update to update image properties
     """
 
-    def __init__(self, arguments={}):
-        super(image_register, self).__init__(arguments)
-        self.arguments['checksum'] =\
-            ValueArgument('set image checksum', '--checksum')
-        self.arguments['container_format'] =\
-            ValueArgument('set container format', '--container-format')
-        self.arguments['disk_format'] =\
-            ValueArgument('set disk format', '--disk-format')
-        self.arguments['id'] = ValueArgument('set image ID', '--id')
-        self.arguments['owner'] =\
-            ValueArgument('set image owner (admin only)', '--owner')
-        self.arguments['properties'] =\
-            KeyValueArgument(parsed_name='--property',
-            help='add property in key=value form (can be repeated)')
-        self.arguments['is_public'] =\
-            FlagArgument('mark image as public', '--public')
-        self.arguments['size'] = IntArgument('set image size', '--size')
-        self.arguments['update'] = FlagArgument(
-            'update an existing image properties', '--update')
+    arguments = dict(
+        checksum=ValueArgument('set image checksum', '--checksum'),
+        container_format=ValueArgument(
+            'set container format',
+            '--container-format'),
+        disk_format=ValueArgument('set disk format', '--disk-format'),
+        id=ValueArgument('set image ID', '--id'),
+        owner=ValueArgument('set image owner (admin only)', '--owner'),
+        properties=KeyValueArgument(
+            'add property in key=value form (can be repeated)',
+            '--property'),
+        is_public=FlagArgument('mark image as public', '--public'),
+        size=IntArgument('set image size', '--size'),
+        update=FlagArgument('update an existing image properties', '--update')
+    )
 
     def main(self, name, location):
         super(self.__class__, self).main()
@@ -159,21 +155,21 @@ class image_register(_init_image):
                 location = 'pithos://%s/%s/%s' % (account, container, location)
 
         params = {}
-        for key in ('checksum',
-            'container_format',
-            'disk_format',
-            'id',
-            'owner',
-            'size',
-            'is_public'):
-            val = self.get_argument(key)
-            if val is not None:
-                params[key] = val
+        for key in set(
+            [
+                'checksum',
+                'container_format',
+                'disk_format',
+                'id',
+                'owner',
+                'size',
+                'is_public'
+            ]).intersection(self.arguments):
+            params[key] = self[key]
 
-        update = self.get_argument('update')
-        properties = self.get_argument('properties')
         try:
-            if update:
+            properties = self['properties']
+            if self['update']:
                 self.client.reregister(location, name, params, properties)
             else:
                 self.client.register(name, location, params, properties)
@@ -249,16 +245,16 @@ class image_setmembers(_init_image):
 class image_list(_init_cyclades):
     """List images"""
 
-    def __init__(self, arguments={}):
-        super(image_list, self).__init__(arguments)
-        self.arguments['detail'] = FlagArgument('show detailed output', '-l')
+    arguments = dict(
+        detail= FlagArgument('show detailed output', '-l')
+    )
 
     def _print(self, images):
         for img in images:
             iname = img.pop('name')
             iid = img.pop('id')
             print('%s (%s)' % (unicode(iid), bold(iname)))
-            if self.get_argument('detail'):
+            if self['detail']:
                 if 'metadata' in img:
                     img['metadata'] = img['metadata']['values']
                 print_dict(img, ident=2)
@@ -266,7 +262,7 @@ class image_list(_init_cyclades):
     def main(self):
         super(self.__class__, self).main()
         try:
-            images = self.client.list_images(self.get_argument('detail'))
+            images = self.client.list_images(self['detail'])
         except Exception as err:
             raiseCLIError(err)
         self._print(images)
