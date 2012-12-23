@@ -201,13 +201,14 @@ class _store_account_command(_pithos_init):
 
     def __init__(self, arguments={}):
         super(_store_account_command, self).__init__(arguments)
-        self.arguments['account'] =\
-            ValueArgument('Set user account (not permanent)', '--account')
+        self['account']=ValueArgument(
+            'Set user account (not permanent)',
+            '--account')
 
     def main(self):
         super(_store_account_command, self).main()
-        if self.arguments['account'].value is not None:
-            self.client.account = self.arguments['account'].value
+        if self['account']:
+            self.client.account = self['account']
 
 
 class _store_container_command(_store_account_command):
@@ -218,14 +219,14 @@ class _store_container_command(_store_account_command):
     '     /config set store.container <container>',
     '  2. --container=<container> (temporary, overrides 1)',
     '  3. Use <container>:<path> (temporary, overrides all)']
+    container = None
+    path = None
 
     def __init__(self, arguments={}):
         super(_store_container_command, self).__init__(arguments)
-        self.arguments['container'] =\
-            ValueArgument('Set container to work with (temporary)',
-                '--container')
-        self.container = None
-        self.path = None
+        self['container']=ValueArgument(
+            'Set container to work with (temporary)',
+            '--container')
 
     def extract_container_and_path(self,
         container_with_path,
@@ -241,19 +242,21 @@ class _store_container_command(_store_account_command):
             if not cont:
                 raiseCLIError(CLISyntaxError('Container is missing\n',
                     details=self.generic_err_details))
-            alt_cont = self.get_argument('container')
+            alt_cont = self['container']
             if alt_cont and cont != alt_cont:
                 raiseCLIError(CLISyntaxError(
                     'Conflict: 2 containers (%s, %s)' % (cont, alt_cont),
-                    details=self.generic_err_details))
+                    details=self.generic_err_details)
+                )
             self.container = cont
             if not path:
                 raiseCLIError(CLISyntaxError(
                     'Path is missing for object in container %s' % cont,
-                    details=self.generic_err_details))
+                    details=self.generic_err_details)
+                )
             self.path = path
         else:
-            alt_cont = self.get_argument('container') or self.client.container
+            alt_cont = self['container'] or self.client.container
             if alt_cont:
                 self.container = alt_cont
                 self.path = cont
@@ -264,16 +267,18 @@ class _store_container_command(_store_account_command):
                 self.container = cont
                 raiseCLIError(CLISyntaxError(
                     'Both container and path are required',
-                    details=self.generic_err_details))
+                    details=self.generic_err_details)
+                )
 
     def main(self, container_with_path=None, path_is_optional=True):
         super(_store_container_command, self).main()
         if container_with_path is not None:
-            self.extract_container_and_path(container_with_path,
+            self.extract_container_and_path(
+                container_with_path,
                 path_is_optional)
             self.client.container = self.container
-        elif self.get_argument('container') is not None:
-            self.client.container = self.get_argument('container')
+        elif self['container']:
+            self.client.container = self['container']
         self.container = self.client.container
 
 
@@ -287,42 +292,38 @@ class store_list(_store_container_command):
         container starting with prefix
     """
 
-    def __init__(self, arguments={}):
-        super(store_list, self).__init__(arguments)
-        self.arguments['detail'] = FlagArgument('show detailed output', '-l')
-        self.arguments['show_size'] =\
-            ValueArgument('print output in chunks of size N', '-N')
-        self.arguments['limit'] = IntArgument('show limited output', '-n')
-        self.arguments['marker'] =\
-            ValueArgument('show output greater that marker', '--marker')
-        self.arguments['prefix'] =\
-            ValueArgument('show output staritng with prefix', '--prefix')
-        self.arguments['delimiter'] =\
-            ValueArgument('show output up to delimiter', '--delimiter')
-        self.arguments['path'] =\
-            ValueArgument('show output starting with prefix up to /', '--path')
-        self.arguments['meta'] =\
-            ValueArgument('show output haviung the specified meta keys',
-            '--meta', default=[])
-        self.arguments['if_modified_since'] =\
-            ValueArgument('show output modified since then',
-                '--if-modified-since')
-        self.arguments['if_unmodified_since'] =\
-            ValueArgument('show output not modified since then',
-            '--if-unmodified-since')
-        self.arguments['until'] =\
-            DateArgument('show metadata until then', '--until')
-        self.arguments['format'] =\
-            ValueArgument('format to parse until data (default: d/m/Y H:M:S',
-            '--format')
-        self.arguments['shared'] = FlagArgument('show only shared', '--shared')
-        self.arguments['public'] = FlagArgument('show only public', '--public')
+    arguments = dict(
+        detail=FlagArgument('show detailed output', '-l'),
+        show_size=ValueArgument('print output in chunks of size N', '-N'),
+        limit=IntArgument('show limited output', '-n'),
+        marker=ValueArgument('show output greater that marker', '--marker'),
+        prefix=ValueArgument('show output staritng with prefix', '--prefix'),
+        delimiter=ValueArgument('show output up to delimiter', '--delimiter'),
+        path=ValueArgument(
+            'show output starting with prefix up to /',
+            '--path'),
+        meta=ValueArgument(
+            'show output with specified meta keys',
+            '--meta',
+            default=[]),
+        if_modified_since=ValueArgument(
+            'show output modified since then',
+            '--if-modified-since'),
+        if_unmodified_since=ValueArgument(
+            'show output not modified since then',
+            '--if-unmodified-since'),
+        until=DateArgument('show metadata until then', '--until'),
+        format=ValueArgument(
+            'format to parse until data (default: d/m/Y H:M:S )',
+            '--format'),
+        shared=FlagArgument('show only shared', '--shared'),
+        public=FlagArgument('show only public', '--public'),
+    )
 
     def print_objects(self, object_list):
         import sys
         try:
-            limit = self.get_argument('show_size')
-            limit = int(limit)
+            limit = int(self['show_size'])
         except (AttributeError, TypeError):
             limit = len(object_list) + 1
         for index, obj in enumerate(object_list):
@@ -339,7 +340,7 @@ class store_list(_store_container_command):
                 size = format_size(obj['bytes'])
                 pretty_obj['bytes'] = '%s (%s)' % (obj['bytes'], size)
             oname = bold(obj['name'])
-            if self.get_argument('detail'):
+            if self['detail']:
                 print('%s%s. %s' % (empty_space, index, oname))
                 print_dict(pretty_keys(pretty_obj), exclude=('name'))
                 print
@@ -354,7 +355,7 @@ class store_list(_store_container_command):
     def print_containers(self, container_list):
         import sys
         try:
-            limit = self.get_argument('show_size')
+            limit = self['show_size']
             limit = int(limit)
         except (AttributeError, TypeError):
             limit = len(container_list) + 1
@@ -362,7 +363,7 @@ class store_list(_store_container_command):
             if 'bytes' in container:
                 size = format_size(container['bytes'])
             cname = '%s. %s' % (index + 1, bold(container['name']))
-            if self.get_argument('detail'):
+            if self['detail']:
                 print(cname)
                 pretty_c = container.copy()
                 if 'bytes' in container:
@@ -383,37 +384,41 @@ class store_list(_store_container_command):
         super(self.__class__, self).main(container____path__)
         try:
             if self.container is None:
-                r = self.client.account_get(limit=self.get_argument('limit'),
-                    marker=self.get_argument('marker'),
-                    if_modified_since=self.get_argument('if_modified_since'),
-                    if_unmodified_since=self.get_argument(\
-                        'if_unmodified_since'),
-                    until=self.get_argument('until'),
-                    show_only_shared=self.get_argument('shared'))
+                r = self.client.account_get(
+                    limit=self['limit'],
+                    marker=self['marker'],
+                    if_modified_since=self['if_modified_since'],
+                    if_unmodified_since=self['if_unmodified_since'],
+                    until=self['until'],
+                    show_only_shared=self['shared'])
                 self.print_containers(r.json)
             else:
                 prefix = self.path if self.path\
-                else self.get_argument('prefix')
-                r = self.client.container_get(limit=self.get_argument('limit'),
-                    marker=self.get_argument('marker'),
+                else self['prefix']
+                r = self.client.container_get(
+                    limit=self['limit'],
+                    marker=self['marker'],
                     prefix=prefix,
-                    delimiter=self.get_argument('delimiter'),
-                    path=self.get_argument('path'),
-                    if_modified_since=self.get_argument('if_modified_since'),
-                    if_unmodified_since=self.get_argument(\
-                        'if_unmodified_since'),
-                    until=self.get_argument('until'),
-                    meta=self.get_argument('meta'),
-                    show_only_shared=self.get_argument('shared'))
+                    delimiter=self['delimiter'],
+                    path=self['path'],
+                    if_modified_since=self['if_modified_since'],
+                    if_unmodified_since=self['if_unmodified_since'],
+                    until=self['until'],
+                    meta=self['meta'],
+                    show_only_shared=self['shared'])
                 self.print_objects(r.json)
         except ClientError as err:
             if err.status == 404:
                 if 'Container does not exist' in ('%s' % err):
-                    raiseCLIError(err, 'No container %s in account %s'\
+                    raiseCLIError(
+                        err,
+                        'No container %s in account %s'\
                         % (self.container, self.account),
                         details=self.generic_err_details)
                 elif 'Object does not exist' in ('%s' % err):
-                    raiseCLIError(err, 'No object %s in %s\'s container %s'\
+                    raiseCLIError(
+                        err,
+                        'No object %s in %s\'s container %s'\
                         % (self.path, self.account, self.container),
                         details=self.generic_err_details)
             raiseCLIError(err)
