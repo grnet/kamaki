@@ -38,7 +38,7 @@ from inspect import getargspec
 
 from kamaki.cli.argument import ArgumentParseManager
 from kamaki.cli.history import History
-from kamaki.cli.utils import print_dict, print_list, red, magenta, yellow
+from kamaki.cli.utils import print_dict, red, magenta, yellow
 from kamaki.cli.errors import CLIError
 
 _help = False
@@ -302,7 +302,7 @@ def update_parser_help(parser, cmd):
         parser.syntax += ' <...>'
     if cmd.has_description:
         parser.parser.description = cmd.help\
-        + ((' . . . %s' % description) if description else '')
+        + (('\n%s' % description) if description else '')
     else:
         parser.parser.description = description
 
@@ -316,7 +316,8 @@ def print_error_message(cli_err):
     elif cli_err.importance > 2:
         errmsg = red(errmsg)
     stdout.write(errmsg)
-    print_list(cli_err.details)
+    for errmsg in cli_err.details:
+        print('| %s' % errmsg)
 
 
 def exec_cmd(instance, cmd_args, help_method):

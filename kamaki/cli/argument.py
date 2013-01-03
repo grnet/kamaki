@@ -38,6 +38,7 @@ from logging import getLogger
 
 
 from argparse import ArgumentParser, ArgumentError
+from argparse import RawDescriptionHelpFormatter
 
 try:
     from progress.bar import ShadyBar as KamakiProgressBar
@@ -231,8 +232,8 @@ class IntArgument(ValueArgument):
         try:
             self._value = int(newvalue)
         except ValueError:
-            raiseCLIError(CLISyntaxError('IntArgument Error'),
-                details='Value %s not an int' % newvalue)
+            raiseCLIError(CLISyntaxError('IntArgument Error',
+                details=['Value %s not an int' % newvalue]))
 
 
 class VersionArgument(FlagArgument):
@@ -373,7 +374,8 @@ class ArgumentParseManager(object):
         :param arguments: (dict) if given, overrides the global _argument as
             the parsers arguments specification
         """
-        self.parser = ArgumentParser(add_help=False)
+        self.parser = ArgumentParser(add_help=False,
+            formatter_class=RawDescriptionHelpFormatter)
         self.syntax = '%s <cmd_group> [<cmd_subbroup> ...] <cmd>' % exe
         if arguments:
             self.arguments = arguments
@@ -444,10 +446,14 @@ class ArgumentParseManager(object):
 
     def parse(self, new_args=None):
         """Do parse user input"""
-        if new_args:
-            self._parsed, unparsed = self.parser.parse_known_args(new_args)
-        else:
-            self._parsed, unparsed = self.parser.parse_known_args()
+        try:
+            if new_args:
+                self._parsed, unparsed = self.parser.parse_known_args(new_args)
+            else:
+                self._parsed, unparsed = self.parser.parse_known_args()
+        except SystemExit:
+            # deal with the fact that argparse error system is STUPID
+            raiseCLIError(CLISyntaxError('Argument Syntax Error'))
         for name, arg in self.arguments.items():
             arg.value = getattr(self._parsed, name, arg.default)
         self._unparsed = []

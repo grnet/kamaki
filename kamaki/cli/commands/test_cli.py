@@ -121,7 +121,7 @@ class test_prints(_test_init):
 
     l1 = [1, 'string', '3', 'many (2 or 3) numbers and strings combined', 5]
 
-    d2 = {'key1a': 'val0a', 'key1b': d1, 'key1c': l1}
+    d2 = {'id': 'val0a', 'key0b': d1, 'title': l1}
 
     l2 = [d2, l1, d1]
 
@@ -130,7 +130,7 @@ class test_prints(_test_init):
         ' check the effects on total result': l1}
 
     def main(self):
-        from kamaki.cli.utils import print_dict, print_list
+        from kamaki.cli.utils import print_dict, print_list, print_items
         print('Test simple dict:\n- - -')
         print_dict(self.d1)
         print('- - -\n')
@@ -157,4 +157,22 @@ class test_prints(_test_init):
         print('- - -\n')
         print('\nTest non-trivial enumerated list:\n- - -')
         print_list(self.l2, with_enumeration=True)
+        print('- - -\n')
+        print('\nTest print_items with id:\n- - -')
+        print_items([{'id': '42', 'title': 'lalakis 1', 'content': self.d1},
+            {'id': '142', 'title': 'lalakis 2', 'content': self.d2}])
+        print('- - -')
+        print('\nTest print_items with id and enumeration:\n- - -')
+        print_items([{'id': '42', 'title': 'lalakis 1', 'content': self.d1},
+            {'id': '142', 'title': 'lalakis 2', 'content': self.d2}],
+            with_enumeration=True)
+        print('- - -')
+        print('\nTest print_items with id, title and redundancy:\n- - -')
+        print_items([{'id': '42', 'title': 'lalakis 1', 'content': self.d1},
+            {'id': '142', 'title': 'lalakis 2', 'content': self.d2}],
+            title=('id', 'title'),
+            with_redundancy=True)
+        print('- - -')
+        print('\nTest print_items with lists- - -')
+        print_items([['i00', 'i01', 'i02'], [self.l2, 'i11', self.d1], 3])
         print('- - -')
