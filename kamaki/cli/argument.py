@@ -35,6 +35,7 @@ from kamaki.cli.config import Config
 from kamaki.cli.errors import CLISyntaxError, raiseCLIError
 from kamaki.cli.utils import split_input
 from logging import getLogger
+from datetime import datetime as dtm
 
 
 from argparse import ArgumentParser, ArgumentError
@@ -234,6 +235,43 @@ class IntArgument(ValueArgument):
         except ValueError:
             raiseCLIError(CLISyntaxError('IntArgument Error',
                 details=['Value %s not an int' % newvalue]))
+
+
+class DateArgument(ValueArgument):
+    """
+    :value type: a string formated in an acceptable date format
+
+    :value returns: same date in first of DATE_FORMATS
+    """
+
+    DATE_FORMATS = ["%a %b %d %H:%M:%S %Y",
+        "%A, %d-%b-%y %H:%M:%S GMT",
+        "%a, %d %b %Y %H:%M:%S GMT"]
+
+    INPUT_FORMATS = DATE_FORMATS + ["%d-%m-%Y", "%H:%M:%S %d-%m-%Y"]
+
+    @property
+    def value(self):
+        return getattr(self, '_value', self.default)
+
+    @value.setter
+    def value(self, newvalue):
+        if newvalue is None:
+            return
+        self._value = self.format_date(newvalue)
+
+    def format_date(self, datestr):
+        for format in self.INPUT_FORMATS:
+            try:
+                t = dtm.strptime(datestr, format)
+            except ValueError:
+                continue
+            self._value = t.strftime(self.DATE_FORMATS[0])
+            return
+        raiseCLIError(None,
+            'Date Argument Error',
+            details='%s not a valid date. correct formats:\n\t%s'\
+            % (datestr, self.INPUT_FORMATS))
 
 
 class VersionArgument(FlagArgument):
