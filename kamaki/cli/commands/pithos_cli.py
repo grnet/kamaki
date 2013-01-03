@@ -36,14 +36,13 @@ from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import raiseCLIError, CLISyntaxError
 from kamaki.cli.utils import format_size, print_dict, pretty_keys
 from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
-from kamaki.cli.argument import KeyValueArgument
+from kamaki.cli.argument import KeyValueArgument, DateArgument
 from kamaki.cli.argument import ProgressBarArgument
 from kamaki.cli.commands import _command_init
 from kamaki.clients.pithos import PithosClient, ClientError
 from kamaki.cli.utils import bold
 from sys import stdout
 from time import localtime, strftime
-from datetime import datetime as dtm
 from logging import getLogger
 
 kloger = getLogger('kamaki')
@@ -136,44 +135,6 @@ class RangeArgument(ValueArgument):
         (start, end) = newvalue.split('-')
         (start, end) = (int(start), int(end))
         self._value = '%s-%s' % (start, end)
-
-
-class DateArgument(ValueArgument):
-    """
-    :value type: a string formated in an acceptable date format
-
-    :value returns: same date in first of DATE_FORMATS
-    """
-
-    DATE_FORMATS = ["%a %b %d %H:%M:%S %Y",
-        "%A, %d-%b-%y %H:%M:%S GMT",
-        "%a, %d %b %Y %H:%M:%S GMT"]
-
-    INPUT_FORMATS = DATE_FORMATS + ["%d-%m-%Y", "%H:%M:%S %d-%m-%Y"]
-
-    @property
-    def value(self):
-        return getattr(self, '_value', self.default)
-
-    @value.setter
-    def value(self, newvalue):
-        if newvalue is None:
-            return
-        self._value = self.format_date(newvalue)
-
-    def format_date(self, datestr):
-        for format in self.INPUT_FORMATS:
-            try:
-                t = dtm.strptime(datestr, format)
-            except ValueError:
-                continue
-            self._value = t.strftime(self.DATE_FORMATS[0])
-            return
-        raiseCLIError(None,
-            'Date Argument Error',
-            details='%s not a valid date. correct formats:\n\t%s'\
-            % (datestr, self.INPUT_FORMATS))
-
 
 # Command specs
 
