@@ -100,6 +100,15 @@ class Shell(Cmd):
     def set_prompt(self, new_prompt):
         self.prompt = '%s%s%s' % (self._prefix, new_prompt, self._suffix)
 
+    def cmdloop(self):
+        while True:
+            try:
+                Cmd.cmdloop(self)
+            except KeyboardInterrupt:
+                print(' - interrupted')
+                continue
+            break
+
     def do_exit(self, line):
         print('')
         if self.prompt[len(self._prefix):-len(self._suffix)]\
@@ -281,6 +290,7 @@ class Shell(Cmd):
 
         try:
             self.cmdloop()
-        except Exception:
+        except Exception as e:
+            print('(%s)' % e)
             from traceback import print_stack
             print_stack()
