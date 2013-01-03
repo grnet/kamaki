@@ -32,7 +32,6 @@
 # or implied, of GRNET S.A.
 
 from kamaki.cli import command
-from kamaki.cli.argument import FlagArgument
 from kamaki.cli.commands import _command_init
 from kamaki.cli.command_tree import CommandTree
 
@@ -44,14 +43,9 @@ _commands = [config_cmds]
 class config_list(_command_init):
     """List configuration options"""
 
-    def __init__(self, arguments={}):
-        super(config_list, self).__init__(arguments)
-        self.arguments['all'] = FlagArgument('include default values', '-a')
-
     def main(self):
-        include_defaults = self.get_argument('all')
         for section in sorted(self.config.sections()):
-            items = self.config.items(section, include_defaults)
+            items = self.config.items(section)
             for key, val in sorted(items):
                 print('%s.%s = %s' % (section, key, val))
 

@@ -134,7 +134,7 @@ class Config(RawConfigParser):
         except NoSectionError:
             pass
 
-    def items(self, section, include_defaults=False):
+    def items(self, section, include_defaults=True):
         try:
             d = dict(DEFAULTS[section]) if include_defaults else {}
         except KeyError:
