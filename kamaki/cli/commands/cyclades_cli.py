@@ -69,7 +69,10 @@ class server_list(_init_cyclades):
     """List servers"""
 
     arguments = dict(
-        detail=FlagArgument('show detailed output', '-l')
+        detail=FlagArgument('show detailed output', '-l'),
+        since=ValueArgument(
+            'show only items since date (\' d/m/Y H:M:S \')',
+            '--since')
     )
 
     def _info_print(self, server):
@@ -98,8 +101,14 @@ class server_list(_init_cyclades):
     def main(self):
         super(self.__class__, self).main()
         try:
-            servers = self.client.list_servers(self['detail'])
+            servers = self.client.list_servers(self['detail'], self['since'])
             self._print(servers)
+        except ClientError as ce:
+            if ce.status == 400 and 'changes-since' in ('%s' % ce):
+                raiseCLIError(None,
+                    'Incorrect date format for --since',
+                    details=['Accepted date format: d/m/y'])
+            raiseCLIError(ce)
         except Exception as err:
             raiseCLIError(err)
 
