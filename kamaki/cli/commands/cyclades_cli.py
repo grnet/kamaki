@@ -55,6 +55,11 @@ network_cmds = CommandTree('network',
 _commands = [server_cmds, flavor_cmds, image_cmds, network_cmds]
 
 
+about_authentication = '\n  User Authentication:\
+    \n    to check authentication: /astakos authenticate\
+    \n    to set authentication token: /config set token <token>'
+
+
 class _init_cyclades(_command_init):
     def main(self, service='compute'):
         token = self.config.get(service, 'token')\
@@ -66,7 +71,10 @@ class _init_cyclades(_command_init):
 
 @command(server_cmds)
 class server_list(_init_cyclades):
-    """List servers"""
+    """List Virtual Machines accessible by user
+    """
+
+    __doc__ += about_authentication
 
     arguments = dict(
         detail=FlagArgument('show detailed output', '-l'),
@@ -240,7 +248,7 @@ class server_delete(_init_cyclades):
 @command(server_cmds)
 class server_reboot(_init_cyclades):
     """Reboot a server"""
-    
+
     arguments = dict(
         hard=FlagArgument('perform a hard reboot', '-f')
     )
