@@ -38,7 +38,7 @@ from inspect import getargspec
 
 from kamaki.cli.argument import ArgumentParseManager
 from kamaki.cli.history import History
-from kamaki.cli.utils import print_dict, print_list, red, magenta, yellow
+from kamaki.cli.utils import print_dict, red, magenta, yellow
 from kamaki.cli.errors import CLIError
 
 _help = False
