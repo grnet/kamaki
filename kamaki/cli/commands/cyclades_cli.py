@@ -66,8 +66,8 @@ howto_token = [
     '  to get current token: /config get [server.]token']
 
 howto_personality = [
-    'Value syntax: PATH,[SERVER_PATH,[OWNER,[GROUP,[MODE]]]]',
     'Defines a file to be injected to VMs personality.',
+    'Personality value syntax: PATH,[SERVER_PATH,[OWNER,[GROUP,[MODE]]]]',
     '  PATH: of local file to be injected',
     '  SERVER_PATH: destination location inside server Image',
     '  OWNER: user id of destination file owner',
@@ -76,7 +76,7 @@ howto_personality = [
 
 
 def raise_if_connection_error(err):
-    if err.status in range(100, 200):
+    if err.status in range(-12, 200):
         raiseCLIError(err, details=[
             'Check if service is up or set compute.url',
             '  to get service url: /config get compute.url',
@@ -209,7 +209,10 @@ class PersonalityArgument(KeyValueArgument):
                 details=howto_personality)
             path = termlist[0]
             if not exists(path):
-                raiseCLIError(None, "File %s does not exist" % path, 1)
+                raiseCLIError(None,
+                    '--personality: File %s does not exist' % path,
+                    importance=1,
+                    details=howto_personality)
             self._value.append(dict(path=path))
             with open(path) as f:
                 self._value[i]['contents'] = b64encode(f.read())
@@ -224,7 +227,12 @@ class PersonalityArgument(KeyValueArgument):
 
 @command(server_cmds)
 class server_create(_init_cyclades):
-    """Create a server"""
+    """Create a server (aka Virtual Machine)
+    Parameters:
+      name: (single quoted text)
+      flavor id: Hardware flavor. Pick one from: /flavor list
+      image id: OS images. Pick one from: /image list
+    """
 
     arguments = dict(
         personality=PersonalityArgument(
@@ -242,8 +250,23 @@ class server_create(_init_cyclades):
                         image_id,
                         self['personality']
                     )
-        except ClientError as err:
-            raiseCLIError(err)
+        except ClientError as ce:
+            if ce.status == 404:
+                msg = ('%s' % ce).lower()
+                if 'flavor' in msg:
+                    raiseCLIError(ce,
+                        'Flavor id %s not found' % flavor_id,
+                        details=['How to pick a valid flavor id:',
+                        '  - get a list of flavor ids: /flavor list',
+                        '  - details on a flavor: /flavor info <flavor id>'])
+                elif 'image' in msg:
+                    raiseCLIError(ce,
+                        'Image id %s not found' % image_id,
+                        details=['How to pick a valid image id:',
+                        '  - get a list of image ids: /image list',
+                        '  - details on an image: /image info <image id>'])
+            raise_if_connection_error(ce)
+            raiseCLIError(ce)
         except ValueError as err:
             raiseCLIError(err, 'Invalid flavor id %s ' % flavor_id,
                 details='Flavor id must be a positive integer',
