@@ -37,7 +37,7 @@ from kamaki.cli.utils import print_dict, print_list, print_items, bold
 from kamaki.cli.errors import raiseCLIError, CLISyntaxError
 from kamaki.clients.cyclades import CycladesClient, ClientError
 from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
-from kamaki.cli.argument import ProgressBarArgument
+from kamaki.cli.argument import ProgressBarArgument, DateArgument
 from kamaki.cli.commands import _command_init
 
 from base64 import b64encode
@@ -59,6 +59,12 @@ about_authentication = '\n  User Authentication:\
     \n    to check authentication: /astakos authenticate\
     \n    to set authentication token: /config set token <token>'
 
+howto_token = [
+    'Make sure a valid token is provided:',
+    '  to check if the token is valid: /astakos authenticate',
+    '  to set a token: /config set [.server.]token <token>',
+    '  to get current token: /config get [server.]token']
+
 
 class _init_cyclades(_command_init):
     def main(self, service='compute'):
@@ -78,7 +84,7 @@ class server_list(_init_cyclades):
 
     arguments = dict(
         detail=FlagArgument('show detailed output', '-l'),
-        since=ValueArgument(
+        since=DateArgument(
             'show only items since date (\' d/m/Y H:M:S \')',
             '--since')
     )
@@ -123,7 +129,13 @@ class server_list(_init_cyclades):
 
 @command(server_cmds)
 class server_info(_init_cyclades):
-    """Get server details"""
+    """Detailed information on a Virtual Machine
+    Contains:
+    - name, id, status, create/update dates
+    - network interfaces
+    - metadata (e.g. os, superuser) and diagnostics
+    - hardware flavor and os image ids
+    """
 
     @classmethod
     def _print(self, server):
@@ -147,7 +159,25 @@ class server_info(_init_cyclades):
         try:
             server = self.client.get_server_details(int(server_id))
         except ValueError as err:
-            raiseCLIError(err, 'Server id must be positive integer', 1)
+            raiseCLIError(err, 'Server id must be a positive integer', 1)
+        except ClientError as ce:
+            if ce.status == 401:
+                raiseCLIError(ce, 'Authorization failed', details=howto_token)
+            elif ce.status == 404:
+                raiseCLIError(ce, 'Server with id %s not found' % server_id)
+            elif ce.status == 111:
+                raiseCLIError(err,
+                    'Connection to %s refused' % self.client.base_url,
+                    details=['Check if service is up or set compute.url',
+                    '  to get service url: /config get compute.url',
+                    '  to set service url: /config set compute.url <URL>'])
+            elif ce.status == 110:
+                raiseCLIError(err,
+                    'Connection to %s timed out' % self.client.base_url,
+                    details=['Check if service is up or set compute.url',
+                    '  to get service url: /config get compute.url',
+                    '  to set service url: /config set compute.url <URL>'])
+            raiseCLIError(ce)
         except Exception as err:
             raiseCLIError(err)
         self._print(server)
