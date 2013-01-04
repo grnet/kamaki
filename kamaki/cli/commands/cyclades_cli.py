@@ -166,13 +166,13 @@ class server_info(_init_cyclades):
             elif ce.status == 404:
                 raiseCLIError(ce, 'Server with id %s not found' % server_id)
             elif ce.status == 111:
-                raiseCLIError(err,
+                raiseCLIError(ce,
                     'Connection to %s refused' % self.client.base_url,
                     details=['Check if service is up or set compute.url',
                     '  to get service url: /config get compute.url',
                     '  to set service url: /config set compute.url <URL>'])
             elif ce.status == 110:
-                raiseCLIError(err,
+                raiseCLIError(ce,
                     'Connection to %s timed out' % self.client.base_url,
                     details=['Check if service is up or set compute.url',
                     '  to get service url: /config get compute.url',
