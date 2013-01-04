@@ -65,6 +65,15 @@ howto_token = [
     '  to set a token: /config set [.server.]token <token>',
     '  to get current token: /config get [server.]token']
 
+howto_personality = [
+    'Value syntax: PATH,[SERVER_PATH,[OWNER,[GROUP,[MODE]]]]',
+    'Defines a file to be injected to VMs personality.',
+    '  PATH: of local file to be injected',
+    '  SERVER_PATH: destination location inside server Image',
+    '  OWNER: user id of destination file owner',
+    '  GROUP: group id or name to own destination file',
+    '  MODEL: permition in octal (e.g. 0777 or o+rwx)']
+
 
 def raise_if_connection_error(err):
     if err.status in range(100, 200):
@@ -195,8 +204,9 @@ class PersonalityArgument(KeyValueArgument):
         for i, terms in enumerate(newvalue):
             termlist = terms.split(',')
             if len(termlist) > 5:
-                raiseCLIError(CLISyntaxError(details='Wrong number of terms'\
-                + ' ("PATH,[SERVER_PATH,[OWNER,[GROUP,[MODE]]]]"'))
+                raiseCLIError(
+                CLISyntaxError('Wrong number of terms (should be 1 to 5)'),
+                details=howto_personality)
             path = termlist[0]
             if not exists(path):
                 raiseCLIError(None, "File %s does not exist" % path, 1)
@@ -218,8 +228,7 @@ class server_create(_init_cyclades):
 
     arguments = dict(
         personality=PersonalityArgument(
-            'add one or more personality files ( ' +\
-                '"PATH,[SERVER_PATH,[OWNER,[GROUP,[MODE]]]]" )',
+            ' _ _ _ '.join(howto_personality),
             parsed_name='--personality')
     )
 
