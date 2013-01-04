@@ -59,12 +59,6 @@ about_authentication = '\n  User Authentication:\
     \n    to check authentication: /astakos authenticate\
     \n    to set authentication token: /config set token <token>'
 
-howto_token = [
-    'Make sure a valid token is provided:',
-    '  to check if the token is valid: /astakos authenticate',
-    '  to set a token: /config set [.server.]token <token>',
-    '  to get current token: /config get [server.]token']
-
 howto_personality = [
     'Defines a file to be injected to VMs personality.',
     'Personality value syntax: PATH,[SERVER_PATH,[OWNER,[GROUP,[MODE]]]]',
@@ -76,6 +70,12 @@ howto_personality = [
 
 
 def raise_if_connection_error(err):
+    if err.status == 401:
+        raiseCLIError(err, 'Authorization failed', details=[
+            'Make sure a valid token is provided:',
+            '  to check if the token is valid: /astakos authenticate',
+            '  to set a token: /config set [.server.]token <token>',
+            '  to get current token: /config get [server.]token'])
     if err.status in range(-12, 200):
         raiseCLIError(err, details=[
             'Check if service is up or set compute.url',
@@ -180,9 +180,7 @@ class server_info(_init_cyclades):
         except ValueError as err:
             raiseCLIError(err, 'Server id must be a positive integer', 1)
         except ClientError as ce:
-            if ce.status == 401:
-                raiseCLIError(ce, 'Authorization failed', details=howto_token)
-            elif ce.status == 404:
+            if ce.status == 404:
                 raiseCLIError(ce, 'Server with id %s not found' % server_id)
             raise_if_connection_error(ce)
             raiseCLIError(ce)
@@ -278,37 +276,49 @@ class server_create(_init_cyclades):
 
 @command(server_cmds)
 class server_rename(_init_cyclades):
-    """Update a server's name"""
+    """Set/update a server (VM) name
+    VM names are not unique, therefore multiple server may share the same name
+    """
 
     def main(self, server_id, new_name):
         super(self.__class__, self).main()
         try:
             self.client.update_server_name(int(server_id), new_name)
-        except ClientError as err:
-            raiseCLIError(err)
+        except ClientError as ce:
+            if ce.status == 404:
+                raiseCLIError(ce, 'Server with id %s not found' % server_id)
+            raise_if_connection_error(ce)
+            raiseCLIError(ce)
         except ValueError as err:
             raiseCLIError(err, 'Invalid server id %s ' % server_id,
-                details='Server id must be positive integer\n',
+                details=['Server id must be positive integer\n'],
                 importance=1)
 
 
 @command(server_cmds)
 class server_delete(_init_cyclades):
-    """Delete a server"""
+    """Delete a server (VM)"""
 
     def main(self, server_id):
         super(self.__class__, self).main()
         try:
             self.client.delete_server(int(server_id))
+        except ClientError as ce:
+            if ce.status == 404:
+                raiseCLIError(ce, 'Server with id %s not found' % server_id)
+            raise_if_connection_error(ce)
+            raiseCLIError(ce)
         except ValueError as err:
-            raiseCLIError(err, 'Server id must be positive integer', 1)
+            raiseCLIError(err, 'Invalid server id %s ' % server_id,
+                details=['Server id must be positive integer\n'],
+                importance=1)
         except Exception as err:
             raiseCLIError(err)
 
 
 @command(server_cmds)
 class server_reboot(_init_cyclades):
-    """Reboot a server"""
+    """Reboot a server (VM)"""
 
     arguments = dict(
         hard=FlagArgument('perform a hard reboot', '-f')
@@ -318,50 +328,83 @@ class server_reboot(_init_cyclades):
         super(self.__class__, self).main()
         try:
             self.client.reboot_server(int(server_id), self['hard'])
+        except ClientError as ce:
+            if ce.status == 404:
+                raiseCLIError(ce, 'Server with id %s not found' % server_id)
+            raise_if_connection_error(ce)
+            raiseCLIError(ce)
         except ValueError as err:
-            raiseCLIError(err, 'Server id must be positive integer', 1)
+            raiseCLIError(err, 'Invalid server id %s ' % server_id,
+                details=['Server id must be positive integer\n'],
+                importance=1)
         except Exception as err:
             raiseCLIError(err)
 
 
 @command(server_cmds)
 class server_start(_init_cyclades):
-    """Start a server"""
+    """Start an existing server (VM)"""
 
     def main(self, server_id):
         super(self.__class__, self).main()
         try:
             self.client.start_server(int(server_id))
+        except ClientError as ce:
+            if ce.status == 404:
+                raiseCLIError(ce, 'Server with id %s not found' % server_id)
+            raise_if_connection_error(ce)
+            raiseCLIError(ce)
         except ValueError as err:
-            raiseCLIError(err, 'Server id must be positive integer', 1)
+            raiseCLIError(err, 'Invalid server id %s ' % server_id,
+                details=['Server id must be positive integer\n'],
+                importance=1)
         except Exception as err:
             raiseCLIError(err)
 
 
 @command(server_cmds)
 class server_shutdown(_init_cyclades):
-    """Shutdown a server"""
+    """Shutdown an active server (VM)"""
 
     def main(self, server_id):
         super(self.__class__, self).main()
         try:
             self.client.shutdown_server(int(server_id))
+        except ClientError as ce:
+            if ce.status == 404:
+                raiseCLIError(ce, 'Server with id %s not found' % server_id)
+            raise_if_connection_error(ce)
+            raiseCLIError(ce)
         except ValueError as err:
-            raiseCLIError(err, 'Server id must be positive integer', 1)
+            raiseCLIError(err, 'Invalid server id %s ' % server_id,
+                details=['Server id must be positive integer\n'],
+                importance=1)
         except Exception as err:
             raiseCLIError(err)
 
 
 @command(server_cmds)
 class server_console(_init_cyclades):
-    """Get a VNC console"""
+    """Get a VNC console to access an existing server (VM)
+    Console connection information provided (at least):
+      host: (url or address) a VNC host
+      port: (int) the gateway to enter VM on host
+      password: for VNC authorization
+    """
 
     def main(self, server_id):
         super(self.__class__, self).main()
         try:
             reply = self.client.get_server_console(int(server_id))
+        except ClientError as ce:
+            if ce.status == 404:
+                raiseCLIError(ce, 'Server with id %s not found' % server_id)
+            raise_if_connection_error(ce)
+            raiseCLIError(ce)
         except ValueError as err:
-            raiseCLIError(err, 'Server id must be positive integer', 1)
+            raiseCLIError(err, 'Invalid server id %s ' % server_id,
+                details=['Server id must be positive integer\n'],
+                importance=1)
         except Exception as err:
             raiseCLIError(err)
         print_dict(reply)
@@ -369,28 +412,52 @@ class server_console(_init_cyclades):
 
 @command(server_cmds)
 class server_firewall(_init_cyclades):
-    """Set the server's firewall profile"""
+    """Set the server (VM) firewall profile on VMs public network
+    Values for profile:
+      DISABLED: Shutdown firewall
+      ENABLED: Firewall in normal mode
+      PROTECTED: Firewall in secure mode
+    """
 
     def main(self, server_id, profile):
         super(self.__class__, self).main()
         try:
-            self.client.set_firewall_profile(int(server_id), profile)
+            self.client.set_firewall_profile(
+                int(server_id),
+                unicode(profile).upper())
+        except ClientError as ce:
+            if ce.status == 400 and 'firewall' in '%s' % ce:
+                raiseCLIError(ce,
+                    '%s is an unsupported firewall profile' % profile)
+            elif ce.status == 404:
+                raiseCLIError(ce, 'Server with id %s not found' % server_id)
+            raise_if_connection_error(ce)
+            raiseCLIError(ce)
         except ValueError as err:
-            raiseCLIError(err, 'Server id must be positive integer', 1)
+            raiseCLIError(err, 'Invalid server id %s ' % server_id,
+                details=['Server id must be positive integer\n'],
+                importance=1)
         except Exception as err:
             raiseCLIError(err)
 
 
 @command(server_cmds)
 class server_addr(_init_cyclades):
-    """List a server's nic address"""
+    """List the addresses of all network interfaces on a server (VM)"""
 
     def main(self, server_id):
         super(self.__class__, self).main()
         try:
             reply = self.client.list_server_nics(int(server_id))
+        except ClientError as ce:
+            if ce.status == 404:
+                raiseCLIError(ce, 'Server with id %s not found' % server_id)
+            raise_if_connection_error(ce)
+            raiseCLIError(ce)
         except ValueError as err:
-            raiseCLIError(err, 'Server id must be positive integer', 1)
+            raiseCLIError(err, 'Invalid server id %s ' % server_id,
+                details=['Server id must be positive integer\n'],
+                importance=1)
         except Exception as err:
             raiseCLIError(err)
         print_list(reply, with_enumeration=len(reply) > 1)
@@ -398,30 +465,26 @@ class server_addr(_init_cyclades):
 
 @command(server_cmds)
 class server_meta(_init_cyclades):
-    """Get a server's metadata"""
+    """Get a server's metadatum
+    Metadata are formed as key:value pairs where key is used to retrieve them
+    """
 
     def main(self, server_id, key=''):
         super(self.__class__, self).main()
         try:
             reply = self.client.get_server_metadata(int(server_id), key)
+        except ClientError as ce:
+            if ce.status == 404:
+                msg = 'No metadata with key %s' % key\
+                if 'Metadata' in '%s' % ce\
+                else 'Server with id %s not found' % server_id
+                raiseCLIError(ce, msg)
+            raise_if_connection_error(ce)
+            raiseCLIError(ce)
         except ValueError as err:
-            raiseCLIError(err, 'Server id must be positive integer', 1)
-        except Exception as err:
-            raiseCLIError(err)
-        print_dict(reply)
-
-
-@command(server_cmds)
-class server_addmeta(_init_cyclades):
-    """Add server metadata"""
-
-    def main(self, server_id, key, val):
-        super(self.__class__, self).main()
-        try:
-            reply = self.client.create_server_metadata(\
-                int(server_id), key, val)
-        except ValueError as err:
-            raiseCLIError(err, 'Server id must be positive integer', 1)
+            raiseCLIError(err, 'Invalid server id %s ' % server_id,
+                details=['Server id must be positive integer\n'],
+                importance=1)
         except Exception as err:
             raiseCLIError(err)
         print_dict(reply)
@@ -429,7 +492,9 @@ class server_addmeta(_init_cyclades):
 
 @command(server_cmds)
 class server_setmeta(_init_cyclades):
-    """Update server's metadata"""
+    """set server (VM) metadata
+    Metadata are formed as key:value pairs, both needed to set one
+    """
 
     def main(self, server_id, key, val):
         super(self.__class__, self).main()
@@ -437,8 +502,15 @@ class server_setmeta(_init_cyclades):
         try:
             reply = self.client.update_server_metadata(int(server_id),
                 **metadata)
+        except ClientError as ce:
+            if ce.status == 404:
+                raiseCLIError(ce, 'Server with id %s not found' % server_id)
+            raise_if_connection_error(ce)
+            raiseCLIError(ce)
         except ValueError as err:
-            raiseCLIError(err, 'Server id must be positive integer', 1)
+            raiseCLIError(err, 'Invalid server id %s ' % server_id,
+                details=['Server id must be positive integer\n'],
+                importance=1)
         except Exception as err:
             raiseCLIError(err)
         print_dict(reply)
@@ -446,28 +518,45 @@ class server_setmeta(_init_cyclades):
 
 @command(server_cmds)
 class server_delmeta(_init_cyclades):
-    """Delete server metadata"""
+    """Delete server (VM) metadata"""
 
     def main(self, server_id, key):
         super(self.__class__, self).main()
         try:
             self.client.delete_server_metadata(int(server_id), key)
+        except ClientError as ce:
+            if ce.status == 404:
+                msg = 'No metadata with key %s' % key\
+                if 'Metadata' in '%s' % ce\
+                else 'Server with id %s not found' % server_id
+                raiseCLIError(ce, msg)
+            raise_if_connection_error(ce)
+            raiseCLIError(ce)
         except ValueError as err:
-            raiseCLIError(err, 'Server id must be positive integer', 1)
+            raiseCLIError(err, 'Invalid server id %s ' % server_id,
+                details=['Server id must be positive integer\n'],
+                importance=1)
         except Exception as err:
             raiseCLIError(err)
 
 
 @command(server_cmds)
 class server_stats(_init_cyclades):
-    """Get server statistics"""
+    """Get server (VM) statistics"""
 
     def main(self, server_id):
         super(self.__class__, self).main()
         try:
             reply = self.client.get_server_stats(int(server_id))
+        except ClientError as ce:
+            if ce.status == 404:
+                raiseCLIError(ce, 'Server with id %s not found' % server_id)
+            raise_if_connection_error(ce)
+            raiseCLIError(ce)
         except ValueError as err:
-            raiseCLIError(err, 'Server id must be positive integer', 1)
+            raiseCLIError(err, 'Invalid server id %s ' % server_id,
+                details=['Server id must be positive integer\n'],
+                importance=1)
         except Exception as err:
             raiseCLIError(err)
         print_dict(reply, exclude=('serverRef',))
@@ -491,6 +580,10 @@ class server_wait(_init_cyclades):
             progress_bar = self.arguments['progress_bar']
             wait_cb = progress_bar.get_generator(\
                 'Server %s still in %s mode' % (server_id, currect_status))
+        except ValueError as err:
+            raiseCLIError(err, 'Invalid server id %s ' % server_id,
+                details=['Server id must be positive integer\n'],
+                importance=1)
         except Exception:
             wait_cb = None
         try:
@@ -502,9 +595,12 @@ class server_wait(_init_cyclades):
             print('\nCanceled')
             progress_bar.finish()
             return
-        except ClientError as err:
+        except ClientError as ce:
             progress_bar.finish()
-            raiseCLIError(err)
+            if ce.status == 404:
+                raiseCLIError(ce, 'Server with id %s not found' % server_id)
+            raise_if_connection_error(ce)
+            raiseCLIError(ce)
         if new_mode:
             print('Server %s is now in %s mode' % (server_id, new_mode))
         else:
