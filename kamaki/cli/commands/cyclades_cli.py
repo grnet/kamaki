@@ -66,6 +66,15 @@ howto_token = [
     '  to get current token: /config get [server.]token']
 
 
+def raise_if_connection_error(err):
+    if err.status in range(100, 200):
+        raiseCLIError(err, details=[
+            'Check if service is up or set compute.url',
+            '  to get service url: /config get compute.url',
+            '  to set service url: /config set compute.url <URL>']
+        )
+
+
 class _init_cyclades(_command_init):
     def main(self, service='compute'):
         token = self.config.get(service, 'token')\
@@ -122,6 +131,7 @@ class server_list(_init_cyclades):
                 raiseCLIError(None,
                     'Incorrect date format for --since',
                     details=['Accepted date format: d/m/y'])
+            raise_if_connection_error(ce)
             raiseCLIError(ce)
         except Exception as err:
             raiseCLIError(err)
@@ -165,18 +175,7 @@ class server_info(_init_cyclades):
                 raiseCLIError(ce, 'Authorization failed', details=howto_token)
             elif ce.status == 404:
                 raiseCLIError(ce, 'Server with id %s not found' % server_id)
-            elif ce.status == 111:
-                raiseCLIError(ce,
-                    'Connection to %s refused' % self.client.base_url,
-                    details=['Check if service is up or set compute.url',
-                    '  to get service url: /config get compute.url',
-                    '  to set service url: /config set compute.url <URL>'])
-            elif ce.status == 110:
-                raiseCLIError(ce,
-                    'Connection to %s timed out' % self.client.base_url,
-                    details=['Check if service is up or set compute.url',
-                    '  to get service url: /config get compute.url',
-                    '  to set service url: /config set compute.url <URL>'])
+            raise_if_connection_error(ce)
             raiseCLIError(ce)
         except Exception as err:
             raiseCLIError(err)
