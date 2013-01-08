@@ -133,16 +133,17 @@ class image_meta(_init_image):
         super(self.__class__, self).main()
         try:
             image = self.client.get_meta(image_id)
-        except ClientError as err:
+        except ClientError as ce:
+            raise_if_connection_error(ce, base_url='image.url')
+            raiseCLIError(ce)
+        except Exception as err:
             raiseCLIError(err)
         print_dict(image)
 
 
 @command(image_cmds)
 class image_register(_init_image):
-    """(Re)Register an image
-        call with --update to update image properties
-    """
+    """(Re)Register an image"""
 
     arguments = dict(
         checksum=ValueArgument('set image checksum', '--checksum'),
@@ -157,7 +158,7 @@ class image_register(_init_image):
             '--property'),
         is_public=FlagArgument('mark image as public', '--public'),
         size=IntArgument('set image size', '--size'),
-        update=FlagArgument('update an existing image properties', '--update')
+        update=FlagArgument('update existing image properties', '--update')
     )
 
     def main(self, name, location):
@@ -193,6 +194,9 @@ class image_register(_init_image):
                 self.client.reregister(location, name, params, properties)
             else:
                 self.client.register(name, location, params, properties)
+        except ClientError as ce:
+            raise_if_connection_error(ce, base_url='image.url')
+            raiseCLIError(ce)
         except Exception as err:
             raiseCLIError(err)
 
@@ -205,10 +209,12 @@ class image_members(_init_image):
         super(self.__class__, self).main()
         try:
             members = self.client.list_members(image_id)
+        except ClientError as ce:
+            raise_if_connection_error(ce, base_url='image.url')
+            raiseCLIError(ce)
         except Exception as err:
             raiseCLIError(err)
-        for member in members:
-            print(member['member_id'])
+        print_items(members)
 
 
 @command(image_cmds)
@@ -219,10 +225,12 @@ class image_shared(_init_image):
         super(self.__class__, self).main()
         try:
             images = self.client.list_shared(member)
+        except ClientError as ce:
+            raise_if_connection_error(ce, base_url='image.url')
+            raiseCLIError(ce)
         except Exception as err:
             raiseCLIError(err)
-        for image in images:
-            print(image['image_id'])
+        print_items(images)
 
 
 @command(image_cmds)
