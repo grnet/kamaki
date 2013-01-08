@@ -76,9 +76,9 @@ def raise_if_connection_error(err):
             '  to check if the token is valid: /astakos authenticate',
             '  to set a token: /config set [.server.]token <token>',
             '  to get current token: /config get [server.]token'])
-    if err.status in range(-12, 200):
+    elif err.status in range(-12, 200) + [403]:
         raiseCLIError(err, details=[
-            'Check if service is up or set compute.url',
+            'Check if service is up or set to compute.url',
             '  to get service url: /config get compute.url',
             '  to set service url: /config set compute.url <URL>']
         )
@@ -130,7 +130,8 @@ class server_list(_init_cyclades):
         super(self.__class__, self).main()
         try:
             servers = self.client.list_servers(self['detail'], self['since'])
-            self._make_results_pretty(servers)
+            if self['detail']:
+                self._make_results_pretty(servers)
         except ClientError as ce:
             if ce.status == 400 and 'changes-since' in ('%s' % ce):
                 raiseCLIError(None,
@@ -626,6 +627,9 @@ class flavor_list(_init_cyclades):
         super(self.__class__, self).main()
         try:
             flavors = self.client.list_flavors(self['detail'])
+        except ClientError as ce:
+            raise_if_connection_error(ce)
+            raiseCLIError(ce)
         except Exception as err:
             raiseCLIError(err)
         if self['more']:
