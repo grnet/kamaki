@@ -159,6 +159,17 @@ class StorageClient(Client):
         r = self.put(path, data=data, success=201)
         r.release()
 
+     def create_object(self, obj):
+        """
+        :param obj: (str) directory-object name
+        """
+        self._assert_container()
+        path = path4url(self.account, self.container, obj)
+        self.set_header('Content-Type', 'application/directory')
+        self.set_header('Content-length', '0')
+        r = self.put(path, success=201)
+        r.release()
+
     def create_directory(self, obj):
         """
         :param obj: (str) directory-object name

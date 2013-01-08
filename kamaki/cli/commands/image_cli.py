@@ -36,9 +36,10 @@ from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import raiseCLIError
 from kamaki.cli.utils import print_dict, print_items, bold
 from kamaki.clients.image import ImageClient, ClientError
-from kamaki.cli.argument import\
-    FlagArgument, ValueArgument, KeyValueArgument, IntArgument
+from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
+from kamaki.cli.argument import IntArgument
 from kamaki.cli.commands.cyclades_cli import _init_cyclades
+from kamaki.cli.commands.cyclades_cli import raise_if_connection_error
 from kamaki.cli.commands import _command_init
 
 
@@ -79,7 +80,11 @@ class image_public(_init_image):
         order=ValueArgument(
             'order by FIELD ( - to reverse order)',
             '--order',
-            default='')
+            default=''),
+        limit=IntArgument('limit the number of images in list', '-n'),
+        more=FlagArgument(
+            'output results in pages (-n to set items per page, default 10)',
+            '--more')
     )
 
     def main(self):
@@ -100,9 +105,24 @@ class image_public(_init_image):
         detail = self['detail']
         try:
             images = self.client.list_public(detail, filters, order)
+        except ClientError as ce:
+            raise_if_connection_error(ce, base_url='image.url')
+            raiseCLIError(ce)
         except Exception as err:
             raiseCLIError(err)
-        print_items(images, title=('name',), with_enumeration=True)
+        if self['more']:
+            print_items(
+                images,
+                title=('name',),
+                with_enumeration=True,
+                page_size=self['limit'] if self['limit'] else 10)
+        elif self['limit']:
+            print_items(
+                images[:self['limit']],
+                title=('name',),
+                with_enumeration=True)
+        else:
+            print_items(images, title=('name',), with_enumeration=True)
 
 
 @command(image_cmds)

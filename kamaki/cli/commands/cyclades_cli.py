@@ -33,7 +33,7 @@
 
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.utils import print_dict, print_list, print_items, bold
+from kamaki.cli.utils import print_dict, print_list, print_items
 from kamaki.cli.errors import raiseCLIError, CLISyntaxError
 from kamaki.clients.cyclades import CycladesClient, ClientError
 from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
@@ -69,18 +69,18 @@ howto_personality = [
     '  MODEL: permition in octal (e.g. 0777 or o+rwx)']
 
 
-def raise_if_connection_error(err):
+def raise_if_connection_error(err, base_url='compute.url'):
     if err.status == 401:
         raiseCLIError(err, 'Authorization failed', details=[
             'Make sure a valid token is provided:',
             '  to check if the token is valid: /astakos authenticate',
             '  to set a token: /config set [.server.]token <token>',
             '  to get current token: /config get [server.]token'])
-    elif err.status in range(-12, 200) + [403]:
+    elif err.status in range(-12, 200) + [403, 500]:
         raiseCLIError(err, details=[
-            'Check if service is up or set to compute.url',
-            '  to get service url: /config get compute.url',
-            '  to set service url: /config set compute.url <URL>']
+            'Check if service is up or set to %s' % base_url,
+            '  to get service url: /config get %s' % base_url,
+            '  to set service url: /config set %s <URL>' % base_url]
         )
 
 
