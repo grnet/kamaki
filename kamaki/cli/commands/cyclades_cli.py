@@ -37,7 +37,7 @@ from kamaki.cli.utils import print_dict, print_list, print_items, bold
 from kamaki.cli.errors import raiseCLIError, CLISyntaxError
 from kamaki.clients.cyclades import CycladesClient, ClientError
 from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
-from kamaki.cli.argument import ProgressBarArgument, DateArgument
+from kamaki.cli.argument import ProgressBarArgument, DateArgument, IntArgument
 from kamaki.cli.commands import _command_init
 
 from base64 import b64encode
@@ -609,10 +609,14 @@ class server_wait(_init_cyclades):
 
 @command(flavor_cmds)
 class flavor_list(_init_cyclades):
-    """List flavors"""
+    """List available hardware flavors"""
 
     arguments = dict(
-        detail=FlagArgument('show detailed output', '-l')
+        detail=FlagArgument('show detailed output', '-l'),
+        limit=IntArgument('limit the number of flavors to list', '-n'),
+        more=FlagArgument(
+            'output results in pages (-n to set items per page, defaul is 10)',
+            '--more')
     )
 
     def main(self):
@@ -621,7 +625,16 @@ class flavor_list(_init_cyclades):
             flavors = self.client.list_flavors(self['detail'])
         except Exception as err:
             raiseCLIError(err)
-        print_items(flavors, with_redundancy=self['detail'])
+        if self['more']:
+            print_items(
+                flavors,
+                with_redundancy=self['detail'],
+                page_size=self['limit'] if self['limit'] else 10)
+        else:
+            print_items(
+                flavors,
+                with_redundancy=self['detail'],
+                page_size=self['limit'])
 
 
 @command(flavor_cmds)
