@@ -31,7 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from sys import stdout
+from sys import stdout, stdin
 from re import compile as regex_compile
 from kamaki.cli.errors import raiseCLIError
 
@@ -194,7 +194,8 @@ def print_list(l,
 def print_items(items,
     title=('id', 'name'),
     with_enumeration=False,
-    with_redundancy=False):
+    with_redundancy=False,
+    page_size=0):
     """print dict or list items in a list, using some values as title
     Objects of next level don't inherit enumeration (default: off) or titles
 
@@ -202,7 +203,17 @@ def print_items(items,
     :param title: (tuple) keys to use their values as title
     :param with_enumeration: (boolean) enumerate items (order id on title)
     :param with_redundancy: (boolean) values in title also appear on body
+    :param page_size: (int) show results in pages of page_size items, enter to
+        continue
     """
+    if not items:
+        return
+    try:
+        page_size = int(page_size) if int(page_size) > 0 else len(items)
+    except:
+        page_size = len(items)
+    num_of_pages = len(items) // page_size
+    num_of_pages += 1 if len(items) % page_size else 0
     for i, item in enumerate(items):
         if with_enumeration:
             stdout.write('%s. ' % (i + 1))
@@ -221,6 +232,14 @@ def print_items(items,
             print_list(item, ident=1)
         else:
             print(' %s' % item)
+        if num_of_pages and len(items) > (i + 1) and 0 == (i + 1) % page_size:
+            num_of_pages -= 1
+            print('(%s listed - %s more - "enter" to continue)' % (
+                i + 1,
+                len(items) - (i + 1)))
+            c = ' '
+            while c != '\n':
+                c = stdin.read(1)
 
 
 def format_size(size):

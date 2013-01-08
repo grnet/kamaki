@@ -215,7 +215,7 @@ class Client(object):
             if not errstr:
                 errstr = ('%s' % type(err))[7:-2]
             raise ClientError('%s\n' % errstr,
-                status=getattr(err, 'status', 0))
+                status=getattr(err, 'status', 0) or getattr(err, 'errno', 0))
 
         self.http_client.reset_headers()
         self.http_client.reset_params()
