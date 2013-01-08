@@ -107,7 +107,7 @@ class server_list(_init_cyclades):
             '--since'),
         limit=IntArgument('limit the number of VMs to list', '-n'),
         more=FlagArgument(
-            'output results in pages (-n to set items per page, defaul is 10)',
+            'output results in pages (-n to set items per page, default 10)',
             '--more')
     )
 
@@ -619,8 +619,8 @@ class flavor_list(_init_cyclades):
         detail=FlagArgument('show detailed output', '-l'),
         limit=IntArgument('limit the number of flavors to list', '-n'),
         more=FlagArgument(
-            'output results in pages (-n to set items per page, defaul is 10)',
-            '--more')
+        'output results in pages (-n to set items per page, default 10)',
+        '--more')
     )
 
     def main(self):
@@ -647,7 +647,8 @@ class flavor_list(_init_cyclades):
 @command(flavor_cmds)
 class flavor_info(_init_cyclades):
     """Detailed information on a hardware flavor
-    To get a list of available flavors and flavor ids, try /flavor list"""
+    To get a list of available flavors and flavor ids, try /flavor list
+    """
 
     def main(self, flavor_id):
         super(self.__class__, self).main()
@@ -668,23 +669,38 @@ class flavor_info(_init_cyclades):
 
 @command(network_cmds)
 class network_info(_init_cyclades):
-    """Get network details"""
+    """Detailed information on a network
+    To get a list of available networks and network ids, try /network list
+    """
 
     @classmethod
-    def print_network(self, net):
+    def _make_result_pretty(self, net):
         if 'attachments' in net:
             att = net['attachments']['values']
             count = len(att)
             net['attachments'] = att if count else None
-        print_dict(net, ident=1)
 
     def main(self, network_id):
         super(self.__class__, self).main()
         try:
-            network = self.client.get_network_details(network_id)
+            network = self.client.get_network_details(int(network_id))
+            self._make_result_pretty(network)
+        except ClientError as ce:
+            raise_if_connection_error(ce)
+            if ce.status == 404:
+                raiseCLIError(ce,
+                    'No network found with id %s' % network_id,
+                    details=['To see a detailed list of available network ids',
+                    ' try /network list'])
+            raiseCLIError(ce)
+        except ValueError as ve:
+            raiseCLIError(ve,
+                'Invalid network_id %s' % network_id,
+                importance=1,
+                details=['Network id must be a possitive integer'])
         except Exception as err:
             raiseCLIError(err)
-        network_info.print_network(network)
+        print_dict(network)
 
 
 @command(network_cmds)
@@ -692,24 +708,39 @@ class network_list(_init_cyclades):
     """List networks"""
 
     arguments = dict(
-        detail=FlagArgument('show detailed output', '-l')
+        detail=FlagArgument('show detailed output', '-l'),
+        limit=IntArgument('limit the number of networks in list', '-n'),
+        more=FlagArgument(
+            'output results in pages (-n to set items per page, default 10)',
+            '--more')
     )
 
-    def print_networks(self, nets):
+    def _make_results_pretty(self, nets):
         for net in nets:
-            netname = bold(net.pop('name'))
-            netid = bold(unicode(net.pop('id')))
-            print('%s (%s)' % (netid, netname))
-            if self['detail']:
-                network_info.print_network(net)
+            network_info._make_result_pretty(net)
 
     def main(self):
         super(self.__class__, self).main()
         try:
             networks = self.client.list_networks(self['detail'])
+            if self['detail']:
+                self._make_results_pretty(networks)
+        except ClientError as ce:
+            raise_if_connection_error(ce)
+            if ce.status == 404:
+                raiseCLIError(ce,
+                    'No networks found on server %s' % self.client.base_url,
+                    details=[
+                    'Please, check if service url is correctly set',
+                    '  to get current service url: /config get compute.url',
+                    '  to set service url: /config set compute.url <URL>'])
+            raiseCLIError(ce)
         except Exception as err:
             raiseCLIError(err)
-        self.print_networks(networks)
+        if self['more']:
+            print_items(networks,
+                page_size=self['limit'] if self['limit'] else 10)
+        print_items(networks)
 
 
 @command(network_cmds)

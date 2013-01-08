@@ -235,7 +235,9 @@ def print_items(items,
             print('(%s listed - %s more - "enter" to continue)' % (
                 i + 1,
                 len(items) - (i + 1)))
-            stdin.read(1)
+            c = ' '
+            while c != '\n':
+                c = stdin.read(1)
 
 
 def format_size(size):
