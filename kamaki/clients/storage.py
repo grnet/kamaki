@@ -159,14 +159,19 @@ class StorageClient(Client):
         r = self.put(path, data=data, success=201)
         r.release()
 
-     def create_object(self, obj):
+    def create_object(self,
+        obj,
+        content_type='application/octet-stream',
+        content_length=0):
         """
         :param obj: (str) directory-object name
+        :param content_type: (str) explicitly set content_type
+        :param content_length: (int) explicitly set content length
         """
         self._assert_container()
         path = path4url(self.account, self.container, obj)
-        self.set_header('Content-Type', 'application/directory')
-        self.set_header('Content-length', '0')
+        self.set_header('Content-Type', content_type)
+        self.set_header('Content-length', str(content_length))
         r = self.put(path, success=201)
         r.release()
 

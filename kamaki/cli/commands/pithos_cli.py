@@ -1256,3 +1256,17 @@ class store_versions(_store_container_command):
             t = localtime(float(vitem[1]))
             vid = bold(unicode(vitem[0]))
             print('\t%s \t(%s)' % (vid, strftime('%d-%m-%Y %H:%M:%S', t)))
+
+
+@command(pithos_cmds)
+class store_touch(_store_container_command):
+    """Create an empty file of type application/octet-stream
+    If object exists, this command will make reset it to 0 length
+    """
+
+    def main(self, container___path, content_type='application/octet-stream'):
+        super(store_touch, self).main(container___path)
+        try:
+            self.client.create_object(self.path, content_type)
+        except ClientError as err:
+            raiseCLIError(err)
