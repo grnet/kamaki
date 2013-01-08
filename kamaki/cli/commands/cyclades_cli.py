@@ -646,14 +646,21 @@ class flavor_list(_init_cyclades):
 
 @command(flavor_cmds)
 class flavor_info(_init_cyclades):
-    """Get flavor details"""
+    """Detailed information on a hardware flavor
+    To get a list of available flavors and flavor ids, try /flavor list"""
 
     def main(self, flavor_id):
         super(self.__class__, self).main()
         try:
             flavor = self.client.get_flavor_details(int(flavor_id))
+        except ClientError as ce:
+            raise_if_connection_error(ce)
+            raiseCLIError(ce)
         except ValueError as err:
-            raiseCLIError(err, 'Server id must be positive integer', 1)
+            raiseCLIError(err,
+                'Invalid flavor id %s' % flavor_id,
+                importance=1,
+                details=['Flavor id must be possitive integer'])
         except Exception as err:
             raiseCLIError(err)
         print_dict(flavor)
