@@ -740,18 +740,21 @@ class network_list(_init_cyclades):
         if self['more']:
             print_items(networks,
                 page_size=self['limit'] if self['limit'] else 10)
-        print_items(networks)
+        elif self['limit']:
+            print_items(networks[:self['limit']])
+        else:
+            print_items(networks)
 
 
 @command(network_cmds)
 class network_create(_init_cyclades):
-    """Create a network"""
+    """Create an (unconnected) network"""
 
     arguments = dict(
-        cidr=ValueArgument('specify cidr', '--with-cidr'),
-        gateway=ValueArgument('specify gateway', '--with-gateway'),
-        dhcp=ValueArgument('specify dhcp', '--with-dhcp'),
-        type=ValueArgument('specify type', '--with-type')
+        cidr=ValueArgument('explicitly set cidr', '--with-cidr'),
+        gateway=ValueArgument('explicitly set gateway', '--with-gateway'),
+        dhcp=ValueArgument('explicitly set dhcp', '--with-dhcp'),
+        type=ValueArgument('explicitly set type', '--with-type')
     )
 
     def main(self, name):
@@ -762,19 +765,39 @@ class network_create(_init_cyclades):
                 gateway=self['gateway'],
                 dhcp=self['dhcp'],
                 type=self['type'])
+        except ClientError as ce:
+            raise_if_connection_error(ce)
+            if ce.status == 413:
+                raiseCLIError(ce,
+                    'Cannot create another network',
+                    details=['Maximum number of networks reached'])
+            raiseCLIError(ce)
         except Exception as err:
             raiseCLIError(err)
-        print_dict(reply)
+        print_items([reply])
 
 
 @command(network_cmds)
 class network_rename(_init_cyclades):
-    """Update network name"""
+    """Set the name of a network"""
 
     def main(self, network_id, new_name):
         super(self.__class__, self).main()
         try:
-            self.client.update_network_name(network_id, new_name)
+            self.client.update_network_name(int(network_id), new_name)
+        except ClientError as ce:
+            raise_if_connection_error(ce)
+            if ce.status == 404:
+                raiseCLIError(ce,
+                    'No network found with id %s' % network_id,
+                    details=['To see a detailed list of available network ids',
+                    ' try /network list'])
+            raiseCLIError(ce)
+        except ValueError as ve:
+            raiseCLIError(ve,
+                'Invalid network_id %s' % network_id,
+                importance=1,
+                details=['Network id must be a possitive integer'])
         except Exception as err:
             raiseCLIError(err)
 
@@ -786,7 +809,28 @@ class network_delete(_init_cyclades):
     def main(self, network_id):
         super(self.__class__, self).main()
         try:
-            self.client.delete_network(network_id)
+            self.client.delete_network(int(network_id))
+        except ClientError as ce:
+            raise_if_connection_error(ce)
+            if ce.status == 421:
+                raiseCLIError(ce,
+                    'Network with id %s is in use' % network_id,
+                    details=[
+                        'Disconnect all nics/VMs of this network first',
+                        '  to get nics: /network info %s' % network_id,
+                        '    (under "attachments" section)',
+                        '  to disconnect: /network disconnect <nic id>'])
+            elif ce.status == 404:
+                raiseCLIError(ce,
+                    'No network found with id %s' % network_id,
+                    details=['To see a detailed list of available network ids',
+                    ' try /network list'])
+            raiseCLIError(ce)
+        except ValueError as ve:
+            raiseCLIError(ve,
+                'Invalid network_id %s' % network_id,
+                importance=1,
+                details=['Network id must be a possitive integer'])
         except Exception as err:
             raiseCLIError(err)
 
@@ -798,22 +842,67 @@ class network_connect(_init_cyclades):
     def main(self, server_id, network_id):
         super(self.__class__, self).main()
         try:
+            network_id = int(network_id)
+            server_id = int(server_id)
             self.client.connect_server(server_id, network_id)
+        except ClientError as ce:
+            raise_if_connection_error(ce)
+            if ce.status == 404:
+                (thename, theid) = ('server', server_id)\
+                    if 'server' in ('%s' % ce).lower()\
+                    else ('network', network_id)
+                raiseCLIError(ce,
+                    'No %s found with id %s' % (thename, theid),
+                    details=[
+                    'To see a detailed list of available %s ids' % thename,
+                    ' try /%s list' % thename])
+            raiseCLIError(ce)
+        except ValueError as ve:
+            (thename, theid) = ('server', server_id)\
+            if isinstance(network_id, int) else ('network', network_id)
+            raiseCLIError(ve,
+                'Invalid %s id %s' % (thename, theid),
+                importance=1,
+                details=['The %s id must be a possitive integer' % thename,
+                '  to get available %s ids: /%s list' % (thename, thename)])
         except Exception as err:
             raiseCLIError(err)
 
 
 @command(network_cmds)
 class network_disconnect(_init_cyclades):
-    """Disconnect a nic that connects a server to a network"""
+    """Disconnect a nic that connects a server to a network
+    Nic ids are listed as "attachments" in detailed network information
+      To get detailed network information: /network info <network id>
+    """
 
     def main(self, nic_id):
         super(self.__class__, self).main()
         try:
             server_id = nic_id.split('-')[1]
-            self.client.disconnect_server(server_id, nic_id)
+            if not self.client.disconnect_server(server_id, nic_id):
+                raise ClientError('Network Interface not found', status=404)
+        except ClientError as ce:
+            raise_if_connection_error(ce)
+            if ce.status == 404:
+                if 'server' in ('%s' % ce).lower():
+                    raiseCLIError(ce,
+                        'No server found with id %s' % (server_id),
+                        details=[
+                        'To see a detailed list of available server ids',
+                        ' try /server list'])
+                raiseCLIError(ce,
+                    'No nic %s in server with id %s' % (nic_id, server_id),
+                    details=[
+                    'To see a list of nic ids for server %s try:' % server_id,
+                    '  /server addr %s' % server_id])
+            raiseCLIError(ce)
         except IndexError as err:
-            raiseCLIError(err, 'Incorrect nic format', importance=1,
-                details='nid_id format: nic-<server_id>-<nic_index>')
+            raiseCLIError(err,
+                'Nic %s is of incorrect format' % nic_id,
+                importance=1,
+                details=['nid_id format: nic-<server_id>-<nic_index>',
+                    '  to get nic ids of a network: /network info <net_id>',
+                    '  they are listed under the "attachments" section'])
         except Exception as err:
             raiseCLIError(err)

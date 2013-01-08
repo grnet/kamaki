@@ -224,10 +224,13 @@ class CycladesClient(CycladesClientApi):
         server_nets = self.list_server_nics(server_id)
         nets = [(net['id'], net['network_id']) for net in server_nets\
             if nic_id == net['id']]
+        num_of_disconnections = 0
         for (nic_id, network_id) in nets:
             req = {'remove': {'attachment': unicode(nic_id)}}
             r = self.networks_post(network_id, 'action', json_data=req)
             r.release()
+            num_of_disconnections += 1
+        return num_of_disconnections
 
     def disconnect_network_nics(self, netid):
         """

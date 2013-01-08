@@ -206,6 +206,8 @@ def print_items(items,
     :param page_size: (int) show results in pages of page_size items, enter to
         continue
     """
+    if not items:
+        return
     try:
         page_size = int(page_size) if int(page_size) > 0 else len(items)
     except:
