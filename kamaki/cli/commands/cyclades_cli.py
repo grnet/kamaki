@@ -104,37 +104,33 @@ class server_list(_init_cyclades):
         detail=FlagArgument('show detailed output', '-l'),
         since=DateArgument(
             'show only items since date (\' d/m/Y H:M:S \')',
-            '--since')
+            '--since'),
+        limit=IntArgument('limit the number of VMs to list', '-n'),
+        more=FlagArgument(
+            'output results in pages (-n to set items per page, defaul is 10)',
+            '--more')
     )
 
-    def _info_print(self, server):
-        addr_dict = {}
-        if 'attachments' in server:
-            for addr in server['attachments']['values']:
-                ips = addr.pop('values', [])
-                for ip in ips:
-                    addr['IPv%s' % ip['version']] = ip['addr']
-                if 'firewallProfile' in addr:
-                    addr['firewall'] = addr.pop('firewallProfile')
-                addr_dict[addr.pop('id')] = addr
-            server['attachments'] = addr_dict if addr_dict is not {} else None
-        if 'metadata' in server:
-            server['metadata'] = server['metadata']['values']
-        print_dict(server, ident=1)
-
-    def _print(self, servers):
+    def _make_results_pretty(self, servers):
         for server in servers:
-            sname = server.pop('name')
-            sid = server.pop('id')
-            print('%s (%s)' % (sid, bold(sname)))
-            if self['detail']:
-                self._info_print(server)
+            addr_dict = {}
+            if 'attachments' in server:
+                for addr in server['attachments']['values']:
+                    ips = addr.pop('values', [])
+                    for ip in ips:
+                        addr['IPv%s' % ip['version']] = ip['addr']
+                    if 'firewallProfile' in addr:
+                        addr['firewall'] = addr.pop('firewallProfile')
+                    addr_dict[addr.pop('id')] = addr
+                server['attachments'] = addr_dict if addr_dict else None
+            if 'metadata' in server:
+                server['metadata'] = server['metadata']['values']
 
     def main(self):
         super(self.__class__, self).main()
         try:
             servers = self.client.list_servers(self['detail'], self['since'])
-            self._print(servers)
+            self._make_results_pretty(servers)
         except ClientError as ce:
             if ce.status == 400 and 'changes-since' in ('%s' % ce):
                 raiseCLIError(None,
@@ -144,6 +140,13 @@ class server_list(_init_cyclades):
             raiseCLIError(ce)
         except Exception as err:
             raiseCLIError(err)
+        if self['more']:
+            print_items(
+                servers,
+                page_size=self['limit'] if self['limit'] else 10)
+        else:
+            print_items(
+                servers[:self['limit'] if self['limit'] else len(servers)])
 
 
 @command(server_cmds)
