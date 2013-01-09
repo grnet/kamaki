@@ -635,12 +635,21 @@ class store_append(_store_container_command):
                 upload_cb = progress_bar.get_generator('Appending blocks')
             except Exception:
                 upload_cb = None
-            self.client.append_object(object=self.path,
-                source_file=f,
-                upload_cb=upload_cb)
+            self.client.append_object(self.path, f, upload_cb)
         except ClientError as err:
             progress_bar.finish()
+            if err.status == 404:
+                if 'container' in ('%s' % err).lower():
+                    raiseCLIError(
+                        err,
+                        'No container %s in account %s'\
+                        % (self.container, self.account),
+                        details=self.generic_err_details)
+            raise_connection_errors(err)
             raiseCLIError(err)
+        except Exception as e:
+            progress_bar.finish()
+            raiseCLIError(e)
         finally:
             progress_bar.finish()
 

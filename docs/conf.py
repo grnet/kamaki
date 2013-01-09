@@ -19,7 +19,6 @@
 from sys import path, stderr
 import os
 
-path.append('/home/saxtouri/src/objpool')
 try:
     from objpool import http
     http
