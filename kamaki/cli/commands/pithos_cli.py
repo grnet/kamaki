@@ -61,6 +61,22 @@ about_directories = [
 
 # Argument functionality
 
+def raise_connection_errors(e):
+    if e.status in range(200) + [403]:
+        raiseCLIError(e, details=[
+            'Please check the service url and the authentication information',
+            ' ',
+            '  to get the service url: /config get store.url',
+            '  to set the service url: /config set store.url <url>',
+            ' ',
+            '  to get user the account: /config get store.account',
+            '           or              /config get account',
+            '  to set the user account: /config set store.account <account>',
+            ' ',
+            '  to get authentication token: /config get token',
+            '  to set authentication token: /config set token <token>'
+            ])
+
 
 class DelimiterArgument(ValueArgument):
     """
@@ -381,6 +397,7 @@ class store_list(_store_container_command):
                         'No object %s in %s\'s container %s'\
                         % (self.path, self.account, self.container),
                         details=self.generic_err_details)
+            raise_connection_errors(err)
             raiseCLIError(err)
         except Exception as e:
             raiseCLIError(e)
@@ -406,6 +423,7 @@ class store_mkdir(_store_container_command):
                         'No container %s in account %s'\
                         % (self.container, self.account),
                         details=self.generic_err_details)
+            raise_connection_errors(err)
             raiseCLIError(err)
         except Exception as err:
             raiseCLIError(err)
@@ -436,6 +454,7 @@ class store_touch(_store_container_command):
                         'No container %s in account %s'\
                         % (self.container, self.account),
                         details=self.generic_err_details)
+            raise_connection_errors(err)
             raiseCLIError(err)
         except Exception as err:
             raiseCLIError(err)
@@ -469,6 +488,7 @@ class store_create(_store_account_command):
                         'No container %s in account %s'\
                         % (self.container, self.account),
                         details=self.generic_err_details)
+            raise_connection_errors(err)
             raiseCLIError(err)
         except Exception as e:
             raiseCLIError(e)
@@ -496,7 +516,7 @@ class store_copy(_store_container_command):
             '--content-type'),
         recursive=FlagArgument(
             'mass copy with delimiter /',
-            ('-r', '--recursive'))
+            ('-r', '--recursive')),
     )
 
     def __init__(self, arguments={}):
@@ -522,7 +542,17 @@ class store_copy(_store_container_command):
                 content_type=self['content_type'],
                 delimiter=self['delimiter'])
         except ClientError as err:
+            if err.status == 404:
+                if 'container' in ('%s' % err).lower():
+                    raiseCLIError(
+                        err,
+                        'No container %s in account %s'\
+                        % (self.container, self.account),
+                        details=self.generic_err_details)
+            raise_connection_errors(err)
             raiseCLIError(err)
+        except Exception as e:
+            raiseCLIError(e)
 
 
 @command(pithos_cmds)
