@@ -182,6 +182,7 @@ store commands
 * setquota  Set new quota (in KB) for account [or container]
 * setversioning Set new versioning (auto, none) for account [or container]
 * sharers   List the accounts that share objects with default account
+* touch     Create an empty file
 * truncate  Truncate remote file up to a size
 * unpublish Unpublish an object
 * upload    Upload a file

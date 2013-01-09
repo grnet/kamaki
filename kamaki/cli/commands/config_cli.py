@@ -40,13 +40,13 @@ config_cmds = CommandTree('config', 'Configuration commands')
 _commands = [config_cmds]
 
 about_options = '\nAbout options:\
-    \n  syntax: [group.]option\
-    \n  example: store.account\
-    \n  special case: <option> is equivalent to global.<option>\
-    \n  configuration file syntax:\
-    \n    [group]\
-    \n    option=value\
-    \n    (more options can be set per group)'
+    \n. syntax: [group.]option\
+    \n. example: store.account\
+    \n. special case: <option> is equivalent to global.<option>\
+    \n. configuration file syntax:\
+    \n.   [group]\
+    \n.   option=value\
+    \n.   (more options can be set per group)'
 
 
 @command(config_cmds)

@@ -191,6 +191,27 @@ def print_list(l,
             print('%s%s' % (prefix, item))
 
 
+def page_hold(index, limit, maxlen):
+    """Check if there are results to show, and hold the page when needed
+    :param index: (int) > 0
+    :param limit: (int) 0 < limit <= max, page hold if limit mod index == 0
+    :param maxlen: (int) Don't hold if index reaches maxlen
+
+    :returns: True if there are more to show, False if all results are shown
+    """
+    if index >= limit and index % limit == 0:
+        if index >= maxlen:
+            return False
+        else:
+            print('(%s listed - %s more - "enter" to continue)' % (
+                index,
+                maxlen - index))
+            c = ' '
+            while c != '\n':
+                c = stdin.read(1)
+    return True
+
+
 def print_items(items,
     title=('id', 'name'),
     with_enumeration=False,
@@ -232,14 +253,7 @@ def print_items(items,
             print_list(item, ident=1)
         else:
             print(' %s' % item)
-        if num_of_pages and len(items) > (i + 1) and 0 == (i + 1) % page_size:
-            num_of_pages -= 1
-            print('(%s listed - %s more - "enter" to continue)' % (
-                i + 1,
-                len(items) - (i + 1)))
-            c = ' '
-            while c != '\n':
-                c = stdin.read(1)
+        page_hold(i + 1, page_size, len(items))
 
 
 def format_size(size):

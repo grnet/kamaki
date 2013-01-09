@@ -34,14 +34,14 @@
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import raiseCLIError, CLISyntaxError
-from kamaki.cli.utils import format_size, print_dict, pretty_keys
+from kamaki.cli.utils import format_size, print_dict, pretty_keys, page_hold
 from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
 from kamaki.cli.argument import KeyValueArgument, DateArgument
 from kamaki.cli.argument import ProgressBarArgument
 from kamaki.cli.commands import _command_init
 from kamaki.clients.pithos import PithosClient, ClientError
 from kamaki.cli.utils import bold
-from sys import stdout
+from sys import stdout, stdin
 from time import localtime, strftime
 from logging import getLogger
 
@@ -77,11 +77,11 @@ class DelimiterArgument(ValueArgument):
 
 class SharingArgument(ValueArgument):
     """Set sharing (read and/or write) groups
-
+    .
     :value type: "read=term1,term2,... write=term1,term2,..."
-
+    .
     :value returns: {'read':['term1', 'term2', ...],
-        'write':['term1', 'term2', ...]}
+    .   'write':['term1', 'term2', ...]}
     """
 
     @property
@@ -117,9 +117,8 @@ class SharingArgument(ValueArgument):
 
 class RangeArgument(ValueArgument):
     """
-    :value type: string of the form <start>-<end>
-        where <start> and <end> are integers
-
+    :value type: string of the form <start>-<end> where <start> and <end> are
+        integers
     :value returns: the input string, after type checking <start> and <end>
     """
 
@@ -162,7 +161,7 @@ class _store_account_command(_pithos_init):
 
     def __init__(self, arguments={}):
         super(_store_account_command, self).__init__(arguments)
-        self['account']=ValueArgument(
+        self['account'] = ValueArgument(
             'Set user account (not permanent)',
             '--account')
 
@@ -175,17 +174,17 @@ class _store_account_command(_pithos_init):
 class _store_container_command(_store_account_command):
     """Base class for container level storage commands"""
 
-    generic_err_details = ['Choose one of the following options:',
+    generic_err_details = ['To specify a container:',
     '  1. Set store.container variable (permanent)',
     '     /config set store.container <container>',
     '  2. --container=<container> (temporary, overrides 1)',
-    '  3. Use <container>:<path> (temporary, overrides all)']
+    '  3. Use the container:path format (temporary, overrides all)']
     container = None
     path = None
 
     def __init__(self, arguments={}):
         super(_store_container_command, self).__init__(arguments)
-        self['container']=ValueArgument(
+        self['container'] = ValueArgument(
             'Set container to work with (temporary)',
             '--container')
 
@@ -250,15 +249,14 @@ class store_list(_store_container_command):
     1 no parameters : containers in set account
     2. one parameter (container) or --container : contents of container
     3. <container>:<prefix> or --container=<container> <prefix>: objects in
-        container starting with prefix
+    .   container starting with prefix
     """
 
     arguments = dict(
         detail=FlagArgument('show detailed output', '-l'),
-        show_size=ValueArgument('print output in chunks of size N', '-N'),
-        limit=IntArgument('show limited output', '-n'),
+        limit=IntArgument('limit the number of listed items', '-n'),
         marker=ValueArgument('show output greater that marker', '--marker'),
-        prefix=ValueArgument('show output staritng with prefix', '--prefix'),
+        prefix=ValueArgument('show output starting with prefix', '--prefix'),
         delimiter=ValueArgument('show output up to delimiter', '--delimiter'),
         path=ValueArgument(
             'show output starting with prefix up to /',
@@ -279,14 +277,13 @@ class store_list(_store_container_command):
             '--format'),
         shared=FlagArgument('show only shared', '--shared'),
         public=FlagArgument('show only public', '--public'),
+        more=FlagArgument(
+            'output results in pages (-n to set items per page, default 10)',
+            '--more')
     )
 
     def print_objects(self, object_list):
-        import sys
-        try:
-            limit = int(self['show_size'])
-        except (AttributeError, TypeError):
-            limit = len(object_list) + 1
+        limit = int(self['limit']) if self['limit'] > 0 else len(object_list)
         for index, obj in enumerate(object_list):
             if 'content_type' not in obj:
                 continue
@@ -309,17 +306,12 @@ class store_list(_store_container_command):
                 oname = '%s%s. %6s %s' % (empty_space, index, size, oname)
                 oname += '/' if isDir else ''
                 print(oname)
-            if limit <= index < len(object_list) and index % limit == 0:
-                print('(press "enter" to continue)')
-                sys.stdin.read(1)
+            if self['more']:
+                page_hold(index, limit, len(object_list))
 
     def print_containers(self, container_list):
-        import sys
-        try:
-            limit = self['show_size']
-            limit = int(limit)
-        except (AttributeError, TypeError):
-            limit = len(container_list) + 1
+        limit = int(self['limit']) if self['limit'] > 0\
+            else len(container_list)
         for index, container in enumerate(container_list):
             if 'bytes' in container:
                 size = format_size(container['bytes'])
@@ -337,16 +329,15 @@ class store_list(_store_container_command):
                     % (cname, size, container['count']))
                 else:
                     print(cname)
-            if limit <= index < len(container_list) and index % limit == 0:
-                print('(press "enter" to continue)')
-                sys.stdin.read(1)
+            if self['more']:
+                page_hold(index + 1, limit, len(container_list))
 
     def main(self, container____path__=None):
         super(self.__class__, self).main(container____path__)
         try:
             if self.container is None:
                 r = self.client.account_get(
-                    limit=self['limit'],
+                    limit=False if self['more'] else self['limit'],
                     marker=self['marker'],
                     if_modified_since=self['if_modified_since'],
                     if_unmodified_since=self['if_unmodified_since'],
@@ -357,7 +348,7 @@ class store_list(_store_container_command):
                 prefix = self.path if self.path\
                 else self['prefix']
                 r = self.client.container_get(
-                    limit=self['limit'],
+                    limit=False if self['more'] else self['limit'],
                     marker=self['marker'],
                     prefix=prefix,
                     delimiter=self['delimiter'],
@@ -370,19 +361,21 @@ class store_list(_store_container_command):
                 self.print_objects(r.json)
         except ClientError as err:
             if err.status == 404:
-                if 'Container does not exist' in ('%s' % err):
+                if 'container' in ('%s' % err).lower():
                     raiseCLIError(
                         err,
                         'No container %s in account %s'\
                         % (self.container, self.account),
                         details=self.generic_err_details)
-                elif 'Object does not exist' in ('%s' % err):
+                elif 'object' in ('%s' % err).lower():
                     raiseCLIError(
                         err,
                         'No object %s in %s\'s container %s'\
                         % (self.path, self.account, self.container),
                         details=self.generic_err_details)
             raiseCLIError(err)
+        except Exception as e:
+            raiseCLIError(e)
 
 
 @command(pithos_cmds)
@@ -430,11 +423,11 @@ class store_copy(_store_container_command):
     """Copy an object from container to (another) container
     Use options:
     1. <container1>:<path1> <container2>[:path2] : from container1 to 2, if
-        path2 is not given, target path will be container2:path1
+    path2 is not given, target path will be container2:path1
     2. <container>:<path1> <container>:<path2> : make a copy in the same
-        container
+    container
     3. Use --container= instead of <container1>, but only for the first
-        parameter
+    parameter
     """
 
     arguments = dict(
@@ -481,10 +474,10 @@ class store_move(_store_container_command):
     """Copy an object
     Use options:
     1. <container1>:<path1> <container2>[:path2] : from container1 to 2, if
-        path2 is not given, target path will be container2:path1
+    path2 is not given, target path will be container2:path1
     2. <container>:<path1> <container>:<path2> : rename
     3. Use --container= instead of <container1>, but only for the first
-        parameter
+    parameter
     """
 
     arguments = dict(
@@ -571,7 +564,7 @@ class store_overwrite(_store_container_command):
     arguments = dict(
         progress_bar=ProgressBarArgument(
             'do not show progress bar',
-            '--no-progress-bar', 
+            '--no-progress-bar',
             default=False)
     )
 
@@ -727,7 +720,6 @@ class store_cat(_store_container_command):
             '--object-version')
     )
 
-
     def main(self, container___path):
         super(self.__class__,
             self).main(container___path, path_is_optional=False)
@@ -866,7 +858,7 @@ class store_delete(_store_container_command):
     """Delete a container [or an object]"""
 
     arguments = dict(
-        until=DateArgument( 'remove history until that date', '--until'),
+        until=DateArgument('remove history until that date', '--until'),
         recursive=FlagArgument(
             'empty dir or container and delete (if dir)',
             ('-r', '--recursive'))
@@ -874,7 +866,7 @@ class store_delete(_store_container_command):
 
     def __init__(self, arguments={}):
         super(self.__class__, self).__init__(arguments)
-        self['delimiter']=DelimiterArgument(
+        self['delimiter'] = DelimiterArgument(
             self,
             parsed_name='--delimiter',
             help='delete objects prefixed with <object><delimiter>')
@@ -900,8 +892,8 @@ class store_delete(_store_container_command):
 class store_purge(_store_container_command):
     """Purge a container
     To completely erase a container:
-    /store delete -r <container>
-    /store purge <container
+    .   /store delete -r <container>
+    .   /store purge <container
     """
 
     def main(self, container):
@@ -1260,13 +1252,20 @@ class store_versions(_store_container_command):
 
 @command(pithos_cmds)
 class store_touch(_store_container_command):
-    """Create an empty file of type application/octet-stream
-    If object exists, this command will make reset it to 0 length
+    """Create an empty file
+    If object exists, this command will reset it to 0 length
     """
 
-    def main(self, container___path, content_type='application/octet-stream'):
+    arguments = dict(
+        content_type=ValueArgument(
+            'Set content type (default: application/octet-stream)',
+            '--content-type',
+            default='application/octet-stream')
+    )
+
+    def main(self, container___path):
         super(store_touch, self).main(container___path)
         try:
-            self.client.create_object(self.path, content_type)
+            self.client.create_object(self.path, self['content_type'])
         except ClientError as err:
             raiseCLIError(err)
