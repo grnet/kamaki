@@ -157,7 +157,7 @@ store commands
 * append    Append local file to (existing) remote object
 * cat       Print a file to console
 * copy      Copy an object
-* create    Create a container or a directory object
+* create    Create a container
 * delete    Delete a container [or an object]
 * delgroup  Delete a user group on an account
 * delmeta   Delete an existing metadatum of account [, container [or object]]

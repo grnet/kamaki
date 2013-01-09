@@ -41,7 +41,7 @@ from kamaki.cli.argument import ProgressBarArgument
 from kamaki.cli.commands import _command_init
 from kamaki.clients.pithos import PithosClient, ClientError
 from kamaki.cli.utils import bold
-from sys import stdout, stdin
+from sys import stdout
 from time import localtime, strftime
 from logging import getLogger
 
@@ -49,6 +49,14 @@ kloger = getLogger('kamaki')
 
 pithos_cmds = CommandTree('store', 'Pithos+ storage commands')
 _commands = [pithos_cmds]
+
+
+about_directories = [
+    'Kamaki hanldes directories the same way as OOS Storage and Pithos+:',
+    'A directory is an object with type "application/directory"',
+    'An object with path dir/name can exist even if dir does not exist or',
+    'even if dir is a non directory object. Users can modify dir without',
+    'affecting the dir/name object in any way.']
 
 
 # Argument functionality
@@ -380,7 +388,10 @@ class store_list(_store_container_command):
 
 @command(pithos_cmds)
 class store_mkdir(_store_container_command):
-    """Create a directory"""
+    """Create a directory
+    """
+
+    __doc__ += '\n. '.join(about_directories)
 
     def main(self, container___directory):
         super(self.__class__,
@@ -388,12 +399,51 @@ class store_mkdir(_store_container_command):
         try:
             self.client.create_directory(self.path)
         except ClientError as err:
+            if err.status == 404:
+                if 'container' in ('%s' % err).lower():
+                    raiseCLIError(
+                        err,
+                        'No container %s in account %s'\
+                        % (self.container, self.account),
+                        details=self.generic_err_details)
+            raiseCLIError(err)
+        except Exception as err:
             raiseCLIError(err)
 
 
 @command(pithos_cmds)
-class store_create(_store_container_command):
-    """Create a container or a directory object"""
+class store_touch(_store_container_command):
+    """Create an empty object (file)
+    If object exists, this command will reset it to 0 length
+    """
+
+    arguments = dict(
+        content_type=ValueArgument(
+            'Set content type (default: application/octet-stream)',
+            '--content-type',
+            default='application/octet-stream')
+    )
+
+    def main(self, container___path):
+        super(store_touch, self).main(container___path)
+        try:
+            self.client.create_object(self.path, self['content_type'])
+        except ClientError as err:
+            if err.status == 404:
+                if 'container' in ('%s' % err).lower():
+                    raiseCLIError(
+                        err,
+                        'No container %s in account %s'\
+                        % (self.container, self.account),
+                        details=self.generic_err_details)
+            raiseCLIError(err)
+        except Exception as err:
+            raiseCLIError(err)
+
+
+@command(pithos_cmds)
+class store_create(_store_account_command):
+    """Create a container"""
 
     arguments = dict(
         versioning=ValueArgument(
@@ -405,17 +455,23 @@ class store_create(_store_container_command):
             '--meta')
     )
 
-    def main(self, container____directory__):
-        super(self.__class__, self).main(container____directory__)
+    def main(self, container):
+        super(self.__class__, self).main(container)
         try:
-            if self.path is None:
-                self.client.container_put(quota=self['quota'],
-                    versioning=self['versioning'],
-                    metadata=self['meta'])
-            else:
-                self.client.create_directory(self.path)
+            self.client.container_put(quota=self['quota'],
+                versioning=self['versioning'],
+                metadata=self['meta'])
         except ClientError as err:
+            if err.status == 404:
+                if 'container' in ('%s' % err).lower():
+                    raiseCLIError(
+                        err,
+                        'No container %s in account %s'\
+                        % (self.container, self.account),
+                        details=self.generic_err_details)
             raiseCLIError(err)
+        except Exception as e:
+            raiseCLIError(e)
 
 
 @command(pithos_cmds)
@@ -445,7 +501,7 @@ class store_copy(_store_container_command):
 
     def __init__(self, arguments={}):
         super(self.__class__, self).__init__(arguments)
-        self['delimiter']=DelimiterArgument(
+        self['delimiter'] = DelimiterArgument(
             self,
             parsed_name='--delimiter',
             help=u'copy objects prefixed as src_object + delimiter')
@@ -1250,22 +1306,3 @@ class store_versions(_store_container_command):
             print('\t%s \t(%s)' % (vid, strftime('%d-%m-%Y %H:%M:%S', t)))
 
 
-@command(pithos_cmds)
-class store_touch(_store_container_command):
-    """Create an empty file
-    If object exists, this command will reset it to 0 length
-    """
-
-    arguments = dict(
-        content_type=ValueArgument(
-            'Set content type (default: application/octet-stream)',
-            '--content-type',
-            default='application/octet-stream')
-    )
-
-    def main(self, container___path):
-        super(store_touch, self).main(container___path)
-        try:
-            self.client.create_object(self.path, self['content_type'])
-        except ClientError as err:
-            raiseCLIError(err)
