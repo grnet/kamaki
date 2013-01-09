@@ -44,6 +44,7 @@ from kamaki.cli.utils import bold
 from sys import stdout
 from time import localtime, strftime
 from logging import getLogger
+from os import path
 
 kloger = getLogger('kamaki')
 
@@ -423,6 +424,12 @@ class store_mkdir(_store_container_command):
                         'No container %s in account %s'\
                         % (self.container, self.account),
                         details=self.generic_err_details)
+                elif 'object' in ('%s' % err).lower():
+                    raiseCLIError(
+                        err,
+                        'No object %s in container %s'\
+                        % (self.path, self.container),
+                        details=self.generic_err_details)
             raise_connection_errors(err)
             raiseCLIError(err)
         except Exception as err:
@@ -453,6 +460,12 @@ class store_touch(_store_container_command):
                         err,
                         'No container %s in account %s'\
                         % (self.container, self.account),
+                        details=self.generic_err_details)
+                elif 'object' in ('%s' % err).lower():
+                    raiseCLIError(
+                        err,
+                        'No object %s in container %s'\
+                        % (self.path, self.container),
                         details=self.generic_err_details)
             raise_connection_errors(err)
             raiseCLIError(err)
@@ -487,6 +500,12 @@ class store_create(_store_account_command):
                         err,
                         'No container %s in account %s'\
                         % (self.container, self.account),
+                        details=self.generic_err_details)
+                elif 'object' in ('%s' % err).lower():
+                    raiseCLIError(
+                        err,
+                        'No object %s in container %s'\
+                        % (self.path, self.container),
                         details=self.generic_err_details)
             raise_connection_errors(err)
             raiseCLIError(err)
@@ -551,6 +570,12 @@ class store_copy(_store_container_command):
                         'No container %s in account %s'\
                         % (cont_msg, self.account),
                         details=self.generic_err_details)
+                elif 'object' in ('%s' % err).lower():
+                    raiseCLIError(
+                        err,
+                        'No object %s in container %s'\
+                        % (self.path, self.container),
+                        details=self.generic_err_details)
             raise_connection_errors(err)
             raiseCLIError(err)
         except Exception as e:
@@ -608,6 +633,12 @@ class store_move(_store_container_command):
                         'No container %s in account %s'\
                         % (cont_msg, self.account),
                         details=self.generic_err_details)
+                elif 'object' in ('%s' % err).lower():
+                    raiseCLIError(
+                        err,
+                        'No object %s in container %s'\
+                        % (self.path, self.container),
+                        details=self.generic_err_details)
             raise_connection_errors(err)
             raiseCLIError(err)
         except Exception as e:
@@ -645,6 +676,12 @@ class store_append(_store_container_command):
                         'No container %s in account %s'\
                         % (self.container, self.account),
                         details=self.generic_err_details)
+                elif 'object' in ('%s' % err).lower():
+                    raiseCLIError(
+                        err,
+                        'No object %s in container %s'\
+                        % (self.path, self.container),
+                        details=self.generic_err_details)
             raise_connection_errors(err)
             raiseCLIError(err)
         except Exception as e:
@@ -659,12 +696,34 @@ class store_truncate(_store_container_command):
     """Truncate remote file up to a size"""
 
     def main(self, container___path, size=0):
-        super(self.__class__,
-            self).main(container___path, path_is_optional=False)
+        super(self.__class__, self).main(container___path)
         try:
             self.client.truncate_object(self.path, size)
         except ClientError as err:
+            if err.status == 404:
+                if 'container' in ('%s' % err).lower():
+                    raiseCLIError(
+                        err,
+                        'No container %s in account %s'\
+                        % (self.container, self.account),
+                        details=self.generic_err_details)
+                elif 'object' in ('%s' % err).lower():
+                    raiseCLIError(
+                        err,
+                        'No object %s in container %s'\
+                        % (self.path, self.container),
+                        details=self.generic_err_details)
+            if err.status == 400 and\
+                'object length is smaller than range length'\
+                in ('%s' % err).lower():
+                raiseCLIError(err, 'Object %s:%s <= %sb' % (
+                    self.container,
+                    self.path,
+                    size))
+            raise_connection_errors(err)
             raiseCLIError(err)
+        except Exception as e:
+            raiseCLIError(e)
 
 
 @command(pithos_cmds)
@@ -680,29 +739,54 @@ class store_overwrite(_store_container_command):
 
     def main(self, local_path, container___path, start, end):
         super(self.__class__,
-            self).main(container___path, path_is_optional=False)
+            self).main(container___path, path_is_optional=True)
         try:
-            f = open(local_path, 'rb')
             progress_bar = self.arguments['progress_bar']
+            f = open(local_path, 'rb')
             try:
                 upload_cb = progress_bar.get_generator('Overwritting blocks')
             except Exception:
                 upload_cb = None
-            self.client.overwrite_object(object=self.path,
+            self.path = self.path if self.path else path.basename(local_path)
+            self.client.overwrite_object(
+                obj=self.path,
                 start=start,
                 end=end,
                 source_file=f,
                 upload_cb=upload_cb)
         except ClientError as err:
             progress_bar.finish()
+            if err.status == 404:
+                if 'container' in ('%s' % err).lower():
+                    raiseCLIError(
+                        err,
+                        'No container %s in account %s'\
+                        % (self.container, self.account),
+                        details=self.generic_err_details)
+                elif 'object' in ('%s' % err).lower():
+                    raiseCLIError(
+                        err,
+                        'No object %s in container %s'\
+                        % (self.path, self.container),
+                        details=self.generic_err_details)
+            raise_connection_errors(err)
             raiseCLIError(err)
+        except Exception as e:
+            progress_bar.finish()
+            raiseCLIError(e)
         finally:
             progress_bar.finish()
 
 
 @command(pithos_cmds)
 class store_manifest(_store_container_command):
-    """Create a remote file with uploaded parts by manifestation"""
+    """Create a remote file of uploaded parts by manifestation
+    How to use manifest:
+    - upload parts of the file on a with names X.1, X.2, ...
+    - /store manifest X
+    An empty object X will behave as the result file of the
+    union of X.1, X.2, ...
+    """
 
     arguments = dict(
         etag=ValueArgument('check written data', '--etag'),
@@ -712,7 +796,10 @@ class store_manifest(_store_container_command):
         content_disposition=ValueArgument(
             'the presentation style of the object',
             '--content-disposition'),
-        content_type=ValueArgument('specify content type', '--content-type'),
+        content_type=ValueArgument(
+            'specify content type',
+            '--content-type',
+            default='application/octet-stream'),
         sharing=SharingArgument(
             'define object sharing policy \n' +\
             '    ( "read=user1,grp1,user2,... write=user1,grp2,..." )',
@@ -732,7 +819,23 @@ class store_manifest(_store_container_command):
                 sharing=self['sharing'],
                 public=self['public'])
         except ClientError as err:
+            if err.status == 404:
+                if 'container' in ('%s' % err).lower():
+                    raiseCLIError(
+                        err,
+                        'No container %s in account %s'\
+                        % (self.container, self.account),
+                        details=self.generic_err_details)
+                elif 'object' in ('%s' % err).lower():
+                    raiseCLIError(
+                        err,
+                        'No object %s in container %s'\
+                        % (self.path, self.container),
+                        details=self.generic_err_details)
+            raise_connection_errors(err)
             raiseCLIError(err)
+        except Exception as e:
+            raiseCLIError(e)
 
 
 @command(pithos_cmds)
