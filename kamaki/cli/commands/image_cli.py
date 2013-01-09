@@ -34,7 +34,7 @@
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import raiseCLIError
-from kamaki.cli.utils import print_dict, print_items, bold
+from kamaki.cli.utils import print_dict, print_items
 from kamaki.clients.image import ImageClient, ClientError
 from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
 from kamaki.cli.argument import IntArgument
@@ -47,6 +47,9 @@ image_cmds = CommandTree(
     'image',
     'Compute/Cyclades or Glance API image commands')
 _commands = [image_cmds]
+
+
+about_image_id = ['To see a list of available image ids: /image list']
 
 
 class _init_image(_command_init):
@@ -127,13 +130,22 @@ class image_public(_init_image):
 
 @command(image_cmds)
 class image_meta(_init_image):
-    """Get image metadata"""
+    """Get image metadata
+    Image metadata include:
+        - image file information (location, size, etc.)
+        - image information (id, name, etc.)
+        - image os properties (os, fs, etc.)
+    """
 
     def main(self, image_id):
         super(self.__class__, self).main()
         try:
             image = self.client.get_meta(image_id)
         except ClientError as ce:
+            if ce.status == 404:
+                raiseCLIError(ce,
+                    'No image with id %s found' % image_id,
+                    details=about_image_id)
             raise_if_connection_error(ce, base_url='image.url')
             raiseCLIError(ce)
         except Exception as err:
@@ -219,7 +231,7 @@ class image_members(_init_image):
 
 @command(image_cmds)
 class image_shared(_init_image):
-    """List shared images"""
+    """List images shared by a member"""
 
     def main(self, member):
         super(self.__class__, self).main()
@@ -241,6 +253,13 @@ class image_addmember(_init_image):
         super(self.__class__, self).main()
         try:
             self.client.add_member(image_id, member)
+        except ClientError as ce:
+            if ce.status == 404:
+                raiseCLIError(ce,
+                    'No image with id %s found' % image_id,
+                    details=about_image_id)
+            raise_if_connection_error(ce, base_url='image.url')
+            raiseCLIError(ce)
         except Exception as err:
             raiseCLIError(err)
 
@@ -253,6 +272,13 @@ class image_delmember(_init_image):
         super(self.__class__, self).main()
         try:
             self.client.remove_member(image_id, member)
+        except ClientError as ce:
+            if ce.status == 404:
+                raiseCLIError(ce,
+                    'No image with id %s found' % image_id,
+                    details=about_image_id)
+            raise_if_connection_error(ce, base_url='image.url')
+            raiseCLIError(ce)
         except Exception as err:
             raiseCLIError(err)
 
@@ -265,6 +291,13 @@ class image_setmembers(_init_image):
         super(self.__class__, self).main()
         try:
             self.client.set_members(image_id, member)
+        except ClientError as ce:
+            if ce.status == 404:
+                raiseCLIError(ce,
+                    'No image with id %s found' % image_id,
+                    details=about_image_id)
+            raise_if_connection_error(ce, base_url='image.url')
+            raiseCLIError(ce)
         except Exception as err:
             raiseCLIError(err)
 
@@ -274,67 +307,102 @@ class image_list(_init_cyclades):
     """List images"""
 
     arguments = dict(
-        detail= FlagArgument('show detailed output', '-l')
+        detail=FlagArgument('show detailed output', '-l'),
+        limit=IntArgument('limit the number of VMs to list', '-n'),
+        more=FlagArgument(
+            'output results in pages (-n to set items per page, default 10)',
+            '--more')
     )
 
-    def _print(self, images):
+    def _make_results_pretty(self, images):
         for img in images:
-            iname = img.pop('name')
-            iid = img.pop('id')
-            print('%s (%s)' % (unicode(iid), bold(iname)))
-            if self['detail']:
-                if 'metadata' in img:
-                    img['metadata'] = img['metadata']['values']
-                print_dict(img, ident=2)
+            if 'metadata' in img:
+                img['metadata'] = img['metadata']['values']
 
     def main(self):
         super(self.__class__, self).main()
         try:
             images = self.client.list_images(self['detail'])
+            if self['detail']:
+                self._make_results_pretty(images)
+            if self['more']:
+                print_items(images,
+                    page_size=self['limit'] if self['limit'] else 10)
+            elif self['limit']:
+                print_items(images[:self['limit']])
+            else:
+                print_items(images)
+        except ClientError as ce:
+            raise_if_connection_error(ce)
+            raiseCLIError(ce)
         except Exception as err:
             raiseCLIError(err)
-        self._print(images)
 
 
 @command(image_cmds)
 class image_info(_init_cyclades):
-    """Get image details"""
+    """Get detailed information on an image"""
 
     @classmethod
-    def _print(self, image):
+    def _make_results_pretty(self, image):
         if 'metadata' in image:
             image['metadata'] = image['metadata']['values']
-        print_dict(image)
 
     def main(self, image_id):
         super(self.__class__, self).main()
         try:
             image = self.client.get_image_details(image_id)
+            self._make_results_pretty(image)
+        except ClientError as ce:
+            if ce.status == 404 and 'image' in ('%s' % ce).lower():
+                raiseCLIError(ce,
+                    'No image with id %s found' % image_id,
+                    details=about_image_id)
+            raise_if_connection_error(ce)
+            raiseCLIError(ce)
         except Exception as err:
             raiseCLIError(err)
-        self._print(image)
+        print_dict(image)
 
 
 @command(image_cmds)
 class image_delete(_init_cyclades):
-    """Delete image"""
+    """Delete an image (image file remains intact)"""
 
     def main(self, image_id):
         super(self.__class__, self).main()
         try:
             self.client.delete_image(image_id)
+        except ClientError as ce:
+            if ce.status == 404 and 'image' in ('%s' % ce).lower():
+                raiseCLIError(ce,
+                    'No image with id %s found' % image_id,
+                    details=about_image_id)
+            raise_if_connection_error(ce)
+            raiseCLIError(ce)
         except Exception as err:
             raiseCLIError(err)
 
 
 @command(image_cmds)
 class image_properties(_init_cyclades):
-    """Get image properties"""
+    """Get properties related to OS installation in an image"""
 
     def main(self, image_id, key=''):
         super(self.__class__, self).main()
         try:
             reply = self.client.get_image_metadata(image_id, key)
+        except ClientError as ce:
+            if ce.status == 404:
+                if 'image' in ('%s' % ce).lower():
+                    raiseCLIError(ce,
+                        'No image with id %s found' % image_id,
+                        details=about_image_id)
+                elif 'metadata' in ('%s' % ce).lower():
+                    raiseCLIError(ce,
+                        'No properties with key %s in this image' % key)
+            raise_if_connection_error(ce)
+            raiseCLIError(ce)
         except Exception as err:
             raiseCLIError(err)
         print_dict(reply)
@@ -342,12 +410,20 @@ class image_properties(_init_cyclades):
 
 @command(image_cmds)
 class image_addproperty(_init_cyclades):
-    """Add an image property"""
+    """Add an OS-related property to an image"""
 
     def main(self, image_id, key, val):
         super(self.__class__, self).main()
         try:
+            assert(key)
             reply = self.client.create_image_metadata(image_id, key, val)
+        except ClientError as ce:
+            if ce.status == 404 and 'image' in ('%s' % ce).lower():
+                raiseCLIError(ce,
+                    'No image with id %s found' % image_id,
+                    details=about_image_id)
+            raise_if_connection_error(ce)
+            raiseCLIError(ce)
         except Exception as err:
             raiseCLIError(err)
         print_dict(reply)
@@ -355,13 +431,20 @@ class image_addproperty(_init_cyclades):
 
 @command(image_cmds)
 class image_setproperty(_init_cyclades):
-    """Update an image property"""
+    """Update an existing property in an image"""
 
     def main(self, image_id, key, val):
         super(self.__class__, self).main()
         metadata = {key: val}
         try:
             reply = self.client.update_image_metadata(image_id, **metadata)
+        except ClientError as ce:
+            if ce.status == 404 and 'image' in ('%s' % ce).lower():
+                raiseCLIError(ce,
+                    'No image with id %s found' % image_id,
+                    details=about_image_id)
+            raise_if_connection_error(ce)
+            raiseCLIError(ce)
         except Exception as err:
             raiseCLIError(err)
         print_dict(reply)
@@ -369,11 +452,22 @@ class image_setproperty(_init_cyclades):
 
 @command(image_cmds)
 class image_delproperty(_init_cyclades):
-    """Delete an image property"""
+    """Delete a property of an image"""
 
     def main(self, image_id, key):
         super(self.__class__, self).main()
         try:
             self.client.delete_image_metadata(image_id, key)
+        except ClientError as ce:
+            if ce.status == 404:
+                if 'image' in ('%s' % ce).lower():
+                    raiseCLIError(ce,
+                        'No image with id %s found' % image_id,
+                        details=about_image_id)
+                elif 'metadata' in ('%s' % ce).lower():
+                    raiseCLIError(ce,
+                        'No properties with key %s in this image' % key)
+            raise_if_connection_error(ce)
+            raiseCLIError(ce)
         except Exception as err:
             raiseCLIError(err)
