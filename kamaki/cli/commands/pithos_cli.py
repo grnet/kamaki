@@ -498,12 +498,10 @@ class store_create(_store_account_command):
 class store_copy(_store_container_command):
     """Copy an object from container to (another) container
     Use options:
-    1. <container1>:<path1> <container2>[:path2] : from container1 to 2, if
-    path2 is not given, target path will be container2:path1
-    2. <container>:<path1> <container>:<path2> : make a copy in the same
-    container
-    3. Use --container= instead of <container1>, but only for the first
-    parameter
+    1. <container1>:<path1> [container2:]<path2> : if container2 is not given,
+    destination is container1:path2
+    2. <container>:<path1> <path2> : make a copy in the same container
+    3. Use --container= instead of <container1>
     """
 
     arguments = dict(
@@ -531,11 +529,11 @@ class store_copy(_store_container_command):
             self).main(source_container___path, path_is_optional=False)
         try:
             dst = destination_container____path__.split(':')
-            dst_cont = dst[0]
-            dst_path = dst[1] if len(dst) > 1 else False
+            (dst_cont, dst_path) = (dst[0], dst[1])\
+            if len(dst) > 1 else (None, dst[0])
             self.client.copy_object(src_container=self.container,
                 src_object=self.path,
-                dst_container=dst_cont,
+                dst_container=dst_cont if dst_cont else self.container,
                 dst_object=dst_path,
                 source_version=self['source_version'],
                 public=self['public'],
@@ -544,10 +542,14 @@ class store_copy(_store_container_command):
         except ClientError as err:
             if err.status == 404:
                 if 'container' in ('%s' % err).lower():
+                    cont_msg = '(either %s or %s)' % (
+                        self.container,
+                        dst_cont
+                    ) if dst_cont else self.container
                     raiseCLIError(
                         err,
                         'No container %s in account %s'\
-                        % (self.container, self.account),
+                        % (cont_msg, self.account),
                         details=self.generic_err_details)
             raise_connection_errors(err)
             raiseCLIError(err)
@@ -559,23 +561,22 @@ class store_copy(_store_container_command):
 class store_move(_store_container_command):
     """Copy an object
     Use options:
-    1. <container1>:<path1> <container2>[:path2] : from container1 to 2, if
-    path2 is not given, target path will be container2:path1
-    2. <container>:<path1> <container>:<path2> : rename
-    3. Use --container= instead of <container1>, but only for the first
-    parameter
+    1. <container1>:<path1> [container2:]<path2> : if container2 not given,
+    destination is container1:path2
+    2. <container>:<path1> path2 : rename
+    3. Use --container= instead of <container1>
     """
 
     arguments = dict(
         source_version=ValueArgument('specify version', '--source-version'),
         public=FlagArgument('make object publicly accessible', '--public'),
         content_type=ValueArgument('modify content type', '--content-type'),
-        recursive= FlagArgument('up to delimiter /', ('-r', '--recursive'))
+        recursive=FlagArgument('up to delimiter /', ('-r', '--recursive'))
     )
 
     def __init__(self, arguments={}):
         super(self.__class__, self).__init__(arguments)
-        self['delimiter']=DelimiterArgument(
+        self['delimiter'] = DelimiterArgument(
             self,
             parsed_name='--delimiter',
             help=u'move objects prefixed as src_object + delimiter')
@@ -585,18 +586,32 @@ class store_move(_store_container_command):
             self).main(source_container___path, path_is_optional=False)
         try:
             dst = destination_container____path__.split(':')
-            dst_cont = dst[0]
-            dst_path = dst[1] if len(dst) > 1 else False
+            (dst_cont, dst_path) = (dst[0], dst[1])\
+            if len(dst) > 1 else (None, dst[0])
             self.client.move_object(src_container=self.container,
                 src_object=self.path,
-                dst_container=dst_cont,
+                dst_container=dst_cont if dst_cont else self.container,
                 dst_object=dst_path,
                 source_version=self['source_version'],
                 public=self['public'],
                 content_type=self['content_type'],
                 delimiter=self['delimiter'])
         except ClientError as err:
+            if err.status == 404:
+                if 'container' in ('%s' % err).lower():
+                    cont_msg = '(either %s or %s)' % (
+                        self.container,
+                        dst_cont
+                    ) if dst_cont else self.container
+                    raiseCLIError(
+                        err,
+                        'No container %s in account %s'\
+                        % (cont_msg, self.account),
+                        details=self.generic_err_details)
+            raise_connection_errors(err)
             raiseCLIError(err)
+        except Exception as e:
+            raiseCLIError(e)
 
 
 @command(pithos_cmds)
