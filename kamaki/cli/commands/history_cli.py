@@ -82,15 +82,15 @@ class history_show(_init_history):
     ---
     * With no parameters : pick all commands in history records
     * With:
-        1.  <order-id> : pick the <order-id>th command
-        2.  <order-id-1>-<order-id-2> : pick all commands ordered in the range
-            [<order-id-1> - <order-id-2>]
-        - the above can be mixed and repeated freely, separated by spaces
-            e.g. pick 2 4-7 -3
-        - Use negative integers to count from the end of the list, e.g.:
-            -2 means : the command before the last one
-            -2-5 means : last 2 commands + the first 5
-            -5--2 means : the last 5 commands except the last 2
+    .   1.  <order-id> : pick the <order-id>th command
+    .   2.  <order-id-1>-<order-id-2> : pick all commands ordered in the range
+    .       [<order-id-1> - <order-id-2>]
+    .   - the above can be mixed and repeated freely, separated by spaces
+    .       e.g. pick 2 4-7 -3
+    .   - Use negative integers to count from the end of the list, e.g.:
+    .       -2 means : the command before the last one
+    .       -2-5 means : last 2 commands + the first 5
+    .       -5--2 means : the last 5 commands except the last 2
     """
 
     def __init__(self, arguments={}):
@@ -136,14 +136,14 @@ class history_clean(_init_history):
 class history_run(_init_history):
     """Run previously executed command(s)
     Use with:
-        1.  <order-id> : pick the <order-id>th command
-        2.  <order-id-1>-<order-id-2> : pick all commands ordered in the range
-            [<order-id-1> - <order-id-2>]
-        - Use negative integers to count from the end of the list, e.g.:
-            -2 means : the command before the last one
-            -2-5 means : last 2 commands + the first 5
-            -5--2 mean
-        - to find order ids for commands try   /history show.
+    .   1.  <order-id> : pick the <order-id>th command
+    .   2.  <order-id-1>-<order-id-2> : pick all commands ordered in the range
+    .       [<order-id-1> - <order-id-2>]
+    .   - Use negative integers to count from the end of the list, e.g.:
+    .       -2 means : the command before the last one
+    .       -2-5 means : last 2 commands + the first 5
+    .       -5--2 mean
+    .   - to find order ids for commands try   /history show.
     """
 
     _cmd_tree = None

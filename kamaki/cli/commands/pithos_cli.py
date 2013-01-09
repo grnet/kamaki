@@ -284,7 +284,7 @@ class store_list(_store_container_command):
     1 no parameters : containers in set account
     2. one parameter (container) or --container : contents of container
     3. <container>:<prefix> or --container=<container> <prefix>: objects in
-        container starting with prefix
+    container starting with prefix
     """
 
     def __init__(self, arguments={}):
