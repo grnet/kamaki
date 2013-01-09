@@ -20,7 +20,7 @@
 # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
 # SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
-# USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+# USE, DATA, OR PROFITS; OR BUSINESS INTERaUPTION) HOWEVER CAUSED
 # AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
 # LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
@@ -34,12 +34,13 @@
 from kamaki.cli import command
 from kamaki.cli.argument import FlagArgument
 from kamaki.cli.commands import _command_init
+from kamaki.cli.command_tree import CommandTree
+
+config_cmds = CommandTree('config', 'Configuration commands')
+_commands = [config_cmds]
 
 
-API_DESCRIPTION = {'config': 'Configuration commands'}
-
-
-@command()
+@command(config_cmds)
 class config_list(_command_init):
     """List configuration options"""
 
@@ -55,7 +56,7 @@ class config_list(_command_init):
                 print('%s.%s = %s' % (section, key, val))
 
 
-@command()
+@command(config_cmds)
 class config_get(_command_init):
     """Show a configuration option"""
 
@@ -63,11 +64,11 @@ class config_get(_command_init):
         section, sep, key = option.rpartition('.')
         section = section or 'global'
         value = self.config.get(section, key)
-        if value is not None:
+        if value:
             print(value)
 
 
-@command()
+@command(config_cmds)
 class config_set(_command_init):
     """Set a configuration option"""
 
@@ -76,9 +77,10 @@ class config_set(_command_init):
         section = section or 'global'
         self.config.set(section, key, value)
         self.config.write()
+        self.config.reload()
 
 
-@command()
+@command(config_cmds)
 class config_delete(_command_init):
     """Delete a configuration option (and use the default value)"""
 
@@ -87,3 +89,4 @@ class config_delete(_command_init):
         section = section or 'global'
         self.config.remove_option(section, key)
         self.config.write()
+        self.config.reload()

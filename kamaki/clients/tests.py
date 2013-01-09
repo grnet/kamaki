@@ -37,22 +37,45 @@ import time
 import datetime
 import os
 import sys
+import tempfile
+from logging import getLogger
+
+kloger = getLogger('kamaki')
+
+try:
+    from progress.bar import FillingCirclesBar as IncrementalBar
+except ImportError:
+    kloger.warning('No progress bars in testing!')
+    pass
 
 from kamaki.clients import ClientError
 from kamaki.clients.pithos import PithosClient as pithos
 from kamaki.clients.cyclades import CycladesClient as cyclades
 from kamaki.clients.image import ImageClient as image
 from kamaki.clients.astakos import AstakosClient as astakos
+from kamaki.cli.config import Config
 
 TEST_ALL = False
 
-global_username = 'USERNAME'
-token = 'T0k3n=='
+cnf = Config()
+global_username = None
+token = None
+
+
+def _init_cnf():
+    global cnf
+    global global_username
+    global_username = cnf.get('test', 'account') or\
+        cnf.get('global', 'account')
+    global token
+    token = cnf.get('test', 'token') or cnf.get('global', 'token')
 
 
 class testAstakos(unittest.TestCase):
     def setUp(self):
-        url = 'https://accounts.okeanos.grnet.gr'
+        _init_cnf()
+        global cnf
+        url = cnf.get('test', 'astakos_url') or cnf.get('astakos', 'url')
         global token
         self.client = astakos(url, token)
 
@@ -74,31 +97,36 @@ class testAstakos(unittest.TestCase):
 
 class testImage(unittest.TestCase):
     def setUp(self):
-        cyclades_url = 'https://cyclades.okeanos.grnet.gr/api/v1.1'
-        url = 'https://cyclades.okeanos.grnet.gr/plankton'
+        _init_cnf()
+        global cnf
+        cyclades_url = cnf.get('compute', 'url')
+        url = cnf.get('image', 'url')
         global token
         self.token = token
         self.imgid = 'b2dffe52-64a4-48c3-8a4c-8214cc3165cf'
         self.now = time.mktime(time.gmtime())
         self.imgname = 'img_%s' % self.now
         global global_username
-        self.imglocation = 'pithos://%s@grnet.gr/pithos/my.img'\
+        self.imglocation = 'pithos://%s/pithos/my.img'\
         % global_username
         self.client = image(url, self.token)
         self.cyclades = cyclades(cyclades_url, self.token)
         self._imglist = {}
 
     def _prepare_img(self):
+        global cnf
         global global_username
-        username = '%s@grnet.gr' % global_username
-        imglocalpath = '/home/%s/src/kamaki-settings/files/centos.diskdump'\
-        % global_username
+        username = global_username.split('@')[0]
+        imglocalpath =\
+        '/home/%s/src/kamaki-settings/files/centos.diskdump' % username
         f = open(imglocalpath, 'rb')
-        pithcli = pithos('https://pithos.okeanos.grnet.gr/v1',
+        pithcli = pithos(cnf.get('store', 'url'),
             self.token,
-            username,
+            global_username,
             'pithos')
+        print('\t- Upload an image at %s...' % imglocalpath)
         pithcli.upload_object('my.img', f)
+        print('\t- ok')
         f.close()
 
         self.client.register(self.imgname,
@@ -160,11 +188,9 @@ class testImage(unittest.TestCase):
                 'properties',
                 'size'):
                 self.assertTrue(term in img)
-                for interm in ('kernel',
+                for interm in (
                     'osfamily',
                     'users',
-                    'gui',
-                    'sortorder',
                     'os',
                     'root_partition',
                     'description'):
@@ -195,7 +221,6 @@ class testImage(unittest.TestCase):
             for interm in ('kernel',
                 'osfamily',
                 'users',
-                'partition-table',
                 'gui', 'sortorder',
                 'root-partition',
                 'os',
@@ -208,6 +233,12 @@ class testImage(unittest.TestCase):
         self.assertTrue(len(self._imglist) > 0)
         for img in self._imglist.values():
             self.assertTrue(img != None)
+
+    def test_reregister(self):
+        """Test reregister"""
+        self._prepare_img()
+        self.client.reregister(self.imglocation,
+            properties=dict(my_property='some_value'))
 
     def test_set_members(self):
         """Test set_members"""
@@ -246,18 +277,19 @@ class testCyclades(unittest.TestCase):
     """Set up a Cyclades thorough test"""
     def setUp(self):
         """okeanos"""
-        url = 'https://cyclades.okeanos.grnet.gr/api/v1.1'
+        _init_cnf()
+        global cnf
+        url = cnf.get('compute', 'url')
         global token
         global global_username
-        #account = '%s@grnet.gr' % global_username
         self.img = 'b2dffe52-64a4-48c3-8a4c-8214cc3165cf'
         self.img_details = {
             u'status': u'ACTIVE',
-            u'updated': u'2012-10-16T09:04:17+00:00',
+            u'updated': u'2012-11-19T13:52:16+00:00',
             u'name': u'Debian Base',
             u'created': u'2012-10-16T09:03:12+00:00',
             u'progress': 100,
-            u'id': 'b2dffe52-64a4-48c3-8a4c-8214cc3165cf',
+            u'id': self.img,
             u'metadata': {
                 u'values': {
                     u'kernel': u'2.6.32',
@@ -267,8 +299,7 @@ class testCyclades(unittest.TestCase):
                     u'sortorder': u'1',
                     u'os': u'debian',
                     u'root_partition': u'1',
-                    u'description': u'Debian 6.0.6 (Squeeze) Base System',
-                    u'partition_table': u'msdos'}
+                    u'description': u'Debian 6.0.6 (Squeeze) Base System'}
                 }
             }
         self.flavor_details = {u'name': u'C1R1024D20',
@@ -279,32 +310,29 @@ class testCyclades(unittest.TestCase):
             u'cpu': 1}
         self.PROFILES = ('ENABLED', 'DISABLED', 'PROTECTED')
 
-        """okeanos.io"""
-        #url = 'https://cyclades.okeanos.io/api/v1.1'
-        #global token
-        #account='%s@grnet.gr'%global_username
-        #self.img = '43cc8497-61c3-4c46-ae8d-3e33861f8527'
-        #self.img_details= {
-        #    u'status': u'ACTIVE',
-        #    u'updated': u'2012-08-21T12:57:39+00:00',
-        #    u'name': u'Debian Base',
-        #    u'created': u'2012-08-21T12:56:53+00:00',
-        #    u'progress': 100,
-        #    u'id': u'43cc8497-61c3-4c46-ae8d-3e33861f8527',
-        #    u'metadata': {
-        #        u'values': {
-        #            u'kernel': u'2.6.32',
-        #            u'osfamily': u'linux',
-        #            u'users': u'root',
-        #            u'gui': u'No GUI',
-        #            u'sortorder': u'1',
-        #            u'os': u'debian',
-        #            u'root_partition':
-        #            u'1', u'description':
-        #            u'Debian Squeeze Base System'}
-        #        }
-        #    }
-        #flavorid = 1
+        """okeanos.io """
+        """
+        self.img = 'b3e68235-3abd-4d60-adfe-1379a4f8d3fe'
+        self.img_details = {
+            u'status': u'ACTIVE',
+            u'updated': u'2012-11-19T15:29:51+00:00',
+            u'name': u'Debian Base',
+            u'created': u'2012-11-19T14:54:57+00:00',
+            u'progress': 100,
+            u'id': self.img,
+            u'metadata': {
+                u'values': {
+                    u'kernel': u'2.6.32',
+                    u'osfamily': u'linux',
+                    u'users': u'root',
+                    u'gui': u'No GUI',
+                    u'sortorder': u'1',
+                    u'os': u'debian',
+                    u'root_partition': u'1',
+                    u'description': u'Debian 6.0.6 (Squeeze) Base System'}
+                }
+            }
+            """
 
         self.servers = {}
         self.now = time.mktime(time.gmtime())
@@ -326,54 +354,9 @@ class testCyclades(unittest.TestCase):
             self._delete_network(netid)
         if 0 >= len(self.servers):
             return
-        there_are_servers_running = True
-        deleted_servers = {}
-        waitime = 0
         print('-> Found %s servers to delete' % len(self.servers))
-        while there_are_servers_running:
-            there_are_servers_running = False
-            if waitime > 0:
-                c = ['|', '/', '-', '\\']
-                suffix = ''
-                sys.stdout.write('\t. . . wait %s seconds: ' % waitime)
-                for i in range(4 * waitime):
-                    oldlen = len(suffix)
-                    suffix = '%ss %s' % (i / 4, c[i % 4])
-                    sys.stdout.write(oldlen * '\b' + suffix)
-                    sys.stdout.flush()
-                    time.sleep(0.25)
-                oldlen = len(': ' + suffix)
-                print(oldlen * '\b' + oldlen * ' ')
-                sys.stdout.flush()
-            waitime += 3
-            dservers = self.client.list_servers(detail=True)
-            for server in dservers:
-                if server['name'] in self.servers.keys():
-                    there_are_servers_running = True
-                    sys.stdout.write('\t%s status:%s '\
-                        % (server['name'], server['status']))
-                    if server['status'] == 'BUILD':
-                        print('\twait...')
-                    else:
-                        print('\tDELETE %s' % server['name'])
-                        self._delete_server(server['id'])
-                        self.servers.pop(server['name'])
-                        deleted_servers[server['name']] = 0
-                        waitime = 0
-                elif server['name'] in deleted_servers.keys():
-                    there_are_servers_running = True
-                    sys.stdout.write('\t%s status:%s '\
-                        % (server['name'], server['status']))
-                    retries = deleted_servers[server['name']]
-                    if retries > 10:
-                        print('\tretry DELETE %s'\
-                            % server['name'])
-                        self._delete_server(server['id'])
-                        retries = 0
-                        waitime = 0
-                    else:
-                        print('\tnot deleted yet ...')
-                    deleted_servers[server['name']] = retries + 1
+        for server in self.servers.values():
+            self._delete_server(server['id'])
 
     def _create_server(self, servername, flavorid, imageid, personality=None):
         server = self.client.create_server(servername,
@@ -384,7 +367,15 @@ class testCyclades(unittest.TestCase):
         return server
 
     def _delete_server(self, servid):
+        try:
+            current_state = self.client.get_server_details(servid)
+            current_state = current_state['status']
+            if current_state == 'DELETED':
+                return
+        except:
+            return
         self.client.delete_server(servid)
+        self._wait_for_status(servid, current_state)
 
     def _create_network(self, netname, **kwargs):
         net = self.client.create_network(netname, **kwargs)
@@ -533,7 +524,7 @@ class testCyclades(unittest.TestCase):
         self._test_create_network()
         print('...ok')
 
-        print('- wait for netowork to be activated')
+        print('- wait for network to be activated')
         self._wait_for_network(self.network1['id'], 'ACTIVE')
         print('- ok')
 
@@ -546,7 +537,7 @@ class testCyclades(unittest.TestCase):
         print('...ok')
 
         self.network2 = self._create_network(self.netname2)
-        print('- wait for netowork to be activated')
+        print('- wait for network to be activated')
         self._wait_for_network(self.network2['id'], 'ACTIVE')
         print('- ok')
 
@@ -580,6 +571,51 @@ class testCyclades(unittest.TestCase):
         self._test_delete_image_metadata()
         print('...ok')
         """
+
+    @if_not_all
+    def test_parallel_creation(self):
+        """test create with multiple threads"""
+        from kamaki.clients import SilentEvent
+        c1 = SilentEvent(self._create_server,
+            self.servname1,
+            self.flavorid,
+            self.img)
+        c2 = SilentEvent(self._create_server,
+            self.servname2,
+            self.flavorid + 2,
+            self.img)
+        c3 = SilentEvent(self._create_server,
+            self.servname1,
+            self.flavorid,
+            self.img)
+        c4 = SilentEvent(self._create_server,
+            self.servname2,
+            self.flavorid + 2,
+            self.img)
+        c5 = SilentEvent(self._create_server,
+            self.servname1,
+            self.flavorid,
+            self.img)
+        c6 = SilentEvent(self._create_server,
+            self.servname2,
+            self.flavorid + 2,
+            self.img)
+        c7 = SilentEvent(self._create_server,
+            self.servname1,
+            self.flavorid,
+            self.img)
+        c8 = SilentEvent(self._create_server,
+            self.servname2,
+            self.flavorid + 2,
+            self.img)
+        c1.start()
+        c2.start()
+        c3.start()
+        c4.start()
+        c5.start()
+        c6.start()
+        c7.start()
+        c8.start()
 
     def _wait_for_network(self, netid, status):
         wait = 3
@@ -633,18 +669,27 @@ class testCyclades(unittest.TestCase):
         return r['status'] == status
 
     def _wait_for_status(self, servid, status):
-        wait = 0
-        c = ['|', '/', '-', '\\']
-        while self._has_status(servid, status):
-            if wait:
-                sys.stdout.write('\tServer %s in %s. Wait %ss  '\
-                    % (servid, status, wait))
-                for i in range(4 * wait):
-                    sys.stdout.write('\b%s' % c[i % 4])
-                    sys.stdout.flush()
-                    time.sleep(0.25)
-                print('\b ')
-            wait = (wait + 3) if wait < 60 else 0
+        withbar = True
+        try:
+            wait_bar = IncrementalBar('\tServer[%s] in %s ' % (servid, status))
+        except NameError:
+            withbar = False
+
+        wait_cb = None
+        if withbar:
+            wait_bar.start()
+
+            def progress_gen(n):
+                for i in wait_bar.iter(range(int(n))):
+                    yield
+                yield
+
+            wait_cb = progress_gen
+
+        time.sleep(0.5)
+        self.client.wait_server(servid, status, wait_cb=wait_cb)
+        if withbar:
+            wait_bar.finish()
 
     @if_not_all
     def test_list_servers(self):
@@ -849,15 +894,16 @@ class testCyclades(unittest.TestCase):
         for detailed_img in r:
             if detailed_img['id'] == self.img:
                 break
-        self.assert_dicts_are_deeply_equal(r[1], self.img_details)
+        self.assert_dicts_are_deeply_equal(detailed_img, self.img_details)
 
     @if_not_all
-    def test_image_details(self):
+    def test_get_image_details(self):
         """Test image_details"""
-        self._test_get_image_details
+        self._test_get_image_details()
 
     def _test_get_image_details(self):
         r = self.client.get_image_details(self.img)
+        r.pop('updated')
         self.assert_dicts_are_deeply_equal(r, self.img_details)
 
     @if_not_all
@@ -909,12 +955,12 @@ class testCyclades(unittest.TestCase):
     def test_get_server_console(self):
         """Test get_server_console"""
         self.server2 = self._create_server(self.servname2,
-            self.flavorid + 1,
+            self.flavorid + 2,
             self.img)
+        self._wait_for_status(self.server2['id'], 'BUILD')
         self._test_get_server_console()
 
     def _test_get_server_console(self):
-        self._wait_for_status(self.server2['id'], 'BUILD')
         r = self.client.get_server_console(self.server2['id'])
         self.assertTrue('host' in r)
         self.assertTrue('password' in r)
@@ -948,28 +994,30 @@ class testCyclades(unittest.TestCase):
         PROFILES = ['DISABLED', 'ENABLED', 'DISABLED', 'PROTECTED']
         fprofile = self.client.get_firewall_profile(self.server1['id'])
         print('')
+        count_success = 0
         for counter, fprofile in enumerate(PROFILES):
-            start = fprofile
             npos = counter + 1
-            nprofile = PROFILES[npos] if npos < len(PROFILES) else PROFILES[0]
+            try:
+                nprofile = PROFILES[npos]
+            except IndexError:
+                nprofile = PROFILES[0]
             print('\tprofile swap %s: %s -> %s' % (npos, fprofile, nprofile))
             self.client.set_firewall_profile(self.server1['id'], nprofile)
-            wait = 3
-            c = ['|', '/', '-', '\\']
-            while fprofile != nprofile:
-                if wait % 10 == 0:
-                    self.client.set_firewall_profile(self.server1['id'],
-                        nprofile)
-                self.assertEqual(fprofile, start)
-                sys.stdout.write('\t   profile is %s, wait %ss  '\
-                    % (fprofile, wait))
-                for i in range(4 * wait):
-                    sys.stdout.write('\b%s' % c[i % 4])
-                    sys.stdout.flush()
-                    time.sleep(0.25)
-                wait += 3
-                print('\b ')
-                fprofile = self.client.get_firewall_profile(self.server1['id'])
+            time.sleep(0.5)
+            self.client.reboot_server(self.server1['id'], hard=True)
+            time.sleep(1)
+            self._wait_for_status(self.server1['id'], 'REBOOT')
+            time.sleep(0.5)
+            changed = self.client.get_firewall_profile(self.server1['id'])
+            try:
+                self.assertEqual(changed, nprofile)
+            except AssertionError as err:
+                if count_success:
+                    print('\tFAIL in swap #%s' % npos)
+                    break
+                else:
+                    raise err
+            count_success += 1
 
     @if_not_all
     def test_get_server_stats(self):
@@ -1000,7 +1048,7 @@ class testCyclades(unittest.TestCase):
         ids = [net['id'] for net in r]
         names = [net['name'] for net in r]
         self.assertTrue('1' in ids)
-        self.assertTrue('public' in names)
+        #self.assertTrue('public' in names)
         self.assertTrue(self.network1['id'] in ids)
         self.assertTrue(self.network1['name'] in names)
 
@@ -1069,8 +1117,6 @@ class testCyclades(unittest.TestCase):
     def _test_list_server_nics(self):
         r = self.client.list_server_nics(self.server1['id'])
         len0 = len(r)
-        self.assertTrue(len0 > 0)
-        self.assertTrue('1' in [net['network_id'] for net in r])
 
         self.client.connect_server(self.server1['id'], self.network2['id'])
         self.assertTrue(self._wait_for_nic(self.network2['id'],
@@ -1167,17 +1213,13 @@ class testCyclades(unittest.TestCase):
 class testPithos(unittest.TestCase):
     """Set up a Pithos+ thorough test"""
     def setUp(self):
-        """
-        url = 'http://127.0.0.1:8000/v1'
-        global token
-        account = 'admin@adminland.com'
-        """
-
-        url = 'https://pithos.okeanos.grnet.gr/v1'
+        _init_cnf()
+        global cnf
+        url = cnf.get('store', 'url')
 
         global token
         global global_username
-        account = '%s@grnet.gr' % global_username
+        account = global_username
 
         """
         url='https://pithos.okeanos.io/v1'
@@ -1368,8 +1410,7 @@ class testPithos(unittest.TestCase):
         self.assertTrue('x-account-meta-' + mprefix + '2' not in r)
 
         """Missing testing for quota, versioning, because normally
-        you don't have permissions
- to modify those at account level
+        you don't have permissions to modify those at account level
         """
 
         newquota = 1000000
@@ -1567,17 +1608,18 @@ class testPithos(unittest.TestCase):
         """put_block uses content_type and content_length to
         post blocks of data 2 container. All that in upload_object"""
         """Change a file at fs"""
-        self.create_large_file(1024 * 1024 * 100, 'l100M.' + unicode(self.now))
+        self.fname = 'l100M.' + unicode(self.now)
+        self.create_large_file(1024 * 1024 * 100, self.fname)
         """Upload it at a directory in container"""
         self.client.create_directory('dir')
-        newf = open(self.fname, 'r')
+        newf = open(self.fname, 'rb')
         self.client.upload_object('/dir/sample.file', newf)
         newf.close()
         """Check if file has been uploaded"""
         r = self.client.get_object_info('/dir/sample.file')
         self.assertTrue(int(r['content-length']) > 100000000)
 
-        """WTF is tranfer_encoding? What should I check about th** s**t? """
+        """What is tranfer_encoding? What should I check about it? """
         #TODO
 
         """Check update=False"""
@@ -1718,8 +1760,15 @@ class testPithos(unittest.TestCase):
             self.assertNotEqual(sc1, sc2)
 
         """Upload an object to download"""
-        src_fname = '/tmp/localfile1_%s' % self.now
-        dnl_fname = '/tmp/localfile2_%s' % self.now
+        src_file = tempfile.NamedTemporaryFile(delete=False)
+        dnl_file = tempfile.NamedTemporaryFile(delete=False)
+        
+        src_fname = src_file.name
+        dnl_fname = dnl_file.name
+        
+        src_file.close()
+        dnl_file.close()
+        
         trg_fname = 'remotefile_%s' % self.now
         f_size = 59247824
         self.create_large_file(f_size, src_fname)
@@ -1768,8 +1817,7 @@ class testPithos(unittest.TestCase):
         r = self.client.get_object_info(obj)
         self.assertTrue('content-disposition' in r)
 
-        """Check permissions
-"""
+        """Check permissions"""
         r = self.client.get_object_sharing(obj)
         self.assertTrue('accx:groupa' in r['read'])
         self.assertTrue('u1' in r['read'])
@@ -1891,8 +1939,9 @@ class testPithos(unittest.TestCase):
         self.assertEqual(r.text, txt)
 
         """Upload a local file with one request"""
-        self.create_large_file(1024 * 10, 'l10K.' + unicode(self.now))
-        newf = open(self.fname, 'r')
+        self.fname = 'l10K.' + unicode(self.now)
+        self.create_large_file(1024 * 10, self.fname)
+        newf = open(self.fname, 'rb')
         self.client.upload_object('sample.file', newf)
         newf.close()
         """Check if file has been uploaded"""
@@ -2021,8 +2070,7 @@ class testPithos(unittest.TestCase):
         self.assertEqual(r['x-object-meta-mkey2'], 'mval2a')
         self.assertEqual(r['x-object-meta-mkey3'], 'mval3')
 
-        """Check permissions
-"""
+        """Check permissions"""
         r = self.client.get_object_sharing(obj)
         self.assertFalse('read' in r)
         self.assertTrue('u5' in r['write'])
@@ -2131,12 +2179,11 @@ class testPithos(unittest.TestCase):
         self.assertEqual(r['x-object-meta-mkey1'], 'mval1')
         self.assertEqual(r['x-object-meta-mkey2'], 'mval2a')
         self.assertEqual(r['x-object-meta-mkey3'], 'mval3')
-        self.client.del_object_meta('mkey1', obj)
+        self.client.del_object_meta(obj, 'mkey1')
         r = self.client.get_object_meta(obj)
         self.assertFalse('x-object-meta-mkey1' in r)
 
-        """Check permissions
-"""
+        """Check permissions"""
         self.client.set_object_sharing(obj,
             read_permition=['u4', 'u5'], write_permition=['u4'])
         r = self.client.get_object_sharing(obj)
@@ -2158,9 +2205,14 @@ class testPithos(unittest.TestCase):
 
         """Check if_etag_(not)match"""
         etag = r['etag']
-        #r = self.client.object_post(obj, update=True, public=True,
-        #    if_etag_not_match=etag, success=(412,202,204))
-        #self.assertEqual(r.status_code, 412)
+        """
+        r = self.client.object_post(obj,
+            update=True,
+            public=True,
+            if_etag_not_match=etag,
+            success=(412, 202, 204))
+        self.assertEqual(r.status_code, 412)
+        """
 
         r = self.client.object_post(obj, update=True, public=True,
             if_etag_match=etag, content_encoding='application/json')
@@ -2250,14 +2302,12 @@ class testPithos(unittest.TestCase):
     def create_large_file(self, size, name):
         """Create a large file at fs"""
         self.fname = name
-        import random
-        random.seed(self.now)
-        rf = open('/dev/urandom', 'r')
         f = open(self.fname, 'w')
-        sys.stdout.write(' create random file %s of size %s      ' % (name, size))
-        for hobyte_id in range(size / 8):
-            #sss = 'hobt%s' % random.randint(1000, 9999)
-            f.write(rf.read(8))
+        sys.stdout.write(
+            ' create random file %s of size %s      ' % (name, size))
+        for hobyte_id in xrange(size / 8):
+            random_bytes = os.urandom(8)
+            f.write(random_bytes)
             if 0 == (hobyte_id * 800) % size:
                 f.write('\n')
                 f.flush()
@@ -2269,7 +2319,6 @@ class testPithos(unittest.TestCase):
                 sys.stdout.flush()
         print('\b\b\b100%')
         f.flush()
-        rf.close()
         f.close()
         """"""
 
@@ -2283,14 +2332,10 @@ def init_parser():
         help="Show this help message and exit")
     return parser
 
-if __name__ == '__main__':
-    parser = init_parser()
-    args, argv = parser.parse_known_args()
 
-    if len(argv) > 2 or getattr(args, 'help') or len(argv) < 1:
-        raise Exception('\tusage: tests.py <group> [command]')
+def main(argv):
+
     suiteFew = unittest.TestSuite()
-
     if len(argv) == 0 or argv[0] == 'pithos':
         if len(argv) == 1:
             suiteFew.addTest(unittest.makeSuite(testPithos))
@@ -2314,3 +2359,10 @@ if __name__ == '__main__':
             suiteFew.addTest(testAstakos('test_' + argv[1]))
 
     unittest.TextTestRunner(verbosity=2).run(suiteFew)
+
+if __name__ == '__main__':
+    parser = init_parser()
+    args, argv = parser.parse_known_args()
+    if len(argv) > 2 or getattr(args, 'help') or len(argv) < 1:
+        raise Exception('\tusage: tests.py <group> [command]')
+    main(argv)

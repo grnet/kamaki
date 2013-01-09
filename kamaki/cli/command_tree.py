@@ -155,6 +155,33 @@ class CommandTree(object):
         if description is not None:
             cmd.help = description
 
+    def find_best_match(self, terms):
+        """Find a command that best matches a given list of terms
+
+        :param terms: (list of str) match them against paths in cmd_tree
+
+        :returns: (Command, list) the matching command, the remaining terms
+        """
+        path = []
+        for term in terms:
+            check_path = path + [term]
+            if '_'.join(check_path) not in self._all_commands:
+                break
+            path = check_path
+        if path:
+            return (self._all_commands['_'.join(path)], terms[len(path):])
+        return (None, terms)
+
+    def add_tree(self, new_tree):
+        tname = new_tree.name
+        tdesc = new_tree.description
+        self.groups.update(new_tree.groups)
+        self._all_commands.update(new_tree._all_commands)
+        self.set_description(tname, tdesc)
+
+    def has_command(self, path):
+        return path in self._all_commands
+
     def get_command(self, path):
         return self._all_commands[path]
 
@@ -167,7 +194,7 @@ class CommandTree(object):
     def set_description(self, path, description):
         self._all_commands[path].help = description
 
-    def get_descitpion(self, path):
+    def get_description(self, path):
         return self._all_commands[path].help
 
     def set_class(self, path, cmd_class):

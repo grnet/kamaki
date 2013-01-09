@@ -31,6 +31,11 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
+import logging
+
+sendlog = logging.getLogger('clients.send')
+recvlog = logging.getLogger('clients.recv')
+
 
 class _command_init(object):
     def __init__(self, arguments={}):

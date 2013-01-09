@@ -33,6 +33,9 @@
 
 
 class HTTPResponse(object):
+    """An abstract HTTP Response object to handle a performed HTTPRequest.
+    Subclass implementation required
+    """
 
     def __init__(self, request=None, prefetched=False):
         self.request = request
@@ -47,11 +50,12 @@ class HTTPResponse(object):
 
     def release(self):
         """Release the connection.
-        Use this after finished using the response"""
+        """
         raise NotImplementedError
 
     @property
     def prefetched(self):
+        """flag to avoid downloading more than nessecary"""
         return self._prefetched
 
     @prefetched.setter
@@ -60,6 +64,7 @@ class HTTPResponse(object):
 
     @property
     def content(self):
+        """(binary) request response content (data)"""
         self._get_response()
         return self._content
 
@@ -69,6 +74,7 @@ class HTTPResponse(object):
 
     @property
     def text(self):
+        """(str)"""
         self._get_response()
         return self._text
 
@@ -78,6 +84,7 @@ class HTTPResponse(object):
 
     @property
     def json(self):
+        """(dict)"""
         self._get_response()
         return self._json
 
@@ -87,6 +94,7 @@ class HTTPResponse(object):
 
     @property
     def headers(self):
+        """(dict)"""
         self._get_response()
         return self._headers
 
@@ -96,6 +104,7 @@ class HTTPResponse(object):
 
     @property
     def status_code(self):
+        """(int) optional"""
         self._get_response()
         return self._status_code
 
@@ -105,6 +114,7 @@ class HTTPResponse(object):
 
     @property
     def status(self):
+        """(str) useful in server error responses"""
         self._get_response()
         return self._status
 
@@ -114,6 +124,7 @@ class HTTPResponse(object):
 
     @property
     def request(self):
+        """(HTTPConnection) the source of this response object"""
         return self._request
 
     @request.setter
@@ -121,29 +132,16 @@ class HTTPResponse(object):
         self._request = v
 
 
-class HTTPConnectionError(Exception):
-    def __init__(self, message, status=0, details=''):
-        super(HTTPConnectionError, self).__init__(message)
-        self.message = message
-        self.status = status
-        self.details = details
-
-
 class HTTPConnection(object):
+    """An abstract HTTP Connection mechanism. Subclass implementation required
+    """
 
     def __init__(self, method=None, url=None, params={}, headers={}):
         self.headers = headers
         self.params = params
         self.url = url
+        self.path = ''
         self.method = method
-
-    def raise_for_status(self, r):
-        message = "%d %s" % (r.status_code, r.status)
-        try:
-            details = r.text
-        except:
-            details = ''
-        raise HTTPConnectionError(message, r.status_code, details)
 
     def set_header(self, name, value):
         self.headers[unicode(name)] = unicode(value)
@@ -178,6 +176,9 @@ class HTTPConnection(object):
     def set_url(self, url):
         self.url = url
 
+    def set_path(self, path):
+        self.path = path
+
     def set_method(self, method):
         self.method = method
 
@@ -187,26 +188,4 @@ class HTTPConnection(object):
         async_headers={},
         async_params={},
         data=None):
-        """
-        @return an HTTPResponse (also in self.response of this object)
-        named args offer the ability to reset a request or a part of the
-        request
-        e.g. r = HTTPConnection(url='http://....', method='GET')
-             r.perform_request()
-             r.perform_request(method='POST')
-        will perform a GET request and later a POST request on the same URL
-        another example:
-             r = HTTPConnection(url='http://....', params='format=json')
-             r.perform_request(method='GET')
-             r.perform_request(method='POST')
-        """
         raise NotImplementedError
-
-    """
-    @property
-    def response(self):
-        return self._response
-    @response.setter
-    def response(self, r):
-        self._response = r
-    """

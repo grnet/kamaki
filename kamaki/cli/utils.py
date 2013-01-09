@@ -31,7 +31,9 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from .errors import CLIError
+from sys import stdout
+from re import compile as regex_compile
+from kamaki.cli.errors import raiseCLIError
 
 try:
     from colors import magenta, red, yellow, bold
@@ -54,9 +56,7 @@ def remove_colors():
 
 
 def pretty_keys(d, delim='_', recurcive=False):
-    """Transform keys of a dict from the form
-    str1_str2_..._strN to the form strN
-    where _ is the delimeter
+    """<term>delim<term> to <term> <term> transformation
     """
     new_d = {}
     for key, val in d.items():
@@ -69,74 +69,166 @@ def pretty_keys(d, delim='_', recurcive=False):
     return new_d
 
 
-def print_dict(d, exclude=(), ident=0):
-    if not isinstance(d, dict):
-        raise CLIError(message='Cannot dict_print a non-dict object')
-    try:
-        margin = max(
-            1 + max(len(unicode(key).strip()) for key in d.keys() \
-                if not isinstance(key, dict) and not isinstance(key, list)),
-            ident)
-    except ValueError:
-        margin = ident
+def print_dict(d,
+    exclude=(),
+    ident=0,
+    with_enumeration=False,
+    recursive_enumeration=False):
+    """
+    Pretty-print a dictionary object
 
+    :param d: (dict) the input
+
+    :param excelude: (set or list) keys to exclude from printing
+
+    :param ident: (int) initial indentation (recursive)
+
+    :param with_enumeration: (bool) enumerate each 1st level key if true
+
+    :recursive_enumeration: (bool) recursively enumerate dicts and lists of
+        2nd level or deeper
+
+    :raises CLIError: (TypeError wrapper) non-dict input
+    """
+    if not isinstance(d, dict):
+        raiseCLIError(TypeError('Cannot dict_print a non-dict object'))
+
+    if d:
+        margin = max(len(unicode(key).strip())\
+            for key in d.keys() if key not in exclude)
+
+    counter = 1
     for key, val in sorted(d.items()):
         if key in exclude:
             continue
-        print_str = '%s:' % unicode(key).strip()
+        print_str = ''
+        if with_enumeration:
+            print_str = '%s. ' % counter
+            counter += 1
+        print_str = '%s%s' % (' ' * (ident - len(print_str)), print_str)
+        print_str += ('%s' % key).strip()
+        print_str += ' ' * (margin - len(unicode(key).strip()))
+        print_str += ': '
         if isinstance(val, dict):
-            print(print_str.rjust(margin) + ' {')
-            print_dict(val, exclude=exclude, ident=margin + 6)
-            print '}'.rjust(margin)
+            print(print_str)
+            print_dict(val,
+                exclude=exclude,
+                ident=margin + ident,
+                with_enumeration=recursive_enumeration,
+                recursive_enumeration=recursive_enumeration)
         elif isinstance(val, list):
-            print(print_str.rjust(margin) + ' [')
-            print_list(val, exclude=exclude, ident=margin + 6)
-            print ']'.rjust(margin)
+            print(print_str)
+            print_list(val,
+                exclude=exclude,
+                ident=margin + ident,
+                with_enumeration=recursive_enumeration,
+                recursive_enumeration=recursive_enumeration)
         else:
-            print print_str.rjust(margin) + ' ' + unicode(val).strip()
+            print print_str + ' ' + unicode(val).strip()
 
 
-def print_list(l, exclude=(), ident=0):
+def print_list(l,
+    exclude=(),
+    ident=0,
+    with_enumeration=False,
+    recursive_enumeration=False):
+    """
+    Pretty-print a list object
+
+    :param l: (list) the input
+
+    :param excelude: (object - anytype) values to exclude from printing
+
+    :param ident: (int) initial indentation (recursive)
+
+    :param with_enumeration: (bool) enumerate each 1st level value if true
+
+    :recursive_enumeration: (bool) recursively enumerate dicts and lists of
+        2nd level or deeper
+
+    :raises CLIError: (TypeError wrapper) non-list input
+    """
     if not isinstance(l, list):
-        raise CLIError(message='Cannot list_print a non-list object')
-    try:
-        margin = max(
-            1 + max(len(unicode(item).strip()) for item in l \
-                if not isinstance(item, dict) and not isinstance(item, list)),
-            ident)
-    except ValueError:
-        margin = ident
+        raiseCLIError(TypeError('Cannot list_print a non-list object'))
 
+    if l:
+        try:
+            margin = max(len(unicode(item).strip()) for item in l\
+                if not (isinstance(item, dict)\
+                or isinstance(item, list)\
+                or item in exclude))
+        except ValueError:
+            margin = (2 + len(unicode(len(l)))) if enumerate else 1
+
+    counter = 1
+    prefix = ''
     for item in sorted(l):
         if item in exclude:
             continue
-        if isinstance(item, dict):
-            print('{'.rjust(margin))
-            print_dict(item, exclude=exclude, ident=margin + 6)
-            print '}'.rjust(margin)
-        elif isinstance(item, list):
-            print '['.rjust(margin)
-            print_list(item, exclude=exclude, ident=margin + 6)
-            print ']'.rjust(margin)
+        elif with_enumeration:
+            prefix = '%s. ' % counter
+            counter += 1
+            prefix = '%s%s' % (' ' * (ident - len(prefix)), prefix)
         else:
-            print unicode(item).rjust(margin)
-
-
-def print_items(items, title=('id', 'name')):
-    for item in items:
-        if isinstance(item, dict) or isinstance(item, list):
-            print ' '.join(unicode(item.pop(key))\
-                for key in title if key in item)
+            prefix = ' ' * ident
         if isinstance(item, dict):
-            print_dict(item)
+            if with_enumeration:
+                print(prefix)
+            print_dict(item,
+                exclude=exclude,
+                ident=margin + ident,
+                with_enumeration=recursive_enumeration,
+                recursive_enumeration=recursive_enumeration)
+        elif isinstance(item, list):
+            if with_enumeration:
+                print(prefix)
+            print_list(item,
+                exclude=exclude,
+                ident=margin + ident,
+                with_enumeration=recursive_enumeration,
+                recursive_enumeration=recursive_enumeration)
+        else:
+            print('%s%s' % (prefix, item))
+
+
+def print_items(items,
+    title=('id', 'name'),
+    with_enumeration=False,
+    with_redundancy=False):
+    """print dict or list items in a list, using some values as title
+    Objects of next level don't inherit enumeration (default: off) or titles
+
+    :param items: (list) items are lists or dict
+    :param title: (tuple) keys to use their values as title
+    :param with_enumeration: (boolean) enumerate items (order id on title)
+    :param with_redundancy: (boolean) values in title also appear on body
+    """
+    for i, item in enumerate(items):
+        if with_enumeration:
+            stdout.write('%s. ' % (i + 1))
+        if isinstance(item, dict):
+            title = sorted(set(title).intersection(item.keys()))
+            if with_redundancy:
+                header = ' '.join(unicode(item[key]) for key in title)
+            else:
+                header = ' '.join(unicode(item.pop(key)) for key in title)
+            print(bold(header))
+        else:
+            print('- - -')
+        if isinstance(item, dict):
+            print_dict(item, ident=1)
+        elif isinstance(item, list):
+            print_list(item, ident=1)
+        else:
+            print(' %s' % item)
 
 
 def format_size(size):
     units = ('B', 'K', 'M', 'G', 'T')
     try:
         size = float(size)
-    except ValueError:
-        raise CLIError(message='Cannot format %s in bytes' % size)
+    except ValueError as err:
+        raiseCLIError(err, 'Cannot format %s in bytes' % size)
     for unit in units:
         if size < 1024:
             break
@@ -168,3 +260,33 @@ def list2file(l, f, depth=1):
             list2file(item, f, depth + 1)
         else:
             f.write('%s%s\n' % ('\t' * depth, unicode(item)))
+
+# Split input auxiliary
+
+
+def _parse_with_regex(line, regex):
+    re_parser = regex_compile(regex)
+    return (re_parser.split(line), re_parser.findall(line))
+
+
+def _sub_split(line):
+    terms = []
+    (sub_trivials, sub_interesting) = _parse_with_regex(line, ' ".*?" ')
+    for subi, subipart in enumerate(sub_interesting):
+        terms += sub_trivials[subi].split()
+        terms.append(subipart[2:-2])
+    terms += sub_trivials[-1].split()
+    return terms
+
+
+def split_input(line):
+    """Use regular expressions to split a line correctly
+    """
+    line = ' %s ' % line
+    (trivial_parts, interesting_parts) = _parse_with_regex(line, ' \'.*?\' ')
+    terms = []
+    for i, ipart in enumerate(interesting_parts):
+        terms += _sub_split(trivial_parts[i])
+        terms.append(ipart[2:-2])
+    terms += _sub_split(trivial_parts[-1])
+    return terms

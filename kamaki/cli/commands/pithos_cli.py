@@ -32,29 +32,35 @@
 # or implied, of GRNET S.A.command
 
 from kamaki.cli import command
-from kamaki.cli.errors import CLIError, raiseCLIError
+from kamaki.cli.command_tree import CommandTree
+from kamaki.cli.errors import raiseCLIError, CLISyntaxError
 from kamaki.cli.utils import format_size, print_dict, pretty_keys
 from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
+from kamaki.cli.argument import KeyValueArgument
+from kamaki.cli.argument import ProgressBarArgument
 from kamaki.cli.commands import _command_init
 from kamaki.clients.pithos import PithosClient, ClientError
 from kamaki.cli.utils import bold
 from sys import stdout
 from time import localtime, strftime
 from datetime import datetime as dtm
+from logging import getLogger
 
+kloger = getLogger('kamaki')
 
-API_DESCRIPTION = dict(store='Pithos+ storage commands')
+pithos_cmds = CommandTree('store', 'Pithos+ storage commands')
+_commands = [pithos_cmds]
 
-try:
-    from progress.bar import IncrementalBar
-except ImportError:
-    # progress not installed - pls, pip install progress
-    pass
 
 # Argument functionality
 
 
 class DelimiterArgument(ValueArgument):
+    """
+    :value type: string
+    :value returns: given string or /
+    """
+
     def __init__(self, caller_obj, help='', parsed_name=None, default=None):
         super(DelimiterArgument, self).__init__(help, parsed_name, default)
         self.caller_obj = caller_obj
@@ -70,59 +76,15 @@ class DelimiterArgument(ValueArgument):
         self._value = newvalue
 
 
-class MetaArgument(ValueArgument):
-    @property
-    def value(self):
-        if self._value is None:
-            return self.default
-        metadict = dict()
-        for metastr in self._value.split('_'):
-            (key, val) = metastr.split(':')
-            metadict[key] = val
-        return metadict
-
-    @value.setter
-    def value(self, newvalue):
-        if newvalue is None:
-            self._value = self.default
-        self._value = newvalue
-
-
-class ProgressBarArgument(FlagArgument):
-
-    def __init__(self, help='', parsed_name='', default=True):
-        self.suffix = '%(percent)d%%'
-        super(ProgressBarArgument, self).__init__(help, parsed_name, default)
-        try:
-            self.bar = IncrementalBar()
-        except NameError:
-            print('Waring: no progress bar functionality')
-
-    def get_generator(self, message, message_len=25):
-        if self.value:
-            return None
-        try:
-            bar = ProgressBar(message.ljust(message_len))
-        except NameError:
-            return None
-        return bar.get_generator()
-
-
-try:
-    class ProgressBar(IncrementalBar):
-        suffix = '%(percent)d%% - %(eta)ds'
-
-        def get_generator(self):
-            def progress_gen(n):
-                for i in self.iter(range(n)):
-                    yield
-                yield
-            return progress_gen
-except NameError:
-    pass
-
-
 class SharingArgument(ValueArgument):
+    """Set sharing (read and/or write) groups
+
+    :value type: "read=term1,term2,... write=term1,term2,..."
+
+    :value returns: {'read':['term1', 'term2', ...],
+        'write':['term1', 'term2', ...]}
+    """
+
     @property
     def value(self):
         return getattr(self, '_value', self.default)
@@ -137,13 +99,13 @@ class SharingArgument(ValueArgument):
         for p in permlist:
             try:
                 (key, val) = p.split('=')
-            except ValueError:
-                raise CLIError(message='Error in --sharing',
+            except ValueError as err:
+                raiseCLIError(err, 'Error in --sharing',
                     details='Incorrect format',
                     importance=1)
             if key.lower() not in ('read', 'write'):
-                raise CLIError(message='Error in --sharing',
-                    details='Invalid permition key %s' % key,
+                raiseCLIError(err, 'Error in --sharing',
+                    details='Invalid permission key %s' % key,
                     importance=1)
             val_list = val.split(',')
             if not key in perms:
@@ -155,6 +117,13 @@ class SharingArgument(ValueArgument):
 
 
 class RangeArgument(ValueArgument):
+    """
+    :value type: string of the form <start>-<end>
+        where <start> and <end> are integers
+
+    :value returns: the input string, after type checking <start> and <end>
+    """
+
     @property
     def value(self):
         return getattr(self, '_value', self.default)
@@ -170,6 +139,12 @@ class RangeArgument(ValueArgument):
 
 
 class DateArgument(ValueArgument):
+    """
+    :value type: a string formated in an acceptable date format
+
+    :value returns: same date in first of DATE_FORMATS
+    """
+
     DATE_FORMATS = ["%a %b %d %H:%M:%S %Y",
         "%A, %d-%b-%y %H:%M:%S GMT",
         "%a, %d %b %Y %H:%M:%S GMT"]
@@ -194,7 +169,8 @@ class DateArgument(ValueArgument):
                 continue
             self._value = t.strftime(self.DATE_FORMATS[0])
             return
-        raise CLIError('Date Argument Error',
+        raiseCLIError(None,
+            'Date Argument Error',
             details='%s not a valid date. correct formats:\n\t%s'\
             % (datestr, self.INPUT_FORMATS))
 
@@ -203,6 +179,8 @@ class DateArgument(ValueArgument):
 
 
 class _pithos_init(_command_init):
+    """Initialize a pithos+ kamaki client"""
+
     def main(self):
         self.token = self.config.get('store', 'token')\
             or self.config.get('global', 'token')
@@ -224,10 +202,7 @@ class _store_account_command(_pithos_init):
     def __init__(self, arguments={}):
         super(_store_account_command, self).__init__(arguments)
         self.arguments['account'] =\
-            ValueArgument('Specify the account', '--account')
-
-    def generator(self, message):
-        return None
+            ValueArgument('Set user account (not permanent)', '--account')
 
     def main(self):
         super(_store_account_command, self).main()
@@ -238,38 +213,58 @@ class _store_account_command(_pithos_init):
 class _store_container_command(_store_account_command):
     """Base class for container level storage commands"""
 
+    generic_err_details = ['Choose one of the following options:',
+    '  1. Set store.container variable (permanent)',
+    '     /config set store.container <container>',
+    '  2. --container=<container> (temporary, overrides 1)',
+    '  3. Use <container>:<path> (temporary, overrides all)']
+
     def __init__(self, arguments={}):
         super(_store_container_command, self).__init__(arguments)
         self.arguments['container'] =\
-            ValueArgument('Specify the container name', '--container')
+            ValueArgument('Set container to work with (temporary)',
+                '--container')
         self.container = None
         self.path = None
 
     def extract_container_and_path(self,
         container_with_path,
         path_is_optional=True):
-        assert isinstance(container_with_path, str)
-        if ':' not in container_with_path:
-            if self.get_argument('container') is not None:
-                self.container = self.get_argument('container')
-            else:
-                self.container = self.client.container
-            if self.container is None:
-                self.container = container_with_path
-            else:
-                self.path = container_with_path
-            if not path_is_optional and self.path is None:
-                raise CLIError(message="Object path is missing", status=11)
-            return
-        cnp = container_with_path.split(':')
-        self.container = cnp[0]
         try:
-            self.path = cnp[1]
-        except IndexError:
-            if path_is_optional:
+            assert isinstance(container_with_path, str)
+        except AssertionError as err:
+            raiseCLIError(err)
+
+        cont, sep, path = container_with_path.partition(':')
+
+        if sep:
+            if not cont:
+                raiseCLIError(CLISyntaxError('Container is missing\n',
+                    details=self.generic_err_details))
+            alt_cont = self.get_argument('container')
+            if alt_cont and cont != alt_cont:
+                raiseCLIError(CLISyntaxError(
+                    'Conflict: 2 containers (%s, %s)' % (cont, alt_cont),
+                    details=self.generic_err_details))
+            self.container = cont
+            if not path:
+                raiseCLIError(CLISyntaxError(
+                    'Path is missing for object in container %s' % cont,
+                    details=self.generic_err_details))
+            self.path = path
+        else:
+            alt_cont = self.get_argument('container') or self.client.container
+            if alt_cont:
+                self.container = alt_cont
+                self.path = cont
+            elif path_is_optional:
+                self.container = cont
                 self.path = None
             else:
-                raise CLIError(message="Object path is missing", status=11)
+                self.container = cont
+                raiseCLIError(CLISyntaxError(
+                    'Both container and path are required',
+                    details=self.generic_err_details))
 
     def main(self, container_with_path=None, path_is_optional=True):
         super(_store_container_command, self).main()
@@ -282,9 +277,14 @@ class _store_container_command(_store_account_command):
         self.container = self.client.container
 
 
-@command()
+@command(pithos_cmds)
 class store_list(_store_container_command):
     """List containers, object trees or objects in a directory
+    Use with:
+    1 no parameters : containers in set account
+    2. one parameter (container) or --container : contents of container
+    3. <container>:<prefix> or --container=<container> <prefix>: objects in
+        container starting with prefix
     """
 
     def __init__(self, arguments={}):
@@ -325,7 +325,6 @@ class store_list(_store_container_command):
             limit = int(limit)
         except (AttributeError, TypeError):
             limit = len(object_list) + 1
-        #index = 0
         for index, obj in enumerate(object_list):
             if 'content_type' not in obj:
                 continue
@@ -393,9 +392,11 @@ class store_list(_store_container_command):
                     show_only_shared=self.get_argument('shared'))
                 self.print_containers(r.json)
             else:
+                prefix = self.path if self.path\
+                else self.get_argument('prefix')
                 r = self.client.container_get(limit=self.get_argument('limit'),
                     marker=self.get_argument('marker'),
-                    prefix=self.get_argument('prefix'),
+                    prefix=prefix,
                     delimiter=self.get_argument('delimiter'),
                     path=self.get_argument('path'),
                     if_modified_since=self.get_argument('if_modified_since'),
@@ -406,10 +407,19 @@ class store_list(_store_container_command):
                     show_only_shared=self.get_argument('shared'))
                 self.print_objects(r.json)
         except ClientError as err:
+            if err.status == 404:
+                if 'Container does not exist' in ('%s' % err):
+                    raiseCLIError(err, 'No container %s in account %s'\
+                        % (self.container, self.account),
+                        details=self.generic_err_details)
+                elif 'Object does not exist' in ('%s' % err):
+                    raiseCLIError(err, 'No object %s in %s\'s container %s'\
+                        % (self.path, self.account, self.container),
+                        details=self.generic_err_details)
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_mkdir(_store_container_command):
     """Create a directory"""
 
@@ -422,7 +432,7 @@ class store_mkdir(_store_container_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_create(_store_container_command):
     """Create a container or a directory object"""
 
@@ -434,7 +444,9 @@ class store_create(_store_container_command):
         self.arguments['quota'] =\
             IntArgument('set default container quota', '--quota')
         self.arguments['meta'] =\
-            MetaArgument('set container metadata', '--meta')
+            KeyValueArgument(
+                'set container metadata (can be repeated)', '--meta')
+            #  MetaArgument('set container metadata', '--meta')
 
     def main(self, container____directory__):
         super(self.__class__, self).main(container____directory__)
@@ -449,7 +461,7 @@ class store_create(_store_container_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_copy(_store_container_command):
     """Copy an object"""
 
@@ -486,7 +498,7 @@ class store_copy(_store_container_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_move(_store_container_command):
     """Copy an object"""
 
@@ -524,7 +536,7 @@ class store_move(_store_container_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_append(_store_container_command):
     """Append local file to (existing) remote object"""
 
@@ -537,9 +549,9 @@ class store_append(_store_container_command):
         super(self.__class__,
             self).main(container___path, path_is_optional=False)
         try:
-            f = open(local_path, 'r')
+            f = open(local_path, 'rb')
+            progress_bar = self.arguments['progress_bar']
             try:
-                progress_bar = self.arguments['progress_bar']
                 upload_cb = progress_bar.get_generator('Appending blocks')
             except Exception:
                 upload_cb = None
@@ -547,10 +559,13 @@ class store_append(_store_container_command):
                 source_file=f,
                 upload_cb=upload_cb)
         except ClientError as err:
+            progress_bar.finish()
             raiseCLIError(err)
+        finally:
+            progress_bar.finish()
 
 
-@command()
+@command(pithos_cmds)
 class store_truncate(_store_container_command):
     """Truncate remote file up to a size"""
 
@@ -563,7 +578,7 @@ class store_truncate(_store_container_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_overwrite(_store_container_command):
     """Overwrite part (from start to end) of a remote file"""
 
@@ -576,9 +591,9 @@ class store_overwrite(_store_container_command):
         super(self.__class__,
             self).main(container___path, path_is_optional=False)
         try:
-            f = open(local_path, 'r')
+            f = open(local_path, 'rb')
+            progress_bar = self.arguments['progress_bar']
             try:
-                progress_bar = self.arguments['progress_bar']
                 upload_cb = progress_bar.get_generator('Overwritting blocks')
             except Exception:
                 upload_cb = None
@@ -588,10 +603,13 @@ class store_overwrite(_store_container_command):
                 source_file=f,
                 upload_cb=upload_cb)
         except ClientError as err:
+            progress_bar.finish()
             raiseCLIError(err)
+        finally:
+            progress_bar.finish()
 
 
-@command()
+@command(pithos_cmds)
 class store_manifest(_store_container_command):
     """Create a remote file with uploaded parts by manifestation"""
 
@@ -625,10 +643,9 @@ class store_manifest(_store_container_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_upload(_store_container_command):
     """Upload a file"""
-
 
     def __init__(self, arguments={}):
         super(self.__class__, self).__init__(arguments)
@@ -659,38 +676,43 @@ class store_upload(_store_container_command):
         remote_path = local_path if self.path is None else self.path
         poolsize = self.get_argument('poolsize')
         if poolsize is not None:
-            self.POOL_SIZE = poolsize
+            self.client.POOL_SIZE = int(poolsize)
         params = dict(content_encoding=self.get_argument('content_encoding'),
             content_type=self.get_argument('content_type'),
             content_disposition=self.get_argument('content_disposition'),
             sharing=self.get_argument('sharing'),
             public=self.get_argument('public'))
         try:
-            with open(local_path) as f:
+            progress_bar = self.arguments['progress_bar']
+            hash_bar = progress_bar.clone()
+            with open(local_path, 'rb') as f:
                 if self.get_argument('unchunked'):
                     self.client.upload_object_unchunked(remote_path, f,
                     etag=self.get_argument('etag'),
                     withHashFile=self.get_argument('use_hashes'),
                     **params)
                 else:
-                    progress_bar = self.arguments['progress_bar']
-                    hash_cb = progress_bar.get_generator(\
+                    hash_cb = hash_bar.get_generator(\
                         'Calculating block hashes')
                     upload_cb = progress_bar.get_generator('Uploading')
                     self.client.upload_object(remote_path, f,
-                    hash_cb=hash_cb,
-                    upload_cb=upload_cb,
-                    **params)
+                        hash_cb=hash_cb,
+                        upload_cb=upload_cb,
+                        **params)
+                    progress_bar.finish()
+                    hash_bar.finish()
         except ClientError as err:
-            raiseCLIError(err)
+            progress_bar.finish()
+            hash_bar.finish()
+            raiseCLIError(err, '"%s" not accessible' % container____path__)
         except IOError as err:
-            raise CLIError(message='Failed to read form file %s' % local_path,
-                importance=2,
-                details=unicode(err))
+            progress_bar.finish()
+            hash_bar.finish()
+            raiseCLIError(err, 'Failed to read form file %s' % local_path, 2)
         print 'Upload completed'
 
 
-@command()
+@command(pithos_cmds)
 class store_cat(_store_container_command):
     """Print a file to console"""
 
@@ -714,16 +736,19 @@ class store_cat(_store_container_command):
     def main(self, container___path):
         super(self.__class__,
             self).main(container___path, path_is_optional=False)
-        self.client.download_object(self.path, stdout,
+        try:
+            self.client.download_object(self.path, stdout,
             range=self.get_argument('range'),
             version=self.get_argument('object_version'),
             if_match=self.get_argument('if_match'),
             if_none_match=self.get_argument('if_none_match'),
             if_modified_since=self.get_argument('if_modified_since'),
             if_unmodified_since=self.get_argument('if_unmodified_since'))
+        except ClientError as err:
+            raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_download(_store_container_command):
     """Download a file"""
 
@@ -762,16 +787,14 @@ class store_download(_store_container_command):
                 else:
                     out = open(local_path, 'wb+')
             except IOError as err:
-                raise CLIError(message='Cannot write to file %s - %s'\
-                    % (local_path, unicode(err)),
-                    importance=1)
-        progress_bar = self.arguments['progress_bar']
-        download_cb = progress_bar.get_generator('Downloading')
+                raiseCLIError(err, 'Cannot write to file %s' % local_path, 1)
         poolsize = self.get_argument('poolsize')
         if poolsize is not None:
-            self.POOL_SIZE = int(poolsize)
+            self.client.POOL_SIZE = int(poolsize)
 
         try:
+            progress_bar = self.arguments['progress_bar']
+            download_cb = progress_bar.get_generator('Downloading')
             self.client.download_object(self.path, out,
                 download_cb=download_cb,
                 range=self.get_argument('range'),
@@ -781,7 +804,9 @@ class store_download(_store_container_command):
                 if_none_match=self.get_argument('if_none_match'),
                 if_modified_since=self.get_argument('if_modified_since'),
                 if_unmodified_since=self.get_argument('if_unmodified_since'))
+            progress_bar.finish()
         except ClientError as err:
+            progress_bar.finish()
             raiseCLIError(err)
         except KeyboardInterrupt:
             from threading import enumerate as activethreads
@@ -793,13 +818,17 @@ class store_download(_store_container_command):
                     stdout.write('.')
                 except RuntimeError:
                     continue
+            progress_bar.finish()
             print('\ndownload canceled by user')
             if local_path is not None:
                 print('to resume, re-run with --resume')
+        except Exception as e:
+            progress_bar.finish()
+            raiseCLIError(e)
         print
 
 
-@command()
+@command(pithos_cmds)
 class store_hashmap(_store_container_command):
     """Get the hashmap of an object"""
 
@@ -823,17 +852,17 @@ class store_hashmap(_store_container_command):
             self).main(container___path, path_is_optional=False)
         try:
             data = self.client.get_object_hashmap(self.path,
-                version=self.arguments('object_version'),
-                if_match=self.arguments('if_match'),
-                if_none_match=self.arguments('if_none_match'),
-                if_modified_since=self.arguments('if_modified_since'),
-                if_unmodified_since=self.arguments('if_unmodified_since'))
+                version=self.get_argument('object_version'),
+                if_match=self.get_argument('if_match'),
+                if_none_match=self.get_argument('if_none_match'),
+                if_modified_since=self.get_argument('if_modified_since'),
+                if_unmodified_since=self.get_argument('if_unmodified_since'))
         except ClientError as err:
             raiseCLIError(err)
         print_dict(data)
 
 
-@command()
+@command(pithos_cmds)
 class store_delete(_store_container_command):
     """Delete a container [or an object]"""
 
@@ -863,7 +892,7 @@ class store_delete(_store_container_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_purge(_store_container_command):
     """Purge a container"""
 
@@ -875,7 +904,7 @@ class store_purge(_store_container_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_publish(_store_container_command):
     """Publish an object"""
 
@@ -883,12 +912,13 @@ class store_publish(_store_container_command):
         super(self.__class__,
             self).main(container___path, path_is_optional=False)
         try:
-            self.client.publish_object(self.path)
+            url = self.client.publish_object(self.path)
         except ClientError as err:
             raiseCLIError(err)
+        print(url)
 
 
-@command()
+@command(pithos_cmds)
 class store_unpublish(_store_container_command):
     """Unpublish an object"""
 
@@ -901,9 +931,9 @@ class store_unpublish(_store_container_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_permissions(_store_container_command):
-    """Get object read/write permissions """
+    """Get object read / write permissions """
 
     def main(self, container___path):
         super(self.__class__,
@@ -915,7 +945,7 @@ class store_permissions(_store_container_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_setpermissions(_store_container_command):
     """Set sharing permissions """
 
@@ -934,8 +964,8 @@ class store_setpermissions(_store_container_command):
                 read = False
                 write = False
         if not read and not write:
-            raise CLIError(importance=0,
-                message='Usage:\tread=<groups,users> write=<groups,users>')
+            raiseCLIError(None,
+            'Usage:\tread=<groups,users> write=<groups,users>')
         return (read, write)
 
     def main(self, container___path, *permissions):
@@ -949,7 +979,7 @@ class store_setpermissions(_store_container_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_delpermissions(_store_container_command):
     """Delete all sharing permissions"""
 
@@ -962,7 +992,7 @@ class store_delpermissions(_store_container_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_info(_store_container_command):
     """Get information for account [, container [or object]]"""
 
@@ -987,7 +1017,7 @@ class store_info(_store_container_command):
         print_dict(reply)
 
 
-@command()
+@command(pithos_cmds)
 class store_meta(_store_container_command):
     """Get custom meta-content for account [, container [or object]]"""
 
@@ -1006,16 +1036,16 @@ class store_meta(_store_container_command):
 
         detail = self.get_argument('detail')
         try:
+            until = self.get_argument('until')
             if self.container is None:
                 print(bold(self.client.account))
-                until = self.get_argument('until')
                 if detail:
                     reply = self.client.get_account_info(until=until)
                 else:
                     reply = self.client.get_account_meta(until=until)
                     reply = pretty_keys(reply, '-')
             elif self.path is None:
-                print(bold('%s: %s' % self.client.account, self.container))
+                print(bold('%s: %s' % (self.client.account, self.container)))
                 if detail:
                     reply = self.client.get_container_info(until=until)
                 else:
@@ -1024,8 +1054,8 @@ class store_meta(_store_container_command):
                     reply = {'container-meta': pretty_keys(cmeta, '-'),
                         'object-meta': pretty_keys(ometa, '-')}
             else:
-                print('%s: %s:%s'\
-                % (bold(self.client.account, self.container, self.path)))
+                print(bold('%s: %s:%s'\
+                    % (self.client.account, self.container, self.path)))
                 version = self.get_argument('object_version')
                 if detail:
                     reply = self.client.get_object_info(self.path,
@@ -1039,7 +1069,7 @@ class store_meta(_store_container_command):
         print_dict(reply)
 
 
-@command()
+@command(pithos_cmds)
 class store_setmeta(_store_container_command):
     """Set a new metadatum for account [, container [or object]]"""
 
@@ -1047,8 +1077,8 @@ class store_setmeta(_store_container_command):
         super(self.__class__, self).main(container____path__)
         try:
             metakey, metavalue = metakey___metaval.split(':')
-        except ValueError:
-            raise CLIError(message='Usage:  metakey:metavalue', importance=1)
+        except ValueError as err:
+            raiseCLIError(err, 'Usage:  metakey:metavalue', importance=1)
         try:
             if self.container is None:
                 self.client.set_account_meta({metakey: metavalue})
@@ -1060,7 +1090,7 @@ class store_setmeta(_store_container_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_delmeta(_store_container_command):
     """Delete an existing metadatum of account [, container [or object]]"""
 
@@ -1072,12 +1102,12 @@ class store_delmeta(_store_container_command):
             elif self.path is None:
                 self.client.del_container_meta(metakey)
             else:
-                self.client.del_object_meta(metakey, self.path)
+                self.client.del_object_meta(self.path, metakey)
         except ClientError as err:
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_quota(_store_account_command):
     """Get  quota for account [or container]"""
 
@@ -1093,7 +1123,7 @@ class store_quota(_store_account_command):
         print_dict(reply)
 
 
-@command()
+@command(pithos_cmds)
 class store_setquota(_store_account_command):
     """Set new quota (in KB) for account [or container]"""
 
@@ -1109,7 +1139,7 @@ class store_setquota(_store_account_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_versioning(_store_account_command):
     """Get  versioning for account [or container ]"""
 
@@ -1125,7 +1155,7 @@ class store_versioning(_store_account_command):
         print_dict(reply)
 
 
-@command()
+@command(pithos_cmds)
 class store_setversioning(_store_account_command):
     """Set new versioning (auto, none) for account [or container]"""
 
@@ -1141,7 +1171,7 @@ class store_setversioning(_store_account_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_group(_store_account_command):
     """Get user groups details for account"""
 
@@ -1154,7 +1184,7 @@ class store_group(_store_account_command):
         print_dict(reply)
 
 
-@command()
+@command(pithos_cmds)
 class store_setgroup(_store_account_command):
     """Create/update a new user group on account"""
 
@@ -1166,7 +1196,7 @@ class store_setgroup(_store_account_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_delgroup(_store_account_command):
     """Delete a user group on an account"""
 
@@ -1178,7 +1208,7 @@ class store_delgroup(_store_account_command):
             raiseCLIError(err)
 
 
-@command()
+@command(pithos_cmds)
 class store_sharers(_store_account_command):
     """List the accounts that share objects with default account"""
 
@@ -1202,12 +1232,12 @@ class store_sharers(_store_account_command):
         for acc in accounts:
             stdout.write(bold(acc['name']) + ' ')
             if self.get_argument('detail'):
-                print_dict(acc, exclude='name', ident=18)
+                print_dict(acc, exclude='name', ident=4)
         if not self.get_argument('detail'):
             print
 
 
-@command()
+@command(pithos_cmds)
 class store_versions(_store_container_command):
     """Get the version list of an object"""
 
@@ -1216,7 +1246,7 @@ class store_versions(_store_container_command):
         try:
             versions = self.client.get_object_versionlist(self.path)
         except ClientError as err:
-            raise CLIError(err)
+            raiseCLIError(err)
 
         print('%s:%s versions' % (self.container, self.path))
         for vitem in versions:

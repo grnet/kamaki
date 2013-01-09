@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright 2012 GRNET S.A. All rights reserved.
+# Copyright 2012-2013 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -34,14 +34,6 @@
 # or implied, of GRNET S.A.
 
 
-def order_free_contains(containing, contained):
-    superset = containing.split()
-    for term in contained.split():
-        if term not in superset:
-            return False
-    return True
-
-
 class History(object):
     def __init__(self, filepath):
         self.filepath = filepath
@@ -71,3 +63,20 @@ class History(object):
     def clean(self):
         f = open(self.filepath, 'w')
         f.close()
+
+    def retrieve(self, cmd_id):
+        """
+        :param cmd_id: (int) the id of the command to retrieve can be positive
+            or negative, zero values are ignored
+
+        :returns: (str) the stored command record without the id
+        """
+        cmd_id = int(cmd_id)
+        if not cmd_id:
+            return None
+        with open(self.filepath) as f:
+            try:
+                cmd_list = f.readlines()[:-1]  # exclude current command
+                return cmd_list[cmd_id - (1 if cmd_id > 0 else 0)]
+            except IndexError:
+                return None

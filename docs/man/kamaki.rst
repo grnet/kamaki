@@ -50,7 +50,7 @@ network
 
 image 
 
-    Manage compute API and glance images.
+    Manage compute API and Plankton images.
 
 store
 
@@ -60,10 +60,12 @@ store
 Options
 -------
 
---help, -h              Show help message and exit.
--v                      Use verbose output.
--d                      Use debug output.
--o KEY=VAL              Override a config value (can be used multiple times)
+.. code-block:: console
+
+    --help, -h              Show help message and exit.
+    -v                      Use verbose output.
+    -d                      Use debug output.
+    -o KEY=VAL              Override a config value (can be used multiple times)
 
 
 Commands
@@ -81,9 +83,11 @@ config commands
 history commands
 ****************
 
-Show command user history, as stored in ~/.kamaki.history
+Command user history, as stored in ~/.kamaki.history
 
+* show      show user history
 * clean     clean up history
+* run       run previously executed command(s)
 
 
 server commands
@@ -105,6 +109,7 @@ server commands
 * setmeta    update server metadata
 * delmeta    delete server metadata
 * stats      get server statistics
+* wait       wait for server to finish [BUILD, STOPPED, REBOOT, ACTIVE]
 
 
 flavor commands
@@ -123,6 +128,7 @@ image commands and options
 * shared      list shared images
 * delete      delete image
 * register    register an image
+* reregister  re-register an image (preserve and update properties)
 * meta        get image metadata
 * members     get image members
 * addmember   add a member to an image
@@ -148,15 +154,44 @@ network commands
 store commands
 **************
 
-* create     create a container
-* container  get container info
-* upload     upload a file
-* download   download a file
-* delete     delete a file
+* append    Append local file to (existing) remote object
+* cat       Print a file to console
+* copy      Copy an object
+* create    Create a container or a directory object
+* delete    Delete a container [or an object]
+* delgroup  Delete a user group on an account
+* delmeta   Delete an existing metadatum of account [, container [or object]]
+* delpermissions    Delete all sharing permissions
+* download  Download a file
+* group     Get user groups details for account
+* hashmap   Get the hashmap of an object
+* info      Get information for account [, container [or object]]
+* list      List containers, object trees or objects in a directory
+* manifest  Create a remote file with uploaded parts by manifestation
+* meta      Get custom meta-content for account [, container [or object]]
+* mkdir     Create a directory
+* move      Copy an object
+* overwrite Overwrite part (from start to end) of a remote file
+* permissions   Get object read/write permissions
+* publish   Publish an object
+* purge     Purge a container
+* quota     Get quota for account [or container]
+* setgroup  Create/update a new user group on account
+* setmeta   Set a new metadatum for account [, container [or object]]
+* setpermissions    Set sharing permissions
+* setquota  Set new quota (in KB) for account [or container]
+* setversioning Set new versioning (auto, none) for account [or container]
+* sharers   List the accounts that share objects with default account
+* truncate  Truncate remote file up to a size
+* unpublish Unpublish an object
+* upload    Upload a file
+* versioning    Get  versioning for account [or container ]
+* versions  Get the version list of an object
+
 
 
 Author
 ------
 
-GRNET development team <synnefo@lists.grnet.gr>.
+GRNET development team <synnefo-devel@googlegroups.com>.
 
