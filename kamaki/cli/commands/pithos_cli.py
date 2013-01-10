@@ -77,6 +77,14 @@ def raise_connection_errors(e):
             '  to get authentication token: /config get token',
             '  to set authentication token: /config set token <token>'
             ])
+    elif e.status == 413:
+        raiseCLIError(e, details=[
+            'Get quotas:',
+            '- total quota:      /store quota',
+            '- container quota:  /store quota <container>',
+            'Users shall set a higher container quota, if available:',
+            '-                  /store setquota <limit in KB> <container>'
+            ])
 
 
 class DelimiterArgument(ValueArgument):
@@ -204,6 +212,7 @@ class _store_container_command(_store_account_command):
     '     /config set store.container <container>',
     '  2. --container=<container> (temporary, overrides 1)',
     '  3. Use the container:path format (temporary, overrides all)']
+
     container = None
     path = None
 
@@ -1612,7 +1621,7 @@ class store_delmeta(_store_container_command):
 
 @command(pithos_cmds)
 class store_quota(_store_account_command):
-    """Get  quota for account [or container]"""
+    """Get quota (in KB) for account or container"""
 
     def main(self, container=None):
         super(self.__class__, self).main()
@@ -1622,13 +1631,21 @@ class store_quota(_store_account_command):
             else:
                 reply = self.client.get_container_quota(container)
         except ClientError as err:
+            if err.status == 404:
+                if 'container' in ('%s' % err).lower():
+                    raiseCLIError(err,
+                        'No container %s in account %s'\
+                        % (container, self.account))
+            raise_connection_errors(err)
             raiseCLIError(err)
-        print_dict(reply)
+        except Exception as err:
+            raiseCLIError(err)
+        print_dict(pretty_keys(reply, '-'))
 
 
 @command(pithos_cmds)
 class store_setquota(_store_account_command):
-    """Set new quota (in KB) for account [or container]"""
+    """Set new quota (in KB) for account or container"""
 
     def main(self, quota, container=None):
         super(self.__class__, self).main()
@@ -1639,12 +1656,20 @@ class store_setquota(_store_account_command):
                 self.client.container = container
                 self.client.set_container_quota(quota)
         except ClientError as err:
+            if err.status == 404:
+                if 'container' in ('%s' % err).lower():
+                    raiseCLIError(err,
+                        'No container %s in account %s'\
+                        % (container, self.account))
+            raise_connection_errors(err)
+            raiseCLIError(err)
+        except Exception as err:
             raiseCLIError(err)
 
 
 @command(pithos_cmds)
 class store_versioning(_store_account_command):
-    """Get  versioning for account [or container ]"""
+    """Get  versioning for account or container"""
 
     def main(self, container=None):
         super(self.__class__, self).main()
@@ -1654,13 +1679,25 @@ class store_versioning(_store_account_command):
             else:
                 reply = self.client.get_container_versioning(container)
         except ClientError as err:
+            if err.status == 404:
+                if 'container' in ('%s' % err).lower():
+                    raiseCLIError(
+                        err,
+                        'No container %s in account %s'\
+                        % (self.container, self.account),
+                        details=self.generic_err_details)
+                else:
+                    raiseCLIError(err, details=self.generic_err_details)
+            raise_connection_errors(err)
+            raiseCLIError(err)
+        except Exception as err:
             raiseCLIError(err)
         print_dict(reply)
 
 
 @command(pithos_cmds)
 class store_setversioning(_store_account_command):
-    """Set new versioning (auto, none) for account [or container]"""
+    """Set versioning mode (auto, none) for account or container"""
 
     def main(self, versioning, container=None):
         super(self.__class__, self).main()
@@ -1671,6 +1708,18 @@ class store_setversioning(_store_account_command):
                 self.client.container = container
                 self.client.set_container_versioning(versioning)
         except ClientError as err:
+            if err.status == 404:
+                if 'container' in ('%s' % err).lower():
+                    raiseCLIError(
+                        err,
+                        'No container %s in account %s'\
+                        % (self.container, self.account),
+                        details=self.generic_err_details)
+                else:
+                    raiseCLIError(err, details=self.generic_err_details)
+            raise_connection_errors(err)
+            raiseCLIError(err)
+        except Exception as err:
             raiseCLIError(err)
 
 
