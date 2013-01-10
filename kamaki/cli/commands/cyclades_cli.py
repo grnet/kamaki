@@ -231,9 +231,9 @@ class PersonalityArgument(KeyValueArgument):
 class server_create(_init_cyclades):
     """Create a server (aka Virtual Machine)
     Parameters:
-      name: (single quoted text)
-      flavor id: Hardware flavor. Pick one from: /flavor list
-      image id: OS images. Pick one from: /image list
+    - name: (single quoted text)
+    - flavor id: Hardware flavor. Pick one from: /flavor list
+    - image id: OS images. Pick one from: /image list
     """
 
     arguments = dict(
@@ -391,9 +391,9 @@ class server_shutdown(_init_cyclades):
 class server_console(_init_cyclades):
     """Get a VNC console to access an existing server (VM)
     Console connection information provided (at least):
-      host: (url or address) a VNC host
-      port: (int) the gateway to enter VM on host
-      password: for VNC authorization
+    - host: (url or address) a VNC host
+    - port: (int) the gateway to enter VM on host
+    - password: for VNC authorization
     """
 
     def main(self, server_id):
@@ -418,9 +418,9 @@ class server_console(_init_cyclades):
 class server_firewall(_init_cyclades):
     """Set the server (VM) firewall profile on VMs public network
     Values for profile:
-      DISABLED: Shutdown firewall
-      ENABLED: Firewall in normal mode
-      PROTECTED: Firewall in secure mode
+    - DISABLED: Shutdown firewall
+    - ENABLED: Firewall in normal mode
+    - PROTECTED: Firewall in secure mode
     """
 
     def main(self, server_id, profile):
@@ -873,7 +873,7 @@ class network_connect(_init_cyclades):
 class network_disconnect(_init_cyclades):
     """Disconnect a nic that connects a server to a network
     Nic ids are listed as "attachments" in detailed network information
-      To get detailed network information: /network info <network id>
+    To get detailed network information: /network info <network id>
     """
 
     def main(self, nic_id):

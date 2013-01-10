@@ -132,9 +132,9 @@ class image_public(_init_image):
 class image_meta(_init_image):
     """Get image metadata
     Image metadata include:
-        - image file information (location, size, etc.)
-        - image information (id, name, etc.)
-        - image os properties (os, fs, etc.)
+    - image file information (location, size, etc.)
+    - image information (id, name, etc.)
+    - image os properties (os, fs, etc.)
     """
 
     def main(self, image_id):
