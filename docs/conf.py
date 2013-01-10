@@ -19,7 +19,6 @@
 from sys import path, stderr
 import os
 
-path.append('/home/saxtouri/src/objpool')
 try:
     from objpool import http
     http
@@ -27,7 +26,7 @@ except ImportError:
     stderr.write("`objpool` package is required to build kamaki docs.\n")
     #exit()
 
-path.append(os.path.join(os.path.abspath(os.path.dirname(__file__)), '..'))
+path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..'))
 
 # -- General configuration ---------------------------------------------------
 
