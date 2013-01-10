@@ -35,15 +35,19 @@
 
 from setuptools import setup
 from sys import version_info
+import collections
 
 import kamaki
+
 
 
 optional = ['ansicolors',
             'progress>=1.0.2']
 requires = ['objpool',
-            'ordereddict',
             'argparse']
+
+if not hasattr(collections, "OrderedDict"): # Python 2.6
+    requires.append("ordereddict")
 
 setup(
     name='kamaki',
