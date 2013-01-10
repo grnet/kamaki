@@ -1725,44 +1725,53 @@ class store_setversioning(_store_account_command):
 
 @command(pithos_cmds)
 class store_group(_store_account_command):
-    """Get user groups details for account"""
+    """Get groups and group members"""
 
     def main(self):
         super(self.__class__, self).main()
         try:
             reply = self.client.get_account_group()
         except ClientError as err:
+            raise_connection_errors(err)
             raiseCLIError(err)
-        print_dict(reply)
+        except Exception as err:
+            raiseCLIError(err)
+        print_dict(pretty_keys(reply, '-'))
 
 
 @command(pithos_cmds)
 class store_setgroup(_store_account_command):
-    """Create/update a new user group on account"""
+    """Set a user group"""
 
     def main(self, groupname, *users):
         super(self.__class__, self).main()
         try:
             self.client.set_account_group(groupname, users)
         except ClientError as err:
+            raise_connection_errors(err)
+            raiseCLIError(err)
+        except Exception as err:
             raiseCLIError(err)
 
 
 @command(pithos_cmds)
 class store_delgroup(_store_account_command):
-    """Delete a user group on an account"""
+    """Delete a user group"""
 
     def main(self, groupname):
         super(self.__class__, self).main()
         try:
             self.client.del_account_group(groupname)
         except ClientError as err:
+            raise_connection_errors(err)
+            raiseCLIError(err)
+        except Exception as err:
             raiseCLIError(err)
 
 
 @command(pithos_cmds)
 class store_sharers(_store_account_command):
-    """List the accounts that share objects with default account"""
+    """List the accounts that share objects with current user"""
 
     arguments = dict(
         detail=FlagArgument('show detailed output', '-l'),
@@ -1775,31 +1784,55 @@ class store_sharers(_store_account_command):
             marker = self['marker']
             accounts = self.client.get_sharing_accounts(marker=marker)
         except ClientError as err:
+            raise_connection_errors(err)
+            raiseCLIError(err)
+        except Exception as err:
             raiseCLIError(err)
 
         for acc in accounts:
             stdout.write(bold(acc['name']) + ' ')
             if self['detail']:
-                print_dict(acc, exclude='name', ident=4)
+                print_dict(acc, exclude='name')
         if not self['detail']:
             print
 
 
 @command(pithos_cmds)
 class store_versions(_store_container_command):
-    """Get the version list of an object"""
+    """Get the list of object versions
+    Deleted objects may still have versions that can be used to restore it and
+    get information about its previous state.
+    The version number can be used in a number of other commands, like info,
+    copy, move, meta. See these commands for more information, e.g.
+    /store info -h
+    """
 
     def main(self, container___path):
         super(store_versions, self).main(container___path)
         try:
             versions = self.client.get_object_versionlist(self.path)
+
+            for vitem in versions:
+                t = localtime(float(vitem[1]))
+                vid = bold(unicode(vitem[0]))
+                print('\t%s \t(%s)' % (vid, strftime('%d-%m-%Y %H:%M:%S', t)))
         except ClientError as err:
+            if err.status == 404:
+                if 'container' in ('%s' % err).lower():
+                    raiseCLIError(
+                        err,
+                        'No container %s in account %s'\
+                        % (self.container, self.account),
+                        details=self.generic_err_details)
+                elif 'object' in ('%s' % err).lower():
+                    raiseCLIError(
+                        err,
+                        'No object %s in container %s'\
+                        % (self.path, self.container),
+                        details=self.generic_err_details)
+                else:
+                    raiseCLIError(err, details=self.generic_err_details)
+            raise_connection_errors(err)
             raiseCLIError(err)
-
-        print('%s:%s versions' % (self.container, self.path))
-        for vitem in versions:
-            t = localtime(float(vitem[1]))
-            vid = bold(unicode(vitem[0]))
-            print('\t%s \t(%s)' % (vid, strftime('%d-%m-%Y %H:%M:%S', t)))
-
-
+        except Exception as err:
+            raiseCLIError(err)
