@@ -246,8 +246,6 @@ class PithosClient(PithosRestAPI):
             if hash_cb:
                 hash_gen.next()
         if offset != size:
-            print("Size is %i" % size)
-            print("Offset is %i" % offset)
             assert offset == size, \
                    "Failed to calculate uploaded blocks: " \
                     "Offset and object size do not match"

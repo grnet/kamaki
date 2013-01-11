@@ -873,8 +873,26 @@ class store_upload(_store_container_command):
         progress_bar=ProgressBarArgument(
             'do not show progress bar',
             '--no-progress-bar',
-            default=False)
+            default=False),
+        overwrite=FlagArgument('Force overwrite, if object exists', '-f')
     )
+
+    def _remote_path(self, remote_path, local_path=''):
+        if self['overwrite']:
+            return remote_path
+        try:
+            r = self.client.get_object_info(remote_path)
+        except ClientError as ce:
+            if ce.status == 404:
+                return remote_path
+        ctype = r.get('content-type', '')
+        if 'application/directory' == ctype.lower():
+            ret = '%s/%s' % (remote_path, local_path)
+            return self._remote_path(ret) if local_path else ret
+        raiseCLIError(
+            'Object %s already exists' % remote_path,
+            importance=1,
+            details=['use -f to overwrite'])
 
     def main(self, local_path, container____path__):
         super(self.__class__, self).main(container____path__)
@@ -889,6 +907,7 @@ class store_upload(_store_container_command):
             sharing=self['sharing'],
             public=self['public'])
         try:
+            remote_path = self._remote_path(remote_path, local_path)
             progress_bar = self.arguments['progress_bar']
             hash_bar = progress_bar.clone()
             with open(path.abspath(local_path), 'rb') as f:
@@ -912,8 +931,11 @@ class store_upload(_store_container_command):
                     progress_bar.finish()
                     hash_bar.finish()
         except ClientError as err:
-            progress_bar.finish()
-            hash_bar.finish()
+            try:
+                progress_bar.finish()
+                hash_bar.finish()
+            except Exception:
+                pass
             if err.status == 404:
                 if 'container' in ('%s' % err).lower():
                     raiseCLIError(
@@ -924,10 +946,18 @@ class store_upload(_store_container_command):
             raise_connection_errors(err)
             raiseCLIError(err, '"%s" not accessible' % container____path__)
         except IOError as err:
-            progress_bar.finish()
-            hash_bar.finish()
+            try:
+                progress_bar.finish()
+                hash_bar.finish()
+            except Exception:
+                pass
             raiseCLIError(err, 'Failed to read form file %s' % local_path, 2)
         except Exception as e:
+            try:
+                progress_bar.finish()
+                hash_bar.finish()
+            except Exception:
+                pass
             raiseCLIError(e)
         print 'Upload completed'
 

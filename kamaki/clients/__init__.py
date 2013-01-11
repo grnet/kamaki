@@ -94,7 +94,7 @@ class SilentEvent(Thread):
         try:
             self._value = self.method(*(self.args), **(self.kwargs))
         except Exception as e:
-            print('______\n%s\n_______' % e)
+            print('______\n%s, \n_______' % (e, type(e)))
             self._exception = e
 
 
