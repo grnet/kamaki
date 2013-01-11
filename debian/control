@@ -2,20 +2,19 @@ Source: kamaki
 Section: python
 Priority: optional
 Maintainer: Stavros Sachtouris <saxtouri@admin.grnet.gr>
-Build-Depends: debhelper (>= 8), python-all (>= 2.5)
+XSBC-Original-Maintainer: Stavros Sachtouris <saxtouri@admin.grnet.gr>
+Build-Depends: debhelper (>= 8), python-all (>= 2.5), python-objpool
 Standards-Version: 3.9.2
 XS-Python-Version: >= 2.6
 Homepage: https://code.grnet.gr/projects/kamaki
 
 Package: kamaki
 Architecture: all
-Depends: ${misc:Depends}, ${python:Depends}, python-setuptools,
- snf-common (>= 0.11), python-ordereddict, python-argparse
-Suggests: python-progress, python-ansicolors
+Depends: ${misc:Depends}, ${python:Depends}, python-setuptools, python-objpool
 XB-Python-Version: ${python:Versions}
-Description: Simple, yet intuitive, command-line tool for managing clouds.
-             It is an initial implementation of the OpenStack Compute API, 
-             v1.1, with custom extensions specific to the Synnefo IaaS cloud 
-             management software.
-
+Description: command-line tool for managing clouds
+ Simple, yet intuitive, command-line tool for managing clouds.
+ It is an initial implementation of the OpenStack Compute API,
+ v1.1, with custom extensions specific to the Synnefo IaaS cloud
+ management software.
 

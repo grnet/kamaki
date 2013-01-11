@@ -1,3 +1,9 @@
+kamaki (0.6.2.1-1) stable; urgency=low
+
+  * New upstream version, replace dependency snf-common with python-objpool
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Fri, 11 Jan 201r 18:29:33 +0200
+
 kamaki (0.6.1.1-1) stable; urgency=low
 
   * Documentation updates, bug fixes
