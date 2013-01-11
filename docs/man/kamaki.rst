@@ -50,7 +50,7 @@ network
 
 image 
 
-    Manage compute API and glance images.
+    Manage compute API and Plankton images.
 
 store
 
@@ -60,10 +60,12 @@ store
 Options
 -------
 
---help, -h              Show help message and exit.
--v                      Use verbose output.
--d                      Use debug output.
--o KEY=VAL              Override a config value (can be used multiple times)
+.. code-block:: console
+
+    --help, -h              Show help message and exit.
+    -v                      Use verbose output.
+    -d                      Use debug output.
+    -o KEY=VAL              Override a config value (can be used multiple times)
 
 
 Commands
@@ -190,5 +192,5 @@ store commands
 Author
 ------
 
-GRNET development team <synnefo@lists.grnet.gr>.
+GRNET development team <synnefo-devel@googlegroups.com>.
 

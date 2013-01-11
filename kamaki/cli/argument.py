@@ -45,7 +45,10 @@ except ImportError:
 
 
 class Argument(object):
-    """An argument that can be parsed from command line or otherwise"""
+    """An argument that can be parsed from command line or otherwise.
+    This is the general Argument class. It is suggested to extent this
+    class into more specific argument types.
+    """
 
     def __init__(self, arity, help=None, parsed_name=None, default=None):
         self.arity = int(arity)
@@ -59,6 +62,9 @@ class Argument(object):
 
     @property
     def parsed_name(self):
+        """the string which will be recognised by the parser as an instance
+            of this argument
+        """
         return getattr(self, '_parsed_name', None)
 
     @parsed_name.setter
@@ -71,6 +77,7 @@ class Argument(object):
 
     @property
     def help(self):
+        """a user friendly help message"""
         return getattr(self, '_help', None)
 
     @help.setter
@@ -79,6 +86,7 @@ class Argument(object):
 
     @property
     def arity(self):
+        """negative for repeating, 0 for flag, 1 or more for values"""
         return getattr(self, '_arity', None)
 
     @arity.setter
@@ -88,6 +96,7 @@ class Argument(object):
 
     @property
     def default(self):
+        """the value of this argument when not set"""
         if not hasattr(self, '_default'):
             self._default = False if self.arity == 0 else None
         return self._default
@@ -98,6 +107,7 @@ class Argument(object):
 
     @property
     def value(self):
+        """the value of the argument"""
         return getattr(self, '_value', self.default)
 
     @value.setter
@@ -105,7 +115,7 @@ class Argument(object):
         self._value = newvalue
 
     def update_parser(self, parser, name):
-        """Update an argument parser with this argument info"""
+        """Update argument parser with self info"""
         action = 'append' if self.arity < 0\
             else 'store_true' if self.arity == 0\
             else 'store'
@@ -113,15 +123,18 @@ class Argument(object):
             default=self.default, help=self.help)
 
     def main(self):
-        """Overide this method to give functionality to ur args"""
+        """Overide this method to give functionality to your args"""
         raise NotImplementedError
 
 
 class ConfigArgument(Argument):
+    """Manage a kamaki configuration (file)"""
+
     _config_file = None
 
     @property
     def value(self):
+        """A Config object"""
         super(self.__class__, self).value
         return super(self.__class__, self).value
 
@@ -136,6 +149,7 @@ class ConfigArgument(Argument):
             self._value = Config()
 
     def get(self, group, term):
+        """Get a configuration setting from the Config object"""
         return self.value.get(group, term)
 
     def get_groups(self):
@@ -145,12 +159,15 @@ _config_arg = ConfigArgument(1, 'Path to configuration file', '--config')
 
 
 class CmdLineConfigArgument(Argument):
+    """Set a run-time setting option (not persistent)"""
+
     def __init__(self, config_arg, help='', parsed_name=None, default=None):
         super(self.__class__, self).__init__(1, help, parsed_name, default)
         self._config_arg = config_arg
 
     @property
     def value(self):
+        """A key=val option"""
         return super(self.__class__, self).value
 
     @value.setter
@@ -176,18 +193,29 @@ class CmdLineConfigArgument(Argument):
 
 
 class FlagArgument(Argument):
-    def __init__(self, help='', parsed_name=None, default=None):
+    """
+    :value: true if set, false otherwise
+    """
+
+    def __init__(self, help='', parsed_name=None, default=False):
         super(FlagArgument, self).__init__(0, help, parsed_name, default)
 
 
 class ValueArgument(Argument):
+    """
+    :value type: string
+    :value returns: given value or default
+    """
+
     def __init__(self, help='', parsed_name=None, default=None):
         super(ValueArgument, self).__init__(1, help, parsed_name, default)
 
 
 class IntArgument(ValueArgument):
+
     @property
     def value(self):
+        """integer (type checking)"""
         return getattr(self, '_value', self.default)
 
     @value.setter
@@ -203,8 +231,11 @@ class IntArgument(ValueArgument):
 
 
 class VersionArgument(FlagArgument):
+    """A flag argument with that prints current version"""
+
     @property
     def value(self):
+        """bool"""
         return super(self.__class__, self).value
 
     @value.setter
@@ -213,17 +244,27 @@ class VersionArgument(FlagArgument):
         self.main()
 
     def main(self):
+        """Print current version"""
         if self.value:
             import kamaki
             print('kamaki %s' % kamaki.__version__)
 
 
 class KeyValueArgument(Argument):
+    """A Value Argument that can be repeated
+
+    :syntax: --<arg> key1=value1 --<arg> key2=value2 ...
+    """
+
     def __init__(self, help='', parsed_name=None, default=[]):
         super(KeyValueArgument, self).__init__(-1, help, parsed_name, default)
 
     @property
     def value(self):
+        """
+        :input: key=value
+        :output: {'key1':'value1', 'key2':'value2', ...}
+        """
         return super(KeyValueArgument, self).value
 
     @value.setter
@@ -238,6 +279,7 @@ class KeyValueArgument(Argument):
 
 
 class ProgressBarArgument(FlagArgument):
+    """Manage a progress bar"""
 
     def __init__(self, help='', parsed_name='', default=True):
         self.suffix = '%(percent)d%%'
@@ -245,9 +287,10 @@ class ProgressBarArgument(FlagArgument):
         try:
             IncrementalBar
         except NameError:
-            print('Waring: no progress bar functionality')
+            print('Warning: no progress bar functionality')
 
     def clone(self):
+        """Get a modifiable copy of this bar"""
         newarg = ProgressBarArgument(
             self.help,
             self.parsed_name,
@@ -256,6 +299,7 @@ class ProgressBarArgument(FlagArgument):
         return newarg
 
     def get_generator(self, message, message_len=25):
+        """Get a generator to handle progress of the bar (gen.next())"""
         if self.value:
             return None
         try:
@@ -273,6 +317,7 @@ class ProgressBarArgument(FlagArgument):
         return progress_gen
 
     def finish(self):
+        """Stop progress bar, return terminal cursor to user"""
         if self.value:
             return
         mybar = getattr(self, 'bar', None)
@@ -292,9 +337,30 @@ _arguments = dict(config=_config_arg,
         'Override a config value',
         ('-o', '--options'))
 )
+"""Initial command line interface arguments"""
+
+
+"""
+Mechanism:
+    init_parser
+    parse_known_args
+    manage top-level user arguments input
+    find user-requested command
+    add command-specific arguments to dict
+    update_arguments
+"""
+
+
+def init_parser(exe, arguments):
+    """Create and initialize an ArgumentParser object"""
+    parser = ArgumentParser(add_help=False)
+    parser.prog = '%s <cmd_group> [<cmd_subbroup> ...] <cmd>' % exe
+    update_arguments(parser, arguments)
+    return parser
 
 
 def parse_known_args(parser, arguments=None):
+    """Fill in arguments from user input"""
     parsed, unparsed = parser.parse_known_args()
     for name, arg in arguments.items():
         arg.value = getattr(parsed, name, arg.default)
@@ -304,14 +370,10 @@ def parse_known_args(parser, arguments=None):
     return parsed, newparsed
 
 
-def init_parser(exe, arguments):
-    parser = ArgumentParser(add_help=False)
-    parser.prog = '%s <cmd_group> [<cmd_subbroup> ...] <cmd>' % exe
-    update_arguments(parser, arguments)
-    return parser
-
-
 def update_arguments(parser, arguments):
+    """Update arguments dict from user input
+
+    """
     for name, argument in arguments.items():
         try:
             argument.update_parser(parser, name)

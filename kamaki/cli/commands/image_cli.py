@@ -262,7 +262,6 @@ class image_list(_init_cyclades):
                 if 'metadata' in img:
                     img['metadata'] = img['metadata']['values']
                 print_dict(img, ident=2)
-            print(' ')
 
     def main(self):
         super(self.__class__, self).main()
@@ -308,7 +307,7 @@ class image_delete(_init_cyclades):
 class image_properties(_init_cyclades):
     """Get image properties"""
 
-    def main(self, image_id, key=None):
+    def main(self, image_id, key=''):
         super(self.__class__, self).main()
         try:
             reply = self.client.get_image_metadata(image_id, key)

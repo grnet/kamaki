@@ -30,6 +30,7 @@
 # documentation are those of the authors and should not be
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
+
 from kamaki.clients import Client, ClientError
 from kamaki.clients.utils import path4url
 
@@ -40,14 +41,17 @@ class ImageClient(Client):
     def __init__(self, base_url, token):
         super(ImageClient, self).__init__(base_url, token)
 
-    def raise_for_status(self, r):
-        if r.status_code == 404:
-            raise ClientError("Image not found", r.status_code)
-
-        # Fallback to the default
-        super(ImageClient, self).raise_for_status(r)
-
     def list_public(self, detail=False, filters={}, order=''):
+        """
+        :param detail: (bool)
+
+        :param filters: (dict) request filters
+
+        :param order: (str) order listing by field (default is ascending, - for
+            descending)
+
+        :returns: (list) id,name + full image info if detail
+        """
         path = path4url('images', 'detail') if detail else path4url('images/')
 
         if isinstance(filters, dict):
@@ -63,6 +67,11 @@ class ImageClient(Client):
         return r.json
 
     def get_meta(self, image_id):
+        """
+        :param image_id: (string)
+
+        :returns: (list) image metadata (key:val)
+        """
         path = path4url('images', image_id)
         r = self.head(path, success=200)
 
@@ -85,6 +94,17 @@ class ImageClient(Client):
         return reply
 
     def register(self, name, location, params={}, properties={}):
+        """Register image put at location
+
+        :param name: (str)
+
+        :param location: (str) pithos://<account>/<container>/<path>
+
+        :param params: (dict) image metadata (X-Image-Meta) can be id, store,
+            disc_format, container_format, size, checksum, is_public, owner
+
+        :param properties: (dict) image properties (X-Image-Meta-Property)
+        """
         path = path4url('images/')
         self.set_header('X-Image-Meta-Name', name)
         self.set_header('X-Image-Meta-Location', location)
@@ -102,6 +122,17 @@ class ImageClient(Client):
         r.release()
 
     def reregister(self, location, name=None, params={}, properties={}):
+        """Update existing image (key: location)
+
+        :param location: (str) pithos://<account>/<container>/<path>
+
+        :param name: (str)
+
+        :param params: (dict) image metadata (X-Image-Meta) can be id, store,
+            disc_format, container_format, size, checksum, is_public, owner
+
+        :param properties: (dict) image properties (X-Image-Meta-Property)
+        """
         path = path4url('images', 'detail')
         r = self.get(path, success=200)
         imgs = [img for img in r.json if img['location'] == location]
@@ -111,29 +142,55 @@ class ImageClient(Client):
             for k, v in properties.items():
                 img_properties[k] = v
             self.register(img_name, location, params, img_properties)
+        r.release()
 
     def list_members(self, image_id):
+        """
+        :param image_id: (str)
+
+        :returns: (list) users who can use current user's images
+        """
         path = path4url('images', image_id, 'members')
         r = self.get(path, success=200)
         return r.json['members']
 
     def list_shared(self, member):
+        """
+        :param member: (str) sharers account
+
+        :returns: (list) images shared by member
+        """
         path = path4url('shared-images', member)
         #self.set_param('format', 'json')
         r = self.get(path, success=200)
         return r.json['shared_images']
 
     def add_member(self, image_id, member):
+        """
+        :param image_id: (str)
+
+        :param member: (str) user to allow access to current user's images
+        """
         path = path4url('images', image_id, 'members', member)
         r = self.put(path, success=204)
         r.release()
 
     def remove_member(self, image_id, member):
+        """
+        :param image_id: (str)
+
+        :param member: (str) user to deprive from current user's images
+        """
         path = path4url('images', image_id, 'members', member)
         r = self.delete(path, success=204)
         r.release()
 
     def set_members(self, image_id, members):
+        """
+        :param image_id: (str)
+
+        :param members: (list) user to deprive from current user's images
+        """
         path = path4url('images', image_id, 'members')
         req = {'memberships': [{'member_id': member} for member in members]}
         r = self.put(path, json=req, success=204)

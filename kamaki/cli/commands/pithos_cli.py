@@ -36,6 +36,7 @@ from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import CLIError, raiseCLIError
 from kamaki.cli.utils import format_size, print_dict, pretty_keys
 from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
+from kamaki.cli.argument import KeyValueArgument
 from kamaki.cli.argument import ProgressBarArgument
 from kamaki.cli.commands import _command_init
 from kamaki.clients.pithos import PithosClient, ClientError
@@ -53,6 +54,11 @@ _commands = [pithos_cmds]
 
 
 class DelimiterArgument(ValueArgument):
+    """
+    :value type: string
+    :value returns: given string or /
+    """
+
     def __init__(self, caller_obj, help='', parsed_name=None, default=None):
         super(DelimiterArgument, self).__init__(help, parsed_name, default)
         self.caller_obj = caller_obj
@@ -68,25 +74,15 @@ class DelimiterArgument(ValueArgument):
         self._value = newvalue
 
 
-class MetaArgument(ValueArgument):
-    @property
-    def value(self):
-        if self._value is None:
-            return self.default
-        metadict = dict()
-        for metastr in self._value.split('_'):
-            (key, val) = metastr.split(':')
-            metadict[key] = val
-        return metadict
-
-    @value.setter
-    def value(self, newvalue):
-        if newvalue is None:
-            self._value = self.default
-        self._value = newvalue
-
-
 class SharingArgument(ValueArgument):
+    """Set sharing (read and/or write) groups
+
+    :value type: "read=term1,term2,... write=term1,term2,..."
+
+    :value returns: {'read':['term1', 'term2', ...],
+        'write':['term1', 'term2', ...]}
+    """
+
     @property
     def value(self):
         return getattr(self, '_value', self.default)
@@ -119,6 +115,13 @@ class SharingArgument(ValueArgument):
 
 
 class RangeArgument(ValueArgument):
+    """
+    :value type: string of the form <start>-<end>
+        where <start> and <end> are integers
+
+    :value returns: the input string, after type checking <start> and <end>
+    """
+
     @property
     def value(self):
         return getattr(self, '_value', self.default)
@@ -134,6 +137,12 @@ class RangeArgument(ValueArgument):
 
 
 class DateArgument(ValueArgument):
+    """
+    :value type: a string formated in an acceptable date format
+
+    :value returns: same date in first of DATE_FORMATS
+    """
+
     DATE_FORMATS = ["%a %b %d %H:%M:%S %Y",
         "%A, %d-%b-%y %H:%M:%S GMT",
         "%a, %d %b %Y %H:%M:%S GMT"]
@@ -167,6 +176,8 @@ class DateArgument(ValueArgument):
 
 
 class _pithos_init(_command_init):
+    """Initialize a pithos+ kamaki client"""
+
     def main(self):
         self.token = self.config.get('store', 'token')\
             or self.config.get('global', 'token')
@@ -398,7 +409,9 @@ class store_create(_store_container_command):
         self.arguments['quota'] =\
             IntArgument('set default container quota', '--quota')
         self.arguments['meta'] =\
-            MetaArgument('set container metadata', '--meta')
+            KeyValueArgument(
+                'set container metadata (can be repeated)', '--meta')
+            #  MetaArgument('set container metadata', '--meta')
 
     def main(self, container____directory__):
         super(self.__class__, self).main(container____directory__)
@@ -889,7 +902,7 @@ class store_unpublish(_store_container_command):
 
 @command(pithos_cmds)
 class store_permissions(_store_container_command):
-    """Get object read/write permissions """
+    """Get object read / write permissions """
 
     def main(self, container___path):
         super(self.__class__,
@@ -1058,7 +1071,7 @@ class store_delmeta(_store_container_command):
             elif self.path is None:
                 self.client.del_container_meta(metakey)
             else:
-                self.client.del_object_meta(metakey, self.path)
+                self.client.del_object_meta(self.path, metakey)
         except ClientError as err:
             raiseCLIError(err)
 

@@ -8,7 +8,7 @@ Kamaki project documentation
 
 .. image:: /images/kamaki-logo.png
 
-./kamaki is a simple, yet intuitive, multipurpose, interactive command-line tool and client API for managing clouds.
+./kamaki is a simple, yet intuitive, multipurpose command-line tool and client API for managing clouds.
 
 As a develpment API is an initial implementation of the OpenStack Compute API, v1.1, with custom extensions specific to the `Synnefo IaaS <http://synnefo.org/>`_ cloud management software.
 
