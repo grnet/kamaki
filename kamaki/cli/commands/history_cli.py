@@ -39,7 +39,7 @@ from kamaki.cli.argument import ArgumentParseManager
 from kamaki.cli.history import History
 from kamaki.cli import command
 from kamaki.cli.commands import _command_init
-from kamaki.cli import _exec_cmd, _print_error_message
+from kamaki.cli import exec_cmd, print_error_message
 from kamaki.cli.errors import CLIError, CLISyntaxError, raiseCLIError
 from kamaki.cli.utils import split_input
 from kamaki.clients import ClientError
@@ -58,13 +58,12 @@ def _get_num_list(num_str):
     (num1, num2) = (num1.strip(), num2.strip())
     try:
         num1 = (-int(num1[1:])) if num1.startswith('-') else int(num1)
-        if num1 > 0:
-            num1 -= 1
     except ValueError as e:
         raiseCLIError(e, 'Invalid id %s' % num1)
     if sep:
         try:
             num2 = (-int(num2[1:])) if num2.startswith('-') else int(num2)
+            num2 += 1 if num2 > 0 else 0
         except ValueError as e:
             raiseCLIError(e, 'Invalid id %s' % num2)
     else:
@@ -79,7 +78,20 @@ class _init_history(_command_init):
 
 @command(history_cmds)
 class history_show(_init_history):
-    """Show history [[-]commandid1[-[-]commandid2] ..."""
+    """Show intersession command history
+    ---
+    * With no parameters : pick all commands in history records
+    * With:
+    .   1.  <order-id> : pick the <order-id>th command
+    .   2.  <order-id-1>-<order-id-2> : pick all commands ordered in the range
+    .       [<order-id-1> - <order-id-2>]
+    .   - the above can be mixed and repeated freely, separated by spaces
+    .       e.g. pick 2 4-7 -3
+    .   - Use negative integers to count from the end of the list, e.g.:
+    .       -2 means : the command before the last one
+    .       -2-5 means : last 2 commands + the first 5
+    .       -5--2 means : the last 5 commands except the last 2
+    """
 
     def __init__(self, arguments={}):
         super(self.__class__, self).__init__(arguments)
@@ -103,14 +115,17 @@ class history_show(_init_history):
 
         for cmd_id in num_list:
             try:
-                print(ret[int(cmd_id)][:-1])
+                cur_id = int(cmd_id)
+                if cur_id:
+                    print(ret[cur_id - (1 if cur_id > 0 else 0)][:-1])
             except IndexError as e2:
+                print('LA %s LA' % self.__doc__)
                 raiseCLIError(e2, 'Command id out of 1-%s range' % len(ret))
 
 
 @command(history_cmds)
 class history_clean(_init_history):
-    """Clean up history"""
+    """Clean up history (permanent)"""
 
     def main(self):
         super(self.__class__, self).main()
@@ -118,8 +133,18 @@ class history_clean(_init_history):
 
 
 @command(history_cmds)
-class history_load(_init_history):
-    """Run previously executed command(s)"""
+class history_run(_init_history):
+    """Run previously executed command(s)
+    Use with:
+    .   1.  <order-id> : pick the <order-id>th command
+    .   2.  <order-id-1>-<order-id-2> : pick all commands ordered in the range
+    .       [<order-id-1> - <order-id-2>]
+    .   - Use negative integers to count from the end of the list, e.g.:
+    .       -2 means : the command before the last one
+    .       -2-5 means : last 2 commands + the first 5
+    .       -5--2 mean
+    .   - to find order ids for commands try   /history show.
+    """
 
     _cmd_tree = None
 
@@ -140,17 +165,17 @@ class history_load(_init_history):
             prs.syntax = '%s %s' % (cmd.path.replace('_', ' '),
                 cmd.get_class().syntax)
             prs.parse(args)
-            _exec_cmd(instance, prs.unparsed, prs.parser.print_help)
+            exec_cmd(instance, prs.unparsed, prs.parser.print_help)
         except (CLIError, ClientError) as err:
-            _print_error_message(err)
+            print_error_message(err)
         except Exception as e:
             print('Execution of [ %s ] failed' % line)
             print('\t%s' % e)
 
     def _get_cmd_ids(self, cmd_ids):
         if not cmd_ids:
-            raise CLISyntaxError('Usage: <id1> [id2] ... [id3-id4] ...',
-                details=' where id* are for commands in history')
+            raise CLISyntaxError('Usage: <id1|id1-id2> [id3|id3-id4] ...',
+                details=self.__doc__.split('\n'))
         cmd_id_list = []
         for cmd_str in cmd_ids:
             cmd_id_list += _get_num_list(cmd_str)
@@ -164,7 +189,7 @@ class history_load(_init_history):
             try:
                 print('< %s >' % r[:-1])
             except (TypeError, KeyError):
-                return
+                continue
             if self._cmd_tree:
                 r = r[len('kamaki '):-1] if r.startswith('kamaki ') else r[:-1]
                 self._run_from_line(r)

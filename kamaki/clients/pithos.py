@@ -245,7 +245,12 @@ class PithosClient(PithosRestAPI):
             offset += bytes
             if hash_cb:
                 hash_gen.next()
-        assert offset == size
+        if offset != size:
+            print("Size is %i" % size)
+            print("Offset is %i" % offset)
+            assert offset == size, \
+                   "Failed to calculate uploaded blocks: " \
+                    "Offset and object size do not match"
 
     def _upload_missing_blocks(self, missing, hmap, fileobj, upload_cb=None):
         """upload missing blocks asynchronously.
@@ -855,7 +860,10 @@ class PithosClient(PithosRestAPI):
         r = self.object_post(obj, update=True, public=True)
         r.release()
         info = self.get_object_info(obj)
-        newurl = path4url(self.base_url, info['x-object-public'])
+        pref, sep, rest = self.base_url.partition('//')
+        base = rest.split('/')[0]
+        newurl = path4url('%s%s%s' % (pref, sep, base),
+            info['x-object-public'])
         return newurl[1:]
 
     def unpublish_object(self, obj):

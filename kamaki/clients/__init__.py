@@ -198,7 +198,7 @@ class Client(object):
                 sendlog.info('\t%s: %s', key, val)
             sendlog.info('')
             if data:
-                sendlog.info('%s', data)
+                sendlog.debug('%s', data)
 
             recvlog.info('%d %s', r.status_code, r.status)
             for key, val in r.headers.items():
