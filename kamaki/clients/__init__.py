@@ -94,7 +94,11 @@ class SilentEvent(Thread):
         try:
             self._value = self.method(*(self.args), **(self.kwargs))
         except Exception as e:
-            print('______\n%s\n_______' % e)
+            recvlog.debug('Thread %s got exception %s\n<%s %s' % (
+                self,
+                type(e),
+                e.status if isinstance(e, ClientError) else '',
+                e))
             self._exception = e
 
 
@@ -204,7 +208,7 @@ class Client(object):
             for key, val in r.headers.items():
                 recvlog.info('%s: %s', key, val)
             if r.content:
-                recvlog.debug(r.content)
+                recvlog.info(r.content[:256] + ' ...')
 
         except (HTTPResponseError, HTTPConnectionError) as err:
             from traceback import format_stack
