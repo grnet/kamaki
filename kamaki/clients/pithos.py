@@ -180,6 +180,9 @@ class PithosClient(PithosRestAPI):
         return event
 
     def _put_block(self, data, hash):
+        #from random import randint
+        #if randint(0,2):
+        #    raise ClientError('BAD GATEWAY STUFF', 502)
         r = self.container_post(update=True,
             content_type='application/octet-stream',
             content_length=len(data),
@@ -278,6 +281,9 @@ class PithosClient(PithosRestAPI):
 
                 if thread.exception:
                     failures.append(thread)
+                    if isinstance(thread.exception, ClientError)\
+                    and thread.exception.status == 502:
+                        self.POOLSIZE = self._thread_limit
                 elif thread.isAlive():
                     unfinished.append(thread)
             flying = unfinished
@@ -359,9 +365,11 @@ class PithosClient(PithosRestAPI):
                     hmap,
                     f,
                     upload_cb=upload_cb)
-                if missing and num_of_blocks > len(missing):
-                    num_of_blocks = len(missing)
-                    retries -= 1
+                if missing:
+                    if num_of_blocks == len(missing):
+                        retries -= 1
+                    else:
+                        num_of_blocks = len(missing)
                 else:
                     break
             if missing:

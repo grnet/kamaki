@@ -120,6 +120,7 @@ class Client(object):
         self._elapsed_new = 0.0
 
     def _watch_thread_limit(self, threadlist):
+        recvlog.debug('# running threads: %s' % len(threadlist))
         if self._elapsed_old > self._elapsed_new\
         and self._thread_limit < self.POOL_SIZE:
             self._thread_limit += 1
@@ -202,7 +203,7 @@ class Client(object):
                 sendlog.info('\t%s: %s', key, val)
             sendlog.info('')
             if data:
-                sendlog.debug('%s', data)
+                sendlog.info(data[:256] + ' ...')
 
             recvlog.info('%d %s', r.status_code, r.status)
             for key, val in r.headers.items():
