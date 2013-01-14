@@ -180,6 +180,9 @@ class PithosClient(PithosRestAPI):
         return event
 
     def _put_block(self, data, hash):
+        #from random import randint
+        #if randint(0,2):
+        #    raise ClientError('BAD GATEWAY STUFF', 502)
         r = self.container_post(update=True,
             content_type='application/octet-stream',
             content_length=len(data),
@@ -246,8 +249,8 @@ class PithosClient(PithosRestAPI):
             if hash_cb:
                 hash_gen.next()
         if offset != size:
-            print("Size is %i" % size)
-            print("Offset is %i" % offset)
+            #print("Size is %i" % size)
+            #print("Offset is %i" % offset)
             assert offset == size, \
                    "Failed to calculate uploaded blocks: " \
                     "Offset and object size do not match"
@@ -264,6 +267,7 @@ class PithosClient(PithosRestAPI):
         self._init_thread_limit()
 
         flying = []
+        failures = []
         for hash in missing:
             offset, bytes = hmap[hash]
             fileobj.seek(offset)
@@ -271,28 +275,25 @@ class PithosClient(PithosRestAPI):
             r = self._put_block_async(data, hash, upload_gen)
             flying.append(r)
             unfinished = []
-            for i, thread in enumerate(flying):
+            for thread in flying:
 
                 unfinished = self._watch_thread_limit(unfinished)
 
-                if thread.isAlive() or thread.exception:
+                if thread.exception:
+                    failures.append(thread)
+                    if isinstance(thread.exception, ClientError)\
+                    and thread.exception.status == 502:
+                        self.POOLSIZE = self._thread_limit
+                elif thread.isAlive():
                     unfinished.append(thread)
-                #else:
-                    #if upload_cb:
-                    #    upload_gen.next()
             flying = unfinished
 
         for thread in flying:
             thread.join()
-            #upload_gen.next()
+            if thread.exception:
+                failures.append(thread)
 
-        failures = [r for r in flying if r.exception]
-        if len(failures):
-            details = ', '.join([' (%s).%s' % (i, r.exception)\
-                for i, r in enumerate(failures)])
-            raise ClientError(message="Block uploading failed",
-                status=505,
-                details=details)
+        return [failure.kwargs['hash'] for failure in failures]
 
     def upload_object(self, obj, f,
         size=None,
@@ -355,8 +356,26 @@ class PithosClient(PithosRestAPI):
         if missing is None:
             return
 
+        retries = 3
         try:
-            self._upload_missing_blocks(missing, hmap, f, upload_cb=upload_cb)
+            while retries:
+                num_of_blocks = len(missing)
+                missing = self._upload_missing_blocks(
+                    missing,
+                    hmap,
+                    f,
+                    upload_cb=upload_cb)
+                if missing:
+                    if num_of_blocks == len(missing):
+                        retries -= 1
+                    else:
+                        num_of_blocks = len(missing)
+                else:
+                    break
+            if missing:
+                raise ClientError(
+                    '%s blocks failed to upload' % len(missing),
+                    status=800)
         except KeyboardInterrupt:
             sendlog.info('- - - wait for threads to finish')
             for thread in activethreads():
