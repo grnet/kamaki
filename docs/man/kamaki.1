@@ -1,0 +1,400 @@
+.TH "KAMAKI" "1" "January 14, 2013" "0.6" "Kamaki"
+.SH NAME
+kamaki \- Command-line tool for managing clouds
+.
+.nr rst2man-indent-level 0
+.
+.de1 rstReportMargin
+\\$1 \\n[an-margin]
+level \\n[rst2man-indent-level]
+level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
+-
+\\n[rst2man-indent0]
+\\n[rst2man-indent1]
+\\n[rst2man-indent2]
+..
+.de1 INDENT
+.\" .rstReportMargin pre:
+. RS \\$1
+. nr rst2man-indent\\n[rst2man-indent-level] \\n[an-margin]
+. nr rst2man-indent-level +1
+.\" .rstReportMargin post:
+..
+.de UNINDENT
+. RE
+.\" indent \\n[an-margin]
+.\" old: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.nr rst2man-indent-level -1
+.\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.in \\n[rst2man-indent\\n[rst2man-indent-level]]u
+..
+.\" Man page generated from reStructeredText.
+.
+.SH SYNOPSIS
+.sp
+\fBkamaki\fP [\fIgroup\fP] [\fIcommand\fP] [...] [\fIoptions\fP]
+.SH DESCRIPTION
+.sp
+\fBkamaki\fP is a simple, yet intuitive, command\-line tool for managing
+clouds. It can be used in three forms: as an interactive shell, as a command line tool or as a clients API for other applications.
+.sp
+To run kamaki as an interactive shell, type
+.INDENT 0.0
+.INDENT 3.5
+.sp
+kamaki
+.UNINDENT
+.UNINDENT
+.sp
+To run kamaki as tool type
+.INDENT 0.0
+.INDENT 3.5
+.sp
+kamaki <group> <command> [...] [options]
+.UNINDENT
+.UNINDENT
+.sp
+The kamaki clients API can be imported in python applications as kamaki.clients
+.sp
+List of available command groups:
+.sp
+config
+.INDENT 0.0
+.INDENT 3.5
+.sp
+Edit configuration options. Config options are stored in ~/.kamakirc file.
+.UNINDENT
+.UNINDENT
+.sp
+history
+.INDENT 0.0
+.INDENT 3.5
+.sp
+Access kamaki user history, which is stored in ~/.kamaki.history file.
+.UNINDENT
+.UNINDENT
+.sp
+server
+.INDENT 0.0
+.INDENT 3.5
+.sp
+Manage compute API virtual machines.
+.UNINDENT
+.UNINDENT
+.sp
+flavor
+.INDENT 0.0
+.INDENT 3.5
+.sp
+Manage compute API flavors.
+.UNINDENT
+.UNINDENT
+.sp
+network
+.INDENT 0.0
+.INDENT 3.5
+.sp
+Manage compute API networks.
+.UNINDENT
+.UNINDENT
+.sp
+image
+.INDENT 0.0
+.INDENT 3.5
+.sp
+Manage compute API and Plankton images.
+.UNINDENT
+.UNINDENT
+.sp
+store
+.INDENT 0.0
+.INDENT 3.5
+.sp
+Manage store API.
+.UNINDENT
+.UNINDENT
+.SH OPTIONS
+.sp
+.nf
+.ft C
+\-\-help, \-h              Show help message and exit.
+\-v                      Use verbose output.
+\-d                      Use debug output.
+\-o KEY=VAL              Override a config value (can be used multiple times)
+.ft P
+.fi
+.SH COMMANDS
+.SS config commands
+.INDENT 0.0
+.IP \(bu 2
+.
+list       list configuration options
+.IP \(bu 2
+.
+get        get a configuration option
+.IP \(bu 2
+.
+set        set a configuration option
+.IP \(bu 2
+.
+del        delete a configuration option
+.UNINDENT
+.SS history commands
+.sp
+Command user history, as stored in ~/.kamaki.history
+.INDENT 0.0
+.IP \(bu 2
+.
+all       show user history
+.IP \(bu 2
+.
+clean     clean up history
+.UNINDENT
+.SS server commands
+.INDENT 0.0
+.IP \(bu 2
+.
+list       list servers
+.IP \(bu 2
+.
+info       get server details
+.IP \(bu 2
+.
+create     create server
+.IP \(bu 2
+.
+rename     update server name
+.IP \(bu 2
+.
+delete     delete server
+.IP \(bu 2
+.
+reboot     reboot server
+.IP \(bu 2
+.
+start      start server
+.IP \(bu 2
+.
+shutdown   shutdown server
+.IP \(bu 2
+.
+console    get a VNC console
+.IP \(bu 2
+.
+firewall   set the firewall profile
+.IP \(bu 2
+.
+addr       list server addresses
+.IP \(bu 2
+.
+meta       get server metadata
+.IP \(bu 2
+.
+addmeta    add server metadata
+.IP \(bu 2
+.
+setmeta    update server metadata
+.IP \(bu 2
+.
+delmeta    delete server metadata
+.IP \(bu 2
+.
+stats      get server statistics
+.IP \(bu 2
+.
+wait       wait for server to finish [BUILD, STOPPED, REBOOT, ACTIVE]
+.UNINDENT
+.SS flavor commands
+.INDENT 0.0
+.IP \(bu 2
+.
+list       list flavors
+.IP \(bu 2
+.
+info       get flavor details
+.UNINDENT
+.SS image commands and options
+.INDENT 0.0
+.IP \(bu 2
+.
+list        list images
+.IP \(bu 2
+.
+info        get image details
+.IP \(bu 2
+.
+public      list public images
+.IP \(bu 2
+.
+shared      list shared images
+.IP \(bu 2
+.
+delete      delete image
+.IP \(bu 2
+.
+register    register an image
+.IP \(bu 2
+.
+reregister  re\-register an image (preserve and update properties)
+.IP \(bu 2
+.
+meta        get image metadata
+.IP \(bu 2
+.
+members     get image members
+.IP \(bu 2
+.
+addmember   add a member to an image
+.IP \(bu 2
+.
+delmember   remove a member from an image
+.IP \(bu 2
+.
+setmembers  set the members of an image
+.IP \(bu 2
+.
+properties  get image properties
+.IP \(bu 2
+.
+setproperty update an image property
+.IP \(bu 2
+.
+addproperty add an image property
+.IP \(bu 2
+.
+delproperty delete an image property
+.UNINDENT
+.SS network commands
+.INDENT 0.0
+.IP \(bu 2
+.
+list       list networks
+.IP \(bu 2
+.
+create     create a network
+.IP \(bu 2
+.
+info       get network details
+.IP \(bu 2
+.
+rename     update network name
+.IP \(bu 2
+.
+delete     delete a network
+.IP \(bu 2
+.
+connect    connect a server to a network
+.IP \(bu 2
+.
+disconnect disconnect a server from a network
+.UNINDENT
+.SS store commands
+.INDENT 0.0
+.IP \(bu 2
+.
+append    Append local file to (existing) remote object
+.IP \(bu 2
+.
+cat       Print a file to console
+.IP \(bu 2
+.
+copy      Copy an object
+.IP \(bu 2
+.
+create    Create a container or a directory object
+.IP \(bu 2
+.
+delete    Delete a container [or an object]
+.IP \(bu 2
+.
+delgroup  Delete a user group on an account
+.IP \(bu 2
+.
+delmeta   Delete an existing metadatum of account [, container [or object]]
+.IP \(bu 2
+.
+delpermissions    Delete all sharing permissions
+.IP \(bu 2
+.
+download  Download a file
+.IP \(bu 2
+.
+group     Get user groups details for account
+.IP \(bu 2
+.
+hashmap   Get the hashmap of an object
+.IP \(bu 2
+.
+info      Get information for account [, container [or object]]
+.IP \(bu 2
+.
+list      List containers, object trees or objects in a directory
+.IP \(bu 2
+.
+manifest  Create a remote file with uploaded parts by manifestation
+.IP \(bu 2
+.
+meta      Get custom meta\-content for account [, container [or object]]
+.IP \(bu 2
+.
+mkdir     Create a directory
+.IP \(bu 2
+.
+move      Copy an object
+.IP \(bu 2
+.
+overwrite Overwrite part (from start to end) of a remote file
+.IP \(bu 2
+.
+permissions   Get object read/write permissions
+.IP \(bu 2
+.
+publish   Publish an object
+.IP \(bu 2
+.
+purge     Purge a container
+.IP \(bu 2
+.
+quota     Get quota for account [or container]
+.IP \(bu 2
+.
+setgroup  Create/update a new user group on account
+.IP \(bu 2
+.
+setmeta   Set a new metadatum for account [, container [or object]]
+.IP \(bu 2
+.
+setpermissions    Set sharing permissions
+.IP \(bu 2
+.
+setquota  Set new quota (in KB) for account [or container]
+.IP \(bu 2
+.
+setversioning Set new versioning (auto, none) for account [or container]
+.IP \(bu 2
+.
+sharers   List the accounts that share objects with default account
+.IP \(bu 2
+.
+truncate  Truncate remote file up to a size
+.IP \(bu 2
+.
+unpublish Unpublish an object
+.IP \(bu 2
+.
+upload    Upload a file
+.IP \(bu 2
+.
+versioning    Get  versioning for account [or container ]
+.IP \(bu 2
+.
+versions  Get the version list of an object
+.UNINDENT
+.SH AUTHOR
+.sp
+GRNET development team <\fI\%synnefo-devel@googlegroups.com\fP>.
+.SH COPYRIGHT
+2012, GRNET
+.\" Generated by docutils manpage writer.
+.\" 
+.
