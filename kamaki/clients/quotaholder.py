@@ -31,17 +31,15 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from kamaki.clients.quotaholder.api import QuotaholderAPI
-from kamaki.clients.quotaholder.api import QH_PRACTICALLY_INFINITE
-from kamaki.clients.quotaholder.exception import (
-    InvalidKeyError,
-    NoEntityError,
-    NoQuantityError,
-    NoCapacityError,
-    ExportLimitError,
-    ImportLimitError,
-    CorruptedError,
-    InvalidDataError,
-    DuplicateError)
+from synnefo.lib.quotaholder.api import QuotaholderAPI, QH_PRACTICALLY_INFINITE
+from .commissioning_client import CommissioningClient
 
-API_Spec = QuotaholderAPI
+class QuotaholderClient(CommissioningClient):
+
+    api_spec = QuotaholderAPI()
+    appname = 'quotaholder'
+
+    def __init__(self, base_url=None, token=None):
+        default_url = 'http://127.0.0.1:8008/quotaholder/v'
+        base_url = base_url if base_url else default_url
+        super(self.__class__, self).__init__(base_url, token)

@@ -31,12 +31,11 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from kamaki.clients.commissioning import Callpoint, CallError
-from kamaki.clients.commissioning.utils.debug import debug
-from kamaki.clients import Client
+from synnefo.lib.commissioning import Callpoint, CallError
+from synnefo.lib.commissioning.utils.debug import debug
+from . import Client
 
 from json import loads as json_loads, dumps as json_dumps
-
 
 class CommissioningClient(Callpoint):
 

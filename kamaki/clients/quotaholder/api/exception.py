@@ -31,36 +31,61 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from kamaki.clients.commissioning import (CallError, register_exception,
-                                       InvalidDataError, CorruptedError)
+from kamaki.clients.commissioning import (
+    CallError,
+    register_exception,
+    InvalidDataError,
+    CorruptedError)
+
 
 @register_exception
 class CommissionException(CallError):
     pass
 
+
 @register_exception
 class InvalidKeyError(CommissionException):
     pass
+
 
 @register_exception
 class NoEntityError(CommissionException):
     pass
 
-@register_exception
-class NoQuantityError(CommissionException):
-    pass
 
 @register_exception
-class NoCapacityError(CommissionException):
-    pass
+class CommissionValueException(CommissionException):
+    def __init__(self, *args, **kw):
+        super(CommissionValueException, self).__init__(*args, **kw)
+        kwargs = self.kwargs
+
+        self.source = kwargs['source']
+        self.target = kwargs['target']
+        self.resource = kwargs['resource']
+        self.requested = kwargs['requested']
+        self.current = kwargs['current']
+        self.limit = kwargs['limit']
+
 
 @register_exception
-class ExportLimitError(CommissionException):
+class NoQuantityError(CommissionValueException):
     pass
 
+
 @register_exception
-class ImportLimitError(CommissionException):
+class NoCapacityError(CommissionValueException):
     pass
+
+
+@register_exception
+class ExportLimitError(CommissionValueException):
+    pass
+
+
+@register_exception
+class ImportLimitError(CommissionValueException):
+    pass
+
 
 @register_exception
 class DuplicateError(CommissionException):
