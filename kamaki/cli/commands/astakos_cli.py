@@ -49,18 +49,31 @@ class _astakos_init(_command_init):
         base_url = self.config.get('astakos', 'url')\
             or self.config.get('global', 'url')
         if base_url is None:
-            raise ClientError('no URL for astakos')
+            raiseCLIError(None, 'Missing astakos server URL')
         self.client = AstakosClient(base_url=base_url, token=token)
 
 
 @command(astakos_cmds)
 class astakos_authenticate(_astakos_init):
-    """Authenticate a user"""
+    """Authenticate a user
+    Get user information (e.g. unique account name) from token
+    Token should be set in settings:
+    *  check if a token is set    /config get token
+    *  permanently set a token    /config set token <token>
+    Token can also be provided as a parameter
+    """
 
     def main(self, custom_token=None):
         super(self.__class__, self).main()
         try:
             reply = self.client.authenticate(custom_token)
-        except ClientError as err:
+        except ClientError as ce:
+            if (ce.status == 401):
+                raiseCLIError(ce,
+                    details=['See if token is set: /config get token',
+                    'If not, set a token:',
+                    '  1.(permanent):    /config set token <token>',
+                    '  2.(temporary):    rerun with <token> parameter'])
+        except Exception as err:
             raiseCLIError(err)
         print_dict(reply)

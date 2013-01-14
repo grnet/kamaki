@@ -34,19 +34,17 @@
 from cmd import Cmd
 from os import popen
 from sys import stdout
-from argparse import ArgumentParser
 
-from kamaki.cli import _exec_cmd, _print_error_message
-from kamaki.cli.argument import update_arguments
+from kamaki.cli import exec_cmd, print_error_message, print_subcommands_help
+from kamaki.cli.argument import ArgumentParseManager
 from kamaki.cli.utils import print_dict, split_input
 from kamaki.cli.history import History
 from kamaki.cli.errors import CLIError
+from kamaki.clients import ClientError
 
 
-def _init_shell(exe_string, arguments):
-    arguments.pop('version', None)
-    arguments.pop('options', None)
-    arguments.pop('history', None)
+def _init_shell(exe_string, parser):
+    parser.arguments.pop('version', None)
     shell = Shell()
     shell.set_prompt(exe_string)
     from kamaki import __version__ as version
@@ -61,12 +59,12 @@ def _init_shell(exe_string, arguments):
 class Shell(Cmd):
     """Kamaki interactive shell"""
     _prefix = '['
-    _suffix = ']:'
+    _suffix = ']: '
     cmd_tree = None
     _history = None
-    _arguments = None
     _context_stack = []
     _prompt_stack = []
+    _parser = None
 
     undoc_header = 'interactive shell commands:'
 
@@ -74,13 +72,15 @@ class Shell(Cmd):
         if self._context_stack:
             self._roll_command()
             self._restore(self._context_stack.pop())
-            self.set_prompt(self._prompt_stack.pop()[1:-2])
+            self.set_prompt(
+                self._prompt_stack.pop()[len(self._prefix):-len(self._suffix)])
 
         return Cmd.postcmd(self, post, line)
 
     def precmd(self, line):
         if line.startswith('/'):
-            cur_cmd_path = self.prompt.replace(' ', '_')[1:-2]
+            cur_cmd_path = self.prompt.replace(' ',
+                '_')[len(self._prefix):-len(self._suffix)]
             if cur_cmd_path != self.cmd_tree.name:
                 cur_cmd = self.cmd_tree.get_command(cur_cmd_path)
                 self._context_stack.append(self._backup())
@@ -98,11 +98,12 @@ class Shell(Cmd):
             % version)
 
     def set_prompt(self, new_prompt):
-        self.prompt = '[%s]:' % new_prompt
+        self.prompt = '%s%s%s' % (self._prefix, new_prompt, self._suffix)
 
     def do_exit(self, line):
         print('')
-        if self.prompt[1:-2] == self.cmd_tree.name:
+        if self.prompt[len(self._prefix):-len(self._suffix)]\
+        == self.cmd_tree.name:
             exit(0)
         return True
 
@@ -143,7 +144,7 @@ class Shell(Cmd):
 
     def _register_command(self, cmd_path):
         cmd = self.cmd_tree.get_command(cmd_path)
-        arguments = self._arguments
+        arguments = self._parser.arguments
 
         def do_method(new_context, line):
             """ Template for all cmd.Cmd methods of the form do_<cmd name>
@@ -152,36 +153,54 @@ class Shell(Cmd):
                 even if cmd_term_term is not a terminal path
             """
             subcmd, cmd_args = cmd.parse_out(split_input(line))
-            if self._history:
-                self._history.add(' '.join([cmd.path.replace('_', ' '), line]))
-            cmd_parser = ArgumentParser(cmd.name, add_help=False)
-            cmd_parser.description = subcmd.help
+            self._history.add(' '.join([cmd.path.replace('_', ' '), line]))
+            tmp_args = dict(self._parser.arguments)
+            tmp_args.pop('options', None)
+            tmp_args.pop('debug', None)
+            tmp_args.pop('verbose', None)
+            tmp_args.pop('include', None)
+            tmp_args.pop('silent', None)
+            cmd_parser = ArgumentParseManager(cmd.name, dict(tmp_args))
+
+            cmd_parser.parser.description = subcmd.help
 
             # exec command or change context
             if subcmd.is_command:  # exec command
-                cls = subcmd.get_class()
-                instance = cls(dict(arguments))
-                cmd_parser.prog = '%s %s' % (cmd_parser.prog.replace('_', ' '),
-                    cls.syntax)
-                update_arguments(cmd_parser, instance.arguments)
-                if '-h' in cmd_args or '--help' in cmd_args:
-                    cmd_parser.print_help()
-                    return
-                parsed, unparsed = cmd_parser.parse_known_args(cmd_args)
-
-                for name, arg in instance.arguments.items():
-                    arg.value = getattr(parsed, name, arg.default)
                 try:
-                    _exec_cmd(instance, unparsed, cmd_parser.print_help)
-                except CLIError as err:
-                    _print_error_message(err)
+                    cls = subcmd.get_class()
+                    ldescr = getattr(cls, 'long_description', '')
+                    if subcmd.path == 'history_run':
+                        instance = cls(dict(cmd_parser.arguments),
+                            self.cmd_tree)
+                    else:
+                        instance = cls(dict(cmd_parser.arguments))
+                    cmd_parser.update_arguments(instance.arguments)
+                    instance.arguments.pop('config')
+                    cmd_parser.arguments = instance.arguments
+                    cmd_parser.syntax = '%s %s' % (
+                        subcmd.path.replace('_', ' '), cls.syntax)
+                    if '-h' in cmd_args or '--help' in cmd_args:
+                        cmd_parser.parser.print_help()
+                        if ldescr.strip():
+                            print('\nDetails:')
+                            print('%s' % ldescr)
+                        return
+                    cmd_parser.parse(cmd_args)
+
+                    for name, arg in instance.arguments.items():
+                        arg.value = getattr(cmd_parser.parsed, name,
+                            arg.default)
+
+                    exec_cmd(instance,
+                        [term for term in cmd_parser.unparsed\
+                            if not term.startswith('-')],
+                        cmd_parser.parser.print_help)
+                except (ClientError, CLIError) as err:
+                    print_error_message(err)
             elif ('-h' in cmd_args or '--help' in cmd_args) \
             or len(cmd_args):  # print options
-                print('%s: %s' % (cmd.name, subcmd.help))
-                options = {}
-                for sub in subcmd.get_subcommands():
-                    options[sub.name] = sub.help
-                print_dict(options)
+                print('%s' % cmd.help)
+                print_subcommands_help(cmd)
             else:  # change context
                 #new_context = this
                 backup_context = self._backup()
@@ -199,6 +218,26 @@ class Shell(Cmd):
 
         def help_method(self):
             print('%s (%s -h for more options)' % (cmd.help, cmd.name))
+            if cmd.is_command:
+                cls = cmd.get_class()
+                ldescr = getattr(cls, 'long_description', '')
+                #_construct_command_syntax(cls)
+                plist = self.prompt[len(self._prefix):-len(self._suffix)]
+                plist = plist.split(' ')
+                clist = cmd.path.split('_')
+                upto = 0
+                if ldescr:
+                    print('%s' % ldescr)
+                for i, term in enumerate(plist):
+                    try:
+                        if clist[i] == term:
+                            upto += 1
+                    except IndexError:
+                        break
+                print('Syntax: %s %s' % (' '.join(clist[upto:]), cls.syntax))
+            else:
+                print_subcommands_help(cmd)
+
         self._register_method(help_method, 'help_%s' % cmd.name)
 
         def complete_method(self, text, line, begidx, endidx):
@@ -225,9 +264,10 @@ class Shell(Cmd):
         hdr = tmp_partition[0].strip()
         return '%s commands:' % hdr
 
-    def run(self, arguments, path=''):
-        self._history = History(arguments['config'].get('history', 'file'))
-        self._arguments = arguments
+    def run(self, parser, path=''):
+        self._parser = parser
+        self._history = History(
+            parser.arguments['config'].get('history', 'file'))
         if path:
             cmd = self.cmd_tree.get_command(path)
             intro = cmd.path.replace('_', ' ')
@@ -239,4 +279,8 @@ class Shell(Cmd):
 
         self.set_prompt(intro)
 
-        self.cmdloop()
+        try:
+            self.cmdloop()
+        except Exception:
+            from traceback import print_stack
+            print_stack()

@@ -40,9 +40,6 @@ test_cmds = CommandTree('test', 'Unitest clients')
 _commands = [test_cmds]
 
 
-#print('Command Terms: ', get_cmd_terms())
-
-
 class _test_init(_command_init):
 
     def main(self, client, method=None):
@@ -51,6 +48,20 @@ class _test_init(_command_init):
             tests.main([client, method])
         else:
             tests.main([client])
+
+
+@command(test_cmds)
+class test_error(_test_init):
+    """Create an error message with optional message"""
+
+    def main(self, errmsg='', importance=0, index=0):
+        from kamaki.cli.errors import raiseCLIError
+        l = [1, 2]
+        try:
+            l[int(index)]
+        except Exception as err:
+            raiseCLIError(err, errmsg, importance)
+        raiseCLIError(None, errmsg, importance)
 
 
 @command(test_cmds)
@@ -100,3 +111,68 @@ class test_astakos(_test_init):
 
     def main(self, method=None):
         super(self.__class__, self).main('astakos', method)
+
+
+@command(test_cmds)
+class test_prints(_test_init):
+    """ user-test print methods for lists and dicts"""
+
+    d1 = {'key0a': 'val0a', 'key0b': 'val0b', 'key0c': 'val0c'}
+
+    l1 = [1, 'string', '3', 'many (2 or 3) numbers and strings combined', 5]
+
+    d2 = {'id': 'val0a', 'key0b': d1, 'title': l1}
+
+    l2 = [d2, l1, d1]
+
+    d3 = {'dict 1': d1, 'dict 2': d2, 'list2': l2,
+        'long key of size 75 characters is used to' +\
+        ' check the effects on total result': l1}
+
+    def main(self):
+        from kamaki.cli.utils import print_dict, print_list, print_items
+        print('Test simple dict:\n- - -')
+        print_dict(self.d1)
+        print('- - -\n')
+        print('\nTest simple list:\n- - -')
+        print_list(self.l1)
+        print('- - -\n')
+        print('\nTest 2-level dict:\n- - -')
+        print_dict(self.d2)
+        print('- - -\n')
+        print('\nTest non-trivial list:\n- - -')
+        print_list(self.l2)
+        print('- - -')
+        print('\nTest extreme dict:\n- - -')
+        print_dict(self.d3)
+        print('- - -\n')
+        print('Test simple enumerated dict:\n- - -')
+        print_dict(self.d1, with_enumeration=True)
+        print('- - -\n')
+        print('\nTest simple enumerated list:\n- - -')
+        print_list(self.l1, with_enumeration=True)
+        print('- - -\n')
+        print('Test non-trivial deep-enumerated dict:\n- - -')
+        print_dict(self.d2, with_enumeration=True, recursive_enumeration=True)
+        print('- - -\n')
+        print('\nTest non-trivial enumerated list:\n- - -')
+        print_list(self.l2, with_enumeration=True)
+        print('- - -\n')
+        print('\nTest print_items with id:\n- - -')
+        print_items([{'id': '42', 'title': 'lalakis 1', 'content': self.d1},
+            {'id': '142', 'title': 'lalakis 2', 'content': self.d2}])
+        print('- - -')
+        print('\nTest print_items with id and enumeration:\n- - -')
+        print_items([{'id': '42', 'title': 'lalakis 1', 'content': self.d1},
+            {'id': '142', 'title': 'lalakis 2', 'content': self.d2}],
+            with_enumeration=True)
+        print('- - -')
+        print('\nTest print_items with id, title and redundancy:\n- - -')
+        print_items([{'id': '42', 'title': 'lalakis 1', 'content': self.d1},
+            {'id': '142', 'title': 'lalakis 2', 'content': self.d2}],
+            title=('id', 'title'),
+            with_redundancy=True)
+        print('- - -')
+        print('\nTest print_items with lists- - -')
+        print_items([['i00', 'i01', 'i02'], [self.l2, 'i11', self.d1], 3])
+        print('- - -')

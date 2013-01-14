@@ -31,10 +31,14 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from json import loads
+import logging
+
+sendlog = logging.getLogger('clients.send')
+recvlog = logging.getLogger('clients.recv')
 
 
 class CLIError(Exception):
+
     def __init__(self, message, details=[], importance=0):
         """
         @message is the main message of the Error
@@ -42,8 +46,9 @@ class CLIError(Exception):
         @importance of the output for the user
             Suggested values: 0, 1, 2, 3
         """
+        message += '' if message and message[-1] == '\n' else '\n'
         super(CLIError, self).__init__(message)
-        self.details = details if isinstance(details, list)\
+        self.details = list(details) if isinstance(details, list)\
             else [] if details is None else ['%s' % details]
         try:
             self.importance = int(importance)
@@ -73,13 +78,56 @@ class CLICmdIncompleteError(CLICmdSpecError):
         super(CLICmdSpecError, self).__init__(message, details, importance)
 
 
-def raiseCLIError(err, importance=0):
-    message = '%s' % err
-    if err.status:
-        message = '(%s) %s' % (err.status, err)
+def raiseCLIError(err, message='', importance=0, details=[]):
+    """
+    :param err: (Exception) the original error message, if None, a new
+        CLIError is born which is conceptually bind to raiser
+
+    :param message: (str) a custom error message that overrides err's
+
+    :param importance: (int) instruction to called application (e.g. for
+        coloring printed error messages)
+
+    :param details: (list) various information on the error
+
+    :raises CLIError: it is the purpose of this method
+    """
+    from traceback import format_stack
+
+    stack = ['%s' % type(err)] if err else ['<kamaki.cli.errors.CLIError>']
+    stack += format_stack()
+    try:
+        stack = [e for e in stack if e != stack[1]]
+    except KeyError:
+        recvlog.debug('\n   < '.join(stack))
+
+    details = ['%s' % details] if not isinstance(details, list)\
+        else list(details)
+    details += getattr(err, 'details', [])
+
+    if err:
+        origerr = '%s' % err
+        origerr = origerr if origerr else '%s' % type(err)
+    else:
+        origerr = stack[0]
+
+    message = unicode(message) if message else unicode(origerr)
+
+    try:
+        status = err.status
+    except AttributeError:
+        status = None
+
+    if origerr not in details + [message]:
+        details.append(origerr)
+
+    message += '' if message and message[-1] == '\n' else '\n'
+    if status:
+        message = '(%s) %s' % (err.status, message)
         try:
             status = int(err.status)
         except ValueError:
-            raise CLIError(message, err.details, importance)
+            raise CLIError(message, details, importance)
         importance = status // 100
-    raise CLIError(message, err.details, importance)
+    importance = getattr(err, 'importance', importance)
+    raise CLIError(message, details, importance)

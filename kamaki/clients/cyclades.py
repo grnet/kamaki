@@ -187,8 +187,8 @@ class CycladesClient(CycladesClientApi):
             r = self.networks_delete(network_id)
         except ClientError as err:
             if err.status == 421:
-                err.details =\
-                'Network may be still connected to at least one server'
+                err.details = [
+                'Network may be still connected to at least one server']
             raise err
         r.release()
 
@@ -250,7 +250,7 @@ class CycladesClient(CycladesClientApi):
 
         if current_status == 'BUILD':
             max_wait = 100
-            wait_gen = wait_cb(max_wait)
+            wait_gen = wait_cb(max_wait) if wait_cb else None
         elif wait_cb:
             wait_gen = wait_cb(1 + max_wait // delay)
             wait_gen.next()

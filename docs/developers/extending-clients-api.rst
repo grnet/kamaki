@@ -1,11 +1,7 @@
 Extending kamaki.clients
 ========================
 
-<<<<<<< HEAD
 By default, kamaki clients are REST clients (they manage HTTP requests and responses to communicate with services). This is achieved by importing the connection module, which is an httplib wrapper.
-=======
-By default, kamaki clients are REST clients (they manage HTTP requests and responses to communicate with services). This is achieved by importing the connection module, which is an httplib rapper.
->>>>>>> master
 
 Connection
 ----------

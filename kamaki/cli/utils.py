@@ -31,8 +31,9 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+from sys import stdout
 from re import compile as regex_compile
-from .errors import CLIError
+from kamaki.cli.errors import raiseCLIError
 
 try:
     from colors import magenta, red, yellow, bold
@@ -68,69 +69,166 @@ def pretty_keys(d, delim='_', recurcive=False):
     return new_d
 
 
-def print_dict(d, exclude=(), ident=0):
+def print_dict(d,
+    exclude=(),
+    ident=0,
+    with_enumeration=False,
+    recursive_enumeration=False):
+    """
+    Pretty-print a dictionary object
+
+    :param d: (dict) the input
+
+    :param excelude: (set or list) keys to exclude from printing
+
+    :param ident: (int) initial indentation (recursive)
+
+    :param with_enumeration: (bool) enumerate each 1st level key if true
+
+    :recursive_enumeration: (bool) recursively enumerate dicts and lists of
+        2nd level or deeper
+
+    :raises CLIError: (TypeError wrapper) non-dict input
+    """
     if not isinstance(d, dict):
-        raise CLIError(message='Cannot dict_print a non-dict object')
+        raiseCLIError(TypeError('Cannot dict_print a non-dict object'))
 
     if d:
         margin = max(len(unicode(key).strip())\
             for key in d.keys() if key not in exclude)
 
+    counter = 1
     for key, val in sorted(d.items()):
         if key in exclude:
             continue
-        print_str = ' ' * ident
+        print_str = ''
+        if with_enumeration:
+            print_str = '%s. ' % counter
+            counter += 1
+        print_str = '%s%s' % (' ' * (ident - len(print_str)), print_str)
         print_str += ('%s' % key).strip()
         print_str += ' ' * (margin - len(unicode(key).strip()))
         print_str += ': '
         if isinstance(val, dict):
             print(print_str)
-            print_dict(val, exclude=exclude, ident=margin + ident)
+            print_dict(val,
+                exclude=exclude,
+                ident=margin + ident,
+                with_enumeration=recursive_enumeration,
+                recursive_enumeration=recursive_enumeration)
         elif isinstance(val, list):
             print(print_str)
-            print_list(val, exclude=exclude, ident=margin + ident)
+            print_list(val,
+                exclude=exclude,
+                ident=margin + ident,
+                with_enumeration=recursive_enumeration,
+                recursive_enumeration=recursive_enumeration)
         else:
             print print_str + ' ' + unicode(val).strip()
 
 
-def print_list(l, exclude=(), ident=0):
+def print_list(l,
+    exclude=(),
+    ident=0,
+    with_enumeration=False,
+    recursive_enumeration=False):
+    """
+    Pretty-print a list object
+
+    :param l: (list) the input
+
+    :param excelude: (object - anytype) values to exclude from printing
+
+    :param ident: (int) initial indentation (recursive)
+
+    :param with_enumeration: (bool) enumerate each 1st level value if true
+
+    :recursive_enumeration: (bool) recursively enumerate dicts and lists of
+        2nd level or deeper
+
+    :raises CLIError: (TypeError wrapper) non-list input
+    """
     if not isinstance(l, list):
-        raise CLIError(message='Cannot list_print a non-list object')
+        raiseCLIError(TypeError('Cannot list_print a non-list object'))
 
     if l:
-        margin = max(len(unicode(item).strip())\
-            for item in l if item not in exclude)
+        try:
+            margin = max(len(unicode(item).strip()) for item in l\
+                if not (isinstance(item, dict)\
+                or isinstance(item, list)\
+                or item in exclude))
+        except ValueError:
+            margin = (2 + len(unicode(len(l)))) if enumerate else 1
 
+    counter = 1
+    prefix = ''
     for item in sorted(l):
         if item in exclude:
             continue
-        if isinstance(item, dict):
-            print_dict(item, exclude=exclude, ident=margin + ident)
-        elif isinstance(item, list):
-            print_list(item, exclude=exclude, ident=margin + ident)
+        elif with_enumeration:
+            prefix = '%s. ' % counter
+            counter += 1
+            prefix = '%s%s' % (' ' * (ident - len(prefix)), prefix)
         else:
-            print ' ' * ident + unicode(item)
-
-
-def print_items(items, title=('id', 'name')):
-    for item in items:
-        if isinstance(item, dict) or isinstance(item, list):
-            header = ' '.join(unicode(item.pop(key))\
-                for key in title if key in item)
-            print(' ')
-            print(bold(header))
+            prefix = ' ' * ident
         if isinstance(item, dict):
-            print_dict(item, ident=2)
+            if with_enumeration:
+                print(prefix)
+            print_dict(item,
+                exclude=exclude,
+                ident=margin + ident,
+                with_enumeration=recursive_enumeration,
+                recursive_enumeration=recursive_enumeration)
         elif isinstance(item, list):
-            print_list(item, ident=2)
+            if with_enumeration:
+                print(prefix)
+            print_list(item,
+                exclude=exclude,
+                ident=margin + ident,
+                with_enumeration=recursive_enumeration,
+                recursive_enumeration=recursive_enumeration)
+        else:
+            print('%s%s' % (prefix, item))
+
+
+def print_items(items,
+    title=('id', 'name'),
+    with_enumeration=False,
+    with_redundancy=False):
+    """print dict or list items in a list, using some values as title
+    Objects of next level don't inherit enumeration (default: off) or titles
+
+    :param items: (list) items are lists or dict
+    :param title: (tuple) keys to use their values as title
+    :param with_enumeration: (boolean) enumerate items (order id on title)
+    :param with_redundancy: (boolean) values in title also appear on body
+    """
+    for i, item in enumerate(items):
+        if with_enumeration:
+            stdout.write('%s. ' % (i + 1))
+        if isinstance(item, dict):
+            title = sorted(set(title).intersection(item.keys()))
+            if with_redundancy:
+                header = ' '.join(unicode(item[key]) for key in title)
+            else:
+                header = ' '.join(unicode(item.pop(key)) for key in title)
+            print(bold(header))
+        else:
+            print('- - -')
+        if isinstance(item, dict):
+            print_dict(item, ident=1)
+        elif isinstance(item, list):
+            print_list(item, ident=1)
+        else:
+            print(' %s' % item)
 
 
 def format_size(size):
     units = ('B', 'K', 'M', 'G', 'T')
     try:
         size = float(size)
-    except ValueError:
-        raise CLIError(message='Cannot format %s in bytes' % size)
+    except ValueError as err:
+        raiseCLIError(err, 'Cannot format %s in bytes' % size)
     for unit in units:
         if size < 1024:
             break

@@ -32,16 +32,21 @@
 # or implied, of GRNET S.A.
 
 from kamaki.cli.config import Config
-from kamaki.cli.errors import CLISyntaxError
+from kamaki.cli.errors import CLISyntaxError, raiseCLIError
 from kamaki.cli.utils import split_input
+from logging import getLogger
+
 
 from argparse import ArgumentParser, ArgumentError
+from argparse import RawDescriptionHelpFormatter
 
 try:
-    from progress.bar import IncrementalBar
+    from progress.bar import ShadyBar as KamakiProgressBar
 except ImportError:
     # progress not installed - pls, pip install progress
     pass
+
+kloger = getLogger('kamaki')
 
 
 class Argument(object):
@@ -179,9 +184,10 @@ class CmdLineConfigArgument(Argument):
         for option in options:
             keypath, sep, val = option.partition('=')
             if not sep:
-                raise CLISyntaxError('Argument Syntax Error ',
-                    details='%s is missing a "=" (usage: -o section.key=val)'\
-                        % option)
+                raiseCLIError(CLISyntaxError('Argument Syntax Error '),
+                    details=['%s is missing a "="',
+                    ' (usage: -o section.key=val)' % option]
+                )
             section, sep, key = keypath.partition('.')
         if not sep:
             key = section
@@ -226,8 +232,8 @@ class IntArgument(ValueArgument):
         try:
             self._value = int(newvalue)
         except ValueError:
-            raise CLISyntaxError('IntArgument Error',
-                details='Value %s not an int' % newvalue)
+            raiseCLIError(CLISyntaxError('IntArgument Error',
+                details=['Value %s not an int' % newvalue]))
 
 
 class VersionArgument(FlagArgument):
@@ -273,7 +279,7 @@ class KeyValueArgument(Argument):
         for pair in keyvalue_pairs:
             key, sep, val = pair.partition('=')
             if not sep:
-                raise CLISyntaxError('Argument syntax error ',
+                raiseCLIError(CLISyntaxError('Argument syntax error '),
                     details='%s is missing a "=" (usage: key1=val1 )\n' % pair)
             self._value[key.strip()] = val.strip()
 
@@ -285,9 +291,9 @@ class ProgressBarArgument(FlagArgument):
         self.suffix = '%(percent)d%%'
         super(ProgressBarArgument, self).__init__(help, parsed_name, default)
         try:
-            IncrementalBar
+            KamakiProgressBar
         except NameError:
-            print('Warning: no progress bar functionality')
+            kloger.warning('no progress bar functionality')
 
     def clone(self):
         """Get a modifiable copy of this bar"""
@@ -303,12 +309,13 @@ class ProgressBarArgument(FlagArgument):
         if self.value:
             return None
         try:
-            self.bar = IncrementalBar()
+            self.bar = KamakiProgressBar()
         except NameError:
             self.value = None
             return self.value
         self.bar.message = message.ljust(message_len)
         self.bar.suffix = '%(percent)d%% - %(eta)ds'
+        self.bar.start()
 
         def progress_gen(n):
             for i in self.bar.iter(range(int(n))):
@@ -351,31 +358,105 @@ Mechanism:
 """
 
 
-def init_parser(exe, arguments):
-    """Create and initialize an ArgumentParser object"""
-    parser = ArgumentParser(add_help=False)
-    parser.prog = '%s <cmd_group> [<cmd_subbroup> ...] <cmd>' % exe
-    update_arguments(parser, arguments)
-    return parser
+class ArgumentParseManager(object):
+    """Manage (initialize and update) an ArgumentParser object"""
 
+    parser = None
+    _arguments = {}
+    _parser_modified = False
+    _parsed = None
+    _unparsed = None
 
-def parse_known_args(parser, arguments=None):
-    """Fill in arguments from user input"""
-    parsed, unparsed = parser.parse_known_args()
-    for name, arg in arguments.items():
-        arg.value = getattr(parsed, name, arg.default)
-    newparsed = []
-    for term in unparsed:
-        newparsed += split_input(' \'%s\' ' % term)
-    return parsed, newparsed
+    def __init__(self, exe, arguments=None):
+        """
+        :param exe: (str) the basic command (e.g. 'kamaki')
 
+        :param arguments: (dict) if given, overrides the global _argument as
+            the parsers arguments specification
+        """
+        self.parser = ArgumentParser(add_help=False,
+            formatter_class=RawDescriptionHelpFormatter)
+        self.syntax = '%s <cmd_group> [<cmd_subbroup> ...] <cmd>' % exe
+        if arguments:
+            self.arguments = arguments
+        else:
+            global _arguments
+            self.arguments = _arguments
+        self.parse()
 
-def update_arguments(parser, arguments):
-    """Update arguments dict from user input
+    @property
+    def syntax(self):
+        """The command syntax (useful for help messages, descriptions, etc)"""
+        return self.parser.prog
 
-    """
-    for name, argument in arguments.items():
+    @syntax.setter
+    def syntax(self, new_syntax):
+        self.parser.prog = new_syntax
+
+    @property
+    def arguments(self):
+        """(dict) arguments the parser should be aware of"""
+        return self._arguments
+
+    @arguments.setter
+    def arguments(self, new_arguments):
+        if new_arguments:
+            assert isinstance(new_arguments, dict)
+        self._arguments = new_arguments
+        self.update_parser()
+
+    @property
+    def parsed(self):
+        """(Namespace) parser-matched terms"""
+        if self._parser_modified:
+            self.parse()
+        return self._parsed
+
+    @property
+    def unparsed(self):
+        """(list) parser-unmatched terms"""
+        if self._parser_modified:
+            self.parse()
+        return self._unparsed
+
+    def update_parser(self, arguments=None):
+        """Load argument specifications to parser
+
+        :param arguments: if not given, update self.arguments instead
+        """
+        if not arguments:
+            arguments = self._arguments
+
+        for name, arg in arguments.items():
+            try:
+                arg.update_parser(self.parser, name)
+                self._parser_modified = True
+            except ArgumentError:
+                pass
+
+    def update_arguments(self, new_arguments):
+        """Add to / update existing arguments
+
+        :param new_arguments: (dict)
+        """
+        if new_arguments:
+            assert isinstance(new_arguments, dict)
+            self._arguments.update(new_arguments)
+            self.update_parser()
+
+    def parse(self, new_args=None):
+        """Do parse user input"""
         try:
-            argument.update_parser(parser, name)
-        except ArgumentError:
-            pass
+            if new_args:
+                self._parsed, unparsed = self.parser.parse_known_args(new_args)
+            else:
+                self._parsed, unparsed = self.parser.parse_known_args()
+        except SystemExit:
+            # deal with the fact that argparse error system is STUPID
+            raiseCLIError(CLISyntaxError('Argument Syntax Error'))
+        for name, arg in self.arguments.items():
+            arg.value = getattr(self._parsed, name, arg.default)
+        self._unparsed = []
+        for term in unparsed:
+            self._unparsed += split_input(' \'%s\' ' % term)
+        self._parser_modified = False
