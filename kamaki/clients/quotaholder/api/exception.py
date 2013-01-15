@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-
-# Copyright 2011 GRNET S.A. All rights reserved.
+# Copyright 2012 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -33,42 +31,62 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from setuptools import setup
-from sys import version_info
-import collections
+from kamaki.clients.commissioning import (
+    CallError,
+    register_exception,
+    InvalidDataError,
+    CorruptedError)
 
-import kamaki
+
+@register_exception
+class CommissionException(CallError):
+    pass
 
 
-optional = ['ansicolors',
-            'progress>=1.0.2']
-requires = ['objpool',
-            'argparse']
+@register_exception
+class InvalidKeyError(CommissionException):
+    pass
 
-if not hasattr(collections, "OrderedDict"):  # Python 2.6
-    requires.append("ordereddict")
 
-setup(
-    name='kamaki',
-    version=kamaki.__version__,
-    description='A command-line tool for managing clouds',
-    long_description=open('README.rst').read(),
-    url='http://code.grnet.gr/projects/kamaki',
-    license='BSD',
-    packages=[
-        'kamaki',
-        'kamaki.clients',
-        'kamaki.clients.connection',
-        'kamaki.cli',
-        'kamaki.cli.commands',
-        'kamaki.clients.commissioning',
-        'kamaki.clients.quotaholder',
-        'kamaki.clients.quotaholder.api',
-        'kamaki.clients.commissioning.utils'
-    ],
-    include_package_data=True,
-    entry_points={
-        'console_scripts': ['kamaki = kamaki.cli:main']
-    },
-    install_requires=requires
-)
+@register_exception
+class NoEntityError(CommissionException):
+    pass
+
+
+@register_exception
+class CommissionValueException(CommissionException):
+    def __init__(self, *args, **kw):
+        super(CommissionValueException, self).__init__(*args, **kw)
+        kwargs = self.kwargs
+
+        self.source = kwargs['source']
+        self.target = kwargs['target']
+        self.resource = kwargs['resource']
+        self.requested = kwargs['requested']
+        self.current = kwargs['current']
+        self.limit = kwargs['limit']
+
+
+@register_exception
+class NoQuantityError(CommissionValueException):
+    pass
+
+
+@register_exception
+class NoCapacityError(CommissionValueException):
+    pass
+
+
+@register_exception
+class ExportLimitError(CommissionValueException):
+    pass
+
+
+@register_exception
+class ImportLimitError(CommissionValueException):
+    pass
+
+
+@register_exception
+class DuplicateError(CommissionException):
+    pass

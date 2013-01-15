@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-
-# Copyright 2011 GRNET S.A. All rights reserved.
+# Copyright 2012 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -33,42 +31,18 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from setuptools import setup
-from sys import version_info
-import collections
-
-import kamaki
+from kamaki.cli.commissioning import commissioning_cli
+from kamaki.clients.quotaholder import QuotaholderClient
 
 
-optional = ['ansicolors',
-            'progress>=1.0.2']
-requires = ['objpool',
-            'argparse']
+class quotaholder_cli(commissioning_cli):
 
-if not hasattr(collections, "OrderedDict"):  # Python 2.6
-    requires.append("ordereddict")
+    def __init__(self):
+        self.client = QuotaholderClient
+        self.add_context = True
+        self.description = 'Quotaholder description'
+        super(self.__class__, self).__init__()
 
-setup(
-    name='kamaki',
-    version=kamaki.__version__,
-    description='A command-line tool for managing clouds',
-    long_description=open('README.rst').read(),
-    url='http://code.grnet.gr/projects/kamaki',
-    license='BSD',
-    packages=[
-        'kamaki',
-        'kamaki.clients',
-        'kamaki.clients.connection',
-        'kamaki.cli',
-        'kamaki.cli.commands',
-        'kamaki.clients.commissioning',
-        'kamaki.clients.quotaholder',
-        'kamaki.clients.quotaholder.api',
-        'kamaki.clients.commissioning.utils'
-    ],
-    include_package_data=True,
-    entry_points={
-        'console_scripts': ['kamaki = kamaki.cli:main']
-    },
-    install_requires=requires
-)
+cli = quotaholder_cli()
+cli.generate_all()
+_commands = [cli.ctree]

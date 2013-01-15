@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-
-# Copyright 2011 GRNET S.A. All rights reserved.
+# Copyright 2012 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -33,42 +31,51 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from setuptools import setup
-from sys import version_info
-import collections
+from imp import find_module, load_module
 
-import kamaki
+_modules = {}
+
+def imp_module(fullname):
+    if fullname in _modules:
+        return _modules[fullname]
+
+    components = fullname.split('.')
+    if not components:
+        raise ValueError('invalid module name')
+
+    module = None
+    modulepath = []
+
+    for name in components:
+        if not name:
+            raise ValueError("Relative paths not allowed")
+
+        modulepath.append(name)
+        modulename = '.'.join(modulepath)
+        if modulename in _modules:
+            module = _modules[modulename]
+
+        elif hasattr(module, name):
+            module = getattr(module, name)
+
+        elif not hasattr(module, '__path__'):
+            m = find_module(name)
+            module = load_module(modulename, *m)
+
+        else:
+            try:
+                m = find_module(name, module.__path__)
+                module = load_module(modulename, *m)
+            except ImportError:
+                m = "No module '%s' in '%s'" % (name, module.__path__)
+                raise ImportError(m)
+
+        _modules[modulename] = module
+
+    return module
 
 
-optional = ['ansicolors',
-            'progress>=1.0.2']
-requires = ['objpool',
-            'argparse']
+def list_modules():
+    return sorted(_modules.keys())
 
-if not hasattr(collections, "OrderedDict"):  # Python 2.6
-    requires.append("ordereddict")
 
-setup(
-    name='kamaki',
-    version=kamaki.__version__,
-    description='A command-line tool for managing clouds',
-    long_description=open('README.rst').read(),
-    url='http://code.grnet.gr/projects/kamaki',
-    license='BSD',
-    packages=[
-        'kamaki',
-        'kamaki.clients',
-        'kamaki.clients.connection',
-        'kamaki.cli',
-        'kamaki.cli.commands',
-        'kamaki.clients.commissioning',
-        'kamaki.clients.quotaholder',
-        'kamaki.clients.quotaholder.api',
-        'kamaki.clients.commissioning.utils'
-    ],
-    include_package_data=True,
-    entry_points={
-        'console_scripts': ['kamaki = kamaki.cli:main']
-    },
-    install_requires=requires
-)

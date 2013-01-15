@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright 2011 GRNET S.A. All rights reserved.
+# Copyright 2012 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -33,42 +33,44 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from setuptools import setup
-from sys import version_info
-import collections
+import logging
+from os import environ
 
-import kamaki
+_logger = None
 
+def init_logger_file(name, level='DEBUG'):
+    logger = logging.getLogger(name)
+    handler = logging.FileHandler(name + '.log')
+    formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    level = getattr(logging, level, logging.DEBUG)
+    logger.setLevel(level)
+    global _logger
+    _logger = logger
+    return logger
 
-optional = ['ansicolors',
-            'progress>=1.0.2']
-requires = ['objpool',
-            'argparse']
+def init_logger_stderr(name, level='DEBUG'):
+    logger = logging.getLogger(name)
+    from sys import stderr
+    handler = logging.StreamHandler(stderr)
+    formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    level = getattr(logging, level, logging.DEBUG)
+    logger.setLevel(level)
+    global _logger
+    _logger = logger
+    return logger
 
-if not hasattr(collections, "OrderedDict"):  # Python 2.6
-    requires.append("ordereddict")
+def debug(fmt, *args):
+    global _logger
+    if _logger is None:
+        init_logger_stderr('logger', get_level())
+    _logger.debug(fmt % args)
 
-setup(
-    name='kamaki',
-    version=kamaki.__version__,
-    description='A command-line tool for managing clouds',
-    long_description=open('README.rst').read(),
-    url='http://code.grnet.gr/projects/kamaki',
-    license='BSD',
-    packages=[
-        'kamaki',
-        'kamaki.clients',
-        'kamaki.clients.connection',
-        'kamaki.cli',
-        'kamaki.cli.commands',
-        'kamaki.clients.commissioning',
-        'kamaki.clients.quotaholder',
-        'kamaki.clients.quotaholder.api',
-        'kamaki.clients.commissioning.utils'
-    ],
-    include_package_data=True,
-    entry_points={
-        'console_scripts': ['kamaki = kamaki.cli:main']
-    },
-    install_requires=requires
-)
+def get_level(default='INFO'):
+    try:
+        return environ['DEBUG_LEVEL']
+    except:
+        return default
