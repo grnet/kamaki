@@ -33,16 +33,33 @@
 
 
 # Import general commission framework
-from .exception         import (CallError, CorruptedError, InvalidDataError,
-                                ReturnButFail,
-				register_exception, register_exceptions)
+from kamaki.clients.commissioning.exception import (
+    CallError,
+    CorruptedError,
+    InvalidDataError,
+    ReturnButFail,
+    register_exception,
+    register_exceptions)
 
-from .callpoint         import  Callpoint, mkcallargs
+from kamaki.clients.commissioning.callpoint import (
+    Callpoint,
+    mkcallargs)
 
-from .specificator      import (Specificator, SpecifyException,
-                                Canonifier, CanonifyException,
-                                Canonical,
-                                Null, Nothing, Integer, Serial,
-                                Text, Bytes, Tuple, ListOf, Dict, Args)
+from kamaki.clients.commissioning.specificator import (
+    Specificator,
+    SpecifyException,
+    Canonifier,
+    CanonifyException,
+    Canonical,
+    Null,
+    Nothing,
+    Integer,
+    Serial,
+    Text,
+    Bytes,
+    Tuple,
+    ListOf,
+    Dict,
+    Args)
 
 # Import standard implementations?

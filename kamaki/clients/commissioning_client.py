@@ -31,11 +31,12 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from synnefo.lib.commissioning import Callpoint, CallError
-from synnefo.lib.commissioning.utils.debug import debug
-from . import Client
+from kamaki.clients.commissioning import Callpoint, CallError
+from kamaki.clients.commissioning.utils.debug import debug
+from kamaki.clients import Client
 
 from json import loads as json_loads, dumps as json_dumps
+
 
 class CommissioningClient(Callpoint):
 
@@ -46,7 +47,7 @@ class CommissioningClient(Callpoint):
     def do_make_call(self, api_call, data):
 
         _kc = self._kc
-        
+
         gettable = ['list', 'get', 'read']
         method = (_kc.get if any(api_call.startswith(x) for x in gettable)
                   else _kc.post)
@@ -54,10 +55,10 @@ class CommissioningClient(Callpoint):
         path = api_call
         json_data = json_dumps(data)
         debug("%s %s\n%s\n<<<\n", method.func_name, path, json_data)
-        
-        resp = method(path, data=json_data, success=(200,450,500))
+
+        resp = method(path, data=json_data, success=(200, 450, 500))
         debug(">>>\nStatus: %s", resp.status_code)
-        
+
         body = resp.text
         debug("\n%s\n<<<\n", body[:128] if body else None)
 

@@ -31,9 +31,10 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from kamaki.clients.quotaholder.api import QuotaholderAPI
-from kamaki.clients.quotaholder.api import QH_PRACTICALLY_INFINITE
-from kamaki.clients.quotaholder.exception import (
+from kamaki.clients.quotaholder.api.quotaholder import (
+    QuotaholderAPI,
+    QH_PRACTICALLY_INFINITE)
+from kamaki.clients.quotaholder.api.exception import (
     InvalidKeyError,
     NoEntityError,
     NoQuantityError,

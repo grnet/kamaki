@@ -35,13 +35,16 @@
 from random import random, choice, randint
 from math import log
 from inspect import isclass
-from .utils.argmap import (argmap_decode, argmap_check, argmap_unpack_dict,
-                           argmap_unpack_list)
+from kamaki.clients.commissioning.utils.argmap import (
+    argmap_decode,
+    argmap_check,
+    argmap_unpack_dict,
+    argmap_unpack_list)
 
 try:
     from collections import OrderedDict
 except ImportError:
-    from .utils.ordereddict import OrderedDict
+    from kamaki.clients.commissioning.utils.ordereddict import OrderedDict
 
 def shorts(s):
     if not isinstance(s, unicode):

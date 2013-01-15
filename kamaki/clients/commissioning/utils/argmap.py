@@ -34,11 +34,12 @@
 try:
     from collections import OrderedDict
 except ImportError:
-    from .ordereddict import OrderedDict
+    from kamaki.clients.commissioning.utils.ordereddict import OrderedDict
 from itertools import chain
 from cStringIO import StringIO
 
 ARGMAP_MAGIC = '[=ARGMAP=]'
+
 
 class arguments(object):
     __slots__ = ('args', 'kw')

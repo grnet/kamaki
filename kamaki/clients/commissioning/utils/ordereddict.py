@@ -1,5 +1,40 @@
-# Backport of OrderedDict() class that runs on Python 2.4, 2.5, 2.6, 2.7 and pypy.
-# Passes Python2.7's test suite and incorporates all the latest updates.
+#!/usr/bin/env python
+
+# Copyright 2012 GRNET S.A. All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or
+# without modification, are permitted provided that the following
+# conditions are met:
+#
+#   1. Redistributions of source code must retain the above
+#      copyright notice, this list of conditions and the following
+#      disclaimer.
+#
+#   2. Redistributions in binary form must reproduce the above
+#      copyright notice, this list of conditions and the following
+#      disclaimer in the documentation and/or other materials
+#      provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY GRNET S.A. ``AS IS'' AND ANY EXPRESS
+# OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL GRNET S.A OR
+# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
+# USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+# AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+# ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+#
+# The views and conclusions contained in the software and
+# documentation are those of the authors and should not be
+# interpreted as representing official policies, either expressed
+# or implied, of GRNET S.A.
+
+# Backport of OrderedDict() class that runs on Python 2.4, 2.5, 2.6, 2.7 and
+# pypy. Passes Python2.7's test suite and incorporates all the latest updates.
 
 try:
     from thread import get_ident as _get_ident
@@ -17,9 +52,11 @@ class OrderedDict(dict):
     # An inherited dict maps keys to values.
     # The inherited dict provides __getitem__, __len__, __contains__, and get.
     # The remaining methods are order-aware.
-    # Big-O running times for all methods are the same as for regular dictionaries.
+    # Big-O running times for all methods are the same as for regular
+    # dictionaries.
 
-    # The internal self.__map dictionary maps keys to links in a doubly linked list.
+    # The internal self.__map dictionary maps keys to links in a doubly linked 
+    # list.
     # The circular doubly linked list starts and ends with a sentinel element.
     # The sentinel element never gets deleted (this simplifies the algorithm).
     # Each link is stored as a list of length three:  [PREV, NEXT, KEY].
@@ -42,8 +79,10 @@ class OrderedDict(dict):
 
     def __setitem__(self, key, value, dict_setitem=dict.__setitem__):
         'od.__setitem__(i, y) <==> od[i]=y'
-        # Setting a new item creates a new link which goes at the end of the linked
-        # list, and the inherited dictionary is updated with the new key/value pair.
+        # Setting a new item creates a new link which goes at the end of the
+        # linked
+        # list, and the inherited dictionary is updated with the new key/value
+        # pair.
         if key not in self:
             root = self.__root
             last = root[0]
@@ -53,7 +92,8 @@ class OrderedDict(dict):
     def __delitem__(self, key, dict_delitem=dict.__delitem__):
         'od.__delitem__(y) <==> del od[y]'
         # Deleting an existing item uses self.__map to find the link which is
-        # then removed by updating the links in the predecessor and successor nodes.
+        # then removed by updating the links in the predecessor and successor
+        # nodes.
         dict_delitem(self, key)
         link_prev, link_next, key = self.__map.pop(key)
         link_prev[1] = link_next
@@ -142,9 +182,9 @@ class OrderedDict(dict):
         '''od.update(E, **F) -> None.  Update od from dict/iterable E and F.
 
         If E is a dict instance, does:           for k in E: od[k] = E[k]
-        If E has a .keys() method, does:         for k in E.keys(): od[k] = E[k]
+        If E has a .keys() method, does:         for k in E.keys(): od[k]=E[k]
         Or if E is an iterable of items, does:   for k, v in E: od[k] = v
-        In either case, this is followed by:     for k, v in F.items(): od[k] = v
+        In either case, this is followed by:     for k, v in F.items(): od[k]=v
 
         '''
         if len(args) > 2:

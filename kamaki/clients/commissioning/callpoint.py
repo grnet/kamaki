@@ -32,11 +32,14 @@
 # or implied, of GRNET S.A.
 
 
-from .specificator  import  CanonifyException
-from .exception     import  CorruptedError, InvalidDataError, ReturnButFail
-from .importing     import  imp_module
+from kamaki.clients.commissioning.specificator import CanonifyException
+from kamaki.clients.commissioning.exception import CorruptedError
+from kamaki.clients.commissioning.exception import InvalidDataError
+from kamaki.clients.commissioning.exception import ReturnButFail
+from kamaki.clients.commissioning.importing import  imp_module
 
 from re import compile as re_compile, sub as re_sub
+
 
 class Callpoint(object):
 
