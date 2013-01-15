@@ -1,4 +1,4 @@
-.TH "KAMAKI" "1" "January 14, 2013" "0.6" "Kamaki"
+.TH "KAMAKI" "1" "January 15, 2013" "0.6" "Kamaki"
 .SH NAME
 kamaki \- Command-line tool for managing clouds
 .
@@ -41,7 +41,6 @@ clouds. It can be used in three forms: as an interactive shell, as a command lin
 To run kamaki as an interactive shell, type
 .INDENT 0.0
 .INDENT 3.5
-.sp
 kamaki
 .UNINDENT
 .UNINDENT
@@ -49,7 +48,6 @@ kamaki
 To run kamaki as tool type
 .INDENT 0.0
 .INDENT 3.5
-.sp
 kamaki <group> <command> [...] [options]
 .UNINDENT
 .UNINDENT
@@ -61,7 +59,6 @@ List of available command groups:
 config
 .INDENT 0.0
 .INDENT 3.5
-.sp
 Edit configuration options. Config options are stored in ~/.kamakirc file.
 .UNINDENT
 .UNINDENT
@@ -69,7 +66,6 @@ Edit configuration options. Config options are stored in ~/.kamakirc file.
 history
 .INDENT 0.0
 .INDENT 3.5
-.sp
 Access kamaki user history, which is stored in ~/.kamaki.history file.
 .UNINDENT
 .UNINDENT
@@ -77,7 +73,6 @@ Access kamaki user history, which is stored in ~/.kamaki.history file.
 server
 .INDENT 0.0
 .INDENT 3.5
-.sp
 Manage compute API virtual machines.
 .UNINDENT
 .UNINDENT
@@ -85,7 +80,6 @@ Manage compute API virtual machines.
 flavor
 .INDENT 0.0
 .INDENT 3.5
-.sp
 Manage compute API flavors.
 .UNINDENT
 .UNINDENT
@@ -93,7 +87,6 @@ Manage compute API flavors.
 network
 .INDENT 0.0
 .INDENT 3.5
-.sp
 Manage compute API networks.
 .UNINDENT
 .UNINDENT
@@ -101,7 +94,6 @@ Manage compute API networks.
 image
 .INDENT 0.0
 .INDENT 3.5
-.sp
 Manage compute API and Plankton images.
 .UNINDENT
 .UNINDENT
@@ -109,8 +101,25 @@ Manage compute API and Plankton images.
 store
 .INDENT 0.0
 .INDENT 3.5
-.sp
 Manage store API.
+.UNINDENT
+.UNINDENT
+.SH HIDDEN COMMAND GROUPS
+.sp
+quotaholder
+.INDENT 0.0
+.INDENT 3.5
+A client for quotaholder API. to enable:
+kamaki config set quotaholder.cli hotaholder_cli
+kamaki config set quotaholder.url <quotaholder server url>
+.UNINDENT
+.UNINDENT
+.sp
+test
+.INDENT 0.0
+.INDENT 3.5
+Prepared unit\-tests for developers (experimental). To enable:
+kamaki config set test.cli test_cli
 .UNINDENT
 .UNINDENT
 .SH OPTIONS
@@ -127,16 +136,12 @@ Manage store API.
 .SS config commands
 .INDENT 0.0
 .IP \(bu 2
-.
 list       list configuration options
 .IP \(bu 2
-.
 get        get a configuration option
 .IP \(bu 2
-.
 set        set a configuration option
 .IP \(bu 2
-.
 del        delete a configuration option
 .UNINDENT
 .SS history commands
@@ -144,251 +149,196 @@ del        delete a configuration option
 Command user history, as stored in ~/.kamaki.history
 .INDENT 0.0
 .IP \(bu 2
-.
-all       show user history
+show      show intersession history
 .IP \(bu 2
-.
 clean     clean up history
+.IP \(bu 2
+run       run/show previously executed command(s)
 .UNINDENT
 .SS server commands
 .INDENT 0.0
 .IP \(bu 2
-.
-list       list servers
+addr      List the addresses of all network interfaces on a server (VM)
 .IP \(bu 2
-.
-info       get server details
+console   Get a VNC console to access an existing server (VM)
 .IP \(bu 2
-.
-create     create server
+create    Create a server (aka Virtual Machine)
 .IP \(bu 2
-.
-rename     update server name
+delete    Delete a server (VM)
 .IP \(bu 2
-.
-delete     delete server
+delmeta   Delete server (VM) metadata
 .IP \(bu 2
-.
-reboot     reboot server
+firewall  Set the server (VM) firewall profile on VMs public network
 .IP \(bu 2
-.
-start      start server
+info      Detailed information on a Virtual Machine
 .IP \(bu 2
-.
-shutdown   shutdown server
+list      List Virtual Machines accessible by user
 .IP \(bu 2
-.
-console    get a VNC console
+meta      Get a server\(aqs metadatum
 .IP \(bu 2
-.
-firewall   set the firewall profile
+reboot    Reboot a server (VM)
 .IP \(bu 2
-.
-addr       list server addresses
+rename    Set/update a server (VM) name
 .IP \(bu 2
-.
-meta       get server metadata
+setmeta   set server (VM) metadata
 .IP \(bu 2
-.
-addmeta    add server metadata
+shutdown  Shutdown an active server (VM)
 .IP \(bu 2
-.
-setmeta    update server metadata
+start     Start an existing server (VM)
 .IP \(bu 2
-.
-delmeta    delete server metadata
+stats     Get server (VM) statistics
 .IP \(bu 2
-.
-stats      get server statistics
-.IP \(bu 2
-.
-wait       wait for server to finish [BUILD, STOPPED, REBOOT, ACTIVE]
+wait      Wait for server to finish [BUILD, STOPPED, REBOOT, ACTIVE]
 .UNINDENT
 .SS flavor commands
 .INDENT 0.0
 .IP \(bu 2
-.
 list       list flavors
 .IP \(bu 2
-.
 info       get flavor details
 .UNINDENT
 .SS image commands and options
 .INDENT 0.0
 .IP \(bu 2
-.
-list        list images
+addmember     Add a member to an image
 .IP \(bu 2
-.
-info        get image details
+addproperty   Add an OS\-related property to an image
 .IP \(bu 2
-.
-public      list public images
+delete        Delete an image (image file remains intact)
 .IP \(bu 2
-.
-shared      list shared images
+delmember     Remove a member from an image
 .IP \(bu 2
-.
-delete      delete image
+delproperty   Delete a property of an image
 .IP \(bu 2
-.
-register    register an image
+info          Get detailed information on an image
 .IP \(bu 2
-.
-reregister  re\-register an image (preserve and update properties)
+list          List images
 .IP \(bu 2
-.
-meta        get image metadata
+members       Get image members
 .IP \(bu 2
-.
-members     get image members
+meta          Get image metadata
 .IP \(bu 2
-.
-addmember   add a member to an image
+properties    Get properties related to OS installation in an image
 .IP \(bu 2
-.
-delmember   remove a member from an image
+public        List public images
 .IP \(bu 2
-.
-setmembers  set the members of an image
+register      (Re)Register an image
 .IP \(bu 2
-.
-properties  get image properties
+setmembers    Set the members of an image
 .IP \(bu 2
-.
-setproperty update an image property
+setproperty   Update an existing property in an image
 .IP \(bu 2
-.
-addproperty add an image property
-.IP \(bu 2
-.
-delproperty delete an image property
+shared        List images shared by a member
 .UNINDENT
 .SS network commands
 .INDENT 0.0
 .IP \(bu 2
-.
-list       list networks
+connect       Connect a server to a network
 .IP \(bu 2
-.
-create     create a network
+create        Create an (unconnected) network
 .IP \(bu 2
-.
-info       get network details
+delete        Delete a network
 .IP \(bu 2
-.
-rename     update network name
+disconnect    Disconnect a nic that connects a server to a network
 .IP \(bu 2
-.
-delete     delete a network
+info          Detailed information on a network
 .IP \(bu 2
-.
-connect    connect a server to a network
+list          List networks
 .IP \(bu 2
-.
-disconnect disconnect a server from a network
+rename        Set the name of a network
 .UNINDENT
 .SS store commands
 .INDENT 0.0
 .IP \(bu 2
-.
-append    Append local file to (existing) remote object
+append            Append local file to (existing) remote object
 .IP \(bu 2
-.
-cat       Print a file to console
+cat               Print remote file contents to console
 .IP \(bu 2
-.
-copy      Copy an object
+copy              Copy an object from container to (another) container
 .IP \(bu 2
-.
-create    Create a container or a directory object
+create            Create a container
 .IP \(bu 2
-.
-delete    Delete a container [or an object]
+delete            Delete a container [or an object]
 .IP \(bu 2
-.
-delgroup  Delete a user group on an account
+delgroup          Delete a user group
 .IP \(bu 2
-.
-delmeta   Delete an existing metadatum of account [, container [or object]]
+delmeta           Delete metadata from account, container or object
 .IP \(bu 2
-.
-delpermissions    Delete all sharing permissions
+delpermissions    Delete all permissions set on object
 .IP \(bu 2
-.
-download  Download a file
+download          Download remote object as local file
 .IP \(bu 2
-.
-group     Get user groups details for account
+group             Get groups and group members
 .IP \(bu 2
-.
-hashmap   Get the hashmap of an object
+hashmap           Get the hash\-map of an object
 .IP \(bu 2
-.
-info      Get information for account [, container [or object]]
+info              Get detailed info for account, containers or objects
 .IP \(bu 2
-.
-list      List containers, object trees or objects in a directory
+list              List containers, object trees or objects in a directory
 .IP \(bu 2
-.
-manifest  Create a remote file with uploaded parts by manifestation
+manifest          Create a remote file of uploaded parts by manifestation
 .IP \(bu 2
-.
-meta      Get custom meta\-content for account [, container [or object]]
+meta              Get metadata for account, containers or objects
 .IP \(bu 2
-.
-mkdir     Create a directory
+mkdir             Create a directory
 .IP \(bu 2
-.
-move      Copy an object
+move              Copy an object
 .IP \(bu 2
-.
-overwrite Overwrite part (from start to end) of a remote file
+overwrite         Overwrite part (from start to end) of a remote file
 .IP \(bu 2
-.
-permissions   Get object read/write permissions
+permissions       Get read and write permissions of an object
 .IP \(bu 2
-.
-publish   Publish an object
+publish           Publish the object and print the public url
 .IP \(bu 2
-.
-purge     Purge a container
+purge             Delete a container and release related data blocks
 .IP \(bu 2
-.
-quota     Get quota for account [or container]
+quota             Get quota (in KB) for account or container
 .IP \(bu 2
-.
-setgroup  Create/update a new user group on account
+setgroup          Set a user group
 .IP \(bu 2
-.
-setmeta   Set a new metadatum for account [, container [or object]]
+setmeta           Set a piece of metadata for account, container or object
 .IP \(bu 2
-.
-setpermissions    Set sharing permissions
+setpermissions    Set permissions for an object
 .IP \(bu 2
-.
-setquota  Set new quota (in KB) for account [or container]
+setquota          Set new quota (in KB) for account or container
 .IP \(bu 2
-.
-setversioning Set new versioning (auto, none) for account [or container]
+setversioning     Set versioning mode (auto, none) for account or container
 .IP \(bu 2
-.
-sharers   List the accounts that share objects with default account
+sharers           List the accounts that share objects with current user
 .IP \(bu 2
-.
-truncate  Truncate remote file up to a size
+touch             Create an empty object (file)
 .IP \(bu 2
-.
-unpublish Unpublish an object
+truncate          Truncate remote file up to a size
 .IP \(bu 2
-.
-upload    Upload a file
+unpublish         Unpublish an object
 .IP \(bu 2
-.
-versioning    Get  versioning for account [or container ]
+upload            Upload a file
 .IP \(bu 2
-.
-versions  Get the version list of an object
+versioning        Get  versioning for account or container
+.IP \(bu 2
+versions          Get the list of object versions
+.UNINDENT
+.SS quotaholder commands (hidden)
+.sp
+accept, ack, add, create, get, init, issue, list, query, reject, release, reset, resolve, set
+.SS test commands (hidden)
+.INDENT 0.0
+.IP \(bu 2
+all         test all clients
+.IP \(bu 2
+args        Test how arguments are treated by kamaki
+.IP \(bu 2
+astakos     test Astakos client
+.IP \(bu 2
+cyclades    test Cyclades client
+.IP \(bu 2
+error       Create an error message with optional message
+.IP \(bu 2
+image       test Image client
+.IP \(bu 2
+pithos      test Pithos client
+.IP \(bu 2
+prints      user\-test print methods for lists and dicts
 .UNINDENT
 .SH AUTHOR
 .sp

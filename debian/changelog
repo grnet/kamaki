@@ -1,3 +1,9 @@
+kamaki (0.6.2.1-2) stable; urgency=low
+
+  * Remove sphinx build dependency, explicitely define manpage
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Tue, 15 Jan 2013 15:29:12 +0200
+
 kamaki (0.6.2.1-1) stable; urgency=low
 
   * New upstream version, replace dependency snf-common with python-objpool
