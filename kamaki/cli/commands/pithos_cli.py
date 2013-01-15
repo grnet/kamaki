@@ -415,8 +415,7 @@ class store_list(_store_container_command):
 
 @command(pithos_cmds)
 class store_mkdir(_store_container_command):
-    """Create a directory
-    """
+    """Create a directory"""
 
     __doc__ += '\n. '.join(about_directories)
 

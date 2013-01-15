@@ -21,16 +21,13 @@ Add the following to apt sources list
 
 As root, append one of the following to */etc/apt/sources.list*:
 
-* Debian Sid (kamaki 0.6.2)::
 
-    deb http://apt.dev.grnet.gr/ sid main
-
-* Debian Stable (kamaki 0.6.1)::
+* Debian Stable (kamaki 0.6.2)::
 
     deb http://apt.dev.grnet.gr/ squeeze main
     deb http://apt2.dev.grnet.gr stable/
 
-* Ubuntu (kamaki 0.6.1)::
+* Ubuntu (kamaki 0.6.2)::
 
     deb http://apt.dev.grnet.gr/ precise main
 
@@ -54,7 +51,7 @@ Update
 Install kamaki
 """"""""""""""
 
-.. note:: **versions 0.6.0 - 0.6.1:**
+.. note:: **versions 0.6.0 - 0.6.1 only:**
 
     The *snf-common* package (available at synnefo apt repository) will be automatically installed as a dependency.
 
@@ -106,7 +103,7 @@ A more detailed example of using virtual env can be found at the `snf-image-crea
 Install objpool (was: snf-common)
 """""""""""""""""""""""""""""""""
 
-.. note:: **versions 0.6.0 - 0.6.1**
+.. note:: **versions 0.6.0 - 0.6.1 only**
 
     Package snf-common is part of the synnefo project and used to be a kamaki dependency in versions from 0.6.0 to 0.6.1 to provide a connection pooling mechanism. Users who still run 0.6.0 or 0.6.1 may need to manually install the snf-common package:
 
@@ -119,7 +116,7 @@ Install objpool (was: snf-common)
 
 **Version 0.6.2 and on:**
 
-Since 0.6.2, kamaki is based on objpool (hence the snf-common dependency is now obsolete). The objpool package is easy to install from source, even on windows platforms:
+Since 0.6.2, kamaki is based on python-objpool. The objpool package is easy to install from source (even on windows platforms):
 
 .. code-block:: console
 
@@ -131,9 +128,21 @@ Since 0.6.2, kamaki is based on objpool (hence the snf-common dependency is now 
 Install kamaki
 """"""""""""""
 
+Kamaki can be downloaded from `here <https://code.grnet.gr/projects/kamaki/files>`_, where users can pick the version they prefer and unzip it locally:
+
+.. code-block:: console
+
+    $ tar xvfz kamaki-0.6.2.tar.gz
+
+or it can be downloaded directly from the git repository:
+
 .. code-block:: console
 
     $ git clone http://code.grnet.gr/git/kamaki
+
+and then installed by the setup script:
+
+.. code-block:: console
     $ cd kamaki
     $ ./setup build install
 
