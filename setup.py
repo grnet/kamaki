@@ -63,7 +63,8 @@ setup(
         'kamaki.cli.commands',
         'kamaki.clients.commissioning',
         'kamaki.clients.quotaholder',
-        'kamaki.clients.quotaholder.api'
+        'kamaki.clients.quotaholder.api',
+        'kamaki.clients.commissioning.utils'
     ],
     include_package_data=True,
     entry_points={
