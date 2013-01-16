@@ -175,7 +175,7 @@ Since version 0.6.1 kamaki contains a test suite for the kamaki.clients API. The
 
 After that, users can run "kamaki test" commands to unit-test the prepackaged client APIs. Unit-tests are still experimental and there is a high probability of false alarms due to some of the expected values being hard-coded in the testing code.
 
-In version 0.6.3, a quotaholder client is introduced as an advanced feature. Quotaholder client is mostly used as a client library for accessing a synnefo quota service, but it can also be allowed as a kamaki command set, but setting the quotaholder.cli and quotaholder.url methods:
+Since version 0.6.3, a quotaholder client is introduced as an advanced feature. Quotaholder client is mostly used as a client library for accessing a synnefo quota service, but it can also be allowed as a kamaki command set, but setting the quotaholder.cli and quotaholder.url methods:
 
     [quotaholder]
     cli=quotaholder_cli

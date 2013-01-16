@@ -34,7 +34,7 @@
 # or implied, of GRNET S.A.
 
 from setuptools import setup
-from sys import version_info
+#from sys import version_info
 import collections
 
 import kamaki
