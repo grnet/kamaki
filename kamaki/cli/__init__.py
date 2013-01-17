@@ -43,6 +43,7 @@ from kamaki.cli.errors import CLIError
 
 _help = False
 _debug = False
+_include = False
 _verbose = False
 _colors = False
 kloger = None
@@ -188,8 +189,9 @@ def _setup_logging(silent=False, debug=False, verbose=False, include=False):
         add_handler('clients.send', logging.INFO, prefix='> ')
         add_handler('clients.recv', logging.INFO, prefix='< ')
         add_handler('kamaki', logging.INFO, prefix='(i): ')
-    elif include:
-        add_handler('clients.recv', logging.INFO)
+    if include:
+        add_handler('data.send', logging.INFO, prefix='>[data]: ')
+        add_handler('data.recv', logging.INFO, prefix='<[data]: ')
     add_handler('kamaki', logging.WARNING, prefix='(warning): ')
     global kloger
     kloger = logging.getLogger('kamaki')
@@ -200,6 +202,8 @@ def _init_session(arguments):
     _help = arguments['help'].value
     global _debug
     _debug = arguments['debug'].value
+    global _include
+    _include = arguments['include'].value
     global _verbose
     _verbose = arguments['verbose'].value
     global _colors
@@ -208,7 +212,6 @@ def _init_session(arguments):
         from kamaki.cli.utils import remove_colors
         remove_colors()
     _silent = arguments['silent'].value
-    _include = arguments['include'].value
     _setup_logging(_silent, _debug, _verbose, _include)
 
 
