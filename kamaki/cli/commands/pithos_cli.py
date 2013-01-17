@@ -935,7 +935,7 @@ class store_upload(_store_container_command):
 
     def main(self, local_path, container____path__):
         super(self.__class__, self).main(container____path__)
-        remote_path = self.path if self.path else local_path
+        remote_path = self.path if self.path else path.basename(local_path)
         poolsize = self['poolsize']
         if poolsize > 0:
             self.client.POOL_SIZE = int(poolsize)
