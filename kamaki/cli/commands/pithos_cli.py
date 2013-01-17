@@ -528,20 +528,20 @@ class store_create(_store_container_command):
 class store_copy(_store_container_command):
     """Copy objects from container to (another) container
     Semantics:
-    * copy cont:path path2
-        will copy all files prefixed with path, as path2path
-    * copy cont:path cont2:
-        will copy all files prefixed with path to container cont2
-    * copy cont:path [cont2:]path2 --exact-match
-        will copy at most one object as a new object named path2
-    * copy cont:path [cont2:]path2 --replace
-        will copy all objs prefixed with path, replacing prefix with path2
-    .
+    copy cont:path path2
+    .   will copy all <obj> prefixed with path, as path2<obj>
+    copy cont:path cont2:
+    .   will copy all <obj> prefixed with path to container cont2
+    copy cont:path [cont2:]path2 --exact-match
+    .   will copy at most one <obj> as a new object named path2
+    copy cont:path [cont2:]path2 --replace
+    .   will copy all <obj> prefixed with path, replacing path with path2
+    where <obj> is a full file or directory object path.
     Use options:
     1. <container1>:<path1> [container2:]<path2> : if container2 is not given,
     destination is container1:path2
     2. <container>:<path1> <path2> : make a copy in the same container
-    3. Use --container= instead of <container1>
+    3. Can use --container= instead of <container1>
     """
 
     arguments = dict(
@@ -614,11 +614,21 @@ class store_copy(_store_container_command):
 @command(pithos_cmds)
 class store_move(_store_container_command):
     """Move/rename objects
+    Semantics:
+    move cont:path path2
+    .   will move all <obj> prefixed with path, as path2<obj>
+    move cont:path cont2:
+    .   will move all <obj> prefixed with path to container cont2
+    move cont:path [cont2:]path2 --exact-match
+    .   will move at most one <obj> as a new object named path2
+    move cont:path [cont2:]path2 --replace
+    .   will move all <obj> prefixed with path, replacing prefix with path2
+    where <obj> is a full file or directory object path.
     Use options:
     1. <container1>:<path1> [container2:]<path2> : if container2 not given,
     destination is container1:path2
     2. <container>:<path1> path2 : rename
-    3. Use --container= instead of <container1>
+    3. Can use --container= instead of <container1>
     """
 
     arguments = dict(
@@ -628,11 +638,15 @@ class store_move(_store_container_command):
         recursive=FlagArgument('up to delimiter /', ('-r', '--recursive')),
         exact_match=FlagArgument(
             'Copy only the object that fully matches path',
-            '--exact-match')
+            '--exact-match'),
+        replace=FlagArgument('Replace src. path with dst. path', '--replace')
     )
 
-    def __init__(self, arguments={}):
-        super(self.__class__, self).__init__(arguments)
+    def _objlist(self):
+        if self['exact_match']:
+            return [self.path]
+        r = self.client.container_get(prefix=self.path)
+        return [obj['name'] for obj in r.json]
 
     def main(self, source_container___path, destination_container____path__):
         super(self.__class__,
@@ -641,13 +655,20 @@ class store_move(_store_container_command):
             dst = destination_container____path__.split(':')
             (dst_cont, dst_path) = (dst[0], dst[1])\
             if len(dst) > 1 else (None, dst[0])
-            self.client.move_object(src_container=self.container,
-                src_object=self.path,
-                dst_container=dst_cont if dst_cont else self.container,
-                dst_object=dst_path,
-                source_version=self['source_version'],
-                public=self['public'],
-                content_type=self['content_type'])
+            final_destination = dst_path
+            for src_object in self._objlist():
+                if not (self['exact_match'] and self.path):
+                    final_destination = '%s%s' % (
+                        dst_path,
+                        src_object[len(self.path) if self['replace'] else 0:])
+                self.client.move_object(
+                    src_container=self.container,
+                    src_object=src_object,
+                    dst_container=dst_cont if dst_cont else self.container,
+                    dst_object=final_destination,
+                    source_version=self['source_version'],
+                    public=self['public'],
+                    content_type=self['content_type'])
         except ClientError as err:
             if err.status == 404:
                 if 'object' in ('%s' % err).lower():
