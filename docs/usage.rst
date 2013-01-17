@@ -270,7 +270,7 @@ The astakos-authenticate command in example 3.4.1 run against an explicitly prov
 Interactive shell
 -----------------
 
-Kamaki interactive shell is details in this section
+Kamaki interactive shell is detailed in this section
 
 Command Contexts
 ^^^^^^^^^^^^^^^^
@@ -477,11 +477,10 @@ It is often the case that a user who works in the context command, needs to crea
     
     [server]:/flavor list
     ...
-    20. AFLAVOR
+    43 AFLAVOR
         SNF:disk_template:  drbd
         cpu              :  4
         disk             :  10
-        id               :  43
         ram              :  2048
     
     [server]:/image list
@@ -493,7 +492,7 @@ It is often the case that a user who works in the context command, needs to crea
     [server]:create 'my debian' 43 6aa6eafd-dccb-67fe2bdde87e
     ...
 
-An other example (4.3.2) showcases how to acquire and modify configuration settings from a different context. In this scenario, the user token expires at server side while the user is working. When that happens, the system responds with an *(401) UNAUTHORIZED* message. The user can acquires a new token (with a browser) which has to be set to kamaki.
+An other example (4.3.2) showcases how to acquire and modify configuration settings from a different context. In this scenario, the user token expires at server side while the user is working. When that happens, the system responds with an *(401) UNAUTHORIZED* message. The user can acquire a new token (with a browser) which has to be set to kamaki.
 
 .. code-block:: console
     :emphasize-lines: 1
@@ -518,6 +517,8 @@ An other example (4.3.2) showcases how to acquire and modify configuration setti
     [store]:list
     1.  pithos (10MB, 2 objects)
     2.  trash (0B, 0 objects)
+
+.. note:: actual kamaki error messages are more helpful and descriptive.
 
 The following example compares some equivalent calls that run *astakos-authenticate* after a *store-list* 401 failure.
 
@@ -617,9 +618,9 @@ Permanent history is implemented as a command group and is common to both the on
 Scripting
 ^^^^^^^^^
 
-Since version 6.2, the history-load feature allows the sequential execution of previously run kamaki commands in kamaki shell.
+Since version 6.2, the history-run feature allows the sequential execution of previously run kamaki commands in kamaki shell.
 
-The following kamaki sequence copies and downloads a file from mycontainer1, uploads it to mycontainer2, then undo the proccess and repeats it with history-load
+The following kamaki sequence copies and downloads a file from mycontainer1, uploads it to mycontainer2, then undo the proccess and repeats it with history-run
 
 .. code-block:: console
     :emphasize-lines: 1,12,19,32
@@ -663,7 +664,7 @@ The following kamaki sequence copies and downloads a file from mycontainer1, upl
     store upload mylocalfile mycontainer2:myfile
     Upload completed
 
-The above strategy is still very primitive. Users are advised to take advantage of their os shell scripting capabilities and combine them with kamaki one-command for powerful scripting. Still, the history-load functionality might prove handy for kamaki shell users.
+The above strategy is still very primitive. Users are advised to take advantage of their os shell scripting capabilities and combine them with kamaki one-command for powerful scripting. Still, the history-run functionality might prove handy for kamaki shell users.
 
 Tab completion
 ^^^^^^^^^^^^^^

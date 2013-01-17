@@ -415,8 +415,7 @@ class store_list(_store_container_command):
 
 @command(pithos_cmds)
 class store_mkdir(_store_container_command):
-    """Create a directory
-    """
+    """Create a directory"""
 
     __doc__ += '\n. '.join(about_directories)
 
@@ -942,7 +941,12 @@ class store_upload(_store_container_command):
                         err,
                         'No container %s in account %s'\
                         % (self.container, self.account),
-                        details=self.generic_err_details)
+                        details=[self.generic_err_details])
+            elif err.status == 800:
+                raiseCLIError(err, details=[
+                    'Possible cause: temporary server failure',
+                    'Try to re-upload the file',
+                    'For more error details, try kamaki store upload -d'])
             raise_connection_errors(err)
             raiseCLIError(err, '"%s" not accessible' % container____path__)
         except IOError as err:

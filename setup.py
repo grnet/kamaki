@@ -34,11 +34,10 @@
 # or implied, of GRNET S.A.
 
 from setuptools import setup
-from sys import version_info
+#from sys import version_info
 import collections
 
 import kamaki
-
 
 
 optional = ['ansicolors',
@@ -46,7 +45,7 @@ optional = ['ansicolors',
 requires = ['objpool',
             'argparse']
 
-if not hasattr(collections, "OrderedDict"): # Python 2.6
+if not hasattr(collections, "OrderedDict"):  # Python 2.6
     requires.append("ordereddict")
 
 setup(
@@ -56,7 +55,17 @@ setup(
     long_description=open('README.rst').read(),
     url='http://code.grnet.gr/projects/kamaki',
     license='BSD',
-    packages=['kamaki', 'kamaki.clients', 'kamaki.clients.connection', 'kamaki.cli', 'kamaki.cli.commands'],
+    packages=[
+        'kamaki',
+        'kamaki.clients',
+        'kamaki.clients.connection',
+        'kamaki.cli',
+        'kamaki.cli.commands',
+        'kamaki.clients.commissioning',
+        'kamaki.clients.quotaholder',
+        'kamaki.clients.quotaholder.api',
+        'kamaki.clients.commissioning.utils'
+    ],
     include_package_data=True,
     entry_points={
         'console_scripts': ['kamaki = kamaki.cli:main']

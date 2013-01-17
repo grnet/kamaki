@@ -135,6 +135,9 @@ The [global] group is treated by kamaki as a generic group for arbitrary options
 * store.account <account name>
     if set, it overrides possible global.account option for store level commands.
 
+* store.token <token>
+    it set, it overrides possible global.token option for store level commands
+
 * compute.url <OOS compute or Cyclades service url>
     the url of the OOS compute or Cyclades service. Set to Okeanos.grnet.gr Cyclades IaaS service by default. Users should set a different value if they need to use a different IaaS service.
 
@@ -171,3 +174,9 @@ Since version 0.6.1 kamaki contains a test suite for the kamaki.clients API. The
     cli=test_cli
 
 After that, users can run "kamaki test" commands to unit-test the prepackaged client APIs. Unit-tests are still experimental and there is a high probability of false alarms due to some of the expected values being hard-coded in the testing code.
+
+Since version 0.6.3, a quotaholder client is introduced as an advanced feature. Quotaholder client is mostly used as a client library for accessing a synnefo quota service, but it can also be allowed as a kamaki command set, but setting the quotaholder.cli and quotaholder.url methods:
+
+    [quotaholder]
+    cli=quotaholder_cli
+    url=<URL of quotaholder service>

@@ -1,45 +1,9 @@
-CHANGELOG
+CHANGELOG for version 0.6.3
 
-1. Clients API relies on objpool instead of snf-common for connection pooling
-2. MS Windows compatiblity:
-    * adjust pithos interface
-    * adjust pithos client local fs handling
-    * progress bar configuration not to rely on unicode characters
-    * adjust hidden Clients API unittests
-3. Update documentation:
-    * rearange text for easier setup
-    * document undocumented methods in Clients API and cli auxiliary methods
-    * MS Windows setup guide
-4. Improve interface output:
-    * detailed description mechanism
-    * uniformity between shell and one-command
-    * various command-specific improvements
-    * new print_list, print_dict and print_item methods have:
-        - better indentation 
-        - enumeration flag
-        - redundancy of presented information flag
-    * mechanism for more descriptive syntax errors and arguments help
-5. Improve error handling:
-    * concrete mechanism for client error propagation
-    * catch some unhandled errors
-    * mechanism for detailed error descriptions
-    * context-specific errors
-    * showcase error handling in store_list
-6. CLI Code restructure:
-    * Introduce ArgumentParseManager class to manage argument parsing
-    * Introduce a seperate one_command package for handling one_command
-    * clean-up main CLI code (move interface-specific methods to their pckgs)
-7. New history capabilities:
-    * allow command ranges
-    * allow backward counting
-    * in-shell sequensial script-like execution of previous commands
-8. Minor new features:
-    * store_publish returns publication url
-    * store_list can list with prefixes instead of full path
-    * hidden optional testing of quoted text and cli.utils.print_* methods
-    * shell prompt easy to modify
-9. Bugfixes:
-    * Shell does not repeat previous command in case of error
-    * handle ValueErrors and KeyErrors
-    * config set values are effective immidiately
-    * unwanted argument inheritance in shell, removed
+1. Introduce a quotaholder client (and primitive cli)
+2. Enrich output responses and error reporting with instructions per command
+3. Unified result output
+4. Stabilize error handling (crashes are much less frequent)
+5. Dynamic upper limit on threads when uploading
+6. Update documentation
+7. Restructure CLI code to clarify what is used in each interface mode
