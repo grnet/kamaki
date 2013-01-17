@@ -313,13 +313,17 @@ class store_list(_store_container_command):
         public=FlagArgument('show only public', '--public'),
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
-            '--more')
+            '--more'),
+        exact_match=FlagArgument(
+            'Show only objects that match exactly with path',
+            '--exact-match')
     )
 
     def print_objects(self, object_list):
         limit = int(self['limit']) if self['limit'] > 0 else len(object_list)
         for index, obj in enumerate(object_list):
-            if 'content_type' not in obj:
+            if (self['exact_match'] and self.path and\
+                obj['name'] != self.path) or 'content_type' not in obj:
                 continue
             pretty_obj = obj.copy()
             index += 1
@@ -379,8 +383,7 @@ class store_list(_store_container_command):
                     show_only_shared=self['shared'])
                 self.print_containers(r.json)
             else:
-                prefix = self.path if self.path\
-                else self['prefix']
+                prefix = self.path if self.path else self['prefix']
                 r = self.client.container_get(
                     limit=False if self['more'] else self['limit'],
                     marker=self['marker'],
@@ -542,30 +545,34 @@ class store_copy(_store_container_command):
         recursive=FlagArgument(
             'mass copy with delimiter /',
             ('-r', '--recursive')),
+        exact_match=FlagArgument(
+            'Copy only the object that fully matches path',
+            '--exact-match')
     )
 
-    def __init__(self, arguments={}):
-        super(self.__class__, self).__init__(arguments)
-        self['delimiter'] = DelimiterArgument(
-            self,
-            parsed_name='--delimiter',
-            help=u'copy objects prefixed as src_object + delimiter')
+    def _objlist(self):
+        if self['exact_match']:
+            return [self.path]
+        r = self.client.container_get(prefix=self.path)
+        return [obj['name'] for obj in r.json]
 
-    def main(self, source_container___path, destination_container____path__):
+    def main(self, source_container___path, destination_container___path):
         super(self.__class__,
             self).main(source_container___path, path_is_optional=False)
         try:
-            dst = destination_container____path__.split(':')
+            dst = destination_container___path.split(':')
             (dst_cont, dst_path) = (dst[0], dst[1])\
             if len(dst) > 1 else (None, dst[0])
-            self.client.copy_object(src_container=self.container,
-                src_object=self.path,
-                dst_container=dst_cont if dst_cont else self.container,
-                dst_object=dst_path,
-                source_version=self['source_version'],
-                public=self['public'],
-                content_type=self['content_type'],
-                delimiter=self['delimiter'])
+            for src_object in self._objlist():
+                if not self['exact_match']:
+                    final_destination = '%s%s' % (dst_path, src_object)
+                self.client.copy_object(src_container=self.container,
+                    src_object=src_object,
+                    dst_container=dst_cont if dst_cont else self.container,
+                    dst_object=final_destination,
+                    source_version=self['source_version'],
+                    public=self['public'],
+                    content_type=self['content_type'])
         except ClientError as err:
             if err.status == 404:
                 if 'object' in ('%s' % err).lower():
