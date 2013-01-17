@@ -189,6 +189,8 @@ class Client(object):
             if data:
                 self.set_default_header('Content-Length', unicode(len(data)))
 
+            sendlog.info('perform a %s @ %s', method, self.base_url)
+
             self.http_client.url = self.base_url
             self.http_client.path = path
             r = self.http_client.perform_request(method,
