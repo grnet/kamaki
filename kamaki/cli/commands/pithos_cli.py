@@ -526,7 +526,17 @@ class store_create(_store_container_command):
 
 @command(pithos_cmds)
 class store_copy(_store_container_command):
-    """Copy an object from container to (another) container
+    """Copy objects from container to (another) container
+    Semantics:
+    * copy cont:path path2
+        will copy all files prefixed with path, as path2path
+    * copy cont:path cont2:
+        will copy all files prefixed with path to container cont2
+    * copy cont:path [cont2:]path2 --exact-match
+        will copy at most one object as a new object named path2
+    * copy cont:path [cont2:]path2 --replace
+        will copy all objs prefixed with path, replacing prefix with path2
+    .
     Use options:
     1. <container1>:<path1> [container2:]<path2> : if container2 is not given,
     destination is container1:path2
@@ -547,7 +557,8 @@ class store_copy(_store_container_command):
             ('-r', '--recursive')),
         exact_match=FlagArgument(
             'Copy only the object that fully matches path',
-            '--exact-match')
+            '--exact-match'),
+        replace=FlagArgument('Replace src. path with dst. path', '--replace')
     )
 
     def _objlist(self):
@@ -563,9 +574,12 @@ class store_copy(_store_container_command):
             dst = destination_container___path.split(':')
             (dst_cont, dst_path) = (dst[0], dst[1])\
             if len(dst) > 1 else (None, dst[0])
+            final_destination = dst_path
             for src_object in self._objlist():
-                if not self['exact_match']:
-                    final_destination = '%s%s' % (dst_path, src_object)
+                if not (self['exact_match'] and self.path):
+                    final_destination = '%s%s' % (
+                        dst_path,
+                        src_object[len(self.path) if self['replace'] else 0:])
                 self.client.copy_object(src_container=self.container,
                     src_object=src_object,
                     dst_container=dst_cont if dst_cont else self.container,
@@ -599,7 +613,7 @@ class store_copy(_store_container_command):
 
 @command(pithos_cmds)
 class store_move(_store_container_command):
-    """Copy an object
+    """Move/rename objects
     Use options:
     1. <container1>:<path1> [container2:]<path2> : if container2 not given,
     destination is container1:path2
@@ -611,15 +625,14 @@ class store_move(_store_container_command):
         source_version=ValueArgument('specify version', '--source-version'),
         public=FlagArgument('make object publicly accessible', '--public'),
         content_type=ValueArgument('modify content type', '--content-type'),
-        recursive=FlagArgument('up to delimiter /', ('-r', '--recursive'))
+        recursive=FlagArgument('up to delimiter /', ('-r', '--recursive')),
+        exact_match=FlagArgument(
+            'Copy only the object that fully matches path',
+            '--exact-match')
     )
 
     def __init__(self, arguments={}):
         super(self.__class__, self).__init__(arguments)
-        self['delimiter'] = DelimiterArgument(
-            self,
-            parsed_name='--delimiter',
-            help=u'move objects prefixed as src_object + delimiter')
 
     def main(self, source_container___path, destination_container____path__):
         super(self.__class__,
@@ -634,8 +647,7 @@ class store_move(_store_container_command):
                 dst_object=dst_path,
                 source_version=self['source_version'],
                 public=self['public'],
-                content_type=self['content_type'],
-                delimiter=self['delimiter'])
+                content_type=self['content_type'])
         except ClientError as err:
             if err.status == 404:
                 if 'object' in ('%s' % err).lower():
