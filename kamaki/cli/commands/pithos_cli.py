@@ -883,11 +883,14 @@ class store_overwrite(_store_container_command):
 @command(pithos_cmds)
 class store_manifest(_store_container_command):
     """Create a remote file of uploaded parts by manifestation
-    How to use manifest:
-    - upload parts of the file on a with names X.1, X.2, ...
-    - /store manifest X
-    An empty object X will behave as the result file of the
-    union of X.1, X.2, ...
+    Remains functional for compatibility with OOS Storage. Users are advised
+    to use the upload command instead.
+    Manifestation is a compliant process for uploading large files. The files
+    have to be chunked in smalled files and uploaded as <prefix><increment>
+    where increment is 1, 2, ...
+    Finally, the manifest command glues partial files together in one file
+    named <prefix>
+    The upload command is faster, easier and more intuitive than manifest
     """
 
     arguments = dict(
