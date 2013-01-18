@@ -1045,6 +1045,21 @@ class store_download(_store_container_command):
             default=False)
     )
 
+    def _download_pairs(self, local_path):
+        """
+        :param local_path: (str)
+
+        :returns: (tupple) (source, destination) paths to download from/to
+        """
+        # Check if self.path is a directory
+        # check if it's none
+        # check if local file exists as a dir or file
+        # make pairs
+        #catch exceptions
+        if not local_path:
+            return ((self.path, stdout))
+
+
     def main(self, container___path, local_path):
         super(self.__class__, self).main(
             container___path,
