@@ -1,3 +1,9 @@
+kamaki (0.6.3-5) stable; urgency=high
+
+  * Enforce python >= 2.6 dependency
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Fri, 18 Jan 2013 17:19:39 +0200
+
 kamaki (0.6.3-4) stable; urgency=low
 
   * Python ordereddict,argpars

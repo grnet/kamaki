@@ -3,6 +3,7 @@ Section: python
 Priority: optional
 Maintainer: Stavros Sachtouris <saxtouri@admin.grnet.gr>
 Build-Depends: debhelper (>= 8), python (>= 2.6), python-objpool
+X-Python-Version: >= 2.6
 Standards-Version: 3.9.1
 Homepage: https://code.grnet.gr/projects/kamaki
 
