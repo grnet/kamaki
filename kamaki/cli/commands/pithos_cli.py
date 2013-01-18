@@ -981,6 +981,7 @@ class store_upload(_store_container_command):
         except ClientError as ce:
             if ce.status == 404:
                 return remote_path
+            raise ce
         ctype = r.get('content-type', '')
         if 'application/directory' == ctype.lower():
             ret = '%s/%s' % (remote_path, local_path)
@@ -990,7 +991,7 @@ class store_upload(_store_container_command):
             importance=1,
             details=['use -f to overwrite'])
 
-    def main(self, local_path, container____path__):
+    def main(self, local_path, container____path__=None):
         super(self.__class__, self).main(container____path__)
         remote_path = self.path if self.path else path.basename(local_path)
         poolsize = self['poolsize']
@@ -1003,9 +1004,9 @@ class store_upload(_store_container_command):
             sharing=self['sharing'],
             public=self['public'])
         try:
-            remote_path = self._remote_path(remote_path, local_path)
             progress_bar = self.arguments['progress_bar']
             hash_bar = progress_bar.clone()
+            remote_path = self._remote_path(remote_path, local_path)
             with open(path.abspath(local_path), 'rb') as f:
                 if self['unchunked']:
                     self.client.upload_object_unchunked(
@@ -1085,8 +1086,9 @@ class store_cat(_store_container_command):
     )
 
     def main(self, container___path):
-        super(self.__class__,
-            self).main(container___path, path_is_optional=False)
+        super(self.__class__, self).main(
+            container___path,
+            path_is_optional=False)
         try:
             self.client.download_object(self.path, stdout,
             range=self['range'],
@@ -1142,22 +1144,22 @@ class store_download(_store_container_command):
             default=False)
     )
 
-    def main(self, container___path, local_path):
+    def _output_stream(self, local_path):
+        if local_path is None:
+            return stdout
+        try:
+            return open(
+                path.abspath(local_path),
+                'rwb+' if self['resume'] else 'wb+')
+        except IOError as err:
+            raiseCLIError(err, 'Cannot write to file %s' % local_path, 1)
+
+    def main(self, container___path, local_path=None):
         super(self.__class__, self).main(
             container___path,
             path_is_optional=False)
 
-        # setup output stream
-        if local_path is None:
-            out = stdout
-        else:
-            try:
-                if self['resume']:
-                    out = open(path.abspath(local_path), 'rwb+')
-                else:
-                    out = open(path.abspath(local_path), 'wb+')
-            except IOError as err:
-                raiseCLIError(err, 'Cannot write to file %s' % local_path, 1)
+        out = self._output_stream(local_path)
         poolsize = self['poolsize']
         if poolsize is not None:
             self.client.POOL_SIZE = int(poolsize)
@@ -1165,7 +1167,9 @@ class store_download(_store_container_command):
         try:
             progress_bar = self.arguments['progress_bar']
             download_cb = progress_bar.get_generator('Downloading')
-            self.client.download_object(self.path, out,
+            self.client.download_object(
+                self.path,
+                out,
                 download_cb=download_cb,
                 range=self['range'],
                 version=self['object_version'],
@@ -1193,7 +1197,10 @@ class store_download(_store_container_command):
             raise_connection_errors(err)
             raiseCLIError(err, '"%s" not accessible' % container___path)
         except IOError as err:
-            progress_bar.finish()
+            try:
+                progress_bar.finish()
+            except Exception:
+                pass
             raiseCLIError(err, 'Failed to write on file %s' % local_path, 2)
         except KeyboardInterrupt:
             from threading import enumerate as activethreads
@@ -1205,12 +1212,18 @@ class store_download(_store_container_command):
                     stdout.write('.')
                 except RuntimeError:
                     continue
-            progress_bar.finish()
+            try:
+                progress_bar.finish()
+            except Exception:
+                pass
             print('\ndownload canceled by user')
             if local_path is not None:
                 print('to resume, re-run with --resume')
         except Exception as e:
-            progress_bar.finish()
+            try:
+                progress_bar.finish()
+            except Exception:
+                pass
             raiseCLIError(e)
         print
 
