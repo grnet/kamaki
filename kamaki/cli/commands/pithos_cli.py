@@ -530,10 +530,12 @@ class store_copy(_store_container_command):
     Semantics:
     copy cont:path path2
     .   will copy all <obj> prefixed with path, as path2<obj>
+    .   or as path2 if path corresponds to just one whole object
     copy cont:path cont2:
     .   will copy all <obj> prefixed with path to container cont2
     copy cont:path [cont2:]path2 --exact-match
-    .   will copy at most one <obj> as a new object named path2
+    .   will copy at most one <obj> as a new object named path2,
+    .   provided path corresponds to a whole object path
     copy cont:path [cont2:]path2 --replace
     .   will copy all <obj> prefixed with path, replacing path with path2
     where <obj> is a full file or directory object path.
@@ -561,11 +563,17 @@ class store_copy(_store_container_command):
         replace=FlagArgument('Replace src. path with dst. path', '--replace')
     )
 
-    def _objlist(self):
+    def _objlist(self, dst_path):
         if self['exact_match']:
-            return [self.path]
+            return [dst_path if dst_path else self.path, self.path]
         r = self.client.container_get(prefix=self.path)
-        return [obj['name'] for obj in r.json]
+        if len(r.json) == 1:
+            obj = r.json[0]
+            return [(obj['name'], dst_path if dst_path else obj['name'])]
+        return [(obj['name'], '%s%s' % (
+                    dst_path,
+                    obj['name'][len(self.path) if self['replace'] else 0:])
+                ) for obj in r.json]
 
     def main(self, source_container___path, destination_container___path):
         super(self.__class__,
@@ -574,16 +582,11 @@ class store_copy(_store_container_command):
             dst = destination_container___path.split(':')
             (dst_cont, dst_path) = (dst[0], dst[1])\
             if len(dst) > 1 else (None, dst[0])
-            final_destination = dst_path
-            for src_object in self._objlist():
-                if not (self['exact_match'] and self.path):
-                    final_destination = '%s%s' % (
-                        dst_path,
-                        src_object[len(self.path) if self['replace'] else 0:])
+            for src_object, dst_object in self._objlist(dst_path):
                 self.client.copy_object(src_container=self.container,
                     src_object=src_object,
                     dst_container=dst_cont if dst_cont else self.container,
-                    dst_object=final_destination,
+                    dst_object=dst_object,
                     source_version=self['source_version'],
                     public=self['public'],
                     content_type=self['content_type'])
@@ -617,12 +620,14 @@ class store_move(_store_container_command):
     Semantics:
     move cont:path path2
     .   will move all <obj> prefixed with path, as path2<obj>
+    .   or as path2 if path corresponds to just one whole object
     move cont:path cont2:
     .   will move all <obj> prefixed with path to container cont2
     move cont:path [cont2:]path2 --exact-match
-    .   will move at most one <obj> as a new object named path2
+    .   will move at most one <obj> as a new object named path2,
+    .   provided path corresponds to a whole object path
     move cont:path [cont2:]path2 --replace
-    .   will move all <obj> prefixed with path, replacing prefix with path2
+    .   will move all <obj> prefixed with path, replacing path with path2
     where <obj> is a full file or directory object path.
     Use options:
     1. <container1>:<path1> [container2:]<path2> : if container2 not given,
@@ -642,11 +647,17 @@ class store_move(_store_container_command):
         replace=FlagArgument('Replace src. path with dst. path', '--replace')
     )
 
-    def _objlist(self):
+    def _objlist(self, dst_path):
         if self['exact_match']:
-            return [self.path]
+            return [dst_path if dst_path else self.path, self.path]
         r = self.client.container_get(prefix=self.path)
-        return [obj['name'] for obj in r.json]
+        if len(r.json) == 1:
+            obj = r.json[0]
+            return [(obj['name'], dst_path if dst_path else obj['name'])]
+        return [(obj['name'], '%s%s' % (
+                    dst_path,
+                    obj['name'][len(self.path) if self['replace'] else 0:])
+                ) for obj in r.json]
 
     def main(self, source_container___path, destination_container____path__):
         super(self.__class__,
@@ -655,17 +666,12 @@ class store_move(_store_container_command):
             dst = destination_container____path__.split(':')
             (dst_cont, dst_path) = (dst[0], dst[1])\
             if len(dst) > 1 else (None, dst[0])
-            final_destination = dst_path
-            for src_object in self._objlist():
-                if not (self['exact_match'] and self.path):
-                    final_destination = '%s%s' % (
-                        dst_path,
-                        src_object[len(self.path) if self['replace'] else 0:])
+            for src_object, dst_object in self._objlist(dst_path):
                 self.client.move_object(
                     src_container=self.container,
                     src_object=src_object,
                     dst_container=dst_cont if dst_cont else self.container,
-                    dst_object=final_destination,
+                    dst_object=dst_object,
                     source_version=self['source_version'],
                     public=self['public'],
                     content_type=self['content_type'])
