@@ -1,6 +1,6 @@
 kamaki (0.6.3-3) stable; urgency=low
 
-  * Fix rules syntax error, Python instead of Python-all
+  * Fix rules syntax error, Python instead of Python-all, add ordereddict,argpars
 
  -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Fri, 18 Jan 2013 16:16:39 +0200
 
