@@ -87,6 +87,30 @@ def raise_connection_errors(e):
             ])
 
 
+def check_range(start, end):
+    """
+    :param start: (int)
+
+    :param end: (int)
+
+    :returns: (int(start), int(end))
+
+    :raises CLIError - Invalid start/end value in range
+    :raises CLIError - Invalid range
+    """
+    try:
+        start = int(start)
+    except ValueError as e:
+        raiseCLIError(e, 'Invalid start value %s in range' % start)
+    try:
+        end = int(end)
+    except ValueError as e:
+        raiseCLIError(e, 'Invalid end value %s in range' % end)
+    if start > end:
+        raiseCLIError('Invalid range %s-%s' % (start, end))
+    return (start, end)
+
+
 class DelimiterArgument(ValueArgument):
     """
     :value type: string
@@ -565,7 +589,7 @@ class store_copy(_store_container_command):
 
     def _objlist(self, dst_path):
         if self['exact_match']:
-            return [dst_path if dst_path else self.path, self.path]
+            return [(dst_path if dst_path else self.path, self.path)]
         r = self.client.container_get(prefix=self.path)
         if len(r.json) == 1:
             obj = r.json[0]
@@ -649,7 +673,7 @@ class store_move(_store_container_command):
 
     def _objlist(self, dst_path):
         if self['exact_match']:
-            return [dst_path if dst_path else self.path, self.path]
+            return [(dst_path if dst_path else self.path, self.path)]
         r = self.client.container_get(prefix=self.path)
         if len(r.json) == 1:
             obj = r.json[0]
@@ -701,7 +725,11 @@ class store_move(_store_container_command):
 
 @command(pithos_cmds)
 class store_append(_store_container_command):
-    """Append local file to (existing) remote object"""
+    """Append local file to (existing) remote object
+    The remote object should exist.
+    If the remote object is a directory, it is transformed into a file.
+    In the later case, objects under the directory remain intact.
+    """
 
     arguments = dict(
         progress_bar=ProgressBarArgument(
@@ -711,15 +739,16 @@ class store_append(_store_container_command):
     )
 
     def main(self, local_path, container___path):
-        super(self.__class__,
-            self).main(container___path, path_is_optional=False)
+        super(self.__class__, self).main(
+            container___path,
+            path_is_optional=False)
+        progress_bar = self.arguments['progress_bar']
+        try:
+            upload_cb = progress_bar.get_generator('Appending blocks')
+        except Exception:
+            upload_cb = None
         try:
             f = open(local_path, 'rb')
-            progress_bar = self.arguments['progress_bar']
-            try:
-                upload_cb = progress_bar.get_generator('Appending blocks')
-            except Exception:
-                upload_cb = None
             self.client.append_object(self.path, f, upload_cb)
         except ClientError as err:
             progress_bar.finish()
@@ -747,7 +776,7 @@ class store_append(_store_container_command):
 
 @command(pithos_cmds)
 class store_truncate(_store_container_command):
-    """Truncate remote file up to a size"""
+    """Truncate remote file up to a size (default is 0)"""
 
     def main(self, container___path, size=0):
         super(self.__class__, self).main(container___path)
@@ -782,7 +811,13 @@ class store_truncate(_store_container_command):
 
 @command(pithos_cmds)
 class store_overwrite(_store_container_command):
-    """Overwrite part (from start to end) of a remote file"""
+    """Overwrite part (from start to end) of a remote file
+    overwrite local-path container 10 20
+    .   will overwrite bytes from 10 to 20 of a remote file with the same name
+    .   as local-path basename
+    overwrite local-path container:path 10 20
+    .   will overwrite as above, but the remote file is named path
+    """
 
     arguments = dict(
         progress_bar=ProgressBarArgument(
@@ -791,16 +826,23 @@ class store_overwrite(_store_container_command):
             default=False)
     )
 
-    def main(self, local_path, container___path, start, end):
-        super(self.__class__,
-            self).main(container___path, path_is_optional=True)
+    def main(self, local_path, container____path__, start, end):
+        (start, end) = check_range(start, end)
+        super(self.__class__, self).main(container____path__)
         try:
-            progress_bar = self.arguments['progress_bar']
             f = open(local_path, 'rb')
-            try:
-                upload_cb = progress_bar.get_generator('Overwritting blocks')
-            except Exception:
-                upload_cb = None
+            f.seek(0, 2)
+            f_size = f.tell()
+            f.seek(start, 0)
+        except Exception as e:
+            raiseCLIError(e)
+        progress_bar = self.arguments['progress_bar']
+        try:
+            upload_cb = progress_bar.get_generator(
+                'Overwriting %s blocks' % end - start)
+        except Exception:
+            upload_cb = None
+        try:
             self.path = self.path if self.path else path.basename(local_path)
             self.client.overwrite_object(
                 obj=self.path,
@@ -810,7 +852,13 @@ class store_overwrite(_store_container_command):
                 upload_cb=upload_cb)
         except ClientError as err:
             progress_bar.finish()
-            if err.status == 404:
+            if (err.status == 400 and\
+            'content length does not match range' in ('%s' % err).lower()) or\
+            err.status == 416:
+                raiseCLIError(err, details=[
+                    'Content size: %s' % f_size,
+                    'Range: %s-%s (size: %s)' % (start, end, end - start)])
+            elif err.status == 404:
                 if 'container' in ('%s' % err).lower():
                     raiseCLIError(
                         err,
