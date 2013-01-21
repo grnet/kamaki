@@ -179,7 +179,7 @@ class PithosClient(PithosRestAPI):
 
     def _put_block(self, data, hash):
         #from random import randint
-        #if not randint(0, 3):
+        #if randint(0, 3):
         #    raise ClientError('BAD GATEWAY STUFF', 503)
         r = self.container_post(update=True,
             content_type='application/octet-stream',
@@ -265,22 +265,24 @@ class PithosClient(PithosRestAPI):
             r = self._put_block_async(data, hash, upload_gen)
             flying.append(r)
             unfinished = []
+            current_fails = 0
             for thread in flying:
                 unfinished = self._watch_thread_limit(unfinished)
-                if upload_gen:
-                    for i in range(len(unfinished), len(flying)):
-                        try:
-                            upload_gen.next()
-                        except:
-                            pass
                 if thread.exception:
                     failures.append(thread)
+                    current_fails += 1
                     if isinstance(thread.exception, ClientError)\
                     and thread.exception.status == 502:
                         self.POOLSIZE = self._thread_limit
                 elif thread.isAlive():
                     unfinished.append(thread)
                 elif upload_gen:
+                    try:
+                        upload_gen.next()
+                    except:
+                        pass
+            if upload_gen:
+                for i in range(len(unfinished), len(flying) - current_fails):
                     try:
                         upload_gen.next()
                     except:
@@ -367,9 +369,10 @@ class PithosClient(PithosRestAPI):
         else:
             upload_gen = None
 
-        retries = 3
+        retries = 7
         try:
             while retries:
+                sendlog.info('%s blocks missing' % len(missing))
                 num_of_blocks = len(missing)
                 missing = self._upload_missing_blocks(
                     missing,
