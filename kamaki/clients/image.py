@@ -54,8 +54,11 @@ class ImageClient(Client):
         """
         path = path4url('images', 'detail') if detail else path4url('images/')
 
+        async_params = {}
         if isinstance(filters, dict):
-            self.http_client.params.update(filters)
+            for key, value in filters.items():
+                if value:
+                    async_params[key] = value
         if order.startswith('-'):
             self.set_param('sort_dir', 'desc')
             order = order[1:]
@@ -63,7 +66,7 @@ class ImageClient(Client):
             self.set_param('sort_dir', 'asc')
         self.set_param('sort_key', order, iff=order)
 
-        r = self.get(path, success=200)
+        r = self.get(path, async_params=async_params, success=200)
         return r.json
 
     def get_meta(self, image_id):
