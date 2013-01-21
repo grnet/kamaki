@@ -93,8 +93,7 @@ class image_public(_init_image):
     def main(self):
         super(self.__class__, self).main()
         filters = {}
-        for arg in set(
-            [
+        for arg in set([
                 'container_format',
                 'disk_format',
                 'name',
