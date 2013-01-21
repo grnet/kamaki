@@ -87,6 +87,30 @@ def raise_connection_errors(e):
             ])
 
 
+def check_range(start, end):
+    """
+    :param start: (int)
+
+    :param end: (int)
+
+    :returns: (int(start), int(end))
+
+    :raises CLIError - Invalid start/end value in range
+    :raises CLIError - Invalid range
+    """
+    try:
+        start = int(start)
+    except ValueError as e:
+        raiseCLIError(e, 'Invalid start value %s in range' % start)
+    try:
+        end = int(end)
+    except ValueError as e:
+        raiseCLIError(e, 'Invalid end value %s in range' % end)
+    if start > end:
+        raiseCLIError('Invalid range %s-%s' % (start, end))
+    return (start, end)
+
+
 class DelimiterArgument(ValueArgument):
     """
     :value type: string
@@ -313,13 +337,17 @@ class store_list(_store_container_command):
         public=FlagArgument('show only public', '--public'),
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
-            '--more')
+            '--more'),
+        exact_match=FlagArgument(
+            'Show only objects that match exactly with path',
+            '--exact-match')
     )
 
     def print_objects(self, object_list):
         limit = int(self['limit']) if self['limit'] > 0 else len(object_list)
         for index, obj in enumerate(object_list):
-            if 'content_type' not in obj:
+            if (self['exact_match'] and self.path and\
+                obj['name'] != self.path) or 'content_type' not in obj:
                 continue
             pretty_obj = obj.copy()
             index += 1
@@ -379,8 +407,7 @@ class store_list(_store_container_command):
                     show_only_shared=self['shared'])
                 self.print_containers(r.json)
             else:
-                prefix = self.path if self.path\
-                else self['prefix']
+                prefix = self.path if self.path else self['prefix']
                 r = self.client.container_get(
                     limit=False if self['more'] else self['limit'],
                     marker=self['marker'],
@@ -523,12 +550,24 @@ class store_create(_store_container_command):
 
 @command(pithos_cmds)
 class store_copy(_store_container_command):
-    """Copy an object from container to (another) container
+    """Copy objects from container to (another) container
+    Semantics:
+    copy cont:path path2
+    .   will copy all <obj> prefixed with path, as path2<obj>
+    .   or as path2 if path corresponds to just one whole object
+    copy cont:path cont2:
+    .   will copy all <obj> prefixed with path to container cont2
+    copy cont:path [cont2:]path2 --exact-match
+    .   will copy at most one <obj> as a new object named path2,
+    .   provided path corresponds to a whole object path
+    copy cont:path [cont2:]path2 --replace
+    .   will copy all <obj> prefixed with path, replacing path with path2
+    where <obj> is a full file or directory object path.
     Use options:
     1. <container1>:<path1> [container2:]<path2> : if container2 is not given,
     destination is container1:path2
     2. <container>:<path1> <path2> : make a copy in the same container
-    3. Use --container= instead of <container1>
+    3. Can use --container= instead of <container1>
     """
 
     arguments = dict(
@@ -542,30 +581,39 @@ class store_copy(_store_container_command):
         recursive=FlagArgument(
             'mass copy with delimiter /',
             ('-r', '--recursive')),
+        exact_match=FlagArgument(
+            'Copy only the object that fully matches path',
+            '--exact-match'),
+        replace=FlagArgument('Replace src. path with dst. path', '--replace')
     )
 
-    def __init__(self, arguments={}):
-        super(self.__class__, self).__init__(arguments)
-        self['delimiter'] = DelimiterArgument(
-            self,
-            parsed_name='--delimiter',
-            help=u'copy objects prefixed as src_object + delimiter')
+    def _objlist(self, dst_path):
+        if self['exact_match']:
+            return [(dst_path if dst_path else self.path, self.path)]
+        r = self.client.container_get(prefix=self.path)
+        if len(r.json) == 1:
+            obj = r.json[0]
+            return [(obj['name'], dst_path if dst_path else obj['name'])]
+        return [(obj['name'], '%s%s' % (
+                    dst_path,
+                    obj['name'][len(self.path) if self['replace'] else 0:])
+                ) for obj in r.json]
 
-    def main(self, source_container___path, destination_container____path__):
+    def main(self, source_container___path, destination_container___path):
         super(self.__class__,
             self).main(source_container___path, path_is_optional=False)
         try:
-            dst = destination_container____path__.split(':')
+            dst = destination_container___path.split(':')
             (dst_cont, dst_path) = (dst[0], dst[1])\
             if len(dst) > 1 else (None, dst[0])
-            self.client.copy_object(src_container=self.container,
-                src_object=self.path,
-                dst_container=dst_cont if dst_cont else self.container,
-                dst_object=dst_path,
-                source_version=self['source_version'],
-                public=self['public'],
-                content_type=self['content_type'],
-                delimiter=self['delimiter'])
+            for src_object, dst_object in self._objlist(dst_path):
+                self.client.copy_object(src_container=self.container,
+                    src_object=src_object,
+                    dst_container=dst_cont if dst_cont else self.container,
+                    dst_object=dst_object,
+                    source_version=self['source_version'],
+                    public=self['public'],
+                    content_type=self['content_type'])
         except ClientError as err:
             if err.status == 404:
                 if 'object' in ('%s' % err).lower():
@@ -592,27 +640,48 @@ class store_copy(_store_container_command):
 
 @command(pithos_cmds)
 class store_move(_store_container_command):
-    """Copy an object
+    """Move/rename objects
+    Semantics:
+    move cont:path path2
+    .   will move all <obj> prefixed with path, as path2<obj>
+    .   or as path2 if path corresponds to just one whole object
+    move cont:path cont2:
+    .   will move all <obj> prefixed with path to container cont2
+    move cont:path [cont2:]path2 --exact-match
+    .   will move at most one <obj> as a new object named path2,
+    .   provided path corresponds to a whole object path
+    move cont:path [cont2:]path2 --replace
+    .   will move all <obj> prefixed with path, replacing path with path2
+    where <obj> is a full file or directory object path.
     Use options:
     1. <container1>:<path1> [container2:]<path2> : if container2 not given,
     destination is container1:path2
     2. <container>:<path1> path2 : rename
-    3. Use --container= instead of <container1>
+    3. Can use --container= instead of <container1>
     """
 
     arguments = dict(
         source_version=ValueArgument('specify version', '--source-version'),
         public=FlagArgument('make object publicly accessible', '--public'),
         content_type=ValueArgument('modify content type', '--content-type'),
-        recursive=FlagArgument('up to delimiter /', ('-r', '--recursive'))
+        recursive=FlagArgument('up to delimiter /', ('-r', '--recursive')),
+        exact_match=FlagArgument(
+            'Copy only the object that fully matches path',
+            '--exact-match'),
+        replace=FlagArgument('Replace src. path with dst. path', '--replace')
     )
 
-    def __init__(self, arguments={}):
-        super(self.__class__, self).__init__(arguments)
-        self['delimiter'] = DelimiterArgument(
-            self,
-            parsed_name='--delimiter',
-            help=u'move objects prefixed as src_object + delimiter')
+    def _objlist(self, dst_path):
+        if self['exact_match']:
+            return [(dst_path if dst_path else self.path, self.path)]
+        r = self.client.container_get(prefix=self.path)
+        if len(r.json) == 1:
+            obj = r.json[0]
+            return [(obj['name'], dst_path if dst_path else obj['name'])]
+        return [(obj['name'], '%s%s' % (
+                    dst_path,
+                    obj['name'][len(self.path) if self['replace'] else 0:])
+                ) for obj in r.json]
 
     def main(self, source_container___path, destination_container____path__):
         super(self.__class__,
@@ -621,14 +690,15 @@ class store_move(_store_container_command):
             dst = destination_container____path__.split(':')
             (dst_cont, dst_path) = (dst[0], dst[1])\
             if len(dst) > 1 else (None, dst[0])
-            self.client.move_object(src_container=self.container,
-                src_object=self.path,
-                dst_container=dst_cont if dst_cont else self.container,
-                dst_object=dst_path,
-                source_version=self['source_version'],
-                public=self['public'],
-                content_type=self['content_type'],
-                delimiter=self['delimiter'])
+            for src_object, dst_object in self._objlist(dst_path):
+                self.client.move_object(
+                    src_container=self.container,
+                    src_object=src_object,
+                    dst_container=dst_cont if dst_cont else self.container,
+                    dst_object=dst_object,
+                    source_version=self['source_version'],
+                    public=self['public'],
+                    content_type=self['content_type'])
         except ClientError as err:
             if err.status == 404:
                 if 'object' in ('%s' % err).lower():
@@ -655,7 +725,11 @@ class store_move(_store_container_command):
 
 @command(pithos_cmds)
 class store_append(_store_container_command):
-    """Append local file to (existing) remote object"""
+    """Append local file to (existing) remote object
+    The remote object should exist.
+    If the remote object is a directory, it is transformed into a file.
+    In the later case, objects under the directory remain intact.
+    """
 
     arguments = dict(
         progress_bar=ProgressBarArgument(
@@ -665,15 +739,16 @@ class store_append(_store_container_command):
     )
 
     def main(self, local_path, container___path):
-        super(self.__class__,
-            self).main(container___path, path_is_optional=False)
+        super(self.__class__, self).main(
+            container___path,
+            path_is_optional=False)
+        progress_bar = self.arguments['progress_bar']
+        try:
+            upload_cb = progress_bar.get_generator('Appending blocks')
+        except Exception:
+            upload_cb = None
         try:
             f = open(local_path, 'rb')
-            progress_bar = self.arguments['progress_bar']
-            try:
-                upload_cb = progress_bar.get_generator('Appending blocks')
-            except Exception:
-                upload_cb = None
             self.client.append_object(self.path, f, upload_cb)
         except ClientError as err:
             progress_bar.finish()
@@ -701,7 +776,7 @@ class store_append(_store_container_command):
 
 @command(pithos_cmds)
 class store_truncate(_store_container_command):
-    """Truncate remote file up to a size"""
+    """Truncate remote file up to a size (default is 0)"""
 
     def main(self, container___path, size=0):
         super(self.__class__, self).main(container___path)
@@ -736,7 +811,13 @@ class store_truncate(_store_container_command):
 
 @command(pithos_cmds)
 class store_overwrite(_store_container_command):
-    """Overwrite part (from start to end) of a remote file"""
+    """Overwrite part (from start to end) of a remote file
+    overwrite local-path container 10 20
+    .   will overwrite bytes from 10 to 20 of a remote file with the same name
+    .   as local-path basename
+    overwrite local-path container:path 10 20
+    .   will overwrite as above, but the remote file is named path
+    """
 
     arguments = dict(
         progress_bar=ProgressBarArgument(
@@ -745,16 +826,23 @@ class store_overwrite(_store_container_command):
             default=False)
     )
 
-    def main(self, local_path, container___path, start, end):
-        super(self.__class__,
-            self).main(container___path, path_is_optional=True)
+    def main(self, local_path, container____path__, start, end):
+        (start, end) = check_range(start, end)
+        super(self.__class__, self).main(container____path__)
         try:
-            progress_bar = self.arguments['progress_bar']
             f = open(local_path, 'rb')
-            try:
-                upload_cb = progress_bar.get_generator('Overwritting blocks')
-            except Exception:
-                upload_cb = None
+            f.seek(0, 2)
+            f_size = f.tell()
+            f.seek(start, 0)
+        except Exception as e:
+            raiseCLIError(e)
+        progress_bar = self.arguments['progress_bar']
+        try:
+            upload_cb = progress_bar.get_generator(
+                'Overwriting %s blocks' % end - start)
+        except Exception:
+            upload_cb = None
+        try:
             self.path = self.path if self.path else path.basename(local_path)
             self.client.overwrite_object(
                 obj=self.path,
@@ -764,7 +852,13 @@ class store_overwrite(_store_container_command):
                 upload_cb=upload_cb)
         except ClientError as err:
             progress_bar.finish()
-            if err.status == 404:
+            if (err.status == 400 and\
+            'content length does not match range' in ('%s' % err).lower()) or\
+            err.status == 416:
+                raiseCLIError(err, details=[
+                    'Content size: %s' % f_size,
+                    'Range: %s-%s (size: %s)' % (start, end, end - start)])
+            elif err.status == 404:
                 if 'container' in ('%s' % err).lower():
                     raiseCLIError(
                         err,
@@ -789,11 +883,14 @@ class store_overwrite(_store_container_command):
 @command(pithos_cmds)
 class store_manifest(_store_container_command):
     """Create a remote file of uploaded parts by manifestation
-    How to use manifest:
-    - upload parts of the file on a with names X.1, X.2, ...
-    - /store manifest X
-    An empty object X will behave as the result file of the
-    union of X.1, X.2, ...
+    Remains functional for compatibility with OOS Storage. Users are advised
+    to use the upload command instead.
+    Manifestation is a compliant process for uploading large files. The files
+    have to be chunked in smalled files and uploaded as <prefix><increment>
+    where increment is 1, 2, ...
+    Finally, the manifest command glues partial files together in one file
+    named <prefix>
+    The upload command is faster, easier and more intuitive than manifest
     """
 
     arguments = dict(
@@ -884,6 +981,7 @@ class store_upload(_store_container_command):
         except ClientError as ce:
             if ce.status == 404:
                 return remote_path
+            raise ce
         ctype = r.get('content-type', '')
         if 'application/directory' == ctype.lower():
             ret = '%s/%s' % (remote_path, local_path)
@@ -891,11 +989,11 @@ class store_upload(_store_container_command):
         raiseCLIError(
             'Object %s already exists' % remote_path,
             importance=1,
-            details=['use -f to overwrite'])
+            details=['use -f to overwrite or resume'])
 
-    def main(self, local_path, container____path__):
+    def main(self, local_path, container____path__=None):
         super(self.__class__, self).main(container____path__)
-        remote_path = self.path if self.path else local_path
+        remote_path = self.path if self.path else path.basename(local_path)
         poolsize = self['poolsize']
         if poolsize > 0:
             self.client.POOL_SIZE = int(poolsize)
@@ -906,9 +1004,9 @@ class store_upload(_store_container_command):
             sharing=self['sharing'],
             public=self['public'])
         try:
-            remote_path = self._remote_path(remote_path, local_path)
             progress_bar = self.arguments['progress_bar']
             hash_bar = progress_bar.clone()
+            remote_path = self._remote_path(remote_path, local_path)
             with open(path.abspath(local_path), 'rb') as f:
                 if self['unchunked']:
                     self.client.upload_object_unchunked(
@@ -948,7 +1046,7 @@ class store_upload(_store_container_command):
                     'Try to re-upload the file',
                     'For more error details, try kamaki store upload -d'])
             raise_connection_errors(err)
-            raiseCLIError(err, '"%s" not accessible' % container____path__)
+            raiseCLIError(err, 'Failed to upload to %s' % container____path__)
         except IOError as err:
             try:
                 progress_bar.finish()
@@ -988,8 +1086,9 @@ class store_cat(_store_container_command):
     )
 
     def main(self, container___path):
-        super(self.__class__,
-            self).main(container___path, path_is_optional=False)
+        super(self.__class__, self).main(
+            container___path,
+            path_is_optional=False)
         try:
             self.client.download_object(self.path, stdout,
             range=self['range'],
@@ -1045,22 +1144,22 @@ class store_download(_store_container_command):
             default=False)
     )
 
-    def main(self, container___path, local_path):
+    def _output_stream(self, local_path):
+        if local_path is None:
+            return stdout
+        try:
+            return open(
+                path.abspath(local_path),
+                'rwb+' if self['resume'] else 'wb+')
+        except IOError as err:
+            raiseCLIError(err, 'Cannot write to file %s' % local_path, 1)
+
+    def main(self, container___path, local_path=None):
         super(self.__class__, self).main(
             container___path,
             path_is_optional=False)
 
-        # setup output stream
-        if local_path is None:
-            out = stdout
-        else:
-            try:
-                if self['resume']:
-                    out = open(path.abspath(local_path), 'rwb+')
-                else:
-                    out = open(path.abspath(local_path), 'wb+')
-            except IOError as err:
-                raiseCLIError(err, 'Cannot write to file %s' % local_path, 1)
+        out = self._output_stream(local_path)
         poolsize = self['poolsize']
         if poolsize is not None:
             self.client.POOL_SIZE = int(poolsize)
@@ -1068,7 +1167,9 @@ class store_download(_store_container_command):
         try:
             progress_bar = self.arguments['progress_bar']
             download_cb = progress_bar.get_generator('Downloading')
-            self.client.download_object(self.path, out,
+            self.client.download_object(
+                self.path,
+                out,
                 download_cb=download_cb,
                 range=self['range'],
                 version=self['object_version'],
@@ -1096,7 +1197,10 @@ class store_download(_store_container_command):
             raise_connection_errors(err)
             raiseCLIError(err, '"%s" not accessible' % container___path)
         except IOError as err:
-            progress_bar.finish()
+            try:
+                progress_bar.finish()
+            except Exception:
+                pass
             raiseCLIError(err, 'Failed to write on file %s' % local_path, 2)
         except KeyboardInterrupt:
             from threading import enumerate as activethreads
@@ -1108,12 +1212,18 @@ class store_download(_store_container_command):
                     stdout.write('.')
                 except RuntimeError:
                     continue
-            progress_bar.finish()
+            try:
+                progress_bar.finish()
+            except Exception:
+                pass
             print('\ndownload canceled by user')
             if local_path is not None:
                 print('to resume, re-run with --resume')
         except Exception as e:
-            progress_bar.finish()
+            try:
+                progress_bar.finish()
+            except Exception:
+                pass
             raiseCLIError(e)
         print
 
