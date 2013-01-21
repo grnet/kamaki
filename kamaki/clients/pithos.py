@@ -175,14 +175,12 @@ class PithosClient(PithosRestAPI):
     def _put_block_async(self, data, hash, upload_gen=None):
         event = SilentEvent(method=self._put_block, data=data, hash=hash)
         event.start()
-        if upload_gen:
-            upload_gen.next()
         return event
 
     def _put_block(self, data, hash):
         #from random import randint
-        #if randint(0,2):
-        #    raise ClientError('BAD GATEWAY STUFF', 502)
+        #if not randint(0, 3):
+        #    raise ClientError('BAD GATEWAY STUFF', 503)
         r = self.container_post(update=True,
             content_type='application/octet-stream',
             content_length=len(data),
@@ -253,14 +251,8 @@ class PithosClient(PithosRestAPI):
                    "Failed to calculate uploaded blocks: " \
                     "Offset and object size do not match"
 
-    def _upload_missing_blocks(self, missing, hmap, fileobj, upload_cb=None):
-        """upload missing blocks asynchronously.
-        """
-        if upload_cb:
-            upload_gen = upload_cb(len(missing))
-            upload_gen.next()
-        else:
-            upload_gen = None
+    def _upload_missing_blocks(self, missing, hmap, fileobj, upload_gen=None):
+        """upload missing blocks asynchronously"""
 
         self._init_thread_limit()
 
@@ -274,9 +266,13 @@ class PithosClient(PithosRestAPI):
             flying.append(r)
             unfinished = []
             for thread in flying:
-
                 unfinished = self._watch_thread_limit(unfinished)
-
+                if upload_gen:
+                    for i in range(len(unfinished), len(flying)):
+                        try:
+                            upload_gen.next()
+                        except:
+                            pass
                 if thread.exception:
                     failures.append(thread)
                     if isinstance(thread.exception, ClientError)\
@@ -284,12 +280,22 @@ class PithosClient(PithosRestAPI):
                         self.POOLSIZE = self._thread_limit
                 elif thread.isAlive():
                     unfinished.append(thread)
+                elif upload_gen:
+                    try:
+                        upload_gen.next()
+                    except:
+                        pass
             flying = unfinished
 
         for thread in flying:
             thread.join()
             if thread.exception:
                 failures.append(thread)
+            elif upload_gen:
+                try:
+                    upload_gen.next()
+                except:
+                    pass
 
         return [failure.kwargs['hash'] for failure in failures]
 
@@ -354,6 +360,13 @@ class PithosClient(PithosRestAPI):
         if missing is None:
             return
 
+        if upload_cb:
+            upload_gen = upload_cb(len(missing))
+            for i in range(len(missing), len(hashmap)):
+                upload_gen.next()
+        else:
+            upload_gen = None
+
         retries = 3
         try:
             while retries:
@@ -362,7 +375,7 @@ class PithosClient(PithosRestAPI):
                     missing,
                     hmap,
                     f,
-                    upload_cb=upload_cb)
+                    upload_gen)
                 if missing:
                     if num_of_blocks == len(missing):
                         retries -= 1

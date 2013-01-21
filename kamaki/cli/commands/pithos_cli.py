@@ -989,7 +989,7 @@ class store_upload(_store_container_command):
         raiseCLIError(
             'Object %s already exists' % remote_path,
             importance=1,
-            details=['use -f to overwrite'])
+            details=['use -f to overwrite or resume'])
 
     def main(self, local_path, container____path__=None):
         super(self.__class__, self).main(container____path__)
