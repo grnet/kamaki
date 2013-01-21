@@ -178,9 +178,9 @@ class PithosClient(PithosRestAPI):
         return event
 
     def _put_block(self, data, hash):
-        #from random import randint
-        #if randint(0, 3):
-        #    raise ClientError('BAD GATEWAY STUFF', 503)
+        from random import randint
+        if not randint(0, 7):
+            raise ClientError('BAD GATEWAY STUFF', 503)
         r = self.container_post(update=True,
             content_type='application/octet-stream',
             content_length=len(data),
@@ -264,25 +264,16 @@ class PithosClient(PithosRestAPI):
             data = fileobj.read(bytes)
             r = self._put_block_async(data, hash, upload_gen)
             flying.append(r)
-            unfinished = []
-            current_fails = 0
-            for thread in flying:
-                unfinished = self._watch_thread_limit(unfinished)
+            unfinished = self._watch_thread_limit(flying)
+            for thread in set(flying).difference(unfinished):
                 if thread.exception:
                     failures.append(thread)
-                    current_fails += 1
                     if isinstance(thread.exception, ClientError)\
                     and thread.exception.status == 502:
                         self.POOLSIZE = self._thread_limit
                 elif thread.isAlive():
-                    unfinished.append(thread)
+                    flying.append(thread)
                 elif upload_gen:
-                    try:
-                        upload_gen.next()
-                    except:
-                        pass
-            if upload_gen:
-                for i in range(len(unfinished), len(flying) - current_fails):
                     try:
                         upload_gen.next()
                     except:
@@ -364,8 +355,11 @@ class PithosClient(PithosRestAPI):
 
         if upload_cb:
             upload_gen = upload_cb(len(missing))
-            for i in range(len(missing), len(hashmap)):
-                upload_gen.next()
+            for i in range(len(missing), len(hashmap['hashes']) + 1):
+                try:
+                    upload_gen.next()
+                except:
+                    upload_gen = None
         else:
             upload_gen = None
 
