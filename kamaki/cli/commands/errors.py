@@ -35,7 +35,7 @@ from traceback import print_stack, print_exc
 import logging
 
 from kamaki.clients import ClientError
-from kamaki.cli.errors import CLIError, raiseCLIError
+from kamaki.cli.errors import CLIError, raiseCLIError, CLISyntaxError
 from kamaki.cli import _debug, kloger
 
 sendlog = logging.getLogger('clients.send')
@@ -103,3 +103,26 @@ class astakos(object):
             self._raise = foo
             return r
         return _raise
+
+
+class history(object):
+    @classmethod
+    def init(this, foo):
+        @generic.all
+        def _raise(self, *args, **kwargs):
+            r = foo(self, *args, **kwargs)
+            if not hasattr(self, 'history'):
+                raise CLIError('Failed to load history', importance=2)
+            return r
+        return _raise
+
+    @classmethod
+    def _get_cmd_ids(this, foo):
+        @generic.all
+        def _raise(self, cmd_ids, *args, **kwargs):
+            if not cmd_ids:
+                raise CLISyntaxError('Usage: <id1|id1-id2> [id3|id3-id4] ...',
+                    details=self.__doc__.split('\n'))
+            return foo(self, cmd_ids, *args, **kwargs)
+        return _raise
+

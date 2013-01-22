@@ -114,7 +114,7 @@ def raiseCLIError(err, message='', importance=0, details=[]):
     message = unicode(message) if message else unicode(origerr)
 
     try:
-        status = err.status
+        status = err.status or err.errno
     except AttributeError:
         status = None
 
