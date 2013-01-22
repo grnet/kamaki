@@ -323,3 +323,16 @@ def split_input(line):
         terms.append(ipart[2:-2])
     terms += _sub_split(trivial_parts[-1])
     return terms
+
+
+def ask_user(msg, true_responses=('Y', 'y')):
+    """Print msg and read user response
+
+    :param true_responses: (tuple of chars)
+
+    :returns: (bool) True if reponse in true responses, False otherwise
+    """
+    stdout.write('%s (%s for yes):' % (msg, true_responses))
+    stdout.flush()
+    user_response = stdin.read(1)
+    return user_response[0] in true_responses

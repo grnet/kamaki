@@ -34,7 +34,12 @@
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import raiseCLIError, CLISyntaxError
-from kamaki.cli.utils import format_size, print_dict, pretty_keys, page_hold
+from kamaki.cli.utils import (
+    format_size,
+    print_dict,
+    pretty_keys,
+    page_hold,
+    ask_user)
 from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
 from kamaki.cli.argument import KeyValueArgument, DateArgument
 from kamaki.cli.argument import ProgressBarArgument
@@ -1302,6 +1307,7 @@ class store_delete(_store_container_command):
 
     arguments = dict(
         until=DateArgument('remove history until that date', '--until'),
+        yes=FlagArgument('Do not prompt for permission', '--yes'),
         recursive=FlagArgument(
             'empty dir or container and delete (if dir)',
             ('-r', '--recursive'))
@@ -1317,16 +1323,19 @@ class store_delete(_store_container_command):
     def main(self, container____path__):
         super(self.__class__, self).main(container____path__)
         try:
-            if self.path is None:
-                self.client.del_container(
-                    until=self['until'],
-                    delimiter=self['delimiter'])
+            if (not self.path):
+                if self['yes'] or ask_user(
+                    'Delete container %s ?' % self.container):
+                    self.client.del_container(
+                        until=self['until'],
+                        delimiter=self['delimiter'])
             else:
-                # self.client.delete_object(self.path)
-                self.client.del_object(
-                    self.path,
-                    until=self['until'],
-                    delimiter=self['delimiter'])
+                if self['yes'] or ask_user(
+                    'Delete %s:%s ?' % (self.container, self.path)):
+                    self.client.del_object(
+                        self.path,
+                        until=self['until'],
+                        delimiter=self['delimiter'])
         except ClientError as err:
             if err.status == 404:
                 if 'container' in ('%s' % err).lower():
@@ -1358,10 +1367,16 @@ class store_purge(_store_container_command):
     .      container and data blocks are released and deleted
     """
 
+    arguments = dict(
+        yes=FlagArgument('Do not prompt for permission', '--yes'),
+    )
+
     def main(self, container):
         super(self.__class__, self).main(container)
         try:
-            self.client.purge_container()
+            if self['yes'] or ask_user(
+                'Purge container %s?' % self.container):
+                self.client.purge_container()
         except ClientError as err:
             if err.status == 404:
                 if 'container' in ('%s' % err).lower():
