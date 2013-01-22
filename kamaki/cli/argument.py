@@ -373,7 +373,7 @@ class ProgressBarArgument(FlagArgument):
 _arguments = dict(config=_config_arg,
     help=Argument(0, 'Show help message', ('-h', '--help')),
     debug=FlagArgument('Include debug output', ('-d', '--debug')),
-    include=FlagArgument('Include protocol headers in the output',
+    include=FlagArgument('Include raw connection data in the output',
         ('-i', '--include')),
     silent=FlagArgument('Do not output anything', ('-s', '--silent')),
     verbose=FlagArgument('More info at response', ('-v', '--verbose')),

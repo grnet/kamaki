@@ -40,7 +40,9 @@ from kamaki.clients.connection.errors import HTTPConnectionError
 from kamaki.clients.connection.errors import HTTPResponseError
 
 sendlog = logging.getLogger('clients.send')
+datasendlog = logging.getLogger('data.send')
 recvlog = logging.getLogger('clients.recv')
+datarecvlog = logging.getLogger('data.recv')
 
 
 class ClientError(Exception):
@@ -187,6 +189,8 @@ class Client(object):
             if data:
                 self.set_default_header('Content-Length', unicode(len(data)))
 
+            sendlog.info('perform a %s @ %s', method, self.base_url)
+
             self.http_client.url = self.base_url
             self.http_client.path = path
             r = self.http_client.perform_request(method,
@@ -203,13 +207,13 @@ class Client(object):
                 sendlog.info('\t%s: %s', key, val)
             sendlog.info('')
             if data:
-                sendlog.info(data[:256] + ' ...')
+                datasendlog.info(data)
 
             recvlog.info('%d %s', r.status_code, r.status)
             for key, val in r.headers.items():
                 recvlog.info('%s: %s', key, val)
             if r.content:
-                recvlog.info(r.content[:256] + ' ...')
+                datarecvlog.info(r.content)
 
         except (HTTPResponseError, HTTPConnectionError) as err:
             from traceback import format_stack
