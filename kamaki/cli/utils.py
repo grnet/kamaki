@@ -257,7 +257,7 @@ def print_items(items,
 
 
 def format_size(size):
-    units = ('B', 'K', 'M', 'G', 'T')
+    units = ('B', 'KiB', 'MiB', 'GiB', 'TiB')
     try:
         size = float(size)
     except ValueError as err:
@@ -265,11 +265,35 @@ def format_size(size):
     for unit in units:
         if size < 1024:
             break
-        size /= 1024
-    s = ('%.1f' % size)
-    if '.0' == s[-2:]:
-        s = s[:-2]
+        size /= 1024.0
+    s = ('%.2f' % size)
+    while '.' in s and s[-1] in ('0', '.'):
+        s = s[:-1]
     return s + unit
+
+
+def to_bytes(size, format):
+    """
+    :param size: (float) the size in the given format
+    :param format: (case insensitive) KiB, KB, MiB, MB, GiB, GB, TiB, TB
+
+    :returns: (int) the size in bytes
+    """
+    format = format.upper()
+    if format == 'B':
+        return int(size)
+    size = float(size)
+    units_dc = ('KB', 'MB', 'GB', 'TB')
+    units_bi = ('KIB', 'MIB', 'GIB', 'TIB')
+
+    factor = 1024 if format in units_bi else 1000 if format in units_dc else 0
+    if not factor:
+        raise ValueError('Invalid data size format %s' % format)
+    for prefix in ('K', 'M', 'G', 'T'):
+        size *= factor
+        if format.startswith(prefix):
+            break
+    return int(size)
 
 
 def dict2file(d, f, depth=0):
@@ -325,14 +349,14 @@ def split_input(line):
     return terms
 
 
-def ask_user(msg, true_responses=('Y', 'y')):
+def ask_user(msg, true_resp=['Y', 'y']):
     """Print msg and read user response
 
-    :param true_responses: (tuple of chars)
+    :param true_resp: (tuple of chars)
 
     :returns: (bool) True if reponse in true responses, False otherwise
     """
-    stdout.write('%s (%s for yes):' % (msg, true_responses))
+    stdout.write('%s (%s or enter for yes):' % (msg, ', '.join(true_resp)))
     stdout.flush()
-    user_response = stdin.read(1)
-    return user_response[0] in true_responses
+    user_response = stdin.readline()
+    return user_response[0] in true_resp + ['\n']

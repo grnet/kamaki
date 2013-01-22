@@ -36,6 +36,7 @@ from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import raiseCLIError, CLISyntaxError
 from kamaki.cli.utils import (
     format_size,
+    to_bytes,
     print_dict,
     pretty_keys,
     page_hold,
@@ -88,7 +89,7 @@ def raise_connection_errors(e):
             '- total quota:      /store quota',
             '- container quota:  /store quota <container>',
             'Users shall set a higher container quota, if available:',
-            '-                  /store setquota <limit in KB> <container>'
+            '-                  /store setquota <quota>[unit] <container>'
             ])
 
 
@@ -1780,7 +1781,11 @@ class store_delmeta(_store_container_command):
 
 @command(pithos_cmds)
 class store_quota(_store_account_command):
-    """Get quota (in KB) for account or container"""
+    """Get quota for account or container"""
+
+    arguments = dict(
+        in_bytes=FlagArgument('Show result in bytes', ('-b', '--bytes'))
+        )
 
     def main(self, container=None):
         super(self.__class__, self).main()
@@ -1799,15 +1804,47 @@ class store_quota(_store_account_command):
             raiseCLIError(err)
         except Exception as err:
             raiseCLIError(err)
+        if not self['in_bytes']:
+            for k in reply:
+                reply[k] = format_size(reply[k])
         print_dict(pretty_keys(reply, '-'))
 
 
 @command(pithos_cmds)
 class store_setquota(_store_account_command):
-    """Set new quota (in KB) for account or container"""
+    """Set new quota for account or container
+    By default, quota is set in bytes
+    Users may specify a different unit, e.g:
+    /store setquota 2.3GB mycontainer
+    Accepted units: B, KiB (1024 B), KB (1000 B), MiB, MB, GiB, GB, TiB, TB
+    """
+
+    def _calculate_quota(self, user_input):
+        quota = 0
+        try:
+            quota = int(user_input)
+        except ValueError:
+            index = 0
+            digits = [str(num) for num in range(0, 10)] + ['.']
+            while user_input[index] in digits:
+                index += 1
+            quota = user_input[:index]
+            format = user_input[index:]
+            try:
+                return to_bytes(quota, format)
+            except Exception as qe:
+                raiseCLIError(qe,
+                    'Failed to convert %s to bytes' % user_input,
+                    details=['Syntax: setquota <quota>[format] [container]',
+                        'e.g.: setquota 2.3GB mycontainer',
+                        'Acceptable formats:',
+                        '(*1024): B, KiB, MiB, GiB, TiB',
+                        '(*1000): B, KB, MB, GB, TB'])
+        return quota
 
     def main(self, quota, container=None):
         super(self.__class__, self).main()
+        quota = self._calculate_quota(quota)
         try:
             if container is None:
                 self.client.set_account_quota(quota)
