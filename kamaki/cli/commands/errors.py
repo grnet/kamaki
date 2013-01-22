@@ -82,7 +82,7 @@ class astakos(object):
             if not getattr(client, 'base_url', False):
                 raise CLIError('Missing astakos server URL',
                     importance=3,
-                    details=['Please check if astakos.url is set correctly',
+                    details=['Check if astakos.url is set correctly',
                     'To get astakos url:   /config get astakos.url',
                     'To set astakos url:   /config set astakos.url <URL>'])
             return r
@@ -90,15 +90,16 @@ class astakos(object):
 
     @classmethod
     def authenticate(this, foo):
-        @generic.all
         def _raise(self, *args, **kwargs):
             try:
-                return foo(self, *args, **kwargs)
+                r = foo(self, *args, **kwargs)
             except ClientError as ce:
                 if ce.status == 401:
                     token = kwargs.get('custom_token', 0) or self.client.token
                     raiseCLIError(ce,
                         'Authorization failed for token %s' % token if token\
                             else 'No token provided',
-                        details=this._token_details)
+                        details=[] if token else this._token_details)
+            self._raise = foo
+            return r
         return _raise
