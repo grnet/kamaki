@@ -38,6 +38,7 @@ recvlog = logging.getLogger('clients.recv')
 
 
 class _command_init(object):
+
     def __init__(self, arguments={}):
         if hasattr(self, 'arguments'):
             arguments.update(self.arguments)

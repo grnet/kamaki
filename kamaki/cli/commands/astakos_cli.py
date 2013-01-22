@@ -31,10 +31,13 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-from kamaki.cli import command
-from kamaki.clients.astakos import AstakosClient, ClientError
-from kamaki.cli.utils import print_dict
+from traceback import print_stack, print_exc
+
+from kamaki.clients import ClientError
 from kamaki.cli.errors import raiseCLIError
+from kamaki.cli import command, _debug
+from kamaki.clients.astakos import AstakosClient
+from kamaki.cli.utils import print_dict
 from kamaki.cli.commands import _command_init
 from kamaki.cli.command_tree import CommandTree
 
@@ -43,6 +46,7 @@ _commands = [astakos_cmds]
 
 
 class _astakos_init(_command_init):
+
     def main(self):
         token = self.config.get('astakos', 'token')\
             or self.config.get('global', 'token')
@@ -51,6 +55,20 @@ class _astakos_init(_command_init):
         if base_url is None:
             raiseCLIError(None, 'Missing astakos server URL')
         self.client = AstakosClient(base_url=base_url, token=token)
+
+    _token_details = [
+        'See if token is set: /config get token',
+        'If not, set a token:',
+        '*  (permanent):    /config set token <token>',
+        '*  (temporary):    re-run with <token> parameter']
+
+    def _raise(self, error):
+        if _debug:
+            print_stack()
+            print_exc(error)
+        if isinstance(error, ClientError) and error.status == 401:
+            raiseCLIError(error, details=self._token_details)
+        raiseCLIError(error)
 
 
 @command(astakos_cmds)
@@ -63,18 +81,23 @@ class astakos_authenticate(_astakos_init):
     Token can also be provided as a parameter
     """
 
+    def _raise(self, error, some_token=None):
+        if isinstance(error, ClientError) and error.status == 401:
+            some_token = some_token if some_token else self.client.token
+            if some_token:
+                raiseCLIError(error,
+                    'Authorization failed for token %s' % some_token,
+                    details=self._token_details)
+            else:
+                raiseCLIError(error,
+                    'No token provided',
+                    details=self._token_details)
+        super(self.__class__, self)._raise(error)
+
     def main(self, custom_token=None):
         super(self.__class__, self).main()
         try:
             reply = self.client.authenticate(custom_token)
-        except ClientError as ce:
-            if (ce.status == 401):
-                raiseCLIError(ce,
-                    details=['See if token is set: /config get token',
-                    'If not, set a token:',
-                    '  1.(permanent):    /config set token <token>',
-                    '  2.(temporary):    rerun with <token> parameter'])
-            raiseCLIError(ce)
-        except Exception as err:
-            raiseCLIError(err)
+        except Exception as e:
+            self._raise(e)
         print_dict(reply)
