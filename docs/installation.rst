@@ -11,65 +11,62 @@ This guide describes the standard installation process for kamaki, with the aspi
 Linux and Unix-like enviroments
 -------------------------------
 
-Ubuntu and Debian packages
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+Debian:
+^^^^^^^
 
 The following steps describe a command-line approach, but any graphic package manager can be used instead.
 
-Add the following to apt sources list
-"""""""""""""""""""""""""""""""""""""
-
-As root, append one of the following to */etc/apt/sources.list*:
-
-
-* Debian Stable::
+* As root, append the following to */etc/apt/sources.list* ::
 
     deb http://apt.dev.grnet.gr/ squeeze main
     deb http://apt2.dev.grnet.gr stable/
 
-* Ubuntu::
-
-    deb http://ppa.launchpad.net/grnet/synnefo/ubuntu <UBUNTU_VERSION> main
-    deb-src http://ppa.launchpad.net/grnet/synnefo/ubuntu <UBUNTU_VERSION> main
-
-where <UBUNTU_VERSION> is the system Ubuntu version (e.g. precise)
-
-Update
-""""""
-
-* In Debian, make sure the GPG public key for the GRNET dev team is added:
+* Make sure the GPG public key for the GRNET dev team is added:
 
     .. code-block:: console
 
-        $ curl https://dev.grnet.gr/files/apt-grnetdev.pub|apt-key add -
+        $ sudo curl https://dev.grnet.gr/files/apt-grnetdev.pub|apt-key add -
 
     otherwise *apt-get update* will produce GPG warnings.
 
-* In Ubuntu, make sure the correct PPA signing key is installed:
+* Update the Debian sources:
+
+    .. code-block:: console
+
+        $ sudo apt-get update
+
+* Install kamaki:
+
+    .. code-block:: console
+
+        $ sudo apt-get install kamaki
+
+Ubuntu
+^^^^^^
+
+The following steps describe a command-line approach, but any graphic package manager can be used instead.
+
+* Let ppa take care of the repository configuration:
 
     .. code-block:: console
 
         $ sudo apt-get install python-software-properties
         $ sudo add-apt-repository ppa:grnet/synnefo
 
-Finally:
+* Update the Debian sources:
 
-.. code-block:: console
+    .. code-block:: console
 
-    $ sudo apt-get update
+        $ sudo apt-get update
 
+* Install kamaki:
 
-Install kamaki
-""""""""""""""
+    .. code-block:: console
 
-.. note:: The objpool package is available at synnefo repositories and is automatically installed as a dependency.
+        $ sudo apt-get install kamaki
 
-.. code-block:: console
-
-    $ sudo apt-get install kamaki
-
-Install ansicolors and/or progress (Optional)
-"""""""""""""""""""""""""""""""""""""""""""""
+Install ansicolors and/or progress (Optional but recommended)
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 .. code-block:: console
 

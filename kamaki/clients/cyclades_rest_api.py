@@ -39,6 +39,30 @@ import json
 class CycladesClientApi(ComputeClient):
     """GRNet Cyclades REST API Client"""
 
+    def servers_get(self,
+        server_id='',
+        command='',
+        success=200,
+        changes_since=None,
+        **kwargs):
+        """GET base_url/servers[/server_id][/command] request
+
+        :param server_id: integer (as int or str)
+
+        :param command: 'ips', 'stats', or ''
+
+        :param success: success code or list or tupple of accepted success
+            codes. if server response code is not in this list, a ClientError
+            raises
+
+        :param changes_since: (date)
+
+        :returns: request response
+        """
+        path = path4url('servers', server_id, command)
+        self.set_param('changes-since', changes_since, changes_since)
+        return self.get(path, success=success, **kwargs)
+
     def networks_get(self,
         network_id='', command='', success=(200, 203), **kwargs):
         """GET base_url/networks[/network_id][/command] request

@@ -36,7 +36,7 @@ from objpool.http import get_http_connection
 from kamaki.clients.connection import HTTPConnection, HTTPResponse
 from kamaki.clients.connection.errors import HTTPConnectionError
 from kamaki.clients.connection.errors import HTTPResponseError
-from socket import gaierror
+from socket import gaierror, error
 
 from json import loads
 
@@ -175,13 +175,14 @@ class KamakiHTTPConnection(HTTPConnection):
                 url=str(self.path),
                 headers=http_headers,
                 body=data)
+        except IOError as ioe:
+            raise HTTPConnectionError(
+                'Cannot connect to %s: %s' % (self.url, ioe.strerror),
+                errno=ioe.errno)
         except Exception as err:
             from traceback import format_stack
             from kamaki.clients import recvlog
             recvlog.debug('\n'.join(['%s' % type(err)] + format_stack()))
             conn.close()
-            if isinstance(err, gaierror):
-                raise HTTPConnectionError(
-                    'Cannot connect to %s - %s' % (self.url, err))
             raise
         return KamakiHTTPResponse(conn)
