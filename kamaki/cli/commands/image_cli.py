@@ -40,7 +40,7 @@ from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
 from kamaki.cli.argument import IntArgument
 from kamaki.cli.commands.cyclades_cli import _init_cyclades
 from kamaki.cli.commands.cyclades_cli import raise_if_connection_error
-from kamaki.cli.commands import _command_init
+from kamaki.cli.commands import _command_init, errors
 
 
 image_cmds = CommandTree(
@@ -53,17 +53,18 @@ about_image_id = ['To see a list of available image ids: /image list']
 
 
 class _init_image(_command_init):
+    @errors.generic.all
+    def _run(self):
+        token = self.config.get('image', 'token')\
+            or self.config.get('compute', 'token')\
+            or self.config.get('global', 'token')
+        base_url = self.config.get('image', 'url')\
+            or self.config.get('compute', 'url')\
+            or self.config.get('global', 'url')
+        self.client = ImageClient(base_url=base_url, token=token)
+
     def main(self):
-        try:
-            token = self.config.get('image', 'token')\
-                or self.config.get('compute', 'token')\
-                or self.config.get('global', 'token')
-            base_url = self.config.get('image', 'url')\
-                or self.config.get('compute', 'url')\
-                or self.config.get('global', 'url')
-            self.client = ImageClient(base_url=base_url, token=token)
-        except Exception as err:
-            raiseCLIError(err)
+        self._run()
 
 
 @command(image_cmds)
@@ -90,8 +91,10 @@ class image_public(_init_image):
             '--more')
     )
 
-    def main(self):
-        super(self.__class__, self).main()
+    @errors.generic.all
+    @errors.cyclades.connection
+    def _run(self):
+        super(self.__class__, self)._run()
         filters = {}
         for arg in set([
                 'container_format',
@@ -105,13 +108,7 @@ class image_public(_init_image):
 
         order = self['order']
         detail = self['detail']
-        try:
-            images = self.client.list_public(detail, filters, order)
-        except ClientError as ce:
-            raise_if_connection_error(ce, base_url='image.url')
-            raiseCLIError(ce)
-        except Exception as err:
-            raiseCLIError(err)
+        images = self.client.list_public(detail, filters, order)
         if self['more']:
             print_items(
                 images,
@@ -126,6 +123,10 @@ class image_public(_init_image):
         else:
             print_items(images, title=('name',), with_enumeration=True)
 
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
+
 
 @command(image_cmds)
 class image_meta(_init_image):
@@ -136,20 +137,16 @@ class image_meta(_init_image):
     - image os properties (os, fs, etc.)
     """
 
-    def main(self, image_id):
-        super(self.__class__, self).main()
-        try:
-            image = self.client.get_meta(image_id)
-        except ClientError as ce:
-            if ce.status == 404:
-                raiseCLIError(ce,
-                    'No image with id %s found' % image_id,
-                    details=about_image_id)
-            raise_if_connection_error(ce, base_url='image.url')
-            raiseCLIError(ce)
-        except Exception as err:
-            raiseCLIError(err)
+    @errors.generic.all
+    @errors.plankton.connection
+    @errors.plankton.id
+    def _run(self, image_id):
+        image = self.client.get_meta(image_id)
         print_dict(image)
+
+    def main(self, image_id):
+        super(self.__class__, self)._run()
+        self._run(image_id)
 
 
 @command(image_cmds)
@@ -172,8 +169,9 @@ class image_register(_init_image):
         update=FlagArgument('update existing image properties', '--update')
     )
 
-    def main(self, name, location):
-        super(self.__class__, self).main()
+    @errors.generic.all
+    @errors.plankton.connection
+    def _run(self, name, location):
         if not location.startswith('pithos://'):
             account = self.config.get('store', 'account') \
                 or self.config.get('global', 'account')
@@ -199,17 +197,15 @@ class image_register(_init_image):
             ]).intersection(self.arguments):
             params[key] = self[key]
 
-        try:
             properties = self['properties']
-            if self['update']:
-                self.client.reregister(location, name, params, properties)
-            else:
-                self.client.register(name, location, params, properties)
-        except ClientError as ce:
-            raise_if_connection_error(ce, base_url='image.url')
-            raiseCLIError(ce)
-        except Exception as err:
-            raiseCLIError(err)
+        if self['update']:
+            self.client.reregister(location, name, params, properties)
+        else:
+            self.client.register(name, location, params, properties)
+
+    def main(self, name, location):
+        super(self.__class__, self)._run()
+        self._run(name, location)
 
 
 @command(image_cmds)

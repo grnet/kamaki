@@ -58,18 +58,37 @@ class generic(object):
                 raiseCLIError(e)
         return _raise
 
+    @classmethod
+    def _connection(this, foo, base_url):
+        def _raise(self, *args, **kwargs):
+            try:
+                foo(self, *args, **kwargs)
+            except ClientError as ce:
+                if ce.status == 401:
+                    raiseCLIError(ce, 'Authorization failed', details=[
+                        'Make sure a valid token is provided:',
+                        '  to check if token is valid: /astakos authenticate',
+                        '  to set token: /config set [.server.]token <token>',
+                        '  to get current token: /config get [server.]token'])
+                elif ce.status in range(-12, 200) + [403, 500]:
+                    raiseCLIError(ce, importance=3, details=[
+                        'Check if service is up or set to url %s' % base_url,
+                        '  to get url: /config get %s' % base_url,
+                        '  to set url: /config set %s <URL>' % base_url])
+                raise
+        return _raise
+
 
 class astakos(object):
 
     _token_details = [
-        'See if token is set: /config get token',
-        'If not, set a token:',
+        'To check default token: /config get token',
+        'If set/update a token:',
         '*  (permanent):    /config set token <token>',
         '*  (temporary):    re-run with <token> parameter']
 
     @classmethod
-    def init(this, foo):
-        @generic.all
+    def load(this, foo):
         def _raise(self, *args, **kwargs):
             r = foo(self, *args, **kwargs)
             try:
@@ -108,7 +127,6 @@ class astakos(object):
 class history(object):
     @classmethod
     def init(this, foo):
-        @generic.all
         def _raise(self, *args, **kwargs):
             r = foo(self, *args, **kwargs)
             if not hasattr(self, 'history'):
@@ -118,7 +136,6 @@ class history(object):
 
     @classmethod
     def _get_cmd_ids(this, foo):
-        @generic.all
         def _raise(self, cmd_ids, *args, **kwargs):
             if not cmd_ids:
                 raise CLISyntaxError('Usage: <id1|id1-id2> [id3|id3-id4] ...',
@@ -126,3 +143,30 @@ class history(object):
             return foo(self, cmd_ids, *args, **kwargs)
         return _raise
 
+
+class cyclades(object):
+    @classmethod
+    def connection(this, foo):
+        return generic._connection(foo, 'compute.url')
+
+
+class plankton(object):
+
+    about_image_id = ['To see a list of available image ids: /image list']
+
+    @classmethod
+    def connection(this, foo):
+        return generic._connection(foo, 'image.url')
+
+    @classmethod
+    def id(this, foo):
+        def _raise(self, image_id, *args, **kwargs):
+            try:
+                foo(self, image_id, *args, **kwargs)
+            except ClientError as ce:
+                if ce.status == 404 and image_id:
+                    raiseCLIError(ce,
+                        'No image with id %s found' % image_id,
+                        details=this.about_image_id)
+                raise
+        return _raise

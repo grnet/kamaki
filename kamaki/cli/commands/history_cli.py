@@ -72,13 +72,12 @@ def _get_num_list(num_str):
 
 
 class _init_history(_command_init):
-
+    @errors.generic.all
     @errors.history.init
     def _run(self):
         self.history = History(self.config.get('history', 'file'))
 
     def main(self):
-        print('DU FUCK')
         self._run()
 
 
@@ -183,6 +182,7 @@ class history_run(_init_history):
             print('Execution of [ %s ] failed' % line)
             print('\t%s' % e)
 
+    @errors.generic.all
     @errors.history._get_cmd_ids
     def _get_cmd_ids(self, cmd_ids):
         cmd_id_list = []

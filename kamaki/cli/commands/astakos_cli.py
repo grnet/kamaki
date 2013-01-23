@@ -43,7 +43,8 @@ _commands = [astakos_cmds]
 
 class _astakos_init(_command_init):
 
-    @errors.astakos.init
+    @errors.generic.all
+    @errors.astakos.load
     def _run(self):
         token = self.config.get('astakos', 'token')\
             or self.config.get('global', 'token')
@@ -65,6 +66,7 @@ class astakos_authenticate(_astakos_init):
     Token can also be provided as a parameter
     """
 
+    @errors.generic.all
     @errors.astakos.authenticate
     def _run(self, custom_token=None):
         super(self.__class__, self)._run()
