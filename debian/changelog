@@ -1,3 +1,9 @@
+kamaki (0.6.3.1-1) stable; urgency=high
+
+  * New upstream version
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Wed, 23 Jan 2013 14:08:34 +0200
+
 kamaki (0.6.3-5) stable; urgency=high
 
   * Enforce python >= 2.6 dependency
