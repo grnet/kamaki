@@ -145,14 +145,73 @@ class history(object):
 
 
 class cyclades(object):
+    about_flavor_id = [
+        'How to pick a valid flavor id:',
+        '* get a list of flavor ids: /flavor list',
+        '* details of flavor: /flavor info <flavor id>']
+
     @classmethod
     def connection(this, foo):
         return generic._connection(foo, 'compute.url')
 
+    @classmethod
+    def date(this, foo):
+        def _raise(self, *args, **kwargs):
+            try:
+                return foo(self, *args, **kwargs)
+            except ClientError as ce:
+                if ce.status == 400 and 'changes-since' in ('%s' % ce):
+                    raise CLIError(
+                        'Incorrect date format for --since',
+                        details=['Accepted date format: d/m/y'])
+                raise
+        return _raise
+
+    @classmethod
+    def flavor_id(this, foo):
+        def _raise(self, *args, **kwargs):
+            flavor_id = kwargs.get('flavor_id', None)
+            try:
+                flavor_id = int(flavor_id)
+                return foo(self, *args, **kwargs)
+            except ValueError as ve:
+                raiseCLIError(ve, 'Invalid flavor id %s ' % flavor_id,
+                    details='Flavor id must be a positive integer',
+                    importance=1)
+            except ClientError as ce:
+                if flavor_id and ce.status == 404 and\
+                    'flavor not found' in ('%s' % ce).lower():
+                        raiseCLIError(ce,
+                            'No flavor with id %s found' % flavor_id,
+                            details=this.about_flavor_id)
+                raise
+        return _raise
+
+    @classmethod
+    def id(this, foo):
+        def _raise(self, *args, **kwargs):
+            server_id = kwargs.get('server_id', None)
+            try:
+                server_id = int(server_id)
+                return foo(self, *args, **kwargs)
+            except ValueError as ve:
+                raiseCLIError(ve,
+                    'Invalid VM id %s' % server_id,
+                    details=['id must be a positive integer'],
+                    importance=1)
+            except ClientError as ce:
+                if ce.status == 404 or\
+                (ce.status == 400 and 'not found' in ('%s' % ce).lower()):
+                    raiseCLIError(ce, 'VM with id %s not found' % server_id)
+                raise
+        return _raise
+
 
 class plankton(object):
 
-    about_image_id = ['To see a list of available image ids: /image list']
+    about_image_id = ['How to pick a suitable image:',
+        '* get a list of image ids: /image list',
+        '* details of image: /flavor info <image id>']
 
     @classmethod
     def connection(this, foo):
@@ -160,13 +219,15 @@ class plankton(object):
 
     @classmethod
     def id(this, foo):
-        def _raise(self, image_id, *args, **kwargs):
+        def _raise(self, *args, **kwargs):
+            image_id = kwargs.get('image_id', None)
             try:
-                foo(self, image_id, *args, **kwargs)
+                foo(self, *args, **kwargs)
             except ClientError as ce:
-                if image_id and (ce.status == 404 or (\
-                    ce.status == 400 and
-                    'image not found' in ('%s' % ce).lower())):
+                if image_id and (ce.status == 404\
+                    or (ce.status == 400 and
+                        'image not found' in ('%s' % ce).lower())\
+                    or ce.status == 411):
                         raiseCLIError(ce,
                             'No image with id %s found' % image_id,
                             details=this.about_image_id)
@@ -175,13 +236,13 @@ class plankton(object):
 
     @classmethod
     def metadata(this, foo):
-        def _raise(self, image_id, key, *args, **kwargs):
+        def _raise(self, *args, **kwargs):
+            key = kwargs.get('key', None)
             try:
-                foo(self, image_id, key, *args, **kwargs)
+                foo(self, *args, **kwargs)
             except ClientError as ce:
-                if image_id and (ce.status == 404 or (\
-                    ce.status == 400 and
-                    'metadata' in ('%s' % ce).lower())):
+                if ce.status == 404 or ((ce.status == 400\
+                    and 'metadata' in ('%s' % ce).lower())):
                         raiseCLIError(ce,
                             'No properties with key %s in this image' % key)
                 raise

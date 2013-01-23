@@ -146,7 +146,7 @@ class image_meta(_init_image):
 
     def main(self, image_id):
         super(self.__class__, self)._run()
-        self._run(image_id)
+        self._run(image_id=image_id)
 
 
 @command(image_cmds)
@@ -221,7 +221,7 @@ class image_members(_init_image):
 
     def main(self, image_id):
         super(self.__class__, self)._run()
-        self._run(image_id)
+        self._run(image_id=image_id)
 
 
 @command(image_cmds)
@@ -246,12 +246,12 @@ class image_addmember(_init_image):
     @errors.generic.all
     @errors.plankton.connection
     @errors.plankton.id
-    def _run(self, image_id, member):
+    def _run(self, image_id=None, member=None):
             self.client.add_member(image_id, member)
 
     def main(self, image_id, member):
         super(self.__class__, self)._run()
-        self._run(image_id, member)
+        self._run(image_id=image_id, member=member)
 
 
 @command(image_cmds)
@@ -261,12 +261,12 @@ class image_delmember(_init_image):
     @errors.generic.all
     @errors.plankton.connection
     @errors.plankton.id
-    def _run(self, image_id, member):
+    def _run(self, image_id=None, member=None):
             self.client.remove_member(image_id, member)
 
     def main(self, image_id, member):
         super(self.__class__, self)._run()
-        self._run(image_id, member)
+        self._run(image_id=image_id, member=member)
 
 
 @command(image_cmds)
@@ -276,12 +276,12 @@ class image_setmembers(_init_image):
     @errors.generic.all
     @errors.plankton.connection
     @errors.plankton.id
-    def _run(self, image_id, *members):
+    def _run(self, image_id, members):
             self.client.set_members(image_id, members)
 
     def main(self, image_id, *members):
         super(self.__class__, self)._run()
-        self._run(image_id, members)
+        self._run(image_id=image_id, members=members)
 
 
 @command(image_cmds)
@@ -335,7 +335,7 @@ class image_info(_init_cyclades):
 
     def main(self, image_id):
         super(self.__class__, self)._run()
-        self._run(image_id)
+        self._run(image_id=image_id)
 
 
 @command(image_cmds)
@@ -350,7 +350,7 @@ class image_delete(_init_cyclades):
 
     def main(self, image_id):
         super(self.__class__, self)._run()
-        self._run(image_id)
+        self._run(image_id=image_id)
 
 
 @command(image_cmds)
@@ -367,7 +367,7 @@ class image_properties(_init_cyclades):
 
     def main(self, image_id, key=''):
         super(self.__class__, self)._run()
-        self._run(image_id, key)
+        self._run(image_id=image_id, key=key)
 
 
 @command(image_cmds)
@@ -377,13 +377,14 @@ class image_addproperty(_init_cyclades):
     @errors.generic.all
     @errors.cyclades.connection
     @errors.plankton.id
+    @errors.plankton.metadata
     def _run(self, image_id, key, val):
         r = self.client.create_image_metadata(image_id, key, val)
         print_dict(r)
 
     def main(self, image_id, key, val):
         super(self.__class__, self)._run()
-        self._run(image_id, key, val)
+        self._run(image_id=image_id, key=key, val=val)
 
 
 @command(image_cmds)
@@ -393,6 +394,7 @@ class image_setproperty(_init_cyclades):
     @errors.generic.all
     @errors.cyclades.connection
     @errors.plankton.id
+    @errors.plankton.metadata
     def _run(self, image_id, key, val):
         metadata = {key: val}
         r = self.client.update_image_metadata(image_id, **metadata)
@@ -400,7 +402,7 @@ class image_setproperty(_init_cyclades):
 
     def main(self, image_id, key, val):
         super(self.__class__, self)._run()
-        self._run(image_id, key, val)
+        self._run(image_id=image_id, key=key, val=val)
 
 
 @command(image_cmds)
@@ -416,4 +418,4 @@ class image_delproperty(_init_cyclades):
 
     def main(self, image_id, key):
         super(self.__class__, self)._run()
-        self._run(image_id, key)
+        self._run(image_id=image_id, key=key)

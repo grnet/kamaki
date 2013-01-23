@@ -38,7 +38,7 @@ from kamaki.cli.errors import raiseCLIError, CLISyntaxError
 from kamaki.clients.cyclades import CycladesClient, ClientError
 from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
 from kamaki.cli.argument import ProgressBarArgument, DateArgument, IntArgument
-from kamaki.cli.commands import _command_init
+from kamaki.cli.commands import _command_init, errors
 
 from base64 import b64encode
 from os.path import exists
@@ -56,8 +56,8 @@ _commands = [server_cmds, flavor_cmds, image_cmds, network_cmds]
 
 
 about_authentication = '\n  User Authentication:\
-    \n    to check authentication: /astakos authenticate\
-    \n    to set authentication token: /config set token <token>'
+    \n* to check authentication: /astakos authenticate\
+    \n* to set authentication token: /config set token <token>'
 
 howto_personality = [
     'Defines a file to be injected to VMs personality.',
@@ -85,6 +85,7 @@ def raise_if_connection_error(err, base_url='compute.url'):
 
 
 class _init_cyclades(_command_init):
+    @errors.generic.all
     def _run(self, service='compute'):
         token = self.config.get(service, 'token')\
             or self.config.get('global', 'token')
@@ -92,8 +93,8 @@ class _init_cyclades(_command_init):
             or self.config.get('global', 'url')
         self.client = CycladesClient(base_url=base_url, token=token)
 
-    def main(self, service='compute'):
-        self._run(service)
+    def main(self):
+        self._run()
 
 
 @command(server_cmds)
@@ -129,21 +130,14 @@ class server_list(_init_cyclades):
             if 'metadata' in server:
                 server['metadata'] = server['metadata']['values']
 
-    def main(self):
-        super(self.__class__, self).main()
-        try:
-            servers = self.client.list_servers(self['detail'], self['since'])
-            if self['detail']:
-                self._make_results_pretty(servers)
-        except ClientError as ce:
-            if ce.status == 400 and 'changes-since' in ('%s' % ce):
-                raiseCLIError(None,
-                    'Incorrect date format for --since',
-                    details=['Accepted date format: d/m/y'])
-            raise_if_connection_error(ce)
-            raiseCLIError(ce)
-        except Exception as err:
-            raiseCLIError(err)
+    @errors.generic.all
+    @errors.cyclades.connection
+    @errors.cyclades.date
+    def _run(self):
+        servers = self.client.list_servers(self['detail'], self['since'])
+        if self['detail']:
+            self._make_results_pretty(servers)
+
         if self['more']:
             print_items(
                 servers,
@@ -151,6 +145,10 @@ class server_list(_init_cyclades):
         else:
             print_items(
                 servers[:self['limit'] if self['limit'] else len(servers)])
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
 
 
 @command(server_cmds)
@@ -163,7 +161,6 @@ class server_info(_init_cyclades):
     - hardware flavor and os image ids
     """
 
-    @classmethod
     def _print(self, server):
         addr_dict = {}
         if 'attachments' in server:
@@ -180,20 +177,16 @@ class server_info(_init_cyclades):
             server['metadata'] = server['metadata']['values']
         print_dict(server, ident=1)
 
-    def main(self, server_id):
-        super(self.__class__, self).main()
-        try:
-            server = self.client.get_server_details(int(server_id))
-        except ValueError as err:
-            raiseCLIError(err, 'Server id must be a positive integer', 1)
-        except ClientError as ce:
-            if ce.status == 404:
-                raiseCLIError(ce, 'Server with id %s not found' % server_id)
-            raise_if_connection_error(ce)
-            raiseCLIError(ce)
-        except Exception as err:
-            raiseCLIError(err)
+    @errors.generic.all
+    @errors.cyclades.connection
+    @errors.cyclades.id
+    def _run(self, server_id):
+        server = self.client.get_server_details(server_id)
         self._print(server)
+
+    def main(self, server_id):
+        super(self.__class__, self)._run()
+        self._run(server_id=server_id)
 
 
 class PersonalityArgument(KeyValueArgument):
@@ -241,44 +234,25 @@ class server_create(_init_cyclades):
 
     arguments = dict(
         personality=PersonalityArgument(
-            ' _ _ _ '.join(howto_personality),
-            parsed_name='--personality')
+            ' /// '.join(howto_personality),
+            '--personality')
     )
 
-    def main(self, name, flavor_id, image_id):
-        super(self.__class__, self).main()
+    @errors.generic.all
+    @errors.cyclades.connection
+    @errors.plankton.id
+    @errors.cyclades.flavor_id
+    def _run(self, name, flavor_id, image_id):
+        r = self.client.create_server(
+            name,
+            int(flavor_id),
+            image_id,
+            self['personality'])
+        print_dict(r)
 
-        try:
-            reply = self.client.create_server(
-                        name,
-                        int(flavor_id),
-                        image_id,
-                        self['personality']
-                    )
-        except ClientError as ce:
-            if ce.status == 404:
-                msg = ('%s' % ce).lower()
-                if 'flavor' in msg:
-                    raiseCLIError(ce,
-                        'Flavor id %s not found' % flavor_id,
-                        details=['How to pick a valid flavor id:',
-                        '  - get a list of flavor ids: /flavor list',
-                        '  - details on a flavor: /flavor info <flavor id>'])
-                elif 'image' in msg:
-                    raiseCLIError(ce,
-                        'Image id %s not found' % image_id,
-                        details=['How to pick a valid image id:',
-                        '  - get a list of image ids: /image list',
-                        '  - details on an image: /image info <image id>'])
-            raise_if_connection_error(ce)
-            raiseCLIError(ce)
-        except ValueError as err:
-            raiseCLIError(err, 'Invalid flavor id %s ' % flavor_id,
-                details='Flavor id must be a positive integer',
-                importance=1)
-        except Exception as err:
-            raiseCLIError(err, 'Syntax error: %s\n' % err, importance=1)
-        print_dict(reply)
+    def main(self, name, flavor_id, image_id):
+        super(self.__class__, self)._run()
+        self._run(name=name, flavor_id=flavor_id, image_id=image_id)
 
 
 @command(server_cmds)
