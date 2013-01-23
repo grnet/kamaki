@@ -212,89 +212,76 @@ class image_register(_init_image):
 class image_members(_init_image):
     """Get image members"""
 
-    def main(self, image_id):
-        super(self.__class__, self).main()
-        try:
-            members = self.client.list_members(image_id)
-        except ClientError as ce:
-            raise_if_connection_error(ce, base_url='image.url')
-            raiseCLIError(ce)
-        except Exception as err:
-            raiseCLIError(err)
+    @errors.generic.all
+    @errors.plankton.connection
+    @errors.plankton.id
+    def _run(self, image_id):
+        members = self.client.list_members(image_id)
         print_items(members)
+
+    def main(self, image_id):
+        super(self.__class__, self)._run()
+        self._run(image_id)
 
 
 @command(image_cmds)
 class image_shared(_init_image):
     """List images shared by a member"""
 
-    def main(self, member):
-        super(self.__class__, self).main()
-        try:
-            images = self.client.list_shared(member)
-        except ClientError as ce:
-            raise_if_connection_error(ce, base_url='image.url')
-            raiseCLIError(ce)
-        except Exception as err:
-            raiseCLIError(err)
+    @errors.generic.all
+    @errors.plankton.connection
+    def _run(self, member):
+        images = self.client.list_shared(member)
         print_items(images)
+
+    def main(self, member):
+        super(self.__class__, self)._run()
+        self._run(member)
 
 
 @command(image_cmds)
 class image_addmember(_init_image):
     """Add a member to an image"""
 
-    def main(self, image_id, member):
-        super(self.__class__, self).main()
-        try:
+    @errors.generic.all
+    @errors.plankton.connection
+    @errors.plankton.id
+    def _run(self, image_id, member):
             self.client.add_member(image_id, member)
-        except ClientError as ce:
-            if ce.status == 404:
-                raiseCLIError(ce,
-                    'No image with id %s found' % image_id,
-                    details=about_image_id)
-            raise_if_connection_error(ce, base_url='image.url')
-            raiseCLIError(ce)
-        except Exception as err:
-            raiseCLIError(err)
+
+    def main(self, image_id, member):
+        super(self.__class__, self)._run()
+        self._run(image_id, member)
 
 
 @command(image_cmds)
 class image_delmember(_init_image):
     """Remove a member from an image"""
 
-    def main(self, image_id, member):
-        super(self.__class__, self).main()
-        try:
+    @errors.generic.all
+    @errors.plankton.connection
+    @errors.plankton.id
+    def _run(self, image_id, member):
             self.client.remove_member(image_id, member)
-        except ClientError as ce:
-            if ce.status == 404:
-                raiseCLIError(ce,
-                    'No image with id %s found' % image_id,
-                    details=about_image_id)
-            raise_if_connection_error(ce, base_url='image.url')
-            raiseCLIError(ce)
-        except Exception as err:
-            raiseCLIError(err)
+
+    def main(self, image_id, member):
+        super(self.__class__, self)._run()
+        self._run(image_id, member)
 
 
 @command(image_cmds)
 class image_setmembers(_init_image):
     """Set the members of an image"""
 
-    def main(self, image_id, *member):
-        super(self.__class__, self).main()
-        try:
-            self.client.set_members(image_id, member)
-        except ClientError as ce:
-            if ce.status == 404:
-                raiseCLIError(ce,
-                    'No image with id %s found' % image_id,
-                    details=about_image_id)
-            raise_if_connection_error(ce, base_url='image.url')
-            raiseCLIError(ce)
-        except Exception as err:
-            raiseCLIError(err)
+    @errors.generic.all
+    @errors.plankton.connection
+    @errors.plankton.id
+    def _run(self, image_id, *members):
+            self.client.set_members(image_id, members)
+
+    def main(self, image_id, *members):
+        super(self.__class__, self)._run()
+        self._run(image_id, members)
 
 
 @command(image_cmds)
@@ -314,155 +301,119 @@ class image_list(_init_cyclades):
             if 'metadata' in img:
                 img['metadata'] = img['metadata']['values']
 
+    @errors.generic.all
+    @errors.cyclades.connection
+    def _run(self):
+        images = self.client.list_images(self['detail'])
+        if self['detail']:
+            self._make_results_pretty(images)
+        if self['more']:
+            print_items(images,
+                page_size=self['limit'] if self['limit'] else 10)
+        elif self['limit']:
+            print_items(images[:self['limit']])
+        else:
+            print_items(images)
+
     def main(self):
-        super(self.__class__, self).main()
-        try:
-            images = self.client.list_images(self['detail'])
-            if self['detail']:
-                self._make_results_pretty(images)
-            if self['more']:
-                print_items(images,
-                    page_size=self['limit'] if self['limit'] else 10)
-            elif self['limit']:
-                print_items(images[:self['limit']])
-            else:
-                print_items(images)
-        except ClientError as ce:
-            raise_if_connection_error(ce)
-            raiseCLIError(ce)
-        except Exception as err:
-            raiseCLIError(err)
+        super(self.__class__, self)._run()
+        self._run()
 
 
 @command(image_cmds)
 class image_info(_init_cyclades):
     """Get detailed information on an image"""
 
-    @classmethod
-    def _make_results_pretty(self, image):
+    @errors.generic.all
+    @errors.cyclades.connection
+    @errors.plankton.id
+    def _run(self, image_id):
+        image = self.client.get_image_details(image_id)
         if 'metadata' in image:
             image['metadata'] = image['metadata']['values']
+        print_dict(image)
 
     def main(self, image_id):
-        super(self.__class__, self).main()
-        try:
-            image = self.client.get_image_details(image_id)
-            self._make_results_pretty(image)
-        except ClientError as ce:
-            if ce.status == 404 and 'image' in ('%s' % ce).lower():
-                raiseCLIError(ce,
-                    'No image with id %s found' % image_id,
-                    details=about_image_id)
-            raise_if_connection_error(ce)
-            raiseCLIError(ce)
-        except Exception as err:
-            raiseCLIError(err)
-        print_dict(image)
+        super(self.__class__, self)._run()
+        self._run(image_id)
 
 
 @command(image_cmds)
 class image_delete(_init_cyclades):
     """Delete an image (image file remains intact)"""
 
+    @errors.generic.all
+    @errors.cyclades.connection
+    @errors.plankton.id
+    def _run(self, image_id):
+        self.client.delete_image(image_id)
+
     def main(self, image_id):
-        super(self.__class__, self).main()
-        try:
-            self.client.delete_image(image_id)
-        except ClientError as ce:
-            if ce.status == 404 and 'image' in ('%s' % ce).lower():
-                raiseCLIError(ce,
-                    'No image with id %s found' % image_id,
-                    details=about_image_id)
-            raise_if_connection_error(ce)
-            raiseCLIError(ce)
-        except Exception as err:
-            raiseCLIError(err)
+        super(self.__class__, self)._run()
+        self._run(image_id)
 
 
 @command(image_cmds)
 class image_properties(_init_cyclades):
     """Get properties related to OS installation in an image"""
 
+    @errors.generic.all
+    @errors.cyclades.connection
+    @errors.plankton.id
+    @errors.plankton.metadata
+    def _run(self, image_id, key):
+        r = self.client.get_image_metadata(image_id, key)
+        print_dict(r)
+
     def main(self, image_id, key=''):
-        super(self.__class__, self).main()
-        try:
-            reply = self.client.get_image_metadata(image_id, key)
-        except ClientError as ce:
-            if ce.status == 404:
-                if 'image' in ('%s' % ce).lower():
-                    raiseCLIError(ce,
-                        'No image with id %s found' % image_id,
-                        details=about_image_id)
-                elif 'metadata' in ('%s' % ce).lower():
-                    raiseCLIError(ce,
-                        'No properties with key %s in this image' % key)
-            raise_if_connection_error(ce)
-            raiseCLIError(ce)
-        except Exception as err:
-            raiseCLIError(err)
-        print_dict(reply)
+        super(self.__class__, self)._run()
+        self._run(image_id, key)
 
 
 @command(image_cmds)
 class image_addproperty(_init_cyclades):
     """Add an OS-related property to an image"""
 
+    @errors.generic.all
+    @errors.cyclades.connection
+    @errors.plankton.id
+    def _run(self, image_id, key, val):
+        r = self.client.create_image_metadata(image_id, key, val)
+        print_dict(r)
+
     def main(self, image_id, key, val):
-        super(self.__class__, self).main()
-        try:
-            assert(key)
-            reply = self.client.create_image_metadata(image_id, key, val)
-        except ClientError as ce:
-            if ce.status == 404 and 'image' in ('%s' % ce).lower():
-                raiseCLIError(ce,
-                    'No image with id %s found' % image_id,
-                    details=about_image_id)
-            raise_if_connection_error(ce)
-            raiseCLIError(ce)
-        except Exception as err:
-            raiseCLIError(err)
-        print_dict(reply)
+        super(self.__class__, self)._run()
+        self._run(image_id, key, val)
 
 
 @command(image_cmds)
 class image_setproperty(_init_cyclades):
     """Update an existing property in an image"""
 
-    def main(self, image_id, key, val):
-        super(self.__class__, self).main()
+    @errors.generic.all
+    @errors.cyclades.connection
+    @errors.plankton.id
+    def _run(self, image_id, key, val):
         metadata = {key: val}
-        try:
-            reply = self.client.update_image_metadata(image_id, **metadata)
-        except ClientError as ce:
-            if ce.status == 404 and 'image' in ('%s' % ce).lower():
-                raiseCLIError(ce,
-                    'No image with id %s found' % image_id,
-                    details=about_image_id)
-            raise_if_connection_error(ce)
-            raiseCLIError(ce)
-        except Exception as err:
-            raiseCLIError(err)
-        print_dict(reply)
+        r = self.client.update_image_metadata(image_id, **metadata)
+        print_dict(r)
+
+    def main(self, image_id, key, val):
+        super(self.__class__, self)._run()
+        self._run(image_id, key, val)
 
 
 @command(image_cmds)
 class image_delproperty(_init_cyclades):
     """Delete a property of an image"""
 
+    @errors.generic.all
+    @errors.cyclades.connection
+    @errors.plankton.id
+    @errors.plankton.metadata
+    def _run(self, image_id, key):
+        self.client.delete_image_metadata(image_id, key)
+
     def main(self, image_id, key):
-        super(self.__class__, self).main()
-        try:
-            self.client.delete_image_metadata(image_id, key)
-        except ClientError as ce:
-            if ce.status == 404:
-                if 'image' in ('%s' % ce).lower():
-                    raiseCLIError(ce,
-                        'No image with id %s found' % image_id,
-                        details=about_image_id)
-                elif 'metadata' in ('%s' % ce).lower():
-                    raiseCLIError(ce,
-                        'No properties with key %s in this image' % key)
-            raise_if_connection_error(ce)
-            raiseCLIError(ce)
-        except Exception as err:
-            raiseCLIError(err)
+        super(self.__class__, self)._run()
+        self._run(image_id, key)

@@ -85,12 +85,15 @@ def raise_if_connection_error(err, base_url='compute.url'):
 
 
 class _init_cyclades(_command_init):
-    def main(self, service='compute'):
+    def _run(self, service='compute'):
         token = self.config.get(service, 'token')\
             or self.config.get('global', 'token')
         base_url = self.config.get(service, 'url')\
             or self.config.get('global', 'url')
         self.client = CycladesClient(base_url=base_url, token=token)
+
+    def main(self, service='compute'):
+        self._run(service)
 
 
 @command(server_cmds)

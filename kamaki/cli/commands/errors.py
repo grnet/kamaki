@@ -164,9 +164,25 @@ class plankton(object):
             try:
                 foo(self, image_id, *args, **kwargs)
             except ClientError as ce:
-                if ce.status == 404 and image_id:
-                    raiseCLIError(ce,
-                        'No image with id %s found' % image_id,
-                        details=this.about_image_id)
+                if image_id and (ce.status == 404 or (\
+                    ce.status == 400 and
+                    'image not found' in ('%s' % ce).lower())):
+                        raiseCLIError(ce,
+                            'No image with id %s found' % image_id,
+                            details=this.about_image_id)
+                raise
+        return _raise
+
+    @classmethod
+    def metadata(this, foo):
+        def _raise(self, image_id, key, *args, **kwargs):
+            try:
+                foo(self, image_id, key, *args, **kwargs)
+            except ClientError as ce:
+                if image_id and (ce.status == 404 or (\
+                    ce.status == 400 and
+                    'metadata' in ('%s' % ce).lower())):
+                        raiseCLIError(ce,
+                            'No properties with key %s in this image' % key)
                 raise
         return _raise
