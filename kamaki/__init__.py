@@ -31,4 +31,4 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-__version__ = '0.6.3'
+__version__ = '0.6.3.1'
