@@ -70,7 +70,7 @@ class generic(object):
                         '  to check if token is valid: /astakos authenticate',
                         '  to set token: /config set [.server.]token <token>',
                         '  to get current token: /config get [server.]token'])
-                elif ce.status in range(-12, 200) + [403, 302, 500]:
+                elif ce.status in range(-12, 200) + [302, 401, 403, 500]:
                     raiseCLIError(ce, importance=3, details=[
                         'Check if service is up or set to url %s' % base_url,
                         '  to get url: /config get %s' % base_url,
@@ -389,5 +389,66 @@ class plankton(object):
                     and 'metadata' in ('%s' % ce).lower())):
                         raiseCLIError(ce,
                             'No properties with key %s in this image' % key)
+                raise
+        return _raise
+
+
+class pithos(object):
+    container_howto = ['To specify a container:',
+    '  1. Set store.container variable (permanent)',
+    '     /config set store.container <container>',
+    '  2. --container=<container> (temporary, overrides 1)',
+    '  3. Use the container:path format (temporary, overrides all)']
+
+    @classmethod
+    def connection(this, foo):
+        return generic._connection(foo, 'store.url')
+
+    @classmethod
+    def quota(this, foo):
+        def _raise(self, *args, **kwargs):
+            try:
+                return foo(self, *args, **kwargs)
+            except ClientError as ce:
+                if ce.status == 413:
+                    raiseCLIError(ce, 'User quota exceeded', details=[
+                        '* get quotas:',
+                        '  * upper total limit:      /store quota',
+                        '  * container limit:  /store quota <container>',
+                        '* set a higher quota (if permitted):',
+                        '    /store setquota <quota>[unit] <container>'
+                        '    as long as <container quota> <= <total quota>'])
+                raise
+        return _raise
+
+    @classmethod
+    def container(this, foo):
+        def _raise(self, *args, **kwargs):
+            dst_cont = kwargs.get('dst_cont', None)
+            try:
+                return foo(self, *args, **kwargs)
+            except ClientError as ce:
+                if ce.status == 404 and 'container' in ('%s' % ce).lower():
+                        cont = '%s or %s' if dst_cont else self.container
+                        raiseCLIError(ce,
+                            'No container %s in account %s' % (
+                                cont,
+                                self.account),
+                            details=this.container_howto)
+                raise
+        return _raise
+
+    @classmethod
+    def object_path(this, foo):
+        def _raise(self, *args, **kwargs):
+            try:
+                return foo(self, *args, **kwargs)
+            except ClientError as ce:
+                err_msg = ('%s' % ce).lower()
+                if ce.status == 404 and 'object not found' in err_msg:
+                    raiseCLIError(ce,
+                        'No object %s in %s\'s container %s'\
+                        % (self.path, self.account, self.container),
+                        details=this.container_howto)
                 raise
         return _raise

@@ -33,13 +33,11 @@
 
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.errors import raiseCLIError
 from kamaki.cli.utils import print_dict, print_items
-from kamaki.clients.image import ImageClient, ClientError
+from kamaki.clients.image import ImageClient
 from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
 from kamaki.cli.argument import IntArgument
 from kamaki.cli.commands.cyclades_cli import _init_cyclades
-from kamaki.cli.commands.cyclades_cli import raise_if_connection_error
 from kamaki.cli.commands import _command_init, errors
 
 
