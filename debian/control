@@ -12,6 +12,7 @@ Homepage: https://code.grnet.gr/projects/kamaki
 Package: kamaki
 Architecture: all
 Depends: ${misc:Depends}, ${python:Depends}, python-setuptools, python-objpool
+Suggests: python-progress, python-ansicolors
 XB-Python-Version: ${python:Versions}
 Description: command-line tool for managing clouds
  Simple, yet intuitive, command-line tool for managing clouds.
