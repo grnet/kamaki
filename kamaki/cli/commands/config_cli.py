@@ -39,26 +39,39 @@ from kamaki.cli.command_tree import CommandTree
 config_cmds = CommandTree('config', 'Configuration commands')
 _commands = [config_cmds]
 
+about_options = '\nAbout options:\
+    \n. syntax: [group.]option\
+    \n. example: store.account\
+    \n. special case: <option> is equivalent to global.<option>\
+    \n. configuration file syntax:\
+    \n.   [group]\
+    \n.   option=value\
+    \n.   (more options can be set per group)'
+
 
 @command(config_cmds)
 class config_list(_command_init):
-    """List configuration options"""
-
-    def __init__(self, arguments={}):
-        super(config_list, self).__init__(arguments)
-        self.arguments['all'] = FlagArgument('include default values', '-a')
+    """List all configuration options
+    FAQ:
+    Q: I haven't set any options!
+    A: Defaults are used (override with /config set )
+    Q: There are more options than I have set
+    A: Default options remain if not explicitly replaced or deleted
+    """
 
     def main(self):
-        include_defaults = self.get_argument('all')
         for section in sorted(self.config.sections()):
-            items = self.config.items(section, include_defaults)
+            items = self.config.items(section)
             for key, val in sorted(items):
                 print('%s.%s = %s' % (section, key, val))
 
 
 @command(config_cmds)
 class config_get(_command_init):
-    """Show a configuration option"""
+    """Show a configuration option
+    """
+
+    __doc__ += about_options
 
     def main(self, option):
         section, sep, key = option.rpartition('.')
@@ -72,6 +85,8 @@ class config_get(_command_init):
 class config_set(_command_init):
     """Set a configuration option"""
 
+    __doc__ += about_options
+
     def main(self, option, value):
         section, sep, key = option.rpartition('.')
         section = section or 'global'
@@ -82,11 +97,20 @@ class config_set(_command_init):
 
 @command(config_cmds)
 class config_delete(_command_init):
-    """Delete a configuration option (and use the default value)"""
+    """Delete a configuration option
+    Default values are not removed by default. To alter this behavior in a
+    session, use --default.
+    """
+
+    arguments = dict(
+        default=FlagArgument(
+            'Remove default value as well (persists until end of sesion)',
+            '--default')
+    )
 
     def main(self, option):
         section, sep, key = option.rpartition('.')
         section = section or 'global'
-        self.config.remove_option(section, key)
+        self.config.remove_option(section, key, self['default'])
         self.config.write()
         self.config.reload()

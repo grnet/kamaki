@@ -1800,6 +1800,10 @@ class testPithos(unittest.TestCase):
         self.client.container = self.c2
         obj = 'another.test'
 
+        self.client.create_object(obj + '.FAKE')
+        r = self.client.get_object_info(obj + '.FAKE')
+        self.assertEqual(r['content-type'], 'application/octet-stream')
+
         """create the object"""
         r = self.client.object_put(obj,
             data='a',

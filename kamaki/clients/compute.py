@@ -98,7 +98,8 @@ class ComputeClient(ComputeClientApi):
             r = self.servers_post(json_data=req)
         except ClientError as err:
             try:
-                tmp_err = err.details.split(',')
+                tmp_err = err.details if isinstance(err.details, list)\
+                else unicode(err.details).split(',')
                 tmp_err = tmp_err[0].split(':')
                 tmp_err = tmp_err[2].split('"')
                 err.message = tmp_err[1]
@@ -112,7 +113,7 @@ class ComputeClient(ComputeClientApi):
 
         :param server_id: integer (str or int)
 
-        :param new_name: (str) 
+        :param new_name: (str)
         """
         req = {'server': {'name': new_name}}
         r = self.servers_put(server_id, json_data=req)

@@ -1,4 +1,4 @@
-# Copyright 2011 GRNET S.A. All rights reserved.
+# Copyright 2012 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -31,4 +31,18 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-__version__ = '0.6.3.2'
+from kamaki.cli.commissioning import commissioning_cli
+from kamaki.clients.quotaholder import QuotaholderClient
+
+
+class quotaholder_cli(commissioning_cli):
+
+    def __init__(self):
+        self.client = QuotaholderClient
+        self.add_context = True
+        self.description = 'Quotaholder description'
+        super(self.__class__, self).__init__()
+
+cli = quotaholder_cli()
+cli.generate_all()
+_commands = [cli.ctree]
