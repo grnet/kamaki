@@ -49,6 +49,21 @@ class _command_init(object):
         except KeyError:
             pass
 
+    def _safe_progress_bar(self, msg, arg='progress_bar'):
+        """Try to get a progress bar, but do not raise errors"""
+        try:
+            progress_bar = self.arguments[arg]
+            gen = progress_bar.get_generator(msg)
+        except Exception:
+            return (None, None)
+        return (progress_bar, gen)
+
+    def _safe_progress_bar_finish(self, progress_bar):
+        try:
+            progress_bar.finish()
+        except Exception:
+            pass
+
     def __getitem__(self, argterm):
         """
         :param argterm: (str) the name/label of an argument in self.arguments

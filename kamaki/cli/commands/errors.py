@@ -70,11 +70,23 @@ class generic(object):
                         '  to check if token is valid: /astakos authenticate',
                         '  to set token: /config set [.server.]token <token>',
                         '  to get current token: /config get [server.]token'])
-                elif ce.status in range(-12, 200) + [403, 500]:
+                elif ce.status in range(-12, 200) + [403, 302, 500]:
                     raiseCLIError(ce, importance=3, details=[
                         'Check if service is up or set to url %s' % base_url,
                         '  to get url: /config get %s' % base_url,
                         '  to set url: /config set %s <URL>' % base_url])
+                elif ce.status == 404\
+                and 'kamakihttpresponse' in ('%s' % ce).lower():
+                    client = getattr(self, 'client', None)
+                    if not client:
+                        raise
+                    url = getattr(client, 'base_url', '<empty>')
+                    raiseCLIError(ce,
+                        'Invalid service url %s' % url,
+                        details=[
+                        'Please, check if service url is correctly set',
+                        '* to get current url: /config get compute.url',
+                        '* to set url: /config set compute.url <URL>'])
                 raise
         return _raise
 
@@ -150,6 +162,11 @@ class cyclades(object):
         '* get a list of flavor ids: /flavor list',
         '* details of flavor: /flavor info <flavor id>']
 
+    about_network_id = [
+        'How to pick a valid network id:',
+        '* get a list of network ids: /network list',
+        '* details of network: /network info <network id>']
+
     @classmethod
     def connection(this, foo):
         return generic._connection(foo, 'compute.url')
@@ -168,6 +185,59 @@ class cyclades(object):
         return _raise
 
     @classmethod
+    def network_id(this, foo):
+        def _raise(self, *args, **kwargs):
+            network_id = kwargs.get('network_id', None)
+            try:
+                network_id = int(network_id)
+                return foo(self, *args, **kwargs)
+            except ValueError as ve:
+                raiseCLIError(ve, 'Invalid network id %s ' % network_id,
+                    details='network id must be a positive integer',
+                    importance=1)
+            except ClientError as ce:
+                if network_id and ce.status == 404 and\
+                    'network' in ('%s' % ce).lower():
+                        raiseCLIError(ce,
+                            'No network with id %s found' % network_id,
+                            details=this.about_network_id)
+                raise
+        return _raise
+
+    @classmethod
+    def network_max(this, foo):
+        def _raise(self, *args, **kwargs):
+            try:
+                return foo(self, *args, **kwargs)
+            except ClientError as ce:
+                if ce.status == 413:
+                    raiseCLIError(ce,
+                        'Cannot create another network',
+                        details=['Maximum number of networks reached',
+                            '* to get a list of networks: /network list',
+                            '* to delete a network: /network delete <net id>'])
+                raise
+        return _raise
+
+    @classmethod
+    def network_in_use(this, foo):
+        def _raise(self, *args, **kwargs):
+            network_id = kwargs.get('network_id', None)
+            try:
+                return foo(self, *args, **kwargs)
+            except ClientError as ce:
+                if network_id or ce.status == 421:
+                    raiseCLIError(ce,
+                        'Network with id %s is in use' % network_id,
+                        details=[
+                            'Disconnect all nics/VMs of this network first',
+                            '* to get nics: /network info %s' % network_id,
+                            '.  (under "attachments" section)',
+                            '* to disconnect: /network disconnect <nic id>'])
+                raise
+        return _raise
+
+    @classmethod
     def flavor_id(this, foo):
         def _raise(self, *args, **kwargs):
             flavor_id = kwargs.get('flavor_id', None)
@@ -180,7 +250,7 @@ class cyclades(object):
                     importance=1)
             except ClientError as ce:
                 if flavor_id and ce.status == 404 and\
-                    'flavor not found' in ('%s' % ce).lower():
+                    'flavor' in ('%s' % ce).lower():
                         raiseCLIError(ce,
                             'No flavor with id %s found' % flavor_id,
                             details=this.about_flavor_id)
@@ -188,7 +258,7 @@ class cyclades(object):
         return _raise
 
     @classmethod
-    def id(this, foo):
+    def server_id(this, foo):
         def _raise(self, *args, **kwargs):
             server_id = kwargs.get('server_id', None)
             try:
@@ -196,13 +266,87 @@ class cyclades(object):
                 return foo(self, *args, **kwargs)
             except ValueError as ve:
                 raiseCLIError(ve,
-                    'Invalid VM id %s' % server_id,
+                    'Invalid server(VM) id %s' % server_id,
                     details=['id must be a positive integer'],
                     importance=1)
             except ClientError as ce:
-                if ce.status == 404 or\
-                (ce.status == 400 and 'not found' in ('%s' % ce).lower()):
-                    raiseCLIError(ce, 'VM with id %s not found' % server_id)
+                err_msg = ('%s' % ce).lower()
+                if (ce.status == 404 and 'server' in err_msg)\
+                or (ce.status == 400 and 'not found' in err_msg):
+                    raiseCLIError(ce,
+                        'server(VM) with id %s not found' % server_id,
+                        details=[
+                            '* to get existing VM ids: /server list',
+                            '* to get VM details: /server info <VM id>'])
+                raise
+        return _raise
+
+    @classmethod
+    def firewall(this, foo):
+        def _raise(self, *args, **kwargs):
+            profile = kwargs.get('profile', None)
+            try:
+                return foo(self, *args, **kwargs)
+            except ClientError as ce:
+                if ce.status == 400 and profile\
+                and 'firewall' in ('%s' % ce).lower():
+                    raiseCLIError(ce,
+                        '%s is an invalid firewall profile term' % profile,
+                        details=['Try one of the following:',
+                            '* DISABLED: Shutdown firewall',
+                            '* ENABLED: Firewall in normal mode',
+                            '* PROTECTED: Firewall in secure mode'])
+                raise
+        return _raise
+
+    @classmethod
+    def nic_id(this, foo):
+        def _raise(self, *args, **kwargs):
+            try:
+                return foo(self, *args, **kwargs)
+            except ClientError as ce:
+                nic_id = kwargs.get('nic_id', None)
+                if nic_id and ce.status == 404\
+                and 'network interface' in ('%s' % ce).lower():
+                    server_id = kwargs.get('server_id', '<no server>')
+                    err_msg = 'No nic %s on server(VM) with id %s' % (
+                        nic_id,
+                        server_id)
+                    raiseCLIError(ce, err_msg, details=[
+                        '* check server(VM) with id %s: /server info %s' % (
+                            server_id,
+                            server_id),
+                        '* list nics for server(VM) with id %s:' % server_id,
+                        '      /server addr %s' % server_id])
+                raise
+        return _raise
+
+    @classmethod
+    def nic_format(this, foo):
+        def _raise(self, *args, **kwargs):
+            try:
+                return foo(self, *args, **kwargs)
+            except IndexError as ie:
+                nic_id = kwargs.get('nic_id', None)
+                raiseCLIError(ie,
+                    'Invalid format for network interface (nic) %s' % nic_id,
+                    importance=1,
+                    details=[
+                        'nid_id format: nic-<server id>-<nic id>',
+                        '* get nics of a network: /network info <net id>',
+                        '    (listed the "attachments" section)'])
+        return _raise
+
+    @classmethod
+    def metadata(this, foo):
+        def _raise(self, *args, **kwargs):
+            key = kwargs.get('key', None)
+            try:
+                foo(self, *args, **kwargs)
+            except ClientError as ce:
+                if key and ce.status == 404\
+                    and 'metadata' in ('%s' % ce).lower():
+                        raiseCLIError(ce, 'No VM metadata with key %s' % key)
                 raise
         return _raise
 
