@@ -696,75 +696,43 @@ class store_append(_store_container_command):
             default=False)
     )
 
-    def main(self, local_path, container___path):
-        super(self.__class__, self).main(
-            container___path,
-            path_is_optional=False)
-        progress_bar = self.arguments['progress_bar']
-        try:
-            upload_cb = progress_bar.get_generator('Appending blocks')
-        except Exception:
-            upload_cb = None
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self, local_path):
+        (progress_bar, upload_cb) = self._safe_progress_bar('Appending')
         try:
             f = open(local_path, 'rb')
             self.client.append_object(self.path, f, upload_cb)
-        except ClientError as err:
-            progress_bar.finish()
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=errors.pithos.container_howto)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=errors.pithos.container_howto)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            progress_bar.finish()
-            raiseCLIError(e)
+        except Exception:
+            self._safe_progress_bar_finish(progress_bar)
+            raise
         finally:
-            progress_bar.finish()
+            self._safe_progress_bar_finish(progress_bar)
+
+    def main(self, local_path, container___path):
+        super(self.__class__, self)._run(
+            container___path,
+            path_is_optional=False)
+        self._run(local_path)
 
 
 @command(pithos_cmds)
 class store_truncate(_store_container_command):
     """Truncate remote file up to a size (default is 0)"""
 
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    @errors.pithos.object_size
+    def _run(self, size=0):
+        self.client.truncate_object(self.path, size)
+
     def main(self, container___path, size=0):
-        super(self.__class__, self).main(container___path)
-        try:
-            self.client.truncate_object(self.path, size)
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=errors.pithos.container_howto)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=errors.pithos.container_howto)
-            if err.status == 400 and\
-                'object length is smaller than range length'\
-                in ('%s' % err).lower():
-                raiseCLIError(err, 'Object %s:%s <= %sb' % (
-                    self.container,
-                    self.path,
-                    size))
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            raiseCLIError(e)
+        super(self.__class__, self)._run(container___path)
+        self._run(size=size)
 
 
 @command(pithos_cmds)
@@ -784,58 +752,40 @@ class store_overwrite(_store_container_command):
             default=False)
     )
 
-    def main(self, local_path, container____path__, start, end):
-        (start, end) = check_range(start, end)
-        super(self.__class__, self).main(container____path__)
+    def _open_file(self, local_path, start):
+        f = open(path.abspath(local_path), 'rb')
+        f.seek(0, 2)
+        f_size = f.tell()
+        f.seek(start, 0)
+        return (f, f_size)
+
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    @errors.pithos.object_size
+    def _run(self, local_path, start, end):
+        (start, end) = (int(start), int(end))
+        (f, f_size) = self._open_file(local_path, start)
+        (progress_bar, upload_cb) = self._safe_progress_bar(
+            'Overwrite %s bytes' % (end - start))
         try:
-            f = open(local_path, 'rb')
-            f.seek(0, 2)
-            f_size = f.tell()
-            f.seek(start, 0)
-        except Exception as e:
-            raiseCLIError(e)
-        progress_bar = self.arguments['progress_bar']
-        try:
-            upload_cb = progress_bar.get_generator(
-                'Overwriting %s blocks' % end - start)
-        except Exception:
-            upload_cb = None
-        try:
-            self.path = self.path if self.path else path.basename(local_path)
             self.client.overwrite_object(
                 obj=self.path,
                 start=start,
                 end=end,
                 source_file=f,
                 upload_cb=upload_cb)
-        except ClientError as err:
-            progress_bar.finish()
-            if (err.status == 400 and\
-            'content length does not match range' in ('%s' % err).lower()) or\
-            err.status == 416:
-                raiseCLIError(err, details=[
-                    'Content size: %s' % f_size,
-                    'Range: %s-%s (size: %s)' % (start, end, end - start)])
-            elif err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=errors.pithos.container_howto)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=errors.pithos.container_howto)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            progress_bar.finish()
-            raiseCLIError(e)
+        except Exception:
+            self._safe_progress_bar_finish(progress_bar)
+            raise
         finally:
-            progress_bar.finish()
+            self._safe_progress_bar_finish(progress_bar)
+
+    def main(self, local_path, container____path__, start, end):
+        super(self.__class__, self)._run(container____path__)
+        self.path = self.path if self.path else path.basename(local_path)
+        self._run(local_path=local_path, start=start, end=end)
 
 
 @command(pithos_cmds)

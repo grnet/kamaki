@@ -908,8 +908,13 @@ class PithosClient(PithosRestAPI):
 
         :returns: (dict)
         """
-        r = self.object_head(obj, version=version)
-        return r.headers
+        try:
+            r = self.object_head(obj, version=version)
+            return r.headers
+        except ClientError as ce:
+            if ce.status == 404:
+                raise ClientError('Object not found', status=404)
+            raise
 
     def get_object_meta(self, obj, version=None):
         """
@@ -985,8 +990,9 @@ class PithosClient(PithosRestAPI):
         filesize = fstat(source_file.fileno()).st_size
         nblocks = 1 + (filesize - 1) // blocksize
         offset = 0
-        if upload_cb is not None:
+        if upload_cb:
             upload_gen = upload_cb(nblocks)
+            upload_gen.next()
         for i in range(nblocks):
             block = source_file.read(min(blocksize, filesize - offset))
             offset += len(block)
@@ -998,7 +1004,7 @@ class PithosClient(PithosRestAPI):
                 data=block)
             r.release()
 
-            if upload_cb is not None:
+            if upload_cb:
                 upload_gen.next()
 
     def truncate_object(self, obj, upto_bytes):
@@ -1034,6 +1040,16 @@ class PithosClient(PithosRestAPI):
         :param upload_db: progress.bar for uploading
         """
 
+        r = self.get_object_info(obj)
+        rf_size = int(r['content-length'])
+        if rf_size < int(start):
+            raise ClientError(
+                'Range start exceeds file size',
+                status=416)
+        elif rf_size < int(end):
+            raise ClientError(
+                'Range end exceeds file size',
+                status=416)
         self._assert_container()
         meta = self.get_container_info()
         blocksize = int(meta['x-container-block-size'])
@@ -1041,22 +1057,25 @@ class PithosClient(PithosRestAPI):
         datasize = int(end) - int(start) + 1
         nblocks = 1 + (datasize - 1) // blocksize
         offset = 0
-        if upload_cb is not None:
+        if upload_cb:
             upload_gen = upload_cb(nblocks)
+            upload_gen.next()
         for i in range(nblocks):
             block = source_file.read(min(blocksize,
                 filesize - offset,
                 datasize - offset))
-            offset += len(block)
             r = self.object_post(obj,
                 update=True,
                 content_type='application/octet-stream',
                 content_length=len(block),
-                content_range='bytes %s-%s/*' % (start, end),
+                content_range='bytes %s-%s/*' % (
+                    start + offset,
+                    start + offset + len(block) - 1),
                 data=block)
+            offset += len(block)
             r.release()
 
-            if upload_cb is not None:
+            if upload_cb:
                 upload_gen.next()
 
     def copy_object(self, src_container, src_object, dst_container,

@@ -44,6 +44,10 @@ from argparse import RawDescriptionHelpFormatter
 try:
     from progress.bar import ShadyBar as KamakiProgressBar
 except ImportError:
+    try:
+        from progress.bar import Bar as KamakiProgressBar
+    except ImportError:
+        pass
     # progress not installed - pls, pip install progress
     pass
 

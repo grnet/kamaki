@@ -37,6 +37,7 @@ import logging
 from kamaki.clients import ClientError
 from kamaki.cli.errors import CLIError, raiseCLIError, CLISyntaxError
 from kamaki.cli import _debug, kloger
+from kamaki.cli.utils import format_size
 
 sendlog = logging.getLogger('clients.send')
 datasendlog = logging.getLogger('data.send')
@@ -398,7 +399,8 @@ class pithos(object):
     '  1. Set store.container variable (permanent)',
     '     /config set store.container <container>',
     '  2. --container=<container> (temporary, overrides 1)',
-    '  3. Use the container:path format (temporary, overrides all)']
+    '  3. Use the container:path format (temporary, overrides all)',
+    'For a list of containers: /store list']
 
     @classmethod
     def connection(this, foo):
@@ -429,9 +431,10 @@ class pithos(object):
                 return foo(self, *args, **kwargs)
             except ClientError as ce:
                 if ce.status == 404 and 'container' in ('%s' % ce).lower():
-                        cont = '%s or %s' if dst_cont else self.container
+                        cont = '%s or %s' % (self.container, dst_cont)\
+                        if dst_cont else self.container
                         raiseCLIError(ce,
-                            'No container %s in account %s' % (
+                            'Is container %s in account %s ?' % (
                                 cont,
                                 self.account),
                             details=this.container_howto)
@@ -450,5 +453,56 @@ class pithos(object):
                         'No object %s in %s\'s container %s'\
                         % (self.path, self.account, self.container),
                         details=this.container_howto)
+                raise
+        return _raise
+
+    @classmethod
+    def object_size(this, foo):
+        def _raise(self, *args, **kwargs):
+            size = kwargs.get('size', None)
+            start = kwargs.get('start', 0)
+            end = kwargs.get('end', 0)
+            if size:
+                try:
+                    size = int(size)
+                except ValueError as ve:
+                    raiseCLIError(ve,
+                        'Invalid file size %s ' % size,
+                        details=['size must be a positive integer'],
+                        importance=1)
+            else:
+                try:
+                    start = int(start)
+                except ValueError as e:
+                    raiseCLIError(e,
+                        'Invalid start value %s in range' % start,
+                        details=['size must be a positive integer'],
+                        importance=1)
+                try:
+                    end = int(end)
+                except ValueError as e:
+                    raiseCLIError(e,
+                        'Invalid end value %s in range' % end,
+                        details=['size must be a positive integer'],
+                        importance=1)
+                if start > end:
+                    raiseCLIError(
+                        'Invalid range %s-%s' % (start, end),
+                        details=['size must be a positive integer'],
+                        importance=1)
+                size = end - start
+            try:
+                return foo(self, *args, **kwargs)
+            except ClientError as ce:
+                err_msg = ('%s' % ce).lower()
+                if size and (ce.status == 416 or
+                (ce.status == 400 and\
+                    'object length is smaller than range length' in err_msg)):
+                    raiseCLIError(ce,
+                        'Remote object %s:%s <= %s %s' % (
+                            self.container,
+                            self.path,
+                            format_size(size),
+                            ('(%sB)' % size) if size >= 1024 else ''))
                 raise
         return _raise

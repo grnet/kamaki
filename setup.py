@@ -34,7 +34,7 @@
 # or implied, of GRNET S.A.
 
 from setuptools import setup
-#from sys import version_info
+from sys import version_info
 import collections
 
 import kamaki
@@ -42,8 +42,10 @@ import kamaki
 
 optional = ['ansicolors',
             'progress>=1.0.2']
-requires = ['objpool',
-            'argparse']
+requires = ['objpool']
+
+if version_info[:1] == (2, 6):
+    requires.append('argparse')
 
 if not hasattr(collections, "OrderedDict"):  # Python 2.6
     requires.append("ordereddict")
