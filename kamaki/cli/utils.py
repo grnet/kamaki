@@ -245,8 +245,6 @@ def print_items(items,
             else:
                 header = ' '.join(unicode(item.pop(key)) for key in title)
             print(bold(header))
-        else:
-            print('- - -')
         if isinstance(item, dict):
             print_dict(item, ident=1)
         elif isinstance(item, list):

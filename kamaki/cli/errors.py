@@ -114,7 +114,7 @@ def raiseCLIError(err, message='', importance=0, details=[]):
     message = unicode(message) if message else unicode(origerr)
 
     try:
-        status = err.status
+        status = err.status or err.errno
     except AttributeError:
         status = None
 
@@ -128,6 +128,6 @@ def raiseCLIError(err, message='', importance=0, details=[]):
             status = int(err.status)
         except ValueError:
             raise CLIError(message, details, importance)
-        importance = status // 100
+        importance = importance if importance else status // 100
     importance = getattr(err, 'importance', importance)
     raise CLIError(message, details, importance)

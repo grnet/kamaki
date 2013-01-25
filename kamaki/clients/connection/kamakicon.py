@@ -168,7 +168,12 @@ class KamakiHTTPConnection(HTTPConnection):
             http_headers[str(k)] = str(v)
 
         #get connection from pool
-        conn = get_http_connection(netloc=netloc, scheme=scheme)
+        try:
+            conn = get_http_connection(netloc=netloc, scheme=scheme)
+        except ValueError as ve:
+            raise HTTPConnectionError(
+                'Cannot establish connection to %s %s' % (self.url, ve),
+                errno=-1)
         try:
             #Be carefull, all non-body variables should not be unicode
             conn.request(method=str(method.upper()),
