@@ -460,7 +460,8 @@ class pithos(object):
                 return foo(self, *args, **kwargs)
             except ClientError as ce:
                 err_msg = ('%s' % ce).lower()
-                if ce.status == 404 and 'object does not' in err_msg:
+                if (ce.status == 404 or ce.status == 500)\
+                and 'object' in err_msg and 'not' in err_msg:
                     raiseCLIError(ce,
                         'No object %s in %s\'s container %s'\
                         % (self.path, self.account, self.container),

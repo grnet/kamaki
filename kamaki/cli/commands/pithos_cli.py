@@ -43,15 +43,16 @@ from kamaki.cli.utils import (
     format_size,
     to_bytes,
     print_dict,
+    print_items,
     pretty_keys,
     page_hold,
+    bold,
     ask_user)
 from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
 from kamaki.cli.argument import KeyValueArgument, DateArgument
 from kamaki.cli.argument import ProgressBarArgument
 from kamaki.cli.commands import _command_init, errors
 from kamaki.clients.pithos import PithosClient, ClientError
-from kamaki.cli.utils import bold
 
 
 kloger = getLogger('kamaki')
@@ -1087,37 +1088,25 @@ class store_hashmap(_store_container_command):
             '--object-version')
     )
 
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self):
+        data = self.client.get_object_hashmap(
+            self.path,
+            version=self['object_version'],
+            if_match=self['if_match'],
+            if_none_match=self['if_none_match'],
+            if_modified_since=self['if_modified_since'],
+            if_unmodified_since=self['if_unmodified_since'])
+        print_dict(data)
+
     def main(self, container___path):
-        super(self.__class__, self).main(
+        super(self.__class__, self)._run(
             container___path,
             path_is_optional=False)
-        try:
-            data = self.client.get_object_hashmap(
-                self.path,
-                version=self['object_version'],
-                if_match=self['if_match'],
-                if_none_match=self['if_none_match'],
-                if_modified_since=self['if_modified_since'],
-                if_unmodified_since=self['if_unmodified_since'])
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=errors.pithos.container_howto)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=errors.pithos.container_howto)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            raiseCLIError(e)
-        print_dict(data)
+        self._run()
 
 
 @command(pithos_cmds)
@@ -1154,40 +1143,33 @@ class store_delete(_store_container_command):
             parsed_name='--delimiter',
             help='delete objects prefixed with <object><delimiter>')
 
-    def main(self, container____path__):
-        super(self.__class__, self).main(container____path__)
-        try:
-            if (not self.path):
-                if self['yes'] or ask_user(
-                    'Delete container %s ?' % self.container):
-                    self.client.del_container(
-                        until=self['until'],
-                        delimiter=self['delimiter'])
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self):
+        if self.path:
+            if self['yes'] or ask_user(
+                'Delete %s:%s ?' % (self.container, self.path)):
+                self.client.del_object(
+                    self.path,
+                    until=self['until'],
+                    delimiter=self['delimiter'])
             else:
-                if self['yes'] or ask_user(
-                    'Delete %s:%s ?' % (self.container, self.path)):
-                    self.client.del_object(
-                        self.path,
-                        until=self['until'],
-                        delimiter=self['delimiter'])
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=errors.pithos.container_howto)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=errors.pithos.container_howto)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            raiseCLIError(e)
+                print('Aborted')
+        else:
+            ask_msg = 'Delete contents of container'\
+            if self['recursive'] else 'Delete container'
+            if self['yes'] or ask_user('%s %s ?' % (ask_msg, self.container)):
+                self.client.del_container(
+                    until=self['until'],
+                    delimiter=self['delimiter'])
+            else:
+                print('Aborted')
+
+    def main(self, container____path__):
+        super(self.__class__, self)._run(container____path__)
+        self._run()
 
 
 @command(pithos_cmds)
@@ -1205,85 +1187,55 @@ class store_purge(_store_container_command):
         yes=FlagArgument('Do not prompt for permission', '--yes'),
     )
 
-    def main(self, container):
-        super(self.__class__, self).main(container)
-        try:
-            if self['yes'] or ask_user(
-                'Purge container %s?' % self.container):
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    def _run(self):
+        if self['yes'] or ask_user('Purge container %s?' % self.container):
                 self.client.purge_container()
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=errors.pithos.container_howto)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            raiseCLIError(e)
+        else:
+            print('Aborted')
+
+    def main(self, container):
+        super(self.__class__, self)._run(container)
+        self._run()
 
 
 @command(pithos_cmds)
 class store_publish(_store_container_command):
     """Publish the object and print the public url"""
 
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self):
+        url = self.client.publish_object(self.path)
+        print(url)
+
     def main(self, container___path):
-        super(self.__class__, self).main(
+        super(self.__class__, self)._run(
             container___path,
             path_is_optional=False)
-        try:
-            url = self.client.publish_object(self.path)
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=errors.pithos.container_howto)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=errors.pithos.container_howto)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            raiseCLIError(e)
-        print(url)
+        self._run()
 
 
 @command(pithos_cmds)
 class store_unpublish(_store_container_command):
     """Unpublish an object"""
 
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self):
+            self.client.unpublish_object(self.path)
+
     def main(self, container___path):
-        super(self.__class__, self).main(
+        super(self.__class__, self)._run(
             container___path,
             path_is_optional=False)
-        try:
-            self.client.unpublish_object(self.path)
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=errors.pithos.container_howto)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=errors.pithos.container_howto)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            raiseCLIError(e)
+        self._run()
 
 
 @command(pithos_cmds)
@@ -1294,31 +1246,19 @@ class store_permissions(_store_container_command):
     permission.
     """
 
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self):
+        r = self.client.get_object_sharing(self.path)
+        print_dict(r)
+
     def main(self, container___path):
-        super(self.__class__, self).main(
+        super(self.__class__, self)._run(
             container___path,
             path_is_optional=False)
-        try:
-            reply = self.client.get_object_sharing(self.path)
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=errors.pithos.container_howto)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=errors.pithos.container_howto)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            raiseCLIError(e)
-        print_dict(reply)
+        self._run()
 
 
 @command(pithos_cmds)
@@ -1332,6 +1272,7 @@ class store_setpermissions(_store_container_command):
     .       /store setpermissions F read=A,B write=C
     """
 
+    @errors.generic.all
     def format_permition_dict(self, permissions):
         read = False
         write = False
@@ -1351,31 +1292,22 @@ class store_setpermissions(_store_container_command):
             'Usage:\tread=<groups,users> write=<groups,users>')
         return (read, write)
 
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self, read, write):
+        self.client.set_object_sharing(
+            self.path,
+            read_permition=read,
+            write_permition=write)
+
     def main(self, container___path, *permissions):
-        super(self.__class__,
-            self).main(container___path, path_is_optional=False)
+        super(self.__class__, self)._run(
+            container___path,
+            path_is_optional=False)
         (read, write) = self.format_permition_dict(permissions)
-        try:
-            self.client.set_object_sharing(self.path,
-                read_permition=read, write_permition=write)
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=errors.pithos.container_howto)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=errors.pithos.container_howto)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            raiseCLIError(e)
+        self._run(read, write)
 
 
 @command(pithos_cmds)
@@ -1384,29 +1316,18 @@ class store_delpermissions(_store_container_command):
     To modify permissions, use /store setpermssions
     """
 
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self):
+        self.client.del_object_sharing(self.path)
+
     def main(self, container___path):
-        super(self.__class__,
-            self).main(container___path, path_is_optional=False)
-        try:
-            self.client.del_object_sharing(self.path)
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=errors.pithos.container_howto)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=errors.pithos.container_howto)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            raiseCLIError(e)
+        super(self.__class__, self)._run(
+            container___path,
+            path_is_optional=False)
+        self._run()
 
 
 @command(pithos_cmds)
@@ -1423,36 +1344,24 @@ class store_info(_store_container_command):
             '--object-version')
     )
 
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self):
+        if self.container is None:
+            r = self.client.get_account_info()
+        elif self.path is None:
+            r = self.client.get_container_info(self.container)
+        else:
+            r = self.client.get_object_info(
+                self.path,
+                version=self['object_version'])
+        print_dict(r)
+
     def main(self, container____path__=None):
-        super(self.__class__, self).main(container____path__)
-        try:
-            if self.container is None:
-                reply = self.client.get_account_info()
-            elif self.path is None:
-                reply = self.client.get_container_info(self.container)
-            else:
-                reply = self.client.get_object_info(
-                    self.path,
-                    version=self['object_version'])
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=errors.pithos.container_howto)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=errors.pithos.container_howto)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            raiseCLIError(e)
-        print_dict(reply)
+        super(self.__class__, self)._run(container____path__)
+        self._run()
 
 
 @command(pithos_cmds)
@@ -1467,62 +1376,46 @@ class store_meta(_store_container_command):
             '--object-version')
     )
 
-    def main(self, container____path__=None):
-        super(self.__class__, self).main(container____path__)
-
-        detail = self['detail']
-        try:
-            until = self['until']
-            if self.container is None:
-                if detail:
-                    reply = self.client.get_account_info(until=until)
-                else:
-                    reply = self.client.get_account_meta(until=until)
-                    reply = pretty_keys(reply, '-')
-                if reply:
-                    print(bold(self.client.account))
-            elif self.path is None:
-                if detail:
-                    reply = self.client.get_container_info(until=until)
-                else:
-                    cmeta = self.client.get_container_meta(until=until)
-                    ometa = self.client.get_container_object_meta(until=until)
-                    reply = {}
-                    if cmeta:
-                        reply['container-meta'] = pretty_keys(cmeta, '-')
-                    if ometa:
-                        reply['object-meta'] = pretty_keys(ometa, '-')
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self):
+        until = self['until']
+        if self.container is None:
+            if self['detail']:
+                r = self.client.get_account_info(until=until)
             else:
-                if detail:
-                    reply = self.client.get_object_info(self.path,
-                        version=self['object_version'])
-                else:
-                    reply = self.client.get_object_meta(self.path,
-                        version=self['object_version'])
-                if reply:
-                    reply = pretty_keys(pretty_keys(reply, '-'))
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=errors.pithos.container_howto)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=errors.pithos.container_howto)
-                else:
-                    raiseCLIError(err, details=errors.pithos.container_howto)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            raiseCLIError(e)
-        if reply:
-            print_dict(reply)
+                r = self.client.get_account_meta(until=until)
+                r = pretty_keys(r, '-')
+            if r:
+                print(bold(self.client.account))
+        elif self.path is None:
+            if self['detail']:
+                r = self.client.get_container_info(until=until)
+            else:
+                cmeta = self.client.get_container_meta(until=until)
+                ometa = self.client.get_container_object_meta(until=until)
+                r = {}
+                if cmeta:
+                    r['container-meta'] = pretty_keys(cmeta, '-')
+                if ometa:
+                    r['object-meta'] = pretty_keys(ometa, '-')
+        else:
+            if self['detail']:
+                r = self.client.get_object_info(self.path,
+                    version=self['object_version'])
+            else:
+                r = self.client.get_object_meta(self.path,
+                    version=self['object_version'])
+            if r:
+                r = pretty_keys(pretty_keys(r, '-'))
+        if r:
+            print_dict(r)
+
+    def main(self, container____path__=None):
+        super(self.__class__, self)._run(container____path__)
+        self._run()
 
 
 @command(pithos_cmds)
@@ -1531,45 +1424,21 @@ class store_setmeta(_store_container_command):
     Metadata are formed as key:value pairs
     """
 
-    def main(self, metakey___metaval, container____path__=None):
-        super(self.__class__, self).main(container____path__)
-        try:
-            metakey, metavalue = metakey___metaval.split(':')
-        except ValueError as err:
-            raiseCLIError(err,
-                'Cannot parse %s as a key:value pair' % metakey___metaval,
-                details=['Syntax:',
-                    '   store setmeta metakey:metavalue [cont[:path]]'
-                ],
-                importance=1,
-                )
-        try:
-            if self.container is None:
-                self.client.set_account_meta({metakey: metavalue})
-            elif self.path is None:
-                self.client.set_container_meta({metakey: metavalue})
-            else:
-                self.client.set_object_meta(self.path, {metakey: metavalue})
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=errors.pithos.container_howto)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=errors.pithos.container_howto)
-                else:
-                    raiseCLIError(err, details=errors.pithos.container_howto)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as err:
-            raiseCLIError(err)
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self, metakey, metaval):
+        if not self.container:
+            self.client.set_account_meta({metakey: metaval})
+        elif not self.path:
+            self.client.set_container_meta({metakey: metaval})
+        else:
+            self.client.set_object_meta(self.path, {metakey: metaval})
+
+    def main(self, metakey, metaval, container____path__=None):
+        super(self.__class__, self)._run(container____path__)
+        self._run(metakey=metakey, metaval=metaval)
 
 
 @command(pithos_cmds)
@@ -1581,35 +1450,21 @@ class store_delmeta(_store_container_command):
     - to get metadata of an object:           /store meta <container>:<path>
     """
 
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self, metakey):
+        if self.container is None:
+            self.client.del_account_meta(metakey)
+        elif self.path is None:
+            self.client.del_container_meta(metakey)
+        else:
+            self.client.del_object_meta(self.path, metakey)
+
     def main(self, metakey, container____path__=None):
-        super(self.__class__, self).main(container____path__)
-        try:
-            if self.container is None:
-                self.client.del_account_meta(metakey)
-            elif self.path is None:
-                self.client.del_container_meta(metakey)
-            else:
-                self.client.del_object_meta(self.path, metakey)
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=errors.pithos.container_howto)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=errors.pithos.container_howto)
-                else:
-                    raiseCLIError(err, details=errors.pithos.container_howto)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as err:
-            raiseCLIError(err)
+        super(self.__class__, self)._run(container____path__)
+        self._run(metakey)
 
 
 @command(pithos_cmds)
@@ -1620,27 +1475,23 @@ class store_quota(_store_account_command):
         in_bytes=FlagArgument('Show result in bytes', ('-b', '--bytes'))
         )
 
-    def main(self, container=None):
-        super(self.__class__, self).main()
-        try:
-            if container is None:
-                reply = self.client.get_account_quota()
-            else:
-                reply = self.client.get_container_quota(container)
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(err,
-                        'No container %s in account %s'\
-                        % (container, self.account))
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as err:
-            raiseCLIError(err)
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    def _run(self):
+        if self.container is None:
+            reply = self.client.get_account_quota()
+        else:
+            reply = self.client.get_container_quota(self.container)
         if not self['in_bytes']:
             for k in reply:
                 reply[k] = format_size(reply[k])
         print_dict(pretty_keys(reply, '-'))
+
+    def main(self, container=None):
+        super(self.__class__, self)._run()
+        self.container = container
+        self._run()
 
 
 @command(pithos_cmds)
@@ -1652,6 +1503,7 @@ class store_setquota(_store_account_command):
     Accepted units: B, KiB (1024 B), KB (1000 B), MiB, MB, GiB, GB, TiB, TB
     """
 
+    @errors.generic.all
     def _calculate_quota(self, user_input):
         quota = 0
         try:
@@ -1668,134 +1520,120 @@ class store_setquota(_store_account_command):
             except Exception as qe:
                 raiseCLIError(qe,
                     'Failed to convert %s to bytes' % user_input,
-                    details=['Syntax: setquota <quota>[format] [container]',
+                    details=[
+                        'Syntax: setquota <quota>[format] [container]',
                         'e.g.: setquota 2.3GB mycontainer',
                         'Acceptable formats:',
                         '(*1024): B, KiB, MiB, GiB, TiB',
                         '(*1000): B, KB, MB, GB, TB'])
         return quota
 
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    def _run(self, quota):
+        if self.container:
+            self.client.container = self.container
+            self.client.set_container_quota(quota)
+        else:
+            self.client.set_account_quota(quota)
+
     def main(self, quota, container=None):
-        super(self.__class__, self).main()
+        super(self.__class__, self)._run()
         quota = self._calculate_quota(quota)
-        try:
-            if container is None:
-                self.client.set_account_quota(quota)
-            else:
-                self.client.container = container
-                self.client.set_container_quota(quota)
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(err,
-                        'No container %s in account %s'\
-                        % (container, self.account))
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as err:
-            raiseCLIError(err)
+        self.container = container
+        self._run(quota)
 
 
 @command(pithos_cmds)
 class store_versioning(_store_account_command):
     """Get  versioning for account or container"""
 
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    def _run(self):
+        if self.container is None:
+            r = self.client.get_account_versioning()
+        else:
+            r = self.client.get_container_versioning(self.container)
+        print_dict(r)
+
     def main(self, container=None):
-        super(self.__class__, self).main()
-        try:
-            if container is None:
-                reply = self.client.get_account_versioning()
-            else:
-                reply = self.client.get_container_versioning(container)
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=errors.pithos.container_howto)
-                else:
-                    raiseCLIError(err, details=errors.pithos.container_howto)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as err:
-            raiseCLIError(err)
-        print_dict(reply)
+        super(self.__class__, self)._run()
+        self.container = container
+        self._run()
 
 
 @command(pithos_cmds)
 class store_setversioning(_store_account_command):
     """Set versioning mode (auto, none) for account or container"""
 
+    def _check_versioning(self, versioning):
+        if versioning and versioning.lower() in ('auto', 'none'):
+            return versioning.lower()
+        raiseCLIError('Invalid versioning %s' % versioning, details=[
+            'Versioning can be auto or none'])
+
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    def _run(self, versioning):
+        if self.container is None:
+            self.client.set_account_versioning(versioning)
+        else:
+            self.client.container = self.container
+            self.client.set_container_versioning(versioning)
+
     def main(self, versioning, container=None):
-        super(self.__class__, self).main()
-        try:
-            if container is None:
-                self.client.set_account_versioning(versioning)
-            else:
-                self.client.container = container
-                self.client.set_container_versioning(versioning)
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=errors.pithos.container_howto)
-                else:
-                    raiseCLIError(err, details=errors.pithos.container_howto)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as err:
-            raiseCLIError(err)
+        super(self.__class__, self)._run()
+        self._run(self._check_versioning(versioning))
 
 
 @command(pithos_cmds)
 class store_group(_store_account_command):
     """Get groups and group members"""
 
+    @errors.generic.all
+    @errors.pithos.connection
+    def _run(self):
+        r = self.client.get_account_group()
+        print_dict(pretty_keys(r, '-'))
+
     def main(self):
-        super(self.__class__, self).main()
-        try:
-            reply = self.client.get_account_group()
-        except ClientError as err:
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as err:
-            raiseCLIError(err)
-        print_dict(pretty_keys(reply, '-'))
+        super(self.__class__, self)._run()
+        self._run()
 
 
 @command(pithos_cmds)
 class store_setgroup(_store_account_command):
     """Set a user group"""
 
+    @errors.generic.all
+    @errors.pithos.connection
+    def _run(self, groupname, *users):
+        self.client.set_account_group(groupname, users)
+
     def main(self, groupname, *users):
-        super(self.__class__, self).main()
-        try:
-            self.client.set_account_group(groupname, users)
-        except ClientError as err:
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as err:
-            raiseCLIError(err)
+        super(self.__class__, self)._run()
+        if users:
+            self._run(groupname, *users)
+        else:
+            raiseCLIError('No users to add in group %s' % groupname)
 
 
 @command(pithos_cmds)
 class store_delgroup(_store_account_command):
     """Delete a user group"""
 
+    @errors.generic.all
+    @errors.pithos.connection
+    def _run(self, groupname):
+        self.client.del_account_group(groupname)
+
     def main(self, groupname):
-        super(self.__class__, self).main()
-        try:
-            self.client.del_account_group(groupname)
-        except ClientError as err:
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as err:
-            raiseCLIError(err)
+        super(self.__class__, self)._run()
+        self._run(groupname)
 
 
 @command(pithos_cmds)
@@ -1807,23 +1645,16 @@ class store_sharers(_store_account_command):
         marker=ValueArgument('show output greater then marker', '--marker')
     )
 
-    def main(self):
-        super(self.__class__, self).main()
-        try:
-            marker = self['marker']
-            accounts = self.client.get_sharing_accounts(marker=marker)
-        except ClientError as err:
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as err:
-            raiseCLIError(err)
+    @errors.generic.all
+    @errors.pithos.connection
+    def _run(self):
+        accounts = self.client.get_sharing_accounts(marker=self['marker'])
+        print_items(accounts if self['detail']\
+        else [acc['name'] for acc in accounts])
 
-        for acc in accounts:
-            stdout.write(bold(acc['name']) + ' ')
-            if self['detail']:
-                print_dict(acc, exclude='name')
-        if not self['detail']:
-            print
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
 
 
 @command(pithos_cmds)
@@ -1836,32 +1667,23 @@ class store_versions(_store_container_command):
     /store info -h
     """
 
-    def main(self, container___path):
-        super(store_versions, self).main(container___path)
-        try:
-            versions = self.client.get_object_versionlist(self.path)
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self):
+        versions = self.client.get_object_versionlist(self.path)
+        print_items([dict(
+            id=vitem[0],
+            created=strftime('%d-%m-%Y %H:%M:%S', localtime(float(vitem[1])))
+            ) for vitem in versions])
+        #:
+        #t = localtime(float(vitem[1]))
+        #vid = bold(unicode(vitem[0]))
+        #print('\t%s \t(%s)' % (vid, strftime('%d-%m-%Y %H:%M:%S', t)))
 
-            for vitem in versions:
-                t = localtime(float(vitem[1]))
-                vid = bold(unicode(vitem[0]))
-                print('\t%s \t(%s)' % (vid, strftime('%d-%m-%Y %H:%M:%S', t)))
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=errors.pithos.container_howto)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=errors.pithos.container_howto)
-                else:
-                    raiseCLIError(err, details=errors.pithos.container_howto)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as err:
-            raiseCLIError(err)
+    def main(self, container___path):
+        super(store_versions, self)._run(
+            container___path,
+            path_is_optional=False)
+        self._run()
