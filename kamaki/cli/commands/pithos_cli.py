@@ -820,35 +820,24 @@ class store_manifest(_store_container_command):
         public=FlagArgument('make object publicly accessible', '--public')
     )
 
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self):
+        self.client.create_object_by_manifestation(
+            self.path,
+            content_encoding=self['content_encoding'],
+            content_disposition=self['content_disposition'],
+            content_type=self['content_type'],
+            sharing=self['sharing'],
+            public=self['public'])
+
     def main(self, container___path):
-        super(self.__class__,
-            self).main(container___path, path_is_optional=False)
-        try:
-            self.client.create_object_by_manifestation(
-                self.path,
-                content_encoding=self['content_encoding'],
-                content_disposition=self['content_disposition'],
-                content_type=self['content_type'],
-                sharing=self['sharing'],
-                public=self['public'])
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=errors.pithos.container_howto)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=errors.pithos.container_howto)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            raiseCLIError(e)
+        super(self.__class__, self)._run(
+            container___path,
+            path_is_optional=False)
+        self.run()
 
 
 @command(pithos_cmds)
@@ -899,9 +888,12 @@ class store_upload(_store_container_command):
             importance=1,
             details=['use -f to overwrite or resume'])
 
-    def main(self, local_path, container____path__=None):
-        super(self.__class__, self).main(container____path__)
-        remote_path = self.path if self.path else path.basename(local_path)
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    @errors.pithos.local_path
+    def _run(self, local_path, remote_path):
         poolsize = self['poolsize']
         if poolsize > 0:
             self.client.POOL_SIZE = int(poolsize)
@@ -911,65 +903,42 @@ class store_upload(_store_container_command):
             content_disposition=self['content_disposition'],
             sharing=self['sharing'],
             public=self['public'])
-        try:
-            progress_bar = self.arguments['progress_bar']
-            hash_bar = progress_bar.clone()
-            remote_path = self._remote_path(remote_path, local_path)
-            with open(path.abspath(local_path), 'rb') as f:
-                if self['unchunked']:
-                    self.client.upload_object_unchunked(
-                        remote_path,
-                        f,
-                        etag=self['etag'],
-                        withHashFile=self['use_hashes'],
-                        **params)
-                else:
-                    hash_cb = hash_bar.get_generator(
-                        'Calculating block hashes')
-                    upload_cb = progress_bar.get_generator('Uploading')
+        remote_path = self._remote_path(remote_path, local_path)
+        with open(path.abspath(local_path), 'rb') as f:
+            if self['unchunked']:
+                self.client.upload_object_unchunked(
+                    remote_path,
+                    f,
+                    etag=self['etag'],
+                    withHashFile=self['use_hashes'],
+                    **params)
+            else:
+                try:
+                    (progress_bar, upload_cb) = self._safe_progress_bar(
+                        'Uploading')
+                    if progress_bar:
+                        hash_bar = progress_bar.clone()
+                        hash_cb = hash_bar.get_generator(
+                                    'Calculating block hashes')
+                    else:
+                        hash_cb = None
                     self.client.upload_object(
                         remote_path,
                         f,
                         hash_cb=hash_cb,
                         upload_cb=upload_cb,
                         **params)
-                    progress_bar.finish()
-                    hash_bar.finish()
-        except ClientError as err:
-            try:
-                progress_bar.finish()
-                hash_bar.finish()
-            except Exception:
-                pass
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=[errors.pithos.container_howto])
-            elif err.status == 800:
-                raiseCLIError(err, details=[
-                    'Possible cause: temporary server failure',
-                    'Try to re-upload the file',
-                    'For more error details, try kamaki store upload -d'])
-            raise_connection_errors(err)
-            raiseCLIError(err, 'Failed to upload to %s' % container____path__)
-        except IOError as err:
-            try:
-                progress_bar.finish()
-                hash_bar.finish()
-            except Exception:
-                pass
-            raiseCLIError(err, 'Failed to read form file %s' % local_path, 2)
-        except Exception as e:
-            try:
-                progress_bar.finish()
-                hash_bar.finish()
-            except Exception:
-                pass
-            raiseCLIError(e)
+                except Exception:
+                    self._safe_progress_bar_finish(progress_bar)
+                    raise
+                finally:
+                    self._safe_progress_bar_finish(progress_bar)
         print 'Upload completed'
+
+    def main(self, local_path, container____path__=None):
+        super(self.__class__, self)._run(container____path__)
+        remote_path = self.path if self.path else path.basename(local_path)
+        self._run(local_path=local_path, remote_path=remote_path)
 
 
 @command(pithos_cmds)
@@ -993,36 +962,26 @@ class store_cat(_store_container_command):
             '--object-version')
     )
 
-    def main(self, container___path):
-        super(self.__class__, self).main(
-            container___path,
-            path_is_optional=False)
-        try:
-            self.client.download_object(self.path, stdout,
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self):
+        self.client.download_object(
+            self.path,
+            stdout,
             range=self['range'],
             version=self['object_version'],
             if_match=self['if_match'],
             if_none_match=self['if_none_match'],
             if_modified_since=self['if_modified_since'],
             if_unmodified_since=self['if_unmodified_since'])
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=errors.pithos.container_howto)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=errors.pithos.container_howto)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            raiseCLIError(e)
+
+    def main(self, container___path):
+        super(self.__class__, self)._run(
+            container___path,
+            path_is_optional=False)
+        self._run()
 
 
 @command(pithos_cmds)
@@ -1055,26 +1014,22 @@ class store_download(_store_container_command):
     def _output_stream(self, local_path):
         if local_path is None:
             return stdout
-        try:
-            return open(
-                path.abspath(local_path),
-                'rwb+' if self['resume'] else 'wb+')
-        except IOError as err:
-            raiseCLIError(err, 'Cannot write to file %s' % local_path, 1)
+        return open(
+            path.abspath(local_path), 'rwb+' if self['resume'] else 'wb+')
 
-    def main(self, container___path, local_path=None):
-        super(self.__class__, self).main(
-            container___path,
-            path_is_optional=False)
-
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    @errors.pithos.local_path
+    def _run(self, local_path):
         out = self._output_stream(local_path)
         poolsize = self['poolsize']
-        if poolsize is not None:
+        if poolsize:
             self.client.POOL_SIZE = int(poolsize)
-
         try:
-            progress_bar = self.arguments['progress_bar']
-            download_cb = progress_bar.get_generator('Downloading')
+            (progress_bar, download_cb) = self._safe_progress_bar(
+                'Downloading')
             self.client.download_object(
                 self.path,
                 out,
@@ -1086,30 +1041,6 @@ class store_download(_store_container_command):
                 if_none_match=self['if_none_match'],
                 if_modified_since=self['if_modified_since'],
                 if_unmodified_since=self['if_unmodified_since'])
-            progress_bar.finish()
-        except ClientError as err:
-            progress_bar.finish()
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=errors.pithos.container_howto)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=errors.pithos.container_howto)
-            raise_connection_errors(err)
-            raiseCLIError(err, '"%s" not accessible' % container___path)
-        except IOError as err:
-            try:
-                progress_bar.finish()
-            except Exception:
-                pass
-            raiseCLIError(err, 'Failed to write on file %s' % local_path, 2)
         except KeyboardInterrupt:
             from threading import enumerate as activethreads
             stdout.write('\nFinishing active threads ')
@@ -1120,20 +1051,20 @@ class store_download(_store_container_command):
                     stdout.write('.')
                 except RuntimeError:
                     continue
-            try:
-                progress_bar.finish()
-            except Exception:
-                pass
             print('\ndownload canceled by user')
             if local_path is not None:
                 print('to resume, re-run with --resume')
-        except Exception as e:
-            try:
-                progress_bar.finish()
-            except Exception:
-                pass
-            raiseCLIError(e)
-        print
+        except Exception:
+            self._safe_progress_bar_finish(progress_bar)
+            raise
+        finally:
+            self._safe_progress_bar_finish(progress_bar)
+
+    def main(self, container___path, local_path=None):
+        super(self.__class__, self)._run(
+            container___path,
+            path_is_optional=False)
+        self._run(local_path=local_path)
 
 
 @command(pithos_cmds)

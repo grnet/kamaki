@@ -442,13 +442,25 @@ class pithos(object):
         return _raise
 
     @classmethod
+    def local_path(this, foo):
+        def _raise(self, *args, **kwargs):
+            local_path = kwargs.get('local_path', '<None>')
+            try:
+                return foo(self, *args, **kwargs)
+            except IOError as ioe:
+                raiseCLIError(ioe,
+                    'Failed to access file %s' % local_path,
+                    importance=2)
+        return _raise
+
+    @classmethod
     def object_path(this, foo):
         def _raise(self, *args, **kwargs):
             try:
                 return foo(self, *args, **kwargs)
             except ClientError as ce:
                 err_msg = ('%s' % ce).lower()
-                if ce.status == 404 and 'object not found' in err_msg:
+                if ce.status == 404 and 'object does not' in err_msg:
                     raiseCLIError(ce,
                         'No object %s in %s\'s container %s'\
                         % (self.path, self.account, self.container),
