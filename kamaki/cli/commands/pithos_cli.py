@@ -1677,10 +1677,6 @@ class store_versions(_store_container_command):
             id=vitem[0],
             created=strftime('%d-%m-%Y %H:%M:%S', localtime(float(vitem[1])))
             ) for vitem in versions])
-        #:
-        #t = localtime(float(vitem[1]))
-        #vid = bold(unicode(vitem[0]))
-        #print('\t%s \t(%s)' % (vid, strftime('%d-%m-%Y %H:%M:%S', t)))
 
     def main(self, container___path):
         super(store_versions, self)._run(
