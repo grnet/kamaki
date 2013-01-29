@@ -989,7 +989,7 @@ class store_cat(_store_container_command):
 class store_download(_store_container_command):
     """Download remote object as local file
     If local destination is a directory:
-    *   download <container>:<path> <local dir> --resursive
+    *   download <container>:<path> <local dir> -r
     will download all files on <container> prefixed as <path>,
     to <local dir>/<full path>
     *   download <container>:<path> <local dir> --exact-match
@@ -1022,7 +1022,7 @@ class store_download(_store_container_command):
             default=False),
         recursive=FlagArgument(
             'Download a remote directory and all its contents',
-            '--resursive')
+            '-r, --resursive')
     )
 
     def _is_dir(self, remote_dict):
