@@ -34,7 +34,7 @@
 from sys import stdout
 from time import localtime, strftime
 from logging import getLogger
-from os import path
+from os import path, makedirs
 
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
@@ -989,11 +989,14 @@ class store_cat(_store_container_command):
 class store_download(_store_container_command):
     """Download remote object as local file
     If local destination is a directory:
-    *   download <container>:<path> <local dir>
+    *   download <container>:<path> <local dir> --resursive
     will download all files on <container> prefixed as <path>,
     to <local dir>/<full path>
     *   download <container>:<path> <local dir> --exact-match
     will download only one file, exactly matching <path>
+    ATTENTION: to download cont:dir1/dir2/file there must exist objects
+    cont:dir1 and cont:dir1/dir2 of type application/directory
+    To create directory objects, use /store mkdir
     """
 
     arguments = dict(
@@ -1017,34 +1020,30 @@ class store_download(_store_container_command):
             'do not show progress bar',
             '--no-progress-bar',
             default=False),
-        exact_match=FlagArgument(
-            'Download only the object that matches path exactly',
-            '--exact-match')
+        recursive=FlagArgument(
+            'Download a remote directory and all its contents',
+            '--resursive')
     )
 
-    def _output_streams(self, local_path):
+    def _is_dir(self, remote_dict):
+        return 'application/directory' == remote_dict.get('content_type', '')
+
+    def _outputs(self, local_path):
         if local_path is None:
-            return [(stdout, self.path)]
+            return [(None, self.path)]
         outpath = path.abspath(local_path)
-        wmode = 'rwb+' if self['resume'] else 'wb+'
-        try:
-            return [(open(outpath, wmode), self.path)]
-        except IOError as ioe:
-            if 'is a directory' in ('%s' % ioe).lower():
-                if self['exact_match']:
-                    return [(
-                            open('%s/%s' % (outpath, self.path), wmode),
-                            self.path
-                        )]
-                remotes = self.client.container_get(
-                    prefix=self.path,
-                    if_modified_since=self['if_modified_since'],
-                    if_unmodified_since=self['if_unmodified_since'])
-                return [(
-                            open('%s/%s' % (outpath, remote['name']), wmode),
-                            remote['name']
-                        ) for remote in remotes.json]
-            raise
+        if not (path.exists(outpath) or path.isdir(outpath)):
+            return [(outpath, self.path)]
+        elif self['recursive']:
+            remotes = self.client.container_get(
+                prefix=self.path,
+                if_modified_since=self['if_modified_since'],
+                if_unmodified_since=self['if_unmodified_since'])
+            return [(
+                '%s/%s' % (outpath, remote['name']),
+                    None if self._is_dir(remote) else remote['name'])\
+                for remote in remotes.json]
+        raiseCLIError('Illegal destination location %s' % local_path)
 
     @errors.generic.all
     @errors.pithos.connection
@@ -1052,26 +1051,32 @@ class store_download(_store_container_command):
     @errors.pithos.object_path
     @errors.pithos.local_path
     def _run(self, local_path):
-        streams = self._output_streams(local_path)
+        outputs = self._outputs(local_path)
         poolsize = self['poolsize']
         if poolsize:
             self.client.POOL_SIZE = int(poolsize)
-        if not streams:
+        if not outputs:
             raiseCLIError('No objects prefixed as %s on container %s' % (
                 self.path,
                 self.container))
+        wmode = 'rwb+' if self['resume'] else 'wb+'
+        progress_bar = None
         try:
-            for out, rpath in streams:
-                print('\nFrom %s:%s to %s/%s' % (
+            for lpath, rpath in sorted(outputs):
+                if not rpath:
+                    if not path.isdir(lpath):
+                        print('Create directory %s' % lpath)
+                        makedirs(lpath)
+                    continue
+                print('\nFrom %s:%s to %s' % (
                     self.container,
                     rpath,
-                    local_path,
-                    rpath))
+                    lpath))
                 (progress_bar,
                     download_cb) = self._safe_progress_bar('Downloading')
                 self.client.download_object(
                     rpath,
-                    out,
+                    open(lpath, wmode) if lpath else stdout,
                     download_cb=download_cb,
                     range=self['range'],
                     version=self['object_version'],
