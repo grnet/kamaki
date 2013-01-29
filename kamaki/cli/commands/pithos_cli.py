@@ -275,6 +275,10 @@ class _store_container_command(_store_account_command):
         try:
             assert isinstance(container_with_path, str)
         except AssertionError as err:
+            if self['container'] and path_is_optional:
+                self.container = self['container']
+                self.client.container = self['container']
+                return
             raiseCLIError(err)
 
         user_cont, sep, userpath = container_with_path.partition(':')
@@ -314,13 +318,19 @@ class _store_container_command(_store_account_command):
     @errors.generic.all
     def _run(self, container_with_path=None, path_is_optional=True):
         super(_store_container_command, self)._run()
-        if container_with_path is not None:
+        if self['container']:
+            self.client.container = self['container']
+            if container_with_path:
+                self.path = container_with_path
+            elif not path_is_optional:
+                raise CLISyntaxError(
+                    'Both container and path are required',
+                    details=errors.pithos.container_howto)
+        elif container_with_path:
             self.extract_container_and_path(
                 container_with_path,
                 path_is_optional)
             self.client.container = self.container
-        elif self['container']:
-            self.client.container = self['container']
         self.container = self.client.container
 
     def main(self, container_with_path=None, path_is_optional=True):
@@ -520,11 +530,12 @@ class store_create(_store_container_command):
             versioning=self['versioning'],
             metadata=self['meta'])
 
-    def main(self, container):
+    def main(self, container=None):
         super(self.__class__, self)._run(container)
-        if self.container != container:
+        if container and self.container != container:
             raiseCLIError('Invalid container name %s' % container, details=[
-                'Did you mean "%s" ?' % self.container])
+                'Did you mean "%s" ?' % self.container,
+                'Use --container to for names containing :'])
         self._run()
 
 
@@ -1210,7 +1221,7 @@ class store_delete(_store_container_command):
             else:
                 print('Aborted')
 
-    def main(self, container____path__):
+    def main(self, container____path__=None):
         super(self.__class__, self)._run(container____path__)
         self._run()
 
