@@ -1,9 +1,8 @@
-CHANGELOG for version 0.6.3
+CHANGELOG for version 0.6.4
 
-1. Introduce a quotaholder client (and primitive cli)
-2. Enrich output responses and error reporting with instructions per command
-3. Unified result output
-4. Stabilize error handling (crashes are much less frequent)
-5. Dynamic upper limit on threads when uploading
-6. Update documentation
-7. Restructure CLI code to clarify what is used in each interface mode
+1. Clean up CLI error handling code
+2. Unify and improve data size units presentation
+3. Ask for user permission at store-delete
+4. Intuitive semantics for store-move/copy/upload
+5. Dynamically limit max number of threads
+6. Various CLI and dependency fixes
