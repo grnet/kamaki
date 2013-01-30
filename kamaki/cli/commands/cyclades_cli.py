@@ -55,7 +55,7 @@ network_cmds = CommandTree('network',
 _commands = [server_cmds, flavor_cmds, image_cmds, network_cmds]
 
 
-about_authentication = '\n  User Authentication:\
+about_authentication = '\nUser Authentication:\
     \n* to check authentication: /astakos authenticate\
     \n* to set authentication token: /config set token <token>'
 
@@ -84,8 +84,7 @@ class _init_cyclades(_command_init):
 
 @command(server_cmds)
 class server_list(_init_cyclades):
-    """List Virtual Machines accessible by user
-    """
+    """List Virtual Machines accessible by user"""
 
     __doc__ += about_authentication
 
