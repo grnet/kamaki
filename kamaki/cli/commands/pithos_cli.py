@@ -591,12 +591,14 @@ class store_copy(_store_container_command):
                 self.path,
                 self.container))
 
-    def main(self, source_container___path, dst_container___path=None):
+    def main(self,
+        source_container___path,
+        destination_container___path=None):
         super(self.__class__, self)._run(
             source_container___path,
             path_is_optional=False)
         (dst_cont, dst_path) = self._dest_container_path(
-            dst_container___path)
+            destination_container___path)
         self._run(dst_cont=dst_cont, dst_path=dst_path or '')
 
 
@@ -623,6 +625,9 @@ class store_move(_store_container_command):
     """
 
     arguments = dict(
+        destination_container=ValueArgument(
+            'use it if destination container name contains a : character',
+            '--dst-container'),
         source_version=ValueArgument('specify version', '--source-version'),
         public=FlagArgument('make object publicly accessible', '--public'),
         content_type=ValueArgument('modify content type', '--content-type'),
@@ -665,13 +670,15 @@ class store_move(_store_container_command):
                 self.path,
                 self.container))
 
-    def main(self, source_container___path, destination_container___path):
+    def main(self,
+        source_container___path,
+        destination_container___path=None):
         super(self.__class__, self)._run(
             source_container___path,
             path_is_optional=False)
         (dst_cont, dst_path) = self._dest_container_path(
             destination_container___path)
-        self._run(dst_cont=dst_cont, dst_path=dst_path)
+        self._run(dst_cont=dst_cont, dst_path=dst_path or '')
 
 
 @command(pithos_cmds)
