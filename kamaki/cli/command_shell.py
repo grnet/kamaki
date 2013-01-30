@@ -100,6 +100,15 @@ class Shell(Cmd):
     def set_prompt(self, new_prompt):
         self.prompt = '%s%s%s' % (self._prefix, new_prompt, self._suffix)
 
+    def cmdloop(self):
+        while True:
+            try:
+                Cmd.cmdloop(self)
+            except KeyboardInterrupt:
+                print(' - interrupted')
+                continue
+            break
+
     def do_exit(self, line):
         print('')
         if self.prompt[len(self._prefix):-len(self._suffix)]\
@@ -170,7 +179,8 @@ class Shell(Cmd):
                     cls = subcmd.get_class()
                     ldescr = getattr(cls, 'long_description', '')
                     if subcmd.path == 'history_run':
-                        instance = cls(dict(cmd_parser.arguments),
+                        instance = cls(
+                            dict(cmd_parser.arguments),
                             self.cmd_tree)
                     else:
                         instance = cls(dict(cmd_parser.arguments))
@@ -191,10 +201,12 @@ class Shell(Cmd):
                         arg.value = getattr(cmd_parser.parsed, name,
                             arg.default)
 
-                    exec_cmd(instance,
-                        [term for term in cmd_parser.unparsed\
-                            if not term.startswith('-')],
+                    exec_cmd(
+                        instance,
+                        cmd_parser.unparsed,
                         cmd_parser.parser.print_help)
+                        #[term for term in cmd_parser.unparsed\
+                        #    if not term.startswith('-')],
                 except (ClientError, CLIError) as err:
                     print_error_message(err)
             elif ('-h' in cmd_args or '--help' in cmd_args) \
@@ -281,6 +293,7 @@ class Shell(Cmd):
 
         try:
             self.cmdloop()
-        except Exception:
+        except Exception as e:
+            print('(%s)' % e)
             from traceback import print_stack
             print_stack()

@@ -74,6 +74,7 @@ class astakos_authenticate(_astakos_init):
                     'If not, set a token:',
                     '  1.(permanent):    /config set token <token>',
                     '  2.(temporary):    rerun with <token> parameter'])
+            raiseCLIError(ce)
         except Exception as err:
             raiseCLIError(err)
         print_dict(reply)
