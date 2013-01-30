@@ -96,30 +96,6 @@ def raise_connection_errors(e):
             ])
 
 
-def check_range(start, end):
-    """
-    :param start: (int)
-
-    :param end: (int)
-
-    :returns: (int(start), int(end))
-
-    :raises CLIError - Invalid start/end value in range
-    :raises CLIError - Invalid range
-    """
-    try:
-        start = int(start)
-    except ValueError as e:
-        raiseCLIError(e, 'Invalid start value %s in range' % start)
-    try:
-        end = int(end)
-    except ValueError as e:
-        raiseCLIError(e, 'Invalid end value %s in range' % end)
-    if start > end:
-        raiseCLIError('Invalid range %s-%s' % (start, end))
-    return (start, end)
-
-
 class DelimiterArgument(ValueArgument):
     """
     :value type: string
