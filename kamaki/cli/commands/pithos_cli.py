@@ -424,7 +424,7 @@ class store_list(_store_container_command):
                 show_only_shared=self['shared'])
             self.print_containers(r.json)
         else:
-            prefix = self.path if self.path else self['prefix']
+            prefix = self.path or self['prefix']
             r = self.client.container_get(
                 limit=False if self['more'] else self['limit'],
                 marker=self['marker'],
@@ -482,7 +482,9 @@ class store_touch(_store_container_command):
         self.client.create_object(self.path, self['content_type'])
 
     def main(self, container___path):
-        super(store_touch, self)._run(container___path)
+        super(store_touch, self)._run(
+            container___path,
+            path_is_optional=False)
         self._run()
 
 
@@ -513,7 +515,7 @@ class store_create(_store_container_command):
         if container and self.container != container:
             raiseCLIError('Invalid container name %s' % container, details=[
                 'Did you mean "%s" ?' % self.container,
-                'Use --container to for names containing :'])
+                'Use --container for names containing :'])
         self._run()
 
 
@@ -561,11 +563,11 @@ class store_copy(_store_container_command):
 
     def _objlist(self, dst_path):
         if self['exact_match']:
-            return [(dst_path if dst_path else self.path, self.path)]
+            return [(dst_path or self.path, self.path)]
         r = self.client.container_get(prefix=self.path)
         if len(r.json) == 1:
             obj = r.json[0]
-            return [(obj['name'], dst_path if dst_path else obj['name'])]
+            return [(obj['name'], dst_path or obj['name'])]
         return [(obj['name'], '%s%s' % (
                     dst_path,
                     obj['name'][len(self.path) if self['replace'] else 0:])
@@ -581,7 +583,7 @@ class store_copy(_store_container_command):
             self.client.copy_object(
                 src_container=self.container,
                 src_object=src_object,
-                dst_container=dst_cont if dst_cont else self.container,
+                dst_container=dst_cont or self.container,
                 dst_object=dst_object,
                 source_version=self['source_version'],
                 public=self['public'],
@@ -640,11 +642,11 @@ class store_move(_store_container_command):
 
     def _objlist(self, dst_path):
         if self['exact_match']:
-            return [(dst_path if dst_path else self.path, self.path)]
+            return [(dst_path or self.path, self.path)]
         r = self.client.container_get(prefix=self.path)
         if len(r.json) == 1:
             obj = r.json[0]
-            return [(obj['name'], dst_path if dst_path else obj['name'])]
+            return [(obj['name'], dst_path or obj['name'])]
         return [(obj['name'], '%s%s' % (
                     dst_path,
                     obj['name'][len(self.path) if self['replace'] else 0:])
@@ -660,7 +662,7 @@ class store_move(_store_container_command):
             self.client.move_object(
                 src_container=self.container,
                 src_object=src_object,
-                dst_container=dst_cont if dst_cont else self.container,
+                dst_container=dst_cont or self.container,
                 dst_object=dst_object,
                 source_version=self['source_version'],
                 public=self['public'],
@@ -782,9 +784,11 @@ class store_overwrite(_store_container_command):
         finally:
             self._safe_progress_bar_finish(progress_bar)
 
-    def main(self, local_path, container____path__, start, end):
-        super(self.__class__, self)._run(container____path__)
-        self.path = self.path if self.path else path.basename(local_path)
+    def main(self, local_path, container___path, start, end):
+        super(self.__class__, self)._run(
+            container___path,
+            path_is_optional=None)
+        self.path = self.path or path.basename(local_path)
         self._run(local_path=local_path, start=start, end=end)
 
 
@@ -937,7 +941,7 @@ class store_upload(_store_container_command):
 
     def main(self, local_path, container____path__=None):
         super(self.__class__, self)._run(container____path__)
-        remote_path = self.path if self.path else path.basename(local_path)
+        remote_path = self.path or path.basename(local_path)
         self._run(local_path=local_path, remote_path=remote_path)
 
 
@@ -1238,8 +1242,12 @@ class store_purge(_store_container_command):
         else:
             print('Aborted')
 
-    def main(self, container):
+    def main(self, container=None):
         super(self.__class__, self)._run(container)
+        if container and self.container != container:
+            raiseCLIError('Invalid container name %s' % container, details=[
+                'Did you mean "%s" ?' % self.container,
+                'Use --container for names containing :'])
         self._run()
 
 
@@ -1329,7 +1337,7 @@ class store_setpermissions(_store_container_command):
             else:
                 read = False
                 write = False
-        if not read and not write:
+        if not (read or write):
             raiseCLIError(None,
             'Usage:\tread=<groups,users> write=<groups,users>')
         return (read, write)
@@ -1521,10 +1529,10 @@ class store_quota(_store_account_command):
     @errors.pithos.connection
     @errors.pithos.container
     def _run(self):
-        if self.container is None:
-            reply = self.client.get_account_quota()
-        else:
+        if self.container:
             reply = self.client.get_container_quota(self.container)
+        else:
+            reply = self.client.get_account_quota()
         if not self['in_bytes']:
             for k in reply:
                 reply[k] = format_size(reply[k])
@@ -1595,10 +1603,10 @@ class store_versioning(_store_account_command):
     @errors.pithos.connection
     @errors.pithos.container
     def _run(self):
-        if self.container is None:
-            r = self.client.get_account_versioning()
-        else:
+        if self.container:
             r = self.client.get_container_versioning(self.container)
+        else:
+            r = self.client.get_account_versioning()
         print_dict(r)
 
     def main(self, container=None):
@@ -1621,11 +1629,11 @@ class store_setversioning(_store_account_command):
     @errors.pithos.connection
     @errors.pithos.container
     def _run(self, versioning):
-        if self.container is None:
-            self.client.set_account_versioning(versioning)
-        else:
+        if self.container:
             self.client.container = self.container
             self.client.set_container_versioning(versioning)
+        else:
+            self.client.set_account_versioning(versioning)
 
     def main(self, versioning, container=None):
         super(self.__class__, self)._run()
@@ -1692,7 +1700,7 @@ class store_sharers(_store_account_command):
     def _run(self):
         accounts = self.client.get_sharing_accounts(marker=self['marker'])
         print_items(accounts if self['detail']\
-        else [acc['name'] for acc in accounts])
+            else [acc['name'] for acc in accounts])
 
     def main(self):
         super(self.__class__, self)._run()
