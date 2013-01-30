@@ -235,6 +235,8 @@ class _store_container_command(_store_account_command):
 
     @errors.generic.all
     def _dest_container_path(self, dest_container_path):
+        if self['destination_container']:
+            return (self['destination_container'], dest_container_path)
         dst = dest_container_path.split(':')
         return (dst[0], dst[1]) if len(dst) > 1 else (None, dst[0])
 
@@ -538,6 +540,9 @@ class store_copy(_store_container_command):
     """
 
     arguments = dict(
+        destination_container=ValueArgument(
+            'use it if destination container name contains a : character',
+            '--dst-container'),
         source_version=ValueArgument(
             'copy specific version',
             '--source-version'),
@@ -586,13 +591,13 @@ class store_copy(_store_container_command):
                 self.path,
                 self.container))
 
-    def main(self, source_container___path, destination_container___path):
+    def main(self, source_container___path, dst_container___path=None):
         super(self.__class__, self)._run(
             source_container___path,
             path_is_optional=False)
         (dst_cont, dst_path) = self._dest_container_path(
-            destination_container___path)
-        self._run(dst_cont=dst_cont, dst_path=dst_path)
+            dst_container___path)
+        self._run(dst_cont=dst_cont, dst_path=dst_path or '')
 
 
 @command(pithos_cmds)
