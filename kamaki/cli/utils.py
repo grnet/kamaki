@@ -31,7 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from sys import stdout
+from sys import stdout, stdin
 from re import compile as regex_compile
 from kamaki.cli.errors import raiseCLIError
 
@@ -191,10 +191,32 @@ def print_list(l,
             print('%s%s' % (prefix, item))
 
 
+def page_hold(index, limit, maxlen):
+    """Check if there are results to show, and hold the page when needed
+    :param index: (int) > 0
+    :param limit: (int) 0 < limit <= max, page hold if limit mod index == 0
+    :param maxlen: (int) Don't hold if index reaches maxlen
+
+    :returns: True if there are more to show, False if all results are shown
+    """
+    if index >= limit and index % limit == 0:
+        if index >= maxlen:
+            return False
+        else:
+            print('(%s listed - %s more - "enter" to continue)' % (
+                index,
+                maxlen - index))
+            c = ' '
+            while c != '\n':
+                c = stdin.read(1)
+    return True
+
+
 def print_items(items,
     title=('id', 'name'),
     with_enumeration=False,
-    with_redundancy=False):
+    with_redundancy=False,
+    page_size=0):
     """print dict or list items in a list, using some values as title
     Objects of next level don't inherit enumeration (default: off) or titles
 
@@ -202,7 +224,17 @@ def print_items(items,
     :param title: (tuple) keys to use their values as title
     :param with_enumeration: (boolean) enumerate items (order id on title)
     :param with_redundancy: (boolean) values in title also appear on body
+    :param page_size: (int) show results in pages of page_size items, enter to
+        continue
     """
+    if not items:
+        return
+    try:
+        page_size = int(page_size) if int(page_size) > 0 else len(items)
+    except:
+        page_size = len(items)
+    num_of_pages = len(items) // page_size
+    num_of_pages += 1 if len(items) % page_size else 0
     for i, item in enumerate(items):
         if with_enumeration:
             stdout.write('%s. ' % (i + 1))
@@ -213,18 +245,17 @@ def print_items(items,
             else:
                 header = ' '.join(unicode(item.pop(key)) for key in title)
             print(bold(header))
-        else:
-            print('- - -')
         if isinstance(item, dict):
             print_dict(item, ident=1)
         elif isinstance(item, list):
             print_list(item, ident=1)
         else:
             print(' %s' % item)
+        page_hold(i + 1, page_size, len(items))
 
 
 def format_size(size):
-    units = ('B', 'K', 'M', 'G', 'T')
+    units = ('B', 'KiB', 'MiB', 'GiB', 'TiB')
     try:
         size = float(size)
     except ValueError as err:
@@ -232,11 +263,35 @@ def format_size(size):
     for unit in units:
         if size < 1024:
             break
-        size /= 1024
-    s = ('%.1f' % size)
-    if '.0' == s[-2:]:
-        s = s[:-2]
+        size /= 1024.0
+    s = ('%.2f' % size)
+    while '.' in s and s[-1] in ('0', '.'):
+        s = s[:-1]
     return s + unit
+
+
+def to_bytes(size, format):
+    """
+    :param size: (float) the size in the given format
+    :param format: (case insensitive) KiB, KB, MiB, MB, GiB, GB, TiB, TB
+
+    :returns: (int) the size in bytes
+    """
+    format = format.upper()
+    if format == 'B':
+        return int(size)
+    size = float(size)
+    units_dc = ('KB', 'MB', 'GB', 'TB')
+    units_bi = ('KIB', 'MIB', 'GIB', 'TIB')
+
+    factor = 1024 if format in units_bi else 1000 if format in units_dc else 0
+    if not factor:
+        raise ValueError('Invalid data size format %s' % format)
+    for prefix in ('K', 'M', 'G', 'T'):
+        size *= factor
+        if format.startswith(prefix):
+            break
+    return int(size)
 
 
 def dict2file(d, f, depth=0):
@@ -290,3 +345,16 @@ def split_input(line):
         terms.append(ipart[2:-2])
     terms += _sub_split(trivial_parts[-1])
     return terms
+
+
+def ask_user(msg, true_resp=['Y', 'y']):
+    """Print msg and read user response
+
+    :param true_resp: (tuple of chars)
+
+    :returns: (bool) True if reponse in true responses, False otherwise
+    """
+    stdout.write('%s (%s or enter for yes):' % (msg, ', '.join(true_resp)))
+    stdout.flush()
+    user_response = stdin.readline()
+    return user_response[0] in true_resp + ['\n']

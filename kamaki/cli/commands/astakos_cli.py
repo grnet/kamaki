@@ -32,10 +32,9 @@
 # or implied, of GRNET S.A.command
 
 from kamaki.cli import command
-from kamaki.clients.astakos import AstakosClient, ClientError
+from kamaki.clients.astakos import AstakosClient
 from kamaki.cli.utils import print_dict
-from kamaki.cli.errors import raiseCLIError
-from kamaki.cli.commands import _command_init
+from kamaki.cli.commands import _command_init, errors
 from kamaki.cli.command_tree import CommandTree
 
 astakos_cmds = CommandTree('astakos', 'Astakos API commands')
@@ -43,14 +42,18 @@ _commands = [astakos_cmds]
 
 
 class _astakos_init(_command_init):
-    def main(self):
+
+    @errors.generic.all
+    @errors.astakos.load
+    def _run(self):
         token = self.config.get('astakos', 'token')\
             or self.config.get('global', 'token')
         base_url = self.config.get('astakos', 'url')\
             or self.config.get('global', 'url')
-        if base_url is None:
-            raiseCLIError(None, 'Missing astakos server URL')
         self.client = AstakosClient(base_url=base_url, token=token)
+
+    def main(self):
+        self._run
 
 
 @command(astakos_cmds)
@@ -63,17 +66,12 @@ class astakos_authenticate(_astakos_init):
     Token can also be provided as a parameter
     """
 
-    def main(self, custom_token=None):
-        super(self.__class__, self).main()
-        try:
-            reply = self.client.authenticate(custom_token)
-        except ClientError as ce:
-            if (ce.status == 401):
-                raiseCLIError(ce,
-                    details=['See if token is set: /config get token',
-                    'If not, set a token:',
-                    '  1.(permanent):    /config set token <token>',
-                    '  2.(temporary):    rerun with <token> parameter'])
-        except Exception as err:
-            raiseCLIError(err)
+    @errors.generic.all
+    @errors.astakos.authenticate
+    def _run(self, custom_token=None):
+        super(self.__class__, self)._run()
+        reply = self.client.authenticate(custom_token)
         print_dict(reply)
+
+    def main(self, custom_token=None):
+        self._run(custom_token)

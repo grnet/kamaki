@@ -128,13 +128,15 @@ class Config(RawConfigParser):
             self.add_section(section)
         RawConfigParser.set(self, section, option, value)
 
-    def remove_option(self, section, option):
+    def remove_option(self, section, option, also_remove_default=False):
         try:
+            if also_remove_default:
+                DEFAULTS[section].pop(option)
             RawConfigParser.remove_option(self, section, option)
         except NoSectionError:
             pass
 
-    def items(self, section, include_defaults=False):
+    def items(self, section, include_defaults=True):
         try:
             d = dict(DEFAULTS[section]) if include_defaults else {}
         except KeyError:

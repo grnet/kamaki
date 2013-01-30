@@ -1,1 +1,3 @@
-include README.rst COPYRIGHT
+include README.rst COPYRIGHT Changelog
+recursive-include docs *
+prune docs/_build
