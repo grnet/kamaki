@@ -112,7 +112,7 @@ class image_public(_init_image):
                 images,
                 title=('name',),
                 with_enumeration=True,
-                page_size=self['limit'] if self['limit'] else 10)
+                page_size=self['limit'] or 10)
         elif self['limit']:
             print_items(
                 images[:self['limit']],
@@ -177,14 +177,13 @@ class image_register(_init_image):
                 account = account[:-1]
             container = self.config.get('store', 'container') \
                 or self.config.get('global', 'container')
-            if container is None or len(container) == 0:
+            if not container:
                 location = 'pithos://%s/%s' % (account, location)
             else:
                 location = 'pithos://%s/%s/%s' % (account, container, location)
 
         params = {}
-        for key in set(
-            [
+        for key in set([
                 'checksum',
                 'container_format',
                 'disk_format',
@@ -306,12 +305,9 @@ class image_list(_init_cyclades):
         if self['detail']:
             self._make_results_pretty(images)
         if self['more']:
-            print_items(images,
-                page_size=self['limit'] if self['limit'] else 10)
-        elif self['limit']:
-            print_items(images[:self['limit']])
+            print_items(images, page_size=self['limit'] or 10)
         else:
-            print_items(images)
+            print_items(images[:self['limit']])
 
     def main(self):
         super(self.__class__, self)._run()
