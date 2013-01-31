@@ -1762,13 +1762,13 @@ class testPithos(unittest.TestCase):
         """Upload an object to download"""
         src_file = tempfile.NamedTemporaryFile(delete=False)
         dnl_file = tempfile.NamedTemporaryFile(delete=False)
-        
+
         src_fname = src_file.name
         dnl_fname = dnl_file.name
-        
+
         src_file.close()
         dnl_file.close()
-        
+
         trg_fname = 'remotefile_%s' % self.now
         f_size = 59247824
         self.create_large_file(f_size, src_fname)
