@@ -334,9 +334,8 @@ def _sub_split(line):
     return terms
 
 
-def split_input(line):
-    """Use regular expressions to split a line correctly
-    """
+def old_split_input(line):
+    """Use regular expressions to split a line correctly"""
     line = ' %s ' % line
     (trivial_parts, interesting_parts) = _parse_with_regex(line, ' \'.*?\' ')
     terms = []
@@ -344,6 +343,40 @@ def split_input(line):
         terms += _sub_split(trivial_parts[i])
         terms.append(ipart[2:-2])
     terms += _sub_split(trivial_parts[-1])
+    return terms
+
+
+def _get_from_parsed(parsed_str):
+    try:
+        parsed_str = parsed_str.strip()
+    except:
+        return None
+    if parsed_str:
+        if parsed_str[0] == parsed_str[-1] and parsed_str[0] in ("'", '"'):
+            return [parsed_str[1:-1]]
+        return parsed_str.split(' ')
+    return None
+
+
+def split_input(line):
+    if not line:
+        return []
+    reg_expr = '\'.*?\'|".*?"|^[\S]*$'
+    (trivial_parts, interesting_parts) = _parse_with_regex(line, reg_expr)
+    assert(len(trivial_parts) == 1 + len(interesting_parts))
+    #print('  [split_input] trivial_parts %s are' % trivial_parts)
+    #print('  [split_input] interesting_parts %s are' % interesting_parts)
+    terms = []
+    for i, tpart in enumerate(trivial_parts):
+        part = _get_from_parsed(tpart)
+        if part:
+            terms += part
+        try:
+            part = _get_from_parsed(interesting_parts[i])
+        except IndexError:
+            break
+        if part:
+            terms += part
     return terms
 
 
@@ -358,3 +391,32 @@ def ask_user(msg, true_resp=['Y', 'y']):
     stdout.flush()
     user_response = stdin.readline()
     return user_response[0] in true_resp + ['\n']
+
+
+if __name__ == '__main__':
+    examples = ['la_la le_le li_li',
+        '\'la la\' \'le le\' \'li li\'',
+        '\'la la\' le_le \'li li\'',
+        'la_la \'le le\' li_li',
+        'la_la \'le le\' \'li li\'',
+        '"la la" "le le" "li li"',
+        '"la la" le_le "li li"',
+        'la_la "le le" li_li',
+        '"la_la" "le le" "li li"',
+        '\'la la\' "le le" \'li li\'',
+        'la_la \'le le\' "li li"',
+        'la_la \'le le\' li_li',
+        '\'la la\' le_le "li li"',
+        '"la la" le_le \'li li\'',
+        '"la la" \'le le\' li_li',
+        'la_la \'le\'le\' "li\'li"',
+        '"la \'le le\' la"',
+        '\'la "le le" la\'',
+        '\'la "la" la\' "le \'le\' le" li_"li"_li',
+        '\'\' \'L\' "" "A"'
+    ]
+
+    for i, example in enumerate(examples):
+        print('%s. Split this: (%s)' % (i + 1, example))
+        ret = old_split_input(example)
+        print('\t(%s) of size %s' % (ret, len(ret)))
