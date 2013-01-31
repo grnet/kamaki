@@ -1062,7 +1062,6 @@ class store_download(_store_container_command):
             raiseCLIError('No objects prefixed as %s on container %s' % (
                 self.path,
                 self.container))
-        wmode = 'rwb+' if self['resume'] else 'wb+'
         progress_bar = None
         try:
             for lpath, rpath in sorted(outputs):
@@ -1071,6 +1070,8 @@ class store_download(_store_container_command):
                         print('Create directory %s' % lpath)
                         makedirs(lpath)
                     continue
+                wmode = 'rwb+' if path.exists(lpath) and self['resume']\
+                    else 'wb+'
                 print('\nFrom %s:%s to %s' % (
                     self.container,
                     rpath,

@@ -298,7 +298,7 @@ store (Storage/Pithos+)
     append        :  Append local file to remote
     cat           :  Print a file to console
     copy          :  Copy an object
-    create        :  Create a container or a directory object
+    create        :  Create a container
     delete        :  Delete a container [or an object]
     delgroup      :  Delete a user group on an account
     delmeta       :  Delete an existing metadatum of account [, container [or object]]
@@ -323,6 +323,7 @@ store (Storage/Pithos+)
     setquota      :  Set new quota (in KB) for account [or container]
     setversioning :  Set new versioning (auto, none) for account [or container]
     sharers       :  List the accounts that share objects with default account
+    touch         :  Create an empty object (file)
     truncate      :  Truncate remote file up to a size
     unpublish     :  Unpublish an object
     upload        :  Upload a file
@@ -405,3 +406,7 @@ Showcase: Upload and download a file
     [store]:!diff rndm_local.file rndm_remote.file
 
 .. Note:: In kamaki shell, ! is used to execute OS shell commands (bash in the above)
+
+.. warning:: The container:object/path syntax does not function if the container and / or the object path contain one or more : characters. To use containers and objects with : use the --container and --dst-container arguments, e.g. to copy test.py object from grnet:dev container to grnet:deploy ::
+
+        $ kamaki store copy --container=grnet:dev test.py --dst-container=grnet:deploy
