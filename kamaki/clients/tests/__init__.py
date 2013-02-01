@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-
-# Copyright 2011 GRNET S.A. All rights reserved.
+# Copyright 2012-2013 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -33,42 +31,39 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from setuptools import setup
-from sys import version_info
-import collections
-
-import kamaki
+from kamaki.cli.config import Config
 
 
-optional = ['ansicolors',
-            'progress>=1.0.2']
-requires = ['objpool']
+def _add_value(foo, value):
+    def wrap(self):
+        return foo(self, value)
+    return wrap
 
-if version_info[:1] == (2, 6):
-    requires.append('argparse')
 
-setup(
-    name='kamaki',
-    version=kamaki.__version__,
-    description='A command-line tool for managing clouds',
-    long_description=open('README.rst').read(),
-    url='http://code.grnet.gr/projects/kamaki',
-    license='BSD',
-    packages=[
-        'kamaki',
-        'kamaki.clients',
-        'kamaki.clients.tests',
-        'kamaki.clients.connection',
-        'kamaki.cli',
-        'kamaki.cli.commands',
-        'kamaki.clients.commissioning',
-        'kamaki.clients.quotaholder',
-        'kamaki.clients.quotaholder.api',
-        'kamaki.clients.commissioning.utils'
-    ],
-    include_package_data=True,
-    entry_points={
-        'console_scripts': ['kamaki = kamaki.cli:main']
-    },
-    install_requires=requires
-)
+class configuration(object):
+
+    _cnf = None
+    _client = ''
+
+    def __init__(self, client='', config_file=None):
+        self._cnf = Config(config_file)
+        self._client = client
+
+        @property
+        def generic_property(self, value):
+            """
+            :param client: (str) if given, try to get test_client.* and then
+            client.*
+            :returns: (str) priorities: test_client, client, test, global
+            """
+            if not hasattr(self, '_%s' % value):
+                _acnt = self._cnf.get('test', '%s_%s' % (self._client, value))\
+                    or self._cnf.get(self._client, value)\
+                    or self._cnf.get('test', value)\
+                    or self._cnf.get('global', value)
+                if _acnt:
+                    setattr(self, '_%s' % value, _acnt)
+            return getattr(self, '_%s' % value, None)
+
+        for foo in ('url', 'token'):
+            setattr(self, foo, _add_value(generic_property, foo))
