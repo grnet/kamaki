@@ -96,7 +96,8 @@ class Generic(TestCase):
                 exceptions[method[0]] = extract_stack()
         for m, e in exceptions.items():
             print('==================\nFAIL: %s\n------------------' % m[6:])
-            print_stack(e)
+            for err in e[-30:]:
+                print('%s %s %s %s' % err)
         if exceptions:
             raise AssertionError('(#of fails: %s)' % len(exceptions))
 
