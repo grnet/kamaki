@@ -32,17 +32,14 @@
 # or implied, of GRNET S.A.
 
 from kamaki.clients import tests
-from kamaki.clients.astakos import AstakosClient as astakos
+from kamaki.clients.astakos import AstakosClient
 
 
 class Astakos(tests.Generic):
     def setUp(self):
-        self.client = astakos(
+        self.client = AstakosClient(
             self['astakos', 'url'],
             self['astakos', 'token'])
-
-    def tearDown(self):
-        pass
 
     def test_authenticate(self):
         r = self.client.authenticate()

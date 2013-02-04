@@ -67,10 +67,13 @@ class Generic(TestCase):
             else key
 
     def _get_from_cnf(self, key):
-        val = (self._cnf.get('test', '%s_%s' % key) if key[0] else None)\
-            or self._cnf.get(*key)\
-            or self._cnf.get('test', key[1])\
-            or self._cnf.get('global', key[1])
+        val = 0
+        if key[0]:
+            val = self._cnf.get('test', '%s_%s' % key)\
+                or self._cnf.get(*key)
+        if not val:
+            val = self._cnf.get('test', key[1])\
+                or self._cnf.get('global', key[1])
         self._fetched[key] = val
         return val
 
@@ -100,12 +103,13 @@ def main(argv):
             suiteFew.addTest(testCyclades('test_000'))
         else:
             suiteFew.addTest(testCyclades('test_' + argv[1]))
-    if len(argv) == 0 or argv[0] == 'image':
-        if len(argv) == 1:
-            suiteFew.addTest(unittest.makeSuite(testImage))
-        else:
-            suiteFew.addTest(testImage('test_' + argv[1]))
     """
+    if len(argv) == 0 or argv[0] == 'image':
+        from kamaki.clients.tests.image import Image
+        if len(argv) == 1:
+            suiteFew.addTest(makeSuite(Image))
+        else:
+            suiteFew.addTest(Image('test_' + argv[1]))
     if len(argv) == 0 or argv[0] == 'astakos':
         from kamaki.clients.tests.astakos import Astakos
         if len(argv) == 1:
