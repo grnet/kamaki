@@ -85,7 +85,7 @@ class Generic(TestCase):
             self,
             predicate=inspect.ismethod)\
             if method[0].startswith('_test_')]
-        exceptions = {}
+        failures = 0
         for method in methods:
             stdout.write('Test %s' % method[0][6:])
             try:
@@ -93,13 +93,9 @@ class Generic(TestCase):
                 print(' ...ok')
             except AssertionError:
                 print('  FAIL: %s (%s)' % (method[0], method[1]))
-                exceptions[method[0]] = extract_stack()
-        for m, e in exceptions.items():
-            print('==================\nFAIL: %s\n------------------' % m[6:])
-            for err in e[-30:]:
-                print('%s %s %s %s' % err)
-        if exceptions:
-            raise AssertionError('(#of fails: %s)' % len(exceptions))
+                failures += 1
+        if failures:
+            raise AssertionError('%s failures' % failures)
 
 
 def init_parser():

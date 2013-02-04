@@ -120,7 +120,6 @@ class Image(tests.Generic):
                 'size'):
                 self.assertTrue(term in img)
         self.assertTrue(r, r0)
-        self.assertTrue(0)
         r0.reverse()
         for i, img in enumerate(r):
             self.assert_dicts_are_deeply_equal(img, r0[i])
