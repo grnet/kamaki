@@ -31,6 +31,9 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+from unittest import TestCase, TestSuite, makeSuite, TextTestRunner
+from argparse import ArgumentParser
+
 from kamaki.cli.config import Config
 
 
@@ -40,30 +43,81 @@ def _add_value(foo, value):
     return wrap
 
 
-class configuration(object):
+class Generic(TestCase):
 
     _cnf = None
-    _client = ''
+    _grp = None
+    _fetched = {}
 
-    def __init__(self, client='', config_file=None):
+    def __init__(self, specific=None, config_file=None, group=None):
+        super(Generic, self).__init__(specific)
         self._cnf = Config(config_file)
-        self._client = client
+        self._grp = group
 
-        @property
-        def generic_property(self, value):
-            """
-            :param client: (str) if given, try to get test_client.* and then
-            client.*
-            :returns: (str) priorities: test_client, client, test, global
-            """
-            if not hasattr(self, '_%s' % value):
-                _acnt = self._cnf.get('test', '%s_%s' % (self._client, value))\
-                    or self._cnf.get(self._client, value)\
-                    or self._cnf.get('test', value)\
-                    or self._cnf.get('global', value)
-                if _acnt:
-                    setattr(self, '_%s' % value, _acnt)
-            return getattr(self, '_%s' % value, None)
+    def __getitem__(self, key):
+        key = self._key(key)
+        try:
+            return self._fetched[key]
+        except KeyError:
+            return self._get_from_cnf(key)
 
-        for foo in ('url', 'token'):
-            setattr(self, foo, _add_value(generic_property, foo))
+    def _key(self, key):
+        return ('', key) if isinstance(key, str)\
+            else ('', key[0]) if len(key) == 1\
+            else key
+
+    def _get_from_cnf(self, key):
+        val = (self._cnf.get('test', '%s_%s' % key) if key[0] else None)\
+            or self._cnf.get(*key)\
+            or self._cnf.get('test', key[1])\
+            or self._cnf.get('global', key[1])
+        self._fetched[key] = val
+        return val
+
+
+def init_parser():
+    parser = ArgumentParser(add_help=False)
+    parser.add_argument('-h', '--help',
+        dest='help',
+        action='store_true',
+        default=False,
+        help="Show this help message and exit")
+    return parser
+
+
+def main(argv):
+
+    suiteFew = TestSuite()
+    """
+    if len(argv) == 0 or argv[0] == 'pithos':
+        if len(argv) == 1:
+            suiteFew.addTest(unittest.makeSuite(testPithos))
+        else:
+            suiteFew.addTest(testPithos('test_' + argv[1]))
+    if len(argv) == 0 or argv[0] == 'cyclades':
+        if len(argv) == 1:
+            #suiteFew.addTest(unittest.makeSuite(testCyclades))
+            suiteFew.addTest(testCyclades('test_000'))
+        else:
+            suiteFew.addTest(testCyclades('test_' + argv[1]))
+    if len(argv) == 0 or argv[0] == 'image':
+        if len(argv) == 1:
+            suiteFew.addTest(unittest.makeSuite(testImage))
+        else:
+            suiteFew.addTest(testImage('test_' + argv[1]))
+    """
+    if len(argv) == 0 or argv[0] == 'astakos':
+        from kamaki.clients.tests.astakos import Astakos
+        if len(argv) == 1:
+            suiteFew.addTest(makeSuite(Astakos))
+        else:
+            suiteFew.addTest(Astakos('test_' + argv[1]))
+
+    TextTestRunner(verbosity=2).run(suiteFew)
+
+if __name__ == '__main__':
+    parser = init_parser()
+    args, argv = parser.parse_known_args()
+    if len(argv) > 2 or getattr(args, 'help') or len(argv) < 1:
+        raise Exception('\tusage: tests.py <group> [command]')
+    main(argv)

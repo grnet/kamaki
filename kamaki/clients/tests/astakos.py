@@ -31,23 +31,23 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from unittest import TestCase
-
-from kamaki.clients.tests import configuration
+from kamaki.clients import tests
 from kamaki.clients.astakos import AstakosClient as astakos
 
 
-class testAstakos(TestCase):
+class Astakos(tests.Generic):
     def setUp(self):
-        self.cnf = configuration('astakos')
-        self.client = astakos(self.cnf.url, self.cnf.token)
+        self.client = astakos(
+            self['astakos', 'url'],
+            self['astakos', 'token'])
 
     def tearDown(self):
         pass
 
     def test_authenticate(self):
         r = self.client.authenticate()
-        for term in ('username',
+        for term in (
+            'username',
             'auth_token_expires',
             'auth_token',
             'auth_token_created',
