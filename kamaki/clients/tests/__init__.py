@@ -33,6 +33,8 @@
 
 from unittest import TestCase, TestSuite, makeSuite, TextTestRunner
 from argparse import ArgumentParser
+from sys import stdout
+from traceback import extract_stack, print_stack
 
 from kamaki.cli.config import Config
 
@@ -77,6 +79,27 @@ class Generic(TestCase):
         self._fetched[key] = val
         return val
 
+    def test_000(self):
+        import inspect
+        methods = [method for method in inspect.getmembers(
+            self,
+            predicate=inspect.ismethod)\
+            if method[0].startswith('_test_')]
+        exceptions = {}
+        for method in methods:
+            stdout.write('Test %s' % method[0][6:])
+            try:
+                method[1]()
+                print(' ...ok')
+            except AssertionError:
+                print('  FAIL: %s (%s)' % (method[0], method[1]))
+                exceptions[method[0]] = extract_stack()
+        for m, e in exceptions.items():
+            print('==================\nFAIL: %s\n------------------' % m[6:])
+            print_stack(e)
+        if exceptions:
+            raise AssertionError('(#of fails: %s)' % len(exceptions))
+
 
 def init_parser():
     parser = ArgumentParser(add_help=False)
@@ -106,10 +129,8 @@ def main(argv):
     """
     if len(argv) == 0 or argv[0] == 'image':
         from kamaki.clients.tests.image import Image
-        if len(argv) == 1:
-            suiteFew.addTest(makeSuite(Image))
-        else:
-            suiteFew.addTest(Image('test_' + argv[1]))
+        test_method = 'test_%s' % (argv[1] if len(argv) > 1 else '000')
+        suiteFew.addTest(Image(test_method))
     if len(argv) == 0 or argv[0] == 'astakos':
         from kamaki.clients.tests.astakos import Astakos
         if len(argv) == 1:

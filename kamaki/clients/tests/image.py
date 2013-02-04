@@ -50,6 +50,10 @@ class Image(tests.Generic):
         self.cyclades = CycladesClient(cyclades_url, self['token'])
         self._imglist = {}
 
+    def test_000(self):
+        self._prepare_img()
+        super(self.__class__, self).test_000()
+
     def _prepare_img(self):
         f = open(self['image', 'local_path'], 'rb')
         uuid = self['store', 'account']
@@ -101,6 +105,9 @@ class Image(tests.Generic):
 
     def test_list_public(self):
         """Test list_public"""
+        self._test_list_public()
+
+    def _test_list_public(self):
         r = self.client.list_public()
         r0 = self.client.list_public(order='-')
         self.assertTrue(len(r) > 0)
@@ -112,7 +119,8 @@ class Image(tests.Generic):
                 'id',
                 'size'):
                 self.assertTrue(term in img)
-        self.assertTrue(len(r), len(r0))
+        self.assertTrue(r, r0)
+        self.assertTrue(0)
         r0.reverse()
         for i, img in enumerate(r):
             self.assert_dicts_are_deeply_equal(img, r0[i])
@@ -133,13 +141,14 @@ class Image(tests.Generic):
                 'properties',
                 'size'):
                 self.assertTrue(term in img)
-                for interm in (
-                    'osfamily',
-                    'users',
-                    'os',
-                    'root_partition',
-                    'description'):
-                    self.assertTrue(interm in img['properties'])
+                if img['properties']:
+                    for interm in (
+                        'osfamily',
+                        'users',
+                        'os',
+                        'root_partition',
+                        'description'):
+                        self.assertTrue(interm in img['properties'])
         size_max = 1000000000
         r2 = self.client.list_public(filters=dict(size_max=size_max))
         self.assertTrue(len(r2) <= len(r))
@@ -148,6 +157,9 @@ class Image(tests.Generic):
 
     def test_get_meta(self):
         """Test get_meta"""
+        self._test_get_meta()
+
+    def _test_get_meta(self):
         r = self.client.get_meta(self['image', 'id'])
         self.assertEqual(r['id'], self['image', 'id'])
         for term in ('status',
@@ -175,13 +187,19 @@ class Image(tests.Generic):
     def test_register(self):
         """Test register"""
         self._prepare_img()
-        self.assertTrue(len(self._imglist) > 0)
+        self._test_register()
+
+    def _test_register(self):
+        self.assertTrue(self._imglist)
         for img in self._imglist.values():
             self.assertTrue(img != None)
 
     def test_reregister(self):
         """Test reregister"""
         self._prepare_img()
+        self._test_reregister()
+
+    def _test_reregister(self):
         self.client.reregister(
             self.location,
             properties=dict(my_property='some_value'))
@@ -189,6 +207,9 @@ class Image(tests.Generic):
     def test_set_members(self):
         """Test set_members"""
         self._prepare_img()
+        self._test_set_members()
+
+    def _test_set_members(self):
         members = ['%s@fake.net' % self.now]
         for img in self._imglist.values():
             self.client.set_members(img['id'], members)
@@ -197,12 +218,18 @@ class Image(tests.Generic):
 
     def test_list_members(self):
         """Test list_members"""
-        self.test_set_members()
+        self._test_list_members()
+
+    def _test_list_members(self):
+        self._test_set_members()
 
     def test_remove_members(self):
         """Test remove_members - NO CHECK"""
-        return
         self._prepare_img()
+        self._test_remove_members()
+
+    def _test_remove_members(self):
+        return
         members = ['%s@fake.net' % self.now, '%s_v2@fake.net' % self.now]
         for img in self._imglist.values():
             self.client.set_members(img['id'], members)
@@ -215,5 +242,8 @@ class Image(tests.Generic):
 
     def test_list_shared(self):
         """Test list_shared - NOT CHECKED"""
+        self._test_list_shared()
+
+    def _test_list_shared(self):
         #No way to test this, if I dont have member images
         pass
