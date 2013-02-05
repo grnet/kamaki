@@ -34,10 +34,10 @@
 from unittest import TestCase, TestSuite, makeSuite, TextTestRunner
 from argparse import ArgumentParser
 from sys import stdout
-from traceback import extract_stack, print_stack
 from progress.bar import ShadyBar
 
 from kamaki.cli.config import Config
+from kamaki.cli.utils import spiner
 
 
 def _add_value(foo, value):
@@ -48,6 +48,7 @@ def _add_value(foo, value):
 
 class Generic(TestCase):
 
+    _waits = []
     _cnf = None
     _grp = None
     _fetched = {}
@@ -56,6 +57,9 @@ class Generic(TestCase):
         super(Generic, self).__init__(specific)
         self._cnf = Config(config_file)
         self._grp = group
+        self._waits.append(0.71828)
+        for i in range(10):
+            self._waits.append(self._waits[-1] * 2.71828)
 
     def __getitem__(self, key):
         key = self._key(key)
@@ -83,20 +87,34 @@ class Generic(TestCase):
     def _safe_progress_bar(self, msg):
         """Try to get a progress bar, but do not raise errors"""
         try:
-            progress_bar = ShadyBar()
-            gen = progress_bar.get_generator(msg)
+            wait_bar = ShadyBar(msg)
+
+            def wait_gen(n):
+                for i in wait_bar.iter(range(int(n))):
+                    yield
+                yield
+            wait_cb = wait_gen
         except Exception:
-            return (None, None)
-        return (progress_bar, gen)
+            stdout.write('%s:' % msg)
+            (wait_bar, wait_cb) = (None, spiner)
+        return (wait_bar, wait_cb)
 
     def _safe_progress_bar_finish(self, progress_bar):
         try:
             progress_bar.finish()
         except Exception:
-            pass
+            print(' DONE')
 
-    def do_with_progress_bar(self, action, msg, list, *args, **kwargs):
-        (action_bar, action_cb) = self._safe_progress_bar('')
+    def do_with_progress_bar(self, action, msg, items):
+        if not items:
+            print('%s: DONE' % msg)
+            return
+        (action_bar, action_cb) = self._safe_progress_bar(msg)
+        action_gen = action_cb(len(items))
+        for item in items:
+            action(item)
+            action_gen.next()
+        self._safe_progress_bar_finish(action_bar)
 
     def assert_dicts_are_deeply_equal(self, d1, d2):
         for k, v in d1.items():
@@ -144,13 +162,11 @@ def main(argv):
             suiteFew.addTest(unittest.makeSuite(testPithos))
         else:
             suiteFew.addTest(testPithos('test_' + argv[1]))
-    if len(argv) == 0 or argv[0] == 'cyclades':
-        if len(argv) == 1:
-            #suiteFew.addTest(unittest.makeSuite(testCyclades))
-            suiteFew.addTest(testCyclades('test_000'))
-        else:
-            suiteFew.addTest(testCyclades('test_' + argv[1]))
     """
+    if len(argv) == 0 or argv[0] == 'cyclades':
+        from kamaki.clients.tests.cyclades import Cyclades
+        test_method = 'test_%s' % (argv[1] if len(argv) > 1 else '000')
+        suiteFew.addTest(Cyclades(test_method))
     if len(argv) == 0 or argv[0] == 'image':
         from kamaki.clients.tests.image import Image
         test_method = 'test_%s' % (argv[1] if len(argv) > 1 else '000')
