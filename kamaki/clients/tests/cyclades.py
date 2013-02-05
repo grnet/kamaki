@@ -32,7 +32,6 @@
 # or implied, of GRNET S.A.
 
 import time
-from progress.bar import ShadyBar
 
 from kamaki.clients import tests, ClientError
 from kamaki.clients.cyclades import CycladesClient
@@ -41,34 +40,12 @@ from kamaki.clients.cyclades import CycladesClient
 class Cyclades(tests.Generic):
     """Set up a Cyclades thorough test"""
     def setUp(self):
-
-        """okeanos"""
-        self.img = 'b2dffe52-64a4-48c3-8a4c-8214cc3165cf'
-        self.img_details = {
-            u'status': u'ACTIVE',
-            u'updated': u'2012-11-19T13:52:16+00:00',
-            u'name': u'Debian Base',
-            u'created': u'2012-10-16T09:03:12+00:00',
-            u'progress': 100,
-            u'id': self.img,
-            u'metadata': {
-                u'values': {
-                    u'kernel': u'2.6.32',
-                    u'osfamily': u'linux',
-                    u'users': u'root',
-                    u'gui': u'No GUI',
-                    u'sortorder': u'1',
-                    u'os': u'debian',
-                    u'root_partition': u'1',
-                    u'description': u'Debian 6.0.6 (Squeeze) Base System'}
-                }
-            }
-        self.flavor_details = {u'name': u'C1R1024D20',
-            u'ram': 1024,
-            u'id': 1,
-            u'SNF:disk_template': u'drbd',
-            u'disk': 20,
-            u'cpu': 1}
+        print
+        with open(self['image', 'details']) as f:
+            self.img_details = eval(f.read())
+        self.img = self.img_details['id']
+        with open(self['flavor', 'details']) as f:
+            self._flavor_details = eval(f.read())
         self.PROFILES = ('ENABLED', 'DISABLED', 'PROTECTED')
 
         self.servers = {}
@@ -83,7 +60,6 @@ class Cyclades(tests.Generic):
         self.netname2 = 'net' + unicode(self.now) + '_v2'
 
         self.client = CycladesClient(self['compute', 'url'], self['token'])
-        pass
 
     def tearDown(self):
         """Destoy servers used in testing"""
@@ -91,17 +67,26 @@ class Cyclades(tests.Generic):
             self._delete_network,
             'Delete %s networks' % len(self.networks),
             self.networks.keys())
-        server_list = [server['id'] for server in self.servers.values()]
-        self.do_with_progress_bar(
-            self._delete_server,
-            'Delete %s servers %s' % (len(server_list), server_list),
-            server_list)
+        for server in self.servers.values():
+            self._delete_server(server['id'])
+            print('DEL VM %s (%s)' % (server['id'], server['name']))
+
+    def test_000(self):
+        "Prepare a full Cyclades test scenario"
+        self.server1 = self._create_server(self.servname1,
+            self.flavorid,
+            self.img)
+        self.server2 = self._create_server(self.servname2,
+            self.flavorid + 2,
+            self.img)
+        super(self.__class__, self).test_000()
 
     def _create_server(self, servername, flavorid, imageid, personality=None):
         server = self.client.create_server(servername,
             flavorid,
             imageid,
             personality)
+        print('CREATE VM %s (%s)' % (server['id'], server['name']))
         self.servers[servername] = server
         return server
 
@@ -111,10 +96,11 @@ class Cyclades(tests.Generic):
             current_state = current_state['status']
             if current_state == 'DELETED':
                 return
+            self.client.delete_server(servid)
+            self._wait_for_status(servid, current_state)
+            self.client.delete_server(servid)
         except:
             return
-        self._wait_for_status(servid, current_state)
-        self.client.delete_server(servid)
 
     def _create_network(self, netname, **kwargs):
         net = self.client.create_network(netname, **kwargs)
@@ -176,33 +162,93 @@ class Cyclades(tests.Generic):
         self.client.wait_server(servid, status, wait_cb=wait_cb)
         self._safe_progress_bar_finish(wait_bar)
 
+    def test_parallel_creation(self):
+        """test create with multiple threads
+        Do not use this in regular tests
+        """
+        from kamaki.clients import SilentEvent
+        c1 = SilentEvent(self._create_server,
+            self.servname1,
+            self.flavorid,
+            self.img)
+        c2 = SilentEvent(self._create_server,
+            self.servname2,
+            self.flavorid + 2,
+            self.img)
+        c3 = SilentEvent(self._create_server,
+            self.servname1,
+            self.flavorid,
+            self.img)
+        c4 = SilentEvent(self._create_server,
+            self.servname2,
+            self.flavorid + 2,
+            self.img)
+        c5 = SilentEvent(self._create_server,
+            self.servname1,
+            self.flavorid,
+            self.img)
+        c6 = SilentEvent(self._create_server,
+            self.servname2,
+            self.flavorid + 2,
+            self.img)
+        c7 = SilentEvent(self._create_server,
+            self.servname1,
+            self.flavorid,
+            self.img)
+        c8 = SilentEvent(self._create_server,
+            self.servname2,
+            self.flavorid + 2,
+            self.img)
+        c1.start()
+        c2.start()
+        c3.start()
+        c4.start()
+        c5.start()
+        c6.start()
+        c7.start()
+        c8.start()
+
+    def test_create_server(self):
+        """Test create_server"""
+        self.server1 = self._create_server(self.servname1,
+            self.flavorid,
+            self.img)
+        self._wait_for_status(self.server1['id'], 'BUILD')
+        self._test_0010_create_server()
+
+    def _test_0010_create_server(self):
+        self.assertEqual(self.server1["name"], self.servname1)
+        self.assertEqual(self.server1["flavorRef"], self.flavorid)
+        self.assertEqual(self.server1["imageRef"], self.img)
+        self.assertEqual(self.server1["status"], "BUILD")
+
     def test_list_servers(self):
         """Test list servers"""
         self.server1 = self._create_server(
             self.servname1,
             self.flavorid,
             self.img)
-        return
         self.server2 = self._create_server(
             self.servname2,
             self.flavorid + 2,
             self.img)
-        self._test_list_servers()
+        self._test_0020_list_servers()
 
-    def _test_list_servers(self):
+    def _test_0020_list_servers(self):
         servers = self.client.list_servers()
         dservers = self.client.list_servers(detail=True)
 
         """detailed and simple are same size"""
         self.assertEqual(len(dservers), len(servers))
         for i in range(len(servers)):
-            for field in ('created',
-            'flavorRef',
-            'hostId',
-            'imageRef',
-            'progress',
-            'status',
-            'updated'):
+            for field in (
+                'created',
+                'flavorRef',
+                'hostId',
+                'imageRef',
+                'progress',
+                'status',
+                'updated'):
                 self.assertFalse(field in servers[i])
                 self.assertTrue(field in dservers[i])
 
@@ -210,3 +256,217 @@ class Cyclades(tests.Generic):
         names = sorted(map(lambda x: x["name"], servers))
         dnames = sorted(map(lambda x: x["name"], dservers))
         self.assertEqual(names, dnames)
+
+    def _test_0030_wait_test_servers_to_build(self):
+        """Pseudo-test to wait for VMs to load"""
+        from sys import stdout
+        stdout.write('')
+        stdout.flush()
+        self._wait_for_status(self.server1['id'], 'BUILD')
+        self._wait_for_status(self.server2['id'], 'BUILD')
+
+    def test_get_server_details(self):
+        """Test get_server_details"""
+        self.server1 = self._create_server(self.servname1,
+            self.flavorid,
+            self.img)
+        self._wait_for_status(self.server1['id'], 'BUILD')
+        self._test_0040_get_server_details()
+
+    def _test_0040_get_server_details(self):
+        r = self.client.get_server_details(self.server1['id'])
+        self.assertEqual(r["name"], self.servname1)
+        self.assertEqual(r["flavorRef"], self.flavorid)
+        self.assertEqual(r["imageRef"], self.img)
+        self.assertEqual(r["status"], "ACTIVE")
+
+    def test_update_server_name(self):
+        """Test update_server_name"""
+        self.server1 = self._create_server(self.servname1,
+            self.flavorid,
+            self.img)
+        self._test_0050_update_server_name()
+
+    def _test_0050_update_server_name(self):
+        new_name = self.servname1 + '_new_name'
+        self.client.update_server_name(self.server1['id'], new_name)
+        r = self.client.get_server_details(self.server1['id'],
+         success=(200, 400))
+        self.assertEqual(r['name'], new_name)
+        changed = self.servers.pop(self.servname1)
+        changed['name'] = new_name
+        self.servers[new_name] = changed
+
+    def test_reboot_server(self):
+        """Test reboot server"""
+        self.server1 = self._create_server(self.servname1,
+            self.flavorid,
+            self.img)
+        self._wait_for_status(self.server1['id'], 'BUILD')
+        self.server2 = self._create_server(self.servname2,
+            self.flavorid + 1,
+            self.img)
+        self._wait_for_status(self.server2['id'], 'BUILD')
+        self._test_0060_reboot_server()
+        self._wait_for_status(self.server1['id'], 'REBOOT')
+        self._wait_for_status(self.server2['id'], 'REBOOT')
+
+    def _test_0060_reboot_server(self):
+        self.client.reboot_server(self.server1['id'])
+        self.assertTrue(self._has_status(self.server1['id'], 'REBOOT'))
+        self.client.reboot_server(self.server2['id'], hard=True)
+        self.assertTrue(self._has_status(self.server2['id'], 'REBOOT'))
+
+    def _test_0070_wait_test_servers_to_reboot(self):
+        """Pseudo-test to wait for VMs to load"""
+        from sys import stdout
+        stdout.write('')
+        stdout.flush()
+        self._wait_for_status(self.server1['id'], 'REBOOT')
+        self._wait_for_status(self.server2['id'], 'REBOOT')
+
+    def test_create_server_metadata(self):
+        """Test create_server_metadata"""
+        self.server1 = self._create_server(self.servname1,
+            self.flavorid,
+            self.img)
+        self._test_0080_create_server_metadata()
+
+    def _test_0080_create_server_metadata(self):
+        r1 = self.client.create_server_metadata(self.server1['id'],
+            'mymeta',
+            'mymeta val')
+        self.assertTrue('mymeta' in r1)
+        r2 = self.client.get_server_metadata(self.server1['id'], 'mymeta')
+        self.assert_dicts_are_deeply_equal(r1, r2)
+
+    def test_get_server_metadata(self):
+        """Test get server_metadata"""
+        self.server1 = self._create_server(self.servname1,
+            self.flavorid,
+            self.img)
+        self._test_0090_get_server_metadata()
+
+    def _test_0090_get_server_metadata(self):
+        self.client.create_server_metadata(self.server1['id'],
+            'mymeta_0',
+            'val_0')
+        r = self.client.get_server_metadata(self.server1['id'], 'mymeta_0')
+        self.assertEqual(r['mymeta_0'], 'val_0')
+
+    def test_update_server_metadata(self):
+        """Test update_server_metadata"""
+        self.server1 = self._create_server(self.servname1,
+            self.flavorid,
+            self.img)
+        self._test_0100_update_server_metadata()
+
+    def _test_0100_update_server_metadata(self):
+        r1 = self.client.create_server_metadata(self.server1['id'],
+            'mymeta3',
+            'val2')
+        self.assertTrue('mymeta3'in r1)
+        r2 = self.client.update_server_metadata(self.server1['id'],
+            mymeta3='val3')
+        self.assertTrue(r2['mymeta3'], 'val3')
+
+    def test_delete_server_metadata(self):
+        """Test delete_server_metadata"""
+        self.server1 = self._create_server(self.servname1,
+            self.flavorid,
+            self.img)
+        self._test_0110_delete_server_metadata()
+
+    def _test_0110_delete_server_metadata(self):
+        r1 = self.client.create_server_metadata(self.server1['id'],
+            'mymeta',
+            'val')
+        self.assertTrue('mymeta' in r1)
+        self.client.delete_server_metadata(self.server1['id'], 'mymeta')
+        try:
+            self.client.get_server_metadata(self.server1['id'], 'mymeta')
+            raise ClientError('Wrong Error', status=100)
+        except ClientError as err:
+            self.assertEqual(err.status, 404)
+
+    def test_list_flavors(self):
+        """Test flavors_get"""
+        self._test_0120_list_flavors()
+
+    def _test_0120_list_flavors(self):
+        r = self.client.list_flavors()
+        self.assertTrue(len(r) > 1)
+        r = self.client.list_flavors(detail=True)
+        self.assertTrue('SNF:disk_template' in r[0])
+
+    def test_get_flavor_details(self):
+        """Test test_get_flavor_details"""
+        self._test_0130_get_flavor_details()
+
+    def _test_0130_get_flavor_details(self):
+        r = self.client.get_flavor_details(self.flavorid)
+        self.assert_dicts_are_deeply_equal(self._flavor_details, r)
+
+    def test_list_images(self):
+        """Test list_images"""
+        self._test_0140_list_images()
+
+    def _test_0140_list_images(self):
+        r = self.client.list_images()
+        self.assertTrue(len(r) > 1)
+        r = self.client.list_images(detail=True)
+        for detailed_img in r:
+            if detailed_img['id'] == self.img:
+                break
+        self.assert_dicts_are_deeply_equal(detailed_img, self.img_details)
+
+    def test_get_image_details(self):
+        """Test image_details"""
+        self._test_0150_get_image_details()
+
+    def _test_0150_get_image_details(self):
+        r = self.client.get_image_details(self.img)
+        r.pop('updated')
+        self.assert_dicts_are_deeply_equal(r, self.img_details)
+
+    def test_get_image_metadata(self):
+        """Test get_image_metadata"""
+        self._test_0160_get_image_metadata()
+
+    def _test_0160_get_image_metadata(self):
+        r = self.client.get_image_metadata(self.img)
+        self.assert_dicts_are_deeply_equal(
+            self.img_details['metadata']['values'], r)
+        for key, val in self.img_details['metadata']['values'].items():
+            r = self.client.get_image_metadata(self.img, key)
+            self.assertEqual(r[key], val)
+
+    def test_shutdown_server(self):
+        """Test shutdown_server"""
+        self.server1 = self._create_server(self.servname1,
+            self.flavorid,
+            self.img)
+        self._wait_for_status(self.server1['id'], 'BUILD')
+        self._test_0170_shutdown_server()
+
+    def _test_0170_shutdown_server(self):
+        self.client.shutdown_server(self.server1['id'])
+        self._wait_for_status(self.server1['id'], 'ACTIVE')
+        r = self.client.get_server_details(self.server1['id'])
+        self.assertEqual(r['status'], 'STOPPED')
+
+    def test_start_server(self):
+        """Test start_server"""
+        self.server1 = self._create_server(self.servname1,
+            self.flavorid,
+            self.img)
+        self._wait_for_status(self.server1['id'], 'BUILD')
+        self.client.shutdown_server(self.server1['id'])
+        self._wait_for_status(self.server1['id'], 'ACTIVE')
+        self._test_0180_start_server()
+
+    def _test_0180_start_server(self):
+        self.client.start_server(self.server1['id'])
+        self._wait_for_status(self.server1['id'], 'STOPPED')
+        r = self.client.get_server_details(self.server1['id'])
+        self.assertEqual(r['status'], 'ACTIVE')
