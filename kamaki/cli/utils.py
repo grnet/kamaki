@@ -393,6 +393,16 @@ def ask_user(msg, true_resp=['Y', 'y']):
     return user_response[0] in true_resp + ['\n']
 
 
+def spiner():
+    spins = ('/', '-', '\\', '|')
+    i = 0
+    stdout.write(' ')
+    while True:
+        stdout.write('\b%s' % spins[i % len(spins)])
+        stdout.flush()
+        i += 1
+        yield
+
 if __name__ == '__main__':
     examples = ['la_la le_le li_li',
         '\'la la\' \'le le\' \'li li\'',

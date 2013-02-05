@@ -35,6 +35,7 @@ from unittest import TestCase, TestSuite, makeSuite, TextTestRunner
 from argparse import ArgumentParser
 from sys import stdout
 from traceback import extract_stack, print_stack
+from progress.bar import ShadyBar
 
 from kamaki.cli.config import Config
 
@@ -78,6 +79,32 @@ class Generic(TestCase):
                 or self._cnf.get('global', key[1])
         self._fetched[key] = val
         return val
+
+    def _safe_progress_bar(self, msg):
+        """Try to get a progress bar, but do not raise errors"""
+        try:
+            progress_bar = ShadyBar()
+            gen = progress_bar.get_generator(msg)
+        except Exception:
+            return (None, None)
+        return (progress_bar, gen)
+
+    def _safe_progress_bar_finish(self, progress_bar):
+        try:
+            progress_bar.finish()
+        except Exception:
+            pass
+
+    def do_with_progress_bar(self, action, msg, list, *args, **kwargs):
+        (action_bar, action_cb) = self._safe_progress_bar('')
+
+    def assert_dicts_are_deeply_equal(self, d1, d2):
+        for k, v in d1.items():
+            self.assertTrue(k in d2)
+            if isinstance(v, dict):
+                self.assert_dicts_are_deeply_equal(v, d2[k])
+            else:
+                self.assertEqual(unicode(v), unicode(d2[k]))
 
     def test_000(self):
         import inspect
