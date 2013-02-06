@@ -45,11 +45,10 @@ _commands = [test_cmds]
 class _test_init(_command_init):
 
     def main(self, client, method=None):
-        tests.cnf = self.config
         if method:
-            tests.main([client, method])
+            tests.main([client, method], config=self.config)
         else:
-            tests.main([client])
+            tests.main([client], config=self.config)
 
 
 @command(test_cmds)

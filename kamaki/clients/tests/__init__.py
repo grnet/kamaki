@@ -45,7 +45,6 @@ def _add_value(foo, value):
         return foo(self, value)
     return wrap
 
-
 class Generic(TestCase):
 
     _waits = []
@@ -53,9 +52,9 @@ class Generic(TestCase):
     _grp = None
     _fetched = {}
 
-    def __init__(self, specific=None, config_file=None, group=None):
+    def __init__(self, specific=None, config=None, group=None):
         super(Generic, self).__init__(specific)
-        self._cnf = Config(config_file)
+        self._cnf = config or Config()
         self._grp = group
         self._waits.append(0.71828)
         for i in range(10):
@@ -111,6 +110,10 @@ class Generic(TestCase):
             return
         (action_bar, action_cb) = self._safe_progress_bar(msg)
         action_gen = action_cb(len(items))
+        try:
+            action_gen.next()
+        except Exception:
+            pass
         for item in items:
             action(item)
             action_gen.next()
@@ -154,7 +157,10 @@ def init_parser():
 
 
 def main(argv):
+    _main(argv, config=None)
 
+
+def _main(argv, config=None):
     suiteFew = TestSuite()
     """
     if len(argv) == 0 or argv[0] == 'pithos':
@@ -166,17 +172,17 @@ def main(argv):
     if len(argv) == 0 or argv[0] == 'cyclades':
         from kamaki.clients.tests.cyclades import Cyclades
         test_method = 'test_%s' % (argv[1] if len(argv) > 1 else '000')
-        suiteFew.addTest(Cyclades(test_method))
+        suiteFew.addTest(Cyclades(test_method, config))
     if len(argv) == 0 or argv[0] == 'image':
         from kamaki.clients.tests.image import Image
         test_method = 'test_%s' % (argv[1] if len(argv) > 1 else '000')
-        suiteFew.addTest(Image(test_method))
+        suiteFew.addTest(Image(test_method, config))
     if len(argv) == 0 or argv[0] == 'astakos':
         from kamaki.clients.tests.astakos import Astakos
         if len(argv) == 1:
-            suiteFew.addTest(makeSuite(Astakos))
+            suiteFew.addTest(makeSuite(Astakos, config))
         else:
-            suiteFew.addTest(Astakos('test_' + argv[1]))
+            suiteFew.addTest(Astakos('test_' + argv[1], config))
 
     TextTestRunner(verbosity=2).run(suiteFew)
 
