@@ -46,9 +46,9 @@ class _test_init(_command_init):
 
     def main(self, client, method=None):
         if method:
-            tests.main([client, method], config=self.config)
+            tests._main([client, method], config=self.config)
         else:
-            tests.main([client], config=self.config)
+            tests._main([client], config=self.config)
 
 
 @command(test_cmds)
