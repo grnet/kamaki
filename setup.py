@@ -61,6 +61,7 @@ setup(
         'kamaki.clients.connection',
         'kamaki.cli',
         'kamaki.cli.commands',
+        'kamaki.clients.tests',
         'kamaki.clients.commissioning',
         'kamaki.clients.quotaholder',
         'kamaki.clients.quotaholder.api',

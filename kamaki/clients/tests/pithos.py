@@ -1165,7 +1165,7 @@ class Pithos(tests.Generic):
 
     def create_large_file(self, size, name):
         """Create a large file at fs"""
-        with open(self.fname, 'w') as f:
+        with open(name, 'w') as f:
             def append2file(step):
                 f.seek(step)
                 f.write(os.urandom(8))
