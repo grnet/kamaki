@@ -64,11 +64,20 @@ class Pithos(tests.Generic):
 
     def _init_data(self):
         self.c1 = 'c1_' + unicode(self.now)
-        self.client.create_container(self.c1)
         self.c2 = 'c2_' + unicode(self.now)
-        self.client.create_container(self.c2)
         self.c3 = 'c3_' + unicode(self.now)
-        self.client.create_container(self.c3)
+        try:
+            self.client.create_container(self.c2)
+        except ClientError:
+            pass
+        try:
+            self.client.create_container(self.c1)
+        except ClientError:
+            pass
+        try:
+            self.client.create_container(self.c3)
+        except ClientError:
+            pass
 
         self.create_remote_object(self.c1, 'test')
         self.create_remote_object(self.c2, 'test')
@@ -98,7 +107,7 @@ class Pithos(tests.Generic):
         """Destroy test cases"""
         for fname in self.fnames:
             try:
-                os.remove(self.fname)
+                os.remove(fname)
             except OSError:
                 pass
         self.forceDeleteContainer(self.c1)
@@ -798,7 +807,7 @@ class Pithos(tests.Generic):
         newf.close()
         """Check if file has been uploaded"""
         r = self.client.get_object_info('sample.file')
-        self.assertEqual(int(r['content-length']), 10260)
+        self.assertEqual(int(r['content-length']), 10240)
 
         """Some problems with transfer-encoding?"""
 
@@ -1165,11 +1174,13 @@ class Pithos(tests.Generic):
 
     def create_large_file(self, size, name):
         """Create a large file at fs"""
+        Ki = size / 10
+        bytelist = [b * Ki for b in range(size / Ki)]
         with open(name, 'w') as f:
             def append2file(step):
                 f.seek(step)
-                f.write(os.urandom(8))
+                f.write(os.urandom(Ki))
             self.do_with_progress_bar(
                 append2file,
                 ' create rand file %s (%sB): ' % (name, size),
-                [hobyte * 8 for hobyte in xrange(size / 8)])
+                bytelist)
