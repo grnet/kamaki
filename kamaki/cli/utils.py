@@ -33,6 +33,8 @@
 
 from sys import stdout, stdin
 from re import compile as regex_compile
+from time import sleep
+
 from kamaki.cli.errors import raiseCLIError
 
 try:
@@ -392,6 +394,18 @@ def ask_user(msg, true_resp=['Y', 'y']):
     user_response = stdin.readline()
     return user_response[0] in true_resp + ['\n']
 
+
+def spiner(size=None):
+    spins = ('/', '-', '\\', '|')
+    stdout.write(' ')
+    size = size or -1
+    i = 0
+    while size - i:
+        stdout.write('\b%s' % spins[i % len(spins)])
+        stdout.flush()
+        i += 1
+        sleep(0.1)
+        yield
 
 if __name__ == '__main__':
     examples = ['la_la le_le li_li',
