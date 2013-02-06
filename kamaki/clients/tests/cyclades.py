@@ -65,10 +65,6 @@ class Cyclades(tests.Generic):
         """Destoy servers used in testing"""
         for net in self.networks.keys():
             self._delete_network(net)
-        #self.do_with_progress_bar(
-        #    self._delete_network,
-        #    'Delete %s networks' % len(self.networks),
-        #    self.networks.keys())
         for server in self.servers.values():
             self._delete_server(server['id'])
             print('DEL VM %s (%s)' % (server['id'], server['name']))

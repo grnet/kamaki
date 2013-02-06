@@ -135,7 +135,8 @@ class Generic(TestCase):
             if method[0].startswith('_test_')]
         failures = 0
         for method in methods:
-            stdout.write('Test %s' % method[0][6:])
+            stdout.write('Test %s ' % method[0][6:])
+            stdout.flush()
             try:
                 method[1]()
                 print(' ...ok')
@@ -162,13 +163,10 @@ def main(argv):
 
 def _main(argv, config=None):
     suiteFew = TestSuite()
-    """
     if len(argv) == 0 or argv[0] == 'pithos':
-        if len(argv) == 1:
-            suiteFew.addTest(unittest.makeSuite(testPithos))
-        else:
-            suiteFew.addTest(testPithos('test_' + argv[1]))
-    """
+        from kamaki.clients.tests.pithos import Pithos
+        test_method = 'test_%s' % (argv[1] if len(argv) > 1 else '000')
+        suiteFew.addTest(Pithos(test_method, config))
     if len(argv) == 0 or argv[0] == 'cyclades':
         from kamaki.clients.tests.cyclades import Cyclades
         test_method = 'test_%s' % (argv[1] if len(argv) > 1 else '000')
