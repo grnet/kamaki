@@ -42,14 +42,50 @@ class Astakos(tests.Generic):
             self['astakos', 'token'])
 
     def test_authenticate(self):
+        self._test_0010_authenticate()
+
+    def _test_0010_authenticate(self):
         r = self.client.authenticate()
         for term in (
+            'name',
             'username',
             'auth_token_expires',
-            'auth_token',
             'auth_token_created',
-            'groups',
-            'uniq',
-            'has_credits',
-            'has_signed_terms'):
+            'uuid',
+            'id',
+            'email'):
             self.assertTrue(term in r)
+
+    def test_info(self):
+        self._test_0020_info()
+
+    def _test_0020_info(self):
+        self.assertTrue(set([
+            'name',
+            'username',
+            'uuid']).issubset(self.client.info().keys()))
+
+    def test_get(self):
+        self._test_0020_get()
+
+    def _test_0020_get(self):
+        for term in (
+            'uuid',
+            'name',
+            'username'):
+            self.assertEqual(
+                self.client.term(term, self['astakos', 'token']),
+                self['astakos', term])
+        self.assertTrue(self['astakos', 'email'] in self.client.term('email'))
+
+    def test_list(self):
+        self.client.authenticate()
+        self._test_0020_list()
+
+    def _test_0020_list(self):
+        terms = set(['name', 'username', 'uuid', 'email', 'auth_token'])
+        uuid = 0
+        for r in self.client.list():
+            self.assertTrue(terms.issubset(r.keys()))
+            self.assertTrue(uuid != r['uuid'] if uuid else True)
+            uuid = r['uuid']

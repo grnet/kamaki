@@ -36,6 +36,10 @@ history
 
     Access kamaki user history, which is stored in ~/.kamaki.history file.
 
+astakos
+
+    Get information from astakos API
+
 server
 
     Manage compute API virtual machines.
@@ -103,6 +107,12 @@ Command user history, as stored in ~/.kamaki.history
 * show      show intersession history
 * clean     clean up history
 * run       run/show previously executed command(s)
+
+
+astakos commands
+****************
+
+* authenticate      Authenticate a user, show user information
 
 
 server commands
