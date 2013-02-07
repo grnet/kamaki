@@ -38,6 +38,7 @@ from tempfile import NamedTemporaryFile
 
 from kamaki.clients import tests, ClientError
 from kamaki.clients.pithos import PithosClient
+from kamaki.clients.astakos import AstakosClient
 
 
 class Pithos(tests.Generic):
@@ -48,7 +49,10 @@ class Pithos(tests.Generic):
         self.client = PithosClient(
             self['store', 'url'],
             self['store', 'token'],
-            self['store', 'account'])
+            AstakosClient(
+                self['astakos', 'url'],
+                self['store', 'token']
+            ).term('uuid'))
 
         self.now = time.mktime(time.gmtime())
         self.now_unformated = datetime.datetime.utcnow()
@@ -58,7 +62,7 @@ class Pithos(tests.Generic):
         self.client.container = self.c1
         self.client.object_post('test',
             update=True,
-            permissions={'read': 'someUser'})
+            permissions={'read': [self.client.account]})
 
         self.create_remote_object(self.c1, 'another.test')
 
