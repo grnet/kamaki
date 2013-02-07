@@ -76,4 +76,4 @@ class AstakosClient(Client):
 
     def term(self, key, token=None):
         """Get (cached) term, from user credentials"""
-        return self.info(token)[key]
+        return self.info(token).get(key, None)

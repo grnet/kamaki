@@ -60,7 +60,8 @@ class Pithos(tests.Generic):
 
         """Prepare an object to be shared - also its container"""
         self.client.container = self.c1
-        self.client.object_post('test',
+        self.client.object_post(
+            'test',
             update=True,
             permissions={'read': [self.client.account]})
 

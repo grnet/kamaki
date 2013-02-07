@@ -299,11 +299,11 @@ store (Storage/Pithos+)
     copy          :  Copy an object
     create        :  Create a container
     delete        :  Delete a container [or an object]
-    delgroup      :  Delete a user group on an account
-    delmeta       :  Delete an existing metadatum of account [, container [or object]]
+    delgroup      :  Delete a user group
+    delmeta       :  Delete an existing metadatum for an account [, container [or object]]
     delpermissions:  Delete all sharing permissions
     download      :  Download a file
-    group         :  Get user groups details for account
+    group         :  Get user groups details
     hashmap       :  Get the hashmap of an object
     info          :  Get information for account [, container [or object]]
     list          :  List containers, object trees or objects in a directory
@@ -316,7 +316,7 @@ store (Storage/Pithos+)
     publish       :  Publish an object
     purge         :  Purge a container
     quota         :  Get  quota for account [or container]
-    setgroup      :  Create/update a new user group on account
+    setgroup      :  Create/update a new user group
     setmeta       :  Set a new metadatum for account [, container [or object]]
     setpermissions:  Set sharing permissions
     setquota      :  Set new quota (in KB) for account [or container]
