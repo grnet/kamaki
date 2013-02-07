@@ -42,9 +42,9 @@ class Astakos(tests.Generic):
             self['astakos', 'token'])
 
     def test_authenticate(self):
-        self._test_authenticate()
+        self._test_0010_authenticate()
 
-    def _test_authenticate(self):
+    def _test_0010_authenticate(self):
         r = self.client.authenticate()
         for term in (
             'name',
@@ -57,9 +57,9 @@ class Astakos(tests.Generic):
             self.assertTrue(term in r)
 
     def test_get(self):
-        self._test_get()
+        self._test_0020_get()
 
-    def _test_get(self):
+    def _test_0020_get(self):
         for term in (
             'uuid',
             'name',
@@ -69,13 +69,12 @@ class Astakos(tests.Generic):
 
     def test_list(self):
         self.client.authenticate()
-        self._test_list()
+        self._test_0020_list()
 
-    def _test_list(self):
+    def _test_0020_list(self):
         terms = set(['name', 'username', 'uuid', 'email'])
         uuid = 0
         for r in self.client.list():
-            print('Hum?')
             self.assertTrue(terms.issubset(r.keys()))
             self.assertTrue(uuid != r['uuid'] if uuid else True)
             uuid = r['uuid']

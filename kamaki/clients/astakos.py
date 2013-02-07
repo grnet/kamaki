@@ -43,25 +43,31 @@ class AstakosClient(Client):
         super(AstakosClient, self).__init__(base_url, token)
 
     def authenticate(self, token=None):
-        """
+        """Get authentication information and store it in this client
+        As long as the AstakosClient instance is alive, the latest
+        authentication information for this token will be available
+
         :param token: (str) custom token to authenticate
 
         :returns: (dict) authentication information
         """
         self.token = token or self.token
-        self._cache[token] = self.get('/im/authenticate').json
-        return self._cache[token]
+        self._cache[self.token] = self.get('/im/authenticate').json
+        return self._cache[self.token]
 
     def list(self):
         """list cached user information"""
         return self._cache.values()
 
     def _user_info(self, token=None):
+        token_bu = self.token
         token = token or self.token
         try:
-            return self._cache[token]
+            r = self._cache[token]
         except KeyError:
-            return self.authenticate(token)
+            r = self.authenticate(token)
+        self.token = token_bu
+        return r
 
     def term(self, key, token=None):
         """Get (cached) term, from user credentials"""
