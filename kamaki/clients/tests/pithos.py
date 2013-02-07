@@ -33,8 +33,8 @@
 
 import time
 import datetime
-import os
-import tempfile
+from os import urandom
+from tempfile import NamedTemporaryFile
 
 from kamaki.clients import tests, ClientError
 from kamaki.clients.pithos import PithosClient
@@ -42,7 +42,7 @@ from kamaki.clients.pithos import PithosClient
 
 class Pithos(tests.Generic):
 
-    fnames = []
+    files = []
 
     def setUp(self):
         self.client = PithosClient(
@@ -105,11 +105,8 @@ class Pithos(tests.Generic):
 
     def tearDown(self):
         """Destroy test cases"""
-        for fname in self.fnames:
-            try:
-                os.remove(fname)
-            except OSError:
-                pass
+        for f in self.files:
+            f.close()
         self.forceDeleteContainer(self.c1)
         self.forceDeleteContainer(self.c2)
         try:
@@ -449,14 +446,10 @@ class Pithos(tests.Generic):
         """put_block uses content_type and content_length to
         post blocks of data 2 container. All that in upload_object"""
         """Change a file at fs"""
-        fname = 'l100M.' + unicode(self.now)
-        self.create_large_file(1024 * 1024 * 100, fname)
-        self.fnames.append(fname)
+        f = self.create_large_file(1024 * 1024 * 100)
         """Upload it at a directory in container"""
         self.client.create_directory('dir')
-        newf = open(fname, 'rb')
-        self.client.upload_object('/dir/sample.file', newf)
-        newf.close()
+        self.client.upload_object('/dir/sample.file', f)
         """Check if file has been uploaded"""
         r = self.client.get_object_info('/dir/sample.file')
         self.assertTrue(int(r['content-length']) > 100000000)
@@ -614,39 +607,21 @@ class Pithos(tests.Generic):
             self.assertNotEqual(sc1, sc2)
 
         """Upload an object to download"""
-        src_file = tempfile.NamedTemporaryFile(delete=False)
-        dnl_file = tempfile.NamedTemporaryFile(delete=False)
-
-        src_fname = src_file.name
-        dnl_fname = dnl_file.name
-
-        src_file.close()
-        dnl_file.close()
-
         trg_fname = 'remotefile_%s' % self.now
         f_size = 59247824
-        self.create_large_file(f_size, src_fname)
-        src_f = open(src_fname, 'rb+')
+        src_f = self.create_large_file(f_size)
         print('\tUploading...')
         self.client.upload_object(trg_fname, src_f)
-        src_f.close()
         print('\tDownloading...')
-        dnl_f = open(dnl_fname, 'wb+')
+        self.files.append(NamedTemporaryFile())
+        dnl_f = self.files[-1]
         self.client.download_object(trg_fname, dnl_f)
-        dnl_f.close()
 
         print('\tCheck if files match...')
-        src_f = open(src_fname)
-        dnl_f = open(dnl_fname)
         for pos in (0, f_size / 2, f_size - 20):
             src_f.seek(pos)
             dnl_f.seek(pos)
             self.assertEqual(src_f.read(10), dnl_f.read(10))
-        src_f.close()
-        dnl_f.close()
-
-        os.remove(src_fname)
-        os.remove(dnl_fname)
 
     def test_object_put(self):
         """Test object_PUT"""
@@ -799,12 +774,8 @@ class Pithos(tests.Generic):
         self.assertEqual(r.text, txt)
 
         """Upload a local file with one request"""
-        fname = 'l10K.' + unicode(self.now)
-        self.create_large_file(1024 * 10, fname)
-        self.fnames.append(fname)
-        newf = open(fname, 'rb')
+        newf = self.create_large_file(1024 * 10)
         self.client.upload_object('sample.file', newf)
-        newf.close()
         """Check if file has been uploaded"""
         r = self.client.get_object_info('sample.file')
         self.assertEqual(int(r['content-length']), 10240)
@@ -1008,12 +979,11 @@ class Pithos(tests.Generic):
         self.client.container = self.c2
         obj = 'test2'
         """create a filesystem file"""
-        self.fnames.append(obj)
-        newf = open(self.fnames[-1], 'w')
+        self.files.append(NamedTemporaryFile())
+        newf = self.files[-1]
         newf.writelines(['ello!\n',
             'This is a test line\n',
             'inside a test file\n'])
-        newf.close()
         """create a file on container"""
         r = self.client.object_put(obj,
             content_type='application/octet-stream',
@@ -1023,7 +993,7 @@ class Pithos(tests.Generic):
                 'write': ['u2', 'u3']})
 
         """Append tests update, content_range, content_type, content_length"""
-        newf = open(obj, 'r')
+        newf.seek(0)
         self.client.append_object(obj, newf)
         r = self.client.object_get(obj)
         self.assertTrue(r.text.startswith('Hello!'))
@@ -1035,7 +1005,6 @@ class Pithos(tests.Generic):
         r = self.client.overwrite_object(obj, 0, 10, newf)
         r = self.client.object_get(obj)
         self.assertTrue(r.text.startswith('ello!'))
-        newf.close()
 
         """Truncate tests update,
             content_range, content_type, object_bytes and source_object"""
@@ -1172,15 +1141,20 @@ class Pithos(tests.Generic):
         r = self.client.object_get(obj, success=(200, 404))
         self.assertEqual(r.status_code, 404)
 
-    def create_large_file(self, size, name):
+    def create_large_file(self, size):
         """Create a large file at fs"""
-        Ki = size / 10
+        self.files.append(NamedTemporaryFile())
+        f = self.files[-1]
+        Ki = size / 8
         bytelist = [b * Ki for b in range(size / Ki)]
-        with open(name, 'w') as f:
-            def append2file(step):
-                f.seek(step)
-                f.write(os.urandom(Ki))
-            self.do_with_progress_bar(
-                append2file,
-                ' create rand file %s (%sB): ' % (name, size),
-                bytelist)
+
+        def append2file(step):
+            f.seek(step)
+            f.write(urandom(Ki))
+            f.flush()
+        self.do_with_progress_bar(
+            append2file,
+            ' create rand file %s (%sB): ' % (f.name, size),
+            bytelist)
+        f.seek(0)
+        return f
