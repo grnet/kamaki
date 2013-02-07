@@ -49,8 +49,11 @@ class AstakosClient(Client):
         :returns: (dict) authentication information
         """
         self.token = token or self.token
-        self._cache[token] = self.get('/im/authenticate')
-        return self._cache[token].json
+        self._cache[token] = self.get('/im/authenticate').json
+        return self._cache[token]
+
+    def list(self):
+        return self._cache.values()
 
     def _user_info(self, token=None):
         token = token or self.token
@@ -59,26 +62,6 @@ class AstakosClient(Client):
         except KeyError:
             return self.authenticate(token)
 
-    def uuid(self, token=None):
-        return self._user_info(token)['uuid'].strip()
-
-    def name(self, token=None):
-        return self._user_info(token)['name'].strip()
-
-    def username(self, token=None):
-        return self._user_info(token)['username'].strip()
-
-    def token_created(self, token=None):
-        return self._user_info(token)['auth_token_created'].strip()
-
-    def token_expires(self, token=None):
-        return self._user_info(token)['auth_token_expires'].strip()
-
-    def email(self, token=None):
-        return self._user_info(token)['email'].strip()
-
-    def id(self, token=None):
-        """Internal reference for Astakos objects (not a unique user id)
-        For a unique identifier use uuid
-        """
-        return self._user_info(token)['id'].strip()
+    def term(self, key, token=None):
+        """Get (cached) term, from user credentials"""
+        return self._user_info(token)[key]

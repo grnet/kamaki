@@ -42,14 +42,27 @@ class Astakos(tests.Generic):
             self['astakos', 'token'])
 
     def test_authenticate(self):
+        self._test_authenticate()
+
+    def _test_authenticate(self):
         r = self.client.authenticate()
         for term in (
+            'name',
             'username',
             'auth_token_expires',
-            'auth_token',
             'auth_token_created',
-            'groups',
-            'uniq',
-            'has_credits',
-            'has_signed_terms'):
+            'uuid',
+            'id',
+            'email'):
             self.assertTrue(term in r)
+
+    def test_get(self):
+        self._test_get()
+
+    def _test_get(self):
+        for term in (
+            'uuid',
+            'name',
+            'username'):
+            self.assertEqual(self.client.term(term), self['astakos', term])
+        self.assertTrue(self['astakos', 'email'] in self.client.term('email'))

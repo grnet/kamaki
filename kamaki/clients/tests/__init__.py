@@ -31,7 +31,8 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from unittest import TestCase, TestSuite, makeSuite, TextTestRunner
+import inspect
+from unittest import TestCase, TestSuite, TextTestRunner
 from argparse import ArgumentParser
 from sys import stdout
 from progress.bar import ShadyBar
@@ -44,6 +45,7 @@ def _add_value(foo, value):
     def wrap(self):
         return foo(self, value)
     return wrap
+
 
 class Generic(TestCase):
 
@@ -128,7 +130,7 @@ class Generic(TestCase):
                 self.assertEqual(unicode(v), unicode(d2[k]))
 
     def test_000(self):
-        import inspect
+        print('')
         methods = [method for method in inspect.getmembers(
             self,
             predicate=inspect.ismethod)\
@@ -177,10 +179,8 @@ def _main(argv, config=None):
         suiteFew.addTest(Image(test_method, config))
     if len(argv) == 0 or argv[0] == 'astakos':
         from kamaki.clients.tests.astakos import Astakos
-        if len(argv) == 1:
-            suiteFew.addTest(makeSuite(Astakos, config))
-        else:
-            suiteFew.addTest(Astakos('test_' + argv[1], config))
+        test_method = 'test_%s' % (argv[1] if len(argv) > 1 else '000')
+        suiteFew.addTest(Astakos(test_method, config))
 
     TextTestRunner(verbosity=2).run(suiteFew)
 
@@ -188,5 +188,5 @@ if __name__ == '__main__':
     parser = init_parser()
     args, argv = parser.parse_known_args()
     if len(argv) > 2 or getattr(args, 'help') or len(argv) < 1:
-        raise Exception('\tusage: tests.py <group> [command]')
+        raise Exception('\tusage: tests <group> [command]')
     main(argv)
