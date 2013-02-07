@@ -24,15 +24,14 @@ In the following, the token has been set in a previous step (see `setup section 
 
     * Authenticate user *
     [astakos]:authenticate
-    auth_token        :  s0m3t0k3nth@t1sr3m0v3d==
     auth_token_created:  2012-11-13T14:12:40.917034
     auth_token_expires:  2012-12-13T14:12:40.917035
-    groups            : 
-                      default
-    has_credits       :  False
-    has_signed_terms  :  True
-    uniq              :  myaccount@grnet.gr
-    username          :  4215th3b357num9323v32
+    email             :  
+                       myaccount@grnet.gr
+                       myotheraccount@grnet.gr
+    name              :  My Real Name
+    username          :  usually@an.email.org
+    uuid              :  ab1cde23-45fg-6h7i-8j9k-10l1m11no2pq
 
 flavor (Compute/Cyclades)
 -------------------------

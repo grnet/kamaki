@@ -44,11 +44,14 @@ _commands = [test_cmds]
 
 class _test_init(_command_init):
 
-    def main(self, client, method=None):
+    def _run(self, client, method=None):
         if method:
             tests._main([client, method], config=self.config)
         else:
             tests._main([client], config=self.config)
+
+    def main(self, client, method=None):
+        return self._run(client, method)
 
 
 @command(test_cmds)
@@ -87,7 +90,7 @@ class test_all(_test_init):
     @errors.generic.all
     def _run(self):
         for client in ('pithos', 'cyclades', 'image', 'astakos'):
-            super(self.__class__, self).main(client)
+            super(self.__class__, self)._run(client)
 
     def main(self):
         self._run()
@@ -99,7 +102,7 @@ class test_pithos(_test_init):
 
     @errors.generic.all
     def _run(self, method=None):
-        super(self.__class__, self).main('pithos', method)
+        super(self.__class__, self)._run('pithos', method)
 
     def main(self, method=None):
         self._run(method)
@@ -111,7 +114,7 @@ class test_cyclades(_test_init):
 
     @errors.generic.all
     def _run(self, method=None):
-        super(self.__class__, self).main('cyclades', method)
+        super(self.__class__, self)._run('cyclades', method)
 
     def main(self, method=None):
         self._run(method)
@@ -123,7 +126,7 @@ class test_image(_test_init):
 
     @errors.generic.all
     def _run(self, method=None):
-        super(self.__class__, self).main('image', method)
+        super(self.__class__, self)._run('image', method)
 
     def main(self, method=None):
         self._run(method)
@@ -135,7 +138,7 @@ class test_astakos(_test_init):
 
     @errors.generic.all
     def _run(self, method=None):
-        super(self.__class__, self).main('astakos', method)
+        super(self.__class__, self)._run('astakos', method)
 
     def main(self, method=None):
         self._run(method)
