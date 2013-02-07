@@ -57,9 +57,14 @@ class AstakosClient(Client):
 
     def list(self):
         """list cached user information"""
-        return self._cache.values()
+        r = []
+        for k, v in self._cache.items():
+            r.append(dict(v))
+            r[-1].update(dict(auth_token=k))
+        return r
 
-    def _user_info(self, token=None):
+    def info(self, token=None):
+        """Get (cached) user information"""
         token_bu = self.token
         token = token or self.token
         try:
@@ -71,4 +76,4 @@ class AstakosClient(Client):
 
     def term(self, key, token=None):
         """Get (cached) term, from user credentials"""
-        return self._user_info(token)[key]
+        return self.info(token)[key]

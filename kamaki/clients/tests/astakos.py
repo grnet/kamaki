@@ -56,6 +56,15 @@ class Astakos(tests.Generic):
             'email'):
             self.assertTrue(term in r)
 
+    def test_info(self):
+        self._test_0020_info()
+
+    def _test_0020_info(self):
+        self.assertTrue(set([
+            'name',
+            'username',
+            'uuid']).issubset(self.client.info().keys()))
+
     def test_get(self):
         self._test_0020_get()
 
@@ -64,7 +73,9 @@ class Astakos(tests.Generic):
             'uuid',
             'name',
             'username'):
-            self.assertEqual(self.client.term(term), self['astakos', term])
+            self.assertEqual(
+                self.client.term(term, self['astakos', 'token']),
+                self['astakos', term])
         self.assertTrue(self['astakos', 'email'] in self.client.term('email'))
 
     def test_list(self):
@@ -72,7 +83,7 @@ class Astakos(tests.Generic):
         self._test_0020_list()
 
     def _test_0020_list(self):
-        terms = set(['name', 'username', 'uuid', 'email'])
+        terms = set(['name', 'username', 'uuid', 'email', 'auth_token'])
         uuid = 0
         for r in self.client.list():
             self.assertTrue(terms.issubset(r.keys()))
