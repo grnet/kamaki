@@ -33,14 +33,8 @@
 
 from kamaki.cli import command
 from kamaki.clients.astakos import AstakosClient
-<<<<<<< HEAD
-from kamaki.cli.utils import print_dict, print_items
-from kamaki.cli.errors import raiseCLIError, CLISyntaxError
-from kamaki.cli.commands import _command_init
-=======
 from kamaki.cli.utils import print_dict
 from kamaki.cli.commands import _command_init, errors
->>>>>>> develop
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.argument import ValueArgument
 
@@ -65,105 +59,6 @@ class _astakos_init(_command_init):
 
 @command(astakos_cmds)
 class astakos_authenticate(_astakos_init):
-<<<<<<< HEAD
-    """Authenticate a user, show user information"""
-
-    def main(self, token=None):
-        super(self.__class__, self).main()
-        try:
-            reply = self.client.authenticate(token)
-        except Exception as err:
-            raiseCLIError(err)
-        print_dict(reply)
-
-
-@command(astakos_cmds)
-class astakos_admin_userinfo(_astakos_init):
-    """Get user info, provided you have admin privileges"""
-
-    def __init__(self, arguments={}):
-        super(self.__class__, self).__init__(arguments)
-        self.arguments['email'] = ValueArgument('target user email', '--email')
-        self.arguments['username'] = ValueArgument('target username',
-            '--username')
-
-    def main(self, admin_token=None):
-        super(self.__class__, self).main()
-        email = self.get_argument('email')
-        username = self.get_argument('username')
-        try:
-            if email and username:
-                raise CLISyntaxError(
-                    'Arguments %s and %s are mutually exclusive' % (
-                        self.arguments['email'].parsed_name,
-                        self.arguments['username'].parsed_name
-                        ), importance=1)
-            elif email:
-                reply = self.client.get_user_by_email(email,
-                    admin=True,
-                    token=admin_token)
-            elif username:
-                reply = self.client.get_user_by_username(username,
-                    admin=True,
-                    token=admin_token)
-            else:
-                raise CLISyntaxError(
-                    'Exactly one of %s or %s is obligatory' % (
-                        self.arguments['email'].parsed_name,
-                        self.arguments['username'].parsed_name
-                        ), importance=1)
-        except Exception as err:
-            raiseCLIError(err)
-        print_dict(reply)
-
-
-@command(astakos_cmds)
-class astakos_service_userinfo(_astakos_init):
-    """Get user info with service token"""
-
-    def __init__(self, arguments={}):
-        super(self.__class__, self).__init__(arguments)
-        self.arguments['email'] = ValueArgument('target user email', '--email')
-        self.arguments['username'] = ValueArgument('target username',
-            '--username')
-
-    def main(self, service_token=None):
-        super(self.__class__, self).main()
-        email = self.get_argument('email')
-        username = self.get_argument('username')
-        try:
-            if email and username:
-                raise CLISyntaxError(
-                    'Arguments %s and %s are mutually exclusive' % (
-                        self.arguments['email'].parsed_name,
-                        self.arguments['username'].parsed_name
-                        ), importance=1)
-            elif email:
-                reply = self.client.get_user_by_email(email,
-                    token=service_token)
-            elif username:
-                reply = self.client.get_user_by_username(username,
-                    token=service_token)
-            else:
-                raise CLISyntaxError(
-                    'Exactly one of %s or %s is obligatory' % (
-                        self.arguments['email'].parsed_name,
-                        self.arguments['username'].parsed_name
-                        ), importance=1)
-        except Exception as err:
-            raiseCLIError(err)
-        print_dict(reply)
-
-
-@command(astakos_cmds)
-class astakos_service_list(_astakos_init):
-    """List cloud services associated with astakos"""
-
-    def main(self, token=None):
-        super(self.__class__, self).main()
-        reply = self.client.list_services(token)
-        print_items(reply)
-=======
     """Authenticate a user
     Get user information (e.g. unique account name) from token
     Token should be set in settings:
@@ -181,4 +76,3 @@ class astakos_service_list(_astakos_init):
 
     def main(self, custom_token=None):
         self._run(custom_token)
->>>>>>> develop
