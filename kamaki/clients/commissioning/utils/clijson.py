@@ -39,10 +39,12 @@ keywords = set(['true', 'false', 'null'])
 unquoted = set('{}[]"\'0123456789')
 name_matcher = re.compile('^[\w @_.+-]+$', re.UNICODE)
 
+
 def is_name(token):
     if name_matcher.match(token):
         return 1
     return 0
+
 
 def quote(token, is_dict):
     if not token:
@@ -85,6 +87,8 @@ def clijson(argv):
     dictionary = 0
     token_join = None
 
+    dictionary += 0
+
     for t in tokens:
         t = t.strip()
 
@@ -118,4 +122,3 @@ if __name__ == '__main__':
     from sys import argv
 
     print clijson(argv[1:])
-

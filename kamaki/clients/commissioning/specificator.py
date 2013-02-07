@@ -46,6 +46,7 @@ try:
 except ImportError:
     from kamaki.clients.commissioning.utils.ordereddict import OrderedDict
 
+
 def shorts(s):
     if not isinstance(s, unicode):
         s = str(s)
@@ -58,6 +59,7 @@ def shorts(s):
 
 class CanonifyException(Exception):
     pass
+
 
 class SpecifyException(Exception):
     pass
@@ -159,15 +161,15 @@ class Canonical(object):
             joinchar = ',\n'
             padchar = '\n'
 
-        args = [a.tostring( depth=depth,
-                            showopts=showopts,
-                            multiline=multiline) for a in self.args]
-        args += [("%s=%s" %
-                    (k, v.tostring( depth=depth,
-                                    showopts=showopts,
-                                    multiline=multiline)))
-
-                                    for k, v in self.kw.items()]
+        args = [a.tostring(
+                    depth=depth,
+                    showopts=showopts,
+                    multiline=multiline) for a in self.args]
+        args += [("%s=%s" % (k, v.tostring(
+                                depth=depth,
+                                showopts=showopts,
+                                multiline=multiline)))
+                            for k, v in self.kw.items()]
         if showopts:
             args += [("%s=%s" % (k, str(v))) for k, v in self.opts.items()]
 
@@ -194,6 +196,7 @@ class Canonical(object):
     def _show(self):
         return self.name
 
+
 class Null(Canonical):
 
     def _check(self, item):
@@ -207,13 +210,13 @@ class Integer(Canonical):
     def _check(self, item):
         try:
             num = long(item)
-        except ValueError, e:
+        except ValueError:
             try:
                 num = long(item, 16)
             except Exception:
                 m = "%s: cannot convert '%s' to long" % (self, shorts(item))
                 raise CanonifyException(m)
-        except TypeError, e:
+        except TypeError:
             m = "%s: cannot convert '%s' to long" % (self, shorts(item))
             raise CanonifyException(m)
 
@@ -246,11 +249,7 @@ class Integer(Canonical):
         return long(minimum + r * (maximum - minimum))
 
 
-
-Serial = Integer(
-            classname   =   'Serial',
-            null        =   True,
-)
+Serial = Integer(classname='Serial', null=True)
 
 
 class Text(Canonical):
@@ -316,8 +315,7 @@ class Text(Canonical):
         matcher = self.matcher
         if matcher is not None:
             match = matcher.match(item)
-            if  (       match is None
-                    or  (match.start(), match.end()) != (0, itemlen)    ):
+            if ((not match) or (match.start(), match.end()) != (0, itemlen)):
 
                     m = ("%s: '%s' does not match '%s'"
                             % (self, shorts(item), self.pat))
@@ -344,7 +342,7 @@ class Text(Canonical):
 
         g = log(z, 2)
         r = random() * g
-        z = minlen + int(2**r)
+        z = minlen + int(2 ** r)
 
         s = u''
         for _ in xrange(z):
@@ -410,9 +408,7 @@ class Bytes(Canonical):
         matcher = self.matcher
         if matcher is not None:
             match = matcher.match(item)
-            if  (       match is None
-                    or  (match.start(), match.end()) != (0, itemlen)    ):
-
+            if ((not match) or (match.start(), match.end()) != (0, itemlen)):
                     m = ("%s: '%s' does not match '%s'"
                             % (self, shorts(item), self.pat))
                     raise CanonifyException(m)
@@ -438,7 +434,7 @@ class Bytes(Canonical):
 
         g = log(z, 2)
         r = random() * g
-        z = minlen + int(2**r)
+        z = minlen + int(2 ** r)
 
         s = u''
         for _ in xrange(z):
@@ -475,7 +471,7 @@ class ListOf(Canonical):
 
         try:
             items = iter(item)
-        except TypeError, e:
+        except TypeError:
             m = "%s: %s is not iterable" % (self, shorts(item))
             raise CanonifyException(m)
 
@@ -502,6 +498,7 @@ class ListOf(Canonical):
     def _show(self):
         return '[ ' + self.canonical.show() + ' ... ]'
 
+
 class Args(Canonical):
 
     def _unpack(self, item):
@@ -524,8 +521,8 @@ class Args(Canonical):
                 for i in range(position, arglen):
                     key = keys[i]
                     if not key in named_args.keys():
-                       position = i + 1
-                       break
+                        position = i + 1
+                        break
                 else:
                     m = "Formal arguments exhausted"
                     raise AssertionError(m)
@@ -535,8 +532,8 @@ class Args(Canonical):
 
     def _check(self, item):
         try:
-            arglist = OrderedDict(item).items()
-        except (TypeError, ValueError), e:
+            OrderedDict(item).items()
+        except (TypeError, ValueError):
             m = "%s: %s is not dict-able" % (self, shorts(item))
             raise CanonifyException(m)
 
@@ -569,7 +566,7 @@ class Tuple(Canonical):
     def _check(self, item):
         try:
             items = list(item)
-        except TypeError, e:
+        except TypeError:
             m = "%s: %s is not iterable" % (self, shorts(item))
             raise CanonifyException(m)
 
@@ -578,7 +575,11 @@ class Tuple(Canonical):
         zc = len(canonicals)
 
         if zi != zc:
-            m = "%s: expecting %d elements, not %d (%s)" % (self, zc, zi, str(items))
+            m = "%s: expecting %d elements, not %d (%s)" % (
+                self,
+                zc,
+                zi,
+                str(items))
             raise CanonifyException(m)
 
         g = (canonical(element) for canonical, element in zip(self.args, item))
@@ -597,6 +598,7 @@ class Tuple(Canonical):
         canonicals = self.args
         strings = [x for x in [c.show() for c in canonicals] if x]
         return '[ ' + ' '.join(strings) + ' ]'
+
 
 class Dict(Canonical):
 
@@ -731,7 +733,7 @@ class Specificator(object):
             deflen = len(defaults)
 
             if arglen != deflen:
-                a = (f.__name__, args[:arglen-deflen])
+                a = (f.__name__, args[:arglen - deflen])
                 m = "Unspecified arguments in '%s': %s" % a
                 raise SpecifyException(m)
 
@@ -758,4 +760,3 @@ class Specificator(object):
 
     def __call__(self):
         return self
-

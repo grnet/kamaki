@@ -31,10 +31,12 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
+from kamaki.cli.commands import errors
 from kamaki.cli import command
 from kamaki.cli.commands import _command_init
 from kamaki.cli.command_tree import CommandTree
 from kamaki.clients import tests
+from kamaki.cli.errors import raiseCLIError
 
 test_cmds = CommandTree('test', 'Unitest clients')
 _commands = [test_cmds]
@@ -43,19 +45,18 @@ _commands = [test_cmds]
 class _test_init(_command_init):
 
     def main(self, client, method=None):
-        tests.cnf = self.config
         if method:
-            tests.main([client, method])
+            tests._main([client, method], config=self.config)
         else:
-            tests.main([client])
+            tests._main([client], config=self.config)
 
 
 @command(test_cmds)
 class test_error(_test_init):
     """Create an error message with optional message"""
 
-    def main(self, errmsg='', importance=0, index=0):
-        from kamaki.cli.errors import raiseCLIError
+    @errors.generic.all
+    def _run(self, errmsg='', importance=0, index=0):
         l = [1, 2]
         try:
             l[int(index)]
@@ -63,54 +64,81 @@ class test_error(_test_init):
             raiseCLIError(err, errmsg, importance)
         raiseCLIError(None, errmsg, importance)
 
+    def main(self, errmsg='', importance=0, index=0):
+        self._run(errmsg, importance, index)
+
 
 @command(test_cmds)
 class test_args(_test_init):
     """Test how arguments are treated by kamaki"""
 
-    def main(self, *args):
+    @errors.generic.all
+    def _run(self, *args):
         print(args)
+
+    def main(self, *args):
+        self._run(args)
 
 
 @command(test_cmds)
 class test_all(_test_init):
     """test all clients"""
 
-    def main(self):
+    @errors.generic.all
+    def _run(self):
         for client in ('pithos', 'cyclades', 'image', 'astakos'):
             super(self.__class__, self).main(client)
+
+    def main(self):
+        self._run()
 
 
 @command(test_cmds)
 class test_pithos(_test_init):
     """ test Pithos client"""
 
-    def main(self, method=None):
+    @errors.generic.all
+    def _run(self, method=None):
         super(self.__class__, self).main('pithos', method)
+
+    def main(self, method=None):
+        self._run(method)
 
 
 @command(test_cmds)
 class test_cyclades(_test_init):
     """ test Cyclades client"""
 
-    def main(self, method=None):
+    @errors.generic.all
+    def _run(self, method=None):
         super(self.__class__, self).main('cyclades', method)
+
+    def main(self, method=None):
+        self._run(method)
 
 
 @command(test_cmds)
 class test_image(_test_init):
     """ test Image client"""
 
-    def main(self, method=None):
+    @errors.generic.all
+    def _run(self, method=None):
         super(self.__class__, self).main('image', method)
+
+    def main(self, method=None):
+        self._run(method)
 
 
 @command(test_cmds)
 class test_astakos(_test_init):
     """ test Astakos client"""
 
-    def main(self, method=None):
+    @errors.generic.all
+    def _run(self, method=None):
         super(self.__class__, self).main('astakos', method)
+
+    def main(self, method=None):
+        self._run(method)
 
 
 @command(test_cmds)
@@ -129,7 +157,8 @@ class test_prints(_test_init):
         'long key of size 75 characters is used to' +\
         ' check the effects on total result': l1}
 
-    def main(self):
+    @errors.generic.all
+    def _run(self):
         from kamaki.cli.utils import print_dict, print_list, print_items
         print('Test simple dict:\n- - -')
         print_dict(self.d1)
@@ -176,3 +205,6 @@ class test_prints(_test_init):
         print('\nTest print_items with lists- - -')
         print_items([['i00', 'i01', 'i02'], [self.l2, 'i11', self.d1], 3])
         print('- - -')
+
+    def main(self):
+        self._run()

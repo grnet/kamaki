@@ -47,9 +47,6 @@ requires = ['objpool']
 if version_info[:1] == (2, 6):
     requires.append('argparse')
 
-if not hasattr(collections, "OrderedDict"):  # Python 2.6
-    requires.append("ordereddict")
-
 setup(
     name='kamaki',
     version=kamaki.__version__,
@@ -60,9 +57,11 @@ setup(
     packages=[
         'kamaki',
         'kamaki.clients',
+        'kamaki.clients.tests',
         'kamaki.clients.connection',
         'kamaki.cli',
         'kamaki.cli.commands',
+        'kamaki.clients.tests',
         'kamaki.clients.commissioning',
         'kamaki.clients.quotaholder',
         'kamaki.clients.quotaholder.api',
