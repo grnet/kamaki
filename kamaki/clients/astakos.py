@@ -32,89 +32,53 @@
 # or implied, of GRNET S.A.
 
 from kamaki.clients import Client, ClientError
-from kamaki.clients.utils import path4url
 
 
 class AstakosClient(Client):
     """GRNet Astakos API client"""
 
+    _cache = {}
+
     def __init__(self, base_url, token):
         super(AstakosClient, self).__init__(base_url, token)
 
-    def _is_email(self, a_str):
-        if isinstance(a_str, str):
-            username, sep, domain = a_str.partition('@')
-            if username and domain:
-                return True
-        return False
-
-    def _assert_token(self, token=None):
-        if token:
-            self.token = token
-        elif not hasattr(self, 'token'):
-            raise ClientError('Token is missing',
-                details='Hint: [kamaki] config set token',
-                importance=3)
-
     def authenticate(self, token=None):
         """
-        :param token: (str) token to authenticate, if not given, read it from
-            config object
+        :param token: (str) custom token to authenticate
 
         :returns: (dict) authentication information
         """
-        self._assert_token(token)
-        r = self.get('/im/authenticate')
-        return r.json
+        self.token = token or self.token
+        self._cache[token] = self.get('/im/authenticate')
+        return self._cache[token].json
 
-    def get_user_by_email(self, email, admin=False, token=None):
+    def _user_info(self, token=None):
+        token = token or self.token
+        try:
+            return self._cache[token]
+        except KeyError:
+            return self.authenticate(token)
+
+    def uuid(self, token=None):
+        return self._user_info(token)['uuid'].strip()
+
+    def name(self, token=None):
+        return self._user_info(token)['name'].strip()
+
+    def username(self, token=None):
+        return self._user_info(token)['username'].strip()
+
+    def token_created(self, token=None):
+        return self._user_info(token)['auth_token_created'].strip()
+
+    def token_expires(self, token=None):
+        return self._user_info(token)['auth_token_expires'].strip()
+
+    def email(self, token=None):
+        return self._user_info(token)['email'].strip()
+
+    def id(self, token=None):
+        """Internal reference for Astakos objects (not a unique user id)
+        For a unique identifier use uuid
         """
-        :param email: (str)
-
-        :param admin: (bool) if true, get info as admin, otherwise as service
-
-        :param token: (str) token to authenticate, if not given, read it from
-            config object
-
-        :returns: (dict) json with info on specific user
-
-        :raises ClientError: (600) if not formated as email
-        """
-        self._assert_token(token)
-        if not self._is_email(email):
-            raise ClientError('%s is not formated as email' % email, 600)
-        self.set_param('email', email)
-
-        path = path4url('im', 'admin' if admin else 'service', 'api/2.0/users')
-        r = self.get(path)
-        return r.json
-
-    def get_user_by_username(self, username, admin=False, token=None):
-        """
-        :param username: (str)
-
-        :param admin: (bool) if true, get info as admin, otherwise as service
-
-        :param token: (str) token to authenticate, if not given, read it from
-            config object
-
-        :returns: (dict) json with info on specific user
-
-        :raises ClientError: (600) if not formated as email
-        """
-        self._assert_token(token)
-        path = path4url('im', 'admin' if admin else 'service', 'api/2.0/users')
-        r = self.get('%s/{%s}' % (path, username))
-        return r.json
-
-    def list_services(self, token=None):
-        """
-        :param token: (str) token to authenticate, if not given, read it from
-            config object
-
-        :returns: (list of dicts) services managed by this I.M.
-            [{'name':'serv name', 'id':<serv id>}, 'url':'/serv/url', ..}, ..]
-        """
-        self._assert_token(token)
-        r = self.get('/im/get_services')
-        return(r.json)
+        return self._user_info(token)['id'].strip()

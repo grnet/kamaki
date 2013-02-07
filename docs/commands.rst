@@ -119,17 +119,17 @@ Showcase: Pick an image and list the properties
 
     * list all available images *
     [image]:list
-    1395fdfb-51b4-419f-bb02-f7d632860611 (Ubuntu Desktop LTS)
-    1580deb4-edb3-4496-a27f-7a246c4c0528 (Ubuntu Desktop)
-    18a82962-43eb-4b32-8e28-8f8880af89d7 (Kubuntu LTS)
-    6aa6eafd-dccb-422d-a904-67fe2bdde87e (Debian Desktop)
-    6b5681e4-7502-46ae-b1e9-9fd837932095 (maelstrom)
-    78262ee7-949e-4d70-af3a-85360c3de57a (Windows Server 2012)
-    86bc2414-0fb3-4898-a637-240292243302 (Fedora)
-    926ab1c5-2d85-49d4-aebe-0fce712789b9 (Windows Server 2008)
-    b2dffe52-64a4-48c3-8a4c-8214cc3165cf (Debian Base)
-    baf2321c-57a0-4a69-825d-49f49cea163a (CentOS)
-    c1d27b46-d875-4f5c-b7f1-f39b5af62905 (Kubuntu)
+    1395fdfb-51b4-419f-bb02-f7d632860611 Ubuntu Desktop LTS
+    1580deb4-edb3-4496-a27f-7a246c4c0528 Ubuntu Desktop
+    18a82962-43eb-4b32-8e28-8f8880af89d7 Kubuntu LTS
+    6aa6eafd-dccb-422d-a904-67fe2bdde87e Debian Desktop
+    6b5681e4-7502-46ae-b1e9-9fd837932095 maelstrom
+    78262ee7-949e-4d70-af3a-85360c3de57a Windows Server 2012
+    86bc2414-0fb3-4898-a637-240292243302 Fedora
+    926ab1c5-2d85-49d4-aebe-0fce712789b9 Windows Server 2008
+    b2dffe52-64a4-48c3-8a4c-8214cc3165cf Debian Base
+    baf2321c-57a0-4a69-825d-49f49cea163a CentOS
+    c1d27b46-d875-4f5c-b7f1-f39b5af62905 Kubuntu
 
     * Get properties of image with id b2dffe52-64a4-48c3-8a4c-8214cc3165cf *
     [image]:properties b2dffe52-64a4-48c3-8a4c-8214cc3165cf
@@ -193,17 +193,17 @@ Showcase: Create a server
 
     * List all available images *
     [server]:/image list
-    1395fdfb-51b4-419f-bb02-f7d632860611 (Ubuntu Desktop LTS)
-    1580deb4-edb3-4496-a27f-7a246c4c0528 (Ubuntu Desktop)
-    18a82962-43eb-4b32-8e28-8f8880af89d7 (Kubuntu LTS)
-    6aa6eafd-dccb-422d-a904-67fe2bdde87e (Debian Desktop)
-    6b5681e4-7502-46ae-b1e9-9fd837932095 (maelstrom)
-    78262ee7-949e-4d70-af3a-85360c3de57a (Windows Server 2012)
-    86bc2414-0fb3-4898-a637-240292243302 (Fedora)
-    926ab1c5-2d85-49d4-aebe-0fce712789b9 (Windows Server 2008)
-    b2dffe52-64a4-48c3-8a4c-8214cc3165cf (Debian Base)
-    baf2321c-57a0-4a69-825d-49f49cea163a (CentOS)
-    c1d27b46-d875-4f5c-b7f1-f39b5af62905 (Kubuntu)
+    1395fdfb-51b4-419f-bb02-f7d632860611 Ubuntu Desktop LTS
+    1580deb4-edb3-4496-a27f-7a246c4c0528 Ubuntu Desktop
+    18a82962-43eb-4b32-8e28-8f8880af89d7 Kubuntu LTS
+    6aa6eafd-dccb-422d-a904-67fe2bdde87e Debian Desktop
+    6b5681e4-7502-46ae-b1e9-9fd837932095 maelstrom
+    78262ee7-949e-4d70-af3a-85360c3de57a Windows Server 2012
+    86bc2414-0fb3-4898-a637-240292243302 Fedora
+    926ab1c5-2d85-49d4-aebe-0fce712789b9 Windows Server 2008
+    b2dffe52-64a4-48c3-8a4c-8214cc3165cf Debian Base
+    baf2321c-57a0-4a69-825d-49f49cea163a CentOS
+    c1d27b46-d875-4f5c-b7f1-f39b5af62905 Kubuntu
 
     * See details of flavor with id 1 *
     [server]:/flavor info 1
@@ -234,7 +234,7 @@ Showcase: Create a server
 
     * wait for server to build (optional) *
     [server]:wait 11687
-    Server 11687 still in BUILD mode |||||||||||||||||    | 80% - 3s
+    Server 11687 still in BUILD mode |||||||||||||||||    | 80%
     Server 11687 is now in ACTIVE mode
 
 .. Note:: In kamaki shell, / is used to access top-level command groups while working in command group contexts
@@ -325,7 +325,7 @@ store (Storage/Pithos+)
     append        :  Append local file to remote
     cat           :  Print a file to console
     copy          :  Copy an object
-    create        :  Create a container or a directory object
+    create        :  Create a container
     delete        :  Delete a container [or an object]
     delgroup      :  Delete a user group on an account
     delmeta       :  Delete an existing metadatum of account [, container [or object]]
@@ -350,6 +350,7 @@ store (Storage/Pithos+)
     setquota      :  Set new quota (in KB) for account [or container]
     setversioning :  Set new versioning (auto, none) for account [or container]
     sharers       :  List the accounts that share objects with default account
+    touch         :  Create an empty object (file)
     truncate      :  Truncate remote file up to a size
     unpublish     :  Unpublish an object
     upload        :  Upload a file
@@ -432,3 +433,7 @@ Showcase: Upload and download a file
     [store]:!diff rndm_local.file rndm_remote.file
 
 .. Note:: In kamaki shell, ! is used to execute OS shell commands (bash in the above)
+
+.. warning:: The container:object/path syntax does not function if the container and / or the object path contain one or more : characters. To use containers and objects with : use the --container and --dst-container arguments, e.g. to copy test.py object from grnet:dev container to grnet:deploy ::
+
+        $ kamaki store copy --container=grnet:dev test.py --dst-container=grnet:deploy

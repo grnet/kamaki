@@ -61,6 +61,21 @@ store
     Manage store API.
 
 
+Hidden command groups
+---------------------
+
+quotaholder
+
+    A client for quotaholder API. to enable:
+    kamaki config set quotaholder.cli hotaholder_cli
+    kamaki config set quotaholder.url <quotaholder server url>
+
+test
+
+    Prepared unit-tests for developers (experimental). To enable:
+    kamaki config set test.cli test_cli
+
+
 Options
 -------
 
@@ -89,8 +104,9 @@ history commands
 
 Command user history, as stored in ~/.kamaki.history
 
-* all       show user history
+* show      show intersession history
 * clean     clean up history
+* run       run/show previously executed command(s)
 
 
 astakos commands
@@ -105,23 +121,22 @@ astakos commands
 server commands
 ***************
 
-* list       list servers
-* info       get server details
-* create     create server
-* rename     update server name
-* delete     delete server
-* reboot     reboot server
-* start      start server
-* shutdown   shutdown server
-* console    get a VNC console
-* firewall   set the firewall profile
-* addr       list server addresses
-* meta       get server metadata
-* addmeta    add server metadata
-* setmeta    update server metadata
-* delmeta    delete server metadata
-* stats      get server statistics
-* wait       wait for server to finish [BUILD, STOPPED, REBOOT, ACTIVE]
+* addr      List the addresses of all network interfaces on a server (VM)
+* console   Get a VNC console to access an existing server (VM)
+* create    Create a server (aka Virtual Machine)
+* delete    Delete a server (VM)
+* delmeta   Delete server (VM) metadata
+* firewall  Set the server (VM) firewall profile on VMs public network
+* info      Detailed information on a Virtual Machine
+* list      List Virtual Machines accessible by user
+* meta      Get a server's metadatum
+* reboot    Reboot a server (VM)
+* rename    Set/update a server (VM) name
+* setmeta   set server (VM) metadata
+* shutdown  Shutdown an active server (VM)
+* start     Start an existing server (VM)
+* stats     Get server (VM) statistics
+* wait      Wait for server to finish [BUILD, STOPPED, REBOOT, ACTIVE]
 
 
 flavor commands
@@ -134,72 +149,91 @@ flavor commands
 image commands and options
 **************************
 
-* list        list images
-* info        get image details
-* public      list public images
-* shared      list shared images
-* delete      delete image
-* register    register an image
-* reregister  re-register an image (preserve and update properties)
-* meta        get image metadata
-* members     get image members
-* addmember   add a member to an image
-* delmember   remove a member from an image
-* setmembers  set the members of an image
-* properties  get image properties
-* setproperty update an image property
-* addproperty add an image property
-* delproperty delete an image property
+* addmember     Add a member to an image
+* addproperty   Add an OS-related property to an image
+* delete        Delete an image (image file remains intact)
+* delmember     Remove a member from an image
+* delproperty   Delete a property of an image
+* info          Get detailed information on an image
+* list          List images
+* members       Get image members
+* meta          Get image metadata
+* properties    Get properties related to OS installation in an image
+* public        List public images
+* register      (Re)Register an image
+* setmembers    Set the members of an image
+* setproperty   Update an existing property in an image
+* shared        List images shared by a member
+
 
 network commands
 ****************
 
-* list       list networks
-* create     create a network
-* info       get network details
-* rename     update network name
-* delete     delete a network
-* connect    connect a server to a network
-* disconnect disconnect a server from a network
+* connect       Connect a server to a network
+* create        Create an (unconnected) network
+* delete        Delete a network
+* disconnect    Disconnect a nic that connects a server to a network
+* info          Detailed information on a network
+* list          List networks
+* rename        Set the name of a network
 
 
 store commands
 **************
 
-* append    Append local file to (existing) remote object
-* cat       Print a file to console
-* copy      Copy an object
-* create    Create a container or a directory object
-* delete    Delete a container [or an object]
-* delgroup  Delete a user group on an account
-* delmeta   Delete an existing metadatum of account [, container [or object]]
-* delpermissions    Delete all sharing permissions
-* download  Download a file
-* group     Get user groups details for account
-* hashmap   Get the hashmap of an object
-* info      Get information for account [, container [or object]]
-* list      List containers, object trees or objects in a directory
-* manifest  Create a remote file with uploaded parts by manifestation
-* meta      Get custom meta-content for account [, container [or object]]
-* mkdir     Create a directory
-* move      Copy an object
-* overwrite Overwrite part (from start to end) of a remote file
-* permissions   Get object read/write permissions
-* publish   Publish an object
-* purge     Purge a container
-* quota     Get quota for account [or container]
-* setgroup  Create/update a new user group on account
-* setmeta   Set a new metadatum for account [, container [or object]]
-* setpermissions    Set sharing permissions
-* setquota  Set new quota (in KB) for account [or container]
-* setversioning Set new versioning (auto, none) for account [or container]
-* sharers   List the accounts that share objects with default account
-* truncate  Truncate remote file up to a size
-* unpublish Unpublish an object
-* upload    Upload a file
-* versioning    Get  versioning for account [or container ]
-* versions  Get the version list of an object
+* append            Append local file to (existing) remote object
+* cat               Print remote file contents to console
+* copy              Copy an object from container to (another) container
+* create            Create a container
+* delete            Delete a container [or an object]
+* delgroup          Delete a user group
+* delmeta           Delete metadata from account, container or object
+* delpermissions    Delete all permissions set on object
+* download          Download remote object as local file
+* group             Get groups and group members
+* hashmap           Get the hash-map of an object
+* info              Get detailed info for account, containers or objects
+* list              List containers, object trees or objects in a directory
+* manifest          Create a remote file of uploaded parts by manifestation
+* meta              Get metadata for account, containers or objects
+* mkdir             Create a directory
+* move              Copy an object
+* overwrite         Overwrite part (from start to end) of a remote file
+* permissions       Get read and write permissions of an object
+* publish           Publish the object and print the public url
+* purge             Delete a container and release related data blocks
+* quota             Get quota (in KB) for account or container
+* setgroup          Set a user group
+* setmeta           Set a piece of metadata for account, container or object
+* setpermissions    Set permissions for an object
+* setquota          Set new quota (in KB) for account or container
+* setversioning     Set versioning mode (auto, none) for account or container
+* sharers           List the accounts that share objects with current user
+* touch             Create an empty object (file)
+* truncate          Truncate remote file up to a size
+* unpublish         Unpublish an object
+* upload            Upload a file
+* versioning        Get  versioning for account or container
+* versions          Get the list of object versions
 
+
+quotaholder commands (hidden)
+*****************************
+
+accept, ack, add, create, get, init, issue, list, query, reject, release, reset, resolve, set
+
+
+test commands (hidden)
+**********************
+
+* all         test all clients
+* args        Test how arguments are treated by kamaki
+* astakos     test Astakos client
+* cyclades    test Cyclades client
+* error       Create an error message with optional message
+* image       test Image client
+* pithos      test Pithos client
+* prints      user-test print methods for lists and dicts
 
 
 Author

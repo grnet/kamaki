@@ -40,7 +40,9 @@ from kamaki.clients.connection.errors import HTTPConnectionError
 from kamaki.clients.connection.errors import HTTPResponseError
 
 sendlog = logging.getLogger('clients.send')
+datasendlog = logging.getLogger('data.send')
 recvlog = logging.getLogger('clients.recv')
+datarecvlog = logging.getLogger('data.recv')
 
 
 class ClientError(Exception):
@@ -94,7 +96,11 @@ class SilentEvent(Thread):
         try:
             self._value = self.method(*(self.args), **(self.kwargs))
         except Exception as e:
-            print('______\n%s\n_______' % e)
+            recvlog.debug('Thread %s got exception %s\n<%s %s' % (
+                self,
+                type(e),
+                e.status if isinstance(e, ClientError) else '',
+                e))
             self._exception = e
 
 
@@ -116,6 +122,7 @@ class Client(object):
         self._elapsed_new = 0.0
 
     def _watch_thread_limit(self, threadlist):
+        recvlog.debug('# running threads: %s' % len(threadlist))
         if self._elapsed_old > self._elapsed_new\
         and self._thread_limit < self.POOL_SIZE:
             self._thread_limit += 1
@@ -182,6 +189,8 @@ class Client(object):
             if data:
                 self.set_default_header('Content-Length', unicode(len(data)))
 
+            sendlog.info('perform a %s @ %s', method, self.base_url)
+
             self.http_client.url = self.base_url
             self.http_client.path = path
             r = self.http_client.perform_request(method,
@@ -198,13 +207,13 @@ class Client(object):
                 sendlog.info('\t%s: %s', key, val)
             sendlog.info('')
             if data:
-                sendlog.info('%s', data)
+                datasendlog.info(data)
 
             recvlog.info('%d %s', r.status_code, r.status)
             for key, val in r.headers.items():
                 recvlog.info('%s: %s', key, val)
             if r.content:
-                recvlog.debug(r.content)
+                datarecvlog.info(r.content)
 
         except (HTTPResponseError, HTTPConnectionError) as err:
             from traceback import format_stack
@@ -215,7 +224,7 @@ class Client(object):
             if not errstr:
                 errstr = ('%s' % type(err))[7:-2]
             raise ClientError('%s\n' % errstr,
-                status=getattr(err, 'status', 0))
+                status=getattr(err, 'status', 0) or getattr(err, 'errno', 0))
 
         self.http_client.reset_headers()
         self.http_client.reset_params()

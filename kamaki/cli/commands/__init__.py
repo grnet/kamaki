@@ -38,12 +38,71 @@ recvlog = logging.getLogger('clients.recv')
 
 
 class _command_init(object):
+
     def __init__(self, arguments={}):
-        self.arguments = arguments
+        if hasattr(self, 'arguments'):
+            arguments.update(self.arguments)
+        self.arguments = dict(arguments)
         try:
-            self.config = self.get_argument('config')
+            self.config = self['config']
+            #self.config = self.get_argument('config')
         except KeyError:
             pass
 
-    def get_argument(self, argterm):
+    def _safe_progress_bar(self, msg, arg='progress_bar'):
+        """Try to get a progress bar, but do not raise errors"""
+        try:
+            progress_bar = self.arguments[arg]
+            gen = progress_bar.get_generator(msg)
+        except Exception:
+            return (None, None)
+        return (progress_bar, gen)
+
+    def _safe_progress_bar_finish(self, progress_bar):
+        try:
+            progress_bar.finish()
+        except Exception:
+            pass
+
+    def __getitem__(self, argterm):
+        """
+        :param argterm: (str) the name/label of an argument in self.arguments
+
+        :returns: the value of the corresponding Argument (not the argument
+            object)
+
+        :raises KeyError: if argterm not in self.arguments of this object
+        """
         return self.arguments[argterm].value
+
+    def __setitem__(self, argterm, arg):
+        """Install an argument as argterm
+        If argterm points to another argument, the other argument is lost
+
+        :param argterm: (str)
+
+        :param arg: (Argument)
+        """
+        if not hasattr(self, 'arguments'):
+            self.arguments = {}
+        self.arguments[argterm] = arg
+
+    def get_argument_object(self, argterm):
+        """
+        :param argterm: (str) the name/label of an argument in self.arguments
+
+        :returns: the arument object
+
+        :raises KeyError: if argterm not in self.arguments of this object
+        """
+        return self.arguments[argterm]
+
+    def get_argument(self, argterm):
+        """
+        :param argterm: (str) the name/label of an argument in self.arguments
+
+        :returns: the value of the arument object
+
+        :raises KeyError: if argterm not in self.arguments of this object
+        """
+        return self[argterm]

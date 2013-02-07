@@ -31,9 +31,11 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+from time import sleep
+
 from kamaki.clients.cyclades_rest_api import CycladesClientApi
 from kamaki.clients import ClientError
-from time import sleep
+from sys import stdout
 
 
 class CycladesClient(CycladesClientApi):
@@ -92,6 +94,18 @@ class CycladesClient(CycladesClientApi):
         req = {'firewallProfile': {'profile': profile}}
         r = self.servers_post(server_id, 'action', json_data=req, success=202)
         r.release()
+
+    def list_servers(self, detail=False, changes_since=None):
+        """
+        :param detail: (bool) append full server details to each item if true
+
+        :param changes_since: (date)
+
+        :returns: list of server ids and names
+        """
+        detail = 'detail' if detail else ''
+        r = self.servers_get(command=detail, changes_since=changes_since)
+        return r.json['servers']['values']
 
     def list_server_nics(self, server_id):
         """
@@ -187,8 +201,8 @@ class CycladesClient(CycladesClientApi):
             r = self.networks_delete(network_id)
         except ClientError as err:
             if err.status == 421:
-                err.details =\
-                'Network may be still connected to at least one server'
+                err.details = [
+                'Network may be still connected to at least one server']
             raise err
         r.release()
 
@@ -212,10 +226,13 @@ class CycladesClient(CycladesClientApi):
         server_nets = self.list_server_nics(server_id)
         nets = [(net['id'], net['network_id']) for net in server_nets\
             if nic_id == net['id']]
+        num_of_disconnections = 0
         for (nic_id, network_id) in nets:
             req = {'remove': {'attachment': unicode(nic_id)}}
             r = self.networks_post(network_id, 'action', json_data=req)
             r.release()
+            num_of_disconnections += 1
+        return num_of_disconnections
 
     def disconnect_network_nics(self, netid):
         """
@@ -262,9 +279,15 @@ class CycladesClient(CycladesClientApi):
                     for i in range(int(old_wait), int(total_wait)):
                         wait_gen.next()
                     old_wait = total_wait
+                else:
+                    stdout.write('.')
+                    stdout.flush()
             else:
                 if wait_cb:
                     wait_gen.next()
+                else:
+                    stdout.write('.')
+                    stdout.flush()
                 total_wait += delay
             sleep(delay)
             r = self.get_server_details(server_id)

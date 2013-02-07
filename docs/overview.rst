@@ -13,9 +13,11 @@ Once it proved so useful to us, we decided to open the source, so the community 
 Who uses *kamaki*?
 ------------------
 
-*kamaki* is currently used internally in GRNET by the development team to test the synnefo software, by the deployment team who operates the ~okeanos service and by the testers using the ~okeanos service and want to access the service from the command line.
+Kamaki is targeted to new and advanced users who need an intuitive managerial console tool to manage a local or remote synnefo cloud installation.
 
-What's more, *kamaki* clients API is used in synnefo as an API for accessing remote services as well as for building manager tools of various synnefo functions (e.g. admin image registration).
+*kamaki* is currently used (i) internally in GRNET by the development team to test the synnefo software, (ii) by the deployment team which operates the ~okeanos service and (iii) by the testers using the ~okeanos service and want to access the service from the command line.
+
+What's more, (iv) *kamaki* clients API is used in synnefo as an API for accessing remote services as well as (v) for building manager tools of various synnefo functions (e.g. image registration).
 
 
 Contributing and helping out

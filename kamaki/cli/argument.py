@@ -34,15 +34,24 @@
 from kamaki.cli.config import Config
 from kamaki.cli.errors import CLISyntaxError, raiseCLIError
 from kamaki.cli.utils import split_input
+from logging import getLogger
+from datetime import datetime as dtm
+
 
 from argparse import ArgumentParser, ArgumentError
+from argparse import RawDescriptionHelpFormatter
 
 try:
-    from progress.bar import FillingCirclesBar as KamakiProgressBar
-    #  IncrementalBar
+    from progress.bar import ShadyBar as KamakiProgressBar
 except ImportError:
+    try:
+        from progress.bar import Bar as KamakiProgressBar
+    except ImportError:
+        pass
     # progress not installed - pls, pip install progress
     pass
+
+kloger = getLogger('kamaki')
 
 
 class Argument(object):
@@ -228,8 +237,45 @@ class IntArgument(ValueArgument):
         try:
             self._value = int(newvalue)
         except ValueError:
-            raiseCLIError(CLISyntaxError('IntArgument Error'),
-                details='Value %s not an int' % newvalue)
+            raiseCLIError(CLISyntaxError('IntArgument Error',
+                details=['Value %s not an int' % newvalue]))
+
+
+class DateArgument(ValueArgument):
+    """
+    :value type: a string formated in an acceptable date format
+
+    :value returns: same date in first of DATE_FORMATS
+    """
+
+    DATE_FORMATS = ["%a %b %d %H:%M:%S %Y",
+        "%A, %d-%b-%y %H:%M:%S GMT",
+        "%a, %d %b %Y %H:%M:%S GMT"]
+
+    INPUT_FORMATS = DATE_FORMATS + ["%d-%m-%Y", "%H:%M:%S %d-%m-%Y"]
+
+    @property
+    def value(self):
+        return getattr(self, '_value', self.default)
+
+    @value.setter
+    def value(self, newvalue):
+        if newvalue is None:
+            return
+        self._value = self.format_date(newvalue)
+
+    def format_date(self, datestr):
+        for format in self.INPUT_FORMATS:
+            try:
+                t = dtm.strptime(datestr, format)
+            except ValueError:
+                continue
+            self._value = t.strftime(self.DATE_FORMATS[0])
+            return
+        raiseCLIError(None,
+            'Date Argument Error',
+            details='%s not a valid date. correct formats:\n\t%s'\
+            % (datestr, self.INPUT_FORMATS))
 
 
 class VersionArgument(FlagArgument):
@@ -289,7 +335,7 @@ class ProgressBarArgument(FlagArgument):
         try:
             KamakiProgressBar
         except NameError:
-            print('Warning: no progress bar functionality')
+            kloger.warning('no progress bar functionality')
 
     def clone(self):
         """Get a modifiable copy of this bar"""
@@ -331,7 +377,7 @@ class ProgressBarArgument(FlagArgument):
 _arguments = dict(config=_config_arg,
     help=Argument(0, 'Show help message', ('-h', '--help')),
     debug=FlagArgument('Include debug output', ('-d', '--debug')),
-    include=FlagArgument('Include protocol headers in the output',
+    include=FlagArgument('Include raw connection data in the output',
         ('-i', '--include')),
     silent=FlagArgument('Do not output anything', ('-s', '--silent')),
     verbose=FlagArgument('More info at response', ('-v', '--verbose')),
@@ -370,7 +416,8 @@ class ArgumentParseManager(object):
         :param arguments: (dict) if given, overrides the global _argument as
             the parsers arguments specification
         """
-        self.parser = ArgumentParser(add_help=False)
+        self.parser = ArgumentParser(add_help=False,
+            formatter_class=RawDescriptionHelpFormatter)
         self.syntax = '%s <cmd_group> [<cmd_subbroup> ...] <cmd>' % exe
         if arguments:
             self.arguments = arguments
@@ -441,10 +488,14 @@ class ArgumentParseManager(object):
 
     def parse(self, new_args=None):
         """Do parse user input"""
-        if new_args:
-            self._parsed, unparsed = self.parser.parse_known_args(new_args)
-        else:
-            self._parsed, unparsed = self.parser.parse_known_args()
+        try:
+            if new_args:
+                self._parsed, unparsed = self.parser.parse_known_args(new_args)
+            else:
+                self._parsed, unparsed = self.parser.parse_known_args()
+        except SystemExit:
+            # deal with the fact that argparse error system is STUPID
+            raiseCLIError(CLISyntaxError('Argument Syntax Error'))
         for name, arg in self.arguments.items():
             arg.value = getattr(self._parsed, name, arg.default)
         self._unparsed = []

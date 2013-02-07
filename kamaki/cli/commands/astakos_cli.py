@@ -33,9 +33,14 @@
 
 from kamaki.cli import command
 from kamaki.clients.astakos import AstakosClient
+<<<<<<< HEAD
 from kamaki.cli.utils import print_dict, print_items
 from kamaki.cli.errors import raiseCLIError, CLISyntaxError
 from kamaki.cli.commands import _command_init
+=======
+from kamaki.cli.utils import print_dict
+from kamaki.cli.commands import _command_init, errors
+>>>>>>> develop
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.argument import ValueArgument
 
@@ -44,18 +49,23 @@ _commands = [astakos_cmds]
 
 
 class _astakos_init(_command_init):
-    def main(self):
+
+    @errors.generic.all
+    @errors.astakos.load
+    def _run(self):
         token = self.config.get('astakos', 'token')\
             or self.config.get('global', 'token')
         base_url = self.config.get('astakos', 'url')\
             or self.config.get('global', 'url')
-        if base_url is None:
-            raiseCLIError(None, 'Missing astakos server URL')
         self.client = AstakosClient(base_url=base_url, token=token)
+
+    def main(self):
+        self._run
 
 
 @command(astakos_cmds)
 class astakos_authenticate(_astakos_init):
+<<<<<<< HEAD
     """Authenticate a user, show user information"""
 
     def main(self, token=None):
@@ -153,3 +163,22 @@ class astakos_service_list(_astakos_init):
         super(self.__class__, self).main()
         reply = self.client.list_services(token)
         print_items(reply)
+=======
+    """Authenticate a user
+    Get user information (e.g. unique account name) from token
+    Token should be set in settings:
+    *  check if a token is set    /config get token
+    *  permanently set a token    /config set token <token>
+    Token can also be provided as a parameter
+    """
+
+    @errors.generic.all
+    @errors.astakos.authenticate
+    def _run(self, custom_token=None):
+        super(self.__class__, self)._run()
+        reply = self.client.authenticate(custom_token)
+        print_dict(reply)
+
+    def main(self, custom_token=None):
+        self._run(custom_token)
+>>>>>>> develop

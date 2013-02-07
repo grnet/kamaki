@@ -33,10 +33,18 @@
 
 
 class HTTPConnectionError(Exception):
-    def __init__(self, message):
+    errno = None
+
+    def __init__(self, message, errno=None):
         super(HTTPConnectionError, self).__init__(message)
+        if errno:
+            self.errno = errno
 
 
 class HTTPResponseError(Exception):
-    def __init__(self, message):
+    errno = None
+
+    def __init__(self, message, errno=None):
         super(HTTPResponseError, self).__init__(message)
+        if errno:
+            self.errno = errno

@@ -3,6 +3,30 @@ Setup
 
 Kamaki is easy to install from source or as a package. Some ui features are optional and can be install separately. Kamaki behavior can be configured in the kamaki config file.
 
+Quick Setup
+-----------
+
+Kamaki interfaces rely on a list of configuration options. Be default, they are configured to communicate with the `Okeanos IaaS <http://okeanos.grnet.gr>`_.
+
+.. note:: It is essential for users to get a configuration token (okeanos.grnet.gr users go `here <https://accounts.okeanos.grnet.gr/im/>`_) and provide it to kamaki:
+
+
+.. code-block:: console
+    :emphasize-lines: 1
+
+    Example 1.1: Set user token to myt0k3n==
+
+    $ kamaki set token myt0k3n==
+
+To use the storage service, a user should also provide the corresponding user-name:
+
+.. code-block:: console
+    :emphasize-lines: 1
+
+    Example 1.2: Set user name to user@domain.com
+
+    $ kamaki set store.account user@domain.com
+
 Optional features
 -----------------
 
@@ -111,6 +135,9 @@ The [global] group is treated by kamaki as a generic group for arbitrary options
 * store.account <account name>
     if set, it overrides possible global.account option for store level commands.
 
+* store.token <token>
+    it set, it overrides possible global.token option for store level commands
+
 * compute.url <OOS compute or Cyclades service url>
     the url of the OOS compute or Cyclades service. Set to Okeanos.grnet.gr Cyclades IaaS service by default. Users should set a different value if they need to use a different IaaS service.
 
@@ -147,3 +174,9 @@ Since version 0.6.1 kamaki contains a test suite for the kamaki.clients API. The
     cli=test_cli
 
 After that, users can run "kamaki test" commands to unit-test the prepackaged client APIs. Unit-tests are still experimental and there is a high probability of false alarms due to some of the expected values being hard-coded in the testing code.
+
+Since version 0.6.3, a quotaholder client is introduced as an advanced feature. Quotaholder client is mostly used as a client library for accessing a synnefo quota service, but it can also be allowed as a kamaki command set, but setting the quotaholder.cli and quotaholder.url methods:
+
+    [quotaholder]
+    cli=quotaholder_cli
+    url=<URL of quotaholder service>

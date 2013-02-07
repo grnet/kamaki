@@ -1,0 +1,8 @@
+CHANGELOG for version 0.7
+
+1. Clean up CLI error handling code
+2. Unify and improve data size units presentation
+3. Ask for user permission at store-delete
+4. Intuitive semantics for store-move/copy/download/upload (modified syntax and clients)
+5. Dynamically limit max number of threads
+6. Various CLI and dependency fixes

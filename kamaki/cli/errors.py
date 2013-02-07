@@ -38,6 +38,7 @@ recvlog = logging.getLogger('clients.recv')
 
 
 class CLIError(Exception):
+
     def __init__(self, message, details=[], importance=0):
         """
         @message is the main message of the Error
@@ -47,7 +48,7 @@ class CLIError(Exception):
         """
         message += '' if message and message[-1] == '\n' else '\n'
         super(CLIError, self).__init__(message)
-        self.details = details if isinstance(details, list)\
+        self.details = list(details) if isinstance(details, list)\
             else [] if details is None else ['%s' % details]
         try:
             self.importance = int(importance)
@@ -92,6 +93,7 @@ def raiseCLIError(err, message='', importance=0, details=[]):
     :raises CLIError: it is the purpose of this method
     """
     from traceback import format_stack
+
     stack = ['%s' % type(err)] if err else ['<kamaki.cli.errors.CLIError>']
     stack += format_stack()
     try:
@@ -101,6 +103,7 @@ def raiseCLIError(err, message='', importance=0, details=[]):
 
     details = ['%s' % details] if not isinstance(details, list)\
         else list(details)
+    details += getattr(err, 'details', [])
 
     if err:
         origerr = '%s' % err
@@ -111,16 +114,12 @@ def raiseCLIError(err, message='', importance=0, details=[]):
     message = unicode(message) if message else unicode(origerr)
 
     try:
-        status = err.status
+        status = err.status or err.errno
     except AttributeError:
         status = None
 
     if origerr not in details + [message]:
         details.append(origerr)
-    try:
-        details.append(err.details)
-    except AttributeError:
-        pass
 
     message += '' if message and message[-1] == '\n' else '\n'
     if status:
@@ -129,5 +128,6 @@ def raiseCLIError(err, message='', importance=0, details=[]):
             status = int(err.status)
         except ValueError:
             raise CLIError(message, details, importance)
-        importance = status // 100
+        importance = importance if importance else status // 100
+    importance = getattr(err, 'importance', importance)
     raise CLIError(message, details, importance)
