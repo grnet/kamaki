@@ -10,9 +10,6 @@ astakos (Identity Manager)
 .. code-block:: text
 
     authenticate:  Authenticate a user
-    admin userinfo: Get user info, (req. admin privileges)
-    service userinfo: Get user info with service token
-    service list: List cloud services associated with astakos
 
 Showcase: get user information
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -27,39 +24,14 @@ In the following, the token has been set in a previous step (see `setup section 
 
     * Authenticate user *
     [astakos]:authenticate
-    auth_token        :  s0m3t0k3nth@t1sr3m0v3d==
     auth_token_created:  2012-11-13T14:12:40.917034
     auth_token_expires:  2012-12-13T14:12:40.917035
-    groups            : 
-                      default
-    has_credits       :  False
-    has_signed_terms  :  True
-    uniq              :  myaccount@grnet.gr
-    username          :  4215th3b357num9323v32
-
-Showcase: get available services
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-In the following, a user needs to know the urls he/she has access to.
-
-.. code-block:: console
-    :emphasize-lines: 1,4
-
-    * Enter appropriate context *
-    [kamaki]:astakos service
-
-    * list services *
-    [astakos service]:list
-    1 grnet cloud
-        icon:  home-icon.png
-        url :  https://okeanos.grnet.gr/
-    2 cyclades
-        icon:  
-        url :  https://cyclades.okeanos.grnet.gr/ui/
-    3 pithos+
-        icon:  
-        url :  https://pithos.okeanos.grnet.gr/ui/
-
+    email             :  
+                       myaccount@grnet.gr
+                       myotheraccount@grnet.gr
+    name              :  My Real Name
+    username          :  usually@an.email.org
+    uuid              :  ab1cde23-45fg-6h7i-8j9k-10l1m11no2pq
 
 flavor (Compute/Cyclades)
 -------------------------

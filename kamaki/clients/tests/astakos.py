@@ -66,3 +66,16 @@ class Astakos(tests.Generic):
             'username'):
             self.assertEqual(self.client.term(term), self['astakos', term])
         self.assertTrue(self['astakos', 'email'] in self.client.term('email'))
+
+    def test_list(self):
+        self.client.authenticate()
+        self._test_list()
+
+    def _test_list(self):
+        terms = set(['name', 'username', 'uuid', 'email'])
+        uuid = 0
+        for r in self.client.list():
+            print('Hum?')
+            self.assertTrue(terms.issubset(r.keys()))
+            self.assertTrue(uuid != r['uuid'] if uuid else True)
+            uuid = r['uuid']

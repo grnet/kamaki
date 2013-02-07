@@ -112,10 +112,7 @@ Command user history, as stored in ~/.kamaki.history
 astakos commands
 ****************
 
-* admin userinfo    Get user info, provided you have admin privileges
 * authenticate      Authenticate a user, show user information
-* service list      List cloud services associated with astakos
-* service userinfo  Get user info with service token
 
 
 server commands

@@ -260,8 +260,8 @@ Kamaki commands can be used along with advanced shell features.
     Example 3.4.1: Print username for token us3rt0k3n== using grep
     
 
-    $ kamaki astakos authenticate -o token=us3rt0k3n== | grep uniq
-    uniq        : user@synnefo.org
+    $ kamaki astakos authenticate -o token=us3rt0k3n== | grep userame
+    userame        : user@synnefo.org
 
 The -o argument can be used to override temporarily various (set or unset) options. In one command, all -o options are forgotten just after the command had been completed, and the previous settings are restored (the configuration file is not modified).
 

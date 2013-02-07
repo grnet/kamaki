@@ -53,6 +53,7 @@ class AstakosClient(Client):
         return self._cache[token]
 
     def list(self):
+        """list cached user information"""
         return self._cache.values()
 
     def _user_info(self, token=None):
