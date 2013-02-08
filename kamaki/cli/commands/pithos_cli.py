@@ -81,16 +81,14 @@ def raise_connection_errors(e):
             '  to set the service url: /config set store.url <url>',
             ' ',
             '  to get authentication token: /config get token',
-            '  to set authentication token: /config set token <token>'
-            ])
+            '  to set authentication token: /config set token <token>'])
     elif e.status == 413:
         raiseCLIError(e, details=[
             'Get quotas:',
             '- total quota:      /store quota',
             '- container quota:  /store quota <container>',
             'Users shall set a higher container quota, if available:',
-            '-                  /store setquota <quota>[unit] <container>'
-            ])
+            '-                  /store setquota <quota>[unit] <container>'])
 
 
 class DelimiterArgument(ValueArgument):
@@ -142,9 +140,9 @@ class SharingArgument(ValueArgument):
                     details='Incorrect format',
                     importance=1)
             if key.lower() not in ('read', 'write'):
-                raiseCLIError(err, 'Error in --sharing',
-                    details='Invalid permission key %s' % key,
-                    importance=1)
+                msg = 'Error in --sharing'
+                raiseCLIError(err, msg, importance=1, details=[
+                    'Invalid permission key %s' % key])
             val_list = val.split(',')
             if not key in perms:
                 perms[key] = []
@@ -189,7 +187,8 @@ class _pithos_init(_command_init):
         self._set_account()
         self.container = self.config.get('store', 'container')\
             or self.config.get('global', 'container')
-        self.client = PithosClient(base_url=self.base_url,
+        self.client = PithosClient(
+            base_url=self.base_url,
             token=self.token,
             account=self.account,
             container=self.container)
@@ -245,7 +244,8 @@ class _store_container_command(_store_account_command):
         dst = dest_container_path.split(':')
         return (dst[0], dst[1]) if len(dst) > 1 else (None, dst[0])
 
-    def extract_container_and_path(self,
+    def extract_container_and_path(
+        self,
         container_with_path,
         path_is_optional=True):
         """Contains all heuristics for deciding what should be used as
@@ -366,8 +366,8 @@ class store_list(_store_container_command):
     def print_objects(self, object_list):
         limit = int(self['limit']) if self['limit'] > 0 else len(object_list)
         for index, obj in enumerate(object_list):
-            if (self['exact_match'] and self.path and\
-                obj['name'] != self.path) or 'content_type' not in obj:
+            if (self['exact_match'] and self.path and (
+                obj['name'] != self.path) or 'content_type' not in obj):
                 continue
             pretty_obj = obj.copy()
             index += 1
@@ -407,8 +407,10 @@ class store_list(_store_container_command):
                 print
             else:
                 if 'count' in container and 'bytes' in container:
-                    print('%s (%s, %s objects)'\
-                    % (cname, size, container['count']))
+                    print('%s (%s, %s objects)' % (
+                        cname,
+                        size,
+                        container['count']))
                 else:
                     print(cname)
             if self['more']:
@@ -511,7 +513,8 @@ class store_create(_store_container_command):
     @errors.pithos.connection
     @errors.pithos.container
     def _run(self):
-        self.client.container_put(quota=self['quota'],
+        self.client.container_put(
+            quota=self['quota'],
             versioning=self['versioning'],
             metadata=self['meta'])
 
@@ -573,10 +576,12 @@ class store_copy(_store_container_command):
         if len(r.json) == 1:
             obj = r.json[0]
             return [(obj['name'], dst_path or obj['name'])]
-        return [(obj['name'], '%s%s' % (
+        return [(
+            obj['name'],
+            '%s%s' % (
                     dst_path,
                     obj['name'][len(self.path) if self['replace'] else 0:])
-                ) for obj in r.json]
+        ) for obj in r.json]
 
     @errors.generic.all
     @errors.pithos.connection
@@ -598,7 +603,8 @@ class store_copy(_store_container_command):
                 self.path,
                 self.container))
 
-    def main(self,
+    def main(
+        self,
         source_container___path,
         destination_container___path=None):
         super(self.__class__, self)._run(
@@ -652,10 +658,12 @@ class store_move(_store_container_command):
         if len(r.json) == 1:
             obj = r.json[0]
             return [(obj['name'], dst_path or obj['name'])]
-        return [(obj['name'], '%s%s' % (
-                    dst_path,
-                    obj['name'][len(self.path) if self['replace'] else 0:])
-                ) for obj in r.json]
+        return [(
+            obj['name'],
+            '%s%s' % (
+                dst_path,
+                obj['name'][len(self.path) if self['replace'] else 0:]
+            )) for obj in r.json]
 
     @errors.generic.all
     @errors.pithos.connection
@@ -677,7 +685,8 @@ class store_move(_store_container_command):
                 self.path,
                 self.container))
 
-    def main(self,
+    def main(
+        self,
         source_container___path,
         destination_container___path=None):
         super(self.__class__, self)._run(
@@ -823,8 +832,9 @@ class store_manifest(_store_container_command):
             '--content-type',
             default='application/octet-stream'),
         sharing=SharingArgument(
-            'define object sharing policy \n' +\
-            '    ( "read=user1,grp1,user2,... write=user1,grp2,..." )',
+            '\n'.join([
+                'define object sharing policy',
+                '    ( "read=user1,grp1,user2,... write=user1,grp2,..." )']),
             '--sharing'),
         public=FlagArgument('make object publicly accessible', '--public')
     )
@@ -867,8 +877,9 @@ class store_upload(_store_container_command):
             '--content-disposition'),
         content_type=ValueArgument('specify content type', '--content-type'),
         sharing=SharingArgument(
-            help='define sharing object policy \n' +\
-            '( "read=user1,grp1,user2,... write=user1,grp2,... )',
+            help='\n'.join([
+                'define sharing object policy',
+                '( "read=user1,grp1,user2,... write=user1,grp2,... )']),
             parsed_name='--sharing'),
         public=FlagArgument('make object publicly accessible', '--public'),
         poolsize=IntArgument('set pool size', '--with-pool-size'),
@@ -928,7 +939,8 @@ class store_upload(_store_container_command):
                     if progress_bar:
                         hash_bar = progress_bar.clone()
                         hash_cb = hash_bar.get_generator(
-                                    'Calculating block hashes')
+                            'Calculating block hashes'
+                        )
                     else:
                         hash_cb = None
                     self.client.upload_object(
@@ -1049,8 +1061,8 @@ class store_download(_store_container_command):
                 if_unmodified_since=self['if_unmodified_since'])
             return [(
                 '%s/%s' % (outpath, remote['name']),
-                    None if self._is_dir(remote) else remote['name'])\
-                for remote in remotes.json]
+                None if self._is_dir(remote) else remote['name']
+            ) for remote in remotes.json]
         raiseCLIError('Illegal destination location %s' % local_path)
 
     @errors.generic.all
@@ -1201,8 +1213,9 @@ class store_delete(_store_container_command):
     @errors.pithos.object_path
     def _run(self):
         if self.path:
-            if self['yes'] or ask_user(
-                'Delete %s:%s ?' % (self.container, self.path)):
+            if self['yes'] or ask_user('Delete %s:%s ?' % (
+                self.container,
+                self.path)):
                 self.client.del_object(
                     self.path,
                     until=self['until'],
@@ -1210,8 +1223,10 @@ class store_delete(_store_container_command):
             else:
                 print('Aborted')
         else:
-            ask_msg = 'Delete contents of container'\
-            if self['recursive'] else 'Delete container'
+            if self['resursive']:
+                ask_msg = 'Delete container contents'
+            else:
+                ask_msg = 'Delete container'
             if self['yes'] or ask_user('%s %s ?' % (ask_msg, self.container)):
                 self.client.del_container(
                     until=self['until'],
@@ -1344,8 +1359,8 @@ class store_setpermissions(_store_container_command):
                 read = False
                 write = False
         if not (read or write):
-            raiseCLIError(None,
-            'Usage:\tread=<groups,users> write=<groups,users>')
+            msg = 'Usage:\tread=<groups,users> write=<groups,users>'
+            raiseCLIError(None, msg)
         return (read, write)
 
     @errors.generic.all
@@ -1459,10 +1474,12 @@ class store_meta(_store_container_command):
                     r['object-meta'] = pretty_keys(ometa, '-')
         else:
             if self['detail']:
-                r = self.client.get_object_info(self.path,
+                r = self.client.get_object_info(
+                    self.path,
                     version=self['object_version'])
             else:
-                r = self.client.get_object_meta(self.path,
+                r = self.client.get_object_meta(
+                    self.path,
                     version=self['object_version'])
             if r:
                 r = pretty_keys(pretty_keys(r, '-'))
@@ -1529,7 +1546,7 @@ class store_quota(_store_account_command):
 
     arguments = dict(
         in_bytes=FlagArgument('Show result in bytes', ('-b', '--bytes'))
-        )
+    )
 
     @errors.generic.all
     @errors.pithos.connection
@@ -1574,14 +1591,13 @@ class store_setquota(_store_account_command):
             try:
                 return to_bytes(quota, format)
             except Exception as qe:
-                raiseCLIError(qe,
-                    'Failed to convert %s to bytes' % user_input,
-                    details=[
-                        'Syntax: setquota <quota>[format] [container]',
-                        'e.g.: setquota 2.3GB mycontainer',
-                        'Acceptable formats:',
-                        '(*1024): B, KiB, MiB, GiB, TiB',
-                        '(*1000): B, KB, MB, GB, TB'])
+                msg = 'Failed to convert %s to bytes' % user_input,
+                raiseCLIError(qe, msg, details=[
+                    'Syntax: setquota <quota>[format] [container]',
+                    'e.g.: setquota 2.3GB mycontainer',
+                    'Acceptable formats:',
+                    '(*1024): B, KiB, MiB, GiB, TiB',
+                    '(*1000): B, KB, MB, GB, TB'])
         return quota
 
     @errors.generic.all
@@ -1705,7 +1721,7 @@ class store_sharers(_store_account_command):
     @errors.pithos.connection
     def _run(self):
         accounts = self.client.get_sharing_accounts(marker=self['marker'])
-        print_items(accounts if self['detail']\
+        print_items(accounts if self['detail']
             else [acc['name'] for acc in accounts])
 
     def main(self):

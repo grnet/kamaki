@@ -49,8 +49,8 @@ class History(object):
 
     def get(self, match_terms=None, limit=0):
         f = open(self.filepath, 'r')
-        result = ['%s.  \t%s' % (index + 1, line)\
-            for index, line in enumerate(f.readlines())\
+        result = ['%s.  \t%s' % (index + 1, line)
+            for index, line in enumerate(f.readlines())
             if self._match(line, match_terms)]
         offset = len(result) - limit if limit and len(result) > limit else 0
         return result[offset:]

@@ -172,7 +172,8 @@ class history_run(_init_history):
             instance.config = self.config
             prs = ArgumentParseManager(cmd.path.split(),
                 dict(instance.arguments))
-            prs.syntax = '%s %s' % (cmd.path.replace('_', ' '),
+            prs.syntax = '%s %s' % (
+                cmd.path.replace('_', ' '),
                 cmd.get_class().syntax)
             prs.parse(args)
             exec_cmd(instance, prs.unparsed, prs.parser.print_help)
