@@ -19,15 +19,6 @@ It is essential for users to get a configuration token (okeanos.grnet.gr users g
 
     $ kamaki set token myt0k3n==
 
-To use the storage service, a user should also provide the corresponding user-name:
-
-.. code-block:: console
-    :emphasize-lines: 1
-
-    Example 1.2: Set user name to user@domain.com
-
-    $ kamaki set account store.user@domain.com
-
 Shell vs one-command
 --------------------
 Kamaki users can access synnefo services through either the interactive shell or the one-command behaviors. In practice, both systems rely on the same command set implementations and API clients, with identical responses and error messages. Still, there are some differences.

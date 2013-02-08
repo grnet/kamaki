@@ -38,6 +38,7 @@ from tempfile import NamedTemporaryFile
 
 from kamaki.clients import tests, ClientError
 from kamaki.clients.pithos import PithosClient
+from kamaki.clients.astakos import AstakosClient
 
 
 class Pithos(tests.Generic):
@@ -48,7 +49,10 @@ class Pithos(tests.Generic):
         self.client = PithosClient(
             self['store', 'url'],
             self['store', 'token'],
-            self['store', 'account'])
+            AstakosClient(
+                self['astakos', 'url'],
+                self['store', 'token']
+            ).term('uuid'))
 
         self.now = time.mktime(time.gmtime())
         self.now_unformated = datetime.datetime.utcnow()
@@ -56,9 +60,10 @@ class Pithos(tests.Generic):
 
         """Prepare an object to be shared - also its container"""
         self.client.container = self.c1
-        self.client.object_post('test',
+        self.client.object_post(
+            'test',
             update=True,
-            permissions={'read': 'someUser'})
+            permissions={'read': [self.client.account]})
 
         self.create_remote_object(self.c1, 'another.test')
 
@@ -213,9 +218,11 @@ class Pithos(tests.Generic):
         """Method set/del_account_meta and set_account_groupcall use
             account_post internally
         """
-        self.client.set_account_group(grpName, ['u1', 'u2'])
+        u1 = self.client.account
+        u2 = self.client.account
+        self.client.set_account_group(grpName, [u1, u2])
         r = self.client.get_account_group()
-        self.assertEqual(r['x-account-group-' + grpName], 'u1,u2')
+        self.assertEqual(r['x-account-group-' + grpName], '%s,%s' % (u1, u2))
         self.client.del_account_group(grpName)
         r = self.client.get_account_group()
         self.assertTrue('x-account-group-' + grpName not in r)
