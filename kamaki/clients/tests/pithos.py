@@ -218,9 +218,11 @@ class Pithos(tests.Generic):
         """Method set/del_account_meta and set_account_groupcall use
             account_post internally
         """
-        self.client.set_account_group(grpName, ['u1', 'u2'])
+        u1 = self.client.account
+        u2 = self.client.account
+        self.client.set_account_group(grpName, [u1, u2])
         r = self.client.get_account_group()
-        self.assertEqual(r['x-account-group-' + grpName], 'u1,u2')
+        self.assertEqual(r['x-account-group-' + grpName], '%s,%s' % (u1, u2))
         self.client.del_account_group(grpName)
         r = self.client.get_account_group()
         self.assertTrue('x-account-group-' + grpName not in r)
