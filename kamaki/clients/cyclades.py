@@ -243,7 +243,9 @@ class CycladesClient(CycladesClientApi):
             r = self.networks_post(netid, 'action', json_data=req)
             r.release()
 
-    def wait_server(self, server_id,
+    def wait_server(
+        self,
+        server_id,
         current_status='BUILD',
         delay=0.5,
         max_wait=128,
