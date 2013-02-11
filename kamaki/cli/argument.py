@@ -36,6 +36,7 @@ from kamaki.cli.errors import CLISyntaxError, raiseCLIError
 from kamaki.cli.utils import split_input
 from logging import getLogger
 from datetime import datetime as dtm
+from time import mktime
 
 
 from argparse import ArgumentParser, ArgumentError
@@ -262,14 +263,23 @@ class DateArgument(ValueArgument):
     INPUT_FORMATS = DATE_FORMATS + ["%d-%m-%Y", "%H:%M:%S %d-%m-%Y"]
 
     @property
+    def timestamp(self):
+        v = getattr(self, '_value', self.default)
+        return mktime(v.timetuple()) if v else None
+
+    @property
+    def formated(self):
+        v = getattr(self, '_value', self.default)
+        return v.strftime(self.DATE_FORMATS[0]) if v else None
+
+    @property
     def value(self):
-        return getattr(self, '_value', self.default)
+        return self.timestamp
 
     @value.setter
     def value(self, newvalue):
-        if newvalue is None:
-            return
-        self._value = self.format_date(newvalue)
+        if newvalue:
+            self._value = self.format_date(newvalue)
 
     def format_date(self, datestr):
         for format in self.INPUT_FORMATS:
@@ -277,8 +287,7 @@ class DateArgument(ValueArgument):
                 t = dtm.strptime(datestr, format)
             except ValueError:
                 continue
-            self._value = t.strftime(self.DATE_FORMATS[0])
-            return
+            return t  # .strftime(self.DATE_FORMATS[0])
         raiseCLIError(
             None,
             'Date Argument Error',

@@ -1216,6 +1216,7 @@ class store_delete(_store_container_command):
         if self.path:
             if self['yes'] or ask_user(
                     'Delete %s:%s ?' % (self.container, self.path)):
+                print('is until? (%s)' % self['until'])
                 self.client.del_object(
                     self.path,
                     until=self['until'],
