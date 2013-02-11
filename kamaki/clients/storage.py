@@ -80,7 +80,8 @@ class StorageClient(Client):
         :param metakey: (str) metadatum key
         """
         headers = self.get_account_info()
-        self.headers = filter_out(headers,
+        self.headers = filter_out(
+            headers,
             'X-Account-Meta-' + metakey,
             exactMatch=True)
         if len(self.headers) == len(headers):
@@ -159,10 +160,9 @@ class StorageClient(Client):
         r = self.put(path, data=data, success=201)
         r.release()
 
-    def create_object(self,
-        obj,
-        content_type='application/octet-stream',
-        content_length=0):
+    def create_object(
+            self, obj,
+            content_type='application/octet-stream', content_length=0):
         """
         :param obj: (str) directory-object name
         :param content_type: (str) explicitly set content_type
@@ -247,8 +247,9 @@ class StorageClient(Client):
         cnt = r.content
         return cnt, size
 
-    def copy_object(self, src_container, src_object, dst_container,
-        dst_object=False):
+    def copy_object(
+            self, src_container, src_object, dst_container,
+            dst_object=False):
         """Copy an objects from src_contaier:src_object to
             dst_container[:dst_object]
 
@@ -268,8 +269,9 @@ class StorageClient(Client):
         r = self.put(dst_path, success=201)
         r.release()
 
-    def move_object(self, src_container, src_object, dst_container,
-        dst_object=False):
+    def move_object(
+            self, src_container, src_object, dst_container,
+            dst_object=False):
         """Move an objects from src_contaier:src_object to
             dst_container[:dst_object]
 
@@ -312,7 +314,7 @@ class StorageClient(Client):
         self.set_param('format', 'json')
         r = self.get(path, success=(200, 204, 304, 404), )
         if r.status_code == 404:
-            raise ClientError(\
+            raise ClientError(
                 "Invalid account (%s) for that container" % self.account,
                 r.status_code)
         elif r.status_code == 304:
@@ -334,7 +336,7 @@ class StorageClient(Client):
         self.set_param('path', 'path_prefix')
         r = self.get(path, success=(200, 204, 404))
         if r.status_code == 404:
-            raise ClientError(\
+            raise ClientError(
                 "Invalid account (%s) for that container" % self.account,
                 r.status_code)
         reply = r.json

@@ -196,13 +196,15 @@ class test_prints(_test_init):
             {'id': '142', 'title': 'lalakis 2', 'content': self.d2}])
         print('- - -')
         print('\nTest print_items with id and enumeration:\n- - -')
-        print_items([
+        print_items(
+            [
                 {'id': '42', 'title': 'lalakis 1', 'content': self.d1},
                 {'id': '142', 'title': 'lalakis 2', 'content': self.d2}],
             with_enumeration=True)
         print('- - -')
         print('\nTest print_items with id, title and redundancy:\n- - -')
-        print_items([
+        print_items(
+            [
                 {'id': '42', 'title': 'lalakis 1', 'content': self.d1},
                 {'id': '142', 'title': 'lalakis 2', 'content': self.d2}],
             title=('id', 'title'),

@@ -72,11 +72,8 @@ def pretty_keys(d, delim='_', recurcive=False):
 
 
 def print_dict(
-    d,
-    exclude=(),
-    ident=0,
-    with_enumeration=False,
-    recursive_enumeration=False):
+        d, exclude=(), ident=0,
+        with_enumeration=False, recursive_enumeration=False):
     """
     Pretty-print a dictionary object
 
@@ -97,8 +94,8 @@ def print_dict(
         raiseCLIError(TypeError('Cannot dict_print a non-dict object'))
 
     if d:
-        margin = max(len(unicode(key).strip())
-            for key in d.keys() if key not in exclude)
+        margin = max(len(('%s' % key).strip()) for key in d.keys() if (
+            key not in exclude))
 
     counter = 1
     for key, val in sorted(d.items()):
@@ -133,11 +130,8 @@ def print_dict(
 
 
 def print_list(
-    l,
-    exclude=(),
-    ident=0,
-    with_enumeration=False,
-    recursive_enumeration=False):
+        l, exclude=(), ident=0,
+        with_enumeration=False, recursive_enumeration=False):
     """
     Pretty-print a list object
 
@@ -159,10 +153,10 @@ def print_list(
 
     if l:
         try:
-            margin = max(len(unicode(item).strip()) for item in l
-                if not (isinstance(item, dict)
-                or isinstance(item, list)
-                or item in exclude))
+            margin = max(len(('%s' % item).strip()) for item in l if not (
+                isinstance(item, dict) or
+                isinstance(item, list) or
+                item in exclude))
         except ValueError:
             margin = (2 + len(unicode(len(l)))) if enumerate else 1
 
@@ -221,11 +215,9 @@ def page_hold(index, limit, maxlen):
 
 
 def print_items(
-    items,
-    title=('id', 'name'),
-    with_enumeration=False,
-    with_redundancy=False,
-    page_size=0):
+        items, title=('id', 'name'),
+        with_enumeration=False, with_redundancy=False,
+        page_size=0):
     """print dict or list items in a list, using some values as title
     Objects of next level don't inherit enumeration (default: off) or titles
 

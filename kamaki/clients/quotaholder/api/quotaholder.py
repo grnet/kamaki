@@ -107,12 +107,8 @@ Reason = Text(classname='Reason', regex='(ACCEPT|REJECT):.*', maxlen=128)
 
 class QuotaholderAPI(Specificator):
 
-    def create_entity(
-        self,
-        context=Context,
-        create_entity=ListOf(Entity, Owner, Key, OwnerKey,
-        nonempty=1)
-    ):
+    def create_entity(self, context=Context, create_entity=ListOf(
+            Entity, Owner, Key, OwnerKey, nonempty=1)):
         rejected = ListOf(Index)
         return rejected
 

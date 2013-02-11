@@ -195,9 +195,9 @@ class CmdLineConfigArgument(Argument):
             if not sep:
                 raiseCLIError(
                     CLISyntaxError('Argument Syntax Error '),
-                    details=['%s is missing a "="',
-                    ' (usage: -o section.key=val)' % option]
-                )
+                    details=[
+                        '%s is missing a "="',
+                        ' (usage: -o section.key=val)' % option])
             section, sep, key = keypath.partition('.')
         if not sep:
             key = section
@@ -242,8 +242,8 @@ class IntArgument(ValueArgument):
         try:
             self._value = int(newvalue)
         except ValueError:
-            raiseCLIError(
-                CLISyntaxError('IntArgument Error',
+            raiseCLIError(CLISyntaxError(
+                'IntArgument Error',
                 details=['Value %s not an int' % newvalue]))
 
 
@@ -282,8 +282,8 @@ class DateArgument(ValueArgument):
         raiseCLIError(
             None,
             'Date Argument Error',
-            details='%s not a valid date. correct formats:\n\t%s'\
-            % (datestr, self.INPUT_FORMATS))
+            details='%s not a valid date. correct formats:\n\t%s' % (
+                datestr, self.INPUT_FORMATS))
 
 
 class VersionArgument(FlagArgument):

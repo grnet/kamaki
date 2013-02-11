@@ -332,7 +332,7 @@ class image_info(_init_cyclades):
 
 @command(image_cmds)
 class image_delete(_init_cyclades):
-    """Delete an image (image file remains intact)"""
+    """Delete an image (WARNING: image file is also removed)"""
 
     @errors.generic.all
     @errors.cyclades.connection

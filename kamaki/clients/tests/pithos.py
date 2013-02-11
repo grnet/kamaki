@@ -91,7 +91,8 @@ class Pithos(tests.Generic):
 
     def create_remote_object(self, container, obj):
         self.client.container = container
-        self.client.object_put(obj,
+        self.client.object_put(
+            obj,
             content_type='application/octet-stream',
             data='file %s that lives in %s' % (obj, container),
             metadata={'incontainer': container})
@@ -149,11 +150,13 @@ class Pithos(tests.Generic):
         """Check if(un)modified_since"""
         for format in self.client.DATE_FORMATS:
             now_formated = self.now_unformated.strftime(format)
-            r1 = self.client.account_head(if_modified_since=now_formated,
+            r1 = self.client.account_head(
+                if_modified_since=now_formated,
                 success=(204, 304, 412))
             sc1 = r1.status_code
             r1.release()
-            r2 = self.client.account_head(if_unmodified_since=now_formated,
+            r2 = self.client.account_head(
+                if_unmodified_since=now_formated,
                 success=(204, 304, 412))
             sc2 = r2.status_code
             r2.release()
@@ -178,8 +181,8 @@ class Pithos(tests.Generic):
         temp_c2 = r.json[2]['name']
 
         r = self.client.account_get(limit=2, marker='c2_')
-        conames = [container['name'] for container in r.json \
-            if container['name'].lower().startswith('c2_')]
+        conames = [container['name'] for container in r.json if (
+            container['name'].lower().startswith('c2_'))]
         self.assertTrue(temp_c0 in conames)
         self.assertFalse(temp_c2 in conames)
 
@@ -192,11 +195,13 @@ class Pithos(tests.Generic):
         """Check if(un)modified_since"""
         for format in self.client.DATE_FORMATS:
             now_formated = self.now_unformated.strftime(format)
-            r1 = self.client.account_get(if_modified_since=now_formated,
+            r1 = self.client.account_get(
+                if_modified_since=now_formated,
                 success=(200, 304, 412))
             sc1 = r1.status_code
             r1.release()
-            r2 = self.client.account_get(if_unmodified_since=now_formated,
+            r2 = self.client.account_get(
+                if_unmodified_since=now_formated,
                 success=(200, 304, 412))
             sc2 = r2.status_code
             r2.release()
@@ -228,7 +233,8 @@ class Pithos(tests.Generic):
         self.assertTrue('x-account-group-' + grpName not in r)
 
         mprefix = 'meta' + unicode(self.now)
-        self.client.set_account_meta({mprefix + '1': 'v1',
+        self.client.set_account_meta({
+            mprefix + '1': 'v1',
             mprefix + '2': 'v2'})
         r = self.client.get_account_meta()
         self.assertEqual(r['x-account-meta-' + mprefix + '1'], 'v1')
@@ -271,11 +277,13 @@ class Pithos(tests.Generic):
         """Check and if(un)modified_since"""
         for format in self.client.DATE_FORMATS:
             now_formated = self.now_unformated.strftime(format)
-            r1 = self.client.container_head(if_modified_since=now_formated,
+            r1 = self.client.container_head(
+                if_modified_since=now_formated,
                 success=(204, 304, 412))
             sc1 = r1.status_code
             r1.release()
-            r2 = self.client.container_head(if_unmodified_since=now_formated,
+            r2 = self.client.container_head(
+                if_unmodified_since=now_formated,
                 success=(204, 304, 412))
             sc2 = r2.status_code
             r2.release()
@@ -336,11 +344,13 @@ class Pithos(tests.Generic):
         """Check and if un/modified_since"""
         for format in self.client.DATE_FORMATS:
             now_formated = self.now_unformated.strftime(format)
-            r1 = self.client.container_get(if_modified_since=now_formated,
+            r1 = self.client.container_get(
+                if_modified_since=now_formated,
                 success=(200, 304, 412))
             sc1 = r1.status_code
             r1.release()
-            r2 = self.client.container_get(if_unmodified_since=now_formated,
+            r2 = self.client.container_get(
+                if_unmodified_since=now_formated,
                 success=(200, 304, 412))
             sc2 = r2.status_code
             r2.release()
@@ -465,7 +475,8 @@ class Pithos(tests.Generic):
         #TODO
 
         """Check update=False"""
-        r = self.client.object_post('test',
+        r = self.client.object_post(
+            'test',
             update=False,
             metadata={'newmeta': 'newval'})
 
@@ -506,7 +517,8 @@ class Pithos(tests.Generic):
         self.assertTrue(len(r) > 0)
         self.assertTrue(len(r[0]) > 1)
         self.client.purge_container()
-        self.assertRaises(ClientError,
+        self.assertRaises(
+            ClientError,
             self.client.get_object_versionlist,
             'test')
 
@@ -531,12 +543,14 @@ class Pithos(tests.Generic):
         r = self.client.object_head(obj, if_etag_match=etag)
         self.assertEqual(r.status_code, 200)
 
-        r = self.client.object_head(obj,
+        r = self.client.object_head(
+            obj,
             if_etag_not_match=etag,
             success=(200, 412, 304))
         self.assertNotEqual(r.status_code, 200)
 
-        r = self.client.object_head(obj,
+        r = self.client.object_head(
+            obj,
             version=40,
             if_etag_match=etag,
             success=412)
@@ -545,11 +559,15 @@ class Pithos(tests.Generic):
         """Check and if(un)modified_since"""
         for format in self.client.DATE_FORMATS:
             now_formated = self.now_unformated.strftime(format)
-            r1 = self.client.object_head(obj, if_modified_since=now_formated,
+            r1 = self.client.object_head(
+                obj,
+                if_modified_since=now_formated,
                 success=(200, 304, 412))
             sc1 = r1.status_code
             r1.release()
-            r2 = self.client.object_head(obj, if_unmodified_since=now_formated,
+            r2 = self.client.object_head(
+                obj,
+                if_unmodified_since=now_formated,
                 success=(200, 304, 412))
             sc2 = r2.status_code
             r2.release()
@@ -570,23 +588,23 @@ class Pithos(tests.Generic):
         etag = r.headers['etag']
 
         r = self.client.object_get(obj, hashmap=True)
-        self.assertTrue('hashes' in r.json\
-            and 'block_hash' in r.json\
-            and 'block_size' in r.json\
-            and 'bytes' in r.json)
+        for term in ('hashes', 'block_hash', 'block_hash', 'bytes'):
+            self.assertTrue(term in r.json)
 
         r = self.client.object_get(obj, format='xml', hashmap=True)
         self.assertEqual(len(r.text.split('hash>')), 3)
 
         rangestr = 'bytes=%s-%s' % (osize / 3, osize / 2)
-        r = self.client.object_get(obj,
+        r = self.client.object_get(
+            obj,
             data_range=rangestr,
             success=(200, 206))
         partsize = int(r.headers['content-length'])
         self.assertTrue(0 < partsize and partsize <= 1 + osize / 3)
 
         rangestr = 'bytes=%s-%s' % (osize / 3, osize / 2)
-        r = self.client.object_get(obj,
+        r = self.client.object_get(
+            obj,
             data_range=rangestr,
             if_range=True,
             success=(200, 206))
@@ -602,11 +620,14 @@ class Pithos(tests.Generic):
         """Check and if(un)modified_since"""
         for format in self.client.DATE_FORMATS:
             now_formated = self.now_unformated.strftime(format)
-            r1 = self.client.object_get(obj, if_modified_since=now_formated,
+            r1 = self.client.object_get(
+                obj,
+                if_modified_since=now_formated,
                 success=(200, 304, 412))
             sc1 = r1.status_code
             r1.release()
-            r2 = self.client.object_get(obj,
+            r2 = self.client.object_get(
+                obj,
                 if_unmodified_since=now_formated,
                 success=(200, 304, 412))
             sc2 = r2.status_code
@@ -646,10 +667,10 @@ class Pithos(tests.Generic):
         r = self.client.object_put(obj,
             data='a',
             content_type='application/octer-stream',
-            permissions={
-                'read': ['accX:groupA', 'u1', 'u2'],
-                'write': ['u2', 'u3']},
-            metadata={'key1': 'val1', 'key2': 'val2'},
+            permissions=dict(
+                read=['accX:groupA', 'u1', 'u2'],
+                write=['u2', 'u3']),
+            metadata=dict(key1='val1', key2='val2'),
             content_encoding='UTF-8',
             content_disposition='attachment; filename="fname.ext"')
         self.assertEqual(r.status_code, 201)
@@ -672,8 +693,12 @@ class Pithos(tests.Generic):
         self.assertEqual(r['x-object-meta-key2'], 'val2')
 
         """Check public and if_etag_match"""
-        r = self.client.object_put(obj, if_etag_match=etag, data='b',
-            content_type='application/octet-stream', public=True)
+        r = self.client.object_put(
+            obj,
+            if_etag_match=etag,
+            data='b',
+            content_type='application/octet-stream',
+            public=True)
 
         r = self.client.object_get(obj)
         self.assertTrue('x-object-public' in r.headers)
@@ -682,13 +707,18 @@ class Pithos(tests.Generic):
         self.assertEqual(r.text, 'b')
 
         """Check if_etag_not_match"""
-        r = self.client.object_put(obj, if_etag_not_match=etag, data='c',
-            content_type='application/octet-stream', success=(201, 412))
+        r = self.client.object_put(
+            obj,
+            if_etag_not_match=etag,
+            data='c',
+            content_type='application/octet-stream',
+            success=(201, 412))
         self.assertEqual(r.status_code, 412)
 
         """Check content_type and content_length"""
         tmpdir = 'dir' + unicode(self.now)
-        r = self.client.object_put(tmpdir,
+        r = self.client.object_put(
+            tmpdir,
             content_type='application/directory',
             content_length=0)
 
@@ -696,16 +726,19 @@ class Pithos(tests.Generic):
         self.assertEqual(r['content-type'], 'application/directory')
 
         """Check copy_from, content_encoding"""
-        r = self.client.object_put('%s/%s' % (tmpdir, obj),
+        r = self.client.object_put(
+            '%s/%s' % (tmpdir, obj),
             format=None,
             copy_from='/%s/%s' % (self.client.container, obj),
             content_encoding='application/octet-stream',
             source_account=self.client.account,
-            content_length=0, success=201)
+            content_length=0,
+            success=201)
         self.assertEqual(r.status_code, 201)
 
         """Test copy_object for cross-conctainer copy"""
-        self.client.copy_object(src_container=self.c2,
+        self.client.copy_object(
+            src_container=self.c2,
             src_object='%s/%s' % (tmpdir, obj),
             dst_container=self.c1,
             dst_object=obj)
@@ -718,12 +751,14 @@ class Pithos(tests.Generic):
         """Check cross-container copy_from, content_encoding"""
         self.client.container = self.c1
         fromstr = '/%s/%s/%s' % (self.c2, tmpdir, obj)
-        r = self.client.object_put(obj,
+        r = self.client.object_put(
+            obj,
             format=None,
             copy_from=fromstr,
             content_encoding='application/octet-stream',
             source_account=self.client.account,
-            content_length=0, success=201)
+            content_length=0,
+            success=201)
 
         self.assertEqual(r.status_code, 201)
         r = self.client.get_object_info(obj)
@@ -732,7 +767,8 @@ class Pithos(tests.Generic):
         """Check source_account"""
         self.client.container = self.c2
         fromstr = '/%s/%s' % (self.c1, obj)
-        r = self.client.object_put(obj + 'v2',
+        r = self.client.object_put(
+            '%sv2' % obj,
             format=None,
             move_from=fromstr,
             content_encoding='application/octet-stream',
@@ -745,7 +781,8 @@ class Pithos(tests.Generic):
         self.client.container = self.c1
         r1 = self.client.get_object_info(obj)
         self.client.container = self.c2
-        self.client.move_object(src_container=self.c1,
+        self.client.move_object(
+            src_container=self.c1,
             src_object=obj,
             dst_container=self.c2,
             dst_object=obj + 'v0')
@@ -753,7 +790,8 @@ class Pithos(tests.Generic):
         self.assertEqual(r1['x-object-hash'], r0['x-object-hash'])
 
         """Check move_from"""
-        r = self.client.object_put(obj + 'v1',
+        r = self.client.object_put(
+            '%sv1' % obj,
             format=None,
             move_from='/%s/%s' % (self.c2, obj),
             source_version=vers2,
@@ -765,14 +803,16 @@ class Pithos(tests.Generic):
         txt = ''
         for i in range(10):
             txt += '%s' % i
-            r = self.client.object_put('%s/%s' % (mobj, i),
+            r = self.client.object_put(
+                '%s/%s' % (mobj, i),
                 data='%s' % i,
                 content_length=1,
                 success=201,
                 content_type='application/octet-stream',
                 content_encoding='application/octet-stream')
 
-        r = self.client.object_put(mobj,
+        r = self.client.object_put(
+            mobj,
             content_length=0,
             content_type='application/octet-stream',
             manifest='%s/%s' % (self.client.container, mobj))
@@ -801,13 +841,14 @@ class Pithos(tests.Generic):
         r = self.client.object_put(obj + 'orig',
             content_type='application/octet-stream',
             data=data,
-            metadata={'mkey1': 'mval1', 'mkey2': 'mval2'},
-            permissions={
-                'read': ['accX:groupA', 'u1', 'u2'],
-                'write': ['u2', 'u3']},
+            metadata=dict(mkey1='mval1', mkey2='mval2'),
+            permissions=dict(
+                read=['accX:groupA', 'u1', 'u2'],
+                write=['u2', 'u3']),
             content_disposition='attachment; filename="fname.ext"')
 
-        r = self.client.object_copy(obj + 'orig',
+        r = self.client.object_copy(
+            '%sorig' % obj,
             destination='/%s/%s' % (self.client.container, obj),
             ignore_content_type=False, content_type='application/json',
             metadata={'mkey2': 'mval2a', 'mkey3': 'mval3'},
@@ -830,7 +871,8 @@ class Pithos(tests.Generic):
         self.assertTrue('accx:groupb' in r['write'])
 
         """Check destination account"""
-        r = self.client.object_copy(obj,
+        r = self.client.object_copy(
+            obj,
             destination='/%s/%s' % (self.c1, obj),
             content_encoding='utf8',
             content_type='application/json',
@@ -840,12 +882,14 @@ class Pithos(tests.Generic):
 
         """Check destination being another container
         and also content_type and content encoding"""
-        r = self.client.object_copy(obj,
+        r = self.client.object_copy(
+            obj,
             destination='/%s/%s' % (self.c1, obj),
             content_encoding='utf8',
             content_type='application/json')
         self.assertEqual(r.status_code, 201)
-        self.assertEqual(r.headers['content-type'],
+        self.assertEqual(
+            r.headers['content-type'],
             'application/json; charset=UTF-8')
 
         """Check ignore_content_type and content_type"""
@@ -854,7 +898,8 @@ class Pithos(tests.Generic):
         ctype = r.headers['content-type']
         self.assertEqual(ctype, 'application/json')
 
-        r = self.client.object_copy(obj + 'orig',
+        r = self.client.object_copy(
+            '%sorig' % obj,
             destination='/%s/%s0' % (self.client.container, obj),
             ignore_content_type=True,
             content_type='application/json')
@@ -862,19 +907,22 @@ class Pithos(tests.Generic):
         self.assertNotEqual(r.headers['content-type'], 'application/json')
 
         """Check if_etag_(not_)match"""
-        r = self.client.object_copy(obj,
+        r = self.client.object_copy(
+            obj,
             destination='/%s/%s1' % (self.client.container, obj),
             if_etag_match=etag)
         self.assertEqual(r.status_code, 201)
 
-        r = self.client.object_copy(obj,
+        r = self.client.object_copy(
+            obj,
             destination='/%s/%s2' % (self.client.container, obj),
             if_etag_not_match='lalala')
         self.assertEqual(r.status_code, 201)
         vers2 = r.headers['x-object-version']
 
         """Check source_version, public and format """
-        r = self.client.object_copy(obj + '2',
+        r = self.client.object_copy(
+            '%s2' % obj,
             destination='/%s/%s3' % (self.client.container, obj),
             source_version=vers2,
             format='xml',
@@ -894,19 +942,22 @@ class Pithos(tests.Generic):
         obj = 'test2'
 
         data = '{"key1": "val1", "key2": "val2"}'
-        r = self.client.object_put(obj + 'orig',
+        r = self.client.object_put(
+            '%sorig' % obj,
             content_type='application/octet-stream',
             data=data,
-            metadata={'mkey1': 'mval1', 'mkey2': 'mval2'},
-            permissions={'read': ['accX:groupA', 'u1', 'u2'],
-                'write': ['u2', 'u3']})
+            metadata=dict(mkey1='mval1', mkey2='mval2'),
+            permissions=dict(
+                read=['accX:groupA', 'u1', 'u2'],
+                write=['u2', 'u3']))
 
-        r = self.client.object_move(obj + 'orig',
+        r = self.client.object_move(
+            '%sorig' % obj,
             destination='/%s/%s' % (self.client.container, obj),
             ignore_content_type=False,
             content_type='application/json',
-            metadata={'mkey2': 'mval2a', 'mkey3': 'mval3'},
-            permissions={'write': ['u5', 'accX:groupB']})
+            metadata=dict(mkey2='mval2a', mkey3='mval3'),
+            permissions=dict(write=['u5', 'accX:groupB']))
         self.assertEqual(r.status_code, 201)
 
         """Check Metadata"""
@@ -922,7 +973,8 @@ class Pithos(tests.Generic):
         self.assertTrue('accx:groupb' in r['write'])
 
         """Check destination account"""
-        r = self.client.object_move(obj,
+        r = self.client.object_move(
+            obj,
             destination='/%s/%s' % (self.c1, obj),
             content_encoding='utf8',
             content_type='application/json',
@@ -932,24 +984,27 @@ class Pithos(tests.Generic):
 
         """Check destination being another container and also
         content_type, content_disposition and content encoding"""
-        r = self.client.object_move(obj,
+        r = self.client.object_move(
+            obj,
             destination='/%s/%s' % (self.c1, obj),
             content_encoding='utf8',
             content_type='application/json',
             content_disposition='attachment; filename="fname.ext"')
         self.assertEqual(r.status_code, 201)
-        self.assertEqual(r.headers['content-type'],
+        self.assertEqual(
+            r.headers['content-type'],
             'application/json; charset=UTF-8')
         self.client.container = self.c1
         r = self.client.get_object_info(obj)
-        self.assertTrue('content-disposition' in r\
-            and 'fname.ext' in r['content-disposition'])
+        self.assertTrue('content-disposition' in r)
+        self.assertTrue('fname.ext' in r['content-disposition'])
         etag = r['etag']
         ctype = r['content-type']
         self.assertEqual(ctype, 'application/json')
 
         """Check ignore_content_type and content_type"""
-        r = self.client.object_move(obj,
+        r = self.client.object_move(
+            obj,
             destination='/%s/%s' % (self.c2, obj),
             ignore_content_type=True,
             content_type='application/json')
@@ -958,20 +1013,24 @@ class Pithos(tests.Generic):
 
         """Check if_etag_(not_)match"""
         self.client.container = self.c2
-        r = self.client.object_move(obj,
+        r = self.client.object_move(
+            obj,
             destination='/%s/%s0' % (self.client.container, obj),
             if_etag_match=etag)
         self.assertEqual(r.status_code, 201)
 
-        r = self.client.object_move(obj + '0',
+        r = self.client.object_move(
+            '%s0' % obj,
             destination='/%s/%s1' % (self.client.container, obj),
             if_etag_not_match='lalala')
         self.assertEqual(r.status_code, 201)
 
         """Check public and format """
-        r = self.client.object_move(obj + '1',
+        r = self.client.object_move(
+            '%s1' % obj,
             destination='/%s/%s2' % (self.client.container, obj),
-            format='xml', public=True)
+            format='xml',
+            public=True)
         self.assertEqual(r.status_code, 201)
         self.assertTrue(r.headers['content-type'].index('xml') > 0)
 
@@ -988,16 +1047,19 @@ class Pithos(tests.Generic):
         """create a filesystem file"""
         self.files.append(NamedTemporaryFile())
         newf = self.files[-1]
-        newf.writelines(['ello!\n',
+        newf.writelines([
+            'ello!\n',
             'This is a test line\n',
             'inside a test file\n'])
         """create a file on container"""
-        r = self.client.object_put(obj,
+        r = self.client.object_put(
+            obj,
             content_type='application/octet-stream',
             data='H',
-            metadata={'mkey1': 'mval1', 'mkey2': 'mval2'},
-            permissions={'read': ['accX:groupA', 'u1', 'u2'],
-                'write': ['u2', 'u3']})
+            metadata=dict(mkey1='mval1', mkey2='mval2'),
+            permissions=dict(
+                read=['accX:groupA', 'u1', 'u2'],
+                write=['u2', 'u3']))
 
         """Append tests update, content_range, content_type, content_length"""
         newf.seek(0)
@@ -1030,8 +1092,10 @@ class Pithos(tests.Generic):
         self.assertFalse('x-object-meta-mkey1' in r)
 
         """Check permissions"""
-        self.client.set_object_sharing(obj,
-            read_permition=['u4', 'u5'], write_permition=['u4'])
+        self.client.set_object_sharing(
+            obj,
+            read_permition=['u4', 'u5'],
+            write_permition=['u4'])
         r = self.client.get_object_sharing(obj)
         self.assertTrue('read' in r)
         self.assertTrue('u5' in r['read'])
@@ -1052,7 +1116,8 @@ class Pithos(tests.Generic):
         """Check if_etag_(not)match"""
         etag = r['etag']
         """
-        r = self.client.object_post(obj,
+        r = self.client.object_post(
+            obj,
             update=True,
             public=True,
             if_etag_not_match=etag,
@@ -1060,8 +1125,12 @@ class Pithos(tests.Generic):
         self.assertEqual(r.status_code, 412)
         """
 
-        r = self.client.object_post(obj, update=True, public=True,
-            if_etag_match=etag, content_encoding='application/json')
+        r = self.client.object_post(
+            obj,
+            update=True,
+            public=True,
+            if_etag_match=etag,
+            content_encoding='application/json')
 
         r = self.client.get_object_info(obj)
         helloVersion = r['x-object-version']
@@ -1069,7 +1138,8 @@ class Pithos(tests.Generic):
         self.assertEqual(r['content-encoding'], 'application/json')
 
         """Check source_version and source_account and content_disposition"""
-        r = self.client.object_post(obj,
+        r = self.client.object_post(
+            obj,
             update=True,
             content_type='application/octet-srteam',
             content_length=5,
@@ -1081,7 +1151,8 @@ class Pithos(tests.Generic):
             success=(403, 202, 204))
         self.assertEqual(r.status_code, 403)
 
-        r = self.client.object_post(obj,
+        r = self.client.object_post(
+            obj,
             update=True,
             content_type='application/octet-srteam',
             content_length=5,
@@ -1094,25 +1165,28 @@ class Pithos(tests.Generic):
 
         r = self.client.object_get(obj)
         self.assertEqual(r.text, 'eello!')
-        self.assertTrue('content-disposition' in r.headers\
-            and 'fname.ext' in r.headers['content-disposition'])
+        self.assertTrue('content-disposition' in r.headers)
+        self.assertTrue('fname.ext' in r.headers['content-disposition'])
 
         """Check manifest"""
         mobj = 'manifest.test'
         txt = ''
         for i in range(10):
             txt += '%s' % i
-            r = self.client.object_put('%s/%s' % (mobj, i),
-            data='%s' % i,
-            content_length=1,
-            success=201,
-            content_encoding='application/octet-stream',
+            r = self.client.object_put(
+                '%s/%s' % (mobj, i),
+                data='%s' % i,
+                content_length=1,
+                success=201,
+                content_encoding='application/octet-stream',
+                content_type='application/octet-stream')
+
+        self.client.create_object_by_manifestation(
+            mobj,
             content_type='application/octet-stream')
 
-        self.client.create_object_by_manifestation(mobj,
-            content_type='application/octet-stream')
-
-        r = self.client.object_post(mobj,
+        r = self.client.object_post(
+            mobj,
             manifest='%s/%s' % (self.client.container, mobj))
 
         r = self.client.object_get(mobj)
@@ -1128,12 +1202,14 @@ class Pithos(tests.Generic):
         self.client.container = self.c2
         obj = 'test2'
         """create a file on container"""
-        r = self.client.object_put(obj,
+        r = self.client.object_put(
+            obj,
             content_type='application/octet-stream',
             data='H',
-            metadata={'mkey1': 'mval1', 'mkey2': 'mval2'},
-            permissions={'read': ['accX:groupA', 'u1', 'u2'],
-                'write': ['u2', 'u3']})
+            metadata=dict(mkey1='mval1', mkey2='mval2'),
+            permissions=dict(
+                read=['accX:groupA', 'u1', 'u2'],
+                write=['u2', 'u3']))
 
         """Check with false until"""
         r = self.client.object_delete(obj, until=1000000)

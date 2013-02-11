@@ -54,7 +54,7 @@ class Astakos(tests.Generic):
             'uuid',
             'id',
             'email'):
-            self.assertTrue(term in r)
+                self.assertTrue(term in r)
 
     def test_info(self):
         self._test_0020_info()
@@ -69,10 +69,7 @@ class Astakos(tests.Generic):
         self._test_0020_get()
 
     def _test_0020_get(self):
-        for term in (
-            'uuid',
-            'name',
-            'username'):
+        for term in ('uuid', 'name', 'username'):
             self.assertEqual(
                 self.client.term(term, self['astakos', 'token']),
                 self['astakos', term])

@@ -122,8 +122,13 @@ class Generic(TestCase):
         self._safe_progress_bar_finish(action_bar)
 
     def assert_dicts_are_deeply_equal(self, d1, d2):
+        (st1, st2) = (set(d1.keys()), set(d2.keys()))
+        diff1 = st1.difference(st2)
+        diff2 = st2.difference(st1)
+        self.assertTrue(
+            not (diff1 or diff2),
+            'Key differences:\n\td1-d2=%s\n\td2-d1=%s' % (diff1, diff2))
         for k, v in d1.items():
-            self.assertTrue(k in d2)
             if isinstance(v, dict):
                 self.assert_dicts_are_deeply_equal(v, d2[k])
             else:
@@ -133,8 +138,7 @@ class Generic(TestCase):
         print('')
         methods = [method for method in inspect.getmembers(
             self,
-            predicate=inspect.ismethod)\
-            if method[0].startswith('_test_')]
+            predicate=inspect.ismethod) if method[0].startswith('_test_')]
         failures = 0
         for method in methods:
             stdout.write('Test %s ' % method[0][6:])
@@ -151,7 +155,8 @@ class Generic(TestCase):
 
 def init_parser():
     parser = ArgumentParser(add_help=False)
-    parser.add_argument('-h', '--help',
+    parser.add_argument(
+        '-h', '--help',
         dest='help',
         action='store_true',
         default=False,

@@ -136,7 +136,9 @@ class SharingArgument(ValueArgument):
             try:
                 (key, val) = p.split('=')
             except ValueError as err:
-                raiseCLIError(err, 'Error in --sharing',
+                raiseCLIError(
+                    err,
+                    'Error in --sharing',
                     details='Incorrect format',
                     importance=1)
             if key.lower() not in ('read', 'write'):
@@ -245,9 +247,9 @@ class _store_container_command(_store_account_command):
         return (dst[0], dst[1]) if len(dst) > 1 else (None, dst[0])
 
     def extract_container_and_path(
-        self,
-        container_with_path,
-        path_is_optional=True):
+            self,
+            container_with_path,
+            path_is_optional=True):
         """Contains all heuristics for deciding what should be used as
         container or path. Options are:
         * user string of the form container:path
@@ -366,9 +368,9 @@ class store_list(_store_container_command):
     def print_objects(self, object_list):
         limit = int(self['limit']) if self['limit'] > 0 else len(object_list)
         for index, obj in enumerate(object_list):
-            if (self['exact_match'] and self.path and (
-                obj['name'] != self.path) or 'content_type' not in obj):
-                continue
+            if self['exact_match'] and self.path and not (
+                obj['name'] == self.path or 'content_type' in obj):
+                    continue
             pretty_obj = obj.copy()
             index += 1
             empty_space = ' ' * (len(str(len(object_list))) - len(str(index)))
@@ -576,12 +578,10 @@ class store_copy(_store_container_command):
         if len(r.json) == 1:
             obj = r.json[0]
             return [(obj['name'], dst_path or obj['name'])]
-        return [(
-            obj['name'],
-            '%s%s' % (
-                    dst_path,
-                    obj['name'][len(self.path) if self['replace'] else 0:])
-        ) for obj in r.json]
+        start = len(self.path) if self['replace'] else 0
+        return [(obj['name'], '%s%s' % (
+            dst_path,
+            obj['name'][start:])) for obj in r.json]
 
     @errors.generic.all
     @errors.pithos.connection
@@ -604,9 +604,9 @@ class store_copy(_store_container_command):
                 self.container))
 
     def main(
-        self,
-        source_container___path,
-        destination_container___path=None):
+            self,
+            source_container___path,
+            destination_container___path=None):
         super(self.__class__, self)._run(
             source_container___path,
             path_is_optional=False)
@@ -686,9 +686,9 @@ class store_move(_store_container_command):
                 self.container))
 
     def main(
-        self,
-        source_container___path,
-        destination_container___path=None):
+            self,
+            source_container___path,
+            destination_container___path=None):
         super(self.__class__, self)._run(
             source_container___path,
             path_is_optional=False)
@@ -1042,7 +1042,7 @@ class store_download(_store_container_command):
             default=False),
         recursive=FlagArgument(
             'Download a remote directory and all its contents',
-            '-r, --resursive')
+            '-r, --recursive')
     )
 
     def _is_dir(self, remote_dict):
@@ -1213,9 +1213,8 @@ class store_delete(_store_container_command):
     @errors.pithos.object_path
     def _run(self):
         if self.path:
-            if self['yes'] or ask_user('Delete %s:%s ?' % (
-                self.container,
-                self.path)):
+            if self['yes'] or ask_user(
+                    'Delete %s:%s ?' % (self.container, self.path)):
                 self.client.del_object(
                     self.path,
                     until=self['until'],
@@ -1223,7 +1222,7 @@ class store_delete(_store_container_command):
             else:
                 print('Aborted')
         else:
-            if self['resursive']:
+            if self['recursive']:
                 ask_msg = 'Delete container contents'
             else:
                 ask_msg = 'Delete container'
@@ -1350,17 +1349,12 @@ class store_setpermissions(_store_container_command):
         for perms in permissions:
             splstr = perms.split('=')
             if 'read' == splstr[0]:
-                read = [user_or_group.strip() \
-                for user_or_group in splstr[1].split(',')]
+                read = [ug.strip() for ug in splstr[1].split(',')]
             elif 'write' == splstr[0]:
-                write = [user_or_group.strip() \
-                for user_or_group in splstr[1].split(',')]
+                write = [ug.strip() for ug in splstr[1].split(',')]
             else:
-                read = False
-                write = False
-        if not (read or write):
-            msg = 'Usage:\tread=<groups,users> write=<groups,users>'
-            raiseCLIError(None, msg)
+                msg = 'Usage:\tread=<groups,users> write=<groups,users>'
+                raiseCLIError(None, msg)
         return (read, write)
 
     @errors.generic.all
@@ -1721,8 +1715,10 @@ class store_sharers(_store_account_command):
     @errors.pithos.connection
     def _run(self):
         accounts = self.client.get_sharing_accounts(marker=self['marker'])
-        print_items(accounts if self['detail']
-            else [acc['name'] for acc in accounts])
+        if self['detail']:
+            print_items(accounts)
+        else:
+            print_items([acc['name'] for acc in accounts])
 
     def main(self):
         super(self.__class__, self)._run()
@@ -1745,10 +1741,9 @@ class store_versions(_store_container_command):
     @errors.pithos.object_path
     def _run(self):
         versions = self.client.get_object_versionlist(self.path)
-        print_items([dict(
-            id=vitem[0],
-            created=strftime('%d-%m-%Y %H:%M:%S', localtime(float(vitem[1])))
-            ) for vitem in versions])
+        print_items([dict(id=vitem[0], created=strftime(
+            '%d-%m-%Y %H:%M:%S',
+            localtime(float(vitem[1])))) for vitem in versions])
 
     def main(self, container___path):
         super(store_versions, self)._run(

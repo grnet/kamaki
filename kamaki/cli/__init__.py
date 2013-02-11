@@ -53,22 +53,20 @@ kloger = None
 _best_match = []
 
 
+def _arg2syntax(arg):
+    return arg.replace(
+        '____', '[:').replace(
+        '___', ':').replace(
+        '__', ']').replace(
+        '_', ' ')
+
+
 def _construct_command_syntax(cls):
         spec = getargspec(cls.main.im_func)
         args = spec.args[1:]
         n = len(args) - len(spec.defaults or ())
-        required = ' '.join(
-            '<%s>' % x.replace(
-            '____', '[:').replace(
-            '___', ':').replace(
-            '__', ']').replace(
-            '_', ' ') for x in args[:n])
-        optional = ' '.join(
-            '[%s]' % x.replace(
-            '____', '[:').replace(
-            '___', ':').replace(
-            '__', ']').replace(
-            '_', ' ') for x in args[n:])
+        required = ' '.join(['<%s>' % _arg2syntax(x) for x in args[:n]])
+        optional = ' '.join(['[%s]' % _arg2syntax(x) for x in args[n:]])
         cls.syntax = ' '.join(x for x in [required, optional] if x)
         if spec.varargs:
             cls.syntax += ' <%s ...>' % spec.varargs
@@ -242,10 +240,9 @@ def _groups_help(arguments):
         if pkg:
             cmds = None
             try:
-                cmds = [
-                    cmd for cmd in getattr(pkg, '_commands')
-                        if arguments['config'].get(cmd.name, 'cli')
-                ]
+                _cnf = arguments['config']
+                cmds = [cmd for cmd in getattr(pkg, '_commands') if _cnf.get(
+                    cmd.name, 'cli')]
             except AttributeError:
                 if _debug:
                     kloger.warning('No description for %s' % spec)
@@ -262,9 +259,9 @@ def _groups_help(arguments):
 
 
 def _load_all_commands(cmd_tree, arguments):
-    _config = arguments['config']
-    for spec in [spec for spec in _config.get_groups()
-        if _config.get(spec, 'cli')]:
+    _cnf = arguments['config']
+    specs = [spec for spec in _cnf.get_groups() if _cnf.get(spec, 'cli')]
+    for spec in specs:
         try:
             spec_module = _load_spec_module(spec, arguments, '_commands')
             spec_commands = getattr(spec_module, '_commands')
