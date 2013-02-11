@@ -77,11 +77,11 @@ class Generic(TestCase):
     def _get_from_cnf(self, key):
         val = 0
         if key[0]:
-            val = self._cnf.get('test', '%s_%s' % key)\
-                or self._cnf.get(*key)
+            val = self._cnf.get('test', '%s_%s' % key) or self._cnf.get(*key)
         if not val:
-            val = self._cnf.get('test', key[1])\
-                or self._cnf.get('global', key[1])
+            val = self._cnf.get('test', key[1]) or self._cnf.get(
+                'global',
+                key[1])
         self._fetched[key] = val
         return val
 

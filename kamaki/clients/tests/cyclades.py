@@ -450,7 +450,6 @@ class Cyclades(tests.Generic):
 
     def _test_0150_get_image_details(self):
         r = self.client.get_image_details(self.img)
-        r.pop('updated')
         self.assert_dicts_are_deeply_equal(r, self.img_details)
 
     def test_get_image_metadata(self):
