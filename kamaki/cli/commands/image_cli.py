@@ -100,8 +100,7 @@ class image_public(_init_image):
                 'name',
                 'size_min',
                 'size_max',
-                'status'
-            ]).intersection(self.arguments):
+                'status']).intersection(self.arguments):
             filters[arg] = self[arg]
 
         order = self['order']
@@ -190,8 +189,7 @@ class image_register(_init_image):
                 'id',
                 'owner',
                 'size',
-                'is_public'
-            ]).intersection(self.arguments):
+                'is_public']).intersection(self.arguments):
             params[key] = self[key]
 
             properties = self['properties']
