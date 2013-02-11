@@ -18,15 +18,6 @@ Kamaki interfaces rely on a list of configuration options. Be default, they are 
 
     $ kamaki set token myt0k3n==
 
-To use the storage service, a user should also provide the corresponding user-name:
-
-.. code-block:: console
-    :emphasize-lines: 1
-
-    Example 1.2: Set user name to user@domain.com
-
-    $ kamaki set store.account user@domain.com
-
 Optional features
 -----------------
 
@@ -73,6 +64,10 @@ All kamaki commands can be used with the -o option in order to override configur
 
 will invoke *kamaki store list* with the specified options, but the initial global.account and global.token values will be restored to initial values afterwards.
 
+.. note:: on-the-fly calls to store require users to explicetely provide the account uuid corresponding to this token. The account is actually the uuid field at the response of the following call::
+
+    $kamaki astakos authenticate aT0k3n==
+
 Editing options
 ^^^^^^^^^^^^^^^
 
@@ -101,28 +96,25 @@ A simple way to create the configuration file is to set a configuration option u
 
 .. code-block:: console
 
-    $ kamaki config set account myusername@mydomain.com
+    $ kamaki config set token myT0k3N==
 
-In the above example, if the kamaki configuration file does not exist, it will be created with all the default values plus the *global.account* option set to *myusername@mydomain.com* value.
+In the above example, if the kamaki configuration file does not exist, it will be created with all the default values plus the *global.token* option set to *myT0k3n==* value.
 
 The configuration file is formatted so that it can be parsed by the python ConfigParser module. It consists of command sections that are denoted with brackets. Every section contains variables with values. For example::
 
     [store]
     url=https://okeanos.grnet.gr/pithos
-    account=myaccount@mydomain.com
+    token=my0th3rT0k3n==
 
-two configuration options are created: *store.url* and *store.account*. These values will be loaded at every future kamaki execution.
+two configuration options are created: *store.url* and *store.token*. These values will be loaded at every future kamaki execution.
 
 Available options
 ^^^^^^^^^^^^^^^^^
 
-The [global] group is treated by kamaki as a generic group for arbitrary options, and it is used as a super-group for vital Kamaki options, namely account, token, url, cli. This feature does not work for types of configuration options. For example if global.account option is set and store.account option is not set, store services will use the global.account option instead. In case of conflict, the most specific options override the global ones.
+The [global] group is treated by kamaki as a generic group for arbitrary options, and it is used as a super-group for vital Kamaki options, namely token, url, cli. In case of conflict, the most specific options overrides the global ones.
 
 * global.colors <on|off>
     enable / disable colors in command line based uis. Requires ansicolors, otherwise it is ignored
-
-* global.account <account name>
-    the username or user email that is user to connect to the cloud service. It can be omitted if provided as a service-specific option
 
 * global.token <user authentication token>
 
@@ -131,9 +123,6 @@ The [global] group is treated by kamaki as a generic group for arbitrary options
 
 * store.url <OOS storage or Pithos+ service url>
     the url of the OOS storage or Pithos+ service. Set to Okeanos.grnet.gr Pithos+ storage service by default. Users should set a different value if they need to use a different storage service.
-
-* store.account <account name>
-    if set, it overrides possible global.account option for store level commands.
 
 * store.token <token>
     it set, it overrides possible global.token option for store level commands

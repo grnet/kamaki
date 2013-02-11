@@ -48,18 +48,18 @@ except ImportError:
 
 
 class OrderedDict(dict):
-    'Dictionary that remembers insertion order'
-    # An inherited dict maps keys to values.
-    # The inherited dict provides __getitem__, __len__, __contains__, and get.
-    # The remaining methods are order-aware.
-    # Big-O running times for all methods are the same as for regular
-    # dictionaries.
-
-    # The internal self.__map dictionary maps keys to links in a doubly linked 
-    # list.
-    # The circular doubly linked list starts and ends with a sentinel element.
-    # The sentinel element never gets deleted (this simplifies the algorithm).
-    # Each link is stored as a list of length three:  [PREV, NEXT, KEY].
+    """Dictionary that remembers insertion order
+    An inherited dict maps keys to values.
+    The inherited dict provides __getitem__, __len__, __contains__, and get.
+    The remaining methods are order-aware.
+    Big-O running times for all methods are the same as for regular
+    dictionaries.
+    The internal self.__map dictionary maps keys to links in a doubly linked
+    list.
+    The circular doubly linked list starts and ends with a sentinel element.
+    The sentinel element never gets deleted (this simplifies the algorithm).
+    Each link is stored as a list of length three:  [PREV, NEXT, KEY].
+    """
 
     def __init__(self, *args, **kwds):
         '''Initialize an ordered dictionary.  Signature is the same as for
@@ -128,10 +128,11 @@ class OrderedDict(dict):
         dict.clear(self)
 
     def popitem(self, last=True):
-        '''od.popitem() -> (k, v), return and remove a (key, value) pair.
-        Pairs are returned in LIFO order if last is true or FIFO order if false.
+        """od.popitem() -> (k, v), return and remove a (key, value) pair.
+        Pairs are returned in LIFO order if last is true or FIFO order if
+        false.
+        """
 
-        '''
         if not self:
             raise KeyError('dictionary is empty')
         root = self.__root
@@ -209,15 +210,16 @@ class OrderedDict(dict):
         for key, value in kwds.items():
             self[key] = value
 
-    __update = update  # let subclasses override update without breaking __init__
+    #  let subclasses override update without breaking __init__
+    __update = update
 
     __marker = object()
 
     def pop(self, key, default=__marker):
-        '''od.pop(k[,d]) -> v, remove specified key and return the corresponding value.
-        If key is not found, d is returned if given, otherwise KeyError is raised.
-
-        '''
+        """od.pop(k[,d]) -> v, remove specified key and return the
+        corresponding value. If key is not found, d is returned if given,
+        otherwise KeyError is raised.
+        """
         if key in self:
             result = self[key]
             del self[key]
@@ -227,14 +229,16 @@ class OrderedDict(dict):
         return default
 
     def setdefault(self, key, default=None):
-        'od.setdefault(k[,d]) -> od.get(k,d), also set od[k]=d if k not in od'
+        """od.setdefault(k[,d]) -> od.get(k,d), also set od[k]=d if k not in
+        od
+        """
         if key in self:
             return self[key]
         self[key] = default
         return default
 
     def __repr__(self, _repr_running={}):
-        'od.__repr__() <==> repr(od)'
+        """od.__repr__() <==> repr(od)"""
         call_key = id(self), _get_ident()
         if call_key in _repr_running:
             return '...'
@@ -247,7 +251,7 @@ class OrderedDict(dict):
             del _repr_running[call_key]
 
     def __reduce__(self):
-        'Return state information for pickling'
+        """Return state information for pickling"""
         items = [[k, self[k]] for k in self]
         inst_dict = vars(self).copy()
         for k in vars(OrderedDict()):
@@ -257,27 +261,26 @@ class OrderedDict(dict):
         return self.__class__, (items,)
 
     def copy(self):
-        'od.copy() -> a shallow copy of od'
+        """od.copy() -> a shallow copy of od"""
         return self.__class__(self)
 
     @classmethod
     def fromkeys(cls, iterable, value=None):
-        '''OD.fromkeys(S[, v]) -> New ordered dictionary with keys from S
+        """OD.fromkeys(S[, v]) -> New ordered dictionary with keys from S
         and values equal to v (which defaults to None).
-
-        '''
+        """
         d = cls()
         for key in iterable:
             d[key] = value
         return d
 
     def __eq__(self, other):
-        '''od.__eq__(y) <==> od==y.  Comparison to another OD is order-sensitive
-        while comparison to a regular mapping is order-insensitive.
-
-        '''
+        """od.__eq__(y) <==> od==y.  Comparison to another OD is
+        order-sensitive while comparison to a regular mapping is
+        order-insensitive.
+        """
         if isinstance(other, OrderedDict):
-            return len(self)==len(other) and self.items() == other.items()
+            return len(self) == len(other) and self.items() == other.items()
         return dict.__eq__(self, other)
 
     def __ne__(self, other):

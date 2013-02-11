@@ -31,20 +31,30 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-from kamaki.cli import command
-from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.errors import raiseCLIError, CLISyntaxError
-from kamaki.cli.utils import format_size, print_dict, pretty_keys, page_hold
-from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
-from kamaki.cli.argument import KeyValueArgument, DateArgument
-from kamaki.cli.argument import ProgressBarArgument
-from kamaki.cli.commands import _command_init
-from kamaki.clients.pithos import PithosClient, ClientError
-from kamaki.cli.utils import bold
 from sys import stdout
 from time import localtime, strftime
 from logging import getLogger
-from os import path
+from os import path, makedirs
+
+from kamaki.cli import command
+from kamaki.cli.command_tree import CommandTree
+from kamaki.cli.errors import raiseCLIError, CLISyntaxError
+from kamaki.cli.utils import (
+    format_size,
+    to_bytes,
+    print_dict,
+    print_items,
+    pretty_keys,
+    page_hold,
+    bold,
+    ask_user)
+from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
+from kamaki.cli.argument import KeyValueArgument, DateArgument
+from kamaki.cli.argument import ProgressBarArgument
+from kamaki.cli.commands import _command_init, errors
+from kamaki.clients.pithos import PithosClient, ClientError
+from kamaki.clients.astakos import AstakosClient
+
 
 kloger = getLogger('kamaki')
 
@@ -70,45 +80,15 @@ def raise_connection_errors(e):
             '  to get the service url: /config get store.url',
             '  to set the service url: /config set store.url <url>',
             ' ',
-            '  to get user the account: /config get store.account',
-            '           or              /config get account',
-            '  to set the user account: /config set store.account <account>',
-            ' ',
             '  to get authentication token: /config get token',
-            '  to set authentication token: /config set token <token>'
-            ])
+            '  to set authentication token: /config set token <token>'])
     elif e.status == 413:
         raiseCLIError(e, details=[
             'Get quotas:',
             '- total quota:      /store quota',
             '- container quota:  /store quota <container>',
             'Users shall set a higher container quota, if available:',
-            '-                  /store setquota <limit in KB> <container>'
-            ])
-
-
-def check_range(start, end):
-    """
-    :param start: (int)
-
-    :param end: (int)
-
-    :returns: (int(start), int(end))
-
-    :raises CLIError - Invalid start/end value in range
-    :raises CLIError - Invalid range
-    """
-    try:
-        start = int(start)
-    except ValueError as e:
-        raiseCLIError(e, 'Invalid start value %s in range' % start)
-    try:
-        end = int(end)
-    except ValueError as e:
-        raiseCLIError(e, 'Invalid end value %s in range' % end)
-    if start > end:
-        raiseCLIError('Invalid range %s-%s' % (start, end))
-    return (start, end)
+            '-                  /store setquota <quota>[unit] <container>'])
 
 
 class DelimiterArgument(ValueArgument):
@@ -160,9 +140,9 @@ class SharingArgument(ValueArgument):
                     details='Incorrect format',
                     importance=1)
             if key.lower() not in ('read', 'write'):
-                raiseCLIError(err, 'Error in --sharing',
-                    details='Invalid permission key %s' % key,
-                    importance=1)
+                msg = 'Error in --sharing'
+                raiseCLIError(err, msg, importance=1, details=[
+                    'Invalid permission key %s' % key])
             val_list = val.split(',')
             if not key in perms:
                 perms[key] = []
@@ -198,19 +178,32 @@ class RangeArgument(ValueArgument):
 class _pithos_init(_command_init):
     """Initialize a pithos+ kamaki client"""
 
-    def main(self):
+    @errors.generic.all
+    def _run(self):
         self.token = self.config.get('store', 'token')\
             or self.config.get('global', 'token')
         self.base_url = self.config.get('store', 'url')\
             or self.config.get('global', 'url')
-        self.account = self.config.get('store', 'account')\
-            or self.config.get('global', 'account')
+        self._set_account()
         self.container = self.config.get('store', 'container')\
             or self.config.get('global', 'container')
-        self.client = PithosClient(base_url=self.base_url,
+        self.client = PithosClient(
+            base_url=self.base_url,
             token=self.token,
             account=self.account,
             container=self.container)
+
+    def main(self):
+        self._run()
+
+    def _set_account(self):
+        astakos = AstakosClient(self.config.get('astakos', 'url'), self.token)
+        self.account = self['account'] or astakos.term('uuid')
+
+        """Backwards compatibility"""
+        self.account = self.account\
+            or self.config.get('store', 'account')\
+            or self.config.get('global', 'account')
 
 
 class _store_account_command(_pithos_init):
@@ -222,20 +215,18 @@ class _store_account_command(_pithos_init):
             'Set user account (not permanent)',
             '--account')
 
-    def main(self):
-        super(_store_account_command, self).main()
+    def _run(self):
+        super(_store_account_command, self)._run()
         if self['account']:
             self.client.account = self['account']
+
+    @errors.generic.all
+    def main(self):
+        self._run()
 
 
 class _store_container_command(_store_account_command):
     """Base class for container level storage commands"""
-
-    generic_err_details = ['To specify a container:',
-    '  1. Set store.container variable (permanent)',
-    '     /config set store.container <container>',
-    '  2. --container=<container> (temporary, overrides 1)',
-    '  3. Use the container:path format (temporary, overrides all)']
 
     container = None
     path = None
@@ -246,65 +237,94 @@ class _store_container_command(_store_account_command):
             'Set container to work with (temporary)',
             '--container')
 
-    def extract_container_and_path(self,
+    @errors.generic.all
+    def _dest_container_path(self, dest_container_path):
+        if self['destination_container']:
+            return (self['destination_container'], dest_container_path)
+        dst = dest_container_path.split(':')
+        return (dst[0], dst[1]) if len(dst) > 1 else (None, dst[0])
+
+    def extract_container_and_path(
+        self,
         container_with_path,
         path_is_optional=True):
+        """Contains all heuristics for deciding what should be used as
+        container or path. Options are:
+        * user string of the form container:path
+        * self.container, self.path variables set by super constructor, or
+        explicitly by the caller application
+        Error handling is explicit as these error cases happen only here
+        """
         try:
             assert isinstance(container_with_path, str)
         except AssertionError as err:
+            if self['container'] and path_is_optional:
+                self.container = self['container']
+                self.client.container = self['container']
+                return
             raiseCLIError(err)
 
-        cont, sep, path = container_with_path.partition(':')
+        user_cont, sep, userpath = container_with_path.partition(':')
 
         if sep:
-            if not cont:
+            if not user_cont:
                 raiseCLIError(CLISyntaxError('Container is missing\n',
-                    details=self.generic_err_details))
+                    details=errors.pithos.container_howto))
             alt_cont = self['container']
-            if alt_cont and cont != alt_cont:
+            if alt_cont and user_cont != alt_cont:
                 raiseCLIError(CLISyntaxError(
-                    'Conflict: 2 containers (%s, %s)' % (cont, alt_cont),
-                    details=self.generic_err_details)
+                    'Conflict: 2 containers (%s, %s)' % (user_cont, alt_cont),
+                    details=errors.pithos.container_howto)
                 )
-            self.container = cont
-            if not path:
+            self.container = user_cont
+            if not userpath:
                 raiseCLIError(CLISyntaxError(
-                    'Path is missing for object in container %s' % cont,
-                    details=self.generic_err_details)
+                    'Path is missing for object in container %s' % user_cont,
+                    details=errors.pithos.container_howto)
                 )
-            self.path = path
+            self.path = userpath
         else:
             alt_cont = self['container'] or self.client.container
             if alt_cont:
                 self.container = alt_cont
-                self.path = cont
+                self.path = user_cont
             elif path_is_optional:
-                self.container = cont
+                self.container = user_cont
                 self.path = None
             else:
-                self.container = cont
+                self.container = user_cont
                 raiseCLIError(CLISyntaxError(
                     'Both container and path are required',
-                    details=self.generic_err_details)
+                    details=errors.pithos.container_howto)
                 )
 
-    def main(self, container_with_path=None, path_is_optional=True):
-        super(_store_container_command, self).main()
-        if container_with_path is not None:
+    @errors.generic.all
+    def _run(self, container_with_path=None, path_is_optional=True):
+        super(_store_container_command, self)._run()
+        if self['container']:
+            self.client.container = self['container']
+            if container_with_path:
+                self.path = container_with_path
+            elif not path_is_optional:
+                raise CLISyntaxError(
+                    'Both container and path are required',
+                    details=errors.pithos.container_howto)
+        elif container_with_path:
             self.extract_container_and_path(
                 container_with_path,
                 path_is_optional)
             self.client.container = self.container
-        elif self['container']:
-            self.client.container = self['container']
         self.container = self.client.container
+
+    def main(self, container_with_path=None, path_is_optional=True):
+        self._run(container_with_path, path_is_optional)
 
 
 @command(pithos_cmds)
 class store_list(_store_container_command):
     """List containers, object trees or objects in a directory
     Use with:
-    1 no parameters : containers in set account
+    1 no parameters : containers in current account
     2. one parameter (container) or --container : contents of container
     3. <container>:<prefix> or --container=<container> <prefix>: objects in
     .   container starting with prefix
@@ -346,8 +366,8 @@ class store_list(_store_container_command):
     def print_objects(self, object_list):
         limit = int(self['limit']) if self['limit'] > 0 else len(object_list)
         for index, obj in enumerate(object_list):
-            if (self['exact_match'] and self.path and\
-                obj['name'] != self.path) or 'content_type' not in obj:
+            if (self['exact_match'] and self.path and (
+                obj['name'] != self.path) or 'content_type' not in obj):
                 continue
             pretty_obj = obj.copy()
             index += 1
@@ -387,57 +407,47 @@ class store_list(_store_container_command):
                 print
             else:
                 if 'count' in container and 'bytes' in container:
-                    print('%s (%s, %s objects)'\
-                    % (cname, size, container['count']))
+                    print('%s (%s, %s objects)' % (
+                        cname,
+                        size,
+                        container['count']))
                 else:
                     print(cname)
             if self['more']:
                 page_hold(index + 1, limit, len(container_list))
 
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.object_path
+    @errors.pithos.container
+    def _run(self):
+        if self.container is None:
+            r = self.client.account_get(
+                limit=False if self['more'] else self['limit'],
+                marker=self['marker'],
+                if_modified_since=self['if_modified_since'],
+                if_unmodified_since=self['if_unmodified_since'],
+                until=self['until'],
+                show_only_shared=self['shared'])
+            self.print_containers(r.json)
+        else:
+            prefix = self.path or self['prefix']
+            r = self.client.container_get(
+                limit=False if self['more'] else self['limit'],
+                marker=self['marker'],
+                prefix=prefix,
+                delimiter=self['delimiter'],
+                path=self['path'],
+                if_modified_since=self['if_modified_since'],
+                if_unmodified_since=self['if_unmodified_since'],
+                until=self['until'],
+                meta=self['meta'],
+                show_only_shared=self['shared'])
+            self.print_objects(r.json)
+
     def main(self, container____path__=None):
-        super(self.__class__, self).main(container____path__)
-        try:
-            if self.container is None:
-                r = self.client.account_get(
-                    limit=False if self['more'] else self['limit'],
-                    marker=self['marker'],
-                    if_modified_since=self['if_modified_since'],
-                    if_unmodified_since=self['if_unmodified_since'],
-                    until=self['until'],
-                    show_only_shared=self['shared'])
-                self.print_containers(r.json)
-            else:
-                prefix = self.path if self.path else self['prefix']
-                r = self.client.container_get(
-                    limit=False if self['more'] else self['limit'],
-                    marker=self['marker'],
-                    prefix=prefix,
-                    delimiter=self['delimiter'],
-                    path=self['path'],
-                    if_modified_since=self['if_modified_since'],
-                    if_unmodified_since=self['if_unmodified_since'],
-                    until=self['until'],
-                    meta=self['meta'],
-                    show_only_shared=self['shared'])
-                self.print_objects(r.json)
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=self.generic_err_details)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in %s\'s container %s'\
-                        % (self.path, self.account, self.container),
-                        details=self.generic_err_details)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            raiseCLIError(e)
+        super(self.__class__, self)._run(container____path__)
+        self._run()
 
 
 @command(pithos_cmds)
@@ -446,29 +456,17 @@ class store_mkdir(_store_container_command):
 
     __doc__ += '\n. '.join(about_directories)
 
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    def _run(self):
+        self.client.create_directory(self.path)
+
     def main(self, container___directory):
-        super(self.__class__,
-            self).main(container___directory, path_is_optional=False)
-        try:
-            self.client.create_directory(self.path)
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=self.generic_err_details)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=self.generic_err_details)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as err:
-            raiseCLIError(err)
+        super(self.__class__, self)._run(
+            container___directory,
+            path_is_optional=False)
+        self._run()
 
 
 @command(pithos_cmds)
@@ -484,28 +482,17 @@ class store_touch(_store_container_command):
             default='application/octet-stream')
     )
 
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    def _run(self):
+        self.client.create_object(self.path, self['content_type'])
+
     def main(self, container___path):
-        super(store_touch, self).main(container___path)
-        try:
-            self.client.create_object(self.path, self['content_type'])
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=self.generic_err_details)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=self.generic_err_details)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as err:
-            raiseCLIError(err)
+        super(store_touch, self)._run(
+            container___path,
+            path_is_optional=False)
+        self._run()
 
 
 @command(pithos_cmds)
@@ -522,30 +509,22 @@ class store_create(_store_container_command):
             '--meta')
     )
 
-    def main(self, container):
-        super(self.__class__, self).main(container)
-        try:
-            self.client.container_put(quota=self['quota'],
-                versioning=self['versioning'],
-                metadata=self['meta'])
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=self.generic_err_details)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=self.generic_err_details)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            raiseCLIError(e)
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    def _run(self):
+        self.client.container_put(
+            quota=self['quota'],
+            versioning=self['versioning'],
+            metadata=self['meta'])
+
+    def main(self, container=None):
+        super(self.__class__, self)._run(container)
+        if container and self.container != container:
+            raiseCLIError('Invalid container name %s' % container, details=[
+                'Did you mean "%s" ?' % self.container,
+                'Use --container for names containing :'])
+        self._run()
 
 
 @command(pithos_cmds)
@@ -571,6 +550,9 @@ class store_copy(_store_container_command):
     """
 
     arguments = dict(
+        destination_container=ValueArgument(
+            'use it if destination container name contains a : character',
+            '--dst-container'),
         source_version=ValueArgument(
             'copy specific version',
             '--source-version'),
@@ -589,53 +571,48 @@ class store_copy(_store_container_command):
 
     def _objlist(self, dst_path):
         if self['exact_match']:
-            return [(dst_path if dst_path else self.path, self.path)]
+            return [(dst_path or self.path, self.path)]
         r = self.client.container_get(prefix=self.path)
         if len(r.json) == 1:
             obj = r.json[0]
-            return [(obj['name'], dst_path if dst_path else obj['name'])]
-        return [(obj['name'], '%s%s' % (
+            return [(obj['name'], dst_path or obj['name'])]
+        return [(
+            obj['name'],
+            '%s%s' % (
                     dst_path,
                     obj['name'][len(self.path) if self['replace'] else 0:])
-                ) for obj in r.json]
+        ) for obj in r.json]
 
-    def main(self, source_container___path, destination_container___path):
-        super(self.__class__,
-            self).main(source_container___path, path_is_optional=False)
-        try:
-            dst = destination_container___path.split(':')
-            (dst_cont, dst_path) = (dst[0], dst[1])\
-            if len(dst) > 1 else (None, dst[0])
-            for src_object, dst_object in self._objlist(dst_path):
-                self.client.copy_object(src_container=self.container,
-                    src_object=src_object,
-                    dst_container=dst_cont if dst_cont else self.container,
-                    dst_object=dst_object,
-                    source_version=self['source_version'],
-                    public=self['public'],
-                    content_type=self['content_type'])
-        except ClientError as err:
-            if err.status == 404:
-                if 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=self.generic_err_details)
-                elif 'container' in ('%s' % err).lower():
-                    cont_msg = '(either %s or %s)' % (
-                        self.container,
-                        dst_cont
-                    ) if dst_cont else self.container
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (cont_msg, self.account),
-                        details=self.generic_err_details)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            raiseCLIError(e)
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    def _run(self, dst_cont, dst_path):
+        no_source_object = True
+        for src_object, dst_object in self._objlist(dst_path):
+            no_source_object = False
+            self.client.copy_object(
+                src_container=self.container,
+                src_object=src_object,
+                dst_container=dst_cont or self.container,
+                dst_object=dst_object,
+                source_version=self['source_version'],
+                public=self['public'],
+                content_type=self['content_type'])
+        if no_source_object:
+            raiseCLIError('No object %s in container %s' % (
+                self.path,
+                self.container))
+
+    def main(
+        self,
+        source_container___path,
+        destination_container___path=None):
+        super(self.__class__, self)._run(
+            source_container___path,
+            path_is_optional=False)
+        (dst_cont, dst_path) = self._dest_container_path(
+            destination_container___path)
+        self._run(dst_cont=dst_cont, dst_path=dst_path or '')
 
 
 @command(pithos_cmds)
@@ -661,6 +638,9 @@ class store_move(_store_container_command):
     """
 
     arguments = dict(
+        destination_container=ValueArgument(
+            'use it if destination container name contains a : character',
+            '--dst-container'),
         source_version=ValueArgument('specify version', '--source-version'),
         public=FlagArgument('make object publicly accessible', '--public'),
         content_type=ValueArgument('modify content type', '--content-type'),
@@ -673,54 +653,48 @@ class store_move(_store_container_command):
 
     def _objlist(self, dst_path):
         if self['exact_match']:
-            return [(dst_path if dst_path else self.path, self.path)]
+            return [(dst_path or self.path, self.path)]
         r = self.client.container_get(prefix=self.path)
         if len(r.json) == 1:
             obj = r.json[0]
-            return [(obj['name'], dst_path if dst_path else obj['name'])]
-        return [(obj['name'], '%s%s' % (
-                    dst_path,
-                    obj['name'][len(self.path) if self['replace'] else 0:])
-                ) for obj in r.json]
+            return [(obj['name'], dst_path or obj['name'])]
+        return [(
+            obj['name'],
+            '%s%s' % (
+                dst_path,
+                obj['name'][len(self.path) if self['replace'] else 0:]
+            )) for obj in r.json]
 
-    def main(self, source_container___path, destination_container____path__):
-        super(self.__class__,
-            self).main(source_container___path, path_is_optional=False)
-        try:
-            dst = destination_container____path__.split(':')
-            (dst_cont, dst_path) = (dst[0], dst[1])\
-            if len(dst) > 1 else (None, dst[0])
-            for src_object, dst_object in self._objlist(dst_path):
-                self.client.move_object(
-                    src_container=self.container,
-                    src_object=src_object,
-                    dst_container=dst_cont if dst_cont else self.container,
-                    dst_object=dst_object,
-                    source_version=self['source_version'],
-                    public=self['public'],
-                    content_type=self['content_type'])
-        except ClientError as err:
-            if err.status == 404:
-                if 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=self.generic_err_details)
-                elif 'container' in ('%s' % err).lower():
-                    cont_msg = '(either %s or %s)' % (
-                        self.container,
-                        dst_cont
-                    ) if dst_cont else self.container
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (cont_msg, self.account),
-                        details=self.generic_err_details)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            raiseCLIError(e)
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    def _run(self, dst_cont, dst_path):
+        no_source_object = True
+        for src_object, dst_object in self._objlist(dst_path):
+            no_source_object = False
+            self.client.move_object(
+                src_container=self.container,
+                src_object=src_object,
+                dst_container=dst_cont or self.container,
+                dst_object=dst_object,
+                source_version=self['source_version'],
+                public=self['public'],
+                content_type=self['content_type'])
+        if no_source_object:
+            raiseCLIError('No object %s in container %s' % (
+                self.path,
+                self.container))
+
+    def main(
+        self,
+        source_container___path,
+        destination_container___path=None):
+        super(self.__class__, self)._run(
+            source_container___path,
+            path_is_optional=False)
+        (dst_cont, dst_path) = self._dest_container_path(
+            destination_container___path)
+        self._run(dst_cont=dst_cont, dst_path=dst_path or '')
 
 
 @command(pithos_cmds)
@@ -738,75 +712,43 @@ class store_append(_store_container_command):
             default=False)
     )
 
-    def main(self, local_path, container___path):
-        super(self.__class__, self).main(
-            container___path,
-            path_is_optional=False)
-        progress_bar = self.arguments['progress_bar']
-        try:
-            upload_cb = progress_bar.get_generator('Appending blocks')
-        except Exception:
-            upload_cb = None
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self, local_path):
+        (progress_bar, upload_cb) = self._safe_progress_bar('Appending')
         try:
             f = open(local_path, 'rb')
             self.client.append_object(self.path, f, upload_cb)
-        except ClientError as err:
-            progress_bar.finish()
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=self.generic_err_details)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=self.generic_err_details)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            progress_bar.finish()
-            raiseCLIError(e)
+        except Exception:
+            self._safe_progress_bar_finish(progress_bar)
+            raise
         finally:
-            progress_bar.finish()
+            self._safe_progress_bar_finish(progress_bar)
+
+    def main(self, local_path, container___path):
+        super(self.__class__, self)._run(
+            container___path,
+            path_is_optional=False)
+        self._run(local_path)
 
 
 @command(pithos_cmds)
 class store_truncate(_store_container_command):
     """Truncate remote file up to a size (default is 0)"""
 
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    @errors.pithos.object_size
+    def _run(self, size=0):
+        self.client.truncate_object(self.path, size)
+
     def main(self, container___path, size=0):
-        super(self.__class__, self).main(container___path)
-        try:
-            self.client.truncate_object(self.path, size)
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=self.generic_err_details)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=self.generic_err_details)
-            if err.status == 400 and\
-                'object length is smaller than range length'\
-                in ('%s' % err).lower():
-                raiseCLIError(err, 'Object %s:%s <= %sb' % (
-                    self.container,
-                    self.path,
-                    size))
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            raiseCLIError(e)
+        super(self.__class__, self)._run(container___path)
+        self._run(size=size)
 
 
 @command(pithos_cmds)
@@ -826,58 +768,42 @@ class store_overwrite(_store_container_command):
             default=False)
     )
 
-    def main(self, local_path, container____path__, start, end):
-        (start, end) = check_range(start, end)
-        super(self.__class__, self).main(container____path__)
+    def _open_file(self, local_path, start):
+        f = open(path.abspath(local_path), 'rb')
+        f.seek(0, 2)
+        f_size = f.tell()
+        f.seek(start, 0)
+        return (f, f_size)
+
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    @errors.pithos.object_size
+    def _run(self, local_path, start, end):
+        (start, end) = (int(start), int(end))
+        (f, f_size) = self._open_file(local_path, start)
+        (progress_bar, upload_cb) = self._safe_progress_bar(
+            'Overwrite %s bytes' % (end - start))
         try:
-            f = open(local_path, 'rb')
-            f.seek(0, 2)
-            f_size = f.tell()
-            f.seek(start, 0)
-        except Exception as e:
-            raiseCLIError(e)
-        progress_bar = self.arguments['progress_bar']
-        try:
-            upload_cb = progress_bar.get_generator(
-                'Overwriting %s blocks' % end - start)
-        except Exception:
-            upload_cb = None
-        try:
-            self.path = self.path if self.path else path.basename(local_path)
             self.client.overwrite_object(
                 obj=self.path,
                 start=start,
                 end=end,
                 source_file=f,
                 upload_cb=upload_cb)
-        except ClientError as err:
-            progress_bar.finish()
-            if (err.status == 400 and\
-            'content length does not match range' in ('%s' % err).lower()) or\
-            err.status == 416:
-                raiseCLIError(err, details=[
-                    'Content size: %s' % f_size,
-                    'Range: %s-%s (size: %s)' % (start, end, end - start)])
-            elif err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=self.generic_err_details)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=self.generic_err_details)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            progress_bar.finish()
-            raiseCLIError(e)
+        except Exception:
+            self._safe_progress_bar_finish(progress_bar)
+            raise
         finally:
-            progress_bar.finish()
+            self._safe_progress_bar_finish(progress_bar)
+
+    def main(self, local_path, container___path, start, end):
+        super(self.__class__, self)._run(
+            container___path,
+            path_is_optional=None)
+        self.path = self.path or path.basename(local_path)
+        self._run(local_path=local_path, start=start, end=end)
 
 
 @command(pithos_cmds)
@@ -906,41 +832,31 @@ class store_manifest(_store_container_command):
             '--content-type',
             default='application/octet-stream'),
         sharing=SharingArgument(
-            'define object sharing policy \n' +\
-            '    ( "read=user1,grp1,user2,... write=user1,grp2,..." )',
+            '\n'.join([
+                'define object sharing policy',
+                '    ( "read=user1,grp1,user2,... write=user1,grp2,..." )']),
             '--sharing'),
         public=FlagArgument('make object publicly accessible', '--public')
     )
 
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self):
+        self.client.create_object_by_manifestation(
+            self.path,
+            content_encoding=self['content_encoding'],
+            content_disposition=self['content_disposition'],
+            content_type=self['content_type'],
+            sharing=self['sharing'],
+            public=self['public'])
+
     def main(self, container___path):
-        super(self.__class__,
-            self).main(container___path, path_is_optional=False)
-        try:
-            self.client.create_object_by_manifestation(
-                self.path,
-                content_encoding=self['content_encoding'],
-                content_disposition=self['content_disposition'],
-                content_type=self['content_type'],
-                sharing=self['sharing'],
-                public=self['public'])
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=self.generic_err_details)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=self.generic_err_details)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            raiseCLIError(e)
+        super(self.__class__, self)._run(
+            container___path,
+            path_is_optional=False)
+        self.run()
 
 
 @command(pithos_cmds)
@@ -961,8 +877,9 @@ class store_upload(_store_container_command):
             '--content-disposition'),
         content_type=ValueArgument('specify content type', '--content-type'),
         sharing=SharingArgument(
-            help='define sharing object policy \n' +\
-            '( "read=user1,grp1,user2,... write=user1,grp2,... )',
+            help='\n'.join([
+                'define sharing object policy',
+                '( "read=user1,grp1,user2,... write=user1,grp2,... )']),
             parsed_name='--sharing'),
         public=FlagArgument('make object publicly accessible', '--public'),
         poolsize=IntArgument('set pool size', '--with-pool-size'),
@@ -991,9 +908,12 @@ class store_upload(_store_container_command):
             importance=1,
             details=['use -f to overwrite or resume'])
 
-    def main(self, local_path, container____path__=None):
-        super(self.__class__, self).main(container____path__)
-        remote_path = self.path if self.path else path.basename(local_path)
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    @errors.pithos.local_path
+    def _run(self, local_path, remote_path):
         poolsize = self['poolsize']
         if poolsize > 0:
             self.client.POOL_SIZE = int(poolsize)
@@ -1003,65 +923,43 @@ class store_upload(_store_container_command):
             content_disposition=self['content_disposition'],
             sharing=self['sharing'],
             public=self['public'])
-        try:
-            progress_bar = self.arguments['progress_bar']
-            hash_bar = progress_bar.clone()
-            remote_path = self._remote_path(remote_path, local_path)
-            with open(path.abspath(local_path), 'rb') as f:
-                if self['unchunked']:
-                    self.client.upload_object_unchunked(
-                        remote_path,
-                        f,
-                        etag=self['etag'],
-                        withHashFile=self['use_hashes'],
-                        **params)
-                else:
-                    hash_cb = hash_bar.get_generator(
-                        'Calculating block hashes')
-                    upload_cb = progress_bar.get_generator('Uploading')
+        remote_path = self._remote_path(remote_path, local_path)
+        with open(path.abspath(local_path), 'rb') as f:
+            if self['unchunked']:
+                self.client.upload_object_unchunked(
+                    remote_path,
+                    f,
+                    etag=self['etag'],
+                    withHashFile=self['use_hashes'],
+                    **params)
+            else:
+                try:
+                    (progress_bar, upload_cb) = self._safe_progress_bar(
+                        'Uploading')
+                    if progress_bar:
+                        hash_bar = progress_bar.clone()
+                        hash_cb = hash_bar.get_generator(
+                            'Calculating block hashes'
+                        )
+                    else:
+                        hash_cb = None
                     self.client.upload_object(
                         remote_path,
                         f,
                         hash_cb=hash_cb,
                         upload_cb=upload_cb,
                         **params)
-                    progress_bar.finish()
-                    hash_bar.finish()
-        except ClientError as err:
-            try:
-                progress_bar.finish()
-                hash_bar.finish()
-            except Exception:
-                pass
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=[self.generic_err_details])
-            elif err.status == 800:
-                raiseCLIError(err, details=[
-                    'Possible cause: temporary server failure',
-                    'Try to re-upload the file',
-                    'For more error details, try kamaki store upload -d'])
-            raise_connection_errors(err)
-            raiseCLIError(err, 'Failed to upload to %s' % container____path__)
-        except IOError as err:
-            try:
-                progress_bar.finish()
-                hash_bar.finish()
-            except Exception:
-                pass
-            raiseCLIError(err, 'Failed to read form file %s' % local_path, 2)
-        except Exception as e:
-            try:
-                progress_bar.finish()
-                hash_bar.finish()
-            except Exception:
-                pass
-            raiseCLIError(e)
+                except Exception:
+                    self._safe_progress_bar_finish(progress_bar)
+                    raise
+                finally:
+                    self._safe_progress_bar_finish(progress_bar)
         print 'Upload completed'
+
+    def main(self, local_path, container____path__=None):
+        super(self.__class__, self)._run(container____path__)
+        remote_path = self.path or path.basename(local_path)
+        self._run(local_path=local_path, remote_path=remote_path)
 
 
 @command(pithos_cmds)
@@ -1085,41 +983,41 @@ class store_cat(_store_container_command):
             '--object-version')
     )
 
-    def main(self, container___path):
-        super(self.__class__, self).main(
-            container___path,
-            path_is_optional=False)
-        try:
-            self.client.download_object(self.path, stdout,
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self):
+        self.client.download_object(
+            self.path,
+            stdout,
             range=self['range'],
             version=self['object_version'],
             if_match=self['if_match'],
             if_none_match=self['if_none_match'],
             if_modified_since=self['if_modified_since'],
             if_unmodified_since=self['if_unmodified_since'])
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=self.generic_err_details)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=self.generic_err_details)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            raiseCLIError(e)
+
+    def main(self, container___path):
+        super(self.__class__, self)._run(
+            container___path,
+            path_is_optional=False)
+        self._run()
 
 
 @command(pithos_cmds)
 class store_download(_store_container_command):
-    """Download remote object as local file"""
+    """Download remote object as local file
+    If local destination is a directory:
+    *   download <container>:<path> <local dir> -r
+    will download all files on <container> prefixed as <path>,
+    to <local dir>/<full path>
+    *   download <container>:<path> <local dir> --exact-match
+    will download only one file, exactly matching <path>
+    ATTENTION: to download cont:dir1/dir2/file there must exist objects
+    cont:dir1 and cont:dir1/dir2 of type application/directory
+    To create directory objects, use /store mkdir
+    """
 
     arguments = dict(
         resume=FlagArgument('Resume instead of overwrite', '--resume'),
@@ -1141,67 +1039,73 @@ class store_download(_store_container_command):
         progress_bar=ProgressBarArgument(
             'do not show progress bar',
             '--no-progress-bar',
-            default=False)
+            default=False),
+        recursive=FlagArgument(
+            'Download a remote directory and all its contents',
+            '-r, --resursive')
     )
 
-    def _output_stream(self, local_path):
+    def _is_dir(self, remote_dict):
+        return 'application/directory' == remote_dict.get('content_type', '')
+
+    def _outputs(self, local_path):
         if local_path is None:
-            return stdout
-        try:
-            return open(
-                path.abspath(local_path),
-                'rwb+' if self['resume'] else 'wb+')
-        except IOError as err:
-            raiseCLIError(err, 'Cannot write to file %s' % local_path, 1)
-
-    def main(self, container___path, local_path=None):
-        super(self.__class__, self).main(
-            container___path,
-            path_is_optional=False)
-
-        out = self._output_stream(local_path)
-        poolsize = self['poolsize']
-        if poolsize is not None:
-            self.client.POOL_SIZE = int(poolsize)
-
-        try:
-            progress_bar = self.arguments['progress_bar']
-            download_cb = progress_bar.get_generator('Downloading')
-            self.client.download_object(
-                self.path,
-                out,
-                download_cb=download_cb,
-                range=self['range'],
-                version=self['object_version'],
-                if_match=self['if_match'],
-                resume=self['resume'],
-                if_none_match=self['if_none_match'],
+            return [(None, self.path)]
+        outpath = path.abspath(local_path)
+        if not (path.exists(outpath) or path.isdir(outpath)):
+            return [(outpath, self.path)]
+        elif self['recursive']:
+            remotes = self.client.container_get(
+                prefix=self.path,
                 if_modified_since=self['if_modified_since'],
                 if_unmodified_since=self['if_unmodified_since'])
-            progress_bar.finish()
-        except ClientError as err:
-            progress_bar.finish()
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=self.generic_err_details)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=self.generic_err_details)
-            raise_connection_errors(err)
-            raiseCLIError(err, '"%s" not accessible' % container___path)
-        except IOError as err:
-            try:
-                progress_bar.finish()
-            except Exception:
-                pass
-            raiseCLIError(err, 'Failed to write on file %s' % local_path, 2)
+            return [(
+                '%s/%s' % (outpath, remote['name']),
+                None if self._is_dir(remote) else remote['name']
+            ) for remote in remotes.json]
+        raiseCLIError('Illegal destination location %s' % local_path)
+
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    @errors.pithos.local_path
+    def _run(self, local_path):
+        outputs = self._outputs(local_path)
+        poolsize = self['poolsize']
+        if poolsize:
+            self.client.POOL_SIZE = int(poolsize)
+        if not outputs:
+            raiseCLIError('No objects prefixed as %s on container %s' % (
+                self.path,
+                self.container))
+        progress_bar = None
+        try:
+            for lpath, rpath in sorted(outputs):
+                if not rpath:
+                    if not path.isdir(lpath):
+                        print('Create directory %s' % lpath)
+                        makedirs(lpath)
+                    continue
+                wmode = 'rwb+' if path.exists(lpath) and self['resume']\
+                    else 'wb+'
+                print('\nFrom %s:%s to %s' % (
+                    self.container,
+                    rpath,
+                    lpath))
+                (progress_bar,
+                    download_cb) = self._safe_progress_bar('Downloading')
+                self.client.download_object(
+                    rpath,
+                    open(lpath, wmode) if lpath else stdout,
+                    download_cb=download_cb,
+                    range=self['range'],
+                    version=self['object_version'],
+                    if_match=self['if_match'],
+                    resume=self['resume'],
+                    if_none_match=self['if_none_match'],
+                    if_modified_since=self['if_modified_since'],
+                    if_unmodified_since=self['if_unmodified_since'])
         except KeyboardInterrupt:
             from threading import enumerate as activethreads
             stdout.write('\nFinishing active threads ')
@@ -1212,20 +1116,20 @@ class store_download(_store_container_command):
                     stdout.write('.')
                 except RuntimeError:
                     continue
-            try:
-                progress_bar.finish()
-            except Exception:
-                pass
             print('\ndownload canceled by user')
             if local_path is not None:
                 print('to resume, re-run with --resume')
-        except Exception as e:
-            try:
-                progress_bar.finish()
-            except Exception:
-                pass
-            raiseCLIError(e)
-        print
+        except Exception:
+            self._safe_progress_bar_finish(progress_bar)
+            raise
+        finally:
+            self._safe_progress_bar_finish(progress_bar)
+
+    def main(self, container___path, local_path=None):
+        super(self.__class__, self)._run(
+            container___path,
+            path_is_optional=False)
+        self._run(local_path=local_path)
 
 
 @command(pithos_cmds)
@@ -1248,37 +1152,25 @@ class store_hashmap(_store_container_command):
             '--object-version')
     )
 
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self):
+        data = self.client.get_object_hashmap(
+            self.path,
+            version=self['object_version'],
+            if_match=self['if_match'],
+            if_none_match=self['if_none_match'],
+            if_modified_since=self['if_modified_since'],
+            if_unmodified_since=self['if_unmodified_since'])
+        print_dict(data)
+
     def main(self, container___path):
-        super(self.__class__, self).main(
+        super(self.__class__, self)._run(
             container___path,
             path_is_optional=False)
-        try:
-            data = self.client.get_object_hashmap(
-                self.path,
-                version=self['object_version'],
-                if_match=self['if_match'],
-                if_none_match=self['if_none_match'],
-                if_modified_since=self['if_modified_since'],
-                if_unmodified_since=self['if_unmodified_since'])
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=self.generic_err_details)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=self.generic_err_details)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            raiseCLIError(e)
-        print_dict(data)
+        self._run()
 
 
 @command(pithos_cmds)
@@ -1302,6 +1194,7 @@ class store_delete(_store_container_command):
 
     arguments = dict(
         until=DateArgument('remove history until that date', '--until'),
+        yes=FlagArgument('Do not prompt for permission', '--yes'),
         recursive=FlagArgument(
             'empty dir or container and delete (if dir)',
             ('-r', '--recursive'))
@@ -1314,37 +1207,36 @@ class store_delete(_store_container_command):
             parsed_name='--delimiter',
             help='delete objects prefixed with <object><delimiter>')
 
-    def main(self, container____path__):
-        super(self.__class__, self).main(container____path__)
-        try:
-            if self.path is None:
-                self.client.del_container(
-                    until=self['until'],
-                    delimiter=self['delimiter'])
-            else:
-                # self.client.delete_object(self.path)
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self):
+        if self.path:
+            if self['yes'] or ask_user('Delete %s:%s ?' % (
+                self.container,
+                self.path)):
                 self.client.del_object(
                     self.path,
                     until=self['until'],
                     delimiter=self['delimiter'])
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=self.generic_err_details)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=self.generic_err_details)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            raiseCLIError(e)
+            else:
+                print('Aborted')
+        else:
+            if self['resursive']:
+                ask_msg = 'Delete container contents'
+            else:
+                ask_msg = 'Delete container'
+            if self['yes'] or ask_user('%s %s ?' % (ask_msg, self.container)):
+                self.client.del_container(
+                    until=self['until'],
+                    delimiter=self['delimiter'])
+            else:
+                print('Aborted')
+
+    def main(self, container____path__=None):
+        super(self.__class__, self)._run(container____path__)
+        self._run()
 
 
 @command(pithos_cmds)
@@ -1358,83 +1250,63 @@ class store_purge(_store_container_command):
     .      container and data blocks are released and deleted
     """
 
-    def main(self, container):
-        super(self.__class__, self).main(container)
-        try:
-            self.client.purge_container()
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=self.generic_err_details)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            raiseCLIError(e)
+    arguments = dict(
+        yes=FlagArgument('Do not prompt for permission', '--yes'),
+    )
+
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    def _run(self):
+        if self['yes'] or ask_user('Purge container %s?' % self.container):
+                self.client.purge_container()
+        else:
+            print('Aborted')
+
+    def main(self, container=None):
+        super(self.__class__, self)._run(container)
+        if container and self.container != container:
+            raiseCLIError('Invalid container name %s' % container, details=[
+                'Did you mean "%s" ?' % self.container,
+                'Use --container for names containing :'])
+        self._run()
 
 
 @command(pithos_cmds)
 class store_publish(_store_container_command):
     """Publish the object and print the public url"""
 
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self):
+        url = self.client.publish_object(self.path)
+        print(url)
+
     def main(self, container___path):
-        super(self.__class__, self).main(
+        super(self.__class__, self)._run(
             container___path,
             path_is_optional=False)
-        try:
-            url = self.client.publish_object(self.path)
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=self.generic_err_details)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=self.generic_err_details)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            raiseCLIError(e)
-        print(url)
+        self._run()
 
 
 @command(pithos_cmds)
 class store_unpublish(_store_container_command):
     """Unpublish an object"""
 
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self):
+            self.client.unpublish_object(self.path)
+
     def main(self, container___path):
-        super(self.__class__, self).main(
+        super(self.__class__, self)._run(
             container___path,
             path_is_optional=False)
-        try:
-            self.client.unpublish_object(self.path)
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=self.generic_err_details)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=self.generic_err_details)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            raiseCLIError(e)
+        self._run()
 
 
 @command(pithos_cmds)
@@ -1445,31 +1317,19 @@ class store_permissions(_store_container_command):
     permission.
     """
 
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self):
+        r = self.client.get_object_sharing(self.path)
+        print_dict(r)
+
     def main(self, container___path):
-        super(self.__class__, self).main(
+        super(self.__class__, self)._run(
             container___path,
             path_is_optional=False)
-        try:
-            reply = self.client.get_object_sharing(self.path)
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=self.generic_err_details)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=self.generic_err_details)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            raiseCLIError(e)
-        print_dict(reply)
+        self._run()
 
 
 @command(pithos_cmds)
@@ -1483,6 +1343,7 @@ class store_setpermissions(_store_container_command):
     .       /store setpermissions F read=A,B write=C
     """
 
+    @errors.generic.all
     def format_permition_dict(self, permissions):
         read = False
         write = False
@@ -1497,36 +1358,27 @@ class store_setpermissions(_store_container_command):
             else:
                 read = False
                 write = False
-        if not read and not write:
-            raiseCLIError(None,
-            'Usage:\tread=<groups,users> write=<groups,users>')
+        if not (read or write):
+            msg = 'Usage:\tread=<groups,users> write=<groups,users>'
+            raiseCLIError(None, msg)
         return (read, write)
 
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self, read, write):
+        self.client.set_object_sharing(
+            self.path,
+            read_permition=read,
+            write_permition=write)
+
     def main(self, container___path, *permissions):
-        super(self.__class__,
-            self).main(container___path, path_is_optional=False)
+        super(self.__class__, self)._run(
+            container___path,
+            path_is_optional=False)
         (read, write) = self.format_permition_dict(permissions)
-        try:
-            self.client.set_object_sharing(self.path,
-                read_permition=read, write_permition=write)
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=self.generic_err_details)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=self.generic_err_details)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            raiseCLIError(e)
+        self._run(read, write)
 
 
 @command(pithos_cmds)
@@ -1535,29 +1387,18 @@ class store_delpermissions(_store_container_command):
     To modify permissions, use /store setpermssions
     """
 
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self):
+        self.client.del_object_sharing(self.path)
+
     def main(self, container___path):
-        super(self.__class__,
-            self).main(container___path, path_is_optional=False)
-        try:
-            self.client.del_object_sharing(self.path)
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=self.generic_err_details)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=self.generic_err_details)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            raiseCLIError(e)
+        super(self.__class__, self)._run(
+            container___path,
+            path_is_optional=False)
+        self._run()
 
 
 @command(pithos_cmds)
@@ -1574,36 +1415,24 @@ class store_info(_store_container_command):
             '--object-version')
     )
 
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self):
+        if self.container is None:
+            r = self.client.get_account_info()
+        elif self.path is None:
+            r = self.client.get_container_info(self.container)
+        else:
+            r = self.client.get_object_info(
+                self.path,
+                version=self['object_version'])
+        print_dict(r)
+
     def main(self, container____path__=None):
-        super(self.__class__, self).main(container____path__)
-        try:
-            if self.container is None:
-                reply = self.client.get_account_info()
-            elif self.path is None:
-                reply = self.client.get_container_info(self.container)
-            else:
-                reply = self.client.get_object_info(
-                    self.path,
-                    version=self['object_version'])
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=self.generic_err_details)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=self.generic_err_details)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            raiseCLIError(e)
-        print_dict(reply)
+        super(self.__class__, self)._run(container____path__)
+        self._run()
 
 
 @command(pithos_cmds)
@@ -1618,62 +1447,48 @@ class store_meta(_store_container_command):
             '--object-version')
     )
 
-    def main(self, container____path__=None):
-        super(self.__class__, self).main(container____path__)
-
-        detail = self['detail']
-        try:
-            until = self['until']
-            if self.container is None:
-                if detail:
-                    reply = self.client.get_account_info(until=until)
-                else:
-                    reply = self.client.get_account_meta(until=until)
-                    reply = pretty_keys(reply, '-')
-                if reply:
-                    print(bold(self.client.account))
-            elif self.path is None:
-                if detail:
-                    reply = self.client.get_container_info(until=until)
-                else:
-                    cmeta = self.client.get_container_meta(until=until)
-                    ometa = self.client.get_container_object_meta(until=until)
-                    reply = {}
-                    if cmeta:
-                        reply['container-meta'] = pretty_keys(cmeta, '-')
-                    if ometa:
-                        reply['object-meta'] = pretty_keys(ometa, '-')
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self):
+        until = self['until']
+        if self.container is None:
+            if self['detail']:
+                r = self.client.get_account_info(until=until)
             else:
-                if detail:
-                    reply = self.client.get_object_info(self.path,
-                        version=self['object_version'])
-                else:
-                    reply = self.client.get_object_meta(self.path,
-                        version=self['object_version'])
-                if reply:
-                    reply = pretty_keys(pretty_keys(reply, '-'))
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=self.generic_err_details)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=self.generic_err_details)
-                else:
-                    raiseCLIError(err, details=self.generic_err_details)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as e:
-            raiseCLIError(e)
-        if reply:
-            print_dict(reply)
+                r = self.client.get_account_meta(until=until)
+                r = pretty_keys(r, '-')
+            if r:
+                print(bold(self.client.account))
+        elif self.path is None:
+            if self['detail']:
+                r = self.client.get_container_info(until=until)
+            else:
+                cmeta = self.client.get_container_meta(until=until)
+                ometa = self.client.get_container_object_meta(until=until)
+                r = {}
+                if cmeta:
+                    r['container-meta'] = pretty_keys(cmeta, '-')
+                if ometa:
+                    r['object-meta'] = pretty_keys(ometa, '-')
+        else:
+            if self['detail']:
+                r = self.client.get_object_info(
+                    self.path,
+                    version=self['object_version'])
+            else:
+                r = self.client.get_object_meta(
+                    self.path,
+                    version=self['object_version'])
+            if r:
+                r = pretty_keys(pretty_keys(r, '-'))
+        if r:
+            print_dict(r)
+
+    def main(self, container____path__=None):
+        super(self.__class__, self)._run(container____path__)
+        self._run()
 
 
 @command(pithos_cmds)
@@ -1682,45 +1497,21 @@ class store_setmeta(_store_container_command):
     Metadata are formed as key:value pairs
     """
 
-    def main(self, metakey___metaval, container____path__=None):
-        super(self.__class__, self).main(container____path__)
-        try:
-            metakey, metavalue = metakey___metaval.split(':')
-        except ValueError as err:
-            raiseCLIError(err,
-                'Cannot parse %s as a key:value pair' % metakey___metaval,
-                details=['Syntax:',
-                    '   store setmeta metakey:metavalue [cont[:path]]'
-                ],
-                importance=1,
-                )
-        try:
-            if self.container is None:
-                self.client.set_account_meta({metakey: metavalue})
-            elif self.path is None:
-                self.client.set_container_meta({metakey: metavalue})
-            else:
-                self.client.set_object_meta(self.path, {metakey: metavalue})
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=self.generic_err_details)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=self.generic_err_details)
-                else:
-                    raiseCLIError(err, details=self.generic_err_details)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as err:
-            raiseCLIError(err)
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self, metakey, metaval):
+        if not self.container:
+            self.client.set_account_meta({metakey: metaval})
+        elif not self.path:
+            self.client.set_container_meta({metakey: metaval})
+        else:
+            self.client.set_object_meta(self.path, {metakey: metaval})
+
+    def main(self, metakey, metaval, container____path__=None):
+        super(self.__class__, self)._run(container____path__)
+        self._run(metakey=metakey, metaval=metaval)
 
 
 @command(pithos_cmds)
@@ -1732,185 +1523,189 @@ class store_delmeta(_store_container_command):
     - to get metadata of an object:           /store meta <container>:<path>
     """
 
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self, metakey):
+        if self.container is None:
+            self.client.del_account_meta(metakey)
+        elif self.path is None:
+            self.client.del_container_meta(metakey)
+        else:
+            self.client.del_object_meta(self.path, metakey)
+
     def main(self, metakey, container____path__=None):
-        super(self.__class__, self).main(container____path__)
-        try:
-            if self.container is None:
-                self.client.del_account_meta(metakey)
-            elif self.path is None:
-                self.client.del_container_meta(metakey)
-            else:
-                self.client.del_object_meta(self.path, metakey)
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=self.generic_err_details)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=self.generic_err_details)
-                else:
-                    raiseCLIError(err, details=self.generic_err_details)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as err:
-            raiseCLIError(err)
+        super(self.__class__, self)._run(container____path__)
+        self._run(metakey)
 
 
 @command(pithos_cmds)
 class store_quota(_store_account_command):
-    """Get quota (in KB) for account or container"""
+    """Get quota for account or container"""
+
+    arguments = dict(
+        in_bytes=FlagArgument('Show result in bytes', ('-b', '--bytes'))
+    )
+
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    def _run(self):
+        if self.container:
+            reply = self.client.get_container_quota(self.container)
+        else:
+            reply = self.client.get_account_quota()
+        if not self['in_bytes']:
+            for k in reply:
+                reply[k] = format_size(reply[k])
+        print_dict(pretty_keys(reply, '-'))
 
     def main(self, container=None):
-        super(self.__class__, self).main()
-        try:
-            if container is None:
-                reply = self.client.get_account_quota()
-            else:
-                reply = self.client.get_container_quota(container)
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(err,
-                        'No container %s in account %s'\
-                        % (container, self.account))
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as err:
-            raiseCLIError(err)
-        print_dict(pretty_keys(reply, '-'))
+        super(self.__class__, self)._run()
+        self.container = container
+        self._run()
 
 
 @command(pithos_cmds)
 class store_setquota(_store_account_command):
-    """Set new quota (in KB) for account or container"""
+    """Set new quota for account or container
+    By default, quota is set in bytes
+    Users may specify a different unit, e.g:
+    /store setquota 2.3GB mycontainer
+    Accepted units: B, KiB (1024 B), KB (1000 B), MiB, MB, GiB, GB, TiB, TB
+    """
+
+    @errors.generic.all
+    def _calculate_quota(self, user_input):
+        quota = 0
+        try:
+            quota = int(user_input)
+        except ValueError:
+            index = 0
+            digits = [str(num) for num in range(0, 10)] + ['.']
+            while user_input[index] in digits:
+                index += 1
+            quota = user_input[:index]
+            format = user_input[index:]
+            try:
+                return to_bytes(quota, format)
+            except Exception as qe:
+                msg = 'Failed to convert %s to bytes' % user_input,
+                raiseCLIError(qe, msg, details=[
+                    'Syntax: setquota <quota>[format] [container]',
+                    'e.g.: setquota 2.3GB mycontainer',
+                    'Acceptable formats:',
+                    '(*1024): B, KiB, MiB, GiB, TiB',
+                    '(*1000): B, KB, MB, GB, TB'])
+        return quota
+
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    def _run(self, quota):
+        if self.container:
+            self.client.container = self.container
+            self.client.set_container_quota(quota)
+        else:
+            self.client.set_account_quota(quota)
 
     def main(self, quota, container=None):
-        super(self.__class__, self).main()
-        try:
-            if container is None:
-                self.client.set_account_quota(quota)
-            else:
-                self.client.container = container
-                self.client.set_container_quota(quota)
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(err,
-                        'No container %s in account %s'\
-                        % (container, self.account))
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as err:
-            raiseCLIError(err)
+        super(self.__class__, self)._run()
+        quota = self._calculate_quota(quota)
+        self.container = container
+        self._run(quota)
 
 
 @command(pithos_cmds)
 class store_versioning(_store_account_command):
     """Get  versioning for account or container"""
 
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    def _run(self):
+        if self.container:
+            r = self.client.get_container_versioning(self.container)
+        else:
+            r = self.client.get_account_versioning()
+        print_dict(r)
+
     def main(self, container=None):
-        super(self.__class__, self).main()
-        try:
-            if container is None:
-                reply = self.client.get_account_versioning()
-            else:
-                reply = self.client.get_container_versioning(container)
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=self.generic_err_details)
-                else:
-                    raiseCLIError(err, details=self.generic_err_details)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as err:
-            raiseCLIError(err)
-        print_dict(reply)
+        super(self.__class__, self)._run()
+        self.container = container
+        self._run()
 
 
 @command(pithos_cmds)
 class store_setversioning(_store_account_command):
     """Set versioning mode (auto, none) for account or container"""
 
+    def _check_versioning(self, versioning):
+        if versioning and versioning.lower() in ('auto', 'none'):
+            return versioning.lower()
+        raiseCLIError('Invalid versioning %s' % versioning, details=[
+            'Versioning can be auto or none'])
+
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    def _run(self, versioning):
+        if self.container:
+            self.client.container = self.container
+            self.client.set_container_versioning(versioning)
+        else:
+            self.client.set_account_versioning(versioning)
+
     def main(self, versioning, container=None):
-        super(self.__class__, self).main()
-        try:
-            if container is None:
-                self.client.set_account_versioning(versioning)
-            else:
-                self.client.container = container
-                self.client.set_container_versioning(versioning)
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=self.generic_err_details)
-                else:
-                    raiseCLIError(err, details=self.generic_err_details)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as err:
-            raiseCLIError(err)
+        super(self.__class__, self)._run()
+        self._run(self._check_versioning(versioning))
 
 
 @command(pithos_cmds)
 class store_group(_store_account_command):
     """Get groups and group members"""
 
+    @errors.generic.all
+    @errors.pithos.connection
+    def _run(self):
+        r = self.client.get_account_group()
+        print_dict(pretty_keys(r, '-'))
+
     def main(self):
-        super(self.__class__, self).main()
-        try:
-            reply = self.client.get_account_group()
-        except ClientError as err:
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as err:
-            raiseCLIError(err)
-        print_dict(pretty_keys(reply, '-'))
+        super(self.__class__, self)._run()
+        self._run()
 
 
 @command(pithos_cmds)
 class store_setgroup(_store_account_command):
     """Set a user group"""
 
+    @errors.generic.all
+    @errors.pithos.connection
+    def _run(self, groupname, *users):
+        self.client.set_account_group(groupname, users)
+
     def main(self, groupname, *users):
-        super(self.__class__, self).main()
-        try:
-            self.client.set_account_group(groupname, users)
-        except ClientError as err:
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as err:
-            raiseCLIError(err)
+        super(self.__class__, self)._run()
+        if users:
+            self._run(groupname, *users)
+        else:
+            raiseCLIError('No users to add in group %s' % groupname)
 
 
 @command(pithos_cmds)
 class store_delgroup(_store_account_command):
     """Delete a user group"""
 
+    @errors.generic.all
+    @errors.pithos.connection
+    def _run(self, groupname):
+        self.client.del_account_group(groupname)
+
     def main(self, groupname):
-        super(self.__class__, self).main()
-        try:
-            self.client.del_account_group(groupname)
-        except ClientError as err:
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as err:
-            raiseCLIError(err)
+        super(self.__class__, self)._run()
+        self._run(groupname)
 
 
 @command(pithos_cmds)
@@ -1922,23 +1717,16 @@ class store_sharers(_store_account_command):
         marker=ValueArgument('show output greater then marker', '--marker')
     )
 
-    def main(self):
-        super(self.__class__, self).main()
-        try:
-            marker = self['marker']
-            accounts = self.client.get_sharing_accounts(marker=marker)
-        except ClientError as err:
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as err:
-            raiseCLIError(err)
+    @errors.generic.all
+    @errors.pithos.connection
+    def _run(self):
+        accounts = self.client.get_sharing_accounts(marker=self['marker'])
+        print_items(accounts if self['detail']
+            else [acc['name'] for acc in accounts])
 
-        for acc in accounts:
-            stdout.write(bold(acc['name']) + ' ')
-            if self['detail']:
-                print_dict(acc, exclude='name')
-        if not self['detail']:
-            print
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
 
 
 @command(pithos_cmds)
@@ -1951,32 +1739,19 @@ class store_versions(_store_container_command):
     /store info -h
     """
 
-    def main(self, container___path):
-        super(store_versions, self).main(container___path)
-        try:
-            versions = self.client.get_object_versionlist(self.path)
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self):
+        versions = self.client.get_object_versionlist(self.path)
+        print_items([dict(
+            id=vitem[0],
+            created=strftime('%d-%m-%Y %H:%M:%S', localtime(float(vitem[1])))
+            ) for vitem in versions])
 
-            for vitem in versions:
-                t = localtime(float(vitem[1]))
-                vid = bold(unicode(vitem[0]))
-                print('\t%s \t(%s)' % (vid, strftime('%d-%m-%Y %H:%M:%S', t)))
-        except ClientError as err:
-            if err.status == 404:
-                if 'container' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No container %s in account %s'\
-                        % (self.container, self.account),
-                        details=self.generic_err_details)
-                elif 'object' in ('%s' % err).lower():
-                    raiseCLIError(
-                        err,
-                        'No object %s in container %s'\
-                        % (self.path, self.container),
-                        details=self.generic_err_details)
-                else:
-                    raiseCLIError(err, details=self.generic_err_details)
-            raise_connection_errors(err)
-            raiseCLIError(err)
-        except Exception as err:
-            raiseCLIError(err)
+    def main(self, container___path):
+        super(store_versions, self)._run(
+            container___path,
+            path_is_optional=False)
+        self._run()

@@ -37,16 +37,43 @@ from kamaki.clients import Client, ClientError
 class AstakosClient(Client):
     """GRNet Astakos API client"""
 
+    _cache = {}
+
     def __init__(self, base_url, token):
         super(AstakosClient, self).__init__(base_url, token)
 
     def authenticate(self, token=None):
-        """
+        """Get authentication information and store it in this client
+        As long as the AstakosClient instance is alive, the latest
+        authentication information for this token will be available
+
         :param token: (str) custom token to authenticate
 
         :returns: (dict) authentication information
         """
-        if token:
-            self.token = token
-        r = self.get('/im/authenticate')
-        return r.json
+        self.token = token or self.token
+        self._cache[self.token] = self.get('/im/authenticate').json
+        return self._cache[self.token]
+
+    def list(self):
+        """list cached user information"""
+        r = []
+        for k, v in self._cache.items():
+            r.append(dict(v))
+            r[-1].update(dict(auth_token=k))
+        return r
+
+    def info(self, token=None):
+        """Get (cached) user information"""
+        token_bu = self.token
+        token = token or self.token
+        try:
+            r = self._cache[token]
+        except KeyError:
+            r = self.authenticate(token)
+        self.token = token_bu
+        return r
+
+    def term(self, key, token=None):
+        """Get (cached) term, from user credentials"""
+        return self.info(token).get(key, None)

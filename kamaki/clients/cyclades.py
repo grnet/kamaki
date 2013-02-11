@@ -31,9 +31,11 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+from time import sleep
+
 from kamaki.clients.cyclades_rest_api import CycladesClientApi
 from kamaki.clients import ClientError
-from time import sleep
+from sys import stdout
 
 
 class CycladesClient(CycladesClientApi):
@@ -241,7 +243,9 @@ class CycladesClient(CycladesClientApi):
             r = self.networks_post(netid, 'action', json_data=req)
             r.release()
 
-    def wait_server(self, server_id,
+    def wait_server(
+        self,
+        server_id,
         current_status='BUILD',
         delay=0.5,
         max_wait=128,
@@ -277,9 +281,15 @@ class CycladesClient(CycladesClientApi):
                     for i in range(int(old_wait), int(total_wait)):
                         wait_gen.next()
                     old_wait = total_wait
+                else:
+                    stdout.write('.')
+                    stdout.flush()
             else:
                 if wait_cb:
                     wait_gen.next()
+                else:
+                    stdout.write('.')
+                    stdout.flush()
                 total_wait += delay
             sleep(delay)
             r = self.get_server_details(server_id)

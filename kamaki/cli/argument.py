@@ -44,6 +44,10 @@ from argparse import RawDescriptionHelpFormatter
 try:
     from progress.bar import ShadyBar as KamakiProgressBar
 except ImportError:
+    try:
+        from progress.bar import Bar as KamakiProgressBar
+    except ImportError:
+        pass
     # progress not installed - pls, pip install progress
     pass
 
@@ -125,8 +129,12 @@ class Argument(object):
         action = 'append' if self.arity < 0\
             else 'store_true' if self.arity == 0\
             else 'store'
-        parser.add_argument(*self.parsed_name, dest=name, action=action,
-            default=self.default, help=self.help)
+        parser.add_argument(
+            *self.parsed_name,
+            dest=name,
+            action=action,
+            default=self.default,
+            help=self.help)
 
     def main(self):
         """Overide this method to give functionality to your args"""
@@ -185,7 +193,8 @@ class CmdLineConfigArgument(Argument):
         for option in options:
             keypath, sep, val = option.partition('=')
             if not sep:
-                raiseCLIError(CLISyntaxError('Argument Syntax Error '),
+                raiseCLIError(
+                    CLISyntaxError('Argument Syntax Error '),
                     details=['%s is missing a "="',
                     ' (usage: -o section.key=val)' % option]
                 )
@@ -233,7 +242,8 @@ class IntArgument(ValueArgument):
         try:
             self._value = int(newvalue)
         except ValueError:
-            raiseCLIError(CLISyntaxError('IntArgument Error',
+            raiseCLIError(
+                CLISyntaxError('IntArgument Error',
                 details=['Value %s not an int' % newvalue]))
 
 
@@ -244,7 +254,8 @@ class DateArgument(ValueArgument):
     :value returns: same date in first of DATE_FORMATS
     """
 
-    DATE_FORMATS = ["%a %b %d %H:%M:%S %Y",
+    DATE_FORMATS = [
+        "%a %b %d %H:%M:%S %Y",
         "%A, %d-%b-%y %H:%M:%S GMT",
         "%a, %d %b %Y %H:%M:%S GMT"]
 
@@ -268,7 +279,8 @@ class DateArgument(ValueArgument):
                 continue
             self._value = t.strftime(self.DATE_FORMATS[0])
             return
-        raiseCLIError(None,
+        raiseCLIError(
+            None,
             'Date Argument Error',
             details='%s not a valid date. correct formats:\n\t%s'\
             % (datestr, self.INPUT_FORMATS))
@@ -317,7 +329,8 @@ class KeyValueArgument(Argument):
         for pair in keyvalue_pairs:
             key, sep, val = pair.partition('=')
             if not sep:
-                raiseCLIError(CLISyntaxError('Argument syntax error '),
+                raiseCLIError(
+                    CLISyntaxError('Argument syntax error '),
                     details='%s is missing a "=" (usage: key1=val1 )\n' % pair)
             self._value[key.strip()] = val.strip()
 
@@ -370,15 +383,18 @@ class ProgressBarArgument(FlagArgument):
             mybar.finish()
 
 
-_arguments = dict(config=_config_arg,
+_arguments = dict(
+    config=_config_arg,
     help=Argument(0, 'Show help message', ('-h', '--help')),
     debug=FlagArgument('Include debug output', ('-d', '--debug')),
-    include=FlagArgument('Include raw connection data in the output',
+    include=FlagArgument(
+        'Include raw connection data in the output',
         ('-i', '--include')),
     silent=FlagArgument('Do not output anything', ('-s', '--silent')),
     verbose=FlagArgument('More info at response', ('-v', '--verbose')),
     version=VersionArgument('Print current version', ('-V', '--version')),
-    options=CmdLineConfigArgument(_config_arg,
+    options=CmdLineConfigArgument(
+        _config_arg,
         'Override a config value',
         ('-o', '--options'))
 )
@@ -412,7 +428,8 @@ class ArgumentParseManager(object):
         :param arguments: (dict) if given, overrides the global _argument as
             the parsers arguments specification
         """
-        self.parser = ArgumentParser(add_help=False,
+        self.parser = ArgumentParser(
+            add_help=False,
             formatter_class=RawDescriptionHelpFormatter)
         self.syntax = '%s <cmd_group> [<cmd_subbroup> ...] <cmd>' % exe
         if arguments:

@@ -34,7 +34,7 @@
 # or implied, of GRNET S.A.
 
 from setuptools import setup
-#from sys import version_info
+from sys import version_info
 import collections
 
 import kamaki
@@ -42,8 +42,12 @@ import kamaki
 
 optional = ['ansicolors',
             'progress>=1.0.2']
+<<<<<<< HEAD
 requires = ['objpool',
             'argparse']
+=======
+requires = ['objpool']
+>>>>>>> release-0.7
 
 setup(
     name='kamaki',
@@ -55,9 +59,11 @@ setup(
     packages=[
         'kamaki',
         'kamaki.clients',
+        'kamaki.clients.tests',
         'kamaki.clients.connection',
         'kamaki.cli',
         'kamaki.cli.commands',
+        'kamaki.clients.tests',
         'kamaki.clients.commissioning',
         'kamaki.clients.quotaholder',
         'kamaki.clients.quotaholder.api',

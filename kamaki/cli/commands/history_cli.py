@@ -38,9 +38,9 @@ from kamaki.cli.argument import IntArgument, ValueArgument
 from kamaki.cli.argument import ArgumentParseManager
 from kamaki.cli.history import History
 from kamaki.cli import command
-from kamaki.cli.commands import _command_init
+from kamaki.cli.commands import _command_init, errors
 from kamaki.cli import exec_cmd, print_error_message
-from kamaki.cli.errors import CLIError, CLISyntaxError, raiseCLIError
+from kamaki.cli.errors import CLIError, raiseCLIError
 from kamaki.cli.utils import split_input
 from kamaki.clients import ClientError
 
@@ -72,8 +72,13 @@ def _get_num_list(num_str):
 
 
 class _init_history(_command_init):
-    def main(self):
+    @errors.generic.all
+    @errors.history.init
+    def _run(self):
         self.history = History(self.config.get('history', 'file'))
+
+    def main(self):
+        self._run()
 
 
 @command(history_cmds)
@@ -98,8 +103,8 @@ class history_show(_init_history):
         match=ValueArgument('show lines that match given terms', '--match')
     )
 
-    def main(self, *cmd_ids):
-        super(self.__class__, self).main()
+    @errors.generic.all
+    def _run(self, *cmd_ids):
         ret = self.history.get(match_terms=self['match'], limit=self['limit'])
 
         if not cmd_ids:
@@ -116,17 +121,24 @@ class history_show(_init_history):
                 if cur_id:
                     print(ret[cur_id - (1 if cur_id > 0 else 0)][:-1])
             except IndexError as e2:
-                print('LA %s LA' % self.__doc__)
                 raiseCLIError(e2, 'Command id out of 1-%s range' % len(ret))
+
+    def main(self, *cmd_ids):
+        super(self.__class__, self)._run()
+        self._run(*cmd_ids)
 
 
 @command(history_cmds)
 class history_clean(_init_history):
     """Clean up history (permanent)"""
 
-    def main(self):
-        super(self.__class__, self).main()
+    @errors.generic.all
+    def _run(self):
         self.history.clean()
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
 
 
 @command(history_cmds)
@@ -149,6 +161,7 @@ class history_run(_init_history):
         super(self.__class__, self).__init__(arguments)
         self._cmd_tree = cmd_tree
 
+    @errors.generic.all
     def _run_from_line(self, line):
         terms = split_input(line)
         cmd, args = self._cmd_tree.find_best_match(terms)
@@ -159,7 +172,8 @@ class history_run(_init_history):
             instance.config = self.config
             prs = ArgumentParseManager(cmd.path.split(),
                 dict(instance.arguments))
-            prs.syntax = '%s %s' % (cmd.path.replace('_', ' '),
+            prs.syntax = '%s %s' % (
+                cmd.path.replace('_', ' '),
                 cmd.get_class().syntax)
             prs.parse(args)
             exec_cmd(instance, prs.unparsed, prs.parser.print_help)
@@ -169,17 +183,16 @@ class history_run(_init_history):
             print('Execution of [ %s ] failed' % line)
             print('\t%s' % e)
 
+    @errors.generic.all
+    @errors.history._get_cmd_ids
     def _get_cmd_ids(self, cmd_ids):
-        if not cmd_ids:
-            raise CLISyntaxError('Usage: <id1|id1-id2> [id3|id3-id4] ...',
-                details=self.__doc__.split('\n'))
         cmd_id_list = []
         for cmd_str in cmd_ids:
             cmd_id_list += _get_num_list(cmd_str)
         return cmd_id_list
 
-    def main(self, *command_ids):
-        super(self.__class__, self).main()
+    @errors.generic.all
+    def _run(self, *command_ids):
         cmd_list = self._get_cmd_ids(command_ids)
         for cmd_id in cmd_list:
             r = self.history.retrieve(cmd_id)
@@ -190,3 +203,7 @@ class history_run(_init_history):
             if self._cmd_tree:
                 r = r[len('kamaki '):-1] if r.startswith('kamaki ') else r[:-1]
                 self._run_from_line(r)
+
+    def main(self, *command_ids):
+        super(self.__class__, self)._run()
+        self._run(*command_ids)
