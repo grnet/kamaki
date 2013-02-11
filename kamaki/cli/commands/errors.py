@@ -227,7 +227,11 @@ class cyclades(object):
             try:
                 return foo(self, *args, **kwargs)
             except ClientError as ce:
-                if network_id or ce.status == 421:
+                if network_id and ce.status == 400:
+                    raiseCLIError(ce,
+                        'Network with id %s does not exist' % network_id,
+                        details=self.about_network_id)
+                elif network_id or ce.status == 421:
                     raiseCLIError(ce,
                         'Network with id %s is in use' % network_id,
                         details=[
@@ -434,9 +438,7 @@ class pithos(object):
                         cont = '%s or %s' % (self.container, dst_cont)\
                         if dst_cont else self.container
                         raiseCLIError(ce,
-                            'Is container %s in account %s ?' % (
-                                cont,
-                                self.account),
+                            'Is container %s in current account?' % (cont),
                             details=this.container_howto)
                 raise
         return _raise
@@ -463,8 +465,8 @@ class pithos(object):
                 if (ce.status == 404 or ce.status == 500)\
                 and 'object' in err_msg and 'not' in err_msg:
                     raiseCLIError(ce,
-                        'No object %s in %s\'s container %s'\
-                        % (self.path, self.account, self.container),
+                        'No object %s in container %s'\
+                        % (self.path, self.container),
                         details=this.container_howto)
                 raise
         return _raise

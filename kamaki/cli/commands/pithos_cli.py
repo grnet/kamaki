@@ -53,6 +53,7 @@ from kamaki.cli.argument import KeyValueArgument, DateArgument
 from kamaki.cli.argument import ProgressBarArgument
 from kamaki.cli.commands import _command_init, errors
 from kamaki.clients.pithos import PithosClient, ClientError
+from kamaki.clients.astakos import AstakosClient
 
 
 kloger = getLogger('kamaki')
@@ -78,10 +79,6 @@ def raise_connection_errors(e):
             ' ',
             '  to get the service url: /config get store.url',
             '  to set the service url: /config set store.url <url>',
-            ' ',
-            '  to get user the account: /config get store.account',
-            '           or              /config get account',
-            '  to set the user account: /config set store.account <account>',
             ' ',
             '  to get authentication token: /config get token',
             '  to set authentication token: /config set token <token>'
@@ -189,8 +186,7 @@ class _pithos_init(_command_init):
             or self.config.get('global', 'token')
         self.base_url = self.config.get('store', 'url')\
             or self.config.get('global', 'url')
-        self.account = self.config.get('store', 'account')\
-            or self.config.get('global', 'account')
+        self._set_account()
         self.container = self.config.get('store', 'container')\
             or self.config.get('global', 'container')
         self.client = PithosClient(base_url=self.base_url,
@@ -200,6 +196,15 @@ class _pithos_init(_command_init):
 
     def main(self):
         self._run()
+
+    def _set_account(self):
+        astakos = AstakosClient(self.config.get('astakos', 'url'), self.token)
+        self.account = self['account'] or astakos.term('uuid')
+
+        """Backwards compatibility"""
+        self.account = self.account\
+            or self.config.get('store', 'account')\
+            or self.config.get('global', 'account')
 
 
 class _store_account_command(_pithos_init):
@@ -319,7 +324,7 @@ class _store_container_command(_store_account_command):
 class store_list(_store_container_command):
     """List containers, object trees or objects in a directory
     Use with:
-    1 no parameters : containers in set account
+    1 no parameters : containers in current account
     2. one parameter (container) or --container : contents of container
     3. <container>:<prefix> or --container=<container> <prefix>: objects in
     .   container starting with prefix

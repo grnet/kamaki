@@ -68,7 +68,7 @@ class CallError(Exception):
         args = None
         try:
             args = tuple(exc.args)
-        except (TypeError, AttributeError), e:
+        except (TypeError, AttributeError):
             pass
 
         if args is None:
@@ -87,7 +87,7 @@ class CallError(Exception):
             if 'error_args' in dictobj and 'call_error' in dictobj:
                 args = dictobj['error_args']
                 call_error = dictobj['call_error']
-        except TypeError, e:
+        except TypeError:
             pass
 
         if args is None:
@@ -100,24 +100,29 @@ class CallError(Exception):
         self = cls(*args, call_error=call_error, **kw)
         return self
 
+
 def register_exceptions(*exceptions):
     for exception in exceptions:
         if not issubclass(exception, CallError):
-            m = "Registering '%s': is not a CallError subclass" % (exception,) 
+            m = "Registering '%s': is not a CallError subclass" % (exception,)
             raise ValueError(m)
         CallError.exceptions[exception.__name__] = exception
+
 
 def register_exception(exc):
     register_exceptions(exc)
     return exc
 
+
 @register_exception
 class CorruptedError(CallError):
     pass
 
+
 @register_exception
 class InvalidDataError(CallError):
     pass
+
 
 class ReturnButFail(Exception):
     def __init__(self, retval=None):

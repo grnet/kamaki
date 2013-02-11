@@ -16,7 +16,7 @@ External applications may instantiate one or more kamaki clients.
 .. code-block:: python
     :emphasize-lines: 1
 
-    Example 1.1: Instantiate a Cyclades client
+    Example 1.1: Instantiate Cyclades and Pithos client
 
 
     from kamaki.clients.cyclades import CycladesClient
@@ -26,6 +26,14 @@ External applications may instantiate one or more kamaki clients.
     my_pithos_client = PithosClient(base_url, token, account, container)
 
 .. note:: *cyclades* and *pithos* clients inherit all methods of *compute* and *storage* clients respectively. Separate compute or storage objects should be used only when implementing applications for strict OS Compute or OS Storage services.
+
+.. note:: *account* variable is usually acquired by the following astakos call
+
+    .. code-block:: python
+
+        from kamaki.clients.astakos import AstakosClient
+        astakos = AstakosClient(astakos_base_url, token)
+        account = astakos.term('uuid')
 
 Use client methods
 ------------------

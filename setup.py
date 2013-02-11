@@ -44,9 +44,6 @@ optional = ['ansicolors',
             'progress>=1.0.2']
 requires = ['objpool']
 
-if version_info[:1] == (2, 6):
-    requires.append('argparse')
-
 setup(
     name='kamaki',
     version=kamaki.__version__,
@@ -57,9 +54,11 @@ setup(
     packages=[
         'kamaki',
         'kamaki.clients',
+        'kamaki.clients.tests',
         'kamaki.clients.connection',
         'kamaki.cli',
         'kamaki.cli.commands',
+        'kamaki.clients.tests',
         'kamaki.clients.commissioning',
         'kamaki.clients.quotaholder',
         'kamaki.clients.quotaholder.api',

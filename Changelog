@@ -1,8 +1,11 @@
-CHANGELOG for version 0.6.4
+CHANGELOG for version 0.7
 
 1. Clean up CLI error handling code
 2. Unify and improve data size units presentation
 3. Ask for user permission at store-delete
-4. Intuitive semantics for store-move/copy/upload
+4. Intuitive semantics for store-move/copy/download/upload (modified syntax and clients)
 5. Dynamically limit max number of threads
-6. Various CLI and dependency fixes
+6. Cache user info in astakos client
+7. Use UUID instead of email in pithos client calls
+8. Organize client unittests in a package and update to comply with new synnefo specs
+9. Allow character : in container operations in store interface
