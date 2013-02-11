@@ -482,8 +482,7 @@ class PithosRestAPI(StorageClient):
         self.set_param('hashmap', hashmap, iff=hashmap)
 
         self.set_header('Range', data_range)
-        self.set_header('If-Range', '',
-            if_range is True and data_range)
+        self.set_header('If-Range', '', if_range and data_range)
         self.set_header('If-Match', if_etag_match, )
         self.set_header('If-None-Match', if_etag_not_match)
         self.set_header('If-Modified-Since', if_modified_since)

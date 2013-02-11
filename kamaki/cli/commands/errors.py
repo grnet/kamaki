@@ -397,9 +397,9 @@ class plankton(object):
             except ClientError as ce:
                 ce_msg = ('%s' % ce).lower()
                 if ce.status == 404 or (
-                    ce.status == 400 and 'metadata' in ce_msg):
-                        msg = 'No properties with key %s in this image' % key
-                        raiseCLIError(ce, msg)
+                        ce.status == 400 and 'metadata' in ce_msg):
+                    msg = 'No properties with key %s in this image' % key
+                    raiseCLIError(ce, msg)
                 raise
         return _raise
 

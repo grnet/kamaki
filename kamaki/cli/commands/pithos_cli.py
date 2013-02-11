@@ -270,7 +270,8 @@ class _store_container_command(_store_account_command):
 
         if sep:
             if not user_cont:
-                raiseCLIError(CLISyntaxError('Container is missing\n',
+                raiseCLIError(CLISyntaxError(
+                    'Container is missing\n',
                     details=errors.pithos.container_howto))
             alt_cont = self['container']
             if alt_cont and user_cont != alt_cont:
@@ -369,8 +370,8 @@ class store_list(_store_container_command):
         limit = int(self['limit']) if self['limit'] > 0 else len(object_list)
         for index, obj in enumerate(object_list):
             if self['exact_match'] and self.path and not (
-                obj['name'] == self.path or 'content_type' in obj):
-                    continue
+                    obj['name'] == self.path or 'content_type' in obj):
+                continue
             pretty_obj = obj.copy()
             index += 1
             empty_space = ' ' * (len(str(len(object_list))) - len(str(index)))

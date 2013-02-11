@@ -183,6 +183,10 @@ class HTTPConnection(object):
         self.method = method
 
     def perform_request(
-        self,
-        method=None, url=None, async_headers={}, async_params={}, data=None):
+            self,
+            method=None,
+            url=None,
+            async_headers={},
+            async_params={},
+            data=None):
         raise NotImplementedError

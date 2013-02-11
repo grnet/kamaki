@@ -225,11 +225,11 @@ class CycladesClient(CycladesClientApi):
 
         :param nic_id: (str)
         """
-        server_nets = self.list_server_nics(server_id)
+        vm_nets = self.list_server_nics(server_id)
         num_of_disconnections = 0
         for (nic_id, network_id) in [(
-            net['id'],
-            net['network_id']) for net in server_nets if nic_id == net['id']]:
+                net['id'],
+                net['network_id']) for net in vm_nets if nic_id == net['id']]:
             req = {'remove': {'attachment': unicode(nic_id)}}
             r = self.networks_post(network_id, 'action', json_data=req)
             r.release()

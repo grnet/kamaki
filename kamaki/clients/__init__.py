@@ -125,8 +125,8 @@ class Client(object):
     def _watch_thread_limit(self, threadlist):
         recvlog.debug('# running threads: %s' % len(threadlist))
         if (self._elapsed_old > self._elapsed_new) and (
-            self._thread_limit < self.POOL_SIZE):
-                self._thread_limit += 1
+                self._thread_limit < self.POOL_SIZE):
+            self._thread_limit += 1
         elif self._elapsed_old < self._elapsed_new and self._thread_limit > 1:
             self._thread_limit -= 1
 

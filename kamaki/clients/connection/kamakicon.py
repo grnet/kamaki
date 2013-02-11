@@ -135,8 +135,8 @@ class KamakiHTTPConnection(HTTPConnection):
         return (parsed.scheme, parsed.netloc)
 
     def perform_request(
-        self,
-        method=None, data=None, async_headers={}, async_params={}):
+            self,
+            method=None, data=None, async_headers={}, async_params={}):
         """
         :param method: (str) http method ('get', 'post', etc.)
 

@@ -230,8 +230,8 @@ class PithosClient(PithosRestAPI):
         return r.json
 
     def _caclulate_uploaded_blocks(
-        self, blocksize, blockhash, size, nblocks, hashes, hmap, fileobj,
-        hash_cb=None):
+            self, blocksize, blockhash, size, nblocks, hashes, hmap, fileobj,
+            hash_cb=None):
         offset = 0
         if hash_cb:
             hash_gen = hash_cb(nblocks)
@@ -269,9 +269,9 @@ class PithosClient(PithosRestAPI):
                 if thread.exception:
                     failures.append(thread)
                     if isinstance(
-                        thread.exception,
-                        ClientError) and thread.exception.status == 502:
-                            self.POOLSIZE = self._thread_limit
+                            thread.exception,
+                            ClientError) and thread.exception.status == 502:
+                        self.POOLSIZE = self._thread_limit
                 elif thread.isAlive():
                     flying.append(thread)
                 elif upload_gen:
@@ -741,7 +741,8 @@ class PithosClient(PithosRestAPI):
         :raises ClientError: 409 Container is not empty
         """
         self._assert_container()
-        r = self.container_delete(until=until,
+        r = self.container_delete(
+            until=until,
             delimiter=delimiter,
             success=(204, 404, 409))
         r.release()
@@ -943,8 +944,8 @@ class PithosClient(PithosRestAPI):
         return reply
 
     def set_object_sharing(
-        self, obj,
-        read_permition=False, write_permition=False):
+            self, obj,
+            read_permition=False, write_permition=False):
         """Give read/write permisions to an object.
 
         :param obj: (str) remote object path
@@ -1018,9 +1019,7 @@ class PithosClient(PithosRestAPI):
             source_object=path4url(self.container, obj))
         r.release()
 
-    def overwrite_object(
-        self, obj, start, end, source_file,
-        upload_cb=None):
+    def overwrite_object(self, obj, start, end, source_file, upload_cb=None):
         """Overwrite a part of an object from local source file
 
         :param obj: (str) remote object path
@@ -1073,12 +1072,12 @@ class PithosClient(PithosRestAPI):
                 upload_gen.next()
 
     def copy_object(
-        self, src_container, src_object, dst_container,
-        dst_object=False,
-        source_version=None,
-        public=False,
-        content_type=None,
-        delimiter=None):
+            self, src_container, src_object, dst_container,
+            dst_object=False,
+            source_version=None,
+            public=False,
+            content_type=None,
+            delimiter=None):
         """
         :param src_container: (str) source container
 

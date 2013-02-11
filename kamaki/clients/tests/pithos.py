@@ -664,7 +664,8 @@ class Pithos(tests.Generic):
         self.assertEqual(r['content-type'], 'application/octet-stream')
 
         """create the object"""
-        r = self.client.object_put(obj,
+        r = self.client.object_put(
+            obj,
             data='a',
             content_type='application/octer-stream',
             permissions=dict(
@@ -838,7 +839,8 @@ class Pithos(tests.Generic):
         obj = 'test2'
 
         data = '{"key1":"val1", "key2":"val2"}'
-        r = self.client.object_put(obj + 'orig',
+        r = self.client.object_put(
+            '%sorig' % obj,
             content_type='application/octet-stream',
             data=data,
             metadata=dict(mkey1='mval1', mkey2='mval2'),

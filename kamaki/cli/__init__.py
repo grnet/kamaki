@@ -56,9 +56,9 @@ _best_match = []
 def _arg2syntax(arg):
     return arg.replace(
         '____', '[:').replace(
-        '___', ':').replace(
-        '__', ']').replace(
-        '_', ' ')
+            '___', ':').replace(
+                '__', ']').replace(
+                    '_', ' ')
 
 
 def _construct_command_syntax(cls):

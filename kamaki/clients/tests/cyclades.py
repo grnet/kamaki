@@ -142,8 +142,8 @@ class Cyclades(tests.Generic):
             for net in nics:
                 found_nic = net['network_id'] == netid
                 if (in_creation and found_nic) or not (
-                    in_creation or found_nic):
-                        return
+                        in_creation or found_nic):
+                    return
             time.sleep(wait)
         self.do_with_progress_bar(
             nicwait,
@@ -152,8 +152,10 @@ class Cyclades(tests.Generic):
                 servid,
                 '' if in_creation else 'dis'),
             self._waits[:5])
-        return netid in [net['network_id']\
-            for net in self.client.list_server_nics(servid)]
+        for net in self.client.list_server_nics(servid):
+            if netid == net['network_id']:
+                return True
+        return False
 
     def _has_status(self, servid, status):
         r = self.client.get_server_details(servid)
@@ -254,13 +256,13 @@ class Cyclades(tests.Generic):
         self.assertEqual(len(dservers), len(servers))
         for i in range(len(servers)):
             for field in (
-                'created',
-                'flavorRef',
-                'hostId',
-                'imageRef',
-                'progress',
-                'status',
-                'updated'):
+                    'created',
+                    'flavorRef',
+                    'hostId',
+                    'imageRef',
+                    'progress',
+                    'status',
+                    'updated'):
                 self.assertFalse(field in servers[i])
                 self.assertTrue(field in dservers[i])
 
@@ -302,8 +304,9 @@ class Cyclades(tests.Generic):
     def _test_0050_update_server_name(self):
         new_name = self.servname1 + '_new_name'
         self.client.update_server_name(self.server1['id'], new_name)
-        r = self.client.get_server_details(self.server1['id'],
-         success=(200, 400))
+        r = self.client.get_server_details(
+            self.server1['id'],
+            success=(200, 400))
         self.assertEqual(r['name'], new_name)
         changed = self.servers.pop(self.servname1)
         changed['name'] = new_name
@@ -339,7 +342,8 @@ class Cyclades(tests.Generic):
 
     def test_create_server_metadata(self):
         """Test create_server_metadata"""
-        self.server1 = self._create_server(self.servname1,
+        self.server1 = self._create_server(
+            self.servname1,
             self.flavorid,
             self.img)
         self._test_0080_create_server_metadata()
