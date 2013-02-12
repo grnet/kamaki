@@ -35,7 +35,6 @@ import inspect
 from unittest import TestCase, TestSuite, TextTestRunner
 from argparse import ArgumentParser
 from sys import stdout
-from progress.bar import ShadyBar
 
 from kamaki.cli.config import Config
 from kamaki.cli.utils import spiner
@@ -88,6 +87,7 @@ class Generic(TestCase):
     def _safe_progress_bar(self, msg):
         """Try to get a progress bar, but do not raise errors"""
         try:
+            from progress.bar import ShadyBar
             wait_bar = ShadyBar(msg)
 
             def wait_gen(n):
