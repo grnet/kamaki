@@ -66,22 +66,14 @@ class Callpoint(object):
 
         for call_name, call_doc in canonifier.call_docs():
             if hasattr(self, call_name):
-                # don't crash: wrap the function instead
-                #m = (   "Method '%s' defined both in natively "
-                #        "in callpoint '%s' and in api spec '%s'" %
-                #            (call_name,
-                #             type(self).__name__,
-                #             type(canonifier).__name__)             )
 
                 #raise ValueError(m)
                 call_func = getattr(self, call_name)
                 if not callable(call_func):
-                    m = ("api spec '%s', method '%s' is not a "\
-                            "callable attribute in callpoint '%s'" %\
-                            (type(canonifier).__name__,
-                            call_name,
-                            type(self).__name))
-                    raise ValueError(m)
+                    raise ValueError(' '.join([
+                        "api spec '%s'," % type(canonifier).__name__,
+                        "method '%s' is not a callable" % call_name,
+                        "attribute in callpoint '%s'" % type(self).__name]))
 
                 original_calls[call_name] = call_func
 

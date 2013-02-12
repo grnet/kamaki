@@ -44,14 +44,10 @@ from base64 import b64encode
 from os.path import exists
 
 
-server_cmds = CommandTree('server',
-    'Compute/Cyclades API server commands')
-flavor_cmds = CommandTree('flavor',
-    'Compute/Cyclades API flavor commands')
-image_cmds = CommandTree('image',
-    'Compute/Cyclades or Glance API image commands')
-network_cmds = CommandTree('network',
-    'Compute/Cyclades API network commands')
+server_cmds = CommandTree('server', 'Compute/Cyclades API server commands')
+flavor_cmds = CommandTree('flavor', 'Compute/Cyclades API flavor commands')
+image_cmds = CommandTree('image', 'Cyclades/Plankton API image commands')
+network_cmds = CommandTree('network', 'Compute/Cyclades API network commands')
 _commands = [server_cmds, flavor_cmds, image_cmds, network_cmds]
 
 
@@ -186,12 +182,12 @@ class PersonalityArgument(KeyValueArgument):
         for i, terms in enumerate(newvalue):
             termlist = terms.split(',')
             if len(termlist) > 5:
-                raiseCLIError(
-                CLISyntaxError('Wrong number of terms (should be 1 to 5)'),
-                details=howto_personality)
+                msg = 'Wrong number of terms (should be 1 to 5)'
+                raiseCLIError(CLISyntaxError(msg), details=howto_personality)
             path = termlist[0]
             if not exists(path):
-                raiseCLIError(None,
+                raiseCLIError(
+                    None,
                     '--personality: File %s does not exist' % path,
                     importance=1,
                     details=howto_personality)
@@ -497,8 +493,8 @@ class flavor_list(_init_cyclades):
         detail=FlagArgument('show detailed output', '-l'),
         limit=IntArgument('limit the number of flavors to list', '-n'),
         more=FlagArgument(
-        'output results in pages (-n to set items per page, default 10)',
-        '--more')
+            'output results in pages (-n to set items per page, default 10)',
+            '--more')
     )
 
     @errors.generic.all
@@ -580,8 +576,7 @@ class network_list(_init_cyclades):
         if self['detail']:
             self._make_results_pretty(networks)
         if self['more']:
-            print_items(networks,
-                page_size=self['limit'] if self['limit'] else 10)
+            print_items(networks, page_size=self['limit'] or 10)
         elif self['limit']:
             print_items(networks[:self['limit']])
         else:
@@ -607,7 +602,8 @@ class network_create(_init_cyclades):
     @errors.cyclades.connection
     @errors.cyclades.network_max
     def _run(self, name):
-        r = self.client.create_network(name,
+        r = self.client.create_network(
+            name,
             cidr=self['cidr'],
             gateway=self['gateway'],
             dhcp=self['dhcp'],

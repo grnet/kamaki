@@ -33,6 +33,8 @@
 
 from sys import stdout, stdin
 from re import compile as regex_compile
+from time import sleep
+
 from kamaki.cli.errors import raiseCLIError
 
 try:
@@ -69,11 +71,9 @@ def pretty_keys(d, delim='_', recurcive=False):
     return new_d
 
 
-def print_dict(d,
-    exclude=(),
-    ident=0,
-    with_enumeration=False,
-    recursive_enumeration=False):
+def print_dict(
+        d, exclude=(), ident=0,
+        with_enumeration=False, recursive_enumeration=False):
     """
     Pretty-print a dictionary object
 
@@ -94,8 +94,8 @@ def print_dict(d,
         raiseCLIError(TypeError('Cannot dict_print a non-dict object'))
 
     if d:
-        margin = max(len(unicode(key).strip())\
-            for key in d.keys() if key not in exclude)
+        margin = max(len(('%s' % key).strip()) for key in d.keys() if (
+            key not in exclude))
 
     counter = 1
     for key, val in sorted(d.items()):
@@ -111,14 +111,16 @@ def print_dict(d,
         print_str += ': '
         if isinstance(val, dict):
             print(print_str)
-            print_dict(val,
+            print_dict(
+                val,
                 exclude=exclude,
                 ident=margin + ident,
                 with_enumeration=recursive_enumeration,
                 recursive_enumeration=recursive_enumeration)
         elif isinstance(val, list):
             print(print_str)
-            print_list(val,
+            print_list(
+                val,
                 exclude=exclude,
                 ident=margin + ident,
                 with_enumeration=recursive_enumeration,
@@ -127,11 +129,9 @@ def print_dict(d,
             print print_str + ' ' + unicode(val).strip()
 
 
-def print_list(l,
-    exclude=(),
-    ident=0,
-    with_enumeration=False,
-    recursive_enumeration=False):
+def print_list(
+        l, exclude=(), ident=0,
+        with_enumeration=False, recursive_enumeration=False):
     """
     Pretty-print a list object
 
@@ -153,10 +153,10 @@ def print_list(l,
 
     if l:
         try:
-            margin = max(len(unicode(item).strip()) for item in l\
-                if not (isinstance(item, dict)\
-                or isinstance(item, list)\
-                or item in exclude))
+            margin = max(len(('%s' % item).strip()) for item in l if not (
+                isinstance(item, dict) or
+                isinstance(item, list) or
+                item in exclude))
         except ValueError:
             margin = (2 + len(unicode(len(l)))) if enumerate else 1
 
@@ -174,7 +174,8 @@ def print_list(l,
         if isinstance(item, dict):
             if with_enumeration:
                 print(prefix)
-            print_dict(item,
+            print_dict(
+                item,
                 exclude=exclude,
                 ident=margin + ident,
                 with_enumeration=recursive_enumeration,
@@ -182,7 +183,8 @@ def print_list(l,
         elif isinstance(item, list):
             if with_enumeration:
                 print(prefix)
-            print_list(item,
+            print_list(
+                item,
                 exclude=exclude,
                 ident=margin + ident,
                 with_enumeration=recursive_enumeration,
@@ -212,11 +214,10 @@ def page_hold(index, limit, maxlen):
     return True
 
 
-def print_items(items,
-    title=('id', 'name'),
-    with_enumeration=False,
-    with_redundancy=False,
-    page_size=0):
+def print_items(
+        items, title=('id', 'name'),
+        with_enumeration=False, with_redundancy=False,
+        page_size=0):
     """print dict or list items in a list, using some values as title
     Objects of next level don't inherit enumeration (default: off) or titles
 
@@ -393,8 +394,21 @@ def ask_user(msg, true_resp=['Y', 'y']):
     return user_response[0] in true_resp + ['\n']
 
 
+def spiner(size=None):
+    spins = ('/', '-', '\\', '|')
+    stdout.write(' ')
+    size = size or -1
+    i = 0
+    while size - i:
+        stdout.write('\b%s' % spins[i % len(spins)])
+        stdout.flush()
+        i += 1
+        sleep(0.1)
+        yield
+
 if __name__ == '__main__':
-    examples = ['la_la le_le li_li',
+    examples = [
+        'la_la le_le li_li',
         '\'la la\' \'le le\' \'li li\'',
         '\'la la\' le_le \'li li\'',
         'la_la \'le le\' li_li',
@@ -413,8 +427,7 @@ if __name__ == '__main__':
         '"la \'le le\' la"',
         '\'la "le le" la\'',
         '\'la "la" la\' "le \'le\' le" li_"li"_li',
-        '\'\' \'L\' "" "A"'
-    ]
+        '\'\' \'L\' "" "A"']
 
     for i, example in enumerate(examples):
         print('%s. Split this: (%s)' % (i + 1, example))

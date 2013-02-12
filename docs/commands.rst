@@ -24,15 +24,14 @@ In the following, the token has been set in a previous step (see `setup section 
 
     * Authenticate user *
     [astakos]:authenticate
-    auth_token        :  s0m3t0k3nth@t1sr3m0v3d==
     auth_token_created:  2012-11-13T14:12:40.917034
     auth_token_expires:  2012-12-13T14:12:40.917035
-    groups            : 
-                      default
-    has_credits       :  False
-    has_signed_terms  :  True
-    uniq              :  myaccount@grnet.gr
-    username          :  4215th3b357num9323v32
+    email             :  
+                       myaccount@grnet.gr
+                       myotheraccount@grnet.gr
+    name              :  My Real Name
+    username          :  usually@an.email.org
+    uuid              :  ab1cde23-45fg-6h7i-8j9k-10l1m11no2pq
 
 flavor (Compute/Cyclades)
 -------------------------
@@ -300,11 +299,11 @@ store (Storage/Pithos+)
     copy          :  Copy an object
     create        :  Create a container
     delete        :  Delete a container [or an object]
-    delgroup      :  Delete a user group on an account
-    delmeta       :  Delete an existing metadatum of account [, container [or object]]
+    delgroup      :  Delete a user group
+    delmeta       :  Delete an existing metadatum for an account [, container [or object]]
     delpermissions:  Delete all sharing permissions
     download      :  Download a file
-    group         :  Get user groups details for account
+    group         :  Get user groups details
     hashmap       :  Get the hashmap of an object
     info          :  Get information for account [, container [or object]]
     list          :  List containers, object trees or objects in a directory
@@ -317,7 +316,7 @@ store (Storage/Pithos+)
     publish       :  Publish an object
     purge         :  Purge a container
     quota         :  Get  quota for account [or container]
-    setgroup      :  Create/update a new user group on account
+    setgroup      :  Create/update a new user group
     setmeta       :  Set a new metadatum for account [, container [or object]]
     setpermissions:  Set sharing permissions
     setquota      :  Set new quota (in KB) for account [or container]
