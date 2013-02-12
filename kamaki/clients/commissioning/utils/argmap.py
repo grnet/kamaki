@@ -60,28 +60,28 @@ class arguments(object):
         return repr(self.args) + '+' + repr(self.kw)
 
     def __getitem__(self, key):
-        if (isinstance(key, int)
-            or isinstance(key, long)
-            or isinstance(key, slice)):
-                return self.args[key]
+        if (isinstance(key, int)) or (
+                isinstance(key, long)) or (
+                    isinstance(key, slice)):
+            return self.args[key]
         else:
             return self.kw[key]
 
     def __setitem__(self, key, value):
-        if (isinstance(key, int)
-            or isinstance(key, long)
-            or isinstance(key, slice)):
-                self.args[key] = value
+        if (isinstance(key, int)) or (
+                isinstance(key, long)) or (
+                    isinstance(key, slice)):
+            self.args[key] = value
         else:
             self.kw[key] = value
 
     def __delitem__(self, key):
-        if (isinstance(key, int)
-            or isinstance(key, long)
-            or isinstance(key, slice)):
-                del self.args[key]
+        if (isinstance(key, int)) or (
+                isinstance(key, long)) or (
+                    isinstance(key, slice)):
+            del self.args[key]
         else:
-                del self.kw[key]
+            del self.kw[key]
 
     def iteritems(self):
         for item in self.args:

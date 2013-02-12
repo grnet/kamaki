@@ -68,19 +68,15 @@ class CLIUnknownCommand(CLIError):
 
 class CLICmdSpecError(CLIError):
     def __init__(
-        self,
-        message='Command Specification Error',
-        details=[],
-        importance=0):
+            self, message='Command Specification Error',
+            details=[], importance=0):
         super(CLICmdSpecError, self).__init__(message, details, importance)
 
 
 class CLICmdIncompleteError(CLICmdSpecError):
     def __init__(
-        self,
-        message='Incomplete Command Error',
-        details=[],
-        importance=1):
+            self, message='Incomplete Command Error',
+            details=[], importance=1):
         super(CLICmdSpecError, self).__init__(message, details, importance)
 
 

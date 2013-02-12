@@ -71,12 +71,12 @@ class ComputeClientApi(Client):
         return self.delete(path, success=success, **kwargs)
 
     def servers_post(
-        self,
-        server_id='',
-        command='',
-        json_data=None,
-        success=202,
-        **kwargs):
+            self,
+            server_id='',
+            command='',
+            json_data=None,
+            success=202,
+            **kwargs):
         """POST base_url/servers[/server_id]/[command] request
 
         :param server_id: integer (as int or str)
@@ -101,12 +101,12 @@ class ComputeClientApi(Client):
         return self.post(path, data=data, success=success, **kwargs)
 
     def servers_put(
-        self,
-        server_id='',
-        command='',
-        json_data=None,
-        success=204,
-        **kwargs):
+            self,
+            server_id='',
+            command='',
+            json_data=None,
+            success=204,
+            **kwargs):
         """PUT base_url/servers[/server_id]/[command] request
 
         :param server_id: integer (as int or str)
@@ -179,12 +179,12 @@ class ComputeClientApi(Client):
         return self.delete(path, success=success, **kwargs)
 
     def images_post(
-        self,
-        image_id='',
-        command='',
-        json_data=None,
-        success=201,
-        **kwargs):
+            self,
+            image_id='',
+            command='',
+            json_data=None,
+            success=201,
+            **kwargs):
         """POST base_url/images[/image_id]/[command] request
 
         :param image_id: string
@@ -209,12 +209,12 @@ class ComputeClientApi(Client):
         return self.post(path, data=data, success=success, **kwargs)
 
     def images_put(
-        self,
-        image_id='',
-        command='',
-        json_data=None,
-        success=201,
-        **kwargs):
+            self,
+            image_id='',
+            command='',
+            json_data=None,
+            success=201,
+            **kwargs):
         """PUT base_url/images[/image_id]/[command] request
 
         :param image_id: string

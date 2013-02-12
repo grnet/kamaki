@@ -36,6 +36,7 @@ from kamaki.cli.errors import CLISyntaxError, raiseCLIError
 from kamaki.cli.utils import split_input
 from logging import getLogger
 from datetime import datetime as dtm
+from time import mktime
 
 
 from argparse import ArgumentParser, ArgumentError
@@ -195,9 +196,9 @@ class CmdLineConfigArgument(Argument):
             if not sep:
                 raiseCLIError(
                     CLISyntaxError('Argument Syntax Error '),
-                    details=['%s is missing a "="',
-                    ' (usage: -o section.key=val)' % option]
-                )
+                    details=[
+                        '%s is missing a "="',
+                        ' (usage: -o section.key=val)' % option])
             section, sep, key = keypath.partition('.')
         if not sep:
             key = section
@@ -242,8 +243,8 @@ class IntArgument(ValueArgument):
         try:
             self._value = int(newvalue)
         except ValueError:
-            raiseCLIError(
-                CLISyntaxError('IntArgument Error',
+            raiseCLIError(CLISyntaxError(
+                'IntArgument Error',
                 details=['Value %s not an int' % newvalue]))
 
 
@@ -262,14 +263,23 @@ class DateArgument(ValueArgument):
     INPUT_FORMATS = DATE_FORMATS + ["%d-%m-%Y", "%H:%M:%S %d-%m-%Y"]
 
     @property
+    def timestamp(self):
+        v = getattr(self, '_value', self.default)
+        return mktime(v.timetuple()) if v else None
+
+    @property
+    def formated(self):
+        v = getattr(self, '_value', self.default)
+        return v.strftime(self.DATE_FORMATS[0]) if v else None
+
+    @property
     def value(self):
-        return getattr(self, '_value', self.default)
+        return self.timestamp
 
     @value.setter
     def value(self, newvalue):
-        if newvalue is None:
-            return
-        self._value = self.format_date(newvalue)
+        if newvalue:
+            self._value = self.format_date(newvalue)
 
     def format_date(self, datestr):
         for format in self.INPUT_FORMATS:
@@ -277,13 +287,12 @@ class DateArgument(ValueArgument):
                 t = dtm.strptime(datestr, format)
             except ValueError:
                 continue
-            self._value = t.strftime(self.DATE_FORMATS[0])
-            return
+            return t  # .strftime(self.DATE_FORMATS[0])
         raiseCLIError(
             None,
             'Date Argument Error',
-            details='%s not a valid date. correct formats:\n\t%s'\
-            % (datestr, self.INPUT_FORMATS))
+            details='%s not a valid date. correct formats:\n\t%s' % (
+                datestr, self.INPUT_FORMATS))
 
 
 class VersionArgument(FlagArgument):
