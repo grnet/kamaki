@@ -115,8 +115,11 @@ class Command(object):
         return cmd, args[index:]
 
     def pretty_print(self, recursive=False):
-        print('Path: %s (Name: %s) is_cmd: %s\n\thelp: %s'\
-            % (self.path, self.name, self.is_command, self.help))
+        print('Path: %s (Name: %s) is_cmd: %s\n\thelp: %s' % (
+            self.path,
+            self.name,
+            self.is_command,
+            self.help))
         for cmd in self.get_subcommands():
             cmd.pretty_print(recursive)
 
@@ -204,12 +207,14 @@ class CommandTree(object):
         return self._all_commands[path].get_class()
 
     def get_subnames(self, path=None):
-        return self.get_group_names() if path in (None, '') \
-        else self._all_commands[path].get_subnames()
+        if path in (None, ''):
+            return self.get_group_names()
+        return self._all_commands[path].get_subnames()
 
     def get_subcommands(self, path=None):
-        return self.get_groups() if path in (None, '') \
-        else self._all_commands[path].get_subcommands()
+        if path in (None, ''):
+            return self.get_groups()
+        return self._all_commands[path].get_subcommands()
 
     def get_parent(self, path):
         if '_' not in path:

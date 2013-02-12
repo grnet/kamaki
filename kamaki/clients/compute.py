@@ -98,8 +98,10 @@ class ComputeClient(ComputeClientApi):
             r = self.servers_post(json_data=req)
         except ClientError as err:
             try:
-                tmp_err = err.details if isinstance(err.details, list)\
-                else unicode(err.details).split(',')
+                if isinstance(err.details, list):
+                    tmp_err = err.details
+                else:
+                    tmp_err = unicode(err.details).split(',')
                 tmp_err = tmp_err[0].split(':')
                 tmp_err = tmp_err[2].split('"')
                 err.message = tmp_err[1]
@@ -161,7 +163,8 @@ class ComputeClient(ComputeClientApi):
         :returns: dict of updated key:val metadata
         """
         req = {'meta': {key: val}}
-        r = self.servers_put(server_id,
+        r = self.servers_put(
+            server_id,
             'meta/' + key,
             json_data=req,
             success=201)
@@ -229,8 +232,8 @@ class ComputeClient(ComputeClientApi):
         try:
             return r.json['image']
         except KeyError:
-            raise ClientError('Image not available', 404,
-                details='Image %d not found or not accessible')
+            raise ClientError('Image not available', 404, details=[
+                'Image %d not found or not accessible'])
 
     def delete_image(self, image_id):
         """

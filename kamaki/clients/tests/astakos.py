@@ -47,13 +47,13 @@ class Astakos(tests.Generic):
     def _test_0010_authenticate(self):
         r = self.client.authenticate()
         for term in (
-            'name',
-            'username',
-            'auth_token_expires',
-            'auth_token_created',
-            'uuid',
-            'id',
-            'email'):
+                'name',
+                'username',
+                'auth_token_expires',
+                'auth_token_created',
+                'uuid',
+                'id',
+                'email'):
             self.assertTrue(term in r)
 
     def test_info(self):
@@ -69,10 +69,7 @@ class Astakos(tests.Generic):
         self._test_0020_get()
 
     def _test_0020_get(self):
-        for term in (
-            'uuid',
-            'name',
-            'username'):
+        for term in ('uuid', 'name', 'username'):
             self.assertEqual(
                 self.client.term(term, self['astakos', 'token']),
                 self['astakos', term])
