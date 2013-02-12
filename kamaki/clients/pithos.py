@@ -1,4 +1,4 @@
-# Copyright 2011-2012 GRNET S.A. All rights reserved.
+# Copyright 2011-2013 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -246,10 +246,9 @@ class PithosClient(PithosRestAPI):
             offset += bytes
             if hash_cb:
                 hash_gen.next()
-        if offset != size:
-            msg = 'Failed to calculate uploaded blocks:'
-            msg += ' Offset and object size do not match'
-            assert offset == size, msg
+        msg = 'Failed to calculate uploaded blocks:'
+        msg += ' Offset and object size do not match'
+        assert offset == size, msg
 
     def _upload_missing_blocks(self, missing, hmap, fileobj, upload_gen=None):
         """upload missing blocks asynchronously"""

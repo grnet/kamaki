@@ -54,6 +54,10 @@ setup(
     long_description=open('README.rst').read(),
     url='http://code.grnet.gr/projects/kamaki',
     license='BSD',
+    author='Synnefo development team',
+    author_email='synnefo-devel@googlegroups.com',
+    maintainer='Synnefo development team',
+    maintainer_email='synnefo-devel@googlegroups.com',
     packages=[
         'kamaki',
         'kamaki.clients',
