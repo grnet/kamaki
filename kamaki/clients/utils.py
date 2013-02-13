@@ -118,21 +118,3 @@ def params4url(params):
         result += '=%s' % params[name] if params[name] else result
         dlmtr = '&'
     return result
-
-
-def list2str(alist, separator=','):
-    """[val1, val2, val3] --> "val1,val2,val3"
-
-    :param separator: (str)
-
-    :returns: (str) all list elements separated by separator
-    """
-
-    ret = ''
-    slist = sorted(alist)
-    for item in slist:
-        if 0 == slist.index(item):
-            ret = unicode(item)
-        else:
-            ret += separator + unicode(item)
-    return ret

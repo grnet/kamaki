@@ -32,7 +32,7 @@
 # or implied, of GRNET S.A.
 
 from kamaki.clients.storage import StorageClient
-from kamaki.clients.utils import path4url, list2str
+from kamaki.clients.utils import path4url
 
 
 class PithosRestAPI(StorageClient):
@@ -275,7 +275,8 @@ class PithosRestAPI(StorageClient):
         else:
             self.set_param('path', path)
         self.set_param('shared', iff=show_only_shared)
-        self.set_param('meta', list2str(meta), iff=meta)
+        print('la%sla' % 1 if meta else 2)
+        self.set_param('meta',  ','.join(meta), iff=meta)
         self.set_param('until', until, iff=until)
 
         self.set_header('If-Modified-Since', if_modified_since)
@@ -601,7 +602,7 @@ class PithosRestAPI(StorageClient):
                     perms += ';'
                 perms += '%s=%s' % (
                     permission_type,
-                    list2str(permission_list, separator=','))
+                     ','.join(permission_list, separator=','))
         self.set_header('X-Object-Sharing', perms)
         self.set_header('X-Object-Public', public)
         if metadata:
@@ -697,7 +698,7 @@ class PithosRestAPI(StorageClient):
                     perms += ';'
                 perms += '%s=%s' % (
                     permission_type,
-                    list2str(permission_list, separator=','))
+                     ','.join(permission_list, separator=','))
         self.set_header('X-Object-Sharing', perms)
         self.set_header('X-Object-Public', public)
         if metadata:
@@ -787,7 +788,7 @@ class PithosRestAPI(StorageClient):
                 perms += ';'
             perms += '%s=%s' % (
                 permission_type,
-                list2str(permission_list, separator=','))
+                 ','.join(permission_list, separator=','))
         self.set_header('X-Object-Sharing', perms)
         self.set_header('X-Object-Public', public)
         for key, val in metadata.items():
@@ -902,7 +903,7 @@ class PithosRestAPI(StorageClient):
                 perms += ';'
             perms += '%s=%s' % (
                 permission_type,
-                list2str(permission_list, separator=','))
+                 ','.join(permission_list, separator=','))
         self.set_header('X-Object-Sharing', perms)
         self.set_header('X-Object-Public', public)
         for key, val in metadata.items():
