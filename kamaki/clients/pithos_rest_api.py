@@ -159,13 +159,14 @@ class PithosRestAPI(StorageClient):
 
         self.set_param('update', iff=update)
 
-        for group, usernames in groups.items():
-            userstr = ''
-            dlm = ''
-            for user in usernames:
-                userstr = userstr + dlm + user
-                dlm = ','
-            self.set_header('X-Account-Group-' + group, userstr)
+        if groups:
+            for group, usernames in groups.items():
+                userstr = ''
+                dlm = ''
+                for user in usernames:
+                    userstr = userstr + dlm + user
+                    dlm = ','
+                self.set_header('X-Account-Group-' + group, userstr)
         if metadata:
             for metaname, metaval in metadata.items():
                 self.set_header('X-Account-Meta-' + metaname, metaval)
@@ -275,8 +276,8 @@ class PithosRestAPI(StorageClient):
         else:
             self.set_param('path', path)
         self.set_param('shared', iff=show_only_shared)
-        print('la%sla' % 1 if meta else 2)
-        self.set_param('meta',  ','.join(meta), iff=meta)
+        if meta:
+            self.set_param('meta',  ','.join(meta))
         self.set_param('until', until, iff=until)
 
         self.set_header('If-Modified-Since', if_modified_since)
@@ -591,19 +592,16 @@ class PithosRestAPI(StorageClient):
         self.set_header('Content-Encoding', content_encoding)
         self.set_header('Content-Disposition', content_disposition)
         self.set_header('X-Object-Manifest', manifest)
-        perms = None
         if permissions:
-            for permission_type, permission_list in permissions.items():
-                if not perms:
-                    perms = ''  # Remove permissions
-                if len(permission_list) == 0:
-                    continue
-                if len(perms):
-                    perms += ';'
-                perms += '%s=%s' % (
-                    permission_type,
-                     ','.join(permission_list, separator=','))
-        self.set_header('X-Object-Sharing', perms)
+            perms = None
+            if permissions:
+                for perm_type, perm_list in permissions.items():
+                    if not perms:
+                        perms = ''  # Remove permissions
+                    if perm_list:
+                        perms += ';' if perms else ''
+                        perms += '%s=%s' % (perm_type, ','.join(perm_list))
+            self.set_header('X-Object-Sharing', perms)
         self.set_header('X-Object-Public', public)
         if metadata:
             for key, val in metadata.items():
@@ -687,19 +685,15 @@ class PithosRestAPI(StorageClient):
         self.set_header('Content-Encoding', content_encoding)
         self.set_header('Content-Disposition', content_disposition)
         self.set_header('X-Source-Version', source_version)
-        perms = None
         if permissions:
-            for permission_type, permission_list in permissions.items():
+            perms = ''
+            for perm_type, perm_list in permissions.items():
                 if not perms:
                     perms = ''  # Remove permissions
-                if len(permission_list) == 0:
-                    continue
-                if len(perms):
-                    perms += ';'
-                perms += '%s=%s' % (
-                    permission_type,
-                     ','.join(permission_list, separator=','))
-        self.set_header('X-Object-Sharing', perms)
+                if perm_list:
+                    perms += ';' if perms else ''
+                    perms += '%s=%s' % (perm_type, ','.join(perm_list))
+            self.set_header('X-Object-Sharing', perms)
         self.set_header('X-Object-Public', public)
         if metadata:
             for key, val in metadata.items():
@@ -778,21 +772,19 @@ class PithosRestAPI(StorageClient):
         self.set_header('Content-Type', content_type)
         self.set_header('Content-Encoding', content_encoding)
         self.set_header('Content-Disposition', content_disposition)
-        perms = None
-        for permission_type, permission_list in permissions.items():
-            if not perms:
-                perms = ''  # Remove permissions
-            if len(permission_list) == 0:
-                continue
-            if len(perms):
-                perms += ';'
-            perms += '%s=%s' % (
-                permission_type,
-                 ','.join(permission_list, separator=','))
-        self.set_header('X-Object-Sharing', perms)
+        if permissions:
+            perms = ''
+            for perm_type, perm_list in permissions.items():
+                if not perms:
+                    perms = ''  # Remove permissions
+                if perm_list:
+                    perms += ';' if perms else ''
+                    perms += '%s=%s' % (perm_type, ','.join(perm_list))
+            self.set_header('X-Object-Sharing', perms)
         self.set_header('X-Object-Public', public)
-        for key, val in metadata.items():
-            self.set_header('X-Object-Meta-' + key, val)
+        if metadata:
+            for key, val in metadata.items():
+                self.set_header('X-Object-Meta-' + key, val)
 
         path = path4url(self.account, self.container, object)
         success = kwargs.pop('success', 201)
@@ -893,18 +885,15 @@ class PithosRestAPI(StorageClient):
         self.set_header('X-Source-Version', source_version)
         self.set_header('X-Object-Bytes', object_bytes)
         self.set_header('X-Object-Manifest', manifest)
-        perms = None
-        for permission_type, permission_list in permissions.items():
-            if not perms:
-                perms = ''  # Remove permissions
-            if len(permission_list) == 0:
-                continue
-            if len(perms):
-                perms += ';'
-            perms += '%s=%s' % (
-                permission_type,
-                 ','.join(permission_list, separator=','))
-        self.set_header('X-Object-Sharing', perms)
+        if permissions:
+            perms = ''
+            for perm_type, perm_list in permissions.items():
+                if not perms:
+                    perms = ''  # Remove permissions
+                if perm_list:
+                    perms += ';' if perms else ''
+                    perms += '%s=%s' % (perm_type, ','.join(perm_list))
+                self.set_header('X-Object-Sharing', perms)
         self.set_header('X-Object-Public', public)
         for key, val in metadata.items():
             self.set_header('X-Object-Meta-' + key, val)

@@ -104,7 +104,7 @@ class Generic(TestCase):
         try:
             progress_bar.finish()
         except Exception:
-            print(' DONE')
+            print('\b DONE')
 
     def do_with_progress_bar(self, action, msg, items):
         if not items:

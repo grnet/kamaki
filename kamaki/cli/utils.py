@@ -405,6 +405,7 @@ def spiner(size=None):
         i += 1
         sleep(0.1)
         yield
+    yield
 
 if __name__ == '__main__':
     examples = [
