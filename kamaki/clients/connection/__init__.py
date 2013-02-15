@@ -144,6 +144,7 @@ class HTTPConnection(object):
         self.method = method
 
     def set_header(self, name, value):
+        assert name, 'HTTPConnection header key cannot be 0 or empty'
         self.headers[unicode(name)] = unicode(value)
 
     def remove_header(self, name):
@@ -159,7 +160,8 @@ class HTTPConnection(object):
         self.replace_headers({})
 
     def set_param(self, name, value=None):
-        self.params[name] = value
+        assert name, 'HTTPConnection param key cannot be 0 or empty'
+        self.params[unicode(name)] = value
 
     def remove_param(self, name):
         try:
