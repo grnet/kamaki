@@ -37,12 +37,12 @@ class HTTPResponse(object):
     Subclass implementation required
     """
 
-    def __init__(self, request=None, prefetched=False):
+    def __init__(self, request, prefetched=False):
         self.request = request
         self.prefetched = prefetched
 
     def _get_response(self):
-        """Wait for http response as late as possible: the first time needed"""
+        """Wait for http response as late as possible"""
         if self.prefetched:
             return
         self = self.request.response
@@ -64,7 +64,7 @@ class HTTPResponse(object):
 
     @property
     def content(self):
-        """(binary) request response content (data)"""
+        """:returns: (binary) request response content (data)"""
         self._get_response()
         return self._content
 

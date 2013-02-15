@@ -57,11 +57,9 @@ class Image(tests.Generic):
     def _prepare_img(self):
         f = open(self['image', 'local_path'], 'rb')
         (token, uuid) = (self['token'], self['store', 'account'])
-        print('UUID HERE: %s (%s)' % (uuid, token))
         if not uuid:
             from kamaki.clients.astakos import AstakosClient
             uuid = AstakosClient(self['astakos', 'url'], token).term('uuid')
-        print('UUID HERE: %s' % uuid)
         from kamaki.clients.pithos import PithosClient
         self.pithcli = PithosClient(self['store', 'url'], token, uuid)
         cont = 'cont_%s' % self.now
@@ -70,7 +68,7 @@ class Image(tests.Generic):
         print('\t- Create container %s on Pithos server' % cont)
         self.pithcli.container_put()
         self.location = 'pithos://%s/%s/%s' % (uuid, cont, self.obj)
-        print('\t- Upload an image at %s...' % self.location)
+        print('\t- Upload an image at %s...\n' % self.location)
         self.pithcli.upload_object(self.obj, f)
         print('\t- ok')
         f.close()
