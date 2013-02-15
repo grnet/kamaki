@@ -62,34 +62,7 @@ pithos_cmds = CommandTree('store', 'Pithos+ storage commands')
 _commands = [pithos_cmds]
 
 
-about_directories = [
-    'Kamaki hanldes directories the same way as OOS Storage and Pithos+:',
-    'A directory is an object with type "application/directory"',
-    'An object with path dir/name can exist even if dir does not exist or',
-    'even if dir is a non directory object. Users can modify dir without',
-    'affecting the dir/name object in any way.']
-
-
 # Argument functionality
-
-def raise_connection_errors(e):
-    if e.status in range(200) + [403, 401]:
-        raiseCLIError(e, details=[
-            'Please check the service url and the authentication information',
-            ' ',
-            '  to get the service url: /config get store.url',
-            '  to set the service url: /config set store.url <url>',
-            ' ',
-            '  to get authentication token: /config get token',
-            '  to set authentication token: /config set token <token>'])
-    elif e.status == 413:
-        raiseCLIError(e, details=[
-            'Get quotas:',
-            '- total quota:      /store quota',
-            '- container quota:  /store quota <container>',
-            'Users shall set a higher container quota, if available:',
-            '-                  /store setquota <quota>[unit] <container>'])
-
 
 class DelimiterArgument(ValueArgument):
     """
@@ -457,7 +430,12 @@ class store_list(_store_container_command):
 class store_mkdir(_store_container_command):
     """Create a directory"""
 
-    __doc__ += '\n. '.join(about_directories)
+    __doc__ += '\n. '.join([
+        'Kamaki hanldes directories the same way as OOS Storage and Pithos+:',
+        'A   directory  is   an  object  with  type  "application/directory"',
+        'An object with path  dir/name can exist even if  dir does not exist',
+        'or even if dir  is  a non  directory  object.  Users can modify dir',
+        'without affecting the dir/name object in any way.'])
 
     @errors.generic.all
     @errors.pithos.connection
@@ -992,7 +970,7 @@ class store_cat(_store_container_command):
         self.client.download_object(
             self.path,
             stdout,
-            range=self['range'],
+            range_str=self['range'],
             version=self['object_version'],
             if_match=self['if_match'],
             if_none_match=self['if_none_match'],
@@ -1054,6 +1032,7 @@ class store_download(_store_container_command):
             return [(None, self.path)]
         outpath = path.abspath(local_path)
         if not (path.exists(outpath) or path.isdir(outpath)):
+            print('Is it this case? %s %s' % (outpath, self.path))
             return [(outpath, self.path)]
         elif self['recursive']:
             remotes = self.client.container_get(
@@ -1094,13 +1073,15 @@ class store_download(_store_container_command):
                     self.container,
                     rpath,
                     lpath))
-                (progress_bar,
+                (
+                    progress_bar,
                     download_cb) = self._safe_progress_bar('Downloading')
+                f = open(lpath, wmode) if lpath else stdout
                 self.client.download_object(
                     rpath,
-                    open(lpath, wmode) if lpath else stdout,
+                    f,
                     download_cb=download_cb,
-                    range=self['range'],
+                    range_str=self['range'],
                     version=self['object_version'],
                     if_match=self['if_match'],
                     resume=self['resume'],
@@ -1124,6 +1105,8 @@ class store_download(_store_container_command):
             self._safe_progress_bar_finish(progress_bar)
             raise
         finally:
+            if lpath:
+                f.close()
             self._safe_progress_bar_finish(progress_bar)
 
     def main(self, container___path, local_path=None):
