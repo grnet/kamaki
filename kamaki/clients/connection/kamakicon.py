@@ -36,7 +36,6 @@ from objpool.http import get_http_connection
 from kamaki.clients.connection import HTTPConnection, HTTPResponse
 from kamaki.clients.connection.errors import HTTPConnectionError
 from kamaki.clients.connection.errors import HTTPResponseError
-from socket import gaierror, error
 
 from json import loads
 
@@ -77,7 +76,7 @@ class KamakiHTTPResponse(HTTPResponse):
         return unicode(self._content)
 
     @text.setter
-    def test(self, v):
+    def text(self, v):
         pass
 
     @property
