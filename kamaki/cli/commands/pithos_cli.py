@@ -1031,8 +1031,8 @@ class store_download(_store_container_command):
         if local_path is None:
             return [(None, self.path)]
         outpath = path.abspath(local_path)
-        if not (path.exists(outpath) or path.isdir(outpath)):
-            print('Is it this case? %s %s' % (outpath, self.path))
+        if self['resume'] or not (
+                path.exists(outpath) or path.isdir(outpath)):
             return [(outpath, self.path)]
         elif self['recursive']:
             remotes = self.client.container_get(
@@ -1043,7 +1043,7 @@ class store_download(_store_container_command):
                 '%s/%s' % (outpath, remote['name']),
                 None if self._is_dir(remote) else remote['name']
             ) for remote in remotes.json]
-        raiseCLIError('Illegal destination location %s' % local_path)
+        raiseCLIError('Path %s already exists (see --resume)' % local_path)
 
     @errors.generic.all
     @errors.pithos.connection
