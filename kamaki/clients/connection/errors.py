@@ -32,19 +32,19 @@
 # or implied, of GRNET S.A.
 
 
-class HTTPConnectionError(Exception):
+class KamakiConnectionError(Exception):
     errno = None
 
     def __init__(self, message, errno=None):
-        super(HTTPConnectionError, self).__init__(message)
+        super(KamakiConnectionError, self).__init__(message)
         if errno:
             self.errno = errno
 
 
-class HTTPResponseError(Exception):
+class KamakiResponseError(Exception):
     errno = None
 
     def __init__(self, message, errno=None):
-        super(HTTPResponseError, self).__init__(message)
+        super(KamakiResponseError, self).__init__(message)
         if errno:
             self.errno = errno

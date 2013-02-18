@@ -33,9 +33,9 @@
 
 from urlparse import urlparse
 from objpool.http import get_http_connection
-from kamaki.clients.connection import HTTPConnection, HTTPResponse
-from kamaki.clients.connection.errors import HTTPConnectionError
-from kamaki.clients.connection.errors import HTTPResponseError
+from kamaki.clients.connection import KamakiConnection, KamakiResponse
+from kamaki.clients.connection.errors import KamakiConnectionError
+from kamaki.clients.connection.errors import KamakiResponseError
 
 from json import loads
 
@@ -43,7 +43,7 @@ from time import sleep
 from httplib import ResponseNotReady
 
 
-class KamakiHTTPResponse(HTTPResponse):
+class KamakiHTTPResponse(KamakiResponse):
 
     def _get_response(self):
         if self.prefetched:
@@ -84,13 +84,13 @@ class KamakiHTTPResponse(HTTPResponse):
         """
         :returns: (dict) the json-formated content
 
-        :raises HTTPResponseError: if content is not json formated
+        :raises KamakiResponseError: if content is not json formated
         """
         self._get_response()
         try:
             return loads(self._content)
         except ValueError as err:
-            HTTPResponseError('Response not formated in JSON - %s' % err)
+            KamakiResponseError('Response not formated in JSON - %s' % err)
 
     @json.setter
     def json(self, v):
@@ -104,7 +104,7 @@ class KamakiHTTPResponse(HTTPResponse):
             self.request.close()
 
 
-class KamakiHTTPConnection(HTTPConnection):
+class KamakiHTTPConnection(KamakiConnection):
 
     def _retrieve_connection_info(self, extra_params={}):
         """
@@ -149,9 +149,9 @@ class KamakiHTTPConnection(HTTPConnection):
             for one request instance as opposed to self.params, which remain to
             be used by following or parallel requests
 
-        :returns: (KamakiHTTPResponse) a response object
+        :returns: (KamakiKamakiResponse) a response object
 
-        :raises HTTPConnectionError: Connection failures
+        :raises KamakiConnectionError: Connection failures
         """
         (scheme, netloc) = self._retrieve_connection_info(
             extra_params=async_params)
@@ -168,7 +168,7 @@ class KamakiHTTPConnection(HTTPConnection):
         try:
             conn = get_http_connection(netloc=netloc, scheme=scheme)
         except ValueError as ve:
-            raise HTTPConnectionError(
+            raise KamakiConnectionError(
                 'Cannot establish connection to %s %s' % (self.url, ve),
                 errno=-1)
         try:
@@ -179,7 +179,7 @@ class KamakiHTTPConnection(HTTPConnection):
                 headers=http_headers,
                 body=data)
         except IOError as ioe:
-            raise HTTPConnectionError(
+            raise KamakiConnectionError(
                 'Cannot connect to %s: %s' % (self.url, ioe.strerror),
                 errno=ioe.errno)
         except Exception as err:
@@ -188,4 +188,4 @@ class KamakiHTTPConnection(HTTPConnection):
             recvlog.debug('\n'.join(['%s' % type(err)] + format_stack()))
             conn.close()
             raise
-        return KamakiHTTPResponse(conn)
+        return KamakiKamakiResponse(conn)

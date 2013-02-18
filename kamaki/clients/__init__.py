@@ -37,8 +37,8 @@ from json import dumps, loads
 from time import time
 import logging
 from kamaki.clients.connection.kamakicon import KamakiHTTPConnection
-from kamaki.clients.connection.errors import HTTPConnectionError
-from kamaki.clients.connection.errors import HTTPResponseError
+from kamaki.clients.connection.errors import KamakiConnectionError
+from kamaki.clients.connection.errors import KamakiResponseError
 
 sendlog = logging.getLogger('clients.send')
 datasendlog = logging.getLogger('data.send')
@@ -76,9 +76,7 @@ class ClientError(Exception):
 
 
 class SilentEvent(Thread):
-    """ Thread-run method(*args, **kwargs)
-        put exception in exception_bucket
-    """
+    """ Thread-run method(*args, **kwargs)"""
     def __init__(self, method, *args, **kwargs):
         super(self.__class__, self).__init__()
         self.method = method
@@ -218,7 +216,7 @@ class Client(object):
             if r.content:
                 datarecvlog.info(r.content)
 
-        except (HTTPResponseError, HTTPConnectionError) as err:
+        except (KamakiResponseError, KamakiConnectionError) as err:
             from traceback import format_stack
             recvlog.debug('\n'.join(['%s' % type(err)] + format_stack()))
             self.http_client.reset_headers()

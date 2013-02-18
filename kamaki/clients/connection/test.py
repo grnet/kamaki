@@ -35,10 +35,10 @@ from unittest import TestCase, TestSuite, TextTestRunner, TestLoader
 from mock import Mock
 
 
-class HTTPResponse(TestCase):
+class KamakiResponse(TestCase):
 
     def setUp(self):
-        from kamaki.clients.connection import HTTPResponse as HTTPR
+        from kamaki.clients.connection import KamakiResponse as HTTPR
         self.resp = HTTPR('Abstract class, so test with fake request (str)')
 
     def _mock_get_response(foo):
@@ -74,13 +74,13 @@ class HTTPResponse(TestCase):
         self.assertTrue(isinstance(r, str))
 
 
-class HTTPConnection(TestCase):
+class KamakiConnection(TestCase):
     v_samples = {'title': 'value', 5: 'value'}
     n_samples = {'title': None, 5: None}
     false_samples = {None: 'value', 0: 'value'}
 
     def setUp(self):
-        from kamaki.clients.connection import HTTPConnection as HTTPC
+        from kamaki.clients.connection import KamakiConnection as HTTPC
         self.conn = HTTPC()
 
     def test_set_header(self):
@@ -173,8 +173,8 @@ class HTTPConnection(TestCase):
 
 def main(argv):
     classes = dict(
-        HTTPResponse=HTTPResponse,
-        HTTPConnection=HTTPConnection)
+        KamakiResponse=KamakiResponse,
+        KamakiConnection=KamakiConnection)
     if argv:
         field = set(classes.keys()).intersection(argv[:1])
     else:
