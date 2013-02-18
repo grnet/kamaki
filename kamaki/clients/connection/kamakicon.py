@@ -119,18 +119,18 @@ class KamakiHTTPConnection(KamakiConnection):
         if self.path:
             url += self.path[1:] if self.path[0] == '/' else self.path
         params = dict(self.params)
-        for k, v in extra_params.items():
-            params[k] = v
+        params.update(extra_params)
         for i, (key, val) in enumerate(params.items()):
-            param_str = ('?' if i == 0 else '&') + unicode(key)
-            if val is not None:
-                param_str += '=' + unicode(val)
-            url += param_str
+            url += '%s%s%s' % (
+                '&' if i else '?',
+                key,
+                '=%s' % val if val else '')
 
         parsed = urlparse(url)
         self.url = url
-        self.path = parsed.path if parsed.path else '/'
-        self.path += '?%s' % parsed.query if parsed.query else ''
+        self.path = parsed.path or '/'
+        if parsed.query:
+            self.path += '?%s' % parsed.query
         return (parsed.scheme, parsed.netloc)
 
     def perform_request(
@@ -153,8 +153,7 @@ class KamakiHTTPConnection(KamakiConnection):
 
         :raises KamakiConnectionError: Connection failures
         """
-        (scheme, netloc) = self._retrieve_connection_info(
-            extra_params=async_params)
+        (scheme, netloc) = self._retrieve_connection_info(async_params)
         headers = dict(self.headers)
         for k, v in async_headers.items():
             headers[k] = v

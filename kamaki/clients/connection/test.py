@@ -31,50 +31,14 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-import unittest
-import mock
+from unittest import TestCase, TestSuite, makeSuite, TextTestRunner
+from mock import Mock, patch
+
+from kamaki.clients import connection
+from kamaki.clients.connection import errors, kamakicon
 
 
-class KamakiResponse(unittest.TestCase):
-
-    def setUp(self):
-        from kamaki.clients.connection import KamakiResponse as HTTPR
-        self.resp = HTTPR('Abstract class, so test with fake request (str)')
-
-    def _mock_get_response(foo):
-        def mocker(self):
-            self.resp._get_response = mock.Mock()
-            foo(self)
-        return mocker
-
-    def test_release(self):
-        self.assertRaises(NotImplementedError, self.resp.release)
-
-    def test_prefetched(self):
-        self.assertFalse(self.resp.prefetched)
-        self.resp.prefetched = True
-        self.assertTrue(self.resp.prefetched)
-
-    @_mock_get_response
-    def test_content(self):
-        rsp = self.resp
-        for cont in ('Sample Content', u'\u03c7\u03cd\u03bd\u03c9\x00'):
-            rsp.content = cont
-            self.assertEquals(rsp.content, cont)
-
-    (
-        test_text,
-        test_json,
-        test_headers,
-        test_status,
-        test_status_code) = 5 * (test_content,)
-
-    def test_request(self):
-        r = self.resp.request
-        self.assertTrue(isinstance(r, str))
-
-
-class KamakiConnection(unittest.TestCase):
+class KamakiConnection(TestCase):
     v_samples = {'title': 'value', 5: 'value'}
     n_samples = {'title': None, 5: None}
     false_samples = {None: 'value', 0: 'value'}
@@ -171,24 +135,105 @@ class KamakiConnection(unittest.TestCase):
         self.assertRaises(NotImplementedError, self.conn.perform_request)
 
 
+class KamakiHTTPConnection(TestCase):
+
+    def setUp(self):
+        self.conn = kamakicon.KamakiHTTPConnection()
+
+    def test_perform_request(self):
+        from httplib import HTTPConnection
+        from objpool import http
+        pr = self.conn.perform_request
+        kwargs = dict(
+            data='',
+            method='GET',
+            async_headers=dict(),
+            async_params=dict())
+
+        KCError = errors.KamakiConnectionError
+        fakecon = HTTPConnection('X', 'Y')
+
+        with patch.object(http, 'get_http_connection', return_value=fakecon):
+            with patch.object(HTTPConnection, 'request', return_value=None):
+                r = pr(**kwargs)
+                self.assertTrue(isinstance(r, kamakicon.KamakiHTTPResponse))
+
+            err = IOError('IO Error')
+            with patch.object(HTTPConnection, 'request', side_effect=err):
+                self.assertRaises(KCError, pr, **kwargs)
+
+        err = ValueError('Cannot Establish connection')
+        with patch.object(http, 'get_http_connection', side_effect=err):
+            self.assertRaises(KCError, pr, **kwargs)
+
+        err = Exception('Any other error')
+        with patch.object(http, 'get_http_connection', side_effect=err):
+            self.assertRaises(KCError, pr, **kwargs)
+
+
+class KamakiHTTPResponse(TestCase):
+
+    def setUp(self):
+        pass
+
+
+class KamakiResponse(TestCase):
+
+    def setUp(self):
+        self.resp = connection.KamakiResponse(
+            'Abstract class, so test with fake request (str)')
+
+    def _mock_get_response(foo):
+        def mocker(self):
+            self.resp._get_response = Mock()
+            foo(self)
+        return mocker
+
+    def test_release(self):
+        self.assertRaises(NotImplementedError, self.resp.release)
+
+    def test_prefetched(self):
+        self.assertFalse(self.resp.prefetched)
+        self.resp.prefetched = True
+        self.assertTrue(self.resp.prefetched)
+
+    @_mock_get_response
+    def test_content(self):
+        rsp = self.resp
+        for cont in ('Sample Content', u'\u03c7\u03cd\u03bd\u03c9\x00'):
+            rsp.content = cont
+            self.assertEquals(rsp.content, cont)
+
+    (
+        test_text,
+        test_json,
+        test_headers,
+        test_status,
+        test_status_code) = 5 * (test_content,)
+
+    def test_request(self):
+        r = self.resp.request
+        self.assertTrue(isinstance(r, str))
+
+
 def get_test_classes(module=__import__(__name__), name=''):
     from inspect import getmembers, isclass
     for objname, obj in getmembers(module):
         if (objname == name or not name) and isclass(obj) and (
-            issubclass(obj, unittest.TestCase)):
+            issubclass(obj, TestCase)):
             yield (obj, objname)
 
 
 def main(argv):
     for cls, name in get_test_classes(name=argv[1] if len(argv) > 1 else ''):
         args = argv[2:]
-        suite = unittest.TestSuite()
+        suite = TestSuite()
         if args:
             suite.addTest(cls('_'.join(['test'] + args)))
         else:
-            suite.addTest(unittest.makeSuite(cls))
-        print('Test for %s class' % name)
-        unittest.TextTestRunner(verbosity=2).run(suite)
+            suite.addTest(makeSuite(cls))
+        print('Test %s' % name)
+        TextTestRunner(verbosity=2).run(suite)
 
 
 if __name__ == '__main__':
