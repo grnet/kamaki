@@ -220,7 +220,7 @@ def get_test_classes(module=__import__(__name__), name=''):
     from inspect import getmembers, isclass
     for objname, obj in getmembers(module):
         if (objname == name or not name) and isclass(obj) and (
-            issubclass(obj, TestCase)):
+                issubclass(obj, TestCase)):
             yield (obj, objname)
 
 
