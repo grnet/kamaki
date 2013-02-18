@@ -31,11 +31,11 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from unittest import TestCase, TestSuite, TextTestRunner, TestLoader
-from mock import Mock
+import unittest
+import mock
 
 
-class KamakiResponse(TestCase):
+class KamakiResponse(unittest.TestCase):
 
     def setUp(self):
         from kamaki.clients.connection import KamakiResponse as HTTPR
@@ -43,7 +43,7 @@ class KamakiResponse(TestCase):
 
     def _mock_get_response(foo):
         def mocker(self):
-            self.resp._get_response = Mock()
+            self.resp._get_response = mock.Mock()
             foo(self)
         return mocker
 
@@ -74,7 +74,7 @@ class KamakiResponse(TestCase):
         self.assertTrue(isinstance(r, str))
 
 
-class KamakiConnection(TestCase):
+class KamakiConnection(unittest.TestCase):
     v_samples = {'title': 'value', 5: 'value'}
     n_samples = {'title': None, 5: None}
     false_samples = {None: 'value', 0: 'value'}
@@ -171,24 +171,26 @@ class KamakiConnection(TestCase):
         self.assertRaises(NotImplementedError, self.conn.perform_request)
 
 
+def get_test_classes(module=__import__(__name__), name=''):
+    from inspect import getmembers, isclass
+    for objname, obj in getmembers(module):
+        if (objname == name or not name) and isclass(obj) and (
+            issubclass(obj, unittest.TestCase)):
+            yield (obj, objname)
+
+
 def main(argv):
-    classes = dict(
-        KamakiResponse=KamakiResponse,
-        KamakiConnection=KamakiConnection)
-    if argv:
-        field = set(classes.keys()).intersection(argv[:1])
-    else:
-        field = classes.keys()
-    for cls in [classes[item] for item in field]:
-        if argv[1:]:
-            suite = TestSuite()
-            test_method = 'test_%s' % '_'.join(argv[1:])
-            suite.addTest(cls(test_method))
+    for cls, name in get_test_classes(name=argv[1] if len(argv) > 1 else ''):
+        args = argv[2:]
+        suite = unittest.TestSuite()
+        if args:
+            suite.addTest(cls('_'.join(['test'] + args)))
         else:
-            suite = TestLoader().loadTestsFromTestCase(cls)
-        TextTestRunner(verbosity=2).run(suite)
+            suite.addTest(unittest.makeSuite(cls))
+        print('Test for %s class' % name)
+        unittest.TextTestRunner(verbosity=2).run(suite)
 
 
 if __name__ == '__main__':
     from sys import argv
-    main(argv[1:])
+    main(argv)

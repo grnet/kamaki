@@ -149,7 +149,7 @@ class KamakiHTTPConnection(KamakiConnection):
             for one request instance as opposed to self.params, which remain to
             be used by following or parallel requests
 
-        :returns: (KamakiKamakiResponse) a response object
+        :returns: (KamakiHTTPResponse) a response object
 
         :raises KamakiConnectionError: Connection failures
         """
@@ -188,4 +188,4 @@ class KamakiHTTPConnection(KamakiConnection):
             recvlog.debug('\n'.join(['%s' % type(err)] + format_stack()))
             conn.close()
             raise
-        return KamakiKamakiResponse(conn)
+        return KamakiHTTPResponse(conn)
