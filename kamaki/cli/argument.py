@@ -68,8 +68,7 @@ class Argument(object):
             self.help = help
         if parsed_name:
             self.parsed_name = parsed_name
-        if default:
-            self.default = default
+        self.default = default
 
     @property
     def parsed_name(self):
