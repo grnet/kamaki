@@ -123,7 +123,7 @@ class astakos(object):
     def authenticate(this, foo):
         def _raise(self, *args, **kwargs):
             try:
-                r = foo(self, *args, **kwargs)
+                return foo(self, *args, **kwargs)
             except ClientError as ce:
                 if ce.status == 401:
                     token = kwargs.get('custom_token', 0) or self.client.token
@@ -133,7 +133,6 @@ class astakos(object):
                     details = [] if token else this._token_details
                     raiseCLIError(ce, msg, details=details)
             self._raise = foo
-            return r
         return _raise
 
 

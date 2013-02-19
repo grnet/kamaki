@@ -36,7 +36,7 @@ from kamaki.clients.astakos import AstakosClient
 from kamaki.cli.utils import print_dict
 from kamaki.cli.commands import _command_init, errors
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.argument import ValueArgument
+# from kamaki.cli.argument import ValueArgument
 
 astakos_cmds = CommandTree('astakos', 'Astakos API commands')
 _commands = [astakos_cmds]
