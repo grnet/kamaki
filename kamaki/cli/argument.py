@@ -64,11 +64,11 @@ class Argument(object):
     def __init__(self, arity, help=None, parsed_name=None, default=None):
         self.arity = int(arity)
 
-        if help is not None:
+        if help:
             self.help = help
-        if parsed_name is not None:
+        if parsed_name:
             self.parsed_name = parsed_name
-        if default is not None:
+        if default:
             self.default = default
 
     @property
@@ -353,7 +353,7 @@ class ProgressBarArgument(FlagArgument):
         try:
             KamakiProgressBar
         except NameError:
-            kloger.warning('no progress bar functionality')
+            kloger.debug('WARNING: no progress bar functionality')
 
     def clone(self):
         """Get a modifiable copy of this bar"""

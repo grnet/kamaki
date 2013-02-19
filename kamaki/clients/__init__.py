@@ -31,6 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+from urllib2 import quote
 from threading import Thread
 from json import dumps, loads
 from time import time
@@ -193,7 +194,7 @@ class Client(object):
             sendlog.info('perform a %s @ %s', method, self.base_url)
 
             self.http_client.url = self.base_url
-            self.http_client.path = path
+            self.http_client.path = quote(path)
             r = self.http_client.perform_request(
                 method,
                 data,
