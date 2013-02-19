@@ -1020,30 +1020,117 @@ class store_download(_store_container_command):
             '--no-progress-bar',
             default=False),
         recursive=FlagArgument(
-            'Download a remote directory and all its contents',
-            '-r, --recursive')
+            'Download a remote path and all its contents',
+            '--recursive')
     )
 
-    def _is_dir(self, remote_dict):
-        return 'application/directory' == remote_dict.get('content_type', '')
+    @staticmethod
+    def _is_dir(remote_dict):
+        return 'application/directory' == remote_dict.get(
+            'content_type',
+            remote_dict.get('content-type', ''))
 
     def _outputs(self, local_path):
-        if local_path is None:
-            return [(None, self.path)]
-        outpath = path.abspath(local_path)
-        if self['resume'] or not (
-                path.exists(outpath) or path.isdir(outpath)):
-            return [(outpath, self.path)]
-        elif self['recursive']:
-            remotes = self.client.container_get(
-                prefix=self.path,
+        """:returns: (local_file, remote_path)"""
+        remotes = []
+        if self['recursive']:
+            r = self.client.container_get(
+                prefix=self.path or '/',
                 if_modified_since=self['if_modified_since'],
                 if_unmodified_since=self['if_unmodified_since'])
-            return [(
-                '%s/%s' % (outpath, remote['name']),
-                None if self._is_dir(remote) else remote['name']
-            ) for remote in remotes.json]
-        raiseCLIError('Path %s already exists (see --resume)' % local_path)
+            dirlist = dict()
+            for remote in r.json:
+                rname = remote['name'].strip('/')
+                tmppath = ''
+                for newdir in rname.strip('/').split('/')[:-1]:
+                    tmppath = '/'.join([tmppath, newdir])
+                    dirlist.update({tmppath.strip('/'): True})
+                remotes.append((rname, store_download._is_dir(remote)))
+            dir_remotes = [r[0] for r in remotes if r[1]]
+            if not set(dirlist).issubset(dir_remotes):
+                badguys = [bg.strip('/') for bg in set(
+                    dirlist).difference(dir_remotes)]
+                raiseCLIError(
+                    'Some remote paths contain non existing directories',
+                    details=['Missing remote directories:'] + badguys)
+        elif self.path:
+            r = self.client.get_object_info(
+                self.path,
+                version=self['object_version'])
+            if store_download._is_dir(r):
+                raiseCLIError(
+                    'Illegal download: Remote object %s is a directory' % (
+                        self.path),
+                    details=['To download a directory, try --recursive'])
+            if '/' in self.path.strip('/') and not local_path:
+                raiseCLIError(
+                    'Illegal download: remote object %s contains "/"' % (
+                        self.path),
+                    details=[
+                        'To download an object containing "/" characters',
+                        'either create the remote directories or',
+                        'specify a non-directory local path for this object'])
+            remotes = [(self.path, False)]
+        if not remotes:
+            if self.path:
+                raiseCLIError(
+                    'No matching path %s on container %s' % (
+                        self.path,
+                        self.container),
+                    details=[
+                        'To list the contents of %s, try:' % self.container,
+                        '   /store list %s' % self.container])
+            raiseCLIError(
+                'Illegal download of container %s' % self.container,
+                details=[
+                    'To download a whole container, try:',
+                    '   /store download --recursive <container>'])
+
+        lprefix = path.abspath(local_path or path.curdir)
+        if path.isdir(lprefix):
+            for rpath, remote_is_dir in remotes:
+                lpath = '/%s/%s' % (lprefix.strip('/'), rpath.strip('/'))
+                if remote_is_dir:
+                    if path.exists(lpath) and path.isdir(lpath):
+                        continue
+                    makedirs(lpath)
+                elif path.exists(lpath):
+                    if not self['resume']:
+                        print('File %s exists, aborting...' % lpath)
+                        continue
+                    with open(lpath, 'rwb+') as f:
+                        yield (f, rpath)
+                else:
+                    with open(lpath, 'wb+') as f:
+                        yield (f, rpath)
+        elif path.exists(lprefix):
+            if len(remotes) > 1:
+                raiseCLIError(
+                    '%s remote objects cannot be merged in local file %s' % (
+                        len(remotes),
+                        local_path),
+                    details=[
+                        'To download multiple objects, local path should be',
+                        'a directory, or use download without a local path'])
+            (rpath, remote_is_dir) = remotes[0]
+            if remote_is_dir:
+                raiseCLIError(
+                    'Remote directory %s should not replace local file %s' % (
+                        rpath,
+                        local_path))
+            if self['resume']:
+                with open(lprefix, 'rwb+') as f:
+                    yield (f, rpath)
+            else:
+                raiseCLIError(
+                    'Local file %s already exist' % local_path,
+                    details=['Try --resume to overwrite it'])
+        else:
+            if len(remotes) > 1 or remotes[0][1]:
+                raiseCLIError(
+                    'Local directory %s does not exist' % local_path)
+            with open(lprefix, 'wb+') as f:
+                yield (f, remotes[0][0])
 
     @errors.generic.all
     @errors.pithos.connection
@@ -1051,32 +1138,17 @@ class store_download(_store_container_command):
     @errors.pithos.object_path
     @errors.pithos.local_path
     def _run(self, local_path):
-        outputs = self._outputs(local_path)
+        #outputs = self._outputs(local_path)
         poolsize = self['poolsize']
         if poolsize:
             self.client.POOL_SIZE = int(poolsize)
-        if not outputs:
-            raiseCLIError('No objects prefixed as %s on container %s' % (
-                self.path,
-                self.container))
         progress_bar = None
         try:
-            for lpath, rpath in sorted(outputs):
-                if not rpath:
-                    if not path.isdir(lpath):
-                        print('Create directory %s' % lpath)
-                        makedirs(lpath)
-                    continue
-                wmode = 'rwb+' if path.exists(lpath) and self['resume']\
-                    else 'wb+'
-                print('\nFrom %s:%s to %s' % (
-                    self.container,
-                    rpath,
-                    lpath))
+            for f, rpath in self._outputs(local_path):
                 (
                     progress_bar,
-                    download_cb) = self._safe_progress_bar('Downloading')
-                f = open(lpath, wmode) if lpath else stdout
+                    download_cb) = self._safe_progress_bar(
+                        'Download %s' % rpath)
                 self.client.download_object(
                     rpath,
                     f,
@@ -1105,14 +1177,10 @@ class store_download(_store_container_command):
             self._safe_progress_bar_finish(progress_bar)
             raise
         finally:
-            if lpath:
-                f.close()
             self._safe_progress_bar_finish(progress_bar)
 
     def main(self, container___path, local_path=None):
-        super(self.__class__, self)._run(
-            container___path,
-            path_is_optional=False)
+        super(self.__class__, self)._run(container___path)
         self._run(local_path=local_path)
 
 
