@@ -173,8 +173,35 @@ class KamakiHTTPConnection(TestCase):
 
 class KamakiHTTPResponse(TestCase):
 
+    class fakeResponse(object):
+        sample = 'sample string'
+        getheaders = Mock(return_value={})
+        read = Mock(return_value=sample)
+        status = Mock(return_value=None)
+        reason = Mock(return_value=None)
+
     def setUp(self):
-        pass
+        from httplib import HTTPConnection
+        self.HTC = HTTPConnection
+        self.FR = self.fakeResponse
+
+    def test_text(self):
+        with patch.object(self.HTC, 'getresponse', return_value=self.FR()):
+            self.resp = kamakicon.KamakiHTTPResponse(self.HTC('X', 'Y'))
+            self.assertEquals(self.resp.text, self.FR.sample)
+            sample2 = 'some other string'
+            self.resp.text = sample2
+            self.assertNotEquals(self.resp.text, sample2)
+
+    def test_json(self):
+        with patch.object(self.HTC, 'getresponse', return_value=self.FR()):
+            self.resp = kamakicon.KamakiHTTPResponse(self.HTC('X', 'Y'))
+            self.assertRaises(errors.KamakiResponseError, self.resp.json)
+            sample2 = '{"antoher":"sample", "formated":"in_json"}'
+            with patch.object(self.FR, 'read', return_value=sample2):
+                self.resp = kamakicon.KamakiHTTPResponse(self.HTC('X', 'Y'))
+                from json import loads
+                self.assertEquals(loads(sample2), self.resp.json)
 
 
 class KamakiResponse(TestCase):
