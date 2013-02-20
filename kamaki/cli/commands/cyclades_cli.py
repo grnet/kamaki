@@ -594,7 +594,7 @@ class network_create(_init_cyclades):
     arguments = dict(
         cidr=ValueArgument('explicitly set cidr', '--with-cidr'),
         gateway=ValueArgument('explicitly set gateway', '--with-gateway'),
-        dhcp=ValueArgument('explicitly set dhcp', '--with-dhcp'),
+        dhcp=FlagArgument('Use dhcp (default: off)', '--with-dhcp'),
         type=ValueArgument('explicitly set type', '--with-type')
     )
 

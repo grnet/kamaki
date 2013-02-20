@@ -147,7 +147,7 @@ class CycladesClient(CycladesClientApi):
 
     def create_network(
             self, name,
-            cidr=None, gateway=None, type=None, dhcp=None):
+            cidr=None, gateway=None, type=None, dhcp=False):
         """
         :param name: (str)
 
@@ -157,7 +157,7 @@ class CycladesClient(CycladesClientApi):
 
         :param type: (str)
 
-        :param dhcp: (str)
+        :param dhcp: (bool)
 
         :returns: (dict) network detailed info
         """
@@ -168,8 +168,7 @@ class CycladesClient(CycladesClientApi):
             net['gateway'] = gateway
         if type:
             net['type'] = type
-        if dhcp:
-            net['dhcp'] = dhcp
+        net['dhcp'] = True if dhcp else False
         req = dict(network=net)
         r = self.networks_post(json_data=req, success=202)
         return r.json['network']
