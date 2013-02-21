@@ -105,7 +105,7 @@ A more detailed example of using virtual env can be found at the `snf-image-crea
 Install objpool (was: snf-common)
 """""""""""""""""""""""""""""""""
 
-Since 0.6.2, kamaki is based on python-objpool. The objpool package is easy to install from source (even on windows platforms):
+Kamaki is based on python-objpool. The objpool package is easy to install from source, even on windows platforms:
 
 .. code-block:: console
 
@@ -121,7 +121,7 @@ Kamaki can be downloaded from `this location <https://code.grnet.gr/projects/kam
 
 .. code-block:: console
 
-    $ tar xvfz kamaki-0.6.2.tar.gz
+    $ tar xvfz kamaki-0.7.tar.gz
 
 or it can be downloaded directly from the git repository:
 
@@ -156,7 +156,7 @@ Kamaki can be installed on Mac OS X systems from source, by following the steps 
 Windows
 -------
 
-Since version 0.6.2 kamaki can run on Windows, either on standard Windows console, or inside an improved command line shell. The present guide presents a tested method for using kamaki in windows
+Kamaki can run on Windows, either on standard Windows console, or inside an improved command line shell. The present guide presents a tested method for setting up kamaki in windows
 
 Requirements
 ^^^^^^^^^^^^
@@ -242,8 +242,6 @@ Install kamaki
         $ python setup.py install
         running install
         ...
-        Finished processing dependencies for kamaki==0.6.2
-
-.. warning:: kamaki version should be 0.6.2 or better, otherwise it will not function. Users can test that by running::
+        Finished processing dependencies for kamaki==0.7
 
     $ kamaki --version

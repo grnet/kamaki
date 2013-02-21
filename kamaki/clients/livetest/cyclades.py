@@ -33,11 +33,11 @@
 
 import time
 
-from kamaki.clients import tests, ClientError
+from kamaki.clients import livetest, ClientError
 from kamaki.clients.cyclades import CycladesClient
 
 
-class Cyclades(tests.Generic):
+class Cyclades(livetest.Generic):
     """Set up a Cyclades thorough test"""
     def setUp(self):
         print
@@ -172,7 +172,7 @@ class Cyclades(tests.Generic):
 
     def test_parallel_creation(self):
         """test create with multiple threads
-        Do not use this in regular tests
+        Do not use this in regular livetest
         """
         from kamaki.clients import SilentEvent
         c1 = SilentEvent(

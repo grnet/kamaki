@@ -33,13 +33,13 @@
 
 import time
 
-from kamaki.clients import tests
+from kamaki.clients import livetest
 from kamaki.clients.cyclades import CycladesClient
 from kamaki.clients.image import ImageClient
 from kamaki.clients import ClientError
 
 
-class Image(tests.Generic):
+class Image(livetest.Generic):
     def setUp(self):
         self.now = time.mktime(time.gmtime())
 
@@ -57,11 +57,9 @@ class Image(tests.Generic):
     def _prepare_img(self):
         f = open(self['image', 'local_path'], 'rb')
         (token, uuid) = (self['token'], self['store', 'account'])
-        print('UUID HERE: %s (%s)' % (uuid, token))
         if not uuid:
             from kamaki.clients.astakos import AstakosClient
             uuid = AstakosClient(self['astakos', 'url'], token).term('uuid')
-        print('UUID HERE: %s' % uuid)
         from kamaki.clients.pithos import PithosClient
         self.pithcli = PithosClient(self['store', 'url'], token, uuid)
         cont = 'cont_%s' % self.now

@@ -36,12 +36,12 @@ import datetime
 from os import urandom
 from tempfile import NamedTemporaryFile
 
-from kamaki.clients import tests, ClientError
+from kamaki.clients import livetest, ClientError
 from kamaki.clients.pithos import PithosClient
 from kamaki.clients.astakos import AstakosClient
 
 
-class Pithos(tests.Generic):
+class Pithos(livetest.Generic):
 
     files = []
 
@@ -1063,13 +1063,13 @@ class Pithos(tests.Generic):
                 read=['accX:groupA', 'u1', 'u2'],
                 write=['u2', 'u3']))
 
-        """Append tests update, content_range, content_type, content_length"""
+        """Append livetest update, content_range, content_type, content_length"""
         newf.seek(0)
         self.client.append_object(obj, newf)
         r = self.client.object_get(obj)
         self.assertTrue(r.text.startswith('Hello!'))
 
-        """Overwrite tests update,
+        """Overwrite livetest update,
             content_type, content_length, content_range
         """
         newf.seek(0)
@@ -1077,7 +1077,7 @@ class Pithos(tests.Generic):
         r = self.client.object_get(obj)
         self.assertTrue(r.text.startswith('ello!'))
 
-        """Truncate tests update,
+        """Truncate livetest update,
             content_range, content_type, object_bytes and source_object"""
         r = self.client.truncate_object(obj, 5)
         r = self.client.object_get(obj)
