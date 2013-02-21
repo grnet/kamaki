@@ -68,7 +68,7 @@ class CommissioningClient(Callpoint):
         else:
             try:
                 error = json_loads(body)
-            except ValueError, e:
+            except ValueError:
                 exc = CallError(body, call_error='ValueError')
             else:
                 exc = CallError.from_dict(error)

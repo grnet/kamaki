@@ -40,12 +40,12 @@ class CycladesClientApi(ComputeClient):
     """GRNet Cyclades REST API Client"""
 
     def servers_get(
-        self,
-        server_id='',
-        command='',
-        success=200,
-        changes_since=None,
-        **kwargs):
+            self,
+            server_id='',
+            command='',
+            success=200,
+            changes_since=None,
+            **kwargs):
         """GET base_url/servers[/server_id][/command] request
 
         :param server_id: integer (as int or str)
@@ -65,11 +65,11 @@ class CycladesClientApi(ComputeClient):
         return self.get(path, success=success, **kwargs)
 
     def networks_get(
-        self,
-        network_id='',
-        command='',
-        success=(200, 203),
-        **kwargs):
+            self,
+            network_id='',
+            command='',
+            success=(200, 203),
+            **kwargs):
         """GET base_url/networks[/network_id][/command] request
 
         :param network_id: integer (str or int)
@@ -86,11 +86,11 @@ class CycladesClientApi(ComputeClient):
         return self.get(path, success=success, **kwargs)
 
     def networks_delete(
-        self,
-        network_id='',
-        command='',
-        success=204,
-        **kwargs):
+            self,
+            network_id='',
+            command='',
+            success=204,
+            **kwargs):
         """DEL ETE base_url/networks[/network_id][/command] request
 
         :param network_id: integer (str or int)
@@ -107,12 +107,12 @@ class CycladesClientApi(ComputeClient):
         return self.delete(path, success=success, **kwargs)
 
     def networks_post(
-        self,
-        network_id='',
-        command='',
-        json_data=None,
-        success=202,
-        **kwargs):
+            self,
+            network_id='',
+            command='',
+            json_data=None,
+            success=202,
+            **kwargs):
         """POST base_url/servers[/server_id]/[command] request
 
         :param network_id: integer (str or int)
@@ -137,12 +137,12 @@ class CycladesClientApi(ComputeClient):
         return self.post(path, data=data, success=success, **kwargs)
 
     def networks_put(
-        self,
-        network_id='',
-        command='',
-        json_data=None,
-        success=204,
-        **kwargs):
+            self,
+            network_id='',
+            command='',
+            json_data=None,
+            success=204,
+            **kwargs):
         """PUT base_url/servers[/server_id]/[command] request
 
         :param network_id: integer (str or int)

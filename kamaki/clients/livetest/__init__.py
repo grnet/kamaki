@@ -35,7 +35,6 @@ import inspect
 from unittest import TestCase, TestSuite, TextTestRunner
 from argparse import ArgumentParser
 from sys import stdout
-from progress.bar import ShadyBar
 
 from kamaki.cli.config import Config
 from kamaki.cli.utils import spiner
@@ -65,8 +64,12 @@ class Generic(TestCase):
     def __getitem__(self, key):
         key = self._key(key)
         try:
+            r = self._fetched[key]
+            return r
             return self._fetched[key]
         except KeyError:
+            r = self._get_from_cnf(key)
+            return r
             return self._get_from_cnf(key)
 
     def _key(self, key):
@@ -77,17 +80,19 @@ class Generic(TestCase):
     def _get_from_cnf(self, key):
         val = 0
         if key[0]:
-            val = self._cnf.get('test', '%s_%s' % key)\
-                or self._cnf.get(*key)
+            keystr = '%s_%s' % key
+            val = self._cnf.get('livetest', keystr) or self._cnf.get(*key)
         if not val:
-            val = self._cnf.get('test', key[1])\
-                or self._cnf.get('global', key[1])
+            val = self._cnf.get('livetest', key[1]) or self._cnf.get(
+                'global',
+                key[1])
         self._fetched[key] = val
         return val
 
     def _safe_progress_bar(self, msg):
         """Try to get a progress bar, but do not raise errors"""
         try:
+            from progress.bar import ShadyBar
             wait_bar = ShadyBar(msg)
 
             def wait_gen(n):
@@ -104,7 +109,7 @@ class Generic(TestCase):
         try:
             progress_bar.finish()
         except Exception:
-            print(' DONE')
+            print('\b DONE')
 
     def do_with_progress_bar(self, action, msg, items):
         if not items:
@@ -122,8 +127,13 @@ class Generic(TestCase):
         self._safe_progress_bar_finish(action_bar)
 
     def assert_dicts_are_deeply_equal(self, d1, d2):
+        (st1, st2) = (set(d1.keys()), set(d2.keys()))
+        diff1 = st1.difference(st2)
+        diff2 = st2.difference(st1)
+        self.assertTrue(
+            not (diff1 or diff2),
+            'Key differences:\n\td1-d2=%s\n\td2-d1=%s' % (diff1, diff2))
         for k, v in d1.items():
-            self.assertTrue(k in d2)
             if isinstance(v, dict):
                 self.assert_dicts_are_deeply_equal(v, d2[k])
             else:
@@ -133,8 +143,7 @@ class Generic(TestCase):
         print('')
         methods = [method for method in inspect.getmembers(
             self,
-            predicate=inspect.ismethod)\
-            if method[0].startswith('_test_')]
+            predicate=inspect.ismethod) if method[0].startswith('_test_')]
         failures = 0
         for method in methods:
             stdout.write('Test %s ' % method[0][6:])
@@ -151,7 +160,8 @@ class Generic(TestCase):
 
 def init_parser():
     parser = ArgumentParser(add_help=False)
-    parser.add_argument('-h', '--help',
+    parser.add_argument(
+        '-h', '--help',
         dest='help',
         action='store_true',
         default=False,
@@ -166,19 +176,19 @@ def main(argv):
 def _main(argv, config=None):
     suiteFew = TestSuite()
     if len(argv) == 0 or argv[0] == 'pithos':
-        from kamaki.clients.tests.pithos import Pithos
+        from kamaki.clients.livetest.pithos import Pithos
         test_method = 'test_%s' % (argv[1] if len(argv) > 1 else '000')
         suiteFew.addTest(Pithos(test_method, config))
     if len(argv) == 0 or argv[0] == 'cyclades':
-        from kamaki.clients.tests.cyclades import Cyclades
+        from kamaki.clients.livetest.cyclades import Cyclades
         test_method = 'test_%s' % (argv[1] if len(argv) > 1 else '000')
         suiteFew.addTest(Cyclades(test_method, config))
     if len(argv) == 0 or argv[0] == 'image':
-        from kamaki.clients.tests.image import Image
+        from kamaki.clients.livetest.image import Image
         test_method = 'test_%s' % (argv[1] if len(argv) > 1 else '000')
         suiteFew.addTest(Image(test_method, config))
     if len(argv) == 0 or argv[0] == 'astakos':
-        from kamaki.clients.tests.astakos import Astakos
+        from kamaki.clients.livetest.astakos import Astakos
         test_method = 'test_%s' % (argv[1] if len(argv) > 1 else '000')
         suiteFew.addTest(Astakos(test_method, config))
 
@@ -188,5 +198,5 @@ if __name__ == '__main__':
     parser = init_parser()
     args, argv = parser.parse_known_args()
     if len(argv) > 2 or getattr(args, 'help') or len(argv) < 1:
-        raise Exception('\tusage: tests <group> [command]')
+        raise Exception('\tusage: livetest <group> [command]')
     main(argv)

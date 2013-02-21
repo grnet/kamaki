@@ -1,4 +1,4 @@
-# Copyright 2011-2012 GRNET S.A. All rights reserved.
+# Copyright 2011-2013 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -79,15 +79,16 @@ class PithosClient(PithosRestAPI):
         r = self.container_delete(until=unicode(time()))
         r.release()
 
-    def upload_object_unchunked(self, obj, f,
-        withHashFile=False,
-        size=None,
-        etag=None,
-        content_encoding=None,
-        content_disposition=None,
-        content_type=None,
-        sharing=None,
-        public=None):
+    def upload_object_unchunked(
+            self, obj, f,
+            withHashFile=False,
+            size=None,
+            etag=None,
+            content_encoding=None,
+            content_disposition=None,
+            content_type=None,
+            sharing=None,
+            public=None):
         """
         :param obj: (str) remote object path
 
@@ -118,14 +119,14 @@ class PithosClient(PithosRestAPI):
                 import json
                 data = json.dumps(json.loads(data))
             except ValueError:
-                raise ClientError(message='"%s" is not json-formated' % f.name,
-                    status=1)
+                raise ClientError('"%s" is not json-formated' % f.name, 1)
             except SyntaxError:
-                raise ClientError(message='"%s" is not a valid hashmap file'\
-                % f.name, status=1)
+                msg = '"%s" is not a valid hashmap file' % f.name
+                raise ClientError(msg, 1)
             f = StringIO(data)
         data = f.read(size) if size is not None else f.read()
-        r = self.object_put(obj,
+        r = self.object_put(
+            obj,
             data=data,
             etag=etag,
             content_encoding=content_encoding,
@@ -136,13 +137,14 @@ class PithosClient(PithosRestAPI):
             success=201)
         r.release()
 
-    def create_object_by_manifestation(self, obj,
-        etag=None,
-        content_encoding=None,
-        content_disposition=None,
-        content_type=None,
-        sharing=None,
-        public=None):
+    def create_object_by_manifestation(
+            self, obj,
+            etag=None,
+            content_encoding=None,
+            content_disposition=None,
+            content_type=None,
+            sharing=None,
+            public=None):
         """
         :param obj: (str) remote object path
 
@@ -160,7 +162,8 @@ class PithosClient(PithosRestAPI):
         :param public: (bool)
         """
         self._assert_container()
-        r = self.object_put(obj,
+        r = self.object_put(
+            obj,
             content_length=0,
             etag=etag,
             content_encoding=content_encoding,
@@ -181,7 +184,8 @@ class PithosClient(PithosRestAPI):
         from random import randint
         if not randint(0, 7):
             raise ClientError('BAD GATEWAY STUFF', 503)
-        r = self.container_post(update=True,
+        r = self.container_post(
+            update=True,
             content_type='application/octet-stream',
             content_length=len(data),
             data=data,
@@ -196,18 +200,20 @@ class PithosClient(PithosRestAPI):
         nblocks = 1 + (size - 1) // blocksize
         return (blocksize, blockhash, size, nblocks)
 
-    def _get_missing_hashes(self, obj, json,
-        size=None,
-        format='json',
-        hashmap=True,
-        content_type=None,
-        etag=None,
-        content_encoding=None,
-        content_disposition=None,
-        permissions=None,
-        public=None,
-        success=(201, 409)):
-        r = self.object_put(obj,
+    def _get_missing_hashes(
+            self, obj, json,
+            size=None,
+            format='json',
+            hashmap=True,
+            content_type=None,
+            etag=None,
+            content_encoding=None,
+            content_disposition=None,
+            permissions=None,
+            public=None,
+            success=(201, 409)):
+        r = self.object_put(
+            obj,
             format='json',
             hashmap=True,
             content_type=content_type,
@@ -223,15 +229,9 @@ class PithosClient(PithosRestAPI):
             return None
         return r.json
 
-    def _caclulate_uploaded_blocks(self,
-        blocksize,
-        blockhash,
-        size,
-        nblocks,
-        hashes,
-        hmap,
-        fileobj,
-        hash_cb=None):
+    def _caclulate_uploaded_blocks(
+            self, blocksize, blockhash, size, nblocks, hashes, hmap, fileobj,
+            hash_cb=None):
         offset = 0
         if hash_cb:
             hash_gen = hash_cb(nblocks)
@@ -246,10 +246,9 @@ class PithosClient(PithosRestAPI):
             offset += bytes
             if hash_cb:
                 hash_gen.next()
-        if offset != size:
-            assert offset == size, \
-                   "Failed to calculate uploaded blocks: " \
-                    "Offset and object size do not match"
+        msg = 'Failed to calculate uploaded blocks:'
+        msg += ' Offset and object size do not match'
+        assert offset == size, msg
 
     def _upload_missing_blocks(self, missing, hmap, fileobj, upload_gen=None):
         """upload missing blocks asynchronously"""
@@ -268,8 +267,9 @@ class PithosClient(PithosRestAPI):
             for thread in set(flying).difference(unfinished):
                 if thread.exception:
                     failures.append(thread)
-                    if isinstance(thread.exception, ClientError)\
-                    and thread.exception.status == 502:
+                    if isinstance(
+                            thread.exception,
+                            ClientError) and thread.exception.status == 502:
                         self.POOLSIZE = self._thread_limit
                 elif thread.isAlive():
                     flying.append(thread)
@@ -292,16 +292,17 @@ class PithosClient(PithosRestAPI):
 
         return [failure.kwargs['hash'] for failure in failures]
 
-    def upload_object(self, obj, f,
-        size=None,
-        hash_cb=None,
-        upload_cb=None,
-        etag=None,
-        content_encoding=None,
-        content_disposition=None,
-        content_type=None,
-        sharing=None,
-        public=None):
+    def upload_object(
+            self, obj, f,
+            size=None,
+            hash_cb=None,
+            upload_cb=None,
+            etag=None,
+            content_encoding=None,
+            content_disposition=None,
+            content_type=None,
+            sharing=None,
+            public=None):
         """Upload an object using multiple connections (threads)
 
         :param obj: (str) remote object path
@@ -334,14 +335,16 @@ class PithosClient(PithosRestAPI):
         if content_type is None:
             content_type = 'application/octet-stream'
 
-        self._caclulate_uploaded_blocks(*block_info,
+        self._caclulate_uploaded_blocks(
+            *block_info,
             hashes=hashes,
             hmap=hmap,
             fileobj=f,
             hash_cb=hash_cb)
 
         hashmap = dict(bytes=size, hashes=hashes)
-        missing = self._get_missing_hashes(obj, hashmap,
+        missing = self._get_missing_hashes(
+            obj, hashmap,
             content_type=content_type,
             size=size,
             etag=etag,
@@ -414,32 +417,23 @@ class PithosClient(PithosRestAPI):
             map_dict[h] = i
         return (blocksize, blockhash, total_size, hashmap['hashes'], map_dict)
 
-    def _dump_blocks_sync(self,
-        obj,
-        remote_hashes,
-        blocksize,
-        total_size,
-        dst,
-        range,
-        **restargs):
+    def _dump_blocks_sync(
+            self, obj, remote_hashes, blocksize, total_size, dst, range,
+            **args):
         for blockid, blockhash in enumerate(remote_hashes):
-            if blockhash == None:
-                continue
-            start = blocksize * blockid
-            end = total_size - 1 if start + blocksize > total_size\
-                else start + blocksize - 1
-            (start, end) = _range_up(start, end, range)
-            restargs['data_range'] = 'bytes=%s-%s' % (start, end)
-            r = self.object_get(obj, success=(200, 206), **restargs)
-            self._cb_next()
-            dst.write(r.content)
-            dst.flush()
+            if blockhash:
+                start = blocksize * blockid
+                is_last = start + blocksize > total_size
+                end = (total_size - 1) if is_last else (start + blocksize - 1)
+                (start, end) = _range_up(start, end, range)
+                args['data_range'] = 'bytes=%s-%s' % (start, end)
+                r = self.object_get(obj, success=(200, 206), **args)
+                self._cb_next()
+                dst.write(r.content)
+                dst.flush()
 
-    def _get_block_async(self, obj, **restargs):
-        event = SilentEvent(self.object_get,
-            obj,
-            success=(200, 206),
-            **restargs)
+    def _get_block_async(self, obj, **args):
+        event = SilentEvent(self.object_get, obj, success=(200, 206), **args)
         event.start()
         return event
 
@@ -450,15 +444,13 @@ class PithosClient(PithosRestAPI):
         h.update(block.strip('\x00'))
         return hexlify(h.digest())
 
-    def _thread2file(self,
-        flying,
-        local_file,
-        offset=0,
-        **restargs):
+    def _thread2file(self, flying, local_file, offset=0, **restargs):
         """write the results of a greenleted rest call to a file
-        @offset: the offset of the file up to blocksize
-            - e.g. if the range is 10-100, all
-        blocks will be written to normal_position - 10"""
+
+        :param offset: the offset of the file up to blocksize
+        - e.g. if the range is 10-100, all blocks will be written to
+        normal_position - 10
+        """
         finished = []
         for i, (start, g) in enumerate(flying.items()):
             if not g.isAlive():
@@ -472,17 +464,9 @@ class PithosClient(PithosRestAPI):
         local_file.flush()
         return finished
 
-    def _dump_blocks_async(self,
-        obj,
-        remote_hashes,
-        blocksize,
-        total_size,
-        local_file,
-        blockhash=None,
-        resume=False,
-        filerange=None,
-        **restargs):
-
+    def _dump_blocks_async(
+            self, obj, remote_hashes, blocksize, total_size, local_file,
+            blockhash=None, resume=False, filerange=None, **restargs):
         file_size = fstat(local_file.fileno()).st_size if resume else 0
         flying = {}
         finished = []
@@ -494,12 +478,8 @@ class PithosClient(PithosRestAPI):
         self._init_thread_limit()
         for block_hash, blockid in remote_hashes.items():
             start = blocksize * blockid
-            if start < file_size\
-            and block_hash == self._hash_from_file(
-                    local_file,
-                    start,
-                    blocksize,
-                    blockhash):
+            if start < file_size and block_hash == self._hash_from_file(
+                    local_file, start, blocksize, blockhash):
                 self._cb_next()
                 continue
             self._watch_thread_limit(flying.values())
@@ -521,19 +501,17 @@ class PithosClient(PithosRestAPI):
             thread.join()
         finished += self._thread2file(flying, local_file, offset, **restargs)
 
-    def download_object(self,
-        obj,
-        dst,
-        download_cb=None,
-        version=None,
-        resume=False,
-        range=None,
-        if_match=None,
-        if_none_match=None,
-        if_modified_since=None,
-        if_unmodified_since=None):
-        """Download an object using multiple connections (threads) and
-            writing to random parts of the file
+    def download_object(
+            self, obj, dst,
+            download_cb=None,
+            version=None,
+            resume=False,
+            range_str=None,
+            if_match=None,
+            if_none_match=None,
+            if_modified_since=None,
+            if_unmodified_since=None):
+        """Download an object (multiple connections, random blocks)
 
         :param obj: (str) remote object path
 
@@ -545,8 +523,7 @@ class PithosClient(PithosRestAPI):
 
         :param resume: (bool) if set, preserve already downloaded file parts
 
-        :param range: (str) from-to where from and to are integers denoting
-            file positions in bytes
+        :param range_str: (str) from, to are file positions (int) in bytes
 
         :param if_match: (str)
 
@@ -554,17 +531,17 @@ class PithosClient(PithosRestAPI):
 
         :param if_modified_since: (str) formated date
 
-        :param if_unmodified_since: (str) formated date
-        """
-
-        restargs = dict(version=version,
-            data_range=None if range is None else 'bytes=%s' % range,
+        :param if_unmodified_since: (str) formated date"""
+        restargs = dict(
+            version=version,
+            data_range=None if range_str is None else 'bytes=%s' % range_str,
             if_match=if_match,
             if_none_match=if_none_match,
             if_modified_since=if_modified_since,
             if_unmodified_since=if_unmodified_since)
 
-        (blocksize,
+        (
+            blocksize,
             blockhash,
             total_size,
             hash_list,
@@ -576,24 +553,26 @@ class PithosClient(PithosRestAPI):
             self._cb_next()
 
         if dst.isatty():
-            self._dump_blocks_sync(obj,
+            self._dump_blocks_sync(
+                obj,
                 hash_list,
                 blocksize,
                 total_size,
                 dst,
-                range,
+                range_str,
                 **restargs)
         else:
-            self._dump_blocks_async(obj,
+            self._dump_blocks_async(
+                obj,
                 remote_hashes,
                 blocksize,
                 total_size,
                 dst,
                 blockhash,
                 resume,
-                range,
+                range_str,
                 **restargs)
-            if range is None:
+            if not range_str:
                 dst.truncate(total_size)
 
         self._complete_cb()
@@ -613,13 +592,14 @@ class PithosClient(PithosRestAPI):
             except:
                 break
 
-    def get_object_hashmap(self, obj,
-        version=None,
-        if_match=None,
-        if_none_match=None,
-        if_modified_since=None,
-        if_unmodified_since=None,
-        data_range=None):
+    def get_object_hashmap(
+            self, obj,
+            version=None,
+            if_match=None,
+            if_none_match=None,
+            if_modified_since=None,
+            if_unmodified_since=None,
+            data_range=None):
         """
         :param obj: (str) remote object path
 
@@ -637,7 +617,8 @@ class PithosClient(PithosRestAPI):
         :returns: (list)
         """
         try:
-            r = self.object_get(obj,
+            r = self.object_get(
+                obj,
                 hashmap=True,
                 version=version,
                 if_etag_match=if_match,
@@ -682,7 +663,8 @@ class PithosClient(PithosRestAPI):
         """
         :returns: (dict)
         """
-        return filter_in(self.get_account_info(),
+        return filter_in(
+            self.get_account_info(),
             'X-Account-Policy-Quota',
             exactMatch=True)
 
@@ -690,7 +672,8 @@ class PithosClient(PithosRestAPI):
         """
         :returns: (dict)
         """
-        return filter_in(self.get_account_info(),
+        return filter_in(
+            self.get_account_info(),
             'X-Account-Policy-Versioning',
             exactMatch=True)
 
@@ -755,15 +738,18 @@ class PithosClient(PithosRestAPI):
         :raises ClientError: 409 Container is not empty
         """
         self._assert_container()
-        r = self.container_delete(until=until,
+        r = self.container_delete(
+            until=until,
             delimiter=delimiter,
             success=(204, 404, 409))
         r.release()
         if r.status_code == 404:
-            raise ClientError('Container "%s" does not exist' % self.container,
+            raise ClientError(
+                'Container "%s" does not exist' % self.container,
                 r.status_code)
         elif r.status_code == 409:
-            raise ClientError('Container "%s" is not empty' % self.container,
+            raise ClientError(
+                'Container "%s" is not empty' % self.container,
                 r.status_code)
 
     def get_container_versioning(self, container):
@@ -773,7 +759,8 @@ class PithosClient(PithosRestAPI):
         :returns: (dict)
         """
         self.container = container
-        return filter_in(self.get_container_info(),
+        return filter_in(
+            self.get_container_info(),
             'X-Container-Policy-Versioning')
 
     def get_container_quota(self, container):
@@ -806,7 +793,8 @@ class PithosClient(PithosRestAPI):
 
         :returns: (dict)
         """
-        return filter_in(self.get_container_info(until=until),
+        return filter_in(
+            self.get_container_info(until=until),
             'X-Container-Meta')
 
     def get_container_object_meta(self, until=None):
@@ -815,7 +803,8 @@ class PithosClient(PithosRestAPI):
 
         :returns: (dict)
         """
-        return filter_in(self.get_container_info(until=until),
+        return filter_in(
+            self.get_container_info(until=until),
             'X-Container-Object-Meta')
 
     def set_container_meta(self, metapairs):
@@ -889,7 +878,8 @@ class PithosClient(PithosRestAPI):
         info = self.get_object_info(obj)
         pref, sep, rest = self.base_url.partition('//')
         base = rest.split('/')[0]
-        newurl = path4url('%s%s%s' % (pref, sep, base),
+        newurl = path4url(
+            '%s%s%s' % (pref, sep, base),
             info['x-object-public'])
         return newurl[1:]
 
@@ -924,7 +914,8 @@ class PithosClient(PithosRestAPI):
 
         :returns: (dict)
         """
-        return filter_in(self.get_object_info(obj, version=version),
+        return filter_in(
+            self.get_object_info(obj, version=version),
             'X-Object-Meta')
 
     def get_object_sharing(self, obj):
@@ -933,7 +924,8 @@ class PithosClient(PithosRestAPI):
 
         :returns: (dict)
         """
-        r = filter_in(self.get_object_info(obj),
+        r = filter_in(
+            self.get_object_info(obj),
             'X-Object-Sharing',
             exactMatch=True)
         reply = {}
@@ -948,9 +940,9 @@ class PithosClient(PithosRestAPI):
                 reply[key] = val
         return reply
 
-    def set_object_sharing(self, obj,
-        read_permition=False,
-        write_permition=False):
+    def set_object_sharing(
+            self, obj,
+            read_permition=False, write_permition=False):
         """Give read/write permisions to an object.
 
         :param obj: (str) remote object path
@@ -964,7 +956,8 @@ class PithosClient(PithosRestAPI):
            permissions will be removed
         """
 
-        perms = dict(read='' if not read_permition else read_permition,
+        perms = dict(
+            read='' if not read_permition else read_permition,
             write='' if not write_permition else write_permition)
         r = self.object_post(obj, update=True, permissions=perms)
         r.release()
@@ -996,7 +989,8 @@ class PithosClient(PithosRestAPI):
         for i in range(nblocks):
             block = source_file.read(min(blocksize, filesize - offset))
             offset += len(block)
-            r = self.object_post(obj,
+            r = self.object_post(
+                obj,
                 update=True,
                 content_range='bytes */*',
                 content_type='application/octet-stream',
@@ -1013,7 +1007,8 @@ class PithosClient(PithosRestAPI):
 
         :param upto_bytes: max number of bytes to leave on file
         """
-        r = self.object_post(obj,
+        r = self.object_post(
+            obj,
             update=True,
             content_range='bytes 0-%s/*' % upto_bytes,
             content_type='application/octet-stream',
@@ -1021,12 +1016,7 @@ class PithosClient(PithosRestAPI):
             source_object=path4url(self.container, obj))
         r.release()
 
-    def overwrite_object(self,
-        obj,
-        start,
-        end,
-        source_file,
-        upload_cb=None):
+    def overwrite_object(self, obj, start, end, source_file, upload_cb=None):
         """Overwrite a part of an object from local source file
 
         :param obj: (str) remote object path
@@ -1061,10 +1051,10 @@ class PithosClient(PithosRestAPI):
             upload_gen = upload_cb(nblocks)
             upload_gen.next()
         for i in range(nblocks):
-            block = source_file.read(min(blocksize,
-                filesize - offset,
-                datasize - offset))
-            r = self.object_post(obj,
+            read_size = min(blocksize, filesize - offset, datasize - offset)
+            block = source_file.read(read_size)
+            r = self.object_post(
+                obj,
                 update=True,
                 content_type='application/octet-stream',
                 content_length=len(block),
@@ -1078,12 +1068,13 @@ class PithosClient(PithosRestAPI):
             if upload_cb:
                 upload_gen.next()
 
-    def copy_object(self, src_container, src_object, dst_container,
-        dst_object=False,
-        source_version=None,
-        public=False,
-        content_type=None,
-        delimiter=None):
+    def copy_object(
+            self, src_container, src_object, dst_container,
+            dst_object=False,
+            source_version=None,
+            public=False,
+            content_type=None,
+            delimiter=None):
         """
         :param src_container: (str) source container
 
@@ -1105,7 +1096,8 @@ class PithosClient(PithosRestAPI):
         self.container = dst_container
         dst_object = dst_object or src_object
         src_path = path4url(src_container, src_object)
-        r = self.object_put(dst_object,
+        r = self.object_put(
+            dst_object,
             success=201,
             copy_from=src_path,
             content_length=0,
@@ -1115,12 +1107,13 @@ class PithosClient(PithosRestAPI):
             delimiter=delimiter)
         r.release()
 
-    def move_object(self, src_container, src_object, dst_container,
-        dst_object=False,
-        source_version=None,
-        public=False,
-        content_type=None,
-        delimiter=None):
+    def move_object(
+            self, src_container, src_object, dst_container,
+            dst_object=False,
+            source_version=None,
+            public=False,
+            content_type=None,
+            delimiter=None):
         """
         :param src_container: (str) source container
 
@@ -1142,7 +1135,8 @@ class PithosClient(PithosRestAPI):
         self.container = dst_container
         dst_object = dst_object or src_object
         src_path = path4url(src_container, src_object)
-        r = self.object_put(dst_object,
+        r = self.object_put(
+            dst_object,
             success=201,
             move_from=src_path,
             content_length=0,

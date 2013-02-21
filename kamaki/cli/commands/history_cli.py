@@ -170,7 +170,8 @@ class history_run(_init_history):
         try:
             instance = cmd.get_class()(self.arguments)
             instance.config = self.config
-            prs = ArgumentParseManager(cmd.path.split(),
+            prs = ArgumentParseManager(
+                cmd.path.split(),
                 dict(instance.arguments))
             prs.syntax = '%s %s' % (
                 cmd.path.replace('_', ' '),

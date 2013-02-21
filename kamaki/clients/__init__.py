@@ -31,6 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+from urllib2 import quote
 from threading import Thread
 from json import dumps, loads
 from time import time
@@ -124,9 +125,8 @@ class Client(object):
 
     def _watch_thread_limit(self, threadlist):
         recvlog.debug('# running threads: %s' % len(threadlist))
-        if (
-            self._elapsed_old > self._elapsed_new) and (
-            self._thread_limit < self.POOL_SIZE):
+        if (self._elapsed_old > self._elapsed_new) and (
+                self._thread_limit < self.POOL_SIZE):
             self._thread_limit += 1
         elif self._elapsed_old < self._elapsed_new and self._thread_limit > 1:
             self._thread_limit -= 1
@@ -164,12 +164,12 @@ class Client(object):
         self.http_client.headers.setdefault(name, value)
 
     def request(
-        self,
-        method,
-        path,
-        async_headers={},
-        async_params={},
-        **kwargs):
+            self,
+            method,
+            path,
+            async_headers={},
+            async_params={},
+            **kwargs):
         """In threaded/asynchronous requests, headers and params are not safe
         Therefore, the standard self.set_header/param system can be used only
         for headers and params that are common for all requests. All other
@@ -179,7 +179,6 @@ class Client(object):
         E.g. in most queries the 'X-Auth-Token' header might be the same for
         all, but the 'Range' header might be different from request to request.
         """
-
         try:
             success = kwargs.pop('success', 200)
 
@@ -195,7 +194,7 @@ class Client(object):
             sendlog.info('perform a %s @ %s', method, self.base_url)
 
             self.http_client.url = self.base_url
-            self.http_client.path = path
+            self.http_client.path = quote(path)
             r = self.http_client.perform_request(
                 method,
                 data,

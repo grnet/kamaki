@@ -70,10 +70,10 @@ quotaholder
     kamaki config set quotaholder.cli hotaholder_cli
     kamaki config set quotaholder.url <quotaholder server url>
 
-test
+livetest
 
-    Prepared unit-tests for developers (experimental). To enable:
-    kamaki config set test.cli test_cli
+    LIve tests that check kamaki against running services. To enable:
+    kamaki config set livetest.cli livetest_cli
 
 
 Options

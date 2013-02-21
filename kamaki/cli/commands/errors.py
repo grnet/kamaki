@@ -65,6 +65,7 @@ class generic(object):
             try:
                 foo(self, *args, **kwargs)
             except ClientError as ce:
+                ce_msg = ('%s' % ce).lower()
                 if ce.status == 401:
                     raiseCLIError(ce, 'Authorization failed', details=[
                         'Make sure a valid token is provided:',
@@ -76,8 +77,7 @@ class generic(object):
                         'Check if service is up or set to url %s' % base_url,
                         '  to get url: /config get %s' % base_url,
                         '  to set url: /config set %s <URL>' % base_url])
-                elif ce.status == 404\
-                and 'kamakihttpresponse' in ('%s' % ce).lower():
+                elif ce.status == 404 and 'kamakihttpresponse' in ce_msg:
                     client = getattr(self, 'client', None)
                     if not client:
                         raise
@@ -123,7 +123,7 @@ class astakos(object):
     def authenticate(this, foo):
         def _raise(self, *args, **kwargs):
             try:
-                r = foo(self, *args, **kwargs)
+                return foo(self, *args, **kwargs)
             except ClientError as ce:
                 if ce.status == 401:
                     token = kwargs.get('custom_token', 0) or self.client.token
@@ -133,7 +133,6 @@ class astakos(object):
                     details = [] if token else this._token_details
                     raiseCLIError(ce, msg, details=details)
             self._raise = foo
-            return r
         return _raise
 
 
@@ -214,7 +213,8 @@ class cyclades(object):
             except ClientError as ce:
                 if ce.status == 413:
                     msg = 'Cannot create another network',
-                    details = ['Maximum number of networks reached',
+                    details = [
+                        'Maximum number of networks reached',
                         '* to get a list of networks: /network list',
                         '* to delete a network: /network delete <net id>']
                     raiseCLIError(ce, msg, details=details)
@@ -394,17 +394,18 @@ class plankton(object):
             try:
                 foo(self, *args, **kwargs)
             except ClientError as ce:
+                ce_msg = ('%s' % ce).lower()
                 if ce.status == 404 or (
-                    (ce.status == 400 and 'metadata' in ('%s' % ce).lower())):
-                        msg = 'No properties with key %s in this image' % key
-                        raiseCLIError(ce, msg)
+                        ce.status == 400 and 'metadata' in ce_msg):
+                    msg = 'No properties with key %s in this image' % key
+                    raiseCLIError(ce, msg)
                 raise
         return _raise
 
 
 class pithos(object):
     container_howto = [
-       "" 'To specify a container:',
+        'To specify a container:',
         '  1. Set store.container variable (permanent)',
         '     /config set store.container <container>',
         '  2. --container=<container> (temporary, overrides 1)',
@@ -512,13 +513,12 @@ class pithos(object):
                 return foo(self, *args, **kwargs)
             except ClientError as ce:
                 err_msg = ('%s' % ce).lower()
-                if size and (ce.status == 416 or
-                (ce.status == 400 and
-                    'object length is smaller than range length' in err_msg)):
+                expected = 'object length is smaller than range length'
+                if size and (
+                    ce.status == 416 or (
+                        ce.status == 400 and expected in err_msg)):
                     raiseCLIError(ce, 'Remote object %s:%s <= %s %s' % (
-                            self.container,
-                            self.path,
-                            format_size(size),
-                            ('(%sB)' % size) if size >= 1024 else ''))
+                        self.container, self.path, format_size(size),
+                        ('(%sB)' % size) if size >= 1024 else ''))
                 raise
         return _raise

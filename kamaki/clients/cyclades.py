@@ -81,7 +81,8 @@ class CycladesClient(CycladesClientApi):
         try:
             return r['attachments']['values'][0]['firewallProfile']
         except KeyError:
-            raise ClientError('No Firewall Profile', 520,
+            raise ClientError(
+                'No Firewall Profile', 520,
                 details='Server %s is missing a firewall profile' % server_id)
 
     def set_firewall_profile(self, server_id, profile):
@@ -144,8 +145,9 @@ class CycladesClient(CycladesClientApi):
         r = self.networks_get(network_id=network_id)
         return r.json['network']['attachments']['values']
 
-    def create_network(self,
-        name, cidr=None, gateway=None, type=None, dhcp=None):
+    def create_network(
+            self, name,
+            cidr=None, gateway=None, type=None, dhcp=False):
         """
         :param name: (str)
 
@@ -155,7 +157,7 @@ class CycladesClient(CycladesClientApi):
 
         :param type: (str)
 
-        :param dhcp: (str)
+        :param dhcp: (bool)
 
         :returns: (dict) network detailed info
         """
@@ -166,8 +168,7 @@ class CycladesClient(CycladesClientApi):
             net['gateway'] = gateway
         if type:
             net['type'] = type
-        if dhcp:
-            net['dhcp'] = dhcp
+        net['dhcp'] = True if dhcp else False
         req = dict(network=net)
         r = self.networks_post(json_data=req, success=202)
         return r.json['network']
@@ -202,7 +203,7 @@ class CycladesClient(CycladesClientApi):
         except ClientError as err:
             if err.status == 421:
                 err.details = [
-                'Network may be still connected to at least one server']
+                    'Network may be still connected to at least one server']
             raise err
         r.release()
 
@@ -223,11 +224,11 @@ class CycladesClient(CycladesClientApi):
 
         :param nic_id: (str)
         """
-        server_nets = self.list_server_nics(server_id)
-        nets = [(net['id'], net['network_id']) for net in server_nets\
-            if nic_id == net['id']]
+        vm_nets = self.list_server_nics(server_id)
         num_of_disconnections = 0
-        for (nic_id, network_id) in nets:
+        for (nic_id, network_id) in [(
+                net['id'],
+                net['network_id']) for net in vm_nets if nic_id == net['id']]:
             req = {'remove': {'attachment': unicode(nic_id)}}
             r = self.networks_post(network_id, 'action', json_data=req)
             r.release()
@@ -244,12 +245,12 @@ class CycladesClient(CycladesClientApi):
             r.release()
 
     def wait_server(
-        self,
-        server_id,
-        current_status='BUILD',
-        delay=0.5,
-        max_wait=128,
-        wait_cb=None):
+            self,
+            server_id,
+            current_status='BUILD',
+            delay=0.5,
+            max_wait=128,
+            wait_cb=None):
         """Wait for server while its status is current_status
 
         :param server_id: integer (str or int)
