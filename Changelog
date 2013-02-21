@@ -20,4 +20,3 @@ Bug fixes:
 3. Quoted text in kamaki shell behaves same way as in one command mode
 4. Pithos container names with spaces fail
 5. URL-encode all url paths before requests
-
