@@ -71,7 +71,7 @@ class Positive(Integer):
         self.opts.update({'minimum': 1})
 
 
-QH_PRACTICALLY_INFINITE = 10**32
+QH_PRACTICALLY_INFINITE = 10 ** 32
 
 Serial = Positive(classname='Serial')
 
@@ -107,12 +107,8 @@ Reason = Text(classname='Reason', regex='(ACCEPT|REJECT):.*', maxlen=128)
 
 class QuotaholderAPI(Specificator):
 
-    def create_entity(
-        self,
-        context=Context,
-        create_entity=ListOf(Entity, Owner, Key, OwnerKey,
-        nonempty=1)
-    ):
+    def create_entity(self, context=Context, create_entity=ListOf(
+            Entity, Owner, Key, OwnerKey, nonempty=1)):
         rejected = ListOf(Index)
         return rejected
 
@@ -169,8 +165,15 @@ class QuotaholderAPI(Specificator):
         context=Context,
         get_holding=ListOf(Entity, Resource, Key)
     ):
-        holdings = ListOf(  Entity, Resource, Policy,
-                            Imported, Exported, Returned, Released, Flags   )
+        holdings = ListOf(
+            Entity,
+            Resource,
+            Policy,
+            Imported,
+            Exported,
+            Returned,
+            Released,
+            Flags)
         return holdings
 
     def set_holding(

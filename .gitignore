@@ -1,6 +1,7 @@
 *.pyc
 *.egg-info
 *.*.swp
+kamaki/version.py
 _build
 build
 dist

@@ -134,11 +134,9 @@ class KamakiHTTPConnection(HTTPConnection):
         self.path += '?%s' % parsed.query if parsed.query else ''
         return (parsed.scheme, parsed.netloc)
 
-    def perform_request(self,
-        method=None,
-        data=None,
-        async_headers={},
-        async_params={}):
+    def perform_request(
+            self,
+            method=None, data=None, async_headers={}, async_params={}):
         """
         :param method: (str) http method ('get', 'post', etc.)
 
@@ -168,10 +166,16 @@ class KamakiHTTPConnection(HTTPConnection):
             http_headers[str(k)] = str(v)
 
         #get connection from pool
-        conn = get_http_connection(netloc=netloc, scheme=scheme)
+        try:
+            conn = get_http_connection(netloc=netloc, scheme=scheme)
+        except ValueError as ve:
+            raise HTTPConnectionError(
+                'Cannot establish connection to %s %s' % (self.url, ve),
+                errno=-1)
         try:
             #Be carefull, all non-body variables should not be unicode
-            conn.request(method=str(method.upper()),
+            conn.request(
+                method=str(method.upper()),
                 url=str(self.path),
                 headers=http_headers,
                 body=data)
