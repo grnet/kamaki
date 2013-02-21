@@ -1063,7 +1063,7 @@ class Pithos(livetest.Generic):
                 read=['accX:groupA', 'u1', 'u2'],
                 write=['u2', 'u3']))
 
-        """Append livetest update, content_range, content_type, content_length"""
+        """Append livetest update, content_[range|type|length]"""
         newf.seek(0)
         self.client.append_object(obj, newf)
         r = self.client.object_get(obj)
