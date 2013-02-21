@@ -32,4 +32,3 @@
 # or implied, of GRNET S.A.
 
 from kamaki.version import __version__
-
