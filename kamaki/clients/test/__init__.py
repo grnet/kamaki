@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-
-# Copyright 2011 GRNET S.A. All rights reserved.
+# Copyright 2013 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -33,47 +31,30 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from setuptools import setup
-from sys import version_info
-import collections
-
-import kamaki
+from unittest import TestCase, TestSuite, makeSuite, TextTestRunner
+#from mock import Mock, patch
 
 
-optional = ['ansicolors',
-            'progress>=1.0.2']
-requires = ['objpool', 'mock']
+def get_test_classes(module=__import__(__name__), name=''):
+    from inspect import getmembers, isclass
+    for objname, obj in getmembers(module):
+        if (objname == name or not name) and isclass(obj) and (
+                issubclass(obj, TestCase)):
+            yield (obj, objname)
 
-if version_info < (2, 7):
-    requires.append('argparse')
 
-setup(
-    name='kamaki',
-    version=kamaki.__version__,
-    description='A command-line tool for managing clouds',
-    long_description=open('README.rst').read(),
-    url='http://code.grnet.gr/projects/kamaki',
-    license='BSD',
-    author='Synnefo development team',
-    author_email='synnefo-devel@googlegroups.com',
-    maintainer='Synnefo development team',
-    maintainer_email='synnefo-devel@googlegroups.com',
-    packages=[
-        'kamaki',
-        'kamaki.cli',
-        'kamaki.cli.commands',
-        'kamaki.clients',
-        'kamaki.clients.test',
-        'kamaki.clients.livetest',
-        'kamaki.clients.connection',
-        'kamaki.clients.commissioning',
-        'kamaki.clients.quotaholder',
-        'kamaki.clients.quotaholder.api',
-        'kamaki.clients.commissioning.utils'
-    ],
-    include_package_data=True,
-    entry_points={
-        'console_scripts': ['kamaki = kamaki.cli:main']
-    },
-    install_requires=requires
-)
+def main(argv):
+    for cls, name in get_test_classes(name=argv[1] if len(argv) > 1 else ''):
+        args = argv[2:]
+        suite = TestSuite()
+        if args:
+            suite.addTest(cls('_'.join(['test'] + args)))
+        else:
+            suite.addTest(makeSuite(cls))
+        print('Test %s' % name)
+        TextTestRunner(verbosity=2).run(suite)
+
+
+if __name__ == '__main__':
+    from sys import argv
+    main(argv)
