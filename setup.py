@@ -44,12 +44,9 @@ optional = ['ansicolors',
             'progress>=1.0.2']
 requires = ['objpool']
 
-<<<<<<< HEAD
-=======
 if version_info < (2, 7):
     requires.append('argparse')
 
->>>>>>> develop
 setup(
     name='kamaki',
     version=kamaki.__version__,
