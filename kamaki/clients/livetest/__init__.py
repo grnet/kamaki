@@ -64,8 +64,12 @@ class Generic(TestCase):
     def __getitem__(self, key):
         key = self._key(key)
         try:
+            r = self._fetched[key]
+            return r
             return self._fetched[key]
         except KeyError:
+            r = self._get_from_cnf(key)
+            return r
             return self._get_from_cnf(key)
 
     def _key(self, key):
@@ -76,9 +80,10 @@ class Generic(TestCase):
     def _get_from_cnf(self, key):
         val = 0
         if key[0]:
-            val = self._cnf.get('test', '%s_%s' % key) or self._cnf.get(*key)
+            keystr = '%s_%s' % key
+            val = self._cnf.get('livetest', keystr) or self._cnf.get(*key)
         if not val:
-            val = self._cnf.get('test', key[1]) or self._cnf.get(
+            val = self._cnf.get('livetest', key[1]) or self._cnf.get(
                 'global',
                 key[1])
         self._fetched[key] = val
@@ -167,19 +172,19 @@ def init_parser():
 def main(argv, config=None):
     suiteFew = TestSuite()
     if len(argv) == 0 or argv[0] == 'pithos':
-        from kamaki.clients.tests.pithos import Pithos
+        from kamaki.clients.livetest.pithos import Pithos
         test_method = 'test_%s' % (argv[1] if len(argv) > 1 else '000')
         suiteFew.addTest(Pithos(test_method, config))
     if len(argv) == 0 or argv[0] == 'cyclades':
-        from kamaki.clients.tests.cyclades import Cyclades
+        from kamaki.clients.livetest.cyclades import Cyclades
         test_method = 'test_%s' % (argv[1] if len(argv) > 1 else '000')
         suiteFew.addTest(Cyclades(test_method, config))
     if len(argv) == 0 or argv[0] == 'image':
-        from kamaki.clients.tests.image import Image
+        from kamaki.clients.livetest.image import Image
         test_method = 'test_%s' % (argv[1] if len(argv) > 1 else '000')
         suiteFew.addTest(Image(test_method, config))
     if len(argv) == 0 or argv[0] == 'astakos':
-        from kamaki.clients.tests.astakos import Astakos
+        from kamaki.clients.livetest.astakos import Astakos
         test_method = 'test_%s' % (argv[1] if len(argv) > 1 else '000')
         suiteFew.addTest(Astakos(test_method, config))
 
@@ -189,5 +194,5 @@ if __name__ == '__main__':
     parser = init_parser()
     args, argv = parser.parse_known_args()
     if len(argv) > 2 or getattr(args, 'help') or len(argv) < 1:
-        raise Exception('\tusage: tests <group> [command]')
+        raise Exception('\tusage: livetest <group> [command]')
     main(argv)

@@ -29,7 +29,7 @@ For installing any all of the following, consult the `kamaki installation guide 
 
 * progress 
     * Attach progress bars to various kamaki commands (e.g. kamaki store upload)
-    * Since version 0.6.1 kamaki "requires" progress version 1.0.2 or better
+    * If desired, progress version should be 1.0.2 or better
 
 Any of the above features can be installed at any time before or after kamaki installation.
 
@@ -157,15 +157,103 @@ The [global] group is treated by kamaki as a generic group for arbitrary options
 Hidden features
 ^^^^^^^^^^^^^^^
 
-Since version 0.6.1 kamaki contains a test suite for the kamaki.clients API. The test suite can be activated with the following option on the configuration file::
+The livetest suite
+""""""""""""""""""
 
-    [test]
-    cli=test_cli
+Kamaki contains a live test suite for the kamaki.clients API, where "live" means that the tests are performed against active services that up and running. The live test package is named "livetest", it is accessible as kamaki.clients.livetest and it is designed to check the actual relation between kamaki and synnefo services.
 
-After that, users can run "kamaki test" commands to unit-test the prepackaged client APIs. Unit-tests are still experimental and there is a high probability of false alarms due to some of the expected values being hard-coded in the testing code.
+The livetest suite can be activated with the following option on the configuration file::
 
-Since version 0.6.3, a quotaholder client is introduced as an advanced feature. Quotaholder client is mostly used as a client library for accessing a synnefo quota service, but it can also be allowed as a kamaki command set, but setting the quotaholder.cli and quotaholder.url methods:
+    [livetest]
+    cli=livetest_cli
+
+In most tests, livetest will run as long as an Astakos identity manager service is accessible and kamaki is set up to authenticate a valid token on this server.
+
+In specific, a setup file needs at least the following mandatory settings in the configuration file:
+
+* If authentication information is used for default kamaki clients::
+
+    [astakos]
+    url=<Astakos Identity Manager URL>
+    token=<A valid user token>
+
+* else if this authentication information is only for testing add this under [livetest]::
+
+    astakos_url=<Astakos Identity Manager URL>
+    astakos_token=<A valid user token>
+
+Each service tested in livetest might need some more options under the [livetest] label, as shown bellow:
+
+* kamaki livetest astakos::
+
+    astakos_email = <The valid email of testing user>
+    astakos_name = <The exact "real" name of testing user>
+    astakos_username = <The username of the testing user>
+    astakos_uuid = <The valid unique user id of the testing user>
+
+* kamaki livetest pithos::
+
+    astakos_uuid = <The valid unique user id of the testing user>
+
+* kamaki livetest cyclades / image::
+
+    image_id = <A valid image id used for testing>
+    image_local_path = <The local path of the testing image>
+    image_details = <A text file containing testing image details in a python dict>
+
+    - example image.details content:
+    {
+        u'id': u'b3e68235-3abd-4d60-adfe-1379a4f8d3fe',
+        u'metadata': {
+            u'values': {
+                u'description': u'Debian 6.0.6 (Squeeze) Base System',
+                u'gui': u'No GUI',
+                u'kernel': u'2.6.32',
+                u'os': u'debian',
+                u'osfamily': u'linux',
+                u'root_partition': u'1',
+                u'sortorder': u'1',
+                u'users': u'root'
+            }
+        },
+        u'name': u'Debian Base',
+        u'progress': u'100',
+        u'status': u'ACTIVE',
+        u'created': u'2012-11-19T14:54:57+00:00',
+        u'updated': u'2012-11-19T15:29:51+00:00'
+    }
+
+    flavor_details = <A text file containing the testing images' flavor details in a python dict>
+
+    - example flavor.details content:
+    {
+        u'name': u'C1R1drbd',
+        u'ram': 1024,
+        u'id': 1,
+        u'SNF:disk_template': u'drbd',
+        u'disk': 20,
+        u'cpu': 1
+    }
+
+After setup, kamaki can run all tests::
+
+    $ kamaki livetest all
+
+a specific test (e.g. astakos)::
+
+    $ kamaki livetest astakos
+
+or a specific method from a service (e.g. astakos authenticate)::
+
+    $ kamaki livetest astakos authenticate
+
+The quotaholder client
+""""""""""""""""""""""
+
+A quotaholder client is introduced as an advanced feature. Quotaholder client is mostly used as a client library for accessing a synnefo quota service, but it can also be allowed as a kamaki command set, but setting the quotaholder.cli and quotaholder.url methods::
 
     [quotaholder]
     cli=quotaholder_cli
     url=<URL of quotaholder service>
+
+Quotaholder is not tested in livetest

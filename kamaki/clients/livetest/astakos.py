@@ -31,11 +31,11 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from kamaki.clients import tests
+from kamaki.clients import livetest
 from kamaki.clients.astakos import AstakosClient
 
 
-class Astakos(tests.Generic):
+class Astakos(livetest.Generic):
     def setUp(self):
         self.client = AstakosClient(
             self['astakos', 'url'],

@@ -33,11 +33,11 @@
 
 import time
 
-from kamaki.clients import tests, ClientError
+from kamaki.clients import livetest, ClientError
 from kamaki.clients.cyclades import CycladesClient
 
 
-class Cyclades(tests.Generic):
+class Cyclades(livetest.Generic):
     """Set up a Cyclades thorough test"""
     def setUp(self):
         print
@@ -109,6 +109,8 @@ class Cyclades(tests.Generic):
         return net
 
     def _delete_network(self, netid):
+        if not netid in self.networks:
+            return None
         print('Disconnect nics of network %s' % netid)
         self.client.disconnect_network_nics(netid)
 
@@ -121,6 +123,7 @@ class Cyclades(tests.Generic):
             netwait,
             'Delete network %s' % netid,
             self._waits[:7])
+        return self.networks.pop(netid)
 
     def _wait_for_network(self, netid, status):
 
@@ -169,7 +172,7 @@ class Cyclades(tests.Generic):
 
     def test_parallel_creation(self):
         """test create with multiple threads
-        Do not use this in regular tests
+        Do not use this in regular livetest
         """
         from kamaki.clients import SilentEvent
         c1 = SilentEvent(
@@ -582,15 +585,31 @@ class Cyclades(tests.Generic):
         self._test_0230_create_network()
 
     def _test_0230_create_network(self):
+        print('\twith no params')
         self.network1 = self._create_network(self.netname1)
         self._wait_for_network(self.network1['id'], 'ACTIVE')
-        self.network1 = self.client.get_network_details(self.network1['id'])
+        n1id = self.network1['id']
+        self.network1 = self.client.get_network_details(n1id)
         nets = self.client.list_networks(self.network1['id'])
-        chosen = [net for net in nets if net['id'] == self.network1['id']][0]
+        chosen = [net for net in nets if net['id'] == n1id][0]
         chosen.pop('updated')
         net1 = dict(self.network1)
         net1.pop('updated')
         self.assert_dicts_are_deeply_equal(chosen, net1)
+        for param, val in dict(
+                cidr='192.168.0.0/24',
+                gateway='192.168.0.1',
+                type='MAC_FILTERED',
+                dhcp=True).items():
+            print('\tdelete %s to avoid max net limit' % n1id)
+            self._delete_network(n1id)
+            kwargs = {param: val}
+            print('\twith %s=%s' % (param, val))
+            self.network1 = self._create_network(self.netname1, **kwargs)
+            n1id = self.network1['id']
+            self._wait_for_network(n1id, 'ACTIVE')
+            self.network1 = self.client.get_network_details(n1id)
+            self.assertEqual(self.network1[param], val)
 
     def test_connect_server(self):
         """Test connect_server"""

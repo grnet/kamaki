@@ -33,13 +33,13 @@
 
 import time
 
-from kamaki.clients import tests
+from kamaki.clients import livetest
 from kamaki.clients.cyclades import CycladesClient
 from kamaki.clients.image import ImageClient
 from kamaki.clients import ClientError
 
 
-class Image(tests.Generic):
+class Image(livetest.Generic):
     def setUp(self):
         self.now = time.mktime(time.gmtime())
 
