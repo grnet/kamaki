@@ -446,9 +446,11 @@ class PithosClient(PithosRestAPI):
 
     def _thread2file(self, flying, local_file, offset=0, **restargs):
         """write the results of a greenleted rest call to a file
-        @offset: the offset of the file up to blocksize
-            - e.g. if the range is 10-100, all
-        blocks will be written to normal_position - 10"""
+
+        :param offset: the offset of the file up to blocksize
+        - e.g. if the range is 10-100, all blocks will be written to
+        normal_position - 10
+        """
         finished = []
         for i, (start, g) in enumerate(flying.items()):
             if not g.isAlive():
@@ -509,8 +511,7 @@ class PithosClient(PithosRestAPI):
             if_none_match=None,
             if_modified_since=None,
             if_unmodified_since=None):
-        """Download an object using multiple connections (threads) and
-            writing to random parts of the file
+        """Download an object (multiple connections, random blocks)
 
         :param obj: (str) remote object path
 
@@ -522,8 +523,7 @@ class PithosClient(PithosRestAPI):
 
         :param resume: (bool) if set, preserve already downloaded file parts
 
-        :param range_str: (str) from-to where from and to are integers
-        denoting file positions in bytes
+        :param range_str: (str) from, to are file positions (int) in bytes
 
         :param if_match: (str)
 
@@ -531,9 +531,7 @@ class PithosClient(PithosRestAPI):
 
         :param if_modified_since: (str) formated date
 
-        :param if_unmodified_since: (str) formated date
-        """
-
+        :param if_unmodified_since: (str) formated date"""
         restargs = dict(
             version=version,
             data_range=None if range_str is None else 'bytes=%s' % range_str,
