@@ -33,13 +33,13 @@
 
 import time
 
-from kamaki.clients import tests
+from kamaki.clients import livetest
 from kamaki.clients.cyclades import CycladesClient
 from kamaki.clients.image import ImageClient
 from kamaki.clients import ClientError
 
 
-class Image(tests.Generic):
+class Image(livetest.Generic):
     def setUp(self):
         self.now = time.mktime(time.gmtime())
 
@@ -56,9 +56,12 @@ class Image(tests.Generic):
 
     def _prepare_img(self):
         f = open(self['image', 'local_path'], 'rb')
-        uuid = self['store', 'account']
+        (token, uuid) = (self['token'], self['store', 'account'])
+        if not uuid:
+            from kamaki.clients.astakos import AstakosClient
+            uuid = AstakosClient(self['astakos', 'url'], token).term('uuid')
         from kamaki.clients.pithos import PithosClient
-        self.pithcli = PithosClient(self['store', 'url'], self['token'], uuid)
+        self.pithcli = PithosClient(self['store', 'url'], token, uuid)
         cont = 'cont_%s' % self.now
         self.pithcli.container = cont
         self.obj = 'obj_%s' % self.now
@@ -70,7 +73,8 @@ class Image(tests.Generic):
         print('\t- ok')
         f.close()
 
-        self.client.register(self.imgname,
+        self.client.register(
+            self.imgname,
             self.location,
             params=dict(is_public=True))
         img = self._get_img_by_name(self.imgname)
@@ -112,12 +116,13 @@ class Image(tests.Generic):
         r0 = self.client.list_public(order='-')
         self.assertTrue(len(r) > 0)
         for img in r:
-            for term in ('status',
-                'name',
-                'container_format',
-                'disk_format',
-                'id',
-                'size'):
+            for term in (
+                    'status',
+                    'name',
+                    'container_format',
+                    'disk_format',
+                    'id',
+                    'size'):
                 self.assertTrue(term in img)
         self.assertTrue(r, r0)
         r0.reverse()
@@ -125,28 +130,29 @@ class Image(tests.Generic):
             self.assert_dicts_are_deeply_equal(img, r0[i])
         r1 = self.client.list_public(detail=True)
         for img in r1:
-            for term in ('status',
-                'name',
-                'checksum',
-                'created_at',
-                'disk_format',
-                'updated_at',
-                'id',
-                'location',
-                'container_format',
-                'owner',
-                'is_public',
-                'deleted_at',
-                'properties',
-                'size'):
+            for term in (
+                    'status',
+                    'name',
+                    'checksum',
+                    'created_at',
+                    'disk_format',
+                    'updated_at',
+                    'id',
+                    'location',
+                    'container_format',
+                    'owner',
+                    'is_public',
+                    'deleted_at',
+                    'properties',
+                    'size'):
                 self.assertTrue(term in img)
                 if img['properties']:
                     for interm in (
-                        'osfamily',
-                        'users',
-                        'os',
-                        'root_partition',
-                        'description'):
+                            'osfamily',
+                            'users',
+                            'os',
+                            'root_partition',
+                            'description'):
                         self.assertTrue(interm in img['properties'])
         size_max = 1000000000
         r2 = self.client.list_public(filters=dict(size_max=size_max))
@@ -161,26 +167,28 @@ class Image(tests.Generic):
     def _test_get_meta(self):
         r = self.client.get_meta(self['image', 'id'])
         self.assertEqual(r['id'], self['image', 'id'])
-        for term in ('status',
-            'name',
-            'checksum',
-            'updated-at',
-            'created-at',
-            'deleted-at',
-            'location',
-            'is-public',
-            'owner',
-            'disk-format',
-            'size',
-            'container-format'):
+        for term in (
+                'status',
+                'name',
+                'checksum',
+                'updated-at',
+                'created-at',
+                'deleted-at',
+                'location',
+                'is-public',
+                'owner',
+                'disk-format',
+                'size',
+                'container-format'):
             self.assertTrue(term in r)
-            for interm in ('kernel',
-                'osfamily',
-                'users',
-                'gui', 'sortorder',
-                'root-partition',
-                'os',
-                'description'):
+            for interm in (
+                    'kernel',
+                    'osfamily',
+                    'users',
+                    'gui', 'sortorder',
+                    'root-partition',
+                    'os',
+                    'description'):
                 self.assertTrue(interm in r['properties'])
 
     def test_register(self):
@@ -191,7 +199,7 @@ class Image(tests.Generic):
     def _test_register(self):
         self.assertTrue(self._imglist)
         for img in self._imglist.values():
-            self.assertTrue(img != None)
+            self.assertTrue(img is not None)
 
     def test_reregister(self):
         """Test reregister"""

@@ -162,14 +162,13 @@ class Canonical(object):
             padchar = '\n'
 
         args = [a.tostring(
-                    depth=depth,
-                    showopts=showopts,
-                    multiline=multiline) for a in self.args]
+            depth=depth,
+            showopts=showopts,
+            multiline=multiline) for a in self.args]
         args += [("%s=%s" % (k, v.tostring(
-                                depth=depth,
-                                showopts=showopts,
-                                multiline=multiline)))
-                            for k, v in self.kw.items()]
+            depth=depth,
+            showopts=showopts,
+            multiline=multiline))) for k, v in self.kw.items()]
         if showopts:
             args += [("%s=%s" % (k, str(v))) for k, v in self.opts.items()]
 
@@ -271,8 +270,9 @@ class Text(Canonical):
             self.pat = pat
 
         if 'choices' in opts:
-            opts['choices'] = dict((unicode(x), unicode(x))
-                                    for x in opts['choices'])
+            opts['choices'] = dict((
+                unicode(x),
+                unicode(x)) for x in opts['choices'])
 
     def _check(self, item):
         if not isinstance(item, unicode):
@@ -316,9 +316,10 @@ class Text(Canonical):
         if matcher is not None:
             match = matcher.match(item)
             if ((not match) or (match.start(), match.end()) != (0, itemlen)):
-
-                    m = ("%s: '%s' does not match '%s'"
-                            % (self, shorts(item), self.pat))
+                    m = ("%s: '%s' does not match '%s'" % (
+                        self,
+                        shorts(item),
+                        self.pat))
                     raise CanonifyException(m)
 
         return item
@@ -370,8 +371,7 @@ class Bytes(Canonical):
             self.pat = pat
 
         if 'choices' in opts:
-            opts['choices'] = dict((str(x), str(x))
-                                    for x in opts['choices'])
+            opts['choices'] = dict((str(x), str(x)) for x in opts['choices'])
 
     def _check(self, item):
         if isinstance(item, unicode):
@@ -409,8 +409,10 @@ class Bytes(Canonical):
         if matcher is not None:
             match = matcher.match(item)
             if ((not match) or (match.start(), match.end()) != (0, itemlen)):
-                    m = ("%s: '%s' does not match '%s'"
-                            % (self, shorts(item), self.pat))
+                    m = ("%s: '%s' does not match '%s'" % (
+                        self,
+                        shorts(item),
+                        self.pat))
                     raise CanonifyException(m)
 
         return item
@@ -507,7 +509,8 @@ class Args(Canonical):
         arglen = len(arglist)
         if arglen != len(keys):
             m = "inconsistent number of parameters: %s != %s" % (
-            arglen, len(keys))
+                arglen,
+                len(keys))
             raise CanonifyException(m)
 
         position = 0
@@ -740,8 +743,9 @@ class Specificator(object):
             args = zip(args, defaults)
             for a, c in args:
                 if not isinstance(c, Canonical):
-                    m = ("argument '%s=%s' is not an instance of 'Canonical'"
-                         % (a, repr(c)))
+                    m = ("argument '%s=%s' not an instance of 'Canonical'" % (
+                        a,
+                        repr(c)))
                     raise SpecifyException(m)
 
             canonical = Null() if len(args) == 0 else Args(*args)
@@ -750,9 +754,9 @@ class Specificator(object):
             self = object.__new__(cls)
             canonical = f(self)
             if not isinstance(canonical, Canonical):
-                m = ("method '%s' does not return a Canonical, but a(n) %s "
-                                                    % (name, type(canonical)))
-                raise SpecifyException(m)
+                raise SpecifyException(', '.join([
+                    "method %s does not return a Canonical" % name,
+                    "but a (n) %s" % type(canonical)]))
             canonical_outputs[name] = canonical
 
         return Canonifier(cls.__name__, canonical_inputs, canonical_outputs,

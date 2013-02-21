@@ -62,34 +62,7 @@ pithos_cmds = CommandTree('store', 'Pithos+ storage commands')
 _commands = [pithos_cmds]
 
 
-about_directories = [
-    'Kamaki hanldes directories the same way as OOS Storage and Pithos+:',
-    'A directory is an object with type "application/directory"',
-    'An object with path dir/name can exist even if dir does not exist or',
-    'even if dir is a non directory object. Users can modify dir without',
-    'affecting the dir/name object in any way.']
-
-
 # Argument functionality
-
-def raise_connection_errors(e):
-    if e.status in range(200) + [403, 401]:
-        raiseCLIError(e, details=[
-            'Please check the service url and the authentication information',
-            ' ',
-            '  to get the service url: /config get store.url',
-            '  to set the service url: /config set store.url <url>',
-            ' ',
-            '  to get authentication token: /config get token',
-            '  to set authentication token: /config set token <token>'])
-    elif e.status == 413:
-        raiseCLIError(e, details=[
-            'Get quotas:',
-            '- total quota:      /store quota',
-            '- container quota:  /store quota <container>',
-            'Users shall set a higher container quota, if available:',
-            '-                  /store setquota <quota>[unit] <container>'])
-
 
 class DelimiterArgument(ValueArgument):
     """
@@ -136,7 +109,9 @@ class SharingArgument(ValueArgument):
             try:
                 (key, val) = p.split('=')
             except ValueError as err:
-                raiseCLIError(err, 'Error in --sharing',
+                raiseCLIError(
+                    err,
+                    'Error in --sharing',
                     details='Incorrect format',
                     importance=1)
             if key.lower() not in ('read', 'write'):
@@ -245,9 +220,9 @@ class _store_container_command(_store_account_command):
         return (dst[0], dst[1]) if len(dst) > 1 else (None, dst[0])
 
     def extract_container_and_path(
-        self,
-        container_with_path,
-        path_is_optional=True):
+            self,
+            container_with_path,
+            path_is_optional=True):
         """Contains all heuristics for deciding what should be used as
         container or path. Options are:
         * user string of the form container:path
@@ -268,7 +243,8 @@ class _store_container_command(_store_account_command):
 
         if sep:
             if not user_cont:
-                raiseCLIError(CLISyntaxError('Container is missing\n',
+                raiseCLIError(CLISyntaxError(
+                    'Container is missing\n',
                     details=errors.pithos.container_howto))
             alt_cont = self['container']
             if alt_cont and user_cont != alt_cont:
@@ -366,8 +342,8 @@ class store_list(_store_container_command):
     def print_objects(self, object_list):
         limit = int(self['limit']) if self['limit'] > 0 else len(object_list)
         for index, obj in enumerate(object_list):
-            if (self['exact_match'] and self.path and (
-                obj['name'] != self.path) or 'content_type' not in obj):
+            if self['exact_match'] and self.path and not (
+                    obj['name'] == self.path or 'content_type' in obj):
                 continue
             pretty_obj = obj.copy()
             index += 1
@@ -454,7 +430,12 @@ class store_list(_store_container_command):
 class store_mkdir(_store_container_command):
     """Create a directory"""
 
-    __doc__ += '\n. '.join(about_directories)
+    __doc__ += '\n. '.join([
+        'Kamaki hanldes directories the same way as OOS Storage and Pithos+:',
+        'A   directory  is   an  object  with  type  "application/directory"',
+        'An object with path  dir/name can exist even if  dir does not exist',
+        'or even if dir  is  a non  directory  object.  Users can modify dir',
+        'without affecting the dir/name object in any way.'])
 
     @errors.generic.all
     @errors.pithos.connection
@@ -576,12 +557,10 @@ class store_copy(_store_container_command):
         if len(r.json) == 1:
             obj = r.json[0]
             return [(obj['name'], dst_path or obj['name'])]
-        return [(
-            obj['name'],
-            '%s%s' % (
-                    dst_path,
-                    obj['name'][len(self.path) if self['replace'] else 0:])
-        ) for obj in r.json]
+        start = len(self.path) if self['replace'] else 0
+        return [(obj['name'], '%s%s' % (
+            dst_path,
+            obj['name'][start:])) for obj in r.json]
 
     @errors.generic.all
     @errors.pithos.connection
@@ -604,9 +583,9 @@ class store_copy(_store_container_command):
                 self.container))
 
     def main(
-        self,
-        source_container___path,
-        destination_container___path=None):
+            self,
+            source_container___path,
+            destination_container___path=None):
         super(self.__class__, self)._run(
             source_container___path,
             path_is_optional=False)
@@ -686,9 +665,9 @@ class store_move(_store_container_command):
                 self.container))
 
     def main(
-        self,
-        source_container___path,
-        destination_container___path=None):
+            self,
+            source_container___path,
+            destination_container___path=None):
         super(self.__class__, self)._run(
             source_container___path,
             path_is_optional=False)
@@ -991,7 +970,7 @@ class store_cat(_store_container_command):
         self.client.download_object(
             self.path,
             stdout,
-            range=self['range'],
+            range_str=self['range'],
             version=self['object_version'],
             if_match=self['if_match'],
             if_none_match=self['if_none_match'],
@@ -1041,29 +1020,117 @@ class store_download(_store_container_command):
             '--no-progress-bar',
             default=False),
         recursive=FlagArgument(
-            'Download a remote directory and all its contents',
-            '-r, --resursive')
+            'Download a remote path and all its contents',
+            '--recursive')
     )
 
-    def _is_dir(self, remote_dict):
-        return 'application/directory' == remote_dict.get('content_type', '')
+    @staticmethod
+    def _is_dir(remote_dict):
+        return 'application/directory' == remote_dict.get(
+            'content_type',
+            remote_dict.get('content-type', ''))
 
     def _outputs(self, local_path):
-        if local_path is None:
-            return [(None, self.path)]
-        outpath = path.abspath(local_path)
-        if not (path.exists(outpath) or path.isdir(outpath)):
-            return [(outpath, self.path)]
-        elif self['recursive']:
-            remotes = self.client.container_get(
-                prefix=self.path,
+        """:returns: (local_file, remote_path)"""
+        remotes = []
+        if self['recursive']:
+            r = self.client.container_get(
+                prefix=self.path or '/',
                 if_modified_since=self['if_modified_since'],
                 if_unmodified_since=self['if_unmodified_since'])
-            return [(
-                '%s/%s' % (outpath, remote['name']),
-                None if self._is_dir(remote) else remote['name']
-            ) for remote in remotes.json]
-        raiseCLIError('Illegal destination location %s' % local_path)
+            dirlist = dict()
+            for remote in r.json:
+                rname = remote['name'].strip('/')
+                tmppath = ''
+                for newdir in rname.strip('/').split('/')[:-1]:
+                    tmppath = '/'.join([tmppath, newdir])
+                    dirlist.update({tmppath.strip('/'): True})
+                remotes.append((rname, store_download._is_dir(remote)))
+            dir_remotes = [r[0] for r in remotes if r[1]]
+            if not set(dirlist).issubset(dir_remotes):
+                badguys = [bg.strip('/') for bg in set(
+                    dirlist).difference(dir_remotes)]
+                raiseCLIError(
+                    'Some remote paths contain non existing directories',
+                    details=['Missing remote directories:'] + badguys)
+        elif self.path:
+            r = self.client.get_object_info(
+                self.path,
+                version=self['object_version'])
+            if store_download._is_dir(r):
+                raiseCLIError(
+                    'Illegal download: Remote object %s is a directory' % (
+                        self.path),
+                    details=['To download a directory, try --recursive'])
+            if '/' in self.path.strip('/') and not local_path:
+                raiseCLIError(
+                    'Illegal download: remote object %s contains "/"' % (
+                        self.path),
+                    details=[
+                        'To download an object containing "/" characters',
+                        'either create the remote directories or',
+                        'specify a non-directory local path for this object'])
+            remotes = [(self.path, False)]
+        if not remotes:
+            if self.path:
+                raiseCLIError(
+                    'No matching path %s on container %s' % (
+                        self.path,
+                        self.container),
+                    details=[
+                        'To list the contents of %s, try:' % self.container,
+                        '   /store list %s' % self.container])
+            raiseCLIError(
+                'Illegal download of container %s' % self.container,
+                details=[
+                    'To download a whole container, try:',
+                    '   /store download --recursive <container>'])
+
+        lprefix = path.abspath(local_path or path.curdir)
+        if path.isdir(lprefix):
+            for rpath, remote_is_dir in remotes:
+                lpath = '/%s/%s' % (lprefix.strip('/'), rpath.strip('/'))
+                if remote_is_dir:
+                    if path.exists(lpath) and path.isdir(lpath):
+                        continue
+                    makedirs(lpath)
+                elif path.exists(lpath):
+                    if not self['resume']:
+                        print('File %s exists, aborting...' % lpath)
+                        continue
+                    with open(lpath, 'rwb+') as f:
+                        yield (f, rpath)
+                else:
+                    with open(lpath, 'wb+') as f:
+                        yield (f, rpath)
+        elif path.exists(lprefix):
+            if len(remotes) > 1:
+                raiseCLIError(
+                    '%s remote objects cannot be merged in local file %s' % (
+                        len(remotes),
+                        local_path),
+                    details=[
+                        'To download multiple objects, local path should be',
+                        'a directory, or use download without a local path'])
+            (rpath, remote_is_dir) = remotes[0]
+            if remote_is_dir:
+                raiseCLIError(
+                    'Remote directory %s should not replace local file %s' % (
+                        rpath,
+                        local_path))
+            if self['resume']:
+                with open(lprefix, 'rwb+') as f:
+                    yield (f, rpath)
+            else:
+                raiseCLIError(
+                    'Local file %s already exist' % local_path,
+                    details=['Try --resume to overwrite it'])
+        else:
+            if len(remotes) > 1 or remotes[0][1]:
+                raiseCLIError(
+                    'Local directory %s does not exist' % local_path)
+            with open(lprefix, 'wb+') as f:
+                yield (f, remotes[0][0])
 
     @errors.generic.all
     @errors.pithos.connection
@@ -1071,35 +1138,22 @@ class store_download(_store_container_command):
     @errors.pithos.object_path
     @errors.pithos.local_path
     def _run(self, local_path):
-        outputs = self._outputs(local_path)
+        #outputs = self._outputs(local_path)
         poolsize = self['poolsize']
         if poolsize:
             self.client.POOL_SIZE = int(poolsize)
-        if not outputs:
-            raiseCLIError('No objects prefixed as %s on container %s' % (
-                self.path,
-                self.container))
         progress_bar = None
         try:
-            for lpath, rpath in sorted(outputs):
-                if not rpath:
-                    if not path.isdir(lpath):
-                        print('Create directory %s' % lpath)
-                        makedirs(lpath)
-                    continue
-                wmode = 'rwb+' if path.exists(lpath) and self['resume']\
-                    else 'wb+'
-                print('\nFrom %s:%s to %s' % (
-                    self.container,
-                    rpath,
-                    lpath))
-                (progress_bar,
-                    download_cb) = self._safe_progress_bar('Downloading')
+            for f, rpath in self._outputs(local_path):
+                (
+                    progress_bar,
+                    download_cb) = self._safe_progress_bar(
+                        'Download %s' % rpath)
                 self.client.download_object(
                     rpath,
-                    open(lpath, wmode) if lpath else stdout,
+                    f,
                     download_cb=download_cb,
-                    range=self['range'],
+                    range_str=self['range'],
                     version=self['object_version'],
                     if_match=self['if_match'],
                     resume=self['resume'],
@@ -1126,9 +1180,7 @@ class store_download(_store_container_command):
             self._safe_progress_bar_finish(progress_bar)
 
     def main(self, container___path, local_path=None):
-        super(self.__class__, self)._run(
-            container___path,
-            path_is_optional=False)
+        super(self.__class__, self)._run(container___path)
         self._run(local_path=local_path)
 
 
@@ -1213,9 +1265,8 @@ class store_delete(_store_container_command):
     @errors.pithos.object_path
     def _run(self):
         if self.path:
-            if self['yes'] or ask_user('Delete %s:%s ?' % (
-                self.container,
-                self.path)):
+            if self['yes'] or ask_user(
+                    'Delete %s:%s ?' % (self.container, self.path)):
                 self.client.del_object(
                     self.path,
                     until=self['until'],
@@ -1223,7 +1274,7 @@ class store_delete(_store_container_command):
             else:
                 print('Aborted')
         else:
-            if self['resursive']:
+            if self['recursive']:
                 ask_msg = 'Delete container contents'
             else:
                 ask_msg = 'Delete container'
@@ -1350,17 +1401,12 @@ class store_setpermissions(_store_container_command):
         for perms in permissions:
             splstr = perms.split('=')
             if 'read' == splstr[0]:
-                read = [user_or_group.strip() \
-                for user_or_group in splstr[1].split(',')]
+                read = [ug.strip() for ug in splstr[1].split(',')]
             elif 'write' == splstr[0]:
-                write = [user_or_group.strip() \
-                for user_or_group in splstr[1].split(',')]
+                write = [ug.strip() for ug in splstr[1].split(',')]
             else:
-                read = False
-                write = False
-        if not (read or write):
-            msg = 'Usage:\tread=<groups,users> write=<groups,users>'
-            raiseCLIError(None, msg)
+                msg = 'Usage:\tread=<groups,users> write=<groups,users>'
+                raiseCLIError(None, msg)
         return (read, write)
 
     @errors.generic.all
@@ -1721,8 +1767,10 @@ class store_sharers(_store_account_command):
     @errors.pithos.connection
     def _run(self):
         accounts = self.client.get_sharing_accounts(marker=self['marker'])
-        print_items(accounts if self['detail']
-            else [acc['name'] for acc in accounts])
+        if self['detail']:
+            print_items(accounts)
+        else:
+            print_items([acc['name'] for acc in accounts])
 
     def main(self):
         super(self.__class__, self)._run()
@@ -1745,10 +1793,9 @@ class store_versions(_store_container_command):
     @errors.pithos.object_path
     def _run(self):
         versions = self.client.get_object_versionlist(self.path)
-        print_items([dict(
-            id=vitem[0],
-            created=strftime('%d-%m-%Y %H:%M:%S', localtime(float(vitem[1])))
-            ) for vitem in versions])
+        print_items([dict(id=vitem[0], created=strftime(
+            '%d-%m-%Y %H:%M:%S',
+            localtime(float(vitem[1])))) for vitem in versions])
 
     def main(self, container___path):
         super(store_versions, self)._run(

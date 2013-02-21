@@ -31,8 +31,4 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-<<<<<<< HEAD
-__version__ = '0.6.3.3'
-=======
 from kamaki.version import __version__
->>>>>>> release-0.7

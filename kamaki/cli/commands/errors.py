@@ -65,6 +65,7 @@ class generic(object):
             try:
                 foo(self, *args, **kwargs)
             except ClientError as ce:
+                ce_msg = ('%s' % ce).lower()
                 if ce.status == 401:
                     raiseCLIError(ce, 'Authorization failed', details=[
                         'Make sure a valid token is provided:',
@@ -76,20 +77,13 @@ class generic(object):
                         'Check if service is up or set to url %s' % base_url,
                         '  to get url: /config get %s' % base_url,
                         '  to set url: /config set %s <URL>' % base_url])
-                elif ce.status == 404\
-                and 'kamakihttpresponse' in ('%s' % ce).lower():
+                elif ce.status == 404 and 'kamakihttpresponse' in ce_msg:
                     client = getattr(self, 'client', None)
                     if not client:
                         raise
                     url = getattr(client, 'base_url', '<empty>')
-<<<<<<< HEAD
-                    raiseCLIError(ce,
-                        'Invalid service url %s' % url,
-                        details=[
-=======
                     msg = 'Invalid service url %s' % url
                     raiseCLIError(ce, msg, details=[
->>>>>>> release-0.7
                         'Please, check if service url is correctly set',
                         '* to get current url: /config get compute.url',
                         '* to set url: /config set compute.url <URL>'])
@@ -117,15 +111,9 @@ class astakos(object):
                 kloger.warning(
                     'No permanent token (try: kamaki config set token <tkn>)')
             if not getattr(client, 'base_url', False):
-<<<<<<< HEAD
-                raise CLIError('Missing astakos server URL',
-                    importance=3,
-                    details=['Check if astakos.url is set correctly',
-=======
                 msg = 'Missing astakos server URL'
                 raise CLIError(msg, importance=3, details=[
                     'Check if astakos.url is set correctly',
->>>>>>> release-0.7
                     'To get astakos url:   /config get astakos.url',
                     'To set astakos url:   /config set astakos.url <URL>'])
             return r
@@ -135,24 +123,16 @@ class astakos(object):
     def authenticate(this, foo):
         def _raise(self, *args, **kwargs):
             try:
-                r = foo(self, *args, **kwargs)
+                return foo(self, *args, **kwargs)
             except ClientError as ce:
                 if ce.status == 401:
                     token = kwargs.get('custom_token', 0) or self.client.token
-<<<<<<< HEAD
-                    raiseCLIError(ce,
-                        'Authorization failed for token %s' % token if token\
-                            else 'No token provided',
-                        details=[] if token else this._token_details)
-=======
                     msg = (
                         'Authorization failed for token %s' % token
                     ) if token else 'No token provided',
                     details = [] if token else this._token_details
                     raiseCLIError(ce, msg, details=details)
->>>>>>> release-0.7
             self._raise = foo
-            return r
         return _raise
 
 
@@ -170,12 +150,8 @@ class history(object):
     def _get_cmd_ids(this, foo):
         def _raise(self, cmd_ids, *args, **kwargs):
             if not cmd_ids:
-<<<<<<< HEAD
-                raise CLISyntaxError('Usage: <id1|id1-id2> [id3|id3-id4] ...',
-=======
                 raise CLISyntaxError(
                     'Usage: <id1|id1-id2> [id3|id3-id4] ...',
->>>>>>> release-0.7
                     details=self.__doc__.split('\n'))
             return foo(self, cmd_ids, *args, **kwargs)
         return _raise
@@ -217,17 +193,6 @@ class cyclades(object):
                 network_id = int(network_id)
                 return foo(self, *args, **kwargs)
             except ValueError as ve:
-<<<<<<< HEAD
-                raiseCLIError(ve, 'Invalid network id %s ' % network_id,
-                    details='network id must be a positive integer',
-                    importance=1)
-            except ClientError as ce:
-                if network_id and ce.status == 404 and\
-                    'network' in ('%s' % ce).lower():
-                        raiseCLIError(ce,
-                            'No network with id %s found' % network_id,
-                            details=this.about_network_id)
-=======
                 msg = 'Invalid network id %s ' % network_id
                 details = ['network id must be a positive integer']
                 raiseCLIError(ve, msg, details=details, importance=1)
@@ -237,7 +202,6 @@ class cyclades(object):
                 ):
                     msg = 'No network with id %s found' % network_id,
                     raiseCLIError(ce, msg, details=this.about_network_id)
->>>>>>> release-0.7
                 raise
         return _raise
 
@@ -248,19 +212,12 @@ class cyclades(object):
                 return foo(self, *args, **kwargs)
             except ClientError as ce:
                 if ce.status == 413:
-<<<<<<< HEAD
-                    raiseCLIError(ce,
-                        'Cannot create another network',
-                        details=['Maximum number of networks reached',
-                            '* to get a list of networks: /network list',
-                            '* to delete a network: /network delete <net id>'])
-=======
                     msg = 'Cannot create another network',
-                    details = ['Maximum number of networks reached',
+                    details = [
+                        'Maximum number of networks reached',
                         '* to get a list of networks: /network list',
                         '* to delete a network: /network delete <net id>']
                     raiseCLIError(ce, msg, details=details)
->>>>>>> release-0.7
                 raise
         return _raise
 
@@ -271,16 +228,6 @@ class cyclades(object):
             try:
                 return foo(self, *args, **kwargs)
             except ClientError as ce:
-<<<<<<< HEAD
-                if network_id or ce.status == 421:
-                    raiseCLIError(ce,
-                        'Network with id %s is in use' % network_id,
-                        details=[
-                            'Disconnect all nics/VMs of this network first',
-                            '* to get nics: /network info %s' % network_id,
-                            '.  (under "attachments" section)',
-                            '* to disconnect: /network disconnect <nic id>'])
-=======
                 if network_id and ce.status == 400:
                     msg = 'Network with id %s does not exist' % network_id,
                     raiseCLIError(ce, msg, details=self.about_network_id)
@@ -291,7 +238,6 @@ class cyclades(object):
                         '* to get nics: /network info %s' % network_id,
                         '.  (under "attachments" section)',
                         '* to disconnect: /network disconnect <nic id>'])
->>>>>>> release-0.7
                 raise
         return _raise
 
@@ -303,17 +249,6 @@ class cyclades(object):
                 flavor_id = int(flavor_id)
                 return foo(self, *args, **kwargs)
             except ValueError as ve:
-<<<<<<< HEAD
-                raiseCLIError(ve, 'Invalid flavor id %s ' % flavor_id,
-                    details='Flavor id must be a positive integer',
-                    importance=1)
-            except ClientError as ce:
-                if flavor_id and ce.status == 404 and\
-                    'flavor' in ('%s' % ce).lower():
-                        raiseCLIError(ce,
-                            'No flavor with id %s found' % flavor_id,
-                            details=this.about_flavor_id)
-=======
                 msg = 'Invalid flavor id %s ' % flavor_id,
                 details = 'Flavor id must be a positive integer',
                 raiseCLIError(ve, msg, details=details, importance=1)
@@ -323,7 +258,6 @@ class cyclades(object):
                 ):
                         msg = 'No flavor with id %s found' % flavor_id,
                         raiseCLIError(ce, msg, details=this.about_flavor_id)
->>>>>>> release-0.7
                 raise
         return _raise
 
@@ -335,21 +269,6 @@ class cyclades(object):
                 server_id = int(server_id)
                 return foo(self, *args, **kwargs)
             except ValueError as ve:
-<<<<<<< HEAD
-                raiseCLIError(ve,
-                    'Invalid server(VM) id %s' % server_id,
-                    details=['id must be a positive integer'],
-                    importance=1)
-            except ClientError as ce:
-                err_msg = ('%s' % ce).lower()
-                if (ce.status == 404 and 'server' in err_msg)\
-                or (ce.status == 400 and 'not found' in err_msg):
-                    raiseCLIError(ce,
-                        'server(VM) with id %s not found' % server_id,
-                        details=[
-                            '* to get existing VM ids: /server list',
-                            '* to get VM details: /server info <VM id>'])
-=======
                 msg = 'Invalid server(VM) id %s' % server_id,
                 details = ['id must be a positive integer'],
                 raiseCLIError(ve, msg, details=details, importance=1)
@@ -364,7 +283,6 @@ class cyclades(object):
                     raiseCLIError(ce, msg, details=[
                         '* to get existing VM ids: /server list',
                         '* to get VM details: /server info <VM id>'])
->>>>>>> release-0.7
                 raise
         return _raise
 
@@ -375,16 +293,6 @@ class cyclades(object):
             try:
                 return foo(self, *args, **kwargs)
             except ClientError as ce:
-<<<<<<< HEAD
-                if ce.status == 400 and profile\
-                and 'firewall' in ('%s' % ce).lower():
-                    raiseCLIError(ce,
-                        '%s is an invalid firewall profile term' % profile,
-                        details=['Try one of the following:',
-                            '* DISABLED: Shutdown firewall',
-                            '* ENABLED: Firewall in normal mode',
-                            '* PROTECTED: Firewall in secure mode'])
-=======
                 if ce.status == 400 and profile and (
                     'firewall' in ('%s' % ce).lower()
                 ):
@@ -394,7 +302,6 @@ class cyclades(object):
                         '* DISABLED: Shutdown firewall',
                         '* ENABLED: Firewall in normal mode',
                         '* PROTECTED: Firewall in secure mode'])
->>>>>>> release-0.7
                 raise
         return _raise
 
@@ -405,14 +312,9 @@ class cyclades(object):
                 return foo(self, *args, **kwargs)
             except ClientError as ce:
                 nic_id = kwargs.get('nic_id', None)
-<<<<<<< HEAD
-                if nic_id and ce.status == 404\
-                and 'network interface' in ('%s' % ce).lower():
-=======
                 if nic_id and ce.status == 404 and (
                     'network interface' in ('%s' % ce).lower()
                 ):
->>>>>>> release-0.7
                     server_id = kwargs.get('server_id', '<no server>')
                     err_msg = 'No nic %s on server(VM) with id %s' % (
                         nic_id,
@@ -433,21 +335,11 @@ class cyclades(object):
                 return foo(self, *args, **kwargs)
             except IndexError as ie:
                 nic_id = kwargs.get('nic_id', None)
-<<<<<<< HEAD
-                raiseCLIError(ie,
-                    'Invalid format for network interface (nic) %s' % nic_id,
-                    importance=1,
-                    details=[
-                        'nid_id format: nic-<server id>-<nic id>',
-                        '* get nics of a network: /network info <net id>',
-                        '    (listed the "attachments" section)'])
-=======
                 msg = 'Invalid format for network interface (nic) %s' % nic_id
                 raiseCLIError(ie, msg, importance=1, details=[
                     'nid_id format: nic-<server id>-<nic id>',
                     '* get nics of a network: /network info <net id>',
                     '    (listed the "attachments" section)'])
->>>>>>> release-0.7
         return _raise
 
     @classmethod
@@ -457,14 +349,9 @@ class cyclades(object):
             try:
                 foo(self, *args, **kwargs)
             except ClientError as ce:
-<<<<<<< HEAD
-                if key and ce.status == 404\
-                    and 'metadata' in ('%s' % ce).lower():
-=======
                 if key and ce.status == 404 and (
                     'metadata' in ('%s' % ce).lower()
                 ):
->>>>>>> release-0.7
                         raiseCLIError(ce, 'No VM metadata with key %s' % key)
                 raise
         return _raise
@@ -472,12 +359,8 @@ class cyclades(object):
 
 class plankton(object):
 
-<<<<<<< HEAD
-    about_image_id = ['How to pick a suitable image:',
-=======
     about_image_id = [
         'How to pick a suitable image:',
->>>>>>> release-0.7
         '* get a list of image ids: /image list',
         '* details of image: /flavor info <image id>']
 
@@ -492,15 +375,6 @@ class plankton(object):
             try:
                 foo(self, *args, **kwargs)
             except ClientError as ce:
-<<<<<<< HEAD
-                if image_id and (ce.status == 404\
-                    or (ce.status == 400 and
-                        'image not found' in ('%s' % ce).lower())\
-                    or ce.status == 411):
-                        raiseCLIError(ce,
-                            'No image with id %s found' % image_id,
-                            details=this.about_image_id)
-=======
                 if image_id and (
                     ce.status == 404
                     or (
@@ -510,7 +384,6 @@ class plankton(object):
                 ):
                         msg = 'No image with id %s found' % image_id
                         raiseCLIError(ce, msg, details=this.about_image_id)
->>>>>>> release-0.7
                 raise
         return _raise
 
@@ -521,38 +394,23 @@ class plankton(object):
             try:
                 foo(self, *args, **kwargs)
             except ClientError as ce:
-<<<<<<< HEAD
-                if ce.status == 404 or ((ce.status == 400\
-                    and 'metadata' in ('%s' % ce).lower())):
-                        raiseCLIError(ce,
-                            'No properties with key %s in this image' % key)
-=======
+                ce_msg = ('%s' % ce).lower()
                 if ce.status == 404 or (
-                    (ce.status == 400 and 'metadata' in ('%s' % ce).lower())):
-                        msg = 'No properties with key %s in this image' % key
-                        raiseCLIError(ce, msg)
->>>>>>> release-0.7
+                        ce.status == 400 and 'metadata' in ce_msg):
+                    msg = 'No properties with key %s in this image' % key
+                    raiseCLIError(ce, msg)
                 raise
         return _raise
 
 
 class pithos(object):
-<<<<<<< HEAD
-    container_howto = ['To specify a container:',
-    '  1. Set store.container variable (permanent)',
-    '     /config set store.container <container>',
-    '  2. --container=<container> (temporary, overrides 1)',
-    '  3. Use the container:path format (temporary, overrides all)',
-    'For a list of containers: /store list']
-=======
     container_howto = [
-       "" 'To specify a container:',
+        'To specify a container:',
         '  1. Set store.container variable (permanent)',
         '     /config set store.container <container>',
         '  2. --container=<container> (temporary, overrides 1)',
         '  3. Use the container:path format (temporary, overrides all)',
         'For a list of containers: /store list']
->>>>>>> release-0.7
 
     @classmethod
     def connection(this, foo):
@@ -583,21 +441,11 @@ class pithos(object):
                 return foo(self, *args, **kwargs)
             except ClientError as ce:
                 if ce.status == 404 and 'container' in ('%s' % ce).lower():
-<<<<<<< HEAD
-                        cont = '%s or %s' % (self.container, dst_cont)\
-                        if dst_cont else self.container
-                        raiseCLIError(ce,
-                            'Is container %s in account %s ?' % (
-                                cont,
-                                self.account),
-                            details=this.container_howto)
-=======
                         cont = ('%s or %s' % (
                             self.container,
                             dst_cont)) if dst_cont else self.container
                         msg = 'Is container %s in current account?' % (cont),
                         raiseCLIError(ce, msg, details=this.container_howto)
->>>>>>> release-0.7
                 raise
         return _raise
 
@@ -608,14 +456,8 @@ class pithos(object):
             try:
                 return foo(self, *args, **kwargs)
             except IOError as ioe:
-<<<<<<< HEAD
-                raiseCLIError(ioe,
-                    'Failed to access file %s' % local_path,
-                    importance=2)
-=======
                 msg = 'Failed to access file %s' % local_path,
                 raiseCLIError(ioe, msg, importance=2)
->>>>>>> release-0.7
         return _raise
 
     @classmethod
@@ -625,14 +467,6 @@ class pithos(object):
                 return foo(self, *args, **kwargs)
             except ClientError as ce:
                 err_msg = ('%s' % ce).lower()
-<<<<<<< HEAD
-                if (ce.status == 404 or ce.status == 500)\
-                and 'object' in err_msg and 'not' in err_msg:
-                    raiseCLIError(ce,
-                        'No object %s in %s\'s container %s'\
-                        % (self.path, self.account, self.container),
-                        details=this.container_howto)
-=======
                 if (
                     ce.status == 404 or ce.status == 500
                 ) and 'object' in err_msg and 'not' in err_msg:
@@ -640,7 +474,6 @@ class pithos(object):
                         self.path,
                         self.container)
                     raiseCLIError(ce, msg, details=this.container_howto)
->>>>>>> release-0.7
                 raise
         return _raise
 
@@ -654,33 +487,13 @@ class pithos(object):
                 try:
                     size = int(size)
                 except ValueError as ve:
-<<<<<<< HEAD
-                    raiseCLIError(ve,
-                        'Invalid file size %s ' % size,
-                        details=['size must be a positive integer'],
-                        importance=1)
-=======
                     msg = 'Invalid file size %s ' % size
                     details = ['size must be a positive integer']
                     raiseCLIError(ve, msg, details=details, importance=1)
->>>>>>> release-0.7
             else:
                 try:
                     start = int(start)
                 except ValueError as e:
-<<<<<<< HEAD
-                    raiseCLIError(e,
-                        'Invalid start value %s in range' % start,
-                        details=['size must be a positive integer'],
-                        importance=1)
-                try:
-                    end = int(end)
-                except ValueError as e:
-                    raiseCLIError(e,
-                        'Invalid end value %s in range' % end,
-                        details=['size must be a positive integer'],
-                        importance=1)
-=======
                     msg = 'Invalid start value %s in range' % start,
                     details = ['size must be a positive integer'],
                     raiseCLIError(e, msg, details=details, importance=1)
@@ -690,7 +503,6 @@ class pithos(object):
                     msg = 'Invalid end value %s in range' % end
                     details = ['size must be a positive integer']
                     raiseCLIError(e, msg, details=details, importance=1)
->>>>>>> release-0.7
                 if start > end:
                     raiseCLIError(
                         'Invalid range %s-%s' % (start, end),
@@ -701,20 +513,12 @@ class pithos(object):
                 return foo(self, *args, **kwargs)
             except ClientError as ce:
                 err_msg = ('%s' % ce).lower()
-                if size and (ce.status == 416 or
-<<<<<<< HEAD
-                (ce.status == 400 and\
-                    'object length is smaller than range length' in err_msg)):
-                    raiseCLIError(ce,
-                        'Remote object %s:%s <= %s %s' % (
-=======
-                (ce.status == 400 and
-                    'object length is smaller than range length' in err_msg)):
+                expected = 'object length is smaller than range length'
+                if size and (
+                    ce.status == 416 or (
+                        ce.status == 400 and expected in err_msg)):
                     raiseCLIError(ce, 'Remote object %s:%s <= %s %s' % (
->>>>>>> release-0.7
-                            self.container,
-                            self.path,
-                            format_size(size),
-                            ('(%sB)' % size) if size >= 1024 else ''))
+                        self.container, self.path, format_size(size),
+                        ('(%sB)' % size) if size >= 1024 else ''))
                 raise
         return _raise
