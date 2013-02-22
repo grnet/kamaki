@@ -1123,8 +1123,8 @@ class store_download(_store_container_command):
                     yield (f, rpath)
             else:
                 raiseCLIError(
-                'Local file %s already exist' % local_path,
-                details=['Try --resume to overwrite it'])
+                    'Local file %s already exist' % local_path,
+                    details=['Try --resume to overwrite it'])
         else:
             if len(remotes) > 1 or remotes[0][1]:
                 raiseCLIError(

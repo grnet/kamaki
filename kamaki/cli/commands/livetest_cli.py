@@ -35,27 +35,27 @@ from kamaki.cli.commands import errors
 from kamaki.cli import command
 from kamaki.cli.commands import _command_init
 from kamaki.cli.command_tree import CommandTree
-from kamaki.clients import tests
+from kamaki.clients import livetest
 from kamaki.cli.errors import raiseCLIError
 
-test_cmds = CommandTree('test', 'Unitest clients')
-_commands = [test_cmds]
+livetest_cmds = CommandTree('livetest', 'Test clients on live servers')
+_commands = [livetest_cmds]
 
 
-class _test_init(_command_init):
+class _livetest_init(_command_init):
 
     def _run(self, client, method=None):
         if method:
-            tests._main([client, method], config=self.config)
+            livetest._main([client, method], config=self.config)
         else:
-            tests._main([client], config=self.config)
+            livetest._main([client], config=self.config)
 
     def main(self, client, method=None):
         return self._run(client, method)
 
 
-@command(test_cmds)
-class test_error(_test_init):
+@command(livetest_cmds)
+class livetest_error(_livetest_init):
     """Create an error message with optional message"""
 
     @errors.generic.all
@@ -71,8 +71,8 @@ class test_error(_test_init):
         self._run(errmsg, importance, index)
 
 
-@command(test_cmds)
-class test_args(_test_init):
+@command(livetest_cmds)
+class livetest_args(_livetest_init):
     """Test how arguments are treated by kamaki"""
 
     @errors.generic.all
@@ -83,8 +83,8 @@ class test_args(_test_init):
         self._run(args)
 
 
-@command(test_cmds)
-class test_all(_test_init):
+@command(livetest_cmds)
+class livetest_all(_livetest_init):
     """test all clients"""
 
     @errors.generic.all
@@ -96,8 +96,8 @@ class test_all(_test_init):
         self._run()
 
 
-@command(test_cmds)
-class test_pithos(_test_init):
+@command(livetest_cmds)
+class livetest_pithos(_livetest_init):
     """ test Pithos client"""
 
     @errors.generic.all
@@ -108,8 +108,8 @@ class test_pithos(_test_init):
         self._run(method)
 
 
-@command(test_cmds)
-class test_cyclades(_test_init):
+@command(livetest_cmds)
+class livetest_cyclades(_livetest_init):
     """ test Cyclades client"""
 
     @errors.generic.all
@@ -120,8 +120,8 @@ class test_cyclades(_test_init):
         self._run(method)
 
 
-@command(test_cmds)
-class test_image(_test_init):
+@command(livetest_cmds)
+class livetest_image(_livetest_init):
     """ test Image client"""
 
     @errors.generic.all
@@ -132,8 +132,8 @@ class test_image(_test_init):
         self._run(method)
 
 
-@command(test_cmds)
-class test_astakos(_test_init):
+@command(livetest_cmds)
+class livetest_astakos(_livetest_init):
     """ test Astakos client"""
 
     @errors.generic.all
@@ -144,8 +144,8 @@ class test_astakos(_test_init):
         self._run(method)
 
 
-@command(test_cmds)
-class test_prints(_test_init):
+@command(livetest_cmds)
+class livetest_prints(_livetest_init):
     """ user-test print methods for lists and dicts"""
 
     d1 = {'key0a': 'val0a', 'key0b': 'val0b', 'key0c': 'val0c'}

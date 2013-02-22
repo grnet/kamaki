@@ -63,7 +63,7 @@ setup(
         'kamaki.cli',
         'kamaki.cli.commands',
         'kamaki.clients',
-        'kamaki.clients.tests',
+        'kamaki.clients.livetest',
         'kamaki.clients.connection',
         'kamaki.clients.commissioning',
         'kamaki.clients.quotaholder',
