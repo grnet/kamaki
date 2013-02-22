@@ -231,7 +231,7 @@ class Client(object):
         self.http_client.reset_params()
 
         if success is not None:
-            # Success can either be an in or a collection
+            # Success can either be an int or a collection
             success = (success,) if isinstance(success, int) else success
             if r.status_code not in success:
                 r.release()

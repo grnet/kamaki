@@ -32,7 +32,40 @@
 # or implied, of GRNET S.A.
 
 from unittest import TestCase, TestSuite, makeSuite, TextTestRunner
-#from mock import Mock, patch
+from mock import Mock, patch
+
+
+class _fakeResponse(object):
+    sample = 'sample string'
+    getheaders = Mock(return_value={})
+    content = Mock(return_value=sample)
+    read = Mock(return_value=sample)
+    status = Mock(return_value=None)
+    status_code = 200
+    reason = Mock(return_value=None)
+    release = Mock()
+    headers = {}
+
+
+class Client(TestCase):
+
+    def setUp(self):
+        from kamaki.clients import Client
+        from kamaki.clients.connection.kamakicon import (
+            KamakiHTTPConnection)
+        self.token = 'F@k3T0k3n'
+        self.base_url = 'http://www.example.com'
+        self.KC = KamakiHTTPConnection
+        self.KR = _fakeResponse
+        self.c = Client(self.base_url, self.token, self.KC())
+
+    def test_request(self):
+        req = self.c.request
+        method = 'GET'
+        path = '/online/path'
+        with patch.object(self.KC, 'perform_request', return_value=self.KR()):
+            r = req(method, path)
+            self.assertTrue(isinstance(r, self.KR))
 
 
 def get_test_classes(module=__import__(__name__), name=''):
