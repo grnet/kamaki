@@ -66,6 +66,13 @@ class Client(TestCase):
         with patch.object(self.KC, 'perform_request', return_value=self.KR()):
             r = req(method, path)
             self.assertTrue(isinstance(r, self.KR))
+            #  async_headers/params do not persist
+            #  TODO: Use a real but mocked KamakiConnection instance
+            tmp_headers = dict(h1='v1', h2='v2')
+            tmp_params = dict(p1='v1', p2=None)
+            r = req(method, path, async_headers=tmp_headers)
+            self.assertFalse(self.c.headers)
+            r = req(method, path, async_params=tmp_params)
 
 
 def get_test_classes(module=__import__(__name__), name=''):
