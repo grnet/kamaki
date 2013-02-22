@@ -153,6 +153,12 @@ class RangeArgument(ValueArgument):
 class _pithos_init(_command_init):
     """Initialize a pithos+ kamaki client"""
 
+    @staticmethod
+    def _is_dir(remote_dict):
+        return 'application/directory' == remote_dict.get(
+            'content_type',
+            remote_dict.get('content-type', ''))
+
     @errors.generic.all
     def _run(self):
         self.token = self.config.get('store', 'token')\
@@ -542,14 +548,86 @@ class store_copy(_store_container_command):
             'change object\'s content type',
             '--content-type'),
         recursive=FlagArgument(
-            'mass copy with delimiter /',
+            'copy directory and contents',
             ('-r', '--recursive')),
-        exact_match=FlagArgument(
-            'Copy only the object that fully matches path',
-            '--exact-match'),
-        replace=FlagArgument('Replace src. path with dst. path', '--replace')
+        src_prefix=ValueArgument(
+            'Prefix of source objects (similar to prefix*)',
+            '--prefix',
+            default=''),
+        src_suffix=ValueArgument(
+            'Suffix of source objects (similar to *suffix)',
+            '--suffix',
+            default=''),
+        dst_prefix=ValueArgument(
+            'Prefix all destination objects with dst path',
+            '--prefix-dst',
+            default=''),
+        dst_suffix=ValueArgument(
+            'Suffix all destination objects with dst path',
+            '--suffix-dst',
+            default=''),
+        replace=ValueArgument(
+            'Set the part of src path to replace with dst path',
+            '--replace')
     )
 
+    def _get_all(self, prefix):
+        return self.client.container_get(prefix=prefix).json
+
+    def _objlist(self, src_cnt, src_path, dst_cnt, dst_path):
+        if src_path and src_path[-1] == '/':
+            src_path = src_path[:-1]
+        self.client.container = src_cnt
+        (src_list_foo, src_list_args) = (None, {})
+
+        try:
+            list_all = False
+            srcobj = self.client.get_object_info(src_path)
+        except ClientError as srcerr:
+            if srcerr not in (404, 204):
+                raise
+            src_list_foo = self.client.list_objects
+            list_all = True
+        else:
+            if self._is_dir(srcobj):
+                if not self['recursive']:
+                    raiseCLIError(
+                        'Object %s of cont. %s is a dir' % (
+                            src_path,
+                            src_cnt),
+                        details=['Use --recursive to access directories'])
+                self['src_prefix'] = self.path
+        finally:
+            if self['src_prefix']:
+                if not self.path.startswith(self['src_prefix']):
+                    raiseCLIError('Path %s conflicts with prefix %s' % (
+                            self.path,
+                            self['src_prefix']))
+                src_list_foo = self._get_all,
+                src_list_args = dict(prefix=self['src_prefix'])
+            elif list_all:
+                src_list_foo = self.client.list_objects
+
+        if dst_path and dst_path[-1] == '/':
+            dst_path = dst_path[:-1]
+        if src_list_foo:
+            #  N src objects
+            (p, s) = (self['dst_prefix'], self['dst_suffix'])
+            if p or s:
+                for obj in src_list_foo(**src_list_args):
+                    name = obj['name']
+                    if not name.endswith(self['src_suffix']):
+                        continue
+                    name = '%s%s%s' % (
+                        self['dst_prefix'],
+                        name,
+                        self['dst_suffix'])
+        else:
+            pass
+            #  1 src object
+
+
+    """
     def _objlist(self, dst_path):
         if self['exact_match']:
             return [(dst_path or self.path, self.path)]
@@ -561,11 +639,15 @@ class store_copy(_store_container_command):
         return [(obj['name'], '%s%s' % (
             dst_path,
             obj['name'][start:])) for obj in r.json]
+    """
 
     @errors.generic.all
     @errors.pithos.connection
     @errors.pithos.container
     def _run(self, dst_cont, dst_path):
+        for lala in self._src_objlist(self.container, self.path):
+            print('I HAVE %s : %s !' % lala)
+        return
         no_source_object = True
         for src_object, dst_object in self._objlist(dst_path):
             no_source_object = False
@@ -1023,12 +1105,6 @@ class store_download(_store_container_command):
             'Download a remote path and all its contents',
             '--recursive')
     )
-
-    @staticmethod
-    def _is_dir(remote_dict):
-        return 'application/directory' == remote_dict.get(
-            'content_type',
-            remote_dict.get('content-type', ''))
 
     def _outputs(self, local_path):
         """:returns: (local_file, remote_path)"""
