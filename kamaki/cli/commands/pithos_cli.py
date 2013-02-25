@@ -797,9 +797,9 @@ class store_move(_source_destination_command):
         super(self.__class__, self)._run(
             source_container___path,
             path_is_optional=False)
-        (dst_cnt, dst_path) = self._dest_container_path(
+        (dst_cont, dst_path) = self._dest_container_path(
             destination_container___path)
-        self._run(dst_cont=dst_cnt or self.container, dst_path=dst_path or '')
+        self._run(dst_cont=dst_cont or self.container, dst_path=dst_path or '')
 
 
 @command(pithos_cmds)
