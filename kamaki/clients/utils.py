@@ -87,19 +87,8 @@ def path4url(*args):
     :returns: (str) a path in the form /args[0]/args[1]/...
     """
 
-    path = ''
-    for arg in args:
-        suffix = '%s' % arg
-        try:
-            while suffix[0] == '/':
-                suffix = '%s' % suffix[1:]
-        except IndexError:
-            continue
-        if len(path) > 0 and path[-1] == '/':
-            path += '%s' % suffix
-        else:
-            path += '/%s' % suffix
-    return path
+    return '/'.join([''] + [arg.decode('utf-8') if (
+        isinstance(arg, str)) else '%s' % arg for arg in args])
 
 
 def params4url(params):
