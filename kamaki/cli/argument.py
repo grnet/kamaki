@@ -83,7 +83,7 @@ class Argument(object):
         if isinstance(newname, list) or isinstance(newname, tuple):
             self._parsed_name += list(newname)
         else:
-            self._parsed_name.append(unicode(newname))
+            self._parsed_name.append('%s' % newname)
 
     @property
     def help(self):
@@ -92,7 +92,7 @@ class Argument(object):
 
     @help.setter
     def help(self, newhelp):
-        self._help = unicode(newhelp)
+        self._help = '%s' % newhelp
 
     @property
     def arity(self):
@@ -189,7 +189,7 @@ class CmdLineConfigArgument(Argument):
         if options == self.default:
             return
         if not isinstance(options, list):
-            options = [unicode(options)]
+            options = ['%s' % options]
         for option in options:
             keypath, sep, val = option.partition('=')
             if not sep:

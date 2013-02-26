@@ -74,7 +74,7 @@ class KamakiHTTPResponse(HTTPResponse):
         :returns: (str) content
         """
         self._get_response()
-        return unicode(self._content)
+        return '%s' % self._content
 
     @text.setter
     def test(self, v):
@@ -123,9 +123,9 @@ class KamakiHTTPConnection(HTTPConnection):
         for k, v in extra_params.items():
             params[k] = v
         for i, (key, val) in enumerate(params.items()):
-            param_str = ('?' if i == 0 else '&') + unicode(key)
+            param_str = '%s%s' % ('?' if i == 0 else '&', key)
             if val is not None:
-                param_str += '=' + unicode(val)
+                param_str += '=%s' % val
             url += param_str
 
         parsed = urlparse(url)
