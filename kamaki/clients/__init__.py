@@ -194,7 +194,7 @@ class Client(object):
             sendlog.info('perform a %s @ %s', method, self.base_url)
 
             self.http_client.url = self.base_url
-            self.http_client.path = quote(path)
+            self.http_client.path = quote(path.encode('utf8'))
             r = self.http_client.perform_request(
                 method,
                 data,
