@@ -113,7 +113,7 @@ def raiseCLIError(err, message='', importance=0, details=[]):
     else:
         origerr = stack[0]
 
-    message = unicode(message) if message else unicode(origerr)
+    message = '%s' % (message if message else origerr)
 
     try:
         status = err.status or err.errno

@@ -144,7 +144,7 @@ class HTTPConnection(object):
         self.method = method
 
     def set_header(self, name, value):
-        self.headers[unicode(name)] = unicode(value)
+        self.headers['%s' % name] = '%s' % value
 
     def remove_header(self, name):
         try:

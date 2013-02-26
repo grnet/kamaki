@@ -229,7 +229,7 @@ class CycladesClient(CycladesClientApi):
         for (nic_id, network_id) in [(
                 net['id'],
                 net['network_id']) for net in vm_nets if nic_id == net['id']]:
-            req = {'remove': {'attachment': unicode(nic_id)}}
+            req = {'remove': {'attachment': '%s' % nic_id}}
             r = self.networks_post(network_id, 'action', json_data=req)
             r.release()
             num_of_disconnections += 1
