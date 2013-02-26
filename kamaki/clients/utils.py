@@ -91,7 +91,7 @@ def path4url(*args):
         isinstance(arg, str)) else '%s' % arg for arg in args])
     while '//' in r:
         r = r.replace('//', '/')
-    return r
+    return ('/%s' % r.strip('/')) if r else ''
 
 
 def params4url(params):
