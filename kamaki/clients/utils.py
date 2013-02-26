@@ -92,13 +92,13 @@ def path4url(*args):
         suffix = '%s' % arg
         try:
             while suffix[0] == '/':
-                suffix = suffix[1:]
+                suffix = '%s' % suffix[1:]
         except IndexError:
             continue
         if len(path) > 0 and path[-1] == '/':
-            path += suffix
+            path += '%s' % suffix
         else:
-            path += '/' + suffix
+            path += '/%s' % suffix
     return path
 
 
@@ -114,7 +114,7 @@ def params4url(params):
     result = ''
     dlmtr = '?'
     for name in params:
-        result = result + dlmtr + name
-        result += '=%s' % params[name] if params[name] else result
+        result += '%s%s' % (dlmtr, name)
+        result += '=%s' % params[name] or result
         dlmtr = '&'
     return result
