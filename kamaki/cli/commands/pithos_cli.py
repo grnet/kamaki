@@ -529,6 +529,7 @@ class store_create(_store_container_command):
 class _source_destination_command(_store_container_command):
 
     arguments = dict(
+        source_account=ValueArgument('', '--src-account'),
         recursive=FlagArgument('', ('-r', '--recursive')),
         prefix=FlagArgument('', '--with-prefix', default=''),
         suffix=ValueArgument('', '--with-suffix', default=''),
@@ -654,6 +655,7 @@ class store_copy(_source_destination_command):
     """
 
     arguments = dict(
+        source_account=ValueArgument('Account to copy from', '--src-account'),
         destination_container=ValueArgument(
             'use it if destination container name contains a : character',
             '--dst-container'),
@@ -692,13 +694,14 @@ class store_copy(_source_destination_command):
     @errors.pithos.container
     def _run(self, dst_cont, dst_path):
         no_source_object = True
-        for src_object, dst_object in self.src_dst_pairs(dst_cont, dst_path):
+        for src_obj, dst_obj in self.src_dst_pairs(dst_cont, dst_path):
             no_source_object = False
             self.client.copy_object(
                 src_container=self.container,
-                src_object=src_object,
+                src_object=src_obj,
                 dst_container=dst_cont,
-                dst_object=dst_object,
+                dst_object=self.client.account,
+                source_account=self['source_account'],
                 source_version=self['source_version'],
                 public=self['public'],
                 content_type=self['content_type'])

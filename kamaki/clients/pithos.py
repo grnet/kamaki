@@ -1072,6 +1072,7 @@ class PithosClient(PithosRestAPI):
             self, src_container, src_object, dst_container,
             dst_object=False,
             source_version=None,
+            source_account=None,
             public=False,
             content_type=None,
             delimiter=None):
@@ -1085,6 +1086,8 @@ class PithosClient(PithosRestAPI):
         :param dst_object: (str) destination object path
 
         :param source_version: (str) source object version
+
+        :param source_account: (str) account to copy from
 
         :param public: (bool)
 
@@ -1102,6 +1105,7 @@ class PithosClient(PithosRestAPI):
             copy_from=src_path,
             content_length=0,
             source_version=source_version,
+            source_account=source_account,
             public=public,
             content_type=content_type,
             delimiter=delimiter)
