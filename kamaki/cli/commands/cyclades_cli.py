@@ -353,7 +353,7 @@ class server_firewall(_init_cyclades):
     def _run(self, server_id, profile):
         self.client.set_firewall_profile(
             server_id=int(server_id),
-            profile=unicode(profile).upper())
+            profile=('%s' % profile).upper())
 
     def main(self, server_id, profile):
         super(self.__class__, self)._run()

@@ -189,7 +189,7 @@ class Client(object):
                 data = dumps(kwargs.pop('json'))
                 self.set_default_header('Content-Type', 'application/json')
             if data:
-                self.set_default_header('Content-Length', unicode(len(data)))
+                self.set_default_header('Content-Length', '%s' % len(data))
 
             sendlog.info('perform a %s @ %s', method, self.base_url)
 

@@ -89,7 +89,7 @@ def path4url(*args):
 
     path = ''
     for arg in args:
-        suffix = unicode(arg)
+        suffix = '%s' % arg
         try:
             while suffix[0] == '/':
                 suffix = suffix[1:]
