@@ -145,7 +145,7 @@ class KamakiConnection(object):
 
     def set_header(self, name, value):
         assert name, 'KamakiConnection header key cannot be 0 or empty'
-        self.headers[unicode(name)] = unicode(value)
+        self.headers['%s' % name] = '%s' % value
 
     def remove_header(self, name):
         try:

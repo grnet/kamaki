@@ -73,7 +73,7 @@ class KamakiHTTPResponse(KamakiResponse):
         :returns: (str) content
         """
         self._get_response()
-        return unicode(self._content)
+        return '%s' % self._content
 
     @text.setter
     def text(self, v):
@@ -121,10 +121,9 @@ class KamakiHTTPConnection(KamakiConnection):
         params = dict(self.params)
         params.update(extra_params)
         for i, (key, val) in enumerate(params.items()):
-            url += '%s%s%s' % (
-                '&' if i else '?',
-                key,
-                '=%s' % val if val else '')
+            url += '%s%s' % ('&' if i else '?', key)
+            if val:
+                url += '=%s' % val
 
         parsed = urlparse(url)
         self.url = url
