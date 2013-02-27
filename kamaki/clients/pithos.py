@@ -1114,6 +1114,7 @@ class PithosClient(PithosRestAPI):
     def move_object(
             self, src_container, src_object, dst_container,
             dst_object=False,
+            source_account=None,
             source_version=None,
             public=False,
             content_type=None,
@@ -1126,6 +1127,8 @@ class PithosClient(PithosRestAPI):
         :param dst_container: (str) destination container
 
         :param dst_object: (str) destination object path
+
+        :param source_account: (str) account to move from
 
         :param source_version: (str) source object version
 
@@ -1144,6 +1147,7 @@ class PithosClient(PithosRestAPI):
             success=201,
             move_from=src_path,
             content_length=0,
+            source_account=source_account,
             source_version=source_version,
             public=public,
             content_type=content_type,

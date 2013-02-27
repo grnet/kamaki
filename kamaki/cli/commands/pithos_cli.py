@@ -809,7 +809,7 @@ class store_move(_source_destination_command):
                 src_object=src_obj,
                 dst_container=self.dst_client.container,
                 dst_object=dst_obj,
-                #source_account=src_account,
+                source_account=src_account,
                 source_version=self['source_version'],
                 public=self['public'],
                 content_type=self['content_type'])
