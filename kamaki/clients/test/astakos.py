@@ -31,24 +31,35 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from mock import Mock, patch
+from mock import patch
 
 from unittest import TestCase
 from kamaki.clients.astakos import AstakosClient
-from json import dumps
+
+
+example = dict(
+        name='Simple Name',
+        username='User Full Name',
+        auth_token_expires='1362583796000',
+        auth_token_created='1359991796000',
+        email=['user@example.gr'],
+        id=42,
+        uuid='aus3r-uu1d-f0r-73s71ng-as7ak0s')
+
+example0 = dict(
+        name='Simple Name 0',
+        username='User Full Name 0',
+        auth_token_expires='1362583796001',
+        auth_token_created='1359991796001',
+        email=['user0@example.gr'],
+        id=32,
+        uuid='an07h2r-us3r-uu1d-f0r-as7ak0s')
 
 
 class Astakos(TestCase):
 
     class fakeResponse(object):
-        json = dumps(dict(
-            name='Simple Name',
-            username='User Full Name',
-            auth_token_expires='1362583796000',
-            auth_token_created='1359991796000',
-            email=['user@example.gr'],
-            id=42,
-            uuid='aus3r-uu1d-f0r-73s71ng-as7ak0s'))
+        json = example
         headers = {}
         content = json
         status = None
@@ -56,6 +67,8 @@ class Astakos(TestCase):
 
         def release(self):
             pass
+
+    cached = False
 
     def setUp(self):
         self.url = 'https://astakos.example.com'
@@ -65,48 +78,40 @@ class Astakos(TestCase):
         self.C = KamakiHTTPConnection
         self.FR = self.fakeResponse
 
-    def test_authenticate(self):
+    def _authenticate(self):
         with patch.object(self.C, 'perform_request', return_value=self.FR()):
             r = self.client.authenticate()
-            for term in (
-                    'name',
-                    'username',
-                    'auth_token_expires',
-                    'auth_token_created',
-                    'uuid',
-                    'id',
-                    'email'):
-                self.assertTrue(term in r)
+        self.cached = True
+        return r
 
-    """
+    def test_authenticate(self):
+        r = self._authenticate()
+        self.assertEqual(self.client.http_client.url, self.url)
+        self.assertEqual(self.client.http_client.path, '/im/authenticate')
+        for term, val in example.items():
+            self.assertTrue(term in r)
+            self.assertEqual(val, r[term])
+
     def test_info(self):
-        self._test_0020_info()
-
-    def _test_0020_info(self):
-        self.assertTrue(set([
-            'name',
-            'username',
-            'uuid']).issubset(self.client.info().keys()))
+        if not self.cached:
+            self._authenticate()
+            return self.test_info()
+        self.assertTrue(set(
+            example.keys()).issubset(self.client.info().keys()))
 
     def test_get(self):
-        self._test_0020_get()
-
-    def _test_0020_get(self):
-        for term in ('uuid', 'name', 'username'):
-            self.assertEqual(
-                self.client.term(term, self['astakos', 'token']),
-                self['astakos', term])
-        self.assertTrue(self['astakos', 'email'] in self.client.term('email'))
+        if not self.cached:
+            self._authenticate()
+            return self.test_get()
+        for term, val in example.items():
+            self.assertEqual(self.client.term(term, self.token), val)
+        self.assertTrue(example['email'][0] in self.client.term('email'))
 
     def test_list(self):
-        self.client.authenticate()
-        self._test_0020_list()
-
-    def _test_0020_list(self):
-        terms = set(['name', 'username', 'uuid', 'email', 'auth_token'])
-        uuid = 0
-        for r in self.client.list():
-            self.assertTrue(terms.issubset(r.keys()))
-            self.assertTrue(uuid != r['uuid'] if uuid else True)
-            uuid = r['uuid']
-    """
+        if not self.cached:
+            self._authenticate
+        with patch.object(self.FR, 'json', return_value=example0):
+            self._authenticate()
+        r = self.client.list()
+        self.assertTrue(len(r) == 1)
+        self.assertEqual(r[0]['auth_token'], self.token)
