@@ -835,6 +835,7 @@ class Pithos(livetest.Generic):
         self._test_0110_object_copy()
 
     def _test_0110_object_copy(self):
+        #  TODO: check with source_account option
         self.client.container = self.c2
         obj = 'test2'
 

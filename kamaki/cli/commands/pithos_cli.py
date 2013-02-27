@@ -153,6 +153,12 @@ class RangeArgument(ValueArgument):
 class _pithos_init(_command_init):
     """Initialize a pithos+ kamaki client"""
 
+    @staticmethod
+    def _is_dir(remote_dict):
+        return 'application/directory' == remote_dict.get(
+            'content_type',
+            remote_dict.get('content-type', ''))
+
     @errors.generic.all
     def _run(self):
         self.token = self.config.get('store', 'token')\
@@ -211,13 +217,6 @@ class _store_container_command(_store_account_command):
         self['container'] = ValueArgument(
             'Set container to work with (temporary)',
             '--container')
-
-    @errors.generic.all
-    def _dest_container_path(self, dest_container_path):
-        if self['destination_container']:
-            return (self['destination_container'], dest_container_path)
-        dst = dest_container_path.split(':')
-        return (dst[0], dst[1]) if len(dst) > 1 else (None, dst[0])
 
     def extract_container_and_path(
             self,
@@ -508,21 +507,159 @@ class store_create(_store_container_command):
         self._run()
 
 
+class _source_destination_command(_store_container_command):
+
+    arguments = dict(
+        destination_account=ValueArgument('', '--dst-account'),
+        recursive=FlagArgument('', ('-r', '--recursive')),
+        prefix=FlagArgument('', '--with-prefix', default=''),
+        suffix=ValueArgument('', '--with-suffix', default=''),
+        add_prefix=ValueArgument('', '--add-prefix', default=''),
+        add_suffix=ValueArgument('', '--add-suffix', default=''),
+        prefix_replace=ValueArgument('', '--prefix-to-replace', default=''),
+        suffix_replace=ValueArgument('', '--suffix-to-replace', default='')
+    )
+
+    def __init__(self, arguments={}):
+        self.arguments.update(arguments)
+        super(_source_destination_command, self).__init__(self.arguments)
+
+    def _run(self, source_container___path, path_is_optional=False):
+        super(_source_destination_command, self)._run(
+            source_container___path,
+            path_is_optional)
+        self.dst_client = PithosClient(
+            base_url=self.client.base_url,
+            token=self.client.token,
+            account=self['destination_account'] or self.client.account)
+
+    @errors.generic.all
+    @errors.pithos.account
+    def _dest_container_path(self, dest_container_path):
+        if self['destination_container']:
+            self.dst_client.container = self['destination_container']
+            return (self['destination_container'], dest_container_path)
+        if dest_container_path:
+            dst = dest_container_path.split(':')
+            if len(dst) > 1:
+                try:
+                    self.dst_client.container = dst[0]
+                    self.dst_client.get_container_info(dst[0])
+                except ClientError as err:
+                    if err.status in (404, 204):
+                        raiseCLIError(
+                            'Destination container %s not found' % dst[0])
+                    raise
+                else:
+                    self.dst_client.container = dst[0]
+                return (dst[0], dst[1])
+            return(None, dst[0])
+        raiseCLIError('No destination container:path provided')
+
+    def _get_all(self, prefix):
+        return self.client.container_get(prefix=prefix).json
+
+    def _get_src_objects(self, src_path):
+        """Get a list of the source objects to be called
+
+        :param src_path: (str) source path
+
+        :returns: (method, params) a method that returns a list when called
+        or (object) if it is a single object
+        """
+        if src_path and src_path[-1] == '/':
+            src_path = src_path[:-1]
+
+        if self['prefix']:
+            return (self._get_all, dict(prefix=src_path))
+        try:
+            srcobj = self.client.get_object_info(src_path)
+        except ClientError as srcerr:
+            if srcerr.status == 404:
+                raiseCLIError(
+                    'Source object %s not in source container %s' % (
+                        src_path,
+                        self.client.container),
+                    details=['Hint: --with-prefix to match multiple objects'])
+            elif srcerr.status not in (204,):
+                raise
+            return (self.client.list_objects, {})
+
+        if self._is_dir(srcobj):
+            if not self['recursive']:
+                raiseCLIError(
+                    'Object %s of cont. %s is a dir' % (
+                        src_path,
+                        self.client.container),
+                    details=['Use --recursive to access directories'])
+            return (self._get_all, dict(prefix=src_path))
+        srcobj['name'] = src_path
+        return srcobj
+
+    def src_dst_pairs(self, dst_path):
+        src_iter = self._get_src_objects(self.path)
+        src_N = isinstance(src_iter, tuple)
+        add_prefix = self['add_prefix'].strip('/')
+
+        if dst_path and dst_path.endswith('/'):
+            dst_path = dst_path[:-1]
+
+        try:
+            dstobj = self.dst_client.get_object_info(dst_path)
+        except ClientError as trgerr:
+            if trgerr.status in (404,):
+                if src_N:
+                    raiseCLIError(
+                        'Cannot merge multiple paths to path %s' % dst_path,
+                        details=[
+                            'Try to use / or a directory as destination',
+                            'or create the destination dir (/store mkdir)',
+                            'or use a single object as source'])
+            elif trgerr.status not in (204,):
+                raise
+        else:
+            if self._is_dir(dstobj):
+                add_prefix = '%s/%s' % (dst_path.strip('/'), add_prefix)
+            elif src_N:
+                raiseCLIError(
+                    'Cannot merge multiple paths to path' % dst_path,
+                    details=[
+                        'Try to use / or a directory as destination',
+                        'or create the destination dir (/store mkdir)',
+                        'or use a single object as source'])
+
+        if src_N:
+            (method, kwargs) = src_iter
+            for obj in method(**kwargs):
+                name = obj['name']
+                if name.endswith(self['suffix']):
+                    yield (name, self._get_new_object(name, add_prefix))
+        elif src_iter['name'].endswith(self['suffix']):
+            name = src_iter['name']
+            yield (name, self._get_new_object(dst_path or name, add_prefix))
+        else:
+            raiseCLIError('Source path %s conflicts with suffix %s' % (
+                src_iter['name'],
+                self['suffix']))
+
+    def _get_new_object(self, obj, add_prefix):
+        if self['prefix_replace'] and obj.startswith(self['prefix_replace']):
+            obj = obj[len(self['prefix_replace']):]
+        if self['suffix_replace'] and obj.endswith(self['suffix_replace']):
+            obj = obj[:-len(self['suffix_replace'])]
+        return add_prefix + obj + self['add_suffix']
+
+
 @command(pithos_cmds)
-class store_copy(_store_container_command):
+class store_copy(_source_destination_command):
     """Copy objects from container to (another) container
     Semantics:
-    copy cont:path path2
-    .   will copy all <obj> prefixed with path, as path2<obj>
-    .   or as path2 if path corresponds to just one whole object
+    copy cont:path dir
+    .   transfer path as dir/path
     copy cont:path cont2:
-    .   will copy all <obj> prefixed with path to container cont2
-    copy cont:path [cont2:]path2 --exact-match
-    .   will copy at most one <obj> as a new object named path2,
-    .   provided path corresponds to a whole object path
-    copy cont:path [cont2:]path2 --replace
-    .   will copy all <obj> prefixed with path, replacing path with path2
-    where <obj> is a full file or directory object path.
+    .   trasnfer all <obj> prefixed with path to container cont2
+    copy cont:path [cont2:]path2
+    .   transfer path to path2
     Use options:
     1. <container1>:<path1> [container2:]<path2> : if container2 is not given,
     destination is container1:path2
@@ -531,6 +668,9 @@ class store_copy(_store_container_command):
     """
 
     arguments = dict(
+        destination_account=ValueArgument(
+            'Account to copy to',
+            '--dst-account'),
         destination_container=ValueArgument(
             'use it if destination container name contains a : character',
             '--dst-container'),
@@ -542,38 +682,44 @@ class store_copy(_store_container_command):
             'change object\'s content type',
             '--content-type'),
         recursive=FlagArgument(
-            'mass copy with delimiter /',
+            'copy directory and contents',
             ('-r', '--recursive')),
-        exact_match=FlagArgument(
-            'Copy only the object that fully matches path',
-            '--exact-match'),
-        replace=FlagArgument('Replace src. path with dst. path', '--replace')
+        prefix=FlagArgument(
+            'Match objects prefixed with src path (feels like src_path*)',
+            '--with-prefix',
+            default=''),
+        suffix=ValueArgument(
+            'Suffix of source objects (feels like *suffix)',
+            '--with-suffix',
+            default=''),
+        add_prefix=ValueArgument('Prefix targets', '--add-prefix', default=''),
+        add_suffix=ValueArgument('Suffix targets', '--add-suffix', default=''),
+        prefix_replace=ValueArgument(
+            'Prefix of src to replace with dst path + add_prefix, if matched',
+            '--prefix-to-replace',
+            default=''),
+        suffix_replace=ValueArgument(
+            'Suffix of src to replace with add_suffix, if matched',
+            '--suffix-to-replace',
+            default='')
     )
-
-    def _objlist(self, dst_path):
-        if self['exact_match']:
-            return [(dst_path or self.path, self.path)]
-        r = self.client.container_get(prefix=self.path)
-        if len(r.json) == 1:
-            obj = r.json[0]
-            return [(obj['name'], dst_path or obj['name'])]
-        start = len(self.path) if self['replace'] else 0
-        return [(obj['name'], '%s%s' % (
-            dst_path,
-            obj['name'][start:])) for obj in r.json]
 
     @errors.generic.all
     @errors.pithos.connection
     @errors.pithos.container
-    def _run(self, dst_cont, dst_path):
+    @errors.pithos.account
+    def _run(self, dst_path):
         no_source_object = True
-        for src_object, dst_object in self._objlist(dst_path):
+        src_account = self.client.account if (
+            self['destination_account']) else None
+        for src_obj, dst_obj in self.src_dst_pairs(dst_path):
             no_source_object = False
-            self.client.copy_object(
-                src_container=self.container,
-                src_object=src_object,
-                dst_container=dst_cont or self.container,
-                dst_object=dst_object,
+            self.dst_client.copy_object(
+                src_container=self.client.container,
+                src_object=src_obj,
+                dst_container=self.dst_client.container,
+                dst_object=dst_obj,
+                source_account=src_account,
                 source_version=self['source_version'],
                 public=self['public'],
                 content_type=self['content_type'])
@@ -586,76 +732,84 @@ class store_copy(_store_container_command):
             self,
             source_container___path,
             destination_container___path=None):
-        super(self.__class__, self)._run(
+        super(store_copy, self)._run(
             source_container___path,
             path_is_optional=False)
         (dst_cont, dst_path) = self._dest_container_path(
             destination_container___path)
-        self._run(dst_cont=dst_cont, dst_path=dst_path or '')
+        self.dst_client.container = dst_cont or self.container
+        self._run(dst_path=dst_path or '')
 
 
 @command(pithos_cmds)
-class store_move(_store_container_command):
-    """Move/rename objects
+class store_move(_source_destination_command):
+    """Move/rename objects from container to (another) container
     Semantics:
-    move cont:path path2
-    .   will move all <obj> prefixed with path, as path2<obj>
-    .   or as path2 if path corresponds to just one whole object
+    move cont:path dir
+    .   rename path as dir/path
     move cont:path cont2:
-    .   will move all <obj> prefixed with path to container cont2
-    move cont:path [cont2:]path2 --exact-match
-    .   will move at most one <obj> as a new object named path2,
-    .   provided path corresponds to a whole object path
-    move cont:path [cont2:]path2 --replace
-    .   will move all <obj> prefixed with path, replacing path with path2
-    where <obj> is a full file or directory object path.
+    .   trasnfer all <obj> prefixed with path to container cont2
+    move cont:path [cont2:]path2
+    .   transfer path to path2
     Use options:
-    1. <container1>:<path1> [container2:]<path2> : if container2 not given,
+    1. <container1>:<path1> [container2:]<path2> : if container2 is not given,
     destination is container1:path2
-    2. <container>:<path1> path2 : rename
+    2. <container>:<path1> <path2> : move in the same container
     3. Can use --container= instead of <container1>
     """
 
     arguments = dict(
+        destination_account=ValueArgument(
+            'Account to move to',
+            '--dst-account'),
         destination_container=ValueArgument(
             'use it if destination container name contains a : character',
             '--dst-container'),
-        source_version=ValueArgument('specify version', '--source-version'),
-        public=FlagArgument('make object publicly accessible', '--public'),
-        content_type=ValueArgument('modify content type', '--content-type'),
-        recursive=FlagArgument('up to delimiter /', ('-r', '--recursive')),
-        exact_match=FlagArgument(
-            'Copy only the object that fully matches path',
-            '--exact-match'),
-        replace=FlagArgument('Replace src. path with dst. path', '--replace')
+        source_version=ValueArgument(
+            'copy specific version',
+            '--source-version'),
+        public=ValueArgument('make object publicly accessible', '--public'),
+        content_type=ValueArgument(
+            'change object\'s content type',
+            '--content-type'),
+        recursive=FlagArgument(
+            'copy directory and contents',
+            ('-r', '--recursive')),
+        prefix=FlagArgument(
+            'Match objects prefixed with src path (feels like src_path*)',
+            '--with-prefix',
+            default=''),
+        suffix=ValueArgument(
+            'Suffix of source objects (feels like *suffix)',
+            '--with-suffix',
+            default=''),
+        add_prefix=ValueArgument('Prefix targets', '--add-prefix', default=''),
+        add_suffix=ValueArgument('Suffix targets', '--add-suffix', default=''),
+        prefix_replace=ValueArgument(
+            'Prefix of src to replace with dst path + add_prefix, if matched',
+            '--prefix-to-replace',
+            default=''),
+        suffix_replace=ValueArgument(
+            'Suffix of src to replace with add_suffix, if matched',
+            '--suffix-to-replace',
+            default='')
     )
-
-    def _objlist(self, dst_path):
-        if self['exact_match']:
-            return [(dst_path or self.path, self.path)]
-        r = self.client.container_get(prefix=self.path)
-        if len(r.json) == 1:
-            obj = r.json[0]
-            return [(obj['name'], dst_path or obj['name'])]
-        return [(
-            obj['name'],
-            '%s%s' % (
-                dst_path,
-                obj['name'][len(self.path) if self['replace'] else 0:]
-            )) for obj in r.json]
 
     @errors.generic.all
     @errors.pithos.connection
     @errors.pithos.container
-    def _run(self, dst_cont, dst_path):
+    def _run(self, dst_path):
         no_source_object = True
-        for src_object, dst_object in self._objlist(dst_path):
+        src_account = self.client.account if (
+            self['destination_account']) else None
+        for src_obj, dst_obj in self.src_dst_pairs(dst_path):
             no_source_object = False
-            self.client.move_object(
+            self.dst_client.move_object(
                 src_container=self.container,
-                src_object=src_object,
-                dst_container=dst_cont or self.container,
-                dst_object=dst_object,
+                src_object=src_obj,
+                dst_container=self.dst_client.container,
+                dst_object=dst_obj,
+                source_account=src_account,
                 source_version=self['source_version'],
                 public=self['public'],
                 content_type=self['content_type'])
@@ -673,7 +827,10 @@ class store_move(_store_container_command):
             path_is_optional=False)
         (dst_cont, dst_path) = self._dest_container_path(
             destination_container___path)
-        self._run(dst_cont=dst_cont, dst_path=dst_path or '')
+        (dst_cont, dst_path) = self._dest_container_path(
+            destination_container___path)
+        self.dst_client.container = dst_cont or self.container
+        self._run(dst_path=dst_path or '')
 
 
 @command(pithos_cmds)
@@ -1023,12 +1180,6 @@ class store_download(_store_container_command):
             'Download a remote path and all its contents',
             '--recursive')
     )
-
-    @staticmethod
-    def _is_dir(remote_dict):
-        return 'application/directory' == remote_dict.get(
-            'content_type',
-            remote_dict.get('content-type', ''))
 
     def _outputs(self, local_path):
         """:returns: (local_file, remote_path)"""

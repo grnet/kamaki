@@ -32,11 +32,11 @@
 # or implied, of GRNET S.A.
 
 from urlparse import urlparse
+from urllib2 import quote
 from objpool.http import get_http_connection
 from kamaki.clients.connection import HTTPConnection, HTTPResponse
 from kamaki.clients.connection.errors import HTTPConnectionError
 from kamaki.clients.connection.errors import HTTPResponseError
-from socket import gaierror, error
 
 from json import loads
 
@@ -158,12 +158,14 @@ class KamakiHTTPConnection(HTTPConnection):
             extra_params=async_params)
         headers = dict(self.headers)
         for k, v in async_headers.items():
+            v = quote(v.encode('utf-8')) if isinstance(v, unicode) else str(v)
             headers[k] = v
 
         #de-unicode headers to prepare them for http
         http_headers = {}
         for k, v in headers.items():
-            http_headers[str(k)] = str(v)
+            v = quote(v.encode('utf-8')) if isinstance(v, unicode) else str(v)
+            http_headers[k] = v
 
         #get connection from pool
         try:
