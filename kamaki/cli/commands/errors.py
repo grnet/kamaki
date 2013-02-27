@@ -417,6 +417,20 @@ class pithos(object):
         return generic._connection(foo, 'store.url')
 
     @classmethod
+    def account(this, foo):
+        def _raise(self, *args, **kwargs):
+            try:
+                return foo(self, *args, **kwargs)
+            except ClientError as ce:
+                if ce.status == 403:
+                    raiseCLIError(
+                        ce,
+                        'Invalid account credentials for this operation',
+                        details=['Check user account settings'])
+                raise
+        return _raise
+
+    @classmethod
     def quota(this, foo):
         def _raise(self, *args, **kwargs):
             try:
