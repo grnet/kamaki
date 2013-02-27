@@ -52,7 +52,8 @@ class ImageClient(Client):
 
         :returns: (list) id,name + full image info if detail
         """
-        path = path4url('images', 'detail') if detail else path4url('images/')
+        path = path4url('images', 'detail') if detail else (
+            path4url('images') + '/')
 
         async_params = {}
         if isinstance(filters, dict):
@@ -108,7 +109,7 @@ class ImageClient(Client):
 
         :param properties: (dict) image properties (X-Image-Meta-Property)
         """
-        path = path4url('images/')
+        path = path4url('images') + '/'
         self.set_header('X-Image-Meta-Name', name)
         self.set_header('X-Image-Meta-Location', location)
 
