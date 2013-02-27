@@ -6,7 +6,7 @@ This guide describes the standard installation process for kamaki, with the aspi
 
 * Kamaki repository: `http://code.grnet.gr/git/kamaki <http://code.grnet.gr/git/kamaki>`_
 
-* Synnefo Linux packages: `http://apt.dev.grnet.gr <http://apt.dev.grnet.gr>`_, `http://apt2.dev.grnet.gr <http://apt2.dev.grnet.gr>`_
+* Synnefo Linux packages: `http://apt2.dev.grnet.gr <http://apt2.dev.grnet.gr>`_
 
 Linux and Unix-like enviroments
 -------------------------------
@@ -18,7 +18,6 @@ The following steps describe a command-line approach, but any graphic package ma
 
 * As root, append the following to */etc/apt/sources.list* ::
 
-    deb http://apt.dev.grnet.gr/ squeeze main
     deb http://apt2.dev.grnet.gr stable/
 
 * Make sure the GPG public key for the GRNET dev team is added:
