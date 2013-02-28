@@ -34,9 +34,9 @@
 from urlparse import urlparse
 from urllib2 import quote
 from objpool.http import get_http_connection
-from kamaki.clients.connection import HTTPConnection, HTTPResponse
-from kamaki.clients.connection.errors import HTTPConnectionError
-from kamaki.clients.connection.errors import HTTPResponseError
+from kamaki.clients.connection import KamakiConnection, KamakiResponse
+from kamaki.clients.connection.errors import KamakiConnectionError
+from kamaki.clients.connection.errors import KamakiResponseError
 
 from json import loads
 
@@ -44,7 +44,7 @@ from time import sleep
 from httplib import ResponseNotReady
 
 
-class KamakiHTTPResponse(HTTPResponse):
+class KamakiHTTPResponse(KamakiResponse):
 
     def _get_response(self):
         if self.prefetched:
@@ -77,7 +77,7 @@ class KamakiHTTPResponse(HTTPResponse):
         return '%s' % self._content
 
     @text.setter
-    def test(self, v):
+    def text(self, v):
         pass
 
     @property
@@ -85,13 +85,13 @@ class KamakiHTTPResponse(HTTPResponse):
         """
         :returns: (dict) the json-formated content
 
-        :raises HTTPResponseError: if content is not json formated
+        :raises KamakiResponseError: if content is not json formated
         """
         self._get_response()
         try:
             return loads(self._content)
         except ValueError as err:
-            HTTPResponseError('Response not formated in JSON - %s' % err)
+            KamakiResponseError('Response not formated in JSON - %s' % err)
 
     @json.setter
     def json(self, v):
@@ -105,7 +105,7 @@ class KamakiHTTPResponse(HTTPResponse):
             self.request.close()
 
 
-class KamakiHTTPConnection(HTTPConnection):
+class KamakiHTTPConnection(KamakiConnection):
 
     def _retrieve_connection_info(self, extra_params={}):
         """
@@ -120,18 +120,17 @@ class KamakiHTTPConnection(HTTPConnection):
         if self.path:
             url += self.path[1:] if self.path[0] == '/' else self.path
         params = dict(self.params)
-        for k, v in extra_params.items():
-            params[k] = v
+        params.update(extra_params)
         for i, (key, val) in enumerate(params.items()):
-            param_str = '%s%s' % ('?' if i == 0 else '&', key)
-            if val is not None:
-                param_str += '=%s' % val
-            url += param_str
+            url += '%s%s' % ('&' if i else '?', key)
+            if val:
+                url += '=%s' % val
 
         parsed = urlparse(url)
         self.url = url
-        self.path = parsed.path if parsed.path else '/'
-        self.path += '?%s' % parsed.query if parsed.query else ''
+        self.path = parsed.path or '/'
+        if parsed.query:
+            self.path += '?%s' % parsed.query
         return (parsed.scheme, parsed.netloc)
 
     def perform_request(
@@ -152,10 +151,9 @@ class KamakiHTTPConnection(HTTPConnection):
 
         :returns: (KamakiHTTPResponse) a response object
 
-        :raises HTTPConnectionError: Connection failures
+        :raises KamakiConnectionError: Connection failures
         """
-        (scheme, netloc) = self._retrieve_connection_info(
-            extra_params=async_params)
+        (scheme, netloc) = self._retrieve_connection_info(async_params)
         headers = dict(self.headers)
         for k, v in async_headers.items():
             v = quote(v.encode('utf-8')) if isinstance(v, unicode) else str(v)
@@ -171,7 +169,7 @@ class KamakiHTTPConnection(HTTPConnection):
         try:
             conn = get_http_connection(netloc=netloc, scheme=scheme)
         except ValueError as ve:
-            raise HTTPConnectionError(
+            raise KamakiConnectionError(
                 'Cannot establish connection to %s %s' % (self.url, ve),
                 errno=-1)
         try:
@@ -182,7 +180,7 @@ class KamakiHTTPConnection(HTTPConnection):
                 headers=http_headers,
                 body=data)
         except IOError as ioe:
-            raise HTTPConnectionError(
+            raise KamakiConnectionError(
                 'Cannot connect to %s: %s' % (self.url, ioe.strerror),
                 errno=ioe.errno)
         except Exception as err:

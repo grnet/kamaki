@@ -32,17 +32,17 @@
 # or implied, of GRNET S.A.
 
 
-class HTTPResponse(object):
+class KamakiResponse(object):
     """An abstract HTTP Response object to handle a performed HTTPRequest.
     Subclass implementation required
     """
 
-    def __init__(self, request=None, prefetched=False):
+    def __init__(self, request, prefetched=False):
         self.request = request
         self.prefetched = prefetched
 
     def _get_response(self):
-        """Wait for http response as late as possible: the first time needed"""
+        """Wait for http response as late as possible"""
         if self.prefetched:
             return
         self = self.request.response
@@ -64,7 +64,7 @@ class HTTPResponse(object):
 
     @property
     def content(self):
-        """(binary) request response content (data)"""
+        """:returns: (binary) request response content (data)"""
         self._get_response()
         return self._content
 
@@ -124,7 +124,7 @@ class HTTPResponse(object):
 
     @property
     def request(self):
-        """(HTTPConnection) the source of this response object"""
+        """(KamakiConnection) the source of this response object"""
         return self._request
 
     @request.setter
@@ -132,7 +132,7 @@ class HTTPResponse(object):
         self._request = v
 
 
-class HTTPConnection(object):
+class KamakiConnection(object):
     """An abstract HTTP Connection mechanism. Subclass implementation required
     """
 
@@ -144,6 +144,7 @@ class HTTPConnection(object):
         self.method = method
 
     def set_header(self, name, value):
+        assert name, 'KamakiConnection header key cannot be 0 or empty'
         self.headers['%s' % name] = '%s' % value
 
     def remove_header(self, name):
@@ -159,7 +160,8 @@ class HTTPConnection(object):
         self.replace_headers({})
 
     def set_param(self, name, value=None):
-        self.params[name] = value
+        assert name, 'KamakiConnection param key cannot be 0 or empty'
+        self.params[unicode(name)] = value
 
     def remove_param(self, name):
         try:

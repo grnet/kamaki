@@ -169,11 +169,7 @@ def init_parser():
     return parser
 
 
-def main(argv):
-    _main(argv, config=None)
-
-
-def _main(argv, config=None):
+def main(argv, config=None):
     suiteFew = TestSuite()
     if len(argv) == 0 or argv[0] == 'pithos':
         from kamaki.clients.livetest.pithos import Pithos
