@@ -47,13 +47,6 @@ example_images = [
         "size": 752782848},
     {
         "status": "available",
-        "name": "Debian_Wheezy_Base",
-        "disk_format": "diskdump",
-        "container_format": "bare",
-        "id": "1f8454f0-8e3e-4b6c-ab8e-5236b728dffe",
-        "size": 795107328},
-    {
-        "status": "available",
         "name": "maelstrom",
         "disk_format": "diskdump",
         "container_format": "bare",
@@ -90,28 +83,6 @@ example_images_detailed = [
         "deleted_at": "",
         "id": "b4713f20-3a41-4eaf-81ae-88698c18b3e8",
         "size": 752782848},
-    {
-        "status": "available",
-        "name": "Debian_Wheezy_Base",
-        "checksum": "8f96e73ba8886a05de6f9b3705c981",
-        "created_at": "2013-01-29 16:41:13",
-        "disk_format": "diskdump",
-        "updated_at": "2013-01-29 16:41:14",
-        "properties": {
-            "partition_table": "msdos",
-            "osfamily": "linux",
-            "users": "root",
-            "swap": "5:259",
-            "os": "debian",
-            "root_partition": "1",
-            "description": "Debian7.0(Wheezy)Base"},
-        "location": "pithos://us3r-EO2-1d/images/Deb_Whz201301291840.diskdump",
-        "container_format": "bare",
-        "owner": "user302@mail.example.com",
-        "is_public": True,
-        "deleted_at": "",
-        "id": "1f8454f0-8e3e-4b6c-ab8e-5236b728dffe",
-        "size": 795107328},
     {
         "status": "available",
         "name": "maelstrom",
@@ -307,14 +278,15 @@ class Image(TestCase):
             for membership in memberships:
                 self.assertTrue(membership['member_id'] in members)
 
-    """
     def test_list_members(self):
-        ""Test list_members""
-        self._test_list_members()
+        img0 = example_images_detailed[0]
+        members = ['use3r-1d-0', 'us2r-1d-1', 'us3r-1d-2']
+        self.FR.json = dict(members=members)
+        with patch.object(self.C, 'perform_request', return_value=self.FR()):
+            r = self.client.list_members(img0['id'])
+            self.assertEqual(r, members)
 
-    def _test_list_members(self):
-        self._test_set_members()
-
+    """
     def test_remove_members(self):
         ""Test remove_members - NO CHECK""
         self._prepare_img()
