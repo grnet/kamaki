@@ -300,7 +300,7 @@ class Image(TestCase):
         with patch.object(self.C, 'perform_request', return_value=self.FR()):
             self.assertRaises(
                 ClientError,
-                self.client.set_members,
+                self.client.add_member,
                 img0['id'], new_member)
             self.FR.status_code = 204
             self.client.add_member(img0['id'], new_member)
@@ -309,19 +309,22 @@ class Image(TestCase):
                 self.client.http_client.path,
                 '/images/%s/members/%s' % (img0['id'], new_member))
 
-    """
-    def test_remove_members(self):
-        return
-        members = ['%s@fake.net' % self.now, '%s_v2@fake.net' % self.now]
-        for img in self._imglist.values():
-            self.client.set_members(img['id'], members)
-            r = self.client.list_members(img['id'])
-            self.assertTrue(len(r) > 1)
-            self.client.remove_member(img['id'], members[0])
-            r0 = self.client.list_members(img['id'])
-            self.assertEqual(len(r), 1 + len(r0))
-            self.assertEqual(r0[0]['member_id'], members[1])
+    def test_remove_member(self):
+        img0 = example_images_detailed[0]
+        old_member = 'us3r-15-0ld'
+        with patch.object(self.C, 'perform_request', return_value=self.FR()):
+            self.assertRaises(
+                ClientError,
+                self.client.remove_member,
+                img0['id'], old_member)
+            self.FR.status_code = 204
+            self.client.remove_member(img0['id'], old_member)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(
+                self.client.http_client.path,
+                '/images/%s/members/%s' % (img0['id'], old_member))
 
+    """
     def test_list_shared(self):
         #No way to test this, if I dont have member images
         pass
