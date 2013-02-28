@@ -155,6 +155,7 @@ example_images_detailed = [
         "id": "5963020b-ab74-4e11-bc59-90c494bbdedb",
         "size": 2589802496}]
 
+
 class Image(TestCase):
 
     class FR(object):
@@ -163,6 +164,9 @@ class Image(TestCase):
         content = json
         status = None
         status_code = 200
+
+        def release(self):
+            pass
 
     def setUp(self):
         self.now = time.mktime(time.gmtime())
@@ -239,27 +243,51 @@ class Image(TestCase):
             self.assertEqual(r['id'], img0['id'])
             self.assert_dicts_are_deeply_equal(r, example_images_detailed[0])
 
-    """
     def test_register(self):
-        ""Test register""
-        self._prepare_img()
-        self._test_register()
+        img0 = example_images_detailed[0]
+        img0_location = img0['location']
+        img0_name = 'A new img0 name'
+        with patch.object(
+                self.C,
+                'perform_request',
+                return_value=self.FR()) as perform_req:
+            self.client.register(img0_name, img0_location)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(self.client.http_client.path, '/images/')
+            (method, data, headers, params) = perform_req.call_args[0]
+            self.assertEqual(method, 'post')
+            self.assertTrue(0 == len(params))
 
-    def _test_register(self):
-        self.assertTrue(self._imglist)
-        for img in self._imglist.values():
-            self.assertTrue(img is not None)
+            val = 'Some random value'
+            param_dict = dict(
+                id=val,
+                store=val,
+                disk_format=val,
+                container_format=val,
+                size=val,
+                checksum=val,
+                is_public=val,
+                owner=val)
+            for key in param_dict.keys():
+                param = {key: val}
+                self.client.register(img0_name, img0_location, params=param)
+                (method, data, a_headers, a_params) = perform_req.call_args[0]
+                key = 'x-image-meta-%s' % key.replace('_', '-')
+                self.assertEqual(a_headers[key], val)
+            self.client.register(img0_name, img0_location, params=param_dict)
+            (method, data, a_headers, a_params) = perform_req.call_args[0]
+            self.assertEqual(len(param_dict), len(a_headers))
+            for key, val in param_dict.items():
+                key = 'x-image-meta-%s' % key.replace('_', '-')
+                self.assertEqual(a_headers[key], val)
 
-    def test_reregister(self):
-        ""Test reregister""
-        self._prepare_img()
-        self._test_reregister()
+            props = dict(key0='val0', key2='val2', key3='val3')
+            self.client.register(img0_name, img0_location, properties=props)
+            (method, data, a_headers, a_params) = perform_req.call_args[0]
+            for k, v in props.items():
+                self.assertEquals(a_headers['X-Image-Meta-Property-%s' % k], v)
 
-    def _test_reregister(self):
-        self.client.reregister(
-            self.location,
-            properties=dict(my_property='some_value'))
-
+    """
     def test_set_members(self):
         ""Test set_members""
         self._prepare_img()

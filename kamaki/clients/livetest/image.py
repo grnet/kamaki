@@ -201,16 +201,6 @@ class Image(livetest.Generic):
         for img in self._imglist.values():
             self.assertTrue(img is not None)
 
-    def test_reregister(self):
-        """Test reregister"""
-        self._prepare_img()
-        self._test_reregister()
-
-    def _test_reregister(self):
-        self.client.reregister(
-            self.location,
-            properties=dict(my_property='some_value'))
-
     def test_set_members(self):
         """Test set_members"""
         self._prepare_img()
