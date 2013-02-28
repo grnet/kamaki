@@ -324,8 +324,14 @@ class Image(TestCase):
                 self.client.http_client.path,
                 '/images/%s/members/%s' % (img0['id'], old_member))
 
-    """
     def test_list_shared(self):
-        #No way to test this, if I dont have member images
-        pass
-    """
+        img0 = example_images_detailed[0]
+        self.FR.json = dict(shared_images=example_images)
+        with patch.object(self.C, 'perform_request', return_value=self.FR()):
+            r = self.client.list_shared(img0['id'])
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(
+                self.client.http_client.path,
+                '/shared-images/%s' % img0['id'])
+            for i in range(len(r)):
+                self.assert_dicts_are_deeply_equal(r[i], example_images[i])
