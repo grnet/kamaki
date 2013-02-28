@@ -67,6 +67,94 @@ example_images = [
         "id": "5963020b-ab74-4e11-bc59-90c494bbdedb",
         "size": 2589802496}]
 
+example_images_detailed = [
+    {
+        "status": "available",
+        "name": "Archlinux",
+        "checksum": "1a126aad07475b43cc1959b446344211be13974",
+        "created_at": "2013-01-28 22:44:54",
+        "disk_format": "diskdump",
+        "updated_at": "2013-01-28 22:44:55",
+        "properties": {
+            "partition_table": "msdos",
+            "osfamily": "linux",
+            "users": "root",
+            "exclude_task_assignhostname": "yes",
+            "os": "archlinux",
+            "root_partition": "1",
+            "description": "Archlinux base install 2012.12.01"},
+        "location": "pithos://us3r-I6E-1d/images/archlinux.12.2012",
+        "container_format": "bare",
+        "owner": "user163@mail.example.com",
+        "is_public": True,
+        "deleted_at": "",
+        "id": "b4713f20-3a41-4eaf-81ae-88698c18b3e8",
+        "size": 752782848},
+    {
+        "status": "available",
+        "name": "Debian_Wheezy_Base",
+        "checksum": "8f96e73ba8886a05de6f9b3705c981",
+        "created_at": "2013-01-29 16:41:13",
+        "disk_format": "diskdump",
+        "updated_at": "2013-01-29 16:41:14",
+        "properties": {
+            "partition_table": "msdos",
+            "osfamily": "linux",
+            "users": "root",
+            "swap": "5:259",
+            "os": "debian",
+            "root_partition": "1",
+            "description": "Debian7.0(Wheezy)Base"},
+        "location": "pithos://us3r-EO2-1d/images/Deb_Whz201301291840.diskdump",
+        "container_format": "bare",
+        "owner": "user302@mail.example.com",
+        "is_public": True,
+        "deleted_at": "",
+        "id": "1f8454f0-8e3e-4b6c-ab8e-5236b728dffe",
+        "size": 795107328},
+    {
+        "status": "available",
+        "name": "maelstrom",
+        "checksum": "b202b8c7030cb22f896c6664ac",
+        "created_at": "2013-02-13 10:07:42",
+        "disk_format": "diskdump",
+        "updated_at": "2013-02-13 10:07:44",
+        "properties": {
+            "partition_table": "msdos",
+            "osfamily": "linux",
+            "description": "Ubuntu 12.04.1 LTS",
+            "os": "ubuntu",
+            "root_partition": "1",
+            "users": "user"},
+        "location": "pithos://us3r-@r3n@-1d/images/mls-201302131203.diskdump",
+        "container_format": "bare",
+        "owner": "user3@mail.example.com",
+        "is_public": True,
+        "deleted_at": "",
+        "id": "0fb03e45-7d5a-4515-bd4e-e6bbf6457f06",
+        "size": 2583195648},
+    {
+        "status": "available",
+        "name": "Gardenia",
+        "checksum": "06d3099815d1f6fada91e80107638b882",
+        "created_at": "2013-02-13 12:35:21",
+        "disk_format": "diskdump",
+        "updated_at": "2013-02-13 12:35:23",
+        "properties": {
+            "partition_table": "msdos",
+            "osfamily": "linux",
+            "description": "Ubuntu 12.04.2 LTS",
+            "os": "ubuntu",
+            "root_partition": "1",
+            "users": "user"},
+        "location": "pithos://us3r-E-1d/images/Gardenia-201302131431.diskdump",
+        "container_format": "bare",
+        "owner": "user3@mail.example.com",
+        "is_public": True,
+        "deleted_at": "",
+        "id": "5963020b-ab74-4e11-bc59-90c494bbdedb",
+        "size": 2589802496}]
+
 class Image(TestCase):
 
     class FR(object):
@@ -119,9 +207,14 @@ class Image(TestCase):
             self.assertEqual(self.client.http_client.url, self.url)
             self.assertEqual(self.client.http_client.path, '/images/')
 
+            self.FR.json = example_images_detailed
             r = self.client.list_public(detail=True)
             self.assertEqual(self.client.http_client.url, self.url)
             self.assertEqual(self.client.http_client.path, '/images/detail')
+            for i in range(len(r)):
+                self.assert_dicts_are_deeply_equal(
+                    r[i],
+                    example_images_detailed[i])
 
             size_max = 1000000000
             r = self.client.list_public(filters=dict(size_max=size_max))
@@ -130,38 +223,23 @@ class Image(TestCase):
             self.assertEqual(self.client.http_client.url, self.url)
             self.assertEqual(self.client.http_client.path, '/images/')
 
-    """
     def test_get_meta(self):
-        ""Test get_meta""
-        self._test_get_meta()
+        img0 = example_images[0]
+        self.FR.json = img0
+        img0_headers = {}
+        for k, v in example_images_detailed[0].items():
+            img0_headers['x-image-meta-%s' % k] = v
+        self.FR.headers = img0_headers
+        with patch.object(self.C, 'perform_request', return_value=self.FR()):
+            r = self.client.get_meta(img0['id'])
+            self.assertEqual(self.client.http_client.url, self.url)
+            expected_path = '/images/%s' % img0['id']
+            self.assertEqual(self.client.http_client.path, expected_path)
 
-    def _test_get_meta(self):
-        r = self.client.get_meta(self['image', 'id'])
-        self.assertEqual(r['id'], self['image', 'id'])
-        for term in (
-                'status',
-                'name',
-                'checksum',
-                'updated-at',
-                'created-at',
-                'deleted-at',
-                'location',
-                'is-public',
-                'owner',
-                'disk-format',
-                'size',
-                'container-format'):
-            self.assertTrue(term in r)
-            for interm in (
-                    'kernel',
-                    'osfamily',
-                    'users',
-                    'gui', 'sortorder',
-                    'root-partition',
-                    'os',
-                    'description'):
-                self.assertTrue(interm in r['properties'])
+            self.assertEqual(r['id'], img0['id'])
+            self.assert_dicts_are_deeply_equal(r, example_images_detailed[0])
 
+    """
     def test_register(self):
         ""Test register""
         self._prepare_img()
