@@ -272,6 +272,10 @@ class Image(TestCase):
                 img0['id'], members)
             self.FR.status_code = 204
             self.client.set_members(img0['id'], members)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(
+                    self.client.http_client.path,
+                '/images/%s/members' % img0['id'])
             (method, data, a_headers, a_params) = perform_req.call_args[0]
             from json import loads
             memberships = loads(data)['memberships']
@@ -284,15 +288,29 @@ class Image(TestCase):
         self.FR.json = dict(members=members)
         with patch.object(self.C, 'perform_request', return_value=self.FR()):
             r = self.client.list_members(img0['id'])
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(
+                self.client.http_client.path,
+                '/images/%s/members' % img0['id'])
             self.assertEqual(r, members)
+
+    def test_add_member(self):
+        img0 = example_images_detailed[0]
+        new_member = 'us3r-15-n3w'
+        with patch.object(self.C, 'perform_request', return_value=self.FR()):
+            self.assertRaises(
+                ClientError,
+                self.client.set_members,
+                img0['id'], new_member)
+            self.FR.status_code = 204
+            self.client.add_member(img0['id'], new_member)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(
+                self.client.http_client.path,
+                '/images/%s/members/%s' % (img0['id'], new_member))
 
     """
     def test_remove_members(self):
-        ""Test remove_members - NO CHECK""
-        self._prepare_img()
-        self._test_remove_members()
-
-    def _test_remove_members(self):
         return
         members = ['%s@fake.net' % self.now, '%s_v2@fake.net' % self.now]
         for img in self._imglist.values():
@@ -305,10 +323,6 @@ class Image(TestCase):
             self.assertEqual(r0[0]['member_id'], members[1])
 
     def test_list_shared(self):
-        ""Test list_shared - NOT CHECKED""
-        self._test_list_shared()
-
-    def _test_list_shared(self):
         #No way to test this, if I dont have member images
         pass
     """
