@@ -61,11 +61,12 @@ class ImageClient(Client):
                 if value:
                     async_params[key] = value
         if order.startswith('-'):
-            self.set_param('sort_dir', 'desc')
+            async_params['sort_dir'] = 'desc'
             order = order[1:]
         else:
-            self.set_param('sort_dir', 'asc')
-        self.set_param('sort_key', order, iff=order)
+            async_params['sort_dir'] = 'asc'
+        if order:
+            async_params['sort_key'] = order
 
         r = self.get(path, async_params=async_params, success=200)
         return r.json

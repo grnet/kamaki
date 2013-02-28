@@ -35,7 +35,7 @@ from unittest import makeSuite, TestSuite, TextTestRunner
 
 from kamaki.clients.test.astakos import Astakos
 #from kamaki.clients.test.cyclades import Cyclades
-#from kamaki.clients.test.image import Image
+from kamaki.clients.test.image import Image
 #from kamaki.clients.test.pithos import Pithos
 
 
@@ -55,15 +55,23 @@ def get_test_classes(module=__import__(__name__), name=''):
 
 
 def main(argv):
+    found = False
     for cls, name in get_test_classes(name=argv[1] if len(argv) > 1 else ''):
+        found = True
         args = argv[2:]
         suite = TestSuite()
         if args:
-            suite.addTest(cls('_'.join(['test'] + args)))
+            try:
+                suite.addTest(cls('_'.join(['test'] + args)))
+            except ValueError:
+                print('Test %s not found in %s suite' % (' '.join(args), name))
+                continue
         else:
             suite.addTest(makeSuite(cls))
         print('Test %s' % name)
         TextTestRunner(verbosity=2).run(suite)
+    if not found:
+        print('Test "%s" not found' % ' '.join(argv[1:]))
 
 
 if __name__ == '__main__':

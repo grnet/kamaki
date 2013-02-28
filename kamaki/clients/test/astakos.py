@@ -58,7 +58,7 @@ example0 = dict(
 
 class Astakos(TestCase):
 
-    class fakeResponse(object):
+    class FR(object):
         json = example
         headers = {}
         content = json
@@ -76,7 +76,6 @@ class Astakos(TestCase):
         self.client = AstakosClient(self.url, self.token)
         from kamaki.clients.connection.kamakicon import KamakiHTTPConnection
         self.C = KamakiHTTPConnection
-        self.FR = self.fakeResponse
 
     def _authenticate(self):
         with patch.object(self.C, 'perform_request', return_value=self.FR()):

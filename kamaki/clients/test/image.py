@@ -31,73 +31,66 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+from mock import patch
 import time
 
-from kamaki.clients import livetest
-from kamaki.clients.cyclades import CycladesClient
-from kamaki.clients.image import ImageClient
+from unittest import TestCase
 from kamaki.clients import ClientError
 
+example_images = [
+    {
+        "status": "available",
+        "name": "Archlinux",
+        "disk_format": "diskdump",
+        "container_format": "bare",
+        "id": "b4713f20-3a41-4eaf-81ae-88698c18b3e8",
+        "size": 752782848},
+    {
+        "status": "available",
+        "name": "Debian_Wheezy_Base",
+        "disk_format": "diskdump",
+        "container_format": "bare",
+        "id": "1f8454f0-8e3e-4b6c-ab8e-5236b728dffe",
+        "size": 795107328},
+    {
+        "status": "available",
+        "name": "maelstrom",
+        "disk_format": "diskdump",
+        "container_format": "bare",
+        "id": "0fb03e45-7d5a-4515-bd4e-e6bbf6457f06",
+        "size": 2583195644},
+    {
+        "status": "available",
+        "name": "Gardenia",
+        "disk_format": "diskdump",
+        "container_format": "bare",
+        "id": "5963020b-ab74-4e11-bc59-90c494bbdedb",
+        "size": 2589802496}]
 
-class Image(livetest.Generic):
+class Image(TestCase):
+
+    class FR(object):
+        json = example_images
+        headers = {}
+        content = json
+        status = None
+        status_code = 200
+
     def setUp(self):
         self.now = time.mktime(time.gmtime())
-
         self.imgname = 'img_%s' % self.now
-        url = self['image', 'url']
-        self.client = ImageClient(url, self['token'])
-        cyclades_url = self['compute', 'url']
-        self.cyclades = CycladesClient(cyclades_url, self['token'])
-        self._imglist = {}
-
-    def test_000(self):
-        self._prepare_img()
-        super(self.__class__, self).test_000()
-
-    def _prepare_img(self):
-        f = open(self['image', 'local_path'], 'rb')
-        (token, uuid) = (self['token'], self['store', 'account'])
-        if not uuid:
-            from kamaki.clients.astakos import AstakosClient
-            uuid = AstakosClient(self['astakos', 'url'], token).term('uuid')
-        from kamaki.clients.pithos import PithosClient
-        self.pithcli = PithosClient(self['store', 'url'], token, uuid)
-        cont = 'cont_%s' % self.now
-        self.pithcli.container = cont
-        self.obj = 'obj_%s' % self.now
-        print('\t- Create container %s on Pithos server' % cont)
-        self.pithcli.container_put()
-        self.location = 'pithos://%s/%s/%s' % (uuid, cont, self.obj)
-        print('\t- Upload an image at %s...\n' % self.location)
-        self.pithcli.upload_object(self.obj, f)
-        print('\t- ok')
-        f.close()
-
-        self.client.register(
-            self.imgname,
-            self.location,
-            params=dict(is_public=True))
-        img = self._get_img_by_name(self.imgname)
-        self._imglist[self.imgname] = img
+        self.url = 'http://image.example.com'
+        self.token = 'an1m@g370k3n=='
+        from kamaki.clients.image import ImageClient
+        self.client = ImageClient(self.url, self.token)
+        self.cyclades_url = 'http://cyclades.example.com'
+        from kamaki.clients.cyclades import CycladesClient
+        self.cyclades = CycladesClient(self.cyclades_url, self.token)
+        from kamaki.clients.connection.kamakicon import KamakiHTTPConnection
+        self.C = KamakiHTTPConnection
 
     def tearDown(self):
-        for img in self._imglist.values():
-            print('\tDeleting image %s' % img['id'])
-            self.cyclades.delete_image(img['id'])
-        if hasattr(self, 'pithcli'):
-            print('\tDeleting container %s' % self.pithcli.container)
-            try:
-                self.pithcli.del_container(delimiter='/')
-                self.pithcli.purge_container()
-            except ClientError:
-                pass
-
-    def _get_img_by_name(self, name):
-        r = self.cyclades.list_images()
-        for img in r:
-            if img['name'] == name:
-                return img
-        return None
+        self.FR.json = example_images
 
     def assert_dicts_are_deeply_equal(self, d1, d2):
         for k, v in d1.items():
@@ -108,60 +101,38 @@ class Image(livetest.Generic):
                 self.assertEqual(unicode(v), unicode(d2[k]))
 
     def test_list_public(self):
-        """Test list_public"""
-        self._test_list_public()
+        with patch.object(
+            self.C,
+            'perform_request',
+            return_value=self.FR()) as perform_req:
+            r = self.client.list_public()
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(self.client.http_client.path, '/images/')
+            params = perform_req.call_args[0][3]
+            self.assertEqual(params['sort_dir'], 'asc')
+            for i in range(len(r)):
+                self.assert_dicts_are_deeply_equal(r[i], example_images[i])
 
-    def _test_list_public(self):
-        r = self.client.list_public()
-        r0 = self.client.list_public(order='-')
-        self.assertTrue(len(r) > 0)
-        for img in r:
-            for term in (
-                    'status',
-                    'name',
-                    'container_format',
-                    'disk_format',
-                    'id',
-                    'size'):
-                self.assertTrue(term in img)
-        self.assertTrue(r, r0)
-        r0.reverse()
-        for i, img in enumerate(r):
-            self.assert_dicts_are_deeply_equal(img, r0[i])
-        r1 = self.client.list_public(detail=True)
-        for img in r1:
-            for term in (
-                    'status',
-                    'name',
-                    'checksum',
-                    'created_at',
-                    'disk_format',
-                    'updated_at',
-                    'id',
-                    'location',
-                    'container_format',
-                    'owner',
-                    'is_public',
-                    'deleted_at',
-                    'properties',
-                    'size'):
-                self.assertTrue(term in img)
-                if img['properties']:
-                    for interm in (
-                            'osfamily',
-                            'users',
-                            'os',
-                            'root_partition',
-                            'description'):
-                        self.assertTrue(interm in img['properties'])
-        size_max = 1000000000
-        r2 = self.client.list_public(filters=dict(size_max=size_max))
-        self.assertTrue(len(r2) <= len(r))
-        for img in r2:
-            self.assertTrue(int(img['size']) <= size_max)
+            r = self.client.list_public(order='-')
+            params = perform_req.call_args[0][3]
+            self.assertEqual(params['sort_dir'], 'desc')
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(self.client.http_client.path, '/images/')
 
+            r = self.client.list_public(detail=True)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(self.client.http_client.path, '/images/detail')
+
+            size_max = 1000000000
+            r = self.client.list_public(filters=dict(size_max=size_max))
+            params = perform_req.call_args[0][3]
+            self.assertEqual(params['size_max'], size_max)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(self.client.http_client.path, '/images/')
+
+    """
     def test_get_meta(self):
-        """Test get_meta"""
+        ""Test get_meta""
         self._test_get_meta()
 
     def _test_get_meta(self):
@@ -192,7 +163,7 @@ class Image(livetest.Generic):
                 self.assertTrue(interm in r['properties'])
 
     def test_register(self):
-        """Test register"""
+        ""Test register""
         self._prepare_img()
         self._test_register()
 
@@ -202,7 +173,7 @@ class Image(livetest.Generic):
             self.assertTrue(img is not None)
 
     def test_reregister(self):
-        """Test reregister"""
+        ""Test reregister""
         self._prepare_img()
         self._test_reregister()
 
@@ -212,7 +183,7 @@ class Image(livetest.Generic):
             properties=dict(my_property='some_value'))
 
     def test_set_members(self):
-        """Test set_members"""
+        ""Test set_members""
         self._prepare_img()
         self._test_set_members()
 
@@ -224,14 +195,14 @@ class Image(livetest.Generic):
             self.assertEqual(r[0]['member_id'], members[0])
 
     def test_list_members(self):
-        """Test list_members"""
+        ""Test list_members""
         self._test_list_members()
 
     def _test_list_members(self):
         self._test_set_members()
 
     def test_remove_members(self):
-        """Test remove_members - NO CHECK"""
+        ""Test remove_members - NO CHECK""
         self._prepare_img()
         self._test_remove_members()
 
@@ -248,9 +219,10 @@ class Image(livetest.Generic):
             self.assertEqual(r0[0]['member_id'], members[1])
 
     def test_list_shared(self):
-        """Test list_shared - NOT CHECKED"""
+        ""Test list_shared - NOT CHECKED""
         self._test_list_shared()
 
     def _test_list_shared(self):
         #No way to test this, if I dont have member images
         pass
+    """
