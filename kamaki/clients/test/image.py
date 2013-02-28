@@ -32,9 +32,8 @@
 # or implied, of GRNET S.A.
 
 from mock import patch
-import time
-
 from unittest import TestCase
+
 from kamaki.clients import ClientError
 
 example_images = [
@@ -140,7 +139,6 @@ class Image(TestCase):
             pass
 
     def setUp(self):
-        self.now = time.mktime(time.gmtime())
         self.imgname = 'img_%s' % self.now
         self.url = 'http://image.example.com'
         self.token = 'an1m@g370k3n=='

@@ -31,7 +31,8 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from unittest import makeSuite, TestSuite, TextTestRunner
+from unittest import makeSuite, TestSuite, TextTestRunner, TestCase
+from time import sleep
 
 from kamaki.clients.test.astakos import Astakos
 #from kamaki.clients.test.cyclades import Cyclades
@@ -52,6 +53,36 @@ def get_test_classes(module=__import__(__name__), name=''):
         if (objname == name or not name) and isclass(obj) and (
                 issubclass(obj, TestCase)):
             yield (obj, objname)
+
+
+class SilentEvent(TestCase):
+
+    can_finish = -1
+
+    def thread_content(self, methodid):
+        wait = 0.1
+        while self.can_finish < methodid and wait < 4:
+            sleep(wait)
+            wait = 2 * wait
+        self.assertTrue(wait < 4)
+
+    def setUp(self):
+        from kamaki.clients import SilentEvent
+        self.SE = SilentEvent
+
+    def test_parallel(self):
+        threads = []
+        for i in range(4):
+            threads.append(self.SE(self.thread_content, i))
+
+        for t in threads:
+            t.start()
+
+        for i in range(4):
+            self.assertTrue(threads[i].is_alive())
+            self.can_finish = i
+            threads[i].join()
+            self.assertFalse(threads[i].is_alive())
 
 
 def main(argv):
