@@ -183,6 +183,7 @@ class Image(TestCase):
 
     def tearDown(self):
         self.FR.json = example_images
+        self.FR.status_code = 200
 
     def assert_dicts_are_deeply_equal(self, d1, d2):
         for k, v in d1.items():
@@ -287,19 +288,26 @@ class Image(TestCase):
             for k, v in props.items():
                 self.assertEquals(a_headers['X-Image-Meta-Property-%s' % k], v)
 
-    """
     def test_set_members(self):
-        ""Test set_members""
-        self._prepare_img()
-        self._test_set_members()
+        img0 = example_images_detailed[0]
+        members = ['use3r-1d-0', 'us2r-1d-1', 'us3r-1d-2']
+        with patch.object(
+                self.C,
+                'perform_request',
+                return_value=self.FR()) as perform_req:
+            self.assertRaises(
+                ClientError,
+                self.client.set_members,
+                img0['id'], members)
+            self.FR.status_code = 204
+            self.client.set_members(img0['id'], members)
+            (method, data, a_headers, a_params) = perform_req.call_args[0]
+            from json import loads
+            memberships = loads(data)['memberships']
+            for membership in memberships:
+                self.assertTrue(membership['member_id'] in members)
 
-    def _test_set_members(self):
-        members = ['%s@fake.net' % self.now]
-        for img in self._imglist.values():
-            self.client.set_members(img['id'], members)
-            r = self.client.list_members(img['id'])
-            self.assertEqual(r[0]['member_id'], members[0])
-
+    """
     def test_list_members(self):
         ""Test list_members""
         self._test_list_members()
