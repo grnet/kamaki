@@ -195,12 +195,24 @@ class Cyclades(TestCase):
                 dict(server=dict(name=new_name)),
                 loads(data))
 
-    """
     def test_reboot_server(self):
-        print('')
-        self._wait_for_status(self.server1['id'], 'REBOOT')
-        self._wait_for_status(self.server2['id'], 'REBOOT')
+        vm_id = vm_recv['server']['id']
+        self.FR.status_code = 202
+        with patch.object(
+                self.C,
+                'perform_request',
+                return_value=self.FR()) as perform_req:
+            self.client.reboot_server(vm_id)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(
+                self.client.http_client.path,
+                '/servers/%s/action' % vm_id)
+            (method, data, a_headers, a_params) = perform_req.call_args[0]
+            self.assert_dicts_are_equal(
+                dict(reboot=dict(type='SOFT')),
+                loads(data))
 
+    """
     def test_create_server_metadata(self):
         r1 = self.client.create_server_metadata(
             self.server1['id'],

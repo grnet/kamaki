@@ -135,8 +135,8 @@ class ComputeClient(ComputeClientApi):
 
         :param hard: perform a hard reboot if true, soft reboot otherwise
         """
-        type = 'HARD' if hard else 'SOFT'
-        req = {'reboot': {'type': type}}
+        boot_type = 'HARD' if hard else 'SOFT'
+        req = {'reboot': {'type': boot_type}}
         r = self.servers_post(server_id, 'action', json_data=req)
         r.release()
 
