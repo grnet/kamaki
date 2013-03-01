@@ -35,7 +35,7 @@ from unittest import makeSuite, TestSuite, TextTestRunner, TestCase
 from time import sleep
 
 from kamaki.clients.test.astakos import Astakos
-#from kamaki.clients.test.cyclades import Cyclades
+from kamaki.clients.test.cyclades import Cyclades
 from kamaki.clients.test.image import Image
 #from kamaki.clients.test.pithos import Pithos
 
@@ -64,13 +64,14 @@ class SilentEvent(TestCase):
         while self.can_finish < methodid and wait < 4:
             sleep(wait)
             wait = 2 * wait
+        self._value = methodid
         self.assertTrue(wait < 4)
 
     def setUp(self):
         from kamaki.clients import SilentEvent
         self.SE = SilentEvent
 
-    def test_parallel(self):
+    def test_threads(self):
         threads = []
         for i in range(4):
             threads.append(self.SE(self.thread_content, i))

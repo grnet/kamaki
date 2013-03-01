@@ -128,6 +128,14 @@ example_images_detailed = [
 
 class Image(TestCase):
 
+    def assert_dicts_are_deeply_equal(self, d1, d2):
+        for k, v in d1.items():
+            self.assertTrue(k in d2)
+            if isinstance(v, dict):
+                self.assert_dicts_are_deeply_equal(v, d2[k])
+            else:
+                self.assertEqual(unicode(v), unicode(d2[k]))
+
     class FR(object):
         json = example_images
         headers = {}
@@ -139,28 +147,16 @@ class Image(TestCase):
             pass
 
     def setUp(self):
-        self.imgname = 'img_%s' % self.now
         self.url = 'http://image.example.com'
         self.token = 'an1m@g370k3n=='
         from kamaki.clients.image import ImageClient
         self.client = ImageClient(self.url, self.token)
-        self.cyclades_url = 'http://cyclades.example.com'
-        from kamaki.clients.cyclades import CycladesClient
-        self.cyclades = CycladesClient(self.cyclades_url, self.token)
         from kamaki.clients.connection.kamakicon import KamakiHTTPConnection
         self.C = KamakiHTTPConnection
 
     def tearDown(self):
         self.FR.json = example_images
         self.FR.status_code = 200
-
-    def assert_dicts_are_deeply_equal(self, d1, d2):
-        for k, v in d1.items():
-            self.assertTrue(k in d2)
-            if isinstance(v, dict):
-                self.assert_dicts_are_deeply_equal(v, d2[k])
-            else:
-                self.assertEqual(unicode(v), unicode(d2[k]))
 
     def test_list_public(self):
         with patch.object(
