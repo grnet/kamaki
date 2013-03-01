@@ -73,15 +73,18 @@ img_recv = dict(image=dict(
         os="debian",
         root_partition="1",
         description="Debian 6.0.7 (Squeeze) Base System"))))
+vm_list = dict(servers=dict(values=[
+    dict(name='n1', id=1),
+    dict(name='n2', id=2)]))
 
 
 class Cyclades(TestCase):
 
-    def assert_dicts_are_deeply_equal(self, d1, d2):
+    def assert_dicts_are_equal(self, d1, d2):
         for k, v in d1.items():
             self.assertTrue(k in d2)
             if isinstance(v, dict):
-                self.assert_dicts_are_deeply_equal(v, d2[k])
+                self.assert_dicts_are_equal(v, d2[k])
             else:
                 self.assertEqual(unicode(v), unicode(d2[k]))
 
@@ -106,7 +109,7 @@ class Cyclades(TestCase):
         self.C = KamakiHTTPConnection
 
     def tearDown(self):
-        pass
+        self.FR.status_code = 200
 
     def test_create_server(self):
         self.client.get_image_details = Mock(return_value=img_recv['image'])
@@ -131,8 +134,8 @@ class Cyclades(TestCase):
             self.assertEqual(self.client.http_client.url, self.url)
             self.assertEqual(self.client.http_client.path, '/servers')
             (method, data, a_headers, a_params) = perform_req.call_args[0]
-            self.assert_dicts_are_deeply_equal(loads(data), vm_send)
-            self.assert_dicts_are_deeply_equal(r, vm_recv['server'])
+            self.assert_dicts_are_equal(loads(data), vm_send)
+            self.assert_dicts_are_equal(r, vm_recv['server'])
             prsn = 'Personality string (does not work with real servers)'
             self.client.create_server(vm_name, fid, img_ref, prsn)
             (method, data, a_headers, a_params) = perform_req.call_args[0]
@@ -140,39 +143,29 @@ class Cyclades(TestCase):
             self.assertTrue('personality' in data['server'])
             self.assertEqual(prsn, data['server']['personality'])
 
-    """
     def test_list_servers(self):
+        self.FR.json = vm_list
+        with patch.object(
+                self.C,
+                'perform_request',
+                return_value=self.FR()) as perform_req:
+            r = self.client.list_servers()
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(self.client.http_client.path, '/servers')
+            (method, data, a_headers, a_params) = perform_req.call_args[0]
+            self.assert_dicts_are_equal(dict(values=r), vm_list['servers'])
+            r = self.client.list_servers(detail=True)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(self.client.http_client.path, '/servers/detail')
+        from kamaki.clients.cyclades_rest_api import CycladesClientApi
+        with patch.object(
+                CycladesClientApi,
+                'servers_get',
+                return_value=self.FR()) as servers_get:
+            self.client.list_servers(changes_since=True)
+            self.assertTrue(servers_get.call_args[1]['changes_since'])
 
-        servers = self.client.list_servers()
-        dservers = self.client.list_servers(detail=True)
-
-        ""detailed and simple are same size""
-        self.assertEqual(len(dservers), len(servers))
-        for i in range(len(servers)):
-            for field in (
-                    'created',
-                    'flavorRef',
-                    'hostId',
-                    'imageRef',
-                    'progress',
-                    'status',
-                    'updated'):
-                self.assertFalse(field in servers[i])
-                self.assertTrue(field in dservers[i])
-
-        ""detailed and simple contain same names""
-        names = sorted(map(lambda x: x["name"], servers))
-        dnames = sorted(map(lambda x: x["name"], dservers))
-        self.assertEqual(names, dnames)
-
-    def _test_0030_wait_test_servers_to_build(self):
-        self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
-        self._wait_for_status(self.server1['id'], 'BUILD')
-        self._test_0040_get_server_details()
-
+    """
     def _test_0040_get_server_details(self):
         self.server1 = self._create_server(
             self.servname1,
@@ -203,7 +196,7 @@ class Cyclades(TestCase):
             'mymeta val')
         self.assertTrue('mymeta' in r1)
         r2 = self.client.get_server_metadata(self.server1['id'], 'mymeta')
-        self.assert_dicts_are_deeply_equal(r1, r2)
+        self.assert_dicts_are_equal(r1, r2)
 
     def test_get_server_metadata(self):
         self.client.create_server_metadata(
@@ -245,7 +238,7 @@ class Cyclades(TestCase):
 
     def test_get_flavor_details(self):
         r = self.client.get_flavor_details(self.flavorid)
-        self.assert_dicts_are_deeply_equal(self._flavor_details, r)
+        self.assert_dicts_are_equal(self._flavor_details, r)
 
     def test_list_images(self):
         r = self.client.list_images()
@@ -254,15 +247,15 @@ class Cyclades(TestCase):
         for detailed_img in r:
             if detailed_img['id'] == self.img:
                 break
-        self.assert_dicts_are_deeply_equal(detailed_img, self.img_details)
+        self.assert_dicts_are_equal(detailed_img, self.img_details)
 
     def test_get_image_details(self):
         r = self.client.get_image_details(self.img)
-        self.assert_dicts_are_deeply_equal(r, self.img_details)
+        self.assert_dicts_are_equal(r, self.img_details)
 
     def test_get_image_metadata(self):
         r = self.client.get_image_metadata(self.img)
-        self.assert_dicts_are_deeply_equal(
+        self.assert_dicts_are_equal(
             self.img_details['metadata']['values'], r)
         for key, val in self.img_details['metadata']['values'].items():
             r = self.client.get_image_metadata(self.img, key)
@@ -339,7 +332,7 @@ class Cyclades(TestCase):
         chosen.pop('updated')
         net1 = dict(self.network1)
         net1.pop('updated')
-        self.assert_dicts_are_deeply_equal(chosen, net1)
+        self.assert_dicts_are_equal(chosen, net1)
         for param, val in dict(
                 cidr='192.168.0.0/24',
                 gateway='192.168.0.1',
@@ -416,7 +409,7 @@ class Cyclades(TestCase):
         r.pop('status')
         r.pop('updated', None)
         r.pop('attachments')
-        self.assert_dicts_are_deeply_equal(net1, r)
+        self.assert_dicts_are_equal(net1, r)
 
     def test_update_network_name(self):
         updated_name = self.netname2 + '_upd'
