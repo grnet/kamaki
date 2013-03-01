@@ -110,6 +110,7 @@ class Cyclades(TestCase):
 
     def tearDown(self):
         self.FR.status_code = 200
+        self.FR.json = vm_recv
 
     def test_create_server(self):
         self.client.get_image_details = Mock(return_value=img_recv['image'])
@@ -165,14 +166,17 @@ class Cyclades(TestCase):
             self.client.list_servers(changes_since=True)
             self.assertTrue(servers_get.call_args[1]['changes_since'])
 
-    """
-    def _test_0040_get_server_details(self):
-        self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
-        self._test_0050_update_server_name()
+    def test_get_server_details(self):
+        vm_id = vm_recv['server']['id']
+        with patch.object(self.C, 'perform_request', return_value=self.FR()):
+            r = self.client.get_server_details(vm_id)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(
+                self.client.http_client.path,
+                '/servers/%s' % vm_id)
+            self.assert_dicts_are_equal(r, vm_recv['server'])
 
+    """
     def _test_0050_update_server_name(self):
         new_name = self.servname1 + '_new_name'
         self.client.update_server_name(self.server1['id'], new_name)
