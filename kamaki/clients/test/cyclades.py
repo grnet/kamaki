@@ -48,7 +48,8 @@ vm_recv = dict(server=dict(
     status="BUILD",
     updated="2013-03-01T10:04:00.637152+00:00",
     hostId="",
-    name=vm_name, imageRef=img_ref,
+    name=vm_name,
+    imageRef=img_ref,
     created="2013-03-01T10:04:00.087324+00:00",
     flavorRef=fid,
     adminPass="n0n3sh@11p@55",
@@ -176,18 +177,25 @@ class Cyclades(TestCase):
                 '/servers/%s' % vm_id)
             self.assert_dicts_are_equal(r, vm_recv['server'])
 
-    """
-    def _test_0050_update_server_name(self):
-        new_name = self.servname1 + '_new_name'
-        self.client.update_server_name(self.server1['id'], new_name)
-        r = self.client.get_server_details(
-            self.server1['id'],
-            success=(200, 400))
-        self.assertEqual(r['name'], new_name)
-        changed = self.servers.pop(self.servname1)
-        changed['name'] = new_name
-        self.servers[new_name] = changed
+    def test_update_server_name(self):
+        vm_id = vm_recv['server']['id']
+        new_name = vm_name + '_new'
+        self.FR.status_code = 204
+        with patch.object(
+                self.C,
+                'perform_request',
+                return_value=self.FR()) as perform_req:
+            self.client.update_server_name(vm_id, new_name)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(
+                self.client.http_client.path,
+                '/servers/%s' % vm_id)
+            (method, data, a_headers, a_params) = perform_req.call_args[0]
+            self.assert_dicts_are_equal(
+                dict(server=dict(name=new_name)),
+                loads(data))
 
+    """
     def test_reboot_server(self):
         print('')
         self._wait_for_status(self.server1['id'], 'REBOOT')
