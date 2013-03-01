@@ -216,29 +216,47 @@ class Cyclades(TestCase):
         vm_id = vm_recv['server']['id']
         metadata = dict(m1='v1', m2='v2', m3='v3')
         self.FR.json = dict(meta=vm_recv['server'])
-        with patch.object(self.C, 'perform_request', return_value=self.FR()):
+        with patch.object(
+                self.C,
+                'perform_request',
+                return_value=self.FR()) as perform_req:
             self.assertRaises(
                 ClientError,
                 self.client.create_server_metadata,
                 vm_id, 'key', 'value')
+            self.FR.status_code = 201
             for k, v in metadata.items():
-                self.FR.status_code = 201
                 r = self.client.create_server_metadata(vm_id, k, v)
                 self.assertEqual(self.client.http_client.url, self.url)
                 self.assertEqual(
                     self.client.http_client.path,
                     '/servers/%s/meta/%s' % (vm_id, k))
+                (method, data, a_headers, a_params) = perform_req.call_args[0]
+                self.assertEqual(dict(meta={k: v}), loads(data))
                 self.assert_dicts_are_equal(r, vm_recv['server'])
 
-    """
     def test_get_server_metadata(self):
-        self.client.create_server_metadata(
-            self.server1['id'],
-            'mymeta_0',
-            'val_0')
-        r = self.client.get_server_metadata(self.server1['id'], 'mymeta_0')
-        self.assertEqual(r['mymeta_0'], 'val_0')
+        vm_id = vm_recv['server']['id']
+        metadata = dict(m1='v1', m2='v2', m3='v3')
+        with patch.object(self.C, 'perform_request', return_value=self.FR()):
+            self.FR.json = dict(metadata=dict(values=metadata))
+            r = self.client.get_server_metadata(vm_id)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(
+                self.client.http_client.path,
+                '/servers/%s/meta' % vm_id)
+            self.assert_dicts_are_equal(r, metadata)
 
+            for k, v in metadata.items():
+                self.FR.json = dict(meta={k: v})
+                r = self.client.get_server_metadata(vm_id, k)
+                self.assertEqual(self.client.http_client.url, self.url)
+                self.assertEqual(
+                    self.client.http_client.path,
+                    '/servers/%s/meta/%s' % (vm_id, k))
+                self.assert_dicts_are_equal(r, {k: v})
+
+    """
     def test_update_server_metadata(self):
         r1 = self.client.create_server_metadata(
             self.server1['id'],
