@@ -35,6 +35,7 @@ from unittest import TestCase
 from json import loads
 
 from kamaki.clients import Client, ClientError
+from kamaki.clients.cyclades_rest_api import CycladesClientApi
 
 img_ref = "1m4g3-r3f3r3nc3"
 vm_name = "my new VM"
@@ -159,7 +160,6 @@ class Cyclades(TestCase):
             r = self.client.list_servers(detail=True)
             self.assertEqual(self.client.http_client.url, self.url)
             self.assertEqual(self.client.http_client.path, '/servers/detail')
-        from kamaki.clients.cyclades_rest_api import CycladesClientApi
         with patch.object(
                 CycladesClientApi,
                 'servers_get',
@@ -260,7 +260,6 @@ class Cyclades(TestCase):
         vm_id = vm_recv['server']['id']
         metadata = dict(m1='v1', m2='v2', m3='v3')
         self.FR.json = dict(metadata=metadata)
-        from kamaki.clients.cyclades_rest_api import CycladesClientApi
         with patch.object(
                 CycladesClientApi,
                 'servers_post',
@@ -273,20 +272,19 @@ class Cyclades(TestCase):
             data = servers_post.call_args[1]['json_data']
             self.assert_dicts_are_equal(data, dict(metadata=metadata))
 
-    """
     def test_delete_server_metadata(self):
-        r1 = self.client.create_server_metadata(
-            self.server1['id'],
-            'mymeta',
-            'val')
-        self.assertTrue('mymeta' in r1)
-        self.client.delete_server_metadata(self.server1['id'], 'mymeta')
-        try:
-            self.client.get_server_metadata(self.server1['id'], 'mymeta')
-            raise ClientError('Wrong Error', status=100)
-        except ClientError as err:
-            self.assertEqual(err.status, 404)
+        vm_id = vm_recv['server']['id']
+        key = 'metakey'
+        with patch.object(
+                CycladesClientApi,
+                'servers_delete',
+                return_value=self.FR()) as servers_delete:
+            self.client.delete_server_metadata(vm_id, key)
+            self.assertEqual(
+                (vm_id, 'meta/' + key),
+                servers_delete.call_args[0])
 
+    """
     def test_list_flavors(self):
         r = self.client.list_flavors()
         self.assertTrue(len(r) > 1)
