@@ -79,9 +79,9 @@ vm_list = dict(servers=dict(values=[
     dict(name='n1', id=1),
     dict(name='n2', id=2)]))
 flavor_list = dict(flavors=dict(values=[
-        dict(id=1, name="C1R1024D20"),
-        dict(id=2, name="C1R1024D40"),
-        dict(id=3, name="C1R1028D20")
+        dict(id=41, name="C1R1024D20"),
+        dict(id=42, name="C1R1024D40"),
+        dict(id=43, name="C1R1028D20")
     ]))
 
 
@@ -290,7 +290,6 @@ class Cyclades(TestCase):
                 servers_delete.call_args[0])
 
     def test_list_flavors(self):
-        self.FR.json = vm_list
         self.FR.json = flavor_list
         with patch.object(
                 self.C,
@@ -305,11 +304,17 @@ class Cyclades(TestCase):
             self.assertEqual(self.client.http_client.url, self.url)
             self.assertEqual(self.client.http_client.path, '/flavors/detail')
 
-    """
     def test_get_flavor_details(self):
-        r = self.client.get_flavor_details(self.flavorid)
-        self.assert_dicts_are_equal(self._flavor_details, r)
+        self.FR.json = dict(flavor=flavor_list['flavors'])
+        with patch.object(self.C, 'perform_request', return_value=self.FR()):
+            r = self.client.get_flavor_details(fid)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(
+                self.client.http_client.path,
+                '/flavors/%s' % fid)
+            self.assert_dicts_are_equal(r, flavor_list['flavors'])
 
+    """
     def test_list_images(self):
         r = self.client.list_images()
         self.assertTrue(len(r) > 1)
