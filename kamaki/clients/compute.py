@@ -150,7 +150,7 @@ class ComputeClient(ComputeClientApi):
         """
         command = path4url('meta', key)
         r = self.servers_get(server_id, command)
-        return r.json['meta'] if key != '' else r.json['metadata']['values']
+        return r.json['meta'] if key else r.json['metadata']['values']
 
     def create_server_metadata(self, server_id, key, val):
         """
@@ -197,8 +197,7 @@ class ComputeClient(ComputeClientApi):
 
         :returns: (dict) flavor info
         """
-        detail = 'detail' if detail else ''
-        r = self.flavors_get(command='detail')
+        r = self.flavors_get(command='detail' if detail else '')
         return r.json['flavors']['values']
 
     def get_flavor_details(self, flavor_id):
