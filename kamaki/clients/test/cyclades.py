@@ -212,16 +212,25 @@ class Cyclades(TestCase):
                 dict(reboot=dict(type='SOFT')),
                 loads(data))
 
-    """
     def test_create_server_metadata(self):
-        r1 = self.client.create_server_metadata(
-            self.server1['id'],
-            'mymeta',
-            'mymeta val')
-        self.assertTrue('mymeta' in r1)
-        r2 = self.client.get_server_metadata(self.server1['id'], 'mymeta')
-        self.assert_dicts_are_equal(r1, r2)
+        vm_id = vm_recv['server']['id']
+        metadata = dict(m1='v1', m2='v2', m3='v3')
+        self.FR.json = dict(meta=vm_recv['server'])
+        with patch.object(self.C, 'perform_request', return_value=self.FR()):
+            self.assertRaises(
+                ClientError,
+                self.client.create_server_metadata,
+                vm_id, 'key', 'value')
+            for k, v in metadata.items():
+                self.FR.status_code = 201
+                r = self.client.create_server_metadata(vm_id, k, v)
+                self.assertEqual(self.client.http_client.url, self.url)
+                self.assertEqual(
+                    self.client.http_client.path,
+                    '/servers/%s/meta/%s' % (vm_id, k))
+                self.assert_dicts_are_equal(r, vm_recv['server'])
 
+    """
     def test_get_server_metadata(self):
         self.client.create_server_metadata(
             self.server1['id'],
