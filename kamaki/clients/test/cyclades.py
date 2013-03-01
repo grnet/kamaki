@@ -256,18 +256,24 @@ class Cyclades(TestCase):
                     '/servers/%s/meta/%s' % (vm_id, k))
                 self.assert_dicts_are_equal(r, {k: v})
 
-    """
     def test_update_server_metadata(self):
-        r1 = self.client.create_server_metadata(
-            self.server1['id'],
-            'mymeta3',
-            'val2')
-        self.assertTrue('mymeta3'in r1)
-        r2 = self.client.update_server_metadata(
-            self.server1['id'],
-            mymeta3='val3')
-        self.assertTrue(r2['mymeta3'], 'val3')
+        vm_id = vm_recv['server']['id']
+        metadata = dict(m1='v1', m2='v2', m3='v3')
+        self.FR.json = dict(metadata=metadata)
+        from kamaki.clients.cyclades_rest_api import CycladesClientApi
+        with patch.object(
+                CycladesClientApi,
+                'servers_post',
+                return_value=self.FR()) as servers_post:
+            r = self.client.update_server_metadata(vm_id, **metadata)
+            self.assert_dicts_are_equal(r, metadata)
+            (called_id, cmd) = servers_post.call_args[0]
+            self.assertEqual(called_id, vm_id)
+            self.assertEqual(cmd, 'meta')
+            data = servers_post.call_args[1]['json_data']
+            self.assert_dicts_are_equal(data, dict(metadata=metadata))
 
+    """
     def test_delete_server_metadata(self):
         r1 = self.client.create_server_metadata(
             self.server1['id'],
