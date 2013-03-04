@@ -64,14 +64,6 @@ The following steps describe a command-line approach, but any graphic package ma
 
         $ sudo apt-get install kamaki
 
-Install ansicolors and/or progress (Optional but recommended)
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-
-.. code-block:: console
-
-    $ sudo apt-get install python-ansicolors
-    $ sudo apt-get install python-progress
-
 .. _installing-from-source-ref:
 
 Installing from source (git repos.)
@@ -135,17 +127,40 @@ and then installed by the setup script:
     $ cd kamaki
     $ ./setup build install
 
-Install progress and/or ansicolors (optional)
-"""""""""""""""""""""""""""""""""""""""""""""
+Install ansicolors / progress
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-progress: command-line progress bars (in some commands)
+Packages **ansicolors** and **progress** are not required for running kamaki, but
+they are recommended as a user experience improvement. In specific, ansicolors
+adds colors to kamaki responses and progress adds progressbars to the commands
+that can make use of it (*/store download*, */store upload*, */server wait* etc.)
 
-ansicolors: color kamaki output (can switched on and off in `setup <setup.html>`_)
+Debian and Ubuntu
+"""""""""""""""""
+
+Follow the `Debian <#debian>`_ or `Ubuntu <#ubuntu>`_ installation procedure described earlier
+and then type:
 
 .. code-block:: console
 
-    $ pip install progress
+    #For ansicolors
+    $ sudo apt-get install python-ansicolors
+
+    # For progress
+    $ sudo apt-get install python-progress
+
+From source
+"""""""""""
+
+If setuptools is not installed, `install them <http://pypi.python.org/pypi/setuptools>`_ and then type:
+
+.. code-block:: console
+
+    #For ansicolors
     $ pip install ansicolors
+
+    #For progress
+    $ pip install progress
 
 Mac OS X
 --------
