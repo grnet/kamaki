@@ -37,6 +37,16 @@ from time import sleep
 
 from kamaki.cli.errors import raiseCLIError
 
+suggest = dict(
+    ansicolors=dict(
+        active=False,
+        url='#install-ansicolors-progress',
+        description='Add colors to console responses'),
+    progress=dict(
+        active=False,
+        url='#install-ansicolors-progress',
+        description='Add progress bars to some commands'))
+
 try:
     from colors import magenta, red, yellow, bold
 except ImportError:
@@ -44,6 +54,24 @@ except ImportError:
     def dummy(val):
         return val
     red = yellow = magenta = bold = dummy
+    suggest['ansicolors']['active'] = True
+
+try:
+    from progress.bar import ShadyBar
+except ImportError:
+    suggest['progress']['active'] = True
+
+
+def suggest_missing(miss=None):
+    global suggest
+    kamaki_docs = 'http://www.synnefo.org/docs/kamaki/latest'
+    for k, v in (miss, suggest[miss]) if miss else suggest.items():
+        if v['active'] and stdout.isatty():
+            print('Suggestion: for better user experience install %s' % k)
+            print('\t%s' % v['description'])
+            print('\tIt is easy, here are the instructions:')
+            print('\t%s/installation.html%s' % (kamaki_docs, v['url']))
+            print('')
 
 
 def remove_colors():
