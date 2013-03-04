@@ -34,6 +34,8 @@
 from urlparse import urlparse
 from urllib2 import quote
 from objpool.http import get_http_connection
+from traceback import format_stack
+
 from kamaki.clients.connection import KamakiConnection, KamakiResponse
 from kamaki.clients.connection.errors import KamakiConnectionError
 from kamaki.clients.connection.errors import KamakiResponseError
@@ -50,23 +52,30 @@ class KamakiHTTPResponse(KamakiResponse):
         if self.prefetched:
             return
 
-        ready = False
-        while not ready:
+        try:
+            ready = False
+            while not ready:
+                try:
+                    r = self.request.getresponse()
+                except ResponseNotReady:
+                    sleep(0.001)
+                    continue
+                break
+            self.prefetched = True
+            headers = {}
+            for k, v in r.getheaders():
+                headers.update({k: v})
+            self.headers = headers
+            self.content = r.read()
+            self.status_code = r.status
+            self.status = r.reason
+        finally:
             try:
-                r = self.request.getresponse()
-            except ResponseNotReady:
-                sleep(0.001)
-                continue
-            break
-        self.prefetched = True
-        headers = {}
-        for k, v in r.getheaders():
-            headers.update({k: v})
-        self.headers = headers
-        self.content = r.read()
-        self.status_code = r.status
-        self.status = r.reason
-        self.request.close()
+                self.request.close()
+            except Exception as err:
+                from kamaki.clients import recvlog
+                recvlog.debug('\n'.join(['%s' % type(err)] + format_stack()))
+                raise
 
     @property
     def text(self):
@@ -102,7 +111,12 @@ class KamakiHTTPResponse(KamakiResponse):
         content hasn't been used.
         """
         if not self.prefetched:
-            self.request.close()
+            try:
+                self.request.close()
+            except Exception as err:
+                from kamaki.clients import recvlog
+                recvlog.debug('\n'.join(['%s' % type(err)] + format_stack()))
+                raise
 
 
 class KamakiHTTPConnection(KamakiConnection):
@@ -184,7 +198,6 @@ class KamakiHTTPConnection(KamakiConnection):
                 'Cannot connect to %s: %s' % (self.url, ioe.strerror),
                 errno=ioe.errno)
         except Exception as err:
-            from traceback import format_stack
             from kamaki.clients import recvlog
             recvlog.debug('\n'.join(['%s' % type(err)] + format_stack()))
             conn.close()
