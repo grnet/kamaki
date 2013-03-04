@@ -390,6 +390,9 @@ def main():
 
         _init_session(parser.arguments)
 
+        from kamaki.cli.utils import suggest_missing
+        suggest_missing()
+
         if parser.unparsed:
             run_one_cmd(exe, parser)
         elif _help:
