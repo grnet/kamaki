@@ -38,7 +38,6 @@ from traceback import format_stack
 from kamaki.clients.connection import HTTPConnection, HTTPResponse
 from kamaki.clients.connection.errors import HTTPConnectionError
 from kamaki.clients.connection.errors import HTTPResponseError
-from kamaki.clients import recvlog
 
 from json import loads
 
@@ -73,6 +72,7 @@ class KamakiHTTPResponse(HTTPResponse):
             try:
                 self.request.close()
             except Exception as err:
+                from kamaki.clients import recvlog
                 recvlog.debug('\n'.join(['%s' % type(err)] + format_stack()))
                 raise
 
@@ -113,6 +113,7 @@ class KamakiHTTPResponse(HTTPResponse):
             try:
                 self.request.close()
             except Exception as err:
+                from kamaki.clients import recvlog
                 recvlog.debug('\n'.join(['%s' % type(err)] + format_stack()))
                 raise
 
@@ -196,6 +197,7 @@ class KamakiHTTPConnection(HTTPConnection):
                 'Cannot connect to %s: %s' % (self.url, ioe.strerror),
                 errno=ioe.errno)
         except Exception as err:
+            from kamaki.clients import recvlog
             recvlog.debug('\n'.join(['%s' % type(err)] + format_stack()))
             conn.close()
             raise
