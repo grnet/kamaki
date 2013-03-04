@@ -31,13 +31,14 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+from urllib2 import quote
 from threading import Thread
 from json import dumps, loads
 from time import time
 import logging
 from kamaki.clients.connection.kamakicon import KamakiHTTPConnection
-from kamaki.clients.connection.errors import HTTPConnectionError
-from kamaki.clients.connection.errors import HTTPResponseError
+from kamaki.clients.connection.errors import KamakiConnectionError
+from kamaki.clients.connection.errors import KamakiResponseError
 
 sendlog = logging.getLogger('clients.send')
 datasendlog = logging.getLogger('data.send')
@@ -75,9 +76,7 @@ class ClientError(Exception):
 
 
 class SilentEvent(Thread):
-    """ Thread-run method(*args, **kwargs)
-        put exception in exception_bucket
-    """
+    """ Thread-run method(*args, **kwargs)"""
     def __init__(self, method, *args, **kwargs):
         super(self.__class__, self).__init__()
         self.method = method
@@ -111,9 +110,10 @@ class Client(object):
         self.base_url = base_url
         self.token = token
         self.headers = {}
-        self.DATE_FORMATS = ["%a %b %d %H:%M:%S %Y",
-            "%A, %d-%b-%y %H:%M:%S GMT",
-            "%a, %d %b %Y %H:%M:%S GMT"]
+        self.DATE_FORMATS = [
+            '%a %b %d %H:%M:%S %Y',
+            '%A, %d-%b-%y %H:%M:%S GMT',
+            '%a, %d %b %Y %H:%M:%S GMT']
         self.http_client = http_client
 
     def _init_thread_limit(self, limit=1):
@@ -123,8 +123,8 @@ class Client(object):
 
     def _watch_thread_limit(self, threadlist):
         recvlog.debug('# running threads: %s' % len(threadlist))
-        if self._elapsed_old > self._elapsed_new\
-        and self._thread_limit < self.POOL_SIZE:
+        if (self._elapsed_old > self._elapsed_new) and (
+                self._thread_limit < self.POOL_SIZE):
             self._thread_limit += 1
         elif self._elapsed_old < self._elapsed_new and self._thread_limit > 1:
             self._thread_limit -= 1
@@ -161,12 +161,13 @@ class Client(object):
     def set_default_header(self, name, value):
         self.http_client.headers.setdefault(name, value)
 
-    def request(self,
-        method,
-        path,
-        async_headers={},
-        async_params={},
-        **kwargs):
+    def request(
+            self,
+            method,
+            path,
+            async_headers={},
+            async_params={},
+            **kwargs):
         """In threaded/asynchronous requests, headers and params are not safe
         Therefore, the standard self.set_header/param system can be used only
         for headers and params that are common for all requests. All other
@@ -176,7 +177,6 @@ class Client(object):
         E.g. in most queries the 'X-Auth-Token' header might be the same for
         all, but the 'Range' header might be different from request to request.
         """
-
         try:
             success = kwargs.pop('success', 200)
 
@@ -187,13 +187,14 @@ class Client(object):
                 data = dumps(kwargs.pop('json'))
                 self.set_default_header('Content-Type', 'application/json')
             if data:
-                self.set_default_header('Content-Length', unicode(len(data)))
+                self.set_default_header('Content-Length', '%s' % len(data))
 
             sendlog.info('perform a %s @ %s', method, self.base_url)
 
             self.http_client.url = self.base_url
-            self.http_client.path = path
-            r = self.http_client.perform_request(method,
+            self.http_client.path = quote(path.encode('utf8'))
+            r = self.http_client.perform_request(
+                method,
                 data,
                 async_headers,
                 async_params)
@@ -215,7 +216,7 @@ class Client(object):
             if r.content:
                 datarecvlog.info(r.content)
 
-        except (HTTPResponseError, HTTPConnectionError) as err:
+        except (KamakiResponseError, KamakiConnectionError) as err:
             from traceback import format_stack
             recvlog.debug('\n'.join(['%s' % type(err)] + format_stack()))
             self.http_client.reset_headers()
@@ -223,14 +224,14 @@ class Client(object):
             errstr = '%s' % err
             if not errstr:
                 errstr = ('%s' % type(err))[7:-2]
-            raise ClientError('%s\n' % errstr,
-                status=getattr(err, 'status', 0) or getattr(err, 'errno', 0))
+            status = getattr(err, 'status', getattr(err, 'errno', 0))
+            raise ClientError('%s\n' % errstr, status=status)
 
         self.http_client.reset_headers()
         self.http_client.reset_params()
 
         if success is not None:
-            # Success can either be an in or a collection
+            # Success can either be an int or a collection
             success = (success,) if isinstance(success, int) else success
             if r.status_code not in success:
                 r.release()

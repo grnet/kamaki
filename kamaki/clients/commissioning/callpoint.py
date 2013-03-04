@@ -36,7 +36,7 @@ from kamaki.clients.commissioning.specificator import CanonifyException
 from kamaki.clients.commissioning.exception import CorruptedError
 from kamaki.clients.commissioning.exception import InvalidDataError
 from kamaki.clients.commissioning.exception import ReturnButFail
-from kamaki.clients.commissioning.importing import  imp_module
+from kamaki.clients.commissioning.importing import imp_module
 
 from re import compile as re_compile, sub as re_sub
 
@@ -66,27 +66,20 @@ class Callpoint(object):
 
         for call_name, call_doc in canonifier.call_docs():
             if hasattr(self, call_name):
-                # don't crash: wrap the function instead
-                #m = (   "Method '%s' defined both in natively "
-                #        "in callpoint '%s' and in api spec '%s'" %
-                #            (call_name,
-                #             type(self).__name__,
-                #             type(canonifier).__name__)             )
 
                 #raise ValueError(m)
                 call_func = getattr(self, call_name)
                 if not callable(call_func):
-                    m = (   "api spec '%s', method '%s' is not a "
-                            "callable attribute in callpoint '%s'" % 
-                            (   type(canonifier).__name__,
-                                call_name,
-                                type(self).__name       )           )
-                    raise ValueError(m)
+                    raise ValueError(' '.join([
+                        "api spec '%s'," % type(canonifier).__name__,
+                        "method '%s' is not a callable" % call_name,
+                        "attribute in callpoint '%s'" % type(self).__name]))
 
                 original_calls[call_name] = call_func
 
             def mk_call_func():
                 local_call_name = call_name
+
                 def call_func(**data):
                     return self.make_call(local_call_name, data)
 
@@ -114,7 +107,7 @@ class Callpoint(object):
     def make_call_from_json_description(self, json_description):
         try:
             description = self.json_loads(json_description)
-        except ValueError, e:
+        except ValueError:
             m = "Cannot load json description"
             raise self.InvalidDataError(m)
 
@@ -191,6 +184,7 @@ def mkcallargs(**kw):
 
 versiontag_pattern = re_compile('[^a-zA-Z0-9_-]')
 
+
 def mk_versiontag(version):
     if not version or version == 'v':
         return ''
@@ -211,8 +205,7 @@ def get_callpoint(pointname, version=None, automake=None, **kw):
     if not category or category not in ['clients', 'servers']:
         raise ValueError("invalid pointname '%s'" % (pointname,))
 
-    modname = ('%s.callpoint.API_Callpoint%s' 
-                                            % (pointname, versiontag))
+    modname = ('%s.callpoint.API_Callpoint%s' % (pointname, versiontag))
 
     try:
         API_Callpoint = imp_module(modname)
@@ -222,7 +215,8 @@ def get_callpoint(pointname, version=None, automake=None, **kw):
             raise
 
     if category != 'clients':
-        m = ("Can only auto-make callpoint in 'clients' not '%s'" % (category,))
+        m = (
+            "Can only auto-make callpoint in 'clients' not '%s'" % (category))
         raise ValueError(m)
 
     components = components[1:]
@@ -250,4 +244,3 @@ def get_callpoint(pointname, version=None, automake=None, **kw):
         api_spec = API_Spec()
 
     return AutoCallpoint
-

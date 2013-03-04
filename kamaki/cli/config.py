@@ -39,7 +39,7 @@ from ConfigParser import RawConfigParser, NoOptionError, NoSectionError
 try:
     from collections import OrderedDict
 except ImportError:
-    from ordereddict import OrderedDict
+    from kamaki.clients.commissioning.utils.ordereddict import OrderedDict
 
 
 # Path to the file that stores the configuration

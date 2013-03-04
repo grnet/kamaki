@@ -36,6 +36,7 @@ from kamaki.cli.errors import CLISyntaxError, raiseCLIError
 from kamaki.cli.utils import split_input
 from logging import getLogger
 from datetime import datetime as dtm
+from time import mktime
 
 
 from argparse import ArgumentParser, ArgumentError
@@ -44,6 +45,10 @@ from argparse import RawDescriptionHelpFormatter
 try:
     from progress.bar import ShadyBar as KamakiProgressBar
 except ImportError:
+    try:
+        from progress.bar import Bar as KamakiProgressBar
+    except ImportError:
+        pass
     # progress not installed - pls, pip install progress
     pass
 
@@ -59,12 +64,11 @@ class Argument(object):
     def __init__(self, arity, help=None, parsed_name=None, default=None):
         self.arity = int(arity)
 
-        if help is not None:
+        if help:
             self.help = help
-        if parsed_name is not None:
+        if parsed_name:
             self.parsed_name = parsed_name
-        if default is not None:
-            self.default = default
+        self.default = default
 
     @property
     def parsed_name(self):
@@ -79,7 +83,7 @@ class Argument(object):
         if isinstance(newname, list) or isinstance(newname, tuple):
             self._parsed_name += list(newname)
         else:
-            self._parsed_name.append(unicode(newname))
+            self._parsed_name.append('%s' % newname)
 
     @property
     def help(self):
@@ -88,7 +92,7 @@ class Argument(object):
 
     @help.setter
     def help(self, newhelp):
-        self._help = unicode(newhelp)
+        self._help = '%s' % newhelp
 
     @property
     def arity(self):
@@ -125,8 +129,12 @@ class Argument(object):
         action = 'append' if self.arity < 0\
             else 'store_true' if self.arity == 0\
             else 'store'
-        parser.add_argument(*self.parsed_name, dest=name, action=action,
-            default=self.default, help=self.help)
+        parser.add_argument(
+            *self.parsed_name,
+            dest=name,
+            action=action,
+            default=self.default,
+            help=self.help)
 
     def main(self):
         """Overide this method to give functionality to your args"""
@@ -181,14 +189,15 @@ class CmdLineConfigArgument(Argument):
         if options == self.default:
             return
         if not isinstance(options, list):
-            options = [unicode(options)]
+            options = ['%s' % options]
         for option in options:
             keypath, sep, val = option.partition('=')
             if not sep:
-                raiseCLIError(CLISyntaxError('Argument Syntax Error '),
-                    details=['%s is missing a "="',
-                    ' (usage: -o section.key=val)' % option]
-                )
+                raiseCLIError(
+                    CLISyntaxError('Argument Syntax Error '),
+                    details=[
+                        '%s is missing a "="',
+                        ' (usage: -o section.key=val)' % option])
             section, sep, key = keypath.partition('.')
         if not sep:
             key = section
@@ -233,7 +242,8 @@ class IntArgument(ValueArgument):
         try:
             self._value = int(newvalue)
         except ValueError:
-            raiseCLIError(CLISyntaxError('IntArgument Error',
+            raiseCLIError(CLISyntaxError(
+                'IntArgument Error',
                 details=['Value %s not an int' % newvalue]))
 
 
@@ -244,21 +254,31 @@ class DateArgument(ValueArgument):
     :value returns: same date in first of DATE_FORMATS
     """
 
-    DATE_FORMATS = ["%a %b %d %H:%M:%S %Y",
+    DATE_FORMATS = [
+        "%a %b %d %H:%M:%S %Y",
         "%A, %d-%b-%y %H:%M:%S GMT",
         "%a, %d %b %Y %H:%M:%S GMT"]
 
     INPUT_FORMATS = DATE_FORMATS + ["%d-%m-%Y", "%H:%M:%S %d-%m-%Y"]
 
     @property
+    def timestamp(self):
+        v = getattr(self, '_value', self.default)
+        return mktime(v.timetuple()) if v else None
+
+    @property
+    def formated(self):
+        v = getattr(self, '_value', self.default)
+        return v.strftime(self.DATE_FORMATS[0]) if v else None
+
+    @property
     def value(self):
-        return getattr(self, '_value', self.default)
+        return self.timestamp
 
     @value.setter
     def value(self, newvalue):
-        if newvalue is None:
-            return
-        self._value = self.format_date(newvalue)
+        if newvalue:
+            self._value = self.format_date(newvalue)
 
     def format_date(self, datestr):
         for format in self.INPUT_FORMATS:
@@ -266,12 +286,12 @@ class DateArgument(ValueArgument):
                 t = dtm.strptime(datestr, format)
             except ValueError:
                 continue
-            self._value = t.strftime(self.DATE_FORMATS[0])
-            return
-        raiseCLIError(None,
+            return t  # .strftime(self.DATE_FORMATS[0])
+        raiseCLIError(
+            None,
             'Date Argument Error',
-            details='%s not a valid date. correct formats:\n\t%s'\
-            % (datestr, self.INPUT_FORMATS))
+            details='%s not a valid date. correct formats:\n\t%s' % (
+                datestr, self.INPUT_FORMATS))
 
 
 class VersionArgument(FlagArgument):
@@ -317,7 +337,8 @@ class KeyValueArgument(Argument):
         for pair in keyvalue_pairs:
             key, sep, val = pair.partition('=')
             if not sep:
-                raiseCLIError(CLISyntaxError('Argument syntax error '),
+                raiseCLIError(
+                    CLISyntaxError('Argument syntax error '),
                     details='%s is missing a "=" (usage: key1=val1 )\n' % pair)
             self._value[key.strip()] = val.strip()
 
@@ -331,7 +352,7 @@ class ProgressBarArgument(FlagArgument):
         try:
             KamakiProgressBar
         except NameError:
-            kloger.warning('no progress bar functionality')
+            kloger.debug('WARNING: no progress bar functionality')
 
     def clone(self):
         """Get a modifiable copy of this bar"""
@@ -370,15 +391,18 @@ class ProgressBarArgument(FlagArgument):
             mybar.finish()
 
 
-_arguments = dict(config=_config_arg,
+_arguments = dict(
+    config=_config_arg,
     help=Argument(0, 'Show help message', ('-h', '--help')),
     debug=FlagArgument('Include debug output', ('-d', '--debug')),
-    include=FlagArgument('Include raw connection data in the output',
+    include=FlagArgument(
+        'Include raw connection data in the output',
         ('-i', '--include')),
     silent=FlagArgument('Do not output anything', ('-s', '--silent')),
     verbose=FlagArgument('More info at response', ('-v', '--verbose')),
     version=VersionArgument('Print current version', ('-V', '--version')),
-    options=CmdLineConfigArgument(_config_arg,
+    options=CmdLineConfigArgument(
+        _config_arg,
         'Override a config value',
         ('-o', '--options'))
 )
@@ -412,7 +436,8 @@ class ArgumentParseManager(object):
         :param arguments: (dict) if given, overrides the global _argument as
             the parsers arguments specification
         """
-        self.parser = ArgumentParser(add_help=False,
+        self.parser = ArgumentParser(
+            add_help=False,
             formatter_class=RawDescriptionHelpFormatter)
         self.syntax = '%s <cmd_group> [<cmd_subbroup> ...] <cmd>' % exe
         if arguments:

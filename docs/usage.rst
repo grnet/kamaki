@@ -3,14 +3,14 @@ Usage
 
 Kamaki offers command line interfaces that implement specific command specifications. A detailed list of the command specifications can be found in `Commands <commands.html>`_ section. This guide covers the generic usage of both interfaces.
 
-What's more, kamaki offers a clients API that allows the development of external applications for synnefo. The clients API is listed in the `Clients lib <developers/code.html#the-clients-api>`_ section. The recommended method of utilizing this API is explained in the present.
+What's more, kamaki offers a clients API that allows the development of external applications for synnefo. The clients API is listed in the `Clients lib <developers/code.html#the-clients-api>`_ section.
 
 Quick Setup
 -----------
 
 Kamaki interfaces rely on a list of configuration options. In the initial state, kamaki is configured to communicate with the Okeanos IaaS. A detailed guide for setting up kamaki can be found in the `Setup <setup.html>`_ section.
 
-It is essential for users to get a configuration token (okeanos.grnet.gr users go `here <https://accounts.okeanos.grnet.gr/im/>`_) and provide it to kamaki:
+It is essential for users to get a valid configuration token that works with for a synnefo-compliant Identity Manager service (okeanos.grnet.gr users go `here <https://accounts.okeanos.grnet.gr/im/>`_) and provide it to kamaki:
 
 .. code-block:: console
     :emphasize-lines: 1
@@ -19,24 +19,16 @@ It is essential for users to get a configuration token (okeanos.grnet.gr users g
 
     $ kamaki set token myt0k3n==
 
-To use the storage service, a user should also provide the corresponding user-name:
-
-.. code-block:: console
-    :emphasize-lines: 1
-
-    Example 1.2: Set user name to user@domain.com
-
-    $ kamaki set account store.user@domain.com
-
 Shell vs one-command
 --------------------
 Kamaki users can access synnefo services through either the interactive shell or the one-command behaviors. In practice, both systems rely on the same command set implementations and API clients, with identical responses and error messages. Still, there are some differences.
 
 In favor of interactive shell behavior:
 
-* tab completion for commands
+* tab completion for commands (mostly on (X)nix OSs)
 * session history with "up" / "down" keys
 * shorter commands with command context switching
+* re-run old commands with /history
 
 In favor of one-command behavior:
 
@@ -92,14 +84,12 @@ To use kamaki as an one-command tool, run:
 One-command interface
 ---------------------
 
-Kamaki usage as a one-command tool is detailed in this section
-
 Using help
 ^^^^^^^^^^
 
-Kamaki help is used to see available commands, with description, syntax and their corresponding optional arguments.
+Kamaki help is used to list available commands with description, syntax and corresponding optional arguments.
 
-To see the command groups, users should use -h or --help like in example 1.3.1. In the same way, help information for command groups and commands is printed. In the following examples, the help messages of kamaki, of a command group (server) and of a command in that group (list) are shown.
+To see the command groups, use -h or --help like in example 1.3.1. In the same way, help information for command groups and commands is printed. In the following examples, the help messages of kamaki, of a command group (server) and of a command in that group (list) are shown.
 
 .. code-block:: console
     :emphasize-lines: 1
@@ -139,7 +129,7 @@ To see the command groups, users should use -h or --help like in example 1.3.1. 
     Example 3.1.2: Cyclades help contains all first-level commands of Cyclades command group
 
 
-    $ kamaki cyclades -h
+    $ kamaki server -h
     usage: kamaki server <...> [-v] [-s] [-V] [-d] [-i] [--config CONFIG]
                                [-o OPTIONS] [-h]
 
@@ -213,9 +203,11 @@ Every syntactically correct command is appended at the end of that file. In orde
 
 
     $ kamaki history -h
-    ...
-    clean:  Clean up history
-    show :  Show history
+    Options:
+     - - - -
+    clean:  Clean up history (permanent)
+    run  :  Run previously executed command(s)
+    show :  Show intersession command history
 
 The following example showcases how to use history in kamaki
 
@@ -238,16 +230,18 @@ The following example showcases how to use history in kamaki
 Debug
 ^^^^^
 
-In case of errors, kamaki in debug mode shows useful debug information, like the stack trace, instead of a user-friendly error message. Kamaki also suppresses various warning messages that are also allowed in debug mode.
+In case of errors, kamaki in debug mode shows useful debug information, like the stack trace. Kamaki in debug mode cancels suppression of warning messages.
 
-To run kamaki in debug mode use the -d or --debug option
+To run kamaki in debug mode use the -d or --debug option (can be combined with any other parameters or options)
 
-Verbose
-"""""""
+Verbose and Include
+"""""""""""""""""""
 
 Most kamaki commands are translated into http requests. Kamaki clients API translated the semantics to REST and handles the response. Users who need to have access to these commands can use the verbose mode that presents the HTTP Request details as well as the full server response.
 
 To run kamaki in verbose mode use the -v or --verbose option
+
+Be default, kamaki in verbose mode prints down only the headers and the address information, thus hiding the data body of the request or response. To see the data body, the -i option can be used.
 
 One-command features
 ^^^^^^^^^^^^^^^^^^^^
@@ -260,17 +254,15 @@ Kamaki commands can be used along with advanced shell features.
     Example 3.4.1: Print username for token us3rt0k3n== using grep
     
 
-    $ kamaki astakos authenticate -o token=us3rt0k3n== | grep uniq
-    uniq        : user@synnefo.org
+    $ kamaki astakos authenticate -o token=us3rt0k3n== | grep userame
+    userame        : user@synnefo.org
 
-The -o argument can be used to override temporarily various (set or unset) options. In one command, all -o options are forgotten just after the command had been completed, and the previous settings are restored (the configuration file is not modified).
+The -o argument can be used to temporarily override various (set or unset) options. In one command, all -o option sets are forgotten just after the command has been completed, and the previous settings are restored (a.k.a. the configuration file is not modified).
 
-The astakos-authenticate command in example 3.4.1 run against an explicitly provided token, which temporarily overrode the token provided in the configuration file.
+The astakos-authenticate command in example 3.4.1 runs with an explicitly provided token, which temporarily overrides the token provided in the configuration file.
 
 Interactive shell
 -----------------
-
-Kamaki interactive shell is detailed in this section
 
 Command Contexts
 ^^^^^^^^^^^^^^^^
@@ -284,10 +276,10 @@ The kamaki interactive shell implements the notion of command contexts. Each com
 
 
     $ kamaki
-    [kamaki]:store
+    [kamaki]: store
     [store]:
 
-Type **exit** or **ctrl-D** to exit a context and return to the context of origin. If already at the top context (kamaki), an exit is equivalent to exiting the program.
+Type **exit** (alternatively **ctrl-D** in (X)nix systems or **ctrl-Z** in Windows) to exit a context and return to the context of origin. If already at the top context (kamaki), an exit is equivalent to exiting the program.
 
 .. code-block:: console
     :emphasize-lines: 1
@@ -306,16 +298,16 @@ A user might **browse** through different contexts during one session.
     Example 4.1.3: Execute list command in different contexts
 
     $ kamaki
-    [kamaki]:config
-    [config]:list
+    [kamaki]: config
+    [config]: list
     ... (configuration options listing) ...
-    [config]:exit
-    [kamaki]:store
-    [store]:list
+    [config]: exit
+    [kamaki]: store
+    [store]: list
     ... (storage containers listing) ...
-    [store]:exit
-    [kamaki]:server
-    [server]:list
+    [store]: exit
+    [kamaki]: server
+    [server]: list
     ... (VMs listing) ...
     [server]: exit
     [kamaki]:
@@ -328,11 +320,11 @@ Users have the option to avoid switching between contexts: all commands can run 
     Example 4.1.4: Execute different "list" commands from top context
 
 
-    [kamaki]:config list
+    [kamaki]: config list
     ... (configuration options listing) ...
-    [kamaki]:store list
+    [kamaki]: store list
     ... (storage container listing) ...
-    [kamaki]:server list
+    [kamaki]: server list
     ... (VMs listing) ...
     [kamaki]:
 
@@ -346,12 +338,12 @@ There are two help mechanisms: a context-level and a command-level.
 Context-level help syntax::
 
     * Show available commands in current context *
-    [context]:help
-    [context]:?
+    [context]: help
+    [context]: ?
 
     * Show help for command cmd *
-    [context]:help cmd
-    [context]:?cmd
+    [context]: help cmd
+    [context]: ?cmd
 
 The context-level help results change from context to context
 
@@ -361,7 +353,7 @@ The context-level help results change from context to context
     Example 4.2.1: Get available commands, pick a context and get help there as well
 
 
-    [kamaki]:help
+    [kamaki]: help
 
     kamaki commands:
     ================
@@ -371,12 +363,12 @@ The context-level help results change from context to context
     ===========================
     exit  help  shell
 
-    [kamaki]:?config
+    [kamaki]: ?config
     Configuration commands (config -h for more options)
 
-    [kamaki]:config
+    [kamaki]: config
 
-    [config]:?
+    [config]: ?
 
     config commands:
     ================
@@ -386,7 +378,7 @@ The context-level help results change from context to context
     ===========================
     exit  help  shell
 
-    [config]:help set
+    [config]: help set
     Set a configuration option (set -h for more options)
 
 In context-level, there is a distinction between kamaki-commands and interactive shell commands. The former are available in one-command mode and are related to the cloud client setup and use, while the later are context-shell functions.
@@ -396,7 +388,7 @@ In context-level, there is a distinction between kamaki-commands and interactive
 Command-level help syntax::
 
     * Get help for command cmd1 cmd2 ... cmdN *
-    [context]:cmd1 cmd2 ... cmdN -h
+    [context]: cmd1 cmd2 ... cmdN -h
     <syntax>
 
     <description>
@@ -411,16 +403,16 @@ Command-level help mechanism is exactly the same as the one used in one-command 
     Example 4.2.2: Get command-level help for config and config-set
 
 
-    [kamaki]:config --help
+    [kamaki]: config --help
     config: Configuration commands
     delete:  Delete a configuration option (and use the default value)
     get   :  Show a configuration option
     list  :  List configuration options
     set   :  Set a configuration option
 
-    [kamaki]:config
+    [kamaki]: config
 
-    [config]:set -h
+    [config]: set -h
     usage: set <option> <value> [-v] [-d] [-h] [-i] [--config CONFIG] [-s]
 
     Set a configuration option
@@ -441,12 +433,12 @@ There are many ways of producing a help message, as shown in example 4.2.3
     Example 4.2.3: Equivalent calls of command-level help for config-set
 
 
-    [config]:set -h
-    [config]:set -help
-    [kamaki]:config set -h
-    [kamaki]:config set --help
-    [store]:/config set -h
-    [server]:/config set --help
+    [config]: set -h
+    [config]: set --help
+    [kamaki]: config set -h
+    [kamaki]: config set --help
+    [store]: /config set -h
+    [server]: /config set --help
 
 .. _accessing-top-level-commands-ref:
 
@@ -456,7 +448,7 @@ Accessing top-level commands
 When working in a context, it is often useful to access other contexts or top-level commands. Kamaki offers access to top-level commands by using the / prefix, as shown bellow::
 
     * access a command "anothercontext cmd1 cmd2 ... cmdN"
-    [context]:/anothercontext cmd1 cmd2 ... cmdN
+    [context]: /anothercontext cmd1 cmd2 ... cmdN
 
 An example (4.3.1) that showcases how top-level access improves user experience is the creation of a VM. A VM is created with the command server-create. This command is called with three parameters:
 
@@ -464,18 +456,18 @@ An example (4.3.1) that showcases how top-level access improves user experience 
 * the flavor id
 * the image id
 
-It is often the case that a user who works in the context command, needs to create a new VM, but doesn't know the flavor or image id of preference. Therefore, it is necessary to list all available flavors (flavor-list) or images (image-list. Both commands belong to different contexts.
+It is often the case that a user who works in the context command, needs to create a new VM, but hasn't selected a flavor or an image id, or cannot recall the id of that flavor or image. Therefore, it is necessary to list all available flavors (flavor-list) or images (image-list). Both commands belong to different contexts.
 
 .. code-block:: console
     :emphasize-lines: 1
 
     Example 4.3.1: Create a VM from server context
 
-    [server]:create -h
+    [server]: create -h
     create <name> <flavor id> <image id> ...
     ...
     
-    [server]:/flavor list
+    [server]: /flavor list
     ...
     43 AFLAVOR
         SNF:disk_template:  drbd
@@ -483,16 +475,16 @@ It is often the case that a user who works in the context command, needs to crea
         disk             :  10
         ram              :  2048
     
-    [server]:/image list
+    [server]: /image list
     1580deb4-edb3-7a246c4c0528 (Ubuntu Desktop)
     18a82962-43eb-8f8880af89d7 (Windows 7)
     531aa018-9a40-a4bfe6a0caff (Windows XP)
     6aa6eafd-dccb-67fe2bdde87e (Debian Desktop)
     
-    [server]:create 'my debian' 43 6aa6eafd-dccb-67fe2bdde87e
+    [server]: create 'my debian' 43 6aa6eafd-dccb-67fe2bdde87e
     ...
 
-An other example (4.3.2) showcases how to acquire and modify configuration settings from a different context. In this scenario, the user token expires at server side while the user is working. When that happens, the system responds with an *(401) UNAUTHORIZED* message. The user can acquire a new token (with a browser) which has to be set to kamaki.
+An other example (4.3.2) showcases how to acquire and modify configuration settings from a different context. In this scenario, the user token expires at server side while the user is working. When that happens, the system responds with an *(401) UNAUTHORIZED* message. The user can acquire a new token (valid for the astakos identity manager of preference) which has to be set to kamaki.
 
 .. code-block:: console
     :emphasize-lines: 1
@@ -500,25 +492,25 @@ An other example (4.3.2) showcases how to acquire and modify configuration setti
     Example 4.3.2: Set a new token from store context
 
 
-    [store]:list
+    [store]: list
     (401) UNAUTHORIZED Access denied
 
-    [store]:/astakos authenticate
+    [store]: /astakos authenticate
     (401) UNAUTHORIZED Invalid X-Auth-Token
 
-    [store]:/config get token
+    [store]: /config get token
     my3xp1r3dt0k3n==
 
-    [store]:/config set token myfr35ht0k3n==
+    [store]: /config set token myfr35ht0k3n==
 
-    [store]:/config get token
+    [store]: /config get token
     myfr35ht0k3n==
 
-    [store]:list
+    [store]: list
     1.  pithos (10MB, 2 objects)
     2.  trash (0B, 0 objects)
 
-.. note:: actual kamaki error messages are more helpful and descriptive.
+.. note:: The error messages on this example where shortened for clarity. Actual kamaki error messages are more helpful and descriptive.
 
 The following example compares some equivalent calls that run *astakos-authenticate* after a *store-list* 401 failure.
 
@@ -535,25 +527,25 @@ The following example compares some equivalent calls that run *astakos-authentic
     $
 
     * from top-level context *
-    [kamaki]:store list
+    [kamaki]: store list
     (401) UNAUTHORIZED Access denied
-    [kamaki]:astakos authenticate
+    [kamaki]: astakos authenticate
     ...
     [kamaki]
 
     * maximum typing *
-    [store]:list
+    [store]: list
     (401) UNAUTHORIZED Access denied
-    [store]:exit
-    [kamaki]:astakos
-    [astakos]:authenticate
+    [store]: exit
+    [kamaki]: astakos
+    [astakos]: authenticate
     ...
     [astakos]:
 
     * minimum typing *
     [store]: list
     (401) UNAUTHORIZED Access denied
-    [store]:/astakos authenticate
+    [store]: /astakos authenticate
     ...
     [store]:
 
@@ -564,11 +556,13 @@ Using config
 
 The configuration mechanism of kamaki is detailed at the `setup section <setup.html>`_ and it is common for both interaction modes. In specific, the configuration mechanism is implemented as a command group, namely *config*. Using the config commands is as straightforward as any other kamaki commands.
 
-It is often useful to set, delete or update a value. This can be managed either inside the config context or from any command context by using the / detour.
+It is often useful to set, delete or update a value. This can be managed either inside the config context or from any command context by using the / prefix.
 
-.. Note:: config updates in kamaki shell persist even after the session is over. All setting changes affects the physical kamaki config file (automatically created, if not set manually)
+.. Note:: config updates in kamaki shell persist even after the session is over.
 
-In example 4.4.1 the user is going to work with only one storage container. The store commands use the container:path syntax, but if the user could set a container as a default, the container name could be omitted in most cases. This is possible by setting a store.container setting.
+All setting changes affect the physical kamaki config file. The config file is created automatically at callers' home firectory the first time a config option is set, and lives there as *.kamakirc* . It can be edited with any text editor or managed with kamaki config commands.
+
+In example 4.4.1 the user is going to work with only one storage container. The store commands use the container:path syntax, but if the user sets a container name as default, the container name can be omitted. This is possible by setting a *store.container* setting.
 
 .. code-block:: console
     :emphasize-lines: 1
@@ -576,22 +570,22 @@ In example 4.4.1 the user is going to work with only one storage container. The 
     Example 4.4.1: Set default storage container
 
 
-    [store]:list
+    [store]: list
     1.  mycontainer (32MB, 2 objects)
     2.  pithos (0B, 0 objects)
     3.  trash (2MB, 1 objects)
 
-    [store]:list mycontainer
+    [store]: list mycontainer
     1.  D mydir/
     2.  20M mydir/rndm_local.file
     
-    [store]:/config set store.container mycontainer
+    [store]: /config set store.container mycontainer
 
     [store]: list
     1.  D mydir/
     2.  20M mydir/rndm_local.file
 
-After a while, the user needs to work with multiple containers, therefore a default container is not longer needed. The store.container setting can be deleted, as shown in example 4.4.2 .
+After a while, the user needs to work with multiple containers, therefore a default container is no longer needed. The *store.container* setting can be deleted, as shown in example 4.4.2 .
 
 .. code-block:: console
     :emphasize-lines: 1
@@ -599,9 +593,9 @@ After a while, the user needs to work with multiple containers, therefore a defa
     Example 4.4.2: Delete a setting option
 
 
-    [store]:/config delete store.container
+    [store]: /config delete store.container
 
-    [store]:list
+    [store]: list
     1.  mycontainer (32MB, 2 objects)
     2.  pithos (0B, 0 objects)
     3.  trash (2MB, 1 objects)
@@ -611,75 +605,70 @@ Using history
 
 There are two history modes: session and permanent. Session history keeps record of all actions in a kamaki shell session, while permanent history appends all commands to an accessible history file.
 
-Session history is only available in interactive shell mode. Users can iterate through past commands in the same session by with the *up* and *down* keys. Session history is not stored, although syntactically correct commands are recorded through the permanent history mechanism
+Session history is only available in interactive shell mode. Users can iterate through past commands in the same session with the *up* and *down* keys. Session history is not stored, although syntactically correct commands are recorded through the permanent history mechanism
 
 Permanent history is implemented as a command group and is common to both the one-command and shell interfaces. In specific, every syntactically correct command is appended in a history file (configured as *history.file* in settings, see `setup section <setup.html>`_ for details). Commands executed in one-command mode are mixed with the ones run in kamaki shell (also see :ref:`using-history-ref` section on this guide).
 
 Scripting
 ^^^^^^^^^
 
-Since version 6.2, the history-run feature allows the sequential execution of previously run kamaki commands in kamaki shell.
+The history-run feature allows the sequential run of previous command executions in kamaki shell.
 
-The following kamaki sequence copies and downloads a file from mycontainer1, uploads it to mycontainer2, then undo the proccess and repeats it with history-run
+The following sequence copies and downloads a file from *mycontainer1* , uploads it to *mycontainer2* , then undo the proccess and repeats it with history-run
 
 .. code-block:: console
     :emphasize-lines: 1,12,19,32
 
     * Download mycontainer1:myfile and upload it to mycontainer2:myfile
     [kamaki]: store
-
     [store]: copy mycontainer1:somefile mycontainer1:myfile
-
     [store]: download mycontainer1:myfile mylocalfile
     Download completed
-
     [store]: upload mylocalfile mycontainer2:myfile
     Upload completed
 
     * undo the process *
     [store]: !rm mylocalfile
-
     [store]: delete mycontainer1:myfile
- 
     [store]: delete mycontainer2:myfile
 
     * check history entries *
     [store]: exit
-
     [kamaki]: history
-
     [history]: show
     1.  store
     2.  store copy mycontainer1:somefile mycontainer1:myfile
     3.  store download mycontainer1:myfile mylocalfile
     4.  store upload mylocalfile mycontainer2:myfile
-    5.  history
-    6.  history show
+    5.  store delete mycontainer1:myfile
+    6.  store delete mycontainer2:myfile
+    7.  history
+    8.  history show
 
     *repeat the process *
     [history]: run 2-4
-    store copy mycontainer1:somefile mycontainer1:myfile
-    store download mycontainer1:myfile mylocalfile
+    <store copy mycontainer1:somefile mycontainer1:myfile>
+    <store download mycontainer1:myfile mylocalfile>
     Download completed
-    store upload mylocalfile mycontainer2:myfile
+    <store upload mylocalfile mycontainer2:myfile>
     Upload completed
 
-The above strategy is still very primitive. Users are advised to take advantage of their os shell scripting capabilities and combine them with kamaki one-command for powerful scripting. Still, the history-run functionality might prove handy for kamaki shell users.
+For powerfull scripting, users are advised to take advantage of their os shell scripting capabilities and combine them with kamaki one-command. Still, the history-run functionality might prove handy in many occasions.
 
 Tab completion
 ^^^^^^^^^^^^^^
 
-Kamaki shell features tab completion for the first level of command terms of the current context. Tab completion pool changes dynamically when the context is switched. Currently, tab completion is not supported when the / detour is used (see :ref:`accessing-top-level-commands-ref` ).
+Kamaki shell features tab completion for the first level of command terms of the current context. Tab completion pool changes dynamically when the context is switched. Currently, tab completion is not supported when / is used (see :ref:`accessing-top-level-commands-ref` ).
 
 OS Shell integration
 ^^^^^^^^^^^^^^^^^^^^
 
 Kamaki shell features the ability to execute OS-shell commands from any context. This can be achieved by typing *!* or *shell*::
 
-    [kamaki_context]:!<OS shell command>
+    [kamaki_context]: !<OS shell command>
     ... OS shell command output ...
 
-    [kamaki_context]:shell <OS shell command>
+    [kamaki_context]: shell <OS shell command>
     ... OS shell command output ...
 
 .. code-block:: console
@@ -688,15 +677,15 @@ Kamaki shell features the ability to execute OS-shell commands from any context.
     Example 4.7.1: Run unix-style shell commands from kamaki shell
 
 
-    [kamaki]:!ls -al
+    [kamaki]: !ls -al
     total 16
     drwxrwxr-x 2 username username 4096 Nov 27 16:47 .
     drwxrwxr-x 7 username username 4096 Nov 27 16:47 ..
     -rw-rw-r-- 1 username username 8063 Jun 28 14:48 kamaki-logo.png
 
-    [kamaki]:shell cp kamaki-logo.png logo-copy.png
+    [kamaki]: shell cp kamaki-logo.png logo-copy.png
 
-    [kamaki]:shell ls -al
+    [kamaki]: shell ls -al
     total 24
     drwxrwxr-x 2 username username 4096 Nov 27 16:47 .
     drwxrwxr-x 7 username username 4096 Nov 27 16:47 ..
@@ -712,10 +701,10 @@ Kamaki shell commits command strings to the outside shell and prints the results
     Example 4.8.2: Attempt (and fail) to change working directory
 
 
-    [kamaki]:!pwd
+    [kamaki]: !pwd
     /home/username
 
-    [kamaki]:!cd ..
+    [kamaki]: !cd ..
 
-    [kamaki]:shell pwd
+    [kamaki]: shell pwd
     /home/username

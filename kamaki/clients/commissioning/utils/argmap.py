@@ -60,28 +60,28 @@ class arguments(object):
         return repr(self.args) + '+' + repr(self.kw)
 
     def __getitem__(self, key):
-        if (isinstance(key, int)
-            or isinstance(key, long)
-            or isinstance(key, slice)):
-                return self.args[key]
+        if (isinstance(key, int)) or (
+                isinstance(key, long)) or (
+                    isinstance(key, slice)):
+            return self.args[key]
         else:
             return self.kw[key]
 
     def __setitem__(self, key, value):
-        if (isinstance(key, int)
-            or isinstance(key, long)
-            or isinstance(key, slice)):
-                self.args[key] = value
+        if (isinstance(key, int)) or (
+                isinstance(key, long)) or (
+                    isinstance(key, slice)):
+            self.args[key] = value
         else:
             self.kw[key] = value
 
     def __delitem__(self, key):
-        if (isinstance(key, int)
-            or isinstance(key, long)
-            or isinstance(key, slice)):
-                del self.args[key]
+        if (isinstance(key, int)) or (
+                isinstance(key, long)) or (
+                    isinstance(key, slice)):
+            del self.args[key]
         else:
-                del self.kw[key]
+            del self.kw[key]
 
     def iteritems(self):
         for item in self.args:
@@ -160,6 +160,7 @@ def argmap_encode(obj, output):
         output(']')
 
     m = "Unsupported type '%s'" % (type(obj))
+    m += ''
 
 
 def argmap_decode(inputf, s=None):
@@ -216,7 +217,7 @@ def argmap_decode_args(inputf):
         if s == ']':
             if key is not None:
                 append((None, key))
-	    args.append(ARGMAP_MAGIC)
+            args.append(ARGMAP_MAGIC)
             return args, None
 
         if s == '=':
@@ -247,8 +248,9 @@ def argmap_check(obj):
         return ARGMAP_MAGIC in obj
     if hasattr(obj, '__len__'):
         length = len(obj)
-        return length and obj[length-1] == ARGMAP_MAGIC
+        return length and obj[length - 1] == ARGMAP_MAGIC
     return False
+
 
 def argmap_unzip_dict(argmap):
     if not hasattr(argmap, 'keys'):
@@ -261,6 +263,7 @@ def argmap_unzip_dict(argmap):
     kw = OrderedDict(argmap)
     del kw[ARGMAP_MAGIC]
     return args, kw
+
 
 def argmap_unzip_list(argmap):
     if not argmap or argmap.pop() != ARGMAP_MAGIC:
@@ -277,6 +280,7 @@ def argmap_unzip_list(argmap):
             kw[k] = v
     return args, kw
 
+
 def argmap_unzip(argmap):
     if hasattr(argmap, 'keys'):
         return argmap_unzip_dict(argmap)
@@ -286,8 +290,10 @@ def argmap_unzip(argmap):
         m = "argmap: cannot unzip type %s" % (type(argmap),)
         raise ValueError(m)
 
+
 def argmap_zip_list(args, kw):
     return [(None, a) for a in args] + kw.items() + [ARGMAP_MAGIC]
+
 
 def argmap_zip_dict(args, kw):
     argmap = OrderedDict()
@@ -298,21 +304,25 @@ def argmap_zip_dict(args, kw):
 
 argmap_zip = argmap_zip_list
 
+
 def argmap_list_to_dict(argmap):
     args, kw = argmap_unzip_list(argmap)
     kw[ARGMAP_MAGIC] = ARGMAP_MAGIC
     kw[None] = args
     return kw
 
+
 def argmap_dict_to_list(argmap):
     args, kw = argmap_unzip_dict(argmap)
     return args + kw.items() + [ARGMAP_MAGIC]
+
 
 def argmap_unpack_list(argmap):
     kw = argmap_list_to_dict(argmap)
     if len(kw) == 2:
         return kw[None]
     return kw
+
 
 def argmap_unpack_dict(argmap):
     if hasattr(argmap, 'keys') and callable(argmap.keys):

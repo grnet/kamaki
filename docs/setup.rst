@@ -18,15 +18,6 @@ Kamaki interfaces rely on a list of configuration options. Be default, they are 
 
     $ kamaki set token myt0k3n==
 
-To use the storage service, a user should also provide the corresponding user-name:
-
-.. code-block:: console
-    :emphasize-lines: 1
-
-    Example 1.2: Set user name to user@domain.com
-
-    $ kamaki set store.account user@domain.com
-
 Optional features
 -----------------
 
@@ -38,7 +29,7 @@ For installing any all of the following, consult the `kamaki installation guide 
 
 * progress 
     * Attach progress bars to various kamaki commands (e.g. kamaki store upload)
-    * Since version 0.6.1 kamaki "requires" progress version 1.0.2 or better
+    * If desired, progress version should be 1.0.2 or better
 
 Any of the above features can be installed at any time before or after kamaki installation.
 
@@ -73,6 +64,10 @@ All kamaki commands can be used with the -o option in order to override configur
 
 will invoke *kamaki store list* with the specified options, but the initial global.account and global.token values will be restored to initial values afterwards.
 
+.. note:: on-the-fly calls to store require users to explicetely provide the account uuid corresponding to this token. The account is actually the uuid field at the response of the following call::
+
+    $kamaki astakos authenticate aT0k3n==
+
 Editing options
 ^^^^^^^^^^^^^^^
 
@@ -101,28 +96,25 @@ A simple way to create the configuration file is to set a configuration option u
 
 .. code-block:: console
 
-    $ kamaki config set account myusername@mydomain.com
+    $ kamaki config set token myT0k3N==
 
-In the above example, if the kamaki configuration file does not exist, it will be created with all the default values plus the *global.account* option set to *myusername@mydomain.com* value.
+In the above example, if the kamaki configuration file does not exist, it will be created with all the default values plus the *global.token* option set to *myT0k3n==* value.
 
 The configuration file is formatted so that it can be parsed by the python ConfigParser module. It consists of command sections that are denoted with brackets. Every section contains variables with values. For example::
 
     [store]
     url=https://okeanos.grnet.gr/pithos
-    account=myaccount@mydomain.com
+    token=my0th3rT0k3n==
 
-two configuration options are created: *store.url* and *store.account*. These values will be loaded at every future kamaki execution.
+two configuration options are created: *store.url* and *store.token*. These values will be loaded at every future kamaki execution.
 
 Available options
 ^^^^^^^^^^^^^^^^^
 
-The [global] group is treated by kamaki as a generic group for arbitrary options, and it is used as a super-group for vital Kamaki options, namely account, token, url, cli. This feature does not work for types of configuration options. For example if global.account option is set and store.account option is not set, store services will use the global.account option instead. In case of conflict, the most specific options override the global ones.
+The [global] group is treated by kamaki as a generic group for arbitrary options, and it is used as a super-group for vital Kamaki options, namely token, url, cli. In case of conflict, the most specific options overrides the global ones.
 
 * global.colors <on|off>
     enable / disable colors in command line based uis. Requires ansicolors, otherwise it is ignored
-
-* global.account <account name>
-    the username or user email that is user to connect to the cloud service. It can be omitted if provided as a service-specific option
 
 * global.token <user authentication token>
 
@@ -131,9 +123,6 @@ The [global] group is treated by kamaki as a generic group for arbitrary options
 
 * store.url <OOS storage or Pithos+ service url>
     the url of the OOS storage or Pithos+ service. Set to Okeanos.grnet.gr Pithos+ storage service by default. Users should set a different value if they need to use a different storage service.
-
-* store.account <account name>
-    if set, it overrides possible global.account option for store level commands.
 
 * store.token <token>
     it set, it overrides possible global.token option for store level commands
@@ -168,15 +157,103 @@ The [global] group is treated by kamaki as a generic group for arbitrary options
 Hidden features
 ^^^^^^^^^^^^^^^
 
-Since version 0.6.1 kamaki contains a test suite for the kamaki.clients API. The test suite can be activated with the following option on the configuration file::
+The livetest suite
+""""""""""""""""""
 
-    [test]
-    cli=test_cli
+Kamaki contains a live test suite for the kamaki.clients API, where "live" means that the tests are performed against active services that up and running. The live test package is named "livetest", it is accessible as kamaki.clients.livetest and it is designed to check the actual relation between kamaki and synnefo services.
 
-After that, users can run "kamaki test" commands to unit-test the prepackaged client APIs. Unit-tests are still experimental and there is a high probability of false alarms due to some of the expected values being hard-coded in the testing code.
+The livetest suite can be activated with the following option on the configuration file::
 
-Since version 0.6.3, a quotaholder client is introduced as an advanced feature. Quotaholder client is mostly used as a client library for accessing a synnefo quota service, but it can also be allowed as a kamaki command set, but setting the quotaholder.cli and quotaholder.url methods:
+    [livetest]
+    cli=livetest_cli
+
+In most tests, livetest will run as long as an Astakos identity manager service is accessible and kamaki is set up to authenticate a valid token on this server.
+
+In specific, a setup file needs at least the following mandatory settings in the configuration file:
+
+* If authentication information is used for default kamaki clients::
+
+    [astakos]
+    url=<Astakos Identity Manager URL>
+    token=<A valid user token>
+
+* else if this authentication information is only for testing add this under [livetest]::
+
+    astakos_url=<Astakos Identity Manager URL>
+    astakos_token=<A valid user token>
+
+Each service tested in livetest might need some more options under the [livetest] label, as shown bellow:
+
+* kamaki livetest astakos::
+
+    astakos_email = <The valid email of testing user>
+    astakos_name = <The exact "real" name of testing user>
+    astakos_username = <The username of the testing user>
+    astakos_uuid = <The valid unique user id of the testing user>
+
+* kamaki livetest pithos::
+
+    astakos_uuid = <The valid unique user id of the testing user>
+
+* kamaki livetest cyclades / image::
+
+    image_id = <A valid image id used for testing>
+    image_local_path = <The local path of the testing image>
+    image_details = <A text file containing testing image details in a python dict>
+
+    - example image.details content:
+    {
+        u'id': u'b3e68235-3abd-4d60-adfe-1379a4f8d3fe',
+        u'metadata': {
+            u'values': {
+                u'description': u'Debian 6.0.6 (Squeeze) Base System',
+                u'gui': u'No GUI',
+                u'kernel': u'2.6.32',
+                u'os': u'debian',
+                u'osfamily': u'linux',
+                u'root_partition': u'1',
+                u'sortorder': u'1',
+                u'users': u'root'
+            }
+        },
+        u'name': u'Debian Base',
+        u'progress': u'100',
+        u'status': u'ACTIVE',
+        u'created': u'2012-11-19T14:54:57+00:00',
+        u'updated': u'2012-11-19T15:29:51+00:00'
+    }
+
+    flavor_details = <A text file containing the testing images' flavor details in a python dict>
+
+    - example flavor.details content:
+    {
+        u'name': u'C1R1drbd',
+        u'ram': 1024,
+        u'id': 1,
+        u'SNF:disk_template': u'drbd',
+        u'disk': 20,
+        u'cpu': 1
+    }
+
+After setup, kamaki can run all tests::
+
+    $ kamaki livetest all
+
+a specific test (e.g. astakos)::
+
+    $ kamaki livetest astakos
+
+or a specific method from a service (e.g. astakos authenticate)::
+
+    $ kamaki livetest astakos authenticate
+
+The quotaholder client
+""""""""""""""""""""""
+
+A quotaholder client is introduced as an advanced feature. Quotaholder client is mostly used as a client library for accessing a synnefo quota service, but it can also be allowed as a kamaki command set, but setting the quotaholder.cli and quotaholder.url methods::
 
     [quotaholder]
     cli=quotaholder_cli
     url=<URL of quotaholder service>
+
+Quotaholder is not tested in livetest

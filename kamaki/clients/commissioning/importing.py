@@ -35,6 +35,7 @@ from imp import find_module, load_module
 
 _modules = {}
 
+
 def imp_module(fullname):
     if fullname in _modules:
         return _modules[fullname]
@@ -77,5 +78,3 @@ def imp_module(fullname):
 
 def list_modules():
     return sorted(_modules.keys())
-
-

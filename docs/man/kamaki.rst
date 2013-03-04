@@ -36,6 +36,10 @@ history
 
     Access kamaki user history, which is stored in ~/.kamaki.history file.
 
+astakos
+
+    Get information from astakos API
+
 server
 
     Manage compute API virtual machines.
@@ -66,10 +70,10 @@ quotaholder
     kamaki config set quotaholder.cli hotaholder_cli
     kamaki config set quotaholder.url <quotaholder server url>
 
-test
+livetest
 
-    Prepared unit-tests for developers (experimental). To enable:
-    kamaki config set test.cli test_cli
+    LIve tests that check kamaki against running services. To enable:
+    kamaki config set livetest.cli livetest_cli
 
 
 Options
@@ -103,6 +107,12 @@ Command user history, as stored in ~/.kamaki.history
 * show      show intersession history
 * clean     clean up history
 * run       run/show previously executed command(s)
+
+
+astakos commands
+****************
+
+* authenticate      Authenticate a user, show user information
 
 
 server commands

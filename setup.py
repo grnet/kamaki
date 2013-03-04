@@ -34,7 +34,7 @@
 # or implied, of GRNET S.A.
 
 from setuptools import setup
-#from sys import version_info
+from sys import version_info
 import collections
 
 import kamaki
@@ -42,11 +42,10 @@ import kamaki
 
 optional = ['ansicolors',
             'progress>=1.0.2']
-requires = ['objpool',
-            'argparse']
+requires = ['objpool', 'mock']
 
-if not hasattr(collections, "OrderedDict"):  # Python 2.6
-    requires.append("ordereddict")
+if version_info < (2, 7):
+    requires.append('argparse')
 
 setup(
     name='kamaki',
@@ -55,12 +54,18 @@ setup(
     long_description=open('README.rst').read(),
     url='http://code.grnet.gr/projects/kamaki',
     license='BSD',
+    author='Synnefo development team',
+    author_email='synnefo-devel@googlegroups.com',
+    maintainer='Synnefo development team',
+    maintainer_email='synnefo-devel@googlegroups.com',
     packages=[
         'kamaki',
-        'kamaki.clients',
-        'kamaki.clients.connection',
         'kamaki.cli',
         'kamaki.cli.commands',
+        'kamaki.clients',
+        'kamaki.clients.test',
+        'kamaki.clients.livetest',
+        'kamaki.clients.connection',
         'kamaki.clients.commissioning',
         'kamaki.clients.quotaholder',
         'kamaki.clients.quotaholder.api',

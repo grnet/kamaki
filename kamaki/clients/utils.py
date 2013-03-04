@@ -87,19 +87,11 @@ def path4url(*args):
     :returns: (str) a path in the form /args[0]/args[1]/...
     """
 
-    path = ''
-    for arg in args:
-        suffix = unicode(arg)
-        try:
-            while suffix[0] == '/':
-                suffix = suffix[1:]
-        except IndexError:
-            continue
-        if len(path) > 0 and path[-1] == '/':
-            path += suffix
-        else:
-            path += '/' + suffix
-    return path
+    r = '/'.join([''] + [arg.decode('utf-8') if (
+        isinstance(arg, str)) else '%s' % arg for arg in args])
+    while '//' in r:
+        r = r.replace('//', '/')
+    return ('/%s' % r.strip('/')) if r else ''
 
 
 def params4url(params):
@@ -114,25 +106,7 @@ def params4url(params):
     result = ''
     dlmtr = '?'
     for name in params:
-        result = result + dlmtr + name
-        result += '=%s' % params[name] if params[name] else result
+        result += '%s%s' % (dlmtr, name)
+        result += '=%s' % params[name] or result
         dlmtr = '&'
     return result
-
-
-def list2str(alist, separator=','):
-    """[val1, val2, val3] --> "val1,val2,val3"
-
-    :param separator: (str)
-
-    :returns: (str) all list elements separated by separator
-    """
-
-    ret = ''
-    slist = sorted(alist)
-    for item in slist:
-        if 0 == slist.index(item):
-            ret = unicode(item)
-        else:
-            ret += separator + unicode(item)
-    return ret
