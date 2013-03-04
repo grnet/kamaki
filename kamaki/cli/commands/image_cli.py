@@ -285,7 +285,7 @@ class image_list(_init_cyclades):
 
     arguments = dict(
         detail=FlagArgument('show detailed output', '-l'),
-        limit=IntArgument('limit the number of VMs to list', '-n'),
+        limit=IntArgument('limit the number of images to list', '-n'),
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
             '--more')
