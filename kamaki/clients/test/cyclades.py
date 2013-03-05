@@ -584,35 +584,25 @@ class Cyclades(TestCase):
                 '/networks/%s' % net_id)
             self.assert_dicts_are_equal(r, net_recv['network'])
 
-    """
-    def test_get_network_details(self):
-        r = self.client.get_network_details(self.network1['id'])
-        net1 = dict(self.network1)
-        net1.pop('status')
-        net1.pop('updated', None)
-        net1.pop('attachments')
-        r.pop('status')
-        r.pop('updated', None)
-        r.pop('attachments')
-        self.assert_dicts_are_equal(net1, r)
-
     def test_update_network_name(self):
-        updated_name = self.netname2 + '_upd'
-        self.client.update_network_name(self.network2['id'], updated_name)
+        net_id = net_recv['network']['id']
+        new_name = '%s_new' % net_id
+        self.FR.status_code = 204
+        with patch.object(
+                self.C,
+                'perform_request',
+                return_value=self.FR()) as perform_req:
+            self.client.update_network_name(net_id, new_name)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(
+                self.client.http_client.path,
+                '/networks/%s' % net_id)
+            (method, data, a_headers, a_params) = perform_req.call_args[0]
+            self.assert_dicts_are_equal(
+                dict(network=dict(name=new_name)),
+                loads(data))
 
-        def netwait(wait):
-            r = self.client.get_network_details(self.network2['id'])
-            if r['name'] == updated_name:
-                return
-            time.sleep(wait)
-        self.do_with_progress_bar(
-            netwait,
-            'Network %s name is changing:' % self.network2['id'],
-            self._waits[:5])
-
-        r = self.client.get_network_details(self.network2['id'])
-        self.assertEqual(r['name'], updated_name)
-
+    """
     def test_delete_image(self):
         images = self.client.list_images()
         self.client.delete_image(images[2]['id'])
