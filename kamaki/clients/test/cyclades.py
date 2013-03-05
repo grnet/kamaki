@@ -92,6 +92,21 @@ img_list = dict(images=dict(values=[
     dict(name="Ubuntu 12.10", id="3a24fef9-1a8c-47d1-8f11-e07bd5e544fd"),
     dict(name="Debian Base", id="40ace203-6254-4e17-a5cb-518d55418a7d"),
     dict(name="ubuntu_bundled", id="5336e265-5c7c-4127-95cb-2bf832a79903")]))
+net_send = dict(network=dict(dhcp=False, name='someNet'))
+net_recv = dict(network=dict(
+    status="PENDING",
+    updated="2013-03-05T15:04:51.758780+00:00",
+    name="someNet",
+    created="2013-03-05T15:04:51.758728+00:00",
+    cidr6=None,
+    id="2130",
+    gateway6=None,
+    public=False,
+    dhcp=False,
+    cidr="192.168.1.0/24",
+    type="MAC_FILTERED",
+    gateway=None,
+    attachments=dict(values=[dict(name='att1'), dict(name='att2')])))
 
 
 class Cyclades(TestCase):
@@ -458,34 +473,37 @@ class Cyclades(TestCase):
                 '/servers/%s/stats' % vm_id)
             self.assert_dicts_are_equal(stats, r)
 
-    """
     def test_create_network(self):
-        print('\twith no params')
-        self.network1 = self._create_network(self.netname1)
-        self._wait_for_network(self.network1['id'], 'ACTIVE')
-        n1id = self.network1['id']
-        self.network1 = self.client.get_network_details(n1id)
-        nets = self.client.list_networks(self.network1['id'])
-        chosen = [net for net in nets if net['id'] == n1id][0]
-        chosen.pop('updated')
-        net1 = dict(self.network1)
-        net1.pop('updated')
-        self.assert_dicts_are_equal(chosen, net1)
-        for param, val in dict(
-                cidr='192.168.0.0/24',
-                gateway='192.168.0.1',
-                type='MAC_FILTERED',
-                dhcp=True).items():
-            print('\tdelete %s to avoid max net limit' % n1id)
-            self._delete_network(n1id)
-            kwargs = {param: val}
-            print('\twith %s=%s' % (param, val))
-            self.network1 = self._create_network(self.netname1, **kwargs)
-            n1id = self.network1['id']
-            self._wait_for_network(n1id, 'ACTIVE')
-            self.network1 = self.client.get_network_details(n1id)
-            self.assertEqual(self.network1[param], val)
+        net_name = net_send['network']['name']
+        #  net_id = net_recv['network']['id']
+        self.FR.json = net_recv
+        self.FR.status_code = 202
+        with patch.object(
+                self.C,
+                'perform_request',
+                return_value=self.FR()) as perform_req:
+            full_args = dict(
+                    cidr='192.168.0.0/24',
+                    gateway='192.168.0.1',
+                    type='MAC_FILTERED',
+                    dhcp=True)
+            test_args = dict(full_args)
+            test_args.update(dict(empty=None, full=None))
+            for arg, val in test_args.items():
+                kwargs = {} if arg == 'empty' else full_args if (
+                    arg == 'full') else {arg: val}
+                r = self.client.create_network(net_name, **kwargs)
+                self.assertEqual(self.client.http_client.url, self.url)
+                self.assertEqual(
+                    self.client.http_client.path,
+                    '/networks')
+                self.assert_dicts_are_equal(r, net_recv['network'])
+                data = perform_req.call_args[0][1]
+                expected = dict(network=dict(net_send['network']))
+                expected['network'].update(kwargs)
+                self.assert_dicts_are_equal(loads(data), expected)
 
+    """
     def test_connect_server(self):
         self.client.connect_server(self.server1['id'], self.network1['id'])
         self.assertTrue(self._wait_for_nic(
