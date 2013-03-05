@@ -205,8 +205,8 @@ class KamakiHTTPResponse(TestCase):
                 self.assertEquals(loads(sample2), self.resp.json)
 
     def test_pool_lock(self):
-        conn_num = 2000
-        for i in range(conn_num):
+        exceptions_left = 100
+        while exceptions_left:
             kre = errors.KamakiResponseError
             with patch.object(self.HTC, 'close', return_value=True):
                 self.resp = kamakicon.KamakiHTTPResponse(self.HTC('X', 'Y'))
@@ -224,7 +224,9 @@ class KamakiHTTPResponse(TestCase):
                         try:
                             self.resp.text
                         except kre:
-                            pass
+                            exceptions_left -= 1
+                        else:
+                            self.assertTrue(False)
                 self.HTC.close.assert_called_with()
 
 
