@@ -81,8 +81,16 @@ vm_list = dict(servers=dict(values=[
 flavor_list = dict(flavors=dict(values=[
         dict(id=41, name="C1R1024D20"),
         dict(id=42, name="C1R1024D40"),
-        dict(id=43, name="C1R1028D20")
-    ]))
+        dict(id=43, name="C1R1028D20")]))
+img_list = dict(images=dict(values=[
+    dict(name="maelstrom", id="0fb03e45-7d5a-4515-bd4e-e6bbf6457f06"),
+    dict(name="edx_saas", id="1357163d-5fd8-488e-a117-48734c526206"),
+    dict(name="Debian_Wheezy_Base", id="1f8454f0-8e3e-4b6c-ab8e-5236b728dffe"),
+    dict(name="CentOS", id="21894b48-c805-4568-ac8b-7d4bb8eb533d"),
+    dict(name="Ubuntu Desktop", id="37bc522c-c479-4085-bfb9-464f9b9e2e31"),
+    dict(name="Ubuntu 12.10", id="3a24fef9-1a8c-47d1-8f11-e07bd5e544fd"),
+    dict(name="Debian Base", id="40ace203-6254-4e17-a5cb-518d55418a7d"),
+    dict(name="ubuntu_bundled", id="5336e265-5c7c-4127-95cb-2bf832a79903")]))
 
 
 class Cyclades(TestCase):
@@ -313,6 +321,19 @@ class Cyclades(TestCase):
                 self.client.http_client.path,
                 '/flavors/%s' % fid)
             self.assert_dicts_are_equal(r, flavor_list['flavors'])
+
+    def test_list_images(self):
+        self.FR.json = img_list
+        with patch.object(self.C, 'perform_request', return_value=self.FR()):
+            r = self.client.list_images()
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(self.client.http_client.path, '/images')
+            expected = img_list['images']['values']
+            for i in range(len(r)):
+                self.assert_dicts_are_equal(expected[i], r[i])
+            self.client.list_images(detail=True)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(self.client.http_client.path, '/images/detail')
 
     """
     def test_list_images(self):
