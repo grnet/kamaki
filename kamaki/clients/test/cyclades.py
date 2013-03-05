@@ -377,6 +377,22 @@ class Cyclades(TestCase):
                 perform_req.call_args[0],
                 ('post',  '{"shutdown": {}}', {}, {}))
 
+    def test_start_server(self):
+        vm_id = vm_recv['server']['id']
+        self.FR.status_code = 202
+        with patch.object(
+                self.C,
+                'perform_request',
+                return_value=self.FR()) as perform_req:
+            self.client.start_server(vm_id)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(
+                self.client.http_client.path,
+                '/servers/%s/action' % vm_id)
+            self.assertEqual(
+                perform_req.call_args[0],
+                ('post',  '{"start": {}}', {}, {}))
+
     """
     def test_start_server(self):
         self.client.start_server(self.server1['id'])
