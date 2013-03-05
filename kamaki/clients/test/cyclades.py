@@ -35,6 +35,7 @@ from unittest import TestCase
 from json import loads
 
 from kamaki.clients import Client, ClientError
+from kamaki.clients.cyclades import CycladesClient
 from kamaki.clients.cyclades_rest_api import CycladesClientApi
 
 img_ref = "1m4g3-r3f3r3nc3"
@@ -118,7 +119,6 @@ class Cyclades(TestCase):
     def setUp(self):
         self.url = 'http://cyclades.example.com'
         self.token = 'cyc14d3s70k3n'
-        from kamaki.clients.cyclades import CycladesClient
         self.client = CycladesClient(self.url, self.token)
         from kamaki.clients.connection.kamakicon import KamakiHTTPConnection
         self.C = KamakiHTTPConnection
@@ -345,19 +345,23 @@ class Cyclades(TestCase):
                 '/images/%s' % img_ref)
             self.assert_dicts_are_equal(r, img_recv['image'])
 
-    """
-    def test_get_image_details(self):
-        r = self.client.get_image_details(self.img)
-        self.assert_dicts_are_equal(r, self.img_details)
-
     def test_get_image_metadata(self):
-        r = self.client.get_image_metadata(self.img)
-        self.assert_dicts_are_equal(
-            self.img_details['metadata']['values'], r)
-        for key, val in self.img_details['metadata']['values'].items():
-            r = self.client.get_image_metadata(self.img, key)
-            self.assertEqual(r[key], val)
+        self.FR.json = dict(metadata=dict(values=img_recv['image']))
+        with patch.object(
+                CycladesClient,
+                'images_get',
+                return_value=self.FR()) as inner:
+            r = self.client.get_image_metadata(img_ref)
+            self.assertEqual(inner.call_args[0], ('%s' % img_ref, '/meta'))
+            self.assert_dicts_are_equal(img_recv['image'], r)
+            self.FR.json = dict(meta=img_recv['image'])
+            key = 'somekey'
+            self.client.get_image_metadata(img_ref, key)
+            self.assertEqual(
+                inner.call_args[0],
+                ('%s' % img_ref, '/meta/%s' % key))
 
+    """
     def test_shutdown_server(self):
         self.client.shutdown_server(self.server1['id'])
         self._wait_for_status(self.server1['id'], 'ACTIVE')
