@@ -424,8 +424,7 @@ class Cyclades(TestCase):
             self.assertEqual(gsd.call_args[0], (vm_id,))
             ret['attachments']['values'][0].pop('firewallProfile')
             self.assertRaises(
-                ClientError,
-                self.client.get_firewall_profile,
+                ClientError, self.client.get_firewall_profile,
                 vm_id)
 
     def test_set_firewall_profile(self):
@@ -447,13 +446,19 @@ class Cyclades(TestCase):
                 {},
                 {}))
 
-    """
     def test_get_server_stats(self):
-        r = self.client.get_server_stats(self.server1['id'])
-        it = ('cpuBar', 'cpuTimeSeries', 'netBar', 'netTimeSeries', 'refresh')
-        for term in it:
-            self.assertTrue(term in r)
+        vm_id = vm_recv['server']['id']
+        stats = dict(stat1='v1', stat2='v2', stat3='v3', stat4='v4')
+        self.FR.json = dict(stats=stats)
+        with patch.object(self.C, 'perform_request', return_value=self.FR()):
+            r = self.client.get_server_stats(vm_id)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(
+                self.client.http_client.path,
+                '/servers/%s/stats' % vm_id)
+            self.assert_dicts_are_equal(stats, r)
 
+    """
     def test_create_network(self):
         print('\twith no params')
         self.network1 = self._create_network(self.netname1)
