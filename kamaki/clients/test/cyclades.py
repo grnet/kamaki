@@ -335,16 +335,17 @@ class Cyclades(TestCase):
             self.assertEqual(self.client.http_client.url, self.url)
             self.assertEqual(self.client.http_client.path, '/images/detail')
 
-    """
-    def test_list_images(self):
-        r = self.client.list_images()
-        self.assertTrue(len(r) > 1)
-        r = self.client.list_images(detail=True)
-        for detailed_img in r:
-            if detailed_img['id'] == self.img:
-                break
-        self.assert_dicts_are_equal(detailed_img, self.img_details)
+    def test_get_image_details(self):
+        self.FR.json = img_recv
+        with patch.object(self.C, 'perform_request', return_value=self.FR()):
+            r = self.client.get_image_details(img_ref)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(
+                self.client.http_client.path,
+                '/images/%s' % img_ref)
+            self.assert_dicts_are_equal(r, img_recv['image'])
 
+    """
     def test_get_image_details(self):
         r = self.client.get_image_details(self.img)
         self.assert_dicts_are_equal(r, self.img_details)
