@@ -33,6 +33,7 @@
 
 from unittest import TestCase, TestSuite, makeSuite, TextTestRunner
 from mock import Mock, patch
+from random import randrange
 
 from kamaki.clients import connection
 from kamaki.clients.connection import errors, kamakicon
@@ -202,6 +203,29 @@ class KamakiHTTPResponse(TestCase):
                 self.resp = kamakicon.KamakiHTTPResponse(self.HTC('X', 'Y'))
                 from json import loads
                 self.assertEquals(loads(sample2), self.resp.json)
+
+    def test_pool_lock(self):
+        conn_num = 2000
+        for i in range(conn_num):
+            kre = errors.KamakiResponseError
+            with patch.object(self.HTC, 'close', return_value=True):
+                self.resp = kamakicon.KamakiHTTPResponse(self.HTC('X', 'Y'))
+                if randrange(10):
+                    with patch.object(
+                            self.HTC,
+                            'getresponse',
+                            return_value=self.FR()):
+                        self.assertEquals(self.resp.text, self.FR.sample)
+                else:
+                    with patch.object(
+                            self.HTC,
+                            'getresponse',
+                            side_effect=kre('A random error')):
+                        try:
+                            self.resp.text
+                        except kre:
+                            pass
+                self.HTC.close.assert_called_with()
 
 
 class KamakiResponse(TestCase):

@@ -53,14 +53,13 @@ class KamakiHTTPResponse(KamakiResponse):
             return
 
         try:
-            ready = False
-            while not ready:
+            while True:
                 try:
                     r = self.request.getresponse()
                 except ResponseNotReady:
                     sleep(0.001)
-                    continue
-                break
+                else:
+                    break
             self.prefetched = True
             headers = {}
             for k, v in r.getheaders():
