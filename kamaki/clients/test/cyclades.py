@@ -631,11 +631,29 @@ class Cyclades(TestCase):
                 self.client.http_client.path,
                 '/networks/%s' % net_id)
 
-    """
     def test_create_image_metadata(self):
-        r = self.client.create_image_metadata(self.img, 'mykey', 'myval')
-        self.assertEqual(r['mykey'], 'myval')
+        metadata = dict(m1='v1', m2='v2', m3='v3')
+        self.FR.json = dict(meta=img_recv['image'])
+        with patch.object(
+                self.C,
+                'perform_request',
+                return_value=self.FR()) as perform_req:
+            self.assertRaises(
+                ClientError,
+                self.client.create_image_metadata,
+                img_ref, 'key', 'value')
+            self.FR.status_code = 201
+            for k, v in metadata.items():
+                r = self.client.create_image_metadata(img_ref, k, v)
+                self.assertEqual(self.client.http_client.url, self.url)
+                self.assertEqual(
+                    self.client.http_client.path,
+                    '/images/%s/meta/%s' % (img_ref, k))
+                (method, data, a_headers, a_params) = perform_req.call_args[0]
+                self.assertEqual(dict(meta={k: v}), loads(data))
+                self.assert_dicts_are_equal(r, img_recv['image'])
 
+    """
     def test_update_image_metadata(self):
         r = self.client.create_image_metadata(self.img, 'mykey0', 'myval')
         r = self.client.update_image_metadata(self.img, 'mykey0', 'myval0')
