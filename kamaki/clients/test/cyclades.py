@@ -542,17 +542,21 @@ class Cyclades(TestCase):
                 self.assertEqual(np.call_args[1], dict(json_data=dict(
                     remove=dict(attachment=nic_id))))
 
-    """
-    def _test_0280_list_server_nics(self):
-        r = self.client.list_server_nics(self.server1['id'])
-        len0 = len(r)
-        self.client.connect_server(self.server1['id'], self.network2['id'])
-        self.assertTrue(self._wait_for_nic(
-            self.network2['id'],
-            self.server1['id']))
-        r = self.client.list_server_nics(self.server1['id'])
-        self.assertTrue(len(r) > len0)
+    def test_list_server_nics(self):
+        vm_id = vm_recv['server']['id']
+        nics = dict(addresses=dict(values=[dict(id='nic1'), dict(id='nic2')]))
+        self.FR.json = nics
+        with patch.object(self.C, 'perform_request', return_value=self.FR()):
+            r = self.client.list_server_nics(vm_id)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(
+                self.client.http_client.path,
+                '/servers/%s/ips' % vm_id)
+            expected = nics['addresses']['values']
+            for i in range(len(r)):
+                self.assert_dicts_are_equal(r[i], expected[i])
 
+    """
     def test_list_networks(self):
         r = self.client.list_networks()
         self.assertTrue(len(r) > 1)
