@@ -475,7 +475,6 @@ class Cyclades(TestCase):
 
     def test_create_network(self):
         net_name = net_send['network']['name']
-        #  net_id = net_recv['network']['id']
         self.FR.json = net_recv
         self.FR.status_code = 202
         with patch.object(
@@ -503,13 +502,24 @@ class Cyclades(TestCase):
                 expected['network'].update(kwargs)
                 self.assert_dicts_are_equal(loads(data), expected)
 
-    """
     def test_connect_server(self):
-        self.client.connect_server(self.server1['id'], self.network1['id'])
-        self.assertTrue(self._wait_for_nic(
-            self.network1['id'],
-            self.server1['id']))
+        vm_id = vm_recv['server']['id']
+        net_id = net_recv['network']['id']
+        self.FR.status_code = 202
+        with patch.object(
+            self.C,
+            'perform_request',
+            return_value=self.FR()) as perform_req:
+            self.client.connect_server(vm_id, net_id)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(
+                self.client.http_client.path,
+                '/networks/%s/action' % net_id)
+            self.assertEqual(
+                perform_req.call_args[0],
+                ('post', '{"add": {"serverRef": %s}}' % vm_id, {}, {}))
 
+    """
     def test_disconnect_server(self):
         self.client.disconnect_server(self.server1['id'], self.network1['id'])
         self.assertTrue(self._wait_for_nic(
