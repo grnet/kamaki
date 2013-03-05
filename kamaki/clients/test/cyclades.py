@@ -393,20 +393,25 @@ class Cyclades(TestCase):
                 perform_req.call_args[0],
                 ('post',  '{"start": {}}', {}, {}))
 
-    """
-    def test_start_server(self):
-        self.client.start_server(self.server1['id'])
-        self._wait_for_status(self.server1['id'], 'STOPPED')
-        r = self.client.get_server_details(self.server1['id'])
-        self.assertEqual(r['status'], 'ACTIVE')
-
     def test_get_server_console(self):
-        r = self.client.get_server_console(self.server2['id'])
-        self.assertTrue('host' in r)
-        self.assertTrue('password' in r)
-        self.assertTrue('port' in r)
-        self.assertTrue('type' in r)
+        cnsl = dict(console=dict(info1='i1', info2='i2', info3='i3'))
+        self.FR.json = cnsl
+        vm_id = vm_recv['server']['id']
+        with patch.object(
+                self.C,
+                'perform_request',
+                return_value=self.FR()) as perform_req:
+            r = self.client.get_server_console(vm_id)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(
+                self.client.http_client.path,
+                '/servers/%s/action' % vm_id)
+            self.assert_dicts_are_equal(cnsl['console'], r)
+            self.assertEqual(
+                perform_req.call_args[0],
+                ('post',  '{"console": {"type": "vnc"}}', {}, {}))
 
+    """
     def test_get_firewall_profile(self):
         self._wait_for_status(self.server1['id'], 'BUILD')
         fprofile = self.client.get_firewall_profile(self.server1['id'])
