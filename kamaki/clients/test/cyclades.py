@@ -602,15 +602,36 @@ class Cyclades(TestCase):
                 dict(network=dict(name=new_name)),
                 loads(data))
 
-    """
-    def test_delete_image(self):
-        images = self.client.list_images()
-        self.client.delete_image(images[2]['id'])
-        try:
-            r = self.client.get_image_details(images[2]['id'], success=(400))
-        except ClientError as err:
-            self.assertEqual(err.status, 404)
+    def test_delete_server(self):
+        vm_id = vm_recv['server']['id']
+        self.FR.status_code = 204
+        with patch.object(self.C, 'perform_request', return_value=self.FR()):
+            self.client.delete_server(vm_id)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(
+                self.client.http_client.path,
+                '/servers/%s' % vm_id)
 
+    def test_delete_image(self):
+        self.FR.status_code = 204
+        with patch.object(self.C, 'perform_request', return_value=self.FR()):
+            self.client.delete_image(img_ref)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(
+                self.client.http_client.path,
+                '/images/%s' % img_ref)
+
+    def test_delete_network(self):
+        net_id = net_recv['network']['id']
+        self.FR.status_code = 204
+        with patch.object(self.C, 'perform_request', return_value=self.FR()):
+            self.client.delete_network(net_id)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(
+                self.client.http_client.path,
+                '/networks/%s' % net_id)
+
+    """
     def test_create_image_metadata(self):
         r = self.client.create_image_metadata(self.img, 'mykey', 'myval')
         self.assertEqual(r['mykey'], 'myval')
