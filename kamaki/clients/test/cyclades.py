@@ -654,7 +654,6 @@ class Cyclades(TestCase):
                 self.assert_dicts_are_equal(r, img_recv['image'])
 
     def test_update_image_metadata(self):
-        img_ref = img_recv['image']['id']
         metadata = dict(m1='v1', m2='v2', m3='v3')
         self.FR.json = dict(metadata=metadata)
         with patch.object(
@@ -669,10 +668,13 @@ class Cyclades(TestCase):
             data = images_post.call_args[1]['json_data']
             self.assert_dicts_are_equal(data, dict(metadata=metadata))
 
-    """
     def test_delete_image_metadata(self):
-        self.client.create_image_metadata(self.img, 'mykey1', 'myval1')
-        self.client.delete_image_metadata(self.img, 'mykey1')
-        r = self.client.get_image_metadata(self.img)
-        self.assertNotEqual('mykey1' in r)
-    """
+        key = 'metakey'
+        with patch.object(
+                CycladesClientApi,
+                'images_delete',
+                return_value=self.FR()) as images_delete:
+            self.client.delete_image_metadata(img_ref, key)
+            self.assertEqual(
+                (img_ref, '/meta/' + key),
+                images_delete.call_args[0])
