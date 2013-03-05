@@ -519,24 +519,30 @@ class Cyclades(TestCase):
                 perform_req.call_args[0],
                 ('post', '{"add": {"serverRef": %s}}' % vm_id, {}, {}))
 
-    """
     def test_disconnect_server(self):
-        self.client.disconnect_server(self.server1['id'], self.network1['id'])
-        self.assertTrue(self._wait_for_nic(
-            self.network1['id'],
-            self.server1['id'],
-            in_creation=False))
+        vm_id = vm_recv['server']['id']
+        net_id = net_recv['network']['id']
+        nic_id = 'nic-%s-%s' % (net_id, vm_id)
+        vm_nics = [
+            dict(id=nic_id, network_id=net_id),
+            dict(id='another-nic-id', network_id='another-net-id'),
+            dict(id=nic_id * 2, network_id=net_id * 2)]
+        with patch.object(
+                CycladesClient,
+                'list_server_nics',
+                return_value=vm_nics) as lsn:
+            with patch.object(
+                    CycladesClient,
+                    'networks_post',
+                    return_value=self.FR()) as np:
+                r = self.client.disconnect_server(vm_id, nic_id)
+                self.assertEqual(r, 1)
+                self.assertEqual(lsn.call_args[0], (vm_id,))
+                self.assertEqual(np.call_args[0], (net_id, 'action'))
+                self.assertEqual(np.call_args[1], dict(json_data=dict(
+                    remove=dict(attachment=nic_id))))
 
-    def _test_0260_wait_for_second_network(self):
-        self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
-        self.network2 = self._create_network(self.netname2)
-        self._wait_for_status(self.server1['id'], 'BUILD')
-        self._wait_for_network(self.network2['id'], 'ACTIVE')
-        self._test_0280_list_server_nics()
-
+    """
     def _test_0280_list_server_nics(self):
         r = self.client.list_server_nics(self.server1['id'])
         len0 = len(r)
