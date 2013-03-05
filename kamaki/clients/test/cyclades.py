@@ -411,12 +411,24 @@ class Cyclades(TestCase):
                 perform_req.call_args[0],
                 ('post',  '{"console": {"type": "vnc"}}', {}, {}))
 
-    """
     def test_get_firewall_profile(self):
-        self._wait_for_status(self.server1['id'], 'BUILD')
-        fprofile = self.client.get_firewall_profile(self.server1['id'])
-        self.assertTrue(fprofile in self.PROFILES)
+        vm_id = vm_recv['server']['id']
+        v = 'Some profile'
+        ret = {'attachments': {'values': [{'firewallProfile': v, 1:1}]}}
+        with patch.object(
+                CycladesClient,
+                'get_server_details',
+                return_value=ret) as gsd:
+            r = self.client.get_firewall_profile(vm_id)
+            self.assertEqual(r, v)
+            self.assertEqual(gsd.call_args[0], (vm_id,))
+            ret['attachments']['values'][0].pop('firewallProfile')
+            self.assertRaises(
+                ClientError,
+                self.client.get_firewall_profile,
+                vm_id)
 
+    """
     def test_set_firewall_profile(self):
         self._wait_for_status(self.server1['id'], 'BUILD')
         PROFILES = ['DISABLED', 'ENABLED', 'DISABLED', 'PROTECTED']
