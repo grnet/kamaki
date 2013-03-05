@@ -107,6 +107,10 @@ net_recv = dict(network=dict(
     type="MAC_FILTERED",
     gateway=None,
     attachments=dict(values=[dict(name='att1'), dict(name='att2')])))
+net_list = dict(networks=dict(values=[
+    dict(id=1, name='n1'),
+    dict(id=2, name='n2'),
+    dict(id=3, name='n3')]))
 
 
 class Cyclades(TestCase):
@@ -555,6 +559,19 @@ class Cyclades(TestCase):
             expected = nics['addresses']['values']
             for i in range(len(r)):
                 self.assert_dicts_are_equal(r[i], expected[i])
+
+    def test_list_networks(self):
+        self.FR.json = net_list
+        with patch.object(self.C, 'perform_request', return_value=self.FR()):
+            r = self.client.list_networks()
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(self.client.http_client.path, '/networks')
+            expected = net_list['networks']['values']
+            for i in range(len(r)):
+                self.assert_dicts_are_equal(expected[i], r[i])
+            self.client.list_networks(detail=True)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(self.client.http_client.path, '/networks/detail')
 
     """
     def test_list_networks(self):
