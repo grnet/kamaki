@@ -428,37 +428,26 @@ class Cyclades(TestCase):
                 self.client.get_firewall_profile,
                 vm_id)
 
-    """
     def test_set_firewall_profile(self):
-        self._wait_for_status(self.server1['id'], 'BUILD')
-        PROFILES = ['DISABLED', 'ENABLED', 'DISABLED', 'PROTECTED']
-        fprofile = self.client.get_firewall_profile(self.server1['id'])
-        print('')
-        count_success = 0
-        for counter, fprofile in enumerate(PROFILES):
-            npos = counter + 1
-            try:
-                nprofile = PROFILES[npos]
-            except IndexError:
-                nprofile = PROFILES[0]
-            print('\tprofile swap %s: %s -> %s' % (npos, fprofile, nprofile))
-            self.client.set_firewall_profile(self.server1['id'], nprofile)
-            time.sleep(0.5)
-            self.client.reboot_server(self.server1['id'], hard=True)
-            time.sleep(1)
-            self._wait_for_status(self.server1['id'], 'REBOOT')
-            time.sleep(0.5)
-            changed = self.client.get_firewall_profile(self.server1['id'])
-            try:
-                self.assertEqual(changed, nprofile)
-            except AssertionError as err:
-                if count_success:
-                    print('\tFAIL in swap #%s' % npos)
-                    break
-                else:
-                    raise err
-            count_success += 1
+        vm_id = vm_recv['server']['id']
+        v = 'Some profile'
+        self.FR.status_code = 202
+        with patch.object(
+                self.C,
+                'perform_request',
+                return_value=self.FR()) as perform_req:
+            self.client.set_firewall_profile(vm_id, v)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(
+                self.client.http_client.path,
+                '/servers/%s/action' % vm_id)
+            self.assertEqual(perform_req.call_args[0], (
+                'post',
+                '{"firewallProfile": {"profile": "%s"}}' % v,
+                {},
+                {}))
 
+    """
     def test_get_server_stats(self):
         r = self.client.get_server_stats(self.server1['id'])
         it = ('cpuBar', 'cpuTimeSeries', 'netBar', 'netTimeSeries', 'refresh')
