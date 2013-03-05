@@ -361,13 +361,23 @@ class Cyclades(TestCase):
                 inner.call_args[0],
                 ('%s' % img_ref, '/meta/%s' % key))
 
-    """
     def test_shutdown_server(self):
-        self.client.shutdown_server(self.server1['id'])
-        self._wait_for_status(self.server1['id'], 'ACTIVE')
-        r = self.client.get_server_details(self.server1['id'])
-        self.assertEqual(r['status'], 'STOPPED')
+        vm_id = vm_recv['server']['id']
+        self.FR.status_code = 202
+        with patch.object(
+                self.C,
+                'perform_request',
+                return_value=self.FR()) as perform_req:
+            self.client.shutdown_server(vm_id)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(
+                self.client.http_client.path,
+                '/servers/%s/action' % vm_id)
+            self.assertEqual(
+                perform_req.call_args[0],
+                ('post',  '{"shutdown": {}}', {}, {}))
 
+    """
     def test_start_server(self):
         self.client.start_server(self.server1['id'])
         self._wait_for_status(self.server1['id'], 'STOPPED')
