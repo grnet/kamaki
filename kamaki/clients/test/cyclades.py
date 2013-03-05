@@ -573,26 +573,18 @@ class Cyclades(TestCase):
             self.assertEqual(self.client.http_client.url, self.url)
             self.assertEqual(self.client.http_client.path, '/networks/detail')
 
+    def test_get_network_details(self):
+        self.FR.json = net_recv
+        net_id = net_recv['network']['id']
+        with patch.object(self.C, 'perform_request', return_value=self.FR()):
+            r = self.client.get_network_details(net_id)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(
+                self.client.http_client.path,
+                '/networks/%s' % net_id)
+            self.assert_dicts_are_equal(r, net_recv['network'])
+
     """
-    def test_list_networks(self):
-        r = self.client.list_networks()
-        self.assertTrue(len(r) > 1)
-        ids = [net['id'] for net in r]
-        names = [net['name'] for net in r]
-        self.assertTrue('1' in ids)
-        #self.assertTrue('public' in names)
-        self.assertTrue(self.network1['id'] in ids)
-        self.assertTrue(self.network1['name'] in names)
-
-        r = self.client.list_networks(detail=True)
-        ids = [net['id'] for net in r]
-        names = [net['name'] for net in r]
-        for net in r:
-            self.assertTrue(net['id'] in ids)
-            self.assertTrue(net['name'] in names)
-            for term in ('status', 'updated', 'created'):
-                self.assertTrue(term in net.keys())
-
     def test_get_network_details(self):
         r = self.client.get_network_details(self.network1['id'])
         net1 = dict(self.network1)
