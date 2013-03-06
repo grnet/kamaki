@@ -66,6 +66,19 @@ container_info = {
     'x-container-object-meta': '',
     'x-container-policy-quota': 53687091200,
     'x-container-policy-versioning': 'auto'}
+container_list = [
+    dict(
+        count=2,
+        last_modified="2013-02-27T11:56:09.893033+00:00",
+        bytes=677076979,
+        name="pithos",
+        x_container_policy=dict(quota="21474836480", versioning="auto")),
+    dict(
+        count=0,
+        last_modified="2012-10-23T12:25:17.229187+00:00",
+        bytes=0,
+        name="trash",
+        x_container_policy=dict(quota="21474836480", versioning="auto"))]
 
 
 class Pithos(TestCase):
@@ -174,3 +187,10 @@ class Pithos(TestCase):
             self.assertRaises(ClientError, self.client.delete_container, cont)
             acall = call('/%s/%s' % (user_id, cont), success=(204, 404, 409))
             self.assertEqual(delete.mock_calls, [acall] * 3)
+
+    def test_list_containers(self):
+        self.FR.json = container_list
+        with patch.object(PC, 'account_get', return_value=self.FR()):
+            r = self.client.list_containers()
+            for i in range(len(r)):
+                self.assert_dicts_are_equal(r[i], container_list[i])
