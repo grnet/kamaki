@@ -596,20 +596,27 @@ class Cyclades(livetest.Generic):
         net1 = dict(self.network1)
         net1.pop('updated')
         self.assert_dicts_are_deeply_equal(chosen, net1)
-        for param, val in dict(
-                cidr='192.168.0.0/24',
-                gateway='192.168.0.1',
+        full_args = dict(
+                cidr='192.168.1.0/24',
+                gateway='192.168.1.1',
                 type='MAC_FILTERED',
-                dhcp=True).items():
+                dhcp=True)
+        try_args = dict(all=True)
+        try_args.update(full_args)
+        for param, val in try_args.items():
             print('\tdelete %s to avoid max net limit' % n1id)
             self._delete_network(n1id)
-            kwargs = {param: val}
+            kwargs = full_args if param == 'all' else {param: val}
             print('\twith %s=%s' % (param, val))
             self.network1 = self._create_network(self.netname1, **kwargs)
             n1id = self.network1['id']
             self._wait_for_network(n1id, 'ACTIVE')
             self.network1 = self.client.get_network_details(n1id)
-            self.assertEqual(self.network1[param], val)
+            if param == 'all':
+                for p, v in full_args.items():
+                    self.assertEqual(self.network1[p], v)
+            else:
+                self.assertEqual(self.network1[param], val)
 
     def test_connect_server(self):
         """Test connect_server"""
@@ -701,7 +708,9 @@ class Cyclades(livetest.Generic):
         self._wait_for_status(self.server1['id'], 'BUILD')
         self._wait_for_network(self.network1['id'], 'ACTIVE')
         self._wait_for_network(self.network2['id'], 'ACTIVE')
+        self.client.connect_server(self.server1['id'], self.network1['id'])
         self.client.connect_server(self.server1['id'], self.network2['id'])
+        self._wait_for_nic(self.network1['id'], self.server1['id'])
         self._wait_for_nic(self.network2['id'], self.server1['id'])
         self._test_0293_list_network_nics()
 
@@ -709,10 +718,10 @@ class Cyclades(livetest.Generic):
         netid1 = self.network1['id']
         netid2 = self.network2['id']
         r = self.client.list_network_nics(netid1)
-        expected = []
+        expected = ['nic-%s-1' % self.server1['id']]
         self.assertEqual(r, expected)
         r = self.client.list_network_nics(netid2)
-        expected = ['nic-%s-1' % self.server1['id']]
+        expected = ['nic-%s-2' % self.server1['id']]
         self.assertEqual(r, expected)
 
     def test_get_network_details(self):
