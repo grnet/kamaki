@@ -60,7 +60,7 @@ class StorageClient(Client):
         path = path4url(self.account)
         r = self.head(path, success=(204, 401))
         if r.status_code == 401:
-            raise ClientError("No authorization")
+            raise ClientError("No authorization", status=401)
         reply = r.headers
         return reply
 

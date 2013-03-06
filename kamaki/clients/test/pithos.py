@@ -106,6 +106,8 @@ class Pithos(TestCase):
                 self.assertEqual(
                     PC.set_param.mock_calls[i],
                     call('until', untils[i], iff=untils[i]))
+            self.FR.status_code = 401
+            self.assertRaises(ClientError, self.client.get_account_info)
 
     def test_replace_account_meta(self):
         self.FR.status_code = 202
@@ -127,3 +129,13 @@ class Pithos(TestCase):
                 self.client.del_account_meta(key)
                 expected.append(call(update=True, metadata={key: ''}))
             self.assertEqual(ap.mock_calls, expected)
+
+    def test_create_container(self):
+        self.FR.status_code = 201
+        with patch.object(PC, 'put', return_value=self.FR()) as put:
+            cont = 's0m3c0n731n3r'
+            self.client.create_container(cont)
+            expected = [call('/%s/%s' % (user_id, cont), success=(201, 202))]
+            self.assertEqual(put.mock_calls, expected)
+            self.FR.status_code = 202
+            self.assertRaises(ClientError, self.client.create_container, cont)
