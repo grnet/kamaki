@@ -52,6 +52,20 @@ account_info = {
     'x-account-container-count': 7,
     'x-account-policy-quota': 53687091200,
     'x-account-policy-versioning': 'auto'}
+container_info = {
+    'content-language': 'en-us',
+    'content-type': 'text/html; charset=utf-8',
+    'date': 'Wed, 06 Mar 2013 15:11:05 GMT',
+    'last-modified': 'Wed, 27 Feb 2013 15:56:13 GMT',
+    'server': 'gunicorn/0.14.5',
+    'vary': 'Accept-Language',
+    'x-container-block-hash': 'sha256',
+    'x-container-block-size': 4194304,
+    'x-container-bytes-used': 309528938,
+    'x-container-object-count': 14,
+    'x-container-object-meta': '',
+    'x-container-policy-quota': 53687091200,
+    'x-container-policy-versioning': 'auto'}
 
 
 class Pithos(TestCase):
@@ -139,3 +153,12 @@ class Pithos(TestCase):
             self.assertEqual(put.mock_calls, expected)
             self.FR.status_code = 202
             self.assertRaises(ClientError, self.client.create_container, cont)
+
+    def test_get_container_info(self):
+        self.FR.headers = container_info
+        with patch.object(PC, 'container_head', return_value=self.FR()) as ch:
+            r = self.client.get_container_info()
+            self.assert_dicts_are_equal(r, container_info)
+            u = 'some date'
+            r = self.client.get_container_info(until=u)
+            self.assertEqual(ch.mock_calls, [call(until=None), call(until=u)])
