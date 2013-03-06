@@ -86,11 +86,10 @@ class Pithos(TestCase):
     class FR(object):
         """FR stands for Fake Response"""
         json = dict()
-        headers = {}
+        headers = dict()
         content = json
         status = None
         status_code = 200
-        headers = dict()
 
         def release(self):
             pass
@@ -115,6 +114,7 @@ class Pithos(TestCase):
     def tearDown(self):
         self.FR.headers = dict()
         self.FR.status_code = 200
+        self.FR.json = dict()
 
     def test_get_account_info(self):
         self.FR.headers = account_info
@@ -194,3 +194,47 @@ class Pithos(TestCase):
             r = self.client.list_containers()
             for i in range(len(r)):
                 self.assert_dicts_are_equal(r[i], container_list[i])
+
+    def test_upload_object(self):
+        PC.get_container_info = Mock(return_value=container_info)
+        PC.container_post = Mock(return_value=self.FR())
+        PC.object_put = Mock(return_value=self.FR())
+        from tempfile import NamedTemporaryFile
+        from os import urandom
+        tmpFile = NamedTemporaryFile()
+        num_of_blocks = 8
+        file_size = num_of_blocks * 4 * 1024 * 1024
+        print('\n\tCreate tmp file')
+        tmpFile.write(urandom(file_size))
+        tmpFile.flush()
+        tmpFile.seek(0)
+        print('\t\tDone')
+        obj = 'objectName'
+        self.client.upload_object(obj, tmpFile)
+        tmpFile.close()
+        self.assertEqual(PC.get_container_info.mock_calls, [call()])
+        [call1, call2] = PC.object_put.mock_calls
+
+        (args, kwargs) = call1[1:3]
+        self.assertEqual(args, (obj,))
+        expected = dict(
+            hashmap=True,
+            success=(201, 409),
+            format='json',
+            json=dict(
+                hashes=['s0m3h@5h'] * num_of_blocks,
+                bytes=file_size),
+            etag=None,
+            content_encoding=None,
+            content_type='application/octet-stream',
+            content_disposition=None,
+            public=None,
+            permissions=None)
+        for k, v in expected.items():
+            if k == 'json':
+                self.assertEqual(len(v['hashes']), len(kwargs[k]['hashes']))
+                self.assertEqual(v['bytes'], kwargs[k]['bytes'])
+            else:
+                self.assertEqual(v, kwargs[k])
+        # TO BE CONTINUED
+        (args, kwargs) = call2[1:3]

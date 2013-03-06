@@ -181,9 +181,6 @@ class PithosClient(PithosRestAPI):
         return event
 
     def _put_block(self, data, hash):
-        from random import randint
-        if not randint(0, 7):
-            raise ClientError('BAD GATEWAY STUFF', 503)
         r = self.container_post(
             update=True,
             content_type='application/octet-stream',
@@ -229,7 +226,7 @@ class PithosClient(PithosRestAPI):
             return None
         return r.json
 
-    def _caclulate_uploaded_blocks(
+    def _culculate_blocks_for_upload(
             self, blocksize, blockhash, size, nblocks, hashes, hmap, fileobj,
             hash_cb=None):
         offset = 0
@@ -247,7 +244,7 @@ class PithosClient(PithosRestAPI):
             if hash_cb:
                 hash_gen.next()
         msg = 'Failed to calculate uploaded blocks:'
-        msg += ' Offset and object size do not match'
+        ' Offset and object size do not match'
         assert offset == size, msg
 
     def _upload_missing_blocks(self, missing, hmap, fileobj, upload_gen=None):
@@ -332,10 +329,10 @@ class PithosClient(PithosRestAPI):
         block_info = (blocksize, blockhash, size, nblocks) =\
             self._get_file_block_info(f, size)
         (hashes, hmap, offset) = ([], {}, 0)
-        if content_type is None:
+        if not content_type:
             content_type = 'application/octet-stream'
 
-        self._caclulate_uploaded_blocks(
+        self._culculate_blocks_for_upload(
             *block_info,
             hashes=hashes,
             hmap=hmap,
@@ -784,7 +781,6 @@ class PithosClient(PithosRestAPI):
             r = self.container_head(until=until)
         except ClientError as err:
             err.details.append('for container %s' % self.container)
-            print('Buh?')
             raise err
         return r.headers
 
