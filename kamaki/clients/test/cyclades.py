@@ -30,7 +30,7 @@
 # documentation are those of the authors and should not be
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
-from mock import patch, Mock
+from mock import patch, Mock, call
 from unittest import TestCase
 from json import loads
 
@@ -585,6 +585,24 @@ class Cyclades(TestCase):
             expected = net_recv['network']['attachments']['values']
             for i in range(len(r)):
                 self.assert_dicts_are_equal(r[i], expected[i])
+
+    def test_disconnect_network_nics(self):
+        net_id = net_recv['network']['id']
+        nics = ['nic1', 'nic2', 'nic3']
+        with patch.object(
+                CycladesClient,
+                'list_network_nics',
+                return_value=nics) as lnn:
+            with patch.object(
+                    CycladesClient,
+                    'networks_post',
+                    return_value=self.FR()) as np:
+                self.client.disconnect_network_nics(net_id)
+                lnn.assert_called_once_with(net_id)
+                for i in range(len(nics)):
+                    expected = call(net_id, 'action', json_data=dict(
+                        remove=dict(attachment=nics[i])))
+                    self.assertEqual(expected, np.mock_calls[i])
 
     def test_get_network_details(self):
         self.FR.json = net_recv
