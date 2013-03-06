@@ -104,3 +104,15 @@ class Pithos(TestCase):
                 self.assertEqual(
                     PithosClient.set_param.mock_calls[i],
                     call('until', untils[i], iff=untils[i]))
+
+    def test_replace_account_meta(self):
+        self.FR.status_code = 202
+        metas = dict(k1='v1', k2='v2', k3='v3')
+        PithosClient.set_header = Mock()
+        with patch.object(C, 'perform_request', return_value=self.FR()):
+            self.client.replace_account_meta(metas)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(self.client.http_client.path, '/%s' % user_id)
+            prfx = 'X-Account-Meta-'
+            expected = [call('%s%s' % (prfx, k), v) for k, v in metas.items()]
+            self.assertEqual(PithosClient.set_header.mock_calls, expected)

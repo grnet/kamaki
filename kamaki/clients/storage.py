@@ -70,7 +70,7 @@ class StorageClient(Client):
         """
         self._assert_account()
         path = path4url(self.account)
-        for key, val in metapairs:
+        for key, val in metapairs.items():
             self.set_header('X-Account-Meta-' + key, val)
         r = self.post(path, success=202)
         r.release()
