@@ -37,7 +37,7 @@ from time import sleep
 from kamaki.clients.test.astakos import Astakos
 from kamaki.clients.test.cyclades import Cyclades
 from kamaki.clients.test.image import Image
-#from kamaki.clients.test.pithos import Pithos
+from kamaki.clients.test.pithos import Pithos
 
 
 def _add_value(foo, value):

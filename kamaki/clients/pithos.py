@@ -656,7 +656,7 @@ class PithosClient(PithosRestAPI):
         """
         r = self.account_head(until=until)
         if r.status_code == 401:
-            raise ClientError("No authorization")
+            raise ClientError("No authorization", status=401)
         return r.headers
 
     def get_account_quota(self):
