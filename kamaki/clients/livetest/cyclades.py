@@ -690,6 +690,31 @@ class Cyclades(livetest.Generic):
             for term in ('status', 'updated', 'created'):
                 self.assertTrue(term in net.keys())
 
+    def test_list_network_nics(self):
+        """Test list_server_nics"""
+        self.server1 = self._create_server(
+            self.servname1,
+            self.flavorid,
+            self.img)
+        self.network1 = self._create_network(self.netname1)
+        self.network2 = self._create_network(self.netname2)
+        self._wait_for_status(self.server1['id'], 'BUILD')
+        self._wait_for_network(self.network1['id'], 'ACTIVE')
+        self._wait_for_network(self.network2['id'], 'ACTIVE')
+        self.client.connect_server(self.server1['id'], self.network2['id'])
+        self._wait_for_nic(self.network2['id'], self.server1['id'])
+        self._test_0293_list_network_nics()
+
+    def _test_0293_list_network_nics(self):
+        netid1 = self.network1['id']
+        netid2 = self.network2['id']
+        r = self.client.list_network_nics(netid1)
+        expected = []
+        self.assertEqual(r, expected)
+        r = self.client.list_network_nics(netid2)
+        expected = ['nic-%s-1' % self.server1['id']]
+        self.assertEqual(r, expected)
+
     def test_get_network_details(self):
         """Test get_network_details"""
         self.network1 = self._create_network(self.netname1)
