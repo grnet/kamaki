@@ -35,7 +35,7 @@ from unittest import TestCase
 from mock import patch, call, Mock
 
 from kamaki.clients import ClientError
-from kamaki.clients.pithos import PithosClient
+from kamaki.clients.pithos import PithosClient as PC
 from kamaki.clients.astakos import AstakosClient
 from kamaki.clients.connection.kamakicon import KamakiHTTPConnection as C
 
@@ -62,7 +62,7 @@ class Pithos(TestCase):
         headers = {}
         content = json
         status = None
-        status_code = 204
+        status_code = 200
         headers = dict()
 
         def release(self):
@@ -81,38 +81,49 @@ class Pithos(TestCase):
     def setUp(self):
         self.url = 'https://www.example.com/pithos'
         self.token = 'p17h0570k3n'
-        self.client = PithosClient(self.url, self.token)
+        self.client = PC(self.url, self.token)
         self.client.account = user_id
         self.client.container = 'c0nt@1n3r_i'
 
     def tearDown(self):
         self.FR.headers = dict()
+        self.FR.status_code = 200
 
     def test_get_account_info(self):
         self.FR.headers = account_info
+        self.FR.status_code = 204
         with patch.object(C, 'perform_request', return_value=self.FR()):
             r = self.client.get_account_info()
             self.assertEqual(self.client.http_client.url, self.url)
             self.assertEqual(self.client.http_client.path, '/%s' % user_id)
             self.assert_dicts_are_equal(r, account_info)
-            PithosClient.set_param = Mock()
+            PC.set_param = Mock()
             untils = ['date 1', 'date 2', 'date 3']
             for unt in untils:
                 r = self.client.get_account_info(until=unt)
                 self.assert_dicts_are_equal(r, account_info)
             for i in range(len(untils)):
                 self.assertEqual(
-                    PithosClient.set_param.mock_calls[i],
+                    PC.set_param.mock_calls[i],
                     call('until', untils[i], iff=untils[i]))
 
     def test_replace_account_meta(self):
         self.FR.status_code = 202
         metas = dict(k1='v1', k2='v2', k3='v3')
-        PithosClient.set_header = Mock()
+        PC.set_header = Mock()
         with patch.object(C, 'perform_request', return_value=self.FR()):
             self.client.replace_account_meta(metas)
             self.assertEqual(self.client.http_client.url, self.url)
             self.assertEqual(self.client.http_client.path, '/%s' % user_id)
             prfx = 'X-Account-Meta-'
             expected = [call('%s%s' % (prfx, k), v) for k, v in metas.items()]
-            self.assertEqual(PithosClient.set_header.mock_calls, expected)
+            self.assertEqual(PC.set_header.mock_calls, expected)
+
+    def test_del_account_meta(self):
+        keys = ['k1', 'k2', 'k3']
+        with patch.object(PC, 'account_post', return_value=self.FR()) as ap:
+            expected = []
+            for key in keys:
+                self.client.del_account_meta(key)
+                expected.append(call(update=True, metadata={key: ''}))
+            self.assertEqual(ap.mock_calls, expected)
