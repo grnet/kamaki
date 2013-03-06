@@ -162,3 +162,15 @@ class Pithos(TestCase):
             u = 'some date'
             r = self.client.get_container_info(until=u)
             self.assertEqual(ch.mock_calls, [call(until=None), call(until=u)])
+
+    def test_delete_container(self):
+        self.FR.status_code = 204
+        with patch.object(PC, 'delete', return_value=self.FR()) as delete:
+            cont = 's0m3c0n731n3r'
+            self.client.delete_container(cont)
+            self.FR.status_code = 404
+            self.assertRaises(ClientError, self.client.delete_container, cont)
+            self.FR.status_code = 409
+            self.assertRaises(ClientError, self.client.delete_container, cont)
+            acall = call('/%s/%s' % (user_id, cont), success=(204, 404, 409))
+            self.assertEqual(delete.mock_calls, [acall] * 3)

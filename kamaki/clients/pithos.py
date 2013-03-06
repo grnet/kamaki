@@ -784,6 +784,7 @@ class PithosClient(PithosRestAPI):
             r = self.container_head(until=until)
         except ClientError as err:
             err.details.append('for container %s' % self.container)
+            print('Buh?')
             raise err
         return r.headers
 
