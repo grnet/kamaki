@@ -573,6 +573,19 @@ class Cyclades(TestCase):
             self.assertEqual(self.client.http_client.url, self.url)
             self.assertEqual(self.client.http_client.path, '/networks/detail')
 
+    def test_list_network_nics(self):
+        net_id = net_recv['network']['id']
+        self.FR.json = net_recv
+        with patch.object(self.C, 'perform_request', return_value=self.FR()):
+            r = self.client.list_network_nics(net_id)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(
+                self.client.http_client.path,
+                '/networks/%s' % net_id)
+            expected = net_recv['network']['attachments']['values']
+            for i in range(len(r)):
+                self.assert_dicts_are_equal(r[i], expected[i])
+
     def test_get_network_details(self):
         self.FR.json = net_recv
         net_id = net_recv['network']['id']
