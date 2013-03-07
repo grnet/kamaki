@@ -73,10 +73,15 @@ class PithosClient(PithosRestAPI):
     def __init__(self, base_url, token, account=None, container=None):
         super(PithosClient, self).__init__(base_url, token, account, container)
 
-    def purge_container(self):
+    def purge_container(self, container=None):
         """Delete an empty container and destroy associated blocks
         """
-        r = self.container_delete(until=unicode(time()))
+        cnt_back_up = self.container
+        try:
+            self.container = container or cnt_back_up
+            r = self.container_delete(until=unicode(time()))
+        finally:
+            self.container = cnt_back_up
         r.release()
 
     def upload_object_unchunked(
@@ -124,7 +129,8 @@ class PithosClient(PithosRestAPI):
                 msg = '"%s" is not a valid hashmap file' % f.name
                 raise ClientError(msg, 1)
             f = StringIO(data)
-        data = f.read(size) if size is not None else f.read()
+        else:
+            data = f.read(size) if size is not None else f.read()
         r = self.object_put(
             obj,
             data=data,

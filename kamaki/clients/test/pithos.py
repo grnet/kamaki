@@ -33,6 +33,8 @@
 
 from unittest import TestCase
 from mock import patch, call, Mock
+from tempfile import NamedTemporaryFile
+from os import urandom
 
 from kamaki.clients import ClientError
 from kamaki.clients.pithos import PithosClient as PC
@@ -134,6 +136,18 @@ class Pithos(TestCase):
 
     files = []
 
+    def _create_temp_file(self):
+        self.files.append(NamedTemporaryFile())
+        tmpFile = self.files[-1]
+        num_of_blocks = 8
+        file_size = num_of_blocks * 4 * 1024 * 1024
+        print('\n\tCreate tmp file')
+        tmpFile.write(urandom(file_size))
+        tmpFile.flush()
+        tmpFile.seek(0)
+        print('\t\tDone')
+        return tmpFile
+
     def assert_dicts_are_equal(self, d1, d2):
         for k, v in d1.items():
             self.assertTrue(k in d2)
@@ -155,6 +169,8 @@ class Pithos(TestCase):
         self.FR.json = dict()
         for f in self.files:
             f.close()
+
+    #  Pithos+ methods that extend storage API
 
     def test_get_account_info(self):
         self.FR.headers = account_info
@@ -239,20 +255,10 @@ class Pithos(TestCase):
         PC.get_container_info = Mock(return_value=container_info)
         PC.container_post = Mock(return_value=self.FR())
         PC.object_put = Mock(return_value=self.FR())
-        from tempfile import NamedTemporaryFile
-        from os import urandom
-        self.files.append(NamedTemporaryFile())
-        tmpFile = self.files[-1]
-        num_of_blocks = 8
-        file_size = num_of_blocks * 4 * 1024 * 1024
-        print('\n\tCreate tmp file')
-        tmpFile.write(urandom(file_size))
-        tmpFile.flush()
-        tmpFile.seek(0)
-        print('\t\tDone')
+        tmpFile = self._create_temp_file()
         obj = 'objectName'
 
-        # No special args
+        # Without kwargs
         self.client.upload_object(obj, tmpFile)
         self.assertEqual(PC.get_container_info.mock_calls, [call()])
         [call1, call2] = PC.object_put.mock_calls
@@ -539,3 +545,47 @@ class Pithos(TestCase):
                 call('format', 'json'), call('path', path)])
             self.FR.status_code = 404
             self.assertRaises(ClientError, self.client.list_objects)
+
+    #  Pithos+ only methods
+
+    def test_purge_container(self):
+        with patch.object(
+                PC,
+                'container_delete',
+                return_value=self.FR()) as cd:
+            self.client.purge_container()
+            self.assertTrue('until' in cd.mock_calls[-1][2])
+            cont = self.client.container
+            self.client.purge_container('another-container')
+            self.assertEqual(self.client.container, cont)
+
+    def test_upload_object_unchunked(self):
+        tmpFile = self._create_temp_file()
+        obj = 'obj3c7N4m3'
+        expected = dict(
+                success=201,
+                data=8 * 4 * 1024 * 1024,
+                etag='some-etag',
+                content_encoding='some content_encoding',
+                content_type='some content-type',
+                content_disposition='some content_disposition',
+                public=True,
+                permissions=dict(read=['u1', 'g1', 'u2'], write=['u1']))
+        with patch.object(PC, 'object_put', return_value=self.FR()) as put:
+            self.client.upload_object_unchunked(obj, tmpFile)
+            self.assertEqual(put.mock_calls[-1][1], (obj,))
+            self.assertEqual(
+                sorted(put.mock_calls[-1][2].keys()),
+                sorted(expected.keys()))
+            kwargs = dict(expected)
+            kwargs.pop('success')
+            kwargs['size'] = kwargs.pop('data')
+            kwargs['sharing'] = kwargs.pop('permissions')
+            tmpFile.seek(0)
+            self.client.upload_object_unchunked(obj, tmpFile, **kwargs)
+            pmc = put.mock_calls[-1][2]
+            for k, v in expected.items():
+                if k == 'data':
+                    self.assertEqual(len(pmc[k]), v)
+                else:
+                    self.assertEqual(pmc[k], v)
