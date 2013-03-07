@@ -119,6 +119,17 @@ object_list = [
         x_object_hash="0afdf29f71cd53126225c3f54ca",
         x_object_version=17737,
         x_object_modified_by=user_id)]
+object_hashmap = dict(
+    block_hash="sha256", block_size=4194304, bytes=33554432,
+    hashes=[
+        "4988438cc1c0292c085d289649b28cf547ba3db71c6efaac9f2df7e193d4d0af",
+        "b214244aa56df7d1df7c6cac066e7cef268d9c2beb4dcf7ce68af667b0626f91",
+        "17f365f25e0682565ded30576066bb13377a3d306967e4d74e06bb6bbc20f75f",
+        "2524ae208932669fff89adf8a2fc0df3b67736ca0d3aadce7a2ce640f142af37",
+        "5d807a2129d2fcd3c221c3da418ed52af3fc48d0817b62e0bb437acffccd3514",
+        "609de22ce842d997f645fc49d5f14e0e3766dd51a6cbe66383b2bab82c8dfcd0",
+        "3102851ac168c78be70e35ff5178c7b1ebebd589e5106d565ca1094d1ca8ff59",
+        "bfe306dd24e92a8d85caf7055643f250fd319e8c4cdd4755ddabbf3ff97e83c7"])
 
 
 class Pithos(TestCase):
@@ -167,6 +178,7 @@ class Pithos(TestCase):
         self.FR.headers = dict()
         self.FR.status_code = 200
         self.FR.json = dict()
+        self.FR.content = self.FR.json
         for f in self.files:
             f.close()
 
@@ -614,3 +626,92 @@ class Pithos(TestCase):
             expected.update(kwargs)
             expected['permissions'] = expected.pop('sharing')
             self.assertEqual(put.mock_calls[-1], call(obj, **expected))
+
+    def test_download_object(self):
+        PC.get_object_hashmap = Mock(return_value=object_hashmap)
+        tmpFile = self._create_temp_file()
+        self.FR.content = tmpFile.read(4 * 1024 * 1024)
+        tmpFile = self._create_temp_file()
+        PC.object_get = Mock(return_value=self.FR())
+        GET = PC.object_get
+        obj = 'obj3c7N4m3'
+        num_of_blocks = len(object_hashmap['hashes'])
+
+        kwargs = dict(
+            version='version',
+            resume=True,
+            range_str='10-20',
+            if_match='if and only if',
+            if_none_match='if and only not',
+            if_modified_since='what if not?',
+            if_unmodified_since='this happens if not!',
+            async_headers=dict(Range='bytes=0-88888888'))
+
+        self.client.download_object(obj, tmpFile)
+        self.assertEqual(len(GET.mock_calls), num_of_blocks)
+        self.assertEqual(GET.mock_calls[-1][1], (obj,))
+        for k, v in kwargs.items():
+            if k == 'async_headers':
+                self.assertTrue('Range' in GET.mock_calls[-1][2][k])
+            elif k in ('resume', 'range_str'):
+                continue
+            else:
+                self.assertEqual(GET.mock_calls[-1][2][k], None)
+
+        #  Check ranges are consecutive
+        starts = []
+        ends = []
+        for c in GET.mock_calls:
+            rng_str = c[2]['async_headers']['Range']
+            (start, rng_str) = rng_str.split('=')
+            (start, end) = rng_str.split('-')
+            starts.append(start)
+            ends.append(end)
+        ends = sorted(ends)
+        for i, start in enumerate(sorted(starts)):
+            if i:
+                int(ends[i - 1]) == int(start) - 1
+
+        #  With progress bars
+        try:
+            from progress.bar import ShadyBar
+            dl_bar = ShadyBar('Mock dl')
+        except ImportError:
+            dl_bar = None
+
+        if dl_bar:
+
+            def blck_gen(n):
+                for i in dl_bar.iter(range(n)):
+                    yield
+                yield
+
+            tmpFile.seek(0)
+            self.client.download_object(obj, tmpFile, download_cb=blck_gen)
+            self.assertEqual(len(GET.mock_calls), 2 * num_of_blocks)
+
+        tmpFile.seek(0)
+        kwargs.pop('async_headers')
+        kwargs.pop('resume')
+        self.client.download_object(obj, tmpFile, **kwargs)
+        for k, v in kwargs.items():
+            if k == 'range_str':
+                self.assertEqual(
+                    GET.mock_calls[-1][2]['data_range'],
+                    'bytes=%s' % v)
+            else:
+                self.assertEqual(GET.mock_calls[-1][2][k], v)
+
+        #  ALl options on no tty
+
+        def foo():
+            return True
+
+        tmpFile.seek(0)
+        tmpFile.isatty = foo
+        self.client.download_object(obj, tmpFile, **kwargs)
+        for k, v in kwargs.items():
+            if k == 'range_str':
+                self.assertTrue('data_range' in GET.mock_calls[-1][2])
+            else:
+                self.assertEqual(GET.mock_calls[-1][2][k], v)
