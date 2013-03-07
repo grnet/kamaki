@@ -589,3 +589,28 @@ class Pithos(TestCase):
                     self.assertEqual(len(pmc[k]), v)
                 else:
                     self.assertEqual(pmc[k], v)
+            self.assertRaises(
+                ClientError,
+                self.client.upload_object_unchunked,
+                obj, tmpFile, withHashFile=True)
+
+    def test_create_object_by_manifestation(self):
+        obj = 'obj3c7N4m3'
+        manifest = '%s/%s' % (self.client.container, obj)
+        kwargs = dict(
+                etag='some-etag',
+                content_encoding='some content_encoding',
+                content_type='some content-type',
+                content_disposition='some content_disposition',
+                public=True,
+                sharing=dict(read=['u1', 'g1', 'u2'], write=['u1']))
+        with patch.object(PC, 'object_put', return_value=self.FR()) as put:
+            self.client.create_object_by_manifestation(obj)
+            expected = dict(content_length=0, manifest=manifest)
+            for k in kwargs:
+                expected['permissions' if k == 'sharing' else k] = None
+            self.assertEqual(put.mock_calls[-1], call(obj, **expected))
+            self.client.create_object_by_manifestation(obj, **kwargs)
+            expected.update(kwargs)
+            expected['permissions'] = expected.pop('sharing')
+            self.assertEqual(put.mock_calls[-1], call(obj, **expected))
