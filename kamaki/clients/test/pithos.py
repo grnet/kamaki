@@ -390,3 +390,12 @@ class Pithos(TestCase):
                 return_value=object_info):
             r = self.client.get_object_meta(obj)
             self.assert_dicts_are_equal(r, expected)
+
+    def test_del_object_meta(self):
+        obj = 'r4nd0m0bj3c7'
+        metakey = '50m3m3t4k3y'
+        with patch.object(PC, 'object_post', return_value=self.FR()) as post:
+            self.client.del_object_meta(obj, metakey)
+            self.assertEqual(
+                post.mock_calls,
+                [call(obj, update=True, metadata={metakey: ''})])
