@@ -66,6 +66,19 @@ container_info = {
     'x-container-object-meta': '',
     'x-container-policy-quota': 53687091200,
     'x-container-policy-versioning': 'auto'}
+object_info = {
+    'content-language': 'en-us',
+    'content-length': 254965,
+    'content-type': 'application/octet-stream',
+    'date': 'Thu, 07 Mar 2013 13:27:43 GMT',
+    'etag': '',
+    'last-modified': 'Mon, 04 Mar 2013 18:22:31 GMT',
+    'server': 'gunicorn/0.14.5',
+    'vary': 'Accept-Language',
+    'x-object-hash': 'obj3c7h45h1s0bj3c7h45h411r34dY',
+    'x-object-uuid': 'd0c747ca-34bd-49e0-8e98-1d07d8b0cbc7',
+    'x-object-version': '525996',
+    'x-object-version-timestamp': 'Mon, 04 Mar 2013 18:22:31 GMT'}
 container_list = [
     dict(
         count=2,
@@ -343,3 +356,23 @@ class Pithos(TestCase):
             self.client.create_directory(obj)
             self.assertEqual(PC.set_header.mock_calls, exp_shd)
             self.assertEqual(put.mock_calls, exp_put)
+
+    def test_get_object_info(self):
+        self.FR.headers = object_info
+        obj = 'r4nd0m0bj3c7'
+        version = 'v3r510n'
+        with patch.object(PC, 'object_head', return_value=self.FR()) as head:
+            r = self.client.get_object_info(obj)
+            self.assertEqual(r, object_info)
+            r = self.client.get_object_info(obj, version=version)
+            self.assertEqual(head.mock_calls, [
+                call(obj, version=None),
+                call(obj, version=version)])
+        with patch.object(
+                PC,
+                'object_head',
+                side_effect=ClientError('Obj not found', 404)):
+            self.assertRaises(
+                ClientError,
+                self.client.get_object_info,
+                obj, version=version)

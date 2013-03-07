@@ -900,7 +900,7 @@ class PithosClient(PithosRestAPI):
             return r.headers
         except ClientError as ce:
             if ce.status == 404:
-                raise ClientError('Object not found', status=404)
+                raise ClientError('Object %s not found' % obj, status=404)
             raise
 
     def get_object_meta(self, obj, version=None):
