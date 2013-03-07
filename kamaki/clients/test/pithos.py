@@ -78,7 +78,9 @@ object_info = {
     'x-object-hash': 'obj3c7h45h1s0bj3c7h45h411r34dY',
     'x-object-uuid': 'd0c747ca-34bd-49e0-8e98-1d07d8b0cbc7',
     'x-object-version': '525996',
-    'x-object-version-timestamp': 'Mon, 04 Mar 2013 18:22:31 GMT'}
+    'x-object-version-timestamp': 'Mon, 04 Mar 2013 18:22:31 GMT',
+    'x-object-meta-k1': 'v1',
+    'x-object-meta-k2': 'v2'}
 container_list = [
     dict(
         count=2,
@@ -376,3 +378,15 @@ class Pithos(TestCase):
                 ClientError,
                 self.client.get_object_info,
                 obj, version=version)
+
+    def test_get_object_meta(self):
+        obj = 'r4nd0m0bj3c7'
+        expected = dict()
+        for k, v in object_info.items():
+            expected[k] = v
+        with patch.object(
+                PC,
+                'get_object_info',
+                return_value=object_info):
+            r = self.client.get_object_meta(obj)
+            self.assert_dicts_are_equal(r, expected)
