@@ -319,7 +319,7 @@ class StorageClient(Client):
         self._assert_container()
         path = path4url(self.account, self.container)
         self.set_param('format', 'json')
-        self.set_param('path', 'path_prefix')
+        self.set_param('path', path_prefix)
         r = self.get(path, success=(200, 204, 404))
         if r.status_code == 404:
             raise ClientError(

@@ -523,3 +523,19 @@ class Pithos(TestCase):
             self.assertEqual(self.client.list_objects(), [])
             self.FR.status_code = 404
             self.assertRaises(ClientError, self.client.list_objects)
+
+    def test_list_objects_in_path(self):
+        self.FR.json = object_list
+        path = '/some/awsome/path'
+        acc = self.client.account
+        cont = self.client.container
+        PC.set_param = Mock()
+        SP = PC.set_param
+        with patch.object(PC, 'get', return_value=self.FR()) as get:
+            self.client.list_objects_in_path(path)
+            self.assertEqual(get.mock_calls, [
+                call('/%s/%s' % (acc, cont), success=(200, 204, 404))])
+            self.assertEqual(SP.mock_calls, [
+                call('format', 'json'), call('path', path)])
+            self.FR.status_code = 404
+            self.assertRaises(ClientError, self.client.list_objects)
