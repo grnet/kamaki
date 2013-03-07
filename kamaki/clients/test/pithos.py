@@ -412,3 +412,33 @@ class Pithos(TestCase):
             prfx = 'X-Object-Meta-'
             expected = [call('%s%s' % (prfx, k), v) for k, v in metas.items()]
             self.assertEqual(PC.set_header.mock_calls, expected)
+
+    def test_copy_object(self):
+        src_cont = 'src-c0nt41n3r'
+        src_obj = 'src-0bj'
+        dst_cont = 'dst-c0nt41n3r'
+        dst_obj = 'dst-0bj'
+        expected = call(
+            src_obj,
+            content_length=0,
+            source_account=None,
+            success=201,
+            copy_from='/%s/%s' % (src_cont, src_obj),
+            delimiter=None,
+            content_type=None,
+            source_version=None,
+            public=False)
+        with patch.object(PC, 'object_put', return_value=self.FR()) as put:
+            self.client.copy_object(src_cont, src_obj, dst_cont)
+            self.assertEqual(put.mock_calls[-1], expected)
+            self.client.copy_object(src_cont, src_obj, dst_cont, dst_obj)
+            self.assertEqual(put.mock_calls[-1][1], (dst_obj,))
+            kwargs = dict(
+                source_version='src-v3r510n',
+                source_account='src-4cc0un7',
+                public=True,
+                content_type='c0n73n7Typ3',
+                delimiter='5')
+            self.client.copy_object(src_cont, src_obj, dst_cont, **kwargs)
+            for k, v in kwargs.items():
+                self.assertEqual(v, put.mock_calls[-1][2][k])

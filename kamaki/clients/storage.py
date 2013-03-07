@@ -234,19 +234,6 @@ class StorageClient(Client):
         r = self.post(path, success=202)
         r.release()
 
-    def get_object(self, obj):
-        """
-        :param obj: (str)
-
-        :returns: (int, int) # of objects, size in bytes
-        """
-        self._assert_container()
-        path = path4url(self.account, self.container, obj)
-        r = self.get(path, success=200)
-        size = int(r.headers['content-length'])
-        cnt = r.content
-        return cnt, size
-
     def copy_object(
             self, src_container, src_object, dst_container,
             dst_object=False):

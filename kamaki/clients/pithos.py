@@ -1067,7 +1067,7 @@ class PithosClient(PithosRestAPI):
 
     def copy_object(
             self, src_container, src_object, dst_container,
-            dst_object=False,
+            dst_object=None,
             source_version=None,
             source_account=None,
             public=False,
@@ -1094,10 +1094,9 @@ class PithosClient(PithosRestAPI):
         """
         self._assert_account()
         self.container = dst_container
-        dst_object = dst_object or src_object
         src_path = path4url(src_container, src_object)
         r = self.object_put(
-            dst_object,
+            dst_object or src_object,
             success=201,
             copy_from=src_path,
             content_length=0,
