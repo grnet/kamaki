@@ -330,7 +330,7 @@ class Pithos(TestCase):
             self.assertEqual(OP.mock_calls[-2][2][arg], val)
 
     def test_create_object(self):
-        PC.set_header = Mock(return_value=None)
+        PC.set_header = Mock()
         obj = 'r4nd0m0bj3c7'
         cont = self.client.container
         ctype = 'c0n73n7/typ3'
@@ -347,7 +347,7 @@ class Pithos(TestCase):
             self.assertEqual(put.mock_calls, exp_put)
 
     def test_create_directory(self):
-        PC.set_header = Mock(return_value=None)
+        PC.set_header = Mock()
         obj = 'r4nd0m0bj3c7'
         cont = self.client.container
         exp_shd = [
@@ -399,3 +399,16 @@ class Pithos(TestCase):
             self.assertEqual(
                 post.mock_calls,
                 [call(obj, update=True, metadata={metakey: ''})])
+
+    def test_replace_object_meta(self):
+        PC.set_header = Mock()
+        metas = dict(k1='new1', k2='new2', k3='new3')
+        cont = self.client.container
+        with patch.object(PC, 'post', return_value=self.FR()) as post:
+            self.client.replace_object_meta(metas)
+            self.assertEqual(post.mock_calls, [
+                call('/%s/%s' % (user_id, cont),
+                success=202)])
+            prfx = 'X-Object-Meta-'
+            expected = [call('%s%s' % (prfx, k), v) for k, v in metas.items()]
+            self.assertEqual(PC.set_header.mock_calls, expected)

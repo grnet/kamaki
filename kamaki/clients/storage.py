@@ -229,7 +229,7 @@ class StorageClient(Client):
         """
         self._assert_container()
         path = path4url(self.account, self.container)
-        for key, val in metapairs:
+        for key, val in metapairs.items():
             self.set_header('X-Object-Meta-' + key, val)
         r = self.post(path, success=202)
         r.release()
