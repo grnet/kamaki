@@ -330,3 +330,16 @@ class Pithos(TestCase):
                 content_type=ctype, content_length=42)
             self.assertEqual(PC.set_header.mock_calls, exp_shd)
             self.assertEqual(put.mock_calls, exp_put)
+
+    def test_create_directory(self):
+        PC.set_header = Mock(return_value=None)
+        obj = 'r4nd0m0bj3c7'
+        cont = self.client.container
+        exp_shd = [
+            call('Content-Type', 'application/directory'),
+            call('Content-length', '0')]
+        exp_put = [call('/%s/%s/%s' % (user_id, cont, obj), success=201)]
+        with patch.object(PC, 'put', return_value=self.FR()) as put:
+            self.client.create_directory(obj)
+            self.assertEqual(PC.set_header.mock_calls, exp_shd)
+            self.assertEqual(put.mock_calls, exp_put)
