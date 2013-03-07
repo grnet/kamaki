@@ -313,3 +313,20 @@ class Pithos(TestCase):
         self.client.upload_object(obj, tmpFile, **kwargs)
         for arg, val in kwargs.items():
             self.assertEqual(OP.mock_calls[-2][2][arg], val)
+
+    def test_create_object(self):
+        PC.set_header = Mock(return_value=None)
+        obj = 'r4nd0m0bj3c7'
+        cont = self.client.container
+        ctype = 'c0n73n7/typ3'
+        exp_shd = [
+            call('Content-Type', 'application/octet-stream'),
+            call('Content-length', '0'),
+            call('Content-Type', ctype), call('Content-length', '42')]
+        exp_put = [call('/%s/%s/%s' % (user_id, cont, obj), success=201)] * 2
+        with patch.object(PC, 'put', return_value=self.FR()) as put:
+            self.client.create_object(obj)
+            self.client.create_object(obj,
+                content_type=ctype, content_length=42)
+            self.assertEqual(PC.set_header.mock_calls, exp_shd)
+            self.assertEqual(put.mock_calls, exp_put)
