@@ -94,6 +94,29 @@ container_list = [
         bytes=0,
         name="trash",
         x_container_policy=dict(quota="21474836480", versioning="auto"))]
+object_list = [
+    dict(hash="",
+        name="The_Secret_Garden.zip",
+        x_object_public="/public/wdp9p",
+        bytes=203304947,
+        x_object_version_timestamp="1360237915.7027509",
+        x_object_uuid="s0m3uu1df0r0bj0n3",
+        last_modified="2013-02-07T11:51:55.702751+00:00",
+        content_type="application/octet-stream",
+        x_object_hash="0afdf29f71cd53126225c3f54ca",
+        x_object_version=17737,
+        x_object_modified_by=user_id),
+    dict(hash="",
+        name="The_Revealed_Garden.zip",
+        x_object_public="/public/wpd7p",
+        bytes=20330947,
+        x_object_version_timestamp="13602915.7027509",
+        x_object_uuid="s0m3uu1df0r0bj70w",
+        last_modified="2013-02-07T11:51:55.702751+00:00",
+        content_type="application/octet-stream",
+        x_object_hash="0afdf29f71cd53126225c3f54ca",
+        x_object_version=17737,
+        x_object_modified_by=user_id)]
 
 
 class Pithos(TestCase):
@@ -472,3 +495,31 @@ class Pithos(TestCase):
             self.client.move_object(src_cont, src_obj, dst_cont, **kwargs)
             for k, v in kwargs.items():
                 self.assertEqual(v, put.mock_calls[-1][2][k])
+
+    def test_delete_object(self):
+        obj = 's0m30bj3c7'
+        cont = self.client.container
+        with patch.object(PC, 'delete', return_value=self.FR()) as delete:
+            self.client.delete_object(obj)
+            self.assertEqual(delete.mock_calls, [
+                call('/%s/%s/%s' % (user_id, cont, obj), success=(204, 404))])
+            self.FR.status_code = 404
+            self.assertRaises(ClientError, self.client.delete_object, obj)
+
+    def test_list_objects(self):
+        self.FR.json = object_list
+        acc = self.client.account
+        cont = self.client.container
+        PC.set_param = Mock()
+        SP = PC.set_param
+        with patch.object(PC, 'get', return_value=self.FR()) as get:
+            r = self.client.list_objects()
+            for i in range(len(r)):
+                self.assert_dicts_are_equal(r[i], object_list[i])
+            self.assertEqual(get.mock_calls, [
+                call('/%s/%s' % (acc, cont), success=(200, 204, 304, 404))])
+            self.assertEqual(SP.mock_calls, [call('format', 'json')])
+            self.FR.status_code = 304
+            self.assertEqual(self.client.list_objects(), [])
+            self.FR.status_code = 404
+            self.assertRaises(ClientError, self.client.list_objects)

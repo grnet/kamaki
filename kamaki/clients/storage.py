@@ -306,8 +306,7 @@ class StorageClient(Client):
                 r.status_code)
         elif r.status_code == 304:
             return []
-        reply = r.json
-        return reply
+        return r.json
 
     def list_objects_in_path(self, path_prefix):
         """
