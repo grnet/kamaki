@@ -772,15 +772,31 @@ class Pithos(TestCase):
             self.assertEqual(r[key], account_info[key])
 
     def test_get_account_meta(self):
-        key = 'x-account-meta'
+        key = 'x-account-meta-'
         with patch.object(PC, 'get_account_info', return_value=account_info):
             r = self.client.get_account_meta()
-            self.assertFalse(key in r)
+            keys = [k for k in r if k.startswith(key)]
+            self.assertFalse(keys)
         acc_info = dict(account_info)
-        acc_info['x-account-meta-k1'] = 'v1'
-        acc_info['x-account-meta-k2'] = 'v2'
-        acc_info['x-account-meta-k3'] = 'v3'
+        acc_info['%sk1' % key] = 'v1'
+        acc_info['%sk2' % key] = 'v2'
+        acc_info['%sk3' % key] = 'v3'
         with patch.object(PC, 'get_account_info', return_value=acc_info):
             r = self.client.get_account_meta()
-            for k in [k for k in acc_info if k.startswith('X-Account-Meta-')]:
-                print(r[k], acc_info[k])
+            for k in [k for k in acc_info if k.startswith(key)]:
+                self.assertEqual(r[k], acc_info[k])
+
+    def test_get_account_group(self):
+        key = 'x-account-group-'
+        with patch.object(PC, 'get_account_info', return_value=account_info):
+            r = self.client.get_account_group()
+            keys = [k for k in r if k.startswith(key)]
+            self.assertFalse(keys)
+        acc_info = dict(account_info)
+        acc_info['%sk1' % key] = 'g1'
+        acc_info['%sk2' % key] = 'g2'
+        acc_info['%sk3' % key] = 'g3'
+        with patch.object(PC, 'get_account_info', return_value=acc_info):
+            r = self.client.get_account_group()
+            for k in [k for k in acc_info if k.startswith(key)]:
+                self.assertEqual(r[k], acc_info[k])
