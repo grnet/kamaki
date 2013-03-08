@@ -755,16 +755,20 @@ class PithosClient(PithosRestAPI):
                 'Container "%s" is not empty' % self.container,
                 r.status_code)
 
-    def get_container_versioning(self, container):
+    def get_container_versioning(self, container=None):
         """
         :param container: (str)
 
         :returns: (dict)
         """
-        self.container = container
-        return filter_in(
-            self.get_container_info(),
-            'X-Container-Policy-Versioning')
+        cnt_back_up = self.container
+        try:
+            self.container = container or cnt_back_up
+            return filter_in(
+                self.get_container_info(),
+                'X-Container-Policy-Versioning')
+        finally:
+            self.container = cnt_back_up
 
     def get_container_quota(self, container):
         """

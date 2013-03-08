@@ -839,3 +839,16 @@ class Pithos(TestCase):
             for status_code in (404, 409):
                 self.FR.status_code = status_code
                 self.assertRaises(ClientError, self.client.del_container)
+
+    def test_get_container_versioning(self):
+        key = 'x-container-policy-versioning'
+        cont = 'c0n7-417'
+        with patch.object(
+                PC,
+                'get_container_info',
+                return_value=container_info) as gci:
+            for container in (None, cont):
+                r = self.client.get_container_versioning(container=container)
+                self.assertEqual(r[key], container_info[key])
+                self.assertEqual(gci.mock_calls[-1], call())
+
