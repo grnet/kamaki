@@ -32,7 +32,7 @@
 # or implied, of GRNET S.A.
 
 from unittest import TestCase
-from mock import patch, call, Mock
+from mock import patch, call
 from tempfile import NamedTemporaryFile
 from os import urandom
 
@@ -132,18 +132,19 @@ object_hashmap = dict(
         "bfe306dd24e92a8d85caf7055643f250fd319e8c4cdd4755ddabbf3ff97e83c7"])
 
 
+class FR(object):
+    """FR stands for Fake Response"""
+    json = dict()
+    headers = dict()
+    content = json
+    status = None
+    status_code = 200
+
+    def release(self):
+        pass
+
+
 class Pithos(TestCase):
-
-    class FR(object):
-        """FR stands for Fake Response"""
-        json = dict()
-        headers = dict()
-        content = json
-        status = None
-        status_code = 200
-
-        def release(self):
-            pass
 
     files = []
 
@@ -174,40 +175,40 @@ class Pithos(TestCase):
         self.client.container = 'c0nt@1n3r_i'
 
     def tearDown(self):
-        self.FR.headers = dict()
-        self.FR.status_code = 200
-        self.FR.json = dict()
-        self.FR.content = self.FR.json
+        FR.headers = dict()
+        FR.status_code = 200
+        FR.json = dict()
+        FR.content = FR.json
         for f in self.files:
             f.close()
 
     #  Pithos+ methods that extend storage API
 
-    def test_get_account_info(self):
-        self.FR.headers = account_info
-        self.FR.status_code = 204
-        with patch.object(C, 'perform_request', return_value=self.FR()):
+    @patch('kamaki.clients.Client.set_param')
+    def test_get_account_info(self, SP):
+        FR.headers = account_info
+        FR.status_code = 204
+        with patch.object(C, 'perform_request', return_value=FR()):
             r = self.client.get_account_info()
             self.assertEqual(self.client.http_client.url, self.url)
             self.assertEqual(self.client.http_client.path, '/%s' % user_id)
             self.assert_dicts_are_equal(r, account_info)
-            PC.set_param = Mock()
             untils = ['date 1', 'date 2', 'date 3']
             for unt in untils:
                 r = self.client.get_account_info(until=unt)
                 self.assert_dicts_are_equal(r, account_info)
             for i in range(len(untils)):
                 self.assertEqual(
-                    PC.set_param.mock_calls[i],
+                    PC.set_param.mock_calls[i + 1],
                     call('until', untils[i], iff=untils[i]))
-            self.FR.status_code = 401
+            FR.status_code = 401
             self.assertRaises(ClientError, self.client.get_account_info)
 
-    def test_replace_account_meta(self):
-        self.FR.status_code = 202
+    @patch('kamaki.clients.Client.set_header')
+    def test_replace_account_meta(self, SH):
+        FR.status_code = 202
         metas = dict(k1='v1', k2='v2', k3='v3')
-        PC.set_header = Mock()
-        with patch.object(C, 'perform_request', return_value=self.FR()):
+        with patch.object(C, 'perform_request', return_value=FR()):
             self.client.replace_account_meta(metas)
             self.assertEqual(self.client.http_client.url, self.url)
             self.assertEqual(self.client.http_client.path, '/%s' % user_id)
@@ -217,7 +218,7 @@ class Pithos(TestCase):
 
     def test_del_account_meta(self):
         keys = ['k1', 'k2', 'k3']
-        with patch.object(PC, 'account_post', return_value=self.FR()) as ap:
+        with patch.object(PC, 'account_post', return_value=FR()) as ap:
             expected = []
             for key in keys:
                 self.client.del_account_meta(key)
@@ -225,18 +226,18 @@ class Pithos(TestCase):
             self.assertEqual(ap.mock_calls, expected)
 
     def test_create_container(self):
-        self.FR.status_code = 201
-        with patch.object(PC, 'put', return_value=self.FR()) as put:
+        FR.status_code = 201
+        with patch.object(PC, 'put', return_value=FR()) as put:
             cont = 's0m3c0n731n3r'
             self.client.create_container(cont)
             expected = [call('/%s/%s' % (user_id, cont), success=(201, 202))]
             self.assertEqual(put.mock_calls, expected)
-            self.FR.status_code = 202
+            FR.status_code = 202
             self.assertRaises(ClientError, self.client.create_container, cont)
 
     def test_get_container_info(self):
-        self.FR.headers = container_info
-        with patch.object(PC, 'container_head', return_value=self.FR()) as ch:
+        FR.headers = container_info
+        with patch.object(PC, 'container_head', return_value=FR()) as ch:
             r = self.client.get_container_info()
             self.assert_dicts_are_equal(r, container_info)
             u = 'some date'
@@ -244,28 +245,34 @@ class Pithos(TestCase):
             self.assertEqual(ch.mock_calls, [call(until=None), call(until=u)])
 
     def test_delete_container(self):
-        self.FR.status_code = 204
-        with patch.object(PC, 'delete', return_value=self.FR()) as delete:
+        FR.status_code = 204
+        with patch.object(PC, 'delete', return_value=FR()) as delete:
             cont = 's0m3c0n731n3r'
             self.client.delete_container(cont)
-            self.FR.status_code = 404
+            FR.status_code = 404
             self.assertRaises(ClientError, self.client.delete_container, cont)
-            self.FR.status_code = 409
+            FR.status_code = 409
             self.assertRaises(ClientError, self.client.delete_container, cont)
             acall = call('/%s/%s' % (user_id, cont), success=(204, 404, 409))
             self.assertEqual(delete.mock_calls, [acall] * 3)
 
     def test_list_containers(self):
-        self.FR.json = container_list
-        with patch.object(PC, 'account_get', return_value=self.FR()):
+        FR.json = container_list
+        with patch.object(PC, 'account_get', return_value=FR()):
             r = self.client.list_containers()
             for i in range(len(r)):
                 self.assert_dicts_are_equal(r[i], container_list[i])
 
-    def test_upload_object(self):
-        PC.get_container_info = Mock(return_value=container_info)
-        PC.container_post = Mock(return_value=self.FR())
-        PC.object_put = Mock(return_value=self.FR())
+    @patch(
+        'kamaki.clients.pithos.PithosClient.get_container_info',
+        return_value=container_info)
+    @patch(
+        'kamaki.clients.pithos.PithosClient.container_post',
+        return_value=FR())
+    @patch(
+        'kamaki.clients.pithos.PithosClient.object_put',
+        return_value=FR())
+    def test_upload_object(self, CI, CP, OP):
         num_of_blocks = 8
         tmpFile = self._create_temp_file(num_of_blocks)
 
@@ -369,8 +376,8 @@ class Pithos(TestCase):
         for arg, val in kwargs.items():
             self.assertEqual(OP.mock_calls[-2][2][arg], val)
 
-    def test_create_object(self):
-        PC.set_header = Mock()
+    @patch('kamaki.clients.Client.set_header')
+    def test_create_object(self, SH):
         cont = self.client.container
         ctype = 'c0n73n7/typ3'
         exp_shd = [
@@ -378,29 +385,29 @@ class Pithos(TestCase):
             call('Content-length', '0'),
             call('Content-Type', ctype), call('Content-length', '42')]
         exp_put = [call('/%s/%s/%s' % (user_id, cont, obj), success=201)] * 2
-        with patch.object(PC, 'put', return_value=self.FR()) as put:
+        with patch.object(PC, 'put', return_value=FR()) as put:
             self.client.create_object(obj)
             self.client.create_object(obj,
                 content_type=ctype, content_length=42)
             self.assertEqual(PC.set_header.mock_calls, exp_shd)
             self.assertEqual(put.mock_calls, exp_put)
 
-    def test_create_directory(self):
-        PC.set_header = Mock()
+    @patch('kamaki.clients.Client.set_header')
+    def test_create_directory(self, SH):
         cont = self.client.container
         exp_shd = [
             call('Content-Type', 'application/directory'),
             call('Content-length', '0')]
         exp_put = [call('/%s/%s/%s' % (user_id, cont, obj), success=201)]
-        with patch.object(PC, 'put', return_value=self.FR()) as put:
+        with patch.object(PC, 'put', return_value=FR()) as put:
             self.client.create_directory(obj)
             self.assertEqual(PC.set_header.mock_calls, exp_shd)
             self.assertEqual(put.mock_calls, exp_put)
 
     def test_get_object_info(self):
-        self.FR.headers = object_info
+        FR.headers = object_info
         version = 'v3r510n'
-        with patch.object(PC, 'object_head', return_value=self.FR()) as head:
+        with patch.object(PC, 'object_head', return_value=FR()) as head:
             r = self.client.get_object_info(obj)
             self.assertEqual(r, object_info)
             r = self.client.get_object_info(obj, version=version)
@@ -429,17 +436,17 @@ class Pithos(TestCase):
 
     def test_del_object_meta(self):
         metakey = '50m3m3t4k3y'
-        with patch.object(PC, 'object_post', return_value=self.FR()) as post:
+        with patch.object(PC, 'object_post', return_value=FR()) as post:
             self.client.del_object_meta(obj, metakey)
             self.assertEqual(
                 post.mock_calls,
                 [call(obj, update=True, metadata={metakey: ''})])
 
-    def test_replace_object_meta(self):
-        PC.set_header = Mock()
+    @patch('kamaki.clients.Client.set_header')
+    def test_replace_object_meta(self, SH):
         metas = dict(k1='new1', k2='new2', k3='new3')
         cont = self.client.container
-        with patch.object(PC, 'post', return_value=self.FR()) as post:
+        with patch.object(PC, 'post', return_value=FR()) as post:
             self.client.replace_object_meta(metas)
             self.assertEqual(post.mock_calls, [
                 call('/%s/%s' % (user_id, cont),
@@ -463,7 +470,7 @@ class Pithos(TestCase):
             content_type=None,
             source_version=None,
             public=False)
-        with patch.object(PC, 'object_put', return_value=self.FR()) as put:
+        with patch.object(PC, 'object_put', return_value=FR()) as put:
             self.client.copy_object(src_cont, src_obj, dst_cont)
             self.assertEqual(put.mock_calls[-1], expected)
             self.client.copy_object(src_cont, src_obj, dst_cont, dst_obj)
@@ -493,7 +500,7 @@ class Pithos(TestCase):
             content_type=None,
             source_version=None,
             public=False)
-        with patch.object(PC, 'object_put', return_value=self.FR()) as put:
+        with patch.object(PC, 'object_put', return_value=FR()) as put:
             self.client.move_object(src_cont, src_obj, dst_cont)
             self.assertEqual(put.mock_calls[-1], expected)
             self.client.move_object(src_cont, src_obj, dst_cont, dst_obj)
@@ -510,45 +517,45 @@ class Pithos(TestCase):
 
     def test_delete_object(self):
         cont = self.client.container
-        with patch.object(PC, 'delete', return_value=self.FR()) as delete:
+        with patch.object(PC, 'delete', return_value=FR()) as delete:
             self.client.delete_object(obj)
             self.assertEqual(delete.mock_calls, [
                 call('/%s/%s/%s' % (user_id, cont, obj), success=(204, 404))])
-            self.FR.status_code = 404
+            FR.status_code = 404
             self.assertRaises(ClientError, self.client.delete_object, obj)
 
-    def test_list_objects(self):
-        self.FR.json = object_list
+    @patch('kamaki.clients.Client.set_param')
+    def test_list_objects(self, SP):
+        FR.json = object_list
         acc = self.client.account
         cont = self.client.container
-        PC.set_param = Mock()
         SP = PC.set_param
-        with patch.object(PC, 'get', return_value=self.FR()) as get:
+        with patch.object(PC, 'get', return_value=FR()) as get:
             r = self.client.list_objects()
             for i in range(len(r)):
                 self.assert_dicts_are_equal(r[i], object_list[i])
             self.assertEqual(get.mock_calls, [
                 call('/%s/%s' % (acc, cont), success=(200, 204, 304, 404))])
             self.assertEqual(SP.mock_calls, [call('format', 'json')])
-            self.FR.status_code = 304
+            FR.status_code = 304
             self.assertEqual(self.client.list_objects(), [])
-            self.FR.status_code = 404
+            FR.status_code = 404
             self.assertRaises(ClientError, self.client.list_objects)
 
-    def test_list_objects_in_path(self):
-        self.FR.json = object_list
+    @patch('kamaki.clients.Client.set_param')
+    def test_list_objects_in_path(self, SP):
+        FR.json = object_list
         path = '/some/awsome/path'
         acc = self.client.account
         cont = self.client.container
-        PC.set_param = Mock()
         SP = PC.set_param
-        with patch.object(PC, 'get', return_value=self.FR()) as get:
+        with patch.object(PC, 'get', return_value=FR()) as get:
             self.client.list_objects_in_path(path)
             self.assertEqual(get.mock_calls, [
                 call('/%s/%s' % (acc, cont), success=(200, 204, 404))])
             self.assertEqual(SP.mock_calls, [
                 call('format', 'json'), call('path', path)])
-            self.FR.status_code = 404
+            FR.status_code = 404
             self.assertRaises(ClientError, self.client.list_objects)
 
     #  Pithos+ only methods
@@ -557,7 +564,7 @@ class Pithos(TestCase):
         with patch.object(
                 PC,
                 'container_delete',
-                return_value=self.FR()) as cd:
+                return_value=FR()) as cd:
             self.client.purge_container()
             self.assertTrue('until' in cd.mock_calls[-1][2])
             cont = self.client.container
@@ -576,7 +583,7 @@ class Pithos(TestCase):
                 content_disposition='some content_disposition',
                 public=True,
                 permissions=dict(read=['u1', 'g1', 'u2'], write=['u1']))
-        with patch.object(PC, 'object_put', return_value=self.FR()) as put:
+        with patch.object(PC, 'object_put', return_value=FR()) as put:
             self.client.upload_object_unchunked(obj, tmpFile)
             self.assertEqual(put.mock_calls[-1][1], (obj,))
             self.assertEqual(
@@ -608,7 +615,7 @@ class Pithos(TestCase):
                 content_disposition='some content_disposition',
                 public=True,
                 sharing=dict(read=['u1', 'g1', 'u2'], write=['u1']))
-        with patch.object(PC, 'object_put', return_value=self.FR()) as put:
+        with patch.object(PC, 'object_put', return_value=FR()) as put:
             self.client.create_object_by_manifestation(obj)
             expected = dict(content_length=0, manifest=manifest)
             for k in kwargs:
@@ -619,16 +626,19 @@ class Pithos(TestCase):
             expected['permissions'] = expected.pop('sharing')
             self.assertEqual(put.mock_calls[-1], call(obj, **expected))
 
-    def test_download_object(self):
-        PC.get_object_hashmap = Mock(return_value=object_hashmap)
+    @patch(
+        'kamaki.clients.pithos.PithosClient.get_object_hashmap',
+        return_value=object_hashmap)
+    @patch(
+        'kamaki.clients.pithos.PithosClient.object_get',
+        return_value=FR())
+    def test_download_object(self, GOH, GET):
         num_of_blocks = 8
         tmpFile = self._create_temp_file(num_of_blocks)
-        self.FR.content = tmpFile.read(4 * 1024 * 1024)
+        FR.content = tmpFile.read(4 * 1024 * 1024)
         tmpFile = self._create_temp_file(num_of_blocks)
-        PC.object_get = Mock(return_value=self.FR())
         GET = PC.object_get
         num_of_blocks = len(object_hashmap['hashes'])
-
         kwargs = dict(
             resume=True,
             version='version',
@@ -709,7 +719,7 @@ class Pithos(TestCase):
                 self.assertEqual(GET.mock_calls[-1][2][k], v)
 
     def test_get_object_hashmap(self):
-        self.FR.json = object_hashmap
+        FR.json = object_hashmap
         for empty in (304, 412):
             with patch.object(
                     PC, 'object_get',
@@ -731,7 +741,7 @@ class Pithos(TestCase):
             if_modified_since='some date here',
             if_unmodified_since='some date here',
             data_range='10-20')
-        with patch.object(PC, 'object_get', return_value=self.FR()) as get:
+        with patch.object(PC, 'object_get', return_value=FR()) as get:
             r = self.client.get_object_hashmap(obj)
             self.assertEqual(r, object_hashmap)
             self.assertEqual(get.mock_calls[-1], call(obj, **exp_args))
@@ -744,7 +754,7 @@ class Pithos(TestCase):
     def test_set_account_group(self):
         group = 'aU53rGr0up'
         usernames = ['u1', 'u2', 'u3']
-        with patch.object(PC, 'account_post', return_value=self.FR()) as post:
+        with patch.object(PC, 'account_post', return_value=FR()) as post:
             self.client.set_account_group(group, usernames)
             self.assertEqual(
                 post.mock_calls[-1],
@@ -752,7 +762,7 @@ class Pithos(TestCase):
 
     def test_del_account_group(self):
         group = 'aU53rGr0up'
-        with patch.object(PC, 'account_post', return_value=self.FR()) as post:
+        with patch.object(PC, 'account_post', return_value=FR()) as post:
             self.client.del_account_group(group)
             self.assertEqual(
                 post.mock_calls[-1],
@@ -802,7 +812,7 @@ class Pithos(TestCase):
 
     def test_set_account_meta(self):
         metas = dict(k1='v1', k2='v2', k3='v3')
-        with patch.object(PC, 'account_post', return_value=self.FR()) as post:
+        with patch.object(PC, 'account_post', return_value=FR()) as post:
             self.client.set_account_meta(metas)
             self.assertEqual(
                 post.mock_calls[-1],
@@ -810,13 +820,13 @@ class Pithos(TestCase):
 
     def test_set_account_quota(self):
         qu = 1024
-        with patch.object(PC, 'account_post', return_value=self.FR()) as post:
+        with patch.object(PC, 'account_post', return_value=FR()) as post:
             self.client.set_account_quota(qu)
             self.assertEqual(post.mock_calls[-1], call(update=True, quota=qu))
 
     def test_set_account_versioning(self):
         vrs = 'n3wV3r51on1ngTyp3'
-        with patch.object(PC, 'account_post', return_value=self.FR()) as post:
+        with patch.object(PC, 'account_post', return_value=FR()) as post:
             self.client.set_account_versioning(vrs)
             self.assertEqual(
                 post.mock_calls[-1],
@@ -829,14 +839,14 @@ class Pithos(TestCase):
         with patch.object(
                 PC,
                 'container_delete',
-                return_value=self.FR()) as delete:
+                return_value=FR()) as delete:
             for kwarg in kwarg_list:
                 self.client.del_container(**kwarg)
                 expected = dict(kwarg)
                 expected['success'] = (204, 404, 409)
                 self.assertEqual(delete.mock_calls[-1], call(**expected))
             for status_code in (404, 409):
-                self.FR.status_code = status_code
+                FR.status_code = status_code
                 self.assertRaises(ClientError, self.client.del_container)
 
     def test_get_container_versioning(self):
