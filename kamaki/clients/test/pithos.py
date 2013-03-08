@@ -758,3 +758,9 @@ class Pithos(TestCase):
             self.assertEqual(
                 post.mock_calls[-1],
                 call(update=True, groups={group: []}))
+
+    def test_get_account_quota(self):
+        key = 'x-account-policy-quota'
+        with patch.object(PC, 'get_account_info', return_value=account_info):
+            r = self.client.get_account_quota()
+            self.assertEqual(r[key], account_info[key])
