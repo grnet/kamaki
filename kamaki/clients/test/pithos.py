@@ -938,3 +938,12 @@ class Pithos(TestCase):
             self.assertEqual(
                 post.mock_calls[-1],
                 call(update=True, versioning=vrs))
+
+    def test_del_object(self):
+        kwargs = [
+            dict(delimiter=None, until=None),
+            dict(delimiter='X', until='50m3d473')]
+        with patch.object(PC, 'object_delete', return_value=FR()) as delete:
+            for kwarg in kwargs:
+                self.client.del_object(obj, **kwarg)
+                self.assertEqual(delete.mock_calls[-1], call(obj, **kwarg))
