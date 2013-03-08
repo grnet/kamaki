@@ -741,3 +741,12 @@ class Pithos(TestCase):
             exp_args['if_etag_not_match'] = kwargs.pop('if_none_match')
             exp_args.update(kwargs)
             self.assertEqual(get.mock_calls[-1], call(obj, **exp_args))
+
+    def test_set_account_group(self):
+        group = 'aU53rGr0up'
+        usernames = ['u1', 'u2', 'u3']
+        with patch.object(PC, 'account_post', return_value=self.FR()) as post:
+            self.client.set_account_group(group, usernames)
+            self.assertEqual(
+                post.mock_calls[-1],
+                call(update=True, groups={group: usernames}))
