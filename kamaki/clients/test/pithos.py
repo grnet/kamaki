@@ -814,3 +814,11 @@ class Pithos(TestCase):
         with patch.object(PC, 'account_post', return_value=self.FR()) as post:
             self.client.set_account_quota(qu)
             self.assertEqual(post.mock_calls[-1], call(update=True, quota=qu))
+
+    def test_set_account_versioning(self):
+        vrs = 'n3wV3r51on1ngTyp3'
+        with patch.object(PC, 'account_post', return_value=self.FR()) as post:
+            self.client.set_account_versioning(vrs)
+            self.assertEqual(
+                post.mock_calls[-1],
+                call(update=True, versioning=vrs))
