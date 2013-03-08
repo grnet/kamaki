@@ -38,7 +38,6 @@ from os import urandom
 
 from kamaki.clients import ClientError
 from kamaki.clients.pithos import PithosClient as PC
-from kamaki.clients.astakos import AstakosClient
 from kamaki.clients.connection.kamakicon import KamakiHTTPConnection as C
 
 user_id = 'ac0un7-1d-5tr1ng'
@@ -867,3 +866,19 @@ class Pithos(TestCase):
                 self.assertEqual(r[key], container_info[key])
                 self.assertEqual(gci.mock_calls[-1], call())
                 self.assertEqual(bu_cnt, self.client.container)
+
+    def test_get_container_meta(self):
+        somedate = '50m3d473'
+        key = 'x-container-meta'
+        metaval = '50m3m374v41'
+        container_plus = dict(container_info)
+        container_plus[key] = metaval
+        for ret in ((container_info, {}), (container_plus, {key: metaval})):
+            with patch.object(
+                    PC,
+                    'get_container_info',
+                    return_value=ret[0]) as gci:
+                for until in (None, somedate):
+                    r = self.client.get_container_meta(until=until)
+                    self.assertEqual(r, ret[1])
+                    self.assertEqual(gci.mock_calls[-1], call(until=until))
