@@ -42,6 +42,7 @@ from kamaki.clients.astakos import AstakosClient
 from kamaki.clients.connection.kamakicon import KamakiHTTPConnection as C
 
 user_id = 'ac0un7-1d-5tr1ng'
+obj = 'obj3c7N4m3'
 
 account_info = {
     'content-language': 'en-us',
@@ -147,10 +148,9 @@ class Pithos(TestCase):
 
     files = []
 
-    def _create_temp_file(self):
+    def _create_temp_file(self, num_of_blocks):
         self.files.append(NamedTemporaryFile())
         tmpFile = self.files[-1]
-        num_of_blocks = 8
         file_size = num_of_blocks * 4 * 1024 * 1024
         print('\n\tCreate tmp file')
         tmpFile.write(urandom(file_size))
@@ -267,8 +267,8 @@ class Pithos(TestCase):
         PC.get_container_info = Mock(return_value=container_info)
         PC.container_post = Mock(return_value=self.FR())
         PC.object_put = Mock(return_value=self.FR())
-        tmpFile = self._create_temp_file()
-        obj = 'objectName'
+        num_of_blocks = 8
+        tmpFile = self._create_temp_file(num_of_blocks)
 
         # Without kwargs
         self.client.upload_object(obj, tmpFile)
@@ -284,7 +284,7 @@ class Pithos(TestCase):
             format='json',
             json=dict(
                 hashes=['s0m3h@5h'] * num_of_blocks,
-                bytes=file_size),
+                bytes=num_of_blocks * 4 * 1024 * 1024),
             etag=None,
             content_encoding=None,
             content_type='application/octet-stream',
@@ -303,7 +303,7 @@ class Pithos(TestCase):
         expected2 = dict(
             json=dict(
                 hashes=['s0m3h@5h'] * num_of_blocks,
-                bytes=file_size),
+                bytes=num_of_blocks * 4 * 1024 * 1024),
             content_type='application/octet-stream',
             hashmap=True,
             success=201,
@@ -372,7 +372,6 @@ class Pithos(TestCase):
 
     def test_create_object(self):
         PC.set_header = Mock()
-        obj = 'r4nd0m0bj3c7'
         cont = self.client.container
         ctype = 'c0n73n7/typ3'
         exp_shd = [
@@ -389,7 +388,6 @@ class Pithos(TestCase):
 
     def test_create_directory(self):
         PC.set_header = Mock()
-        obj = 'r4nd0m0bj3c7'
         cont = self.client.container
         exp_shd = [
             call('Content-Type', 'application/directory'),
@@ -402,7 +400,6 @@ class Pithos(TestCase):
 
     def test_get_object_info(self):
         self.FR.headers = object_info
-        obj = 'r4nd0m0bj3c7'
         version = 'v3r510n'
         with patch.object(PC, 'object_head', return_value=self.FR()) as head:
             r = self.client.get_object_info(obj)
@@ -421,7 +418,6 @@ class Pithos(TestCase):
                 obj, version=version)
 
     def test_get_object_meta(self):
-        obj = 'r4nd0m0bj3c7'
         expected = dict()
         for k, v in object_info.items():
             expected[k] = v
@@ -433,7 +429,6 @@ class Pithos(TestCase):
             self.assert_dicts_are_equal(r, expected)
 
     def test_del_object_meta(self):
-        obj = 'r4nd0m0bj3c7'
         metakey = '50m3m3t4k3y'
         with patch.object(PC, 'object_post', return_value=self.FR()) as post:
             self.client.del_object_meta(obj, metakey)
@@ -515,7 +510,6 @@ class Pithos(TestCase):
                 self.assertEqual(v, put.mock_calls[-1][2][k])
 
     def test_delete_object(self):
-        obj = 's0m30bj3c7'
         cont = self.client.container
         with patch.object(PC, 'delete', return_value=self.FR()) as delete:
             self.client.delete_object(obj)
@@ -572,11 +566,11 @@ class Pithos(TestCase):
             self.assertEqual(self.client.container, cont)
 
     def test_upload_object_unchunked(self):
-        tmpFile = self._create_temp_file()
-        obj = 'obj3c7N4m3'
+        num_of_blocks = 8
+        tmpFile = self._create_temp_file(num_of_blocks)
         expected = dict(
                 success=201,
-                data=8 * 4 * 1024 * 1024,
+                data=num_of_blocks * 4 * 1024 * 1024,
                 etag='some-etag',
                 content_encoding='some content_encoding',
                 content_type='some content-type',
@@ -607,7 +601,6 @@ class Pithos(TestCase):
                 obj, tmpFile, withHashFile=True)
 
     def test_create_object_by_manifestation(self):
-        obj = 'obj3c7N4m3'
         manifest = '%s/%s' % (self.client.container, obj)
         kwargs = dict(
                 etag='some-etag',
@@ -629,17 +622,17 @@ class Pithos(TestCase):
 
     def test_download_object(self):
         PC.get_object_hashmap = Mock(return_value=object_hashmap)
-        tmpFile = self._create_temp_file()
+        num_of_blocks = 8
+        tmpFile = self._create_temp_file(num_of_blocks)
         self.FR.content = tmpFile.read(4 * 1024 * 1024)
-        tmpFile = self._create_temp_file()
+        tmpFile = self._create_temp_file(num_of_blocks)
         PC.object_get = Mock(return_value=self.FR())
         GET = PC.object_get
-        obj = 'obj3c7N4m3'
         num_of_blocks = len(object_hashmap['hashes'])
 
         kwargs = dict(
-            version='version',
             resume=True,
+            version='version',
             range_str='10-20',
             if_match='if and only if',
             if_none_match='if and only not',
@@ -715,3 +708,36 @@ class Pithos(TestCase):
                 self.assertTrue('data_range' in GET.mock_calls[-1][2])
             else:
                 self.assertEqual(GET.mock_calls[-1][2][k], v)
+
+    def test_get_object_hashmap(self):
+        self.FR.json = object_hashmap
+        for empty in (304, 412):
+            with patch.object(
+                    PC, 'object_get',
+                    side_effect=ClientError('Empty', status=empty)):
+                r = self.client.get_object_hashmap(obj)
+                self.assertEqual(r, {})
+        exp_args = dict(
+            hashmap=True,
+            data_range=None,
+            version=None,
+            if_etag_match=None,
+            if_etag_not_match=None,
+            if_modified_since=None,
+            if_unmodified_since=None)
+        kwargs = dict(
+            version='s0m3v3r51on',
+            if_match='if match',
+            if_none_match='if non match',
+            if_modified_since='some date here',
+            if_unmodified_since='some date here',
+            data_range='10-20')
+        with patch.object(PC, 'object_get', return_value=self.FR()) as get:
+            r = self.client.get_object_hashmap(obj)
+            self.assertEqual(r, object_hashmap)
+            self.assertEqual(get.mock_calls[-1], call(obj, **exp_args))
+            r = self.client.get_object_hashmap(obj, **kwargs)
+            exp_args['if_etag_match'] = kwargs.pop('if_match')
+            exp_args['if_etag_not_match'] = kwargs.pop('if_none_match')
+            exp_args.update(kwargs)
+            self.assertEqual(get.mock_calls[-1], call(obj, **exp_args))
