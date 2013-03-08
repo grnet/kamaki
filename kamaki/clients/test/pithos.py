@@ -950,3 +950,10 @@ class Pithos(TestCase):
                 call(obj, public=True, update=True))
             self.assertEqual(gof.mock_calls[-1], call(obj))
             self.assertEqual(r, '%s%s' % (self.url[:-6], val))
+
+    @patch('%s.object_post' % pithos_pkg, return_value=FR())
+    def test_unpublish_object(self, post):
+        self.client.unpublish_object(obj)
+        self.assertEqual(
+            post.mock_calls[-1],
+            call(obj, public=False, update=True))
