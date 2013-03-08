@@ -892,3 +892,21 @@ class Pithos(TestCase):
                     r = self.client.get_container_meta(until=until)
                     self.assertEqual(r, ret[1])
                     self.assertEqual(gci.mock_calls[-1], call(until=until))
+
+    def test_get_container_object_meta(self):
+        somedate = '50m3d473'
+        key = 'x-container-object-meta'
+        metaval = '50m3m374v41'
+        container_plus = dict(container_info)
+        container_plus[key] = metaval
+        for ret in (
+                (container_info, {key: ''}),
+                (container_plus, {key: metaval})):
+            with patch.object(
+                    PC,
+                    'get_container_info',
+                    return_value=ret[0]) as gci:
+                for until in (None, somedate):
+                    r = self.client.get_container_object_meta(until=until)
+                    self.assertEqual(r, ret[1])
+                    self.assertEqual(gci.mock_calls[-1], call(until=until))
