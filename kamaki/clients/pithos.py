@@ -770,14 +770,20 @@ class PithosClient(PithosRestAPI):
         finally:
             self.container = cnt_back_up
 
-    def get_container_quota(self, container):
+    def get_container_quota(self, container=None):
         """
         :param container: (str)
 
         :returns: (dict)
         """
-        self.container = container
-        return filter_in(self.get_container_info(), 'X-Container-Policy-Quota')
+        cnt_back_up = self.container
+        try:
+            self.container = container or cnt_back_up
+            return filter_in(
+                self.get_container_info(),
+                'X-Container-Policy-Quota')
+        finally:
+            self.container = cnt_back_up
 
     def get_container_info(self, until=None):
         """
