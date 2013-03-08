@@ -427,10 +427,7 @@ class Pithos(TestCase):
         expected = dict()
         for k, v in object_info.items():
             expected[k] = v
-        with patch.object(
-                PC,
-                'get_object_info',
-                return_value=object_info):
+        with patch.object(PC, 'get_object_info', return_value=object_info):
             r = self.client.get_object_meta(obj)
             self.assert_dicts_are_equal(r, expected)
 
@@ -561,10 +558,7 @@ class Pithos(TestCase):
     #  Pithos+ only methods
 
     def test_purge_container(self):
-        with patch.object(
-                PC,
-                'container_delete',
-                return_value=FR()) as cd:
+        with patch.object(PC, 'container_delete', return_value=FR()) as cd:
             self.client.purge_container()
             self.assertTrue('until' in cd.mock_calls[-1][2])
             cont = self.client.container
@@ -836,10 +830,7 @@ class Pithos(TestCase):
         kwarg_list = [
             dict(delimiter=None, until=None),
             dict(delimiter='X', until='50m3d473')]
-        with patch.object(
-                PC,
-                'container_delete',
-                return_value=FR()) as delete:
+        with patch.object(PC, 'container_delete', return_value=FR()) as delete:
             for kwarg in kwarg_list:
                 self.client.del_container(**kwarg)
                 expected = dict(kwarg)
@@ -849,33 +840,31 @@ class Pithos(TestCase):
                 FR.status_code = status_code
                 self.assertRaises(ClientError, self.client.del_container)
 
-    def test_get_container_versioning(self):
+    @patch(
+        'kamaki.clients.pithos.PithosClient.get_container_info',
+        return_value=container_info)
+    def test_get_container_versioning(self, GCI):
         key = 'x-container-policy-versioning'
         cont = 'c0n7-417'
         bu_cnt = self.client.container
-        with patch.object(
-                PC,
-                'get_container_info',
-                return_value=container_info) as gci:
-            for container in (None, cont):
-                r = self.client.get_container_versioning(container=container)
-                self.assertEqual(r[key], container_info[key])
-                self.assertEqual(gci.mock_calls[-1], call())
-                self.assertEqual(bu_cnt, self.client.container)
+        for container in (None, cont):
+            r = self.client.get_container_versioning(container=container)
+            self.assertEqual(r[key], container_info[key])
+            self.assertEqual(GCI.mock_calls[-1], call())
+            self.assertEqual(bu_cnt, self.client.container)
 
-    def test_get_container_quota(self):
+    @patch(
+        'kamaki.clients.pithos.PithosClient.get_container_info',
+        return_value=container_info)
+    def test_get_container_quota(self, GCI):
         key = 'x-container-policy-quota'
         cont = 'c0n7-417'
         bu_cnt = self.client.container
-        with patch.object(
-                PC,
-                'get_container_info',
-                return_value=container_info) as gci:
-            for container in (None, cont):
-                r = self.client.get_container_quota(container=container)
-                self.assertEqual(r[key], container_info[key])
-                self.assertEqual(gci.mock_calls[-1], call())
-                self.assertEqual(bu_cnt, self.client.container)
+        for container in (None, cont):
+            r = self.client.get_container_quota(container=container)
+            self.assertEqual(r[key], container_info[key])
+            self.assertEqual(GCI.mock_calls[-1], call())
+            self.assertEqual(bu_cnt, self.client.container)
 
     def test_get_container_meta(self):
         somedate = '50m3d473'
@@ -947,3 +936,15 @@ class Pithos(TestCase):
             for kwarg in kwargs:
                 self.client.del_object(obj, **kwarg)
                 self.assertEqual(delete.mock_calls[-1], call(obj, **kwarg))
+
+    def test_set_object_meta(self):
+        metas = dict(k1='v1', k2='v2', k3='v3')
+        with patch.object(PC, 'object_post', return_value=FR()) as post:
+            self.assertRaises(
+                AssertionError,
+                self.client.set_object_meta,
+                obj, 'Non dict arg')
+            self.client.set_object_meta(obj, metas)
+            self.assertEqual(
+                post.mock_calls[-1],
+                call(obj, update=True, metadata=metas))
