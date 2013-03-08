@@ -918,3 +918,9 @@ class Pithos(TestCase):
             self.assertEqual(
                 post.mock_calls[-1],
                 call(update=True, metadata=metas))
+
+    def test_del_container_meta(self):
+        with patch.object(PC, 'container_post', return_value=FR()) as ap:
+            self.client.del_container_meta('somekey')
+            expected = [call(update=True, metadata={'somekey': ''})]
+            self.assertEqual(ap.mock_calls, expected)
