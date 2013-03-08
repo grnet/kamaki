@@ -750,3 +750,11 @@ class Pithos(TestCase):
             self.assertEqual(
                 post.mock_calls[-1],
                 call(update=True, groups={group: usernames}))
+
+    def test_del_account_group(self):
+        group = 'aU53rGr0up'
+        with patch.object(PC, 'account_post', return_value=self.FR()) as post:
+            self.client.del_account_group(group)
+            self.assertEqual(
+                post.mock_calls[-1],
+                call(update=True, groups={group: []}))
