@@ -891,10 +891,7 @@ class PithosClient(PithosRestAPI):
         info = self.get_object_info(obj)
         pref, sep, rest = self.base_url.partition('//')
         base = rest.split('/')[0]
-        newurl = path4url(
-            '%s%s%s' % (pref, sep, base),
-            info['x-object-public'])
-        return newurl[1:]
+        return '%s%s%s/%s' % (pref, sep, base, info['x-object-public'])
 
     def unpublish_object(self, obj):
         """

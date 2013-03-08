@@ -40,6 +40,9 @@ from kamaki.clients import ClientError
 from kamaki.clients.pithos import PithosClient as PC
 from kamaki.clients.connection.kamakicon import KamakiHTTPConnection as C
 
+client_pkg = 'kamaki.clients.Client'
+pithos_pkg = 'kamaki.clients.pithos.PithosClient'
+
 user_id = 'ac0un7-1d-5tr1ng'
 obj = 'obj3c7N4m3'
 
@@ -184,7 +187,7 @@ class Pithos(TestCase):
 
     #  Pithos+ methods that extend storage API
 
-    @patch('kamaki.clients.Client.set_param')
+    @patch('%s.set_param' % client_pkg)
     def test_get_account_info(self, SP):
         FR.headers = account_info
         FR.status_code = 204
@@ -204,7 +207,7 @@ class Pithos(TestCase):
             FR.status_code = 401
             self.assertRaises(ClientError, self.client.get_account_info)
 
-    @patch('kamaki.clients.Client.set_header')
+    @patch('%s.set_header' % client_pkg)
     def test_replace_account_meta(self, SH):
         FR.status_code = 202
         metas = dict(k1='v1', k2='v2', k3='v3')
@@ -263,15 +266,9 @@ class Pithos(TestCase):
             for i in range(len(r)):
                 self.assert_dicts_are_equal(r[i], container_list[i])
 
-    @patch(
-        'kamaki.clients.pithos.PithosClient.get_container_info',
-        return_value=container_info)
-    @patch(
-        'kamaki.clients.pithos.PithosClient.container_post',
-        return_value=FR())
-    @patch(
-        'kamaki.clients.pithos.PithosClient.object_put',
-        return_value=FR())
+    @patch('%s.get_container_info' % pithos_pkg, return_value=container_info)
+    @patch('%s.container_post' % pithos_pkg, return_value=FR())
+    @patch('%s.object_put' % pithos_pkg, return_value=FR())
     def test_upload_object(self, CI, CP, OP):
         num_of_blocks = 8
         tmpFile = self._create_temp_file(num_of_blocks)
@@ -376,7 +373,7 @@ class Pithos(TestCase):
         for arg, val in kwargs.items():
             self.assertEqual(OP.mock_calls[-2][2][arg], val)
 
-    @patch('kamaki.clients.Client.set_header')
+    @patch('%s.set_header' % client_pkg)
     def test_create_object(self, SH):
         cont = self.client.container
         ctype = 'c0n73n7/typ3'
@@ -392,7 +389,7 @@ class Pithos(TestCase):
             self.assertEqual(PC.set_header.mock_calls, exp_shd)
             self.assertEqual(put.mock_calls, exp_put)
 
-    @patch('kamaki.clients.Client.set_header')
+    @patch('%s.set_header' % client_pkg)
     def test_create_directory(self, SH):
         cont = self.client.container
         exp_shd = [
@@ -439,7 +436,7 @@ class Pithos(TestCase):
                 post.mock_calls,
                 [call(obj, update=True, metadata={metakey: ''})])
 
-    @patch('kamaki.clients.Client.set_header')
+    @patch('%s.set_header' % client_pkg)
     def test_replace_object_meta(self, SH):
         metas = dict(k1='new1', k2='new2', k3='new3')
         cont = self.client.container
@@ -521,7 +518,7 @@ class Pithos(TestCase):
             FR.status_code = 404
             self.assertRaises(ClientError, self.client.delete_object, obj)
 
-    @patch('kamaki.clients.Client.set_param')
+    @patch('%s.set_param' % client_pkg)
     def test_list_objects(self, SP):
         FR.json = object_list
         acc = self.client.account
@@ -539,7 +536,7 @@ class Pithos(TestCase):
             FR.status_code = 404
             self.assertRaises(ClientError, self.client.list_objects)
 
-    @patch('kamaki.clients.Client.set_param')
+    @patch('%s.set_param' % client_pkg)
     def test_list_objects_in_path(self, SP):
         FR.json = object_list
         path = '/some/awsome/path'
@@ -620,12 +617,8 @@ class Pithos(TestCase):
             expected['permissions'] = expected.pop('sharing')
             self.assertEqual(put.mock_calls[-1], call(obj, **expected))
 
-    @patch(
-        'kamaki.clients.pithos.PithosClient.get_object_hashmap',
-        return_value=object_hashmap)
-    @patch(
-        'kamaki.clients.pithos.PithosClient.object_get',
-        return_value=FR())
+    @patch('%s.get_object_hashmap' % pithos_pkg, return_value=object_hashmap)
+    @patch('%s.object_get' % pithos_pkg, return_value=FR())
     def test_download_object(self, GOH, GET):
         num_of_blocks = 8
         tmpFile = self._create_temp_file(num_of_blocks)
@@ -840,9 +833,7 @@ class Pithos(TestCase):
                 FR.status_code = status_code
                 self.assertRaises(ClientError, self.client.del_container)
 
-    @patch(
-        'kamaki.clients.pithos.PithosClient.get_container_info',
-        return_value=container_info)
+    @patch('%s.get_container_info' % pithos_pkg, return_value=container_info)
     def test_get_container_versioning(self, GCI):
         key = 'x-container-policy-versioning'
         cont = 'c0n7-417'
@@ -853,9 +844,7 @@ class Pithos(TestCase):
             self.assertEqual(GCI.mock_calls[-1], call())
             self.assertEqual(bu_cnt, self.client.container)
 
-    @patch(
-        'kamaki.clients.pithos.PithosClient.get_container_info',
-        return_value=container_info)
+    @patch('%s.get_container_info' % pithos_pkg, return_value=container_info)
     def test_get_container_quota(self, GCI):
         key = 'x-container-policy-quota'
         cont = 'c0n7-417'
@@ -948,3 +937,16 @@ class Pithos(TestCase):
             self.assertEqual(
                 post.mock_calls[-1],
                 call(obj, update=True, metadata=metas))
+
+    @patch('%s.object_post' % pithos_pkg, return_value=FR())
+    def test_publish_object(self, post):
+        oinfo = dict(object_info)
+        val = 'pubL1c'
+        oinfo['x-object-public'] = val
+        with patch.object(PC, 'get_object_info', return_value=oinfo) as gof:
+            r = self.client.publish_object(obj)
+            self.assertEqual(
+                post.mock_calls[-1],
+                call(obj, public=True, update=True))
+            self.assertEqual(gof.mock_calls[-1], call(obj))
+            self.assertEqual(r, '%s%s' % (self.url[:-6], val))
