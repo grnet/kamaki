@@ -924,3 +924,17 @@ class Pithos(TestCase):
             self.client.del_container_meta('somekey')
             expected = [call(update=True, metadata={'somekey': ''})]
             self.assertEqual(ap.mock_calls, expected)
+
+    def test_set_container_quota(self):
+        qu = 1024
+        with patch.object(PC, 'container_post', return_value=FR()) as post:
+            self.client.set_container_quota(qu)
+            self.assertEqual(post.mock_calls[-1], call(update=True, quota=qu))
+
+    def test_set_container_versioning(self):
+        vrs = 'n3wV3r51on1ngTyp3'
+        with patch.object(PC, 'container_post', return_value=FR()) as post:
+            self.client.set_container_versioning(vrs)
+            self.assertEqual(
+                post.mock_calls[-1],
+                call(update=True, versioning=vrs))
