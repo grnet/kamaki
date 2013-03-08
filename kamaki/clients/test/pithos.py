@@ -800,3 +800,11 @@ class Pithos(TestCase):
             r = self.client.get_account_group()
             for k in [k for k in acc_info if k.startswith(key)]:
                 self.assertEqual(r[k], acc_info[k])
+
+    def test_set_account_meta(self):
+        metas = dict(k1='v1', k2='v2', k3='v3')
+        with patch.object(PC, 'account_post', return_value=self.FR()) as post:
+            self.client.set_account_meta(metas)
+            self.assertEqual(
+                post.mock_calls[-1],
+                call(update=True, metadata=metas))
