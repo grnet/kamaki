@@ -910,3 +910,11 @@ class Pithos(TestCase):
                     r = self.client.get_container_object_meta(until=until)
                     self.assertEqual(r, ret[1])
                     self.assertEqual(gci.mock_calls[-1], call(until=until))
+
+    def test_set_container_meta(self):
+        metas = dict(k1='v1', k2='v2', k3='v3')
+        with patch.object(PC, 'container_post', return_value=FR()) as post:
+            self.client.set_container_meta(metas)
+            self.assertEqual(
+                post.mock_calls[-1],
+                call(update=True, metadata=metas))
