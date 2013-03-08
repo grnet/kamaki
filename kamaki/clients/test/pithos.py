@@ -822,3 +822,20 @@ class Pithos(TestCase):
             self.assertEqual(
                 post.mock_calls[-1],
                 call(update=True, versioning=vrs))
+
+    def test_del_container(self):
+        kwarg_list = [
+            dict(delimiter=None, until=None),
+            dict(delimiter='X', until='50m3d473')]
+        with patch.object(
+                PC,
+                'container_delete',
+                return_value=self.FR()) as delete:
+            for kwarg in kwarg_list:
+                self.client.del_container(**kwarg)
+                expected = dict(kwarg)
+                expected['success'] = (204, 404, 409)
+                self.assertEqual(delete.mock_calls[-1], call(**expected))
+            for status_code in (404, 409):
+                self.FR.status_code = status_code
+                self.assertRaises(ClientError, self.client.del_container)
