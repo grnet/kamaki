@@ -770,3 +770,17 @@ class Pithos(TestCase):
         with patch.object(PC, 'get_account_info', return_value=account_info):
             r = self.client.get_account_versioning()
             self.assertEqual(r[key], account_info[key])
+
+    def test_get_account_meta(self):
+        key = 'x-account-meta'
+        with patch.object(PC, 'get_account_info', return_value=account_info):
+            r = self.client.get_account_meta()
+            self.assertFalse(key in r)
+        acc_info = dict(account_info)
+        acc_info['x-account-meta-k1'] = 'v1'
+        acc_info['x-account-meta-k2'] = 'v2'
+        acc_info['x-account-meta-k3'] = 'v3'
+        with patch.object(PC, 'get_account_info', return_value=acc_info):
+            r = self.client.get_account_meta()
+            for k in [k for k in acc_info if k.startswith('X-Account-Meta-')]:
+                print(r[k], acc_info[k])
