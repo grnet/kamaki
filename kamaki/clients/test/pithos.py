@@ -808,3 +808,9 @@ class Pithos(TestCase):
             self.assertEqual(
                 post.mock_calls[-1],
                 call(update=True, metadata=metas))
+
+    def test_set_account_quota(self):
+        qu = 1024
+        with patch.object(PC, 'account_post', return_value=self.FR()) as post:
+            self.client.set_account_quota(qu)
+            self.assertEqual(post.mock_calls[-1], call(update=True, quota=qu))
