@@ -1106,7 +1106,7 @@ class Pithos(TestCase):
                 self.assertEqual(kwargs['content_type'], exp)
 
     @patch('%s.set_param' % client_pkg)
-    @patch('%s.get' % pithos_pkg, return_value=FR)
+    @patch('%s.get' % pithos_pkg, return_value=FR())
     def test_get_sharing_accounts(self, get, SP):
         FR.json = sharers
         for kws in (
@@ -1126,3 +1126,14 @@ class Pithos(TestCase):
             self.assertEqual(get.mock_calls[-1], call('', success=(200, 204)))
             for i in range(len(r)):
                 self.assert_dicts_are_equal(r[i], sharers[i])
+
+    @patch('%s.object_get' % pithos_pkg, return_value=FR())
+    def test_get_object_versionlist(self, get):
+        info = dict(object_info)
+        info['versions'] = ['v1', 'v2']
+        FR.json = info
+        r = self.client.get_object_versionlist(obj)
+        self.assertEqual(
+            get.mock_calls[-1],
+            call(obj, format='json', version='list'))
+        self.assertEqual(r, info['versions'])
