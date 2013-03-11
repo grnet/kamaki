@@ -130,7 +130,7 @@ class PithosClient(PithosRestAPI):
                 raise ClientError(msg, 1)
             f = StringIO(data)
         else:
-            data = f.read(size) if size is not None else f.read()
+            data = f.read(size or ())
         r = self.object_put(
             obj,
             data=data,

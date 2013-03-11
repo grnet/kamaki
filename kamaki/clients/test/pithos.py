@@ -138,6 +138,7 @@ sharers = [
     dict(last_modified="2013-01-29T16:50:06.084674+00:00", name="0b2a-f2d5"),
     dict(last_modified="2013-01-29T16:50:06.084674+00:00", name="2b1a-82d6")]
 
+
 class FR(object):
     """FR stands for Fake Response"""
     json = dict()
