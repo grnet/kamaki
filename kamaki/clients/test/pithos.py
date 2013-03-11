@@ -989,15 +989,18 @@ class Pithos(TestCase):
         read_perms = ['u1', 'g1', 'u2', 'g2']
         write_perms = ['u1', 'g1']
         for kwargs in (
-                dict(read_permition=read_perms, write_permition=write),
+                dict(read_permition=read_perms, write_permition=write_perms),
                 dict(read_permition=read_perms),
-                dict(write_permition=write_perms)).items():
+                dict(write_permition=write_perms),
+                dict()):
             self.client.set_object_sharing(obj, **kwargs)
-            if 'read_permition' in kwargs:
-                kwargs['read'] = kwargs.pop('read_permition')
-            if 'write_permition' in kwargs:
-                kwargs['write'] = kwargs.pop('write_permition')
+            kwargs['read'] = kwargs.pop('read_permition', '')
+            kwargs['write'] = kwargs.pop('write_permition', '')
             self.assertEqual(
                 POST.mock_calls[-1],
-                call(obj, update=True, permissions=kwargs)
+                call(obj, update=True, permissions=kwargs))
 
+    @patch('%s.set_object_sharing' % pithos_pkg)
+    def test_del_object_sharing(self, SOS):
+        self.client.del_object_sharing(obj)
+        self.assertEqual(SOS.mock_calls[-1], call(obj))
