@@ -1003,7 +1003,7 @@ class Pithos(TestCase):
     @patch('%s.object_post' % pithos_pkg, return_value=FR())
     def test_append_object(self, post, GCI):
         num_of_blocks = 4
-        tmpFile = self._create_temp_file(4)
+        tmpFile = self._create_temp_file(num_of_blocks)
         tmpFile.seek(0, 2)
         file_size = tmpFile.tell()
         for turn in range(2):
@@ -1050,3 +1050,54 @@ class Pithos(TestCase):
             content_range='bytes 0-%s/*' % upto_bytes,
             content_type='application/octet-stream',
             source_object='/%s/%s' % (self.client.container, obj)))
+
+    @patch('%s.get_container_info' % pithos_pkg, return_value=container_info)
+    @patch('%s.object_post' % pithos_pkg, return_value=FR())
+    def test_overwrite_object(self, post, GCI):
+        num_of_blocks = 4
+        tmpFile = self._create_temp_file(num_of_blocks)
+        tmpFile.seek(0, 2)
+        file_size = tmpFile.tell()
+        info = dict(object_info)
+        info['content-length'] = file_size
+        block_size = container_info['x-container-block-size']
+        with patch.object(PC, 'get_object_info', return_value=info) as GOI:
+            for start, end in (
+                    (0, file_size + 1),
+                    (file_size + 1, file_size + 2)):
+                tmpFile.seek(0, 0)
+                self.assertRaises(
+                    ClientError,
+                    self.client.overwrite_object,
+                    obj, start, end, tmpFile)
+            for start, end in ((0, 144), (144, 233), (233, file_size)):
+                tmpFile.seek(0, 0)
+                owr_gen = None
+                exp_size = end - start + 1
+                if not start or exp_size > block_size:
+                    try:
+                        from progress.bar import ShadyBar
+                        owr_bar = ShadyBar('Mock append')
+                    except ImportError:
+                        owr_bar = None
+
+                    if owr_bar:
+
+                        def owr_gen(n):
+                            for i in owr_bar.iter(range(n)):
+                                yield
+                            yield
+
+                    if exp_size > block_size:
+                        exp_size = exp_size % block_size or block_size
+
+                self.client.overwrite_object(obj, start, end, tmpFile, owr_gen)
+                self.assertEqual(GOI.mock_calls[-1], call(obj))
+                self.assertEqual(GCI.mock_calls[-1], call())
+                (args, kwargs) = post.mock_calls[-1][1:3]
+                self.assertEqual(args, (obj,))
+                self.assertEqual(len(kwargs['data']), exp_size)
+                self.assertEqual(kwargs['content_length'], exp_size)
+                self.assertEqual(kwargs['update'], True)
+                exp = 'application/octet-stream'
+                self.assertEqual(kwargs['content_type'], exp)
