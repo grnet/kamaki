@@ -180,7 +180,10 @@ class KamakiHTTPConnection(HTTPConnection):
 
         #get connection from pool
         try:
-            conn = get_http_connection(netloc=netloc, scheme=scheme)
+            conn = get_http_connection(
+                netloc=netloc,
+                scheme=scheme,
+                pool_size=self.poolsize)
         except ValueError as ve:
             raise HTTPConnectionError(
                 'Cannot establish connection to %s %s' % (self.url, ve),
