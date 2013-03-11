@@ -966,9 +966,7 @@ class PithosClient(PithosRestAPI):
            permissions will be removed
         """
 
-        perms = dict(
-            read='' if not read_permition else read_permition,
-            write='' if not write_permition else write_permition)
+        perms = dict(read=read_permition or '', write=write_permition or '')
         r = self.object_post(obj, update=True, permissions=perms)
         r.release()
 

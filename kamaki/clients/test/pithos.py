@@ -983,3 +983,21 @@ class Pithos(TestCase):
             r = self.client.get_object_sharing(obj)
             expected.pop('write')
             self.assert_dicts_are_equal(r, expected)
+
+    @patch('%s.object_post' % pithos_pkg, return_value=FR())
+    def test_set_object_sharing(self, POST):
+        read_perms = ['u1', 'g1', 'u2', 'g2']
+        write_perms = ['u1', 'g1']
+        for kwargs in (
+                dict(read_permition=read_perms, write_permition=write),
+                dict(read_permition=read_perms),
+                dict(write_permition=write_perms)).items():
+            self.client.set_object_sharing(obj, **kwargs)
+            if 'read_permition' in kwargs:
+                kwargs['read'] = kwargs.pop('read_permition')
+            if 'write_permition' in kwargs:
+                kwargs['write'] = kwargs.pop('write_permition')
+            self.assertEqual(
+                POST.mock_calls[-1],
+                call(obj, update=True, permissions=kwargs)
+
