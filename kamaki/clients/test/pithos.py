@@ -133,7 +133,10 @@ object_hashmap = dict(
         "609de22ce842d997f645fc49d5f14e0e3766dd51a6cbe66383b2bab82c8dfcd0",
         "3102851ac168c78be70e35ff5178c7b1ebebd589e5106d565ca1094d1ca8ff59",
         "bfe306dd24e92a8d85caf7055643f250fd319e8c4cdd4755ddabbf3ff97e83c7"])
-
+sharers = [
+    dict(last_modified="2013-01-29T16:50:06.084674+00:00", name="0b1a-82d5"),
+    dict(last_modified="2013-01-29T16:50:06.084674+00:00", name="0b2a-f2d5"),
+    dict(last_modified="2013-01-29T16:50:06.084674+00:00", name="2b1a-82d6")]
 
 class FR(object):
     """FR stands for Fake Response"""
@@ -1101,3 +1104,25 @@ class Pithos(TestCase):
                 self.assertEqual(kwargs['update'], True)
                 exp = 'application/octet-stream'
                 self.assertEqual(kwargs['content_type'], exp)
+
+    @patch('%s.set_param' % client_pkg)
+    @patch('%s.get' % pithos_pkg, return_value=FR)
+    def test_get_sharing_accounts(self, get, SP):
+        FR.json = sharers
+        for kws in (
+                dict(),
+                dict(limit='50m3-11m17'),
+                dict(marker='X'),
+                dict(limit='50m3-11m17', marker='X')):
+            r = self.client.get_sharing_accounts(**kws)
+            self.assertEqual(SP.mock_calls[-3], call('format', 'json'))
+            limit, marker = kws.get('limit', None), kws.get('marker', None)
+            self.assertEqual(SP.mock_calls[-2], call(
+                'limit', limit,
+                iff=limit is not None))
+            self.assertEqual(SP.mock_calls[-1], call(
+                'marker', marker,
+                iff=marker is not None))
+            self.assertEqual(get.mock_calls[-1], call('', success=(200, 204)))
+            for i in range(len(r)):
+                self.assert_dicts_are_equal(r[i], sharers[i])
