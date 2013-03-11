@@ -219,52 +219,51 @@ class Pithos(TestCase):
             expected = [call('%s%s' % (prfx, k), v) for k, v in metas.items()]
             self.assertEqual(PC.set_header.mock_calls, expected)
 
-    def test_del_account_meta(self):
+    @patch('%s.account_post' % pithos_pkg, return_value=FR())
+    def test_del_account_meta(self, ap):
         keys = ['k1', 'k2', 'k3']
-        with patch.object(PC, 'account_post', return_value=FR()) as ap:
-            expected = []
-            for key in keys:
-                self.client.del_account_meta(key)
-                expected.append(call(update=True, metadata={key: ''}))
-            self.assertEqual(ap.mock_calls, expected)
+        expected = []
+        for key in keys:
+            self.client.del_account_meta(key)
+            expected.append(call(update=True, metadata={key: ''}))
+        self.assertEqual(ap.mock_calls, expected)
 
-    def test_create_container(self):
+    @patch('%s.put' % pithos_pkg, return_value=FR())
+    def test_create_container(self, put):
         FR.status_code = 201
-        with patch.object(PC, 'put', return_value=FR()) as put:
-            cont = 's0m3c0n731n3r'
-            self.client.create_container(cont)
-            expected = [call('/%s/%s' % (user_id, cont), success=(201, 202))]
-            self.assertEqual(put.mock_calls, expected)
-            FR.status_code = 202
-            self.assertRaises(ClientError, self.client.create_container, cont)
+        cont = 's0m3c0n731n3r'
+        self.client.create_container(cont)
+        expected = [call('/%s/%s' % (user_id, cont), success=(201, 202))]
+        self.assertEqual(put.mock_calls, expected)
+        FR.status_code = 202
+        self.assertRaises(ClientError, self.client.create_container, cont)
 
-    def test_get_container_info(self):
+    @patch('%s.container_head' % pithos_pkg, return_value=FR())
+    def test_get_container_info(self, ch):
         FR.headers = container_info
-        with patch.object(PC, 'container_head', return_value=FR()) as ch:
-            r = self.client.get_container_info()
-            self.assert_dicts_are_equal(r, container_info)
-            u = 'some date'
-            r = self.client.get_container_info(until=u)
-            self.assertEqual(ch.mock_calls, [call(until=None), call(until=u)])
+        r = self.client.get_container_info()
+        self.assert_dicts_are_equal(r, container_info)
+        u = 'some date'
+        r = self.client.get_container_info(until=u)
+        self.assertEqual(ch.mock_calls, [call(until=None), call(until=u)])
 
-    def test_delete_container(self):
+    @patch('%s.delete' % pithos_pkg, return_value=FR())
+    def test_delete_container(self, delete):
         FR.status_code = 204
-        with patch.object(PC, 'delete', return_value=FR()) as delete:
-            cont = 's0m3c0n731n3r'
-            self.client.delete_container(cont)
-            FR.status_code = 404
+        cont = 's0m3c0n731n3r'
+        self.client.delete_container(cont)
+        for err_code in (404, 409):
+            FR.status_code = err_code
             self.assertRaises(ClientError, self.client.delete_container, cont)
-            FR.status_code = 409
-            self.assertRaises(ClientError, self.client.delete_container, cont)
-            acall = call('/%s/%s' % (user_id, cont), success=(204, 404, 409))
-            self.assertEqual(delete.mock_calls, [acall] * 3)
+        acall = call('/%s/%s' % (user_id, cont), success=(204, 404, 409))
+        self.assertEqual(delete.mock_calls, [acall] * 3)
 
-    def test_list_containers(self):
+    @patch('%s.account_get' % pithos_pkg, return_value=FR())
+    def test_list_containers(self, get):
         FR.json = container_list
-        with patch.object(PC, 'account_get', return_value=FR()):
-            r = self.client.list_containers()
-            for i in range(len(r)):
-                self.assert_dicts_are_equal(r[i], container_list[i])
+        r = self.client.list_containers()
+        for i in range(len(r)):
+            self.assert_dicts_are_equal(r[i], container_list[i])
 
     @patch('%s.get_container_info' % pithos_pkg, return_value=container_info)
     @patch('%s.container_post' % pithos_pkg, return_value=FR())
@@ -373,8 +372,9 @@ class Pithos(TestCase):
         for arg, val in kwargs.items():
             self.assertEqual(OP.mock_calls[-2][2][arg], val)
 
+    @patch('%s.put' % pithos_pkg, return_value=FR())
     @patch('%s.set_header' % client_pkg)
-    def test_create_object(self, SH):
+    def test_create_object(self, SH, put):
         cont = self.client.container
         ctype = 'c0n73n7/typ3'
         exp_shd = [
@@ -382,24 +382,22 @@ class Pithos(TestCase):
             call('Content-length', '0'),
             call('Content-Type', ctype), call('Content-length', '42')]
         exp_put = [call('/%s/%s/%s' % (user_id, cont, obj), success=201)] * 2
-        with patch.object(PC, 'put', return_value=FR()) as put:
-            self.client.create_object(obj)
-            self.client.create_object(obj,
-                content_type=ctype, content_length=42)
-            self.assertEqual(PC.set_header.mock_calls, exp_shd)
-            self.assertEqual(put.mock_calls, exp_put)
+        self.client.create_object(obj)
+        self.client.create_object(obj, content_type=ctype, content_length=42)
+        self.assertEqual(PC.set_header.mock_calls, exp_shd)
+        self.assertEqual(put.mock_calls, exp_put)
 
+    @patch('%s.put' % pithos_pkg, return_value=FR())
     @patch('%s.set_header' % client_pkg)
-    def test_create_directory(self, SH):
+    def test_create_directory(self, SH, put):
         cont = self.client.container
         exp_shd = [
             call('Content-Type', 'application/directory'),
             call('Content-length', '0')]
         exp_put = [call('/%s/%s/%s' % (user_id, cont, obj), success=201)]
-        with patch.object(PC, 'put', return_value=FR()) as put:
-            self.client.create_directory(obj)
-            self.assertEqual(PC.set_header.mock_calls, exp_shd)
-            self.assertEqual(put.mock_calls, exp_put)
+        self.client.create_directory(obj)
+        self.assertEqual(PC.set_header.mock_calls, exp_shd)
+        self.assertEqual(put.mock_calls, exp_put)
 
     def test_get_object_info(self):
         FR.headers = object_info
@@ -420,36 +418,35 @@ class Pithos(TestCase):
                 self.client.get_object_info,
                 obj, version=version)
 
-    def test_get_object_meta(self):
+    @patch('%s.get_object_info' % pithos_pkg, return_value=object_info)
+    def test_get_object_meta(self, GOI):
         expected = dict()
         for k, v in object_info.items():
             expected[k] = v
-        with patch.object(PC, 'get_object_info', return_value=object_info):
-            r = self.client.get_object_meta(obj)
-            self.assert_dicts_are_equal(r, expected)
+        r = self.client.get_object_meta(obj)
+        self.assert_dicts_are_equal(r, expected)
 
-    def test_del_object_meta(self):
+    @patch('%s.object_post' % pithos_pkg, return_value=FR())
+    def test_del_object_meta(self, post):
         metakey = '50m3m3t4k3y'
-        with patch.object(PC, 'object_post', return_value=FR()) as post:
-            self.client.del_object_meta(obj, metakey)
-            self.assertEqual(
-                post.mock_calls,
-                [call(obj, update=True, metadata={metakey: ''})])
+        self.client.del_object_meta(obj, metakey)
+        expected = call(obj, update=True, metadata={metakey: ''})
+        self.assertEqual(post.mock_calls[-1], expected)
 
+    @patch('%s.post' % client_pkg, return_value=FR())
     @patch('%s.set_header' % client_pkg)
-    def test_replace_object_meta(self, SH):
+    def test_replace_object_meta(self, SH, post):
         metas = dict(k1='new1', k2='new2', k3='new3')
         cont = self.client.container
-        with patch.object(PC, 'post', return_value=FR()) as post:
-            self.client.replace_object_meta(metas)
-            self.assertEqual(post.mock_calls, [
-                call('/%s/%s' % (user_id, cont),
-                success=202)])
-            prfx = 'X-Object-Meta-'
-            expected = [call('%s%s' % (prfx, k), v) for k, v in metas.items()]
-            self.assertEqual(PC.set_header.mock_calls, expected)
+        self.client.replace_object_meta(metas)
+        expected = call('/%s/%s' % (user_id, cont), success=202)
+        self.assertEqual(post.mock_calls[-1], expected)
+        prfx = 'X-Object-Meta-'
+        expected = [call('%s%s' % (prfx, k), v) for k, v in metas.items()]
+        self.assertEqual(PC.set_header.mock_calls, expected)
 
-    def test_copy_object(self):
+    @patch('%s.object_put' % pithos_pkg, return_value=FR())
+    def test_copy_object(self, put):
         src_cont = 'src-c0nt41n3r'
         src_obj = 'src-0bj'
         dst_cont = 'dst-c0nt41n3r'
@@ -464,22 +461,22 @@ class Pithos(TestCase):
             content_type=None,
             source_version=None,
             public=False)
-        with patch.object(PC, 'object_put', return_value=FR()) as put:
-            self.client.copy_object(src_cont, src_obj, dst_cont)
-            self.assertEqual(put.mock_calls[-1], expected)
-            self.client.copy_object(src_cont, src_obj, dst_cont, dst_obj)
-            self.assertEqual(put.mock_calls[-1][1], (dst_obj,))
-            kwargs = dict(
-                source_version='src-v3r510n',
-                source_account='src-4cc0un7',
-                public=True,
-                content_type='c0n73n7Typ3',
-                delimiter='5')
-            self.client.copy_object(src_cont, src_obj, dst_cont, **kwargs)
-            for k, v in kwargs.items():
-                self.assertEqual(v, put.mock_calls[-1][2][k])
+        self.client.copy_object(src_cont, src_obj, dst_cont)
+        self.assertEqual(put.mock_calls[-1], expected)
+        self.client.copy_object(src_cont, src_obj, dst_cont, dst_obj)
+        self.assertEqual(put.mock_calls[-1][1], (dst_obj,))
+        kwargs = dict(
+            source_version='src-v3r510n',
+            source_account='src-4cc0un7',
+            public=True,
+            content_type='c0n73n7Typ3',
+            delimiter='5')
+        self.client.copy_object(src_cont, src_obj, dst_cont, **kwargs)
+        for k, v in kwargs.items():
+            self.assertEqual(v, put.mock_calls[-1][2][k])
 
-    def test_move_object(self):
+    @patch('%s.object_put' % pithos_pkg, return_value=FR())
+    def test_move_object(self, put):
         src_cont = 'src-c0nt41n3r'
         src_obj = 'src-0bj'
         dst_cont = 'dst-c0nt41n3r'
@@ -494,75 +491,76 @@ class Pithos(TestCase):
             content_type=None,
             source_version=None,
             public=False)
-        with patch.object(PC, 'object_put', return_value=FR()) as put:
-            self.client.move_object(src_cont, src_obj, dst_cont)
-            self.assertEqual(put.mock_calls[-1], expected)
-            self.client.move_object(src_cont, src_obj, dst_cont, dst_obj)
-            self.assertEqual(put.mock_calls[-1][1], (dst_obj,))
-            kwargs = dict(
-                source_version='src-v3r510n',
-                source_account='src-4cc0un7',
-                public=True,
-                content_type='c0n73n7Typ3',
-                delimiter='5')
-            self.client.move_object(src_cont, src_obj, dst_cont, **kwargs)
-            for k, v in kwargs.items():
-                self.assertEqual(v, put.mock_calls[-1][2][k])
+        self.client.move_object(src_cont, src_obj, dst_cont)
+        self.assertEqual(put.mock_calls[-1], expected)
+        self.client.move_object(src_cont, src_obj, dst_cont, dst_obj)
+        self.assertEqual(put.mock_calls[-1][1], (dst_obj,))
+        kwargs = dict(
+            source_version='src-v3r510n',
+            source_account='src-4cc0un7',
+            public=True,
+            content_type='c0n73n7Typ3',
+            delimiter='5')
+        self.client.move_object(src_cont, src_obj, dst_cont, **kwargs)
+        for k, v in kwargs.items():
+            self.assertEqual(v, put.mock_calls[-1][2][k])
 
-    def test_delete_object(self):
+    @patch('%s.delete' % client_pkg, return_value=FR())
+    def test_delete_object(self, delete):
         cont = self.client.container
-        with patch.object(PC, 'delete', return_value=FR()) as delete:
-            self.client.delete_object(obj)
-            self.assertEqual(delete.mock_calls, [
-                call('/%s/%s/%s' % (user_id, cont, obj), success=(204, 404))])
-            FR.status_code = 404
-            self.assertRaises(ClientError, self.client.delete_object, obj)
+        self.client.delete_object(obj)
+        self.assertEqual(
+            delete.mock_calls[-1],
+            call('/%s/%s/%s' % (user_id, cont, obj), success=(204, 404)))
+        FR.status_code = 404
+        self.assertRaises(ClientError, self.client.delete_object, obj)
 
+    @patch('%s.get' % client_pkg, return_value=FR())
     @patch('%s.set_param' % client_pkg)
-    def test_list_objects(self, SP):
+    def test_list_objects(self, SP, get):
         FR.json = object_list
         acc = self.client.account
         cont = self.client.container
         SP = PC.set_param
-        with patch.object(PC, 'get', return_value=FR()) as get:
-            r = self.client.list_objects()
-            for i in range(len(r)):
-                self.assert_dicts_are_equal(r[i], object_list[i])
-            self.assertEqual(get.mock_calls, [
-                call('/%s/%s' % (acc, cont), success=(200, 204, 304, 404))])
-            self.assertEqual(SP.mock_calls, [call('format', 'json')])
-            FR.status_code = 304
-            self.assertEqual(self.client.list_objects(), [])
-            FR.status_code = 404
-            self.assertRaises(ClientError, self.client.list_objects)
+        r = self.client.list_objects()
+        for i in range(len(r)):
+            self.assert_dicts_are_equal(r[i], object_list[i])
+        self.assertEqual(get.mock_calls, [
+            call('/%s/%s' % (acc, cont), success=(200, 204, 304, 404))])
+        self.assertEqual(SP.mock_calls, [call('format', 'json')])
+        FR.status_code = 304
+        self.assertEqual(self.client.list_objects(), [])
+        FR.status_code = 404
+        self.assertRaises(ClientError, self.client.list_objects)
 
+    @patch('%s.get' % client_pkg, return_value=FR())
     @patch('%s.set_param' % client_pkg)
-    def test_list_objects_in_path(self, SP):
+    def test_list_objects_in_path(self, SP, get):
         FR.json = object_list
         path = '/some/awsome/path'
         acc = self.client.account
         cont = self.client.container
         SP = PC.set_param
-        with patch.object(PC, 'get', return_value=FR()) as get:
-            self.client.list_objects_in_path(path)
-            self.assertEqual(get.mock_calls, [
-                call('/%s/%s' % (acc, cont), success=(200, 204, 404))])
-            self.assertEqual(SP.mock_calls, [
-                call('format', 'json'), call('path', path)])
-            FR.status_code = 404
-            self.assertRaises(ClientError, self.client.list_objects)
+        self.client.list_objects_in_path(path)
+        self.assertEqual(get.mock_calls, [
+            call('/%s/%s' % (acc, cont), success=(200, 204, 404))])
+        self.assertEqual(SP.mock_calls, [
+            call('format', 'json'), call('path', path)])
+        FR.status_code = 404
+        self.assertRaises(ClientError, self.client.list_objects)
 
     #  Pithos+ only methods
 
-    def test_purge_container(self):
-        with patch.object(PC, 'container_delete', return_value=FR()) as cd:
-            self.client.purge_container()
-            self.assertTrue('until' in cd.mock_calls[-1][2])
-            cont = self.client.container
-            self.client.purge_container('another-container')
-            self.assertEqual(self.client.container, cont)
+    @patch('%s.container_delete' % pithos_pkg, return_value=FR())
+    def test_purge_container(self, cd):
+        self.client.purge_container()
+        self.assertTrue('until' in cd.mock_calls[-1][2])
+        cont = self.client.container
+        self.client.purge_container('another-container')
+        self.assertEqual(self.client.container, cont)
 
-    def test_upload_object_unchunked(self):
+    @patch('%s.object_put' % pithos_pkg, return_value=FR())
+    def test_upload_object_unchunked(self, put):
         num_of_blocks = 8
         tmpFile = self._create_temp_file(num_of_blocks)
         expected = dict(
@@ -574,30 +572,30 @@ class Pithos(TestCase):
                 content_disposition='some content_disposition',
                 public=True,
                 permissions=dict(read=['u1', 'g1', 'u2'], write=['u1']))
-        with patch.object(PC, 'object_put', return_value=FR()) as put:
-            self.client.upload_object_unchunked(obj, tmpFile)
-            self.assertEqual(put.mock_calls[-1][1], (obj,))
-            self.assertEqual(
-                sorted(put.mock_calls[-1][2].keys()),
-                sorted(expected.keys()))
-            kwargs = dict(expected)
-            kwargs.pop('success')
-            kwargs['size'] = kwargs.pop('data')
-            kwargs['sharing'] = kwargs.pop('permissions')
-            tmpFile.seek(0)
-            self.client.upload_object_unchunked(obj, tmpFile, **kwargs)
-            pmc = put.mock_calls[-1][2]
-            for k, v in expected.items():
-                if k == 'data':
-                    self.assertEqual(len(pmc[k]), v)
-                else:
-                    self.assertEqual(pmc[k], v)
-            self.assertRaises(
-                ClientError,
-                self.client.upload_object_unchunked,
-                obj, tmpFile, withHashFile=True)
+        self.client.upload_object_unchunked(obj, tmpFile)
+        self.assertEqual(put.mock_calls[-1][1], (obj,))
+        self.assertEqual(
+            sorted(put.mock_calls[-1][2].keys()),
+            sorted(expected.keys()))
+        kwargs = dict(expected)
+        kwargs.pop('success')
+        kwargs['size'] = kwargs.pop('data')
+        kwargs['sharing'] = kwargs.pop('permissions')
+        tmpFile.seek(0)
+        self.client.upload_object_unchunked(obj, tmpFile, **kwargs)
+        pmc = put.mock_calls[-1][2]
+        for k, v in expected.items():
+            if k == 'data':
+                self.assertEqual(len(pmc[k]), v)
+            else:
+                self.assertEqual(pmc[k], v)
+        self.assertRaises(
+            ClientError,
+            self.client.upload_object_unchunked,
+            obj, tmpFile, withHashFile=True)
 
-    def test_create_object_by_manifestation(self):
+    @patch('%s.object_put' % pithos_pkg, return_value=FR())
+    def test_create_object_by_manifestation(self, put):
         manifest = '%s/%s' % (self.client.container, obj)
         kwargs = dict(
                 etag='some-etag',
@@ -606,16 +604,15 @@ class Pithos(TestCase):
                 content_disposition='some content_disposition',
                 public=True,
                 sharing=dict(read=['u1', 'g1', 'u2'], write=['u1']))
-        with patch.object(PC, 'object_put', return_value=FR()) as put:
-            self.client.create_object_by_manifestation(obj)
-            expected = dict(content_length=0, manifest=manifest)
-            for k in kwargs:
-                expected['permissions' if k == 'sharing' else k] = None
-            self.assertEqual(put.mock_calls[-1], call(obj, **expected))
-            self.client.create_object_by_manifestation(obj, **kwargs)
-            expected.update(kwargs)
-            expected['permissions'] = expected.pop('sharing')
-            self.assertEqual(put.mock_calls[-1], call(obj, **expected))
+        self.client.create_object_by_manifestation(obj)
+        expected = dict(content_length=0, manifest=manifest)
+        for k in kwargs:
+            expected['permissions' if k == 'sharing' else k] = None
+        self.assertEqual(put.mock_calls[-1], call(obj, **expected))
+        self.client.create_object_by_manifestation(obj, **kwargs)
+        expected.update(kwargs)
+        expected['permissions'] = expected.pop('sharing')
+        self.assertEqual(put.mock_calls[-1], call(obj, **expected))
 
     @patch('%s.get_object_hashmap' % pithos_pkg, return_value=object_hashmap)
     @patch('%s.object_get' % pithos_pkg, return_value=FR())
@@ -738,34 +735,33 @@ class Pithos(TestCase):
             exp_args.update(kwargs)
             self.assertEqual(get.mock_calls[-1], call(obj, **exp_args))
 
-    def test_set_account_group(self):
-        group = 'aU53rGr0up'
-        usernames = ['u1', 'u2', 'u3']
-        with patch.object(PC, 'account_post', return_value=FR()) as post:
-            self.client.set_account_group(group, usernames)
-            self.assertEqual(
-                post.mock_calls[-1],
-                call(update=True, groups={group: usernames}))
+    @patch('%s.account_post' % pithos_pkg, return_value=FR())
+    def test_set_account_group(self, post):
+        (group, usernames) = ('aU53rGr0up', ['u1', 'u2', 'u3'])
+        self.client.set_account_group(group, usernames)
+        self.assertEqual(
+            post.mock_calls[-1],
+            call(update=True, groups={group: usernames}))
 
-    def test_del_account_group(self):
+    @patch('%s.account_post' % pithos_pkg, return_value=FR())
+    def test_del_account_group(self, post):
         group = 'aU53rGr0up'
-        with patch.object(PC, 'account_post', return_value=FR()) as post:
-            self.client.del_account_group(group)
-            self.assertEqual(
-                post.mock_calls[-1],
-                call(update=True, groups={group: []}))
+        self.client.del_account_group(group)
+        self.assertEqual(
+            post.mock_calls[-1],
+            call(update=True, groups={group: []}))
 
-    def test_get_account_quota(self):
+    @patch('%s.get_account_info' % pithos_pkg, return_value=account_info)
+    def test_get_account_quota(self, GAI):
         key = 'x-account-policy-quota'
-        with patch.object(PC, 'get_account_info', return_value=account_info):
-            r = self.client.get_account_quota()
-            self.assertEqual(r[key], account_info[key])
+        r = self.client.get_account_quota()
+        self.assertEqual(r[key], account_info[key])
 
-    def test_get_account_versioning(self):
+    @patch('%s.get_account_info' % pithos_pkg, return_value=account_info)
+    def test_get_account_versioning(self, GAI):
         key = 'x-account-policy-versioning'
-        with patch.object(PC, 'get_account_info', return_value=account_info):
-            r = self.client.get_account_versioning()
-            self.assertEqual(r[key], account_info[key])
+        r = self.client.get_account_versioning()
+        self.assertEqual(r[key], account_info[key])
 
     def test_get_account_meta(self):
         key = 'x-account-meta-'
@@ -797,41 +793,40 @@ class Pithos(TestCase):
             for k in [k for k in acc_info if k.startswith(key)]:
                 self.assertEqual(r[k], acc_info[k])
 
-    def test_set_account_meta(self):
+    @patch('%s.account_post' % pithos_pkg, return_value=FR())
+    def test_set_account_meta(self, post):
         metas = dict(k1='v1', k2='v2', k3='v3')
-        with patch.object(PC, 'account_post', return_value=FR()) as post:
-            self.client.set_account_meta(metas)
-            self.assertEqual(
-                post.mock_calls[-1],
-                call(update=True, metadata=metas))
+        self.client.set_account_meta(metas)
+        self.assertEqual(
+            post.mock_calls[-1],
+            call(update=True, metadata=metas))
 
-    def test_set_account_quota(self):
+    @patch('%s.account_post' % pithos_pkg, return_value=FR())
+    def test_set_account_quota(self, post):
         qu = 1024
-        with patch.object(PC, 'account_post', return_value=FR()) as post:
-            self.client.set_account_quota(qu)
-            self.assertEqual(post.mock_calls[-1], call(update=True, quota=qu))
+        self.client.set_account_quota(qu)
+        self.assertEqual(post.mock_calls[-1], call(update=True, quota=qu))
 
-    def test_set_account_versioning(self):
+    @patch('%s.account_post' % pithos_pkg, return_value=FR())
+    def test_set_account_versioning(self, post):
         vrs = 'n3wV3r51on1ngTyp3'
-        with patch.object(PC, 'account_post', return_value=FR()) as post:
-            self.client.set_account_versioning(vrs)
-            self.assertEqual(
-                post.mock_calls[-1],
-                call(update=True, versioning=vrs))
+        self.client.set_account_versioning(vrs)
+        self.assertEqual(
+            post.mock_calls[-1],
+            call(update=True, versioning=vrs))
 
-    def test_del_container(self):
-        kwarg_list = [
-            dict(delimiter=None, until=None),
-            dict(delimiter='X', until='50m3d473')]
-        with patch.object(PC, 'container_delete', return_value=FR()) as delete:
-            for kwarg in kwarg_list:
-                self.client.del_container(**kwarg)
-                expected = dict(kwarg)
-                expected['success'] = (204, 404, 409)
-                self.assertEqual(delete.mock_calls[-1], call(**expected))
-            for status_code in (404, 409):
-                FR.status_code = status_code
-                self.assertRaises(ClientError, self.client.del_container)
+    @patch('%s.container_delete' % pithos_pkg, return_value=FR())
+    def test_del_container(self, delete):
+        for kwarg in (
+                dict(delimiter=None, until=None),
+                dict(delimiter='X', until='50m3d473')):
+            self.client.del_container(**kwarg)
+            expected = dict(kwarg)
+            expected['success'] = (204, 404, 409)
+            self.assertEqual(delete.mock_calls[-1], call(**expected))
+        for status_code in (404, 409):
+            FR.status_code = status_code
+            self.assertRaises(ClientError, self.client.del_container)
 
     @patch('%s.get_container_info' % pithos_pkg, return_value=container_info)
     def test_get_container_versioning(self, GCI):
@@ -889,54 +884,53 @@ class Pithos(TestCase):
                     self.assertEqual(r, ret[1])
                     self.assertEqual(gci.mock_calls[-1], call(until=until))
 
-    def test_set_container_meta(self):
+    @patch('%s.container_post' % pithos_pkg, return_value=FR())
+    def test_set_container_meta(self, post):
         metas = dict(k1='v1', k2='v2', k3='v3')
-        with patch.object(PC, 'container_post', return_value=FR()) as post:
-            self.client.set_container_meta(metas)
-            self.assertEqual(
-                post.mock_calls[-1],
-                call(update=True, metadata=metas))
+        self.client.set_container_meta(metas)
+        self.assertEqual(
+            post.mock_calls[-1],
+            call(update=True, metadata=metas))
 
-    def test_del_container_meta(self):
-        with patch.object(PC, 'container_post', return_value=FR()) as ap:
-            self.client.del_container_meta('somekey')
-            expected = [call(update=True, metadata={'somekey': ''})]
-            self.assertEqual(ap.mock_calls, expected)
+    @patch('%s.container_post' % pithos_pkg, return_value=FR())
+    def test_del_container_meta(self, ap):
+        self.client.del_container_meta('somekey')
+        expected = [call(update=True, metadata={'somekey': ''})]
+        self.assertEqual(ap.mock_calls, expected)
 
-    def test_set_container_quota(self):
+    @patch('%s.container_post' % pithos_pkg, return_value=FR())
+    def test_set_container_quota(self, post):
         qu = 1024
-        with patch.object(PC, 'container_post', return_value=FR()) as post:
-            self.client.set_container_quota(qu)
-            self.assertEqual(post.mock_calls[-1], call(update=True, quota=qu))
+        self.client.set_container_quota(qu)
+        self.assertEqual(post.mock_calls[-1], call(update=True, quota=qu))
 
-    def test_set_container_versioning(self):
+    @patch('%s.container_post' % pithos_pkg, return_value=FR())
+    def test_set_container_versioning(self, post):
         vrs = 'n3wV3r51on1ngTyp3'
-        with patch.object(PC, 'container_post', return_value=FR()) as post:
-            self.client.set_container_versioning(vrs)
-            self.assertEqual(
-                post.mock_calls[-1],
-                call(update=True, versioning=vrs))
+        self.client.set_container_versioning(vrs)
+        self.assertEqual(
+            post.mock_calls[-1],
+            call(update=True, versioning=vrs))
 
-    def test_del_object(self):
-        kwargs = [
-            dict(delimiter=None, until=None),
-            dict(delimiter='X', until='50m3d473')]
-        with patch.object(PC, 'object_delete', return_value=FR()) as delete:
-            for kwarg in kwargs:
-                self.client.del_object(obj, **kwarg)
-                self.assertEqual(delete.mock_calls[-1], call(obj, **kwarg))
+    @patch('%s.object_delete' % pithos_pkg, return_value=FR())
+    def test_del_object(self, delete):
+        for kwarg in (
+                dict(delimiter=None, until=None),
+                dict(delimiter='X', until='50m3d473')):
+            self.client.del_object(obj, **kwarg)
+            self.assertEqual(delete.mock_calls[-1], call(obj, **kwarg))
 
-    def test_set_object_meta(self):
+    @patch('%s.object_post' % pithos_pkg, return_value=FR())
+    def test_set_object_meta(self, post):
         metas = dict(k1='v1', k2='v2', k3='v3')
-        with patch.object(PC, 'object_post', return_value=FR()) as post:
-            self.assertRaises(
-                AssertionError,
-                self.client.set_object_meta,
-                obj, 'Non dict arg')
-            self.client.set_object_meta(obj, metas)
-            self.assertEqual(
-                post.mock_calls[-1],
-                call(obj, update=True, metadata=metas))
+        self.assertRaises(
+            AssertionError,
+            self.client.set_object_meta,
+            obj, 'Non dict arg')
+        self.client.set_object_meta(obj, metas)
+        self.assertEqual(
+            post.mock_calls[-1],
+            call(obj, update=True, metadata=metas))
 
     @patch('%s.object_post' % pithos_pkg, return_value=FR())
     def test_publish_object(self, post):
@@ -1004,3 +998,43 @@ class Pithos(TestCase):
     def test_del_object_sharing(self, SOS):
         self.client.del_object_sharing(obj)
         self.assertEqual(SOS.mock_calls[-1], call(obj))
+
+    @patch('%s.get_container_info' % pithos_pkg, return_value=container_info)
+    @patch('%s.object_post' % pithos_pkg, return_value=FR())
+    def test_append_object(self, post, GCI):
+        num_of_blocks = 4
+        tmpFile = self._create_temp_file(4)
+        tmpFile.seek(0, 2)
+        file_size = tmpFile.tell()
+        for turn in range(2):
+            tmpFile.seek(0, 0)
+
+            try:
+                from progress.bar import ShadyBar
+                apn_bar = ShadyBar('Mock append')
+            except ImportError:
+                apn_bar = None
+
+            if apn_bar:
+
+                def append_gen(n):
+                    for i in apn_bar.iter(range(n)):
+                        yield
+                    yield
+
+            else:
+                append_gen = None
+
+            self.client.append_object(
+                obj, tmpFile,
+                upload_cb=append_gen if turn else None)
+            self.assertEqual((turn + 1) * num_of_blocks, len(post.mock_calls))
+            (args, kwargs) = post.mock_calls[-1][1:3]
+            self.assertEqual(args, (obj,))
+            self.assertEqual(kwargs['content_length'], len(kwargs['data']))
+            fsize = num_of_blocks * int(kwargs['content_length'])
+            self.assertEqual(fsize, file_size)
+            self.assertEqual(kwargs['content_range'], 'bytes */*')
+            exp = 'application/octet-stream'
+            self.assertEqual(kwargs['content_type'], exp)
+            self.assertEqual(kwargs['update'], True)
