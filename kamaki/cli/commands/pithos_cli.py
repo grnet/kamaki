@@ -1075,8 +1075,7 @@ class store_upload(_store_container_command):
                     if progress_bar:
                         hash_bar = progress_bar.clone()
                         hash_cb = hash_bar.get_generator(
-                            'Calculating block hashes'
-                        )
+                            'Calculating block hashes')
                     else:
                         hash_cb = None
                     self.client.upload_object(

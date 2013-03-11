@@ -48,6 +48,20 @@ class KamakiConnection(TestCase):
         from kamaki.clients.connection import KamakiConnection as HTTPC
         self.conn = HTTPC()
 
+    def test_poolsize(self):
+
+        def set_poolsize(poolsize):
+            self.conn.poolsize = poolsize
+
+        from kamaki.clients.connection import KamakiConnection as HTTPC
+        for poolsize in ('non integer', -10, 0):
+            err = AssertionError
+            self.assertRaises(err, set_poolsize, poolsize)
+        for poolsize in (1, 100, 1024 * 1024 * 1024 * 1024):
+            self.conn.poolsize = poolsize
+            self.assertEquals(self.conn.poolsize, poolsize)
+            self.assertEquals(HTTPC(poolsize=poolsize).poolsize, poolsize)
+
     def test_set_header(self):
         cnn = self.conn
         for k, v in self.v_samples.items():
