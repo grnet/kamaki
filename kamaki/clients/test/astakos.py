@@ -56,17 +56,20 @@ example0 = dict(
         uuid='an07h2r-us3r-uu1d-f0r-as7ak0s')
 
 
+class FR(object):
+    json = example
+    headers = {}
+    content = json
+    status = None
+    status_code = 200
+
+    def release(self):
+        pass
+
+khttp = 'kamaki.clients.connection.kamakicon.KamakiHTTPConnection'
+
+
 class Astakos(TestCase):
-
-    class FR(object):
-        json = example
-        headers = {}
-        content = json
-        status = None
-        status_code = 200
-
-        def release(self):
-            pass
 
     cached = False
 
@@ -74,12 +77,13 @@ class Astakos(TestCase):
         self.url = 'https://astakos.example.com'
         self.token = 'ast@k0sT0k3n=='
         self.client = AstakosClient(self.url, self.token)
-        from kamaki.clients.connection.kamakicon import KamakiHTTPConnection
-        self.C = KamakiHTTPConnection
 
-    def _authenticate(self):
-        with patch.object(self.C, 'perform_request', return_value=self.FR()):
-            r = self.client.authenticate()
+    def tearDown(self):
+        FR.json = example
+
+    @patch('%s.perform_request' % khttp, return_value=FR())
+    def _authenticate(self, PR):
+        r = self.client.authenticate()
         self.cached = True
         return r
 
@@ -109,8 +113,8 @@ class Astakos(TestCase):
     def test_list(self):
         if not self.cached:
             self._authenticate
-        with patch.object(self.FR, 'json', return_value=example0):
-            self._authenticate()
+        FR.json = example0
+        self._authenticate()
         r = self.client.list()
         self.assertTrue(len(r) == 1)
         self.assertEqual(r[0]['auth_token'], self.token)
