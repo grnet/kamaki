@@ -957,3 +957,29 @@ class Pithos(TestCase):
         self.assertEqual(
             post.mock_calls[-1],
             call(obj, public=False, update=True))
+
+    def test_get_object_sharing(self):
+        info = dict(object_info)
+        expected = dict(read='u1,g1,u2', write='u1')
+        info['x-object-sharing'] = '; '.join(
+            ['%s=%s' % (k, v) for k, v in expected.items()])
+        with patch.object(PC, 'get_object_info', return_value=info) as GOF:
+            r = self.client.get_object_sharing(obj)
+            self.assertEqual(GOF.mock_calls[-1], call(obj))
+            self.assert_dicts_are_equal(r, expected)
+            info['x-object-sharing'] = '//'.join(
+                ['%s=%s' % (k, v) for k, v in expected.items()])
+            self.assertRaises(
+                ValueError,
+                self.client.get_object_sharing,
+                obj)
+            info['x-object-sharing'] = '; '.join(
+                ['%s:%s' % (k, v) for k, v in expected.items()])
+            self.assertRaises(
+                ClientError,
+                self.client.get_object_sharing,
+                obj)
+            info['x-object-sharing'] = 'read=%s' % expected['read']
+            r = self.client.get_object_sharing(obj)
+            expected.pop('write')
+            self.assert_dicts_are_equal(r, expected)
