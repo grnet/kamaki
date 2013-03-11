@@ -1038,3 +1038,15 @@ class Pithos(TestCase):
             exp = 'application/octet-stream'
             self.assertEqual(kwargs['content_type'], exp)
             self.assertEqual(kwargs['update'], True)
+
+    @patch('%s.object_post' % pithos_pkg, return_value=FR())
+    def test_truncate_object(self, post):
+        upto_bytes = 377
+        self.client.truncate_object(obj, upto_bytes)
+        self.assertEqual(post.mock_calls[-1], call(
+            obj,
+            update=True,
+            object_bytes=upto_bytes,
+            content_range='bytes 0-%s/*' % upto_bytes,
+            content_type='application/octet-stream',
+            source_object='/%s/%s' % (self.client.container, obj)))
