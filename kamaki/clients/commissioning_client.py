@@ -40,9 +40,10 @@ from json import loads as json_loads, dumps as json_dumps
 
 class CommissioningClient(Callpoint):
 
-    def __init__(self, base_url, token):
+    def __init__(self, base_url, token, poolsize):
         super(CommissioningClient, self).__init__()
         self._kc = Client(base_url, token)
+        self._kc.http_client.poolsize = poolsize
 
     def do_make_call(self, api_call, data):
 
