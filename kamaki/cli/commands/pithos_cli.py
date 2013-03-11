@@ -1052,7 +1052,7 @@ class store_upload(_store_container_command):
     def _run(self, local_path, remote_path):
         poolsize = self['poolsize']
         if poolsize > 0:
-            self.client.POOL_SIZE = int(poolsize)
+            self.client.MAX_THREADS = int(poolsize)
         params = dict(
             content_encoding=self['content_encoding'],
             content_type=self['content_type'],
@@ -1292,7 +1292,7 @@ class store_download(_store_container_command):
         #outputs = self._outputs(local_path)
         poolsize = self['poolsize']
         if poolsize:
-            self.client.POOL_SIZE = int(poolsize)
+            self.client.MAX_THREADS = int(poolsize)
         progress_bar = None
         try:
             for f, rpath in self._outputs(local_path):
