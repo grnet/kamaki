@@ -213,16 +213,6 @@ class Pithos(TestCase):
             expected.append(call(update=True, metadata={key: ''}))
         self.assertEqual(ap.mock_calls, expected)
 
-    @patch('%s.put' % pithos_pkg, return_value=FR())
-    def test_create_container(self, put):
-        FR.status_code = 201
-        cont = 's0m3c0n731n3r'
-        self.client.create_container(cont)
-        expected = [call('/%s/%s' % (user_id, cont), success=(201, 202))]
-        self.assertEqual(put.mock_calls, expected)
-        FR.status_code = 202
-        self.assertRaises(ClientError, self.client.create_container, cont)
-
     @patch('%s.container_head' % pithos_pkg, return_value=FR())
     def test_get_container_info(self, ch):
         FR.headers = container_info

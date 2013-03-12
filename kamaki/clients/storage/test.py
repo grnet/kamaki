@@ -230,17 +230,16 @@ class Storage(TestCase):
         self.assertEqual(len(keys), len(post.mock_calls))
         self.assertRaises(ClientError, self.client.del_account_meta, 'k4')
 
-    """
-    @patch('%s.put' % pithos_pkg, return_value=FR())
+    @patch('%s.put' % storage_pkg, return_value=FR())
     def test_create_container(self, put):
-        FR.status_code = 201
         cont = 's0m3c0n731n3r'
         self.client.create_container(cont)
-        expected = [call('/%s/%s' % (user_id, cont), success=(201, 202))]
-        self.assertEqual(put.mock_calls, expected)
+        expected = call('/%s/%s' % (user_id, cont), success=(201, 202))
+        self.assertEqual(put.mock_calls[-1], expected)
         FR.status_code = 202
         self.assertRaises(ClientError, self.client.create_container, cont)
 
+    """
     @patch('%s.container_head' % pithos_pkg, return_value=FR())
     def test_get_container_info(self, ch):
         FR.headers = container_info
