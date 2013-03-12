@@ -118,3 +118,8 @@ class Astakos(TestCase):
         r = self.client.list()
         self.assertTrue(len(r) == 1)
         self.assertEqual(r[0]['auth_token'], self.token)
+
+if __name__ == '__main__':
+    from sys import argv
+    from kamaki.clients.test import runTestCase
+    runTestCase(Astakos, 'AstakosClient', argv[1:])

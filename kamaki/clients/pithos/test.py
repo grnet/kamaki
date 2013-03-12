@@ -1138,3 +1138,8 @@ class Pithos(TestCase):
             get.mock_calls[-1],
             call(obj, format='json', version='list'))
         self.assertEqual(r, info['versions'])
+
+if __name__ == '__main__':
+    from sys import argv
+    from kamaki.clients.test import runTestCase
+    runTestCase(Pithos, 'Pithos+ Client', argv[1:])

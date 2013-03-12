@@ -636,3 +636,8 @@ class Cyclades(TestCase):
         self.assertEqual(
             (img_ref, '/meta/' + key),
             images_delete.call_args[0])
+
+if __name__ == '__main__':
+    from sys import argv
+    from kamaki.clients.test import runTestCase
+    runTestCase(Cyclades, 'Cyclades (multi) Client', argv[1:])

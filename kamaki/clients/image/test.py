@@ -323,3 +323,8 @@ class Image(TestCase):
             '/shared-images/%s' % img0['id'])
         for i in range(len(r)):
             self.assert_dicts_are_deeply_equal(r[i], example_images[i])
+
+if __name__ == '__main__':
+    from sys import argv
+    from kamaki.clients.test import runTestCase
+    runTestCase(Image, 'Plankton Client', argv[1:])

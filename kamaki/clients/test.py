@@ -1,4 +1,4 @@
-# Copyright 2012-2013 GRNET S.A. All rights reserved.
+# Copyright 2013 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -33,26 +33,12 @@
 
 from unittest import makeSuite, TestSuite, TextTestRunner, TestCase
 from time import sleep
+from inspect import getmembers, isclass
 
-from kamaki.clients.test.astakos import Astakos
-from kamaki.clients.test.cyclades import Cyclades
-from kamaki.clients.test.image import Image
-from kamaki.clients.test.pithos import Pithos
-
-
-def _add_value(foo, value):
-    def wrap(self):
-        return foo(self, value)
-    return wrap
-
-
-def get_test_classes(module=__import__(__name__), name=''):
-    from inspect import getmembers, isclass
-    for objname, obj in getmembers(module):
-        from unittest import TestCase
-        if (objname == name or not name) and isclass(obj) and (
-                issubclass(obj, TestCase)):
-            yield (obj, objname)
+from kamaki.clients.astakos.test import Astakos
+from kamaki.clients.cyclades.test import Cyclades
+from kamaki.clients.image.test import Image
+from kamaki.clients.pithos.test import Pithos
 
 
 class SilentEvent(TestCase):
@@ -86,22 +72,41 @@ class SilentEvent(TestCase):
             self.assertFalse(threads[i].is_alive())
 
 
+#  TestCase auxiliary methods
+
+def runTestCase(cls, test_name, args=[]):
+    suite = TestSuite()
+    if args:
+        suite.addTest(cls('_'.join(['test'] + args)))
+    else:
+        suite.addTest(makeSuite(cls))
+    print('* Test * %s *' % test_name)
+    TextTestRunner(verbosity=2).run(suite)
+
+
+def _add_value(foo, value):
+    def wrap(self):
+        return foo(self, value)
+    return wrap
+
+
+def get_test_classes(module=__import__(__name__), name=''):
+    module_stack = [module]
+    while module_stack:
+        module = module_stack[-1]
+        module_stack = module_stack[:-1]
+        for objname, obj in getmembers(module):
+            if (objname == name or not name):
+                if isclass(obj) and objname != 'TestCase' and (
+                        issubclass(obj, TestCase)):
+                    yield (obj, objname)
+
+
 def main(argv):
     found = False
     for cls, name in get_test_classes(name=argv[1] if len(argv) > 1 else ''):
         found = True
-        args = argv[2:]
-        suite = TestSuite()
-        if args:
-            try:
-                suite.addTest(cls('_'.join(['test'] + args)))
-            except ValueError:
-                print('Test %s not found in %s suite' % (' '.join(args), name))
-                continue
-        else:
-            suite.addTest(makeSuite(cls))
-        print('Test %s' % name)
-        TextTestRunner(verbosity=2).run(suite)
+        runTestCase(cls, name, argv[2:])
     if not found:
         print('Test "%s" not found' % ' '.join(argv[1:]))
 
