@@ -224,10 +224,14 @@ class Pithos(livetest.Generic):
             account_post internally
         """
         u1 = self.client.account
-        u2 = self.client.account
-        self.client.set_account_group(grpName, [u1, u2])
+        u2 = '1nc0r3c7-d15p14y-n4m3'
+        self.assertRaises(
+            ClientError,
+            self.client.set_account_group,
+            grpName, [u1, u2])
+        self.client.set_account_group(grpName, [u1])
         r = self.client.get_account_group()
-        self.assertEqual(r['x-account-group-' + grpName], '%s,%s' % (u1, u2))
+        self.assertEqual(r['x-account-group-' + grpName], '%s' % u1)
         self.client.del_account_group(grpName)
         r = self.client.get_account_group()
         self.assertTrue('x-account-group-' + grpName not in r)
