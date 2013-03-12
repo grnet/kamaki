@@ -65,6 +65,7 @@ setup(
         'kamaki.clients',
         'kamaki.clients.livetest',
         'kamaki.clients.image',
+        'kamaki.clients.storage',
         'kamaki.clients.pithos',
         'kamaki.clients.astakos',
         'kamaki.clients.cyclades',

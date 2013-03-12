@@ -38,6 +38,7 @@ from inspect import getmembers, isclass
 from kamaki.clients.astakos.test import Astakos
 from kamaki.clients.cyclades.test import Cyclades
 from kamaki.clients.image.test import Image
+from kamaki.clients.storage.test import Storage
 from kamaki.clients.pithos.test import Pithos
 
 
