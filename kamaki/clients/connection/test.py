@@ -33,6 +33,7 @@
 
 from unittest import TestCase, TestSuite, makeSuite, TextTestRunner
 from mock import Mock, patch
+from random import randrange
 
 from kamaki.clients import connection
 from kamaki.clients.connection import errors, kamakicon
@@ -46,6 +47,20 @@ class KamakiConnection(TestCase):
     def setUp(self):
         from kamaki.clients.connection import KamakiConnection as HTTPC
         self.conn = HTTPC()
+
+    def test_poolsize(self):
+
+        def set_poolsize(poolsize):
+            self.conn.poolsize = poolsize
+
+        from kamaki.clients.connection import KamakiConnection as HTTPC
+        for poolsize in ('non integer', -10, 0):
+            err = AssertionError
+            self.assertRaises(err, set_poolsize, poolsize)
+        for poolsize in (1, 100, 1024 * 1024 * 1024 * 1024):
+            self.conn.poolsize = poolsize
+            self.assertEquals(self.conn.poolsize, poolsize)
+            self.assertEquals(HTTPC(poolsize=poolsize).poolsize, poolsize)
 
     def test_set_header(self):
         cnn = self.conn
@@ -202,6 +217,31 @@ class KamakiHTTPResponse(TestCase):
                 self.resp = kamakicon.KamakiHTTPResponse(self.HTC('X', 'Y'))
                 from json import loads
                 self.assertEquals(loads(sample2), self.resp.json)
+
+    def test_pool_lock(self):
+        exceptions_left = 100
+        while exceptions_left:
+            kre = errors.KamakiResponseError
+            with patch.object(self.HTC, 'close', return_value=True):
+                self.resp = kamakicon.KamakiHTTPResponse(self.HTC('X', 'Y'))
+                if randrange(10):
+                    with patch.object(
+                            self.HTC,
+                            'getresponse',
+                            return_value=self.FR()):
+                        self.assertEquals(self.resp.text, self.FR.sample)
+                else:
+                    with patch.object(
+                            self.HTC,
+                            'getresponse',
+                            side_effect=kre('A random error')):
+                        try:
+                            self.resp.text
+                        except kre:
+                            exceptions_left -= 1
+                        else:
+                            self.assertTrue(False)
+                self.HTC.close.assert_called_with()
 
 
 class KamakiResponse(TestCase):

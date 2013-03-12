@@ -169,8 +169,56 @@ def init_parser():
     return parser
 
 
+class Connection(Generic):
+
+    def setUp(self):
+        from kamaki.clients.connection import kamakicon
+        self.conn = kamakicon.KamakiHTTPConnection
+        self.resp = kamakicon.KamakiHTTPResponse
+        self.rerr = kamakicon.KamakiResponseError
+        self.url = self['store', 'url']
+        self.token = self['store', 'token']
+
+    def test_000(self):
+        exceptions_left = 9
+        from random import randrange
+        from httplib import HTTPSConnection
+        from mock import patch
+        connection = self.conn(url=self.url)
+        tries = 0
+        while exceptions_left:
+            from time import sleep
+            sleep(0.5)
+            tries += 1
+            print('Try connection #%s' % tries)
+            response = connection.perform_request('GET', async_headers={
+                'X-Auth-Token': self.token})
+            with patch.object(response.request, 'close', return_value=None):
+                if randrange(2):
+                    response.release()
+                    #self.assertTrue(len(text) > 0)
+                else:
+                    print('\tRaise artificial exception (%s left)' % (
+                        exceptions_left - 1))
+                    with patch.object(
+                            HTTPSConnection,
+                            'getresponse',
+                            side_effect=self.rerr('A random error')):
+                        try:
+                            response.text
+                        except self.rerr:
+                            exceptions_left -= 1
+                        else:
+                            assert False, 'Exception not raised as expected'
+                response.request.close.assert_called_once_with()
+            response.request.close()
+
+
 def main(argv, config=None):
     suiteFew = TestSuite()
+    if len(argv) == 0 or argv[0] == 'connection':
+        test_method = 'test_%s' % (argv[1] if len(argv) > 1 else '000')
+        suiteFew.addTest(Connection(test_method, config))
     if len(argv) == 0 or argv[0] == 'pithos':
         from kamaki.clients.livetest.pithos import Pithos
         test_method = 'test_%s' % (argv[1] if len(argv) > 1 else '000')

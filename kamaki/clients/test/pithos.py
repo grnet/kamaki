@@ -1,4 +1,4 @@
-# Copyright 2012-2013 GRNET S.A. All rights reserved.
+# Copyright 2013 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -31,1216 +31,1110 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-import time
-import datetime
-from os import urandom
+from unittest import TestCase
+from mock import patch, call
 from tempfile import NamedTemporaryFile
+from os import urandom
 
-from kamaki.clients import livetest, ClientError
-from kamaki.clients.pithos import PithosClient
-from kamaki.clients.astakos import AstakosClient
+from kamaki.clients import ClientError
+from kamaki.clients.pithos import PithosClient as PC
+from kamaki.clients.connection.kamakicon import KamakiHTTPConnection as C
+
+client_pkg = 'kamaki.clients.Client'
+pithos_pkg = 'kamaki.clients.pithos.PithosClient'
+
+user_id = 'ac0un7-1d-5tr1ng'
+obj = 'obj3c7N4m3'
+
+account_info = {
+    'content-language': 'en-us',
+    'content-type': 'text/html; charset=utf-8',
+    'date': 'Wed, 06 Mar 2013 13:25:51 GMT',
+    'last-modified': 'Mon, 04 Mar 2013 18:22:31 GMT',
+    'server': 'gunicorn/0.14.5',
+    'vary': 'Accept-Language',
+    'x-account-bytes-used': '751615526',
+    'x-account-container-count': 7,
+    'x-account-policy-quota': 53687091200,
+    'x-account-policy-versioning': 'auto'}
+container_info = {
+    'content-language': 'en-us',
+    'content-type': 'text/html; charset=utf-8',
+    'date': 'Wed, 06 Mar 2013 15:11:05 GMT',
+    'last-modified': 'Wed, 27 Feb 2013 15:56:13 GMT',
+    'server': 'gunicorn/0.14.5',
+    'vary': 'Accept-Language',
+    'x-container-block-hash': 'sha256',
+    'x-container-block-size': 4194304,
+    'x-container-bytes-used': 309528938,
+    'x-container-object-count': 14,
+    'x-container-object-meta': '',
+    'x-container-policy-quota': 53687091200,
+    'x-container-policy-versioning': 'auto'}
+object_info = {
+    'content-language': 'en-us',
+    'content-length': 254965,
+    'content-type': 'application/octet-stream',
+    'date': 'Thu, 07 Mar 2013 13:27:43 GMT',
+    'etag': '',
+    'last-modified': 'Mon, 04 Mar 2013 18:22:31 GMT',
+    'server': 'gunicorn/0.14.5',
+    'vary': 'Accept-Language',
+    'x-object-hash': 'obj3c7h45h1s0bj3c7h45h411r34dY',
+    'x-object-uuid': 'd0c747ca-34bd-49e0-8e98-1d07d8b0cbc7',
+    'x-object-version': '525996',
+    'x-object-version-timestamp': 'Mon, 04 Mar 2013 18:22:31 GMT',
+    'x-object-meta-k1': 'v1',
+    'x-object-meta-k2': 'v2'}
+container_list = [
+    dict(
+        count=2,
+        last_modified="2013-02-27T11:56:09.893033+00:00",
+        bytes=677076979,
+        name="pithos",
+        x_container_policy=dict(quota="21474836480", versioning="auto")),
+    dict(
+        count=0,
+        last_modified="2012-10-23T12:25:17.229187+00:00",
+        bytes=0,
+        name="trash",
+        x_container_policy=dict(quota="21474836480", versioning="auto"))]
+object_list = [
+    dict(hash="",
+        name="The_Secret_Garden.zip",
+        x_object_public="/public/wdp9p",
+        bytes=203304947,
+        x_object_version_timestamp="1360237915.7027509",
+        x_object_uuid="s0m3uu1df0r0bj0n3",
+        last_modified="2013-02-07T11:51:55.702751+00:00",
+        content_type="application/octet-stream",
+        x_object_hash="0afdf29f71cd53126225c3f54ca",
+        x_object_version=17737,
+        x_object_modified_by=user_id),
+    dict(hash="",
+        name="The_Revealed_Garden.zip",
+        x_object_public="/public/wpd7p",
+        bytes=20330947,
+        x_object_version_timestamp="13602915.7027509",
+        x_object_uuid="s0m3uu1df0r0bj70w",
+        last_modified="2013-02-07T11:51:55.702751+00:00",
+        content_type="application/octet-stream",
+        x_object_hash="0afdf29f71cd53126225c3f54ca",
+        x_object_version=17737,
+        x_object_modified_by=user_id)]
+object_hashmap = dict(
+    block_hash="sha256", block_size=4194304, bytes=33554432,
+    hashes=[
+        "4988438cc1c0292c085d289649b28cf547ba3db71c6efaac9f2df7e193d4d0af",
+        "b214244aa56df7d1df7c6cac066e7cef268d9c2beb4dcf7ce68af667b0626f91",
+        "17f365f25e0682565ded30576066bb13377a3d306967e4d74e06bb6bbc20f75f",
+        "2524ae208932669fff89adf8a2fc0df3b67736ca0d3aadce7a2ce640f142af37",
+        "5d807a2129d2fcd3c221c3da418ed52af3fc48d0817b62e0bb437acffccd3514",
+        "609de22ce842d997f645fc49d5f14e0e3766dd51a6cbe66383b2bab82c8dfcd0",
+        "3102851ac168c78be70e35ff5178c7b1ebebd589e5106d565ca1094d1ca8ff59",
+        "bfe306dd24e92a8d85caf7055643f250fd319e8c4cdd4755ddabbf3ff97e83c7"])
+sharers = [
+    dict(last_modified="2013-01-29T16:50:06.084674+00:00", name="0b1a-82d5"),
+    dict(last_modified="2013-01-29T16:50:06.084674+00:00", name="0b2a-f2d5"),
+    dict(last_modified="2013-01-29T16:50:06.084674+00:00", name="2b1a-82d6")]
 
 
-class Pithos(livetest.Generic):
+class FR(object):
+    """FR stands for Fake Response"""
+    json = dict()
+    headers = dict()
+    content = json
+    status = None
+    status_code = 200
+
+    def release(self):
+        pass
+
+
+class Pithos(TestCase):
 
     files = []
 
+    def _create_temp_file(self, num_of_blocks):
+        self.files.append(NamedTemporaryFile())
+        tmpFile = self.files[-1]
+        file_size = num_of_blocks * 4 * 1024 * 1024
+        print('\n\tCreate tmp file')
+        tmpFile.write(urandom(file_size))
+        tmpFile.flush()
+        tmpFile.seek(0)
+        print('\t\tDone')
+        return tmpFile
+
+    def assert_dicts_are_equal(self, d1, d2):
+        for k, v in d1.items():
+            self.assertTrue(k in d2)
+            if isinstance(v, dict):
+                self.assert_dicts_are_equal(v, d2[k])
+            else:
+                self.assertEqual(unicode(v), unicode(d2[k]))
+
     def setUp(self):
-        self.client = PithosClient(
-            self['store', 'url'],
-            self['store', 'token'],
-            AstakosClient(
-                self['astakos', 'url'],
-                self['store', 'token']
-            ).term('uuid'))
-
-        self.now = time.mktime(time.gmtime())
-        self.now_unformated = datetime.datetime.utcnow()
-        self._init_data()
-
-        """Prepare an object to be shared - also its container"""
-        self.client.container = self.c1
-        self.client.object_post(
-            'test',
-            update=True,
-            permissions={'read': [self.client.account]})
-
-        self.create_remote_object(self.c1, 'another.test')
-
-    def _init_data(self):
-        self.c1 = 'c1_' + unicode(self.now)
-        self.c2 = 'c2_' + unicode(self.now)
-        self.c3 = 'c3_' + unicode(self.now)
-        try:
-            self.client.create_container(self.c2)
-        except ClientError:
-            pass
-        try:
-            self.client.create_container(self.c1)
-        except ClientError:
-            pass
-        try:
-            self.client.create_container(self.c3)
-        except ClientError:
-            pass
-
-        self.create_remote_object(self.c1, 'test')
-        self.create_remote_object(self.c2, 'test')
-        self.create_remote_object(self.c1, 'test1')
-        self.create_remote_object(self.c2, 'test1')
-
-    def create_remote_object(self, container, obj):
-        self.client.container = container
-        self.client.object_put(
-            obj,
-            content_type='application/octet-stream',
-            data='file %s that lives in %s' % (obj, container),
-            metadata={'incontainer': container})
-
-    def forceDeleteContainer(self, container):
-        self.client.container = container
-        try:
-            r = self.client.list_objects()
-        except ClientError:
-            return
-        for obj in r:
-            name = obj['name']
-            self.client.del_object(name)
-        r = self.client.container_delete()
-        self.container = ''
+        self.url = 'https://www.example.com/pithos'
+        self.token = 'p17h0570k3n'
+        self.client = PC(self.url, self.token)
+        self.client.account = user_id
+        self.client.container = 'c0nt@1n3r_i'
 
     def tearDown(self):
-        """Destroy test cases"""
+        FR.headers = dict()
+        FR.status_code = 200
+        FR.json = dict()
+        FR.content = FR.json
         for f in self.files:
             f.close()
-        self.forceDeleteContainer(self.c1)
-        self.forceDeleteContainer(self.c2)
-        try:
-            self.forceDeleteContainer(self.c3)
-        except ClientError:
-            pass
-        self.client.container = ''
 
-    def test_000(self):
-        """Prepare a full Pithos+ test"""
-        print('')
-        super(self.__class__, self).test_000()
+    #  Pithos+ methods that extend storage API
 
-    def test_account_head(self):
-        """Test account_HEAD"""
-        self._test_0010_account_head()
+    @patch('%s.set_param' % client_pkg)
+    def test_get_account_info(self, SP):
+        FR.headers = account_info
+        FR.status_code = 204
+        with patch.object(C, 'perform_request', return_value=FR()):
+            r = self.client.get_account_info()
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(self.client.http_client.path, '/%s' % user_id)
+            self.assert_dicts_are_equal(r, account_info)
+            untils = ['date 1', 'date 2', 'date 3']
+            for unt in untils:
+                r = self.client.get_account_info(until=unt)
+                self.assert_dicts_are_equal(r, account_info)
+            for i in range(len(untils)):
+                self.assertEqual(
+                    PC.set_param.mock_calls[i + 1],
+                    call('until', untils[i], iff=untils[i]))
+            FR.status_code = 401
+            self.assertRaises(ClientError, self.client.get_account_info)
 
-    def _test_0010_account_head(self):
-        r = self.client.account_head()
-        self.assertEqual(r.status_code, 204)
+    @patch('%s.set_header' % client_pkg)
+    def test_replace_account_meta(self, SH):
+        FR.status_code = 202
+        metas = dict(k1='v1', k2='v2', k3='v3')
+        with patch.object(C, 'perform_request', return_value=FR()):
+            self.client.replace_account_meta(metas)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(self.client.http_client.path, '/%s' % user_id)
+            prfx = 'X-Account-Meta-'
+            expected = [call('%s%s' % (prfx, k), v) for k, v in metas.items()]
+            self.assertEqual(PC.set_header.mock_calls, expected)
 
-        r = self.client.account_head(until='1000000000')
-        self.assertEqual(r.status_code, 204)
+    @patch('%s.account_post' % pithos_pkg, return_value=FR())
+    def test_del_account_meta(self, ap):
+        keys = ['k1', 'k2', 'k3']
+        expected = []
+        for key in keys:
+            self.client.del_account_meta(key)
+            expected.append(call(update=True, metadata={key: ''}))
+        self.assertEqual(ap.mock_calls, expected)
 
-        r = self.client.get_account_info(until='1000000000')
-        datestring = unicode(r['x-account-until-timestamp'])
-        self.assertEqual(u'Sun, 09 Sep 2001 01:46:40 GMT', datestring)
+    @patch('%s.put' % pithos_pkg, return_value=FR())
+    def test_create_container(self, put):
+        FR.status_code = 201
+        cont = 's0m3c0n731n3r'
+        self.client.create_container(cont)
+        expected = [call('/%s/%s' % (user_id, cont), success=(201, 202))]
+        self.assertEqual(put.mock_calls, expected)
+        FR.status_code = 202
+        self.assertRaises(ClientError, self.client.create_container, cont)
 
-        r = self.client.get_account_quota()
-        self.assertTrue('x-account-policy-quota' in r)
+    @patch('%s.container_head' % pithos_pkg, return_value=FR())
+    def test_get_container_info(self, ch):
+        FR.headers = container_info
+        r = self.client.get_container_info()
+        self.assert_dicts_are_equal(r, container_info)
+        u = 'some date'
+        r = self.client.get_container_info(until=u)
+        self.assertEqual(ch.mock_calls, [call(until=None), call(until=u)])
 
-        r = self.client.get_account_versioning()
-        self.assertTrue('x-account-policy-versioning' in r)
+    @patch('%s.delete' % pithos_pkg, return_value=FR())
+    def test_delete_container(self, delete):
+        FR.status_code = 204
+        cont = 's0m3c0n731n3r'
+        self.client.delete_container(cont)
+        for err_code in (404, 409):
+            FR.status_code = err_code
+            self.assertRaises(ClientError, self.client.delete_container, cont)
+        acall = call('/%s/%s' % (user_id, cont), success=(204, 404, 409))
+        self.assertEqual(delete.mock_calls, [acall] * 3)
 
-        """Check if(un)modified_since"""
-        for format in self.client.DATE_FORMATS:
-            now_formated = self.now_unformated.strftime(format)
-            r1 = self.client.account_head(
-                if_modified_since=now_formated,
-                success=(204, 304, 412))
-            sc1 = r1.status_code
-            r1.release()
-            r2 = self.client.account_head(
-                if_unmodified_since=now_formated,
-                success=(204, 304, 412))
-            sc2 = r2.status_code
-            r2.release()
-            self.assertNotEqual(sc1, sc2)
-
-    def test_account_get(self):
-        """Test account_GET"""
-        self._test_0020_account_get()
-
-    def _test_0020_account_get(self):
-        #r = self.client.account_get()
-        #self.assertEqual(r.status_code, 200)
+    @patch('%s.account_get' % pithos_pkg, return_value=FR())
+    def test_list_containers(self, get):
+        FR.json = container_list
         r = self.client.list_containers()
-        fullLen = len(r)
-        self.assertTrue(fullLen > 2)
+        for i in range(len(r)):
+            self.assert_dicts_are_equal(r[i], container_list[i])
 
-        r = self.client.account_get(limit=1)
-        self.assertEqual(len(r.json), 1)
+    @patch('%s.get_container_info' % pithos_pkg, return_value=container_info)
+    @patch('%s.container_post' % pithos_pkg, return_value=FR())
+    @patch('%s.object_put' % pithos_pkg, return_value=FR())
+    def test_upload_object(self, CI, CP, OP):
+        num_of_blocks = 8
+        tmpFile = self._create_temp_file(num_of_blocks)
 
-        r = self.client.account_get(marker='c2_')
-        temp_c0 = r.json[0]['name']
-        temp_c2 = r.json[2]['name']
+        # Without kwargs
+        self.client.upload_object(obj, tmpFile)
+        self.assertEqual(PC.get_container_info.mock_calls, [call()])
+        [call1, call2] = PC.object_put.mock_calls
 
-        r = self.client.account_get(limit=2, marker='c2_')
-        conames = [container['name'] for container in r.json if (
-            container['name'].lower().startswith('c2_'))]
-        self.assertTrue(temp_c0 in conames)
-        self.assertFalse(temp_c2 in conames)
+        (args1, kwargs1) = call1[1:3]
+        (args2, kwargs2) = call2[1:3]
+        self.assertEqual(args1, (obj,))
+        expected1 = dict(
+            hashmap=True,
+            success=(201, 409),
+            format='json',
+            json=dict(
+                hashes=['s0m3h@5h'] * num_of_blocks,
+                bytes=num_of_blocks * 4 * 1024 * 1024),
+            etag=None,
+            content_encoding=None,
+            content_type='application/octet-stream',
+            content_disposition=None,
+            public=None,
+            permissions=None)
+        for k, v in expected1.items():
+            if k == 'json':
+                self.assertEqual(len(v['hashes']), len(kwargs1[k]['hashes']))
+                self.assertEqual(v['bytes'], kwargs1[k]['bytes'])
+            else:
+                self.assertEqual(v, kwargs1[k])
 
-        r = self.client.account_get(show_only_shared=True)
-        self.assertTrue(self.c1 in [c['name'] for c in r.json])
+        (args2, kwargs2) = call2[1:3]
+        self.assertEqual(args2, (obj,))
+        expected2 = dict(
+            json=dict(
+                hashes=['s0m3h@5h'] * num_of_blocks,
+                bytes=num_of_blocks * 4 * 1024 * 1024),
+            content_type='application/octet-stream',
+            hashmap=True,
+            success=201,
+            format='json')
+        for k, v in expected2.items():
+            if k == 'json':
+                self.assertEqual(len(v['hashes']), len(kwargs2[k]['hashes']))
+                self.assertEqual(v['bytes'], kwargs2[k]['bytes'])
+            else:
+                self.assertEqual(v, kwargs2[k])
 
-        r = self.client.account_get(until=1342609206)
-        self.assertTrue(len(r.json) <= fullLen)
+        OP = PC.object_put
+        mock_offset = 2
 
-        """Check if(un)modified_since"""
-        for format in self.client.DATE_FORMATS:
-            now_formated = self.now_unformated.strftime(format)
-            r1 = self.client.account_get(
-                if_modified_since=now_formated,
-                success=(200, 304, 412))
-            sc1 = r1.status_code
-            r1.release()
-            r2 = self.client.account_get(
-                if_unmodified_since=now_formated,
-                success=(200, 304, 412))
-            sc2 = r2.status_code
-            r2.release()
-            self.assertNotEqual(sc1, sc2)
-
-        """Check sharing_accounts"""
-        r = self.client.get_sharing_accounts()
-        self.assertTrue(len(r) > 0)
-
-    def test_account_post(self):
-        """Test account_POST"""
-        self._test_0030_account_post()
-
-    def _test_0030_account_post(self):
-        r = self.client.account_post()
-        self.assertEqual(r.status_code, 202)
-        grpName = 'grp' + unicode(self.now)
-
-        """Method set/del_account_meta and set_account_groupcall use
-            account_post internally
-        """
-        u1 = self.client.account
-        u2 = self.client.account
-        self.client.set_account_group(grpName, [u1, u2])
-        r = self.client.get_account_group()
-        self.assertEqual(r['x-account-group-' + grpName], '%s,%s' % (u1, u2))
-        self.client.del_account_group(grpName)
-        r = self.client.get_account_group()
-        self.assertTrue('x-account-group-' + grpName not in r)
-
-        mprefix = 'meta' + unicode(self.now)
-        self.client.set_account_meta({
-            mprefix + '1': 'v1',
-            mprefix + '2': 'v2'})
-        r = self.client.get_account_meta()
-        self.assertEqual(r['x-account-meta-' + mprefix + '1'], 'v1')
-        self.assertEqual(r['x-account-meta-' + mprefix + '2'], 'v2')
-
-        self.client.del_account_meta(mprefix + '1')
-        r = self.client.get_account_meta()
-        self.assertTrue('x-account-meta-' + mprefix + '1' not in r)
-
-        self.client.del_account_meta(mprefix + '2')
-        r = self.client.get_account_meta()
-        self.assertTrue('x-account-meta-' + mprefix + '2' not in r)
-
-        """Missing testing for quota, versioning, because normally
-        you don't have permissions to modify those at account level
-        """
-
-        newquota = 1000000
-        self.client.set_account_quota(newquota)
-        #r = self.client.get_account_info()
-        #print(unicode(r))
-        #r = self.client.get_account_quota()
-        #self.assertEqual(r['x-account-policy-quota'], newquota)
-        self.client.set_account_versioning('auto')
-
-    def test_container_head(self):
-        """Test container_HEAD"""
-        self._test_0040_container_head()
-
-    def _test_0040_container_head(self):
-        self.client.container = self.c1
-
-        r = self.client.container_head()
-        self.assertEqual(r.status_code, 204)
-
-        """Check until"""
-        r = self.client.container_head(until=1000000, success=(204, 404))
-        self.assertEqual(r.status_code, 404)
-
-        """Check and if(un)modified_since"""
-        for format in self.client.DATE_FORMATS:
-            now_formated = self.now_unformated.strftime(format)
-            r1 = self.client.container_head(
-                if_modified_since=now_formated,
-                success=(204, 304, 412))
-            sc1 = r1.status_code
-            r1.release()
-            r2 = self.client.container_head(
-                if_unmodified_since=now_formated,
-                success=(204, 304, 412))
-            sc2 = r2.status_code
-            r2.release()
-            self.assertNotEqual(sc1, sc2)
-
-        """Check container object meta"""
-        r = self.client.get_container_object_meta()
-        self.assertEqual(r['x-container-object-meta'], 'Incontainer')
-
-    def test_container_get(self):
-        """Test container_GET"""
-        self._test_0050_container_get()
-
-    def _test_0050_container_get(self):
-        self.client.container = self.c1
-
-        r = self.client.container_get()
-        self.assertEqual(r.status_code, 200)
-        fullLen = len(r.json)
-
-        r = self.client.container_get(prefix='test')
-        lalobjects = [obj for obj in r.json if obj['name'].startswith('test')]
-        self.assertTrue(len(r.json) > 1)
-        self.assertEqual(len(r.json), len(lalobjects))
-
-        r = self.client.container_get(limit=1)
-        self.assertEqual(len(r.json), 1)
-
-        r = self.client.container_get(marker='another')
-        self.assertTrue(len(r.json) > 1)
-        neobjects = [obj for obj in r.json if obj['name'] > 'another']
-        self.assertEqual(len(r.json), len(neobjects))
-
-        r = self.client.container_get(prefix='another.test', delimiter='.')
-        self.assertTrue(fullLen > len(r.json))
-
-        r = self.client.container_get(path='/')
-        self.assertEqual(fullLen, len(r.json))
-
-        r = self.client.container_get(format='xml')
-        self.assertEqual(r.text.split()[4], 'name="' + self.c1 + '">')
-
-        r = self.client.container_get(meta=['incontainer'])
-        self.assertTrue(len(r.json) > 0)
-
-        r = self.client.container_get(show_only_shared=True)
-        self.assertTrue(len(r.json) < fullLen)
-
+        #  With progress bars
         try:
-            r = self.client.container_get(until=1000000000)
-            datestring = unicode(r.headers['x-account-until-timestamp'])
-            self.assertEqual(u'Sun, 09 Sep 2001 01:46:40 GMT', datestring)
+            from progress.bar import ShadyBar
+            blck_bar = ShadyBar('Mock blck calc.')
+            upld_bar = ShadyBar('Mock uplds')
+        except ImportError:
+            blck_bar = None
+            upld_bar = None
 
-        except ClientError:
+        if blck_bar and upld_bar:
 
-            pass
+            def blck_gen(n):
+                for i in blck_bar.iter(range(n)):
+                    yield
+                yield
 
-        """Check and if un/modified_since"""
-        for format in self.client.DATE_FORMATS:
-            now_formated = self.now_unformated.strftime(format)
-            r1 = self.client.container_get(
-                if_modified_since=now_formated,
-                success=(200, 304, 412))
-            sc1 = r1.status_code
-            r1.release()
-            r2 = self.client.container_get(
-                if_unmodified_since=now_formated,
-                success=(200, 304, 412))
-            sc2 = r2.status_code
-            r2.release()
-            self.assertNotEqual(sc1, sc2)
+            def upld_gen(n):
+                for i in upld_bar.iter(range(n)):
+                    yield
+                yield
 
-    def test_container_put(self):
-        """Test container_PUT"""
-        self._test_0050_container_put()
+            tmpFile.seek(0)
+            self.client.upload_object(
+                obj, tmpFile,
+                hash_cb=blck_gen, upload_cb=upld_gen)
 
-    def _test_0050_container_put(self):
-        self.client.container = self.c2
+            for i, c in enumerate(OP.mock_calls[-mock_offset:]):
+                self.assertEqual(OP.mock_calls[i], c)
 
-        r = self.client.container_put()
-        self.assertEqual(r.status_code, 202)
+        #  With content-type
+        tmpFile.seek(0)
+        ctype = 'video/mpeg'
+        sharing = dict(read=['u1', 'g1', 'u2'], write=['u1'])
+        self.client.upload_object(obj, tmpFile,
+            content_type=ctype, sharing=sharing)
+        self.assertEqual(OP.mock_calls[-1][2]['content_type'], ctype)
+        self.assert_dicts_are_equal(
+            OP.mock_calls[-2][2]['permissions'],
+            sharing)
 
-        r = self.client.get_container_quota(self.client.container)
-        cquota = r.values()[0]
-        newquota = 2 * int(cquota)
+        # With other args
+        tmpFile.seek(0)
+        kwargs = dict(
+            etag='s0m3E74g',
+            content_type=ctype,
+            content_disposition=ctype + 'd15p051710n',
+            public=True,
+            content_encoding='802.11')
+        self.client.upload_object(obj, tmpFile, **kwargs)
+        for arg, val in kwargs.items():
+            self.assertEqual(OP.mock_calls[-2][2][arg], val)
 
-        r = self.client.container_put(quota=newquota)
-        self.assertEqual(r.status_code, 202)
+    @patch('%s.put' % pithos_pkg, return_value=FR())
+    @patch('%s.set_header' % client_pkg)
+    def test_create_object(self, SH, put):
+        cont = self.client.container
+        ctype = 'c0n73n7/typ3'
+        exp_shd = [
+            call('Content-Type', 'application/octet-stream'),
+            call('Content-length', '0'),
+            call('Content-Type', ctype), call('Content-length', '42')]
+        exp_put = [call('/%s/%s/%s' % (user_id, cont, obj), success=201)] * 2
+        self.client.create_object(obj)
+        self.client.create_object(obj, content_type=ctype, content_length=42)
+        self.assertEqual(PC.set_header.mock_calls, exp_shd)
+        self.assertEqual(put.mock_calls, exp_put)
 
-        r = self.client.get_container_quota(self.client.container)
-        xquota = int(r.values()[0])
-        self.assertEqual(newquota, xquota)
+    @patch('%s.put' % pithos_pkg, return_value=FR())
+    @patch('%s.set_header' % client_pkg)
+    def test_create_directory(self, SH, put):
+        cont = self.client.container
+        exp_shd = [
+            call('Content-Type', 'application/directory'),
+            call('Content-length', '0')]
+        exp_put = [call('/%s/%s/%s' % (user_id, cont, obj), success=201)]
+        self.client.create_directory(obj)
+        self.assertEqual(PC.set_header.mock_calls, exp_shd)
+        self.assertEqual(put.mock_calls, exp_put)
 
-        r = self.client.container_put(versioning='auto')
-        self.assertEqual(r.status_code, 202)
+    def test_get_object_info(self):
+        FR.headers = object_info
+        version = 'v3r510n'
+        with patch.object(PC, 'object_head', return_value=FR()) as head:
+            r = self.client.get_object_info(obj)
+            self.assertEqual(r, object_info)
+            r = self.client.get_object_info(obj, version=version)
+            self.assertEqual(head.mock_calls, [
+                call(obj, version=None),
+                call(obj, version=version)])
+        with patch.object(
+                PC,
+                'object_head',
+                side_effect=ClientError('Obj not found', 404)):
+            self.assertRaises(
+                ClientError,
+                self.client.get_object_info,
+                obj, version=version)
 
-        r = self.client.get_container_versioning(self.client.container)
-        nvers = r.values()[0]
-        self.assertEqual('auto', nvers)
+    @patch('%s.get_object_info' % pithos_pkg, return_value=object_info)
+    def test_get_object_meta(self, GOI):
+        expected = dict()
+        for k, v in object_info.items():
+            expected[k] = v
+        r = self.client.get_object_meta(obj)
+        self.assert_dicts_are_equal(r, expected)
 
-        r = self.client.container_put(versioning='none')
-        self.assertEqual(r.status_code, 202)
+    @patch('%s.object_post' % pithos_pkg, return_value=FR())
+    def test_del_object_meta(self, post):
+        metakey = '50m3m3t4k3y'
+        self.client.del_object_meta(obj, metakey)
+        expected = call(obj, update=True, metadata={metakey: ''})
+        self.assertEqual(post.mock_calls[-1], expected)
 
-        r = self.client.get_container_versioning(self.client.container)
-        nvers = r.values()[0]
-        self.assertEqual('none', nvers)
+    @patch('%s.post' % client_pkg, return_value=FR())
+    @patch('%s.set_header' % client_pkg)
+    def test_replace_object_meta(self, SH, post):
+        metas = dict(k1='new1', k2='new2', k3='new3')
+        cont = self.client.container
+        self.client.replace_object_meta(metas)
+        expected = call('/%s/%s' % (user_id, cont), success=202)
+        self.assertEqual(post.mock_calls[-1], expected)
+        prfx = 'X-Object-Meta-'
+        expected = [call('%s%s' % (prfx, k), v) for k, v in metas.items()]
+        self.assertEqual(PC.set_header.mock_calls, expected)
 
-        r = self.client.container_put(metadata={'m1': 'v1', 'm2': 'v2'})
-        self.assertEqual(r.status_code, 202)
+    @patch('%s.object_put' % pithos_pkg, return_value=FR())
+    def test_copy_object(self, put):
+        src_cont = 'src-c0nt41n3r'
+        src_obj = 'src-0bj'
+        dst_cont = 'dst-c0nt41n3r'
+        dst_obj = 'dst-0bj'
+        expected = call(
+            src_obj,
+            content_length=0,
+            source_account=None,
+            success=201,
+            copy_from='/%s/%s' % (src_cont, src_obj),
+            delimiter=None,
+            content_type=None,
+            source_version=None,
+            public=False)
+        self.client.copy_object(src_cont, src_obj, dst_cont)
+        self.assertEqual(put.mock_calls[-1], expected)
+        self.client.copy_object(src_cont, src_obj, dst_cont, dst_obj)
+        self.assertEqual(put.mock_calls[-1][1], (dst_obj,))
+        kwargs = dict(
+            source_version='src-v3r510n',
+            source_account='src-4cc0un7',
+            public=True,
+            content_type='c0n73n7Typ3',
+            delimiter='5')
+        self.client.copy_object(src_cont, src_obj, dst_cont, **kwargs)
+        for k, v in kwargs.items():
+            self.assertEqual(v, put.mock_calls[-1][2][k])
 
-        r = self.client.get_container_meta(self.client.container)
-        self.assertTrue('x-container-meta-m1' in r)
-        self.assertEqual(r['x-container-meta-m1'], 'v1')
-        self.assertTrue('x-container-meta-m2' in r)
-        self.assertEqual(r['x-container-meta-m2'], 'v2')
+    @patch('%s.object_put' % pithos_pkg, return_value=FR())
+    def test_move_object(self, put):
+        src_cont = 'src-c0nt41n3r'
+        src_obj = 'src-0bj'
+        dst_cont = 'dst-c0nt41n3r'
+        dst_obj = 'dst-0bj'
+        expected = call(
+            src_obj,
+            content_length=0,
+            source_account=None,
+            success=201,
+            move_from='/%s/%s' % (src_cont, src_obj),
+            delimiter=None,
+            content_type=None,
+            source_version=None,
+            public=False)
+        self.client.move_object(src_cont, src_obj, dst_cont)
+        self.assertEqual(put.mock_calls[-1], expected)
+        self.client.move_object(src_cont, src_obj, dst_cont, dst_obj)
+        self.assertEqual(put.mock_calls[-1][1], (dst_obj,))
+        kwargs = dict(
+            source_version='src-v3r510n',
+            source_account='src-4cc0un7',
+            public=True,
+            content_type='c0n73n7Typ3',
+            delimiter='5')
+        self.client.move_object(src_cont, src_obj, dst_cont, **kwargs)
+        for k, v in kwargs.items():
+            self.assertEqual(v, put.mock_calls[-1][2][k])
 
-        r = self.client.container_put(metadata={'m1': '', 'm2': 'v2a'})
-        self.assertEqual(r.status_code, 202)
+    @patch('%s.delete' % client_pkg, return_value=FR())
+    def test_delete_object(self, delete):
+        cont = self.client.container
+        self.client.delete_object(obj)
+        self.assertEqual(
+            delete.mock_calls[-1],
+            call('/%s/%s/%s' % (user_id, cont, obj), success=(204, 404)))
+        FR.status_code = 404
+        self.assertRaises(ClientError, self.client.delete_object, obj)
 
-        r = self.client.get_container_meta(self.client.container)
-        self.assertTrue('x-container-meta-m1' not in r)
-        self.assertTrue('x-container-meta-m2' in r)
-        self.assertEqual(r['x-container-meta-m2'], 'v2a')
+    @patch('%s.get' % client_pkg, return_value=FR())
+    @patch('%s.set_param' % client_pkg)
+    def test_list_objects(self, SP, get):
+        FR.json = object_list
+        acc = self.client.account
+        cont = self.client.container
+        SP = PC.set_param
+        r = self.client.list_objects()
+        for i in range(len(r)):
+            self.assert_dicts_are_equal(r[i], object_list[i])
+        self.assertEqual(get.mock_calls, [
+            call('/%s/%s' % (acc, cont), success=(200, 204, 304, 404))])
+        self.assertEqual(SP.mock_calls, [call('format', 'json')])
+        FR.status_code = 304
+        self.assertEqual(self.client.list_objects(), [])
+        FR.status_code = 404
+        self.assertRaises(ClientError, self.client.list_objects)
 
-        self.client.del_container_meta(self.client.container)
+    @patch('%s.get' % client_pkg, return_value=FR())
+    @patch('%s.set_param' % client_pkg)
+    def test_list_objects_in_path(self, SP, get):
+        FR.json = object_list
+        path = '/some/awsome/path'
+        acc = self.client.account
+        cont = self.client.container
+        SP = PC.set_param
+        self.client.list_objects_in_path(path)
+        self.assertEqual(get.mock_calls, [
+            call('/%s/%s' % (acc, cont), success=(200, 204, 404))])
+        self.assertEqual(SP.mock_calls, [
+            call('format', 'json'), call('path', path)])
+        FR.status_code = 404
+        self.assertRaises(ClientError, self.client.list_objects)
 
-    def test_container_post(self):
-        """Test container_POST"""
-        self._test_0060_container_post()
+    #  Pithos+ only methods
 
-    def _test_0060_container_post(self):
-        self.client.container = self.c2
-
-        """Simple post"""
-        r = self.client.container_post()
-        self.assertEqual(r.status_code, 202)
-
-        """post meta"""
-        self.client.set_container_meta({'m1': 'v1', 'm2': 'v2'})
-        r = self.client.get_container_meta(self.client.container)
-        self.assertTrue('x-container-meta-m1' in r)
-        self.assertEqual(r['x-container-meta-m1'], 'v1')
-        self.assertTrue('x-container-meta-m2' in r)
-        self.assertEqual(r['x-container-meta-m2'], 'v2')
-
-        """post/2del meta"""
-        r = self.client.del_container_meta('m1')
-        r = self.client.set_container_meta({'m2': 'v2a'})
-        r = self.client.get_container_meta(self.client.container)
-        self.assertTrue('x-container-meta-m1' not in r)
-        self.assertTrue('x-container-meta-m2' in r)
-        self.assertEqual(r['x-container-meta-m2'], 'v2a')
-
-        """check quota"""
-        r = self.client.get_container_quota(self.client.container)
-        cquota = r.values()[0]
-        newquota = 2 * int(cquota)
-        r = self.client.set_container_quota(newquota)
-        r = self.client.get_container_quota(self.client.container)
-        xquota = int(r.values()[0])
-        self.assertEqual(newquota, xquota)
-        r = self.client.set_container_quota(cquota)
-        r = self.client.get_container_quota(self.client.container)
-        xquota = r.values()[0]
-        self.assertEqual(cquota, xquota)
-
-        """Check versioning"""
-        self.client.set_container_versioning('auto')
-        r = self.client.get_container_versioning(self.client.container)
-        nvers = r.values()[0]
-        self.assertEqual('auto', nvers)
-        self.client.set_container_versioning('none')
-        r = self.client.get_container_versioning(self.client.container)
-        nvers = r.values()[0]
-        self.assertEqual('none', nvers)
-
-        """put_block uses content_type and content_length to
-        post blocks of data 2 container. All that in upload_object"""
-        """Change a file at fs"""
-        f = self.create_large_file(1024 * 1024 * 100)
-        """Upload it at a directory in container"""
-        self.client.create_directory('dir')
-        self.client.upload_object('/dir/sample.file', f)
-        """Check if file has been uploaded"""
-        r = self.client.get_object_info('/dir/sample.file')
-        self.assertTrue(int(r['content-length']) > 100000000)
-
-        """What is tranfer_encoding? What should I check about it? """
-        #TODO
-
-        """Check update=False"""
-        r = self.client.object_post(
-            'test',
-            update=False,
-            metadata={'newmeta': 'newval'})
-
-        r = self.client.get_object_info('test')
-        self.assertTrue('x-object-meta-newmeta' in r)
-        self.assertFalse('x-object-meta-incontainer' in r)
-
-        r = self.client.del_container_meta('m2')
-
-    def test_container_delete(self):
-        """Test container_DELETE"""
-        self._test_0070_container_delete()
-
-    def _test_0070_container_delete(self):
-
-        """Fail to delete a non-empty container"""
-        self.client.container = self.c2
-        r = self.client.container_delete(success=409)
-        self.assertEqual(r.status_code, 409)
-
-        """Fail to delete c3 (empty) container"""
-        self.client.container = self.c3
-        r = self.client.container_delete(until='1000000000')
-        self.assertEqual(r.status_code, 204)
-
-        """Delete c3 (empty) container"""
-        r = self.client.container_delete()
-        self.assertEqual(r.status_code, 204)
-
-        """Purge container(empty a container), check versionlist"""
-        self.client.container = self.c1
-        r = self.client.object_head('test', success=(200, 404))
-        self.assertEqual(r.status_code, 200)
-        self.client.del_container(delimiter='/')
-        r = self.client.object_head('test', success=(200, 404))
-        self.assertEqual(r.status_code, 404)
-        r = self.client.get_object_versionlist('test')
-        self.assertTrue(len(r) > 0)
-        self.assertTrue(len(r[0]) > 1)
+    @patch('%s.container_delete' % pithos_pkg, return_value=FR())
+    def test_purge_container(self, cd):
         self.client.purge_container()
+        self.assertTrue('until' in cd.mock_calls[-1][2])
+        cont = self.client.container
+        self.client.purge_container('another-container')
+        self.assertEqual(self.client.container, cont)
+
+    @patch('%s.object_put' % pithos_pkg, return_value=FR())
+    def test_upload_object_unchunked(self, put):
+        num_of_blocks = 8
+        tmpFile = self._create_temp_file(num_of_blocks)
+        expected = dict(
+                success=201,
+                data=num_of_blocks * 4 * 1024 * 1024,
+                etag='some-etag',
+                content_encoding='some content_encoding',
+                content_type='some content-type',
+                content_disposition='some content_disposition',
+                public=True,
+                permissions=dict(read=['u1', 'g1', 'u2'], write=['u1']))
+        self.client.upload_object_unchunked(obj, tmpFile)
+        self.assertEqual(put.mock_calls[-1][1], (obj,))
+        self.assertEqual(
+            sorted(put.mock_calls[-1][2].keys()),
+            sorted(expected.keys()))
+        kwargs = dict(expected)
+        kwargs.pop('success')
+        kwargs['size'] = kwargs.pop('data')
+        kwargs['sharing'] = kwargs.pop('permissions')
+        tmpFile.seek(0)
+        self.client.upload_object_unchunked(obj, tmpFile, **kwargs)
+        pmc = put.mock_calls[-1][2]
+        for k, v in expected.items():
+            if k == 'data':
+                self.assertEqual(len(pmc[k]), v)
+            else:
+                self.assertEqual(pmc[k], v)
         self.assertRaises(
             ClientError,
-            self.client.get_object_versionlist,
-            'test')
+            self.client.upload_object_unchunked,
+            obj, tmpFile, withHashFile=True)
 
-    def _test_0080_recreate_deleted_data(self):
-        self._init_data()
+    @patch('%s.object_put' % pithos_pkg, return_value=FR())
+    def test_create_object_by_manifestation(self, put):
+        manifest = '%s/%s' % (self.client.container, obj)
+        kwargs = dict(
+                etag='some-etag',
+                content_encoding='some content_encoding',
+                content_type='some content-type',
+                content_disposition='some content_disposition',
+                public=True,
+                sharing=dict(read=['u1', 'g1', 'u2'], write=['u1']))
+        self.client.create_object_by_manifestation(obj)
+        expected = dict(content_length=0, manifest=manifest)
+        for k in kwargs:
+            expected['permissions' if k == 'sharing' else k] = None
+        self.assertEqual(put.mock_calls[-1], call(obj, **expected))
+        self.client.create_object_by_manifestation(obj, **kwargs)
+        expected.update(kwargs)
+        expected['permissions'] = expected.pop('sharing')
+        self.assertEqual(put.mock_calls[-1], call(obj, **expected))
 
-    def test_object_head(self):
-        """Test object_HEAD"""
-        self._test_0090_object_head()
+    @patch('%s.get_object_hashmap' % pithos_pkg, return_value=object_hashmap)
+    @patch('%s.object_get' % pithos_pkg, return_value=FR())
+    def test_download_object(self, GOH, GET):
+        num_of_blocks = 8
+        tmpFile = self._create_temp_file(num_of_blocks)
+        FR.content = tmpFile.read(4 * 1024 * 1024)
+        tmpFile = self._create_temp_file(num_of_blocks)
+        GET = PC.object_get
+        num_of_blocks = len(object_hashmap['hashes'])
+        kwargs = dict(
+            resume=True,
+            version='version',
+            range_str='10-20',
+            if_match='if and only if',
+            if_none_match='if and only not',
+            if_modified_since='what if not?',
+            if_unmodified_since='this happens if not!',
+            async_headers=dict(Range='bytes=0-88888888'))
 
-    def _test_0090_object_head(self):
-        self.client.container = self.c2
-        obj = 'test'
+        self.client.download_object(obj, tmpFile)
+        self.assertEqual(len(GET.mock_calls), num_of_blocks)
+        self.assertEqual(GET.mock_calls[-1][1], (obj,))
+        for k, v in kwargs.items():
+            if k == 'async_headers':
+                self.assertTrue('Range' in GET.mock_calls[-1][2][k])
+            elif k in ('resume', 'range_str'):
+                continue
+            else:
+                self.assertEqual(GET.mock_calls[-1][2][k], None)
 
-        r = self.client.object_head(obj)
-        self.assertEqual(r.status_code, 200)
-        etag = r.headers['etag']
+        #  Check ranges are consecutive
+        starts = []
+        ends = []
+        for c in GET.mock_calls:
+            rng_str = c[2]['async_headers']['Range']
+            (start, rng_str) = rng_str.split('=')
+            (start, end) = rng_str.split('-')
+            starts.append(start)
+            ends.append(end)
+        ends = sorted(ends)
+        for i, start in enumerate(sorted(starts)):
+            if i:
+                int(ends[i - 1]) == int(start) - 1
 
-        r = self.client.object_head(obj, version=40)
-        self.assertEqual(r.headers['x-object-version'], '40')
+        #  With progress bars
+        try:
+            from progress.bar import ShadyBar
+            dl_bar = ShadyBar('Mock dl')
+        except ImportError:
+            dl_bar = None
 
-        r = self.client.object_head(obj, if_etag_match=etag)
-        self.assertEqual(r.status_code, 200)
+        if dl_bar:
 
-        r = self.client.object_head(
-            obj,
-            if_etag_not_match=etag,
-            success=(200, 412, 304))
-        self.assertNotEqual(r.status_code, 200)
+            def blck_gen(n):
+                for i in dl_bar.iter(range(n)):
+                    yield
+                yield
 
-        r = self.client.object_head(
-            obj,
-            version=40,
-            if_etag_match=etag,
-            success=412)
-        self.assertEqual(r.status_code, 412)
+            tmpFile.seek(0)
+            self.client.download_object(obj, tmpFile, download_cb=blck_gen)
+            self.assertEqual(len(GET.mock_calls), 2 * num_of_blocks)
 
-        """Check and if(un)modified_since"""
-        for format in self.client.DATE_FORMATS:
-            now_formated = self.now_unformated.strftime(format)
-            r1 = self.client.object_head(
-                obj,
-                if_modified_since=now_formated,
-                success=(200, 304, 412))
-            sc1 = r1.status_code
-            r1.release()
-            r2 = self.client.object_head(
-                obj,
-                if_unmodified_since=now_formated,
-                success=(200, 304, 412))
-            sc2 = r2.status_code
-            r2.release()
-            self.assertNotEqual(sc1, sc2)
+        tmpFile.seek(0)
+        kwargs.pop('async_headers')
+        kwargs.pop('resume')
+        self.client.download_object(obj, tmpFile, **kwargs)
+        for k, v in kwargs.items():
+            if k == 'range_str':
+                self.assertEqual(
+                    GET.mock_calls[-1][2]['data_range'],
+                    'bytes=%s' % v)
+            else:
+                self.assertEqual(GET.mock_calls[-1][2][k], v)
 
-    def test_object_get(self):
-        """Test object_GET"""
-        self._test_0100_object_get()
+        #  ALl options on no tty
 
-    def _test_0100_object_get(self):
-        self.client.container = self.c1
-        obj = 'test'
+        def foo():
+            return True
 
-        r = self.client.object_get(obj)
-        self.assertEqual(r.status_code, 200)
+        tmpFile.seek(0)
+        tmpFile.isatty = foo
+        self.client.download_object(obj, tmpFile, **kwargs)
+        for k, v in kwargs.items():
+            if k == 'range_str':
+                self.assertTrue('data_range' in GET.mock_calls[-1][2])
+            else:
+                self.assertEqual(GET.mock_calls[-1][2][k], v)
 
-        osize = int(r.headers['content-length'])
-        etag = r.headers['etag']
+    def test_get_object_hashmap(self):
+        FR.json = object_hashmap
+        for empty in (304, 412):
+            with patch.object(
+                    PC, 'object_get',
+                    side_effect=ClientError('Empty', status=empty)):
+                r = self.client.get_object_hashmap(obj)
+                self.assertEqual(r, {})
+        exp_args = dict(
+            hashmap=True,
+            data_range=None,
+            version=None,
+            if_etag_match=None,
+            if_etag_not_match=None,
+            if_modified_since=None,
+            if_unmodified_since=None)
+        kwargs = dict(
+            version='s0m3v3r51on',
+            if_match='if match',
+            if_none_match='if non match',
+            if_modified_since='some date here',
+            if_unmodified_since='some date here',
+            data_range='10-20')
+        with patch.object(PC, 'object_get', return_value=FR()) as get:
+            r = self.client.get_object_hashmap(obj)
+            self.assertEqual(r, object_hashmap)
+            self.assertEqual(get.mock_calls[-1], call(obj, **exp_args))
+            r = self.client.get_object_hashmap(obj, **kwargs)
+            exp_args['if_etag_match'] = kwargs.pop('if_match')
+            exp_args['if_etag_not_match'] = kwargs.pop('if_none_match')
+            exp_args.update(kwargs)
+            self.assertEqual(get.mock_calls[-1], call(obj, **exp_args))
 
-        r = self.client.object_get(obj, hashmap=True)
-        for term in ('hashes', 'block_hash', 'block_hash', 'bytes'):
-            self.assertTrue(term in r.json)
-
-        r = self.client.object_get(obj, format='xml', hashmap=True)
-        self.assertEqual(len(r.text.split('hash>')), 3)
-
-        rangestr = 'bytes=%s-%s' % (osize / 3, osize / 2)
-        r = self.client.object_get(
-            obj,
-            data_range=rangestr,
-            success=(200, 206))
-        partsize = int(r.headers['content-length'])
-        self.assertTrue(0 < partsize and partsize <= 1 + osize / 3)
-
-        rangestr = 'bytes=%s-%s' % (osize / 3, osize / 2)
-        r = self.client.object_get(
-            obj,
-            data_range=rangestr,
-            if_range=True,
-            success=(200, 206))
-        partsize = int(r.headers['content-length'])
-        self.assertTrue(0 < partsize and partsize <= 1 + osize / 3)
-
-        r = self.client.object_get(obj, if_etag_match=etag)
-        self.assertEqual(r.status_code, 200)
-
-        r = self.client.object_get(obj, if_etag_not_match=etag + 'LALALA')
-        self.assertEqual(r.status_code, 200)
-
-        """Check and if(un)modified_since"""
-        for format in self.client.DATE_FORMATS:
-            now_formated = self.now_unformated.strftime(format)
-            r1 = self.client.object_get(
-                obj,
-                if_modified_since=now_formated,
-                success=(200, 304, 412))
-            sc1 = r1.status_code
-            r1.release()
-            r2 = self.client.object_get(
-                obj,
-                if_unmodified_since=now_formated,
-                success=(200, 304, 412))
-            sc2 = r2.status_code
-            r2.release()
-            self.assertNotEqual(sc1, sc2)
-
-        """Upload an object to download"""
-        trg_fname = 'remotefile_%s' % self.now
-        f_size = 59247824
-        src_f = self.create_large_file(f_size)
-        print('\tUploading...')
-        self.client.upload_object(trg_fname, src_f)
-        print('\tDownloading...')
-        self.files.append(NamedTemporaryFile())
-        dnl_f = self.files[-1]
-        self.client.download_object(trg_fname, dnl_f)
-
-        print('\tCheck if files match...')
-        for pos in (0, f_size / 2, f_size - 20):
-            src_f.seek(pos)
-            dnl_f.seek(pos)
-            self.assertEqual(src_f.read(10), dnl_f.read(10))
-
-    def test_object_put(self):
-        """Test object_PUT"""
-        self._test_object_put()
-
-    def _test_object_put(self):
-        self.client.container = self.c2
-        obj = 'another.test'
-
-        self.client.create_object(obj + '.FAKE')
-        r = self.client.get_object_info(obj + '.FAKE')
-        self.assertEqual(r['content-type'], 'application/octet-stream')
-
-        """create the object"""
-        r = self.client.object_put(
-            obj,
-            data='a',
-            content_type='application/octer-stream',
-            permissions=dict(
-                read=['accX:groupA', 'u1', 'u2'],
-                write=['u2', 'u3']),
-            metadata=dict(key1='val1', key2='val2'),
-            content_encoding='UTF-8',
-            content_disposition='attachment; filename="fname.ext"')
-        self.assertEqual(r.status_code, 201)
-        etag = r.headers['etag']
-
-        """Check content-disposition"""
-        r = self.client.get_object_info(obj)
-        self.assertTrue('content-disposition' in r)
-
-        """Check permissions"""
-        r = self.client.get_object_sharing(obj)
-        self.assertTrue('accx:groupa' in r['read'])
-        self.assertTrue('u1' in r['read'])
-        self.assertTrue('u2' in r['write'])
-        self.assertTrue('u3' in r['write'])
-
-        """Check metadata"""
-        r = self.client.get_object_meta(obj)
-        self.assertEqual(r['x-object-meta-key1'], 'val1')
-        self.assertEqual(r['x-object-meta-key2'], 'val2')
-
-        """Check public and if_etag_match"""
-        r = self.client.object_put(
-            obj,
-            if_etag_match=etag,
-            data='b',
-            content_type='application/octet-stream',
-            public=True)
-
-        r = self.client.object_get(obj)
-        self.assertTrue('x-object-public' in r.headers)
-        vers2 = int(r.headers['x-object-version'])
-        etag = r.headers['etag']
-        self.assertEqual(r.text, 'b')
-
-        """Check if_etag_not_match"""
-        r = self.client.object_put(
-            obj,
-            if_etag_not_match=etag,
-            data='c',
-            content_type='application/octet-stream',
-            success=(201, 412))
-        self.assertEqual(r.status_code, 412)
-
-        """Check content_type and content_length"""
-        tmpdir = 'dir' + unicode(self.now)
-        r = self.client.object_put(
-            tmpdir,
-            content_type='application/directory',
-            content_length=0)
-
-        r = self.client.get_object_info(tmpdir)
-        self.assertEqual(r['content-type'], 'application/directory')
-
-        """Check copy_from, content_encoding"""
-        r = self.client.object_put(
-            '%s/%s' % (tmpdir, obj),
-            format=None,
-            copy_from='/%s/%s' % (self.client.container, obj),
-            content_encoding='application/octet-stream',
-            source_account=self.client.account,
-            content_length=0,
-            success=201)
-        self.assertEqual(r.status_code, 201)
-
-        """Test copy_object for cross-conctainer copy"""
-        self.client.copy_object(
-            src_container=self.c2,
-            src_object='%s/%s' % (tmpdir, obj),
-            dst_container=self.c1,
-            dst_object=obj)
-        self.client.container = self.c1
-        r1 = self.client.get_object_info(obj)
-        self.client.container = self.c2
-        r2 = self.client.get_object_info('%s/%s' % (tmpdir, obj))
-        self.assertEqual(r1['x-object-hash'], r2['x-object-hash'])
-
-        """Check cross-container copy_from, content_encoding"""
-        self.client.container = self.c1
-        fromstr = '/%s/%s/%s' % (self.c2, tmpdir, obj)
-        r = self.client.object_put(
-            obj,
-            format=None,
-            copy_from=fromstr,
-            content_encoding='application/octet-stream',
-            source_account=self.client.account,
-            content_length=0,
-            success=201)
-
-        self.assertEqual(r.status_code, 201)
-        r = self.client.get_object_info(obj)
-        self.assertEqual(r['etag'], etag)
-
-        """Check source_account"""
-        self.client.container = self.c2
-        fromstr = '/%s/%s' % (self.c1, obj)
-        r = self.client.object_put(
-            '%sv2' % obj,
-            format=None,
-            move_from=fromstr,
-            content_encoding='application/octet-stream',
-            source_account='nonExistendAddress@NeverLand.com',
-            content_length=0,
-            success=(201, 403))
-        self.assertEqual(r.status_code, 403)
-
-        """Check cross-container move_from"""
-        self.client.container = self.c1
-        r1 = self.client.get_object_info(obj)
-        self.client.container = self.c2
-        self.client.move_object(
-            src_container=self.c1,
-            src_object=obj,
-            dst_container=self.c2,
-            dst_object=obj + 'v0')
-        r0 = self.client.get_object_info(obj + 'v0')
-        self.assertEqual(r1['x-object-hash'], r0['x-object-hash'])
-
-        """Check move_from"""
-        r = self.client.object_put(
-            '%sv1' % obj,
-            format=None,
-            move_from='/%s/%s' % (self.c2, obj),
-            source_version=vers2,
-            content_encoding='application/octet-stream',
-            content_length=0, success=201)
-
-        """Check manifest"""
-        mobj = 'manifest.test'
-        txt = ''
-        for i in range(10):
-            txt += '%s' % i
-            r = self.client.object_put(
-                '%s/%s' % (mobj, i),
-                data='%s' % i,
-                content_length=1,
-                success=201,
-                content_type='application/octet-stream',
-                content_encoding='application/octet-stream')
-
-        r = self.client.object_put(
-            mobj,
-            content_length=0,
-            content_type='application/octet-stream',
-            manifest='%s/%s' % (self.client.container, mobj))
-
-        r = self.client.object_get(mobj)
-        self.assertEqual(r.text, txt)
-
-        """Upload a local file with one request"""
-        newf = self.create_large_file(1024 * 10)
-        self.client.upload_object('sample.file', newf)
-        """Check if file has been uploaded"""
-        r = self.client.get_object_info('sample.file')
-        self.assertEqual(int(r['content-length']), 10240)
-
-        """Some problems with transfer-encoding?"""
-
-    def test_object_copy(self):
-        """Test object_COPY"""
-        self._test_0110_object_copy()
-
-    def _test_0110_object_copy(self):
-        #  TODO: check with source_account option
-        self.client.container = self.c2
-        obj = 'test2'
-
-        data = '{"key1":"val1", "key2":"val2"}'
-        r = self.client.object_put(
-            '%sorig' % obj,
-            content_type='application/octet-stream',
-            data=data,
-            metadata=dict(mkey1='mval1', mkey2='mval2'),
-            permissions=dict(
-                read=['accX:groupA', 'u1', 'u2'],
-                write=['u2', 'u3']),
-            content_disposition='attachment; filename="fname.ext"')
-
-        r = self.client.object_copy(
-            '%sorig' % obj,
-            destination='/%s/%s' % (self.client.container, obj),
-            ignore_content_type=False, content_type='application/json',
-            metadata={'mkey2': 'mval2a', 'mkey3': 'mval3'},
-            permissions={'write': ['u5', 'accX:groupB']})
-        self.assertEqual(r.status_code, 201)
-
-        """Check content-disposition"""
-        r = self.client.get_object_info(obj)
-        self.assertTrue('content-disposition' in r)
-
-        """Check Metadata"""
-        r = self.client.get_object_meta(obj)
-        self.assertEqual(r['x-object-meta-mkey1'], 'mval1')
-        self.assertEqual(r['x-object-meta-mkey2'], 'mval2a')
-        self.assertEqual(r['x-object-meta-mkey3'], 'mval3')
-
-        """Check permissions"""
-        r = self.client.get_object_sharing(obj)
-        self.assertFalse('read' in r or 'u2' in r['write'])
-        self.assertTrue('accx:groupb' in r['write'])
-
-        """Check destination account"""
-        r = self.client.object_copy(
-            obj,
-            destination='/%s/%s' % (self.c1, obj),
-            content_encoding='utf8',
-            content_type='application/json',
-            destination_account='nonExistendAddress@NeverLand.com',
-            success=(201, 403))
-        self.assertEqual(r.status_code, 403)
-
-        """Check destination being another container
-        and also content_type and content encoding"""
-        r = self.client.object_copy(
-            obj,
-            destination='/%s/%s' % (self.c1, obj),
-            content_encoding='utf8',
-            content_type='application/json')
-        self.assertEqual(r.status_code, 201)
+    @patch('%s.account_post' % pithos_pkg, return_value=FR())
+    def test_set_account_group(self, post):
+        (group, usernames) = ('aU53rGr0up', ['u1', 'u2', 'u3'])
+        self.client.set_account_group(group, usernames)
         self.assertEqual(
-            r.headers['content-type'],
-            'application/json; charset=UTF-8')
+            post.mock_calls[-1],
+            call(update=True, groups={group: usernames}))
 
-        """Check ignore_content_type and content_type"""
-        r = self.client.object_get(obj)
-        etag = r.headers['etag']
-        ctype = r.headers['content-type']
-        self.assertEqual(ctype, 'application/json')
-
-        r = self.client.object_copy(
-            '%sorig' % obj,
-            destination='/%s/%s0' % (self.client.container, obj),
-            ignore_content_type=True,
-            content_type='application/json')
-        self.assertEqual(r.status_code, 201)
-        self.assertNotEqual(r.headers['content-type'], 'application/json')
-
-        """Check if_etag_(not_)match"""
-        r = self.client.object_copy(
-            obj,
-            destination='/%s/%s1' % (self.client.container, obj),
-            if_etag_match=etag)
-        self.assertEqual(r.status_code, 201)
-
-        r = self.client.object_copy(
-            obj,
-            destination='/%s/%s2' % (self.client.container, obj),
-            if_etag_not_match='lalala')
-        self.assertEqual(r.status_code, 201)
-        vers2 = r.headers['x-object-version']
-
-        """Check source_version, public and format """
-        r = self.client.object_copy(
-            '%s2' % obj,
-            destination='/%s/%s3' % (self.client.container, obj),
-            source_version=vers2,
-            format='xml',
-            public=True)
-        self.assertEqual(r.status_code, 201)
-        self.assertTrue(r.headers['content-type'].index('xml') > 0)
-
-        r = self.client.get_object_info(obj + '3')
-        self.assertTrue('x-object-public' in r)
-
-    def test_object_move(self):
-        """Test object_MOVE"""
-        self._test_0120_object_move()
-
-    def _test_0120_object_move(self):
-        self.client.container = self.c2
-        obj = 'test2'
-
-        data = '{"key1": "val1", "key2": "val2"}'
-        r = self.client.object_put(
-            '%sorig' % obj,
-            content_type='application/octet-stream',
-            data=data,
-            metadata=dict(mkey1='mval1', mkey2='mval2'),
-            permissions=dict(
-                read=['accX:groupA', 'u1', 'u2'],
-                write=['u2', 'u3']))
-
-        r = self.client.object_move(
-            '%sorig' % obj,
-            destination='/%s/%s' % (self.client.container, obj),
-            ignore_content_type=False,
-            content_type='application/json',
-            metadata=dict(mkey2='mval2a', mkey3='mval3'),
-            permissions=dict(write=['u5', 'accX:groupB']))
-        self.assertEqual(r.status_code, 201)
-
-        """Check Metadata"""
-        r = self.client.get_object_meta(obj)
-        self.assertEqual(r['x-object-meta-mkey1'], 'mval1')
-        self.assertEqual(r['x-object-meta-mkey2'], 'mval2a')
-        self.assertEqual(r['x-object-meta-mkey3'], 'mval3')
-
-        """Check permissions"""
-        r = self.client.get_object_sharing(obj)
-        self.assertFalse('read' in r)
-        self.assertTrue('u5' in r['write'])
-        self.assertTrue('accx:groupb' in r['write'])
-
-        """Check destination account"""
-        r = self.client.object_move(
-            obj,
-            destination='/%s/%s' % (self.c1, obj),
-            content_encoding='utf8',
-            content_type='application/json',
-            destination_account='nonExistendAddress@NeverLand.com',
-            success=(201, 403))
-        self.assertEqual(r.status_code, 403)
-
-        """Check destination being another container and also
-        content_type, content_disposition and content encoding"""
-        r = self.client.object_move(
-            obj,
-            destination='/%s/%s' % (self.c1, obj),
-            content_encoding='utf8',
-            content_type='application/json',
-            content_disposition='attachment; filename="fname.ext"')
-        self.assertEqual(r.status_code, 201)
+    @patch('%s.account_post' % pithos_pkg, return_value=FR())
+    def test_del_account_group(self, post):
+        group = 'aU53rGr0up'
+        self.client.del_account_group(group)
         self.assertEqual(
-            r.headers['content-type'],
-            'application/json; charset=UTF-8')
-        self.client.container = self.c1
-        r = self.client.get_object_info(obj)
-        self.assertTrue('content-disposition' in r)
-        self.assertTrue('fname.ext' in r['content-disposition'])
-        etag = r['etag']
-        ctype = r['content-type']
-        self.assertEqual(ctype, 'application/json')
+            post.mock_calls[-1],
+            call(update=True, groups={group: []}))
 
-        """Check ignore_content_type and content_type"""
-        r = self.client.object_move(
-            obj,
-            destination='/%s/%s' % (self.c2, obj),
-            ignore_content_type=True,
-            content_type='application/json')
-        self.assertEqual(r.status_code, 201)
-        self.assertNotEqual(r.headers['content-type'], 'application/json')
+    @patch('%s.get_account_info' % pithos_pkg, return_value=account_info)
+    def test_get_account_quota(self, GAI):
+        key = 'x-account-policy-quota'
+        r = self.client.get_account_quota()
+        self.assertEqual(r[key], account_info[key])
 
-        """Check if_etag_(not_)match"""
-        self.client.container = self.c2
-        r = self.client.object_move(
-            obj,
-            destination='/%s/%s0' % (self.client.container, obj),
-            if_etag_match=etag)
-        self.assertEqual(r.status_code, 201)
+    @patch('%s.get_account_info' % pithos_pkg, return_value=account_info)
+    def test_get_account_versioning(self, GAI):
+        key = 'x-account-policy-versioning'
+        r = self.client.get_account_versioning()
+        self.assertEqual(r[key], account_info[key])
 
-        r = self.client.object_move(
-            '%s0' % obj,
-            destination='/%s/%s1' % (self.client.container, obj),
-            if_etag_not_match='lalala')
-        self.assertEqual(r.status_code, 201)
+    def test_get_account_meta(self):
+        key = 'x-account-meta-'
+        with patch.object(PC, 'get_account_info', return_value=account_info):
+            r = self.client.get_account_meta()
+            keys = [k for k in r if k.startswith(key)]
+            self.assertFalse(keys)
+        acc_info = dict(account_info)
+        acc_info['%sk1' % key] = 'v1'
+        acc_info['%sk2' % key] = 'v2'
+        acc_info['%sk3' % key] = 'v3'
+        with patch.object(PC, 'get_account_info', return_value=acc_info):
+            r = self.client.get_account_meta()
+            for k in [k for k in acc_info if k.startswith(key)]:
+                self.assertEqual(r[k], acc_info[k])
 
-        """Check public and format """
-        r = self.client.object_move(
-            '%s1' % obj,
-            destination='/%s/%s2' % (self.client.container, obj),
-            format='xml',
-            public=True)
-        self.assertEqual(r.status_code, 201)
-        self.assertTrue(r.headers['content-type'].index('xml') > 0)
+    def test_get_account_group(self):
+        key = 'x-account-group-'
+        with patch.object(PC, 'get_account_info', return_value=account_info):
+            r = self.client.get_account_group()
+            keys = [k for k in r if k.startswith(key)]
+            self.assertFalse(keys)
+        acc_info = dict(account_info)
+        acc_info['%sk1' % key] = 'g1'
+        acc_info['%sk2' % key] = 'g2'
+        acc_info['%sk3' % key] = 'g3'
+        with patch.object(PC, 'get_account_info', return_value=acc_info):
+            r = self.client.get_account_group()
+            for k in [k for k in acc_info if k.startswith(key)]:
+                self.assertEqual(r[k], acc_info[k])
 
-        r = self.client.get_object_info(obj + '2')
-        self.assertTrue('x-object-public' in r)
+    @patch('%s.account_post' % pithos_pkg, return_value=FR())
+    def test_set_account_meta(self, post):
+        metas = dict(k1='v1', k2='v2', k3='v3')
+        self.client.set_account_meta(metas)
+        self.assertEqual(
+            post.mock_calls[-1],
+            call(update=True, metadata=metas))
 
-    def test_object_post(self):
-        """Test object_POST"""
-        self._test_0130_object_post()
+    @patch('%s.account_post' % pithos_pkg, return_value=FR())
+    def test_set_account_quota(self, post):
+        qu = 1024
+        self.client.set_account_quota(qu)
+        self.assertEqual(post.mock_calls[-1], call(update=True, quota=qu))
 
-    def _test_0130_object_post(self):
-        self.client.container = self.c2
-        obj = 'test2'
-        """create a filesystem file"""
-        self.files.append(NamedTemporaryFile())
-        newf = self.files[-1]
-        newf.writelines([
-            'ello!\n',
-            'This is a test line\n',
-            'inside a test file\n'])
-        """create a file on container"""
-        r = self.client.object_put(
-            obj,
-            content_type='application/octet-stream',
-            data='H',
-            metadata=dict(mkey1='mval1', mkey2='mval2'),
-            permissions=dict(
-                read=['accX:groupA', 'u1', 'u2'],
-                write=['u2', 'u3']))
+    @patch('%s.account_post' % pithos_pkg, return_value=FR())
+    def test_set_account_versioning(self, post):
+        vrs = 'n3wV3r51on1ngTyp3'
+        self.client.set_account_versioning(vrs)
+        self.assertEqual(
+            post.mock_calls[-1],
+            call(update=True, versioning=vrs))
 
-        """Append livetest update, content_[range|type|length]"""
-        newf.seek(0)
-        self.client.append_object(obj, newf)
-        r = self.client.object_get(obj)
-        self.assertTrue(r.text.startswith('Hello!'))
+    @patch('%s.container_delete' % pithos_pkg, return_value=FR())
+    def test_del_container(self, delete):
+        for kwarg in (
+                dict(delimiter=None, until=None),
+                dict(delimiter='X', until='50m3d473')):
+            self.client.del_container(**kwarg)
+            expected = dict(kwarg)
+            expected['success'] = (204, 404, 409)
+            self.assertEqual(delete.mock_calls[-1], call(**expected))
+        for status_code in (404, 409):
+            FR.status_code = status_code
+            self.assertRaises(ClientError, self.client.del_container)
 
-        """Overwrite livetest update,
-            content_type, content_length, content_range
-        """
-        newf.seek(0)
-        r = self.client.overwrite_object(obj, 0, 10, newf)
-        r = self.client.object_get(obj)
-        self.assertTrue(r.text.startswith('ello!'))
+    @patch('%s.get_container_info' % pithos_pkg, return_value=container_info)
+    def test_get_container_versioning(self, GCI):
+        key = 'x-container-policy-versioning'
+        cont = 'c0n7-417'
+        bu_cnt = self.client.container
+        for container in (None, cont):
+            r = self.client.get_container_versioning(container=container)
+            self.assertEqual(r[key], container_info[key])
+            self.assertEqual(GCI.mock_calls[-1], call())
+            self.assertEqual(bu_cnt, self.client.container)
 
-        """Truncate livetest update,
-            content_range, content_type, object_bytes and source_object"""
-        r = self.client.truncate_object(obj, 5)
-        r = self.client.object_get(obj)
-        self.assertEqual(r.text, 'ello!')
+    @patch('%s.get_container_info' % pithos_pkg, return_value=container_info)
+    def test_get_container_quota(self, GCI):
+        key = 'x-container-policy-quota'
+        cont = 'c0n7-417'
+        bu_cnt = self.client.container
+        for container in (None, cont):
+            r = self.client.get_container_quota(container=container)
+            self.assertEqual(r[key], container_info[key])
+            self.assertEqual(GCI.mock_calls[-1], call())
+            self.assertEqual(bu_cnt, self.client.container)
 
-        """Check metadata"""
-        self.client.set_object_meta(obj, {'mkey2': 'mval2a', 'mkey3': 'mval3'})
-        r = self.client.get_object_meta(obj)
-        self.assertEqual(r['x-object-meta-mkey1'], 'mval1')
-        self.assertEqual(r['x-object-meta-mkey2'], 'mval2a')
-        self.assertEqual(r['x-object-meta-mkey3'], 'mval3')
-        self.client.del_object_meta(obj, 'mkey1')
-        r = self.client.get_object_meta(obj)
-        self.assertFalse('x-object-meta-mkey1' in r)
+    def test_get_container_meta(self):
+        somedate = '50m3d473'
+        key = 'x-container-meta'
+        metaval = '50m3m374v41'
+        container_plus = dict(container_info)
+        container_plus[key] = metaval
+        for ret in ((container_info, {}), (container_plus, {key: metaval})):
+            with patch.object(
+                    PC,
+                    'get_container_info',
+                    return_value=ret[0]) as gci:
+                for until in (None, somedate):
+                    r = self.client.get_container_meta(until=until)
+                    self.assertEqual(r, ret[1])
+                    self.assertEqual(gci.mock_calls[-1], call(until=until))
 
-        """Check permissions"""
-        self.client.set_object_sharing(
-            obj,
-            read_permition=['u4', 'u5'],
-            write_permition=['u4'])
-        r = self.client.get_object_sharing(obj)
-        self.assertTrue('read' in r)
-        self.assertTrue('u5' in r['read'])
-        self.assertTrue('write' in r)
-        self.assertTrue('u4' in r['write'])
-        self.client.del_object_sharing(obj)
-        r = self.client.get_object_sharing(obj)
-        self.assertTrue(len(r) == 0)
+    def test_get_container_object_meta(self):
+        somedate = '50m3d473'
+        key = 'x-container-object-meta'
+        metaval = '50m3m374v41'
+        container_plus = dict(container_info)
+        container_plus[key] = metaval
+        for ret in (
+                (container_info, {key: ''}),
+                (container_plus, {key: metaval})):
+            with patch.object(
+                    PC,
+                    'get_container_info',
+                    return_value=ret[0]) as gci:
+                for until in (None, somedate):
+                    r = self.client.get_container_object_meta(until=until)
+                    self.assertEqual(r, ret[1])
+                    self.assertEqual(gci.mock_calls[-1], call(until=until))
 
-        """Check publish"""
-        self.client.publish_object(obj)
-        r = self.client.get_object_info(obj)
-        self.assertTrue('x-object-public' in r)
+    @patch('%s.container_post' % pithos_pkg, return_value=FR())
+    def test_set_container_meta(self, post):
+        metas = dict(k1='v1', k2='v2', k3='v3')
+        self.client.set_container_meta(metas)
+        self.assertEqual(
+            post.mock_calls[-1],
+            call(update=True, metadata=metas))
+
+    @patch('%s.container_post' % pithos_pkg, return_value=FR())
+    def test_del_container_meta(self, ap):
+        self.client.del_container_meta('somekey')
+        expected = [call(update=True, metadata={'somekey': ''})]
+        self.assertEqual(ap.mock_calls, expected)
+
+    @patch('%s.container_post' % pithos_pkg, return_value=FR())
+    def test_set_container_quota(self, post):
+        qu = 1024
+        self.client.set_container_quota(qu)
+        self.assertEqual(post.mock_calls[-1], call(update=True, quota=qu))
+
+    @patch('%s.container_post' % pithos_pkg, return_value=FR())
+    def test_set_container_versioning(self, post):
+        vrs = 'n3wV3r51on1ngTyp3'
+        self.client.set_container_versioning(vrs)
+        self.assertEqual(
+            post.mock_calls[-1],
+            call(update=True, versioning=vrs))
+
+    @patch('%s.object_delete' % pithos_pkg, return_value=FR())
+    def test_del_object(self, delete):
+        for kwarg in (
+                dict(delimiter=None, until=None),
+                dict(delimiter='X', until='50m3d473')):
+            self.client.del_object(obj, **kwarg)
+            self.assertEqual(delete.mock_calls[-1], call(obj, **kwarg))
+
+    @patch('%s.object_post' % pithos_pkg, return_value=FR())
+    def test_set_object_meta(self, post):
+        metas = dict(k1='v1', k2='v2', k3='v3')
+        self.assertRaises(
+            AssertionError,
+            self.client.set_object_meta,
+            obj, 'Non dict arg')
+        self.client.set_object_meta(obj, metas)
+        self.assertEqual(
+            post.mock_calls[-1],
+            call(obj, update=True, metadata=metas))
+
+    @patch('%s.object_post' % pithos_pkg, return_value=FR())
+    def test_publish_object(self, post):
+        oinfo = dict(object_info)
+        val = 'pubL1c'
+        oinfo['x-object-public'] = val
+        with patch.object(PC, 'get_object_info', return_value=oinfo) as gof:
+            r = self.client.publish_object(obj)
+            self.assertEqual(
+                post.mock_calls[-1],
+                call(obj, public=True, update=True))
+            self.assertEqual(gof.mock_calls[-1], call(obj))
+            self.assertEqual(r, '%s%s' % (self.url[:-6], val))
+
+    @patch('%s.object_post' % pithos_pkg, return_value=FR())
+    def test_unpublish_object(self, post):
         self.client.unpublish_object(obj)
-        r = self.client.get_object_info(obj)
-        self.assertFalse('x-object-public' in r)
+        self.assertEqual(
+            post.mock_calls[-1],
+            call(obj, public=False, update=True))
 
-        """Check if_etag_(not)match"""
-        etag = r['etag']
-        """
-        r = self.client.object_post(
+    def test_get_object_sharing(self):
+        info = dict(object_info)
+        expected = dict(read='u1,g1,u2', write='u1')
+        info['x-object-sharing'] = '; '.join(
+            ['%s=%s' % (k, v) for k, v in expected.items()])
+        with patch.object(PC, 'get_object_info', return_value=info) as GOF:
+            r = self.client.get_object_sharing(obj)
+            self.assertEqual(GOF.mock_calls[-1], call(obj))
+            self.assert_dicts_are_equal(r, expected)
+            info['x-object-sharing'] = '//'.join(
+                ['%s=%s' % (k, v) for k, v in expected.items()])
+            self.assertRaises(
+                ValueError,
+                self.client.get_object_sharing,
+                obj)
+            info['x-object-sharing'] = '; '.join(
+                ['%s:%s' % (k, v) for k, v in expected.items()])
+            self.assertRaises(
+                ClientError,
+                self.client.get_object_sharing,
+                obj)
+            info['x-object-sharing'] = 'read=%s' % expected['read']
+            r = self.client.get_object_sharing(obj)
+            expected.pop('write')
+            self.assert_dicts_are_equal(r, expected)
+
+    @patch('%s.object_post' % pithos_pkg, return_value=FR())
+    def test_set_object_sharing(self, POST):
+        read_perms = ['u1', 'g1', 'u2', 'g2']
+        write_perms = ['u1', 'g1']
+        for kwargs in (
+                dict(read_permition=read_perms, write_permition=write_perms),
+                dict(read_permition=read_perms),
+                dict(write_permition=write_perms),
+                dict()):
+            self.client.set_object_sharing(obj, **kwargs)
+            kwargs['read'] = kwargs.pop('read_permition', '')
+            kwargs['write'] = kwargs.pop('write_permition', '')
+            self.assertEqual(
+                POST.mock_calls[-1],
+                call(obj, update=True, permissions=kwargs))
+
+    @patch('%s.set_object_sharing' % pithos_pkg)
+    def test_del_object_sharing(self, SOS):
+        self.client.del_object_sharing(obj)
+        self.assertEqual(SOS.mock_calls[-1], call(obj))
+
+    @patch('%s.get_container_info' % pithos_pkg, return_value=container_info)
+    @patch('%s.object_post' % pithos_pkg, return_value=FR())
+    def test_append_object(self, post, GCI):
+        num_of_blocks = 4
+        tmpFile = self._create_temp_file(num_of_blocks)
+        tmpFile.seek(0, 2)
+        file_size = tmpFile.tell()
+        for turn in range(2):
+            tmpFile.seek(0, 0)
+
+            try:
+                from progress.bar import ShadyBar
+                apn_bar = ShadyBar('Mock append')
+            except ImportError:
+                apn_bar = None
+
+            if apn_bar:
+
+                def append_gen(n):
+                    for i in apn_bar.iter(range(n)):
+                        yield
+                    yield
+
+            else:
+                append_gen = None
+
+            self.client.append_object(
+                obj, tmpFile,
+                upload_cb=append_gen if turn else None)
+            self.assertEqual((turn + 1) * num_of_blocks, len(post.mock_calls))
+            (args, kwargs) = post.mock_calls[-1][1:3]
+            self.assertEqual(args, (obj,))
+            self.assertEqual(kwargs['content_length'], len(kwargs['data']))
+            fsize = num_of_blocks * int(kwargs['content_length'])
+            self.assertEqual(fsize, file_size)
+            self.assertEqual(kwargs['content_range'], 'bytes */*')
+            exp = 'application/octet-stream'
+            self.assertEqual(kwargs['content_type'], exp)
+            self.assertEqual(kwargs['update'], True)
+
+    @patch('%s.object_post' % pithos_pkg, return_value=FR())
+    def test_truncate_object(self, post):
+        upto_bytes = 377
+        self.client.truncate_object(obj, upto_bytes)
+        self.assertEqual(post.mock_calls[-1], call(
             obj,
             update=True,
-            public=True,
-            if_etag_not_match=etag,
-            success=(412, 202, 204))
-        self.assertEqual(r.status_code, 412)
-        """
-
-        r = self.client.object_post(
-            obj,
-            update=True,
-            public=True,
-            if_etag_match=etag,
-            content_encoding='application/json')
-
-        r = self.client.get_object_info(obj)
-        helloVersion = r['x-object-version']
-        self.assertTrue('x-object-public' in r)
-        self.assertEqual(r['content-encoding'], 'application/json')
-
-        """Check source_version and source_account and content_disposition"""
-        r = self.client.object_post(
-            obj,
-            update=True,
-            content_type='application/octet-srteam',
-            content_length=5,
-            content_range='bytes 1-5/*',
-            source_object='/%s/%s' % (self.c2, obj),
-            source_account='thisAccountWillNeverExist@adminland.com',
-            source_version=helloVersion,
-            data='12345',
-            success=(403, 202, 204))
-        self.assertEqual(r.status_code, 403)
-
-        r = self.client.object_post(
-            obj,
-            update=True,
-            content_type='application/octet-srteam',
-            content_length=5,
-            content_range='bytes 1-5/*',
-            source_object='/%s/%s' % (self.c2, obj),
-            source_account=self.client.account,
-            source_version=helloVersion,
-            data='12345',
-            content_disposition='attachment; filename="fname.ext"')
-
-        r = self.client.object_get(obj)
-        self.assertEqual(r.text, 'eello!')
-        self.assertTrue('content-disposition' in r.headers)
-        self.assertTrue('fname.ext' in r.headers['content-disposition'])
-
-        """Check manifest"""
-        mobj = 'manifest.test'
-        txt = ''
-        for i in range(10):
-            txt += '%s' % i
-            r = self.client.object_put(
-                '%s/%s' % (mobj, i),
-                data='%s' % i,
-                content_length=1,
-                success=201,
-                content_encoding='application/octet-stream',
-                content_type='application/octet-stream')
-
-        self.client.create_object_by_manifestation(
-            mobj,
-            content_type='application/octet-stream')
-
-        r = self.client.object_post(
-            mobj,
-            manifest='%s/%s' % (self.client.container, mobj))
-
-        r = self.client.object_get(mobj)
-        self.assertEqual(r.text, txt)
-
-        """We need to check transfer_encoding """
-
-    def test_object_delete(self):
-        """Test object_DELETE"""
-        self._test_0140_object_delete()
-
-    def _test_0140_object_delete(self):
-        self.client.container = self.c2
-        obj = 'test2'
-        """create a file on container"""
-        r = self.client.object_put(
-            obj,
+            object_bytes=upto_bytes,
+            content_range='bytes 0-%s/*' % upto_bytes,
             content_type='application/octet-stream',
-            data='H',
-            metadata=dict(mkey1='mval1', mkey2='mval2'),
-            permissions=dict(
-                read=['accX:groupA', 'u1', 'u2'],
-                write=['u2', 'u3']))
+            source_object='/%s/%s' % (self.client.container, obj)))
 
-        """Check with false until"""
-        r = self.client.object_delete(obj, until=1000000)
+    @patch('%s.get_container_info' % pithos_pkg, return_value=container_info)
+    @patch('%s.object_post' % pithos_pkg, return_value=FR())
+    def test_overwrite_object(self, post, GCI):
+        num_of_blocks = 4
+        tmpFile = self._create_temp_file(num_of_blocks)
+        tmpFile.seek(0, 2)
+        file_size = tmpFile.tell()
+        info = dict(object_info)
+        info['content-length'] = file_size
+        block_size = container_info['x-container-block-size']
+        with patch.object(PC, 'get_object_info', return_value=info) as GOI:
+            for start, end in (
+                    (0, file_size + 1),
+                    (file_size + 1, file_size + 2)):
+                tmpFile.seek(0, 0)
+                self.assertRaises(
+                    ClientError,
+                    self.client.overwrite_object,
+                    obj, start, end, tmpFile)
+            for start, end in ((0, 144), (144, 233), (233, file_size)):
+                tmpFile.seek(0, 0)
+                owr_gen = None
+                exp_size = end - start + 1
+                if not start or exp_size > block_size:
+                    try:
+                        from progress.bar import ShadyBar
+                        owr_bar = ShadyBar('Mock append')
+                    except ImportError:
+                        owr_bar = None
 
-        r = self.client.object_get(obj, success=(200, 404))
-        self.assertEqual(r.status_code, 200)
+                    if owr_bar:
 
-        """Check normal case"""
-        r = self.client.object_delete(obj)
-        self.assertEqual(r.status_code, 204)
+                        def owr_gen(n):
+                            for i in owr_bar.iter(range(n)):
+                                yield
+                            yield
 
-        r = self.client.object_get(obj, success=(200, 404))
-        self.assertEqual(r.status_code, 404)
+                    if exp_size > block_size:
+                        exp_size = exp_size % block_size or block_size
 
-    def create_large_file(self, size):
-        """Create a large file at fs"""
-        self.files.append(NamedTemporaryFile())
-        f = self.files[-1]
-        Ki = size / 8
-        bytelist = [b * Ki for b in range(size / Ki)]
+                self.client.overwrite_object(obj, start, end, tmpFile, owr_gen)
+                self.assertEqual(GOI.mock_calls[-1], call(obj))
+                self.assertEqual(GCI.mock_calls[-1], call())
+                (args, kwargs) = post.mock_calls[-1][1:3]
+                self.assertEqual(args, (obj,))
+                self.assertEqual(len(kwargs['data']), exp_size)
+                self.assertEqual(kwargs['content_length'], exp_size)
+                self.assertEqual(kwargs['update'], True)
+                exp = 'application/octet-stream'
+                self.assertEqual(kwargs['content_type'], exp)
 
-        def append2file(step):
-            f.seek(step)
-            f.write(urandom(Ki))
-            f.flush()
-        self.do_with_progress_bar(
-            append2file,
-            ' create rand file %s (%sB): ' % (f.name, size),
-            bytelist)
-        f.seek(0)
-        return f
+    @patch('%s.set_param' % client_pkg)
+    @patch('%s.get' % pithos_pkg, return_value=FR())
+    def test_get_sharing_accounts(self, get, SP):
+        FR.json = sharers
+        for kws in (
+                dict(),
+                dict(limit='50m3-11m17'),
+                dict(marker='X'),
+                dict(limit='50m3-11m17', marker='X')):
+            r = self.client.get_sharing_accounts(**kws)
+            self.assertEqual(SP.mock_calls[-3], call('format', 'json'))
+            limit, marker = kws.get('limit', None), kws.get('marker', None)
+            self.assertEqual(SP.mock_calls[-2], call(
+                'limit', limit,
+                iff=limit is not None))
+            self.assertEqual(SP.mock_calls[-1], call(
+                'marker', marker,
+                iff=marker is not None))
+            self.assertEqual(get.mock_calls[-1], call('', success=(200, 204)))
+            for i in range(len(r)):
+                self.assert_dicts_are_equal(r[i], sharers[i])
+
+    @patch('%s.object_get' % pithos_pkg, return_value=FR())
+    def test_get_object_versionlist(self, get):
+        info = dict(object_info)
+        info['versions'] = ['v1', 'v2']
+        FR.json = info
+        r = self.client.get_object_versionlist(obj)
+        self.assertEqual(
+            get.mock_calls[-1],
+            call(obj, format='json', version='list'))
+        self.assertEqual(r, info['versions'])

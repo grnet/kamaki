@@ -1,4 +1,4 @@
-# Copyright 2011 GRNET S.A. All rights reserved.
+# Copyright 2011-2013 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -82,7 +82,7 @@ class CycladesClient(CycladesClientApi):
             return r['attachments']['values'][0]['firewallProfile']
         except KeyError:
             raise ClientError(
-                'No Firewall Profile', 520,
+                'No Firewall Profile',
                 details='Server %s is missing a firewall profile' % server_id)
 
     def set_firewall_profile(self, server_id, profile):

@@ -73,10 +73,15 @@ class PithosClient(PithosRestAPI):
     def __init__(self, base_url, token, account=None, container=None):
         super(PithosClient, self).__init__(base_url, token, account, container)
 
-    def purge_container(self):
+    def purge_container(self, container=None):
         """Delete an empty container and destroy associated blocks
         """
-        r = self.container_delete(until=unicode(time()))
+        cnt_back_up = self.container
+        try:
+            self.container = container or cnt_back_up
+            r = self.container_delete(until=unicode(time()))
+        finally:
+            self.container = cnt_back_up
         r.release()
 
     def upload_object_unchunked(
@@ -124,7 +129,8 @@ class PithosClient(PithosRestAPI):
                 msg = '"%s" is not a valid hashmap file' % f.name
                 raise ClientError(msg, 1)
             f = StringIO(data)
-        data = f.read(size) if size is not None else f.read()
+        else:
+            data = f.read(size) if size else f.read()
         r = self.object_put(
             obj,
             data=data,
@@ -181,9 +187,6 @@ class PithosClient(PithosRestAPI):
         return event
 
     def _put_block(self, data, hash):
-        from random import randint
-        if not randint(0, 7):
-            raise ClientError('BAD GATEWAY STUFF', 503)
         r = self.container_post(
             update=True,
             content_type='application/octet-stream',
@@ -229,7 +232,7 @@ class PithosClient(PithosRestAPI):
             return None
         return r.json
 
-    def _caclulate_uploaded_blocks(
+    def _culculate_blocks_for_upload(
             self, blocksize, blockhash, size, nblocks, hashes, hmap, fileobj,
             hash_cb=None):
         offset = 0
@@ -247,7 +250,7 @@ class PithosClient(PithosRestAPI):
             if hash_cb:
                 hash_gen.next()
         msg = 'Failed to calculate uploaded blocks:'
-        msg += ' Offset and object size do not match'
+        ' Offset and object size do not match'
         assert offset == size, msg
 
     def _upload_missing_blocks(self, missing, hmap, fileobj, upload_gen=None):
@@ -332,10 +335,10 @@ class PithosClient(PithosRestAPI):
         block_info = (blocksize, blockhash, size, nblocks) =\
             self._get_file_block_info(f, size)
         (hashes, hmap, offset) = ([], {}, 0)
-        if content_type is None:
+        if not content_type:
             content_type = 'application/octet-stream'
 
-        self._caclulate_uploaded_blocks(
+        self._culculate_blocks_for_upload(
             *block_info,
             hashes=hashes,
             hmap=hmap,
@@ -656,7 +659,7 @@ class PithosClient(PithosRestAPI):
         """
         r = self.account_head(until=until)
         if r.status_code == 401:
-            raise ClientError("No authorization")
+            raise ClientError("No authorization", status=401)
         return r.headers
 
     def get_account_quota(self):
@@ -752,25 +755,35 @@ class PithosClient(PithosRestAPI):
                 'Container "%s" is not empty' % self.container,
                 r.status_code)
 
-    def get_container_versioning(self, container):
+    def get_container_versioning(self, container=None):
         """
         :param container: (str)
 
         :returns: (dict)
         """
-        self.container = container
-        return filter_in(
-            self.get_container_info(),
-            'X-Container-Policy-Versioning')
+        cnt_back_up = self.container
+        try:
+            self.container = container or cnt_back_up
+            return filter_in(
+                self.get_container_info(),
+                'X-Container-Policy-Versioning')
+        finally:
+            self.container = cnt_back_up
 
-    def get_container_quota(self, container):
+    def get_container_quota(self, container=None):
         """
         :param container: (str)
 
         :returns: (dict)
         """
-        self.container = container
-        return filter_in(self.get_container_info(), 'X-Container-Policy-Quota')
+        cnt_back_up = self.container
+        try:
+            self.container = container or cnt_back_up
+            return filter_in(
+                self.get_container_info(),
+                'X-Container-Policy-Quota')
+        finally:
+            self.container = cnt_back_up
 
     def get_container_info(self, until=None):
         """
@@ -878,10 +891,7 @@ class PithosClient(PithosRestAPI):
         info = self.get_object_info(obj)
         pref, sep, rest = self.base_url.partition('//')
         base = rest.split('/')[0]
-        newurl = path4url(
-            '%s%s%s' % (pref, sep, base),
-            info['x-object-public'])
-        return newurl[1:]
+        return '%s%s%s/%s' % (pref, sep, base, info['x-object-public'])
 
     def unpublish_object(self, obj):
         """
@@ -903,7 +913,7 @@ class PithosClient(PithosRestAPI):
             return r.headers
         except ClientError as ce:
             if ce.status == 404:
-                raise ClientError('Object not found', status=404)
+                raise ClientError('Object %s not found' % obj, status=404)
             raise
 
     def get_object_meta(self, obj, version=None):
@@ -956,9 +966,7 @@ class PithosClient(PithosRestAPI):
            permissions will be removed
         """
 
-        perms = dict(
-            read='' if not read_permition else read_permition,
-            write='' if not write_permition else write_permition)
+        perms = dict(read=read_permition or '', write=write_permition or '')
         r = self.object_post(obj, update=True, permissions=perms)
         r.release()
 
@@ -1070,7 +1078,7 @@ class PithosClient(PithosRestAPI):
 
     def copy_object(
             self, src_container, src_object, dst_container,
-            dst_object=False,
+            dst_object=None,
             source_version=None,
             source_account=None,
             public=False,
@@ -1097,10 +1105,9 @@ class PithosClient(PithosRestAPI):
         """
         self._assert_account()
         self.container = dst_container
-        dst_object = dst_object or src_object
         src_path = path4url(src_container, src_object)
         r = self.object_put(
-            dst_object,
+            dst_object or src_object,
             success=201,
             copy_from=src_path,
             content_length=0,

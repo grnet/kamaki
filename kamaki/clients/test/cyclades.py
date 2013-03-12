@@ -1,4 +1,4 @@
-# Copyright 2012-2013 GRNET S.A. All rights reserved.
+# Copyright 2013 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -30,736 +30,609 @@
 # documentation are those of the authors and should not be
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
+from mock import patch, Mock, call
+from unittest import TestCase
+from json import loads
 
-import time
-
-from kamaki.clients import livetest, ClientError
+from kamaki.clients import Client, ClientError
 from kamaki.clients.cyclades import CycladesClient
+from kamaki.clients.cyclades_rest_api import CycladesClientApi
+
+img_ref = "1m4g3-r3f3r3nc3"
+vm_name = "my new VM"
+fid = 42
+vm_send = dict(server=dict(
+    flavorRef=fid,
+    name=vm_name,
+    imageRef=img_ref,
+    metadata=dict(os="debian", users="root")))
+vm_recv = dict(server=dict(
+    status="BUILD",
+    updated="2013-03-01T10:04:00.637152+00:00",
+    hostId="",
+    name=vm_name,
+    imageRef=img_ref,
+    created="2013-03-01T10:04:00.087324+00:00",
+    flavorRef=fid,
+    adminPass="n0n3sh@11p@55",
+    suspended=False,
+    progress=0,
+    id=31173,
+    metadata=dict(values=dict(os="debian", users="root"))))
+img_recv = dict(image=dict(
+    status="ACTIVE",
+    updated="2013-02-26T11:10:14+00:00",
+    name="Debian Base",
+    created="2013-02-26T11:03:29+00:00",
+    progress=100,
+    id=img_ref,
+    metadata=dict(values=dict(
+        partition_table="msdos",
+        kernel="2.6.32",
+        osfamily="linux",
+        users="root",
+        gui="No GUI",
+        sortorder="1",
+        os="debian",
+        root_partition="1",
+        description="Debian 6.0.7 (Squeeze) Base System"))))
+vm_list = dict(servers=dict(values=[
+    dict(name='n1', id=1),
+    dict(name='n2', id=2)]))
+flavor_list = dict(flavors=dict(values=[
+        dict(id=41, name="C1R1024D20"),
+        dict(id=42, name="C1R1024D40"),
+        dict(id=43, name="C1R1028D20")]))
+img_list = dict(images=dict(values=[
+    dict(name="maelstrom", id="0fb03e45-7d5a-4515-bd4e-e6bbf6457f06"),
+    dict(name="edx_saas", id="1357163d-5fd8-488e-a117-48734c526206"),
+    dict(name="Debian_Wheezy_Base", id="1f8454f0-8e3e-4b6c-ab8e-5236b728dffe"),
+    dict(name="CentOS", id="21894b48-c805-4568-ac8b-7d4bb8eb533d"),
+    dict(name="Ubuntu Desktop", id="37bc522c-c479-4085-bfb9-464f9b9e2e31"),
+    dict(name="Ubuntu 12.10", id="3a24fef9-1a8c-47d1-8f11-e07bd5e544fd"),
+    dict(name="Debian Base", id="40ace203-6254-4e17-a5cb-518d55418a7d"),
+    dict(name="ubuntu_bundled", id="5336e265-5c7c-4127-95cb-2bf832a79903")]))
+net_send = dict(network=dict(dhcp=False, name='someNet'))
+net_recv = dict(network=dict(
+    status="PENDING",
+    updated="2013-03-05T15:04:51.758780+00:00",
+    name="someNet",
+    created="2013-03-05T15:04:51.758728+00:00",
+    cidr6=None,
+    id="2130",
+    gateway6=None,
+    public=False,
+    dhcp=False,
+    cidr="192.168.1.0/24",
+    type="MAC_FILTERED",
+    gateway=None,
+    attachments=dict(values=[dict(name='att1'), dict(name='att2')])))
+net_list = dict(networks=dict(values=[
+    dict(id=1, name='n1'),
+    dict(id=2, name='n2'),
+    dict(id=3, name='n3')]))
 
 
-class Cyclades(livetest.Generic):
+class FR(object):
+    """FR stands for Fake Response"""
+    json = vm_recv
+    headers = {}
+    content = json
+    status = None
+    status_code = 200
+
+    def release(self):
+        pass
+
+khttp = 'kamaki.clients.connection.kamakicon.KamakiHTTPConnection'
+cyclades_pkg = 'kamaki.clients.cyclades.CycladesClient'
+
+
+class Cyclades(TestCase):
+
+    def assert_dicts_are_equal(self, d1, d2):
+        for k, v in d1.items():
+            self.assertTrue(k in d2)
+            if isinstance(v, dict):
+                self.assert_dicts_are_equal(v, d2[k])
+            else:
+                self.assertEqual(unicode(v), unicode(d2[k]))
+
     """Set up a Cyclades thorough test"""
     def setUp(self):
-        print
-        with open(self['image', 'details']) as f:
-            self.img_details = eval(f.read())
-        self.img = self.img_details['id']
-        with open(self['flavor', 'details']) as f:
-            self._flavor_details = eval(f.read())
-        self.PROFILES = ('ENABLED', 'DISABLED', 'PROTECTED')
-
-        self.servers = {}
-        self.now = time.mktime(time.gmtime())
-        self.servname1 = 'serv' + unicode(self.now)
-        self.servname2 = self.servname1 + '_v2'
-        self.servname1 += '_v1'
-        self.flavorid = 1
-        #servers have to be created at the begining...
-        self.networks = {}
-        self.netname1 = 'net' + unicode(self.now)
-        self.netname2 = 'net' + unicode(self.now) + '_v2'
-
-        self.client = CycladesClient(self['compute', 'url'], self['token'])
+        self.url = 'http://cyclades.example.com'
+        self.token = 'cyc14d3s70k3n'
+        self.client = CycladesClient(self.url, self.token)
+        from kamaki.clients.connection.kamakicon import KamakiHTTPConnection
+        self.C = KamakiHTTPConnection
 
     def tearDown(self):
-        """Destoy servers used in testing"""
-        for net in self.networks.keys():
-            self._delete_network(net)
-        for server in self.servers.values():
-            self._delete_server(server['id'])
-            print('DEL VM %s (%s)' % (server['id'], server['name']))
-
-    def test_000(self):
-        "Prepare a full Cyclades test scenario"
-        self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
-        self.server2 = self._create_server(
-            self.servname2,
-            self.flavorid + 2,
-            self.img)
-        super(self.__class__, self).test_000()
-
-    def _create_server(self, servername, flavorid, imageid, personality=None):
-        server = self.client.create_server(
-            servername,
-            flavorid,
-            imageid,
-            personality)
-        print('CREATE VM %s (%s)' % (server['id'], server['name']))
-        self.servers[servername] = server
-        return server
-
-    def _delete_server(self, servid):
-        try:
-            current_state = self.client.get_server_details(servid)
-            current_state = current_state['status']
-            if current_state == 'DELETED':
-                return
-            self.client.delete_server(servid)
-            self._wait_for_status(servid, current_state)
-            self.client.delete_server(servid)
-        except:
-            return
-
-    def _create_network(self, netname, **kwargs):
-        net = self.client.create_network(netname, **kwargs)
-        self.networks[net['id']] = net
-        return net
-
-    def _delete_network(self, netid):
-        if not netid in self.networks:
-            return None
-        print('Disconnect nics of network %s' % netid)
-        self.client.disconnect_network_nics(netid)
-
-        def netwait(wait):
-            try:
-                self.client.delete_network(netid)
-            except ClientError:
-                time.sleep(wait)
-        self.do_with_progress_bar(
-            netwait,
-            'Delete network %s' % netid,
-            self._waits[:7])
-        return self.networks.pop(netid)
-
-    def _wait_for_network(self, netid, status):
-
-        def netwait(wait):
-            r = self.client.get_network_details(netid)
-            if r['status'] == status:
-                return
-            time.sleep(wait)
-        self.do_with_progress_bar(
-            netwait,
-            'Wait network %s to reach status %s' % (netid, status),
-            self._waits[:5])
-
-    def _wait_for_nic(self, netid, servid, in_creation=True):
-        self._wait_for_network(netid, 'ACTIVE')
-
-        def nicwait(wait):
-            nics = self.client.list_server_nics(servid)
-            for net in nics:
-                found_nic = net['network_id'] == netid
-                if (in_creation and found_nic) or not (
-                        in_creation or found_nic):
-                    return
-            time.sleep(wait)
-        self.do_with_progress_bar(
-            nicwait,
-            'Wait nic-%s-%s to %sconnect' % (
-                netid,
-                servid,
-                '' if in_creation else 'dis'),
-            self._waits[:5])
-        for net in self.client.list_server_nics(servid):
-            if netid == net['network_id']:
-                return True
-        return False
-
-    def _has_status(self, servid, status):
-        r = self.client.get_server_details(servid)
-        return r['status'] == status
-
-    def _wait_for_status(self, servid, status):
-        (wait_bar, wait_cb) = self._safe_progress_bar(
-            'Server %s in %s' % (servid, status))
-        self.client.wait_server(servid, status, wait_cb=wait_cb)
-        self._safe_progress_bar_finish(wait_bar)
-
-    def test_parallel_creation(self):
-        """test create with multiple threads
-        Do not use this in regular livetest
-        """
-        from kamaki.clients import SilentEvent
-        c1 = SilentEvent(
-            self._create_server,
-            self.servname1,
-            self.flavorid,
-            self.img)
-        c2 = SilentEvent(
-            self._create_server,
-            self.servname2,
-            self.flavorid + 2,
-            self.img)
-        c3 = SilentEvent(
-            self._create_server,
-            self.servname1,
-            self.flavorid,
-            self.img)
-        c4 = SilentEvent(
-            self._create_server,
-            self.servname2,
-            self.flavorid + 2,
-            self.img)
-        c5 = SilentEvent(
-            self._create_server,
-            self.servname1,
-            self.flavorid,
-            self.img)
-        c6 = SilentEvent(
-            self._create_server,
-            self.servname2,
-            self.flavorid + 2,
-            self.img)
-        c7 = SilentEvent(
-            self._create_server,
-            self.servname1,
-            self.flavorid,
-            self.img)
-        c8 = SilentEvent(
-            self._create_server,
-            self.servname2,
-            self.flavorid + 2,
-            self.img)
-        c1.start()
-        c2.start()
-        c3.start()
-        c4.start()
-        c5.start()
-        c6.start()
-        c7.start()
-        c8.start()
+        FR.status_code = 200
+        FR.json = vm_recv
 
     def test_create_server(self):
-        """Test create_server"""
-        self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
-        self._wait_for_status(self.server1['id'], 'BUILD')
-        self._test_0010_create_server()
+        self.client.get_image_details = Mock(return_value=img_recv['image'])
+        with patch.object(Client, 'request', side_effect=ClientError(
+                'REQUEST ENTITY TOO LARGE',
+                status=403)):
+            self.assertRaises(
+                ClientError,
+                self.client.create_server,
+                vm_name, fid, img_ref)
 
-    def _test_0010_create_server(self):
-        self.assertEqual(self.server1["name"], self.servname1)
-        self.assertEqual(self.server1["flavorRef"], self.flavorid)
-        self.assertEqual(self.server1["imageRef"], self.img)
-        self.assertEqual(self.server1["status"], "BUILD")
+        with patch.object(
+                self.C,
+                'perform_request',
+                return_value=FR()) as perform_req:
+            self.assertRaises(
+                ClientError,
+                self.client.create_server,
+                vm_name, fid, img_ref)
+            FR.status_code = 202
+            r = self.client.create_server(vm_name, fid, img_ref)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(self.client.http_client.path, '/servers')
+            (method, data, a_headers, a_params) = perform_req.call_args[0]
+            self.assert_dicts_are_equal(loads(data), vm_send)
+            self.assert_dicts_are_equal(r, vm_recv['server'])
+            prsn = 'Personality string (does not work with real servers)'
+            self.client.create_server(vm_name, fid, img_ref, prsn)
+            (method, data, a_headers, a_params) = perform_req.call_args[0]
+            data = loads(data)
+            self.assertTrue('personality' in data['server'])
+            self.assertEqual(prsn, data['server']['personality'])
 
     def test_list_servers(self):
-        """Test list servers"""
-        self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
-        self.server2 = self._create_server(
-            self.servname2,
-            self.flavorid + 2,
-            self.img)
-        self._test_0020_list_servers()
+        FR.json = vm_list
+        with patch.object(
+                self.C,
+                'perform_request',
+                return_value=FR()) as perform_req:
+            r = self.client.list_servers()
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(self.client.http_client.path, '/servers')
+            (method, data, a_headers, a_params) = perform_req.call_args[0]
+            self.assert_dicts_are_equal(dict(values=r), vm_list['servers'])
+            r = self.client.list_servers(detail=True)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(self.client.http_client.path, '/servers/detail')
+        with patch.object(
+                CycladesClientApi,
+                'servers_get',
+                return_value=FR()) as servers_get:
+            self.client.list_servers(changes_since=True)
+            self.assertTrue(servers_get.call_args[1]['changes_since'])
 
-    def _test_0020_list_servers(self):
-        servers = self.client.list_servers()
-        dservers = self.client.list_servers(detail=True)
+    @patch('%s.perform_request' % khttp, return_value=FR())
+    def test_get_server_details(self, PR):
+        vm_id = vm_recv['server']['id']
+        r = self.client.get_server_details(vm_id)
+        self.assertEqual(self.client.http_client.url, self.url)
+        self.assertEqual(self.client.http_client.path, '/servers/%s' % vm_id)
+        self.assert_dicts_are_equal(r, vm_recv['server'])
 
-        """detailed and simple are same size"""
-        self.assertEqual(len(dservers), len(servers))
-        for i in range(len(servers)):
-            for field in (
-                    'created',
-                    'flavorRef',
-                    'hostId',
-                    'imageRef',
-                    'progress',
-                    'status',
-                    'updated'):
-                self.assertFalse(field in servers[i])
-                self.assertTrue(field in dservers[i])
+    @patch('%s.perform_request' % khttp, return_value=FR())
+    def test_update_server_name(self, PR):
+        vm_id = vm_recv['server']['id']
+        new_name = vm_name + '_new'
+        FR.status_code = 204
+        self.client.update_server_name(vm_id, new_name)
+        self.assertEqual(self.client.http_client.url, self.url)
+        self.assertEqual(self.client.http_client.path, '/servers/%s' % vm_id)
+        (method, data, a_headers, a_params) = PR.call_args[0]
+        self.assert_dicts_are_equal(
+            dict(server=dict(name=new_name)),
+            loads(data))
 
-        """detailed and simple contain same names"""
-        names = sorted(map(lambda x: x["name"], servers))
-        dnames = sorted(map(lambda x: x["name"], dservers))
-        self.assertEqual(names, dnames)
+    @patch('%s.perform_request' % khttp, return_value=FR())
+    def test_reboot_server(self, PR):
+        vm_id = vm_recv['server']['id']
+        FR.status_code = 202
+        self.client.reboot_server(vm_id)
+        self.assertEqual(self.client.http_client.url, self.url)
+        self.assertEqual(
+            self.client.http_client.path,
+            '/servers/%s/action' % vm_id)
+        (method, data, a_headers, a_params) = PR.call_args[0]
+        self.assert_dicts_are_equal(
+            dict(reboot=dict(type='SOFT')),
+            loads(data))
 
-    def _test_0030_wait_test_servers_to_build(self):
-        """Pseudo-test to wait for VMs to load"""
-        print('')
-        self._wait_for_status(self.server1['id'], 'BUILD')
-        self._wait_for_status(self.server2['id'], 'BUILD')
+    @patch('%s.perform_request' % khttp, return_value=FR())
+    def test_create_server_metadata(self, PR):
+        vm_id = vm_recv['server']['id']
+        metadata = dict(m1='v1', m2='v2', m3='v3')
+        FR.json = dict(meta=vm_recv['server'])
+        self.assertRaises(
+            ClientError,
+            self.client.create_server_metadata,
+            vm_id, 'key', 'value')
+        FR.status_code = 201
+        for k, v in metadata.items():
+            r = self.client.create_server_metadata(vm_id, k, v)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(
+                self.client.http_client.path,
+                '/servers/%s/meta/%s' % (vm_id, k))
+            (method, data, a_headers, a_params) = PR.call_args[0]
+            self.assertEqual(dict(meta={k: v}), loads(data))
+            self.assert_dicts_are_equal(r, vm_recv['server'])
 
-    def test_get_server_details(self):
-        """Test get_server_details"""
-        self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
-        self._wait_for_status(self.server1['id'], 'BUILD')
-        self._test_0040_get_server_details()
+    @patch('%s.perform_request' % khttp, return_value=FR())
+    def test_get_server_metadata(self, PR):
+        vm_id = vm_recv['server']['id']
+        metadata = dict(m1='v1', m2='v2', m3='v3')
+        FR.json = dict(metadata=dict(values=metadata))
+        r = self.client.get_server_metadata(vm_id)
+        self.assertEqual(self.client.http_client.url, self.url)
+        self.assertEqual(
+            self.client.http_client.path,
+            '/servers/%s/meta' % vm_id)
+        self.assert_dicts_are_equal(r, metadata)
 
-    def _test_0040_get_server_details(self):
-        r = self.client.get_server_details(self.server1['id'])
-        self.assertEqual(r["name"], self.servname1)
-        self.assertEqual(r["flavorRef"], self.flavorid)
-        self.assertEqual(r["imageRef"], self.img)
-        self.assertEqual(r["status"], "ACTIVE")
+        for k, v in metadata.items():
+            FR.json = dict(meta={k: v})
+            r = self.client.get_server_metadata(vm_id, k)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(
+                self.client.http_client.path,
+                '/servers/%s/meta/%s' % (vm_id, k))
+            self.assert_dicts_are_equal(r, {k: v})
 
-    def test_update_server_name(self):
-        """Test update_server_name"""
-        self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
-        self._test_0050_update_server_name()
+    @patch('%s.servers_post' % cyclades_pkg, return_value=FR())
+    def test_update_server_metadata(self, servers_post):
+        vm_id = vm_recv['server']['id']
+        metadata = dict(m1='v1', m2='v2', m3='v3')
+        FR.json = dict(metadata=metadata)
+        r = self.client.update_server_metadata(vm_id, **metadata)
+        self.assert_dicts_are_equal(r, metadata)
+        (called_id, cmd) = servers_post.call_args[0]
+        self.assertEqual(called_id, vm_id)
+        self.assertEqual(cmd, 'meta')
+        data = servers_post.call_args[1]['json_data']
+        self.assert_dicts_are_equal(data, dict(metadata=metadata))
 
-    def _test_0050_update_server_name(self):
-        new_name = self.servname1 + '_new_name'
-        self.client.update_server_name(self.server1['id'], new_name)
-        r = self.client.get_server_details(
-            self.server1['id'],
-            success=(200, 400))
-        self.assertEqual(r['name'], new_name)
-        changed = self.servers.pop(self.servname1)
-        changed['name'] = new_name
-        self.servers[new_name] = changed
+    @patch('%s.servers_delete' % cyclades_pkg, return_value=FR())
+    def test_delete_server_metadata(self, servers_delete):
+        vm_id = vm_recv['server']['id']
+        key = 'metakey'
+        self.client.delete_server_metadata(vm_id, key)
+        self.assertEqual((vm_id, 'meta/' + key), servers_delete.call_args[0])
 
-    def test_reboot_server(self):
-        """Test reboot server"""
-        self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
-        self._wait_for_status(self.server1['id'], 'BUILD')
-        self.server2 = self._create_server(
-            self.servname2,
-            self.flavorid + 1,
-            self.img)
-        self._wait_for_status(self.server2['id'], 'BUILD')
-        self._test_0060_reboot_server()
-        self._wait_for_status(self.server1['id'], 'REBOOT')
-        self._wait_for_status(self.server2['id'], 'REBOOT')
-
-    def _test_0060_reboot_server(self):
-        self.client.reboot_server(self.server1['id'])
-        self.assertTrue(self._has_status(self.server1['id'], 'REBOOT'))
-        self.client.reboot_server(self.server2['id'], hard=True)
-        self.assertTrue(self._has_status(self.server2['id'], 'REBOOT'))
-
-    def _test_0070_wait_test_servers_to_reboot(self):
-        """Pseudo-test to wait for VMs to load"""
-        print('')
-        self._wait_for_status(self.server1['id'], 'REBOOT')
-        self._wait_for_status(self.server2['id'], 'REBOOT')
-
-    def test_create_server_metadata(self):
-        """Test create_server_metadata"""
-        self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
-        self._test_0080_create_server_metadata()
-
-    def _test_0080_create_server_metadata(self):
-        r1 = self.client.create_server_metadata(
-            self.server1['id'],
-            'mymeta',
-            'mymeta val')
-        self.assertTrue('mymeta' in r1)
-        r2 = self.client.get_server_metadata(self.server1['id'], 'mymeta')
-        self.assert_dicts_are_deeply_equal(r1, r2)
-
-    def test_get_server_metadata(self):
-        """Test get server_metadata"""
-        self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
-        self._test_0090_get_server_metadata()
-
-    def _test_0090_get_server_metadata(self):
-        self.client.create_server_metadata(
-            self.server1['id'],
-            'mymeta_0',
-            'val_0')
-        r = self.client.get_server_metadata(self.server1['id'], 'mymeta_0')
-        self.assertEqual(r['mymeta_0'], 'val_0')
-
-    def test_update_server_metadata(self):
-        """Test update_server_metadata"""
-        self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
-        self._test_0100_update_server_metadata()
-
-    def _test_0100_update_server_metadata(self):
-        r1 = self.client.create_server_metadata(
-            self.server1['id'],
-            'mymeta3',
-            'val2')
-        self.assertTrue('mymeta3'in r1)
-        r2 = self.client.update_server_metadata(
-            self.server1['id'],
-            mymeta3='val3')
-        self.assertTrue(r2['mymeta3'], 'val3')
-
-    def test_delete_server_metadata(self):
-        """Test delete_server_metadata"""
-        self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
-        self._test_0110_delete_server_metadata()
-
-    def _test_0110_delete_server_metadata(self):
-        r1 = self.client.create_server_metadata(
-            self.server1['id'],
-            'mymeta',
-            'val')
-        self.assertTrue('mymeta' in r1)
-        self.client.delete_server_metadata(self.server1['id'], 'mymeta')
-        try:
-            self.client.get_server_metadata(self.server1['id'], 'mymeta')
-            raise ClientError('Wrong Error', status=100)
-        except ClientError as err:
-            self.assertEqual(err.status, 404)
-
-    def test_list_flavors(self):
-        """Test flavors_get"""
-        self._test_0120_list_flavors()
-
-    def _test_0120_list_flavors(self):
+    @patch('%s.perform_request' % khttp, return_value=FR())
+    def test_list_flavors(self, PR):
+        FR.json = flavor_list
         r = self.client.list_flavors()
-        self.assertTrue(len(r) > 1)
+        self.assertEqual(self.client.http_client.url, self.url)
+        self.assertEqual(self.client.http_client.path, '/flavors')
+        (method, data, a_headers, a_params) = PR.call_args[0]
+        self.assert_dicts_are_equal(dict(values=r), flavor_list['flavors'])
         r = self.client.list_flavors(detail=True)
-        self.assertTrue('SNF:disk_template' in r[0])
+        self.assertEqual(self.client.http_client.url, self.url)
+        self.assertEqual(self.client.http_client.path, '/flavors/detail')
 
-    def test_get_flavor_details(self):
-        """Test test_get_flavor_details"""
-        self._test_0130_get_flavor_details()
+    @patch('%s.perform_request' % khttp, return_value=FR())
+    def test_get_flavor_details(self, PR):
+        FR.json = dict(flavor=flavor_list['flavors'])
+        r = self.client.get_flavor_details(fid)
+        self.assertEqual(self.client.http_client.url, self.url)
+        self.assertEqual(self.client.http_client.path, '/flavors/%s' % fid)
+        self.assert_dicts_are_equal(r, flavor_list['flavors'])
 
-    def _test_0130_get_flavor_details(self):
-        r = self.client.get_flavor_details(self.flavorid)
-        self.assert_dicts_are_deeply_equal(self._flavor_details, r)
-
-    def test_list_images(self):
-        """Test list_images"""
-        self._test_0140_list_images()
-
-    def _test_0140_list_images(self):
+    @patch('%s.perform_request' % khttp, return_value=FR())
+    def test_list_images(self, PR):
+        FR.json = img_list
         r = self.client.list_images()
-        self.assertTrue(len(r) > 1)
-        r = self.client.list_images(detail=True)
-        for detailed_img in r:
-            if detailed_img['id'] == self.img:
-                break
-        self.assert_dicts_are_deeply_equal(detailed_img, self.img_details)
+        self.assertEqual(self.client.http_client.url, self.url)
+        self.assertEqual(self.client.http_client.path, '/images')
+        expected = img_list['images']['values']
+        for i in range(len(r)):
+            self.assert_dicts_are_equal(expected[i], r[i])
+        self.client.list_images(detail=True)
+        self.assertEqual(self.client.http_client.url, self.url)
+        self.assertEqual(self.client.http_client.path, '/images/detail')
 
-    def test_get_image_details(self):
-        """Test image_details"""
-        self._test_0150_get_image_details()
+    @patch('%s.perform_request' % khttp, return_value=FR())
+    def test_get_image_details(self, PR):
+        FR.json = img_recv
+        r = self.client.get_image_details(img_ref)
+        self.assertEqual(self.client.http_client.url, self.url)
+        self.assertEqual(self.client.http_client.path, '/images/%s' % img_ref)
+        self.assert_dicts_are_equal(r, img_recv['image'])
 
-    def _test_0150_get_image_details(self):
-        r = self.client.get_image_details(self.img)
-        self.assert_dicts_are_deeply_equal(r, self.img_details)
+    @patch('%s.images_get' % cyclades_pkg, return_value=FR())
+    def test_get_image_metadata(self, IG):
+        FR.json = dict(metadata=dict(values=img_recv['image']))
+        r = self.client.get_image_metadata(img_ref)
+        self.assertEqual(IG.call_args[0], ('%s' % img_ref, '/meta'))
+        self.assert_dicts_are_equal(img_recv['image'], r)
+        FR.json = dict(meta=img_recv['image'])
+        key = 'somekey'
+        self.client.get_image_metadata(img_ref, key)
+        self.assertEqual(IG.call_args[0], ('%s' % img_ref, '/meta/%s' % key))
 
-    def test_get_image_metadata(self):
-        """Test get_image_metadata"""
-        self._test_0160_get_image_metadata()
+    @patch('%s.perform_request' % khttp, return_value=FR())
+    def test_shutdown_server(self, PR):
+        vm_id = vm_recv['server']['id']
+        FR.status_code = 202
+        self.client.shutdown_server(vm_id)
+        self.assertEqual(self.client.http_client.url, self.url)
+        self.assertEqual(
+            self.client.http_client.path,
+            '/servers/%s/action' % vm_id)
+        self.assertEqual(
+            PR.call_args[0],
+            ('post',  '{"shutdown": {}}', {}, {}))
 
-    def _test_0160_get_image_metadata(self):
-        r = self.client.get_image_metadata(self.img)
-        self.assert_dicts_are_deeply_equal(
-            self.img_details['metadata']['values'], r)
-        for key, val in self.img_details['metadata']['values'].items():
-            r = self.client.get_image_metadata(self.img, key)
-            self.assertEqual(r[key], val)
+    @patch('%s.perform_request' % khttp, return_value=FR())
+    def test_start_server(self, PR):
+        vm_id = vm_recv['server']['id']
+        FR.status_code = 202
+        self.client.start_server(vm_id)
+        self.assertEqual(self.client.http_client.url, self.url)
+        self.assertEqual(
+            self.client.http_client.path,
+            '/servers/%s/action' % vm_id)
+        self.assertEqual(PR.call_args[0], ('post',  '{"start": {}}', {}, {}))
 
-    def test_shutdown_server(self):
-        """Test shutdown_server"""
-        self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
-        self._wait_for_status(self.server1['id'], 'BUILD')
-        self._test_0170_shutdown_server()
-
-    def _test_0170_shutdown_server(self):
-        self.client.shutdown_server(self.server1['id'])
-        self._wait_for_status(self.server1['id'], 'ACTIVE')
-        r = self.client.get_server_details(self.server1['id'])
-        self.assertEqual(r['status'], 'STOPPED')
-
-    def test_start_server(self):
-        """Test start_server"""
-        self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
-        self._wait_for_status(self.server1['id'], 'BUILD')
-        self.client.shutdown_server(self.server1['id'])
-        self._wait_for_status(self.server1['id'], 'ACTIVE')
-        self._test_0180_start_server()
-
-    def _test_0180_start_server(self):
-        self.client.start_server(self.server1['id'])
-        self._wait_for_status(self.server1['id'], 'STOPPED')
-        r = self.client.get_server_details(self.server1['id'])
-        self.assertEqual(r['status'], 'ACTIVE')
-
-    def test_get_server_console(self):
-        """Test get_server_console"""
-        self.server2 = self._create_server(
-            self.servname2,
-            self.flavorid + 2,
-            self.img)
-        self._wait_for_status(self.server2['id'], 'BUILD')
-        self._test_0190_get_server_console()
-
-    def _test_0190_get_server_console(self):
-        r = self.client.get_server_console(self.server2['id'])
-        self.assertTrue('host' in r)
-        self.assertTrue('password' in r)
-        self.assertTrue('port' in r)
-        self.assertTrue('type' in r)
+    @patch('%s.perform_request' % khttp, return_value=FR())
+    def test_get_server_console(self, PR):
+        cnsl = dict(console=dict(info1='i1', info2='i2', info3='i3'))
+        FR.json = cnsl
+        vm_id = vm_recv['server']['id']
+        r = self.client.get_server_console(vm_id)
+        self.assertEqual(self.client.http_client.url, self.url)
+        self.assertEqual(
+            self.client.http_client.path,
+            '/servers/%s/action' % vm_id)
+        self.assert_dicts_are_equal(cnsl['console'], r)
+        self.assertEqual(
+            PR.call_args[0],
+            ('post',  '{"console": {"type": "vnc"}}', {}, {}))
 
     def test_get_firewall_profile(self):
-        """Test get_firewall_profile"""
-        self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
-        self._test_0200_get_firewall_profile()
+        vm_id = vm_recv['server']['id']
+        v = 'Some profile'
+        ret = {'attachments': {'values': [{'firewallProfile': v, 1:1}]}}
+        with patch.object(
+                CycladesClient,
+                'get_server_details',
+                return_value=ret) as GSD:
+            r = self.client.get_firewall_profile(vm_id)
+            self.assertEqual(r, v)
+            self.assertEqual(GSD.call_args[0], (vm_id,))
+            ret['attachments']['values'][0].pop('firewallProfile')
+            self.assertRaises(
+                ClientError,
+                self.client.get_firewall_profile,
+                vm_id)
 
-    def _test_0200_get_firewall_profile(self):
-        self._wait_for_status(self.server1['id'], 'BUILD')
-        fprofile = self.client.get_firewall_profile(self.server1['id'])
-        self.assertTrue(fprofile in self.PROFILES)
+    @patch('%s.perform_request' % khttp, return_value=FR())
+    def test_set_firewall_profile(self, PR):
+        vm_id = vm_recv['server']['id']
+        v = 'Some profile'
+        FR.status_code = 202
+        self.client.set_firewall_profile(vm_id, v)
+        self.assertEqual(self.client.http_client.url, self.url)
+        self.assertEqual(
+            self.client.http_client.path,
+            '/servers/%s/action' % vm_id)
+        self.assertEqual(PR.call_args[0], (
+            'post',
+            '{"firewallProfile": {"profile": "%s"}}' % v,
+            {},
+            {}))
 
-    def test_set_firewall_profile(self):
-        """Test set_firewall_profile"""
-        self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
-        self._test_0210_set_firewall_profile()
+    @patch('%s.perform_request' % khttp, return_value=FR())
+    def test_get_server_stats(self, PR):
+        vm_id = vm_recv['server']['id']
+        stats = dict(stat1='v1', stat2='v2', stat3='v3', stat4='v4')
+        FR.json = dict(stats=stats)
+        r = self.client.get_server_stats(vm_id)
+        self.assertEqual(self.client.http_client.url, self.url)
+        self.assertEqual(
+            self.client.http_client.path,
+            '/servers/%s/stats' % vm_id)
+        self.assert_dicts_are_equal(stats, r)
 
-    def _test_0210_set_firewall_profile(self):
-
-        self._wait_for_status(self.server1['id'], 'BUILD')
-        PROFILES = ['DISABLED', 'ENABLED', 'DISABLED', 'PROTECTED']
-        fprofile = self.client.get_firewall_profile(self.server1['id'])
-        print('')
-        count_success = 0
-        for counter, fprofile in enumerate(PROFILES):
-            npos = counter + 1
-            try:
-                nprofile = PROFILES[npos]
-            except IndexError:
-                nprofile = PROFILES[0]
-            print('\tprofile swap %s: %s -> %s' % (npos, fprofile, nprofile))
-            self.client.set_firewall_profile(self.server1['id'], nprofile)
-            time.sleep(0.5)
-            self.client.reboot_server(self.server1['id'], hard=True)
-            time.sleep(1)
-            self._wait_for_status(self.server1['id'], 'REBOOT')
-            time.sleep(0.5)
-            changed = self.client.get_firewall_profile(self.server1['id'])
-            try:
-                self.assertEqual(changed, nprofile)
-            except AssertionError as err:
-                if count_success:
-                    print('\tFAIL in swap #%s' % npos)
-                    break
-                else:
-                    raise err
-            count_success += 1
-
-    def test_get_server_stats(self):
-        self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
-        self._test_0220_get_server_stats()
-
-    def _test_0220_get_server_stats(self):
-        r = self.client.get_server_stats(self.server1['id'])
-        it = ('cpuBar', 'cpuTimeSeries', 'netBar', 'netTimeSeries', 'refresh')
-        for term in it:
-            self.assertTrue(term in r)
-
-    def test_create_network(self):
-        """Test create_network"""
-        self._test_0230_create_network()
-
-    def _test_0230_create_network(self):
-        print('\twith no params')
-        self.network1 = self._create_network(self.netname1)
-        self._wait_for_network(self.network1['id'], 'ACTIVE')
-        n1id = self.network1['id']
-        self.network1 = self.client.get_network_details(n1id)
-        nets = self.client.list_networks(self.network1['id'])
-        chosen = [net for net in nets if net['id'] == n1id][0]
-        chosen.pop('updated')
-        net1 = dict(self.network1)
-        net1.pop('updated')
-        self.assert_dicts_are_deeply_equal(chosen, net1)
-        for param, val in dict(
+    @patch('%s.perform_request' % khttp, return_value=FR())
+    def test_create_network(self, PR):
+        net_name = net_send['network']['name']
+        FR.json = net_recv
+        FR.status_code = 202
+        full_args = dict(
                 cidr='192.168.0.0/24',
                 gateway='192.168.0.1',
                 type='MAC_FILTERED',
-                dhcp=True).items():
-            print('\tdelete %s to avoid max net limit' % n1id)
-            self._delete_network(n1id)
-            kwargs = {param: val}
-            print('\twith %s=%s' % (param, val))
-            self.network1 = self._create_network(self.netname1, **kwargs)
-            n1id = self.network1['id']
-            self._wait_for_network(n1id, 'ACTIVE')
-            self.network1 = self.client.get_network_details(n1id)
-            self.assertEqual(self.network1[param], val)
+                dhcp=True)
+        test_args = dict(full_args)
+        test_args.update(dict(empty=None, full=None))
+        for arg, val in test_args.items():
+            kwargs = {} if arg == 'empty' else full_args if (
+                arg == 'full') else {arg: val}
+            r = self.client.create_network(net_name, **kwargs)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(
+                self.client.http_client.path,
+                '/networks')
+            self.assert_dicts_are_equal(r, net_recv['network'])
+            data = PR.call_args[0][1]
+            expected = dict(network=dict(net_send['network']))
+            expected['network'].update(kwargs)
+            self.assert_dicts_are_equal(loads(data), expected)
 
-    def test_connect_server(self):
-        """Test connect_server"""
-        self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
-        self.network1 = self._create_network(self.netname1)
-        self._wait_for_status(self.server1['id'], 'BUILD')
-        self._wait_for_network(self.network1['id'], 'ACTIVE')
-        self._test_0240_connect_server()
+    @patch('%s.perform_request' % khttp, return_value=FR())
+    def test_connect_server(self, PR):
+        vm_id = vm_recv['server']['id']
+        net_id = net_recv['network']['id']
+        FR.status_code = 202
+        self.client.connect_server(vm_id, net_id)
+        self.assertEqual(self.client.http_client.url, self.url)
+        self.assertEqual(
+            self.client.http_client.path,
+            '/networks/%s/action' % net_id)
+        self.assertEqual(
+            PR.call_args[0],
+            ('post', '{"add": {"serverRef": %s}}' % vm_id, {}, {}))
 
-    def _test_0250_connect_server(self):
-        self.client.connect_server(self.server1['id'], self.network1['id'])
-        self.assertTrue(self._wait_for_nic(
-            self.network1['id'],
-            self.server1['id']))
+    @patch('%s.networks_post' % cyclades_pkg, return_value=FR())
+    def test_disconnect_server(self, NP):
+        vm_id = vm_recv['server']['id']
+        net_id = net_recv['network']['id']
+        nic_id = 'nic-%s-%s' % (net_id, vm_id)
+        vm_nics = [
+            dict(id=nic_id, network_id=net_id),
+            dict(id='another-nic-id', network_id='another-net-id'),
+            dict(id=nic_id * 2, network_id=net_id * 2)]
+        with patch.object(
+                CycladesClient,
+                'list_server_nics',
+                return_value=vm_nics) as LSN:
+            r = self.client.disconnect_server(vm_id, nic_id)
+            self.assertEqual(r, 1)
+            self.assertEqual(LSN.call_args[0], (vm_id,))
+            self.assertEqual(NP.call_args[0], (net_id, 'action'))
+            self.assertEqual(
+                NP.call_args[1],
+                dict(json_data=dict(remove=dict(attachment=nic_id))))
 
-    def test_disconnect_server(self):
-        """Test disconnect_server"""
-        self.test_connect_server()
-        self._test_0250_disconnect_server()
+    @patch('%s.perform_request' % khttp, return_value=FR())
+    def test_list_server_nics(self, PR):
+        vm_id = vm_recv['server']['id']
+        nics = dict(addresses=dict(values=[dict(id='nic1'), dict(id='nic2')]))
+        FR.json = nics
+        r = self.client.list_server_nics(vm_id)
+        self.assertEqual(self.client.http_client.url, self.url)
+        self.assertEqual(
+            self.client.http_client.path,
+            '/servers/%s/ips' % vm_id)
+        expected = nics['addresses']['values']
+        for i in range(len(r)):
+            self.assert_dicts_are_equal(r[i], expected[i])
 
-    def _test_0250_disconnect_server(self):
-        self.client.disconnect_server(self.server1['id'], self.network1['id'])
-        self.assertTrue(self._wait_for_nic(
-            self.network1['id'],
-            self.server1['id'],
-            in_creation=False))
-
-    def _test_0260_wait_for_second_network(self):
-        self.network2 = self._create_network(self.netname2)
-        self._wait_for_network(self.network2['id'], 'ACTIVE')
-
-    def test_list_server_nics(self):
-        """Test list_server_nics"""
-        self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
-        self.network2 = self._create_network(self.netname2)
-        self._wait_for_status(self.server1['id'], 'BUILD')
-        self._wait_for_network(self.network2['id'], 'ACTIVE')
-        self._test_0280_list_server_nics()
-
-    def _test_0280_list_server_nics(self):
-        r = self.client.list_server_nics(self.server1['id'])
-        len0 = len(r)
-        self.client.connect_server(self.server1['id'], self.network2['id'])
-        self.assertTrue(self._wait_for_nic(
-            self.network2['id'],
-            self.server1['id']))
-        r = self.client.list_server_nics(self.server1['id'])
-        self.assertTrue(len(r) > len0)
-
-    def test_list_networks(self):
-        """Test list_network"""
-        self.network1 = self._create_network(self.netname1)
-        self._wait_for_network(self.network1['id'], 'ACTIVE')
-        self._test_0290_list_networks()
-
-    def _test_0290_list_networks(self):
+    @patch('%s.perform_request' % khttp, return_value=FR())
+    def test_list_networks(self, PR):
+        FR.json = net_list
         r = self.client.list_networks()
-        self.assertTrue(len(r) > 1)
-        ids = [net['id'] for net in r]
-        names = [net['name'] for net in r]
-        self.assertTrue('1' in ids)
-        #self.assertTrue('public' in names)
-        self.assertTrue(self.network1['id'] in ids)
-        self.assertTrue(self.network1['name'] in names)
+        self.assertEqual(self.client.http_client.url, self.url)
+        self.assertEqual(self.client.http_client.path, '/networks')
+        expected = net_list['networks']['values']
+        for i in range(len(r)):
+            self.assert_dicts_are_equal(expected[i], r[i])
+        self.client.list_networks(detail=True)
+        self.assertEqual(self.client.http_client.url, self.url)
+        self.assertEqual(self.client.http_client.path, '/networks/detail')
 
-        r = self.client.list_networks(detail=True)
-        ids = [net['id'] for net in r]
-        names = [net['name'] for net in r]
-        for net in r:
-            self.assertTrue(net['id'] in ids)
-            self.assertTrue(net['name'] in names)
-            for term in ('status', 'updated', 'created'):
-                self.assertTrue(term in net.keys())
+    @patch('%s.perform_request' % khttp, return_value=FR())
+    def test_list_network_nics(self, PR):
+        net_id = net_recv['network']['id']
+        FR.json = net_recv
+        r = self.client.list_network_nics(net_id)
+        self.assertEqual(self.client.http_client.url, self.url)
+        self.assertEqual(
+            self.client.http_client.path,
+            '/networks/%s' % net_id)
+        expected = net_recv['network']['attachments']['values']
+        for i in range(len(r)):
+            self.assert_dicts_are_equal(r[i], expected[i])
 
-    def test_get_network_details(self):
-        """Test get_network_details"""
-        self.network1 = self._create_network(self.netname1)
-        self._test_0300_get_network_details()
+    @patch('%s.networks_post' % cyclades_pkg, return_value=FR())
+    def test_disconnect_network_nics(self, NP):
+        net_id = net_recv['network']['id']
+        nics = ['nic1', 'nic2', 'nic3']
+        with patch.object(
+                CycladesClient,
+                'list_network_nics',
+                return_value=nics) as lnn:
+            self.client.disconnect_network_nics(net_id)
+            lnn.assert_called_once_with(net_id)
+            for i in range(len(nics)):
+                expected = call(net_id, 'action', json_data=dict(
+                    remove=dict(attachment=nics[i])))
+                self.assertEqual(expected, NP.mock_calls[i])
 
-    def _test_0300_get_network_details(self):
-        r = self.client.get_network_details(self.network1['id'])
-        net1 = dict(self.network1)
-        net1.pop('status')
-        net1.pop('updated', None)
-        net1.pop('attachments')
-        r.pop('status')
-        r.pop('updated', None)
-        r.pop('attachments')
-        self.assert_dicts_are_deeply_equal(net1, r)
+    @patch('%s.perform_request' % khttp, return_value=FR())
+    def test_get_network_details(self, PR):
+        FR.json = net_recv
+        net_id = net_recv['network']['id']
+        r = self.client.get_network_details(net_id)
+        self.assertEqual(self.client.http_client.url, self.url)
+        self.assertEqual(
+            self.client.http_client.path,
+            '/networks/%s' % net_id)
+        self.assert_dicts_are_equal(r, net_recv['network'])
 
-    def test_update_network_name(self):
-        self.network2 = self._create_network(self.netname2)
-        self._test_0310_update_network_name()
+    @patch('%s.perform_request' % khttp, return_value=FR())
+    def test_update_network_name(self, PR):
+        net_id = net_recv['network']['id']
+        new_name = '%s_new' % net_id
+        FR.status_code = 204
+        self.client.update_network_name(net_id, new_name)
+        self.assertEqual(self.client.http_client.url, self.url)
+        self.assertEqual(self.client.http_client.path, '/networks/%s' % net_id)
+        (method, data, a_headers, a_params) = PR.call_args[0]
+        self.assert_dicts_are_equal(
+            dict(network=dict(name=new_name)),
+            loads(data))
 
-    def _test_0310_update_network_name(self):
-        updated_name = self.netname2 + '_upd'
-        self.client.update_network_name(self.network2['id'], updated_name)
+    @patch('%s.perform_request' % khttp, return_value=FR())
+    def test_delete_server(self, PR):
+        vm_id = vm_recv['server']['id']
+        FR.status_code = 204
+        self.client.delete_server(vm_id)
+        self.assertEqual(self.client.http_client.url, self.url)
+        self.assertEqual(self.client.http_client.path, '/servers/%s' % vm_id)
 
-        def netwait(wait):
-            r = self.client.get_network_details(self.network2['id'])
-            if r['name'] == updated_name:
-                return
-            time.sleep(wait)
-        self.do_with_progress_bar(
-            netwait,
-            'Network %s name is changing:' % self.network2['id'],
-            self._waits[:5])
+    @patch('%s.perform_request' % khttp, return_value=FR())
+    def test_delete_image(self, PR):
+        FR.status_code = 204
+        self.client.delete_image(img_ref)
+        self.assertEqual(self.client.http_client.url, self.url)
+        self.assertEqual(self.client.http_client.path, '/images/%s' % img_ref)
 
-        r = self.client.get_network_details(self.network2['id'])
-        self.assertEqual(r['name'], updated_name)
+    @patch('%s.perform_request' % khttp, return_value=FR())
+    def test_delete_network(self, PR):
+        net_id = net_recv['network']['id']
+        FR.status_code = 204
+        self.client.delete_network(net_id)
+        self.assertEqual(self.client.http_client.url, self.url)
+        self.assertEqual(self.client.http_client.path, '/networks/%s' % net_id)
 
-    """ Don't have auth to test this
-    def test_delete_image(self):
-        ""Test delete_image""
-        self._test_0330_delete_image()
-    def _test_0330_delete_image(self):
-        images = self.client.list_images()
-        self.client.delete_image(images[2]['id'])
-        try:
-            r = self.client.get_image_details(images[2]['id'], success=(400))
-        except ClientError as err:
-            self.assertEqual(err.status, 404)
+    @patch('%s.perform_request' % khttp, return_value=FR())
+    def test_create_image_metadata(self, PR):
+        metadata = dict(m1='v1', m2='v2', m3='v3')
+        FR.json = dict(meta=img_recv['image'])
+        self.assertRaises(
+            ClientError,
+            self.client.create_image_metadata,
+            img_ref, 'key', 'value')
+        FR.status_code = 201
+        for k, v in metadata.items():
+            r = self.client.create_image_metadata(img_ref, k, v)
+            self.assertEqual(self.client.http_client.url, self.url)
+            self.assertEqual(
+                self.client.http_client.path,
+                '/images/%s/meta/%s' % (img_ref, k))
+            (method, data, a_headers, a_params) = PR.call_args[0]
+            self.assertEqual(dict(meta={k: v}), loads(data))
+            self.assert_dicts_are_equal(r, img_recv['image'])
 
-    def test_create_image_metadata(self):
-        ""Test create_image_metadata""
-        self._test_0340_create_image_metadata()
-    def _test_0340_create_image_metadata(self):
-        r = self.client.create_image_metadata(self.img, 'mykey', 'myval')
-        self.assertEqual(r['mykey'], 'myval')
+    @patch('%s.images_post' % cyclades_pkg, return_value=FR())
+    def test_update_image_metadata(self, images_post):
+        metadata = dict(m1='v1', m2='v2', m3='v3')
+        FR.json = dict(metadata=metadata)
+        r = self.client.update_image_metadata(img_ref, **metadata)
+        self.assert_dicts_are_equal(r, metadata)
+        (called_id, cmd) = images_post.call_args[0]
+        self.assertEqual(called_id, img_ref)
+        self.assertEqual(cmd, 'meta')
+        data = images_post.call_args[1]['json_data']
+        self.assert_dicts_are_equal(data, dict(metadata=metadata))
 
-    def test_update_image_metadata(self):
-        ""Test update_image_metadata""
-        self._test_0350_update_image_metadata()
-    def _test_0350_update_image_metadata(self):
-        r = self.client.create_image_metadata(self.img, 'mykey0', 'myval')
-        r = self.client.update_image_metadata(self.img, 'mykey0', 'myval0')
-        self.assertEqual(r['mykey0'], 'myval0')
-
-    def test_delete_image_metadata(self):
-        ""Test delete_image_metadata""
-        self._test_0360_delete_image_metadata()
-    def _test_0360_delete_image_metadata(self):
-        self.client.create_image_metadata(self.img, 'mykey1', 'myval1')
-        self.client.delete_image_metadata(self.img, 'mykey1')
-        r = self.client.get_image_metadata(self.img)
-        self.assertNotEqual('mykey1' in r)
-    """
+    @patch('%s.images_delete' % cyclades_pkg, return_value=FR())
+    def test_delete_image_metadata(self, images_delete):
+        key = 'metakey'
+        self.client.delete_image_metadata(img_ref, key)
+        self.assertEqual(
+            (img_ref, '/meta/' + key),
+            images_delete.call_args[0])

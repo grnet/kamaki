@@ -92,7 +92,7 @@ class ComputeClientApi(Client):
         :returns: request response
         """
         data = json_data
-        if json_data is not None:
+        if json_data:
             data = json.dumps(json_data)
             self.set_header('Content-Type', 'application/json')
             self.set_header('Content-Length', len(data))

@@ -1,4 +1,4 @@
-# Copyright 2011 GRNET S.A. All rights reserved.
+# Copyright 2011-2013 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -34,7 +34,6 @@
 from kamaki.clients import ClientError
 from kamaki.clients.compute_rest_api import ComputeClientApi
 from kamaki.clients.utils import path4url
-import json
 
 
 class ComputeClient(ComputeClientApi):
@@ -136,8 +135,8 @@ class ComputeClient(ComputeClientApi):
 
         :param hard: perform a hard reboot if true, soft reboot otherwise
         """
-        type = 'HARD' if hard else 'SOFT'
-        req = {'reboot': {'type': type}}
+        boot_type = 'HARD' if hard else 'SOFT'
+        req = {'reboot': {'type': boot_type}}
         r = self.servers_post(server_id, 'action', json_data=req)
         r.release()
 
@@ -151,7 +150,7 @@ class ComputeClient(ComputeClientApi):
         """
         command = path4url('meta', key)
         r = self.servers_get(server_id, command)
-        return r.json['meta'] if key != '' else r.json['metadata']['values']
+        return r.json['meta'] if key else r.json['metadata']['values']
 
     def create_server_metadata(self, server_id, key, val):
         """
@@ -198,8 +197,7 @@ class ComputeClient(ComputeClientApi):
 
         :returns: (dict) flavor info
         """
-        detail = 'detail' if detail else ''
-        r = self.flavors_get(command='detail')
+        r = self.flavors_get(command='detail' if detail else '')
         return r.json['flavors']['values']
 
     def get_flavor_details(self, flavor_id):
