@@ -121,10 +121,10 @@ class KamakiHTTPResponse(KamakiResponse):
 class KamakiHTTPConnection(KamakiConnection):
 
     def _retrieve_connection_info(self, extra_params={}):
-        """
+        """ Set self.url to scheme://netloc/?params
         :param extra_params: (dict) key:val for url parameters
 
-        :returns: (scheme, netloc, url?with&params)
+        :returns: (scheme, netloc)
         """
         if self.url:
             url = self.url if self.url[-1] == '/' else (self.url + '/')

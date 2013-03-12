@@ -155,6 +155,30 @@ class KamakiHTTPConnection(TestCase):
     def setUp(self):
         self.conn = kamakicon.KamakiHTTPConnection()
 
+    def test__retrieve_connection_info(self):
+        async_params = dict(param1='val1', param2=None, param3=42)
+        r = self.conn._retrieve_connection_info(async_params)
+        self.assertEquals(r, ('http', '127.0.0.1'))
+        expected = '?%s' % '&'.join([(
+            '%s=%s' % (k, v)) if v else (
+            '%s' % k) for k, v in async_params.items()])
+        self.assertEquals('http://127.0.0.1%s' % expected, self.conn.url)
+
+        for schnet in (
+            ('http', 'www.example.com'), ('https', 'www.example.com'),
+            ('ftp', 'www.example.com'), ('ftps', 'www.example.com'),
+            ('http', 'www.example.com/v1'), ('https', 'www.example.com/v1')):
+            self.conn = kamakicon.KamakiHTTPConnection(url='%s://%s' % schnet)
+            self.conn.url = '%s://%s' % schnet
+            r = self.conn._retrieve_connection_info(async_params)
+            if schnet[1].endswith('v1'):
+                self.assertEquals(r, (schnet[0], schnet[1][:-3]))
+            else:
+                self.assertEquals(r, schnet)
+            self.assertEquals(
+                '%s://%s/%s' % (schnet[0], schnet[1], expected),
+                self.conn.url)
+
     def test_perform_request(self):
         from httplib import HTTPConnection
         from objpool import http
