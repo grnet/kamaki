@@ -192,29 +192,17 @@ class Pithos(TestCase):
     #  Pithos+ methods that extend storage API
 
     @patch('%s.account_head' % pithos_pkg, return_value=FR())
-    def test_get_account_info(self, SP):
+    def test_get_account_info(self, AH):
         FR.headers = account_info
         r = self.client.get_account_info()
         self.assert_dicts_are_equal(r, account_info)
-        self.assertEqual(SP.mock_calls[-1], call(until=None))
+        self.assertEqual(AH.mock_calls[-1], call(until=None))
         unt = 'un71L-d473'
         r = self.client.get_account_info(until=unt)
         self.assert_dicts_are_equal(r, account_info)
-        self.assertEqual(SP.mock_calls[-1], call(until=unt))
+        self.assertEqual(AH.mock_calls[-1], call(until=unt))
         FR.status_code = 401
         self.assertRaises(ClientError, self.client.get_account_info)
-
-    @patch('%s.set_header' % client_pkg)
-    def test_replace_account_meta(self, SH):
-        FR.status_code = 202
-        metas = dict(k1='v1', k2='v2', k3='v3')
-        with patch.object(C, 'perform_request', return_value=FR()):
-            self.client.replace_account_meta(metas)
-            self.assertEqual(self.client.http_client.url, self.url)
-            self.assertEqual(self.client.http_client.path, '/%s' % user_id)
-            prfx = 'X-Account-Meta-'
-            expected = [call('%s%s' % (prfx, k), v) for k, v in metas.items()]
-            self.assertEqual(PC.set_header.mock_calls, expected)
 
     @patch('%s.account_post' % pithos_pkg, return_value=FR())
     def test_del_account_meta(self, ap):
