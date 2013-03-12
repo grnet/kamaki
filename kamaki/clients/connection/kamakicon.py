@@ -135,6 +135,8 @@ class KamakiHTTPConnection(KamakiConnection):
         params = dict(self.params)
         params.update(extra_params)
         for i, (key, val) in enumerate(params.items()):
+            if isinstance(val, unicode):
+                val = quote(val.encode('utf-8'))
             url += '%s%s' % ('&' if i else '?', key)
             if val:
                 url += '=%s' % val

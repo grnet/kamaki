@@ -32,11 +32,18 @@
 # or implied, of GRNET S.A.
 
 from unittest import TestCase, TestSuite, makeSuite, TextTestRunner
-from mock import Mock, patch
+from mock import Mock, patch, call
 from random import randrange
+from urllib2 import quote
 
 from kamaki.clients import connection
 from kamaki.clients.connection import errors, kamakicon
+
+
+def _encode(v):
+    if v and isinstance(v, unicode):
+        return quote(v.encode('utf-8'))
+    return v
 
 
 class KamakiConnection(TestCase):
@@ -47,6 +54,8 @@ class KamakiConnection(TestCase):
     def setUp(self):
         from kamaki.clients.connection import KamakiConnection as HTTPC
         self.conn = HTTPC()
+        self.conn.reset_headers()
+        self.conn.reset_params()
 
     def test_poolsize(self):
 
@@ -154,6 +163,8 @@ class KamakiHTTPConnection(TestCase):
 
     def setUp(self):
         self.conn = kamakicon.KamakiHTTPConnection()
+        self.conn.reset_params()
+        self.conn.reset_headers()
 
     def test__retrieve_connection_info(self):
         async_params = dict(param1='val1', param2=None, param3=42)
@@ -188,14 +199,58 @@ class KamakiHTTPConnection(TestCase):
             method='GET',
             async_headers=dict(),
             async_params=dict())
+        utf_test = u'\u03a6\u03bf\u03cd\u03c4\u03c3\u03bf\u03c2'
+        utf_dict = dict(utf=utf_test)
+        ascii_dict = dict(ascii1='myAscii', ascii2=None)
+        kwargs0 = dict(
+            data='',
+            method='get',
+            async_headers=utf_dict,
+            async_params=ascii_dict)
+
+        def get_expected():
+            expected = []
+            for k, v in kwargs0['async_params'].items():
+                v = _encode(v)
+                expected.append(('%s=%s' % (k, v)) if v else ('%s' % k))
+            return '&'.join(expected)
 
         KCError = errors.KamakiConnectionError
         fakecon = HTTPConnection('X', 'Y')
 
         with patch.object(http, 'get_http_connection', return_value=fakecon):
-            with patch.object(HTTPConnection, 'request', return_value=None):
+            with patch.object(HTTPConnection, 'request') as request:
                 r = pr(**kwargs)
                 self.assertTrue(isinstance(r, kamakicon.KamakiHTTPResponse))
+                self.assertEquals(
+                    request.mock_calls[-1],
+                    call(body='', headers={}, url='/', method='GET'))
+
+                pr(**kwargs0)
+
+                exp_headers = dict(kwargs0['async_headers'])
+                exp_headers['utf'] = _encode(exp_headers['utf'])
+
+                self.assertEquals(
+                    request.mock_calls[-1],
+                    call(
+                        body=kwargs0['data'],
+                        headers=exp_headers,
+                        url='/?%s' % get_expected(),
+                        method=kwargs0['method'].upper()))
+
+                self.conn = kamakicon.KamakiHTTPConnection()
+                (kwargs0['async_params'], kwargs0['async_headers']) = (
+                    kwargs0['async_headers'], kwargs0['async_params'])
+                kwargs0['async_headers']['ascii2'] = 'None'
+                self.conn.perform_request(**kwargs0)
+                self.assertEquals(
+                    request.mock_calls[-1],
+                    call(
+                        body=kwargs0['data'],
+                        headers=kwargs0['async_headers'],
+                        url='/?%s' % get_expected(),
+                        method=kwargs0['method'].upper()))
 
             err = IOError('IO Error')
             with patch.object(HTTPConnection, 'request', side_effect=err):
