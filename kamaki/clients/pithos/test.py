@@ -191,25 +191,18 @@ class Pithos(TestCase):
 
     #  Pithos+ methods that extend storage API
 
-    @patch('%s.set_param' % client_pkg)
+    @patch('%s.account_head' % pithos_pkg, return_value=FR())
     def test_get_account_info(self, SP):
         FR.headers = account_info
-        FR.status_code = 204
-        with patch.object(C, 'perform_request', return_value=FR()):
-            r = self.client.get_account_info()
-            self.assertEqual(self.client.http_client.url, self.url)
-            self.assertEqual(self.client.http_client.path, '/%s' % user_id)
-            self.assert_dicts_are_equal(r, account_info)
-            untils = ['date 1', 'date 2', 'date 3']
-            for unt in untils:
-                r = self.client.get_account_info(until=unt)
-                self.assert_dicts_are_equal(r, account_info)
-            for i in range(len(untils)):
-                self.assertEqual(
-                    PC.set_param.mock_calls[i + 1],
-                    call('until', untils[i], iff=untils[i]))
-            FR.status_code = 401
-            self.assertRaises(ClientError, self.client.get_account_info)
+        r = self.client.get_account_info()
+        self.assert_dicts_are_equal(r, account_info)
+        self.assertEqual(SP.mock_calls[-1], call(until=None))
+        unt = 'un71L-d473'
+        r = self.client.get_account_info(until=unt)
+        self.assert_dicts_are_equal(r, account_info)
+        self.assertEqual(SP.mock_calls[-1], call(until=unt))
+        FR.status_code = 401
+        self.assertRaises(ClientError, self.client.get_account_info)
 
     @patch('%s.set_header' % client_pkg)
     def test_replace_account_meta(self, SH):
