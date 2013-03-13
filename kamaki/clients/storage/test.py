@@ -343,7 +343,6 @@ class Storage(TestCase):
             '/%s/%s/%s' % (self.client.account, self.client.container, obj),
             success=202))
 
-    """
     @patch('%s.post' % client_pkg, return_value=FR())
     @patch('%s.set_header' % client_pkg)
     def test_replace_object_meta(self, SH, post):
@@ -354,8 +353,9 @@ class Storage(TestCase):
         self.assertEqual(post.mock_calls[-1], expected)
         prfx = 'X-Object-Meta-'
         expected = [call('%s%s' % (prfx, k), v) for k, v in metas.items()]
-        self.assertEqual(PC.set_header.mock_calls, expected)
+        self.assertEqual(SH.mock_calls, expected)
 
+    """
     @patch('%s.object_put' % pithos_pkg, return_value=FR())
     def test_copy_object(self, put):
         src_cont = 'src-c0nt41n3r'
