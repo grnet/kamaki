@@ -336,18 +336,6 @@ class Pithos(TestCase):
         for arg, val in kwargs.items():
             self.assertEqual(OP.mock_calls[-2][2][arg], val)
 
-    @patch('%s.put' % pithos_pkg, return_value=FR())
-    @patch('%s.set_header' % client_pkg)
-    def test_create_directory(self, SH, put):
-        cont = self.client.container
-        exp_shd = [
-            call('Content-Type', 'application/directory'),
-            call('Content-length', '0')]
-        exp_put = [call('/%s/%s/%s' % (user_id, cont, obj), success=201)]
-        self.client.create_directory(obj)
-        self.assertEqual(PC.set_header.mock_calls, exp_shd)
-        self.assertEqual(put.mock_calls, exp_put)
-
     def test_get_object_info(self):
         FR.headers = object_info
         version = 'v3r510n'
@@ -359,8 +347,7 @@ class Pithos(TestCase):
                 call(obj, version=None),
                 call(obj, version=version)])
         with patch.object(
-                PC,
-                'object_head',
+                PC, 'object_head',
                 side_effect=ClientError('Obj not found', 404)):
             self.assertRaises(
                 ClientError,

@@ -316,26 +316,15 @@ class Storage(TestCase):
         self.assertEqual(SH.mock_calls, exp_shd)
         self.assertEqual(put.mock_calls, exp_put)
 
-    """
-    def test_get_object_info(self):
+    @patch('%s.head' % storage_pkg, return_value=FR())
+    def test_get_object_info(self, head):
         FR.headers = object_info
-        version = 'v3r510n'
-        with patch.object(PC, 'object_head', return_value=FR()) as head:
-            r = self.client.get_object_info(obj)
-            self.assertEqual(r, object_info)
-            r = self.client.get_object_info(obj, version=version)
-            self.assertEqual(head.mock_calls, [
-                call(obj, version=None),
-                call(obj, version=version)])
-        with patch.object(
-                PC,
-                'object_head',
-                side_effect=ClientError('Obj not found', 404)):
-            self.assertRaises(
-                ClientError,
-                self.client.get_object_info,
-                obj, version=version)
+        path = '/%s/%s/%s' % (self.client.account, self.client.container, obj)
+        r = self.client.get_object_info(obj)
+        self.assertEqual(r, object_info)
+        self.assertEqual(head.mock_calls[-1], call(path, success=200))
 
+    """
     @patch('%s.get_object_info' % pithos_pkg, return_value=object_info)
     def test_get_object_meta(self, GOI):
         expected = dict()
