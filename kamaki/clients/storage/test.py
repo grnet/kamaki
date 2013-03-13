@@ -304,8 +304,7 @@ class Storage(TestCase):
         self.assertEqual(SH.mock_calls, exp_shd)
         self.assertEqual(put.mock_calls, exp_put)
 
-    """
-    @patch('%s.put' % pithos_pkg, return_value=FR())
+    @patch('%s.put' % storage_pkg, return_value=FR())
     @patch('%s.set_header' % client_pkg)
     def test_create_directory(self, SH, put):
         cont = self.client.container
@@ -314,9 +313,10 @@ class Storage(TestCase):
             call('Content-length', '0')]
         exp_put = [call('/%s/%s/%s' % (user_id, cont, obj), success=201)]
         self.client.create_directory(obj)
-        self.assertEqual(PC.set_header.mock_calls, exp_shd)
+        self.assertEqual(SH.mock_calls, exp_shd)
         self.assertEqual(put.mock_calls, exp_put)
 
+    """
     def test_get_object_info(self):
         FR.headers = object_info
         version = 'v3r510n'
