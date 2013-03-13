@@ -37,10 +37,9 @@ from kamaki.clients import Client, ClientError
 class AstakosClient(Client):
     """GRNet Astakos API client"""
 
-    _cache = {}
-
     def __init__(self, base_url, token):
         super(AstakosClient, self).__init__(base_url, token)
+        self._cache = {}
 
     def authenticate(self, token=None):
         """Get authentication information and store it in this client
