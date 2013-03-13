@@ -289,9 +289,8 @@ class Storage(TestCase):
                 data=tmpFile.read(size) if size else tmpFile.read(),
                 success=201))
 
-    """
-    @patch('%s.put' % pithos_pkg, return_value=FR())
-    @patch('%s.set_header' % client_pkg)
+    @patch('%s.put' % storage_pkg, return_value=FR())
+    @patch('%s.set_header' % storage_pkg)
     def test_create_object(self, SH, put):
         cont = self.client.container
         ctype = 'c0n73n7/typ3'
@@ -302,9 +301,10 @@ class Storage(TestCase):
         exp_put = [call('/%s/%s/%s' % (user_id, cont, obj), success=201)] * 2
         self.client.create_object(obj)
         self.client.create_object(obj, content_type=ctype, content_length=42)
-        self.assertEqual(PC.set_header.mock_calls, exp_shd)
+        self.assertEqual(SH.mock_calls, exp_shd)
         self.assertEqual(put.mock_calls, exp_put)
 
+    """
     @patch('%s.put' % pithos_pkg, return_value=FR())
     @patch('%s.set_header' % client_pkg)
     def test_create_directory(self, SH, put):

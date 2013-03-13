@@ -338,21 +338,6 @@ class Pithos(TestCase):
 
     @patch('%s.put' % pithos_pkg, return_value=FR())
     @patch('%s.set_header' % client_pkg)
-    def test_create_object(self, SH, put):
-        cont = self.client.container
-        ctype = 'c0n73n7/typ3'
-        exp_shd = [
-            call('Content-Type', 'application/octet-stream'),
-            call('Content-length', '0'),
-            call('Content-Type', ctype), call('Content-length', '42')]
-        exp_put = [call('/%s/%s/%s' % (user_id, cont, obj), success=201)] * 2
-        self.client.create_object(obj)
-        self.client.create_object(obj, content_type=ctype, content_length=42)
-        self.assertEqual(PC.set_header.mock_calls, exp_shd)
-        self.assertEqual(put.mock_calls, exp_put)
-
-    @patch('%s.put' % pithos_pkg, return_value=FR())
-    @patch('%s.set_header' % client_pkg)
     def test_create_directory(self, SH, put):
         cont = self.client.container
         exp_shd = [
