@@ -373,37 +373,25 @@ class Storage(TestCase):
                 SH.mock_calls[-2:],
                 [call(k, v) for k, v in kwargs.items()])
 
-    """
-    @patch('%s.object_put' % pithos_pkg, return_value=FR())
-    def test_move_object(self, put):
+    @patch('%s.put' % storage_pkg, return_value=FR())
+    @patch('%s.set_header' % storage_pkg)
+    def test_move_object(self, SH, put):
         src_cont = 'src-c0nt41n3r'
         src_obj = 'src-0bj'
         dst_cont = 'dst-c0nt41n3r'
-        dst_obj = 'dst-0bj'
-        expected = call(
-            src_obj,
-            content_length=0,
-            source_account=None,
-            success=201,
-            move_from='/%s/%s' % (src_cont, src_obj),
-            delimiter=None,
-            content_type=None,
-            source_version=None,
-            public=False)
-        self.client.move_object(src_cont, src_obj, dst_cont)
-        self.assertEqual(put.mock_calls[-1], expected)
-        self.client.move_object(src_cont, src_obj, dst_cont, dst_obj)
-        self.assertEqual(put.mock_calls[-1][1], (dst_obj,))
-        kwargs = dict(
-            source_version='src-v3r510n',
-            source_account='src-4cc0un7',
-            public=True,
-            content_type='c0n73n7Typ3',
-            delimiter='5')
-        self.client.move_object(src_cont, src_obj, dst_cont, **kwargs)
-        for k, v in kwargs.items():
-            self.assertEqual(v, put.mock_calls[-1][2][k])
+        for dst_obj in (None, 'dst-0bj'):
+            dst_path = dst_obj or src_obj
+            path = '/%s/%s/%s' % (self.client.account, dst_cont, dst_path)
+            self.client.move_object(src_cont, src_obj, dst_cont, dst_obj)
+            self.assertEqual(put.mock_calls[-1], call(path, success=201))
+            kwargs = {
+                'X-Move-From': '/%s/%s' % (src_cont, src_obj),
+                'Content-Length': 0}
+            self.assertEqual(
+                SH.mock_calls[-2:],
+                [call(k, v) for k, v in kwargs.items()])
 
+    """
     @patch('%s.delete' % client_pkg, return_value=FR())
     def test_delete_object(self, delete):
         cont = self.client.container
