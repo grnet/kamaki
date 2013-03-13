@@ -68,6 +68,7 @@ setup(
         'kamaki.clients.storage',
         'kamaki.clients.pithos',
         'kamaki.clients.astakos',
+        'kamaki.clients.compute',
         'kamaki.clients.cyclades',
         'kamaki.clients.connection',
         'kamaki.clients.commissioning',
