@@ -250,8 +250,7 @@ class Storage(TestCase):
         FR.status_code = 404
         self.assertRaises(ClientError, self.client.get_container_info, cont)
 
-    """
-    @patch('%s.delete' % pithos_pkg, return_value=FR())
+    @patch('%s.delete' % storage_pkg, return_value=FR())
     def test_delete_container(self, delete):
         FR.status_code = 204
         cont = 's0m3c0n731n3r'
@@ -262,6 +261,7 @@ class Storage(TestCase):
         acall = call('/%s/%s' % (user_id, cont), success=(204, 404, 409))
         self.assertEqual(delete.mock_calls, [acall] * 3)
 
+    """
     @patch('%s.account_get' % pithos_pkg, return_value=FR())
     def test_list_containers(self, get):
         FR.json = container_list

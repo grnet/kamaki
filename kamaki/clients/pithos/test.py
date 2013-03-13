@@ -222,17 +222,6 @@ class Pithos(TestCase):
         r = self.client.get_container_info(until=u)
         self.assertEqual(ch.mock_calls, [call(until=None), call(until=u)])
 
-    @patch('%s.delete' % pithos_pkg, return_value=FR())
-    def test_delete_container(self, delete):
-        FR.status_code = 204
-        cont = 's0m3c0n731n3r'
-        self.client.delete_container(cont)
-        for err_code in (404, 409):
-            FR.status_code = err_code
-            self.assertRaises(ClientError, self.client.delete_container, cont)
-        acall = call('/%s/%s' % (user_id, cont), success=(204, 404, 409))
-        self.assertEqual(delete.mock_calls, [acall] * 3)
-
     @patch('%s.account_get' % pithos_pkg, return_value=FR())
     def test_list_containers(self, get):
         FR.json = container_list
