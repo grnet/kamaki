@@ -273,114 +273,23 @@ class Storage(TestCase):
             get.mock_calls[-1],
             call('/%s' % self.client.account, success=(200., 204)))
 
-    """
-    @patch('%s.get_container_info' % pithos_pkg, return_value=container_info)
-    @patch('%s.container_post' % pithos_pkg, return_value=FR())
-    @patch('%s.object_put' % pithos_pkg, return_value=FR())
-    def test_upload_object(self, CI, CP, OP):
-        num_of_blocks = 8
+    @patch('%s.put' % storage_pkg, return_value=FR())
+    def test_upload_object(self, put):
+        (acc, cont) = (self.client.account, self.client.container)
+        num_of_blocks = 4
         tmpFile = self._create_temp_file(num_of_blocks)
-
-        # Without kwargs
-        self.client.upload_object(obj, tmpFile)
-        self.assertEqual(PC.get_container_info.mock_calls, [call()])
-        [call1, call2] = PC.object_put.mock_calls
-
-        (args1, kwargs1) = call1[1:3]
-        (args2, kwargs2) = call2[1:3]
-        self.assertEqual(args1, (obj,))
-        expected1 = dict(
-            hashmap=True,
-            success=(201, 409),
-            format='json',
-            json=dict(
-                hashes=['s0m3h@5h'] * num_of_blocks,
-                bytes=num_of_blocks * 4 * 1024 * 1024),
-            etag=None,
-            content_encoding=None,
-            content_type='application/octet-stream',
-            content_disposition=None,
-            public=None,
-            permissions=None)
-        for k, v in expected1.items():
-            if k == 'json':
-                self.assertEqual(len(v['hashes']), len(kwargs1[k]['hashes']))
-                self.assertEqual(v['bytes'], kwargs1[k]['bytes'])
-            else:
-                self.assertEqual(v, kwargs1[k])
-
-        (args2, kwargs2) = call2[1:3]
-        self.assertEqual(args2, (obj,))
-        expected2 = dict(
-            json=dict(
-                hashes=['s0m3h@5h'] * num_of_blocks,
-                bytes=num_of_blocks * 4 * 1024 * 1024),
-            content_type='application/octet-stream',
-            hashmap=True,
-            success=201,
-            format='json')
-        for k, v in expected2.items():
-            if k == 'json':
-                self.assertEqual(len(v['hashes']), len(kwargs2[k]['hashes']))
-                self.assertEqual(v['bytes'], kwargs2[k]['bytes'])
-            else:
-                self.assertEqual(v, kwargs2[k])
-
-        OP = PC.object_put
-        mock_offset = 2
-
-        #  With progress bars
-        try:
-            from progress.bar import ShadyBar
-            blck_bar = ShadyBar('Mock blck calc.')
-            upld_bar = ShadyBar('Mock uplds')
-        except ImportError:
-            blck_bar = None
-            upld_bar = None
-
-        if blck_bar and upld_bar:
-
-            def blck_gen(n):
-                for i in blck_bar.iter(range(n)):
-                    yield
-                yield
-
-            def upld_gen(n):
-                for i in upld_bar.iter(range(n)):
-                    yield
-                yield
-
+        tmpFile.seek(0, 2)
+        sizes = [None, (tmpFile.tell() / num_of_blocks) / 2]
+        for size in sizes:
             tmpFile.seek(0)
-            self.client.upload_object(
-                obj, tmpFile,
-                hash_cb=blck_gen, upload_cb=upld_gen)
+            self.client.upload_object(obj, tmpFile, size)
+            tmpFile.seek(0)
+            self.assertEqual(put.mock_calls[-1], call(
+                '/%s/%s/%s' % (acc, cont, obj),
+                data=tmpFile.read(size) if size else tmpFile.read(),
+                success=201))
 
-            for i, c in enumerate(OP.mock_calls[-mock_offset:]):
-                self.assertEqual(OP.mock_calls[i], c)
-
-        #  With content-type
-        tmpFile.seek(0)
-        ctype = 'video/mpeg'
-        sharing = dict(read=['u1', 'g1', 'u2'], write=['u1'])
-        self.client.upload_object(obj, tmpFile,
-            content_type=ctype, sharing=sharing)
-        self.assertEqual(OP.mock_calls[-1][2]['content_type'], ctype)
-        self.assert_dicts_are_equal(
-            OP.mock_calls[-2][2]['permissions'],
-            sharing)
-
-        # With other args
-        tmpFile.seek(0)
-        kwargs = dict(
-            etag='s0m3E74g',
-            content_type=ctype,
-            content_disposition=ctype + 'd15p051710n',
-            public=True,
-            content_encoding='802.11')
-        self.client.upload_object(obj, tmpFile, **kwargs)
-        for arg, val in kwargs.items():
-            self.assertEqual(OP.mock_calls[-2][2][arg], val)
-
+    """
     @patch('%s.put' % pithos_pkg, return_value=FR())
     @patch('%s.set_header' % client_pkg)
     def test_create_object(self, SH, put):
