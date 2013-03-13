@@ -261,14 +261,19 @@ class Storage(TestCase):
         acall = call('/%s/%s' % (user_id, cont), success=(204, 404, 409))
         self.assertEqual(delete.mock_calls, [acall] * 3)
 
-    """
-    @patch('%s.account_get' % pithos_pkg, return_value=FR())
-    def test_list_containers(self, get):
+    @patch('%s.get' % storage_pkg, return_value=FR())
+    @patch('%s.set_param' % storage_pkg)
+    def test_list_containers(self, SP, get):
         FR.json = container_list
         r = self.client.list_containers()
         for i in range(len(r)):
             self.assert_dicts_are_equal(r[i], container_list[i])
+        self.assertEqual(SP.mock_calls[-1], call('format', 'json'))
+        self.assertEqual(
+            get.mock_calls[-1],
+            call('/%s' % self.client.account, success=(200., 204)))
 
+    """
     @patch('%s.get_container_info' % pithos_pkg, return_value=container_info)
     @patch('%s.container_post' % pithos_pkg, return_value=FR())
     @patch('%s.object_put' % pithos_pkg, return_value=FR())
