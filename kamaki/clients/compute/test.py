@@ -180,28 +180,19 @@ class Cyclades(TestCase):
             expected['server']['personality'] = prsn
             self.assertEqual(post.mock_calls[-1], call(json_data=expected))
 
-    """
-    def test_list_servers(self):
+    @patch('%s.servers_get' % compute_pkg, return_value=FR())
+    def test_list_servers(self, SG):
         FR.json = vm_list
-        with patch.object(
-                self.C,
-                'perform_request',
-                return_value=FR()) as perform_req:
-            r = self.client.list_servers()
-            self.assertEqual(self.client.http_client.url, self.url)
-            self.assertEqual(self.client.http_client.path, '/servers')
-            (method, data, a_headers, a_params) = perform_req.call_args[0]
-            self.assert_dicts_are_equal(dict(values=r), vm_list['servers'])
-            r = self.client.list_servers(detail=True)
-            self.assertEqual(self.client.http_client.url, self.url)
-            self.assertEqual(self.client.http_client.path, '/servers/detail')
-        with patch.object(
-                CycladesClientApi,
-                'servers_get',
-                return_value=FR()) as servers_get:
-            self.client.list_servers(changes_since=True)
-            self.assertTrue(servers_get.call_args[1]['changes_since'])
+        for detail in (False, True):
+            r = self.client.list_servers(detail)
+            for i, vm in enumerate(vm_list['servers']['values']):
+                self.assert_dicts_are_equal(r[i], vm)
+            self.assertEqual(i + 1, len(r))
+            self.assertEqual(SG.mock_calls[-1], call(
+                changes_since=None,
+                command='detail' if detail else ''))
 
+    """
     @patch('%s.perform_request' % khttp, return_value=FR())
     def test_get_server_details(self, PR):
         vm_id = vm_recv['server']['id']
