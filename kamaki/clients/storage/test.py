@@ -418,23 +418,20 @@ class Storage(TestCase):
         FR.status_code = 404
         self.assertRaises(ClientError, self.client.list_objects)
 
-    """
     @patch('%s.get' % client_pkg, return_value=FR())
     @patch('%s.set_param' % client_pkg)
     def test_list_objects_in_path(self, SP, get):
         FR.json = object_list
         path = '/some/awsome/path'
-        acc = self.client.account
-        cont = self.client.container
-        SP = PC.set_param
+        acc, cont = self.client.account, self.client.container
         self.client.list_objects_in_path(path)
-        self.assertEqual(get.mock_calls, [
-            call('/%s/%s' % (acc, cont), success=(200, 204, 404))])
+        self.assertEqual(
+            get.mock_calls[-1],
+            call('/%s/%s' % (acc, cont), success=(200, 204, 404)))
         self.assertEqual(SP.mock_calls, [
             call('format', 'json'), call('path', path)])
         FR.status_code = 404
         self.assertRaises(ClientError, self.client.list_objects)
-    """
 
 if __name__ == '__main__':
     from sys import argv

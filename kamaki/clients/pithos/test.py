@@ -428,40 +428,6 @@ class Pithos(TestCase):
         for k, v in kwargs.items():
             self.assertEqual(v, put.mock_calls[-1][2][k])
 
-    @patch('%s.get' % pithos_pkg, return_value=FR())
-    @patch('%s.set_param' % pithos_pkg)
-    def test_list_objects(self, SP, get):
-        FR.json = object_list
-        acc = self.client.account
-        cont = self.client.container
-        SP = PC.set_param
-        r = self.client.list_objects()
-        for i in range(len(r)):
-            self.assert_dicts_are_equal(r[i], object_list[i])
-        self.assertEqual(get.mock_calls, [
-            call('/%s/%s' % (acc, cont), success=(200, 204, 304, 404))])
-        self.assertEqual(SP.mock_calls, [call('format', 'json')])
-        FR.status_code = 304
-        self.assertEqual(self.client.list_objects(), [])
-        FR.status_code = 404
-        self.assertRaises(ClientError, self.client.list_objects)
-
-    @patch('%s.get' % pithos_pkg, return_value=FR())
-    @patch('%s.set_param' % pithos_pkg)
-    def test_list_objects_in_path(self, SP, get):
-        FR.json = object_list
-        path = '/some/awsome/path'
-        acc = self.client.account
-        cont = self.client.container
-        SP = PC.set_param
-        self.client.list_objects_in_path(path)
-        self.assertEqual(get.mock_calls, [
-            call('/%s/%s' % (acc, cont), success=(200, 204, 404))])
-        self.assertEqual(SP.mock_calls, [
-            call('format', 'json'), call('path', path)])
-        FR.status_code = 404
-        self.assertRaises(ClientError, self.client.list_objects)
-
     #  Pithos+ only methods
 
     @patch('%s.container_delete' % pithos_pkg, return_value=FR())
