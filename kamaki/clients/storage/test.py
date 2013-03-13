@@ -239,16 +239,18 @@ class Storage(TestCase):
         FR.status_code = 202
         self.assertRaises(ClientError, self.client.create_container, cont)
 
-    """
-    @patch('%s.container_head' % pithos_pkg, return_value=FR())
-    def test_get_container_info(self, ch):
+    @patch('%s.head' % storage_pkg, return_value=FR())
+    def test_get_container_info(self, head):
         FR.headers = container_info
-        r = self.client.get_container_info()
+        cont = self.client.container
+        r = self.client.get_container_info(cont)
         self.assert_dicts_are_equal(r, container_info)
-        u = 'some date'
-        r = self.client.get_container_info(until=u)
-        self.assertEqual(ch.mock_calls, [call(until=None), call(until=u)])
+        path = '/%s/%s' % (self.client.account, cont)
+        self.assertEqual(head.mock_calls[-1], call(path, success=(204, 404)))
+        FR.status_code = 404
+        self.assertRaises(ClientError, self.client.get_container_info, cont)
 
+    """
     @patch('%s.delete' % pithos_pkg, return_value=FR())
     def test_delete_container(self, delete):
         FR.status_code = 204
