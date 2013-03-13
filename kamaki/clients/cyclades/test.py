@@ -150,38 +150,6 @@ class Cyclades(TestCase):
         FR.status_code = 200
         FR.json = vm_recv
 
-    def test_create_server(self):
-        self.client.get_image_details = Mock(return_value=img_recv['image'])
-        with patch.object(Client, 'request', side_effect=ClientError(
-                'REQUEST ENTITY TOO LARGE',
-                status=403)):
-            self.assertRaises(
-                ClientError,
-                self.client.create_server,
-                vm_name, fid, img_ref)
-
-        with patch.object(
-                self.C,
-                'perform_request',
-                return_value=FR()) as perform_req:
-            self.assertRaises(
-                ClientError,
-                self.client.create_server,
-                vm_name, fid, img_ref)
-            FR.status_code = 202
-            r = self.client.create_server(vm_name, fid, img_ref)
-            self.assertEqual(self.client.http_client.url, self.url)
-            self.assertEqual(self.client.http_client.path, '/servers')
-            (method, data, a_headers, a_params) = perform_req.call_args[0]
-            self.assert_dicts_are_equal(loads(data), vm_send)
-            self.assert_dicts_are_equal(r, vm_recv['server'])
-            prsn = 'Personality string (does not work with real servers)'
-            self.client.create_server(vm_name, fid, img_ref, prsn)
-            (method, data, a_headers, a_params) = perform_req.call_args[0]
-            data = loads(data)
-            self.assertTrue('personality' in data['server'])
-            self.assertEqual(prsn, data['server']['personality'])
-
     def test_list_servers(self):
         FR.json = vm_list
         with patch.object(

@@ -39,6 +39,10 @@ from kamaki.clients import Client, ClientError
 from kamaki.clients.cyclades import CycladesClient
 from kamaki.clients.cyclades_rest_api import CycladesClientApi
 
+
+khttp_pkg = 'kamaki.clients.connection.kamakicon.KamakiHTTPConnection'
+compute_pkg = 'kamaki.clients.cyclades.CycladesClient'
+
 img_ref = "1m4g3-r3f3r3nc3"
 vm_name = "my new VM"
 fid = 42
@@ -125,9 +129,6 @@ class FR(object):
     def release(self):
         pass
 
-khttp = 'kamaki.clients.connection.kamakicon.KamakiHTTPConnection'
-cyclades_pkg = 'kamaki.clients.cyclades.CycladesClient'
-
 
 class Cyclades(TestCase):
 
@@ -151,39 +152,35 @@ class Cyclades(TestCase):
         FR.status_code = 200
         FR.json = vm_recv
 
-    """
-    def test_create_server(self):
-        self.client.get_image_details = Mock(return_value=img_recv['image'])
-        with patch.object(Client, 'request', side_effect=ClientError(
-                'REQUEST ENTITY TOO LARGE',
-                status=403)):
+    @patch(
+        '%s.get_image_details' % compute_pkg,
+        return_value=img_recv['image'])
+    def test_create_server(self, GID):
+        with patch.object(
+                CycladesClient, 'servers_post',
+                side_effect=ClientError(
+                    'REQUEST ENTITY TOO LARGE',
+                    status=403)):
             self.assertRaises(
                 ClientError,
                 self.client.create_server,
                 vm_name, fid, img_ref)
+        self.assertEqual(GID.mock_calls[-1], call(img_ref))
 
         with patch.object(
-                self.C,
-                'perform_request',
-                return_value=FR()) as perform_req:
-            self.assertRaises(
-                ClientError,
-                self.client.create_server,
-                vm_name, fid, img_ref)
-            FR.status_code = 202
+                CycladesClient, 'servers_post',
+                return_value=FR()) as post:
             r = self.client.create_server(vm_name, fid, img_ref)
-            self.assertEqual(self.client.http_client.url, self.url)
-            self.assertEqual(self.client.http_client.path, '/servers')
-            (method, data, a_headers, a_params) = perform_req.call_args[0]
-            self.assert_dicts_are_equal(loads(data), vm_send)
-            self.assert_dicts_are_equal(r, vm_recv['server'])
+            self.assertEqual(r, FR.json['server'])
+            self.assertEqual(GID.mock_calls[-1], call(img_ref))
+            self.assertEqual(post.mock_calls[-1], call(json_data=vm_send))
             prsn = 'Personality string (does not work with real servers)'
             self.client.create_server(vm_name, fid, img_ref, prsn)
-            (method, data, a_headers, a_params) = perform_req.call_args[0]
-            data = loads(data)
-            self.assertTrue('personality' in data['server'])
-            self.assertEqual(prsn, data['server']['personality'])
+            expected = dict(server=dict(vm_send['server']))
+            expected['server']['personality'] = prsn
+            self.assertEqual(post.mock_calls[-1], call(json_data=expected))
 
+    """
     def test_list_servers(self):
         FR.json = vm_list
         with patch.object(

@@ -124,21 +124,6 @@ object_list = [
         x_object_hash="0afdf29f71cd53126225c3f54ca",
         x_object_version=17737,
         x_object_modified_by=user_id)]
-object_hashmap = dict(
-    block_hash="sha256", block_size=4194304, bytes=33554432,
-    hashes=[
-        "4988438cc1c0292c085d289649b28cf547ba3db71c6efaac9f2df7e193d4d0af",
-        "b214244aa56df7d1df7c6cac066e7cef268d9c2beb4dcf7ce68af667b0626f91",
-        "17f365f25e0682565ded30576066bb13377a3d306967e4d74e06bb6bbc20f75f",
-        "2524ae208932669fff89adf8a2fc0df3b67736ca0d3aadce7a2ce640f142af37",
-        "5d807a2129d2fcd3c221c3da418ed52af3fc48d0817b62e0bb437acffccd3514",
-        "609de22ce842d997f645fc49d5f14e0e3766dd51a6cbe66383b2bab82c8dfcd0",
-        "3102851ac168c78be70e35ff5178c7b1ebebd589e5106d565ca1094d1ca8ff59",
-        "bfe306dd24e92a8d85caf7055643f250fd319e8c4cdd4755ddabbf3ff97e83c7"])
-sharers = [
-    dict(last_modified="2013-01-29T16:50:06.084674+00:00", name="0b1a-82d5"),
-    dict(last_modified="2013-01-29T16:50:06.084674+00:00", name="0b2a-f2d5"),
-    dict(last_modified="2013-01-29T16:50:06.084674+00:00", name="2b1a-82d6")]
 
 
 class FR(object):
