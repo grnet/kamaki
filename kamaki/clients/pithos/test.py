@@ -38,9 +38,7 @@ from os import urandom
 
 from kamaki.clients import ClientError
 from kamaki.clients.pithos import PithosClient as PC
-from kamaki.clients.connection.kamakicon import KamakiHTTPConnection as C
 
-client_pkg = 'kamaki.clients.Client'
 pithos_pkg = 'kamaki.clients.pithos.PithosClient'
 
 user_id = 'ac0un7-1d-5tr1ng'
@@ -356,11 +354,12 @@ class Pithos(TestCase):
 
     @patch('%s.get_object_info' % pithos_pkg, return_value=object_info)
     def test_get_object_meta(self, GOI):
-        expected = dict()
-        for k, v in object_info.items():
-            expected[k] = v
-        r = self.client.get_object_meta(obj)
-        self.assert_dicts_are_equal(r, expected)
+        for version in (None, 'v3r510n'):
+            r = self.client.get_object_meta(obj, version)
+            for k in [k for k in object_info if k.startswith('x-object-meta')]:
+                self.assertEqual(r.pop(k), object_info[k])
+            self.assertFalse(len(r))
+            self.assertEqual(GOI.mock_calls[-1], call(obj, version=version))
 
     @patch('%s.object_post' % pithos_pkg, return_value=FR())
     def test_del_object_meta(self, post):
@@ -369,8 +368,8 @@ class Pithos(TestCase):
         expected = call(obj, update=True, metadata={metakey: ''})
         self.assertEqual(post.mock_calls[-1], expected)
 
-    @patch('%s.post' % client_pkg, return_value=FR())
-    @patch('%s.set_header' % client_pkg)
+    @patch('%s.post' % pithos_pkg, return_value=FR())
+    @patch('%s.set_header' % pithos_pkg)
     def test_replace_object_meta(self, SH, post):
         metas = dict(k1='new1', k2='new2', k3='new3')
         cont = self.client.container
@@ -441,7 +440,7 @@ class Pithos(TestCase):
         for k, v in kwargs.items():
             self.assertEqual(v, put.mock_calls[-1][2][k])
 
-    @patch('%s.delete' % client_pkg, return_value=FR())
+    @patch('%s.delete' % pithos_pkg, return_value=FR())
     def test_delete_object(self, delete):
         cont = self.client.container
         self.client.delete_object(obj)
@@ -451,8 +450,8 @@ class Pithos(TestCase):
         FR.status_code = 404
         self.assertRaises(ClientError, self.client.delete_object, obj)
 
-    @patch('%s.get' % client_pkg, return_value=FR())
-    @patch('%s.set_param' % client_pkg)
+    @patch('%s.get' % pithos_pkg, return_value=FR())
+    @patch('%s.set_param' % pithos_pkg)
     def test_list_objects(self, SP, get):
         FR.json = object_list
         acc = self.client.account
@@ -469,8 +468,8 @@ class Pithos(TestCase):
         FR.status_code = 404
         self.assertRaises(ClientError, self.client.list_objects)
 
-    @patch('%s.get' % client_pkg, return_value=FR())
-    @patch('%s.set_param' % client_pkg)
+    @patch('%s.get' % pithos_pkg, return_value=FR())
+    @patch('%s.set_param' % pithos_pkg)
     def test_list_objects_in_path(self, SP, get):
         FR.json = object_list
         path = '/some/awsome/path'
@@ -1038,7 +1037,7 @@ class Pithos(TestCase):
                 exp = 'application/octet-stream'
                 self.assertEqual(kwargs['content_type'], exp)
 
-    @patch('%s.set_param' % client_pkg)
+    @patch('%s.set_param' % pithos_pkg)
     @patch('%s.get' % pithos_pkg, return_value=FR())
     def test_get_sharing_accounts(self, get, SP):
         FR.json = sharers

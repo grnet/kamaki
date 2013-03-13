@@ -38,7 +38,6 @@ from os import urandom
 
 from kamaki.clients import ClientError
 from kamaki.clients.storage import StorageClient as SC
-from kamaki.clients.connection.kamakicon import KamakiHTTPConnection as C
 
 client_pkg = 'kamaki.clients.Client'
 storage_pkg = 'kamaki.clients.storage.StorageClient'
@@ -324,15 +323,16 @@ class Storage(TestCase):
         self.assertEqual(r, object_info)
         self.assertEqual(head.mock_calls[-1], call(path, success=200))
 
-    """
-    @patch('%s.get_object_info' % pithos_pkg, return_value=object_info)
+    @patch('%s.get_object_info' % storage_pkg, return_value=object_info)
     def test_get_object_meta(self, GOI):
-        expected = dict()
-        for k, v in object_info.items():
-            expected[k] = v
         r = self.client.get_object_meta(obj)
-        self.assert_dicts_are_equal(r, expected)
+        prfx = 'x-object-meta-'
+        for k in [k for k in object_info if k.startswith(prfx)]:
+            self.assertEqual(r.pop(k[len(prfx):]), object_info[k])
+        self.assertFalse(len(r))
+        self.assertEqual(GOI.mock_calls[-1], call(obj))
 
+    """
     @patch('%s.object_post' % pithos_pkg, return_value=FR())
     def test_del_object_meta(self, post):
         metakey = '50m3m3t4k3y'
