@@ -332,14 +332,18 @@ class Storage(TestCase):
         self.assertFalse(len(r))
         self.assertEqual(GOI.mock_calls[-1], call(obj))
 
-    """
-    @patch('%s.object_post' % pithos_pkg, return_value=FR())
-    def test_del_object_meta(self, post):
-        metakey = '50m3m3t4k3y'
-        self.client.del_object_meta(obj, metakey)
-        expected = call(obj, update=True, metadata={metakey: ''})
-        self.assertEqual(post.mock_calls[-1], expected)
+    @patch('%s.post' % storage_pkg, return_value=FR())
+    @patch('%s.set_header' % storage_pkg)
+    def test_del_object_meta(self, SH, post):
+        key = '50m3m3t4k3y'
+        self.client.del_object_meta(obj, key)
+        prfx = 'X-Object-Meta-'
+        self.assertEqual(SH.mock_calls[-1], call('%s%s' % (prfx, key), ''))
+        self.assertEqual(post.mock_calls[-1], call(
+            '/%s/%s/%s' % (self.client.account, self.client.container, obj),
+            success=202))
 
+    """
     @patch('%s.post' % client_pkg, return_value=FR())
     @patch('%s.set_header' % client_pkg)
     def test_replace_object_meta(self, SH, post):
