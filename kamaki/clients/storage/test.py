@@ -401,25 +401,24 @@ class Storage(TestCase):
         FR.status_code = 404
         self.assertRaises(ClientError, self.client.delete_object, obj)
 
-    """
     @patch('%s.get' % client_pkg, return_value=FR())
     @patch('%s.set_param' % client_pkg)
     def test_list_objects(self, SP, get):
         FR.json = object_list
-        acc = self.client.account
-        cont = self.client.container
-        SP = PC.set_param
+        acc, cont = self.client.account, self.client.container
         r = self.client.list_objects()
         for i in range(len(r)):
             self.assert_dicts_are_equal(r[i], object_list[i])
-        self.assertEqual(get.mock_calls, [
-            call('/%s/%s' % (acc, cont), success=(200, 204, 304, 404))])
-        self.assertEqual(SP.mock_calls, [call('format', 'json')])
+        self.assertEqual(
+            get.mock_calls[-1],
+            call('/%s/%s' % (acc, cont), success=(200, 204, 304, 404)))
+        self.assertEqual(SP.mock_calls[-1], call('format', 'json'))
         FR.status_code = 304
         self.assertEqual(self.client.list_objects(), [])
         FR.status_code = 404
         self.assertRaises(ClientError, self.client.list_objects)
 
+    """
     @patch('%s.get' % client_pkg, return_value=FR())
     @patch('%s.set_param' % client_pkg)
     def test_list_objects_in_path(self, SP, get):
