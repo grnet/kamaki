@@ -391,8 +391,7 @@ class Storage(TestCase):
                 SH.mock_calls[-2:],
                 [call(k, v) for k, v in kwargs.items()])
 
-    """
-    @patch('%s.delete' % client_pkg, return_value=FR())
+    @patch('%s.delete' % storage_pkg, return_value=FR())
     def test_delete_object(self, delete):
         cont = self.client.container
         self.client.delete_object(obj)
@@ -402,6 +401,7 @@ class Storage(TestCase):
         FR.status_code = 404
         self.assertRaises(ClientError, self.client.delete_object, obj)
 
+    """
     @patch('%s.get' % client_pkg, return_value=FR())
     @patch('%s.set_param' % client_pkg)
     def test_list_objects(self, SP, get):

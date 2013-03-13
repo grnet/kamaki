@@ -368,18 +368,6 @@ class Pithos(TestCase):
         expected = call(obj, update=True, metadata={metakey: ''})
         self.assertEqual(post.mock_calls[-1], expected)
 
-    @patch('%s.post' % pithos_pkg, return_value=FR())
-    @patch('%s.set_header' % pithos_pkg)
-    def test_replace_object_meta(self, SH, post):
-        metas = dict(k1='new1', k2='new2', k3='new3')
-        cont = self.client.container
-        self.client.replace_object_meta(metas)
-        expected = call('/%s/%s' % (user_id, cont), success=202)
-        self.assertEqual(post.mock_calls[-1], expected)
-        prfx = 'X-Object-Meta-'
-        expected = [call('%s%s' % (prfx, k), v) for k, v in metas.items()]
-        self.assertEqual(PC.set_header.mock_calls, expected)
-
     @patch('%s.object_put' % pithos_pkg, return_value=FR())
     def test_copy_object(self, put):
         src_cont = 'src-c0nt41n3r'
@@ -439,16 +427,6 @@ class Pithos(TestCase):
         self.client.move_object(src_cont, src_obj, dst_cont, **kwargs)
         for k, v in kwargs.items():
             self.assertEqual(v, put.mock_calls[-1][2][k])
-
-    @patch('%s.delete' % pithos_pkg, return_value=FR())
-    def test_delete_object(self, delete):
-        cont = self.client.container
-        self.client.delete_object(obj)
-        self.assertEqual(
-            delete.mock_calls[-1],
-            call('/%s/%s/%s' % (user_id, cont, obj), success=(204, 404)))
-        FR.status_code = 404
-        self.assertRaises(ClientError, self.client.delete_object, obj)
 
     @patch('%s.get' % pithos_pkg, return_value=FR())
     @patch('%s.set_param' % pithos_pkg)
