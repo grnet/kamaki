@@ -215,19 +215,14 @@ class Cyclades(TestCase):
                 call(json_data=expected, success=202))
             self.assert_dicts_are_equal(r, net_recv['network'])
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
-    def test_connect_server(self, PR):
+    @patch('%s.networks_post' % cyclades_pkg, return_value=FR())
+    def test_connect_server(self, NP):
         vm_id = vm_recv['server']['id']
         net_id = net_recv['network']['id']
-        FR.status_code = 202
         self.client.connect_server(vm_id, net_id)
-        self.assertEqual(self.client.http_client.url, self.url)
-        self.assertEqual(
-            self.client.http_client.path,
-            '/networks/%s/action' % net_id)
-        self.assertEqual(
-            PR.call_args[0],
-            ('post', '{"add": {"serverRef": %s}}' % vm_id, {}, {}))
+        self.assertEqual(NP.mock_calls[-1], call(
+            net_id, 'action',
+            json_data=dict(add=dict(serverRef=vm_id))))
 
     @patch('%s.networks_post' % cyclades_pkg, return_value=FR())
     def test_disconnect_server(self, NP):
