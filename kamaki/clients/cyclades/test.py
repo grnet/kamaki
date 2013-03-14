@@ -271,7 +271,7 @@ class Cyclades(TestCase):
         net_id = net_recv['network']['id']
         FR.json = net_recv
         r = self.client.list_network_nics(net_id)
-        self.assertEqual(NG.mock_calls[-1], call(network_id=net_id))
+        NG.assert_called_once_with(network_id=net_id)
         expected = net_recv['network']['attachments']['values']
         for i in range(len(r)):
             self.assert_dicts_are_equal(r[i], expected[i])
@@ -283,15 +283,15 @@ class Cyclades(TestCase):
         with patch.object(
                 CycladesClient,
                 'list_network_nics',
-                return_value=nics) as lnn:
+                return_value=nics) as LNN:
             self.client.disconnect_network_nics(net_id)
-            lnn.assert_called_once_with(net_id)
+            LNN.assert_called_once_with(net_id)
             for i in range(len(nics)):
                 expected = call(net_id, 'action', json_data=dict(
                     remove=dict(attachment=nics[i])))
                 self.assertEqual(expected, NP.mock_calls[i])
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
+    @patch('%s.networks_get' % cyclades_pkg, return_value=FR())
     def test_get_network_details(self, PR):
         FR.json = net_recv
         net_id = net_recv['network']['id']
