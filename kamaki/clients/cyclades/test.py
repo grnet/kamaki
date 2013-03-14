@@ -171,17 +171,6 @@ class Cyclades(TestCase):
             self.client.list_servers(changes_since=True)
             self.assertTrue(servers_get.call_args[1]['changes_since'])
 
-    @patch('%s.images_get' % cyclades_pkg, return_value=FR())
-    def test_get_image_metadata(self, IG):
-        FR.json = dict(metadata=dict(values=img_recv['image']))
-        r = self.client.get_image_metadata(img_ref)
-        self.assertEqual(IG.call_args[0], ('%s' % img_ref, '/meta'))
-        self.assert_dicts_are_equal(img_recv['image'], r)
-        FR.json = dict(meta=img_recv['image'])
-        key = 'somekey'
-        self.client.get_image_metadata(img_ref, key)
-        self.assertEqual(IG.call_args[0], ('%s' % img_ref, '/meta/%s' % key))
-
     @patch('%s.perform_request' % khttp, return_value=FR())
     def test_shutdown_server(self, PR):
         vm_id = vm_recv['server']['id']
@@ -405,14 +394,6 @@ class Cyclades(TestCase):
         self.assert_dicts_are_equal(
             dict(network=dict(name=new_name)),
             loads(data))
-
-    @patch('%s.perform_request' % khttp, return_value=FR())
-    def test_delete_server(self, PR):
-        vm_id = vm_recv['server']['id']
-        FR.status_code = 204
-        self.client.delete_server(vm_id)
-        self.assertEqual(self.client.http_client.url, self.url)
-        self.assertEqual(self.client.http_client.path, '/servers/%s' % vm_id)
 
     @patch('%s.perform_request' % khttp, return_value=FR())
     def test_delete_image(self, PR):
