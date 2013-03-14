@@ -276,20 +276,17 @@ class Cyclades(TestCase):
         self.assertEqual(FG.mock_calls[-1], call(fid))
         self.assert_dicts_are_equal(r, flavor_list['flavors'])
 
-    """
-    @patch('%s.perform_request' % compute_pkg, return_value=FR())
-    def test_list_images(self, PR):
+    @patch('%s.images_get' % compute_pkg, return_value=FR())
+    def test_list_images(self, IG):
         FR.json = img_list
-        r = self.client.list_images()
-        self.assertEqual(self.client.http_client.url, self.url)
-        self.assertEqual(self.client.http_client.path, '/images')
-        expected = img_list['images']['values']
-        for i in range(len(r)):
-            self.assert_dicts_are_equal(expected[i], r[i])
-        self.client.list_images(detail=True)
-        self.assertEqual(self.client.http_client.url, self.url)
-        self.assertEqual(self.client.http_client.path, '/images/detail')
+        for cmd in ('', 'detail'):
+            r = self.client.list_images(detail=(cmd == 'detail'))
+            self.assertEqual(IG.mock_calls[-1], call(command=cmd))
+            expected = img_list['images']['values']
+            for i in range(len(r)):
+                self.assert_dicts_are_equal(expected[i], r[i])
 
+    """
     @patch('%s.perform_request' % compute_pkg, return_value=FR())
     def test_get_image_details(self, PR):
         FR.json = img_recv

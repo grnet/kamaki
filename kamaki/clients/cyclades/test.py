@@ -172,19 +172,6 @@ class Cyclades(TestCase):
             self.assertTrue(servers_get.call_args[1]['changes_since'])
 
     @patch('%s.perform_request' % khttp, return_value=FR())
-    def test_list_images(self, PR):
-        FR.json = img_list
-        r = self.client.list_images()
-        self.assertEqual(self.client.http_client.url, self.url)
-        self.assertEqual(self.client.http_client.path, '/images')
-        expected = img_list['images']['values']
-        for i in range(len(r)):
-            self.assert_dicts_are_equal(expected[i], r[i])
-        self.client.list_images(detail=True)
-        self.assertEqual(self.client.http_client.url, self.url)
-        self.assertEqual(self.client.http_client.path, '/images/detail')
-
-    @patch('%s.perform_request' % khttp, return_value=FR())
     def test_get_image_details(self, PR):
         FR.json = img_recv
         r = self.client.get_image_details(img_ref)
