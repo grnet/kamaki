@@ -308,13 +308,22 @@ class Cyclades(TestCase):
             network_id=net_id,
             json_data=dict(network=dict(name=new_name)))
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
-    def test_delete_network(self, PR):
+    def test_delete_network(self):
         net_id = net_recv['network']['id']
-        FR.status_code = 204
-        self.client.delete_network(net_id)
-        self.assertEqual(self.client.http_client.url, self.url)
-        self.assertEqual(self.client.http_client.path, '/networks/%s' % net_id)
+        with patch.object(
+                CycladesClient, 'networks_delete',
+                return_value=FR()) as ND:
+            self.client.delete_network(net_id)
+            ND.assert_called_once_with(net_id)
+        with patch.object(
+                CycladesClient, 'networks_delete',
+                side_effect=ClientError('A 421 Error', 421)):
+            try:
+                self.client.delete_network(421)
+            except ClientError as err:
+                self.assertEqual(err.status, 421)
+                self.assertEqual(err.details, [
+                    'Network may be still connected to at least one server'])
 
 if __name__ == '__main__':
     from sys import argv
