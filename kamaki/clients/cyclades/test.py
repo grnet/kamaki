@@ -243,19 +243,17 @@ class Cyclades(TestCase):
                 net_id, 'action',
                 json_data=dict(remove=dict(attachment=nic_id))))
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
-    def test_list_server_nics(self, PR):
+    @patch('%s.servers_get' % cyclades_pkg, return_value=FR())
+    def test_list_server_nics(self, SG):
         vm_id = vm_recv['server']['id']
         nics = dict(addresses=dict(values=[dict(id='nic1'), dict(id='nic2')]))
         FR.json = nics
         r = self.client.list_server_nics(vm_id)
-        self.assertEqual(self.client.http_client.url, self.url)
-        self.assertEqual(
-            self.client.http_client.path,
-            '/servers/%s/ips' % vm_id)
+        self.assertEqual(SG.mock_calls[-1], call(vm_id, 'ips'))
         expected = nics['addresses']['values']
         for i in range(len(r)):
             self.assert_dicts_are_equal(r[i], expected[i])
+        self.assertEqual(i + 1, len(r))
 
     @patch('%s.perform_request' % khttp, return_value=FR())
     def test_list_networks(self, PR):
