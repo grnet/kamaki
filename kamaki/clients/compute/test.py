@@ -293,18 +293,21 @@ class Cyclades(TestCase):
         self.assertEqual(IG.mock_calls[-1], call(img_ref))
         self.assert_dicts_are_equal(r, img_recv['image'])
 
-    """
     @patch('%s.images_get' % compute_pkg, return_value=FR())
     def test_get_image_metadata(self, IG):
         FR.json = dict(metadata=dict(values=img_recv['image']))
         r = self.client.get_image_metadata(img_ref)
-        self.assertEqual(IG.call_args[0], ('%s' % img_ref, '/meta'))
+        self.assertEqual(IG.mock_calls[-1], call('%s' % img_ref, '/meta'))
         self.assert_dicts_are_equal(img_recv['image'], r)
         FR.json = dict(meta=img_recv['image'])
         key = 'somekey'
-        self.client.get_image_metadata(img_ref, key)
-        self.assertEqual(IG.call_args[0], ('%s' % img_ref, '/meta/%s' % key))
+        r = self.client.get_image_metadata(img_ref, key)
+        self.assertEqual(
+            IG.mock_calls[-1],
+            call('%s' % img_ref, '/meta/%s' % key))
+        self.assert_dicts_are_equal(img_recv['image'], r)
 
+    """
     @patch('%s.perform_request' % compute_pkg, return_value=FR())
     def test_shutdown_server(self, PR):
         vm_id = vm_recv['server']['id']
