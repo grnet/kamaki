@@ -403,18 +403,6 @@ class Cyclades(TestCase):
         self.assertEqual(self.client.http_client.url, self.url)
         self.assertEqual(self.client.http_client.path, '/networks/%s' % net_id)
 
-    @patch('%s.images_post' % cyclades_pkg, return_value=FR())
-    def test_update_image_metadata(self, images_post):
-        metadata = dict(m1='v1', m2='v2', m3='v3')
-        FR.json = dict(metadata=metadata)
-        r = self.client.update_image_metadata(img_ref, **metadata)
-        self.assert_dicts_are_equal(r, metadata)
-        (called_id, cmd) = images_post.call_args[0]
-        self.assertEqual(called_id, img_ref)
-        self.assertEqual(cmd, 'meta')
-        data = images_post.call_args[1]['json_data']
-        self.assert_dicts_are_equal(data, dict(metadata=metadata))
-
     @patch('%s.images_delete' % cyclades_pkg, return_value=FR())
     def test_delete_image_metadata(self, images_delete):
         key = 'metakey'
