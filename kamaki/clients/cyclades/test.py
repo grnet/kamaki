@@ -292,14 +292,11 @@ class Cyclades(TestCase):
                 self.assertEqual(expected, NP.mock_calls[i])
 
     @patch('%s.networks_get' % cyclades_pkg, return_value=FR())
-    def test_get_network_details(self, PR):
+    def test_get_network_details(self, NG):
         FR.json = net_recv
         net_id = net_recv['network']['id']
         r = self.client.get_network_details(net_id)
-        self.assertEqual(self.client.http_client.url, self.url)
-        self.assertEqual(
-            self.client.http_client.path,
-            '/networks/%s' % net_id)
+        NG.assert_called_once_with(network_id=net_id)
         self.assert_dicts_are_equal(r, net_recv['network'])
 
     @patch('%s.perform_request' % khttp, return_value=FR())
