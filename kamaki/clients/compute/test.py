@@ -123,8 +123,6 @@ class Cyclades(TestCase):
         self.url = 'http://cyclades.example.com'
         self.token = 'cyc14d3s70k3n'
         self.client = CycladesClient(self.url, self.token)
-        from kamaki.clients.connection.kamakicon import KamakiHTTPConnection
-        self.C = KamakiHTTPConnection
 
     def tearDown(self):
         FR.status_code = 200

@@ -192,52 +192,50 @@ class Pithos(TestCase):
     @patch('%s.account_head' % pithos_pkg, return_value=FR())
     def test_get_account_info(self, AH):
         FR.headers = account_info
-        r = self.client.get_account_info()
-        self.assert_dicts_are_equal(r, account_info)
-        self.assertEqual(AH.mock_calls[-1], call(until=None))
-        unt = 'un71L-d473'
-        r = self.client.get_account_info(until=unt)
-        self.assert_dicts_are_equal(r, account_info)
-        self.assertEqual(AH.mock_calls[-1], call(until=unt))
+        for until in (None, 'un71L-d473'):
+            r = self.client.get_account_info(until=until)
+            self.assert_dicts_are_equal(r, account_info)
+            self.assertEqual(AH.mock_calls[-1], call(until=until))
         FR.status_code = 401
         self.assertRaises(ClientError, self.client.get_account_info)
 
     @patch('%s.account_post' % pithos_pkg, return_value=FR())
-    def test_del_account_meta(self, ap):
+    def test_del_account_meta(self, AP):
         keys = ['k1', 'k2', 'k3']
-        expected = []
         for key in keys:
             self.client.del_account_meta(key)
-            expected.append(call(update=True, metadata={key: ''}))
-        self.assertEqual(ap.mock_calls, expected)
+            self.assertEqual(
+                AP.mock_calls[-1],
+                call(update=True, metadata={key: ''}))
 
     @patch('%s.container_head' % pithos_pkg, return_value=FR())
-    def test_get_container_info(self, ch):
+    def test_get_container_info(self, CH):
         FR.headers = container_info
         r = self.client.get_container_info()
         self.assert_dicts_are_equal(r, container_info)
         u = 'some date'
         r = self.client.get_container_info(until=u)
-        self.assertEqual(ch.mock_calls, [call(until=None), call(until=u)])
+        self.assertEqual(CH.mock_calls, [call(until=None), call(until=u)])
 
     @patch('%s.account_get' % pithos_pkg, return_value=FR())
     def test_list_containers(self, get):
         FR.json = container_list
         r = self.client.list_containers()
+        get.assert_called_once_with()
         for i in range(len(r)):
             self.assert_dicts_are_equal(r[i], container_list[i])
 
     @patch('%s.get_container_info' % pithos_pkg, return_value=container_info)
     @patch('%s.container_post' % pithos_pkg, return_value=FR())
     @patch('%s.object_put' % pithos_pkg, return_value=FR())
-    def test_upload_object(self, CI, CP, OP):
+    def test_upload_object(self, OP, CP, GCI):
         num_of_blocks = 8
         tmpFile = self._create_temp_file(num_of_blocks)
 
         # Without kwargs
         self.client.upload_object(obj, tmpFile)
-        self.assertEqual(PC.get_container_info.mock_calls, [call()])
-        [call1, call2] = PC.object_put.mock_calls
+        self.assertEqual(GCI.mock_calls[-1], call())
+        [call1, call2] = OP.mock_calls
 
         (args1, kwargs1) = call1[1:3]
         (args2, kwargs2) = call2[1:3]
@@ -279,7 +277,6 @@ class Pithos(TestCase):
             else:
                 self.assertEqual(v, kwargs2[k])
 
-        OP = PC.object_put
         mock_offset = 2
 
         #  With progress bars
@@ -365,8 +362,7 @@ class Pithos(TestCase):
     def test_del_object_meta(self, post):
         metakey = '50m3m3t4k3y'
         self.client.del_object_meta(obj, metakey)
-        expected = call(obj, update=True, metadata={metakey: ''})
-        self.assertEqual(post.mock_calls[-1], expected)
+        post.assert_called_once_with(obj, update=True, metadata={metakey: ''})
 
     @patch('%s.object_put' % pithos_pkg, return_value=FR())
     def test_copy_object(self, put):
@@ -431,9 +427,9 @@ class Pithos(TestCase):
     #  Pithos+ only methods
 
     @patch('%s.container_delete' % pithos_pkg, return_value=FR())
-    def test_purge_container(self, cd):
+    def test_purge_container(self, CD):
         self.client.purge_container()
-        self.assertTrue('until' in cd.mock_calls[-1][2])
+        self.assertTrue('until' in CD.mock_calls[-1][2])
         cont = self.client.container
         self.client.purge_container('another-container')
         self.assertEqual(self.client.container, cont)
@@ -495,12 +491,11 @@ class Pithos(TestCase):
 
     @patch('%s.get_object_hashmap' % pithos_pkg, return_value=object_hashmap)
     @patch('%s.object_get' % pithos_pkg, return_value=FR())
-    def test_download_object(self, GOH, GET):
+    def test_download_object(self, GET, GOH):
         num_of_blocks = 8
         tmpFile = self._create_temp_file(num_of_blocks)
         FR.content = tmpFile.read(4 * 1024 * 1024)
         tmpFile = self._create_temp_file(num_of_blocks)
-        GET = PC.object_get
         num_of_blocks = len(object_hashmap['hashes'])
         kwargs = dict(
             resume=True,
@@ -618,28 +613,26 @@ class Pithos(TestCase):
     def test_set_account_group(self, post):
         (group, usernames) = ('aU53rGr0up', ['u1', 'u2', 'u3'])
         self.client.set_account_group(group, usernames)
-        self.assertEqual(
-            post.mock_calls[-1],
-            call(update=True, groups={group: usernames}))
+        post.assert_called_once_with(update=True, groups={group: usernames})
 
     @patch('%s.account_post' % pithos_pkg, return_value=FR())
     def test_del_account_group(self, post):
         group = 'aU53rGr0up'
         self.client.del_account_group(group)
-        self.assertEqual(
-            post.mock_calls[-1],
-            call(update=True, groups={group: []}))
+        post.assert_called_once_with(update=True, groups={group: []})
 
     @patch('%s.get_account_info' % pithos_pkg, return_value=account_info)
     def test_get_account_quota(self, GAI):
         key = 'x-account-policy-quota'
         r = self.client.get_account_quota()
+        GAI.assert_called_once_with()
         self.assertEqual(r[key], account_info[key])
 
     @patch('%s.get_account_info' % pithos_pkg, return_value=account_info)
     def test_get_account_versioning(self, GAI):
         key = 'x-account-policy-versioning'
         r = self.client.get_account_versioning()
+        GAI.assert_called_once_with()
         self.assertEqual(r[key], account_info[key])
 
     def test_get_account_meta(self):
@@ -676,23 +669,19 @@ class Pithos(TestCase):
     def test_set_account_meta(self, post):
         metas = dict(k1='v1', k2='v2', k3='v3')
         self.client.set_account_meta(metas)
-        self.assertEqual(
-            post.mock_calls[-1],
-            call(update=True, metadata=metas))
+        post.assert_called_once_with(update=True, metadata=metas)
 
     @patch('%s.account_post' % pithos_pkg, return_value=FR())
     def test_set_account_quota(self, post):
         qu = 1024
         self.client.set_account_quota(qu)
-        self.assertEqual(post.mock_calls[-1], call(update=True, quota=qu))
+        post.assert_called_once_with(update=True, quota=qu)
 
     @patch('%s.account_post' % pithos_pkg, return_value=FR())
     def test_set_account_versioning(self, post):
         vrs = 'n3wV3r51on1ngTyp3'
         self.client.set_account_versioning(vrs)
-        self.assertEqual(
-            post.mock_calls[-1],
-            call(update=True, versioning=vrs))
+        post.assert_called_once_with(update=True, versioning=vrs)
 
     @patch('%s.container_delete' % pithos_pkg, return_value=FR())
     def test_del_container(self, delete):
@@ -739,11 +728,11 @@ class Pithos(TestCase):
             with patch.object(
                     PC,
                     'get_container_info',
-                    return_value=ret[0]) as gci:
+                    return_value=ret[0]) as GCI:
                 for until in (None, somedate):
                     r = self.client.get_container_meta(until=until)
                     self.assertEqual(r, ret[1])
-                    self.assertEqual(gci.mock_calls[-1], call(until=until))
+                    self.assertEqual(GCI.mock_calls[-1], call(until=until))
 
     def test_get_container_object_meta(self):
         somedate = '50m3d473'
@@ -757,39 +746,34 @@ class Pithos(TestCase):
             with patch.object(
                     PC,
                     'get_container_info',
-                    return_value=ret[0]) as gci:
+                    return_value=ret[0]) as GCI:
                 for until in (None, somedate):
                     r = self.client.get_container_object_meta(until=until)
                     self.assertEqual(r, ret[1])
-                    self.assertEqual(gci.mock_calls[-1], call(until=until))
+                    self.assertEqual(GCI.mock_calls[-1], call(until=until))
 
     @patch('%s.container_post' % pithos_pkg, return_value=FR())
     def test_set_container_meta(self, post):
         metas = dict(k1='v1', k2='v2', k3='v3')
         self.client.set_container_meta(metas)
-        self.assertEqual(
-            post.mock_calls[-1],
-            call(update=True, metadata=metas))
+        post.assert_called_once_with(update=True, metadata=metas)
 
     @patch('%s.container_post' % pithos_pkg, return_value=FR())
-    def test_del_container_meta(self, ap):
+    def test_del_container_meta(self, AP):
         self.client.del_container_meta('somekey')
-        expected = [call(update=True, metadata={'somekey': ''})]
-        self.assertEqual(ap.mock_calls, expected)
+        AP.assert_called_once_with(update=True, metadata={'somekey': ''})
 
     @patch('%s.container_post' % pithos_pkg, return_value=FR())
     def test_set_container_quota(self, post):
         qu = 1024
         self.client.set_container_quota(qu)
-        self.assertEqual(post.mock_calls[-1], call(update=True, quota=qu))
+        post.assert_called_once_with(update=True, quota=qu)
 
     @patch('%s.container_post' % pithos_pkg, return_value=FR())
     def test_set_container_versioning(self, post):
         vrs = 'n3wV3r51on1ngTyp3'
         self.client.set_container_versioning(vrs)
-        self.assertEqual(
-            post.mock_calls[-1],
-            call(update=True, versioning=vrs))
+        post.assert_called_once_with(update=True, versioning=vrs)
 
     @patch('%s.object_delete' % pithos_pkg, return_value=FR())
     def test_del_object(self, delete):
@@ -807,29 +791,25 @@ class Pithos(TestCase):
             self.client.set_object_meta,
             obj, 'Non dict arg')
         self.client.set_object_meta(obj, metas)
-        self.assertEqual(
-            post.mock_calls[-1],
-            call(obj, update=True, metadata=metas))
+        post.assert_called_once_with(obj, update=True, metadata=metas)
 
     @patch('%s.object_post' % pithos_pkg, return_value=FR())
     def test_publish_object(self, post):
         oinfo = dict(object_info)
         val = 'pubL1c'
         oinfo['x-object-public'] = val
-        with patch.object(PC, 'get_object_info', return_value=oinfo) as gof:
+        with patch.object(PC, 'get_object_info', return_value=oinfo) as GOF:
             r = self.client.publish_object(obj)
             self.assertEqual(
                 post.mock_calls[-1],
                 call(obj, public=True, update=True))
-            self.assertEqual(gof.mock_calls[-1], call(obj))
+            self.assertEqual(GOF.mock_calls[-1], call(obj))
             self.assertEqual(r, '%s%s' % (self.url[:-6], val))
 
     @patch('%s.object_post' % pithos_pkg, return_value=FR())
     def test_unpublish_object(self, post):
         self.client.unpublish_object(obj)
-        self.assertEqual(
-            post.mock_calls[-1],
-            call(obj, public=False, update=True))
+        post.assert_called_once_with(obj, public=False, update=True)
 
     def test_get_object_sharing(self):
         info = dict(object_info)
@@ -858,7 +838,7 @@ class Pithos(TestCase):
             self.assert_dicts_are_equal(r, expected)
 
     @patch('%s.object_post' % pithos_pkg, return_value=FR())
-    def test_set_object_sharing(self, POST):
+    def test_set_object_sharing(self, OP):
         read_perms = ['u1', 'g1', 'u2', 'g2']
         write_perms = ['u1', 'g1']
         for kwargs in (
@@ -870,13 +850,13 @@ class Pithos(TestCase):
             kwargs['read'] = kwargs.pop('read_permition', '')
             kwargs['write'] = kwargs.pop('write_permition', '')
             self.assertEqual(
-                POST.mock_calls[-1],
+                OP.mock_calls[-1],
                 call(obj, update=True, permissions=kwargs))
 
     @patch('%s.set_object_sharing' % pithos_pkg)
     def test_del_object_sharing(self, SOS):
         self.client.del_object_sharing(obj)
-        self.assertEqual(SOS.mock_calls[-1], call(obj))
+        SOS.assert_called_once_with(obj)
 
     @patch('%s.get_container_info' % pithos_pkg, return_value=container_info)
     @patch('%s.object_post' % pithos_pkg, return_value=FR())
@@ -922,13 +902,13 @@ class Pithos(TestCase):
     def test_truncate_object(self, post):
         upto_bytes = 377
         self.client.truncate_object(obj, upto_bytes)
-        self.assertEqual(post.mock_calls[-1], call(
+        post.assert_called_once_with(
             obj,
             update=True,
             object_bytes=upto_bytes,
             content_range='bytes 0-%s/*' % upto_bytes,
             content_type='application/octet-stream',
-            source_object='/%s/%s' % (self.client.container, obj)))
+            source_object='/%s/%s' % (self.client.container, obj))
 
     @patch('%s.get_container_info' % pithos_pkg, return_value=container_info)
     @patch('%s.object_post' % pithos_pkg, return_value=FR())
@@ -991,6 +971,7 @@ class Pithos(TestCase):
                 dict(marker='X'),
                 dict(limit='50m3-11m17', marker='X')):
             r = self.client.get_sharing_accounts(**kws)
+            self.assertEqual(get.mock_calls[-1], call('', success=(200, 204)))
             self.assertEqual(SP.mock_calls[-3], call('format', 'json'))
             limit, marker = kws.get('limit', None), kws.get('marker', None)
             self.assertEqual(SP.mock_calls[-2], call(
@@ -999,7 +980,6 @@ class Pithos(TestCase):
             self.assertEqual(SP.mock_calls[-1], call(
                 'marker', marker,
                 iff=marker is not None))
-            self.assertEqual(get.mock_calls[-1], call('', success=(200, 204)))
             for i in range(len(r)):
                 self.assert_dicts_are_equal(r[i], sharers[i])
 
@@ -1009,9 +989,7 @@ class Pithos(TestCase):
         info['versions'] = ['v1', 'v2']
         FR.json = info
         r = self.client.get_object_versionlist(obj)
-        self.assertEqual(
-            get.mock_calls[-1],
-            call(obj, format='json', version='list'))
+        get.assert_called_once_with(obj, format='json', version='list')
         self.assertEqual(r, info['versions'])
 
 if __name__ == '__main__':

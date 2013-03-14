@@ -32,11 +32,9 @@
 # or implied, of GRNET S.A.
 from mock import patch, call
 from unittest import TestCase
-from json import loads
 
 from kamaki.clients import ClientError
 from kamaki.clients.cyclades import CycladesClient
-from kamaki.clients.cyclades_rest_api import CycladesClientApi
 
 img_ref = "1m4g3-r3f3r3nc3"
 vm_name = "my new VM"
@@ -91,7 +89,6 @@ class FR(object):
     def release(self):
         pass
 
-khttp = 'kamaki.clients.connection.kamakicon.KamakiHTTPConnection'
 cyclades_pkg = 'kamaki.clients.cyclades.CycladesClient'
 
 
@@ -110,8 +107,6 @@ class Cyclades(TestCase):
         self.url = 'http://cyclades.example.com'
         self.token = 'cyc14d3s70k3n'
         self.client = CycladesClient(self.url, self.token)
-        from kamaki.clients.connection.kamakicon import KamakiHTTPConnection
-        self.C = KamakiHTTPConnection
 
     def tearDown(self):
         FR.status_code = 200
