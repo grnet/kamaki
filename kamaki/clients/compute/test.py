@@ -261,19 +261,15 @@ class Cyclades(TestCase):
         self.client.delete_server_metadata(vm_id, key)
         self.assertEqual(SD.mock_calls[-1], call(vm_id, 'meta/' + key))
 
-    """
-    @patch('%s.perform_request' % compute_pkg, return_value=FR())
-    def test_list_flavors(self, PR):
+    @patch('%s.flavors_get' % compute_pkg, return_value=FR())
+    def test_list_flavors(self, FG):
         FR.json = flavor_list
-        r = self.client.list_flavors()
-        self.assertEqual(self.client.http_client.url, self.url)
-        self.assertEqual(self.client.http_client.path, '/flavors')
-        (method, data, a_headers, a_params) = PR.call_args[0]
-        self.assert_dicts_are_equal(dict(values=r), flavor_list['flavors'])
-        r = self.client.list_flavors(detail=True)
-        self.assertEqual(self.client.http_client.url, self.url)
-        self.assertEqual(self.client.http_client.path, '/flavors/detail')
+        for cmd in ('', 'detail'):
+            r = self.client.list_flavors(detail=(cmd == 'detail'))
+            self.assertEqual(FG.mock_calls[-1], call(command=cmd))
+            self.assert_dicts_are_equal(dict(values=r), flavor_list['flavors'])
 
+    """
     @patch('%s.perform_request' % compute_pkg, return_value=FR())
     def test_get_flavor_details(self, PR):
         FR.json = dict(flavor=flavor_list['flavors'])
