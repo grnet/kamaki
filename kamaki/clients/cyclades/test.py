@@ -403,25 +403,6 @@ class Cyclades(TestCase):
         self.assertEqual(self.client.http_client.url, self.url)
         self.assertEqual(self.client.http_client.path, '/networks/%s' % net_id)
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
-    def test_create_image_metadata(self, PR):
-        metadata = dict(m1='v1', m2='v2', m3='v3')
-        FR.json = dict(meta=img_recv['image'])
-        self.assertRaises(
-            ClientError,
-            self.client.create_image_metadata,
-            img_ref, 'key', 'value')
-        FR.status_code = 201
-        for k, v in metadata.items():
-            r = self.client.create_image_metadata(img_ref, k, v)
-            self.assertEqual(self.client.http_client.url, self.url)
-            self.assertEqual(
-                self.client.http_client.path,
-                '/images/%s/meta/%s' % (img_ref, k))
-            (method, data, a_headers, a_params) = PR.call_args[0]
-            self.assertEqual(dict(meta={k: v}), loads(data))
-            self.assert_dicts_are_equal(r, img_recv['image'])
-
     @patch('%s.images_post' % cyclades_pkg, return_value=FR())
     def test_update_image_metadata(self, images_post):
         metadata = dict(m1='v1', m2='v2', m3='v3')
