@@ -243,20 +243,18 @@ class Cyclades(TestCase):
             self.assert_dicts_are_equal(r, {k: v})
             self.assertEqual(SG.mock_calls[-1], call(vm_id, '/meta/%s' % k))
 
-    """
     @patch('%s.servers_post' % compute_pkg, return_value=FR())
-    def test_update_server_metadata(self, servers_post):
+    def test_update_server_metadata(self, SP):
         vm_id = vm_recv['server']['id']
         metadata = dict(m1='v1', m2='v2', m3='v3')
         FR.json = dict(metadata=metadata)
         r = self.client.update_server_metadata(vm_id, **metadata)
         self.assert_dicts_are_equal(r, metadata)
-        (called_id, cmd) = servers_post.call_args[0]
-        self.assertEqual(called_id, vm_id)
-        self.assertEqual(cmd, 'meta')
-        data = servers_post.call_args[1]['json_data']
-        self.assert_dicts_are_equal(data, dict(metadata=metadata))
+        self.assertEqual(SP.mock_calls[-1], call(
+            vm_id, 'meta',
+            json_data=dict(metadata=metadata), success=201))
 
+    """
     @patch('%s.servers_delete' % compute_pkg, return_value=FR())
     def test_delete_server_metadata(self, servers_delete):
         vm_id = vm_recv['server']['id']
