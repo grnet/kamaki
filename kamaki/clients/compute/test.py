@@ -286,15 +286,14 @@ class Cyclades(TestCase):
             for i in range(len(r)):
                 self.assert_dicts_are_equal(expected[i], r[i])
 
-    """
-    @patch('%s.perform_request' % compute_pkg, return_value=FR())
-    def test_get_image_details(self, PR):
+    @patch('%s.images_get' % compute_pkg, return_value=FR())
+    def test_get_image_details(self, IG):
         FR.json = img_recv
         r = self.client.get_image_details(img_ref)
-        self.assertEqual(self.client.http_client.url, self.url)
-        self.assertEqual(self.client.http_client.path, '/images/%s' % img_ref)
+        self.assertEqual(IG.mock_calls[-1], call(img_ref))
         self.assert_dicts_are_equal(r, img_recv['image'])
 
+    """
     @patch('%s.images_get' % compute_pkg, return_value=FR())
     def test_get_image_metadata(self, IG):
         FR.json = dict(metadata=dict(values=img_recv['image']))
