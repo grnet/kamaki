@@ -76,6 +76,8 @@ net_list = dict(networks=dict(values=[
     dict(id=1, name='n1'),
     dict(id=2, name='n2'),
     dict(id=3, name='n3')]))
+firewalls = dict(attachments=dict(values=[
+    dict(firewallProfile='50m3_pr0f1L3', otherStuff='57uff')]))
 
 
 class FR(object):
@@ -157,16 +159,16 @@ class Cyclades(TestCase):
 
     def test_get_firewall_profile(self):
         vm_id = vm_recv['server']['id']
-        v = 'Some profile'
-        ret = {'attachments': {'values': [{'firewallProfile': v, 1:1}]}}
+        v = firewalls['attachments']['values'][0]['firewallProfile']
         with patch.object(
-                CycladesClient,
-                'get_server_details',
-                return_value=ret) as GSD:
+                CycladesClient, 'get_server_details',
+                return_value=firewalls) as GSD:
             r = self.client.get_firewall_profile(vm_id)
             self.assertEqual(r, v)
-            self.assertEqual(GSD.call_args[0], (vm_id,))
-            ret['attachments']['values'][0].pop('firewallProfile')
+            self.assertEqual(GSD.mock_calls[-1], call(vm_id))
+        with patch.object(
+                CycladesClient, 'get_server_details',
+                return_value=dict()):
             self.assertRaises(
                 ClientError,
                 self.client.get_firewall_profile,
