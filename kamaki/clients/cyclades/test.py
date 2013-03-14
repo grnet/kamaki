@@ -174,21 +174,14 @@ class Cyclades(TestCase):
                 self.client.get_firewall_profile,
                 vm_id)
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
-    def test_set_firewall_profile(self, PR):
+    @patch('%s.servers_post' % cyclades_pkg, return_value=FR())
+    def test_set_firewall_profile(self, SP):
         vm_id = vm_recv['server']['id']
-        v = 'Some profile'
-        FR.status_code = 202
+        v = firewalls['attachments']['values'][0]['firewallProfile']
         self.client.set_firewall_profile(vm_id, v)
-        self.assertEqual(self.client.http_client.url, self.url)
-        self.assertEqual(
-            self.client.http_client.path,
-            '/servers/%s/action' % vm_id)
-        self.assertEqual(PR.call_args[0], (
-            'post',
-            '{"firewallProfile": {"profile": "%s"}}' % v,
-            {},
-            {}))
+        self.assertEqual(SP.mock_calls[-1], call(
+            vm_id, 'action',
+            json_data=dict(firewallProfile=dict(profile=v)), success=202))
 
     @patch('%s.perform_request' % khttp, return_value=FR())
     def test_get_server_stats(self, PR):
