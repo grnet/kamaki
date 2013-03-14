@@ -216,27 +216,19 @@ class Cyclades(TestCase):
                 vm_id, 'action',
                 json_data=dict(reboot=dict(type='HARD' if hard else 'SOFT'))))
 
-    """
-    @patch('%s.perform_request' % khttp, return_value=FR())
-    def test_create_server_metadata(self, PR):
+    @patch('%s.servers_put' % compute_pkg, return_value=FR())
+    def test_create_server_metadata(self, SP):
         vm_id = vm_recv['server']['id']
         metadata = dict(m1='v1', m2='v2', m3='v3')
         FR.json = dict(meta=vm_recv['server'])
-        self.assertRaises(
-            ClientError,
-            self.client.create_server_metadata,
-            vm_id, 'key', 'value')
-        FR.status_code = 201
         for k, v in metadata.items():
             r = self.client.create_server_metadata(vm_id, k, v)
-            self.assertEqual(self.client.http_client.url, self.url)
-            self.assertEqual(
-                self.client.http_client.path,
-                '/servers/%s/meta/%s' % (vm_id, k))
-            (method, data, a_headers, a_params) = PR.call_args[0]
-            self.assertEqual(dict(meta={k: v}), loads(data))
             self.assert_dicts_are_equal(r, vm_recv['server'])
+            self.assertEqual(SP.mock_calls[-1], call(
+                vm_id, 'meta/%s' % k,
+                json_data=dict(meta={k: v}), success=201))
 
+    """
     @patch('%s.perform_request' % khttp, return_value=FR())
     def test_get_server_metadata(self, PR):
         vm_id = vm_recv['server']['id']
