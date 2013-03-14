@@ -40,7 +40,7 @@ from kamaki.clients.cyclades import CycladesClient
 from kamaki.clients.cyclades_rest_api import CycladesClientApi
 
 
-khttp_pkg = 'kamaki.clients.connection.kamakicon.KamakiHTTPConnection'
+compute_pkg_pkg = 'kamaki.clients.connection.kamakicon.KamakiHTTPConnection'
 compute_pkg = 'kamaki.clients.cyclades.CycladesClient'
 
 img_ref = "1m4g3-r3f3r3nc3"
@@ -228,29 +228,23 @@ class Cyclades(TestCase):
                 vm_id, 'meta/%s' % k,
                 json_data=dict(meta={k: v}), success=201))
 
-    """
-    @patch('%s.perform_request' % khttp, return_value=FR())
-    def test_get_server_metadata(self, PR):
+    @patch('%s.servers_get' % compute_pkg, return_value=FR())
+    def test_get_server_metadata(self, SG):
         vm_id = vm_recv['server']['id']
         metadata = dict(m1='v1', m2='v2', m3='v3')
         FR.json = dict(metadata=dict(values=metadata))
         r = self.client.get_server_metadata(vm_id)
-        self.assertEqual(self.client.http_client.url, self.url)
-        self.assertEqual(
-            self.client.http_client.path,
-            '/servers/%s/meta' % vm_id)
+        self.assertEqual(SG.mock_calls[-1], call(vm_id, '/meta'))
         self.assert_dicts_are_equal(r, metadata)
 
         for k, v in metadata.items():
             FR.json = dict(meta={k: v})
             r = self.client.get_server_metadata(vm_id, k)
-            self.assertEqual(self.client.http_client.url, self.url)
-            self.assertEqual(
-                self.client.http_client.path,
-                '/servers/%s/meta/%s' % (vm_id, k))
             self.assert_dicts_are_equal(r, {k: v})
+            self.assertEqual(SG.mock_calls[-1], call(vm_id, '/meta/%s' % k))
 
-    @patch('%s.servers_post' % cyclades_pkg, return_value=FR())
+    """
+    @patch('%s.servers_post' % compute_pkg, return_value=FR())
     def test_update_server_metadata(self, servers_post):
         vm_id = vm_recv['server']['id']
         metadata = dict(m1='v1', m2='v2', m3='v3')
@@ -263,14 +257,14 @@ class Cyclades(TestCase):
         data = servers_post.call_args[1]['json_data']
         self.assert_dicts_are_equal(data, dict(metadata=metadata))
 
-    @patch('%s.servers_delete' % cyclades_pkg, return_value=FR())
+    @patch('%s.servers_delete' % compute_pkg, return_value=FR())
     def test_delete_server_metadata(self, servers_delete):
         vm_id = vm_recv['server']['id']
         key = 'metakey'
         self.client.delete_server_metadata(vm_id, key)
         self.assertEqual((vm_id, 'meta/' + key), servers_delete.call_args[0])
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
+    @patch('%s.perform_request' % compute_pkg, return_value=FR())
     def test_list_flavors(self, PR):
         FR.json = flavor_list
         r = self.client.list_flavors()
@@ -282,7 +276,7 @@ class Cyclades(TestCase):
         self.assertEqual(self.client.http_client.url, self.url)
         self.assertEqual(self.client.http_client.path, '/flavors/detail')
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
+    @patch('%s.perform_request' % compute_pkg, return_value=FR())
     def test_get_flavor_details(self, PR):
         FR.json = dict(flavor=flavor_list['flavors'])
         r = self.client.get_flavor_details(fid)
@@ -290,7 +284,7 @@ class Cyclades(TestCase):
         self.assertEqual(self.client.http_client.path, '/flavors/%s' % fid)
         self.assert_dicts_are_equal(r, flavor_list['flavors'])
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
+    @patch('%s.perform_request' % compute_pkg, return_value=FR())
     def test_list_images(self, PR):
         FR.json = img_list
         r = self.client.list_images()
@@ -303,7 +297,7 @@ class Cyclades(TestCase):
         self.assertEqual(self.client.http_client.url, self.url)
         self.assertEqual(self.client.http_client.path, '/images/detail')
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
+    @patch('%s.perform_request' % compute_pkg, return_value=FR())
     def test_get_image_details(self, PR):
         FR.json = img_recv
         r = self.client.get_image_details(img_ref)
@@ -311,7 +305,7 @@ class Cyclades(TestCase):
         self.assertEqual(self.client.http_client.path, '/images/%s' % img_ref)
         self.assert_dicts_are_equal(r, img_recv['image'])
 
-    @patch('%s.images_get' % cyclades_pkg, return_value=FR())
+    @patch('%s.images_get' % compute_pkg, return_value=FR())
     def test_get_image_metadata(self, IG):
         FR.json = dict(metadata=dict(values=img_recv['image']))
         r = self.client.get_image_metadata(img_ref)
@@ -322,7 +316,7 @@ class Cyclades(TestCase):
         self.client.get_image_metadata(img_ref, key)
         self.assertEqual(IG.call_args[0], ('%s' % img_ref, '/meta/%s' % key))
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
+    @patch('%s.perform_request' % compute_pkg, return_value=FR())
     def test_shutdown_server(self, PR):
         vm_id = vm_recv['server']['id']
         FR.status_code = 202
@@ -335,7 +329,7 @@ class Cyclades(TestCase):
             PR.call_args[0],
             ('post',  '{"shutdown": {}}', {}, {}))
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
+    @patch('%s.perform_request' % compute_pkg, return_value=FR())
     def test_start_server(self, PR):
         vm_id = vm_recv['server']['id']
         FR.status_code = 202
@@ -346,7 +340,7 @@ class Cyclades(TestCase):
             '/servers/%s/action' % vm_id)
         self.assertEqual(PR.call_args[0], ('post',  '{"start": {}}', {}, {}))
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
+    @patch('%s.perform_request' % compute_pkg, return_value=FR())
     def test_get_server_console(self, PR):
         cnsl = dict(console=dict(info1='i1', info2='i2', info3='i3'))
         FR.json = cnsl
@@ -378,7 +372,7 @@ class Cyclades(TestCase):
                 self.client.get_firewall_profile,
                 vm_id)
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
+    @patch('%s.perform_request' % compute_pkg, return_value=FR())
     def test_set_firewall_profile(self, PR):
         vm_id = vm_recv['server']['id']
         v = 'Some profile'
@@ -394,7 +388,7 @@ class Cyclades(TestCase):
             {},
             {}))
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
+    @patch('%s.perform_request' % compute_pkg, return_value=FR())
     def test_get_server_stats(self, PR):
         vm_id = vm_recv['server']['id']
         stats = dict(stat1='v1', stat2='v2', stat3='v3', stat4='v4')
@@ -406,7 +400,7 @@ class Cyclades(TestCase):
             '/servers/%s/stats' % vm_id)
         self.assert_dicts_are_equal(stats, r)
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
+    @patch('%s.perform_request' % compute_pkg, return_value=FR())
     def test_create_network(self, PR):
         net_name = net_send['network']['name']
         FR.json = net_recv
@@ -432,7 +426,7 @@ class Cyclades(TestCase):
             expected['network'].update(kwargs)
             self.assert_dicts_are_equal(loads(data), expected)
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
+    @patch('%s.perform_request' % compute_pkg, return_value=FR())
     def test_connect_server(self, PR):
         vm_id = vm_recv['server']['id']
         net_id = net_recv['network']['id']
@@ -446,7 +440,7 @@ class Cyclades(TestCase):
             PR.call_args[0],
             ('post', '{"add": {"serverRef": %s}}' % vm_id, {}, {}))
 
-    @patch('%s.networks_post' % cyclades_pkg, return_value=FR())
+    @patch('%s.networks_post' % compute_pkg, return_value=FR())
     def test_disconnect_server(self, NP):
         vm_id = vm_recv['server']['id']
         net_id = net_recv['network']['id']
@@ -467,7 +461,7 @@ class Cyclades(TestCase):
                 NP.call_args[1],
                 dict(json_data=dict(remove=dict(attachment=nic_id))))
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
+    @patch('%s.perform_request' % compute_pkg, return_value=FR())
     def test_list_server_nics(self, PR):
         vm_id = vm_recv['server']['id']
         nics = dict(addresses=dict(values=[dict(id='nic1'), dict(id='nic2')]))
@@ -481,7 +475,7 @@ class Cyclades(TestCase):
         for i in range(len(r)):
             self.assert_dicts_are_equal(r[i], expected[i])
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
+    @patch('%s.perform_request' % compute_pkg, return_value=FR())
     def test_list_networks(self, PR):
         FR.json = net_list
         r = self.client.list_networks()
@@ -494,7 +488,7 @@ class Cyclades(TestCase):
         self.assertEqual(self.client.http_client.url, self.url)
         self.assertEqual(self.client.http_client.path, '/networks/detail')
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
+    @patch('%s.perform_request' % compute_pkg, return_value=FR())
     def test_list_network_nics(self, PR):
         net_id = net_recv['network']['id']
         FR.json = net_recv
@@ -507,7 +501,7 @@ class Cyclades(TestCase):
         for i in range(len(r)):
             self.assert_dicts_are_equal(r[i], expected[i])
 
-    @patch('%s.networks_post' % cyclades_pkg, return_value=FR())
+    @patch('%s.networks_post' % compute_pkg, return_value=FR())
     def test_disconnect_network_nics(self, NP):
         net_id = net_recv['network']['id']
         nics = ['nic1', 'nic2', 'nic3']
@@ -522,7 +516,7 @@ class Cyclades(TestCase):
                     remove=dict(attachment=nics[i])))
                 self.assertEqual(expected, NP.mock_calls[i])
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
+    @patch('%s.perform_request' % compute_pkg, return_value=FR())
     def test_get_network_details(self, PR):
         FR.json = net_recv
         net_id = net_recv['network']['id']
@@ -533,7 +527,7 @@ class Cyclades(TestCase):
             '/networks/%s' % net_id)
         self.assert_dicts_are_equal(r, net_recv['network'])
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
+    @patch('%s.perform_request' % compute_pkg, return_value=FR())
     def test_update_network_name(self, PR):
         net_id = net_recv['network']['id']
         new_name = '%s_new' % net_id
@@ -546,7 +540,7 @@ class Cyclades(TestCase):
             dict(network=dict(name=new_name)),
             loads(data))
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
+    @patch('%s.perform_request' % compute_pkg, return_value=FR())
     def test_delete_server(self, PR):
         vm_id = vm_recv['server']['id']
         FR.status_code = 204
@@ -554,14 +548,14 @@ class Cyclades(TestCase):
         self.assertEqual(self.client.http_client.url, self.url)
         self.assertEqual(self.client.http_client.path, '/servers/%s' % vm_id)
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
+    @patch('%s.perform_request' % compute_pkg, return_value=FR())
     def test_delete_image(self, PR):
         FR.status_code = 204
         self.client.delete_image(img_ref)
         self.assertEqual(self.client.http_client.url, self.url)
         self.assertEqual(self.client.http_client.path, '/images/%s' % img_ref)
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
+    @patch('%s.perform_request' % compute_pkg, return_value=FR())
     def test_delete_network(self, PR):
         net_id = net_recv['network']['id']
         FR.status_code = 204
@@ -569,7 +563,7 @@ class Cyclades(TestCase):
         self.assertEqual(self.client.http_client.url, self.url)
         self.assertEqual(self.client.http_client.path, '/networks/%s' % net_id)
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
+    @patch('%s.perform_request' % compute_pkg, return_value=FR())
     def test_create_image_metadata(self, PR):
         metadata = dict(m1='v1', m2='v2', m3='v3')
         FR.json = dict(meta=img_recv['image'])
@@ -588,7 +582,7 @@ class Cyclades(TestCase):
             self.assertEqual(dict(meta={k: v}), loads(data))
             self.assert_dicts_are_equal(r, img_recv['image'])
 
-    @patch('%s.images_post' % cyclades_pkg, return_value=FR())
+    @patch('%s.images_post' % compute_pkg, return_value=FR())
     def test_update_image_metadata(self, images_post):
         metadata = dict(m1='v1', m2='v2', m3='v3')
         FR.json = dict(metadata=metadata)
@@ -600,7 +594,7 @@ class Cyclades(TestCase):
         data = images_post.call_args[1]['json_data']
         self.assert_dicts_are_equal(data, dict(metadata=metadata))
 
-    @patch('%s.images_delete' % cyclades_pkg, return_value=FR())
+    @patch('%s.images_delete' % compute_pkg, return_value=FR())
     def test_delete_image_metadata(self, images_delete):
         key = 'metakey'
         self.client.delete_image_metadata(img_ref, key)
