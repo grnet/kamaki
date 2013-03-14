@@ -199,20 +199,15 @@ class Cyclades(TestCase):
         self.assert_dicts_are_equal(r, vm_recv['server'])
         self.assertEqual(SG.mock_calls[-1], call(vm_id))
 
-    """
-    @patch('%s.perform_request' % khttp, return_value=FR())
-    def test_update_server_name(self, PR):
+    @patch('%s.servers_put' % compute_pkg, return_value=FR())
+    def test_update_server_name(self, SP):
         vm_id = vm_recv['server']['id']
         new_name = vm_name + '_new'
-        FR.status_code = 204
         self.client.update_server_name(vm_id, new_name)
-        self.assertEqual(self.client.http_client.url, self.url)
-        self.assertEqual(self.client.http_client.path, '/servers/%s' % vm_id)
-        (method, data, a_headers, a_params) = PR.call_args[0]
-        self.assert_dicts_are_equal(
-            dict(server=dict(name=new_name)),
-            loads(data))
+        self.assertEqual(SP.mock_calls[-1], call(vm_id, json_data=dict(
+            server=dict(name=new_name))))
 
+    """
     @patch('%s.perform_request' % khttp, return_value=FR())
     def test_reboot_server(self, PR):
         vm_id = vm_recv['server']['id']
