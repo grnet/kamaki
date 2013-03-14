@@ -136,16 +136,13 @@ class Cyclades(TestCase):
             vm_id, 'action',
             json_data=dict(shutdown=dict()), success=202))
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
-    def test_start_server(self, PR):
+    @patch('%s.servers_post' % cyclades_pkg, return_value=FR())
+    def test_start_server(self, SP):
         vm_id = vm_recv['server']['id']
-        FR.status_code = 202
         self.client.start_server(vm_id)
-        self.assertEqual(self.client.http_client.url, self.url)
-        self.assertEqual(
-            self.client.http_client.path,
-            '/servers/%s/action' % vm_id)
-        self.assertEqual(PR.call_args[0], ('post',  '{"start": {}}', {}, {}))
+        self.assertEqual(SP.mock_calls[-1], call(
+            vm_id, 'action',
+            json_data=dict(start=dict()), success=202))
 
     @patch('%s.perform_request' % khttp, return_value=FR())
     def test_get_server_console(self, PR):
