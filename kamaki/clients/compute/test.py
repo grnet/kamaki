@@ -313,14 +313,12 @@ class Cyclades(TestCase):
         self.client.delete_server(vm_id)
         self.assertEqual(SD.mock_calls[-1], call(vm_id))
 
-    """
-    @patch('%s.perform_request' % compute_pkg, return_value=FR())
-    def test_delete_image(self, PR):
-        FR.status_code = 204
+    @patch('%s.images_delete' % compute_pkg, return_value=FR())
+    def test_delete_image(self, ID):
         self.client.delete_image(img_ref)
-        self.assertEqual(self.client.http_client.url, self.url)
-        self.assertEqual(self.client.http_client.path, '/images/%s' % img_ref)
+        self.assertEqual(ID.mock_calls[-1], call(img_ref))
 
+    """
     @patch('%s.perform_request' % compute_pkg, return_value=FR())
     def test_delete_network(self, PR):
         net_id = net_recv['network']['id']

@@ -396,13 +396,6 @@ class Cyclades(TestCase):
             loads(data))
 
     @patch('%s.perform_request' % khttp, return_value=FR())
-    def test_delete_image(self, PR):
-        FR.status_code = 204
-        self.client.delete_image(img_ref)
-        self.assertEqual(self.client.http_client.url, self.url)
-        self.assertEqual(self.client.http_client.path, '/images/%s' % img_ref)
-
-    @patch('%s.perform_request' % khttp, return_value=FR())
     def test_delete_network(self, PR):
         net_id = net_recv['network']['id']
         FR.status_code = 204
