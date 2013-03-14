@@ -192,11 +192,10 @@ class Cyclades(TestCase):
         self.assertEqual(SG.mock_calls[-1], call(vm_id, 'stats'))
         self.assert_dicts_are_equal(stats, r)
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
-    def test_create_network(self, PR):
+    @patch('%s.networks_post' % cyclades_pkg, return_value=FR())
+    def test_create_network(self, NP):
         net_name = net_send['network']['name']
         FR.json = net_recv
-        FR.status_code = 202
         full_args = dict(
                 cidr='192.168.0.0/24',
                 gateway='192.168.0.1',
@@ -204,19 +203,17 @@ class Cyclades(TestCase):
                 dhcp=True)
         test_args = dict(full_args)
         test_args.update(dict(empty=None, full=None))
+        net_exp = dict(dhcp=False, name=net_name)
         for arg, val in test_args.items():
             kwargs = {} if arg == 'empty' else full_args if (
                 arg == 'full') else {arg: val}
-            r = self.client.create_network(net_name, **kwargs)
-            self.assertEqual(self.client.http_client.url, self.url)
-            self.assertEqual(
-                self.client.http_client.path,
-                '/networks')
-            self.assert_dicts_are_equal(r, net_recv['network'])
-            data = PR.call_args[0][1]
-            expected = dict(network=dict(net_send['network']))
+            expected = dict(network=dict(net_exp))
             expected['network'].update(kwargs)
-            self.assert_dicts_are_equal(loads(data), expected)
+            r = self.client.create_network(net_name, **kwargs)
+            self.assertEqual(
+                NP.mock_calls[-1],
+                call(json_data=expected, success=202))
+            self.assert_dicts_are_equal(r, net_recv['network'])
 
     @patch('%s.perform_request' % khttp, return_value=FR())
     def test_connect_server(self, PR):
