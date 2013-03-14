@@ -197,9 +197,7 @@ class Storage(TestCase):
         prfx = 'X-Account-Meta-'
         expected = [call('%s%s' % (prfx, k), v) for k, v in metas.items()]
         self.assertEqual(SH.mock_calls, expected)
-        self.assertEqual(
-            post.mock_calls[-1],
-            call('/%s' % self.client.account, success=202))
+        post.assert_called_once_with('/%s' % self.client.account, success=202)
 
     @patch('%s.post' % storage_pkg, return_value=FR())
     @patch('%s.get_account_info' % storage_pkg, return_value=account_info)
@@ -218,8 +216,8 @@ class Storage(TestCase):
     def test_create_container(self, put):
         cont = 's0m3c0n731n3r'
         self.client.create_container(cont)
-        expected = call('/%s/%s' % (user_id, cont), success=(201, 202))
-        self.assertEqual(put.mock_calls[-1], expected)
+        args = (user_id, cont)
+        put.assert_called_once_with('/%s/%s' % args, success=(201, 202))
         FR.status_code = 202
         self.assertRaises(ClientError, self.client.create_container, cont)
 
@@ -230,7 +228,7 @@ class Storage(TestCase):
         r = self.client.get_container_info(cont)
         self.assert_dicts_are_equal(r, container_info)
         path = '/%s/%s' % (self.client.account, cont)
-        self.assertEqual(head.mock_calls[-1], call(path, success=(204, 404)))
+        head.assert_called_once_with(path, success=(204, 404))
         FR.status_code = 404
         self.assertRaises(ClientError, self.client.get_container_info, cont)
 
@@ -248,14 +246,12 @@ class Storage(TestCase):
     @patch('%s.get' % storage_pkg, return_value=FR())
     @patch('%s.set_param' % storage_pkg)
     def test_list_containers(self, SP, get):
-        FR.json = container_list
+        FR.json, acc = container_list, self.client.account
         r = self.client.list_containers()
+        SP.assert_called_once_with('format', 'json')
+        get.assert_called_once_with('/%s' % acc, success=(200, 204))
         for i in range(len(r)):
             self.assert_dicts_are_equal(r[i], container_list[i])
-        self.assertEqual(SP.mock_calls[-1], call('format', 'json'))
-        self.assertEqual(
-            get.mock_calls[-1],
-            call('/%s' % self.client.account, success=(200., 204)))
 
     @patch('%s.put' % storage_pkg, return_value=FR())
     def test_upload_object(self, put):
@@ -305,17 +301,17 @@ class Storage(TestCase):
         FR.headers = object_info
         path = '/%s/%s/%s' % (self.client.account, self.client.container, obj)
         r = self.client.get_object_info(obj)
+        head.assert_called_once_with(path, success=200)
         self.assertEqual(r, object_info)
-        self.assertEqual(head.mock_calls[-1], call(path, success=200))
 
     @patch('%s.get_object_info' % storage_pkg, return_value=object_info)
     def test_get_object_meta(self, GOI):
         r = self.client.get_object_meta(obj)
+        GOI.assert_called_once_with(obj)
         prfx = 'x-object-meta-'
         for k in [k for k in object_info if k.startswith(prfx)]:
             self.assertEqual(r.pop(k[len(prfx):]), object_info[k])
         self.assertFalse(len(r))
-        self.assertEqual(GOI.mock_calls[-1], call(obj))
 
     @patch('%s.post' % storage_pkg, return_value=FR())
     @patch('%s.set_header' % storage_pkg)
@@ -323,10 +319,9 @@ class Storage(TestCase):
         key = '50m3m3t4k3y'
         self.client.del_object_meta(obj, key)
         prfx = 'X-Object-Meta-'
-        self.assertEqual(SH.mock_calls[-1], call('%s%s' % (prfx, key), ''))
-        self.assertEqual(post.mock_calls[-1], call(
-            '/%s/%s/%s' % (self.client.account, self.client.container, obj),
-            success=202))
+        SH.assert_called_once_with('%s%s' % (prfx, key), '')
+        exp = '/%s/%s/%s' % (self.client.account, self.client.container, obj)
+        post.assert_called_once_with(exp, success=202)
 
     @patch('%s.post' % client_pkg, return_value=FR())
     @patch('%s.set_header' % client_pkg)
@@ -334,8 +329,7 @@ class Storage(TestCase):
         metas = dict(k1='new1', k2='new2', k3='new3')
         cont = self.client.container
         self.client.replace_object_meta(metas)
-        expected = call('/%s/%s' % (user_id, cont), success=202)
-        self.assertEqual(post.mock_calls[-1], expected)
+        post.assert_called_once_with('/%s/%s' % (user_id, cont), success=202)
         prfx = 'X-Object-Meta-'
         expected = [call('%s%s' % (prfx, k), v) for k, v in metas.items()]
         self.assertEqual(SH.mock_calls, expected)
@@ -380,9 +374,8 @@ class Storage(TestCase):
     def test_delete_object(self, delete):
         cont = self.client.container
         self.client.delete_object(obj)
-        self.assertEqual(
-            delete.mock_calls[-1],
-            call('/%s/%s/%s' % (user_id, cont, obj), success=(204, 404)))
+        exp = '/%s/%s/%s' % (user_id, cont, obj)
+        delete.assert_called_once_with(exp, success=(204, 404))
         FR.status_code = 404
         self.assertRaises(ClientError, self.client.delete_object, obj)
 
@@ -394,10 +387,9 @@ class Storage(TestCase):
         r = self.client.list_objects()
         for i in range(len(r)):
             self.assert_dicts_are_equal(r[i], object_list[i])
-        self.assertEqual(
-            get.mock_calls[-1],
-            call('/%s/%s' % (acc, cont), success=(200, 204, 304, 404)))
-        self.assertEqual(SP.mock_calls[-1], call('format', 'json'))
+        exp = '/%s/%s' % (acc, cont)
+        get.assert_called_once_with(exp, success=(200, 204, 304, 404))
+        SP.assert_called_once_with('format', 'json')
         FR.status_code = 304
         self.assertEqual(self.client.list_objects(), [])
         FR.status_code = 404
@@ -410,11 +402,11 @@ class Storage(TestCase):
         path = '/some/awsome/path'
         acc, cont = self.client.account, self.client.container
         self.client.list_objects_in_path(path)
+        exp = '/%s/%s' % (acc, cont)
+        get.assert_called_once_with(exp, success=(200, 204, 404))
         self.assertEqual(
-            get.mock_calls[-1],
-            call('/%s/%s' % (acc, cont), success=(200, 204, 404)))
-        self.assertEqual(SP.mock_calls, [
-            call('format', 'json'), call('path', path)])
+            SP.mock_calls,
+            [call('format', 'json'), call('path', path)])
         FR.status_code = 404
         self.assertRaises(ClientError, self.client.list_objects)
 
