@@ -183,16 +183,13 @@ class Cyclades(TestCase):
             vm_id, 'action',
             json_data=dict(firewallProfile=dict(profile=v)), success=202))
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
-    def test_get_server_stats(self, PR):
+    @patch('%s.servers_get' % cyclades_pkg, return_value=FR())
+    def test_get_server_stats(self, SG):
         vm_id = vm_recv['server']['id']
         stats = dict(stat1='v1', stat2='v2', stat3='v3', stat4='v4')
         FR.json = dict(stats=stats)
         r = self.client.get_server_stats(vm_id)
-        self.assertEqual(self.client.http_client.url, self.url)
-        self.assertEqual(
-            self.client.http_client.path,
-            '/servers/%s/stats' % vm_id)
+        self.assertEqual(SG.mock_calls[-1], call(vm_id, 'stats'))
         self.assert_dicts_are_equal(stats, r)
 
     @patch('%s.perform_request' % khttp, return_value=FR())
