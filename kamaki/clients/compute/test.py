@@ -192,15 +192,14 @@ class Cyclades(TestCase):
                 changes_since=None,
                 command='detail' if detail else ''))
 
-    """
-    @patch('%s.perform_request' % khttp, return_value=FR())
-    def test_get_server_details(self, PR):
+    @patch('%s.servers_get' % compute_pkg, return_value=FR())
+    def test_get_server_details(self, SG):
         vm_id = vm_recv['server']['id']
         r = self.client.get_server_details(vm_id)
-        self.assertEqual(self.client.http_client.url, self.url)
-        self.assertEqual(self.client.http_client.path, '/servers/%s' % vm_id)
         self.assert_dicts_are_equal(r, vm_recv['server'])
+        self.assertEqual(SG.mock_calls[-1], call(vm_id))
 
+    """
     @patch('%s.perform_request' % khttp, return_value=FR())
     def test_update_server_name(self, PR):
         vm_id = vm_recv['server']['id']
