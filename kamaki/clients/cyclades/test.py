@@ -172,47 +172,6 @@ class Cyclades(TestCase):
             self.assertTrue(servers_get.call_args[1]['changes_since'])
 
     @patch('%s.perform_request' % khttp, return_value=FR())
-    def test_get_server_metadata(self, PR):
-        vm_id = vm_recv['server']['id']
-        metadata = dict(m1='v1', m2='v2', m3='v3')
-        FR.json = dict(metadata=dict(values=metadata))
-        r = self.client.get_server_metadata(vm_id)
-        self.assertEqual(self.client.http_client.url, self.url)
-        self.assertEqual(
-            self.client.http_client.path,
-            '/servers/%s/meta' % vm_id)
-        self.assert_dicts_are_equal(r, metadata)
-
-        for k, v in metadata.items():
-            FR.json = dict(meta={k: v})
-            r = self.client.get_server_metadata(vm_id, k)
-            self.assertEqual(self.client.http_client.url, self.url)
-            self.assertEqual(
-                self.client.http_client.path,
-                '/servers/%s/meta/%s' % (vm_id, k))
-            self.assert_dicts_are_equal(r, {k: v})
-
-    @patch('%s.servers_post' % cyclades_pkg, return_value=FR())
-    def test_update_server_metadata(self, servers_post):
-        vm_id = vm_recv['server']['id']
-        metadata = dict(m1='v1', m2='v2', m3='v3')
-        FR.json = dict(metadata=metadata)
-        r = self.client.update_server_metadata(vm_id, **metadata)
-        self.assert_dicts_are_equal(r, metadata)
-        (called_id, cmd) = servers_post.call_args[0]
-        self.assertEqual(called_id, vm_id)
-        self.assertEqual(cmd, 'meta')
-        data = servers_post.call_args[1]['json_data']
-        self.assert_dicts_are_equal(data, dict(metadata=metadata))
-
-    @patch('%s.servers_delete' % cyclades_pkg, return_value=FR())
-    def test_delete_server_metadata(self, servers_delete):
-        vm_id = vm_recv['server']['id']
-        key = 'metakey'
-        self.client.delete_server_metadata(vm_id, key)
-        self.assertEqual((vm_id, 'meta/' + key), servers_delete.call_args[0])
-
-    @patch('%s.perform_request' % khttp, return_value=FR())
     def test_list_flavors(self, PR):
         FR.json = flavor_list
         r = self.client.list_flavors()

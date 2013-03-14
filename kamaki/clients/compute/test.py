@@ -254,14 +254,14 @@ class Cyclades(TestCase):
             vm_id, 'meta',
             json_data=dict(metadata=metadata), success=201))
 
-    """
     @patch('%s.servers_delete' % compute_pkg, return_value=FR())
-    def test_delete_server_metadata(self, servers_delete):
+    def test_delete_server_metadata(self, SD):
         vm_id = vm_recv['server']['id']
         key = 'metakey'
         self.client.delete_server_metadata(vm_id, key)
-        self.assertEqual((vm_id, 'meta/' + key), servers_delete.call_args[0])
+        self.assertEqual(SD.mock_calls[-1], call(vm_id, 'meta/' + key))
 
+    """
     @patch('%s.perform_request' % compute_pkg, return_value=FR())
     def test_list_flavors(self, PR):
         FR.json = flavor_list
