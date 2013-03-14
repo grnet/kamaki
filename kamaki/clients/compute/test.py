@@ -143,7 +143,6 @@ class Cyclades(TestCase):
                 ClientError,
                 self.client.create_server,
                 vm_name, fid, img_ref)
-        self.assertEqual(GID.mock_calls[-1], call(img_ref))
 
         with patch.object(
                 CycladesClient, 'servers_post',
@@ -163,27 +162,27 @@ class Cyclades(TestCase):
         FR.json = vm_list
         for detail in (False, True):
             r = self.client.list_servers(detail)
-            for i, vm in enumerate(vm_list['servers']['values']):
-                self.assert_dicts_are_equal(r[i], vm)
-            self.assertEqual(i + 1, len(r))
             self.assertEqual(SG.mock_calls[-1], call(
                 changes_since=None,
                 command='detail' if detail else ''))
+            for i, vm in enumerate(vm_list['servers']['values']):
+                self.assert_dicts_are_equal(r[i], vm)
+            self.assertEqual(i + 1, len(r))
 
     @patch('%s.servers_get' % compute_pkg, return_value=FR())
     def test_get_server_details(self, SG):
         vm_id = vm_recv['server']['id']
         r = self.client.get_server_details(vm_id)
+        SG.assert_called_once_with(vm_id)
         self.assert_dicts_are_equal(r, vm_recv['server'])
-        self.assertEqual(SG.mock_calls[-1], call(vm_id))
 
     @patch('%s.servers_put' % compute_pkg, return_value=FR())
     def test_update_server_name(self, SP):
         vm_id = vm_recv['server']['id']
         new_name = vm_name + '_new'
         self.client.update_server_name(vm_id, new_name)
-        self.assertEqual(SP.mock_calls[-1], call(vm_id, json_data=dict(
-            server=dict(name=new_name))))
+        SP.assert_called_once_with(vm_id, json_data=dict(
+            server=dict(name=new_name)))
 
     @patch('%s.servers_post' % compute_pkg, return_value=FR())
     def test_reboot_server(self, SP):
@@ -212,7 +211,7 @@ class Cyclades(TestCase):
         metadata = dict(m1='v1', m2='v2', m3='v3')
         FR.json = dict(metadata=dict(values=metadata))
         r = self.client.get_server_metadata(vm_id)
-        self.assertEqual(SG.mock_calls[-1], call(vm_id, '/meta'))
+        SG.assert_called_once_with(vm_id, '/meta')
         self.assert_dicts_are_equal(r, metadata)
 
         for k, v in metadata.items():
@@ -228,16 +227,16 @@ class Cyclades(TestCase):
         FR.json = dict(metadata=metadata)
         r = self.client.update_server_metadata(vm_id, **metadata)
         self.assert_dicts_are_equal(r, metadata)
-        self.assertEqual(SP.mock_calls[-1], call(
+        SP.assert_called_once_with(
             vm_id, 'meta',
-            json_data=dict(metadata=metadata), success=201))
+            json_data=dict(metadata=metadata), success=201)
 
     @patch('%s.servers_delete' % compute_pkg, return_value=FR())
     def test_delete_server_metadata(self, SD):
         vm_id = vm_recv['server']['id']
         key = 'metakey'
         self.client.delete_server_metadata(vm_id, key)
-        self.assertEqual(SD.mock_calls[-1], call(vm_id, 'meta/' + key))
+        SD.assert_called_once_with(vm_id, 'meta/' + key)
 
     @patch('%s.flavors_get' % compute_pkg, return_value=FR())
     def test_list_flavors(self, FG):
@@ -251,7 +250,7 @@ class Cyclades(TestCase):
     def test_get_flavor_details(self, FG):
         FR.json = dict(flavor=flavor_list['flavors'])
         r = self.client.get_flavor_details(fid)
-        self.assertEqual(FG.mock_calls[-1], call(fid))
+        FG.assert_called_once_with(fid)
         self.assert_dicts_are_equal(r, flavor_list['flavors'])
 
     @patch('%s.images_get' % compute_pkg, return_value=FR())
@@ -268,22 +267,19 @@ class Cyclades(TestCase):
     def test_get_image_details(self, IG):
         FR.json = img_recv
         r = self.client.get_image_details(img_ref)
-        self.assertEqual(IG.mock_calls[-1], call(img_ref))
+        IG.assert_called_once_with(img_ref)
         self.assert_dicts_are_equal(r, img_recv['image'])
 
     @patch('%s.images_get' % compute_pkg, return_value=FR())
     def test_get_image_metadata(self, IG):
-        FR.json = dict(metadata=dict(values=img_recv['image']))
-        r = self.client.get_image_metadata(img_ref)
-        self.assertEqual(IG.mock_calls[-1], call('%s' % img_ref, '/meta'))
-        self.assert_dicts_are_equal(img_recv['image'], r)
-        FR.json = dict(meta=img_recv['image'])
-        key = 'somekey'
-        r = self.client.get_image_metadata(img_ref, key)
-        self.assertEqual(
-            IG.mock_calls[-1],
-            call('%s' % img_ref, '/meta/%s' % key))
-        self.assert_dicts_are_equal(img_recv['image'], r)
+        for key in ('', '50m3k3y'):
+            FR.json = dict(meta=img_recv['image']) if (
+                key) else dict(metadata=dict(values=img_recv['image']))
+            r = self.client.get_image_metadata(img_ref, key)
+            self.assertEqual(IG.mock_calls[-1], call(
+                '%s' % img_ref,
+                '/meta%s' % (('/%s' % key) if key else '')))
+            self.assert_dicts_are_equal(img_recv['image'], r)
 
     @patch('%s.servers_delete' % compute_pkg, return_value=FR())
     def test_delete_server(self, SD):
