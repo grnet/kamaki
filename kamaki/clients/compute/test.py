@@ -31,16 +31,13 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from mock import patch, Mock, call
+from mock import patch, call
 from unittest import TestCase
-from json import loads
 
-from kamaki.clients import Client, ClientError
+from kamaki.clients import ClientError
 from kamaki.clients.cyclades import CycladesClient
-from kamaki.clients.cyclades_rest_api import CycladesClientApi
 
 
-compute_pkg_pkg = 'kamaki.clients.connection.kamakicon.KamakiHTTPConnection'
 compute_pkg = 'kamaki.clients.cyclades.CycladesClient'
 
 img_ref = "1m4g3-r3f3r3nc3"
@@ -85,9 +82,9 @@ vm_list = dict(servers=dict(values=[
     dict(name='n1', id=1),
     dict(name='n2', id=2)]))
 flavor_list = dict(flavors=dict(values=[
-        dict(id=41, name="C1R1024D20"),
-        dict(id=42, name="C1R1024D40"),
-        dict(id=43, name="C1R1028D20")]))
+    dict(id=41, name="C1R1024D20"),
+    dict(id=42, name="C1R1024D40"),
+    dict(id=43, name="C1R1028D20")]))
 img_list = dict(images=dict(values=[
     dict(name="maelstrom", id="0fb03e45-7d5a-4515-bd4e-e6bbf6457f06"),
     dict(name="edx_saas", id="1357163d-5fd8-488e-a117-48734c526206"),
@@ -97,25 +94,6 @@ img_list = dict(images=dict(values=[
     dict(name="Ubuntu 12.10", id="3a24fef9-1a8c-47d1-8f11-e07bd5e544fd"),
     dict(name="Debian Base", id="40ace203-6254-4e17-a5cb-518d55418a7d"),
     dict(name="ubuntu_bundled", id="5336e265-5c7c-4127-95cb-2bf832a79903")]))
-net_send = dict(network=dict(dhcp=False, name='someNet'))
-net_recv = dict(network=dict(
-    status="PENDING",
-    updated="2013-03-05T15:04:51.758780+00:00",
-    name="someNet",
-    created="2013-03-05T15:04:51.758728+00:00",
-    cidr6=None,
-    id="2130",
-    gateway6=None,
-    public=False,
-    dhcp=False,
-    cidr="192.168.1.0/24",
-    type="MAC_FILTERED",
-    gateway=None,
-    attachments=dict(values=[dict(name='att1'), dict(name='att2')])))
-net_list = dict(networks=dict(values=[
-    dict(id=1, name='n1'),
-    dict(id=2, name='n2'),
-    dict(id=3, name='n3')]))
 
 
 class FR(object):
@@ -338,15 +316,11 @@ class Cyclades(TestCase):
             call(img_ref, 'meta', json_data=dict(metadata=metadata)))
         self.assert_dicts_are_equal(r, metadata)
 
-    """
     @patch('%s.images_delete' % compute_pkg, return_value=FR())
-    def test_delete_image_metadata(self, images_delete):
+    def test_delete_image_metadata(self, ID):
         key = 'metakey'
         self.client.delete_image_metadata(img_ref, key)
-        self.assertEqual(
-            (img_ref, '/meta/' + key),
-            images_delete.call_args[0])
-    """
+        self.assertEqual(ID.mock_calls[-1], call(img_ref, '/meta/%s' % key))
 
 if __name__ == '__main__':
     from sys import argv

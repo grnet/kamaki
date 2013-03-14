@@ -30,22 +30,17 @@
 # documentation are those of the authors and should not be
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
-from mock import patch, Mock, call
+from mock import patch, call
 from unittest import TestCase
 from json import loads
 
-from kamaki.clients import Client, ClientError
+from kamaki.clients import ClientError
 from kamaki.clients.cyclades import CycladesClient
 from kamaki.clients.cyclades_rest_api import CycladesClientApi
 
 img_ref = "1m4g3-r3f3r3nc3"
 vm_name = "my new VM"
 fid = 42
-vm_send = dict(server=dict(
-    flavorRef=fid,
-    name=vm_name,
-    imageRef=img_ref,
-    metadata=dict(os="debian", users="root")))
 vm_recv = dict(server=dict(
     status="BUILD",
     updated="2013-03-01T10:04:00.637152+00:00",
@@ -59,39 +54,9 @@ vm_recv = dict(server=dict(
     progress=0,
     id=31173,
     metadata=dict(values=dict(os="debian", users="root"))))
-img_recv = dict(image=dict(
-    status="ACTIVE",
-    updated="2013-02-26T11:10:14+00:00",
-    name="Debian Base",
-    created="2013-02-26T11:03:29+00:00",
-    progress=100,
-    id=img_ref,
-    metadata=dict(values=dict(
-        partition_table="msdos",
-        kernel="2.6.32",
-        osfamily="linux",
-        users="root",
-        gui="No GUI",
-        sortorder="1",
-        os="debian",
-        root_partition="1",
-        description="Debian 6.0.7 (Squeeze) Base System"))))
 vm_list = dict(servers=dict(values=[
     dict(name='n1', id=1),
     dict(name='n2', id=2)]))
-flavor_list = dict(flavors=dict(values=[
-        dict(id=41, name="C1R1024D20"),
-        dict(id=42, name="C1R1024D40"),
-        dict(id=43, name="C1R1028D20")]))
-img_list = dict(images=dict(values=[
-    dict(name="maelstrom", id="0fb03e45-7d5a-4515-bd4e-e6bbf6457f06"),
-    dict(name="edx_saas", id="1357163d-5fd8-488e-a117-48734c526206"),
-    dict(name="Debian_Wheezy_Base", id="1f8454f0-8e3e-4b6c-ab8e-5236b728dffe"),
-    dict(name="CentOS", id="21894b48-c805-4568-ac8b-7d4bb8eb533d"),
-    dict(name="Ubuntu Desktop", id="37bc522c-c479-4085-bfb9-464f9b9e2e31"),
-    dict(name="Ubuntu 12.10", id="3a24fef9-1a8c-47d1-8f11-e07bd5e544fd"),
-    dict(name="Debian Base", id="40ace203-6254-4e17-a5cb-518d55418a7d"),
-    dict(name="ubuntu_bundled", id="5336e265-5c7c-4127-95cb-2bf832a79903")]))
 net_send = dict(network=dict(dhcp=False, name='someNet'))
 net_recv = dict(network=dict(
     status="PENDING",
@@ -402,14 +367,6 @@ class Cyclades(TestCase):
         self.client.delete_network(net_id)
         self.assertEqual(self.client.http_client.url, self.url)
         self.assertEqual(self.client.http_client.path, '/networks/%s' % net_id)
-
-    @patch('%s.images_delete' % cyclades_pkg, return_value=FR())
-    def test_delete_image_metadata(self, images_delete):
-        key = 'metakey'
-        self.client.delete_image_metadata(img_ref, key)
-        self.assertEqual(
-            (img_ref, '/meta/' + key),
-            images_delete.call_args[0])
 
 if __name__ == '__main__':
     from sys import argv
