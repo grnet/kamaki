@@ -144,20 +144,16 @@ class Cyclades(TestCase):
             vm_id, 'action',
             json_data=dict(start=dict()), success=202))
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
-    def test_get_server_console(self, PR):
+    @patch('%s.servers_post' % cyclades_pkg, return_value=FR())
+    def test_get_server_console(self, SP):
         cnsl = dict(console=dict(info1='i1', info2='i2', info3='i3'))
         FR.json = cnsl
         vm_id = vm_recv['server']['id']
         r = self.client.get_server_console(vm_id)
-        self.assertEqual(self.client.http_client.url, self.url)
-        self.assertEqual(
-            self.client.http_client.path,
-            '/servers/%s/action' % vm_id)
-        self.assert_dicts_are_equal(cnsl['console'], r)
-        self.assertEqual(
-            PR.call_args[0],
-            ('post',  '{"console": {"type": "vnc"}}', {}, {}))
+        self.assertEqual(SP.mock_calls[-1], call(
+            vm_id, 'action',
+            json_data=dict(console=dict(type='vnc')), success=200))
+        self.assert_dicts_are_equal(r, cnsl['console'])
 
     def test_get_firewall_profile(self):
         vm_id = vm_recv['server']['id']
