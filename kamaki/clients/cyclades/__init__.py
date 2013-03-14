@@ -223,6 +223,8 @@ class CycladesClient(CycladesClientApi):
         :param server_id: integer (str or int)
 
         :param nic_id: (str)
+
+        :returns: (int) the number of nics disconnected
         """
         vm_nets = self.list_server_nics(server_id)
         num_of_disconnections = 0

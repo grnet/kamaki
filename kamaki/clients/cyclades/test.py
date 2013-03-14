@@ -226,8 +226,7 @@ class Cyclades(TestCase):
 
     @patch('%s.networks_post' % cyclades_pkg, return_value=FR())
     def test_disconnect_server(self, NP):
-        vm_id = vm_recv['server']['id']
-        net_id = net_recv['network']['id']
+        net_id, vm_id = net_recv['network']['id'], vm_recv['server']['id']
         nic_id = 'nic-%s-%s' % (net_id, vm_id)
         vm_nics = [
             dict(id=nic_id, network_id=net_id),
@@ -239,11 +238,10 @@ class Cyclades(TestCase):
                 return_value=vm_nics) as LSN:
             r = self.client.disconnect_server(vm_id, nic_id)
             self.assertEqual(r, 1)
-            self.assertEqual(LSN.call_args[0], (vm_id,))
-            self.assertEqual(NP.call_args[0], (net_id, 'action'))
-            self.assertEqual(
-                NP.call_args[1],
-                dict(json_data=dict(remove=dict(attachment=nic_id))))
+            self.assertEqual(LSN.mock_calls[-1], call(vm_id,))
+            self.assertEqual(NP.mock_calls[-1], call(
+                net_id, 'action',
+                json_data=dict(remove=dict(attachment=nic_id))))
 
     @patch('%s.perform_request' % khttp, return_value=FR())
     def test_list_server_nics(self, PR):
