@@ -183,9 +183,9 @@ class Storage(TestCase):
         FR.headers = account_info
         r = self.client.get_account_info()
         self.assert_dicts_are_equal(account_info, r)
-        self.assertEqual(
-            head.mock_calls[-1],
-            call('/%s' % self.client.account, success=(204, 401)))
+        head.assert_called_once_with(
+            '/%s' % self.client.account,
+            success=(204, 401))
         FR.status_code = 401
         self.assertRaises(ClientError, self.client.get_account_info)
 

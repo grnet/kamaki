@@ -285,21 +285,21 @@ class Cyclades(TestCase):
     def test_delete_server(self, SD):
         vm_id = vm_recv['server']['id']
         self.client.delete_server(vm_id)
-        self.assertEqual(SD.mock_calls[-1], call(vm_id))
+        SD.assert_called_once_with(vm_id)
 
     @patch('%s.images_delete' % compute_pkg, return_value=FR())
     def test_delete_image(self, ID):
         self.client.delete_image(img_ref)
-        self.assertEqual(ID.mock_calls[-1], call(img_ref))
+        ID.assert_called_once_with(img_ref)
 
     @patch('%s.images_put' % compute_pkg, return_value=FR())
     def test_create_image_metadata(self, IP):
         (key, val) = ('k1', 'v1')
         FR.json = dict(meta=img_recv['image'])
         r = self.client.create_image_metadata(img_ref, key, val)
-        self.assertEqual(IP.mock_calls[-1], call(
+        IP.assert_called_once_with(
             img_ref, 'meta/%s' % key,
-            json_data=dict(meta={key: val})))
+            json_data=dict(meta={key: val}))
         self.assert_dicts_are_equal(r, img_recv['image'])
 
     @patch('%s.images_post' % compute_pkg, return_value=FR())
@@ -307,16 +307,16 @@ class Cyclades(TestCase):
         metadata = dict(m1='v1', m2='v2', m3='v3')
         FR.json = dict(metadata=metadata)
         r = self.client.update_image_metadata(img_ref, **metadata)
-        self.assertEqual(
-            IP.mock_calls[-1],
-            call(img_ref, 'meta', json_data=dict(metadata=metadata)))
+        IP.assert_called_once_with(
+            img_ref, 'meta',
+            json_data=dict(metadata=metadata))
         self.assert_dicts_are_equal(r, metadata)
 
     @patch('%s.images_delete' % compute_pkg, return_value=FR())
     def test_delete_image_metadata(self, ID):
         key = 'metakey'
         self.client.delete_image_metadata(img_ref, key)
-        self.assertEqual(ID.mock_calls[-1], call(img_ref, '/meta/%s' % key))
+        ID.assert_called_once_with(img_ref, '/meta/%s' % key)
 
 if __name__ == '__main__':
     from sys import argv
