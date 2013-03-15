@@ -234,16 +234,13 @@ class Image(TestCase):
             json=dict(memberships=[dict(member_id=m) for m in members]),
             success=204)
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
-    def test_list_members(self, PR):
-        img0 = example_images_detailed[0]
+    @patch('%s.put' % image_pkg, return_value=FR())
+    def test_list_members(self, get):
+        imgid = example_images_detailed[0]['id']
         members = ['use3r-1d-0', 'us2r-1d-1', 'us3r-1d-2']
         FR.json = dict(members=members)
-        r = self.client.list_members(img0['id'])
-        self.assertEqual(self.client.http_client.url, self.url)
-        self.assertEqual(
-            self.client.http_client.path,
-            '/images/%s/members' % img0['id'])
+        r = self.client.list_members(imgid)
+        get.assert_called_once_with('/images/%s/members' % imgid, success=200)
         self.assertEqual(r, members)
 
     @patch('%s.perform_request' % khttp, return_value=FR())
