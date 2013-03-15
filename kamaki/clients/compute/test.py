@@ -123,38 +123,53 @@ class ComputeRestApi(TestCase):
         FR.json = vm_recv
 
     @patch('%s.get' % rest_pkg, return_value=FR())
-    def test_servers_get(self, get):
-        vm_id = vm_recv['server']['id']
+    def _test_get(self, service, get):
         for args in product(
-                ('', vm_id),
+                ('', '%s_id' % service),
                 ('', 'cmd'),
                 (200, 204),
                 ({}, {'k': 'v'})):
-            (server_id, command, success, kwargs) = args
-            self.client.servers_get(*args[:3], **kwargs)
-            vm_str = '/%s' % server_id if server_id else ''
+            (srv_id, command, success, kwargs) = args
+            method = getattr(self.client, '%s_get' % service)
+            method(*args[:3], **kwargs)
+            srv_str = '/%s' % srv_id if srv_id else ''
             cmd_str = '/%s' % command if command else ''
             self.assertEqual(get.mock_calls[-1], call(
-                '/servers%s%s' % (vm_str, cmd_str),
+                '/%s%s%s' % (service, srv_str, cmd_str),
                 success=success,
                 **kwargs))
 
+    def test_servers_get(self):
+        self._test_get('servers')
+
+    def test_flavors_get(self):
+        self._test_get('flavors')
+
+    def test_images_get(self):
+        self._test_get('images')
+
     @patch('%s.delete' % rest_pkg, return_value=FR())
-    def test_servers_delete(self, delete):
-        vm_id = vm_recv['server']['id']
+    def _test_delete(self, service, delete):
         for args in product(
-                ('', vm_id),
+                ('', '%s_id' % service),
                 ('', 'cmd'),
                 (204, 208),
                 ({}, {'k': 'v'})):
-            (server_id, command, success, kwargs) = args
-            self.client.servers_delete(*args[:3], **args[3])
-            vm_str = '/%s' % server_id if server_id else ''
+            (srv_id, command, success, kwargs) = args
+            method = getattr(self.client, '%s_delete' % service)
+            method(*args[:3], **kwargs)
+            vm_str = '/%s' % srv_id if srv_id else ''
             cmd_str = '/%s' % command if command else ''
             self.assertEqual(delete.mock_calls[-1], call(
-                '/servers%s%s' % (vm_str, cmd_str),
+                '/%s%s%s' % (service, vm_str, cmd_str),
                 success=success,
                 **kwargs))
+
+    def test_servers_delete(self):
+        self._test_delete('servers')
+
+    def test_images_delete(self):
+        self._test_delete('images')
 
     @patch('%s.set_header' % rest_pkg)
     @patch('%s.post' % rest_pkg, return_value=FR())
@@ -204,23 +219,6 @@ class ComputeRestApi(TestCase):
             self.assertEqual(put.mock_calls[-1], call(
                 '/servers%s%s' % (vm_str, cmd_str),
                 data=json_data, success=success,
-                **kwargs))
-
-    @patch('%s.get' % rest_pkg, return_value=FR())
-    def test_flavors_get(self, get):
-        vm_id = vm_recv['server']['id']
-        for args in product(
-                ('', vm_id),
-                ('', 'cmd'),
-                (200, 204),
-                ({}, {'k': 'v'})):
-            (server_id, command, success, kwargs) = args
-            self.client.flavors_get(*args[:3], **kwargs)
-            vm_str = '/%s' % server_id if server_id else ''
-            cmd_str = '/%s' % command if command else ''
-            self.assertEqual(get.mock_calls[-1], call(
-                '/flavors%s%s' % (vm_str, cmd_str),
-                success=success,
                 **kwargs))
 
 
