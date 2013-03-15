@@ -243,20 +243,14 @@ class Image(TestCase):
         get.assert_called_once_with('/images/%s/members' % imgid, success=200)
         self.assertEqual(r, members)
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
-    def test_add_member(self, PR):
-        img0 = example_images_detailed[0]
+    @patch('%s.put' % image_pkg, return_value=FR())
+    def test_add_member(self, put):
+        imgid = example_images_detailed[0]['id']
         new_member = 'us3r-15-n3w'
-        self.assertRaises(
-            ClientError,
-            self.client.add_member,
-            img0['id'], new_member)
-        FR.status_code = 204
-        self.client.add_member(img0['id'], new_member)
-        self.assertEqual(self.client.http_client.url, self.url)
-        self.assertEqual(
-            self.client.http_client.path,
-            '/images/%s/members/%s' % (img0['id'], new_member))
+        self.client.add_member(imgid, new_member)
+        put.assert_called_once_with(
+            '/images/%s/members/%s' % (imgid, new_member),
+            success=204)
 
     @patch('%s.perform_request' % khttp, return_value=FR())
     def test_remove_member(self, PR):
