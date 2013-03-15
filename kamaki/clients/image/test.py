@@ -252,20 +252,14 @@ class Image(TestCase):
             '/images/%s/members/%s' % (imgid, new_member),
             success=204)
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
-    def test_remove_member(self, PR):
-        img0 = example_images_detailed[0]
+    @patch('%s.delete' % image_pkg, return_value=FR())
+    def test_remove_member(self, delete):
+        imgid = example_images_detailed[0]['id']
         old_member = 'us3r-15-0ld'
-        self.assertRaises(
-            ClientError,
-            self.client.remove_member,
-            img0['id'], old_member)
-        FR.status_code = 204
-        self.client.remove_member(img0['id'], old_member)
-        self.assertEqual(self.client.http_client.url, self.url)
-        self.assertEqual(
-            self.client.http_client.path,
-            '/images/%s/members/%s' % (img0['id'], old_member))
+        self.client.remove_member(imgid, old_member)
+        delete.assert_called_once_with(
+            '/images/%s/members/%s' % (imgid, old_member),
+            success=204)
 
     @patch('%s.perform_request' % khttp, return_value=FR())
     def test_list_shared(self, PR):
