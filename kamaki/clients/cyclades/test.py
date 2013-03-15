@@ -159,6 +159,30 @@ class CycladesRestApi(TestCase):
                 success=success,
                 **kwargs))
 
+    @patch('%s.set_header' % rest_pkg)
+    @patch('%s.post' % rest_pkg, return_value=FR())
+    def test_networks_post(self, post, SH):
+        from json import dumps
+        for args in product(
+                ('', 'net_id'),
+                ('', 'cmd'),
+                (None, [dict(json="data"), dict(data="json")]),
+                (202, 204),
+                ({}, {'k': 'v'})):
+            (srv_id, command, json_data, success, kwargs) = args
+            self.client.networks_post(*args[:4], **kwargs)
+            vm_str = '/%s' % srv_id if srv_id else ''
+            cmd_str = '/%s' % command if command else ''
+            if json_data:
+                json_data = dumps(json_data)
+                self.assertEqual(SH.mock_calls[-2:], [
+                    call('Content-Type', 'application/json'),
+                    call('Content-Length', len(json_data))])
+            self.assertEqual(post.mock_calls[-1], call(
+                '/networks%s%s' % (vm_str, cmd_str),
+                data=json_data, success=success,
+                **kwargs))
+
 
 class Cyclades(TestCase):
 
