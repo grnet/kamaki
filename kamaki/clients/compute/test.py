@@ -138,6 +138,23 @@ class ComputeRestApi(TestCase):
                 success=success,
                 **args[3]))
 
+    @patch('%s.delete' % rest_pkg, return_value=FR())
+    def test_servers_delete(self, delete):
+        vm_id = vm_recv['server']['id']
+        for args in product(
+                ('', vm_id),
+                ('', 'cmd'),
+                (204, 208),
+                ({}, {'k': 'v'})):
+            (server_id, command, success, kwargs) = args
+            self.client.servers_delete(*args[:3], **args[3])
+            vm_str = '/%s' % server_id if server_id else ''
+            cmd_str = '/%s' % command if command else ''
+            self.assertEqual(delete.mock_calls[-1], call(
+                '/servers%s%s' % (vm_str, cmd_str),
+                success=success,
+                **args[3]))
+
 
 class Compute(TestCase):
 
