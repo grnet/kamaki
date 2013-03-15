@@ -32,7 +32,7 @@
 # or implied, of GRNET S.A.
 
 from kamaki.clients import ClientError
-from kamaki.clients.compute_rest_api import ComputeClientApi
+from kamaki.clients.compute.rest_api import ComputeClientApi
 from kamaki.clients.utils import path4url
 
 

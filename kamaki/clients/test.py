@@ -36,6 +36,7 @@ from time import sleep
 from inspect import getmembers, isclass
 
 from kamaki.clients.astakos.test import Astakos
+from kamaki.clients.compute.test import Compute, ComputeRestApi
 from kamaki.clients.cyclades.test import Cyclades
 from kamaki.clients.image.test import Image
 from kamaki.clients.storage.test import Storage

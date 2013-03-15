@@ -33,12 +33,14 @@
 
 from mock import patch, call
 from unittest import TestCase
+from itertools import product
 
+from kamaki.clients.compute import ComputeClient, ComputeClientApi
 from kamaki.clients import ClientError
-from kamaki.clients.cyclades import CycladesClient
 
 
-compute_pkg = 'kamaki.clients.cyclades.CycladesClient'
+rest_pkg = 'kamaki.clients.compute.rest_api.ComputeClientApi'
+compute_pkg = 'kamaki.clients.compute.ComputeClient'
 
 img_ref = "1m4g3-r3f3r3nc3"
 vm_name = "my new VM"
@@ -108,7 +110,36 @@ class FR(object):
         pass
 
 
-class Cyclades(TestCase):
+class ComputeRestApi(TestCase):
+
+    """Set up a ComputesRestApi thorough test"""
+    def setUp(self):
+        self.url = 'http://cyclades.example.com'
+        self.token = 'cyc14d3s70k3n'
+        self.client = ComputeClientApi(self.url, self.token)
+
+    def tearDown(self):
+        FR.json = vm_recv
+
+    @patch('%s.get' % rest_pkg, return_value=FR())
+    def test_servers_get(self, get):
+        vm_id = vm_recv['server']['id']
+        for args in product(
+                ('', vm_id),
+                ('', 'cmd'),
+                (200, 204),
+                ({}, {'k': 'v'})):
+            (server_id, command, success, kwargs) = args
+            self.client.servers_get(*args[:3], **args[3])
+            vm_str = '/%s' % server_id if server_id else ''
+            cmd_str = '/%s' % command if command else ''
+            self.assertEqual(get.mock_calls[-1], call(
+                '/servers%s%s' % (vm_str, cmd_str),
+                success=success,
+                **args[3]))
+
+
+class Compute(TestCase):
 
     def assert_dicts_are_equal(self, d1, d2):
         for k, v in d1.items():
@@ -122,7 +153,7 @@ class Cyclades(TestCase):
     def setUp(self):
         self.url = 'http://cyclades.example.com'
         self.token = 'cyc14d3s70k3n'
-        self.client = CycladesClient(self.url, self.token)
+        self.client = ComputeClient(self.url, self.token)
 
     def tearDown(self):
         FR.status_code = 200
@@ -133,7 +164,7 @@ class Cyclades(TestCase):
         return_value=img_recv['image'])
     def test_create_server(self, GID):
         with patch.object(
-                CycladesClient, 'servers_post',
+                ComputeClient, 'servers_post',
                 side_effect=ClientError(
                     'REQUEST ENTITY TOO LARGE',
                     status=403)):
@@ -143,7 +174,7 @@ class Cyclades(TestCase):
                 vm_name, fid, img_ref)
 
         with patch.object(
-                CycladesClient, 'servers_post',
+                ComputeClient, 'servers_post',
                 return_value=FR()) as post:
             r = self.client.create_server(vm_name, fid, img_ref)
             self.assertEqual(r, FR.json['server'])
@@ -161,7 +192,6 @@ class Cyclades(TestCase):
         for detail in (False, True):
             r = self.client.list_servers(detail)
             self.assertEqual(SG.mock_calls[-1], call(
-                changes_since=None,
                 command='detail' if detail else ''))
             for i, vm in enumerate(vm_list['servers']['values']):
                 self.assert_dicts_are_equal(r[i], vm)
@@ -316,7 +346,16 @@ class Cyclades(TestCase):
         self.client.delete_image_metadata(img_ref, key)
         ID.assert_called_once_with(img_ref, '/meta/%s' % key)
 
+
 if __name__ == '__main__':
     from sys import argv
     from kamaki.clients.test import runTestCase
-    runTestCase(Cyclades, 'Cyclades (multi) Client', argv[1:])
+    not_found = True
+    if not argv[1:] or argv[1] == 'Compute':
+        not_found = False
+        runTestCase(Compute, 'Compute Client', argv[2:])
+    if not argv[1:] or argv[1] == 'ComputeRestApi':
+        not_found = False
+        runTestCase(ComputeRestApi, 'ComputeRestApi Client', argv[2:])
+    if not_found:
+        print('TestCase %s not found' % argv[1])
