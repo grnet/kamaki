@@ -224,25 +224,15 @@ class Image(TestCase):
             call('X-Image-Meta-Name', img0_name),
             call('X-Image-Meta-Location', img0_location)])
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
-    def test_set_members(self, PR):
+    @patch('%s.put' % image_pkg, return_value=FR())
+    def test_set_members(self, put):
         img0 = example_images_detailed[0]
         members = ['use3r-1d-0', 'us2r-1d-1', 'us3r-1d-2']
-        self.assertRaises(
-            ClientError,
-            self.client.set_members,
-            img0['id'], members)
-        FR.status_code = 204
         self.client.set_members(img0['id'], members)
-        self.assertEqual(self.client.http_client.url, self.url)
-        self.assertEqual(
-                self.client.http_client.path,
-            '/images/%s/members' % img0['id'])
-        (method, data, a_headers, a_params) = PR.call_args[0]
-        from json import loads
-        memberships = loads(data)['memberships']
-        for membership in memberships:
-            self.assertTrue(membership['member_id'] in members)
+        put.assert_called_once_with(
+            '/images/%s/members' % img0['id'],
+            json=dict(memberships=[dict(member_id=m) for m in members]),
+            success=204)
 
     @patch('%s.perform_request' % khttp, return_value=FR())
     def test_list_members(self, PR):
