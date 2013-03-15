@@ -173,18 +173,17 @@ class ComputeRestApi(TestCase):
 
     @patch('%s.set_header' % rest_pkg)
     @patch('%s.post' % rest_pkg, return_value=FR())
-    def test_servers_post(self, post, SH):
-        vm_id = vm_recv['server']['id']
+    def _test_post(self, service, post, SH):
         for args in product(
-                ('', vm_id),
+                ('', '%s_id' % service),
                 ('', 'cmd'),
                 (None, [dict(json="data"), dict(data="json")]),
                 (202, 204),
                 ({}, {'k': 'v'})):
-            (server_id, command, json_data, success, kwargs) = args
-
-            self.client.servers_post(*args[:4], **kwargs)
-            vm_str = '/%s' % server_id if server_id else ''
+            (srv_id, command, json_data, success, kwargs) = args
+            method = getattr(self.client, '%s_post' % service)
+            method(*args[:4], **kwargs)
+            vm_str = '/%s' % srv_id if srv_id else ''
             cmd_str = '/%s' % command if command else ''
             if json_data:
                 json_data = dumps(json_data)
@@ -192,23 +191,28 @@ class ComputeRestApi(TestCase):
                     call('Content-Type', 'application/json'),
                     call('Content-Length', len(json_data))])
             self.assertEqual(post.mock_calls[-1], call(
-                '/servers%s%s' % (vm_str, cmd_str),
+                '/%s%s%s' % (service, vm_str, cmd_str),
                 data=json_data, success=success,
                 **kwargs))
 
+    def test_servers_post(self):
+        self._test_post('servers')
+
+    def test_images_post(self):
+        self._test_post('images')
+
     @patch('%s.set_header' % rest_pkg)
     @patch('%s.put' % rest_pkg, return_value=FR())
-    def test_servers_put(self, put, SH):
-        vm_id = vm_recv['server']['id']
+    def _test_put(self, service, put, SH):
         for args in product(
-                ('', vm_id),
+                ('', '%s_id' % service),
                 ('', 'cmd'),
                 (None, [dict(json="data"), dict(data="json")]),
                 (204, 504),
                 ({}, {'k': 'v'})):
             (server_id, command, json_data, success, kwargs) = args
-
-            self.client.servers_put(*args[:4], **kwargs)
+            method = getattr(self.client, '%s_put' % service)
+            method(*args[:4], **kwargs)
             vm_str = '/%s' % server_id if server_id else ''
             cmd_str = '/%s' % command if command else ''
             if json_data:
@@ -217,9 +221,15 @@ class ComputeRestApi(TestCase):
                     call('Content-Type', 'application/json'),
                     call('Content-Length', len(json_data))])
             self.assertEqual(put.mock_calls[-1], call(
-                '/servers%s%s' % (vm_str, cmd_str),
+                '/%s%s%s' % (service, vm_str, cmd_str),
                 data=json_data, success=success,
                 **kwargs))
+
+    def test_servers_put(self):
+        self._test_put('servers')
+
+    def test_images_put(self):
+        self._test_put('images')
 
 
 class Compute(TestCase):
