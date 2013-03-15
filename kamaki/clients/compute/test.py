@@ -34,6 +34,7 @@
 from mock import patch, call
 from unittest import TestCase
 from itertools import product
+from json import dumps
 
 from kamaki.clients.compute import ComputeClient, ComputeClientApi
 from kamaki.clients import ClientError
@@ -158,7 +159,6 @@ class ComputeRestApi(TestCase):
     @patch('%s.set_header' % rest_pkg)
     @patch('%s.post' % rest_pkg, return_value=FR())
     def test_servers_post(self, post, SH):
-        from json import dumps
         vm_id = vm_recv['server']['id']
         for args in product(
                 ('', vm_id),
@@ -177,6 +177,31 @@ class ComputeRestApi(TestCase):
                     call('Content-Type', 'application/json'),
                     call('Content-Length', len(json_data))])
             self.assertEqual(post.mock_calls[-1], call(
+                '/servers%s%s' % (vm_str, cmd_str),
+                data=json_data, success=success,
+                **kwargs))
+
+    @patch('%s.set_header' % rest_pkg)
+    @patch('%s.put' % rest_pkg, return_value=FR())
+    def test_servers_put(self, put, SH):
+        vm_id = vm_recv['server']['id']
+        for args in product(
+                ('', vm_id),
+                ('', 'cmd'),
+                (None, [dict(json="data"), dict(data="json")]),
+                (204, 504),
+                ({}, {'k': 'v'})):
+            (server_id, command, json_data, success, kwargs) = args
+
+            self.client.servers_put(*args[:4], **kwargs)
+            vm_str = '/%s' % server_id if server_id else ''
+            cmd_str = '/%s' % command if command else ''
+            if json_data:
+                json_data = dumps(json_data)
+                self.assertEqual(SH.mock_calls[-2:], [
+                    call('Content-Type', 'application/json'),
+                    call('Content-Length', len(json_data))])
+            self.assertEqual(put.mock_calls[-1], call(
                 '/servers%s%s' % (vm_str, cmd_str),
                 data=json_data, success=success,
                 **kwargs))
