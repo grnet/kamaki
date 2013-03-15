@@ -31,8 +31,9 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from mock import patch
+from mock import patch, call
 from unittest import TestCase
+from itertools import product
 
 from kamaki.clients import ClientError
 
@@ -137,15 +138,16 @@ class FR(object):
         pass
 
 khttp = 'kamaki.clients.connection.kamakicon.KamakiHTTPConnection'
+image_pkg = 'kamaki.clients.image.ImageClient'
 
 
 class Image(TestCase):
 
-    def assert_dicts_are_deeply_equal(self, d1, d2):
+    def assert_dicts_are_equal(self, d1, d2):
         for k, v in d1.items():
             self.assertTrue(k in d2)
             if isinstance(v, dict):
-                self.assert_dicts_are_deeply_equal(v, d2[k])
+                self.assert_dicts_are_equal(v, d2[k])
             else:
                 self.assertEqual(unicode(v), unicode(d2[k]))
 
@@ -161,37 +163,18 @@ class Image(TestCase):
         FR.json = example_images
         FR.status_code = 200
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
-    def test_list_public(self, PR):
-        r = self.client.list_public()
-        self.assertEqual(self.client.http_client.url, self.url)
-        self.assertEqual(self.client.http_client.path, '/images/')
-        params = PR.call_args[0][3]
-        self.assertEqual(params['sort_dir'], 'asc')
-        for i in range(len(r)):
-            self.assert_dicts_are_deeply_equal(r[i], example_images[i])
-
-        r = self.client.list_public(order='-')
-        params = PR.call_args[0][3]
-        self.assertEqual(params['sort_dir'], 'desc')
-        self.assertEqual(self.client.http_client.url, self.url)
-        self.assertEqual(self.client.http_client.path, '/images/')
-
-        FR.json = example_images_detailed
-        r = self.client.list_public(detail=True)
-        self.assertEqual(self.client.http_client.url, self.url)
-        self.assertEqual(self.client.http_client.path, '/images/detail')
-        for i in range(len(r)):
-            self.assert_dicts_are_deeply_equal(
-                r[i],
-                example_images_detailed[i])
-
-        size_max = 1000000000
-        r = self.client.list_public(filters=dict(size_max=size_max))
-        params = PR.call_args[0][3]
-        self.assertEqual(params['size_max'], size_max)
-        self.assertEqual(self.client.http_client.url, self.url)
-        self.assertEqual(self.client.http_client.path, '/images/')
+    @patch('%s.get' % image_pkg, return_value=FR())
+    def test_list_public(self, get):
+        a_filter = dict(size_max=42)
+        for args in product((False, True), ({}, a_filter), ('', '-')):
+            (detail, filters, order) = args
+            r = self.client.list_public(*args)
+            filters['sort_dir'] = 'desc' if order.startswith('-') else 'asc'
+            self.assertEqual(get.mock_calls[-1], call(
+                '/images/%s' % ('detail' if detail else ''),
+                async_params=filters, success=200))
+            for i in range(len(r)):
+                self.assert_dicts_are_equal(r[i], example_images[i])
 
     @patch('%s.perform_request' % khttp, return_value=FR())
     def test_get_meta(self, PR):
@@ -207,7 +190,7 @@ class Image(TestCase):
         self.assertEqual(self.client.http_client.path, expected_path)
 
         self.assertEqual(r['id'], img0['id'])
-        self.assert_dicts_are_deeply_equal(r, example_images_detailed[0])
+        self.assert_dicts_are_equal(r, example_images_detailed[0])
 
     @patch('%s.perform_request' % khttp, return_value=FR())
     def test_register(self, PR):
@@ -322,7 +305,7 @@ class Image(TestCase):
             self.client.http_client.path,
             '/shared-images/%s' % img0['id'])
         for i in range(len(r)):
-            self.assert_dicts_are_deeply_equal(r[i], example_images[i])
+            self.assert_dicts_are_equal(r[i], example_images[i])
 
 if __name__ == '__main__':
     from sys import argv
