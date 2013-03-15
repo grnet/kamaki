@@ -35,10 +35,18 @@ from unittest import TestCase
 from mock import patch, call
 from tempfile import NamedTemporaryFile
 from os import urandom
+from itertools import product
+
+try:
+    from collections import OrderedDict
+except ImportError:
+    from kamaki.clients.commisioning.utils.ordereddict import OrderedDict
 
 from kamaki.clients import ClientError
 from kamaki.clients.pithos import PithosClient, PithosRestClient
 
+
+rest_pkg = 'kamaki.clients.pithos.rest_api.PithosRestClient'
 pithos_pkg = 'kamaki.clients.pithos.PithosClient'
 
 user_id = 'ac0un7-1d-5tr1ng'
@@ -154,17 +162,40 @@ class PithosRest(TestCase):
     def setUp(self):
         self.url = 'https://www.example.com/pithos'
         self.token = 'p17h0570k3n'
-        self.client = PithosClient(self.url, self.token)
+        self.client = PithosRestClient(self.url, self.token)
         self.client.account = user_id
         self.client.container = 'c0nt@1n3r_i'
 
     def tearDown(self):
         FR.headers = dict()
-        FR.status_code = 200
         FR.json = dict()
         FR.content = FR.json
-        for f in self.files:
-            f.close()
+
+    @patch('%s.set_param' % rest_pkg)
+    @patch('%s.set_header' % rest_pkg)
+    @patch('%s.head' % rest_pkg, return_value=FR())
+    def test_account_head(self, head, SH, SP):
+        self.client.account_head()
+        for params in product(
+                (None, '50m3-d473'),
+                (None, '50m3-07h3r-d473'),
+                (None, 'y37-4n7h3r-d473'),
+                ((), ('someval',), ('v1', 'v2',)),
+                (dict(), dict(success=200), dict(k='v', v='k'))):
+            args, kwargs = params[-2], params[-1]
+            params = params[:-2]
+            self.client.account_head(*(params + args), **kwargs)
+            unt = params[0]
+            self.assertEqual(SP.mock_calls[-1], call('until', unt, iff=unt))
+            IMS, IUS = params[1], params[2]
+            self.assertEqual(SH.mock_calls[-2:], [
+                call('If-Modified-Since', IMS),
+                call('If-Unmodified-Since', IUS)])
+            self.assertEqual(head.mock_calls[-1], call(
+                '/%s' % self.client.account,
+                *args,
+                success=kwargs.pop('success', 204),
+                **kwargs))
 
 
 class Pithos(TestCase):
