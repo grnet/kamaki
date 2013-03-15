@@ -33,18 +33,14 @@
 
 
 class KamakiConnectionError(Exception):
-    errno = None
 
     def __init__(self, message, errno=None):
         super(KamakiConnectionError, self).__init__(message)
-        if errno:
-            self.errno = errno
+        self.errno = errno if errno else 0
 
 
 class KamakiResponseError(Exception):
-    errno = None
 
     def __init__(self, message, errno=None):
         super(KamakiResponseError, self).__init__(message)
-        if errno:
-            self.errno = errno
+        self.errno = errno if errno else 0
