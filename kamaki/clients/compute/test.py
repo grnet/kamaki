@@ -130,13 +130,13 @@ class ComputeRestApi(TestCase):
                 (200, 204),
                 ({}, {'k': 'v'})):
             (server_id, command, success, kwargs) = args
-            self.client.servers_get(*args[:3], **args[3])
+            self.client.servers_get(*args[:3], **kwargs)
             vm_str = '/%s' % server_id if server_id else ''
             cmd_str = '/%s' % command if command else ''
             self.assertEqual(get.mock_calls[-1], call(
                 '/servers%s%s' % (vm_str, cmd_str),
                 success=success,
-                **args[3]))
+                **kwargs))
 
     @patch('%s.delete' % rest_pkg, return_value=FR())
     def test_servers_delete(self, delete):
@@ -153,7 +153,33 @@ class ComputeRestApi(TestCase):
             self.assertEqual(delete.mock_calls[-1], call(
                 '/servers%s%s' % (vm_str, cmd_str),
                 success=success,
-                **args[3]))
+                **kwargs))
+
+    @patch('%s.set_header' % rest_pkg)
+    @patch('%s.post' % rest_pkg, return_value=FR())
+    def test_servers_post(self, post, SH):
+        from json import dumps
+        vm_id = vm_recv['server']['id']
+        for args in product(
+                ('', vm_id),
+                ('', 'cmd'),
+                (None, [dict(json="data"), dict(data="json")]),
+                (202, 204),
+                ({}, {'k': 'v'})):
+            (server_id, command, json_data, success, kwargs) = args
+
+            self.client.servers_post(*args[:4], **kwargs)
+            vm_str = '/%s' % server_id if server_id else ''
+            cmd_str = '/%s' % command if command else ''
+            if json_data:
+                json_data = dumps(json_data)
+                self.assertEqual(SH.mock_calls[-2:], [
+                    call('Content-Type', 'application/json'),
+                    call('Content-Length', len(json_data))])
+            self.assertEqual(post.mock_calls[-1], call(
+                '/servers%s%s' % (vm_str, cmd_str),
+                data=json_data, success=success,
+                **kwargs))
 
 
 class Compute(TestCase):
