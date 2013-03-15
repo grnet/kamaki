@@ -107,20 +107,19 @@ class CycladesRestApi(TestCase):
 
     @patch('%s.set_param' % rest_pkg)
     @patch('%s.get' % rest_pkg, return_value=FR())
-    def _test_get(self, service, get, SP):
+    def test_servers_get(self, get, SP):
         for args in product(
-                ('', '%s_id' % service),
+                ('', 'vm_id'),
                 ('', 'cmd'),
                 (200, 204),
                 (None, '50m3-d473'),
                 ({}, {'k': 'v'})):
             (srv_id, command, success, changes_since, kwargs) = args
-            method = getattr(self.client, '%s_get' % service)
-            method(*args[:4], **kwargs)
+            self.client.servers_get(*args[:4], **kwargs)
             srv_str = '/%s' % srv_id if srv_id else ''
             cmd_str = '/%s' % command if command else ''
             self.assertEqual(get.mock_calls[-1], call(
-                '/%s%s%s' % (service, srv_str, cmd_str),
+                '/servers%s%s' % (srv_str, cmd_str),
                 success=success,
                 **kwargs))
             if changes_since:
@@ -128,8 +127,37 @@ class CycladesRestApi(TestCase):
                     SP.mock_calls[-1],
                     call('changes-since', changes_since, changes_since))
 
-    def test_servers_get(self):
-        self._test_get('servers')
+    @patch('%s.get' % rest_pkg, return_value=FR())
+    def test_networks_get(self, get):
+        for args in product(
+                ('', 'net_id'),
+                ('', 'cmd'),
+                (200, 204),
+                ({}, {'k': 'v'})):
+            (srv_id, command, success, kwargs) = args
+            self.client.networks_get(*args[:3], **kwargs)
+            srv_str = '/%s' % srv_id if srv_id else ''
+            cmd_str = '/%s' % command if command else ''
+            self.assertEqual(get.mock_calls[-1], call(
+                '/networks%s%s' % (srv_str, cmd_str),
+                success=success,
+                **kwargs))
+
+    @patch('%s.delete' % rest_pkg, return_value=FR())
+    def test_networks_delete(self, delete):
+        for args in product(
+                ('', 'net_id'),
+                ('', 'cmd'),
+                (202, 204),
+                ({}, {'k': 'v'})):
+            (srv_id, command, success, kwargs) = args
+            self.client.networks_delete(*args[:3], **kwargs)
+            srv_str = '/%s' % srv_id if srv_id else ''
+            cmd_str = '/%s' % command if command else ''
+            self.assertEqual(delete.mock_calls[-1], call(
+                '/networks%s%s' % (srv_str, cmd_str),
+                success=success,
+                **kwargs))
 
 
 class Cyclades(TestCase):
