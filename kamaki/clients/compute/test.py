@@ -206,6 +206,23 @@ class ComputeRestApi(TestCase):
                 data=json_data, success=success,
                 **kwargs))
 
+    @patch('%s.get' % rest_pkg, return_value=FR())
+    def test_flavors_get(self, get):
+        vm_id = vm_recv['server']['id']
+        for args in product(
+                ('', vm_id),
+                ('', 'cmd'),
+                (200, 204),
+                ({}, {'k': 'v'})):
+            (server_id, command, success, kwargs) = args
+            self.client.flavors_get(*args[:3], **kwargs)
+            vm_str = '/%s' % server_id if server_id else ''
+            cmd_str = '/%s' % command if command else ''
+            self.assertEqual(get.mock_calls[-1], call(
+                '/flavors%s%s' % (vm_str, cmd_str),
+                success=success,
+                **kwargs))
+
 
 class Compute(TestCase):
 
