@@ -189,46 +189,40 @@ class Image(TestCase):
         self.assertEqual(r['id'], img0['id'])
         self.assert_dicts_are_equal(r, example_images_detailed[0])
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
-    def test_register(self, PR):
+    @patch('%s.set_header' % image_pkg, return_value=FR())
+    @patch('%s.post' % image_pkg, return_value=FR())
+    def test_register(self, post, SH):
         img0 = example_images_detailed[0]
         img0_location = img0['location']
         img0_name = 'A new img0 name'
-        self.client.register(img0_name, img0_location)
-        self.assertEqual(self.client.http_client.url, self.url)
-        self.assertEqual(self.client.http_client.path, '/images/')
-        (method, data, headers, params) = PR.call_args[0]
-        self.assertEqual(method, 'post')
-        self.assertTrue(0 == len(params))
-
-        val = 'Some random value'
-        param_dict = dict(
-            id=val,
-            store=val,
-            disk_format=val,
-            container_format=val,
-            size=val,
-            checksum=val,
-            is_public=val,
-            owner=val)
-        for key in param_dict.keys():
-            param = {key: val}
-            self.client.register(img0_name, img0_location, params=param)
-            (method, data, a_headers, a_params) = PR.call_args[0]
-            key = 'x-image-meta-%s' % key.replace('_', '-')
-            self.assertEqual(a_headers[key], val)
-        self.client.register(img0_name, img0_location, params=param_dict)
-        (method, data, a_headers, a_params) = PR.call_args[0]
-        self.assertEqual(len(param_dict), len(a_headers))
-        for key, val in param_dict.items():
-            key = 'x-image-meta-%s' % key.replace('_', '-')
-            self.assertEqual(a_headers[key], val)
-
-        props = dict(key0='val0', key2='val2', key3='val3')
-        self.client.register(img0_name, img0_location, properties=props)
-        (method, data, a_headers, a_params) = PR.call_args[0]
-        for k, v in props.items():
-            self.assertEquals(a_headers['X-Image-Meta-Property-%s' % k], v)
+        prfx = 'x-image-meta-'
+        proprfx = 'x-image-meta-property-'
+        keys = [
+            'id', 'store', 'dist_format', 'container_format',
+            'size', 'checksum', 'is_public', 'owner']
+        for args in product(
+                ('v_id', None), ('v_store', None),
+                ('v_dist_format', None), ('v_container_format', None),
+                ('v_size', None), ('v_checksum', None),
+                ('v_is_public', None), ('v_owner', None)):
+            params = dict()
+            async_headers = dict()
+            props = dict()
+            for i, k in enumerate(keys):
+                if args[i]:
+                    params[k] = args[i]
+                    async_headers['%s%s' % (prfx, k)] = args[i]
+                    props['%s%s' % (proprfx, args[i])] = k
+            async_headers.update(props)
+        self.client.register(
+            img0_name, img0_location,
+            params=params, properties=props)
+        self.assertEqual(
+            post.mock_calls[-1],
+            call('/images/', async_headers=async_headers, success=200))
+        self.assertEqual(SH.mock_calls[-2:], [
+            call('X-Image-Meta-Name', img0_name),
+            call('X-Image-Meta-Location', img0_location)])
 
     @patch('%s.perform_request' % khttp, return_value=FR())
     def test_set_members(self, PR):
