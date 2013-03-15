@@ -34,11 +34,11 @@
 from sys import stdout
 from time import sleep
 
-from kamaki.clients.cyclades.rest_api import CycladesClientApi
+from kamaki.clients.cyclades.rest_api import CycladesRestClient
 from kamaki.clients import ClientError
 
 
-class CycladesClient(CycladesClientApi):
+class CycladesClient(CycladesRestClient):
     """GRNet Cyclades API client"""
 
     def start_server(self, server_id):

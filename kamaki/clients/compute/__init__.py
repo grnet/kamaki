@@ -32,11 +32,11 @@
 # or implied, of GRNET S.A.
 
 from kamaki.clients import ClientError
-from kamaki.clients.compute.rest_api import ComputeClientApi
+from kamaki.clients.compute.rest_api import ComputeRestClient
 from kamaki.clients.utils import path4url
 
 
-class ComputeClient(ComputeClientApi):
+class ComputeClient(ComputeRestClient):
     """OpenStack Compute API 1.1 client"""
 
     def list_servers(self, detail=False):

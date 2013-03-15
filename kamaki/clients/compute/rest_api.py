@@ -36,7 +36,7 @@ from kamaki.clients.utils import path4url
 import json
 
 
-class ComputeClientApi(Client):
+class ComputeRestClient(Client):
 
     def servers_get(self, server_id='', command='', success=200, **kwargs):
         """GET base_url/servers[/server_id][/command] request

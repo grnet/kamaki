@@ -35,7 +35,7 @@ from unittest import TestCase
 from itertools import product
 
 from kamaki.clients import ClientError
-from kamaki.clients.cyclades import CycladesClient, CycladesClientApi
+from kamaki.clients.cyclades import CycladesClient, CycladesRestClient
 
 img_ref = "1m4g3-r3f3r3nc3"
 vm_name = "my new VM"
@@ -90,17 +90,17 @@ class FR(object):
     def release(self):
         pass
 
-rest_pkg = 'kamaki.clients.cyclades.CycladesClientApi'
+rest_pkg = 'kamaki.clients.cyclades.CycladesRestClient'
 cyclades_pkg = 'kamaki.clients.cyclades.CycladesClient'
 
 
-class CycladesRestApi(TestCase):
+class CycladesRest(TestCase):
 
     """Set up a Cyclades thorough test"""
     def setUp(self):
         self.url = 'http://cyclades.example.com'
         self.token = 'cyc14d3s70k3n'
-        self.client = CycladesClientApi(self.url, self.token)
+        self.client = CycladesRestClient(self.url, self.token)
 
     def tearDown(self):
         FR.json = vm_recv
@@ -444,8 +444,8 @@ if __name__ == '__main__':
     if not argv[1:] or argv[1] == 'Cyclades':
         not_found = False
         runTestCase(Cyclades, 'Cyclades Client', argv[2:])
-    if not argv[1:] or argv[1] == 'CycladesRestApi':
+    if not argv[1:] or argv[1] == 'CycladesRest':
         not_found = False
-        runTestCase(CycladesRestApi, 'CycladesRestApi Client', argv[2:])
+        runTestCase(CycladesRest, 'CycladesRest Client', argv[2:])
     if not_found:
         print('TestCase %s not found' % argv[1])

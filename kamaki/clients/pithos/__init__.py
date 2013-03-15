@@ -40,7 +40,7 @@ from time import time
 from binascii import hexlify
 
 from kamaki.clients import SilentEvent, sendlog
-from kamaki.clients.pithos_rest_api import PithosRestAPI
+from kamaki.clients.pithos.rest_api import PithosRestClient
 from kamaki.clients.storage import ClientError
 from kamaki.clients.utils import path4url, filter_in
 from StringIO import StringIO
@@ -65,7 +65,7 @@ def _range_up(start, end, a_range):
     return (start, end)
 
 
-class PithosClient(PithosRestAPI):
+class PithosClient(PithosRestClient):
     """GRNet Pithos API client"""
 
     def __init__(self, base_url, token, account=None, container=None):

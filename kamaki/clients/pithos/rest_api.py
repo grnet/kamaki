@@ -35,7 +35,7 @@ from kamaki.clients.storage import StorageClient
 from kamaki.clients.utils import path4url
 
 
-class PithosRestAPI(StorageClient):
+class PithosRestClient(StorageClient):
 
     def account_head(
             self,

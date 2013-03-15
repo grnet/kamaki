@@ -36,11 +36,11 @@ from time import sleep
 from inspect import getmembers, isclass
 
 from kamaki.clients.astakos.test import Astakos
-from kamaki.clients.compute.test import Compute, ComputeRestApi
-from kamaki.clients.cyclades.test import Cyclades, CycladesRestApi
+from kamaki.clients.compute.test import Compute, ComputeRest
+from kamaki.clients.cyclades.test import Cyclades, CycladesRest
 from kamaki.clients.image.test import Image
 from kamaki.clients.storage.test import Storage
-from kamaki.clients.pithos.test import Pithos
+from kamaki.clients.pithos.test import Pithos, PithosRest
 
 
 class SilentEvent(TestCase):

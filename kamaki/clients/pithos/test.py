@@ -37,7 +37,7 @@ from tempfile import NamedTemporaryFile
 from os import urandom
 
 from kamaki.clients import ClientError
-from kamaki.clients.pithos import PithosClient as PC
+from kamaki.clients.pithos import PithosClient, PithosRestClient
 
 pithos_pkg = 'kamaki.clients.pithos.PithosClient'
 
@@ -149,6 +149,24 @@ class FR(object):
         pass
 
 
+class PithosRest(TestCase):
+
+    def setUp(self):
+        self.url = 'https://www.example.com/pithos'
+        self.token = 'p17h0570k3n'
+        self.client = PithosClient(self.url, self.token)
+        self.client.account = user_id
+        self.client.container = 'c0nt@1n3r_i'
+
+    def tearDown(self):
+        FR.headers = dict()
+        FR.status_code = 200
+        FR.json = dict()
+        FR.content = FR.json
+        for f in self.files:
+            f.close()
+
+
 class Pithos(TestCase):
 
     files = []
@@ -175,7 +193,7 @@ class Pithos(TestCase):
     def setUp(self):
         self.url = 'https://www.example.com/pithos'
         self.token = 'p17h0570k3n'
-        self.client = PC(self.url, self.token)
+        self.client = PithosClient(self.url, self.token)
         self.client.account = user_id
         self.client.container = 'c0nt@1n3r_i'
 
@@ -334,7 +352,9 @@ class Pithos(TestCase):
     def test_get_object_info(self):
         FR.headers = object_info
         version = 'v3r510n'
-        with patch.object(PC, 'object_head', return_value=FR()) as head:
+        with patch.object(
+                PithosClient, 'object_head',
+                return_value=FR()) as head:
             r = self.client.get_object_info(obj)
             self.assertEqual(r, object_info)
             r = self.client.get_object_info(obj, version=version)
@@ -342,7 +362,7 @@ class Pithos(TestCase):
                 call(obj, version=None),
                 call(obj, version=version)])
         with patch.object(
-                PC, 'object_head',
+                PithosClient, 'object_head',
                 side_effect=ClientError('Obj not found', 404)):
             self.assertRaises(
                 ClientError,
@@ -580,7 +600,7 @@ class Pithos(TestCase):
         FR.json = object_hashmap
         for empty in (304, 412):
             with patch.object(
-                    PC, 'object_get',
+                    PithosClient, 'object_get',
                     side_effect=ClientError('Empty', status=empty)):
                 r = self.client.get_object_hashmap(obj)
                 self.assertEqual(r, {})
@@ -599,7 +619,9 @@ class Pithos(TestCase):
             if_modified_since='some date here',
             if_unmodified_since='some date here',
             data_range='10-20')
-        with patch.object(PC, 'object_get', return_value=FR()) as get:
+        with patch.object(
+                PithosClient, 'object_get',
+                return_value=FR()) as get:
             r = self.client.get_object_hashmap(obj)
             self.assertEqual(r, object_hashmap)
             self.assertEqual(get.mock_calls[-1], call(obj, **exp_args))
@@ -637,7 +659,9 @@ class Pithos(TestCase):
 
     def test_get_account_meta(self):
         key = 'x-account-meta-'
-        with patch.object(PC, 'get_account_info', return_value=account_info):
+        with patch.object(
+                PithosClient, 'get_account_info',
+                return_value=account_info):
             r = self.client.get_account_meta()
             keys = [k for k in r if k.startswith(key)]
             self.assertFalse(keys)
@@ -645,14 +669,18 @@ class Pithos(TestCase):
         acc_info['%sk1' % key] = 'v1'
         acc_info['%sk2' % key] = 'v2'
         acc_info['%sk3' % key] = 'v3'
-        with patch.object(PC, 'get_account_info', return_value=acc_info):
+        with patch.object(
+                PithosClient, 'get_account_info',
+                return_value=acc_info):
             r = self.client.get_account_meta()
             for k in [k for k in acc_info if k.startswith(key)]:
                 self.assertEqual(r[k], acc_info[k])
 
     def test_get_account_group(self):
         key = 'x-account-group-'
-        with patch.object(PC, 'get_account_info', return_value=account_info):
+        with patch.object(
+                PithosClient, 'get_account_info',
+                return_value=account_info):
             r = self.client.get_account_group()
             keys = [k for k in r if k.startswith(key)]
             self.assertFalse(keys)
@@ -660,7 +688,9 @@ class Pithos(TestCase):
         acc_info['%sk1' % key] = 'g1'
         acc_info['%sk2' % key] = 'g2'
         acc_info['%sk3' % key] = 'g3'
-        with patch.object(PC, 'get_account_info', return_value=acc_info):
+        with patch.object(
+                PithosClient, 'get_account_info',
+                return_value=acc_info):
             r = self.client.get_account_group()
             for k in [k for k in acc_info if k.startswith(key)]:
                 self.assertEqual(r[k], acc_info[k])
@@ -726,7 +756,7 @@ class Pithos(TestCase):
         container_plus[key] = metaval
         for ret in ((container_info, {}), (container_plus, {key: metaval})):
             with patch.object(
-                    PC,
+                    PithosClient,
                     'get_container_info',
                     return_value=ret[0]) as GCI:
                 for until in (None, somedate):
@@ -744,7 +774,7 @@ class Pithos(TestCase):
                 (container_info, {key: ''}),
                 (container_plus, {key: metaval})):
             with patch.object(
-                    PC,
+                    PithosClient,
                     'get_container_info',
                     return_value=ret[0]) as GCI:
                 for until in (None, somedate):
@@ -798,7 +828,9 @@ class Pithos(TestCase):
         oinfo = dict(object_info)
         val = 'pubL1c'
         oinfo['x-object-public'] = val
-        with patch.object(PC, 'get_object_info', return_value=oinfo) as GOF:
+        with patch.object(
+                PithosClient, 'get_object_info',
+                return_value=oinfo) as GOF:
             r = self.client.publish_object(obj)
             self.assertEqual(
                 post.mock_calls[-1],
@@ -816,7 +848,9 @@ class Pithos(TestCase):
         expected = dict(read='u1,g1,u2', write='u1')
         info['x-object-sharing'] = '; '.join(
             ['%s=%s' % (k, v) for k, v in expected.items()])
-        with patch.object(PC, 'get_object_info', return_value=info) as GOF:
+        with patch.object(
+                PithosClient, 'get_object_info',
+                return_value=info) as GOF:
             r = self.client.get_object_sharing(obj)
             self.assertEqual(GOF.mock_calls[-1], call(obj))
             self.assert_dicts_are_equal(r, expected)
@@ -920,7 +954,9 @@ class Pithos(TestCase):
         info = dict(object_info)
         info['content-length'] = file_size
         block_size = container_info['x-container-block-size']
-        with patch.object(PC, 'get_object_info', return_value=info) as GOI:
+        with patch.object(
+                PithosClient, 'get_object_info',
+                return_value=info) as GOI:
             for start, end in (
                     (0, file_size + 1),
                     (file_size + 1, file_size + 2)):
@@ -995,4 +1031,12 @@ class Pithos(TestCase):
 if __name__ == '__main__':
     from sys import argv
     from kamaki.clients.test import runTestCase
-    runTestCase(Pithos, 'Pithos+ Client', argv[1:])
+    not_found = True
+    if not argv[1:] or argv[1] == 'Pithos':
+        not_found = False
+        runTestCase(Pithos, 'Pithos Client', argv[2:])
+    if not argv[1:] or argv[1] == 'PithosRest':
+        not_found = False
+        runTestCase(PithosRest, 'PithosRest Client', argv[2:])
+    if not_found:
+        print('TestCase %s not found' % argv[1])

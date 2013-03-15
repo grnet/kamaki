@@ -36,11 +36,11 @@ from unittest import TestCase
 from itertools import product
 from json import dumps
 
-from kamaki.clients.compute import ComputeClient, ComputeClientApi
+from kamaki.clients.compute import ComputeClient, ComputeRestClient
 from kamaki.clients import ClientError
 
 
-rest_pkg = 'kamaki.clients.compute.rest_api.ComputeClientApi'
+rest_pkg = 'kamaki.clients.compute.rest_api.ComputeRestClient'
 compute_pkg = 'kamaki.clients.compute.ComputeClient'
 
 img_ref = "1m4g3-r3f3r3nc3"
@@ -111,13 +111,13 @@ class FR(object):
         pass
 
 
-class ComputeRestApi(TestCase):
+class ComputeRest(TestCase):
 
-    """Set up a ComputesRestApi thorough test"""
+    """Set up a ComputesRest thorough test"""
     def setUp(self):
         self.url = 'http://cyclades.example.com'
         self.token = 'cyc14d3s70k3n'
-        self.client = ComputeClientApi(self.url, self.token)
+        self.client = ComputeRestClient(self.url, self.token)
 
     def tearDown(self):
         FR.json = vm_recv
@@ -447,8 +447,8 @@ if __name__ == '__main__':
     if not argv[1:] or argv[1] == 'Compute':
         not_found = False
         runTestCase(Compute, 'Compute Client', argv[2:])
-    if not argv[1:] or argv[1] == 'ComputeRestApi':
+    if not argv[1:] or argv[1] == 'ComputeRest':
         not_found = False
-        runTestCase(ComputeRestApi, 'ComputeRestApi Client', argv[2:])
+        runTestCase(ComputeRest, 'ComputeRest Client', argv[2:])
     if not_found:
         print('TestCase %s not found' % argv[1])
