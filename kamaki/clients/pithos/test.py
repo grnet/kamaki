@@ -175,7 +175,6 @@ class PithosRest(TestCase):
     @patch('%s.set_header' % rest_pkg)
     @patch('%s.head' % rest_pkg, return_value=FR())
     def test_account_head(self, head, SH, SP):
-        self.client.account_head()
         for params in product(
                 (None, '50m3-d473'),
                 (None, '50m3-07h3r-d473'),
@@ -195,6 +194,38 @@ class PithosRest(TestCase):
                 '/%s' % self.client.account,
                 *args,
                 success=kwargs.pop('success', 204),
+                **kwargs))
+
+    @patch('%s.set_param' % rest_pkg)
+    @patch('%s.set_header' % rest_pkg)
+    @patch('%s.get' % rest_pkg, return_value=FR())
+    def test_account_get(self, get, SH, SP):
+        keys = ('limit', 'marker', 'format', 'shared', 'until')
+        for params in product(
+                (None, 42),
+                (None, 'X'),
+                ('json', 'xml'),
+                (False, True),
+                (None, '50m3-d473'),
+                (None, '50m3-07h3r-d473'),
+                (None, 'y37-4n7h3r-d473'),
+                ((), ('someval',), ('v1', 'v2',)),
+                (dict(), dict(success=200), dict(k='v', v='k'))):
+            args, kwargs = params[-2], params[-1]
+            params = params[:-2]
+            self.client.account_get(*(params + args), **kwargs)
+            self.assertEqual(SP.mock_calls[-5:],
+                [call(keys[i], iff=X) if (
+                    i == 3) else call(
+                        keys[i], X, iff=X) for i, X in enumerate(params[:5])])
+            IMS, IUS = params[5], params[6]
+            self.assertEqual(SH.mock_calls[-2:], [
+                call('If-Modified-Since', IMS),
+                call('If-Unmodified-Since', IUS)])
+            self.assertEqual(get.mock_calls[-1], call(
+                '/%s' % self.client.account,
+                *args,
+                success=kwargs.pop('success', (200, 204)),
                 **kwargs))
 
 

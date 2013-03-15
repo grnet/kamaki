@@ -111,9 +111,9 @@ class PithosRestClient(StorageClient):
 
         self._assert_account()
 
-        self.set_param('format', format, iff=format)
         self.set_param('limit', limit, iff=limit)
         self.set_param('marker', marker, iff=marker)
+        self.set_param('format', format, iff=format)
         self.set_param('shared', iff=show_only_shared)
         self.set_param('until', until, iff=until)
 
