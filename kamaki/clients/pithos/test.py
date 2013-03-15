@@ -228,6 +228,41 @@ class PithosRest(TestCase):
                 success=kwargs.pop('success', (200, 204)),
                 **kwargs))
 
+    @patch('%s.set_param' % rest_pkg)
+    @patch('%s.set_header' % rest_pkg)
+    @patch('%s.post' % rest_pkg, return_value=FR())
+    def test_account_post(self, post, SH, SP):
+        #keys = ('update', 'groups', 'metadata', 'quota', 'versioning')
+        for pm in product(
+                (True, False),
+                ({}, dict(g=['u1', 'u2']), dict(g1=[], g2=['u1', 'u2'])),
+                (None, dict(k1='v1', k2='v2', k3='v2'), dict(k='v')),
+                (None, 42),
+                (None, 'v3r510n1ng'),
+                ((), ('someval',), ('v1', 'v2',)),
+                (dict(), dict(success=200), dict(k='v', v='k'))):
+            args, kwargs = pm[-2], pm[-1]
+            pm = pm[:-2]
+            self.client.account_post(*(pm + args), **kwargs)
+            upd = pm[0]
+            self.assertEqual(SP.mock_calls[-1], call('update', iff=upd))
+            expected = []
+            if pm[1]:
+                expected += [
+                call('X-Account-Group-%s' % k, v) for k, v in pm[1].items()]
+            if pm[2]:
+                expected = [
+                call('X-Account-Meta-%s' % k, v) for k, v in pm[2].items()]
+            expected = [
+                call('X-Account-Policy-Quota', pm[3]),
+                call('X-Account-Policy-Versioning', pm[4])]
+            self.assertEqual(SH.mock_calls[- len(expected):], expected)
+            self.assertEqual(post.mock_calls[-1], call(
+                '/%s' % self.client.account,
+                *args,
+                success=kwargs.pop('success', 202),
+                **kwargs))
+
 
 class Pithos(TestCase):
 
