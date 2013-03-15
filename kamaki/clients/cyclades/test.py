@@ -32,9 +32,10 @@
 # or implied, of GRNET S.A.
 from mock import patch, call
 from unittest import TestCase
+from itertools import product
 
 from kamaki.clients import ClientError
-from kamaki.clients.cyclades import CycladesClient
+from kamaki.clients.cyclades import CycladesClient, CycladesClientApi
 
 img_ref = "1m4g3-r3f3r3nc3"
 vm_name = "my new VM"
@@ -89,7 +90,46 @@ class FR(object):
     def release(self):
         pass
 
+rest_pkg = 'kamaki.clients.cyclades.CycladesClientApi'
 cyclades_pkg = 'kamaki.clients.cyclades.CycladesClient'
+
+
+class CycladesRestApi(TestCase):
+
+    """Set up a Cyclades thorough test"""
+    def setUp(self):
+        self.url = 'http://cyclades.example.com'
+        self.token = 'cyc14d3s70k3n'
+        self.client = CycladesClientApi(self.url, self.token)
+
+    def tearDown(self):
+        FR.json = vm_recv
+
+    @patch('%s.set_param' % rest_pkg)
+    @patch('%s.get' % rest_pkg, return_value=FR())
+    def _test_get(self, service, get, SP):
+        for args in product(
+                ('', '%s_id' % service),
+                ('', 'cmd'),
+                (200, 204),
+                (None, '50m3-d473'),
+                ({}, {'k': 'v'})):
+            (srv_id, command, success, changes_since, kwargs) = args
+            method = getattr(self.client, '%s_get' % service)
+            method(*args[:4], **kwargs)
+            srv_str = '/%s' % srv_id if srv_id else ''
+            cmd_str = '/%s' % command if command else ''
+            self.assertEqual(get.mock_calls[-1], call(
+                '/%s%s%s' % (service, srv_str, cmd_str),
+                success=success,
+                **kwargs))
+            if changes_since:
+                self.assertEqual(
+                    SP.mock_calls[-1],
+                    call('changes-since', changes_since, changes_since))
+
+    def test_servers_get(self):
+        self._test_get('servers')
 
 
 class Cyclades(TestCase):
@@ -320,7 +360,16 @@ class Cyclades(TestCase):
                 self.assertEqual(err.details, [
                     'Network may be still connected to at least one server'])
 
+
 if __name__ == '__main__':
     from sys import argv
     from kamaki.clients.test import runTestCase
-    runTestCase(Cyclades, 'Cyclades (multi) Client', argv[1:])
+    not_found = True
+    if not argv[1:] or argv[1] == 'Cyclades':
+        not_found = False
+        runTestCase(Cyclades, 'Cyclades Client', argv[2:])
+    if not argv[1:] or argv[1] == 'CycladesRestApi':
+        not_found = False
+        runTestCase(CycladesRestApi, 'CycladesRestApi Client', argv[2:])
+    if not_found:
+        print('TestCase %s not found' % argv[1])
