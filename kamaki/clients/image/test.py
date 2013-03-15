@@ -176,8 +176,8 @@ class Image(TestCase):
             for i in range(len(r)):
                 self.assert_dicts_are_equal(r[i], example_images[i])
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
-    def test_get_meta(self, PR):
+    @patch('%s.head' % image_pkg, return_value=FR())
+    def test_get_meta(self, head):
         img0 = example_images[0]
         FR.json = img0
         img0_headers = {}
@@ -185,10 +185,7 @@ class Image(TestCase):
             img0_headers['x-image-meta-%s' % k] = v
         FR.headers = img0_headers
         r = self.client.get_meta(img0['id'])
-        self.assertEqual(self.client.http_client.url, self.url)
-        expected_path = '/images/%s' % img0['id']
-        self.assertEqual(self.client.http_client.path, expected_path)
-
+        head.assert_called_once_with('/images/%s' % img0['id'], success=200)
         self.assertEqual(r['id'], img0['id'])
         self.assert_dicts_are_equal(r, example_images_detailed[0])
 
