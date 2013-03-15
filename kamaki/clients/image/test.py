@@ -35,8 +35,6 @@ from mock import patch, call
 from unittest import TestCase
 from itertools import product
 
-from kamaki.clients import ClientError
-
 example_images = [
     {
         "status": "available",
@@ -59,7 +57,7 @@ example_images = [
         "container_format": "bare",
         "id": "5963020b-ab74-4e11-bc59-90c494bbdedb",
         "size": 2589802496}]
-
+imgid = "b4713f20-3a41-4eaf-81ae-88698c18b3e8"
 example_images_detailed = [
     {
         "status": "available",
@@ -137,7 +135,6 @@ class FR(object):
     def release(self):
         pass
 
-khttp = 'kamaki.clients.connection.kamakicon.KamakiHTTPConnection'
 image_pkg = 'kamaki.clients.image.ImageClient'
 
 
@@ -156,8 +153,6 @@ class Image(TestCase):
         self.token = 'an1m@g370k3n=='
         from kamaki.clients.image import ImageClient
         self.client = ImageClient(self.url, self.token)
-        from kamaki.clients.connection.kamakicon import KamakiHTTPConnection
-        self.C = KamakiHTTPConnection
 
     def tearDown(self):
         FR.json = example_images
@@ -226,17 +221,15 @@ class Image(TestCase):
 
     @patch('%s.put' % image_pkg, return_value=FR())
     def test_set_members(self, put):
-        img0 = example_images_detailed[0]
         members = ['use3r-1d-0', 'us2r-1d-1', 'us3r-1d-2']
-        self.client.set_members(img0['id'], members)
+        self.client.set_members(imgid, members)
         put.assert_called_once_with(
-            '/images/%s/members' % img0['id'],
+            '/images/%s/members' % imgid,
             json=dict(memberships=[dict(member_id=m) for m in members]),
             success=204)
 
-    @patch('%s.put' % image_pkg, return_value=FR())
+    @patch('%s.get' % image_pkg, return_value=FR())
     def test_list_members(self, get):
-        imgid = example_images_detailed[0]['id']
         members = ['use3r-1d-0', 'us2r-1d-1', 'us3r-1d-2']
         FR.json = dict(members=members)
         r = self.client.list_members(imgid)
@@ -245,7 +238,6 @@ class Image(TestCase):
 
     @patch('%s.put' % image_pkg, return_value=FR())
     def test_add_member(self, put):
-        imgid = example_images_detailed[0]['id']
         new_member = 'us3r-15-n3w'
         self.client.add_member(imgid, new_member)
         put.assert_called_once_with(
@@ -254,22 +246,17 @@ class Image(TestCase):
 
     @patch('%s.delete' % image_pkg, return_value=FR())
     def test_remove_member(self, delete):
-        imgid = example_images_detailed[0]['id']
         old_member = 'us3r-15-0ld'
         self.client.remove_member(imgid, old_member)
         delete.assert_called_once_with(
             '/images/%s/members/%s' % (imgid, old_member),
             success=204)
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
-    def test_list_shared(self, PR):
-        img0 = example_images_detailed[0]
+    @patch('%s.get' % image_pkg, return_value=FR())
+    def test_list_shared(self, get):
         FR.json = dict(shared_images=example_images)
-        r = self.client.list_shared(img0['id'])
-        self.assertEqual(self.client.http_client.url, self.url)
-        self.assertEqual(
-            self.client.http_client.path,
-            '/shared-images/%s' % img0['id'])
+        r = self.client.list_shared(imgid)
+        get.assert_called_once_with('/shared-images/%s' % imgid, success=200)
         for i in range(len(r)):
             self.assert_dicts_are_equal(r[i], example_images[i])
 
