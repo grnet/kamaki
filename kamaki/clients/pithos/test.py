@@ -328,6 +328,30 @@ class PithosRest(TestCase):
                 success=kwargs.pop('success', 200),
                 **kwargs))
 
+    @patch('%s.set_header' % rest_pkg)
+    @patch('%s.put' % rest_pkg, return_value=FR())
+    def test_container_put(self, put, SH):
+        for pm in product(
+                (None, 42),
+                (None, 'v3r51on1ng'),
+                (dict(), dict(k1='v2'), dict(k2='v2', k3='v3')),
+                ((), ('someval',)),
+                (dict(), dict(success=400), dict(k='v', v='k'))):
+            args, kwargs = pm[-2:]
+            pm = pm[:-2]
+            self.client.container_put(*(pm + args), **kwargs)
+            quota, versioning, metas = pm[-3:]
+            exp = [
+                call('X-Container-Policy-Quota', quota),
+                call('X-Container-Policy-Versioning', versioning)] + [
+                call('X-Container-Meta-%s' % k, v) for k, v in metas.items()]
+            self.assertEqual(SH.mock_calls[- len(exp):], exp)
+            self.assertEqual(put.mock_calls[-1], call(
+                '/%s/%s' % (self.client.account, self.client.container),
+                *args,
+                success=kwargs.pop('success', (201, 202)),
+                **kwargs))
+
 
 class Pithos(TestCase):
 

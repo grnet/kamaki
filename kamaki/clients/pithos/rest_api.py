@@ -306,11 +306,11 @@ class PithosRestClient(StorageClient):
         """
         self._assert_container()
 
+        self.set_header('X-Container-Policy-Quota', quota)
+        self.set_header('X-Container-Policy-Versioning', versioning)
         if metadata:
             for metaname, metaval in metadata.items():
                 self.set_header('X-Container-Meta-' + metaname, metaval)
-        self.set_header('X-Container-Policy-Quota', quota)
-        self.set_header('X-Container-Policy-Versioning', versioning)
 
         path = path4url(self.account, self.container)
         success = kwargs.pop('success', (201, 202))
