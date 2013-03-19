@@ -495,7 +495,7 @@ class PithosRestClient(StorageClient):
         return self.get(path, *args, success=success, **kwargs)
 
     def object_put(
-            self, object,
+            self, obj,
             format='json',
             hashmap=False,
             delimiter=None,
@@ -513,7 +513,7 @@ class PithosRestClient(StorageClient):
             content_disposition=None,
             manifest=None,
             permissions=None,
-            public=None,
+            public=False,
             metadata=None,
             *args, **kwargs):
         """ Full Pithos+ PUT at object level
@@ -607,7 +607,7 @@ class PithosRestClient(StorageClient):
             for key, val in metadata.items():
                 self.set_header('X-Object-Meta-' + key, val)
 
-        path = path4url(self.account, self.container, object)
+        path = path4url(self.account, self.container, obj)
         success = kwargs.pop('success', 201)
         return self.put(path, *args, success=success, **kwargs)
 
