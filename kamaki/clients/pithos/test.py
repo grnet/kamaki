@@ -412,6 +412,37 @@ class PithosRest(TestCase):
                 success=kwargs.pop('success', 204),
                 **kwargs))
 
+    @patch('%s.set_param' % rest_pkg)
+    @patch('%s.set_header' % rest_pkg)
+    @patch('%s.head' % rest_pkg, return_value=FR())
+    def test_object_head(self, head, SH, SP):
+        for pm in product(
+                (None, 'v3r510n'),
+                (None, '1f-374g'),
+                (None, '1f-n0-74g'),
+                (None, '1f-m0d-51nc3'),
+                (None, '1f-unm0d-51nc3'),
+                ((), ('someval',)),
+                (dict(), dict(success=400), dict(k='v', v='k'))):
+            args, kwargs = pm[-2:]
+            pm = pm[:-2]
+            self.client.object_head(obj, *(pm + args), **kwargs)
+            vrs, etag, netag, ims, ius = pm[:5]
+            self.assertEqual(
+                SP.mock_calls[-1],
+                call('version', vrs, iff=vrs))
+            self.assertEqual(SH.mock_calls[-4:], [
+                call('If-Match', etag),
+                call('If-None-Match', netag),
+                call('If-Modified-Since', ims),
+                call('If-Unmodified-Since', ius)])
+            acc, cont = self.client.account, self.client.container
+            self.assertEqual(head.mock_calls[-1], call(
+                '/%s/%s/%s' % (acc, cont, obj),
+                *args,
+                success=kwargs.pop('success', 200),
+                **kwargs))
+
 
 class Pithos(TestCase):
 

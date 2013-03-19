@@ -391,7 +391,7 @@ class PithosRestClient(StorageClient):
         return self.delete(path, *args, success=success, **kwargs)
 
     def object_head(
-            self, object,
+            self, obj,
             version=None,
             if_etag_match=None,
             if_etag_not_match=None,
@@ -430,7 +430,7 @@ class PithosRestClient(StorageClient):
         self.set_header('If-Modified-Since', if_modified_since)
         self.set_header('If-Unmodified-Since', if_unmodified_since)
 
-        path = path4url(self.account, self.container, object)
+        path = path4url(self.account, self.container, obj)
         success = kwargs.pop('success', 200)
         return self.head(path, *args, success=success, **kwargs)
 
