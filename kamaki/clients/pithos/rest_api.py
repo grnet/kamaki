@@ -612,7 +612,7 @@ class PithosRestClient(StorageClient):
         return self.put(path, *args, success=success, **kwargs)
 
     def object_copy(
-            self, object, destination,
+            self, obj, destination,
             format='json',
             ignore_content_type=False,
             if_etag_match=None,
@@ -699,7 +699,7 @@ class PithosRestClient(StorageClient):
             for key, val in metadata.items():
                 self.set_header('X-Object-Meta-' + key, val)
 
-        path = path4url(self.account, self.container, object)
+        path = path4url(self.account, self.container, obj)
         success = kwargs.pop('success', 201)
         return self.copy(path, *args, success=success, **kwargs)
 
