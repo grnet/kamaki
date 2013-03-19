@@ -249,8 +249,8 @@ class PithosRestClient(StorageClient):
             existence queries, <key><op><value> for value queries, where <op>
             can be one of =, !=, <=, >=, <, >)
 
-        :param shared: (bool) If true, only shared containers will be included
-            in results
+        :param show_only_shared: (bool) If true, only shared containers will
+            be included in results
 
         :param until: (string) optional timestamp
 
@@ -267,7 +267,6 @@ class PithosRestClient(StorageClient):
 
         self._assert_container()
 
-        self.set_param('format', format, iff=format)
         self.set_param('limit', limit, iff=limit)
         self.set_param('marker', marker, iff=marker)
         if not path:
@@ -275,6 +274,7 @@ class PithosRestClient(StorageClient):
             self.set_param('delimiter', delimiter, iff=delimiter)
         else:
             self.set_param('path', path)
+        self.set_param('format', format, iff=format)
         self.set_param('shared', iff=show_only_shared)
         if meta:
             self.set_param('meta',  ','.join(meta))

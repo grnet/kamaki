@@ -287,6 +287,47 @@ class PithosRest(TestCase):
                 success=kwargs.pop('success', 204),
                 **kwargs))
 
+    @patch('%s.set_param' % rest_pkg)
+    @patch('%s.set_header' % rest_pkg)
+    @patch('%s.get' % rest_pkg, return_value=FR())
+    def test_container_get(self, get, SH, SP):
+        for pm in product(
+                (None, 42),
+                (None, 'X'),
+                (None, 'some/prefix'),
+                (None, 'delimiter'),
+                (None, '/some/path'),
+                ('json', 'some-format'),
+                ([], ['k1', 'k2', 'k3']),
+                (False, True),
+                (None, 'unt1l-d473'),
+                (None, 'y37-4n47h3r'),
+                (None, '4n47h3r-d473'),
+                ((), ('someval',)),
+                (dict(), dict(success=400), dict(k='v', v='k'))):
+            args, kwargs = pm[-2:]
+            pm = pm[:-2]
+            self.client.container_get(*(pm + args), **kwargs)
+            lmt, mrk, prfx, dlm, path, frmt, meta, shr, unt = pm[:-2]
+            exp = [call('limit', lmt, iff=lmt), call('marker', mrk, iff=mrk)]
+            exp += [call('path', path)] if path else [
+                call('prefix', prfx, iff=prfx),
+                call('delimiter', dlm, iff=dlm)]
+            exp += [call('format', frmt, iff=frmt), call('shared', iff=shr)]
+            if meta:
+                exp += [call('meta', ','.join(meta))]
+            exp += [call('until', unt, iff=unt)]
+            self.assertEqual(SP.mock_calls[- len(exp):], exp)
+            ims, ius = pm[-2:]
+            self.assertEqual(SH.mock_calls[-2:], [
+                call('If-Modified-Since', ims),
+                call('If-Unmodified-Since', ius)])
+            self.assertEqual(get.mock_calls[-1], call(
+                '/%s/%s' % (self.client.account, self.client.container),
+                *args,
+                success=kwargs.pop('success', 200),
+                **kwargs))
+
 
 class Pithos(TestCase):
 
