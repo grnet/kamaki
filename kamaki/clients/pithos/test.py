@@ -653,6 +653,68 @@ class PithosRest(TestCase):
                 success=kwargs.pop('success', 201),
                 **kwargs))
 
+    @patch('%s.set_param' % rest_pkg)
+    @patch('%s.set_header' % rest_pkg)
+    @patch('%s.post' % rest_pkg, return_value=FR())
+    def test_object_post(self, post, SH, SP):
+        for pm in product(
+                ('json', 'f0rm47'),
+                (False, True),
+                (dict(), dict(read=['u1', 'g2'], write=['u1'])),
+                (False, True),
+                (dict(), dict(k2='v2', k3='v3')),
+                ((), ('someval',)),
+                (dict(), dict(success=400), dict(k='v', v='k'))):
+            args, kwargs = pm[-2:]
+            pm = pm[:-2]
+            terms = [None] * 13
+            for i in range(len(terms)):
+                if randint(0, 2):
+                    terms[i] = 'val_%s' % randint(13, 1024)
+            self.client.object_post(
+                obj,
+                *(pm[:2] + tuple(terms) + pm[2:] + args),
+                **kwargs)
+            format, update = pm[:2]
+            self.assertEqual(SP.mock_calls[-2:], [
+                call('format', format, iff=format),
+                call('update', iff=update)])
+            (
+                im, inm, clen, ctype, crng, trenc, cenc,
+                condis, srcobj, srcacc, srcvrs, obytes, mnfs) = terms
+            exp = [
+                call('If-Match', im),
+                call('If-None-Match', inm),
+                call('Content-Length', clen, iff=not trenc),
+                call('Content-Type', ctype),
+                call('Content-Range', crng),
+                call('Transfer-Encoding', trenc),
+                call('Content-Encoding', cenc),
+                call('Content-Disposition', condis),
+                call('X-Source-Object', srcobj),
+                call('X-Source-Account', srcacc),
+                call('X-Source-Version', srcvrs),
+                call('X-Object-Bytes', obytes),
+                call('X-Object-Manifest', mnfs)]
+            perms, public, metas = pm[2:]
+            if perms:
+                perm_str = ''
+                for ptype, pval in perms.items():
+                    if pval:
+                        perm_str += ';' if perm_str else ''
+                        perm_str += '%s=%s' % (ptype, ','.join(pval))
+                exp += [call('X-Object-Sharing', perm_str)]
+            exp += [call('X-Object-Public', public)]
+            for k, v in metas.items():
+                exp += [call('X-Object-Meta-%s' % k, v)]
+            self.assertEqual(SH.mock_calls[- len(exp):], exp)
+            acc, cont = self.client.account, self.client.container
+            self.assertEqual(post.mock_calls[-1], call(
+                '/%s/%s/%s' % (acc, cont, obj),
+                *args,
+                success=kwargs.pop('success', (202, 204)),
+                **kwargs))
+
 
 class Pithos(TestCase):
 

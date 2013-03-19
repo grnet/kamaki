@@ -791,7 +791,7 @@ class PithosRestClient(StorageClient):
         return self.move(path, *args, success=success, **kwargs)
 
     def object_post(
-            self, object,
+            self, obj,
             format='json',
             update=True,
             if_etag_match=None,
@@ -893,12 +893,12 @@ class PithosRestClient(StorageClient):
                 if perm_list:
                     perms += ';' if perms else ''
                     perms += '%s=%s' % (perm_type, ','.join(perm_list))
-                self.set_header('X-Object-Sharing', perms)
+            self.set_header('X-Object-Sharing', perms)
         self.set_header('X-Object-Public', public)
         for key, val in metadata.items():
             self.set_header('X-Object-Meta-' + key, val)
 
-        path = path4url(self.account, self.container, object)
+        path = path4url(self.account, self.container, obj)
         success = kwargs.pop('success', (202, 204))
         return self.post(path, *args, success=success, **kwargs)
 
