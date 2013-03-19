@@ -1,3 +1,9 @@
+kamaki (0.7.7-1) UNRELEASED; urgency=low
+
+  * New upstream version
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Tue, 19 Mar 2013 13:35:16 +0200
+
 kamaki (0.6.3.3-1) stable; urgency=low
 
   * Remove OrderedDict Dependency
