@@ -715,6 +715,31 @@ class PithosRest(TestCase):
                 success=kwargs.pop('success', (202, 204)),
                 **kwargs))
 
+    @patch('%s.set_param' % rest_pkg)
+    @patch('%s.delete' % rest_pkg, return_value=FR())
+    def test_object_delete(self, delete, SP):
+        for pm in product(
+                (None, 'until'),
+                (None, 'delim'),
+                ((), ('someval',)),
+                (dict(), dict(success=400), dict(k='v', v='k'))):
+            args, kwargs = pm[-2:]
+            pm = pm[:-2]
+            self.client.object_delete(
+                obj,
+                *(pm + args),
+                **kwargs)
+            until, dlm = pm[-2:]
+            self.assertEqual(SP.mock_calls[-2:], [
+                call('until', until, iff=until),
+                call('delimiter', dlm, iff=dlm)])
+            acc, cont = self.client.account, self.client.container
+            self.assertEqual(delete.mock_calls[-1], call(
+                '/%s/%s/%s' % (acc, cont, obj),
+                *args,
+                success=kwargs.pop('success', 204),
+                **kwargs))
+
 
 class Pithos(TestCase):
 
