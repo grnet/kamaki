@@ -101,7 +101,8 @@ class ComputeClient(ComputeClientApi):
                 if isinstance(err.details, list):
                     tmp_err = err.details
                 else:
-                    tmp_err = unicode(err.details).split(',')
+                    errd = '%s' % err.details
+                    tmp_err = errd.split(',')
                 tmp_err = tmp_err[0].split(':')
                 tmp_err = tmp_err[2].split('"')
                 err.message = tmp_err[1]

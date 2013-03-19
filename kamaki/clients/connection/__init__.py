@@ -136,15 +136,27 @@ class HTTPConnection(object):
     """An abstract HTTP Connection mechanism. Subclass implementation required
     """
 
-    def __init__(self, method=None, url=None, params={}, headers={}):
+    def __init__(
+            self,
+            method=None, url=None, params={}, headers={}, poolsize=8):
         self.headers = headers
         self.params = params
         self.url = url
         self.path = ''
         self.method = method
+        self.poolsize = poolsize
+
+    @property
+    def poolsize(self):
+        return self._poolsize
+
+    @poolsize.setter
+    def poolsize(self, v):
+        assert isinstance(v, (int, long)) and v > 0
+        self._poolsize = v
 
     def set_header(self, name, value):
-        self.headers[unicode(name)] = unicode(value)
+        self.headers['%s' % name] = '%s' % value
 
     def remove_header(self, name):
         try:

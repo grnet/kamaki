@@ -33,10 +33,11 @@
 
 from urlparse import urlparse
 from objpool.http import get_http_connection
+from traceback import format_stack
+
 from kamaki.clients.connection import HTTPConnection, HTTPResponse
 from kamaki.clients.connection.errors import HTTPConnectionError
 from kamaki.clients.connection.errors import HTTPResponseError
-from socket import gaierror, error
 
 from json import loads
 
@@ -50,23 +51,30 @@ class KamakiHTTPResponse(HTTPResponse):
         if self.prefetched:
             return
 
-        ready = False
-        while not ready:
+        try:
+            ready = False
+            while not ready:
+                try:
+                    r = self.request.getresponse()
+                except ResponseNotReady:
+                    sleep(0.001)
+                    continue
+                break
+            self.prefetched = True
+            headers = {}
+            for k, v in r.getheaders():
+                headers.update({k: v})
+            self.headers = headers
+            self.content = r.read()
+            self.status_code = r.status
+            self.status = r.reason
+        finally:
             try:
-                r = self.request.getresponse()
-            except ResponseNotReady:
-                sleep(0.001)
-                continue
-            break
-        self.prefetched = True
-        headers = {}
-        for k, v in r.getheaders():
-            headers.update({k: v})
-        self.headers = headers
-        self.content = r.read()
-        self.status_code = r.status
-        self.status = r.reason
-        self.request.close()
+                self.request.close()
+            except Exception as err:
+                from kamaki.clients import recvlog
+                recvlog.debug('\n'.join(['%s' % type(err)] + format_stack()))
+                raise
 
     @property
     def text(self):
@@ -74,7 +82,7 @@ class KamakiHTTPResponse(HTTPResponse):
         :returns: (str) content
         """
         self._get_response()
-        return unicode(self._content)
+        return '%s' % self._content
 
     @text.setter
     def test(self, v):
@@ -102,7 +110,12 @@ class KamakiHTTPResponse(HTTPResponse):
         content hasn't been used.
         """
         if not self.prefetched:
-            self.request.close()
+            try:
+                self.request.close()
+            except Exception as err:
+                from kamaki.clients import recvlog
+                recvlog.debug('\n'.join(['%s' % type(err)] + format_stack()))
+                raise
 
 
 class KamakiHTTPConnection(HTTPConnection):
@@ -123,9 +136,9 @@ class KamakiHTTPConnection(HTTPConnection):
         for k, v in extra_params.items():
             params[k] = v
         for i, (key, val) in enumerate(params.items()):
-            param_str = ('?' if i == 0 else '&') + unicode(key)
+            param_str = '%s%s' % ('?' if i == 0 else '&', key)
             if val is not None:
-                param_str += '=' + unicode(val)
+                param_str += '=%s' % val
             url += param_str
 
         parsed = urlparse(url)
@@ -167,7 +180,10 @@ class KamakiHTTPConnection(HTTPConnection):
 
         #get connection from pool
         try:
-            conn = get_http_connection(netloc=netloc, scheme=scheme)
+            conn = get_http_connection(
+                netloc=netloc,
+                scheme=scheme,
+                pool_size=self.poolsize)
         except ValueError as ve:
             raise HTTPConnectionError(
                 'Cannot establish connection to %s %s' % (self.url, ve),
@@ -184,7 +200,6 @@ class KamakiHTTPConnection(HTTPConnection):
                 'Cannot connect to %s: %s' % (self.url, ioe.strerror),
                 errno=ioe.errno)
         except Exception as err:
-            from traceback import format_stack
             from kamaki.clients import recvlog
             recvlog.debug('\n'.join(['%s' % type(err)] + format_stack()))
             conn.close()

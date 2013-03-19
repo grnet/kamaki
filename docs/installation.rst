@@ -6,7 +6,9 @@ This guide describes the standard installation process for kamaki, with the aspi
 
 * Kamaki repository: `http://code.grnet.gr/git/kamaki <http://code.grnet.gr/git/kamaki>`_
 
-* Synnefo Linux packages: `http://apt.dev.grnet.gr <http://apt.dev.grnet.gr>`_, `http://apt2.dev.grnet.gr <http://apt2.dev.grnet.gr>`_
+* Kamaki at pypi: `http://pypi.python.org/pypi/kamaki <https://pypi.python.org/pypi/kamaki>`_
+
+* Synnefo Linux packages: `http://apt2.dev.grnet.gr <http://apt2.dev.grnet.gr>`_
 
 Linux and Unix-like enviroments
 -------------------------------
@@ -73,10 +75,10 @@ Install ansicolors and/or progress (Optional but recommended)
     $ sudo apt-get install python-ansicolors
     $ sudo apt-get install python-progress
 
-.. _installing-from-source-ref:
+.. _installing-from-pypi-ref:
 
-Installing from source (git repos.)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Installing from pypi
+^^^^^^^^^^^^^^^^^^^^
 
 Requirements
 """"""""""""
@@ -102,83 +104,78 @@ With virtualenv users can setup kamaki and synnefo services in a sandbox environ
 
 A more detailed example of using virtual env can be found at the `snf-image-creator setup guide <http://docs.dev.grnet.gr/snf-image-creator/latest/install.html#python-virtual-environment>`_
 
-Install objpool (was: snf-common)
-"""""""""""""""""""""""""""""""""
-
-Kamaki is based on python-objpool. The objpool package is easy to install from source, even on windows platforms:
-
-.. code-block:: console
-
-    $ git clone http://code.grnet.gr/git/objpool
-    $ cd objpool
-    $ ./setup build install
-    $ cd -
-
 Install kamaki
 """"""""""""""
 
-Kamaki can be downloaded from `this location <https://code.grnet.gr/projects/kamaki/files>`_, where users can pick the version they prefer and unzip it locally:
+.. code-block:: console
+
+    $ pip install kamaki
+
+Install ansicolors / progress
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Packages **ansicolors** and **progress** are not required for running kamaki, but
+they are recommended as a user experience improvement. In specific, ansicolors
+adds colors to kamaki responses and progress adds progressbars to the commands
+that can make use of it (*/store download*, */store upload*, */server wait* etc.)
+
+Debian and Ubuntu
+"""""""""""""""""
+
+Follow the `Debian <#debian>`_ or `Ubuntu <#ubuntu>`_ installation procedure described earlier
+and then type:
 
 .. code-block:: console
 
-    $ tar xvfz kamaki-0.7.tar.gz
+    #For ansicolors
+    $ sudo apt-get install python-ansicolors
 
-or it can be downloaded directly from the git repository:
+    # For progress
+    $ sudo apt-get install python-progress
 
-.. code-block:: console
+From source
+"""""""""""
 
-    $ git clone http://code.grnet.gr/git/kamaki
-
-and then installed by the setup script:
-
-.. code-block:: console
-
-    $ cd kamaki
-    $ ./setup build install
-
-Install progress and/or ansicolors (optional)
-"""""""""""""""""""""""""""""""""""""""""""""
-
-progress: command-line progress bars (in some commands)
-
-ansicolors: color kamaki output (can switched on and off in `setup <setup.html>`_)
+If setuptools is not installed, `install them <http://pypi.python.org/pypi/setuptools>`_ and then type:
 
 .. code-block:: console
 
-    $ pip install progress
+    #For ansicolors
     $ pip install ansicolors
+
+    #For progress
+    $ pip install progress
 
 Mac OS X
 --------
 
-Kamaki can be installed on Mac OS X systems from source, by following the steps at :ref:`installing-from-source-ref`.
+Kamaki can be installed on Mac OS X systems from source, by following the steps at :ref:`installing-from-pypi-ref`.
 
 Windows
 -------
 
-Kamaki can run on Windows, either on standard Windows console, or inside an improved command line shell. The present guide presents a tested method for setting up kamaki in windows
+Kamaki can be installed on Windows by following the pypi method. Installing the requirements is a bit different than in other systems. 
+
+The full process is detailed in the following:
 
 Requirements
 ^^^^^^^^^^^^
 
 * Python 2.7 or better (`Official versions <http://www.python.org/getit>`_)
 
-* Git (download `windows version <http://git-scm.com/download/win>`_)
-
 * Setuptools (`Official versions and workarounds <http://pypi.python.org/pypi/setuptools>`_)
 
-Installation from source
-^^^^^^^^^^^^^^^^^^^^^^^^
+Users who have already set up python and setuptools (e.g. for another project) may skip python and / or setup tools installation.
 
 Install python
-""""""""""""""
+^^^^^^^^^^^^^^
 
 Download and run the Windows installer from `here <http://www.python.org/getit>`_
 
 Users should pick the installer that fits their windows version and architecture.
 
 Add python to windows path
-""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The following will allow users to run python and python scripts from command line.
 
@@ -193,7 +190,7 @@ The following will allow users to run python and python scripts from command lin
 .. warning:: C:\\Python should be replaced with the actual python path in the system, e.g. C:\\Python27
 
 Install setuptools
-""""""""""""""""""
+^^^^^^^^^^^^^^^^^^
 
 According to the corresponding `python org page <http://pypi.python.org/pypi/setuptools>`_, the setuptools installer doesn't currently work on 64bit machines.
 
@@ -207,41 +204,19 @@ According to the corresponding `python org page <http://pypi.python.org/pypi/set
     Installation finished
     C:\Downloads\>
 
-Install GIT
-"""""""""""
-
-`Download GIT <http://git-scm.com/download/win>`_ and run the graphic installer. During the installation, users will be able to modify some installation options. The present guide is tested with the default selections.
-
-After the installation is completed, a GIT standalone shell will be installed (a desktop shortcut is created, by default). Users are advised to run kamaki through this shell.
-
 Install kamaki
-""""""""""""""
+^^^^^^^^^^^^^^
 
-* Run the GIT standalone shell
+.. code-block:: console
 
-* Enter the location where kamaki will be installed, e.g. **C:\\**
+    $ easy_setup kamaki
 
-    .. code-block:: console
+Install progress (optional)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-        $ cd /c/
+progress: command-line progress bars (in some commands)
 
-* Download source from GRNET repository
+.. code-block:: console
 
-    .. code-block:: console
+    $ easy_setup progress
 
-        $ git clone http://code.grnet.gr/git/kamaki
-        Cloning into 'kamaki'...
-        Receiving objects: ...
-        Resolving Deltas: ...
-
-* Enter source and install kamaki
-
-    .. code-block:: console
-
-        $ cd kamaki
-        $ python setup.py install
-        running install
-        ...
-        Finished processing dependencies for kamaki==0.7
-
-    $ kamaki --version
