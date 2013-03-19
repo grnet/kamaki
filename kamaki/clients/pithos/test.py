@@ -352,6 +352,45 @@ class PithosRest(TestCase):
                 success=kwargs.pop('success', (201, 202)),
                 **kwargs))
 
+    @patch('%s.set_param' % rest_pkg)
+    @patch('%s.set_header' % rest_pkg)
+    @patch('%s.post' % rest_pkg, return_value=FR())
+    def test_container_post(self, post, SH, SP):
+        for pm in product(
+                (True, False),
+                ('json', 'some-format'),
+                (None, 'quota'),
+                (None, 'v3r51on1ng'),
+                (dict(), dict(k1='v2'), dict(k2='v2', k3='v3')),
+                (None, 'content-type'),
+                (None, 42),
+                (None, 'transfer-encoding'),
+                ((), ('someval',)),
+                (dict(), dict(success=400), dict(k='v', v='k'))):
+            args, kwargs = pm[-2:]
+            pm = pm[:-2]
+            self.client.container_post(*(pm + args), **kwargs)
+            upd, frmt = pm[:2]
+            self.assertEqual(SP.mock_calls[-2:], [
+                call('update', iff=upd),
+                call('format', frmt, iff=frmt)])
+            qta, vrs, metas, ctype, clen, trenc = pm[2:]
+            prfx = 'X-Container-Meta-'
+            exp = [
+                call('X-Container-Policy-Quota', qta),
+                call('X-Container-Policy-Versioning', vrs)] + [
+                call('%s%s' % (prfx, k), v) for k, v in metas.items()] + [
+                call('Content-Type', ctype),
+                call('Content-Length', clen),
+                call('Transfer-Encoding', trenc)]
+            self.assertEqual(SH.mock_calls[- len(exp):], exp)
+            ims, ius = pm[-2:]
+            self.assertEqual(post.mock_calls[-1], call(
+                '/%s/%s' % (self.client.account, self.client.container),
+                *args,
+                success=kwargs.pop('success', 202),
+                **kwargs))
+
 
 class Pithos(TestCase):
 

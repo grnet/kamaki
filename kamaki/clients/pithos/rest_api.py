@@ -348,20 +348,20 @@ class PithosRestClient(StorageClient):
 
         :param content_length: (string) set a custrom content length
 
-        :param transfer_encoding: (string) set a custrom transfer encoding
+        :param transfer_encoding: (string) set a custom transfer encoding
 
         :returns: ConnectionResponse
         """
         self._assert_container()
 
-        self.set_param('format', format, iff=format)
         self.set_param('update', iff=update)
+        self.set_param('format', format, iff=format)
 
+        self.set_header('X-Container-Policy-Quota', quota)
+        self.set_header('X-Container-Policy-Versioning', versioning)
         if metadata:
             for metaname, metaval in metadata.items():
                 self.set_header('X-Container-Meta-' + metaname, metaval)
-        self.set_header('X-Container-Policy-Quota', quota)
-        self.set_header('X-Container-Policy-Versioning', versioning)
         self.set_header('Content-Type', content_type)
         self.set_header('Content-Length', content_length)
         self.set_header('Transfer-Encoding', transfer_encoding)
