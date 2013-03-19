@@ -241,7 +241,7 @@ class PithosRest(TestCase):
                 (None, 'v3r510n1ng'),
                 ((), ('someval',), ('v1', 'v2',)),
                 (dict(), dict(success=200), dict(k='v', v='k'))):
-            args, kwargs = pm[-2], pm[-1]
+            args, kwargs = pm[-2:]
             pm = pm[:-2]
             self.client.account_post(*(pm + args), **kwargs)
             upd = pm[0]
@@ -261,6 +261,30 @@ class PithosRest(TestCase):
                 '/%s' % self.client.account,
                 *args,
                 success=kwargs.pop('success', 202),
+                **kwargs))
+
+    @patch('%s.set_param' % rest_pkg)
+    @patch('%s.set_header' % rest_pkg)
+    @patch('%s.head' % rest_pkg, return_value=FR())
+    def test_container_head(self, head, SH, SP):
+        for pm in product(
+                (None, '4-d473'),
+                (None, '47h3r-d473'),
+                (None, 'y37-4n47h3r'),
+                ((), ('someval',)),
+                (dict(), dict(success=200), dict(k='v', v='k'))):
+            args, kwargs = pm[-2:]
+            pm = pm[:-2]
+            self.client.container_head(*(pm + args), **kwargs)
+            unt, ims, ius = pm[0:3]
+            self.assertEqual(SP.mock_calls[-1], call('until', unt, iff=unt))
+            self.assertEqual(SH.mock_calls[-2:], [
+                call('If-Modified-Since', ims),
+                call('If-Unmodified-Since', ius)])
+            self.assertEqual(head.mock_calls[-1], call(
+                '/%s/%s' % (self.client.account, self.client.container),
+                *args,
+                success=kwargs.pop('success', 204),
                 **kwargs))
 
 
