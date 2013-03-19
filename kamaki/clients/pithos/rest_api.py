@@ -388,7 +388,7 @@ class PithosRestClient(StorageClient):
 
         path = path4url(self.account, self.container)
         success = kwargs.pop('success', 204)
-        return self.delete(path, success=success)
+        return self.delete(path, *args, success=success, **kwargs)
 
     def object_head(
             self, object,
