@@ -601,6 +601,58 @@ class PithosRest(TestCase):
                 success=kwargs.pop('success', 201),
                 **kwargs))
 
+    @patch('%s.set_param' % rest_pkg)
+    @patch('%s.set_header' % rest_pkg)
+    @patch('%s.move' % rest_pkg, return_value=FR())
+    def test_object_move(self, move, SH, SP):
+        for pm in product(
+                ('json', 'f0rm47'),
+                (False, True),
+                (None, 'ifmatch'),
+                (None, 'ifnonematch'),
+                (None, 'destination'),
+                (None, 'destinationaccount'),
+                (None, 'content-type'),
+                (None, 'content-encoding'),
+                (None, 'content-disp'),
+                (dict(), dict(read=['u1', 'g2'], write=['u1'])),
+                (False, True),
+                (dict(), dict(k2='v2', k3='v3')),
+                ((), ('someval',)),
+                (dict(), dict(success=400), dict(k='v', v='k'))):
+            args, kwargs = pm[-2:]
+            pm = pm[:-2]
+            self.client.object_move(obj, *(pm + args), **kwargs)
+            format, ict = pm[:2]
+            self.assertEqual(SP.mock_calls[-2:], [
+                call('format', format, iff=format),
+                call('ignore_content_type', iff=ict)])
+            im, inm, d, da, ct, ce, cd, perms, public, metas = pm[2:]
+            exp = [call('If-Match', im),
+                call('If-None-Match', inm),
+                call('Destination', d),
+                call('Destination-Account', da),
+                call('Content-Type', ct),
+                call('Content-Encoding', ce),
+                call('Content-Disposition', cd)]
+            if perms:
+                perm_str = ''
+                for ptype, pval in perms.items():
+                    if pval:
+                        perm_str += ';' if perm_str else ''
+                        perm_str += '%s=%s' % (ptype, ','.join(pval))
+                exp += [call('X-Object-Sharing', perm_str)]
+            exp += [call('X-Object-Public', public)]
+            for k, v in metas.items():
+                exp += [call('X-Object-Meta-%s' % k, v)]
+            self.assertEqual(SH.mock_calls[- len(exp):], exp)
+            acc, cont = self.client.account, self.client.container
+            self.assertEqual(move.mock_calls[-1], call(
+                '/%s/%s/%s' % (acc, cont, obj),
+                *args,
+                success=kwargs.pop('success', 201),
+                **kwargs))
+
 
 class Pithos(TestCase):
 
