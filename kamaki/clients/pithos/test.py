@@ -443,6 +443,45 @@ class PithosRest(TestCase):
                 success=kwargs.pop('success', 200),
                 **kwargs))
 
+    @patch('%s.set_param' % rest_pkg)
+    @patch('%s.set_header' % rest_pkg)
+    @patch('%s.get' % rest_pkg, return_value=FR())
+    def test_object_get(self, get, SH, SP):
+        for pm in product(
+                ('json', 'f0rm47'),
+                (False, True),
+                (None, 'v3r510n'),
+                (None, 'range=74-63'),
+                (False, True),
+                (None, '3746'),
+                (None, 'non-3746'),
+                (None, '1f-m0d'),
+                (None, '1f-unm0d'),
+                ((), ('someval',)),
+                (dict(), dict(success=400), dict(k='v', v='k'))):
+            args, kwargs = pm[-2:]
+            pm = pm[:-2]
+            self.client.object_get(obj, *(pm + args), **kwargs)
+            format, hashmap, version = pm[:3]
+            self.assertEqual(SP.mock_calls[-3:], [
+                call('format', format, iff=format),
+                call('hashmap', hashmap, iff=hashmap),
+                call('version', version, iff=version)])
+            rng, ifrng, im, inm, ims, ius = pm[-6:]
+            self.assertEqual(SH.mock_calls[-6:], [
+                call('Range', rng),
+                call('If-Range', '', ifrng and rng),
+                call('If-Match', im),
+                call('If-None-Match', inm),
+                call('If-Modified-Since', ims),
+                call('If-Unmodified-Since', ius)])
+            acc, cont = self.client.account, self.client.container
+            self.assertEqual(get.mock_calls[-1], call(
+                '/%s/%s/%s' % (acc, cont, obj),
+                *args,
+                success=kwargs.pop('success', 200),
+                **kwargs))
+
 
 class Pithos(TestCase):
 

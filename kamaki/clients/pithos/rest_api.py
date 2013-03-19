@@ -435,7 +435,7 @@ class PithosRestClient(StorageClient):
         return self.head(path, *args, success=success, **kwargs)
 
     def object_get(
-            self, object,
+            self, obj,
             format='json',
             hashmap=False,
             version=None,
@@ -480,8 +480,8 @@ class PithosRestClient(StorageClient):
         self._assert_container()
 
         self.set_param('format', format, iff=format)
-        self.set_param('version', version, iff=version)
         self.set_param('hashmap', hashmap, iff=hashmap)
+        self.set_param('version', version, iff=version)
 
         self.set_header('Range', data_range)
         self.set_header('If-Range', '', if_range and data_range)
@@ -490,7 +490,7 @@ class PithosRestClient(StorageClient):
         self.set_header('If-Modified-Since', if_modified_since)
         self.set_header('If-Unmodified-Since', if_unmodified_since)
 
-        path = path4url(self.account, self.container, object)
+        path = path4url(self.account, self.container, obj)
         success = kwargs.pop('success', 200)
         return self.get(path, *args, success=success, **kwargs)
 
