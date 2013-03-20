@@ -77,14 +77,28 @@ class SilentEvent(TestCase):
 
 #  TestCase auxiliary methods
 
-def runTestCase(cls, test_name, args=[]):
+def runTestCase(cls, test_name, args=[], failure_collector=[]):
+    """
+    :param cls: (TestCase) a set of Tests
+
+    :param test_name: (str)
+
+    :param args: (list) these are prefixed with test_ and used as params when
+        instantiating cls
+
+    :param failure_collector: (list) collects info of test failures
+
+    :returns: (int) total # of run tests
+    """
     suite = TestSuite()
     if args:
         suite.addTest(cls('_'.join(['test'] + args)))
     else:
         suite.addTest(makeSuite(cls))
     print('* Test * %s *' % test_name)
-    TextTestRunner(verbosity=2).run(suite)
+    r = TextTestRunner(verbosity=2).run(suite)
+    failure_collector += r.failures
+    return r.testsRun
 
 
 def _add_value(foo, value):
@@ -107,11 +121,20 @@ def get_test_classes(module=__import__(__name__), name=''):
 
 def main(argv):
     found = False
+    failure_collector = list()
+    num_of_tests = 0
     for cls, name in get_test_classes(name=argv[1] if len(argv) > 1 else ''):
         found = True
-        runTestCase(cls, name, argv[2:])
+        num_of_tests += runTestCase(cls, name, argv[2:], failure_collector)
     if not found:
         print('Test "%s" not found' % ' '.join(argv[1:]))
+    else:
+        for i, failure in enumerate(failure_collector):
+            print('Failure %s: ' % (i + 1))
+            for field in failure:
+                print('\t%s' % field)
+        print('\nTotal tests run: %s' % num_of_tests)
+        print('Total failures: %s' % len(failure_collector))
 
 
 if __name__ == '__main__':

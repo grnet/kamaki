@@ -77,12 +77,6 @@ class Utils(TestCase):
             else:
                 self.assertEqual(unicode(v), unicode(d2[k]))
 
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
-
     def test__matches(self):
         for args in (
                 ('example', 'example'), ('example', 'example', True),
