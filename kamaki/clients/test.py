@@ -148,6 +148,41 @@ class SilentEvent(TestCase):
                 self.assertFalse(t.exception)
 
 
+class FakeConnection(object):
+    """A fake Connection class"""
+
+    def __init__(self):
+        pass
+
+
+class Client(TestCase):
+
+    def assert_dicts_are_equal(self, d1, d2):
+        for k, v in d1.items():
+            self.assertTrue(k in d2)
+            if isinstance(v, dict):
+                self.assert_dicts_are_equal(v, d2[k])
+            else:
+                self.assertEqual(unicode(v), unicode(d2[k]))
+
+    def setUp(self):
+        from kamaki.clients import Client
+        self.base_url = 'http://example.com'
+        self.token = 's0m370k3n=='
+        self.client = Client(self.base_url, self.token, FakeConnection())
+
+    def test___init__(self):
+        self.assertEqual(self.client.base_url, self.base_url)
+        self.assertEqual(self.client.token, self.token)
+        self.assert_dicts_are_equal(self.client.headers, {})
+        DATE_FORMATS = [
+            '%a %b %d %H:%M:%S %Y',
+            '%A, %d-%b-%y %H:%M:%S GMT',
+            '%a, %d %b %Y %H:%M:%S GMT']
+        self.assertEqual(self.client.DATE_FORMATS, DATE_FORMATS)
+        self.assertTrue(isinstance(self.client.http_client, FakeConnection))
+
+
 #  TestCase auxiliary methods
 
 def runTestCase(cls, test_name, args=[], failure_collector=[]):
