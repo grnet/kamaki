@@ -35,6 +35,11 @@ from unittest import makeSuite, TestSuite, TextTestRunner, TestCase
 from time import sleep
 from inspect import getmembers, isclass
 
+from kamaki.clients.connection.test import (
+    KamakiConnection,
+    KamakiHTTPConnection,
+    KamakiResponse,
+    KamakiHTTPResponse)
 from kamaki.clients.utils.test import Utils
 from kamaki.clients.astakos.test import Astakos
 from kamaki.clients.compute.test import Compute, ComputeRest

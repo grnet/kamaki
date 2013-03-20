@@ -31,7 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from unittest import TestCase, TestSuite, makeSuite, TextTestRunner
+from unittest import TestCase
 from mock import Mock, patch, call
 from random import randrange
 from urllib2 import quote
@@ -362,26 +362,18 @@ class KamakiResponse(TestCase):
         self.assertTrue(isinstance(r, str))
 
 
-def get_test_classes(module=__import__(__name__), name=''):
-    from inspect import getmembers, isclass
-    for objname, obj in getmembers(module):
-        if (objname == name or not name) and isclass(obj) and (
-                issubclass(obj, TestCase)):
-            yield (obj, objname)
-
-
-def main(argv):
-    for cls, name in get_test_classes(name=argv[1] if len(argv) > 1 else ''):
-        args = argv[2:]
-        suite = TestSuite()
-        if args:
-            suite.addTest(cls('_'.join(['test'] + args)))
-        else:
-            suite.addTest(makeSuite(cls))
-        print('Test %s' % name)
-        TextTestRunner(verbosity=2).run(suite)
-
-
 if __name__ == '__main__':
     from sys import argv
-    main(argv)
+    from kamaki.clients.test import runTestCase
+    classes = dict(
+        KamakiConnection=KamakiConnection,
+        KamakiHTTPConnection=KamakiHTTPConnection,
+        KamakiHTTPResponse=KamakiHTTPResponse,
+        KamakiResponse=KamakiResponse)
+    not_found = True
+    for k, cls in classes.items():
+        if not argv[1:] or argv[1] == k:
+            not_found = False
+            runTestCase(cls, '%s Client' % k, argv[2:])
+    if not_found:
+        print('TestCase %s not found' % argv[1])
