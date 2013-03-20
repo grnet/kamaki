@@ -90,21 +90,3 @@ def path4url(*args):
     while '//' in r:
         r = r.replace('//', '/')
     return ('/%s' % r.strip('/')) if r else ''
-
-
-def params4url(params):
-    """{'key1':'val1', 'key2':None, 'key3':15} --> "?key1=val1&key2&key3=15"
-
-    :param params: (dict) request parameters in the form key:val
-
-    :returns: (str) http-request friendly in the form ?key1=val1&key2=val2&...
-    """
-
-    assert(type(params) is dict)
-    result = ''
-    dlmtr = '?'
-    for name in params:
-        result += '%s%s' % (dlmtr, name)
-        result += '=%s' % params[name] or result
-        dlmtr = '&'
-    return result

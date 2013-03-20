@@ -123,6 +123,16 @@ class Utils(TestCase):
             else:
                 self.assert_dicts_are_equal(r, dict())
 
+    def test_path4url(self):
+        utf = u'\u03a6\u03bf\u03cd\u03c4\u03c3\u03bf\u03c2'.encode('utf-8')
+        for expected, args in (
+                ('', ('')),
+                ('/path1/path2', ('path1', 'path2')),
+                ('/1/number/0.28', (1, 'number', 0.28)),
+                ('/1/n/u/m/b/er/X', ('//1//', '//n//u///m////b/er/', 'X//')),
+                ('/p1/%s/p2' % utf.decode('utf-8'), ('p1', utf, 'p2'))):
+            self.assertEqual(utils.path4url(*args), expected)
+
 
 if __name__ == '__main__':
     from sys import argv
