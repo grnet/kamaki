@@ -107,7 +107,6 @@ class SilentEvent(Thread):
 
 
 class Client(object):
-    MAX_THREADS = 7
 
     def __init__(self, base_url, token, http_client=KamakiHTTPConnection()):
         self.base_url = base_url
@@ -118,18 +117,23 @@ class Client(object):
             '%A, %d-%b-%y %H:%M:%S GMT',
             '%a, %d %b %Y %H:%M:%S GMT']
         self.http_client = http_client
+        self.MAX_THREADS = 7
 
     def _init_thread_limit(self, limit=1):
+        assert isinstance(limit, int) and limit > 0, 'Thread limit not a +int'
         self._thread_limit = limit
         self._elapsed_old = 0.0
         self._elapsed_new = 0.0
 
     def _watch_thread_limit(self, threadlist):
+        self._thread_limit = getattr(self, '_thread_limit', 1)
+        self._elapsed_new = getattr(self, '_elapsed_new', 0.0)
+        self._elapsed_old = getattr(self, '_elapsed_old', 0.0)
         recvlog.debug('# running threads: %s' % len(threadlist))
-        if (self._elapsed_old > self._elapsed_new) and (
+        if self._elapsed_old and self._elapsed_old >= self._elapsed_new and (
                 self._thread_limit < self.MAX_THREADS):
             self._thread_limit += 1
-        elif self._elapsed_old < self._elapsed_new and self._thread_limit > 1:
+        elif self._elapsed_old <= self._elapsed_new and self._thread_limit > 1:
             self._thread_limit -= 1
 
         self._elapsed_old = self._elapsed_new
