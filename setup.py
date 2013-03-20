@@ -63,6 +63,7 @@ setup(
         'kamaki.cli',
         'kamaki.cli.commands',
         'kamaki.clients',
+        'kamaki.clients.utils',
         'kamaki.clients.livetest',
         'kamaki.clients.image',
         'kamaki.clients.storage',
