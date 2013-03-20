@@ -96,12 +96,14 @@ class ClientError(TestCase):
 
 class SilentEvent(TestCase):
 
-    def thread_content(self, methodid):
+    def thread_content(self, methodid, raiseException=0):
         wait = 0.1
         self.can_finish = -1
         while self.can_finish < methodid and wait < 4:
             sleep(wait)
             wait = 2 * wait
+        if raiseException and raiseException == methodid:
+            raise Exception('Some exception')
         self._value = methodid
         self.assertTrue(wait < 4)
 
@@ -109,11 +111,8 @@ class SilentEvent(TestCase):
         from kamaki.clients import SilentEvent
         self.SE = SilentEvent
 
-    def test_threads(self):
-        threads = []
-        for i in range(4):
-            threads.append(self.SE(self.thread_content, i))
-
+    def test_run(self):
+        threads = [self.SE(self.thread_content, i) for i in range(4)]
         for t in threads:
             t.start()
 
@@ -122,6 +121,31 @@ class SilentEvent(TestCase):
             self.can_finish = i
             threads[i].join()
             self.assertFalse(threads[i].is_alive())
+
+    def test_value(self):
+        threads = [self.SE(self.thread_content, i) for i in range(4)]
+        for t in threads:
+            t.start()
+
+        for mid, t in enumerate(threads):
+            if t.is_alive():
+                self.can_finish = mid
+                continue
+            self.assertTrue(mid, t.value)
+
+    def test_exception(self):
+        threads = [self.SE(self.thread_content, i, (i % 2)) for i in range(4)]
+        for t in threads:
+            t.start()
+
+        for i, t in enumerate(threads):
+            if t.is_alive():
+                self.can_finish = i
+                continue
+            if i % 2:
+                self.assertTrue(isinstance(t.exception, Exception))
+            else:
+                self.assertFalse(t.exception)
 
 
 #  TestCase auxiliary methods
