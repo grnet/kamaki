@@ -34,6 +34,7 @@
 from unittest import makeSuite, TestSuite, TextTestRunner, TestCase
 from time import sleep
 from inspect import getmembers, isclass
+from json import loads
 
 from kamaki.clients.connection.test import (
     KamakiConnection,
@@ -49,12 +50,55 @@ from kamaki.clients.storage.test import Storage
 from kamaki.clients.pithos.test import Pithos, PithosRest
 
 
-class SilentEvent(TestCase):
+class ClientError(TestCase):
 
-    can_finish = -1
+    def test___init__(self):
+        from kamaki.clients import ClientError
+        for msg, status, details, exp_msg, exp_status, exp_details in (
+                ('some msg', 42, 0.28, 0, 0, 0),
+                ('some msg', 'fail', [], 0, 0, 0),
+                ('some msg', 42, 'details on error', 0, 0, 0),
+                (
+                    '404 {"ExampleError":'
+                    ' {"message": "a msg", "code": 42, "details": "dets"}}',
+                    404,
+                    0,
+                    '404 ExampleError (a msg)\n',
+                    42,
+                    ['dets']),
+                (
+                    '404 {"ExampleError":'
+                    ' {"message": "a msg", "code": 42}}',
+                    404,
+                    'details on error',
+                    '404 ExampleError (a msg)\n',
+                    42,
+                    0),
+                (
+                    '404 {"ExampleError":'
+                    ' {"details": "Explain your error"}}',
+                    404,
+                    'details on error',
+                    '404 ExampleError',
+                    0,
+                    ['details on error', 'Explain your error']),
+                ('some msg\n', -10, ['details', 'on', 'error'], 0, 0, 0)):
+            ce = ClientError(msg, status, details)
+            exp_msg = exp_msg or (msg if msg.endswith('\n') else msg + '\n')
+            exp_status = exp_status or status
+            exp_details = exp_details or details
+            self.assertEqual('%s' % ce, exp_msg)
+            self.assertEqual(
+                exp_status if isinstance(exp_status, int) else 0,
+                ce.status)
+            self.assertEqual(exp_details, ce.details)
+
+
+class SilentEvent(TestCase):
 
     def thread_content(self, methodid):
         wait = 0.1
+        self.can_finish = -1
         while self.can_finish < methodid and wait < 4:
             sleep(wait)
             wait = 2 * wait

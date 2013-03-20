@@ -51,28 +51,31 @@ class ClientError(Exception):
         try:
             message += '' if message and message[-1] == '\n' else '\n'
             serv_stat, sep, new_msg = message.partition('{')
-            new_msg = sep + new_msg
+            new_msg = sep + new_msg[:-1 if new_msg.endswith('\n') else 0]
             json_msg = loads(new_msg)
             key = json_msg.keys()[0]
+            serv_stat = serv_stat.strip()
 
             json_msg = json_msg[key]
-            message = '%s %s (%s)\n' % (serv_stat, key, json_msg['message'])\
-                if 'message' in json_msg else '%s %s' % (serv_stat, key)
-            if 'code' in json_msg:
-                status = json_msg['code']
+            message = '%s %s (%s)\n' % (
+                serv_stat,
+                key,
+                json_msg['message']) if (
+                    'message' in json_msg) else '%s %s' % (serv_stat, key)
+            status = json_msg.get('code', status)
             if 'details' in json_msg:
                 if not details:
                     details = []
-                elif not isinstance(details, list):
+                if not isinstance(details, list):
                     details = [details]
                 if json_msg['details']:
                     details.append(json_msg['details'])
-        except:
+        except Exception:
             pass
-
-        super(ClientError, self).__init__(message)
-        self.status = status
-        self.details = details if details else []
+        finally:
+            super(ClientError, self).__init__(message)
+            self.status = status if isinstance(status, int) else 0
+            self.details = details if details else []
 
 
 class SilentEvent(Thread):
