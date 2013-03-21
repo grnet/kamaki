@@ -159,6 +159,9 @@ class FakeConnection(object):
     def set_header(self, name, value):
         pass
 
+    def set_param(self, name, value):
+        pass
+
 
 class FR(object):
     json = None
@@ -281,6 +284,20 @@ class Client(TestCase):
                 num_of_calls += 1
             else:
                 self.assertEqual(num_of_calls, len(SH.mock_calls))
+
+    @patch('%s.FakeConnection.set_param' % __name__)
+    def test_set_param(self, SP):
+        num_of_calls = 0
+        for name, value, condition in product(
+                ('n4m3', '', None),
+                ('v41u3', None, 42),
+                (True, False, None, 1, '')):
+            self.client.set_param(name, value, iff=condition)
+            if condition:
+                self.assertEqual(SP.mock_calls[-1], call(name, value))
+                num_of_calls += 1
+            else:
+                self.assertEqual(num_of_calls, len(SP.mock_calls))
 
 
 #  TestCase auxiliary methods
