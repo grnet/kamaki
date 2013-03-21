@@ -36,7 +36,7 @@ from kamaki.clients.utils import path4url
 import json
 
 
-class CycladesClientApi(ComputeClient):
+class CycladesRestClient(ComputeClient):
     """GRNet Cyclades REST API Client"""
 
     def servers_get(

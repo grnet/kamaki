@@ -156,7 +156,7 @@ class StorageClient(Client):
         """
         self._assert_container()
         path = path4url(self.account, self.container, obj)
-        data = f.read(size) if size is not None else f.read()
+        data = f.read(size) if size else f.read()
         r = self.put(path, data=data, success=201)
         r.release()
 

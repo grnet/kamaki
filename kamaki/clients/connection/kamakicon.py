@@ -46,6 +46,12 @@ from time import sleep
 from httplib import ResponseNotReady
 
 
+def _encode(v):
+    if v and isinstance(v, unicode):
+        return quote(v.encode('utf-8'))
+    return v
+
+
 class KamakiHTTPResponse(KamakiResponse):
 
     def _get_response(self):
@@ -121,10 +127,10 @@ class KamakiHTTPResponse(KamakiResponse):
 class KamakiHTTPConnection(KamakiConnection):
 
     def _retrieve_connection_info(self, extra_params={}):
-        """
+        """ Set self.url to scheme://netloc/?params
         :param extra_params: (dict) key:val for url parameters
 
-        :returns: (scheme, netloc, url?with&params)
+        :returns: (scheme, netloc)
         """
         if self.url:
             url = self.url if self.url[-1] == '/' else (self.url + '/')
@@ -135,6 +141,7 @@ class KamakiHTTPConnection(KamakiConnection):
         params = dict(self.params)
         params.update(extra_params)
         for i, (key, val) in enumerate(params.items()):
+            val = _encode(val)
             url += '%s%s' % ('&' if i else '?', key)
             if val:
                 url += '=%s' % val
@@ -169,13 +176,13 @@ class KamakiHTTPConnection(KamakiConnection):
         (scheme, netloc) = self._retrieve_connection_info(async_params)
         headers = dict(self.headers)
         for k, v in async_headers.items():
-            v = quote(v.encode('utf-8')) if isinstance(v, unicode) else str(v)
+            v = _encode(v)
             headers[k] = v
 
         #de-unicode headers to prepare them for http
         http_headers = {}
         for k, v in headers.items():
-            v = quote(v.encode('utf-8')) if isinstance(v, unicode) else str(v)
+            v = _encode(v)
             http_headers[k] = v
 
         #get connection from pool

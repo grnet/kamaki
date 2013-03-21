@@ -122,7 +122,7 @@ class ImageClient(Client):
                 async_headers[key] = val
 
         for key, val in properties.items():
-            async_headers['X-Image-Meta-Property-%s' % key] = val
+            async_headers['x-image-meta-property-%s' % key] = val
 
         r = self.post(path, success=200, async_headers=async_headers)
         r.release()

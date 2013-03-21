@@ -31,12 +31,19 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from unittest import TestCase, TestSuite, makeSuite, TextTestRunner
-from mock import Mock, patch
+from unittest import TestCase
+from mock import Mock, patch, call
 from random import randrange
+from urllib2 import quote
 
 from kamaki.clients import connection
 from kamaki.clients.connection import errors, kamakicon
+
+
+def _encode(v):
+    if v and isinstance(v, unicode):
+        return quote(v.encode('utf-8'))
+    return v
 
 
 class KamakiConnection(TestCase):
@@ -47,6 +54,8 @@ class KamakiConnection(TestCase):
     def setUp(self):
         from kamaki.clients.connection import KamakiConnection as HTTPC
         self.conn = HTTPC()
+        self.conn.reset_headers()
+        self.conn.reset_params()
 
     def test_poolsize(self):
 
@@ -154,6 +163,32 @@ class KamakiHTTPConnection(TestCase):
 
     def setUp(self):
         self.conn = kamakicon.KamakiHTTPConnection()
+        self.conn.reset_params()
+        self.conn.reset_headers()
+
+    def test__retrieve_connection_info(self):
+        async_params = dict(param1='val1', param2=None, param3=42)
+        r = self.conn._retrieve_connection_info(async_params)
+        self.assertEquals(r, ('http', '127.0.0.1'))
+        expected = '?%s' % '&'.join([(
+            '%s=%s' % (k, v)) if v else (
+            '%s' % k) for k, v in async_params.items()])
+        self.assertEquals('http://127.0.0.1%s' % expected, self.conn.url)
+
+        for schnet in (
+            ('http', 'www.example.com'), ('https', 'www.example.com'),
+            ('ftp', 'www.example.com'), ('ftps', 'www.example.com'),
+            ('http', 'www.example.com/v1'), ('https', 'www.example.com/v1')):
+            self.conn = kamakicon.KamakiHTTPConnection(url='%s://%s' % schnet)
+            self.conn.url = '%s://%s' % schnet
+            r = self.conn._retrieve_connection_info(async_params)
+            if schnet[1].endswith('v1'):
+                self.assertEquals(r, (schnet[0], schnet[1][:-3]))
+            else:
+                self.assertEquals(r, schnet)
+            self.assertEquals(
+                '%s://%s/%s' % (schnet[0], schnet[1], expected),
+                self.conn.url)
 
     def test_perform_request(self):
         from httplib import HTTPConnection
@@ -164,14 +199,58 @@ class KamakiHTTPConnection(TestCase):
             method='GET',
             async_headers=dict(),
             async_params=dict())
+        utf_test = u'\u03a6\u03bf\u03cd\u03c4\u03c3\u03bf\u03c2'
+        utf_dict = dict(utf=utf_test)
+        ascii_dict = dict(ascii1='myAscii', ascii2=None)
+        kwargs0 = dict(
+            data='',
+            method='get',
+            async_headers=utf_dict,
+            async_params=ascii_dict)
+
+        def get_expected():
+            expected = []
+            for k, v in kwargs0['async_params'].items():
+                v = _encode(v)
+                expected.append(('%s=%s' % (k, v)) if v else ('%s' % k))
+            return '&'.join(expected)
 
         KCError = errors.KamakiConnectionError
         fakecon = HTTPConnection('X', 'Y')
 
         with patch.object(http, 'get_http_connection', return_value=fakecon):
-            with patch.object(HTTPConnection, 'request', return_value=None):
+            with patch.object(HTTPConnection, 'request') as request:
                 r = pr(**kwargs)
                 self.assertTrue(isinstance(r, kamakicon.KamakiHTTPResponse))
+                self.assertEquals(
+                    request.mock_calls[-1],
+                    call(body='', headers={}, url='/', method='GET'))
+
+                pr(**kwargs0)
+
+                exp_headers = dict(kwargs0['async_headers'])
+                exp_headers['utf'] = _encode(exp_headers['utf'])
+
+                self.assertEquals(
+                    request.mock_calls[-1],
+                    call(
+                        body=kwargs0['data'],
+                        headers=exp_headers,
+                        url='/?%s' % get_expected(),
+                        method=kwargs0['method'].upper()))
+
+                self.conn = kamakicon.KamakiHTTPConnection()
+                (kwargs0['async_params'], kwargs0['async_headers']) = (
+                    kwargs0['async_headers'], kwargs0['async_params'])
+                kwargs0['async_headers']['ascii2'] = 'None'
+                self.conn.perform_request(**kwargs0)
+                self.assertEquals(
+                    request.mock_calls[-1],
+                    call(
+                        body=kwargs0['data'],
+                        headers=kwargs0['async_headers'],
+                        url='/?%s' % get_expected(),
+                        method=kwargs0['method'].upper()))
 
             err = IOError('IO Error')
             with patch.object(HTTPConnection, 'request', side_effect=err):
@@ -283,26 +362,18 @@ class KamakiResponse(TestCase):
         self.assertTrue(isinstance(r, str))
 
 
-def get_test_classes(module=__import__(__name__), name=''):
-    from inspect import getmembers, isclass
-    for objname, obj in getmembers(module):
-        if (objname == name or not name) and isclass(obj) and (
-                issubclass(obj, TestCase)):
-            yield (obj, objname)
-
-
-def main(argv):
-    for cls, name in get_test_classes(name=argv[1] if len(argv) > 1 else ''):
-        args = argv[2:]
-        suite = TestSuite()
-        if args:
-            suite.addTest(cls('_'.join(['test'] + args)))
-        else:
-            suite.addTest(makeSuite(cls))
-        print('Test %s' % name)
-        TextTestRunner(verbosity=2).run(suite)
-
-
 if __name__ == '__main__':
     from sys import argv
-    main(argv)
+    from kamaki.clients.test import runTestCase
+    classes = dict(
+        KamakiConnection=KamakiConnection,
+        KamakiHTTPConnection=KamakiHTTPConnection,
+        KamakiHTTPResponse=KamakiHTTPResponse,
+        KamakiResponse=KamakiResponse)
+    not_found = True
+    for k, cls in classes.items():
+        if not argv[1:] or argv[1] == k:
+            not_found = False
+            runTestCase(cls, '%s Client' % k, argv[2:])
+    if not_found:
+        print('TestCase %s not found' % argv[1])

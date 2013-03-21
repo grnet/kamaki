@@ -35,10 +35,8 @@
 def _matches(val1, val2, exactMath=True):
     """Case Insensitive match"""
 
-    if exactMath:
-        return True if val1.lower() == val2.lower() else False
-    else:
-        return True if val1.lower().startswith(val2.lower()) else False
+    return (val1.lower() == val2.lower()) if (
+        exactMath) else val1.lower().startswith(val2.lower())
 
 
 def filter_out(d, prefix, exactMatch=False):
@@ -54,7 +52,7 @@ def filter_out(d, prefix, exactMatch=False):
     :returns: (dict) the updated d
     """
 
-    ret = {}
+    ret = dict()
     for key, val in d.items():
         if not _matches(key, prefix, exactMath=exactMatch):
             ret[key] = val
@@ -73,7 +71,7 @@ def filter_in(d, prefix, exactMatch=False):
 
     :returns: (dict) the updated d
     """
-    ret = {}
+    ret = dict()
     for key, val in d.items():
         if _matches(key, prefix, exactMath=exactMatch):
             ret[key] = val
@@ -92,21 +90,3 @@ def path4url(*args):
     while '//' in r:
         r = r.replace('//', '/')
     return ('/%s' % r.strip('/')) if r else ''
-
-
-def params4url(params):
-    """{'key1':'val1', 'key2':None, 'key3':15} --> "?key1=val1&key2&key3=15"
-
-    :param params: (dict) request parameters in the form key:val
-
-    :returns: (str) http-request friendly in the form ?key1=val1&key2=val2&...
-    """
-
-    assert(type(params) is dict)
-    result = ''
-    dlmtr = '?'
-    for name in params:
-        result += '%s%s' % (dlmtr, name)
-        result += '=%s' % params[name] or result
-        dlmtr = '&'
-    return result

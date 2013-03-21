@@ -31,7 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from mock import patch
+from mock import patch, call
 
 from unittest import TestCase
 from kamaki.clients.astakos import AstakosClient
@@ -66,7 +66,7 @@ class FR(object):
     def release(self):
         pass
 
-khttp = 'kamaki.clients.connection.kamakicon.KamakiHTTPConnection'
+astakos_pkg = 'kamaki.clients.astakos.AstakosClient'
 
 
 class Astakos(TestCase):
@@ -81,16 +81,15 @@ class Astakos(TestCase):
     def tearDown(self):
         FR.json = example
 
-    @patch('%s.perform_request' % khttp, return_value=FR())
-    def _authenticate(self, PR):
+    @patch('%s.get' % astakos_pkg, return_value=FR())
+    def _authenticate(self, get):
         r = self.client.authenticate()
+        self.assertEqual(get.mock_calls[-1], call('/im/authenticate'))
         self.cached = True
         return r
 
     def test_authenticate(self):
         r = self._authenticate()
-        self.assertEqual(self.client.http_client.url, self.url)
-        self.assertEqual(self.client.http_client.path, '/im/authenticate')
         for term, val in example.items():
             self.assertTrue(term in r)
             self.assertEqual(val, r[term])
@@ -118,3 +117,8 @@ class Astakos(TestCase):
         r = self.client.list()
         self.assertTrue(len(r) == 1)
         self.assertEqual(r[0]['auth_token'], self.token)
+
+if __name__ == '__main__':
+    from sys import argv
+    from kamaki.clients.test import runTestCase
+    runTestCase(Astakos, 'AstakosClient', argv[1:])

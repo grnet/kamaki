@@ -51,28 +51,33 @@ class ClientError(Exception):
         try:
             message += '' if message and message[-1] == '\n' else '\n'
             serv_stat, sep, new_msg = message.partition('{')
-            new_msg = sep + new_msg
+            new_msg = sep + new_msg[:-1 if new_msg.endswith('\n') else 0]
             json_msg = loads(new_msg)
             key = json_msg.keys()[0]
+            serv_stat = serv_stat.strip()
 
             json_msg = json_msg[key]
-            message = '%s %s (%s)\n' % (serv_stat, key, json_msg['message'])\
-                if 'message' in json_msg else '%s %s' % (serv_stat, key)
-            if 'code' in json_msg:
-                status = json_msg['code']
+            message = '%s %s (%s)\n' % (
+                serv_stat,
+                key,
+                json_msg['message']) if (
+                    'message' in json_msg) else '%s %s' % (serv_stat, key)
+            status = json_msg.get('code', status)
             if 'details' in json_msg:
                 if not details:
                     details = []
-                elif not isinstance(details, list):
+                if not isinstance(details, list):
                     details = [details]
                 if json_msg['details']:
                     details.append(json_msg['details'])
-        except:
+        except Exception:
             pass
-
-        super(ClientError, self).__init__(message)
-        self.status = status
-        self.details = details if details else []
+        finally:
+            while message.endswith('\n\n'):
+                message = message[:-1]
+            super(ClientError, self).__init__(message)
+            self.status = status if isinstance(status, int) else 0
+            self.details = details if details else []
 
 
 class SilentEvent(Thread):
@@ -104,7 +109,6 @@ class SilentEvent(Thread):
 
 
 class Client(object):
-    MAX_THREADS = 7
 
     def __init__(self, base_url, token, http_client=KamakiHTTPConnection()):
         self.base_url = base_url
@@ -115,18 +119,23 @@ class Client(object):
             '%A, %d-%b-%y %H:%M:%S GMT',
             '%a, %d %b %Y %H:%M:%S GMT']
         self.http_client = http_client
+        self.MAX_THREADS = 7
 
     def _init_thread_limit(self, limit=1):
+        assert isinstance(limit, int) and limit > 0, 'Thread limit not a +int'
         self._thread_limit = limit
         self._elapsed_old = 0.0
         self._elapsed_new = 0.0
 
     def _watch_thread_limit(self, threadlist):
+        self._thread_limit = getattr(self, '_thread_limit', 1)
+        self._elapsed_new = getattr(self, '_elapsed_new', 0.0)
+        self._elapsed_old = getattr(self, '_elapsed_old', 0.0)
         recvlog.debug('# running threads: %s' % len(threadlist))
-        if (self._elapsed_old > self._elapsed_new) and (
+        if self._elapsed_old and self._elapsed_old >= self._elapsed_new and (
                 self._thread_limit < self.MAX_THREADS):
             self._thread_limit += 1
-        elif self._elapsed_old < self._elapsed_new and self._thread_limit > 1:
+        elif self._elapsed_old <= self._elapsed_new and self._thread_limit > 1:
             self._thread_limit -= 1
 
         self._elapsed_old = self._elapsed_new
@@ -141,7 +150,7 @@ class Client(object):
         return threadlist
 
     def _raise_for_status(self, r):
-        status_msg = getattr(r, 'status', '')
+        status_msg = getattr(r, 'status', None) or ''
         try:
             message = '%s %s\n' % (status_msg, r.text)
         except:
@@ -157,9 +166,6 @@ class Client(object):
     def set_param(self, name, value=None, iff=True):
         if iff:
             self.http_client.set_param(name, value)
-
-    def set_default_header(self, name, value):
-        self.http_client.headers.setdefault(name, value)
 
     def request(
             self,
@@ -177,17 +183,24 @@ class Client(object):
         E.g. in most queries the 'X-Auth-Token' header might be the same for
         all, but the 'Range' header might be different from request to request.
         """
+        assert isinstance(method, str) or isinstance(method, unicode)
+        assert method
+        assert isinstance(path, str) or isinstance(path, unicode)
+        assert path
         try:
             success = kwargs.pop('success', 200)
-
             data = kwargs.pop('data', None)
-            self.set_default_header('X-Auth-Token', self.token)
+            self.http_client.headers.setdefault('X-Auth-Token', self.token)
 
             if 'json' in kwargs:
                 data = dumps(kwargs.pop('json'))
-                self.set_default_header('Content-Type', 'application/json')
+                self.http_client.headers.setdefault(
+                    'Content-Type',
+                    'application/json')
             if data:
-                self.set_default_header('Content-Length', '%s' % len(data))
+                self.http_client.headers.setdefault(
+                    'Content-Length',
+                    '%s' % len(data))
 
             sendlog.info('perform a %s @ %s', method, self.base_url)
 
@@ -226,9 +239,9 @@ class Client(object):
                 errstr = ('%s' % type(err))[7:-2]
             status = getattr(err, 'status', getattr(err, 'errno', 0))
             raise ClientError('%s\n' % errstr, status=status)
-
-        self.http_client.reset_headers()
-        self.http_client.reset_params()
+        finally:
+            self.http_client.reset_headers()
+            self.http_client.reset_params()
 
         if success is not None:
             # Success can either be an int or a collection

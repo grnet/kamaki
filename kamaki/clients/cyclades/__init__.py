@@ -31,14 +31,14 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+from sys import stdout
 from time import sleep
 
-from kamaki.clients.cyclades_rest_api import CycladesClientApi
+from kamaki.clients.cyclades.rest_api import CycladesRestClient
 from kamaki.clients import ClientError
-from sys import stdout
 
 
-class CycladesClient(CycladesClientApi):
+class CycladesClient(CycladesRestClient):
     """GRNet Cyclades API client"""
 
     def start_server(self, server_id):
@@ -223,6 +223,8 @@ class CycladesClient(CycladesClientApi):
         :param server_id: integer (str or int)
 
         :param nic_id: (str)
+
+        :returns: (int) the number of nics disconnected
         """
         vm_nets = self.list_server_nics(server_id)
         num_of_disconnections = 0
