@@ -31,10 +31,11 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+from mock import patch, call
 from unittest import makeSuite, TestSuite, TextTestRunner, TestCase
 from time import sleep
 from inspect import getmembers, isclass
-from json import loads
+from itertools import product
 from random import randint
 
 from kamaki.clients.connection.test import (
@@ -155,6 +156,9 @@ class FakeConnection(object):
     def __init__(self):
         pass
 
+    def set_header(self, name, value):
+        pass
+
 
 class FR(object):
     json = None
@@ -263,6 +267,20 @@ class Client(TestCase):
             except self.CE as ce:
                 self.assertEqual('%s' % ce, '%s %s\n' % (sts_code or '', msg))
                 self.assertEqual(ce.status, sts_code or 0)
+
+    @patch('%s.FakeConnection.set_header' % __name__)
+    def test_set_header(self, SH):
+        num_of_calls = 0
+        for name, value, condition in product(
+                ('n4m3', '', None),
+                ('v41u3', None, 42),
+                (True, False, None, 1, '')):
+            self.client.set_header(name, value, iff=condition)
+            if value is not None and condition:
+                self.assertEqual(SH.mock_calls[-1], call(name, value))
+                num_of_calls += 1
+            else:
+                self.assertEqual(num_of_calls, len(SH.mock_calls))
 
 
 #  TestCase auxiliary methods
