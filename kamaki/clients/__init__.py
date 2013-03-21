@@ -167,9 +167,6 @@ class Client(object):
         if iff:
             self.http_client.set_param(name, value)
 
-    def set_default_header(self, name, value):
-        self.http_client.headers.setdefault(name, value)
-
     def request(
             self,
             method,
@@ -190,13 +187,17 @@ class Client(object):
             success = kwargs.pop('success', 200)
 
             data = kwargs.pop('data', None)
-            self.set_default_header('X-Auth-Token', self.token)
+            self.http_client.headers.setdefault('X-Auth-Token', self.token)
 
             if 'json' in kwargs:
                 data = dumps(kwargs.pop('json'))
-                self.set_default_header('Content-Type', 'application/json')
+                self.http_client.headers.setdefault(
+                    'Content-Type',
+                    'application/json')
             if data:
-                self.set_default_header('Content-Length', '%s' % len(data))
+                self.http_client.headers.setdefault(
+                    'Content-Length',
+                    '%s' % len(data))
 
             sendlog.info('perform a %s @ %s', method, self.base_url)
 
