@@ -150,8 +150,23 @@ class SilentEvent(TestCase):
                 self.assertFalse(t.exception)
 
 
+class FR(object):
+    json = None
+    text = None
+    headers = dict()
+    content = json
+    status = None
+    status_code = 200
+
+    def release(self):
+        pass
+
+
 class FakeConnection(object):
     """A fake Connection class"""
+
+    headers = dict()
+    params = dict()
 
     def __init__(self):
         pass
@@ -159,20 +174,17 @@ class FakeConnection(object):
     def set_header(self, name, value):
         pass
 
+    def reset_headers(self):
+        self.headers = {}
+
     def set_param(self, name, value):
+        self.params = {}
+
+    def reset_params(self):
         pass
 
-
-class FR(object):
-    json = None
-    text = None
-    headers = {}
-    content = json
-    status = None
-    status_code = 200
-
-    def release(self):
-        pass
+    def perform_request(self, *args):
+        return FR()
 
 
 class Client(TestCase):
@@ -197,6 +209,8 @@ class Client(TestCase):
         FR.text = None
         FR.status = None
         FR.status_code = 200
+        FakeConnection.headers = dict()
+        self.client.token = self.token
 
     def test___init__(self):
         self.assertEqual(self.client.base_url, self.base_url)
@@ -298,6 +312,75 @@ class Client(TestCase):
                 num_of_calls += 1
             else:
                 self.assertEqual(num_of_calls, len(SP.mock_calls))
+
+    @patch('%s.FakeConnection.perform_request' % __name__, return_value=FR())
+    def test_request(self, PR):
+        for args in product(
+                ('get', '', dict(method='get')),
+                ('/some/path', None, ['some', 'path']),
+                (dict(), dict(h1='v1'), dict(h1='v2', h2='v2')),
+                (dict(), dict(p1='v1'), dict(p1='v2', p2=None, p3='v3')),
+                (dict(), dict(data='some data'), dict(
+                    success=400,
+                    json=dict(k2='v2', k1='v1')))):
+            method, path, kwargs = args[0], args[1], args[-1]
+            args = args[:-1]
+            if not (isinstance(method, str) and method and isinstance(
+                    path, str) and path):
+                self.assertRaises(
+                    AssertionError,
+                    self.client.request,
+                    *args, **kwargs)
+            else:
+                atoken = 'a70k3n_%s' % randint(1, 30)
+                self.client.token = atoken
+                if 'success' in kwargs:
+                    self.assertRaises(
+                        self.CE,
+                        self.client.request,
+                        *args, **kwargs)
+                    FR.status_code = kwargs['success']
+                else:
+                    FR.status_code = 200
+                self.client.request(*args, **kwargs)
+                data = kwargs.get(
+                    'data',
+                    '{"k2": "v2", "k1": "v1"}' if 'json' in kwargs else None)
+                self.assertEqual(self.client.http_client.url, self.base_url)
+                self.assertEqual(self.client.http_client.path, path)
+                self.assertEqual(
+                    PR.mock_calls[-1],
+                    call(method, data, *args[2:]))
+                self.assertEqual(self.client.http_client.headers, dict())
+                self.assertEqual(self.client.http_client.params, dict())
+
+    @patch('kamaki.clients.Client.request', return_value='lala')
+    def _test_foo(self, foo, request):
+        method = getattr(self.client, foo)
+        r = method('path', k='v')
+        self.assertEqual(r, 'lala')
+        request.assert_called_once_with(foo, 'path', k='v')
+
+    def test_delete(self):
+        self._test_foo('delete')
+
+    def test_get(self):
+        self._test_foo('get')
+
+    def test_head(self):
+        self._test_foo('head')
+
+    def test_post(self):
+        self._test_foo('post')
+
+    def test_put(self):
+        self._test_foo('put')
+
+    def test_copy(self):
+        self._test_foo('copy')
+
+    def test_move(self):
+        self._test_foo('move')
 
 
 #  TestCase auxiliary methods

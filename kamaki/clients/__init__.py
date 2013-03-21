@@ -183,9 +183,12 @@ class Client(object):
         E.g. in most queries the 'X-Auth-Token' header might be the same for
         all, but the 'Range' header might be different from request to request.
         """
+        assert isinstance(method, str) or isinstance(method, unicode)
+        assert method
+        assert isinstance(path, str) or isinstance(path, unicode)
+        assert path
         try:
             success = kwargs.pop('success', 200)
-
             data = kwargs.pop('data', None)
             self.http_client.headers.setdefault('X-Auth-Token', self.token)
 
@@ -236,9 +239,9 @@ class Client(object):
                 errstr = ('%s' % type(err))[7:-2]
             status = getattr(err, 'status', getattr(err, 'errno', 0))
             raise ClientError('%s\n' % errstr, status=status)
-
-        self.http_client.reset_headers()
-        self.http_client.reset_params()
+        finally:
+            self.http_client.reset_headers()
+            self.http_client.reset_params()
 
         if success is not None:
             # Success can either be an int or a collection
