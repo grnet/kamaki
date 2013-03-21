@@ -169,7 +169,7 @@ class ConfigArgument(Argument):
     def get_groups(self):
         return self.value.apis()
 
-_config_arg = ConfigArgument(1, 'Path to configuration file', '--config')
+_config_arg = ConfigArgument(1, 'Path to configuration file', '-c, --config')
 
 
 class CmdLineConfigArgument(Argument):
