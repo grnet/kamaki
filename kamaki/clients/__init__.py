@@ -73,6 +73,8 @@ class ClientError(Exception):
         except Exception:
             pass
         finally:
+            while message.endswith('\n\n'):
+                message = message[:-1]
             super(ClientError, self).__init__(message)
             self.status = status if isinstance(status, int) else 0
             self.details = details if details else []
@@ -148,7 +150,7 @@ class Client(object):
         return threadlist
 
     def _raise_for_status(self, r):
-        status_msg = getattr(r, 'status', '')
+        status_msg = getattr(r, 'status', None) or ''
         try:
             message = '%s %s\n' % (status_msg, r.text)
         except:

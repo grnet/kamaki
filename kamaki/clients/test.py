@@ -156,6 +156,18 @@ class FakeConnection(object):
         pass
 
 
+class FR(object):
+    json = None
+    text = None
+    headers = {}
+    content = json
+    status = None
+    status_code = 200
+
+    def release(self):
+        pass
+
+
 class Client(TestCase):
 
     def assert_dicts_are_equal(self, d1, d2):
@@ -168,9 +180,16 @@ class Client(TestCase):
 
     def setUp(self):
         from kamaki.clients import Client
+        from kamaki.clients import ClientError as CE
         self.base_url = 'http://example.com'
         self.token = 's0m370k3n=='
         self.client = Client(self.base_url, self.token, FakeConnection())
+        self.CE = CE
+
+    def tearDown(self):
+        FR.text = None
+        FR.status = None
+        FR.status_code = 200
 
     def test___init__(self):
         self.assertEqual(self.client.base_url, self.base_url)
@@ -226,6 +245,24 @@ class Client(TestCase):
                 self.client._elapsed_new = wait
                 self.client._watch_thread_limit(list())
                 self.assertEqual(exp_limit, self.client._thread_limit)
+
+    def test__raise_for_status(self):
+        r = FR()
+        for txt, sts_code, sts in (('err msg', 10, None), ('', 42, 'Err St')):
+            r.text, r.status_code, r.status = txt, sts_code, sts
+            try:
+                self.client._raise_for_status(r)
+            except self.CE as ce:
+                self.assertEqual('%s' % ce, '%s %s\n' % (sts or '', txt))
+                self.assertEqual(ce.status, sts_code)
+
+        for msg, sts_code in (('err msg', 32), ('', 42), ('an err', None)):
+            err = self.CE(msg, sts_code) if sts_code else Exception(msg)
+            try:
+                self.client._raise_for_status(err)
+            except self.CE as ce:
+                self.assertEqual('%s' % ce, '%s %s\n' % (sts_code or '', msg))
+                self.assertEqual(ce.status, sts_code or 0)
 
 
 #  TestCase auxiliary methods
