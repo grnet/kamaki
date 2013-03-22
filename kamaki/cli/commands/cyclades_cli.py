@@ -85,11 +85,11 @@ class server_list(_init_cyclades):
     __doc__ += about_authentication
 
     arguments = dict(
-        detail=FlagArgument('show detailed output', '-l'),
+        detail=FlagArgument('show detailed output', ('-l', '--details')),
         since=DateArgument(
             'show only items since date (\' d/m/Y H:M:S \')',
             '--since'),
-        limit=IntArgument('limit the number of VMs to list', '-n'),
+        limit=IntArgument('limit number of listed VMs', ('-n', '--number')),
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
             '--more')
@@ -215,7 +215,7 @@ class server_create(_init_cyclades):
     arguments = dict(
         personality=PersonalityArgument(
             ' /// '.join(howto_personality),
-            '--personality')
+            ('-p', '--personality'))
     )
 
     @errors.generic.all
@@ -272,7 +272,7 @@ class server_reboot(_init_cyclades):
     """Reboot a server (VM)"""
 
     arguments = dict(
-        hard=FlagArgument('perform a hard reboot', '-f')
+        hard=FlagArgument('perform a hard reboot', ('-f', '--force'))
     )
 
     @errors.generic.all
@@ -453,7 +453,7 @@ class server_wait(_init_cyclades):
     arguments = dict(
         progress_bar=ProgressBarArgument(
             'do not show progress bar',
-            '--no-progress-bar',
+            ('-N', '--no-progress-bar'),
             False
         )
     )
@@ -490,8 +490,8 @@ class flavor_list(_init_cyclades):
     """List available hardware flavors"""
 
     arguments = dict(
-        detail=FlagArgument('show detailed output', '-l'),
-        limit=IntArgument('limit the number of flavors to list', '-n'),
+        detail=FlagArgument('show detailed output', ('-l', '--details')),
+        limit=IntArgument('limit # of listed flavors', ('-n', '--number')),
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
             '--more')
@@ -558,8 +558,8 @@ class network_list(_init_cyclades):
     """List networks"""
 
     arguments = dict(
-        detail=FlagArgument('show detailed output', '-l'),
-        limit=IntArgument('limit the number of networks in list', '-n'),
+        detail=FlagArgument('show detailed output', ('-l', '--details')),
+        limit=IntArgument('limit # of listed networks', ('-n', '--number')),
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
             '--more')

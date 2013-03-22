@@ -186,7 +186,6 @@ class Client(object):
         assert isinstance(method, str) or isinstance(method, unicode)
         assert method
         assert isinstance(path, str) or isinstance(path, unicode)
-        assert path
         try:
             success = kwargs.pop('success', 200)
             data = kwargs.pop('data', None)

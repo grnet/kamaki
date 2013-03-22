@@ -194,7 +194,7 @@ class _store_account_command(_pithos_init):
         super(_store_account_command, self).__init__(arguments)
         self['account'] = ValueArgument(
             'Set user account (not permanent)',
-            '--account')
+            ('-A', '--account'))
 
     def _run(self):
         super(_store_account_command, self)._run()
@@ -216,7 +216,7 @@ class _store_container_command(_store_account_command):
         super(_store_container_command, self).__init__(arguments)
         self['container'] = ValueArgument(
             'Set container to work with (temporary)',
-            '--container')
+            ('-C', '--container'))
 
     def extract_container_and_path(
             self,
@@ -306,10 +306,10 @@ class store_list(_store_container_command):
     """
 
     arguments = dict(
-        detail=FlagArgument('show detailed output', '-l'),
-        limit=IntArgument('limit the number of listed items', '-n'),
-        marker=ValueArgument('show output greater that marker', '--marker'),
-        prefix=ValueArgument('show output starting with prefix', '--prefix'),
+        detail=FlagArgument('detailed output', ('-l', '--list')),
+        limit=IntArgument('limit number of listed items', ('-n', '--number')),
+        marker=ValueArgument('output greater that marker', '--marker'),
+        prefix=ValueArgument('output starting with prefix', '--prefix'),
         delimiter=ValueArgument('show output up to delimiter', '--delimiter'),
         path=ValueArgument(
             'show output starting with prefix up to /',
@@ -510,8 +510,8 @@ class store_create(_store_container_command):
 class _source_destination_command(_store_container_command):
 
     arguments = dict(
-        destination_account=ValueArgument('', '--dst-account'),
-        recursive=FlagArgument('', ('-r', '--recursive')),
+        destination_account=ValueArgument('', ('a', '--dst-account')),
+        recursive=FlagArgument('', ('-R', '--recursive')),
         prefix=FlagArgument('', '--with-prefix', default=''),
         suffix=ValueArgument('', '--with-suffix', default=''),
         add_prefix=ValueArgument('', '--add-prefix', default=''),
@@ -670,20 +670,20 @@ class store_copy(_source_destination_command):
     arguments = dict(
         destination_account=ValueArgument(
             'Account to copy to',
-            '--dst-account'),
+            ('-a', '--dst-account')),
         destination_container=ValueArgument(
             'use it if destination container name contains a : character',
-            '--dst-container'),
+            ('-D', '--dst-container')),
         source_version=ValueArgument(
             'copy specific version',
-            '--source-version'),
+            ('-S', '--source-version')),
         public=ValueArgument('make object publicly accessible', '--public'),
         content_type=ValueArgument(
             'change object\'s content type',
             '--content-type'),
         recursive=FlagArgument(
             'copy directory and contents',
-            ('-r', '--recursive')),
+            ('-R', '--recursive')),
         prefix=FlagArgument(
             'Match objects prefixed with src path (feels like src_path*)',
             '--with-prefix',
@@ -761,10 +761,10 @@ class store_move(_source_destination_command):
     arguments = dict(
         destination_account=ValueArgument(
             'Account to move to',
-            '--dst-account'),
+            ('-a', '--dst-account')),
         destination_container=ValueArgument(
             'use it if destination container name contains a : character',
-            '--dst-container'),
+            ('-D', '--dst-container')),
         source_version=ValueArgument(
             'copy specific version',
             '--source-version'),
@@ -774,7 +774,7 @@ class store_move(_source_destination_command):
             '--content-type'),
         recursive=FlagArgument(
             'copy directory and contents',
-            ('-r', '--recursive')),
+            ('-R', '--recursive')),
         prefix=FlagArgument(
             'Match objects prefixed with src path (feels like src_path*)',
             '--with-prefix',
@@ -844,7 +844,7 @@ class store_append(_store_container_command):
     arguments = dict(
         progress_bar=ProgressBarArgument(
             'do not show progress bar',
-            '--no-progress-bar',
+            ('-N', '--no-progress-bar'),
             default=False)
     )
 
@@ -900,7 +900,7 @@ class store_overwrite(_store_container_command):
     arguments = dict(
         progress_bar=ProgressBarArgument(
             'do not show progress bar',
-            '--no-progress-bar',
+            ('-N', '--no-progress-bar'),
             default=False)
     )
 
@@ -1021,9 +1021,9 @@ class store_upload(_store_container_command):
         poolsize=IntArgument('set pool size', '--with-pool-size'),
         progress_bar=ProgressBarArgument(
             'do not show progress bar',
-            '--no-progress-bar',
+            ('N', '--no-progress-bar'),
             default=False),
-        overwrite=FlagArgument('Force overwrite, if object exists', '-f')
+        overwrite=FlagArgument('Force (over)write', ('-f', '--force'))
     )
 
     def _remote_path(self, remote_path, local_path=''):
@@ -1115,7 +1115,7 @@ class store_cat(_store_container_command):
             '--if-unmodified-since'),
         object_version=ValueArgument(
             'get the specific version',
-            '--object-version')
+            ('-j', '--object-version'))
     )
 
     @errors.generic.all
@@ -1144,7 +1144,7 @@ class store_cat(_store_container_command):
 class store_download(_store_container_command):
     """Download remote object as local file
     If local destination is a directory:
-    *   download <container>:<path> <local dir> -r
+    *   download <container>:<path> <local dir> -R
     will download all files on <container> prefixed as <path>,
     to <local dir>/<full path>
     *   download <container>:<path> <local dir> --exact-match
@@ -1155,7 +1155,7 @@ class store_download(_store_container_command):
     """
 
     arguments = dict(
-        resume=FlagArgument('Resume instead of overwrite', '--resume'),
+        resume=FlagArgument('Resume instead of overwrite', ('-r', '--resume')),
         range=RangeArgument('show range of data', '--range'),
         if_match=ValueArgument('show output if ETags match', '--if-match'),
         if_none_match=ValueArgument(
@@ -1169,15 +1169,15 @@ class store_download(_store_container_command):
             '--if-unmodified-since'),
         object_version=ValueArgument(
             'get the specific version',
-            '--object-version'),
+            ('-j', '--object-version')),
         poolsize=IntArgument('set pool size', '--with-pool-size'),
         progress_bar=ProgressBarArgument(
             'do not show progress bar',
-            '--no-progress-bar',
+            ('-N', '--no-progress-bar'),
             default=False),
         recursive=FlagArgument(
             'Download a remote path and all its contents',
-            '--recursive')
+            ('-R', '--recursive'))
     )
 
     def _outputs(self, local_path):
@@ -1351,7 +1351,7 @@ class store_hashmap(_store_container_command):
             '--if-unmodified-since'),
         object_version=ValueArgument(
             'get the specific version',
-            '--object-version')
+            ('-j', '--object-version'))
     )
 
     @errors.generic.all
@@ -1379,13 +1379,13 @@ class store_hashmap(_store_container_command):
 class store_delete(_store_container_command):
     """Delete a container [or an object]
     How to delete a non-empty container:
-    - empty the container:  /store delete -r <container>
+    - empty the container:  /store delete -R <container>
     - delete it:            /store delete <container>
     .
     Semantics of directory deletion:
     .a preserve the contents: /store delete <container>:<directory>
     .    objects of the form dir/filename can exist with a dir object
-    .b delete contents:       /store delete -r <container>:<directory>
+    .b delete contents:       /store delete -R <container>:<directory>
     .    all dir/* objects are affected, even if dir does not exist
     .
     To restore a deleted object OBJ in a container CONT:
@@ -1399,7 +1399,7 @@ class store_delete(_store_container_command):
         yes=FlagArgument('Do not prompt for permission', '--yes'),
         recursive=FlagArgument(
             'empty dir or container and delete (if dir)',
-            ('-r', '--recursive'))
+            ('-R', '--recursive'))
     )
 
     def __init__(self, arguments={}):
@@ -1445,7 +1445,7 @@ class store_purge(_store_container_command):
     """Delete a container and release related data blocks
     Non-empty containers can not purged.
     To purge a container with content:
-    .   /store delete -r <container>
+    .   /store delete -R <container>
     .      objects are deleted, but data blocks remain on server
     .   /store purge <container>
     .      container and data blocks are released and deleted
@@ -1608,7 +1608,7 @@ class store_info(_store_container_command):
     arguments = dict(
         object_version=ValueArgument(
             'show specific version \ (applies only for objects)',
-            '--object-version')
+            ('-j', '--object-version'))
     )
 
     @errors.generic.all
@@ -1636,11 +1636,11 @@ class store_meta(_store_container_command):
     """Get metadata for account, containers or objects"""
 
     arguments = dict(
-        detail=FlagArgument('show detailed output', '-l'),
+        detail=FlagArgument('show detailed output', ('-l', '--details')),
         until=DateArgument('show metadata until then', '--until'),
         object_version=ValueArgument(
             'show specific version \ (applies only for objects)',
-            '--object-version')
+            ('-j', '--object-version'))
     )
 
     @errors.generic.all
@@ -1909,7 +1909,7 @@ class store_sharers(_store_account_command):
     """List the accounts that share objects with current user"""
 
     arguments = dict(
-        detail=FlagArgument('show detailed output', '-l'),
+        detail=FlagArgument('show detailed output', ('-l', '--details')),
         marker=ValueArgument('show output greater then marker', '--marker')
     )
 

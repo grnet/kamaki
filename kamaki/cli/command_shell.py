@@ -95,7 +95,7 @@ class Shell(Cmd):
 
     def greet(self, version):
         print('kamaki v%s - Interactive Shell\n' % version)
-        print('\t\exit     \tterminate kamaki')
+        print('\t/exit     \tterminate kamaki')
         print('\texit or ^D\texit context')
         print('\t? or help \tavailable commands')
         print('\t?command  \thelp on command')
