@@ -36,14 +36,20 @@ from threading import Thread
 from json import dumps, loads
 from time import time
 
-from kamaki.clients.utils import get_logger
+from kamaki.clients.utils import get_logger, add_file_logger, get_log_filename
 from kamaki.clients.connection.kamakicon import KamakiHTTPConnection
 from kamaki.clients.connection.errors import KamakiConnectionError
 from kamaki.clients.connection.errors import KamakiResponseError
 
+DEBUG_LOG = get_log_filename()
+add_file_logger('clients.send', __name__, filename=DEBUG_LOG)
 sendlog = get_logger('clients.send')
+sendlog.debug('Logging location: %s' % DEBUG_LOG)
+add_file_logger('data.send', __name__, filename=DEBUG_LOG)
 datasendlog = get_logger('data.send')
+add_file_logger('clients.recv', __name__, filename=DEBUG_LOG)
 recvlog = get_logger('clients.recv')
+add_file_logger('data.recv', __name__, filename=DEBUG_LOG)
 datarecvlog = get_logger('data.recv')
 
 

@@ -34,13 +34,37 @@
 import logging
 
 
-def add_logger(name, level, prefix=''):
-    h = logging.StreamHandler()
-    fmt = logging.Formatter(prefix + '%(message)s')
-    h.setFormatter(fmt)
-    logger = logging.getLogger(name)
-    logger.addHandler(h)
-    logger.setLevel(level)
+def get_log_filename(filename=(
+        '/var/log/kamaki.log',
+        '/var/log/kamaki/clients.log',
+        '/tmp/kamaki.log',
+        'kamaki.log')):
+    if not (isinstance(filename, list) or isinstance(filename, tuple)):
+        filename = (filename,)
+    for logfile in filename:
+        try:
+            with open(logfile) as f:
+                f.seek(0)
+        except IOError:
+            continue
+        return logfile
+    print('Failed to open any logging locations')
+
+
+def add_file_logger(
+        name, caller,
+        level=logging.DEBUG, prefix='', filename='/tmp/kamaki.log'):
+    try:
+        assert caller and filename
+        logger = logging.getLogger(name)
+        h = logging.FileHandler(filename)
+        fmt = logging.Formatter(
+            '%(asctime)s ' + caller + ' %(name)s-%(levelname)s: %(message)s')
+        h.setFormatter(fmt)
+        logger.addHandler(h)
+        logger.setLevel(level)
+    except Exception:
+        pass
 
 
 def get_logger(name):
