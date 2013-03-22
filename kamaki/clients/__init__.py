@@ -41,7 +41,9 @@ from kamaki.clients.connection.kamakicon import KamakiHTTPConnection
 from kamaki.clients.connection.errors import KamakiConnectionError
 from kamaki.clients.connection.errors import KamakiResponseError
 
+LOG_TOKEN = False
 DEBUG_LOG = get_log_filename()
+
 add_file_logger('clients.send', __name__, filename=DEBUG_LOG)
 sendlog = get_logger('clients.send')
 sendlog.debug('Logging location: %s' % DEBUG_LOG)
@@ -224,6 +226,8 @@ class Client(object):
             headers.update(async_headers)
 
             for key, val in headers.items():
+                if (not LOG_TOKEN) and key.lower() == 'x-auth-token':
+                    continue
                 sendlog.info('\t%s: %s', key, val)
             sendlog.info('')
             if data:
@@ -231,6 +235,8 @@ class Client(object):
 
             recvlog.info('%d %s', r.status_code, r.status)
             for key, val in r.headers.items():
+                if (not LOG_TOKEN) and key.lower() == 'x-auth-token':
+                    continue
                 recvlog.info('%s: %s', key, val)
             if r.content:
                 datarecvlog.info(r.content)
