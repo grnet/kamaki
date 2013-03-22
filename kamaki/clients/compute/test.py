@@ -36,8 +36,7 @@ from unittest import TestCase
 from itertools import product
 from json import dumps
 
-from kamaki.clients.compute import ComputeClient, ComputeRestClient
-from kamaki.clients import ClientError
+from kamaki.clients import ClientError, compute
 
 
 rest_pkg = 'kamaki.clients.compute.rest_api.ComputeRestClient'
@@ -111,13 +110,13 @@ class FR(object):
         pass
 
 
-class ComputeRest(TestCase):
+class ComputeRestClient(TestCase):
 
     """Set up a ComputesRest thorough test"""
     def setUp(self):
         self.url = 'http://cyclades.example.com'
         self.token = 'cyc14d3s70k3n'
-        self.client = ComputeRestClient(self.url, self.token)
+        self.client = compute.ComputeRestClient(self.url, self.token)
 
     def tearDown(self):
         FR.json = vm_recv
@@ -232,7 +231,7 @@ class ComputeRest(TestCase):
         self._test_put('images')
 
 
-class Compute(TestCase):
+class ComputeClient(TestCase):
 
     def assert_dicts_are_equal(self, d1, d2):
         for k, v in d1.items():
@@ -246,7 +245,7 @@ class Compute(TestCase):
     def setUp(self):
         self.url = 'http://cyclades.example.com'
         self.token = 'cyc14d3s70k3n'
-        self.client = ComputeClient(self.url, self.token)
+        self.client = compute.ComputeClient(self.url, self.token)
 
     def tearDown(self):
         FR.status_code = 200
@@ -257,7 +256,7 @@ class Compute(TestCase):
         return_value=img_recv['image'])
     def test_create_server(self, GID):
         with patch.object(
-                ComputeClient, 'servers_post',
+                compute.ComputeClient, 'servers_post',
                 side_effect=ClientError(
                     'REQUEST ENTITY TOO LARGE',
                     status=403)):
@@ -267,7 +266,7 @@ class Compute(TestCase):
                 vm_name, fid, img_ref)
 
         with patch.object(
-                ComputeClient, 'servers_post',
+                compute.ComputeClient, 'servers_post',
                 return_value=FR()) as post:
             r = self.client.create_server(vm_name, fid, img_ref)
             self.assertEqual(r, FR.json['server'])
@@ -444,11 +443,11 @@ if __name__ == '__main__':
     from sys import argv
     from kamaki.clients.test import runTestCase
     not_found = True
-    if not argv[1:] or argv[1] == 'Compute':
+    if not argv[1:] or argv[1] == 'ComputeClient':
         not_found = False
-        runTestCase(Compute, 'Compute Client', argv[2:])
+        runTestCase(ComputeClient, 'Compute Client', argv[2:])
     if not argv[1:] or argv[1] == 'ComputeRest':
         not_found = False
-        runTestCase(ComputeRest, 'ComputeRest Client', argv[2:])
+        runTestCase(ComputeRestClient, 'ComputeRest Client', argv[2:])
     if not_found:
         print('TestCase %s not found' % argv[1])

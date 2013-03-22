@@ -44,12 +44,13 @@ from kamaki.clients.connection.test import (
     KamakiResponse,
     KamakiHTTPResponse)
 from kamaki.clients.utils.test import Utils
-from kamaki.clients.astakos.test import Astakos
-from kamaki.clients.compute.test import Compute, ComputeRest
-from kamaki.clients.cyclades.test import Cyclades, CycladesRest
-from kamaki.clients.image.test import Image
-from kamaki.clients.storage.test import Storage
-from kamaki.clients.pithos.test import Pithos, PithosRest
+from kamaki.clients.astakos.test import AstakosClient
+from kamaki.clients.compute.test import ComputeClient, ComputeRestClient
+from kamaki.clients.cyclades.test import CycladesClient
+from kamaki.clients.cyclades.test import CycladesRestClient
+from kamaki.clients.image.test import ImageClient
+from kamaki.clients.storage.test import StorageClient
+from kamaki.clients.pithos.test import PithosClient, PithosRestClient
 
 
 class ClientError(TestCase):
