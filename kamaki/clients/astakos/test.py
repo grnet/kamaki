@@ -32,9 +32,9 @@
 # or implied, of GRNET S.A.
 
 from mock import patch, call
-
 from unittest import TestCase
-from kamaki.clients.astakos import AstakosClient
+
+from kamaki.clients import astakos
 
 
 example = dict(
@@ -69,14 +69,14 @@ class FR(object):
 astakos_pkg = 'kamaki.clients.astakos.AstakosClient'
 
 
-class Astakos(TestCase):
+class AstakosClient(TestCase):
 
     cached = False
 
     def setUp(self):
         self.url = 'https://astakos.example.com'
         self.token = 'ast@k0sT0k3n=='
-        self.client = AstakosClient(self.url, self.token)
+        self.client = astakos.AstakosClient(self.url, self.token)
 
     def tearDown(self):
         FR.json = example
@@ -121,4 +121,4 @@ class Astakos(TestCase):
 if __name__ == '__main__':
     from sys import argv
     from kamaki.clients.test import runTestCase
-    runTestCase(Astakos, 'AstakosClient', argv[1:])
+    runTestCase(AstakosClient, 'AstakosClient', argv[1:])

@@ -138,7 +138,7 @@ class FR(object):
         pass
 
 
-class Storage(TestCase):
+class StorageClient(TestCase):
 
     files = []
 
@@ -413,4 +413,4 @@ class Storage(TestCase):
 if __name__ == '__main__':
     from sys import argv
     from kamaki.clients.test import runTestCase
-    runTestCase(Storage, 'Storage Client', argv[1:])
+    runTestCase(StorageClient, 'Storage Client', argv[1:])

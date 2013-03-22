@@ -138,7 +138,7 @@ class FR(object):
 image_pkg = 'kamaki.clients.image.ImageClient'
 
 
-class Image(TestCase):
+class ImageClient(TestCase):
 
     def assert_dicts_are_equal(self, d1, d2):
         for k, v in d1.items():
@@ -151,8 +151,8 @@ class Image(TestCase):
     def setUp(self):
         self.url = 'http://image.example.com'
         self.token = 'an1m@g370k3n=='
-        from kamaki.clients.image import ImageClient
-        self.client = ImageClient(self.url, self.token)
+        from kamaki.clients import image
+        self.client = image.ImageClient(self.url, self.token)
 
     def tearDown(self):
         FR.json = example_images
@@ -263,4 +263,4 @@ class Image(TestCase):
 if __name__ == '__main__':
     from sys import argv
     from kamaki.clients.test import runTestCase
-    runTestCase(Image, 'Plankton Client', argv[1:])
+    runTestCase(ImageClient, 'Plankton Client', argv[1:])

@@ -131,7 +131,7 @@ To test a specific method in a class, apply an extra argument, e.g. for the requ
 
     $ python test.py Client request
 
-Each package contains a test module (test.py) which is also runnable from the command line. E.g. the pithos package contains a Pithos test which contains, among others, the download sub-test:
+Each package contains a test module (test.py) which is also runnable from the command line. E.g. in the pithos package there is a test module which contains, among others, the **download** sub-test:
 
 .. code-block:: console
 
@@ -146,19 +146,25 @@ Each package contains a test module (test.py) which is also runnable from the co
     # Test kamaki.clients.pithos.PithosClient.download
     $ python test.py Pithos download
 
+To fully test a specific package, run test.py from the package location. E.g. to test everything in kamaki.clients.pithos package:
+
+.. code-block:: console
+
+    $ cd pithos
+    $ python test.py
+
 Mechanism
 ^^^^^^^^^
 
 Each folder / package contains a test.py file, that represents the test module of this package. All test modules contain a set of classes that extent the TestCase class. They also contain a main method to run the tests.
 
-All classes in the tested package are tested by similarly-named classes in the test module. Methods that do no belong to a class are tested by testing classes named after the module tested methods belong to.
+By convention, testing classes are named as <Tested Class> where <Test Class> is the name of the tested class or module. Methods not grouped in classes are tested by classes named after their respective module.
 
-For example, the kamaki.clients.pithos.PithosClient class is tested by the kamaki.clients.pithos.test.Pithos class, which the method in the kamaki.clients.utils module are tested by the kamaki.clients.utils.test.Utils testing class.
-
+For example, the kamaki.clients.pithos.PithosClient class is tested by the kamaki.clients.pithos.test.PithosClient class, while the methods in kamaki.clients.utils module are tested by the kamaki.clients.utils.test.Utils testing class.
 
 Adding unit tests
 ^^^^^^^^^^^^^^^^^
-After modifying or extending kamaki.clients method, classes, modules or packages, it is a good practice to also modify or extend the corresponding unit tests. What's more, it is recommended to modify or implement the tests that test the new behavior, before implementing the behavior itself.
+After modifying or extending kamaki.clients method, classes, modules or packages, it is a good practice to also modify or extend the corresponding unit tests. What's more, it is recommended to modify or implement the testing of new behavior before implementing the behavior itself. The aim for kamaki.clients package is an 1 to 1 mapping between methods and their tests.
 
 Modifying an existing method
 """"""""""""""""""""""""""""
@@ -167,18 +173,20 @@ In case of an existing method modification, the programmer has to modify the cor
 
 Example 1: to modify the kamaki.clients.utils.filter_in method, the programmer has to also adjust the kamaki.clients.utils.test.Utils.test_filter_in method.
 
-Example 2: to modify the kamaki.clients.pithos.PithosRestClient.object_get, the programmer has to also adjust the kamaki.clients.pithos.test.PithosRest.test_object_get method.
+Example 2: to modify the kamaki.clients.pithos.PithosRestClient.object_get, the programmer has to also adjust the kamaki.clients.pithos.test.PithosRestClient.test_object_get method.
 
 Adding a new method
 """""""""""""""""""
 
-Programmers who want to implement a new method in an existing class, are encouraged to implement the corresponding unit test first. In order to do that, they should first find the testing class that is mapped to the class they need to extend.
+Programmers who want to implement a new method in an existing class, are encouraged to implement the corresponding unit test first. In order to do that, they should find the testing class that is mapped to the class or module they need to extend.
 
-Example 1: To add a **list_special** method to kamaki.clients.astakos.AstakosClient, extend the kamaki.clients.astakos.test.Astakos test class, as shown bellow:
+Example 1: To add a **list_special** method to kamaki.clients.astakos.AstakosClient, extend the kamaki.clients.astakos.test.AstakosClient class, as shown bellow:
 
 .. code-block:: python
 
-    class Astakos(TestCase):
+    # file: ${kamaki}/kamaki/clients/astakos/__init__.py
+
+    class AstakosClient(TestCase):
         ...
         def test_list_special(self):
             """Test the list_special method"""
@@ -187,6 +195,8 @@ Example 1: To add a **list_special** method to kamaki.clients.astakos.AstakosCli
 Example 2: To add a **get_random_int** method in kamaki.clients.utils module, extend the kamaki.clients.utils.test.Utils test class, as shown bellow:
 
 .. code-block:: python
+
+    # file: ${kamaki}/kamaki/clients/utils/__init__.py
 
     class Utils(TestCase):
         ...
@@ -199,7 +209,7 @@ Implementing a new class or module
 
 Each class or module needs a seperate test sub-module. By convention, each class or module under the kamaki.clients should be located in a separate directory.
 
-Example 1: To add a NewService class, that extents the kamaki.clients.Client interface: 
+Example 1: To add a NewService class that implements the kamaki.clients.Client interface: 
 
 * create a new_service package and implement the unit tests in the kamaki.clients.new_service.test module:
 
@@ -217,9 +227,10 @@ Example 1: To add a NewService class, that extents the kamaki.clients.Client int
 
 .. code-block:: python
 
+    # file: ${kamaki}/kamaki/clients/new_service/test.py
     from unittest import TestCase
 
-    class NewServiceTest(TestCase):
+    class NewService(TestCase):
 
         def test_method1(self):
             ...
@@ -228,6 +239,7 @@ Example 1: To add a NewService class, that extents the kamaki.clients.Client int
 
 .. code-block:: python
 
+    # file: ${kamaki}/kamaki/clients/new_service/__init__.py
     from kamaki.clients import Client
 
     class NewService(Client):
@@ -239,9 +251,9 @@ Example 1: To add a NewService class, that extents the kamaki.clients.Client int
 
 ..code-block:: python
 
-    # kamaki.clients.test module
-    ...
+    # file: ${kamaki}/kamaki/clients/test.py
+
     from kamaki.clients.new_service.test import NewService
 
-.. note:: If the new class or module is part of an existing sub-package, it is best to append its testing class in the existing test.py file of the sub-package it belongs to. For example, the kamaki.clients.pithos.PithosClient and kamaki.clients.pithos.rest_api.PithosRestClient classes are tested by two different classes (Pithos and PithosRest) in the same module (kamaki.clients.pithos.test).
+.. note:: If the new class or module is part of an existing sub-package, it is acceptable to append its testing class in the existing test.py file of the sub-package it belongs to. For example, the kamaki.clients.pithos.PithosClient and kamaki.clients.pithos.rest_api.PithosRestClient classes are tested by two different classes (PithosClient and PithosRestClient respectively) in the same module (kamaki.clients.pithos.test).
 

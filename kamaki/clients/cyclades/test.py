@@ -30,12 +30,12 @@
 # documentation are those of the authors and should not be
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
+
 from mock import patch, call
 from unittest import TestCase
 from itertools import product
 
-from kamaki.clients import ClientError
-from kamaki.clients.cyclades import CycladesClient, CycladesRestClient
+from kamaki.clients import ClientError, cyclades
 
 img_ref = "1m4g3-r3f3r3nc3"
 vm_name = "my new VM"
@@ -94,13 +94,13 @@ rest_pkg = 'kamaki.clients.cyclades.CycladesRestClient'
 cyclades_pkg = 'kamaki.clients.cyclades.CycladesClient'
 
 
-class CycladesRest(TestCase):
+class CycladesRestClient(TestCase):
 
     """Set up a Cyclades thorough test"""
     def setUp(self):
         self.url = 'http://cyclades.example.com'
         self.token = 'cyc14d3s70k3n'
-        self.client = CycladesRestClient(self.url, self.token)
+        self.client = cyclades.CycladesRestClient(self.url, self.token)
 
     def tearDown(self):
         FR.json = vm_recv
@@ -208,7 +208,7 @@ class CycladesRest(TestCase):
                 **kwargs))
 
 
-class Cyclades(TestCase):
+class CycladesClient(TestCase):
 
     def assert_dicts_are_equal(self, d1, d2):
         for k, v in d1.items():
@@ -222,7 +222,7 @@ class Cyclades(TestCase):
     def setUp(self):
         self.url = 'http://cyclades.example.com'
         self.token = 'cyc14d3s70k3n'
-        self.client = CycladesClient(self.url, self.token)
+        self.client = cyclades.CycladesClient(self.url, self.token)
 
     def tearDown(self):
         FR.status_code = 200
@@ -272,13 +272,13 @@ class Cyclades(TestCase):
         vm_id = vm_recv['server']['id']
         v = firewalls['attachments']['values'][0]['firewallProfile']
         with patch.object(
-                CycladesClient, 'get_server_details',
+                cyclades.CycladesClient, 'get_server_details',
                 return_value=firewalls) as GSD:
             r = self.client.get_firewall_profile(vm_id)
             GSD.assert_called_once_with(vm_id)
             self.assertEqual(r, v)
         with patch.object(
-                CycladesClient, 'get_server_details',
+                cyclades.CycladesClient, 'get_server_details',
                 return_value=dict()):
             self.assertRaises(
                 ClientError,
@@ -344,7 +344,7 @@ class Cyclades(TestCase):
             dict(id='another-nic-id', network_id='another-net-id'),
             dict(id=nic_id * 2, network_id=net_id * 2)]
         with patch.object(
-                CycladesClient,
+                cyclades.CycladesClient,
                 'list_server_nics',
                 return_value=vm_nics) as LSN:
             r = self.client.disconnect_server(vm_id, nic_id)
@@ -392,7 +392,7 @@ class Cyclades(TestCase):
         net_id = net_recv['network']['id']
         nics = ['nic1', 'nic2', 'nic3']
         with patch.object(
-                CycladesClient,
+                cyclades.CycladesClient,
                 'list_network_nics',
                 return_value=nics) as LNN:
             self.client.disconnect_network_nics(net_id)
@@ -422,12 +422,12 @@ class Cyclades(TestCase):
     def test_delete_network(self):
         net_id = net_recv['network']['id']
         with patch.object(
-                CycladesClient, 'networks_delete',
+                cyclades.CycladesClient, 'networks_delete',
                 return_value=FR()) as ND:
             self.client.delete_network(net_id)
             ND.assert_called_once_with(net_id)
         with patch.object(
-                CycladesClient, 'networks_delete',
+                cyclades.CycladesClient, 'networks_delete',
                 side_effect=ClientError('A 421 Error', 421)):
             try:
                 self.client.delete_network(421)
@@ -441,11 +441,11 @@ if __name__ == '__main__':
     from sys import argv
     from kamaki.clients.test import runTestCase
     not_found = True
-    if not argv[1:] or argv[1] == 'Cyclades':
+    if not argv[1:] or argv[1] == 'CycladesClient':
         not_found = False
-        runTestCase(Cyclades, 'Cyclades Client', argv[2:])
-    if not argv[1:] or argv[1] == 'CycladesRest':
+        runTestCase(CycladesClient, 'Cyclades Client', argv[2:])
+    if not argv[1:] or argv[1] == 'CycladesRestClient':
         not_found = False
-        runTestCase(CycladesRest, 'CycladesRest Client', argv[2:])
+        runTestCase(CycladesRestClient, 'CycladesRest Client', argv[2:])
     if not_found:
         print('TestCase %s not found' % argv[1])
