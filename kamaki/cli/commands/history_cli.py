@@ -99,7 +99,10 @@ class history_show(_init_history):
     """
 
     arguments = dict(
-        limit=IntArgument('number of lines to show', '-n', default=0),
+        limit=IntArgument(
+            'number of lines to show',
+            ('-n', '--numner'),
+            default=0),
         match=ValueArgument('show lines that match given terms', '--match')
     )
 

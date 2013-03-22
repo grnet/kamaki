@@ -70,7 +70,7 @@ class image_public(_init_image):
     """List public images"""
 
     arguments = dict(
-        detail=FlagArgument('show detailed output', '-l'),
+        detail=FlagArgument('show detailed output', ('-l', '--details')),
         container_format=ValueArgument(
             'filter by container format',
             '--container-format'),
@@ -83,7 +83,7 @@ class image_public(_init_image):
             'order by FIELD ( - to reverse order)',
             '--order',
             default=''),
-        limit=IntArgument('limit the number of images in list', '-n'),
+        limit=IntArgument('limit number of listed images', ('-n', '--number')),
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
             '--more')
@@ -160,10 +160,12 @@ class image_register(_init_image):
         owner=ValueArgument('set image owner (admin only)', '--owner'),
         properties=KeyValueArgument(
             'add property in key=value form (can be repeated)',
-            '--property'),
+            ('-p, --property')),
         is_public=FlagArgument('mark image as public', '--public'),
         size=IntArgument('set image size', '--size'),
-        update=FlagArgument('update existing image properties', '--update')
+        update=FlagArgument(
+            'update existing image properties',
+            ('-u', '--update'))
     )
 
     @errors.generic.all
@@ -284,8 +286,8 @@ class image_list(_init_cyclades):
     """List images"""
 
     arguments = dict(
-        detail=FlagArgument('show detailed output', '-l'),
-        limit=IntArgument('limit the number of images to list', '-n'),
+        detail=FlagArgument('show detailed output', ('-l', '--details')),
+        limit=IntArgument('limit number listed images', ('-n', '--number')),
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
             '--more')
