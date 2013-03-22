@@ -31,6 +31,21 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+import logging
+
+
+def add_logger(name, level, prefix=''):
+    h = logging.StreamHandler()
+    fmt = logging.Formatter(prefix + '%(message)s')
+    h.setFormatter(fmt)
+    logger = logging.getLogger(name)
+    logger.addHandler(h)
+    logger.setLevel(level)
+
+
+def get_logger(name):
+    return logging.getLogger(name)
+
 
 def _matches(val1, val2, exactMath=True):
     """Case Insensitive match"""

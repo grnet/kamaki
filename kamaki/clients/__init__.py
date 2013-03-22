@@ -35,15 +35,16 @@ from urllib2 import quote
 from threading import Thread
 from json import dumps, loads
 from time import time
-import logging
+
+from kamaki.clients.utils import get_logger
 from kamaki.clients.connection.kamakicon import KamakiHTTPConnection
 from kamaki.clients.connection.errors import KamakiConnectionError
 from kamaki.clients.connection.errors import KamakiResponseError
 
-sendlog = logging.getLogger('clients.send')
-datasendlog = logging.getLogger('data.send')
-recvlog = logging.getLogger('clients.recv')
-datarecvlog = logging.getLogger('data.recv')
+sendlog = get_logger('clients.send')
+datasendlog = get_logger('data.send')
+recvlog = get_logger('clients.recv')
+datarecvlog = get_logger('data.recv')
 
 
 class ClientError(Exception):
