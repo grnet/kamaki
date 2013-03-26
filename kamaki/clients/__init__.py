@@ -47,16 +47,24 @@ DEBUG_LOG = logger.get_log_filename()
 logger.add_file_logger('clients.send', __name__, filename=DEBUG_LOG)
 sendlog = logger.get_logger('clients.send')
 sendlog.debug('Logging location: %s' % DEBUG_LOG)
+
 logger.add_file_logger('data.send', __name__, filename=DEBUG_LOG)
 datasendlog = logger.get_logger('data.send')
+
 logger.add_file_logger('clients.recv', __name__, filename=DEBUG_LOG)
 recvlog = logger.get_logger('clients.recv')
+
 logger.add_file_logger('data.recv', __name__, filename=DEBUG_LOG)
 datarecvlog = logger.get_logger('data.recv')
+
+logger.add_file_logger('ClientError', __name__, filename=DEBUG_LOG)
+clienterrorlog = logger.get_logger('ClientError')
 
 
 class ClientError(Exception):
     def __init__(self, message, status=0, details=None):
+        clienterrorlog.debug(
+            'msg[%s], sts[%s], dtl[%s]' % (message, status, details))
         try:
             message += '' if message and message[-1] == '\n' else '\n'
             serv_stat, sep, new_msg = message.partition('{')
@@ -159,6 +167,7 @@ class Client(object):
         return threadlist
 
     def _raise_for_status(self, r):
+        clienterrorlog.debug('raise err from [%s] of type[%s]' % (r, type(r)))
         status_msg = getattr(r, 'status', None) or ''
         try:
             message = '%s %s\n' % (status_msg, r.text)
