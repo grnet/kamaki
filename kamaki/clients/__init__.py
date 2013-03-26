@@ -36,23 +36,23 @@ from threading import Thread
 from json import dumps, loads
 from time import time
 
-from kamaki.clients.utils import get_logger, add_file_logger, get_log_filename
+from kamaki.clients.utils import logger
 from kamaki.clients.connection.kamakicon import KamakiHTTPConnection
 from kamaki.clients.connection.errors import KamakiConnectionError
 from kamaki.clients.connection.errors import KamakiResponseError
 
 LOG_TOKEN = False
-DEBUG_LOG = get_log_filename()
+DEBUG_LOG = logger.get_log_filename()
 
-add_file_logger('clients.send', __name__, filename=DEBUG_LOG)
-sendlog = get_logger('clients.send')
+logger.add_file_logger('clients.send', __name__, filename=DEBUG_LOG)
+sendlog = logger.get_logger('clients.send')
 sendlog.debug('Logging location: %s' % DEBUG_LOG)
-add_file_logger('data.send', __name__, filename=DEBUG_LOG)
-datasendlog = get_logger('data.send')
-add_file_logger('clients.recv', __name__, filename=DEBUG_LOG)
-recvlog = get_logger('clients.recv')
-add_file_logger('data.recv', __name__, filename=DEBUG_LOG)
-datarecvlog = get_logger('data.recv')
+logger.add_file_logger('data.send', __name__, filename=DEBUG_LOG)
+datasendlog = logger.get_logger('data.send')
+logger.add_file_logger('clients.recv', __name__, filename=DEBUG_LOG)
+recvlog = logger.get_logger('clients.recv')
+logger.add_file_logger('data.recv', __name__, filename=DEBUG_LOG)
+datarecvlog = logger.get_logger('data.recv')
 
 
 class ClientError(Exception):
