@@ -35,19 +35,36 @@ from urllib2 import quote
 from threading import Thread
 from json import dumps, loads
 from time import time
-import logging
+
+from kamaki.clients.utils import logger
 from kamaki.clients.connection.kamakicon import KamakiHTTPConnection
 from kamaki.clients.connection.errors import KamakiConnectionError
 from kamaki.clients.connection.errors import KamakiResponseError
 
-sendlog = logging.getLogger('clients.send')
-datasendlog = logging.getLogger('data.send')
-recvlog = logging.getLogger('clients.recv')
-datarecvlog = logging.getLogger('data.recv')
+LOG_TOKEN = False
+DEBUG_LOG = logger.get_log_filename()
+
+logger.add_file_logger('clients.send', __name__, filename=DEBUG_LOG)
+sendlog = logger.get_logger('clients.send')
+sendlog.debug('Logging location: %s' % DEBUG_LOG)
+
+logger.add_file_logger('data.send', __name__, filename=DEBUG_LOG)
+datasendlog = logger.get_logger('data.send')
+
+logger.add_file_logger('clients.recv', __name__, filename=DEBUG_LOG)
+recvlog = logger.get_logger('clients.recv')
+
+logger.add_file_logger('data.recv', __name__, filename=DEBUG_LOG)
+datarecvlog = logger.get_logger('data.recv')
+
+logger.add_file_logger('ClientError', __name__, filename=DEBUG_LOG)
+clienterrorlog = logger.get_logger('ClientError')
 
 
 class ClientError(Exception):
     def __init__(self, message, status=0, details=None):
+        clienterrorlog.debug(
+            'msg[%s], sts[%s], dtl[%s]' % (message, status, details))
         try:
             message += '' if message and message[-1] == '\n' else '\n'
             serv_stat, sep, new_msg = message.partition('{')
@@ -150,6 +167,7 @@ class Client(object):
         return threadlist
 
     def _raise_for_status(self, r):
+        clienterrorlog.debug('raise err from [%s] of type[%s]' % (r, type(r)))
         status_msg = getattr(r, 'status', None) or ''
         try:
             message = '%s %s\n' % (status_msg, r.text)
@@ -217,6 +235,8 @@ class Client(object):
             headers.update(async_headers)
 
             for key, val in headers.items():
+                if (not LOG_TOKEN) and key.lower() == 'x-auth-token':
+                    continue
                 sendlog.info('\t%s: %s', key, val)
             sendlog.info('')
             if data:
@@ -224,6 +244,8 @@ class Client(object):
 
             recvlog.info('%d %s', r.status_code, r.status)
             for key, val in r.headers.items():
+                if (not LOG_TOKEN) and key.lower() == 'x-auth-token':
+                    continue
                 recvlog.info('%s: %s', key, val)
             if r.content:
                 datarecvlog.info(r.content)
