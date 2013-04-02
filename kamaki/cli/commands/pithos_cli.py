@@ -1021,7 +1021,7 @@ class store_upload(_store_container_command):
         poolsize=IntArgument('set pool size', '--with-pool-size'),
         progress_bar=ProgressBarArgument(
             'do not show progress bar',
-            ('N', '--no-progress-bar'),
+            ('-N', '--no-progress-bar'),
             default=False),
         overwrite=FlagArgument('Force (over)write', ('-f', '--force'))
     )

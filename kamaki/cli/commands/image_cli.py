@@ -41,9 +41,7 @@ from kamaki.cli.commands.cyclades_cli import _init_cyclades
 from kamaki.cli.commands import _command_init, errors
 
 
-image_cmds = CommandTree(
-    'image',
-    'Compute/Cyclades or Glance API image commands')
+image_cmds = CommandTree('image', 'Plankton Image API commands')
 _commands = [image_cmds]
 
 
@@ -174,6 +172,7 @@ class image_register(_init_image):
         if not location.startswith('pithos://'):
             account = self.config.get('store', 'account') \
                 or self.config.get('global', 'account')
+            assert account, 'No user account provided'
             if account[-1] == '/':
                 account = account[:-1]
             container = self.config.get('store', 'container') \
@@ -282,7 +281,12 @@ class image_setmembers(_init_image):
 
 
 @command(image_cmds)
-class image_list(_init_cyclades):
+class image_compute(_init_cyclades):
+    """Compute Image API commands"""
+
+
+@command(image_cmds)
+class image_compute_list(_init_cyclades):
     """List images"""
 
     arguments = dict(
@@ -315,7 +319,7 @@ class image_list(_init_cyclades):
 
 
 @command(image_cmds)
-class image_info(_init_cyclades):
+class image_compute_info(_init_cyclades):
     """Get detailed information on an image"""
 
     @errors.generic.all
@@ -333,7 +337,7 @@ class image_info(_init_cyclades):
 
 
 @command(image_cmds)
-class image_delete(_init_cyclades):
+class image_compute_delete(_init_cyclades):
     """Delete an image (WARNING: image file is also removed)"""
 
     @errors.generic.all
@@ -348,7 +352,7 @@ class image_delete(_init_cyclades):
 
 
 @command(image_cmds)
-class image_properties(_init_cyclades):
+class image_compute_properties(_init_cyclades):
     """Get properties related to OS installation in an image"""
 
     @errors.generic.all
@@ -382,7 +386,7 @@ class image_addproperty(_init_cyclades):
 
 
 @command(image_cmds)
-class image_setproperty(_init_cyclades):
+class image_compute_setproperty(_init_cyclades):
     """Update an existing property in an image"""
 
     @errors.generic.all
@@ -400,7 +404,7 @@ class image_setproperty(_init_cyclades):
 
 
 @command(image_cmds)
-class image_delproperty(_init_cyclades):
+class image_compute_delproperty(_init_cyclades):
     """Delete a property of an image"""
 
     @errors.generic.all
