@@ -158,7 +158,7 @@ class image_register(_init_image):
             'set container format',
             '--container-format'),
         disk_format=ValueArgument('set disk format', '--disk-format'),
-        id=ValueArgument('set image ID', '--id'),
+        #id=ValueArgument('set image ID', '--id'),
         owner=ValueArgument('set image owner (admin only)', '--owner'),
         properties=KeyValueArgument(
             'add property in key=value form (can be repeated)',
@@ -191,7 +191,6 @@ class image_register(_init_image):
                 'checksum',
                 'container_format',
                 'disk_format',
-                'id',
                 'owner',
                 'size',
                 'is_public']).intersection(self.arguments):

@@ -127,8 +127,8 @@ class ImageClient(Client):
 
         async_headers = {}
         for key, val in params.items():
-            if key in ('id', 'store', 'disk_format', 'container_format',
-                       'size', 'checksum', 'is_public', 'owner'):
+            if key in ('store', 'disk_format', 'container_format',
+                       'size', 'checksum', 'is_public', 'owner') and val:
                 key = 'x-image-meta-' + key.replace('_', '-')
                 async_headers[key] = val
 
