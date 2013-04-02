@@ -46,9 +46,8 @@ from os.path import exists
 
 server_cmds = CommandTree('server', 'Compute/Cyclades API server commands')
 flavor_cmds = CommandTree('flavor', 'Compute/Cyclades API flavor commands')
-image_cmds = CommandTree('image', 'Cyclades/Plankton API image commands')
 network_cmds = CommandTree('network', 'Compute/Cyclades API network commands')
-_commands = [server_cmds, flavor_cmds, image_cmds, network_cmds]
+_commands = [server_cmds, flavor_cmds, network_cmds]
 
 
 about_authentication = '\nUser Authentication:\
