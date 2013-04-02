@@ -41,17 +41,6 @@ class ImageClient(Client):
     def __init__(self, base_url, token):
         super(ImageClient, self).__init__(base_url, token)
 
-    def test(self):
-        """
-        :param image_id: (str)
-
-        :param member: (str) user to allow access to current user's images
-        """
-        path = path4url('images')
-        data = dict(stuff='stuff')
-        r = self.put(path, json=data, async_headers={'x-image-meta-name': 'lalakis'})
-        r.release()
-
     def list_public(self, detail=False, filters={}, order=''):
         """
         :param detail: (bool)
