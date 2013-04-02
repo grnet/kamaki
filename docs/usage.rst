@@ -118,7 +118,7 @@ To see the command groups, use -h or --help like in example 1.3.1. In the same w
     config :  Configuration commands
     flavor :  Compute/Cyclades API flavor commands
     history:  Command history
-    image  :  Plankton Image API commands
+    image  :  Plankton (and Compute) Image API commands
     network:  Compute/Cyclades API network commands
     server :  Compute/Cyclades API server commands
     store  :  Pithos+ storage commands
@@ -456,7 +456,7 @@ An example (4.3.1) that showcases how top-level access improves user experience 
 * the flavor id
 * the image id
 
-It is often the case that a user who works in the context command, needs to create a new VM, but hasn't selected a flavor or an image id, or cannot recall the id of that flavor or image. Therefore, it is necessary to list all available flavors (flavor-list) or images (image-list). Both commands belong to different contexts.
+It is often the case that a user who works in the context command, needs to create a new VM, but hasn't selected a flavor or an image id, or cannot recall the id of that flavor or image. Therefore, it is necessary to list all available flavors (flavor-list) or images (image-compute-list). Both commands belong to different contexts.
 
 .. code-block:: console
     :emphasize-lines: 1
@@ -475,7 +475,7 @@ It is often the case that a user who works in the context command, needs to crea
         disk             :  10
         ram              :  2048
     
-    [server]: /image list
+    [server]: /image compute list
     1580deb4-edb3-7a246c4c0528 (Ubuntu Desktop)
     18a82962-43eb-8f8880af89d7 (Windows 7)
     531aa018-9a40-a4bfe6a0caff (Windows XP)

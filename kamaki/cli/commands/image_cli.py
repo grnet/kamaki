@@ -41,11 +41,12 @@ from kamaki.cli.commands.cyclades_cli import _init_cyclades
 from kamaki.cli.commands import _command_init, errors
 
 
-image_cmds = CommandTree('image', 'Plankton Image API commands')
+image_cmds = CommandTree('image', 'Plankton (and Compute) Image API commands')
 _commands = [image_cmds]
 
 
-about_image_id = ['To see a list of available image ids: /image list']
+about_image_id = [
+    'To see a list of available image ids: /image list']
 
 
 class _init_image(_command_init):
@@ -63,9 +64,12 @@ class _init_image(_command_init):
         self._run()
 
 
+# Plankton Image Commands
+
+
 @command(image_cmds)
-class image_public(_init_image):
-    """List public images"""
+class image_list(_init_image):
+    """List images accessible by user"""
 
     arguments = dict(
         detail=FlagArgument('show detailed output', ('-l', '--details')),
@@ -278,6 +282,9 @@ class image_setmembers(_init_image):
     def main(self, image_id, *members):
         super(self.__class__, self)._run()
         self._run(image_id=image_id, members=members)
+
+
+# Compute Image Commands
 
 
 @command(image_cmds)
