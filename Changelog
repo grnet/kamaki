@@ -1,11 +1,22 @@
 CHANGELOG for version 0.7
 
+New features:
+1. Unify and improve data size units presentation
+2. Ask for user permission at store-delete
+3. Intuitive semantics for store-move/copy/download/upload (modified syntax and clients)
+4. Use UUID instead of email in pithos client calls, make account setting obsolete
+5. Allow character : in container operations in store interface
+6. Recursively download remote directories
+
+Improvements:
 1. Clean up CLI error handling code
-2. Unify and improve data size units presentation
-3. Ask for user permission at store-delete
-4. Intuitive semantics for store-move/copy/download/upload (modified syntax and clients)
-5. Dynamically limit max number of threads
-6. Cache user info in astakos client
-7. Use UUID instead of email in pithos client calls
-8. Organize client unittests in a package and update to comply with new synnefo specs
-9. Allow character : in container operations in store interface
+2. Dynamically limit max number of threads
+3. Cache user info in astakos client
+4. Organize client unittests in a package and update to comply with new synnefo specs
+
+Bug fixes:
+1. kamaki image * commands should not send non-flag URL params without values
+2. Trace errors through all parts of kamaki code
+3. Quoted text in kamaki shell behaves same way as in one command mode
+4. Pithos container names with spaces fail
+5. URL-encode all url paths before requests

@@ -46,9 +46,8 @@ from os.path import exists
 
 server_cmds = CommandTree('server', 'Compute/Cyclades API server commands')
 flavor_cmds = CommandTree('flavor', 'Compute/Cyclades API flavor commands')
-image_cmds = CommandTree('image', 'Cyclades/Plankton API image commands')
 network_cmds = CommandTree('network', 'Compute/Cyclades API network commands')
-_commands = [server_cmds, flavor_cmds, image_cmds, network_cmds]
+_commands = [server_cmds, flavor_cmds, network_cmds]
 
 
 about_authentication = '\nUser Authentication:\
@@ -85,11 +84,11 @@ class server_list(_init_cyclades):
     __doc__ += about_authentication
 
     arguments = dict(
-        detail=FlagArgument('show detailed output', '-l'),
+        detail=FlagArgument('show detailed output', ('-l', '--details')),
         since=DateArgument(
             'show only items since date (\' d/m/Y H:M:S \')',
             '--since'),
-        limit=IntArgument('limit the number of VMs to list', '-n'),
+        limit=IntArgument('limit number of listed VMs', ('-n', '--number')),
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
             '--more')
@@ -215,7 +214,7 @@ class server_create(_init_cyclades):
     arguments = dict(
         personality=PersonalityArgument(
             ' /// '.join(howto_personality),
-            '--personality')
+            ('-p', '--personality'))
     )
 
     @errors.generic.all
@@ -272,7 +271,7 @@ class server_reboot(_init_cyclades):
     """Reboot a server (VM)"""
 
     arguments = dict(
-        hard=FlagArgument('perform a hard reboot', '-f')
+        hard=FlagArgument('perform a hard reboot', ('-f', '--force'))
     )
 
     @errors.generic.all
@@ -353,7 +352,7 @@ class server_firewall(_init_cyclades):
     def _run(self, server_id, profile):
         self.client.set_firewall_profile(
             server_id=int(server_id),
-            profile=unicode(profile).upper())
+            profile=('%s' % profile).upper())
 
     def main(self, server_id, profile):
         super(self.__class__, self)._run()
@@ -453,7 +452,7 @@ class server_wait(_init_cyclades):
     arguments = dict(
         progress_bar=ProgressBarArgument(
             'do not show progress bar',
-            '--no-progress-bar',
+            ('-N', '--no-progress-bar'),
             False
         )
     )
@@ -490,8 +489,8 @@ class flavor_list(_init_cyclades):
     """List available hardware flavors"""
 
     arguments = dict(
-        detail=FlagArgument('show detailed output', '-l'),
-        limit=IntArgument('limit the number of flavors to list', '-n'),
+        detail=FlagArgument('show detailed output', ('-l', '--details')),
+        limit=IntArgument('limit # of listed flavors', ('-n', '--number')),
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
             '--more')
@@ -558,8 +557,8 @@ class network_list(_init_cyclades):
     """List networks"""
 
     arguments = dict(
-        detail=FlagArgument('show detailed output', '-l'),
-        limit=IntArgument('limit the number of networks in list', '-n'),
+        detail=FlagArgument('show detailed output', ('-l', '--details')),
+        limit=IntArgument('limit # of listed networks', ('-n', '--number')),
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
             '--more')
@@ -594,7 +593,7 @@ class network_create(_init_cyclades):
     arguments = dict(
         cidr=ValueArgument('explicitly set cidr', '--with-cidr'),
         gateway=ValueArgument('explicitly set gateway', '--with-gateway'),
-        dhcp=ValueArgument('explicitly set dhcp', '--with-dhcp'),
+        dhcp=FlagArgument('Use dhcp (default: off)', '--with-dhcp'),
         type=ValueArgument('explicitly set type', '--with-type')
     )
 

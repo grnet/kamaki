@@ -35,7 +35,6 @@ import inspect
 from unittest import TestCase, TestSuite, TextTestRunner
 from argparse import ArgumentParser
 from sys import stdout
-from progress.bar import ShadyBar
 
 from kamaki.cli.config import Config
 from kamaki.cli.utils import spiner
@@ -65,8 +64,12 @@ class Generic(TestCase):
     def __getitem__(self, key):
         key = self._key(key)
         try:
+            r = self._fetched[key]
+            return r
             return self._fetched[key]
         except KeyError:
+            r = self._get_from_cnf(key)
+            return r
             return self._get_from_cnf(key)
 
     def _key(self, key):
@@ -77,9 +80,10 @@ class Generic(TestCase):
     def _get_from_cnf(self, key):
         val = 0
         if key[0]:
-            val = self._cnf.get('test', '%s_%s' % key) or self._cnf.get(*key)
+            keystr = '%s_%s' % key
+            val = self._cnf.get('livetest', keystr) or self._cnf.get(*key)
         if not val:
-            val = self._cnf.get('test', key[1]) or self._cnf.get(
+            val = self._cnf.get('livetest', key[1]) or self._cnf.get(
                 'global',
                 key[1])
         self._fetched[key] = val
@@ -88,6 +92,7 @@ class Generic(TestCase):
     def _safe_progress_bar(self, msg):
         """Try to get a progress bar, but do not raise errors"""
         try:
+            from progress.bar import ShadyBar
             wait_bar = ShadyBar(msg)
 
             def wait_gen(n):
@@ -104,7 +109,7 @@ class Generic(TestCase):
         try:
             progress_bar.finish()
         except Exception:
-            print(' DONE')
+            print('\b DONE')
 
     def do_with_progress_bar(self, action, msg, items):
         if not items:
@@ -164,26 +169,70 @@ def init_parser():
     return parser
 
 
-def main(argv):
-    _main(argv, config=None)
+class Connection(Generic):
+
+    def setUp(self):
+        from kamaki.clients.connection import kamakicon
+        self.conn = kamakicon.KamakiHTTPConnection
+        self.resp = kamakicon.KamakiHTTPResponse
+        self.rerr = kamakicon.KamakiResponseError
+        self.url = self['store', 'url']
+        self.token = self['store', 'token']
+
+    def test_000(self):
+        exceptions_left = 9
+        from random import randrange
+        from httplib import HTTPSConnection
+        from mock import patch
+        connection = self.conn(url=self.url)
+        tries = 0
+        while exceptions_left:
+            from time import sleep
+            sleep(0.5)
+            tries += 1
+            print('Try connection #%s' % tries)
+            response = connection.perform_request('GET', async_headers={
+                'X-Auth-Token': self.token})
+            with patch.object(response.request, 'close', return_value=None):
+                if randrange(2):
+                    response.release()
+                    #self.assertTrue(len(text) > 0)
+                else:
+                    print('\tRaise artificial exception (%s left)' % (
+                        exceptions_left - 1))
+                    with patch.object(
+                            HTTPSConnection,
+                            'getresponse',
+                            side_effect=self.rerr('A random error')):
+                        try:
+                            response.text
+                        except self.rerr:
+                            exceptions_left -= 1
+                        else:
+                            assert False, 'Exception not raised as expected'
+                response.request.close.assert_called_once_with()
+            response.request.close()
 
 
-def _main(argv, config=None):
+def main(argv, config=None):
     suiteFew = TestSuite()
+    if len(argv) == 0 or argv[0] == 'connection':
+        test_method = 'test_%s' % (argv[1] if len(argv) > 1 else '000')
+        suiteFew.addTest(Connection(test_method, config))
     if len(argv) == 0 or argv[0] == 'pithos':
-        from kamaki.clients.tests.pithos import Pithos
+        from kamaki.clients.livetest.pithos import Pithos
         test_method = 'test_%s' % (argv[1] if len(argv) > 1 else '000')
         suiteFew.addTest(Pithos(test_method, config))
     if len(argv) == 0 or argv[0] == 'cyclades':
-        from kamaki.clients.tests.cyclades import Cyclades
+        from kamaki.clients.livetest.cyclades import Cyclades
         test_method = 'test_%s' % (argv[1] if len(argv) > 1 else '000')
         suiteFew.addTest(Cyclades(test_method, config))
     if len(argv) == 0 or argv[0] == 'image':
-        from kamaki.clients.tests.image import Image
+        from kamaki.clients.livetest.image import Image
         test_method = 'test_%s' % (argv[1] if len(argv) > 1 else '000')
         suiteFew.addTest(Image(test_method, config))
     if len(argv) == 0 or argv[0] == 'astakos':
-        from kamaki.clients.tests.astakos import Astakos
+        from kamaki.clients.livetest.astakos import Astakos
         test_method = 'test_%s' % (argv[1] if len(argv) > 1 else '000')
         suiteFew.addTest(Astakos(test_method, config))
 
@@ -193,5 +242,5 @@ if __name__ == '__main__':
     parser = init_parser()
     args, argv = parser.parse_known_args()
     if len(argv) > 2 or getattr(args, 'help') or len(argv) < 1:
-        raise Exception('\tusage: tests <group> [command]')
+        raise Exception('\tusage: livetest <group> [command]')
     main(argv)

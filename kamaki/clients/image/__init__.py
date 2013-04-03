@@ -52,7 +52,8 @@ class ImageClient(Client):
 
         :returns: (list) id,name + full image info if detail
         """
-        path = path4url('images', 'detail') if detail else path4url('images/')
+        path = path4url('images', 'detail') if detail else (
+            path4url('images') + '/')
 
         async_params = {}
         if isinstance(filters, dict):
@@ -60,11 +61,12 @@ class ImageClient(Client):
                 if value:
                     async_params[key] = value
         if order.startswith('-'):
-            self.set_param('sort_dir', 'desc')
+            async_params['sort_dir'] = 'desc'
             order = order[1:]
         else:
-            self.set_param('sort_dir', 'asc')
-        self.set_param('sort_key', order, iff=order)
+            async_params['sort_dir'] = 'asc'
+        if order:
+            async_params['sort_key'] = order
 
         r = self.get(path, async_params=async_params, success=200)
         return r.json
@@ -108,43 +110,21 @@ class ImageClient(Client):
 
         :param properties: (dict) image properties (X-Image-Meta-Property)
         """
-        path = path4url('images/')
+        path = path4url('images') + '/'
         self.set_header('X-Image-Meta-Name', name)
         self.set_header('X-Image-Meta-Location', location)
 
+        async_headers = {}
         for key, val in params.items():
-            if key in ('id', 'store', 'disk_format', 'container_format',
-                       'size', 'checksum', 'is_public', 'owner'):
+            if key in ('store', 'disk_format', 'container_format',
+                       'size', 'checksum', 'is_public', 'owner') and val:
                 key = 'x-image-meta-' + key.replace('_', '-')
-                self.set_header(key, val)
+                async_headers[key] = val
 
         for key, val in properties.items():
-            self.set_header('X-Image-Meta-Property-%s' % key, val)
+            async_headers['x-image-meta-property-%s' % key] = val
 
-        r = self.post(path, success=200)
-        r.release()
-
-    def reregister(self, location, name=None, params={}, properties={}):
-        """Update existing image (key: location)
-
-        :param location: (str) pithos://<account>/<container>/<path>
-
-        :param name: (str)
-
-        :param params: (dict) image metadata (X-Image-Meta) can be id, store,
-            disc_format, container_format, size, checksum, is_public, owner
-
-        :param properties: (dict) image properties (X-Image-Meta-Property)
-        """
-        path = path4url('images', 'detail')
-        r = self.get(path, success=200)
-        imgs = [img for img in r.json if img['location'] == location]
-        for img in imgs:
-            img_name = name if name else img['name']
-            img_properties = img['properties']
-            for k, v in properties.items():
-                img_properties[k] = v
-            self.register(img_name, location, params, img_properties)
+        r = self.post(path, success=200, async_headers=async_headers)
         r.release()
 
     def list_members(self, image_id):

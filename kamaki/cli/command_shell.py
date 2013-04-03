@@ -95,7 +95,7 @@ class Shell(Cmd):
 
     def greet(self, version):
         print('kamaki v%s - Interactive Shell\n' % version)
-        print('\t\exit     \tterminate kamaki')
+        print('\t/exit     \tterminate kamaki')
         print('\texit or ^D\texit context')
         print('\t? or help \tavailable commands')
         print('\t?command  \thelp on command')
@@ -254,7 +254,7 @@ class Shell(Cmd):
                     except IndexError:
                         break
                 print('Syntax: %s %s' % (' '.join(clist[upto:]), cls.syntax))
-            else:
+            if cmd.subcommands:
                 print_subcommands_help(cmd)
 
         self._register_method(help_method, 'help_%s' % cmd.name)

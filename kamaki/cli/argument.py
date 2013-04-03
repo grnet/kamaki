@@ -64,12 +64,11 @@ class Argument(object):
     def __init__(self, arity, help=None, parsed_name=None, default=None):
         self.arity = int(arity)
 
-        if help is not None:
+        if help:
             self.help = help
-        if parsed_name is not None:
+        if parsed_name:
             self.parsed_name = parsed_name
-        if default is not None:
-            self.default = default
+        self.default = default
 
     @property
     def parsed_name(self):
@@ -84,7 +83,7 @@ class Argument(object):
         if isinstance(newname, list) or isinstance(newname, tuple):
             self._parsed_name += list(newname)
         else:
-            self._parsed_name.append(unicode(newname))
+            self._parsed_name.append('%s' % newname)
 
     @property
     def help(self):
@@ -93,7 +92,7 @@ class Argument(object):
 
     @help.setter
     def help(self, newhelp):
-        self._help = unicode(newhelp)
+        self._help = '%s' % newhelp
 
     @property
     def arity(self):
@@ -170,7 +169,7 @@ class ConfigArgument(Argument):
     def get_groups(self):
         return self.value.apis()
 
-_config_arg = ConfigArgument(1, 'Path to configuration file', '--config')
+_config_arg = ConfigArgument(1, 'Path to configuration file', '-c, --config')
 
 
 class CmdLineConfigArgument(Argument):
@@ -190,7 +189,7 @@ class CmdLineConfigArgument(Argument):
         if options == self.default:
             return
         if not isinstance(options, list):
-            options = [unicode(options)]
+            options = ['%s' % options]
         for option in options:
             keypath, sep, val = option.partition('=')
             if not sep:
@@ -353,7 +352,7 @@ class ProgressBarArgument(FlagArgument):
         try:
             KamakiProgressBar
         except NameError:
-            kloger.warning('no progress bar functionality')
+            kloger.debug('WARNING: no progress bar functionality')
 
     def clone(self):
         """Get a modifiable copy of this bar"""

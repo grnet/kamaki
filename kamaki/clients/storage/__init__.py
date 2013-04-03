@@ -60,7 +60,7 @@ class StorageClient(Client):
         path = path4url(self.account)
         r = self.head(path, success=(204, 401))
         if r.status_code == 401:
-            raise ClientError("No authorization")
+            raise ClientError("No authorization", status=401)
         reply = r.headers
         return reply
 
@@ -70,7 +70,7 @@ class StorageClient(Client):
         """
         self._assert_account()
         path = path4url(self.account)
-        for key, val in metapairs:
+        for key, val in metapairs.items():
             self.set_header('X-Account-Meta-' + key, val)
         r = self.post(path, success=202)
         r.release()
@@ -156,7 +156,7 @@ class StorageClient(Client):
         """
         self._assert_container()
         path = path4url(self.account, self.container, obj)
-        data = f.read(size) if size is not None else f.read()
+        data = f.read(size) if size else f.read()
         r = self.put(path, data=data, success=201)
         r.release()
 
@@ -229,23 +229,10 @@ class StorageClient(Client):
         """
         self._assert_container()
         path = path4url(self.account, self.container)
-        for key, val in metapairs:
+        for key, val in metapairs.items():
             self.set_header('X-Object-Meta-' + key, val)
         r = self.post(path, success=202)
         r.release()
-
-    def get_object(self, obj):
-        """
-        :param obj: (str)
-
-        :returns: (int, int) # of objects, size in bytes
-        """
-        self._assert_container()
-        path = path4url(self.account, self.container, obj)
-        r = self.get(path, success=200)
-        size = int(r.headers['content-length'])
-        cnt = r.content
-        return cnt, size
 
     def copy_object(
             self, src_container, src_object, dst_container,
@@ -319,8 +306,7 @@ class StorageClient(Client):
                 r.status_code)
         elif r.status_code == 304:
             return []
-        reply = r.json
-        return reply
+        return r.json
 
     def list_objects_in_path(self, path_prefix):
         """
@@ -333,7 +319,7 @@ class StorageClient(Client):
         self._assert_container()
         path = path4url(self.account, self.container)
         self.set_param('format', 'json')
-        self.set_param('path', 'path_prefix')
+        self.set_param('path', path_prefix)
         r = self.get(path, success=(200, 204, 404))
         if r.status_code == 404:
             raise ClientError(

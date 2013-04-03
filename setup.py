@@ -40,9 +40,9 @@ import collections
 import kamaki
 
 
-optional = ['ansicolors',
-            'progress>=1.0.2']
-requires = ['objpool']
+optional = ['ansicolors', 'mock>=1.0.1']
+
+requires = ['objpool', 'progress>=1.1']
 
 if version_info < (2, 7):
     requires.append('argparse')
@@ -54,14 +54,24 @@ setup(
     long_description=open('README.rst').read(),
     url='http://code.grnet.gr/projects/kamaki',
     license='BSD',
+    author='Synnefo development team',
+    author_email='synnefo-devel@googlegroups.com',
+    maintainer='Synnefo development team',
+    maintainer_email='synnefo-devel@googlegroups.com',
     packages=[
         'kamaki',
-        'kamaki.clients',
-        'kamaki.clients.tests',
-        'kamaki.clients.connection',
         'kamaki.cli',
         'kamaki.cli.commands',
-        'kamaki.clients.tests',
+        'kamaki.clients',
+        'kamaki.clients.utils',
+        'kamaki.clients.livetest',
+        'kamaki.clients.image',
+        'kamaki.clients.storage',
+        'kamaki.clients.pithos',
+        'kamaki.clients.astakos',
+        'kamaki.clients.compute',
+        'kamaki.clients.cyclades',
+        'kamaki.clients.connection',
         'kamaki.clients.commissioning',
         'kamaki.clients.quotaholder',
         'kamaki.clients.quotaholder.api',

@@ -1,4 +1,4 @@
-# Copyright 2011 GRNET S.A. All rights reserved.
+# Copyright 2011-2013 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -31,14 +31,14 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+from sys import stdout
 from time import sleep
 
-from kamaki.clients.cyclades_rest_api import CycladesClientApi
+from kamaki.clients.cyclades.rest_api import CycladesRestClient
 from kamaki.clients import ClientError
-from sys import stdout
 
 
-class CycladesClient(CycladesClientApi):
+class CycladesClient(CycladesRestClient):
     """GRNet Cyclades API client"""
 
     def start_server(self, server_id):
@@ -82,7 +82,7 @@ class CycladesClient(CycladesClientApi):
             return r['attachments']['values'][0]['firewallProfile']
         except KeyError:
             raise ClientError(
-                'No Firewall Profile', 520,
+                'No Firewall Profile',
                 details='Server %s is missing a firewall profile' % server_id)
 
     def set_firewall_profile(self, server_id, profile):
@@ -147,7 +147,7 @@ class CycladesClient(CycladesClientApi):
 
     def create_network(
             self, name,
-            cidr=None, gateway=None, type=None, dhcp=None):
+            cidr=None, gateway=None, type=None, dhcp=False):
         """
         :param name: (str)
 
@@ -157,7 +157,7 @@ class CycladesClient(CycladesClientApi):
 
         :param type: (str)
 
-        :param dhcp: (str)
+        :param dhcp: (bool)
 
         :returns: (dict) network detailed info
         """
@@ -168,8 +168,7 @@ class CycladesClient(CycladesClientApi):
             net['gateway'] = gateway
         if type:
             net['type'] = type
-        if dhcp:
-            net['dhcp'] = dhcp
+        net['dhcp'] = True if dhcp else False
         req = dict(network=net)
         r = self.networks_post(json_data=req, success=202)
         return r.json['network']
@@ -224,13 +223,15 @@ class CycladesClient(CycladesClientApi):
         :param server_id: integer (str or int)
 
         :param nic_id: (str)
+
+        :returns: (int) the number of nics disconnected
         """
         vm_nets = self.list_server_nics(server_id)
         num_of_disconnections = 0
         for (nic_id, network_id) in [(
                 net['id'],
                 net['network_id']) for net in vm_nets if nic_id == net['id']]:
-            req = {'remove': {'attachment': unicode(nic_id)}}
+            req = {'remove': {'attachment': '%s' % nic_id}}
             r = self.networks_post(network_id, 'action', json_data=req)
             r.release()
             num_of_disconnections += 1

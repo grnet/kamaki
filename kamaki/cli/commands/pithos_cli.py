@@ -62,34 +62,7 @@ pithos_cmds = CommandTree('store', 'Pithos+ storage commands')
 _commands = [pithos_cmds]
 
 
-about_directories = [
-    'Kamaki hanldes directories the same way as OOS Storage and Pithos+:',
-    'A directory is an object with type "application/directory"',
-    'An object with path dir/name can exist even if dir does not exist or',
-    'even if dir is a non directory object. Users can modify dir without',
-    'affecting the dir/name object in any way.']
-
-
 # Argument functionality
-
-def raise_connection_errors(e):
-    if e.status in range(200) + [403, 401]:
-        raiseCLIError(e, details=[
-            'Please check the service url and the authentication information',
-            ' ',
-            '  to get the service url: /config get store.url',
-            '  to set the service url: /config set store.url <url>',
-            ' ',
-            '  to get authentication token: /config get token',
-            '  to set authentication token: /config set token <token>'])
-    elif e.status == 413:
-        raiseCLIError(e, details=[
-            'Get quotas:',
-            '- total quota:      /store quota',
-            '- container quota:  /store quota <container>',
-            'Users shall set a higher container quota, if available:',
-            '-                  /store setquota <quota>[unit] <container>'])
-
 
 class DelimiterArgument(ValueArgument):
     """
@@ -180,6 +153,12 @@ class RangeArgument(ValueArgument):
 class _pithos_init(_command_init):
     """Initialize a pithos+ kamaki client"""
 
+    @staticmethod
+    def _is_dir(remote_dict):
+        return 'application/directory' == remote_dict.get(
+            'content_type',
+            remote_dict.get('content-type', ''))
+
     @errors.generic.all
     def _run(self):
         self.token = self.config.get('store', 'token')\
@@ -215,7 +194,7 @@ class _store_account_command(_pithos_init):
         super(_store_account_command, self).__init__(arguments)
         self['account'] = ValueArgument(
             'Set user account (not permanent)',
-            '--account')
+            ('-A', '--account'))
 
     def _run(self):
         super(_store_account_command, self)._run()
@@ -237,14 +216,7 @@ class _store_container_command(_store_account_command):
         super(_store_container_command, self).__init__(arguments)
         self['container'] = ValueArgument(
             'Set container to work with (temporary)',
-            '--container')
-
-    @errors.generic.all
-    def _dest_container_path(self, dest_container_path):
-        if self['destination_container']:
-            return (self['destination_container'], dest_container_path)
-        dst = dest_container_path.split(':')
-        return (dst[0], dst[1]) if len(dst) > 1 else (None, dst[0])
+            ('-C', '--container'))
 
     def extract_container_and_path(
             self,
@@ -334,10 +306,10 @@ class store_list(_store_container_command):
     """
 
     arguments = dict(
-        detail=FlagArgument('show detailed output', '-l'),
-        limit=IntArgument('limit the number of listed items', '-n'),
-        marker=ValueArgument('show output greater that marker', '--marker'),
-        prefix=ValueArgument('show output starting with prefix', '--prefix'),
+        detail=FlagArgument('detailed output', ('-l', '--list')),
+        limit=IntArgument('limit number of listed items', ('-n', '--number')),
+        marker=ValueArgument('output greater that marker', '--marker'),
+        prefix=ValueArgument('output starting with prefix', '--prefix'),
         delimiter=ValueArgument('show output up to delimiter', '--delimiter'),
         path=ValueArgument(
             'show output starting with prefix up to /',
@@ -457,7 +429,12 @@ class store_list(_store_container_command):
 class store_mkdir(_store_container_command):
     """Create a directory"""
 
-    __doc__ += '\n. '.join(about_directories)
+    __doc__ += '\n. '.join([
+        'Kamaki hanldes directories the same way as OOS Storage and Pithos+:',
+        'A   directory  is   an  object  with  type  "application/directory"',
+        'An object with path  dir/name can exist even if  dir does not exist',
+        'or even if dir  is  a non  directory  object.  Users can modify dir',
+        'without affecting the dir/name object in any way.'])
 
     @errors.generic.all
     @errors.pithos.connection
@@ -530,21 +507,159 @@ class store_create(_store_container_command):
         self._run()
 
 
+class _source_destination_command(_store_container_command):
+
+    arguments = dict(
+        destination_account=ValueArgument('', ('a', '--dst-account')),
+        recursive=FlagArgument('', ('-R', '--recursive')),
+        prefix=FlagArgument('', '--with-prefix', default=''),
+        suffix=ValueArgument('', '--with-suffix', default=''),
+        add_prefix=ValueArgument('', '--add-prefix', default=''),
+        add_suffix=ValueArgument('', '--add-suffix', default=''),
+        prefix_replace=ValueArgument('', '--prefix-to-replace', default=''),
+        suffix_replace=ValueArgument('', '--suffix-to-replace', default='')
+    )
+
+    def __init__(self, arguments={}):
+        self.arguments.update(arguments)
+        super(_source_destination_command, self).__init__(self.arguments)
+
+    def _run(self, source_container___path, path_is_optional=False):
+        super(_source_destination_command, self)._run(
+            source_container___path,
+            path_is_optional)
+        self.dst_client = PithosClient(
+            base_url=self.client.base_url,
+            token=self.client.token,
+            account=self['destination_account'] or self.client.account)
+
+    @errors.generic.all
+    @errors.pithos.account
+    def _dest_container_path(self, dest_container_path):
+        if self['destination_container']:
+            self.dst_client.container = self['destination_container']
+            return (self['destination_container'], dest_container_path)
+        if dest_container_path:
+            dst = dest_container_path.split(':')
+            if len(dst) > 1:
+                try:
+                    self.dst_client.container = dst[0]
+                    self.dst_client.get_container_info(dst[0])
+                except ClientError as err:
+                    if err.status in (404, 204):
+                        raiseCLIError(
+                            'Destination container %s not found' % dst[0])
+                    raise
+                else:
+                    self.dst_client.container = dst[0]
+                return (dst[0], dst[1])
+            return(None, dst[0])
+        raiseCLIError('No destination container:path provided')
+
+    def _get_all(self, prefix):
+        return self.client.container_get(prefix=prefix).json
+
+    def _get_src_objects(self, src_path):
+        """Get a list of the source objects to be called
+
+        :param src_path: (str) source path
+
+        :returns: (method, params) a method that returns a list when called
+        or (object) if it is a single object
+        """
+        if src_path and src_path[-1] == '/':
+            src_path = src_path[:-1]
+
+        if self['prefix']:
+            return (self._get_all, dict(prefix=src_path))
+        try:
+            srcobj = self.client.get_object_info(src_path)
+        except ClientError as srcerr:
+            if srcerr.status == 404:
+                raiseCLIError(
+                    'Source object %s not in source container %s' % (
+                        src_path,
+                        self.client.container),
+                    details=['Hint: --with-prefix to match multiple objects'])
+            elif srcerr.status not in (204,):
+                raise
+            return (self.client.list_objects, {})
+
+        if self._is_dir(srcobj):
+            if not self['recursive']:
+                raiseCLIError(
+                    'Object %s of cont. %s is a dir' % (
+                        src_path,
+                        self.client.container),
+                    details=['Use --recursive to access directories'])
+            return (self._get_all, dict(prefix=src_path))
+        srcobj['name'] = src_path
+        return srcobj
+
+    def src_dst_pairs(self, dst_path):
+        src_iter = self._get_src_objects(self.path)
+        src_N = isinstance(src_iter, tuple)
+        add_prefix = self['add_prefix'].strip('/')
+
+        if dst_path and dst_path.endswith('/'):
+            dst_path = dst_path[:-1]
+
+        try:
+            dstobj = self.dst_client.get_object_info(dst_path)
+        except ClientError as trgerr:
+            if trgerr.status in (404,):
+                if src_N:
+                    raiseCLIError(
+                        'Cannot merge multiple paths to path %s' % dst_path,
+                        details=[
+                            'Try to use / or a directory as destination',
+                            'or create the destination dir (/store mkdir)',
+                            'or use a single object as source'])
+            elif trgerr.status not in (204,):
+                raise
+        else:
+            if self._is_dir(dstobj):
+                add_prefix = '%s/%s' % (dst_path.strip('/'), add_prefix)
+            elif src_N:
+                raiseCLIError(
+                    'Cannot merge multiple paths to path' % dst_path,
+                    details=[
+                        'Try to use / or a directory as destination',
+                        'or create the destination dir (/store mkdir)',
+                        'or use a single object as source'])
+
+        if src_N:
+            (method, kwargs) = src_iter
+            for obj in method(**kwargs):
+                name = obj['name']
+                if name.endswith(self['suffix']):
+                    yield (name, self._get_new_object(name, add_prefix))
+        elif src_iter['name'].endswith(self['suffix']):
+            name = src_iter['name']
+            yield (name, self._get_new_object(dst_path or name, add_prefix))
+        else:
+            raiseCLIError('Source path %s conflicts with suffix %s' % (
+                src_iter['name'],
+                self['suffix']))
+
+    def _get_new_object(self, obj, add_prefix):
+        if self['prefix_replace'] and obj.startswith(self['prefix_replace']):
+            obj = obj[len(self['prefix_replace']):]
+        if self['suffix_replace'] and obj.endswith(self['suffix_replace']):
+            obj = obj[:-len(self['suffix_replace'])]
+        return add_prefix + obj + self['add_suffix']
+
+
 @command(pithos_cmds)
-class store_copy(_store_container_command):
+class store_copy(_source_destination_command):
     """Copy objects from container to (another) container
     Semantics:
-    copy cont:path path2
-    .   will copy all <obj> prefixed with path, as path2<obj>
-    .   or as path2 if path corresponds to just one whole object
+    copy cont:path dir
+    .   transfer path as dir/path
     copy cont:path cont2:
-    .   will copy all <obj> prefixed with path to container cont2
-    copy cont:path [cont2:]path2 --exact-match
-    .   will copy at most one <obj> as a new object named path2,
-    .   provided path corresponds to a whole object path
-    copy cont:path [cont2:]path2 --replace
-    .   will copy all <obj> prefixed with path, replacing path with path2
-    where <obj> is a full file or directory object path.
+    .   trasnfer all <obj> prefixed with path to container cont2
+    copy cont:path [cont2:]path2
+    .   transfer path to path2
     Use options:
     1. <container1>:<path1> [container2:]<path2> : if container2 is not given,
     destination is container1:path2
@@ -553,9 +668,103 @@ class store_copy(_store_container_command):
     """
 
     arguments = dict(
+        destination_account=ValueArgument(
+            'Account to copy to',
+            ('-a', '--dst-account')),
         destination_container=ValueArgument(
             'use it if destination container name contains a : character',
-            '--dst-container'),
+            ('-D', '--dst-container')),
+        source_version=ValueArgument(
+            'copy specific version',
+            ('-S', '--source-version')),
+        public=ValueArgument('make object publicly accessible', '--public'),
+        content_type=ValueArgument(
+            'change object\'s content type',
+            '--content-type'),
+        recursive=FlagArgument(
+            'copy directory and contents',
+            ('-R', '--recursive')),
+        prefix=FlagArgument(
+            'Match objects prefixed with src path (feels like src_path*)',
+            '--with-prefix',
+            default=''),
+        suffix=ValueArgument(
+            'Suffix of source objects (feels like *suffix)',
+            '--with-suffix',
+            default=''),
+        add_prefix=ValueArgument('Prefix targets', '--add-prefix', default=''),
+        add_suffix=ValueArgument('Suffix targets', '--add-suffix', default=''),
+        prefix_replace=ValueArgument(
+            'Prefix of src to replace with dst path + add_prefix, if matched',
+            '--prefix-to-replace',
+            default=''),
+        suffix_replace=ValueArgument(
+            'Suffix of src to replace with add_suffix, if matched',
+            '--suffix-to-replace',
+            default='')
+    )
+
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.account
+    def _run(self, dst_path):
+        no_source_object = True
+        src_account = self.client.account if (
+            self['destination_account']) else None
+        for src_obj, dst_obj in self.src_dst_pairs(dst_path):
+            no_source_object = False
+            self.dst_client.copy_object(
+                src_container=self.client.container,
+                src_object=src_obj,
+                dst_container=self.dst_client.container,
+                dst_object=dst_obj,
+                source_account=src_account,
+                source_version=self['source_version'],
+                public=self['public'],
+                content_type=self['content_type'])
+        if no_source_object:
+            raiseCLIError('No object %s in container %s' % (
+                self.path,
+                self.container))
+
+    def main(
+            self,
+            source_container___path,
+            destination_container___path=None):
+        super(store_copy, self)._run(
+            source_container___path,
+            path_is_optional=False)
+        (dst_cont, dst_path) = self._dest_container_path(
+            destination_container___path)
+        self.dst_client.container = dst_cont or self.container
+        self._run(dst_path=dst_path or '')
+
+
+@command(pithos_cmds)
+class store_move(_source_destination_command):
+    """Move/rename objects from container to (another) container
+    Semantics:
+    move cont:path dir
+    .   rename path as dir/path
+    move cont:path cont2:
+    .   trasnfer all <obj> prefixed with path to container cont2
+    move cont:path [cont2:]path2
+    .   transfer path to path2
+    Use options:
+    1. <container1>:<path1> [container2:]<path2> : if container2 is not given,
+    destination is container1:path2
+    2. <container>:<path1> <path2> : move in the same container
+    3. Can use --container= instead of <container1>
+    """
+
+    arguments = dict(
+        destination_account=ValueArgument(
+            'Account to move to',
+            ('-a', '--dst-account')),
+        destination_container=ValueArgument(
+            'use it if destination container name contains a : character',
+            ('-D', '--dst-container')),
         source_version=ValueArgument(
             'copy specific version',
             '--source-version'),
@@ -564,38 +773,43 @@ class store_copy(_store_container_command):
             'change object\'s content type',
             '--content-type'),
         recursive=FlagArgument(
-            'mass copy with delimiter /',
-            ('-r', '--recursive')),
-        exact_match=FlagArgument(
-            'Copy only the object that fully matches path',
-            '--exact-match'),
-        replace=FlagArgument('Replace src. path with dst. path', '--replace')
+            'copy directory and contents',
+            ('-R', '--recursive')),
+        prefix=FlagArgument(
+            'Match objects prefixed with src path (feels like src_path*)',
+            '--with-prefix',
+            default=''),
+        suffix=ValueArgument(
+            'Suffix of source objects (feels like *suffix)',
+            '--with-suffix',
+            default=''),
+        add_prefix=ValueArgument('Prefix targets', '--add-prefix', default=''),
+        add_suffix=ValueArgument('Suffix targets', '--add-suffix', default=''),
+        prefix_replace=ValueArgument(
+            'Prefix of src to replace with dst path + add_prefix, if matched',
+            '--prefix-to-replace',
+            default=''),
+        suffix_replace=ValueArgument(
+            'Suffix of src to replace with add_suffix, if matched',
+            '--suffix-to-replace',
+            default='')
     )
-
-    def _objlist(self, dst_path):
-        if self['exact_match']:
-            return [(dst_path or self.path, self.path)]
-        r = self.client.container_get(prefix=self.path)
-        if len(r.json) == 1:
-            obj = r.json[0]
-            return [(obj['name'], dst_path or obj['name'])]
-        start = len(self.path) if self['replace'] else 0
-        return [(obj['name'], '%s%s' % (
-            dst_path,
-            obj['name'][start:])) for obj in r.json]
 
     @errors.generic.all
     @errors.pithos.connection
     @errors.pithos.container
-    def _run(self, dst_cont, dst_path):
+    def _run(self, dst_path):
         no_source_object = True
-        for src_object, dst_object in self._objlist(dst_path):
+        src_account = self.client.account if (
+            self['destination_account']) else None
+        for src_obj, dst_obj in self.src_dst_pairs(dst_path):
             no_source_object = False
-            self.client.copy_object(
+            self.dst_client.move_object(
                 src_container=self.container,
-                src_object=src_object,
-                dst_container=dst_cont or self.container,
-                dst_object=dst_object,
+                src_object=src_obj,
+                dst_container=self.dst_client.container,
+                dst_object=dst_obj,
+                source_account=src_account,
                 source_version=self['source_version'],
                 public=self['public'],
                 content_type=self['content_type'])
@@ -613,89 +827,10 @@ class store_copy(_store_container_command):
             path_is_optional=False)
         (dst_cont, dst_path) = self._dest_container_path(
             destination_container___path)
-        self._run(dst_cont=dst_cont, dst_path=dst_path or '')
-
-
-@command(pithos_cmds)
-class store_move(_store_container_command):
-    """Move/rename objects
-    Semantics:
-    move cont:path path2
-    .   will move all <obj> prefixed with path, as path2<obj>
-    .   or as path2 if path corresponds to just one whole object
-    move cont:path cont2:
-    .   will move all <obj> prefixed with path to container cont2
-    move cont:path [cont2:]path2 --exact-match
-    .   will move at most one <obj> as a new object named path2,
-    .   provided path corresponds to a whole object path
-    move cont:path [cont2:]path2 --replace
-    .   will move all <obj> prefixed with path, replacing path with path2
-    where <obj> is a full file or directory object path.
-    Use options:
-    1. <container1>:<path1> [container2:]<path2> : if container2 not given,
-    destination is container1:path2
-    2. <container>:<path1> path2 : rename
-    3. Can use --container= instead of <container1>
-    """
-
-    arguments = dict(
-        destination_container=ValueArgument(
-            'use it if destination container name contains a : character',
-            '--dst-container'),
-        source_version=ValueArgument('specify version', '--source-version'),
-        public=FlagArgument('make object publicly accessible', '--public'),
-        content_type=ValueArgument('modify content type', '--content-type'),
-        recursive=FlagArgument('up to delimiter /', ('-r', '--recursive')),
-        exact_match=FlagArgument(
-            'Copy only the object that fully matches path',
-            '--exact-match'),
-        replace=FlagArgument('Replace src. path with dst. path', '--replace')
-    )
-
-    def _objlist(self, dst_path):
-        if self['exact_match']:
-            return [(dst_path or self.path, self.path)]
-        r = self.client.container_get(prefix=self.path)
-        if len(r.json) == 1:
-            obj = r.json[0]
-            return [(obj['name'], dst_path or obj['name'])]
-        return [(
-            obj['name'],
-            '%s%s' % (
-                dst_path,
-                obj['name'][len(self.path) if self['replace'] else 0:]
-            )) for obj in r.json]
-
-    @errors.generic.all
-    @errors.pithos.connection
-    @errors.pithos.container
-    def _run(self, dst_cont, dst_path):
-        no_source_object = True
-        for src_object, dst_object in self._objlist(dst_path):
-            no_source_object = False
-            self.client.move_object(
-                src_container=self.container,
-                src_object=src_object,
-                dst_container=dst_cont or self.container,
-                dst_object=dst_object,
-                source_version=self['source_version'],
-                public=self['public'],
-                content_type=self['content_type'])
-        if no_source_object:
-            raiseCLIError('No object %s in container %s' % (
-                self.path,
-                self.container))
-
-    def main(
-            self,
-            source_container___path,
-            destination_container___path=None):
-        super(self.__class__, self)._run(
-            source_container___path,
-            path_is_optional=False)
         (dst_cont, dst_path) = self._dest_container_path(
             destination_container___path)
-        self._run(dst_cont=dst_cont, dst_path=dst_path or '')
+        self.dst_client.container = dst_cont or self.container
+        self._run(dst_path=dst_path or '')
 
 
 @command(pithos_cmds)
@@ -709,7 +844,7 @@ class store_append(_store_container_command):
     arguments = dict(
         progress_bar=ProgressBarArgument(
             'do not show progress bar',
-            '--no-progress-bar',
+            ('-N', '--no-progress-bar'),
             default=False)
     )
 
@@ -765,7 +900,7 @@ class store_overwrite(_store_container_command):
     arguments = dict(
         progress_bar=ProgressBarArgument(
             'do not show progress bar',
-            '--no-progress-bar',
+            ('-N', '--no-progress-bar'),
             default=False)
     )
 
@@ -886,9 +1021,9 @@ class store_upload(_store_container_command):
         poolsize=IntArgument('set pool size', '--with-pool-size'),
         progress_bar=ProgressBarArgument(
             'do not show progress bar',
-            '--no-progress-bar',
+            ('-N', '--no-progress-bar'),
             default=False),
-        overwrite=FlagArgument('Force overwrite, if object exists', '-f')
+        overwrite=FlagArgument('Force (over)write', ('-f', '--force'))
     )
 
     def _remote_path(self, remote_path, local_path=''):
@@ -917,7 +1052,7 @@ class store_upload(_store_container_command):
     def _run(self, local_path, remote_path):
         poolsize = self['poolsize']
         if poolsize > 0:
-            self.client.POOL_SIZE = int(poolsize)
+            self.client.MAX_THREADS = int(poolsize)
         params = dict(
             content_encoding=self['content_encoding'],
             content_type=self['content_type'],
@@ -940,8 +1075,7 @@ class store_upload(_store_container_command):
                     if progress_bar:
                         hash_bar = progress_bar.clone()
                         hash_cb = hash_bar.get_generator(
-                            'Calculating block hashes'
-                        )
+                            'Calculating block hashes')
                     else:
                         hash_cb = None
                     self.client.upload_object(
@@ -981,7 +1115,7 @@ class store_cat(_store_container_command):
             '--if-unmodified-since'),
         object_version=ValueArgument(
             'get the specific version',
-            '--object-version')
+            ('-j', '--object-version'))
     )
 
     @errors.generic.all
@@ -992,7 +1126,7 @@ class store_cat(_store_container_command):
         self.client.download_object(
             self.path,
             stdout,
-            range=self['range'],
+            range_str=self['range'],
             version=self['object_version'],
             if_match=self['if_match'],
             if_none_match=self['if_none_match'],
@@ -1010,7 +1144,7 @@ class store_cat(_store_container_command):
 class store_download(_store_container_command):
     """Download remote object as local file
     If local destination is a directory:
-    *   download <container>:<path> <local dir> -r
+    *   download <container>:<path> <local dir> -R
     will download all files on <container> prefixed as <path>,
     to <local dir>/<full path>
     *   download <container>:<path> <local dir> --exact-match
@@ -1021,7 +1155,7 @@ class store_download(_store_container_command):
     """
 
     arguments = dict(
-        resume=FlagArgument('Resume instead of overwrite', '--resume'),
+        resume=FlagArgument('Resume instead of overwrite', ('-r', '--resume')),
         range=RangeArgument('show range of data', '--range'),
         if_match=ValueArgument('show output if ETags match', '--if-match'),
         if_none_match=ValueArgument(
@@ -1035,36 +1169,118 @@ class store_download(_store_container_command):
             '--if-unmodified-since'),
         object_version=ValueArgument(
             'get the specific version',
-            '--object-version'),
+            ('-j', '--object-version')),
         poolsize=IntArgument('set pool size', '--with-pool-size'),
         progress_bar=ProgressBarArgument(
             'do not show progress bar',
-            '--no-progress-bar',
+            ('-N', '--no-progress-bar'),
             default=False),
         recursive=FlagArgument(
-            'Download a remote directory and all its contents',
-            '-r, --recursive')
+            'Download a remote path and all its contents',
+            ('-R', '--recursive'))
     )
 
-    def _is_dir(self, remote_dict):
-        return 'application/directory' == remote_dict.get('content_type', '')
-
     def _outputs(self, local_path):
-        if local_path is None:
-            return [(None, self.path)]
-        outpath = path.abspath(local_path)
-        if not (path.exists(outpath) or path.isdir(outpath)):
-            return [(outpath, self.path)]
-        elif self['recursive']:
-            remotes = self.client.container_get(
-                prefix=self.path,
+        """:returns: (local_file, remote_path)"""
+        remotes = []
+        if self['recursive']:
+            r = self.client.container_get(
+                prefix=self.path or '/',
                 if_modified_since=self['if_modified_since'],
                 if_unmodified_since=self['if_unmodified_since'])
-            return [(
-                '%s/%s' % (outpath, remote['name']),
-                None if self._is_dir(remote) else remote['name']
-            ) for remote in remotes.json]
-        raiseCLIError('Illegal destination location %s' % local_path)
+            dirlist = dict()
+            for remote in r.json:
+                rname = remote['name'].strip('/')
+                tmppath = ''
+                for newdir in rname.strip('/').split('/')[:-1]:
+                    tmppath = '/'.join([tmppath, newdir])
+                    dirlist.update({tmppath.strip('/'): True})
+                remotes.append((rname, store_download._is_dir(remote)))
+            dir_remotes = [r[0] for r in remotes if r[1]]
+            if not set(dirlist).issubset(dir_remotes):
+                badguys = [bg.strip('/') for bg in set(
+                    dirlist).difference(dir_remotes)]
+                raiseCLIError(
+                    'Some remote paths contain non existing directories',
+                    details=['Missing remote directories:'] + badguys)
+        elif self.path:
+            r = self.client.get_object_info(
+                self.path,
+                version=self['object_version'])
+            if store_download._is_dir(r):
+                raiseCLIError(
+                    'Illegal download: Remote object %s is a directory' % (
+                        self.path),
+                    details=['To download a directory, try --recursive'])
+            if '/' in self.path.strip('/') and not local_path:
+                raiseCLIError(
+                    'Illegal download: remote object %s contains "/"' % (
+                        self.path),
+                    details=[
+                        'To download an object containing "/" characters',
+                        'either create the remote directories or',
+                        'specify a non-directory local path for this object'])
+            remotes = [(self.path, False)]
+        if not remotes:
+            if self.path:
+                raiseCLIError(
+                    'No matching path %s on container %s' % (
+                        self.path,
+                        self.container),
+                    details=[
+                        'To list the contents of %s, try:' % self.container,
+                        '   /store list %s' % self.container])
+            raiseCLIError(
+                'Illegal download of container %s' % self.container,
+                details=[
+                    'To download a whole container, try:',
+                    '   /store download --recursive <container>'])
+
+        lprefix = path.abspath(local_path or path.curdir)
+        if path.isdir(lprefix):
+            for rpath, remote_is_dir in remotes:
+                lpath = '/%s/%s' % (lprefix.strip('/'), rpath.strip('/'))
+                if remote_is_dir:
+                    if path.exists(lpath) and path.isdir(lpath):
+                        continue
+                    makedirs(lpath)
+                elif path.exists(lpath):
+                    if not self['resume']:
+                        print('File %s exists, aborting...' % lpath)
+                        continue
+                    with open(lpath, 'rwb+') as f:
+                        yield (f, rpath)
+                else:
+                    with open(lpath, 'wb+') as f:
+                        yield (f, rpath)
+        elif path.exists(lprefix):
+            if len(remotes) > 1:
+                raiseCLIError(
+                    '%s remote objects cannot be merged in local file %s' % (
+                        len(remotes),
+                        local_path),
+                    details=[
+                        'To download multiple objects, local path should be',
+                        'a directory, or use download without a local path'])
+            (rpath, remote_is_dir) = remotes[0]
+            if remote_is_dir:
+                raiseCLIError(
+                    'Remote directory %s should not replace local file %s' % (
+                        rpath,
+                        local_path))
+            if self['resume']:
+                with open(lprefix, 'rwb+') as f:
+                    yield (f, rpath)
+            else:
+                raiseCLIError(
+                    'Local file %s already exist' % local_path,
+                    details=['Try --resume to overwrite it'])
+        else:
+            if len(remotes) > 1 or remotes[0][1]:
+                raiseCLIError(
+                    'Local directory %s does not exist' % local_path)
+            with open(lprefix, 'wb+') as f:
+                yield (f, remotes[0][0])
 
     @errors.generic.all
     @errors.pithos.connection
@@ -1072,35 +1288,22 @@ class store_download(_store_container_command):
     @errors.pithos.object_path
     @errors.pithos.local_path
     def _run(self, local_path):
-        outputs = self._outputs(local_path)
+        #outputs = self._outputs(local_path)
         poolsize = self['poolsize']
         if poolsize:
-            self.client.POOL_SIZE = int(poolsize)
-        if not outputs:
-            raiseCLIError('No objects prefixed as %s on container %s' % (
-                self.path,
-                self.container))
+            self.client.MAX_THREADS = int(poolsize)
         progress_bar = None
         try:
-            for lpath, rpath in sorted(outputs):
-                if not rpath:
-                    if not path.isdir(lpath):
-                        print('Create directory %s' % lpath)
-                        makedirs(lpath)
-                    continue
-                wmode = 'rwb+' if path.exists(lpath) and self['resume']\
-                    else 'wb+'
-                print('\nFrom %s:%s to %s' % (
-                    self.container,
-                    rpath,
-                    lpath))
-                (progress_bar,
-                    download_cb) = self._safe_progress_bar('Downloading')
+            for f, rpath in self._outputs(local_path):
+                (
+                    progress_bar,
+                    download_cb) = self._safe_progress_bar(
+                        'Download %s' % rpath)
                 self.client.download_object(
                     rpath,
-                    open(lpath, wmode) if lpath else stdout,
+                    f,
                     download_cb=download_cb,
-                    range=self['range'],
+                    range_str=self['range'],
                     version=self['object_version'],
                     if_match=self['if_match'],
                     resume=self['resume'],
@@ -1127,9 +1330,7 @@ class store_download(_store_container_command):
             self._safe_progress_bar_finish(progress_bar)
 
     def main(self, container___path, local_path=None):
-        super(self.__class__, self)._run(
-            container___path,
-            path_is_optional=False)
+        super(self.__class__, self)._run(container___path)
         self._run(local_path=local_path)
 
 
@@ -1150,7 +1351,7 @@ class store_hashmap(_store_container_command):
             '--if-unmodified-since'),
         object_version=ValueArgument(
             'get the specific version',
-            '--object-version')
+            ('-j', '--object-version'))
     )
 
     @errors.generic.all
@@ -1178,13 +1379,13 @@ class store_hashmap(_store_container_command):
 class store_delete(_store_container_command):
     """Delete a container [or an object]
     How to delete a non-empty container:
-    - empty the container:  /store delete -r <container>
+    - empty the container:  /store delete -R <container>
     - delete it:            /store delete <container>
     .
     Semantics of directory deletion:
     .a preserve the contents: /store delete <container>:<directory>
     .    objects of the form dir/filename can exist with a dir object
-    .b delete contents:       /store delete -r <container>:<directory>
+    .b delete contents:       /store delete -R <container>:<directory>
     .    all dir/* objects are affected, even if dir does not exist
     .
     To restore a deleted object OBJ in a container CONT:
@@ -1198,7 +1399,7 @@ class store_delete(_store_container_command):
         yes=FlagArgument('Do not prompt for permission', '--yes'),
         recursive=FlagArgument(
             'empty dir or container and delete (if dir)',
-            ('-r', '--recursive'))
+            ('-R', '--recursive'))
     )
 
     def __init__(self, arguments={}):
@@ -1216,7 +1417,6 @@ class store_delete(_store_container_command):
         if self.path:
             if self['yes'] or ask_user(
                     'Delete %s:%s ?' % (self.container, self.path)):
-                print('is until? (%s)' % self['until'])
                 self.client.del_object(
                     self.path,
                     until=self['until'],
@@ -1245,7 +1445,7 @@ class store_purge(_store_container_command):
     """Delete a container and release related data blocks
     Non-empty containers can not purged.
     To purge a container with content:
-    .   /store delete -r <container>
+    .   /store delete -R <container>
     .      objects are deleted, but data blocks remain on server
     .   /store purge <container>
     .      container and data blocks are released and deleted
@@ -1408,7 +1608,7 @@ class store_info(_store_container_command):
     arguments = dict(
         object_version=ValueArgument(
             'show specific version \ (applies only for objects)',
-            '--object-version')
+            ('-j', '--object-version'))
     )
 
     @errors.generic.all
@@ -1436,11 +1636,11 @@ class store_meta(_store_container_command):
     """Get metadata for account, containers or objects"""
 
     arguments = dict(
-        detail=FlagArgument('show detailed output', '-l'),
+        detail=FlagArgument('show detailed output', ('-l', '--details')),
         until=DateArgument('show metadata until then', '--until'),
         object_version=ValueArgument(
             'show specific version \ (applies only for objects)',
-            '--object-version')
+            ('-j', '--object-version'))
     )
 
     @errors.generic.all
@@ -1709,7 +1909,7 @@ class store_sharers(_store_account_command):
     """List the accounts that share objects with current user"""
 
     arguments = dict(
-        detail=FlagArgument('show detailed output', '-l'),
+        detail=FlagArgument('show detailed output', ('-l', '--details')),
         marker=ValueArgument('show output greater then marker', '--marker')
     )
 

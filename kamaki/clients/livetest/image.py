@@ -33,13 +33,13 @@
 
 import time
 
-from kamaki.clients import tests
+from kamaki.clients import livetest
 from kamaki.clients.cyclades import CycladesClient
 from kamaki.clients.image import ImageClient
 from kamaki.clients import ClientError
 
 
-class Image(tests.Generic):
+class Image(livetest.Generic):
     def setUp(self):
         self.now = time.mktime(time.gmtime())
 
@@ -57,11 +57,9 @@ class Image(tests.Generic):
     def _prepare_img(self):
         f = open(self['image', 'local_path'], 'rb')
         (token, uuid) = (self['token'], self['store', 'account'])
-        print('UUID HERE: %s (%s)' % (uuid, token))
         if not uuid:
             from kamaki.clients.astakos import AstakosClient
             uuid = AstakosClient(self['astakos', 'url'], token).term('uuid')
-        print('UUID HERE: %s' % uuid)
         from kamaki.clients.pithos import PithosClient
         self.pithcli = PithosClient(self['store', 'url'], token, uuid)
         cont = 'cont_%s' % self.now
@@ -70,7 +68,7 @@ class Image(tests.Generic):
         print('\t- Create container %s on Pithos server' % cont)
         self.pithcli.container_put()
         self.location = 'pithos://%s/%s/%s' % (uuid, cont, self.obj)
-        print('\t- Upload an image at %s...' % self.location)
+        print('\t- Upload an image at %s...\n' % self.location)
         self.pithcli.upload_object(self.obj, f)
         print('\t- ok')
         f.close()
@@ -202,16 +200,6 @@ class Image(tests.Generic):
         self.assertTrue(self._imglist)
         for img in self._imglist.values():
             self.assertTrue(img is not None)
-
-    def test_reregister(self):
-        """Test reregister"""
-        self._prepare_img()
-        self._test_reregister()
-
-    def _test_reregister(self):
-        self.client.reregister(
-            self.location,
-            properties=dict(my_property='some_value'))
 
     def test_set_members(self):
         """Test set_members"""

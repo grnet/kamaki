@@ -36,12 +36,12 @@ import datetime
 from os import urandom
 from tempfile import NamedTemporaryFile
 
-from kamaki.clients import tests, ClientError
+from kamaki.clients import livetest, ClientError
 from kamaki.clients.pithos import PithosClient
 from kamaki.clients.astakos import AstakosClient
 
 
-class Pithos(tests.Generic):
+class Pithos(livetest.Generic):
 
     files = []
 
@@ -224,10 +224,25 @@ class Pithos(tests.Generic):
             account_post internally
         """
         u1 = self.client.account
-        u2 = self.client.account
-        self.client.set_account_group(grpName, [u1, u2])
+        #  Invalid display name
+        u2 = '1nc0r3c7-d15p14y-n4m3'
+        #  valid display name
+        u3 = '6488c1b2-cb06-40a8-a02a-d474b8d29c59'
+        self.assertRaises(
+            ClientError,
+            self.client.set_account_group,
+            grpName, [u1, u2])
+        self.client.set_account_group(grpName, [u1])
         r = self.client.get_account_group()
-        self.assertEqual(r['x-account-group-' + grpName], '%s,%s' % (u1, u2))
+        self.assertEqual(r['x-account-group-' + grpName], '%s' % u1)
+        try:
+            self.client.set_account_group(grpName, [u1, u3])
+            r = self.client.get_account_group()
+            self.assertEqual(
+                r['x-account-group-' + grpName],
+                '%s,%s' % (u1, u3))
+        except:
+            print('\tInvalid user id %s (it is ok, though)' % u3)
         self.client.del_account_group(grpName)
         r = self.client.get_account_group()
         self.assertTrue('x-account-group-' + grpName not in r)
@@ -835,6 +850,7 @@ class Pithos(tests.Generic):
         self._test_0110_object_copy()
 
     def _test_0110_object_copy(self):
+        #  TODO: check with source_account option
         self.client.container = self.c2
         obj = 'test2'
 
@@ -1063,13 +1079,13 @@ class Pithos(tests.Generic):
                 read=['accX:groupA', 'u1', 'u2'],
                 write=['u2', 'u3']))
 
-        """Append tests update, content_range, content_type, content_length"""
+        """Append livetest update, content_[range|type|length]"""
         newf.seek(0)
         self.client.append_object(obj, newf)
         r = self.client.object_get(obj)
         self.assertTrue(r.text.startswith('Hello!'))
 
-        """Overwrite tests update,
+        """Overwrite livetest update,
             content_type, content_length, content_range
         """
         newf.seek(0)
@@ -1077,7 +1093,7 @@ class Pithos(tests.Generic):
         r = self.client.object_get(obj)
         self.assertTrue(r.text.startswith('ello!'))
 
-        """Truncate tests update,
+        """Truncate livetest update,
             content_range, content_type, object_bytes and source_object"""
         r = self.client.truncate_object(obj, 5)
         r = self.client.object_get(obj)

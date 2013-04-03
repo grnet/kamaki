@@ -1,4 +1,4 @@
-# Copyright 2011-2012 GRNET S.A. All rights reserved.
+# Copyright 2011-2013 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -40,7 +40,7 @@ from time import time
 from binascii import hexlify
 
 from kamaki.clients import SilentEvent, sendlog
-from kamaki.clients.pithos_rest_api import PithosRestAPI
+from kamaki.clients.pithos.rest_api import PithosRestClient
 from kamaki.clients.storage import ClientError
 from kamaki.clients.utils import path4url, filter_in
 from StringIO import StringIO
@@ -65,18 +65,21 @@ def _range_up(start, end, a_range):
     return (start, end)
 
 
-class PithosClient(PithosRestAPI):
+class PithosClient(PithosRestClient):
     """GRNet Pithos API client"""
-
-    _thread_exceptions = []
 
     def __init__(self, base_url, token, account=None, container=None):
         super(PithosClient, self).__init__(base_url, token, account, container)
 
-    def purge_container(self):
+    def purge_container(self, container=None):
         """Delete an empty container and destroy associated blocks
         """
-        r = self.container_delete(until=unicode(time()))
+        cnt_back_up = self.container
+        try:
+            self.container = container or cnt_back_up
+            r = self.container_delete(until=unicode(time()))
+        finally:
+            self.container = cnt_back_up
         r.release()
 
     def upload_object_unchunked(
@@ -124,7 +127,8 @@ class PithosClient(PithosRestAPI):
                 msg = '"%s" is not a valid hashmap file' % f.name
                 raise ClientError(msg, 1)
             f = StringIO(data)
-        data = f.read(size) if size is not None else f.read()
+        else:
+            data = f.read(size) if size else f.read()
         r = self.object_put(
             obj,
             data=data,
@@ -181,9 +185,6 @@ class PithosClient(PithosRestAPI):
         return event
 
     def _put_block(self, data, hash):
-        from random import randint
-        if not randint(0, 7):
-            raise ClientError('BAD GATEWAY STUFF', 503)
         r = self.container_post(
             update=True,
             content_type='application/octet-stream',
@@ -229,7 +230,7 @@ class PithosClient(PithosRestAPI):
             return None
         return r.json
 
-    def _caclulate_uploaded_blocks(
+    def _culculate_blocks_for_upload(
             self, blocksize, blockhash, size, nblocks, hashes, hmap, fileobj,
             hash_cb=None):
         offset = 0
@@ -246,10 +247,9 @@ class PithosClient(PithosRestAPI):
             offset += bytes
             if hash_cb:
                 hash_gen.next()
-        if offset != size:
-            msg = 'Failed to calculate uploaded blocks:'
-            msg += ' Offset and object size do not match'
-            assert offset == size, msg
+        msg = 'Failed to calculate uploaded blocks:'
+        ' Offset and object size do not match'
+        assert offset == size, msg
 
     def _upload_missing_blocks(self, missing, hmap, fileobj, upload_gen=None):
         """upload missing blocks asynchronously"""
@@ -333,10 +333,10 @@ class PithosClient(PithosRestAPI):
         block_info = (blocksize, blockhash, size, nblocks) =\
             self._get_file_block_info(f, size)
         (hashes, hmap, offset) = ([], {}, 0)
-        if content_type is None:
+        if not content_type:
             content_type = 'application/octet-stream'
 
-        self._caclulate_uploaded_blocks(
+        self._culculate_blocks_for_upload(
             *block_info,
             hashes=hashes,
             hmap=hmap,
@@ -447,9 +447,11 @@ class PithosClient(PithosRestAPI):
 
     def _thread2file(self, flying, local_file, offset=0, **restargs):
         """write the results of a greenleted rest call to a file
-        @offset: the offset of the file up to blocksize
-            - e.g. if the range is 10-100, all
-        blocks will be written to normal_position - 10"""
+
+        :param offset: the offset of the file up to blocksize
+        - e.g. if the range is 10-100, all blocks will be written to
+        normal_position - 10
+        """
         finished = []
         for i, (start, g) in enumerate(flying.items()):
             if not g.isAlive():
@@ -510,8 +512,7 @@ class PithosClient(PithosRestAPI):
             if_none_match=None,
             if_modified_since=None,
             if_unmodified_since=None):
-        """Download an object using multiple connections (threads) and
-            writing to random parts of the file
+        """Download an object (multiple connections, random blocks)
 
         :param obj: (str) remote object path
 
@@ -523,8 +524,7 @@ class PithosClient(PithosRestAPI):
 
         :param resume: (bool) if set, preserve already downloaded file parts
 
-        :param range_str: (str) from-to where from and to are integers
-        denoting file positions in bytes
+        :param range_str: (str) from, to are file positions (int) in bytes
 
         :param if_match: (str)
 
@@ -532,9 +532,7 @@ class PithosClient(PithosRestAPI):
 
         :param if_modified_since: (str) formated date
 
-        :param if_unmodified_since: (str) formated date
-        """
-
+        :param if_unmodified_since: (str) formated date"""
         restargs = dict(
             version=version,
             data_range=None if range_str is None else 'bytes=%s' % range_str,
@@ -659,7 +657,7 @@ class PithosClient(PithosRestAPI):
         """
         r = self.account_head(until=until)
         if r.status_code == 401:
-            raise ClientError("No authorization")
+            raise ClientError("No authorization", status=401)
         return r.headers
 
     def get_account_quota(self):
@@ -755,25 +753,35 @@ class PithosClient(PithosRestAPI):
                 'Container "%s" is not empty' % self.container,
                 r.status_code)
 
-    def get_container_versioning(self, container):
+    def get_container_versioning(self, container=None):
         """
         :param container: (str)
 
         :returns: (dict)
         """
-        self.container = container
-        return filter_in(
-            self.get_container_info(),
-            'X-Container-Policy-Versioning')
+        cnt_back_up = self.container
+        try:
+            self.container = container or cnt_back_up
+            return filter_in(
+                self.get_container_info(),
+                'X-Container-Policy-Versioning')
+        finally:
+            self.container = cnt_back_up
 
-    def get_container_quota(self, container):
+    def get_container_quota(self, container=None):
         """
         :param container: (str)
 
         :returns: (dict)
         """
-        self.container = container
-        return filter_in(self.get_container_info(), 'X-Container-Policy-Quota')
+        cnt_back_up = self.container
+        try:
+            self.container = container or cnt_back_up
+            return filter_in(
+                self.get_container_info(),
+                'X-Container-Policy-Quota')
+        finally:
+            self.container = cnt_back_up
 
     def get_container_info(self, until=None):
         """
@@ -881,10 +889,7 @@ class PithosClient(PithosRestAPI):
         info = self.get_object_info(obj)
         pref, sep, rest = self.base_url.partition('//')
         base = rest.split('/')[0]
-        newurl = path4url(
-            '%s%s%s' % (pref, sep, base),
-            info['x-object-public'])
-        return newurl[1:]
+        return '%s%s%s/%s' % (pref, sep, base, info['x-object-public'])
 
     def unpublish_object(self, obj):
         """
@@ -906,7 +911,7 @@ class PithosClient(PithosRestAPI):
             return r.headers
         except ClientError as ce:
             if ce.status == 404:
-                raise ClientError('Object not found', status=404)
+                raise ClientError('Object %s not found' % obj, status=404)
             raise
 
     def get_object_meta(self, obj, version=None):
@@ -959,9 +964,7 @@ class PithosClient(PithosRestAPI):
            permissions will be removed
         """
 
-        perms = dict(
-            read='' if not read_permition else read_permition,
-            write='' if not write_permition else write_permition)
+        perms = dict(read=read_permition or '', write=write_permition or '')
         r = self.object_post(obj, update=True, permissions=perms)
         r.release()
 
@@ -1073,8 +1076,9 @@ class PithosClient(PithosRestAPI):
 
     def copy_object(
             self, src_container, src_object, dst_container,
-            dst_object=False,
+            dst_object=None,
             source_version=None,
+            source_account=None,
             public=False,
             content_type=None,
             delimiter=None):
@@ -1089,6 +1093,8 @@ class PithosClient(PithosRestAPI):
 
         :param source_version: (str) source object version
 
+        :param source_account: (str) account to copy from
+
         :param public: (bool)
 
         :param content_type: (str)
@@ -1097,14 +1103,14 @@ class PithosClient(PithosRestAPI):
         """
         self._assert_account()
         self.container = dst_container
-        dst_object = dst_object or src_object
         src_path = path4url(src_container, src_object)
         r = self.object_put(
-            dst_object,
+            dst_object or src_object,
             success=201,
             copy_from=src_path,
             content_length=0,
             source_version=source_version,
+            source_account=source_account,
             public=public,
             content_type=content_type,
             delimiter=delimiter)
@@ -1113,6 +1119,7 @@ class PithosClient(PithosRestAPI):
     def move_object(
             self, src_container, src_object, dst_container,
             dst_object=False,
+            source_account=None,
             source_version=None,
             public=False,
             content_type=None,
@@ -1125,6 +1132,8 @@ class PithosClient(PithosRestAPI):
         :param dst_container: (str) destination container
 
         :param dst_object: (str) destination object path
+
+        :param source_account: (str) account to move from
 
         :param source_version: (str) source object version
 
@@ -1143,6 +1152,7 @@ class PithosClient(PithosRestAPI):
             success=201,
             move_from=src_path,
             content_length=0,
+            source_account=source_account,
             source_version=source_version,
             public=public,
             content_type=content_type,
