@@ -1,6 +1,12 @@
 kamaki (0.7.8-2) stable; urgency=high
 
-  * Enforce objpool>=0.2
+  * enforce objpool>=0.2
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Wed, 03 Apr 2013 18:12:53 +0300
+
+kamaki (0.7.8-1) stable; urgency=high
+
+  * Enforce objpool>0.1.1
 
  -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Wed, 03 Apr 2013 18:09:21 +0300
 
