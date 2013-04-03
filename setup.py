@@ -35,14 +35,13 @@
 
 from setuptools import setup
 from sys import version_info
-import collections
 
 import kamaki
 
 
 optional = ['ansicolors',
             'progress>=1.0.2']
-requires = ['objpool']
+requires = ['objpool>0.1.1']
 
 if version_info < (2, 7):
     requires.append('argparse')

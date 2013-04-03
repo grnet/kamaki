@@ -32,7 +32,7 @@
 # or implied, of GRNET S.A.
 
 from urlparse import urlparse
-from objpool.http import get_http_connection
+from objpool.http import PooledHTTPConnection
 from traceback import format_stack
 
 from kamaki.clients.connection import HTTPConnection, HTTPResponse
@@ -46,35 +46,58 @@ from httplib import ResponseNotReady
 
 
 class KamakiHTTPResponse(HTTPResponse):
+    """The request is created only if there is demand for the response"""
+
+    def __init__(
+        self, netloc, scheme,
+        method='GET', url='127.0.0.1', headers={}, body=None, poolsize=None):
+        self.netloc, self.scheme = netloc, scheme
+        self.method, self.url, self.http_headers = method, url, headers
+        self.body = body
+        self.poolsize = poolsize
 
     def _get_response(self):
-        if self.prefetched:
-            return
+        try:
+            if self.prefetched:
+                return
+        except AttributeError:
+            pass
 
         try:
-            ready = False
-            while not ready:
-                try:
-                    r = self.request.getresponse()
-                except ResponseNotReady:
-                    sleep(0.001)
-                    continue
-                break
-            self.prefetched = True
-            headers = {}
-            for k, v in r.getheaders():
-                headers.update({k: v})
-            self.headers = headers
-            self.content = r.read()
-            self.status_code = r.status
-            self.status = r.reason
-        finally:
-            try:
-                self.request.close()
-            except Exception as err:
-                from kamaki.clients import recvlog
-                recvlog.debug('\n'.join(['%s' % type(err)] + format_stack()))
-                raise
+            with PooledHTTPConnection(
+                    self.netloc, self.scheme,
+                    size=self.poolsize) as conn:
+                super(KamakiHTTPResponse, self).__init__(conn)
+                conn.request(
+                    method=str(self.method),
+                    url=str(self.url),
+                    headers=self.http_headers,
+                    body=self.body)
+                while True:
+                    try:
+                        r = self.request.getresponse()
+                    except ResponseNotReady:
+                        sleep(0.001)
+                        continue
+                    break
+                self.prefetched = True
+                headers = {}
+                for k, v in r.getheaders():
+                    headers.update({k: v})
+                self.headers = headers
+                self.content = r.read()
+                self.status_code = r.status
+                self.status = r.reason
+        except IOError as ioe:
+            raise HTTPConnectionError(
+                'Cannot connect to %s: %s' % (self.url, ioe.strerror),
+                errno=ioe.errno)
+        except Exception as err:
+            from kamaki.clients import recvlog
+            recvlog.debug('\n'.join(['%s' % type(err)] + format_stack()))
+            raise HTTPConnectionError(
+                'Failed to handle connection to %s %s' % (self.url, err),
+                errno=-1)
 
     @property
     def text(self):
@@ -85,7 +108,7 @@ class KamakiHTTPResponse(HTTPResponse):
         return '%s' % self._content
 
     @text.setter
-    def test(self, v):
+    def text(self, v):
         pass
 
     @property
@@ -106,16 +129,7 @@ class KamakiHTTPResponse(HTTPResponse):
         pass
 
     def release(self):
-        """ Release the connection. Should always be called if the response
-        content hasn't been used.
-        """
-        if not self.prefetched:
-            try:
-                self.request.close()
-            except Exception as err:
-                from kamaki.clients import recvlog
-                recvlog.debug('\n'.join(['%s' % type(err)] + format_stack()))
-                raise
+        (self.netloc, self.scheme, self.poolsize) = (None, None, None)
 
 
 class KamakiHTTPConnection(HTTPConnection):
@@ -178,30 +192,6 @@ class KamakiHTTPConnection(HTTPConnection):
         for k, v in headers.items():
             http_headers[str(k)] = str(v)
 
-        #get connection from pool
-        try:
-            conn = get_http_connection(
-                netloc=netloc,
-                scheme=scheme,
-                pool_size=self.poolsize)
-        except ValueError as ve:
-            raise HTTPConnectionError(
-                'Cannot establish connection to %s %s' % (self.url, ve),
-                errno=-1)
-        try:
-            #Be carefull, all non-body variables should not be unicode
-            conn.request(
-                method=str(method.upper()),
-                url=str(self.path),
-                headers=http_headers,
-                body=data)
-        except IOError as ioe:
-            raise HTTPConnectionError(
-                'Cannot connect to %s: %s' % (self.url, ioe.strerror),
-                errno=ioe.errno)
-        except Exception as err:
-            from kamaki.clients import recvlog
-            recvlog.debug('\n'.join(['%s' % type(err)] + format_stack()))
-            conn.close()
-            raise
-        return KamakiHTTPResponse(conn)
+        return KamakiHTTPResponse(
+            netloc, scheme, method.upper(), self.path,
+            headers=http_headers, body=data, poolsize=self.poolsize)
