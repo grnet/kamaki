@@ -1,6 +1,16 @@
-Hotfix 0.7.8
+Hotfix 0.7.8:
 
 Enforce dependency objpool>0.1.1
+Fix bug #3527 of 404 errors apearing due to mishandling in threads
+
+Hotfix 0.7.7:
+
+Update documentation to suggest installing fron pypi instead of git repo
+
+Hotfix 0.7.6:
+
+1. Urgent feature #3422 Explicetly set http connection pool size in kamaki lib
+2. Fix Bug#3446 (Astakos client cache should not be shared between instances)
 
 CHANGELOG for version 0.7
 

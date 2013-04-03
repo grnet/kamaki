@@ -35,7 +35,6 @@
 
 from setuptools import setup
 from sys import version_info
-import collections
 
 import kamaki
 
