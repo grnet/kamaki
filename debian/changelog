@@ -1,3 +1,9 @@
+kamaki (0.7.8-1) stable; urgency=high
+
+  * Enforce objlist>0.1.1, new upstream version
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Wed, 03 Apr 2013 17:26:33 +0300
+
 kamaki (0.7.7-1) stable; urgency=low
 
   * New upstream version
