@@ -125,11 +125,11 @@ class RequestManager(object):
         url += '' if url.endswith('/') else '/'
         if path:
             url += _encode(path[1:] if path.startswith('/') else path)
-        for i, (key, val) in enumerate(params.items()):
+        delim = '?'
+        for key, val in params.items():
             val = _encode(val)
-            url += '%s%s' % ('&' if i else '?', key)
-            if val:
-                url += '=%s' % val
+            url += '%s%s%s' % (delim, key, ('=%s' % val) if val else '')
+            delim = '&'
         parsed = urlparse(url)
         self.url = url
         self.path = parsed.path or '/'
@@ -144,7 +144,7 @@ class RequestManager(object):
         assert method in HTTP_METHODS, 'Invalid http method %s' % method
         if headers:
             assert isinstance(headers, dict)
-            self.headers = dict(headers)
+        self.headers = dict(headers)
         self.method, self.data = method, data
         self.scheme, self.netloc = self._connection_info(url, path, params)
 

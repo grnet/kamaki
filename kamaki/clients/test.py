@@ -38,11 +38,6 @@ from inspect import getmembers, isclass
 from itertools import product
 from random import randint
 
-from kamaki.clients.connection.test import (
-    KamakiConnection,
-    KamakiHTTPConnection,
-    KamakiResponse,
-    KamakiHTTPResponse)
 from kamaki.clients.utils.test import Utils
 from kamaki.clients.astakos.test import AstakosClient
 from kamaki.clients.compute.test import ComputeClient, ComputeRestClient
@@ -95,6 +90,36 @@ class ClientError(TestCase):
                 exp_status if isinstance(exp_status, int) else 0,
                 ce.status)
             self.assertEqual(exp_details, ce.details)
+
+
+class RequestManager(TestCase):
+
+    def setUp(self):
+        from kamaki.clients import RequestManager
+        self.RM = RequestManager
+
+    def test___init__(self):
+        from kamaki.clients import HTTP_METHODS
+        method_values = HTTP_METHODS + [v.lower() for v in HTTP_METHODS]
+        for args in product(
+                tuple(method_values),
+                ('http://www.example.com', 'https://example.com', ''),
+                ('/some/path', '/' ''),
+                ('Some data', '', None),
+                (dict(k1='v1', k2='v2'), dict()),
+                (dict(k='v', k2=None, k3='v3'), dict(k=0), dict(k='v'), {})):
+            req = self.RM(*args)
+            method, url, path, data, headers, params = args
+            self.assertEqual(req.method, method.upper())
+            for i, (k, v) in enumerate(params.items()):
+                path += '%s%s%s' % (
+                    '&' if '?' in path or i else '?',
+                    k,
+                    ('=%s' % v) if v else '')
+            self.assertEqual(req.path, path)
+            self.assertEqual(req.data, data)
+            self.assertEqual(req.headers, headers)
+        self.assertRaises(AssertionError, self.RM, 'GOT', '', '', '', {}, {})
 
 
 class SilentEvent(TestCase):
