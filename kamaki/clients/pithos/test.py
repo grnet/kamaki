@@ -153,9 +153,6 @@ class FR(object):
     status = None
     status_code = 200
 
-    def release(self):
-        pass
-
 
 class PithosRestClient(TestCase):
 

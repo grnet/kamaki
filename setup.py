@@ -42,7 +42,7 @@ import kamaki
 
 optional = ['ansicolors', 'mock>=1.0.1']
 
-requires = ['objpool', 'progress>=1.1']
+requires = ['objpool>=0.2', 'progress>=1.1']
 
 if version_info < (2, 7):
     requires.append('argparse')
@@ -71,7 +71,6 @@ setup(
         'kamaki.clients.astakos',
         'kamaki.clients.compute',
         'kamaki.clients.cyclades',
-        'kamaki.clients.connection',
         'kamaki.clients.commissioning',
         'kamaki.clients.quotaholder',
         'kamaki.clients.quotaholder.api',

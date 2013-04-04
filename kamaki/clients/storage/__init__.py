@@ -72,8 +72,7 @@ class StorageClient(Client):
         path = path4url(self.account)
         for key, val in metapairs.items():
             self.set_header('X-Account-Meta-' + key, val)
-        r = self.post(path, success=202)
-        r.release()
+        self.post(path, success=202)
 
     def del_account_meta(self, metakey):
         """
@@ -87,8 +86,7 @@ class StorageClient(Client):
         if len(self.headers) == len(headers):
             raise ClientError('X-Account-Meta-%s not found' % metakey, 404)
         path = path4url(self.account)
-        r = self.post(path, success=202)
-        r.release()
+        self.post(path, success=202)
 
     def create_container(self, container):
         """
@@ -99,7 +97,6 @@ class StorageClient(Client):
         self._assert_account()
         path = path4url(self.account, container)
         r = self.put(path, success=(201, 202))
-        r.release()
         if r.status_code == 202:
             raise ClientError("Container already exists", r.status_code)
 
@@ -157,8 +154,7 @@ class StorageClient(Client):
         self._assert_container()
         path = path4url(self.account, self.container, obj)
         data = f.read(size) if size else f.read()
-        r = self.put(path, data=data, success=201)
-        r.release()
+        self.put(path, data=data, success=201)
 
     def create_object(
             self, obj,
@@ -172,8 +168,7 @@ class StorageClient(Client):
         path = path4url(self.account, self.container, obj)
         self.set_header('Content-Type', content_type)
         self.set_header('Content-length', str(content_length))
-        r = self.put(path, success=201)
-        r.release()
+        self.put(path, success=201)
 
     def create_directory(self, obj):
         """
@@ -183,8 +178,7 @@ class StorageClient(Client):
         path = path4url(self.account, self.container, obj)
         self.set_header('Content-Type', 'application/directory')
         self.set_header('Content-length', '0')
-        r = self.put(path, success=201)
-        r.release()
+        self.put(path, success=201)
 
     def get_object_info(self, obj):
         """
@@ -220,8 +214,7 @@ class StorageClient(Client):
         self._assert_container()
         self.set_header('X-Object-Meta-' + metakey, '')
         path = path4url(self.account, self.container, obj)
-        r = self.post(path, success=202)
-        r.release()
+        self.post(path, success=202)
 
     def replace_object_meta(self, metapairs):
         """
@@ -231,8 +224,7 @@ class StorageClient(Client):
         path = path4url(self.account, self.container)
         for key, val in metapairs.items():
             self.set_header('X-Object-Meta-' + key, val)
-        r = self.post(path, success=202)
-        r.release()
+        self.post(path, success=202)
 
     def copy_object(
             self, src_container, src_object, dst_container,
@@ -253,8 +245,7 @@ class StorageClient(Client):
         dst_path = path4url(self.account, dst_container, dst_object)
         self.set_header('X-Copy-From', path4url(src_container, src_object))
         self.set_header('Content-Length', 0)
-        r = self.put(dst_path, success=201)
-        r.release()
+        self.put(dst_path, success=201)
 
     def move_object(
             self, src_container, src_object, dst_container,
@@ -275,8 +266,7 @@ class StorageClient(Client):
         dst_path = path4url(self.account, dst_container, dst_object)
         self.set_header('X-Move-From', path4url(src_container, src_object))
         self.set_header('Content-Length', 0)
-        r = self.put(dst_path, success=201)
-        r.release()
+        self.put(dst_path, success=201)
 
     def delete_object(self, obj):
         """
