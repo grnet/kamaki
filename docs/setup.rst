@@ -16,7 +16,7 @@ Kamaki interfaces rely on a list of configuration options. Be default, they are 
 
     Example 1.1: Set user token to myt0k3n==
 
-    $ kamaki set token myt0k3n==
+    $ kamaki config set token myt0k3n==
 
 Optional features
 -----------------
