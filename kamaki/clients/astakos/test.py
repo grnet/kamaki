@@ -63,9 +63,6 @@ class FR(object):
     status = None
     status_code = 200
 
-    def release(self):
-        pass
-
 astakos_pkg = 'kamaki.clients.astakos.AstakosClient'
 
 

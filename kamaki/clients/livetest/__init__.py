@@ -169,6 +169,7 @@ def init_parser():
     return parser
 
 
+"""
 class Connection(Generic):
 
     def setUp(self):
@@ -212,13 +213,14 @@ class Connection(Generic):
                             assert False, 'Exception not raised as expected'
                 response.request.close.assert_called_once_with()
             response.request.close()
+"""
 
 
 def main(argv, config=None):
     suiteFew = TestSuite()
-    if len(argv) == 0 or argv[0] == 'connection':
-        test_method = 'test_%s' % (argv[1] if len(argv) > 1 else '000')
-        suiteFew.addTest(Connection(test_method, config))
+    #if len(argv) == 0 or argv[0] == 'connection':
+    #    test_method = 'test_%s' % (argv[1] if len(argv) > 1 else '000')
+    #    suiteFew.addTest(Connection(test_method, config))
     if len(argv) == 0 or argv[0] == 'pithos':
         from kamaki.clients.livetest.pithos import Pithos
         test_method = 'test_%s' % (argv[1] if len(argv) > 1 else '000')

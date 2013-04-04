@@ -118,16 +118,14 @@ class ComputeClient(ComputeRestClient):
         :param new_name: (str)
         """
         req = {'server': {'name': new_name}}
-        r = self.servers_put(server_id, json_data=req)
-        r.release()
+        self.servers_put(server_id, json_data=req)
 
     def delete_server(self, server_id):
         """Submit a deletion request for a server specified by id
 
         :param server_id: integer (str or int)
         """
-        r = self.servers_delete(server_id)
-        r.release()
+        self.servers_delete(server_id)
 
     def reboot_server(self, server_id, hard=False):
         """
@@ -137,8 +135,7 @@ class ComputeClient(ComputeRestClient):
         """
         boot_type = 'HARD' if hard else 'SOFT'
         req = {'reboot': {'type': boot_type}}
-        r = self.servers_post(server_id, 'action', json_data=req)
-        r.release()
+        self.servers_post(server_id, 'action', json_data=req)
 
     def get_server_metadata(self, server_id, key=''):
         """
@@ -188,8 +185,7 @@ class ComputeClient(ComputeRestClient):
 
         :param key: (str) the meta key
         """
-        r = self.servers_delete(server_id, 'meta/' + key)
-        r.release()
+        self.servers_delete(server_id, 'meta/' + key)
 
     def list_flavors(self, detail=False):
         """
@@ -238,8 +234,7 @@ class ComputeClient(ComputeRestClient):
         """
         :param image_id: (str)
         """
-        r = self.images_delete(image_id)
-        r.release()
+        self.images_delete(image_id)
 
     def get_image_metadata(self, image_id, key=''):
         """
@@ -286,5 +281,4 @@ class ComputeClient(ComputeRestClient):
         :param key: (str) metadatum key
         """
         command = path4url('meta', key)
-        r = self.images_delete(image_id, command)
-        r.release()
+        self.images_delete(image_id, command)

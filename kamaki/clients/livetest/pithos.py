@@ -154,12 +154,10 @@ class Pithos(livetest.Generic):
                 if_modified_since=now_formated,
                 success=(204, 304, 412))
             sc1 = r1.status_code
-            r1.release()
             r2 = self.client.account_head(
                 if_unmodified_since=now_formated,
                 success=(204, 304, 412))
             sc2 = r2.status_code
-            r2.release()
             self.assertNotEqual(sc1, sc2)
 
     def test_account_get(self):
@@ -199,12 +197,10 @@ class Pithos(livetest.Generic):
                 if_modified_since=now_formated,
                 success=(200, 304, 412))
             sc1 = r1.status_code
-            r1.release()
             r2 = self.client.account_get(
                 if_unmodified_since=now_formated,
                 success=(200, 304, 412))
             sc2 = r2.status_code
-            r2.release()
             self.assertNotEqual(sc1, sc2)
 
         """Check sharing_accounts"""
@@ -296,12 +292,10 @@ class Pithos(livetest.Generic):
                 if_modified_since=now_formated,
                 success=(204, 304, 412))
             sc1 = r1.status_code
-            r1.release()
             r2 = self.client.container_head(
                 if_unmodified_since=now_formated,
                 success=(204, 304, 412))
             sc2 = r2.status_code
-            r2.release()
             self.assertNotEqual(sc1, sc2)
 
         """Check container object meta"""
@@ -363,12 +357,10 @@ class Pithos(livetest.Generic):
                 if_modified_since=now_formated,
                 success=(200, 304, 412))
             sc1 = r1.status_code
-            r1.release()
             r2 = self.client.container_get(
                 if_unmodified_since=now_formated,
                 success=(200, 304, 412))
             sc2 = r2.status_code
-            r2.release()
             self.assertNotEqual(sc1, sc2)
 
     def test_container_put(self):
@@ -579,13 +571,11 @@ class Pithos(livetest.Generic):
                 if_modified_since=now_formated,
                 success=(200, 304, 412))
             sc1 = r1.status_code
-            r1.release()
             r2 = self.client.object_head(
                 obj,
                 if_unmodified_since=now_formated,
                 success=(200, 304, 412))
             sc2 = r2.status_code
-            r2.release()
             self.assertNotEqual(sc1, sc2)
 
     def test_object_get(self):
@@ -640,13 +630,11 @@ class Pithos(livetest.Generic):
                 if_modified_since=now_formated,
                 success=(200, 304, 412))
             sc1 = r1.status_code
-            r1.release()
             r2 = self.client.object_get(
                 obj,
                 if_unmodified_since=now_formated,
                 success=(200, 304, 412))
             sc2 = r2.status_code
-            r2.release()
             self.assertNotEqual(sc1, sc2)
 
         """Upload an object to download"""

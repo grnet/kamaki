@@ -159,9 +159,6 @@ class FR(object):
     status = None
     status_code = 200
 
-    def release(self):
-        pass
-
 
 class FakeConnection(object):
     """A fake Connection class"""
