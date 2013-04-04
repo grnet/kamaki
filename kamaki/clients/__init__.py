@@ -162,11 +162,16 @@ class RequestManager(object):
             url=str(self.path),
             headers=self.headers,
             body=self.data)
-        while True:
+        keep_trying = 60.0
+        while keep_trying > 0:
             try:
                 return conn.getresponse()
             except ResponseNotReady:
-                sleep(0.03 * random())
+                wait = 0.03 * random()
+                sleep(wait)
+                keep_trying -= wait
+        recvlog('Kamaki Timeout %s %s\t[%s]' % (self.method, self.path, self))
+        raise ClientError('HTTPResponse takes too long - kamaki timeout')
 
 
 class ResponseManager(object):
@@ -206,8 +211,7 @@ class ResponseManager(object):
             raise ClientError(
                 'Failed while http-connecting to %s (%s)' % (
                     self.request.url,
-                    err),
-                1000)
+                    err))
 
     @property
     def status_code(self):
@@ -246,7 +250,7 @@ class ResponseManager(object):
         try:
             return loads(self._content)
         except ValueError as err:
-            ClientError('Response not formated in JSON - %s' % err)
+            raise ClientError('Response not formated in JSON - %s' % err)
 
 
 class SilentEvent(Thread):

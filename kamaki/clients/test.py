@@ -121,6 +121,92 @@ class RequestManager(TestCase):
             self.assertEqual(req.headers, headers)
         self.assertRaises(AssertionError, self.RM, 'GOT', '', '', '', {}, {})
 
+    @patch('httplib.HTTPConnection.getresponse')
+    @patch('httplib.HTTPConnection.request')
+    def test_perform(self, request, getresponse):
+        from httplib import HTTPConnection
+        self.RM('GET', 'http://example.com', '/').perform(
+            HTTPConnection('http', 'example.com'))
+        expected = dict(body=None, headers={}, url='/', method='GET')
+        request.assert_called_once_with(**expected)
+        getresponse.assert_called_once_with()
+
+
+class FakeResp(object):
+
+    READ = 'something to read'
+    HEADERS = dict(k='v', k1='v1', k2='v2')
+    reason = 'some reason'
+    status = 42
+
+    def read(self):
+        return self.READ
+
+    def getheaders(self):
+        return self.HEADERS.items()
+
+
+class ResponseManager(TestCase):
+
+    def setUp(self):
+        from kamaki.clients import ResponseManager, RequestManager
+        from httplib import HTTPConnection
+        self.RM = ResponseManager(RequestManager('GET', 'http://ok', '/'))
+        self.HTTPC = HTTPConnection
+
+    def tearDown(self):
+        FakeResp.READ = 'something to read'
+
+    @patch('kamaki.clients.RequestManager.perform', return_value=FakeResp())
+    def test_content(self, perform):
+        self.assertEqual(self.RM.content, FakeResp.READ)
+        self.assertTrue(isinstance(perform.call_args[0][0], self.HTTPC))
+
+    @patch('kamaki.clients.RequestManager.perform', return_value=FakeResp())
+    def test_text(self, perform):
+        self.assertEqual(self.RM.text, FakeResp.READ)
+        self.assertTrue(isinstance(perform.call_args[0][0], self.HTTPC))
+
+    @patch('kamaki.clients.RequestManager.perform', return_value=FakeResp())
+    def test_status(self, perform):
+        self.assertEqual(self.RM.status, FakeResp.reason)
+        self.assertTrue(isinstance(perform.call_args[0][0], self.HTTPC))
+
+    @patch('kamaki.clients.RequestManager.perform', return_value=FakeResp())
+    def test_status_code(self, perform):
+        self.assertEqual(self.RM.status_code, FakeResp.status)
+        self.assertTrue(isinstance(perform.call_args[0][0], self.HTTPC))
+
+    @patch('kamaki.clients.RequestManager.perform', return_value=FakeResp())
+    def test_headers(self, perform):
+        self.assertEqual(self.RM.headers, FakeResp.HEADERS)
+        self.assertTrue(isinstance(perform.call_args[0][0], self.HTTPC))
+
+    @patch('kamaki.clients.RequestManager.perform', return_value=FakeResp())
+    def test_json(self, perform):
+        try:
+            self.RM.json
+        except Exception as e:
+            self.assertEqual(
+                '%s' % e,
+                'Response not formated in JSON - '
+                'No JSON object could be decoded\n')
+
+        from json import dumps
+        FakeResp.READ = dumps(FakeResp.HEADERS)
+        self.RM._request_performed = False
+        self.assertEqual(self.RM.json, FakeResp.HEADERS)
+        self.assertTrue(isinstance(perform.call_args[0][0], self.HTTPC))
+
+    @patch('kamaki.clients.RequestManager.perform', return_value=FakeResp())
+    def test_all(self, perform):
+        self.assertEqual(self.RM.content, FakeResp.READ)
+        self.assertEqual(self.RM.text, FakeResp.READ)
+        self.assertEqual(self.RM.status, FakeResp.reason)
+        self.assertEqual(self.RM.status_code, FakeResp.status)
+        self.assertEqual(self.RM.headers, FakeResp.HEADERS)
+        perform.assert_called_only_once
+
 
 class SilentEvent(TestCase):
 
