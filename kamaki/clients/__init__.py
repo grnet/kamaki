@@ -44,8 +44,9 @@ from objpool.http import PooledHTTPConnection
 
 from kamaki.clients.utils import logger
 
-LOG_TOKEN = False
 DEBUG_LOG = logger.get_log_filename()
+TIMEOUT = 60.0   # seconds
+HTTP_METHODS = ['GET', 'POST', 'PUT', 'HEAD', 'DELETE', 'COPY', 'MOVE']
 
 logger.add_file_logger('clients.send', __name__, filename=DEBUG_LOG)
 sendlog = logger.get_logger('clients.send')
@@ -63,8 +64,6 @@ datarecvlog = logger.get_logger('data.recv')
 logger.add_file_logger('ClientError', __name__, filename=DEBUG_LOG)
 clienterrorlog = logger.get_logger('ClientError')
 
-HTTP_METHODS = ['GET', 'POST', 'PUT', 'HEAD', 'DELETE', 'COPY', 'MOVE']
-
 
 def _encode(v):
     if v and isinstance(v, unicode):
@@ -74,8 +73,10 @@ def _encode(v):
 
 class ClientError(Exception):
     def __init__(self, message, status=0, details=None):
-        clienterrorlog.debug(
-            'msg[%s], sts[%s], dtl[%s]' % (message, status, details))
+        clienterrorlog.debug('ClientError: msg[%s], sts[%s], dtl[%s]' % (
+            message,
+            status,
+            details))
         try:
             message += '' if message and message[-1] == '\n' else '\n'
             serv_stat, sep, new_msg = message.partition('{')
@@ -108,7 +109,13 @@ class ClientError(Exception):
             self.details = details if details else []
 
 
-class RequestManager(object):
+class Logged(object):
+
+    LOG_TOKEN = False
+    LOG_DATA = False
+
+
+class RequestManager(Logged):
     """Handle http request information"""
 
     def _connection_info(self, url, path, params={}):
@@ -148,20 +155,37 @@ class RequestManager(object):
         self.method, self.data = method, data
         self.scheme, self.netloc = self._connection_info(url, path, params)
 
+    def log(self):
+        sendlog.info('%s %s://%s%s\t[%s]' % (
+            self.method,
+            self.scheme,
+            self.netloc,
+            self.path,
+            self))
+        for key, val in self.headers.items():
+            if (not self.LOG_TOKEN) and key.lower() == 'x-auth-token':
+                continue
+            sendlog.info('  %s: %s\t[%s]' % (key, val, self))
+        if self.data:
+            sendlog.info('data size:%s\t[%s]' % (len(self.data), self))
+            if self.LOG_DATA:
+                datasendlog.info(self.data)
+        else:
+            sendlog.info('data size:0\t[%s]' % self)
+        sendlog.info('')
+
     def perform(self, conn):
         """
         :param conn: (httplib connection object)
 
         :returns: (HTTPResponse)
         """
-        #  sendlog.debug(
-        #    'RequestManager.perform mthd(%s), url(%s), headrs(%s), bdlen(%s)',
-        #    self.method, self.url, self.headers, self.data)
         conn.request(
             method=str(self.method.upper()),
             url=str(self.path),
             headers=self.headers,
             body=self.data)
+        self.log()
         keep_trying = 60.0
         while keep_trying > 0:
             try:
@@ -170,11 +194,12 @@ class RequestManager(object):
                 wait = 0.03 * random()
                 sleep(wait)
                 keep_trying -= wait
-        recvlog('Kamaki Timeout %s %s\t[%s]' % (self.method, self.path, self))
+        logmsg = 'Kamaki Timeout %s %s\t[%s]' % (self.method, self.path, self)
+        recvlog.debug(logmsg)
         raise ClientError('HTTPResponse takes too long - kamaki timeout')
 
 
-class ResponseManager(object):
+class ResponseManager(Logged):
     """Manage the http request and handle the response data, headers, etc."""
 
     def __init__(self, request, poolsize=None):
@@ -194,18 +219,27 @@ class ResponseManager(object):
             with PooledHTTPConnection(
                     self.request.netloc, self.request.scheme,
                     **pool_kw) as connection:
+                self.request.LOG_TOKEN = self.LOG_TOKEN
+                self.request.LOG_DATA = self.LOG_DATA
                 r = self.request.perform(connection)
-                #  recvlog.debug('ResponseManager(%s):' % r)
+                recvlog.info('[resp: %s] <-- [req: %s]\n' % (r, self.request))
                 self._request_performed = True
+                self._status_code, self._status = r.status, r.reason
+                recvlog.info(
+                    '%d %s\t[p: %s]' % (self.status_code, self.status, self))
                 self._headers = dict()
                 for k, v in r.getheaders():
-                    self.headers[k] = v
-                    #  recvlog.debug('\t%s: %s\t(%s)' % (k, v, r))
+                    if (not self.LOG_TOKEN) and k.lower() == 'x-auth-token':
+                        continue
+                    self._headers[k] = v
+                    recvlog.info('  %s: %s\t[p: %s]' % (k, v, self))
                 self._content = r.read()
-                self._status_code = r.status
-                self._status = r.reason
+                recvlog.info('data size: %s\t[p: %s]' % (
+                    len(self._content) if self._content else 0,
+                    self))
+                if self.LOG_DATA and self._content:
+                    datarecvlog.info('%s\t[p: %s]' % (self._content, self))
         except Exception as err:
-            from kamaki.clients import recvlog
             from traceback import format_stack
             recvlog.debug('\n'.join(['%s' % type(err)] + format_stack()))
             raise ClientError(
@@ -254,7 +288,7 @@ class ResponseManager(object):
 
 
 class SilentEvent(Thread):
-    """ Thread-run method(*args, **kwargs)"""
+    """Thread-run method(*args, **kwargs)"""
     def __init__(self, method, *args, **kwargs):
         super(self.__class__, self).__init__()
         self.method = method
@@ -283,15 +317,18 @@ class SilentEvent(Thread):
 
 class Client(object):
 
+    MAX_THREADS = 7
+    DATE_FORMATS = [
+        '%a %b %d %H:%M:%S %Y',
+        '%A, %d-%b-%y %H:%M:%S GMT',
+        '%a, %d %b %Y %H:%M:%S GMT']
+    LOG_TOKEN = False
+    LOG_DATA = False
+
     def __init__(self, base_url, token):
         self.base_url = base_url
         self.token = token
         self.headers, self.params = dict(), dict()
-        self.DATE_FORMATS = [
-            '%a %b %d %H:%M:%S %Y',
-            '%A, %d-%b-%y %H:%M:%S GMT',
-            '%a, %d %b %Y %H:%M:%S GMT']
-        self.MAX_THREADS = 7
 
     def _init_thread_limit(self, limit=1):
         assert isinstance(limit, int) and limit > 0, 'Thread limit not a +int'
@@ -344,14 +381,11 @@ class Client(object):
             self, method, path,
             async_headers=dict(), async_params=dict(),
             **kwargs):
-        """In threaded/asynchronous requests, headers and params are not safe
-        Therefore, the standard self.set_header/param system can be used only
-        for headers and params that are common for all requests. All other
-        params and headers should passes as
-        @param async_headers
-        @async_params
-        E.g. in most queries the 'X-Auth-Token' header might be the same for
-        all, but the 'Range' header might be different from request to request.
+        """Commit an HTTP request to base_url/path
+        Requests are commited to and performed by Request/ResponseManager
+        These classes perform a lazy http request. Present method, by default,
+        enforces them to perform the http call. Hint: call present method with
+        success=None to get a non-performed ResponseManager object.
         """
         assert isinstance(method, str) or isinstance(method, unicode)
         assert method
@@ -370,27 +404,13 @@ class Client(object):
             if data:
                 headers.setdefault('Content-Length', '%s' % len(data))
 
+            sendlog.debug('COMMIT %s @ %s\t[%s]', method, self.base_url, self)
             req = RequestManager(
                 method, self.base_url, path,
                 data=data, headers=headers, params=params)
-            sendlog.info('commit a %s @ %s\t[%s]', method, self.base_url, self)
-            sendlog.info('\tpath: %s\t[%s]', req.path, self)
-            for key, val in req.headers.items():
-                if (not LOG_TOKEN) and key.lower() == 'x-auth-token':
-                    continue
-                sendlog.info('\t%s: %s [%s]', key, val, self)
-            if data:
-                datasendlog.info(data)
-            sendlog.info('END HTTP request commit\t[%s]', self)
-
+            #  req.log()
             r = ResponseManager(req)
-            recvlog.info('%d %s', r.status_code, r.status)
-            for key, val in r.headers.items():
-                if (not LOG_TOKEN) and key.lower() == 'x-auth-token':
-                    continue
-                recvlog.info('%s: %s', key, val)
-            if r.content:
-                datarecvlog.info(r.content)
+            r.LOG_TOKEN, r.LOG_DATA = self.LOG_TOKEN, self.LOG_DATA
         finally:
             self.headers = dict()
             self.params = dict()
