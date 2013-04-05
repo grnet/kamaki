@@ -51,9 +51,10 @@ class _astakos_init(_command_init):
         base_url = self.config.get('astakos', 'url')\
             or self.config.get('global', 'url')
         self.client = AstakosClient(base_url=base_url, token=token)
+        self._update_low_level_log()
 
     def main(self):
-        self._run
+        self._run()
 
 
 @command(astakos_cmds)

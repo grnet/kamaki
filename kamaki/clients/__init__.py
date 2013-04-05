@@ -47,8 +47,6 @@ from kamaki.clients.utils import logger
 DEBUG_LOG = logger.get_log_filename()
 TIMEOUT = 60.0   # seconds
 HTTP_METHODS = ['GET', 'POST', 'PUT', 'HEAD', 'DELETE', 'COPY', 'MOVE']
-LOG_TOKEN = False
-LOG_DATA = True
 
 logger.add_file_logger('clients.send', __name__, filename=DEBUG_LOG)
 sendlog = logger.get_logger('clients.send')
@@ -111,7 +109,13 @@ class ClientError(Exception):
             self.details = details if details else []
 
 
-class RequestManager(object):
+class Logged(object):
+
+    LOG_TOKEN = False
+    LOG_DATA = False
+
+
+class RequestManager(Logged):
     """Handle http request information"""
 
     def _connection_info(self, url, path, params={}):
@@ -152,22 +156,22 @@ class RequestManager(object):
         self.scheme, self.netloc = self._connection_info(url, path, params)
 
     def log(self):
-        sendlog.debug('%s %s://%s%s\t[%s]' % (
+        sendlog.info('%s %s://%s%s\t[%s]' % (
             self.method,
             self.scheme,
             self.netloc,
             self.path,
             self))
         for key, val in self.headers.items():
-            if (not LOG_TOKEN) and key.lower() == 'x-auth-token':
+            if (not self.LOG_TOKEN) and key.lower() == 'x-auth-token':
                 continue
-            sendlog.debug('%s: %s\t[%s]', (key, val, self))
+            sendlog.info('  %s: %s\t[%s]' % (key, val, self))
         if self.data:
-            sendlog.debug('data size:%s\t[%s]' % (len(self.data), self))
-            if LOG_DATA:
+            sendlog.info('data size:%s\t[%s]' % (len(self.data), self))
+            if self.LOG_DATA:
                 datasendlog.info(self.data)
         else:
-            sendlog.debug('data size:0\t[%s]' % self)
+            sendlog.info('data size:0\t[%s]' % self)
         sendlog.info('')
 
     def perform(self, conn):
@@ -195,7 +199,7 @@ class RequestManager(object):
         raise ClientError('HTTPResponse takes too long - kamaki timeout')
 
 
-class ResponseManager(object):
+class ResponseManager(Logged):
     """Manage the http request and handle the response data, headers, etc."""
 
     def __init__(self, request, poolsize=None):
@@ -215,24 +219,26 @@ class ResponseManager(object):
             with PooledHTTPConnection(
                     self.request.netloc, self.request.scheme,
                     **pool_kw) as connection:
+                self.request.LOG_TOKEN = self.LOG_TOKEN
+                self.request.LOG_DATA = self.LOG_DATA
                 r = self.request.perform(connection)
-                recvlog.debug('[resp: %s] <-- [req: %s]\n' % (r, self.request))
+                recvlog.info('[resp: %s] <-- [req: %s]\n' % (r, self.request))
                 self._request_performed = True
                 self._status_code, self._status = r.status, r.reason
-                recvlog.debug(
+                recvlog.info(
                     '%d %s\t[p: %s]' % (self.status_code, self.status, self))
                 self._headers = dict()
                 for k, v in r.getheaders():
-                    if (not LOG_TOKEN) and k.lower() == 'x-auth-token':
+                    if (not self.LOG_TOKEN) and k.lower() == 'x-auth-token':
                         continue
                     self._headers[k] = v
-                    recvlog.debug('  %s: %s\t[p: %s]' % (k, v, self))
+                    recvlog.info('  %s: %s\t[p: %s]' % (k, v, self))
                 self._content = r.read()
-                recvlog.debug('data size: %s\t[p: %s]' % (
+                recvlog.info('data size: %s\t[p: %s]' % (
                     len(self._content) if self._content else 0,
                     self))
-                if LOG_DATA and self._content:
-                    datarecvlog.debug('%s\t[p: %s]' % (self._content, self))
+                if self.LOG_DATA and self._content:
+                    datarecvlog.info('%s\t[p: %s]' % (self._content, self))
         except Exception as err:
             from traceback import format_stack
             recvlog.debug('\n'.join(['%s' % type(err)] + format_stack()))
@@ -316,6 +322,8 @@ class Client(object):
         '%a %b %d %H:%M:%S %Y',
         '%A, %d-%b-%y %H:%M:%S GMT',
         '%a, %d %b %Y %H:%M:%S GMT']
+    LOG_TOKEN = False
+    LOG_DATA = False
 
     def __init__(self, base_url, token):
         self.base_url = base_url
@@ -402,6 +410,7 @@ class Client(object):
                 data=data, headers=headers, params=params)
             #  req.log()
             r = ResponseManager(req)
+            r.LOG_TOKEN, r.LOG_DATA = self.LOG_TOKEN, self.LOG_DATA
         finally:
             self.headers = dict()
             self.params = dict()

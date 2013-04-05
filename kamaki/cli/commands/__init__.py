@@ -49,6 +49,12 @@ class _command_init(object):
         except KeyError:
             pass
 
+    def _update_low_level_log(self):
+        if hasattr(self, 'client'):
+            self.client.LOG_TOKEN, self.client.LOG_DATA = (
+                self['config'].get('global', 'log_token') == 'on',
+                self['config'].get('global', 'log_data') == 'on')
+
     def _safe_progress_bar(self, msg, arg='progress_bar'):
         """Try to get a progress bar, but do not raise errors"""
         try:
