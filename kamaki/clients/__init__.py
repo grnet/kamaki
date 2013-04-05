@@ -74,8 +74,10 @@ def _encode(v):
 
 class ClientError(Exception):
     def __init__(self, message, status=0, details=None):
-        clienterrorlog.debug(
-            'msg[%s], sts[%s], dtl[%s]' % (message, status, details))
+        clienterrorlog.debug('ClientError: msg[%s], sts[%s], dtl[%s]' % (
+            message,
+            status,
+            details))
         try:
             message += '' if message and message[-1] == '\n' else '\n'
             serv_stat, sep, new_msg = message.partition('{')
@@ -208,13 +210,18 @@ class ResponseManager(object):
                 r = self.request.perform(connection)
                 #recvlog.debug('ResponseManager(%s):' % r)
                 self._request_performed = True
+                self._status_code, self._status = r.status, r.reason
+                recvlog.info(
+                    '%d %s\t[p: %s]' % (self.status_code, self.status, self))
                 self._headers = dict()
                 for k, v in r.getheaders():
+                    if (not LOG_TOKEN) and k.lower() == 'x-auth-token':
+                        continue
                     self.headers[k] = v
-                    recvlog.debug('\t%s: %s\t(p: %s)' % (k, v, r))
+                    recvlog.debug('%s: %s\t(p: %s)' % (k, v, self))
                 self._content = r.read()
-                self._status_code = r.status
-                self._status = r.reason
+                if self._content:
+                    datarecvlog.info('%s\t[p: %s]' % (self._content, self))
         except Exception as err:
             from traceback import format_stack
             recvlog.debug('\n'.join(['%s' % type(err)] + format_stack()))
@@ -354,15 +361,6 @@ class Client(object):
             self, method, path,
             async_headers=dict(), async_params=dict(),
             **kwargs):
-        """In threaded/asynchronous requests, headers and params are not safe
-        Therefore, the standard self.set_header/param system can be used only
-        for headers and params that are common for all requests. All other
-        params and headers should passes as
-        @param async_headers
-        @async_params
-        E.g. in most queries the 'X-Auth-Token' header might be the same for
-        all, but the 'Range' header might be different from request to request.
-        """
         assert isinstance(method, str) or isinstance(method, unicode)
         assert method
         assert isinstance(path, str) or isinstance(path, unicode)
@@ -386,15 +384,7 @@ class Client(object):
                 method, self.base_url, path,
                 data=data, headers=headers, params=params)
             #  req.log()
-
             r = ResponseManager(req)
-            recvlog.info('%d %s', r.status_code, r.status)
-            for key, val in r.headers.items():
-                if (not LOG_TOKEN) and key.lower() == 'x-auth-token':
-                    continue
-                recvlog.info('%s: %s', key, val)
-            if r.content:
-                datarecvlog.info(r.content)
         finally:
             self.headers = dict()
             self.params = dict()
