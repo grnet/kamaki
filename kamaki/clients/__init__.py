@@ -46,6 +46,8 @@ from kamaki.clients.utils import logger
 
 LOG_TOKEN = False
 DEBUG_LOG = logger.get_log_filename()
+TIMEOUT = 60.0   # seconds
+HTTP_METHODS = ['GET', 'POST', 'PUT', 'HEAD', 'DELETE', 'COPY', 'MOVE']
 
 logger.add_file_logger('clients.send', __name__, filename=DEBUG_LOG)
 sendlog = logger.get_logger('clients.send')
@@ -62,8 +64,6 @@ datarecvlog = logger.get_logger('data.recv')
 
 logger.add_file_logger('ClientError', __name__, filename=DEBUG_LOG)
 clienterrorlog = logger.get_logger('ClientError')
-
-HTTP_METHODS = ['GET', 'POST', 'PUT', 'HEAD', 'DELETE', 'COPY', 'MOVE']
 
 
 def _encode(v):
@@ -148,20 +148,30 @@ class RequestManager(object):
         self.method, self.data = method, data
         self.scheme, self.netloc = self._connection_info(url, path, params)
 
+    def log(self):
+        sendlog.info('%s %s %s\t[%s]', (self.method, self.path, self))
+        for key, val in self.headers.items():
+            if (not LOG_TOKEN) and key.lower() == 'x-auth-token':
+                continue
+            sendlog.info('%s: %s\t[%s]', (key, val, self))
+        if self.data:
+            sendlog.info('data size:%s\t[%s]' % (len(self.data), self))
+            datasendlog.info(self.data)
+        else:
+            sendlog.info('data size:0\t[%s]' % self)
+
     def perform(self, conn):
         """
         :param conn: (httplib connection object)
 
         :returns: (HTTPResponse)
         """
-        #  sendlog.debug(
-        #    'RequestManager.perform mthd(%s), url(%s), headrs(%s), bdlen(%s)',
-        #    self.method, self.url, self.headers, self.data)
         conn.request(
             method=str(self.method.upper()),
             url=str(self.path),
             headers=self.headers,
             body=self.data)
+        self.log()
         keep_trying = 60.0
         while keep_trying > 0:
             try:
@@ -170,7 +180,8 @@ class RequestManager(object):
                 wait = 0.03 * random()
                 sleep(wait)
                 keep_trying -= wait
-        recvlog('Kamaki Timeout %s %s\t[%s]' % (self.method, self.path, self))
+        logmsg = 'Kamaki Timeout %s %s\t[%s]' % (self.method, self.path, self)
+        recvlog.info(logmsg)
         raise ClientError('HTTPResponse takes too long - kamaki timeout')
 
 
@@ -195,17 +206,16 @@ class ResponseManager(object):
                     self.request.netloc, self.request.scheme,
                     **pool_kw) as connection:
                 r = self.request.perform(connection)
-                #  recvlog.debug('ResponseManager(%s):' % r)
+                #recvlog.debug('ResponseManager(%s):' % r)
                 self._request_performed = True
                 self._headers = dict()
                 for k, v in r.getheaders():
                     self.headers[k] = v
-                    #  recvlog.debug('\t%s: %s\t(%s)' % (k, v, r))
+                    recvlog.debug('\t%s: %s\t(p: %s)' % (k, v, r))
                 self._content = r.read()
                 self._status_code = r.status
                 self._status = r.reason
         except Exception as err:
-            from kamaki.clients import recvlog
             from traceback import format_stack
             recvlog.debug('\n'.join(['%s' % type(err)] + format_stack()))
             raise ClientError(
@@ -370,18 +380,12 @@ class Client(object):
             if data:
                 headers.setdefault('Content-Length', '%s' % len(data))
 
+            sendlog.debug('commit %s on %s\t[%s]', method, self.base_url, self)
+            sendlog.debug('\tw. path: %s' % path)
             req = RequestManager(
                 method, self.base_url, path,
                 data=data, headers=headers, params=params)
-            sendlog.info('commit a %s @ %s\t[%s]', method, self.base_url, self)
-            sendlog.info('\tpath: %s\t[%s]', req.path, self)
-            for key, val in req.headers.items():
-                if (not LOG_TOKEN) and key.lower() == 'x-auth-token':
-                    continue
-                sendlog.info('\t%s: %s [%s]', key, val, self)
-            if data:
-                datasendlog.info(data)
-            sendlog.info('END HTTP request commit\t[%s]', self)
+            #  req.log()
 
             r = ResponseManager(req)
             recvlog.info('%d %s', r.status_code, r.status)
