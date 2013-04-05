@@ -31,6 +31,8 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+from kamaki.clients import Client
+
 
 class Command(object):
     """Store a command and the next-level (2 levels)"""
