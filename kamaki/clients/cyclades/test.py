@@ -87,9 +87,6 @@ class FR(object):
     status = None
     status_code = 200
 
-    def release(self):
-        pass
-
 rest_pkg = 'kamaki.clients.cyclades.CycladesRestClient'
 cyclades_pkg = 'kamaki.clients.cyclades.CycladesClient'
 

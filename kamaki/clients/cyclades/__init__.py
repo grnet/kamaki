@@ -47,8 +47,7 @@ class CycladesClient(CycladesRestClient):
         :param server_id: integer (str or int)
         """
         req = {'start': {}}
-        r = self.servers_post(server_id, 'action', json_data=req, success=202)
-        r.release()
+        self.servers_post(server_id, 'action', json_data=req, success=202)
 
     def shutdown_server(self, server_id):
         """Submit a shutdown request
@@ -56,8 +55,7 @@ class CycladesClient(CycladesRestClient):
         :param server_id: integer (str or int)
         """
         req = {'shutdown': {}}
-        r = self.servers_post(server_id, 'action', json_data=req, success=202)
-        r.release()
+        self.servers_post(server_id, 'action', json_data=req, success=202)
 
     def get_server_console(self, server_id):
         """
@@ -93,8 +91,7 @@ class CycladesClient(CycladesRestClient):
         :param profile: (str) ENABLED | DISABLED | PROTECTED
         """
         req = {'firewallProfile': {'profile': profile}}
-        r = self.servers_post(server_id, 'action', json_data=req, success=202)
-        r.release()
+        self.servers_post(server_id, 'action', json_data=req, success=202)
 
     def list_servers(self, detail=False, changes_since=None):
         """
@@ -189,8 +186,7 @@ class CycladesClient(CycladesRestClient):
         :param new_name: (str)
         """
         req = {'network': {'name': new_name}}
-        r = self.networks_put(network_id=network_id, json_data=req)
-        r.release()
+        self.networks_put(network_id=network_id, json_data=req)
 
     def delete_network(self, network_id):
         """
@@ -199,13 +195,12 @@ class CycladesClient(CycladesRestClient):
         :raises ClientError: 421 Network in use
         """
         try:
-            r = self.networks_delete(network_id)
+            self.networks_delete(network_id)
         except ClientError as err:
             if err.status == 421:
                 err.details = [
                     'Network may be still connected to at least one server']
             raise err
-        r.release()
 
     def connect_server(self, server_id, network_id):
         """ Connect a server to a network
@@ -215,8 +210,7 @@ class CycladesClient(CycladesRestClient):
         :param network_id: integer (str or int)
         """
         req = {'add': {'serverRef': server_id}}
-        r = self.networks_post(network_id, 'action', json_data=req)
-        r.release()
+        self.networks_post(network_id, 'action', json_data=req)
 
     def disconnect_server(self, server_id, nic_id):
         """
@@ -232,8 +226,7 @@ class CycladesClient(CycladesRestClient):
                 net['id'],
                 net['network_id']) for net in vm_nets if nic_id == net['id']]:
             req = {'remove': {'attachment': '%s' % nic_id}}
-            r = self.networks_post(network_id, 'action', json_data=req)
-            r.release()
+            self.networks_post(network_id, 'action', json_data=req)
             num_of_disconnections += 1
         return num_of_disconnections
 
@@ -243,8 +236,7 @@ class CycladesClient(CycladesRestClient):
         """
         for nic in self.list_network_nics(netid):
             req = dict(remove=dict(attachment=nic))
-            r = self.networks_post(netid, 'action', json_data=req)
-            r.release()
+            self.networks_post(netid, 'action', json_data=req)
 
     def wait_server(
             self,

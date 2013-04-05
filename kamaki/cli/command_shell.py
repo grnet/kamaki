@@ -254,7 +254,7 @@ class Shell(Cmd):
                     except IndexError:
                         break
                 print('Syntax: %s %s' % (' '.join(clist[upto:]), cls.syntax))
-            else:
+            if cmd.subcommands:
                 print_subcommands_help(cmd)
 
         self._register_method(help_method, 'help_%s' % cmd.name)

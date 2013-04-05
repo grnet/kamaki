@@ -116,16 +116,15 @@ class ImageClient(Client):
 
         async_headers = {}
         for key, val in params.items():
-            if key in ('id', 'store', 'disk_format', 'container_format',
-                       'size', 'checksum', 'is_public', 'owner'):
+            if key in ('store', 'disk_format', 'container_format',
+                       'size', 'checksum', 'is_public', 'owner') and val:
                 key = 'x-image-meta-' + key.replace('_', '-')
                 async_headers[key] = val
 
         for key, val in properties.items():
             async_headers['x-image-meta-property-%s' % key] = val
 
-        r = self.post(path, success=200, async_headers=async_headers)
-        r.release()
+        self.post(path, success=200, async_headers=async_headers)
 
     def list_members(self, image_id):
         """
@@ -155,8 +154,7 @@ class ImageClient(Client):
         :param member: (str) user to allow access to current user's images
         """
         path = path4url('images', image_id, 'members', member)
-        r = self.put(path, success=204)
-        r.release()
+        self.put(path, success=204)
 
     def remove_member(self, image_id, member):
         """
@@ -165,8 +163,7 @@ class ImageClient(Client):
         :param member: (str) user to deprive from current user's images
         """
         path = path4url('images', image_id, 'members', member)
-        r = self.delete(path, success=204)
-        r.release()
+        self.delete(path, success=204)
 
     def set_members(self, image_id, members):
         """
@@ -176,5 +173,4 @@ class ImageClient(Client):
         """
         path = path4url('images', image_id, 'members')
         req = {'memberships': [{'member_id': member} for member in members]}
-        r = self.put(path, json=req, success=204)
-        r.release()
+        self.put(path, json=req, success=204)

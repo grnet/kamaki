@@ -133,7 +133,7 @@ Modules list
 compute_rest_api
 ^^^^^^^^^^^^^^^^
 
-.. automodule:: kamaki.clients.compute_rest_api
+.. automodule:: kamaki.clients.compute.rest_api
     :members:
     :show-inheritance:
     :undoc-members:
@@ -177,7 +177,7 @@ pithos
 pithos_rest_api
 ^^^^^^^^^^^^^^^
 
-.. automodule:: kamaki.clients.pithos_rest_api
+.. automodule:: kamaki.clients.pithos.rest_api
     :members:
     :show-inheritance:
     :undoc-members:

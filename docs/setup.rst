@@ -16,7 +16,7 @@ Kamaki interfaces rely on a list of configuration options. Be default, they are 
 
     Example 1.1: Set user token to myt0k3n==
 
-    $ kamaki set token myt0k3n==
+    $ kamaki config set token myt0k3n==
 
 Optional features
 -----------------
@@ -142,9 +142,9 @@ The [global] group is treated by kamaki as a generic group for arbitrary options
     a special package that is used to load cyclades virtual network commands to kamaki UIs. Don't touch this unless you know what you are doing.
 
 * image.url <Plankton image service url>
-    the url of the Plankton service. Set to Okeanos.grnet.gr Plankton service be default. Users should set a different value if they need to use a different service.
+    the url of the Plankton service. Set to Okeanos.grnet.gr Plankton service by default. Users should set a different value if they need to use a different service. Note that the *image compute* commands are depended on the compute.url instead.
 
-* image.cli <UI command specifications for Plankton and Cyclades image service>
+* image.cli <UI command specifications for Plankton (and Compute) image service>
     a special package that is used to load image-related commands to kamaki UIs. Don't touch this unless you know what you are doing.
 
 * astakos.url <Astakos authentication service url>
