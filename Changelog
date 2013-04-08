@@ -1,6 +1,11 @@
-Hotfix 0.7.8:
+Hotfix 0.7.9:
 
 Enforce dependency objpool>0.1.1
+Fix bug #3555: downloaded files with same blocks are not corrupted anymore
+
+Hotfix 0.7.8:
+
+Adjust Kamaki to cooperate with objpool 0.1.2 or better (with context manager)
 Fix bug #3527 of 404 errors apearing due to mishandling in threads
 
 Hotfix 0.7.7:
