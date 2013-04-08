@@ -582,14 +582,15 @@ class PithosClient(PithosRestClient):
     def _cb_next(self, step=1):
         if hasattr(self, 'progress_bar_gen'):
             try:
-                self.progress_bar_gen.next(step)
+                for i in xrange(step):
+                    self.progress_bar_gen.next()
             except:
                 pass
 
     def _complete_cb(self):
         while True:
             try:
-                self.progress_bar_gen.next(step)
+                self.progress_bar_gen.next()
             except:
                 break
 
