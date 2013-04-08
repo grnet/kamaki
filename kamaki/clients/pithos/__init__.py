@@ -408,7 +408,11 @@ class PithosClient(PithosRestClient):
         #assert total_size/blocksize + 1 == len(hashmap['hashes'])
         map_dict = {}
         for i, h in enumerate(hashmap['hashes']):
-            map_dict[h] = i
+            #  map_dict[h] = i   CHAGE
+            if h in map_dict:
+                map_dict[h].append(i)
+            else:
+                map_dict[h] = [i]
         return (blocksize, blockhash, total_size, hashmap['hashes'], map_dict)
 
     def _dump_blocks_sync(
@@ -470,26 +474,28 @@ class PithosClient(PithosRestClient):
             offset = rstart if blocksize > rstart else rstart % blocksize
 
         self._init_thread_limit()
-        for block_hash, blockid in remote_hashes.items():
-            start = blocksize * blockid
-            if start < file_size and block_hash == self._hash_from_file(
-                    local_file, start, blocksize, blockhash):
-                self._cb_next()
-                continue
-            self._watch_thread_limit(flying.values())
-            finished += self._thread2file(
-                flying,
-                local_file,
-                offset,
-                **restargs)
-            end = total_size - 1 if start + blocksize > total_size\
-                else start + blocksize - 1
-            (start, end) = _range_up(start, end, filerange)
-            if start == end:
-                self._cb_next()
-                continue
-            restargs['async_headers'] = {'Range': 'bytes=%s-%s' % (start, end)}
-            flying[start] = self._get_block_async(obj, **restargs)
+        for block_hash, blockids in remote_hashes.items():
+            for blockid in blockids:
+                start = blocksize * blockid
+                if start < file_size and block_hash == self._hash_from_file(
+                        local_file, start, blocksize, blockhash):
+                    self._cb_next()
+                    continue
+                self._watch_thread_limit(flying.values())
+                finished += self._thread2file(
+                    flying,
+                    local_file,
+                    offset,
+                    **restargs)
+                end = total_size - 1 if start + blocksize > total_size\
+                    else start + blocksize - 1
+                (start, end) = _range_up(start, end, filerange)
+                if start == end:
+                    self._cb_next()
+                    continue
+                restargs['async_headers'] = {
+                    'Range': 'bytes=%s-%s' % (start, end)}
+                flying[start] = self._get_block_async(obj, **restargs)
 
         for thread in flying.values():
             thread.join()
@@ -543,7 +549,7 @@ class PithosClient(PithosRestClient):
         assert total_size >= 0
 
         if download_cb:
-            self.progress_bar_gen = download_cb(len(remote_hashes))
+            self.progress_bar_gen = download_cb(len(hash_list))
             self._cb_next()
 
         if dst.isatty():
