@@ -68,7 +68,7 @@ class Image(livetest.Generic):
         print('\t- Create container %s on Pithos server' % cont)
         self.pithcli.container_put()
         self.location = 'pithos://%s/%s/%s' % (uuid, cont, self.obj)
-        print('\t- Upload an image at %s...' % self.location)
+        print('\t- Upload an image at %s...\n' % self.location)
         self.pithcli.upload_object(self.obj, f)
         print('\t- ok')
         f.close()
@@ -200,16 +200,6 @@ class Image(livetest.Generic):
         self.assertTrue(self._imglist)
         for img in self._imglist.values():
             self.assertTrue(img is not None)
-
-    def test_reregister(self):
-        """Test reregister"""
-        self._prepare_img()
-        self._test_reregister()
-
-    def _test_reregister(self):
-        self.client.reregister(
-            self.location,
-            properties=dict(my_property='some_value'))
 
     def test_set_members(self):
         """Test set_members"""

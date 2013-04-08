@@ -154,12 +154,10 @@ class Pithos(livetest.Generic):
                 if_modified_since=now_formated,
                 success=(204, 304, 412))
             sc1 = r1.status_code
-            r1.release()
             r2 = self.client.account_head(
                 if_unmodified_since=now_formated,
                 success=(204, 304, 412))
             sc2 = r2.status_code
-            r2.release()
             self.assertNotEqual(sc1, sc2)
 
     def test_account_get(self):
@@ -199,12 +197,10 @@ class Pithos(livetest.Generic):
                 if_modified_since=now_formated,
                 success=(200, 304, 412))
             sc1 = r1.status_code
-            r1.release()
             r2 = self.client.account_get(
                 if_unmodified_since=now_formated,
                 success=(200, 304, 412))
             sc2 = r2.status_code
-            r2.release()
             self.assertNotEqual(sc1, sc2)
 
         """Check sharing_accounts"""
@@ -224,10 +220,25 @@ class Pithos(livetest.Generic):
             account_post internally
         """
         u1 = self.client.account
-        u2 = self.client.account
-        self.client.set_account_group(grpName, [u1, u2])
+        #  Invalid display name
+        u2 = '1nc0r3c7-d15p14y-n4m3'
+        #  valid display name
+        u3 = '6488c1b2-cb06-40a8-a02a-d474b8d29c59'
+        self.assertRaises(
+            ClientError,
+            self.client.set_account_group,
+            grpName, [u1, u2])
+        self.client.set_account_group(grpName, [u1])
         r = self.client.get_account_group()
-        self.assertEqual(r['x-account-group-' + grpName], '%s,%s' % (u1, u2))
+        self.assertEqual(r['x-account-group-' + grpName], '%s' % u1)
+        try:
+            self.client.set_account_group(grpName, [u1, u3])
+            r = self.client.get_account_group()
+            self.assertEqual(
+                r['x-account-group-' + grpName],
+                '%s,%s' % (u1, u3))
+        except:
+            print('\tInvalid user id %s (it is ok, though)' % u3)
         self.client.del_account_group(grpName)
         r = self.client.get_account_group()
         self.assertTrue('x-account-group-' + grpName not in r)
@@ -281,12 +292,10 @@ class Pithos(livetest.Generic):
                 if_modified_since=now_formated,
                 success=(204, 304, 412))
             sc1 = r1.status_code
-            r1.release()
             r2 = self.client.container_head(
                 if_unmodified_since=now_formated,
                 success=(204, 304, 412))
             sc2 = r2.status_code
-            r2.release()
             self.assertNotEqual(sc1, sc2)
 
         """Check container object meta"""
@@ -348,12 +357,10 @@ class Pithos(livetest.Generic):
                 if_modified_since=now_formated,
                 success=(200, 304, 412))
             sc1 = r1.status_code
-            r1.release()
             r2 = self.client.container_get(
                 if_unmodified_since=now_formated,
                 success=(200, 304, 412))
             sc2 = r2.status_code
-            r2.release()
             self.assertNotEqual(sc1, sc2)
 
     def test_container_put(self):
@@ -564,13 +571,11 @@ class Pithos(livetest.Generic):
                 if_modified_since=now_formated,
                 success=(200, 304, 412))
             sc1 = r1.status_code
-            r1.release()
             r2 = self.client.object_head(
                 obj,
                 if_unmodified_since=now_formated,
                 success=(200, 304, 412))
             sc2 = r2.status_code
-            r2.release()
             self.assertNotEqual(sc1, sc2)
 
     def test_object_get(self):
@@ -625,13 +630,11 @@ class Pithos(livetest.Generic):
                 if_modified_since=now_formated,
                 success=(200, 304, 412))
             sc1 = r1.status_code
-            r1.release()
             r2 = self.client.object_get(
                 obj,
                 if_unmodified_since=now_formated,
                 success=(200, 304, 412))
             sc2 = r2.status_code
-            r2.release()
             self.assertNotEqual(sc1, sc2)
 
         """Upload an object to download"""

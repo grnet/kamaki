@@ -36,7 +36,6 @@ from kamaki.clients.astakos import AstakosClient
 from kamaki.cli.utils import print_dict
 from kamaki.cli.commands import _command_init, errors
 from kamaki.cli.command_tree import CommandTree
-# from kamaki.cli.argument import ValueArgument
 
 astakos_cmds = CommandTree('astakos', 'Astakos API commands')
 _commands = [astakos_cmds]
@@ -52,9 +51,10 @@ class _astakos_init(_command_init):
         base_url = self.config.get('astakos', 'url')\
             or self.config.get('global', 'url')
         self.client = AstakosClient(base_url=base_url, token=token)
+        self._update_low_level_log()
 
     def main(self):
-        self._run
+        self._run()
 
 
 @command(astakos_cmds)

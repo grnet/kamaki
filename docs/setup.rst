@@ -16,20 +16,22 @@ Kamaki interfaces rely on a list of configuration options. Be default, they are 
 
     Example 1.1: Set user token to myt0k3n==
 
-    $ kamaki set token myt0k3n==
+    $ kamaki config set token myt0k3n==
 
 Optional features
 -----------------
 
-For installing any all of the following, consult the `kamaki installation guide <installation.html#install-progress-and-or-ansicolors-optional>`_
+For installing any or all of the following, consult the `kamaki installation guide <installation.html#install-ansicolors>`_
 
 * ansicolors
     * Make command line / console user interface responses prettier with text formating (colors, bold, etc.)
     * Can be switched on/off in kamaki configuration file: colors=on/off
+    * Has not been tested on non unix / linux based platforms
 
-* progress 
-    * Attach progress bars to various kamaki commands (e.g. kamaki store upload)
-    * If desired, progress version should be 1.0.2 or better
+* mock 
+    * For kamaki contributors only
+    * Allow unittests to run on kamaki.clients package
+    * Needs mock version 1.X or better
 
 Any of the above features can be installed at any time before or after kamaki installation.
 
@@ -140,9 +142,9 @@ The [global] group is treated by kamaki as a generic group for arbitrary options
     a special package that is used to load cyclades virtual network commands to kamaki UIs. Don't touch this unless you know what you are doing.
 
 * image.url <Plankton image service url>
-    the url of the Plankton service. Set to Okeanos.grnet.gr Plankton service be default. Users should set a different value if they need to use a different service.
+    the url of the Plankton service. Set to Okeanos.grnet.gr Plankton service by default. Users should set a different value if they need to use a different service. Note that the *image compute* commands are depended on the compute.url instead.
 
-* image.cli <UI command specifications for Plankton and Cyclades image service>
+* image.cli <UI command specifications for Plankton (and Compute) image service>
     a special package that is used to load image-related commands to kamaki UIs. Don't touch this unless you know what you are doing.
 
 * astakos.url <Astakos authentication service url>
@@ -257,3 +259,8 @@ A quotaholder client is introduced as an advanced feature. Quotaholder client is
     url=<URL of quotaholder service>
 
 Quotaholder is not tested in livetest
+
+The unit testing system
+"""""""""""""""""""""""
+
+Kamaki container a set of finegrained unit tests for the kamaki.clients package. This set is not used when kamaki is running. Instead, it is aimed to developers who debug or extent the kamaki clients library. For more information, check the `Going Agile <developers/extending-clients-api.html#going-agile>`_ entry at the `developers section <developers/extending-clients-api.html>`_.

@@ -1,4 +1,4 @@
-# Copyright 2011 GRNET S.A. All rights reserved.
+# Copyright 2011-2013 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -31,14 +31,14 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+from sys import stdout
 from time import sleep
 
-from kamaki.clients.cyclades_rest_api import CycladesClientApi
+from kamaki.clients.cyclades.rest_api import CycladesRestClient
 from kamaki.clients import ClientError
-from sys import stdout
 
 
-class CycladesClient(CycladesClientApi):
+class CycladesClient(CycladesRestClient):
     """GRNet Cyclades API client"""
 
     def start_server(self, server_id):
@@ -47,8 +47,7 @@ class CycladesClient(CycladesClientApi):
         :param server_id: integer (str or int)
         """
         req = {'start': {}}
-        r = self.servers_post(server_id, 'action', json_data=req, success=202)
-        r.release()
+        self.servers_post(server_id, 'action', json_data=req, success=202)
 
     def shutdown_server(self, server_id):
         """Submit a shutdown request
@@ -56,8 +55,7 @@ class CycladesClient(CycladesClientApi):
         :param server_id: integer (str or int)
         """
         req = {'shutdown': {}}
-        r = self.servers_post(server_id, 'action', json_data=req, success=202)
-        r.release()
+        self.servers_post(server_id, 'action', json_data=req, success=202)
 
     def get_server_console(self, server_id):
         """
@@ -82,7 +80,7 @@ class CycladesClient(CycladesClientApi):
             return r['attachments']['values'][0]['firewallProfile']
         except KeyError:
             raise ClientError(
-                'No Firewall Profile', 520,
+                'No Firewall Profile',
                 details='Server %s is missing a firewall profile' % server_id)
 
     def set_firewall_profile(self, server_id, profile):
@@ -93,8 +91,7 @@ class CycladesClient(CycladesClientApi):
         :param profile: (str) ENABLED | DISABLED | PROTECTED
         """
         req = {'firewallProfile': {'profile': profile}}
-        r = self.servers_post(server_id, 'action', json_data=req, success=202)
-        r.release()
+        self.servers_post(server_id, 'action', json_data=req, success=202)
 
     def list_servers(self, detail=False, changes_since=None):
         """
@@ -189,8 +186,7 @@ class CycladesClient(CycladesClientApi):
         :param new_name: (str)
         """
         req = {'network': {'name': new_name}}
-        r = self.networks_put(network_id=network_id, json_data=req)
-        r.release()
+        self.networks_put(network_id=network_id, json_data=req)
 
     def delete_network(self, network_id):
         """
@@ -199,13 +195,12 @@ class CycladesClient(CycladesClientApi):
         :raises ClientError: 421 Network in use
         """
         try:
-            r = self.networks_delete(network_id)
+            self.networks_delete(network_id)
         except ClientError as err:
             if err.status == 421:
                 err.details = [
                     'Network may be still connected to at least one server']
             raise err
-        r.release()
 
     def connect_server(self, server_id, network_id):
         """ Connect a server to a network
@@ -215,14 +210,15 @@ class CycladesClient(CycladesClientApi):
         :param network_id: integer (str or int)
         """
         req = {'add': {'serverRef': server_id}}
-        r = self.networks_post(network_id, 'action', json_data=req)
-        r.release()
+        self.networks_post(network_id, 'action', json_data=req)
 
     def disconnect_server(self, server_id, nic_id):
         """
         :param server_id: integer (str or int)
 
         :param nic_id: (str)
+
+        :returns: (int) the number of nics disconnected
         """
         vm_nets = self.list_server_nics(server_id)
         num_of_disconnections = 0
@@ -230,8 +226,7 @@ class CycladesClient(CycladesClientApi):
                 net['id'],
                 net['network_id']) for net in vm_nets if nic_id == net['id']]:
             req = {'remove': {'attachment': '%s' % nic_id}}
-            r = self.networks_post(network_id, 'action', json_data=req)
-            r.release()
+            self.networks_post(network_id, 'action', json_data=req)
             num_of_disconnections += 1
         return num_of_disconnections
 
@@ -241,8 +236,7 @@ class CycladesClient(CycladesClientApi):
         """
         for nic in self.list_network_nics(netid):
             req = dict(remove=dict(attachment=nic))
-            r = self.networks_post(netid, 'action', json_data=req)
-            r.release()
+            self.networks_post(netid, 'action', json_data=req)
 
     def wait_server(
             self,

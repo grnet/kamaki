@@ -46,9 +46,9 @@ class _livetest_init(_command_init):
 
     def _run(self, client, method=None):
         if method:
-            livetest._main([client, method], config=self.config)
+            livetest.main([client, method], config=self.config)
         else:
-            livetest._main([client], config=self.config)
+            livetest.main([client], config=self.config)
 
     def main(self, client, method=None):
         return self._run(client, method)

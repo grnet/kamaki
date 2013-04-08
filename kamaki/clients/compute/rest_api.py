@@ -36,7 +36,7 @@ from kamaki.clients.utils import path4url
 import json
 
 
-class ComputeClientApi(Client):
+class ComputeRestClient(Client):
 
     def servers_get(self, server_id='', command='', success=200, **kwargs):
         """GET base_url/servers[/server_id][/command] request
@@ -92,7 +92,7 @@ class ComputeClientApi(Client):
         :returns: request response
         """
         data = json_data
-        if json_data is not None:
+        if json_data:
             data = json.dumps(json_data)
             self.set_header('Content-Type', 'application/json')
             self.set_header('Content-Length', len(data))
