@@ -404,7 +404,7 @@ class Client(object):
             if data:
                 headers.setdefault('Content-Length', '%s' % len(data))
 
-            sendlog.debug('COMMIT %s @ %s\t[%s]', method, self.base_url, self)
+            sendlog.debug('\n\nCMT %s@%s\t[%s]', method, self.base_url, self)
             req = RequestManager(
                 method, self.base_url, path,
                 data=data, headers=headers, params=params)
