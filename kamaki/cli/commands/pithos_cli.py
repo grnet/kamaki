@@ -1312,16 +1312,17 @@ class store_download(_store_container_command):
                     if_modified_since=self['if_modified_since'],
                     if_unmodified_since=self['if_unmodified_since'])
         except KeyboardInterrupt:
-            from threading import enumerate as activethreads
-            stdout.write('\nFinishing active threads ')
-            for thread in activethreads():
-                stdout.flush()
-                try:
-                    thread.join()
-                    stdout.write('.')
-                except RuntimeError:
-                    continue
-            print('\ndownload canceled by user')
+            from threading import activeCount, enumerate as activethreads
+            while activeCount() > 1:
+                stdout.write('\nTry stop %s threads: ' % (activeCount() - 1))
+                for thread in activethreads():
+                    stdout.flush()
+                    try:
+                        thread.join(0.5)
+                        stdout.write('*')
+                    except RuntimeError:
+                        continue
+            print('\nDownload canceled by user')
             if local_path is not None:
                 print('to resume, re-run with --resume')
         except Exception:
