@@ -17,7 +17,7 @@ It is essential for users to get a valid configuration token that works with for
 
     Example 1.1: Set user token to myt0k3n==
 
-    $ kamaki set token myt0k3n==
+    $ kamaki config set token myt0k3n==
 
 Shell vs one-command
 --------------------
