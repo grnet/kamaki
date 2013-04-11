@@ -156,8 +156,30 @@ The [global] group is treated by kamaki as a generic group for arbitrary options
 * history.file <history file path>
     the path of a simple file for inter-session kamaki history. Make sure kamaki is executed in a context where this file is accessible for reading and writing. Kamaki automatically creates the file if it doesn't exist
 
-Hidden features
-^^^^^^^^^^^^^^^
+Additional features
+^^^^^^^^^^^^^^^^^^^
+
+Richer connection logs
+""""""""""""""""""""""
+
+Kamaki logs down the http requests and responses in /var/log/kamaki/clients.log (make sure it is accessible). The request and response data and user authentication information is excluded from the logs be default. The former may render the logs unreadable and the later are sensitive information. Users my activate data and / or token logging my setting the global options log_data and log_token respectively::
+
+    $ kamaki config set log_data on
+    $ kamaki config set log_token on
+
+Either or both of these options may be switched off either by setting them to ``off`` or by deleting them.
+
+    $ kamaki config set log_data off
+    $ kamaki config delete log_token
+
+Set custom thread limit
+"""""""""""""""""""""""
+
+Some operations (e.g. download and upload) may use threaded http connections for better performance. Kamaki.clients utilizes a sophisticated mechanism for dynamically adjusting the number of simultaneous threads running, but users may wish to enforce their own upper thread limit. In that case, the max_threads option may be set to the configuration file::
+
+    $ kamaki config set max_threads 3
+
+If the value is not a positive integer, kamaki will ignore it and a warning message will be logged.
 
 The livetest suite
 """"""""""""""""""
