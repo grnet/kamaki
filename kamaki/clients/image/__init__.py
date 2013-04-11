@@ -32,7 +32,7 @@
 # or implied, of GRNET S.A.
 
 from kamaki.clients import Client, ClientError
-from kamaki.clients.utils import path4url
+from kamaki.clients.utils import path4url, filter_in
 
 
 class ImageClient(Client):
@@ -109,6 +109,8 @@ class ImageClient(Client):
             disc_format, container_format, size, checksum, is_public, owner
 
         :param properties: (dict) image properties (X-Image-Meta-Property)
+
+        :returns: (dict) details of the created image
         """
         path = path4url('images') + '/'
         self.set_header('X-Image-Meta-Name', name)
@@ -124,7 +126,8 @@ class ImageClient(Client):
         for key, val in properties.items():
             async_headers['x-image-meta-property-%s' % key] = val
 
-        self.post(path, success=200, async_headers=async_headers)
+        r = self.post(path, success=200, async_headers=async_headers)
+        return filter_in(r.headers, 'X-Image-')
 
     def list_members(self, image_id):
         """
