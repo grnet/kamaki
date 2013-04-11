@@ -200,7 +200,7 @@ class CycladesClient(CycladesRestClient):
             if err.status == 421:
                 err.details = [
                     'Network may be still connected to at least one server']
-            raise err
+            raise
 
     def connect_server(self, server_id, network_id):
         """ Connect a server to a network
