@@ -80,11 +80,10 @@ class ComputeClient(ComputeRestClient):
                           'imageRef': image_id}}
 
         image = self.get_image_details(image_id)
-        img_meta = image['metadata']['values']
         metadata = {}
         for key in ('os', 'users'):
             try:
-                metadata[key] = img_meta[key]
+                metadata[key] = image['metadata']['values'][key]
             except KeyError:
                 pass
         if metadata:
