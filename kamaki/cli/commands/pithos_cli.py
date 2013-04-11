@@ -1313,15 +1313,20 @@ class store_download(_store_container_command):
                     if_unmodified_since=self['if_unmodified_since'])
         except KeyboardInterrupt:
             from threading import activeCount, enumerate as activethreads
+            timeout = 0.5
             while activeCount() > 1:
-                stdout.write('\nTry stop %s threads: ' % (activeCount() - 1))
+                stdout.write('\nCancel %s threads: ' % (activeCount() - 1))
+                stdout.flush()
                 for thread in activethreads():
-                    stdout.flush()
                     try:
-                        thread.join(0.5)
-                        stdout.write('*')
+                        thread.join(timeout)
+                        stdout.write('.' if thread.isAlive() else '*')
                     except RuntimeError:
                         continue
+                    finally:
+                        stdout.flush()
+                        timeout += 0.1
+
             print('\nDownload canceled by user')
             if local_path is not None:
                 print('to resume, re-run with --resume')
