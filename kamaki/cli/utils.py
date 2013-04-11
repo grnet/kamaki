@@ -33,7 +33,19 @@
 
 from sys import stdout, stdin
 from re import compile as regex_compile
+from time import sleep
+
 from kamaki.cli.errors import raiseCLIError
+
+suggest = dict(
+    ansicolors=dict(
+        active=False,
+        url='#install-ansicolors-progress',
+        description='Add colors to console responses'),
+    progress=dict(
+        active=False,
+        url='#install-ansicolors-progress',
+        description='Add progress bars to some commands'))
 
 try:
     from colors import magenta, red, yellow, bold
@@ -42,6 +54,24 @@ except ImportError:
     def dummy(val):
         return val
     red = yellow = magenta = bold = dummy
+    suggest['ansicolors']['active'] = True
+
+try:
+    from progress.bar import ShadyBar
+except ImportError:
+    suggest['progress']['active'] = True
+
+
+def suggest_missing(miss=None):
+    global suggest
+    kamaki_docs = 'http://www.synnefo.org/docs/kamaki/latest'
+    for k, v in (miss, suggest[miss]) if miss else suggest.items():
+        if v['active'] and stdout.isatty():
+            print('Suggestion: for better user experience install %s' % k)
+            print('\t%s' % v['description'])
+            print('\tIt is easy, here are the instructions:')
+            print('\t%s/installation.html%s' % (kamaki_docs, v['url']))
+            print('')
 
 
 def remove_colors():
@@ -69,11 +99,9 @@ def pretty_keys(d, delim='_', recurcive=False):
     return new_d
 
 
-def print_dict(d,
-    exclude=(),
-    ident=0,
-    with_enumeration=False,
-    recursive_enumeration=False):
+def print_dict(
+        d, exclude=(), ident=0,
+        with_enumeration=False, recursive_enumeration=False):
     """
     Pretty-print a dictionary object
 
@@ -94,11 +122,12 @@ def print_dict(d,
         raiseCLIError(TypeError('Cannot dict_print a non-dict object'))
 
     if d:
-        margin = max(len(unicode(key).strip())\
-            for key in d.keys() if key not in exclude)
+        margin = max(len(('%s' % key).strip()) for key in d.keys() if (
+            key not in exclude))
 
     counter = 1
     for key, val in sorted(d.items()):
+        key = '%s' % key
         if key in exclude:
             continue
         print_str = ''
@@ -106,32 +135,32 @@ def print_dict(d,
             print_str = '%s. ' % counter
             counter += 1
         print_str = '%s%s' % (' ' * (ident - len(print_str)), print_str)
-        print_str += ('%s' % key).strip()
-        print_str += ' ' * (margin - len(unicode(key).strip()))
+        print_str += key.strip()
+        print_str += ' ' * (margin - len(key.strip()))
         print_str += ': '
         if isinstance(val, dict):
             print(print_str)
-            print_dict(val,
+            print_dict(
+                val,
                 exclude=exclude,
                 ident=margin + ident,
                 with_enumeration=recursive_enumeration,
                 recursive_enumeration=recursive_enumeration)
         elif isinstance(val, list):
             print(print_str)
-            print_list(val,
+            print_list(
+                val,
                 exclude=exclude,
                 ident=margin + ident,
                 with_enumeration=recursive_enumeration,
                 recursive_enumeration=recursive_enumeration)
         else:
-            print print_str + ' ' + unicode(val).strip()
+            print print_str + ' ' + ('%s' % val).strip()
 
 
-def print_list(l,
-    exclude=(),
-    ident=0,
-    with_enumeration=False,
-    recursive_enumeration=False):
+def print_list(
+        l, exclude=(), ident=0,
+        with_enumeration=False, recursive_enumeration=False):
     """
     Pretty-print a list object
 
@@ -153,12 +182,12 @@ def print_list(l,
 
     if l:
         try:
-            margin = max(len(unicode(item).strip()) for item in l\
-                if not (isinstance(item, dict)\
-                or isinstance(item, list)\
-                or item in exclude))
+            margin = max(len(('%s' % item).strip()) for item in l if not (
+                isinstance(item, dict) or
+                isinstance(item, list) or
+                item in exclude))
         except ValueError:
-            margin = (2 + len(unicode(len(l)))) if enumerate else 1
+            margin = (2 + len(('%s' % len(l)))) if enumerate else 1
 
     counter = 1
     prefix = ''
@@ -174,7 +203,8 @@ def print_list(l,
         if isinstance(item, dict):
             if with_enumeration:
                 print(prefix)
-            print_dict(item,
+            print_dict(
+                item,
                 exclude=exclude,
                 ident=margin + ident,
                 with_enumeration=recursive_enumeration,
@@ -182,7 +212,8 @@ def print_list(l,
         elif isinstance(item, list):
             if with_enumeration:
                 print(prefix)
-            print_list(item,
+            print_list(
+                item,
                 exclude=exclude,
                 ident=margin + ident,
                 with_enumeration=recursive_enumeration,
@@ -212,11 +243,10 @@ def page_hold(index, limit, maxlen):
     return True
 
 
-def print_items(items,
-    title=('id', 'name'),
-    with_enumeration=False,
-    with_redundancy=False,
-    page_size=0):
+def print_items(
+        items, title=('id', 'name'),
+        with_enumeration=False, with_redundancy=False,
+        page_size=0):
     """print dict or list items in a list, using some values as title
     Objects of next level don't inherit enumeration (default: off) or titles
 
@@ -241,9 +271,9 @@ def print_items(items,
         if isinstance(item, dict):
             title = sorted(set(title).intersection(item.keys()))
             if with_redundancy:
-                header = ' '.join(unicode(item[key]) for key in title)
+                header = ' '.join('%s' % item[key] for key in title)
             else:
-                header = ' '.join(unicode(item.pop(key)) for key in title)
+                header = ' '.join('%s' % item.pop(key) for key in title)
             print(bold(header))
         if isinstance(item, dict):
             print_dict(item, ident=1)
@@ -304,7 +334,7 @@ def dict2file(d, f, depth=0):
             f.write('\n')
             list2file(v, f, depth + 1)
         else:
-            f.write(' %s\n' % unicode(v))
+            f.write(' %s\n' % v)
 
 
 def list2file(l, f, depth=1):
@@ -314,7 +344,7 @@ def list2file(l, f, depth=1):
         elif isinstance(item, list):
             list2file(item, f, depth + 1)
         else:
-            f.write('%s%s\n' % ('\t' * depth, unicode(item)))
+            f.write('%s%s\n' % ('\t' * depth, item))
 
 # Split input auxiliary
 
@@ -334,9 +364,8 @@ def _sub_split(line):
     return terms
 
 
-def split_input(line):
-    """Use regular expressions to split a line correctly
-    """
+def old_split_input(line):
+    """Use regular expressions to split a line correctly"""
     line = ' %s ' % line
     (trivial_parts, interesting_parts) = _parse_with_regex(line, ' \'.*?\' ')
     terms = []
@@ -344,6 +373,40 @@ def split_input(line):
         terms += _sub_split(trivial_parts[i])
         terms.append(ipart[2:-2])
     terms += _sub_split(trivial_parts[-1])
+    return terms
+
+
+def _get_from_parsed(parsed_str):
+    try:
+        parsed_str = parsed_str.strip()
+    except:
+        return None
+    if parsed_str:
+        if parsed_str[0] == parsed_str[-1] and parsed_str[0] in ("'", '"'):
+            return [parsed_str[1:-1]]
+        return parsed_str.split(' ')
+    return None
+
+
+def split_input(line):
+    if not line:
+        return []
+    reg_expr = '\'.*?\'|".*?"|^[\S]*$'
+    (trivial_parts, interesting_parts) = _parse_with_regex(line, reg_expr)
+    assert(len(trivial_parts) == 1 + len(interesting_parts))
+    #print('  [split_input] trivial_parts %s are' % trivial_parts)
+    #print('  [split_input] interesting_parts %s are' % interesting_parts)
+    terms = []
+    for i, tpart in enumerate(trivial_parts):
+        part = _get_from_parsed(tpart)
+        if part:
+            terms += part
+        try:
+            part = _get_from_parsed(interesting_parts[i])
+        except IndexError:
+            break
+        if part:
+            terms += part
     return terms
 
 
@@ -358,3 +421,45 @@ def ask_user(msg, true_resp=['Y', 'y']):
     stdout.flush()
     user_response = stdin.readline()
     return user_response[0] in true_resp + ['\n']
+
+
+def spiner(size=None):
+    spins = ('/', '-', '\\', '|')
+    stdout.write(' ')
+    size = size or -1
+    i = 0
+    while size - i:
+        stdout.write('\b%s' % spins[i % len(spins)])
+        stdout.flush()
+        i += 1
+        sleep(0.1)
+        yield
+    yield
+
+if __name__ == '__main__':
+    examples = [
+        'la_la le_le li_li',
+        '\'la la\' \'le le\' \'li li\'',
+        '\'la la\' le_le \'li li\'',
+        'la_la \'le le\' li_li',
+        'la_la \'le le\' \'li li\'',
+        '"la la" "le le" "li li"',
+        '"la la" le_le "li li"',
+        'la_la "le le" li_li',
+        '"la_la" "le le" "li li"',
+        '\'la la\' "le le" \'li li\'',
+        'la_la \'le le\' "li li"',
+        'la_la \'le le\' li_li',
+        '\'la la\' le_le "li li"',
+        '"la la" le_le \'li li\'',
+        '"la la" \'le le\' li_li',
+        'la_la \'le\'le\' "li\'li"',
+        '"la \'le le\' la"',
+        '\'la "le le" la\'',
+        '\'la "la" la\' "le \'le\' le" li_"li"_li',
+        '\'\' \'L\' "" "A"']
+
+    for i, example in enumerate(examples):
+        print('%s. Split this: (%s)' % (i + 1, example))
+        ret = old_split_input(example)
+        print('\t(%s) of size %s' % (ret, len(ret)))

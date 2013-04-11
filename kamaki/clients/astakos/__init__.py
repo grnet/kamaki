@@ -31,46 +31,48 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from kamaki.clients.commissioning import Callpoint, CallError
-from kamaki.clients.commissioning.utils.debug import debug
-from kamaki.clients import Client
-
-from json import loads as json_loads, dumps as json_dumps
+from kamaki.clients import Client, ClientError
 
 
-class CommissioningClient(Callpoint):
+class AstakosClient(Client):
+    """GRNet Astakos API client"""
 
-    def __init__(self, base_url, token, poolsize):
-        super(CommissioningClient, self).__init__()
-        self._kc = Client(base_url, token)
-        self._kc.http_client.poolsize = poolsize
+    def __init__(self, base_url, token):
+        super(AstakosClient, self).__init__(base_url, token)
+        self._cache = {}
 
-    def do_make_call(self, api_call, data):
+    def authenticate(self, token=None):
+        """Get authentication information and store it in this client
+        As long as the AstakosClient instance is alive, the latest
+        authentication information for this token will be available
 
-        _kc = self._kc
+        :param token: (str) custom token to authenticate
 
-        gettable = ['list', 'get', 'read']
-        method = (_kc.get if any(api_call.startswith(x) for x in gettable)
-                  else _kc.post)
+        :returns: (dict) authentication information
+        """
+        self.token = token or self.token
+        self._cache[self.token] = self.get('/im/authenticate').json
+        return self._cache[self.token]
 
-        path = api_call
-        json_data = json_dumps(data)
-        debug("%s %s\n%s\n<<<\n", method.func_name, path, json_data)
+    def list(self):
+        """list cached user information"""
+        r = []
+        for k, v in self._cache.items():
+            r.append(dict(v))
+            r[-1].update(dict(auth_token=k))
+        return r
 
-        resp = method(path, data=json_data, success=(200, 450, 500))
-        debug(">>>\nStatus: %s", resp.status_code)
+    def info(self, token=None):
+        """Get (cached) user information"""
+        token_bu = self.token
+        token = token or self.token
+        try:
+            r = self._cache[token]
+        except KeyError:
+            r = self.authenticate(token)
+        self.token = token_bu
+        return r
 
-        body = resp.text
-        debug("\n%s\n<<<\n", body[:128] if body else None)
-
-        status = int(resp.status_code)
-        if status == 200:
-            return json_loads(body)
-        else:
-            try:
-                error = json_loads(body)
-            except ValueError:
-                exc = CallError(body, call_error='ValueError')
-            else:
-                exc = CallError.from_dict(error)
-            raise exc
+    def term(self, key, token=None):
+        """Get (cached) term, from user credentials"""
+        return self.info(token).get(key, None)

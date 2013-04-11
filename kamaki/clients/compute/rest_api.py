@@ -36,7 +36,7 @@ from kamaki.clients.utils import path4url
 import json
 
 
-class ComputeClientApi(Client):
+class ComputeRestClient(Client):
 
     def servers_get(self, server_id='', command='', success=200, **kwargs):
         """GET base_url/servers[/server_id][/command] request
@@ -70,8 +70,13 @@ class ComputeClientApi(Client):
         path = path4url('servers', server_id, command)
         return self.delete(path, success=success, **kwargs)
 
-    def servers_post(self,
-        server_id='', command='', json_data=None, success=202, **kwargs):
+    def servers_post(
+            self,
+            server_id='',
+            command='',
+            json_data=None,
+            success=202,
+            **kwargs):
         """POST base_url/servers[/server_id]/[command] request
 
         :param server_id: integer (as int or str)
@@ -87,7 +92,7 @@ class ComputeClientApi(Client):
         :returns: request response
         """
         data = json_data
-        if json_data is not None:
+        if json_data:
             data = json.dumps(json_data)
             self.set_header('Content-Type', 'application/json')
             self.set_header('Content-Length', len(data))
@@ -95,8 +100,13 @@ class ComputeClientApi(Client):
         path = path4url('servers', server_id, command)
         return self.post(path, data=data, success=success, **kwargs)
 
-    def servers_put(self,
-        server_id='', command='', json_data=None, success=204, **kwargs):
+    def servers_put(
+            self,
+            server_id='',
+            command='',
+            json_data=None,
+            success=204,
+            **kwargs):
         """PUT base_url/servers[/server_id]/[command] request
 
         :param server_id: integer (as int or str)
@@ -168,8 +178,13 @@ class ComputeClientApi(Client):
         path = path4url('images', image_id, command)
         return self.delete(path, success=success, **kwargs)
 
-    def images_post(self,
-        image_id='', command='', json_data=None, success=201, **kwargs):
+    def images_post(
+            self,
+            image_id='',
+            command='',
+            json_data=None,
+            success=201,
+            **kwargs):
         """POST base_url/images[/image_id]/[command] request
 
         :param image_id: string
@@ -193,8 +208,13 @@ class ComputeClientApi(Client):
         path = path4url('images', image_id, command)
         return self.post(path, data=data, success=success, **kwargs)
 
-    def images_put(self,
-        image_id='', command='', json_data=None, success=201, **kwargs):
+    def images_put(
+            self,
+            image_id='',
+            command='',
+            json_data=None,
+            success=201,
+            **kwargs):
         """PUT base_url/images[/image_id]/[command] request
 
         :param image_id: string

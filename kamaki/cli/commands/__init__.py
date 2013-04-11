@@ -49,6 +49,27 @@ class _command_init(object):
         except KeyError:
             pass
 
+    def _update_low_level_log(self):
+        try:
+            self.client.LOG_TOKEN, self.client.LOG_DATA = (
+                self['config'].get('global', 'log_token') == 'on',
+                self['config'].get('global', 'log_data') == 'on')
+        except Exception as e:
+            sendlog.warning('Failed to read custom log settings: %s' % e)
+            sendlog.warning('\tdefaults for token and data logging are off')
+            pass
+
+    def _update_max_threads(self):
+        try:
+            max_threads = int(self['config'].get('global', 'max_threads'))
+            assert max_threads > 0
+            self.client.MAX_THREADS = max_threads
+        except Exception as e:
+            sendlog.warning('Failed to read custom thread settings: %s' % e)
+            sendlog.warning(
+                '\tdefault for max threads is %s' % self.client.MAX_THREADS)
+            pass
+
     def _safe_progress_bar(self, msg, arg='progress_bar'):
         """Try to get a progress bar, but do not raise errors"""
         try:

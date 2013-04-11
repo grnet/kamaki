@@ -31,6 +31,8 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+from kamaki.clients import Client
+
 
 class Command(object):
     """Store a command and the next-level (2 levels)"""
@@ -70,7 +72,7 @@ class Command(object):
 
     @property
     def is_command(self):
-        return self.cmd_class is not None
+        return self.cmd_class is not None and len(self.subcommands) == 0
 
     @property
     def has_description(self):
@@ -115,8 +117,11 @@ class Command(object):
         return cmd, args[index:]
 
     def pretty_print(self, recursive=False):
-        print('Path: %s (Name: %s) is_cmd: %s\n\thelp: %s'\
-            % (self.path, self.name, self.is_command, self.help))
+        print('Path: %s (Name: %s) is_cmd: %s\n\thelp: %s' % (
+            self.path,
+            self.name,
+            self.is_command,
+            self.help))
         for cmd in self.get_subcommands():
             cmd.pretty_print(recursive)
 
@@ -150,7 +155,7 @@ class CommandTree(object):
                 self._all_commands[path] = new_cmd
                 cmd.add_subcmd(new_cmd)
                 cmd = new_cmd
-        if cmd_class is not None:
+        if cmd_class:
             cmd.set_class(cmd_class)
         if description is not None:
             cmd.help = description
@@ -204,12 +209,14 @@ class CommandTree(object):
         return self._all_commands[path].get_class()
 
     def get_subnames(self, path=None):
-        return self.get_group_names() if path in (None, '') \
-        else self._all_commands[path].get_subnames()
+        if path in (None, ''):
+            return self.get_group_names()
+        return self._all_commands[path].get_subnames()
 
     def get_subcommands(self, path=None):
-        return self.get_groups() if path in (None, '') \
-        else self._all_commands[path].get_subcommands()
+        if path in (None, ''):
+            return self.get_groups()
+        return self._all_commands[path].get_subcommands()
 
     def get_parent(self, path):
         if '_' not in path:

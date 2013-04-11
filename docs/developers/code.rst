@@ -121,19 +121,13 @@ utils
 The clients API
 ---------------
 
-Imports
-^^^^^^^
-
-.. toctree::
-    connection
-
 Modules list
 ^^^^^^^^^^^^
 
-compute_rest_api
+compute ReST API
 ^^^^^^^^^^^^^^^^
 
-.. automodule:: kamaki.clients.compute_rest_api
+.. automodule:: kamaki.clients.compute.rest_api
     :members:
     :show-inheritance:
     :undoc-members:
@@ -147,6 +141,14 @@ compute
     :show-inheritance:
     :undoc-members:
 
+
+cyclades ReST API
+^^^^^^^^^^^^^^^^^
+
+.. automodule:: kamaki.clients.cyclades.rest_api
+    :members:
+    :show-inheritance:
+    :undoc-members:
 
 cyclades
 ^^^^^^^^
@@ -165,6 +167,13 @@ storage
     :show-inheritance:
     :undoc-members:
 
+pithos_rest_api
+^^^^^^^^^^^^^^^
+
+.. automodule:: kamaki.clients.pithos.rest_api
+    :members:
+    :show-inheritance:
+    :undoc-members:
 
 pithos
 ^^^^^^
@@ -173,15 +182,6 @@ pithos
     :members:
     :show-inheritance:
     :undoc-members:
-
-pithos_rest_api
-^^^^^^^^^^^^^^^
-
-.. automodule:: kamaki.clients.pithos_rest_api
-    :members:
-    :show-inheritance:
-    :undoc-members:
-
 
 image
 ^^^^^

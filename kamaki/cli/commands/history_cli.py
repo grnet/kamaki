@@ -99,7 +99,10 @@ class history_show(_init_history):
     """
 
     arguments = dict(
-        limit=IntArgument('number of lines to show', '-n', default=0),
+        limit=IntArgument(
+            'number of lines to show',
+            ('-n', '--numner'),
+            default=0),
         match=ValueArgument('show lines that match given terms', '--match')
     )
 
@@ -170,9 +173,11 @@ class history_run(_init_history):
         try:
             instance = cmd.get_class()(self.arguments)
             instance.config = self.config
-            prs = ArgumentParseManager(cmd.path.split(),
+            prs = ArgumentParseManager(
+                cmd.path.split(),
                 dict(instance.arguments))
-            prs.syntax = '%s %s' % (cmd.path.replace('_', ' '),
+            prs.syntax = '%s %s' % (
+                cmd.path.replace('_', ' '),
                 cmd.get_class().syntax)
             prs.parse(args)
             exec_cmd(instance, prs.unparsed, prs.parser.print_help)

@@ -24,15 +24,14 @@ In the following, the token has been set in a previous step (see `setup section 
 
     * Authenticate user *
     [astakos]:authenticate
-    auth_token        :  s0m3t0k3nth@t1sr3m0v3d==
     auth_token_created:  2012-11-13T14:12:40.917034
     auth_token_expires:  2012-12-13T14:12:40.917035
-    groups            : 
-                      default
-    has_credits       :  False
-    has_signed_terms  :  True
-    uniq              :  myaccount@grnet.gr
-    username          :  4215th3b357num9323v32
+    email             :  
+                       myaccount@grnet.gr
+                       myotheraccount@grnet.gr
+    name              :  My Real Name
+    username          :  usually@an.email.org
+    uuid              :  ab1cde23-45fg-6h7i-8j9k-10l1m11no2pq
 
 flavor (Compute/Cyclades)
 -------------------------
@@ -60,26 +59,27 @@ Showcase: show details for flavor with id 43
     name             :  C4R2048D10
     ram              :  2048
 
-image (Compute/Cyclades + Plankton)
------------------------------------
+image (Plankton commands + Compute Image subcommands)
+-----------------------------------------------------
 
 .. code-block:: text
 
     addmember  :  Add a member to an image
     addproperty:  Add an image property
-    delete     :  Delete image
     delmember  :  Remove a member from an image
-    delproperty:  Delete an image property
-    info       :  Get image details
-    list       :  List images
+    list       :  List images accessible by user
     members    :  Get image members
     meta       :  Get image metadata
-    properties :  Get image properties
-    public     :  List public images
     register   :  (Re)Register an image
     setmembers :  Set the members of an image
-    setproperty:  Update an image property
     shared     :  List shared images
+    compute    :  Compute Image API commands
+        list       :  List images
+        delete     :  Delete image
+        info       :  Get image details
+        properties :  Get image properties
+        delproperty:  Delete an image property
+        setproperty:  Update an image property
 
 Showcase: Pick an image and list the properties
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -92,20 +92,33 @@ Showcase: Pick an image and list the properties
 
     * list all available images *
     [image]:list
-    1395fdfb-51b4-419f-bb02-f7d632860611 Ubuntu Desktop LTS
-    1580deb4-edb3-4496-a27f-7a246c4c0528 Ubuntu Desktop
-    18a82962-43eb-4b32-8e28-8f8880af89d7 Kubuntu LTS
-    6aa6eafd-dccb-422d-a904-67fe2bdde87e Debian Desktop
-    6b5681e4-7502-46ae-b1e9-9fd837932095 maelstrom
-    78262ee7-949e-4d70-af3a-85360c3de57a Windows Server 2012
-    86bc2414-0fb3-4898-a637-240292243302 Fedora
-    926ab1c5-2d85-49d4-aebe-0fce712789b9 Windows Server 2008
-    b2dffe52-64a4-48c3-8a4c-8214cc3165cf Debian Base
-    baf2321c-57a0-4a69-825d-49f49cea163a CentOS
-    c1d27b46-d875-4f5c-b7f1-f39b5af62905 Kubuntu
+    1. Windows Server 2008
+     container_format:  bare
+     disk_format     :  diskdump
+     id              :  926ab1c5-2d85-49d4-aebe-0fce712789b9
+     size            :  11917066240
+     status          :  available
+    2. Windows Server 2012
+     container_format:  bare
+     disk_format     :  diskdump
+     id              :  78262ee7-949e-4d70-af3a-85360c3de57a
+     size            :  11697913856
+     status          :  available
+    3. ubuntu
+     container_format:  bare
+     disk_format     :  diskdump
+     id              :  5ed5a29b-292c-4fe0-b32c-2e2b65628635
+     size            :  2578100224
+     status          :  available
+    4. Debian_Wheezy_Base
+     container_format:  bare
+     disk_format     :  diskdump
+     id              :  1f8454f0-8e3e-4b6c-ab8e-5236b728dffe
+     size            :  795107328
+     status          :  available
 
-    * Get properties of image with id b2dffe52-64a4-48c3-8a4c-8214cc3165cf *
-    [image]:properties b2dffe52-64a4-48c3-8a4c-8214cc3165cf
+    * Get properties of image with id 1f8454f0-8e3e-4b6c-ab8e-5236b728dffe *
+    [image]:compute properties 1f8454f0-8e3e-4b6c-ab8e-5236b728dffe
     description   :  Debian 6.0.6 (Squeeze) Base System
     gui           :  No GUI
     kernel        :  2.6.32
@@ -165,7 +178,7 @@ Showcase: Create a server
       -s, --silent          Do not output anything
 
     * List all available images *
-    [server]:/image list
+    [server]:/image compute list
     1395fdfb-51b4-419f-bb02-f7d632860611 Ubuntu Desktop LTS
     1580deb4-edb3-4496-a27f-7a246c4c0528 Ubuntu Desktop
     18a82962-43eb-4b32-8e28-8f8880af89d7 Kubuntu LTS
@@ -300,11 +313,11 @@ store (Storage/Pithos+)
     copy          :  Copy an object
     create        :  Create a container
     delete        :  Delete a container [or an object]
-    delgroup      :  Delete a user group on an account
-    delmeta       :  Delete an existing metadatum of account [, container [or object]]
+    delgroup      :  Delete a user group
+    delmeta       :  Delete an existing metadatum for an account [, container [or object]]
     delpermissions:  Delete all sharing permissions
     download      :  Download a file
-    group         :  Get user groups details for account
+    group         :  Get user groups details
     hashmap       :  Get the hashmap of an object
     info          :  Get information for account [, container [or object]]
     list          :  List containers, object trees or objects in a directory
@@ -317,7 +330,7 @@ store (Storage/Pithos+)
     publish       :  Publish an object
     purge         :  Purge a container
     quota         :  Get  quota for account [or container]
-    setgroup      :  Create/update a new user group on account
+    setgroup      :  Create/update a new user group
     setmeta       :  Set a new metadatum for account [, container [or object]]
     setpermissions:  Set sharing permissions
     setquota      :  Set new quota (in KB) for account [or container]

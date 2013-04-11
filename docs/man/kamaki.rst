@@ -36,6 +36,10 @@ history
 
     Access kamaki user history, which is stored in ~/.kamaki.history file.
 
+astakos
+
+    Get information from astakos API
+
 server
 
     Manage compute API virtual machines.
@@ -50,7 +54,7 @@ network
 
 image 
 
-    Manage compute API and Plankton images.
+    Manage images on Plankton (and Compute).
 
 store
 
@@ -66,10 +70,10 @@ quotaholder
     kamaki config set quotaholder.cli hotaholder_cli
     kamaki config set quotaholder.url <quotaholder server url>
 
-test
+livetest
 
-    Prepared unit-tests for developers (experimental). To enable:
-    kamaki config set test.cli test_cli
+    LIve tests that check kamaki against running services. To enable:
+    kamaki config set livetest.cli livetest_cli
 
 
 Options
@@ -105,6 +109,12 @@ Command user history, as stored in ~/.kamaki.history
 * run       run/show previously executed command(s)
 
 
+astakos commands
+****************
+
+* authenticate      Authenticate a user, show user information
+
+
 server commands
 ***************
 
@@ -133,8 +143,8 @@ flavor commands
 * info       get flavor details
 
 
-image commands and options
-**************************
+image commands
+**************
 
 * addmember     Add a member to an image
 * addproperty   Add an OS-related property to an image
@@ -142,15 +152,21 @@ image commands and options
 * delmember     Remove a member from an image
 * delproperty   Delete a property of an image
 * info          Get detailed information on an image
-* list          List images
 * members       Get image members
 * meta          Get image metadata
 * properties    Get properties related to OS installation in an image
-* public        List public images
+* list          List images accessible by user
 * register      (Re)Register an image
 * setmembers    Set the members of an image
 * setproperty   Update an existing property in an image
 * shared        List images shared by a member
+* compute       Compute Image API commands
+    * list          List images
+    * delete        Delete image
+    * info          Get image details
+    * properties    Get image properties
+    * delproperty   Delete an image property
+    * setproperty   Update an image property
 
 
 network commands

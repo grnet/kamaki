@@ -1,4 +1,4 @@
-# Copyright 2011 GRNET S.A. All rights reserved.
+# Copyright 2011-2013 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -32,12 +32,11 @@
 # or implied, of GRNET S.A.
 
 from kamaki.clients import ClientError
-from kamaki.clients.compute_rest_api import ComputeClientApi
+from kamaki.clients.compute.rest_api import ComputeRestClient
 from kamaki.clients.utils import path4url
-import json
 
 
-class ComputeClient(ComputeClientApi):
+class ComputeClient(ComputeRestClient):
     """OpenStack Compute API 1.1 client"""
 
     def list_servers(self, detail=False):
@@ -81,11 +80,10 @@ class ComputeClient(ComputeClientApi):
                           'imageRef': image_id}}
 
         image = self.get_image_details(image_id)
-        img_meta = image['metadata']['values']
         metadata = {}
         for key in ('os', 'users'):
             try:
-                metadata[key] = img_meta[key]
+                metadata[key] = image['metadata']['values'][key]
             except KeyError:
                 pass
         if metadata:
@@ -98,8 +96,11 @@ class ComputeClient(ComputeClientApi):
             r = self.servers_post(json_data=req)
         except ClientError as err:
             try:
-                tmp_err = err.details if isinstance(err.details, list)\
-                else unicode(err.details).split(',')
+                if isinstance(err.details, list):
+                    tmp_err = err.details
+                else:
+                    errd = '%s' % err.details
+                    tmp_err = errd.split(',')
                 tmp_err = tmp_err[0].split(':')
                 tmp_err = tmp_err[2].split('"')
                 err.message = tmp_err[1]
@@ -116,16 +117,14 @@ class ComputeClient(ComputeClientApi):
         :param new_name: (str)
         """
         req = {'server': {'name': new_name}}
-        r = self.servers_put(server_id, json_data=req)
-        r.release()
+        self.servers_put(server_id, json_data=req)
 
     def delete_server(self, server_id):
         """Submit a deletion request for a server specified by id
 
         :param server_id: integer (str or int)
         """
-        r = self.servers_delete(server_id)
-        r.release()
+        self.servers_delete(server_id)
 
     def reboot_server(self, server_id, hard=False):
         """
@@ -133,10 +132,9 @@ class ComputeClient(ComputeClientApi):
 
         :param hard: perform a hard reboot if true, soft reboot otherwise
         """
-        type = 'HARD' if hard else 'SOFT'
-        req = {'reboot': {'type': type}}
-        r = self.servers_post(server_id, 'action', json_data=req)
-        r.release()
+        boot_type = 'HARD' if hard else 'SOFT'
+        req = {'reboot': {'type': boot_type}}
+        self.servers_post(server_id, 'action', json_data=req)
 
     def get_server_metadata(self, server_id, key=''):
         """
@@ -148,7 +146,7 @@ class ComputeClient(ComputeClientApi):
         """
         command = path4url('meta', key)
         r = self.servers_get(server_id, command)
-        return r.json['meta'] if key != '' else r.json['metadata']['values']
+        return r.json['meta'] if key else r.json['metadata']['values']
 
     def create_server_metadata(self, server_id, key, val):
         """
@@ -161,7 +159,8 @@ class ComputeClient(ComputeClientApi):
         :returns: dict of updated key:val metadata
         """
         req = {'meta': {key: val}}
-        r = self.servers_put(server_id,
+        r = self.servers_put(
+            server_id,
             'meta/' + key,
             json_data=req,
             success=201)
@@ -185,8 +184,7 @@ class ComputeClient(ComputeClientApi):
 
         :param key: (str) the meta key
         """
-        r = self.servers_delete(server_id, 'meta/' + key)
-        r.release()
+        self.servers_delete(server_id, 'meta/' + key)
 
     def list_flavors(self, detail=False):
         """
@@ -194,8 +192,7 @@ class ComputeClient(ComputeClientApi):
 
         :returns: (dict) flavor info
         """
-        detail = 'detail' if detail else ''
-        r = self.flavors_get(command='detail')
+        r = self.flavors_get(command='detail' if detail else '')
         return r.json['flavors']['values']
 
     def get_flavor_details(self, flavor_id):
@@ -229,15 +226,14 @@ class ComputeClient(ComputeClientApi):
         try:
             return r.json['image']
         except KeyError:
-            raise ClientError('Image not available', 404,
-                details='Image %d not found or not accessible')
+            raise ClientError('Image not available', 404, details=[
+                'Image %d not found or not accessible'])
 
     def delete_image(self, image_id):
         """
         :param image_id: (str)
         """
-        r = self.images_delete(image_id)
-        r.release()
+        self.images_delete(image_id)
 
     def get_image_metadata(self, image_id, key=''):
         """
@@ -284,5 +280,4 @@ class ComputeClient(ComputeClientApi):
         :param key: (str) metadatum key
         """
         command = path4url('meta', key)
-        r = self.images_delete(image_id, command)
-        r.release()
+        self.images_delete(image_id, command)
