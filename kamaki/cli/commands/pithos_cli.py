@@ -331,7 +331,6 @@ class store_list(_store_container_command):
             'format to parse until data (default: d/m/Y H:M:S )',
             '--format'),
         shared=FlagArgument('show only shared', '--shared'),
-        public=FlagArgument('show only public', '--public'),
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
             '--more'),

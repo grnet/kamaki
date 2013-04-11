@@ -394,6 +394,8 @@ class PithosClient(PithosRestClient):
             hashmap=True,
             content_type=content_type,
             json=hashmap,
+            permissions=sharing,
+            public=public,
             success=201)
 
     # download_* auxiliary methods
