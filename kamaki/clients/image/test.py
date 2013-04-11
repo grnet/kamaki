@@ -35,6 +35,22 @@ from mock import patch, call
 from unittest import TestCase
 from itertools import product
 
+example_image_headers = {
+    'x-image-meta-id': '3edd4d15-41b4-4a39-9601-015ef56b3bb3',
+    'x-image-meta-checksum': 'df23837c30889252c0aed80b6f770a53a86',
+    'x-image-meta-container-format': 'bare',
+    'x-image-meta-location': 'pithos://a13528163db/con/obj_13.0',
+    'x-image-meta-disk-format': 'diskdump',
+    'x-image-meta-is-public': 'True',
+    'x-image-meta-status': 'available',
+    'x-image-meta-deleted-at': '',
+    'x-image-meta-updated-at': '2013-04-11 15:22:39',
+    'x-image-meta-created-at': '2013-04-11 15:22:37',
+    'x-image-meta-owner': 'a13529bb3c3db',
+    'x-image-meta-size': '1073741824',
+    'x-image-meta-name': 'img_1365686546.0',
+    'extraheaders': 'should be ignored'
+}
 example_images = [
     {
         "status": "available",
@@ -185,6 +201,7 @@ class ImageClient(TestCase):
     @patch('%s.post' % image_pkg, return_value=FR())
     def test_register(self, post, SH):
         img0 = example_images_detailed[0]
+        FR.headers = example_image_headers
         img0_location = img0['location']
         img0_name = 'A new img0 name'
         prfx = 'x-image-meta-'
@@ -206,9 +223,12 @@ class ImageClient(TestCase):
                     async_headers['%s%s' % (prfx, k)] = args[i]
                     props['%s%s' % (proprfx, args[i])] = k
             async_headers.update(props)
-        self.client.register(
+        r = self.client.register(
             img0_name, img0_location,
             params=params, properties=props)
+        expectedict = dict(example_image_headers)
+        expectedict.pop('extraheaders')
+        self.assert_dicts_are_equal(expectedict, r)
         self.assertEqual(
             post.mock_calls[-1],
             call('/images/', async_headers=async_headers, success=200))

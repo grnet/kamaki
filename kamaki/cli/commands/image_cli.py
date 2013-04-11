@@ -202,7 +202,8 @@ class image_register(_init_image):
         if self['update']:
             self.client.reregister(location, name, params, properties)
         else:
-            self.client.register(name, location, params, properties)
+            r = self.client.register(name, location, params, properties)
+            print_dict(r)
 
     def main(self, name, location):
         super(self.__class__, self)._run()
