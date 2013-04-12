@@ -176,12 +176,12 @@ class image_register(_init_image):
     @errors.plankton.connection
     def _run(self, name, location):
         if not location.startswith('pithos://'):
-            account = self.config.get('store', 'account') \
+            account = self.config.get('file', 'account') \
                 or self.config.get('global', 'account')
             assert account, 'No user account provided'
             if account[-1] == '/':
                 account = account[:-1]
-            container = self.config.get('store', 'container') \
+            container = self.config.get('file', 'container') \
                 or self.config.get('global', 'container')
             if not container:
                 location = 'pithos://%s/%s' % (account, location)

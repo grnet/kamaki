@@ -38,8 +38,8 @@ from kamaki.clients.astakos import AstakosClient
 class Astakos(livetest.Generic):
     def setUp(self):
         self.client = AstakosClient(
-            self['astakos', 'url'],
-            self['astakos', 'token'])
+            self['user', 'url'],
+            self['user', 'token'])
 
     def test_authenticate(self):
         self._test_0010_authenticate()

@@ -37,18 +37,18 @@ from kamaki.cli.utils import print_dict
 from kamaki.cli.commands import _command_init, errors
 from kamaki.cli.command_tree import CommandTree
 
-astakos_cmds = CommandTree('astakos', 'Astakos API commands')
-_commands = [astakos_cmds]
+user_cmds = CommandTree('user', 'Astakos API commands')
+_commands = [user_cmds]
 
 
-class _astakos_init(_command_init):
+class _user_init(_command_init):
 
     @errors.generic.all
-    @errors.astakos.load
+    @errors.user.load
     def _run(self):
-        token = self.config.get('astakos', 'token')\
+        token = self.config.get('user', 'token')\
             or self.config.get('global', 'token')
-        base_url = self.config.get('astakos', 'url')\
+        base_url = self.config.get('user', 'url')\
             or self.config.get('global', 'url')
         self.client = AstakosClient(base_url=base_url, token=token)
         self._set_log_params()
@@ -58,8 +58,8 @@ class _astakos_init(_command_init):
         self._run()
 
 
-@command(astakos_cmds)
-class astakos_authenticate(_astakos_init):
+@command(user_cmds)
+class user_authenticate(_user_init):
     """Authenticate a user
     Get user information (e.g. unique account name) from token
     Token should be set in settings:
@@ -69,7 +69,7 @@ class astakos_authenticate(_astakos_init):
     """
 
     @errors.generic.all
-    @errors.astakos.authenticate
+    @errors.user.authenticate
     def _run(self, custom_token=None):
         super(self.__class__, self)._run()
         reply = self.client.authenticate(custom_token)

@@ -35,7 +35,7 @@ from kamaki.cli.commissioning import commissioning_cli
 from kamaki.clients.quotaholder import QuotaholderClient
 
 
-class quotaholder_cli(commissioning_cli):
+class quotaholder(commissioning_cli):
 
     def __init__(self):
         self.client = QuotaholderClient
@@ -43,6 +43,6 @@ class quotaholder_cli(commissioning_cli):
         self.description = 'Quotaholder description'
         super(self.__class__, self).__init__()
 
-cli = quotaholder_cli()
+cli = quotaholder()
 cli.generate_all()
 _commands = [cli.ctree]

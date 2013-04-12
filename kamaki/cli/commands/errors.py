@@ -69,7 +69,7 @@ class generic(object):
                 if ce.status == 401:
                     raiseCLIError(ce, 'Authorization failed', details=[
                         'Make sure a valid token is provided:',
-                        '  to check if token is valid: /astakos authenticate',
+                        '  to check if token is valid: /user authenticate',
                         '  to set token: /config set [.server.]token <token>',
                         '  to get current token: /config get [server.]token'])
                 elif ce.status in range(-12, 200) + [302, 401, 403, 500]:
@@ -91,7 +91,7 @@ class generic(object):
         return _raise
 
 
-class astakos(object):
+class user(object):
 
     _token_details = [
         'To check default token: /config get token',
@@ -113,9 +113,9 @@ class astakos(object):
             if not getattr(client, 'base_url', False):
                 msg = 'Missing astakos server URL'
                 raise CLIError(msg, importance=3, details=[
-                    'Check if astakos.url is set correctly',
-                    'To get astakos url:   /config get astakos.url',
-                    'To set astakos url:   /config set astakos.url <URL>'])
+                    'Check if user.url is set correctly',
+                    'To get astakos url:   /config get user.url',
+                    'To set astakos url:   /config set user.url <URL>'])
             return r
         return _raise
 
@@ -406,15 +406,15 @@ class plankton(object):
 class pithos(object):
     container_howto = [
         'To specify a container:',
-        '  1. Set store.container variable (permanent)',
-        '     /config set store.container <container>',
+        '  1. Set file.container variable (permanent)',
+        '     /config set file.container <container>',
         '  2. --container=<container> (temporary, overrides 1)',
         '  3. Use the container:path format (temporary, overrides all)',
-        'For a list of containers: /store list']
+        'For a list of containers: /file list']
 
     @classmethod
     def connection(this, foo):
-        return generic._connection(foo, 'store.url')
+        return generic._connection(foo, 'file.url')
 
     @classmethod
     def account(this, foo):
@@ -439,10 +439,10 @@ class pithos(object):
                 if ce.status == 413:
                     raiseCLIError(ce, 'User quota exceeded', details=[
                         '* get quotas:',
-                        '  * upper total limit:      /store quota',
-                        '  * container limit:  /store quota <container>',
+                        '  * upper total limit:      /file quota',
+                        '  * container limit:  /file quota <container>',
                         '* set a higher quota (if permitted):',
-                        '    /store setquota <quota>[unit] <container>'
+                        '    /file setquota <quota>[unit] <container>'
                         '    as long as <container quota> <= <total quota>'])
                 raise
         return _raise

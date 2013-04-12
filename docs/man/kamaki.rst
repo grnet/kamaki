@@ -36,9 +36,9 @@ history
 
     Access kamaki user history, which is stored in ~/.kamaki.history file.
 
-astakos
+user
 
-    Get information from astakos API
+    Get information from Astakos API
 
 server
 
@@ -56,9 +56,9 @@ image
 
     Manage images on Plankton (and Compute).
 
-store
+file
 
-    Manage store API.
+    Manage Pithos+ API.
 
 
 Hidden command groups
@@ -67,13 +67,13 @@ Hidden command groups
 quotaholder
 
     A client for quotaholder API. to enable:
-    kamaki config set quotaholder.cli hotaholder_cli
+    kamaki config set quotaholder.cli hotaholder
     kamaki config set quotaholder.url <quotaholder server url>
 
 livetest
 
     LIve tests that check kamaki against running services. To enable:
-    kamaki config set livetest.cli livetest_cli
+    kamaki config set livetest.cli livetest
 
 
 Options
@@ -109,8 +109,8 @@ Command user history, as stored in ~/.kamaki.history
 * run       run/show previously executed command(s)
 
 
-astakos commands
-****************
+user commands
+*************
 
 * authenticate      Authenticate a user, show user information
 
@@ -181,7 +181,7 @@ network commands
 * rename        Set the name of a network
 
 
-store commands
+file commands
 **************
 
 * append            Append local file to (existing) remote object
@@ -230,7 +230,7 @@ test commands (hidden)
 **********************
 
 * all         test all clients
-* args        Test how arguments are treated by kamaki
+* args        test how arguments are treated by kamaki
 * astakos     test Astakos client
 * cyclades    test Cyclades client
 * error       Create an error message with optional message

@@ -63,12 +63,12 @@ class Image(livetest.Generic):
 
     def _prepare_img(self):
         f = open(self['image', 'local_path'], 'rb')
-        (token, uuid) = (self['token'], self['store', 'account'])
+        (token, uuid) = (self['token'], self['file', 'account'])
         if not uuid:
             from kamaki.clients.astakos import AstakosClient
             uuid = AstakosClient(self['astakos', 'url'], token).term('uuid')
         from kamaki.clients.pithos import PithosClient
-        self.pithcli = PithosClient(self['store', 'url'], token, uuid)
+        self.pithcli = PithosClient(self['file', 'url'], token, uuid)
         cont = 'cont_%s' % self.now
         self.pithcli.container = cont
         self.obj = 'obj_%s' % self.now

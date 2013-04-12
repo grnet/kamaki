@@ -6,31 +6,31 @@ APIs code
 Command Specifications
 ----------------------
 
-astakos
-^^^^^^^
+user
+^^^^
 
-.. automodule:: kamaki.cli.commands.astakos_cli
+.. automodule:: kamaki.cli.commands.user
     :members:
     :undoc-members:
 
 cyclades (server, flavor, network)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. automodule:: kamaki.cli.commands.cyclades_cli
+.. automodule:: kamaki.cli.commands.cyclades
     :members:
     :undoc-members:
 
-pithos (store)
-^^^^^^^^^^^^^^
+pithos (file)
+^^^^^^^^^^^^^
 
-.. automodule:: kamaki.cli.commands.pithos_cli
+.. automodule:: kamaki.cli.commands.pithos
     :members:
     :undoc-members:
 
 image
 ^^^^^
 
-.. automodule:: kamaki.cli.commands.image_cli
+.. automodule:: kamaki.cli.commands.image
     :members:
     :undoc-members:
 
@@ -40,14 +40,14 @@ Kamaki commands
 config
 """"""
 
-.. automodule:: kamaki.cli.commands.config_cli
+.. automodule:: kamaki.cli.commands.config
     :members:
     :undoc-members:
 
 history
 """""""
 
-.. automodule:: kamaki.cli.commands.history_cli
+.. automodule:: kamaki.cli.commands.history
     :members:
     :undoc-members:
 

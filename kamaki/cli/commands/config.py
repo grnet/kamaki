@@ -41,7 +41,7 @@ _commands = [config_cmds]
 
 about_options = '\nAbout options:\
     \n. syntax: [group.]option\
-    \n. example: store.account\
+    \n. example: file.account\
     \n. special case: <option> is equivalent to global.<option>\
     \n. configuration file syntax:\
     \n.   [group]\
