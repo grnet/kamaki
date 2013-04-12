@@ -44,7 +44,7 @@ LOG_FILE = [
 def get_log_filename():
     for logfile in LOG_FILE:
         try:
-            with open(logfile, 'w+') as f:
+            with open(logfile, 'a+') as f:
                 f.seek(0)
         except IOError:
             continue
