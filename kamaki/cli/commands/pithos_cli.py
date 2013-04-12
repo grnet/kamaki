@@ -180,8 +180,8 @@ class _pithos_init(_command_init):
         self._run()
 
     def _set_account(self):
-        astakos = AstakosClient(self.config.get('astakos', 'url'), self.token)
-        self.account = self['account'] or astakos.term('uuid')
+        user = AstakosClient(self.config.get('user', 'url'), self.token)
+        self.account = self['account'] or user.term('uuid')
 
         """Backwards compatibility"""
         self.account = self.account\

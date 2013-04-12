@@ -73,7 +73,7 @@ class Pithos(livetest.Generic):
             self['store', 'url'],
             self['store', 'token'],
             AstakosClient(
-                self['astakos', 'url'],
+                self['user', 'url'],
                 self['store', 'token']
             ).term('uuid'))
 

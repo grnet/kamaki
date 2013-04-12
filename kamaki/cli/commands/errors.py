@@ -69,7 +69,7 @@ class generic(object):
                 if ce.status == 401:
                     raiseCLIError(ce, 'Authorization failed', details=[
                         'Make sure a valid token is provided:',
-                        '  to check if token is valid: /astakos authenticate',
+                        '  to check if token is valid: /user authenticate',
                         '  to set token: /config set [.server.]token <token>',
                         '  to get current token: /config get [server.]token'])
                 elif ce.status in range(-12, 200) + [302, 401, 403, 500]:
@@ -91,7 +91,7 @@ class generic(object):
         return _raise
 
 
-class astakos(object):
+class user(object):
 
     _token_details = [
         'To check default token: /config get token',
@@ -113,9 +113,9 @@ class astakos(object):
             if not getattr(client, 'base_url', False):
                 msg = 'Missing astakos server URL'
                 raise CLIError(msg, importance=3, details=[
-                    'Check if astakos.url is set correctly',
-                    'To get astakos url:   /config get astakos.url',
-                    'To set astakos url:   /config set astakos.url <URL>'])
+                    'Check if user.url is set correctly',
+                    'To get astakos url:   /config get user.url',
+                    'To set astakos url:   /config set user.url <URL>'])
             return r
         return _raise
 
