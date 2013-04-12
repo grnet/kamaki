@@ -204,7 +204,6 @@ class PithosClient(PithosRestClient):
             format='json',
             hashmap=True,
             content_type=None,
-            etag=None,
             content_encoding=None,
             content_disposition=None,
             permissions=None,
@@ -216,7 +215,6 @@ class PithosClient(PithosRestClient):
             hashmap=True,
             content_type=content_type,
             json=json,
-            etag=etag,
             content_encoding=content_encoding,
             content_disposition=content_disposition,
             permissions=permissions,
@@ -293,6 +291,7 @@ class PithosClient(PithosRestClient):
             hash_cb=None,
             upload_cb=None,
             etag=None,
+            if_not_exist=None,
             content_encoding=None,
             content_disposition=None,
             content_type=None,
@@ -309,6 +308,11 @@ class PithosClient(PithosRestClient):
         :param upload_cb: optional progress.bar object for uploading
 
         :param etag: (str)
+
+        :param if_not_exist: (bool) If true, the file will be uploaded ONLY if
+            it does not exist remotely, otherwise the operation will fail.
+            Involves the case of an object with the same path is created while
+            the object is being uploaded.
 
         :param content_encoding: (str)
 
@@ -342,7 +346,6 @@ class PithosClient(PithosRestClient):
             obj, hashmap,
             content_type=content_type,
             size=size,
-            etag=etag,
             content_encoding=content_encoding,
             content_disposition=content_disposition,
             permissions=sharing,
@@ -393,6 +396,8 @@ class PithosClient(PithosRestClient):
             format='json',
             hashmap=True,
             content_type=content_type,
+            if_etag_not_match='*' if if_not_exist else None,
+            etag=etag,
             json=hashmap,
             permissions=sharing,
             public=public,

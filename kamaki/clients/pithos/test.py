@@ -835,7 +835,6 @@ class PithosClient(TestCase):
             json=dict(
                 hashes=['s0m3h@5h'] * num_of_blocks,
                 bytes=num_of_blocks * 4 * 1024 * 1024),
-            etag=None,
             content_encoding=None,
             content_type='application/octet-stream',
             content_disposition=None,
@@ -911,13 +910,18 @@ class PithosClient(TestCase):
         tmpFile.seek(0)
         kwargs = dict(
             etag='s0m3E74g',
+            if_not_exist=True,
             content_type=ctype,
             content_disposition=ctype + 'd15p051710n',
             public=True,
             content_encoding='802.11')
         self.client.upload_object(obj, tmpFile, **kwargs)
+        kwargs.pop('if_not_exist')
+        etag = kwargs.pop('etag')
         for arg, val in kwargs.items():
             self.assertEqual(OP.mock_calls[-2][2][arg], val)
+        self.assertEqual(OP.mock_calls[-1][2]['if_etag_not_match'], '*')
+        self.assertEqual(OP.mock_calls[-1][2]['etag'], etag)
 
     def test_get_object_info(self):
         FR.headers = object_info
