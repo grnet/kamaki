@@ -173,7 +173,7 @@ class _pithos_init(_command_init):
             token=self.token,
             account=self.account,
             container=self.container)
-        self._update_low_level_log()
+        self._set_log_params()
         self._update_max_threads()
 
     def main(self):

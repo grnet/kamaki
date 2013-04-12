@@ -34,21 +34,27 @@
 import logging
 
 
-def get_log_filename(filename=(
-        '/var/log/kamaki.log',
-        '/var/log/kamaki/clients.log',
-        '/tmp/kamaki.log',
-        'kamaki.log')):
-    if not (isinstance(filename, list) or isinstance(filename, tuple)):
-        filename = (filename,)
-    for logfile in filename:
+LOG_FILE = [
+    '/var/log/kamaki.log',
+    '/var/log/kamaki/clients.log',
+    '/tmp/kamaki.log',
+    'kamaki.log']
+
+
+def get_log_filename():
+    for logfile in LOG_FILE:
         try:
-            with open(logfile) as f:
+            with open(logfile, 'a+') as f:
                 f.seek(0)
         except IOError:
             continue
         return logfile
     print('Failed to open any logging locations, file-logging aborted')
+
+
+def set_log_filename(filename):
+    global LOG_FILE
+    LOG_FILE = [filename] + LOG_FILE
 
 
 def add_file_logger(

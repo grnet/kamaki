@@ -24,7 +24,7 @@ try:
     PooledHTTPConnection
 except ImportError:
     stderr.write("`objpool` package is required to build kamaki docs.\n")
-    raise
+    # raise
 
 path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..'))
 

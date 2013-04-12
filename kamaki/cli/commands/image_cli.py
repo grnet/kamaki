@@ -59,7 +59,7 @@ class _init_image(_command_init):
             or self.config.get('compute', 'url')\
             or self.config.get('global', 'url')
         self.client = ImageClient(base_url=base_url, token=token)
-        self._update_low_level_log()
+        self._set_log_params()
         self._update_max_threads()
 
     def main(self):

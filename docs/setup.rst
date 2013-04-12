@@ -120,6 +120,15 @@ The [global] group is treated by kamaki as a generic group for arbitrary options
 
 * global.token <user authentication token>
 
+* global.log_file <logfile full path>
+    set a custom location for kamaki logging. Default values are /var/log/kamaki.log, /var/log/kamaki/clients.log /tmp/kamaki.log and ./kamaki.log 
+
+* global.log_token <on|off>
+    allow kamaki to log user tokens
+
+* global.log_data <on|off>
+    allow kamaki to log http data (by default, it logs only method, URL and headers)
+
 * store.cli <UI command specifications for store>
     a special package that is used to load storage commands to kamaki UIs. Don't touch this unless if you know what you are doing.
 
@@ -158,6 +167,21 @@ The [global] group is treated by kamaki as a generic group for arbitrary options
 
 Additional features
 ^^^^^^^^^^^^^^^^^^^
+
+Log file location
+"""""""""""""""""
+
+Kamaki log file path is set by the following command::
+
+    $ kamaki config set log_file <logfile path>
+
+By default, kamaki keeps a list of possible logfile locations::
+
+    /var/log/kamaki.log, /var/log/kamaki/clients.log, /tmp/kamaki.log, ./kamaki.log
+
+When initialized, kamaki attempts to open one of these locations for writing, in the order presented above and uses the first accessible for appending logs. If the log_file option is set, kamaki prepends the value of this option to the logfile list, so the custom location will be the first one kamaki will attetmpt to log at.
+
+Kamaki will not crush if the logging location is not accessible.
 
 Richer connection logs
 """"""""""""""""""""""
