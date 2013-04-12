@@ -660,8 +660,6 @@ class PithosRestClient(StorageClient):
             { 'read':[user1, group1, user2, ...],
             'write':['user3, group2, group3, ...] }
 
-        :param permissions: update permissions
-
         :param public: (bool) If true, Object is publicly accessible
 
         :param metadata: (dict) Optional user defined metadata in the form

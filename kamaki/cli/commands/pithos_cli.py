@@ -174,6 +174,7 @@ class _pithos_init(_command_init):
             account=self.account,
             container=self.container)
         self._update_low_level_log()
+        self._update_max_threads()
 
     def main(self):
         self._run()
@@ -330,7 +331,6 @@ class store_list(_store_container_command):
             'format to parse until data (default: d/m/Y H:M:S )',
             '--format'),
         shared=FlagArgument('show only shared', '--shared'),
-        public=FlagArgument('show only public', '--public'),
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
             '--more'),
@@ -1312,16 +1312,22 @@ class store_download(_store_container_command):
                     if_modified_since=self['if_modified_since'],
                     if_unmodified_since=self['if_unmodified_since'])
         except KeyboardInterrupt:
-            from threading import enumerate as activethreads
-            stdout.write('\nFinishing active threads ')
-            for thread in activethreads():
+            from threading import activeCount, enumerate as activethreads
+            timeout = 0.5
+            while activeCount() > 1:
+                stdout.write('\nCancel %s threads: ' % (activeCount() - 1))
                 stdout.flush()
-                try:
-                    thread.join()
-                    stdout.write('.')
-                except RuntimeError:
-                    continue
-            print('\ndownload canceled by user')
+                for thread in activethreads():
+                    try:
+                        thread.join(timeout)
+                        stdout.write('.' if thread.isAlive() else '*')
+                    except RuntimeError:
+                        continue
+                    finally:
+                        stdout.flush()
+                        timeout += 0.1
+
+            print('\nDownload canceled by user')
             if local_path is not None:
                 print('to resume, re-run with --resume')
         except Exception:

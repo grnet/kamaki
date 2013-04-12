@@ -230,7 +230,7 @@ class cyclades(object):
             except ClientError as ce:
                 if network_id and ce.status == 400:
                     msg = 'Network with id %s does not exist' % network_id,
-                    raiseCLIError(ce, msg, details=self.about_network_id)
+                    raiseCLIError(ce, msg, details=this.about_network_id)
                 elif network_id or ce.status == 421:
                     msg = 'Network with id %s is in use' % network_id,
                     raiseCLIError(ce, msg, details=[

@@ -60,6 +60,7 @@ class _init_image(_command_init):
             or self.config.get('global', 'url')
         self.client = ImageClient(base_url=base_url, token=token)
         self._update_low_level_log()
+        self._update_max_threads()
 
     def main(self):
         self._run()
@@ -201,7 +202,8 @@ class image_register(_init_image):
         if self['update']:
             self.client.reregister(location, name, params, properties)
         else:
-            self.client.register(name, location, params, properties)
+            r = self.client.register(name, location, params, properties)
+            print_dict(r)
 
     def main(self, name, location):
         super(self.__class__, self)._run()

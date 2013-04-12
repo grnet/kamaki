@@ -39,6 +39,12 @@ from kamaki.clients.image import ImageClient
 from kamaki.clients import ClientError
 
 
+IMGMETA = set([
+    'id', 'name', 'checksum', 'container-format', 'location', 'disk-format',
+    'is-public', 'status', 'deleted-at', 'updated-at', 'created-at', 'owner',
+    'size'])
+
+
 class Image(livetest.Generic):
     def setUp(self):
         self.now = time.mktime(time.gmtime())
@@ -49,6 +55,7 @@ class Image(livetest.Generic):
         cyclades_url = self['compute', 'url']
         self.cyclades = CycladesClient(cyclades_url, self['token'])
         self._imglist = {}
+        self._imgdetails = {}
 
     def test_000(self):
         self._prepare_img()
@@ -73,12 +80,13 @@ class Image(livetest.Generic):
         print('\t- ok')
         f.close()
 
-        self.client.register(
+        r = self.client.register(
             self.imgname,
             self.location,
             params=dict(is_public=True))
-        img = self._get_img_by_name(self.imgname)
-        self._imglist[self.imgname] = img
+        self._imglist[self.imgname] = dict(
+            name=r['x-image-meta-name'], id=r['x-image-meta-id'])
+        self._imgdetails[self.imgname] = r
 
     def tearDown(self):
         for img in self._imglist.values():
@@ -200,6 +208,9 @@ class Image(livetest.Generic):
         self.assertTrue(self._imglist)
         for img in self._imglist.values():
             self.assertTrue(img is not None)
+            r = set(self._imgdetails[img['name']].keys())
+            self.assertTrue(
+                r.issubset(['x-image-meta-%s' % k for k in IMGMETA]))
 
     def test_set_members(self):
         """Test set_members"""

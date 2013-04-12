@@ -57,7 +57,10 @@ DEFAULTS = {
     'global': {
         'colors': 'off',
         'account':  '',
-        'token': ''
+        'token': '',
+        'log_token': 'off',
+        'log_data': 'off',
+        'max_threads': 7
     },
     'config': {
         'cli': 'config_cli',

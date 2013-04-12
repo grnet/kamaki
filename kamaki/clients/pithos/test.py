@@ -1153,7 +1153,6 @@ class PithosClient(TestCase):
                 self.assertEqual(GET.mock_calls[-1][2][k], v)
 
         #  ALl options on no tty
-
         def foo():
             return True
 

@@ -35,10 +35,33 @@ import time
 import datetime
 from os import urandom
 from tempfile import NamedTemporaryFile
+from string import ascii_letters
 
 from kamaki.clients import livetest, ClientError
 from kamaki.clients.pithos import PithosClient
 from kamaki.clients.astakos import AstakosClient
+
+
+def chargen():
+    """10 + 2 * 26 + 26 = 88"""
+    while True:
+        for CH in xrange(10):
+            yield '%s' % CH
+        for CH in ascii_letters:
+            yield CH
+        for CH in '~!@#$%^&*()_+`-=:";|<>?,./':
+            yield CH
+
+
+def sample_block(f, block):
+    block_size = 4 * 1024 * 1024
+    f.seek(block * block_size)
+    ch = [f.read(1)]
+    f.seek(block_size / 2, 1)
+    ch.append(f.read(1))
+    f.seek((block + 1) * block_size - 1)
+    ch.append(f.read(1))
+    return ch
 
 
 class Pithos(livetest.Generic):
@@ -654,6 +677,20 @@ class Pithos(livetest.Generic):
             dnl_f.seek(pos)
             self.assertEqual(src_f.read(10), dnl_f.read(10))
 
+        """Upload a boring file"""
+        trg_fname = 'boringfile_%s' % self.now
+        src_f = self.create_boring_file(42)
+        print('\tUploading boring file...')
+        self.client.upload_object(trg_fname, src_f)
+        print('\tDownloading boring file...')
+        self.files.append(NamedTemporaryFile())
+        dnl_f = self.files[-1]
+        self.client.download_object(trg_fname, dnl_f)
+
+        print('\tCheck if files match...')
+        for i in range(42):
+            self.assertEqual(sample_block(src_f, i), sample_block(dnl_f, i))
+
     def test_object_put(self):
         """Test object_PUT"""
         self._test_object_put()
@@ -1247,3 +1284,18 @@ class Pithos(livetest.Generic):
             bytelist)
         f.seek(0)
         return f
+
+    def create_boring_file(self, num_of_blocks):
+        """Create a file with some blocks being the same"""
+        self.files.append(NamedTemporaryFile())
+        tmpFile = self.files[-1]
+        block_size = 4 * 1024 * 1024
+        print('\n\tCreate boring file of %s blocks' % num_of_blocks)
+        chars = chargen()
+        while num_of_blocks:
+            fslice = 3 if num_of_blocks > 3 else num_of_blocks
+            tmpFile.write(fslice * block_size * chars.next())
+            num_of_blocks -= fslice
+        print('\t\tDone')
+        tmpFile.seek(0)
+        return tmpFile
