@@ -910,6 +910,7 @@ class PithosClient(TestCase):
         tmpFile.seek(0)
         kwargs = dict(
             etag='s0m3E74g',
+            if_etag_match='if etag match',
             if_not_exist=True,
             content_type=ctype,
             content_disposition=ctype + 'd15p051710n',
@@ -917,9 +918,11 @@ class PithosClient(TestCase):
             content_encoding='802.11')
         self.client.upload_object(obj, tmpFile, **kwargs)
         kwargs.pop('if_not_exist')
+        ematch = kwargs.pop('if_etag_match')
         etag = kwargs.pop('etag')
         for arg, val in kwargs.items():
             self.assertEqual(OP.mock_calls[-2][2][arg], val)
+        self.assertEqual(OP.mock_calls[-1][2]['if_etag_match'], ematch)
         self.assertEqual(OP.mock_calls[-1][2]['if_etag_not_match'], '*')
         self.assertEqual(OP.mock_calls[-1][2]['etag'], etag)
 

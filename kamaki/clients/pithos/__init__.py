@@ -291,6 +291,7 @@ class PithosClient(PithosRestClient):
             hash_cb=None,
             upload_cb=None,
             etag=None,
+            if_etag_match=None,
             if_not_exist=None,
             content_encoding=None,
             content_disposition=None,
@@ -308,6 +309,9 @@ class PithosClient(PithosRestClient):
         :param upload_cb: optional progress.bar object for uploading
 
         :param etag: (str)
+
+        :param if_etag_match: (str) Push that value to if-match header at file
+            creation
 
         :param if_not_exist: (bool) If true, the file will be uploaded ONLY if
             it does not exist remotely, otherwise the operation will fail.
@@ -396,6 +400,7 @@ class PithosClient(PithosRestClient):
             format='json',
             hashmap=True,
             content_type=content_type,
+            if_etag_match=if_etag_match,
             if_etag_not_match='*' if if_not_exist else None,
             etag=etag,
             json=hashmap,
