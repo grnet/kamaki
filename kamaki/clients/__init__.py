@@ -42,26 +42,26 @@ from random import random
 
 from objpool.http import PooledHTTPConnection
 
-from kamaki.clients.utils import logger
+from kamaki import logger
 
-DEBUG_LOG = logger.get_log_filename()
+LOG_FILE = logger.get_log_filename()
 TIMEOUT = 60.0   # seconds
 HTTP_METHODS = ['GET', 'POST', 'PUT', 'HEAD', 'DELETE', 'COPY', 'MOVE']
 
-logger.add_file_logger('clients.send', __name__, filename=DEBUG_LOG)
+logger.add_file_logger('clients.send', __name__, filename=LOG_FILE)
 sendlog = logger.get_logger('clients.send')
-sendlog.debug('Logging location: %s' % DEBUG_LOG)
+sendlog.debug('Logging location: %s' % LOG_FILE)
 
-logger.add_file_logger('data.send', __name__, filename=DEBUG_LOG)
+logger.add_file_logger('data.send', __name__, filename=LOG_FILE)
 datasendlog = logger.get_logger('data.send')
 
-logger.add_file_logger('clients.recv', __name__, filename=DEBUG_LOG)
+logger.add_file_logger('clients.recv', __name__, filename=LOG_FILE)
 recvlog = logger.get_logger('clients.recv')
 
-logger.add_file_logger('data.recv', __name__, filename=DEBUG_LOG)
+logger.add_file_logger('data.recv', __name__, filename=LOG_FILE)
 datarecvlog = logger.get_logger('data.recv')
 
-logger.add_file_logger('ClientError', __name__, filename=DEBUG_LOG)
+logger.add_file_logger('ClientError', __name__, filename=LOG_FILE)
 clienterrorlog = logger.get_logger('ClientError')
 
 
@@ -186,7 +186,7 @@ class RequestManager(Logged):
             headers=self.headers,
             body=self.data)
         self.log()
-        keep_trying = 60.0
+        keep_trying = TIMEOUT
         while keep_trying > 0:
             try:
                 return conn.getresponse()

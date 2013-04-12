@@ -31,10 +31,10 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-import logging
+from kamaki import logger
 
-sendlog = logging.getLogger('clients.send')
-recvlog = logging.getLogger('clients.recv')
+logger.add_file_logger('cli', __name__, filename=logger.get_log_filename())
+sendlog = logger.get_logger('cli')
 
 
 class _command_init(object):
@@ -49,7 +49,7 @@ class _command_init(object):
         except KeyError:
             pass
 
-    def _update_low_level_log(self):
+    def _set_log_params(self):
         try:
             self.client.LOG_TOKEN, self.client.LOG_DATA = (
                 self['config'].get('global', 'log_token') == 'on',

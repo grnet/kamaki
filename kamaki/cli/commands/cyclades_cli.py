@@ -72,7 +72,7 @@ class _init_cyclades(_command_init):
         base_url = self.config.get(service, 'url')\
             or self.config.get('global', 'url')
         self.client = CycladesClient(base_url=base_url, token=token)
-        self._update_low_level_log()
+        self._set_log_params()
         self._update_max_threads()
 
     def main(self):
