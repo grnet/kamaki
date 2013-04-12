@@ -70,7 +70,7 @@ DEFAULTS = {
         'cli': 'history_cli',
         'file': HISTORY_PATH
     },
-    'store': {
+    'file': {
         'cli': 'pithos_cli',
         'url': 'https://pithos.okeanos.grnet.gr/v1'
     },

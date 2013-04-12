@@ -58,7 +58,7 @@ from kamaki.clients.astakos import AstakosClient
 
 kloger = getLogger('kamaki')
 
-pithos_cmds = CommandTree('store', 'Pithos+ storage commands')
+pithos_cmds = CommandTree('file', 'Pithos+ storage commands')
 _commands = [pithos_cmds]
 
 
@@ -161,12 +161,12 @@ class _pithos_init(_command_init):
 
     @errors.generic.all
     def _run(self):
-        self.token = self.config.get('store', 'token')\
+        self.token = self.config.get('file', 'token')\
             or self.config.get('global', 'token')
-        self.base_url = self.config.get('store', 'url')\
+        self.base_url = self.config.get('file', 'url')\
             or self.config.get('global', 'url')
         self._set_account()
-        self.container = self.config.get('store', 'container')\
+        self.container = self.config.get('file', 'container')\
             or self.config.get('global', 'container')
         self.client = PithosClient(
             base_url=self.base_url,
@@ -185,21 +185,21 @@ class _pithos_init(_command_init):
 
         """Backwards compatibility"""
         self.account = self.account\
-            or self.config.get('store', 'account')\
+            or self.config.get('file', 'account')\
             or self.config.get('global', 'account')
 
 
-class _store_account_command(_pithos_init):
+class _file_account_command(_pithos_init):
     """Base class for account level storage commands"""
 
     def __init__(self, arguments={}):
-        super(_store_account_command, self).__init__(arguments)
+        super(_file_account_command, self).__init__(arguments)
         self['account'] = ValueArgument(
             'Set user account (not permanent)',
             ('-A', '--account'))
 
     def _run(self):
-        super(_store_account_command, self)._run()
+        super(_file_account_command, self)._run()
         if self['account']:
             self.client.account = self['account']
 
@@ -208,14 +208,14 @@ class _store_account_command(_pithos_init):
         self._run()
 
 
-class _store_container_command(_store_account_command):
+class _file_container_command(_file_account_command):
     """Base class for container level storage commands"""
 
     container = None
     path = None
 
     def __init__(self, arguments={}):
-        super(_store_container_command, self).__init__(arguments)
+        super(_file_container_command, self).__init__(arguments)
         self['container'] = ValueArgument(
             'Set container to work with (temporary)',
             ('-C', '--container'))
@@ -277,7 +277,7 @@ class _store_container_command(_store_account_command):
 
     @errors.generic.all
     def _run(self, container_with_path=None, path_is_optional=True):
-        super(_store_container_command, self)._run()
+        super(_file_container_command, self)._run()
         if self['container']:
             self.client.container = self['container']
             if container_with_path:
@@ -298,7 +298,7 @@ class _store_container_command(_store_account_command):
 
 
 @command(pithos_cmds)
-class store_list(_store_container_command):
+class file_list(_file_container_command):
     """List containers, object trees or objects in a directory
     Use with:
     1 no parameters : containers in current account
@@ -427,7 +427,7 @@ class store_list(_store_container_command):
 
 
 @command(pithos_cmds)
-class store_mkdir(_store_container_command):
+class file_mkdir(_file_container_command):
     """Create a directory"""
 
     __doc__ += '\n. '.join([
@@ -451,7 +451,7 @@ class store_mkdir(_store_container_command):
 
 
 @command(pithos_cmds)
-class store_touch(_store_container_command):
+class file_touch(_file_container_command):
     """Create an empty object (file)
     If object exists, this command will reset it to 0 length
     """
@@ -470,14 +470,14 @@ class store_touch(_store_container_command):
         self.client.create_object(self.path, self['content_type'])
 
     def main(self, container___path):
-        super(store_touch, self)._run(
+        super(file_touch, self)._run(
             container___path,
             path_is_optional=False)
         self._run()
 
 
 @command(pithos_cmds)
-class store_create(_store_container_command):
+class file_create(_file_container_command):
     """Create a container"""
 
     arguments = dict(
@@ -508,7 +508,7 @@ class store_create(_store_container_command):
         self._run()
 
 
-class _source_destination_command(_store_container_command):
+class _source_destination_command(_file_container_command):
 
     arguments = dict(
         destination_account=ValueArgument('', ('a', '--dst-account')),
@@ -614,7 +614,7 @@ class _source_destination_command(_store_container_command):
                         'Cannot merge multiple paths to path %s' % dst_path,
                         details=[
                             'Try to use / or a directory as destination',
-                            'or create the destination dir (/store mkdir)',
+                            'or create the destination dir (/file mkdir)',
                             'or use a single object as source'])
             elif trgerr.status not in (204,):
                 raise
@@ -626,7 +626,7 @@ class _source_destination_command(_store_container_command):
                     'Cannot merge multiple paths to path' % dst_path,
                     details=[
                         'Try to use / or a directory as destination',
-                        'or create the destination dir (/store mkdir)',
+                        'or create the destination dir (/file mkdir)',
                         'or use a single object as source'])
 
         if src_N:
@@ -652,7 +652,7 @@ class _source_destination_command(_store_container_command):
 
 
 @command(pithos_cmds)
-class store_copy(_source_destination_command):
+class file_copy(_source_destination_command):
     """Copy objects from container to (another) container
     Semantics:
     copy cont:path dir
@@ -733,7 +733,7 @@ class store_copy(_source_destination_command):
             self,
             source_container___path,
             destination_container___path=None):
-        super(store_copy, self)._run(
+        super(file_copy, self)._run(
             source_container___path,
             path_is_optional=False)
         (dst_cont, dst_path) = self._dest_container_path(
@@ -743,7 +743,7 @@ class store_copy(_source_destination_command):
 
 
 @command(pithos_cmds)
-class store_move(_source_destination_command):
+class file_move(_source_destination_command):
     """Move/rename objects from container to (another) container
     Semantics:
     move cont:path dir
@@ -835,7 +835,7 @@ class store_move(_source_destination_command):
 
 
 @command(pithos_cmds)
-class store_append(_store_container_command):
+class file_append(_file_container_command):
     """Append local file to (existing) remote object
     The remote object should exist.
     If the remote object is a directory, it is transformed into a file.
@@ -872,7 +872,7 @@ class store_append(_store_container_command):
 
 
 @command(pithos_cmds)
-class store_truncate(_store_container_command):
+class file_truncate(_file_container_command):
     """Truncate remote file up to a size (default is 0)"""
 
     @errors.generic.all
@@ -889,7 +889,7 @@ class store_truncate(_store_container_command):
 
 
 @command(pithos_cmds)
-class store_overwrite(_store_container_command):
+class file_overwrite(_file_container_command):
     """Overwrite part (from start to end) of a remote file
     overwrite local-path container 10 20
     .   will overwrite bytes from 10 to 20 of a remote file with the same name
@@ -944,7 +944,7 @@ class store_overwrite(_store_container_command):
 
 
 @command(pithos_cmds)
-class store_manifest(_store_container_command):
+class file_manifest(_file_container_command):
     """Create a remote file of uploaded parts by manifestation
     Remains functional for compatibility with OOS Storage. Users are advised
     to use the upload command instead.
@@ -997,7 +997,7 @@ class store_manifest(_store_container_command):
 
 
 @command(pithos_cmds)
-class store_upload(_store_container_command):
+class file_upload(_file_container_command):
     """Upload a file"""
 
     arguments = dict(
@@ -1099,7 +1099,7 @@ class store_upload(_store_container_command):
 
 
 @command(pithos_cmds)
-class store_cat(_store_container_command):
+class file_cat(_file_container_command):
     """Print remote file contents to console"""
 
     arguments = dict(
@@ -1142,7 +1142,7 @@ class store_cat(_store_container_command):
 
 
 @command(pithos_cmds)
-class store_download(_store_container_command):
+class file_download(_file_container_command):
     """Download remote object as local file
     If local destination is a directory:
     *   download <container>:<path> <local dir> -R
@@ -1152,7 +1152,7 @@ class store_download(_store_container_command):
     will download only one file, exactly matching <path>
     ATTENTION: to download cont:dir1/dir2/file there must exist objects
     cont:dir1 and cont:dir1/dir2 of type application/directory
-    To create directory objects, use /store mkdir
+    To create directory objects, use /file mkdir
     """
 
     arguments = dict(
@@ -1196,7 +1196,7 @@ class store_download(_store_container_command):
                 for newdir in rname.strip('/').split('/')[:-1]:
                     tmppath = '/'.join([tmppath, newdir])
                     dirlist.update({tmppath.strip('/'): True})
-                remotes.append((rname, store_download._is_dir(remote)))
+                remotes.append((rname, file_download._is_dir(remote)))
             dir_remotes = [r[0] for r in remotes if r[1]]
             if not set(dirlist).issubset(dir_remotes):
                 badguys = [bg.strip('/') for bg in set(
@@ -1208,7 +1208,7 @@ class store_download(_store_container_command):
             r = self.client.get_object_info(
                 self.path,
                 version=self['object_version'])
-            if store_download._is_dir(r):
+            if file_download._is_dir(r):
                 raiseCLIError(
                     'Illegal download: Remote object %s is a directory' % (
                         self.path),
@@ -1230,12 +1230,12 @@ class store_download(_store_container_command):
                         self.container),
                     details=[
                         'To list the contents of %s, try:' % self.container,
-                        '   /store list %s' % self.container])
+                        '   /file list %s' % self.container])
             raiseCLIError(
                 'Illegal download of container %s' % self.container,
                 details=[
                     'To download a whole container, try:',
-                    '   /store download --recursive <container>'])
+                    '   /file download --recursive <container>'])
 
         lprefix = path.abspath(local_path or path.curdir)
         if path.isdir(lprefix):
@@ -1342,7 +1342,7 @@ class store_download(_store_container_command):
 
 
 @command(pithos_cmds)
-class store_hashmap(_store_container_command):
+class file_hashmap(_file_container_command):
     """Get the hash-map of an object"""
 
     arguments = dict(
@@ -1383,22 +1383,22 @@ class store_hashmap(_store_container_command):
 
 
 @command(pithos_cmds)
-class store_delete(_store_container_command):
+class file_delete(_file_container_command):
     """Delete a container [or an object]
     How to delete a non-empty container:
-    - empty the container:  /store delete -R <container>
-    - delete it:            /store delete <container>
+    - empty the container:  /file delete -R <container>
+    - delete it:            /file delete <container>
     .
     Semantics of directory deletion:
-    .a preserve the contents: /store delete <container>:<directory>
+    .a preserve the contents: /file delete <container>:<directory>
     .    objects of the form dir/filename can exist with a dir object
-    .b delete contents:       /store delete -R <container>:<directory>
+    .b delete contents:       /file delete -R <container>:<directory>
     .    all dir/* objects are affected, even if dir does not exist
     .
     To restore a deleted object OBJ in a container CONT:
-    - get object versions: /store versions CONT:OBJ
+    - get object versions: /file versions CONT:OBJ
     .   and choose the version to be restored
-    - restore the object:  /store copy --source-version=<version> CONT:OBJ OBJ
+    - restore the object:  /file copy --source-version=<version> CONT:OBJ OBJ
     """
 
     arguments = dict(
@@ -1448,13 +1448,13 @@ class store_delete(_store_container_command):
 
 
 @command(pithos_cmds)
-class store_purge(_store_container_command):
+class file_purge(_file_container_command):
     """Delete a container and release related data blocks
     Non-empty containers can not purged.
     To purge a container with content:
-    .   /store delete -R <container>
+    .   /file delete -R <container>
     .      objects are deleted, but data blocks remain on server
-    .   /store purge <container>
+    .   /file purge <container>
     .      container and data blocks are released and deleted
     """
 
@@ -1481,7 +1481,7 @@ class store_purge(_store_container_command):
 
 
 @command(pithos_cmds)
-class store_publish(_store_container_command):
+class file_publish(_file_container_command):
     """Publish the object and print the public url"""
 
     @errors.generic.all
@@ -1500,7 +1500,7 @@ class store_publish(_store_container_command):
 
 
 @command(pithos_cmds)
-class store_unpublish(_store_container_command):
+class file_unpublish(_file_container_command):
     """Unpublish an object"""
 
     @errors.generic.all
@@ -1518,7 +1518,7 @@ class store_unpublish(_store_container_command):
 
 
 @command(pithos_cmds)
-class store_permissions(_store_container_command):
+class file_permissions(_file_container_command):
     """Get read and write permissions of an object
     Permissions are lists of users and user groups. There is read and write
     permissions. Users and groups with write permission have also read
@@ -1541,14 +1541,14 @@ class store_permissions(_store_container_command):
 
 
 @command(pithos_cmds)
-class store_setpermissions(_store_container_command):
+class file_setpermissions(_file_container_command):
     """Set permissions for an object
     New permissions overwrite existing permissions.
     Permission format:
     -   read=<username>[,usergroup[,...]]
     -   write=<username>[,usegroup[,...]]
     E.g. to give read permissions for file F to users A and B and write for C:
-    .       /store setpermissions F read=A,B write=C
+    .       /file setpermissions F read=A,B write=C
     """
 
     @errors.generic.all
@@ -1585,9 +1585,9 @@ class store_setpermissions(_store_container_command):
 
 
 @command(pithos_cmds)
-class store_delpermissions(_store_container_command):
+class file_delpermissions(_file_container_command):
     """Delete all permissions set on object
-    To modify permissions, use /store setpermssions
+    To modify permissions, use /file setpermssions
     """
 
     @errors.generic.all
@@ -1605,11 +1605,11 @@ class store_delpermissions(_store_container_command):
 
 
 @command(pithos_cmds)
-class store_info(_store_container_command):
+class file_info(_file_container_command):
     """Get detailed information for user account, containers or objects
-    to get account info:    /store info
-    to get container info:  /store info <container>
-    to get object info:     /store info <container>:<path>
+    to get account info:    /file info
+    to get container info:  /file info <container>
+    to get object info:     /file info <container>:<path>
     """
 
     arguments = dict(
@@ -1639,7 +1639,7 @@ class store_info(_store_container_command):
 
 
 @command(pithos_cmds)
-class store_meta(_store_container_command):
+class file_meta(_file_container_command):
     """Get metadata for account, containers or objects"""
 
     arguments = dict(
@@ -1695,7 +1695,7 @@ class store_meta(_store_container_command):
 
 
 @command(pithos_cmds)
-class store_setmeta(_store_container_command):
+class file_setmeta(_file_container_command):
     """Set a piece of metadata for account, container or object
     Metadata are formed as key:value pairs
     """
@@ -1718,12 +1718,12 @@ class store_setmeta(_store_container_command):
 
 
 @command(pithos_cmds)
-class store_delmeta(_store_container_command):
+class file_delmeta(_file_container_command):
     """Delete metadata with given key from account, container or object
     Metadata are formed as key:value objects
-    - to get metadata of current account:     /store meta
-    - to get metadata of a container:         /store meta <container>
-    - to get metadata of an object:           /store meta <container>:<path>
+    - to get metadata of current account:     /file meta
+    - to get metadata of a container:         /file meta <container>
+    - to get metadata of an object:           /file meta <container>:<path>
     """
 
     @errors.generic.all
@@ -1744,7 +1744,7 @@ class store_delmeta(_store_container_command):
 
 
 @command(pithos_cmds)
-class store_quota(_store_account_command):
+class file_quota(_file_account_command):
     """Get quota for account or container"""
 
     arguments = dict(
@@ -1771,11 +1771,11 @@ class store_quota(_store_account_command):
 
 
 @command(pithos_cmds)
-class store_setquota(_store_account_command):
+class file_setquota(_file_account_command):
     """Set new quota for account or container
     By default, quota is set in bytes
     Users may specify a different unit, e.g:
-    /store setquota 2.3GB mycontainer
+    /file setquota 2.3GB mycontainer
     Accepted units: B, KiB (1024 B), KB (1000 B), MiB, MB, GiB, GB, TiB, TB
     """
 
@@ -1821,7 +1821,7 @@ class store_setquota(_store_account_command):
 
 
 @command(pithos_cmds)
-class store_versioning(_store_account_command):
+class file_versioning(_file_account_command):
     """Get  versioning for account or container"""
 
     @errors.generic.all
@@ -1841,7 +1841,7 @@ class store_versioning(_store_account_command):
 
 
 @command(pithos_cmds)
-class store_setversioning(_store_account_command):
+class file_setversioning(_file_account_command):
     """Set versioning mode (auto, none) for account or container"""
 
     def _check_versioning(self, versioning):
@@ -1866,7 +1866,7 @@ class store_setversioning(_store_account_command):
 
 
 @command(pithos_cmds)
-class store_group(_store_account_command):
+class file_group(_file_account_command):
     """Get groups and group members"""
 
     @errors.generic.all
@@ -1881,7 +1881,7 @@ class store_group(_store_account_command):
 
 
 @command(pithos_cmds)
-class store_setgroup(_store_account_command):
+class file_setgroup(_file_account_command):
     """Set a user group"""
 
     @errors.generic.all
@@ -1898,7 +1898,7 @@ class store_setgroup(_store_account_command):
 
 
 @command(pithos_cmds)
-class store_delgroup(_store_account_command):
+class file_delgroup(_file_account_command):
     """Delete a user group"""
 
     @errors.generic.all
@@ -1912,7 +1912,7 @@ class store_delgroup(_store_account_command):
 
 
 @command(pithos_cmds)
-class store_sharers(_store_account_command):
+class file_sharers(_file_account_command):
     """List the accounts that share objects with current user"""
 
     arguments = dict(
@@ -1935,13 +1935,13 @@ class store_sharers(_store_account_command):
 
 
 @command(pithos_cmds)
-class store_versions(_store_container_command):
+class file_versions(_file_container_command):
     """Get the list of object versions
     Deleted objects may still have versions that can be used to restore it and
     get information about its previous state.
     The version number can be used in a number of other commands, like info,
     copy, move, meta. See these commands for more information, e.g.
-    /store info -h
+    /file info -h
     """
 
     @errors.generic.all
@@ -1955,7 +1955,7 @@ class store_versions(_store_container_command):
             localtime(float(vitem[1])))) for vitem in versions])
 
     def main(self, container___path):
-        super(store_versions, self)._run(
+        super(file_versions, self)._run(
             container___path,
             path_is_optional=False)
         self._run()

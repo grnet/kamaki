@@ -70,11 +70,11 @@ class Pithos(livetest.Generic):
 
     def setUp(self):
         self.client = PithosClient(
-            self['store', 'url'],
-            self['store', 'token'],
+            self['file', 'url'],
+            self['file', 'token'],
             AstakosClient(
                 self['user', 'url'],
-                self['store', 'token']
+                self['file', 'token']
             ).term('uuid'))
 
         self.now = time.mktime(time.gmtime())

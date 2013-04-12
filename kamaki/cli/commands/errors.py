@@ -406,15 +406,15 @@ class plankton(object):
 class pithos(object):
     container_howto = [
         'To specify a container:',
-        '  1. Set store.container variable (permanent)',
-        '     /config set store.container <container>',
+        '  1. Set file.container variable (permanent)',
+        '     /config set file.container <container>',
         '  2. --container=<container> (temporary, overrides 1)',
         '  3. Use the container:path format (temporary, overrides all)',
-        'For a list of containers: /store list']
+        'For a list of containers: /file list']
 
     @classmethod
     def connection(this, foo):
-        return generic._connection(foo, 'store.url')
+        return generic._connection(foo, 'file.url')
 
     @classmethod
     def account(this, foo):
@@ -439,10 +439,10 @@ class pithos(object):
                 if ce.status == 413:
                     raiseCLIError(ce, 'User quota exceeded', details=[
                         '* get quotas:',
-                        '  * upper total limit:      /store quota',
-                        '  * container limit:  /store quota <container>',
+                        '  * upper total limit:      /file quota',
+                        '  * container limit:  /file quota <container>',
                         '* set a higher quota (if permitted):',
-                        '    /store setquota <quota>[unit] <container>'
+                        '    /file setquota <quota>[unit] <container>'
                         '    as long as <container quota> <= <total quota>'])
                 raise
         return _raise
