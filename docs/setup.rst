@@ -62,13 +62,13 @@ All kamaki commands can be used with the -o option in order to override configur
 
 .. code-block:: console
 
-    $ kamaki store list -o global.account=anotheraccount -o global.token=aT0k3n==
+    $ kamaki file list -o global.account=anotheraccount -o global.token=aT0k3n==
 
-will invoke *kamaki store list* with the specified options, but the initial global.account and global.token values will be restored to initial values afterwards.
+will invoke *kamaki file list* with the specified options, but the initial global.account and global.token values will be restored to initial values afterwards.
 
-.. note:: on-the-fly calls to store require users to explicetely provide the account uuid corresponding to this token. The account is actually the uuid field at the response of the following call::
+.. note:: on-the-fly calls to file require users to explicetely provide the account uuid corresponding to this token. The account is actually the uuid field at the response of the following call::
 
-    $kamaki astakos authenticate aT0k3n==
+    $kamaki user authenticate aT0k3n==
 
 Editing options
 ^^^^^^^^^^^^^^^
@@ -104,11 +104,11 @@ In the above example, if the kamaki configuration file does not exist, it will b
 
 The configuration file is formatted so that it can be parsed by the python ConfigParser module. It consists of command sections that are denoted with brackets. Every section contains variables with values. For example::
 
-    [store]
+    [file]
     url=https://okeanos.grnet.gr/pithos
     token=my0th3rT0k3n==
 
-two configuration options are created: *store.url* and *store.token*. These values will be loaded at every future kamaki execution.
+two configuration options are created: *file.url* and *file.token*. These values will be loaded at every future kamaki execution.
 
 Available options
 ^^^^^^^^^^^^^^^^^
@@ -129,14 +129,14 @@ The [global] group is treated by kamaki as a generic group for arbitrary options
 * global.log_data <on|off>
     allow kamaki to log http data (by default, it logs only method, URL and headers)
 
-* store.cli <UI command specifications for store>
+* file.cli <UI command specifications for file>
     a special package that is used to load storage commands to kamaki UIs. Don't touch this unless if you know what you are doing.
 
-* store.url <OOS storage or Pithos+ service url>
+* file.url <OOS storage or Pithos+ service url>
     the url of the OOS storage or Pithos+ service. Set to Okeanos.grnet.gr Pithos+ storage service by default. Users should set a different value if they need to use a different storage service.
 
-* store.token <token>
-    it set, it overrides possible global.token option for store level commands
+* file.token <token>
+    it set, it overrides possible global.token option for file level commands
 
 * compute.url <OOS compute or Cyclades service url>
     the url of the OOS compute or Cyclades service. Set to Okeanos.grnet.gr Cyclades IaaS service by default. Users should set a different value if they need to use a different IaaS service.
@@ -156,10 +156,10 @@ The [global] group is treated by kamaki as a generic group for arbitrary options
 * image.cli <UI command specifications for Plankton (and Compute) image service>
     a special package that is used to load image-related commands to kamaki UIs. Don't touch this unless you know what you are doing.
 
-* astakos.url <Astakos authentication service url>
+* user.url <Astakos authentication service url>
     the url of the Astakos authentication service. Set to the Okeanos.grnet.gr Astakos service by default. Users should set a different value if they need to use a different service.
 
-* astakos.cli <UI command specifications for Astakos authentication service>
+* user.cli <UI command specifications for Astakos authentication service>
     a special package that is used to load astakos-related commands to kamaki UIs. Don't touch this unless you know what you are doing.
 
 * history.file <history file path>
@@ -213,7 +213,7 @@ Kamaki contains a live test suite for the kamaki.clients API, where "live" means
 The livetest suite can be activated with the following option on the configuration file::
 
     [livetest]
-    cli=livetest_cli
+    cli=livetest
 
 In most tests, livetest will run as long as an Astakos identity manager service is accessible and kamaki is set up to authenticate a valid token on this server.
 
@@ -221,14 +221,14 @@ In specific, a setup file needs at least the following mandatory settings in the
 
 * If authentication information is used for default kamaki clients::
 
-    [astakos]
+    [user]
     url=<Astakos Identity Manager URL>
     token=<A valid user token>
 
 * else if this authentication information is only for testing add this under [livetest]::
 
-    astakos_url=<Astakos Identity Manager URL>
-    astakos_token=<A valid user token>
+    user_url=<Astakos Identity Manager URL>
+    user_token=<A valid user token>
 
 Each service tested in livetest might need some more options under the [livetest] label, as shown bellow:
 
@@ -301,7 +301,7 @@ The quotaholder client
 A quotaholder client is introduced as an advanced feature. Quotaholder client is mostly used as a client library for accessing a synnefo quota service, but it can also be allowed as a kamaki command set, but setting the quotaholder.cli and quotaholder.url methods::
 
     [quotaholder]
-    cli=quotaholder_cli
+    cli=quotaholder
     url=<URL of quotaholder service>
 
 Quotaholder is not tested in livetest

@@ -63,35 +63,35 @@ DEFAULTS = {
         'max_threads': 7
     },
     'config': {
-        'cli': 'config_cli',
+        'cli': 'config',
         'description': 'Configuration commands'
     },
     'history': {
-        'cli': 'history_cli',
+        'cli': 'history',
         'file': HISTORY_PATH
     },
     'file': {
-        'cli': 'pithos_cli',
+        'cli': 'pithos',
         'url': 'https://pithos.okeanos.grnet.gr/v1'
     },
     'compute': {
         'url': 'https://cyclades.okeanos.grnet.gr/api/v1.1'
     },
     'server': {
-        'cli': 'cyclades_cli'
+        'cli': 'cyclades'
     },
     'flavor': {
-        'cli': 'cyclades_cli'
+        'cli': 'cyclades'
     },
     'network': {
-        'cli': 'cyclades_cli'
+        'cli': 'cyclades'
     },
     'image': {
-        'cli': 'image_cli',
+        'cli': 'image',
         'url': 'https://cyclades.okeanos.grnet.gr/plankton'
     },
     'user': {
-        'cli': 'astakos_cli',
+        'cli': 'user',
         'url': 'https://accounts.okeanos.grnet.gr'
     }
 }
