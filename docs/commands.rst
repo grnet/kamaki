@@ -329,12 +329,13 @@ file (Storage/Pithos+)
     permissions   :  Get object read/write permissions
     publish       :  Publish an object
     purge         :  Purge a container
-    quota         :  Get  quota for account [or container]
+    quota         :  Get  quota for account
     setgroup      :  Create/update a new user group
     setmeta       :  Set a new metadatum for account [, container [or object]]
     setpermissions:  Set sharing permissions
     containerlimit:  Container size limit commands
-        set       :  Set copntainer data limit
+        set       :  Set container data limit
+        get       :  Get container data limit
     setversioning :  Set new versioning (auto, none) for account [or container]
     sharers       :  List the accounts that share objects with default account
     touch         :  Create an empty object (file)

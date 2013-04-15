@@ -203,7 +203,8 @@ file commands
 * setgroup              Set a user group
 * setmeta               Set a piece of metadata for account, container or object
 * setpermissions        Set permissions for an object
-* containerlimit set    Set new quota (in KB) for account or container
+* containerlimit set    Set new limit for container
+* containerlimit get    Get container limit
 * setversioning         Set versioning mode (auto, none) for account or container
 * sharers               List the accounts that share objects with current user
 * touch                 Create an empty object (file)
