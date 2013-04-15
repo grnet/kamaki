@@ -596,7 +596,11 @@ class network_create(_init_cyclades):
         cidr=ValueArgument('explicitly set cidr', '--with-cidr'),
         gateway=ValueArgument('explicitly set gateway', '--with-gateway'),
         dhcp=FlagArgument('Use dhcp (default: off)', '--with-dhcp'),
-        type=ValueArgument('explicitly set type', '--with-type')
+        type=ValueArgument(
+            'Valid network types are '
+            'CUSTOM, IP_LESS_ROUTED, MAC_FILTERED (default), PHYSICAL_VLAN',
+            '--with-type',
+            default='MAC_FILTERED')
     )
 
     @errors.generic.all
