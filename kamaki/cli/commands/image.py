@@ -86,6 +86,7 @@ class image_list(_init_image):
         size_min=IntArgument('filter by minimum size', '--size-min'),
         size_max=IntArgument('filter by maximum size', '--size-max'),
         status=ValueArgument('filter by status', '--status'),
+        owner=ValueArgument('filter by owner', '--owner'),
         order=ValueArgument(
             'order by FIELD ( - to reverse order)',
             '--order',
@@ -95,6 +96,18 @@ class image_list(_init_image):
             'output results in pages (-n to set items per page, default 10)',
             '--more')
     )
+
+    def _filtered_by_owner(self, detail, *list_params):
+        images = []
+        MINKEYS = set([
+            'id', 'size', 'status', 'disk_format', 'container_format', 'name'])
+        for img in self.client.list_public(True, *list_params):
+            if img['owner'] == self['owner']:
+                if not detail:
+                    for key in set(img.keys()).difference(MINKEYS):
+                        img.pop(key)
+                images.append(img)
+        return images
 
     @errors.generic.all
     @errors.cyclades.connection
@@ -112,7 +125,11 @@ class image_list(_init_image):
 
         order = self['order']
         detail = self['detail']
-        images = self.client.list_public(detail, filters, order)
+        if self['owner']:
+            images = self._filtered_by_owner(detail, filters, order)
+        else:
+            images = self.client.list_public(detail, filters, order)
+
         if self['more']:
             print_items(
                 images,
