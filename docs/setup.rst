@@ -295,17 +295,6 @@ or a specific method from a service (e.g. astakos authenticate)::
 
     $ kamaki livetest astakos authenticate
 
-The quotaholder client
-""""""""""""""""""""""
-
-A quotaholder client is introduced as an advanced feature. Quotaholder client is mostly used as a client library for accessing a synnefo quota service, but it can also be allowed as a kamaki command set, but setting the quotaholder.cli and quotaholder.url methods::
-
-    [quotaholder]
-    cli=quotaholder
-    url=<URL of quotaholder service>
-
-Quotaholder is not tested in livetest
-
 The unit testing system
 """""""""""""""""""""""
 

@@ -51,6 +51,7 @@ class Image(livetest.Generic):
 
         self.imgname = 'img_%s' % self.now
         url = self['image', 'url']
+        print('::::%s::::' % url)
         self.client = ImageClient(url, self['token'])
         cyclades_url = self['compute', 'url']
         self.cyclades = CycladesClient(cyclades_url, self['token'])
@@ -66,7 +67,7 @@ class Image(livetest.Generic):
         (token, uuid) = (self['token'], self['file', 'account'])
         if not uuid:
             from kamaki.clients.astakos import AstakosClient
-            uuid = AstakosClient(self['astakos', 'url'], token).term('uuid')
+            uuid = AstakosClient(self['user', 'url'], token).term('uuid')
         from kamaki.clients.pithos import PithosClient
         self.pithcli = PithosClient(self['file', 'url'], token, uuid)
         cont = 'cont_%s' % self.now

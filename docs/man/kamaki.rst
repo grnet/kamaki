@@ -64,12 +64,6 @@ file
 Hidden command groups
 ---------------------
 
-quotaholder
-
-    A client for quotaholder API. to enable:
-    kamaki config set quotaholder.cli hotaholder
-    kamaki config set quotaholder.url <quotaholder server url>
-
 livetest
 
     LIve tests that check kamaki against running services. To enable:
@@ -218,12 +212,6 @@ file commands
 * upload            Upload a file
 * versioning        Get  versioning for account or container
 * versions          Get the list of object versions
-
-
-quotaholder commands (hidden)
-*****************************
-
-accept, ack, add, create, get, init, issue, list, query, reject, release, reset, resolve, set
 
 
 test commands (hidden)

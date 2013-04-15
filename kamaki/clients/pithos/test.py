@@ -41,7 +41,7 @@ from random import randint
 try:
     from collections import OrderedDict
 except ImportError:
-    from kamaki.clients.commisioning.utils.ordereddict import OrderedDict
+    from kamaki.clients.utils.ordereddict import OrderedDict
 
 from kamaki.clients import pithos, ClientError
 
