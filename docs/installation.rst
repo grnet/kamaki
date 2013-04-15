@@ -22,7 +22,7 @@ The following steps describe a command-line approach, but any graphic package ma
 
     deb http://apt2.dev.grnet.gr stable/
 
-* Make sure the GPG public key for the GRNET dev team is added:
+* Make sure the GPG public key for the Synnefo development team is added:
 
     .. code-block:: console
 

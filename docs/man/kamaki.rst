@@ -231,5 +231,5 @@ test commands (hidden)
 Author
 ------
 
-GRNET development team <synnefo-devel@googlegroups.com>.
+Synnefo development team <synnefo-devel@googlegroups.com>.
 

@@ -36,7 +36,7 @@ from kamaki.clients.utils import path4url, filter_in
 
 
 class ImageClient(Client):
-    """OpenStack Image Service API 1.0 and GRNET Plankton client"""
+    """Synnefo Plankton API client"""
 
     def __init__(self, base_url, token):
         super(ImageClient, self).__init__(base_url, token)
