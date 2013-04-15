@@ -45,7 +45,7 @@ from kamaki.cli.utils import split_input
 from kamaki.clients import ClientError
 
 
-history_cmds = CommandTree('history', 'Command history')
+history_cmds = CommandTree('history', 'Kamaki command history')
 _commands = [history_cmds]
 
 

@@ -44,9 +44,9 @@ from base64 import b64encode
 from os.path import exists
 
 
-server_cmds = CommandTree('server', 'Compute/Cyclades API server commands')
-flavor_cmds = CommandTree('flavor', 'Compute/Cyclades API flavor commands')
-network_cmds = CommandTree('network', 'Compute/Cyclades API network commands')
+server_cmds = CommandTree('server', 'Cyclades/Compute API server commands')
+flavor_cmds = CommandTree('flavor', 'Cyclades/Compute API flavor commands')
+network_cmds = CommandTree('network', 'Cyclades/Compute API network commands')
 _commands = [server_cmds, flavor_cmds, network_cmds]
 
 

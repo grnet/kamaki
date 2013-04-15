@@ -36,7 +36,7 @@ from kamaki.cli.argument import FlagArgument
 from kamaki.cli.commands import _command_init, errors
 from kamaki.cli.command_tree import CommandTree
 
-config_cmds = CommandTree('config', 'Configuration commands')
+config_cmds = CommandTree('config', 'Kamaki configurations')
 _commands = [config_cmds]
 
 about_options = '\nAbout options:\

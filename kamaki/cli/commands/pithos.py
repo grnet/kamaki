@@ -58,7 +58,7 @@ from kamaki.clients.astakos import AstakosClient
 
 kloger = getLogger('kamaki')
 
-pithos_cmds = CommandTree('file', 'Pithos+ storage commands')
+pithos_cmds = CommandTree('file', 'Pithos+/Storage API commands')
 _commands = [pithos_cmds]
 
 

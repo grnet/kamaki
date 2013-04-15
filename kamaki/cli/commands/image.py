@@ -41,7 +41,10 @@ from kamaki.cli.commands.cyclades_cli import _init_cyclades
 from kamaki.cli.commands import _command_init, errors
 
 
-image_cmds = CommandTree('image', 'Plankton (and Compute) Image API commands')
+image_cmds = CommandTree(
+    'image',
+    'Cyclades/Plankton API image commands\n'
+    'image compute:\tCyclades/Compute API image commands')
 _commands = [image_cmds]
 
 
@@ -291,7 +294,7 @@ class image_setmembers(_init_image):
 
 @command(image_cmds)
 class image_compute(_init_cyclades):
-    """Compute Image API commands"""
+    """Cyclades/Compute API image commands"""
 
 
 @command(image_cmds)
