@@ -311,7 +311,7 @@ class CycladesClient(TestCase):
                 dhcp=True)
         test_args = dict(full_args)
         test_args.update(dict(empty=None, full=None))
-        net_exp = dict(dhcp=False, name=net_name)
+        net_exp = dict(dhcp=False, name=net_name, type='MAC_FILTERED')
         for arg, val in test_args.items():
             kwargs = {} if arg == 'empty' else full_args if (
                 arg == 'full') else {arg: val}

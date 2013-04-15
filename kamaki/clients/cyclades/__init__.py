@@ -152,7 +152,8 @@ class CycladesClient(CycladesRestClient):
 
         :param geteway: (str)
 
-        :param type: (str)
+        :param type: (str) if None, will use MAC_FILTERED as default
+            Valid values: CUSTOM, IP_LESS_ROUTED, MAC_FILTERED, PHYSICAL_VLAN
 
         :param dhcp: (bool)
 
@@ -163,8 +164,7 @@ class CycladesClient(CycladesRestClient):
             net['cidr'] = cidr
         if gateway:
             net['gateway'] = gateway
-        if type:
-            net['type'] = type
+        net['type'] = type or 'MAC_FILTERED'
         net['dhcp'] = True if dhcp else False
         req = dict(network=net)
         r = self.networks_post(json_data=req, success=202)
