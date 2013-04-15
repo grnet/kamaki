@@ -83,9 +83,19 @@ class image_list(_init_image):
             '--container-format'),
         disk_format=ValueArgument('filter by disk format', '--disk-format'),
         name=ValueArgument('filter by name', '--name'),
+        name_pref=ValueArgument(
+            'filter by name prefix (case insensitive)',
+            '--name-prefix'),
+        name_suff=ValueArgument(
+            'filter by name suffix (case insensitive)',
+            '--name-suffix'),
+        name_like=ValueArgument(
+            'print only if name contains this (case insensitive)',
+            '--name-like'),
         size_min=IntArgument('filter by minimum size', '--size-min'),
         size_max=IntArgument('filter by maximum size', '--size-max'),
         status=ValueArgument('filter by status', '--status'),
+        owner=ValueArgument('filter by owner', '--owner'),
         order=ValueArgument(
             'order by FIELD ( - to reverse order)',
             '--order',
@@ -95,6 +105,25 @@ class image_list(_init_image):
             'output results in pages (-n to set items per page, default 10)',
             '--more')
     )
+
+    def _filtered_by_owner(self, detail, *list_params):
+        images = []
+        MINKEYS = set([
+            'id', 'size', 'status', 'disk_format', 'container_format', 'name'])
+        for img in self.client.list_public(True, *list_params):
+            if img['owner'] == self['owner']:
+                if not detail:
+                    for key in set(img.keys()).difference(MINKEYS):
+                        img.pop(key)
+                images.append(img)
+        return images
+
+    def _filtered_by_name(self, images):
+        np, ns, nl = self['name_pref'], self['name_suff'], self['name_like']
+        return [img for img in images if (
+            (not np) or img['name'].lower().startswith(np.lower())) and (
+            (not ns) or img['name'].lower().endswith(ns.lower())) and (
+            (not nl) or nl.lower() in img['name'].lower())]
 
     @errors.generic.all
     @errors.cyclades.connection
@@ -112,7 +141,12 @@ class image_list(_init_image):
 
         order = self['order']
         detail = self['detail']
-        images = self.client.list_public(detail, filters, order)
+        if self['owner']:
+            images = self._filtered_by_owner(detail, filters, order)
+        else:
+            images = self.client.list_public(detail, filters, order)
+        images = self._filtered_by_name(images)
+
         if self['more']:
             print_items(
                 images,
