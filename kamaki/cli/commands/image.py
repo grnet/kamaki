@@ -83,6 +83,15 @@ class image_list(_init_image):
             '--container-format'),
         disk_format=ValueArgument('filter by disk format', '--disk-format'),
         name=ValueArgument('filter by name', '--name'),
+        name_pref=ValueArgument(
+            'filter by name prefix (case insensitive)',
+            '--name-prefix'),
+        name_suff=ValueArgument(
+            'filter by name suffix (case insensitive)',
+            '--name-suffix'),
+        name_like=ValueArgument(
+            'print only if name contains this (case insensitive)',
+            '--name-like'),
         size_min=IntArgument('filter by minimum size', '--size-min'),
         size_max=IntArgument('filter by maximum size', '--size-max'),
         status=ValueArgument('filter by status', '--status'),
@@ -109,6 +118,13 @@ class image_list(_init_image):
                 images.append(img)
         return images
 
+    def _filtered_by_name(self, images):
+        np, ns, nl = self['name_pref'], self['name_suff'], self['name_like']
+        return [img for img in images if (
+            (not np) or img['name'].lower().startswith(np.lower())) and (
+            (not ns) or img['name'].lower().endswith(ns.lower())) and (
+            (not nl) or nl.lower() in img['name'].lower())]
+
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self):
@@ -129,6 +145,7 @@ class image_list(_init_image):
             images = self._filtered_by_owner(detail, filters, order)
         else:
             images = self.client.list_public(detail, filters, order)
+        images = self._filtered_by_name(images)
 
         if self['more']:
             print_items(
