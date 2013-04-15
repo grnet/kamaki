@@ -38,7 +38,7 @@ from kamaki.cli.command_tree import CommandTree
 from kamaki.clients import livetest
 from kamaki.cli.errors import raiseCLIError
 
-livetest_cmds = CommandTree('livetest', 'Test clients on live servers')
+livetest_cmds = CommandTree('livetest', 'Client func. tests on live servers')
 _commands = [livetest_cmds]
 
 

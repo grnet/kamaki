@@ -91,7 +91,7 @@ DEFAULTS = {
         'url': 'https://cyclades.okeanos.grnet.gr/plankton'
     },
     'user': {
-        'cli': 'user',
+        'cli': 'astakos',
         'url': 'https://accounts.okeanos.grnet.gr'
     }
 }
