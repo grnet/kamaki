@@ -178,40 +178,40 @@ network commands
 file commands
 **************
 
-* append            Append local file to (existing) remote object
-* cat               Print remote file contents to console
-* copy              Copy an object from container to (another) container
-* create            Create a container
-* delete            Delete a container [or an object]
-* delgroup          Delete a user group
-* delmeta           Delete metadata from account, container or object
-* delpermissions    Delete all permissions set on object
-* download          Download remote object as local file
-* group             Get groups and group members
-* hashmap           Get the hash-map of an object
-* info              Get detailed info for account, containers or objects
-* list              List containers, object trees or objects in a directory
-* manifest          Create a remote file of uploaded parts by manifestation
-* meta              Get metadata for account, containers or objects
-* mkdir             Create a directory
-* move              Copy an object
-* overwrite         Overwrite part (from start to end) of a remote file
-* permissions       Get read and write permissions of an object
-* publish           Publish the object and print the public url
-* purge             Delete a container and release related data blocks
-* quota             Get quota (in KB) for account or container
-* setgroup          Set a user group
-* setmeta           Set a piece of metadata for account, container or object
-* setpermissions    Set permissions for an object
-* setquota          Set new quota (in KB) for account or container
-* setversioning     Set versioning mode (auto, none) for account or container
-* sharers           List the accounts that share objects with current user
-* touch             Create an empty object (file)
-* truncate          Truncate remote file up to a size
-* unpublish         Unpublish an object
-* upload            Upload a file
-* versioning        Get  versioning for account or container
-* versions          Get the list of object versions
+* append                Append local file to (existing) remote object
+* cat                   Print remote file contents to console
+* copy                  Copy an object from container to (another) container
+* create                Create a container
+* delete                Delete a container [or an object]
+* delgroup              Delete a user group
+* delmeta               Delete metadata from account, container or object
+* delpermissions        Delete all permissions set on object
+* download              Download remote object as local file
+* group                 Get groups and group members
+* hashmap               Get the hash-map of an object
+* info                  Get detailed info for account, containers or objects
+* list                  List containers, object trees or objects in a directory
+* manifest              Create a remote file of uploaded parts by manifestation
+* meta                  Get metadata for account, containers or objects
+* mkdir                 Create a directory
+* move                  Copy an object
+* overwrite             Overwrite part (from start to end) of a remote file
+* permissions           Get read and write permissions of an object
+* publish               Publish the object and print the public url
+* purge                 Delete a container and release related data blocks
+* quota                 Get quota (in KB) for account or container
+* setgroup              Set a user group
+* setmeta               Set a piece of metadata for account, container or object
+* setpermissions        Set permissions for an object
+* containerlimit set    Set new quota (in KB) for account or container
+* setversioning         Set versioning mode (auto, none) for account or container
+* sharers               List the accounts that share objects with current user
+* touch                 Create an empty object (file)
+* truncate              Truncate remote file up to a size
+* unpublish             Unpublish an object
+* upload                Upload a file
+* versioning            Get  versioning for account or container
+* versions              Get the list of object versions
 
 
 test commands (hidden)

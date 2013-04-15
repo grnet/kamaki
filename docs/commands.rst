@@ -333,7 +333,8 @@ file (Storage/Pithos+)
     setgroup      :  Create/update a new user group
     setmeta       :  Set a new metadatum for account [, container [or object]]
     setpermissions:  Set sharing permissions
-    setquota      :  Set new quota (in KB) for account [or container]
+    containerlimit:  Container size limit commands
+        set       :  Set copntainer data limit
     setversioning :  Set new versioning (auto, none) for account [or container]
     sharers       :  List the accounts that share objects with default account
     touch         :  Create an empty object (file)

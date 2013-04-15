@@ -1370,9 +1370,9 @@ class PithosClient(TestCase):
         AP.assert_called_once_with(update=True, metadata={'somekey': ''})
 
     @patch('%s.container_post' % pithos_pkg, return_value=FR())
-    def test_set_container_quota(self, post):
+    def test_set_container_limit(self, post):
         qu = 1024
-        self.client.set_container_quota(qu)
+        self.client.set_container_limit(qu)
         post.assert_called_once_with(update=True, quota=qu)
 
     @patch('%s.container_post' % pithos_pkg, return_value=FR())

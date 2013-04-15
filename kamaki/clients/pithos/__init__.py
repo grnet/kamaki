@@ -837,11 +837,11 @@ class PithosClient(PithosRestClient):
         """
         self.container_post(update=True, metadata={metakey: ''})
 
-    def set_container_quota(self, quota):
+    def set_container_limit(self, limit):
         """
-        :param quota: (int)
+        :param limit: (int)
         """
-        self.container_post(update=True, quota=quota)
+        self.container_post(update=True, quota=limit)
 
     def set_container_versioning(self, versioning):
         """
