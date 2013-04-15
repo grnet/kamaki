@@ -198,9 +198,11 @@ class _file_account_command(_pithos_init):
             'Set user account (not permanent)',
             ('-A', '--account'))
 
-    def _run(self):
+    def _run(self, custom_account=None):
         super(_file_account_command, self)._run()
-        if self['account']:
+        if custom_account:
+            self.client.account = custom_account
+        elif self['account']:
             self.client.account = self['account']
 
     @errors.generic.all
@@ -484,7 +486,7 @@ class file_create(_file_container_command):
         versioning=ValueArgument(
             'set container versioning (auto/none)',
             '--versioning'),
-        quota=IntArgument('set default container quota', '--quota'),
+        limit=IntArgument('set default container limit', '--limit'),
         meta=KeyValueArgument(
             'set container metadata (can be repeated)',
             '--meta')
@@ -495,7 +497,7 @@ class file_create(_file_container_command):
     @errors.pithos.container
     def _run(self):
         self.client.container_put(
-            quota=self['quota'],
+            limit=self['limit'],
             versioning=self['versioning'],
             metadata=self['meta'])
 
@@ -1745,7 +1747,7 @@ class file_delmeta(_file_container_command):
 
 @command(pithos_cmds)
 class file_quota(_file_account_command):
-    """Get quota for account or container"""
+    """Get account quota"""
 
     arguments = dict(
         in_bytes=FlagArgument('Show result in bytes', ('-b', '--bytes'))
@@ -1753,12 +1755,35 @@ class file_quota(_file_account_command):
 
     @errors.generic.all
     @errors.pithos.connection
+    def _run(self):
+        reply = self.client.get_account_quota()
+        if not self['in_bytes']:
+            for k in reply:
+                reply[k] = format_size(reply[k])
+        print_dict(pretty_keys(reply, '-'))
+
+    def main(self, custom_uuid=None):
+        super(self.__class__, self)._run(custom_account=custom_uuid)
+        self._run()
+
+
+@command(pithos_cmds)
+class file_containerlimit(_pithos_init):
+    """Container size limit commands"""
+
+
+@command(pithos_cmds)
+class file_containerlimit_get(_file_container_command):
+    """Get container size limit"""
+
+    arguments = dict(
+        in_bytes=FlagArgument('Show result in bytes', ('-b', '--bytes'))
+    )
+
+    @errors.generic.all
     @errors.pithos.container
     def _run(self):
-        if self.container:
-            reply = self.client.get_container_quota(self.container)
-        else:
-            reply = self.client.get_account_quota()
+        reply = self.client.get_container_limit(self.container)
         if not self['in_bytes']:
             for k in reply:
                 reply[k] = format_size(reply[k])
@@ -1771,53 +1796,51 @@ class file_quota(_file_account_command):
 
 
 @command(pithos_cmds)
-class file_setquota(_file_account_command):
-    """Set new quota for account or container
-    By default, quota is set in bytes
+class file_containerlimit_set(_file_account_command):
+    """Set new storage limit for a container
+    By default, the limit is set in bytes
     Users may specify a different unit, e.g:
-    /file setquota 2.3GB mycontainer
-    Accepted units: B, KiB (1024 B), KB (1000 B), MiB, MB, GiB, GB, TiB, TB
+    /file containerlimit set 2.3GB mycontainer
+    Valid units: B, KiB (1024 B), KB (1000 B), MiB, MB, GiB, GB, TiB, TB
     """
 
     @errors.generic.all
-    def _calculate_quota(self, user_input):
-        quota = 0
+    def _calculate_limit(self, user_input):
+        limit = 0
         try:
-            quota = int(user_input)
+            limit = int(user_input)
         except ValueError:
             index = 0
             digits = [str(num) for num in range(0, 10)] + ['.']
             while user_input[index] in digits:
                 index += 1
-            quota = user_input[:index]
+            limit = user_input[:index]
             format = user_input[index:]
             try:
-                return to_bytes(quota, format)
+                return to_bytes(limit, format)
             except Exception as qe:
                 msg = 'Failed to convert %s to bytes' % user_input,
                 raiseCLIError(qe, msg, details=[
-                    'Syntax: setquota <quota>[format] [container]',
-                    'e.g.: setquota 2.3GB mycontainer',
-                    'Acceptable formats:',
+                    'Syntax: containerlimit set <limit>[format] [container]',
+                    'e.g.: containerlimit set 2.3GB mycontainer',
+                    'Valid formats:',
                     '(*1024): B, KiB, MiB, GiB, TiB',
                     '(*1000): B, KB, MB, GB, TB'])
-        return quota
+        return limit
 
     @errors.generic.all
     @errors.pithos.connection
     @errors.pithos.container
-    def _run(self, quota):
+    def _run(self, limit):
         if self.container:
             self.client.container = self.container
-            self.client.set_container_quota(quota)
-        else:
-            self.client.set_account_quota(quota)
+        self.client.set_container_limit(limit)
 
-    def main(self, quota, container=None):
+    def main(self, limit, container=None):
         super(self.__class__, self)._run()
-        quota = self._calculate_quota(quota)
+        limit = self._calculate_limit(limit)
         self.container = container
-        self._run(quota)
+        self._run(limit)
 
 
 @command(pithos_cmds)

@@ -1277,11 +1277,13 @@ class PithosClient(TestCase):
         self.client.set_account_meta(metas)
         post.assert_called_once_with(update=True, metadata=metas)
 
+    """
     @patch('%s.account_post' % pithos_pkg, return_value=FR())
     def test_set_account_quota(self, post):
         qu = 1024
         self.client.set_account_quota(qu)
         post.assert_called_once_with(update=True, quota=qu)
+    """
 
     @patch('%s.account_post' % pithos_pkg, return_value=FR())
     def test_set_account_versioning(self, post):
@@ -1314,12 +1316,12 @@ class PithosClient(TestCase):
             self.assertEqual(bu_cnt, self.client.container)
 
     @patch('%s.get_container_info' % pithos_pkg, return_value=container_info)
-    def test_get_container_quota(self, GCI):
+    def test_get_container_limit(self, GCI):
         key = 'x-container-policy-quota'
         cont = 'c0n7-417'
         bu_cnt = self.client.container
         for container in (None, cont):
-            r = self.client.get_container_quota(container=container)
+            r = self.client.get_container_limit(container=container)
             self.assertEqual(r[key], container_info[key])
             self.assertEqual(GCI.mock_calls[-1], call())
             self.assertEqual(bu_cnt, self.client.container)
@@ -1370,9 +1372,9 @@ class PithosClient(TestCase):
         AP.assert_called_once_with(update=True, metadata={'somekey': ''})
 
     @patch('%s.container_post' % pithos_pkg, return_value=FR())
-    def test_set_container_quota(self, post):
+    def test_set_container_limit(self, post):
         qu = 1024
-        self.client.set_container_quota(qu)
+        self.client.set_container_limit(qu)
         post.assert_called_once_with(update=True, quota=qu)
 
     @patch('%s.container_post' % pithos_pkg, return_value=FR())

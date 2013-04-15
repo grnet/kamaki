@@ -716,11 +716,13 @@ class PithosClient(PithosRestClient):
         """
         self.account_post(update=True, metadata={metakey: ''})
 
+    """
     def set_account_quota(self, quota):
-        """
+        ""
         :param quota: (int)
-        """
+        ""
         self.account_post(update=True, quota=quota)
+    """
 
     def set_account_versioning(self, versioning):
         """
@@ -774,7 +776,7 @@ class PithosClient(PithosRestClient):
         finally:
             self.container = cnt_back_up
 
-    def get_container_quota(self, container=None):
+    def get_container_limit(self, container=None):
         """
         :param container: (str)
 
@@ -837,11 +839,11 @@ class PithosClient(PithosRestClient):
         """
         self.container_post(update=True, metadata={metakey: ''})
 
-    def set_container_quota(self, quota):
+    def set_container_limit(self, limit):
         """
-        :param quota: (int)
+        :param limit: (int)
         """
-        self.container_post(update=True, quota=quota)
+        self.container_post(update=True, quota=limit)
 
     def set_container_versioning(self, versioning):
         """

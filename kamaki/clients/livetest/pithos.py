@@ -286,8 +286,8 @@ class Pithos(livetest.Generic):
         you don't have permissions to modify those at account level
         """
 
-        newquota = 1000000
-        self.client.set_account_quota(newquota)
+        #newquota = 1000000
+        #self.client.set_account_quota(newquota)
         #r = self.client.get_account_info()
         #print(unicode(r))
         #r = self.client.get_account_quota()
@@ -396,14 +396,14 @@ class Pithos(livetest.Generic):
         r = self.client.container_put()
         self.assertEqual(r.status_code, 202)
 
-        r = self.client.get_container_quota(self.client.container)
+        r = self.client.get_container_limit(self.client.container)
         cquota = r.values()[0]
         newquota = 2 * int(cquota)
 
         r = self.client.container_put(quota=newquota)
         self.assertEqual(r.status_code, 202)
 
-        r = self.client.get_container_quota(self.client.container)
+        r = self.client.get_container_limit(self.client.container)
         xquota = int(r.values()[0])
         self.assertEqual(newquota, xquota)
 
@@ -468,15 +468,15 @@ class Pithos(livetest.Generic):
         self.assertEqual(r['x-container-meta-m2'], 'v2a')
 
         """check quota"""
-        r = self.client.get_container_quota(self.client.container)
+        r = self.client.get_container_limit(self.client.container)
         cquota = r.values()[0]
         newquota = 2 * int(cquota)
-        r = self.client.set_container_quota(newquota)
-        r = self.client.get_container_quota(self.client.container)
+        r = self.client.set_container_limit(newquota)
+        r = self.client.get_container_limit(self.client.container)
         xquota = int(r.values()[0])
         self.assertEqual(newquota, xquota)
-        r = self.client.set_container_quota(cquota)
-        r = self.client.get_container_quota(self.client.container)
+        r = self.client.set_container_limit(cquota)
+        r = self.client.get_container_limit(self.client.container)
         xquota = r.values()[0]
         self.assertEqual(cquota, xquota)
 
