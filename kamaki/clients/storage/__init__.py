@@ -280,16 +280,47 @@ class StorageClient(Client):
         if r.status_code == 404:
             raise ClientError("Object %s not found" % obj, r.status_code)
 
-    def list_objects(self):
+    def list_objects(
+            self,
+            limit=None,
+            marker=None,
+            prefix=None,
+            format=None,
+            delimiter=None,
+            path=None):
         """
+        :param limit: (integer) The amount of results requested
+
+        :param marker: (string) Return containers with name lexicographically
+            after marker
+
+        :param prefix: (string) Return objects starting with prefix
+
+        :param format: (string) reply format can be json or xml (default:json)
+
+        :param delimiter: (string) Return objects up to the delimiter
+
+        :param path: (string) assume prefix = path and delimiter = /
+            (overwrites prefix and delimiter)
+
         :returns: (dict)
 
         :raises ClientError: 404 Invalid account
         """
         self._assert_container()
-        path = path4url(self.account, self.container)
-        self.set_param('format', 'json')
-        r = self.get(path, success=(200, 204, 304, 404), )
+        restpath = path4url(self.account, self.container)
+
+        self.set_param('format', format or 'json')
+
+        self.set_param('limit', limit, iff=limit)
+        self.set_param('marker', marker, iff=marker)
+        if path:
+            self.set_param('path', path)
+        else:
+            self.set_param('prefix', prefix, iff=prefix)
+            self.set_param('delimiter', delimiter, iff=delimiter)
+
+        r = self.get(restpath, success=(200, 204, 304, 404), )
         if r.status_code == 404:
             raise ClientError(
                 "Invalid account (%s) for that container" % self.account,

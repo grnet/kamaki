@@ -386,7 +386,27 @@ class StorageClient(TestCase):
             self.assert_dicts_are_equal(r[i], object_list[i])
         exp = '/%s/%s' % (acc, cont)
         get.assert_called_once_with(exp, success=(200, 204, 304, 404))
-        SP.assert_called_once_with('format', 'json')
+        self.assertEqual(SP.mock_calls, [
+            call('format', 'json'),
+            call('limit', None, iff=None),
+            call('marker', None, iff=None),
+            call('prefix', None, iff=None),
+            call('delimiter', None, iff=None)])
+        self.client.list_objects(
+            format='xml', limit=10, marker='X', path='/lala')
+        self.assertEqual(SP.mock_calls[-4:], [
+            call('format', 'xml'),
+            call('limit', 10, iff=10),
+            call('marker', 'X', iff='X'),
+            call('path', '/lala')])
+        self.client.list_objects(delimiter='X', prefix='/lala')
+        self.assertEqual(SP.mock_calls[-5:], [
+            call('format', 'json'),
+            call('limit', None, iff=None),
+            call('marker', None, iff=None),
+            call('prefix', '/lala', iff='/lala'),
+            call('delimiter', 'X', iff='X'),
+            ])
         FR.status_code = 304
         self.assertEqual(self.client.list_objects(), [])
         FR.status_code = 404
