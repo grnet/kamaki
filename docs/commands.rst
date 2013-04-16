@@ -316,7 +316,7 @@ file (Storage/Pithos+)
     delgroup      :  Delete a user group
     delmeta       :  Delete an existing metadatum for an account [, container [or object]]
     delpermissions:  Delete all sharing permissions
-    download      :  Download a file
+    download      :  Download a file or directory
     group         :  Get user groups details
     hashmap       :  Get the hashmap of an object
     info          :  Get information for account [, container [or object]]
@@ -341,7 +341,7 @@ file (Storage/Pithos+)
     touch         :  Create an empty object (file)
     truncate      :  Truncate remote file up to a size
     unpublish     :  Unpublish an object
-    upload        :  Upload a file
+    upload        :  Upload a file or directory
     versioning    :  Get  versioning for account [or container ]
     versions      :  Get the version list of an object
 

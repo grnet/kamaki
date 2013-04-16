@@ -34,20 +34,14 @@
 from sys import stdout
 from time import localtime, strftime
 from logging import getLogger
-from os import path, makedirs
+from os import path, makedirs, walk
 
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import raiseCLIError, CLISyntaxError
 from kamaki.cli.utils import (
-    format_size,
-    to_bytes,
-    print_dict,
-    print_items,
-    pretty_keys,
-    page_hold,
-    bold,
-    ask_user)
+    format_size, to_bytes, print_dict, print_items, pretty_keys,
+    page_hold, bold, ask_user, get_path_size)
 from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
 from kamaki.cli.argument import KeyValueArgument, DateArgument
 from kamaki.cli.argument import ProgressBarArgument
@@ -599,7 +593,7 @@ class _source_destination_command(_file_container_command):
         srcobj['name'] = src_path
         return srcobj
 
-    def src_dst_pairs(self, dst_path):
+    def src_dst_pairs(self, ds_path):
         src_iter = self._get_src_objects(self.path)
         src_N = isinstance(src_iter, tuple)
         add_prefix = self['add_prefix'].strip('/')
@@ -1029,23 +1023,83 @@ class file_upload(_file_container_command):
         overwrite=FlagArgument('Force (over)write', ('-f', '--force'))
     )
 
-    def _remote_path(self, remote_path, local_path=''):
-        if self['overwrite']:
-            return remote_path
-        try:
-            r = self.client.get_object_info(remote_path)
-        except ClientError as ce:
-            if ce.status == 404:
-                return remote_path
-            raise ce
-        ctype = r.get('content-type', '')
-        if 'application/directory' == ctype.lower():
-            ret = '%s/%s' % (remote_path, local_path)
-            return self._remote_path(ret) if local_path else ret
-        raiseCLIError(
-            'Object %s already exists' % remote_path,
-            importance=1,
-            details=['use -f to overwrite or resume'])
+    def _check_container_limit(self, path):
+        cl_dict = self.client.get_container_limit()
+        container_limit = int(cl_dict['x-container-policy-quota'])
+        path_size = get_path_size(path)
+        if path_size > container_limit:
+            raiseCLIError('Container(%s) limit(%s) < size(%s) of %s' % (
+                    self.client.container,
+                    format_size(container_limit),
+                    format_size(path_size),
+                    path),
+                importance=1, details=[
+                    'Check accound limit: /file quota',
+                    'Check container limit:',
+                    '\t/file containerlimit get %s' % self.client.container,
+                    'Increase container limit:',
+                    '\t/file containerlimit set <new limit> %s' % (
+                        self.client.container)])
+
+    def _path_pairs(self, local_path, remote_path):
+        """Get pairs of local and remote paths"""
+        lpath = path.abspath(local_path)
+        self._check_container_limit(lpath)
+        short_path = lpath.split(path.sep)[-1]
+        rpath = remote_path or short_path
+        if path.isdir(lpath):
+            robj = self.client.container_get(path=rpath)
+            if robj.json and not self['overwrite']:
+                raiseCLIError(
+                    'Objects prefixed with %s already exist' % rpath,
+                    importance=1,
+                    details=['Existing objects:'] + ['\t%s:\t%s' % (
+                        o['content_type'][12:],
+                        o['name']) for o in robj.json] + [
+                        'Use -f to add, overwrite or resume'])
+            if not self['overwrite']:
+                try:
+                    topobj = self.client.get_object_info(rpath)
+                    if not self._is_dir(topobj):
+                        raiseCLIError(
+                            'Object %s exists but it is not a dir' % rpath,
+                            importance=1, details=['Use -f to overwrite'])
+                except ClientError as ce:
+                    if ce.status != 404:
+                        raise
+            prev = ''
+            for top, subdirs, files in walk(lpath):
+                if top != prev:
+                    prev = top
+                    try:
+                        rel_path = rpath + top.split(lpath)[1]
+                    except IndexError:
+                        rel_path = rpath
+                    print('mkdir %s:%s' % (self.client.container, rel_path))
+                    self.client.create_directory(rel_path)
+                for f in files:
+                    fpath = path.join(top, f)
+                    if path.isfile(fpath):
+                        yield open(fpath, 'rb'), '%s/%s' % (rel_path, f)
+                    else:
+                        print('%s is not a regular file' % fpath)
+        else:
+            if not path.isfile(lpath):
+                raiseCLIError('%s is not a regular file' % lpath)
+            try:
+                robj = self.client.get_object_info(rpath)
+                if remote_path and self._is_dir(robj):
+                    rpath += '/%s' % short_path
+                    self.client.get_object_info(rpath)
+                if not self['overwrite']:
+                    raiseCLIError(
+                        'Object %s already exists' % rpath,
+                        importance=1,
+                        details=['use -f to overwrite or resume'])
+            except ClientError as ce:
+                if ce.status != 404:
+                    raise
+            yield open(lpath, 'rb'), rpath
 
     @errors.generic.all
     @errors.pithos.connection
@@ -1062,19 +1116,17 @@ class file_upload(_file_container_command):
             content_disposition=self['content_disposition'],
             sharing=self['sharing'],
             public=self['public'])
-        remote_path = self._remote_path(remote_path, local_path)
-        with open(path.abspath(local_path), 'rb') as f:
+        for f, rpath in self._path_pairs(local_path, remote_path):
+            print('%s --> %s:%s' % (f.name, self.client.container, rpath))
             if self['unchunked']:
                 self.client.upload_object_unchunked(
-                    remote_path,
-                    f,
-                    etag=self['etag'],
-                    withHashFile=self['use_hashes'],
+                    rpath, f,
+                    etag=self['etag'], withHashFile=self['use_hashes'],
                     **params)
             else:
                 try:
                     (progress_bar, upload_cb) = self._safe_progress_bar(
-                        'Uploading')
+                        'Uploading %s' % f.name.split(path.sep)[-1])
                     if progress_bar:
                         hash_bar = progress_bar.clone()
                         hash_cb = hash_bar.get_generator(
@@ -1082,10 +1134,8 @@ class file_upload(_file_container_command):
                     else:
                         hash_cb = None
                     self.client.upload_object(
-                        remote_path,
-                        f,
-                        hash_cb=hash_cb,
-                        upload_cb=upload_cb,
+                        rpath, f,
+                        hash_cb=hash_cb, upload_cb=upload_cb,
                         **params)
                 except Exception:
                     self._safe_progress_bar_finish(progress_bar)
