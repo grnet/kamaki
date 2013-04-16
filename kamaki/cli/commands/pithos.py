@@ -40,14 +40,8 @@ from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import raiseCLIError, CLISyntaxError
 from kamaki.cli.utils import (
-    format_size,
-    to_bytes,
-    print_dict,
-    print_items,
-    pretty_keys,
-    page_hold,
-    bold,
-    ask_user)
+    format_size, to_bytes, print_dict, print_items, pretty_keys,
+    page_hold, bold, ask_user, get_path_size)
 from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
 from kamaki.cli.argument import KeyValueArgument, DateArgument
 from kamaki.cli.argument import ProgressBarArgument
@@ -1029,9 +1023,28 @@ class file_upload(_file_container_command):
         overwrite=FlagArgument('Force (over)write', ('-f', '--force'))
     )
 
+    def _check_container_limit(self, path):
+        cl_dict = self.client.get_container_limit()
+        container_limit = int(cl_dict['x-container-policy-quota'])
+        path_size = get_path_size(path)
+        if path_size > container_limit:
+            raiseCLIError('Container(%s) limit(%s) < size(%s) of %s' % (
+                    self.client.container,
+                    format_size(container_limit),
+                    format_size(path_size),
+                    path),
+                importance=1, details=[
+                    'Check accound limit: /file quota',
+                    'Check container limit:',
+                    '\t/file containerlimit get %s' % self.client.container,
+                    'Increase container limit:',
+                    '\t/file containerlimit set <new limit> %s' % (
+                        self.client.container)])
+
     def _path_pairs(self, local_path, remote_path):
         """Get pairs of local and remote paths"""
         lpath = path.abspath(local_path)
+        self._check_container_limit(lpath)
         short_path = lpath.split(path.sep)[-1]
         rpath = remote_path or short_path
         if path.isdir(lpath):
@@ -1067,11 +1080,12 @@ class file_upload(_file_container_command):
                 for f in files:
                     fpath = path.join(top, f)
                     if path.isfile(fpath):
-                        yield open(fpath, 'rb'), '%s%s/%s' % (
-                            rpath, rel_path, f)
+                        yield open(fpath, 'rb'), '%s/%s' % (rel_path, f)
                     else:
                         print('%s is not a regular file' % fpath)
         else:
+            if not path.isfile(lpath):
+                raiseCLIError('%s is not a regular file' % lpath)
             try:
                 robj = self.client.get_object_info(rpath)
                 if remote_path and self._is_dir(robj):
@@ -1102,7 +1116,6 @@ class file_upload(_file_container_command):
             content_disposition=self['content_disposition'],
             sharing=self['sharing'],
             public=self['public'])
-
         for f, rpath in self._path_pairs(local_path, remote_path):
             print('%s --> %s:%s' % (f.name, self.client.container, rpath))
             if self['unchunked']:
