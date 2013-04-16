@@ -186,7 +186,7 @@ file commands
 * delgroup              Delete a user group
 * delmeta               Delete metadata from account, container or object
 * delpermissions        Delete all permissions set on object
-* download              Download remote object as local file
+* download              Download remote object(s) as local file(s)
 * group                 Get groups and group members
 * hashmap               Get the hash-map of an object
 * info                  Get detailed info for account, containers or objects
@@ -210,7 +210,7 @@ file commands
 * touch                 Create an empty object (file)
 * truncate              Truncate remote file up to a size
 * unpublish             Unpublish an object
-* upload                Upload a file
+* upload                Upload a file or directory
 * versioning            Get  versioning for account or container
 * versions              Get the list of object versions
 
