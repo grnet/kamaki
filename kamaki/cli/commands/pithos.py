@@ -1020,7 +1020,10 @@ class file_upload(_file_container_command):
             'do not show progress bar',
             ('-N', '--no-progress-bar'),
             default=False),
-        overwrite=FlagArgument('Force (over)write', ('-f', '--force'))
+        overwrite=FlagArgument('Force (over)write', ('-f', '--force')),
+        recursive=FlagArgument(
+            'Recursively upload directory *contents* + subdirectories',
+            ('-R', '--recursive'))
     )
 
     def _check_container_limit(self, path):
@@ -1048,10 +1051,12 @@ class file_upload(_file_container_command):
     def _path_pairs(self, local_path, remote_path):
         """Get pairs of local and remote paths"""
         lpath = path.abspath(local_path)
-        self._check_container_limit(lpath)
         short_path = lpath.split(path.sep)[-1]
         rpath = remote_path or short_path
         if path.isdir(lpath):
+            if not self['recursive']:
+                raiseCLIError('%s is a directory' % lpath, details=[
+                    'Use -R to upload directory contents'])
             robj = self.client.container_get(path=rpath)
             if robj.json and not self['overwrite']:
                 raiseCLIError(
@@ -1071,6 +1076,7 @@ class file_upload(_file_container_command):
                 except ClientError as ce:
                     if ce.status != 404:
                         raise
+            self._check_container_limit(lpath)
             prev = ''
             for top, subdirs, files in walk(lpath):
                 if top != prev:
@@ -1103,6 +1109,7 @@ class file_upload(_file_container_command):
             except ClientError as ce:
                 if ce.status != 404:
                     raise
+            self._check_container_limit(lpath)
             yield open(lpath, 'rb'), rpath
 
     @errors.generic.all
