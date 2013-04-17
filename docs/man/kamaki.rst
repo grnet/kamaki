@@ -36,9 +36,9 @@ history
 
     Access kamaki user history, which is stored in ~/.kamaki.history file.
 
-astakos
+user
 
-    Get information from astakos API
+    Get information from Astakos API
 
 server
 
@@ -54,26 +54,20 @@ network
 
 image 
 
-    Manage compute API and Plankton images.
+    Manage images on Plankton (and Compute).
 
-store
+file
 
-    Manage store API.
+    Manage Pithos+ API.
 
 
 Hidden command groups
 ---------------------
 
-quotaholder
+livetest
 
-    A client for quotaholder API. to enable:
-    kamaki config set quotaholder.cli hotaholder_cli
-    kamaki config set quotaholder.url <quotaholder server url>
-
-test
-
-    Prepared unit-tests for developers (experimental). To enable:
-    kamaki config set test.cli test_cli
+    LIve tests that check kamaki against running services. To enable:
+    kamaki config set livetest.cli livetest
 
 
 Options
@@ -109,8 +103,8 @@ Command user history, as stored in ~/.kamaki.history
 * run       run/show previously executed command(s)
 
 
-astakos commands
-****************
+user commands
+*************
 
 * authenticate      Authenticate a user, show user information
 
@@ -143,8 +137,8 @@ flavor commands
 * info       get flavor details
 
 
-image commands and options
-**************************
+image commands
+**************
 
 * addmember     Add a member to an image
 * addproperty   Add an OS-related property to an image
@@ -152,15 +146,21 @@ image commands and options
 * delmember     Remove a member from an image
 * delproperty   Delete a property of an image
 * info          Get detailed information on an image
-* list          List images
 * members       Get image members
 * meta          Get image metadata
 * properties    Get properties related to OS installation in an image
-* public        List public images
+* list          List images accessible by user
 * register      (Re)Register an image
 * setmembers    Set the members of an image
 * setproperty   Update an existing property in an image
 * shared        List images shared by a member
+* compute       Compute Image API commands
+    * list          List images
+    * delete        Delete image
+    * info          Get image details
+    * properties    Get image properties
+    * delproperty   Delete an image property
+    * setproperty   Update an image property
 
 
 network commands
@@ -175,56 +175,51 @@ network commands
 * rename        Set the name of a network
 
 
-store commands
+file commands
 **************
 
-* append            Append local file to (existing) remote object
-* cat               Print remote file contents to console
-* copy              Copy an object from container to (another) container
-* create            Create a container
-* delete            Delete a container [or an object]
-* delgroup          Delete a user group
-* delmeta           Delete metadata from account, container or object
-* delpermissions    Delete all permissions set on object
-* download          Download remote object as local file
-* group             Get groups and group members
-* hashmap           Get the hash-map of an object
-* info              Get detailed info for account, containers or objects
-* list              List containers, object trees or objects in a directory
-* manifest          Create a remote file of uploaded parts by manifestation
-* meta              Get metadata for account, containers or objects
-* mkdir             Create a directory
-* move              Copy an object
-* overwrite         Overwrite part (from start to end) of a remote file
-* permissions       Get read and write permissions of an object
-* publish           Publish the object and print the public url
-* purge             Delete a container and release related data blocks
-* quota             Get quota (in KB) for account or container
-* setgroup          Set a user group
-* setmeta           Set a piece of metadata for account, container or object
-* setpermissions    Set permissions for an object
-* setquota          Set new quota (in KB) for account or container
-* setversioning     Set versioning mode (auto, none) for account or container
-* sharers           List the accounts that share objects with current user
-* touch             Create an empty object (file)
-* truncate          Truncate remote file up to a size
-* unpublish         Unpublish an object
-* upload            Upload a file
-* versioning        Get  versioning for account or container
-* versions          Get the list of object versions
-
-
-quotaholder commands (hidden)
-*****************************
-
-accept, ack, add, create, get, init, issue, list, query, reject, release, reset, resolve, set
+* append                Append local file to (existing) remote object
+* cat                   Print remote file contents to console
+* copy                  Copy an object from container to (another) container
+* create                Create a container
+* delete                Delete a container [or an object]
+* delgroup              Delete a user group
+* delmeta               Delete metadata from account, container or object
+* delpermissions        Delete all permissions set on object
+* download              Download remote object(s) as local file(s)
+* group                 Get groups and group members
+* hashmap               Get the hash-map of an object
+* info                  Get detailed info for account, containers or objects
+* list                  List containers, object trees or objects in a directory
+* manifest              Create a remote file of uploaded parts by manifestation
+* meta                  Get metadata for account, containers or objects
+* mkdir                 Create a directory
+* move                  Copy an object
+* overwrite             Overwrite part (from start to end) of a remote file
+* permissions           Get read and write permissions of an object
+* publish               Publish the object and print the public url
+* purge                 Delete a container and release related data blocks
+* quota                 Get quota (in KB) for account or container
+* setgroup              Set a user group
+* setmeta               Set a piece of metadata for account, container or object
+* setpermissions        Set permissions for an object
+* containerlimit set    Set new limit for container
+* containerlimit get    Get container limit
+* setversioning         Set versioning mode (auto, none) for account or container
+* sharers               List the accounts that share objects with current user
+* touch                 Create an empty object (file)
+* truncate              Truncate remote file up to a size
+* unpublish             Unpublish an object
+* upload                Upload a file or directory
+* versioning            Get  versioning for account or container
+* versions              Get the list of object versions
 
 
 test commands (hidden)
 **********************
 
 * all         test all clients
-* args        Test how arguments are treated by kamaki
+* args        test how arguments are treated by kamaki
 * astakos     test Astakos client
 * cyclades    test Cyclades client
 * error       Create an error message with optional message
@@ -236,5 +231,5 @@ test commands (hidden)
 Author
 ------
 
-GRNET development team <synnefo-devel@googlegroups.com>.
+Synnefo development team <synnefo-devel@googlegroups.com>.
 

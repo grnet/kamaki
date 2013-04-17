@@ -35,10 +35,33 @@ import time
 import datetime
 from os import urandom
 from tempfile import NamedTemporaryFile
+from string import ascii_letters
 
 from kamaki.clients import livetest, ClientError
 from kamaki.clients.pithos import PithosClient
 from kamaki.clients.astakos import AstakosClient
+
+
+def chargen():
+    """10 + 2 * 26 + 26 = 88"""
+    while True:
+        for CH in xrange(10):
+            yield '%s' % CH
+        for CH in ascii_letters:
+            yield CH
+        for CH in '~!@#$%^&*()_+`-=:";|<>?,./':
+            yield CH
+
+
+def sample_block(f, block):
+    block_size = 4 * 1024 * 1024
+    f.seek(block * block_size)
+    ch = [f.read(1)]
+    f.seek(block_size / 2, 1)
+    ch.append(f.read(1))
+    f.seek((block + 1) * block_size - 1)
+    ch.append(f.read(1))
+    return ch
 
 
 class Pithos(livetest.Generic):
@@ -47,11 +70,11 @@ class Pithos(livetest.Generic):
 
     def setUp(self):
         self.client = PithosClient(
-            self['store', 'url'],
-            self['store', 'token'],
+            self['file', 'url'],
+            self['file', 'token'],
             AstakosClient(
-                self['astakos', 'url'],
-                self['store', 'token']
+                self['user', 'url'],
+                self['file', 'token']
             ).term('uuid'))
 
         self.now = time.mktime(time.gmtime())
@@ -154,12 +177,10 @@ class Pithos(livetest.Generic):
                 if_modified_since=now_formated,
                 success=(204, 304, 412))
             sc1 = r1.status_code
-            r1.release()
             r2 = self.client.account_head(
                 if_unmodified_since=now_formated,
                 success=(204, 304, 412))
             sc2 = r2.status_code
-            r2.release()
             self.assertNotEqual(sc1, sc2)
 
     def test_account_get(self):
@@ -199,12 +220,10 @@ class Pithos(livetest.Generic):
                 if_modified_since=now_formated,
                 success=(200, 304, 412))
             sc1 = r1.status_code
-            r1.release()
             r2 = self.client.account_get(
                 if_unmodified_since=now_formated,
                 success=(200, 304, 412))
             sc2 = r2.status_code
-            r2.release()
             self.assertNotEqual(sc1, sc2)
 
         """Check sharing_accounts"""
@@ -224,10 +243,25 @@ class Pithos(livetest.Generic):
             account_post internally
         """
         u1 = self.client.account
-        u2 = self.client.account
-        self.client.set_account_group(grpName, [u1, u2])
+        #  Invalid display name
+        u2 = '1nc0r3c7-d15p14y-n4m3'
+        #  valid display name
+        u3 = '6488c1b2-cb06-40a8-a02a-d474b8d29c59'
+        self.assertRaises(
+            ClientError,
+            self.client.set_account_group,
+            grpName, [u1, u2])
+        self.client.set_account_group(grpName, [u1])
         r = self.client.get_account_group()
-        self.assertEqual(r['x-account-group-' + grpName], '%s,%s' % (u1, u2))
+        self.assertEqual(r['x-account-group-' + grpName], '%s' % u1)
+        try:
+            self.client.set_account_group(grpName, [u1, u3])
+            r = self.client.get_account_group()
+            self.assertEqual(
+                r['x-account-group-' + grpName],
+                '%s,%s' % (u1, u3))
+        except:
+            print('\tInvalid user id %s (it is ok, though)' % u3)
         self.client.del_account_group(grpName)
         r = self.client.get_account_group()
         self.assertTrue('x-account-group-' + grpName not in r)
@@ -252,8 +286,8 @@ class Pithos(livetest.Generic):
         you don't have permissions to modify those at account level
         """
 
-        newquota = 1000000
-        self.client.set_account_quota(newquota)
+        #newquota = 1000000
+        #self.client.set_account_quota(newquota)
         #r = self.client.get_account_info()
         #print(unicode(r))
         #r = self.client.get_account_quota()
@@ -281,12 +315,10 @@ class Pithos(livetest.Generic):
                 if_modified_since=now_formated,
                 success=(204, 304, 412))
             sc1 = r1.status_code
-            r1.release()
             r2 = self.client.container_head(
                 if_unmodified_since=now_formated,
                 success=(204, 304, 412))
             sc2 = r2.status_code
-            r2.release()
             self.assertNotEqual(sc1, sc2)
 
         """Check container object meta"""
@@ -348,12 +380,10 @@ class Pithos(livetest.Generic):
                 if_modified_since=now_formated,
                 success=(200, 304, 412))
             sc1 = r1.status_code
-            r1.release()
             r2 = self.client.container_get(
                 if_unmodified_since=now_formated,
                 success=(200, 304, 412))
             sc2 = r2.status_code
-            r2.release()
             self.assertNotEqual(sc1, sc2)
 
     def test_container_put(self):
@@ -366,14 +396,14 @@ class Pithos(livetest.Generic):
         r = self.client.container_put()
         self.assertEqual(r.status_code, 202)
 
-        r = self.client.get_container_quota(self.client.container)
+        r = self.client.get_container_limit(self.client.container)
         cquota = r.values()[0]
         newquota = 2 * int(cquota)
 
         r = self.client.container_put(quota=newquota)
         self.assertEqual(r.status_code, 202)
 
-        r = self.client.get_container_quota(self.client.container)
+        r = self.client.get_container_limit(self.client.container)
         xquota = int(r.values()[0])
         self.assertEqual(newquota, xquota)
 
@@ -438,15 +468,15 @@ class Pithos(livetest.Generic):
         self.assertEqual(r['x-container-meta-m2'], 'v2a')
 
         """check quota"""
-        r = self.client.get_container_quota(self.client.container)
+        r = self.client.get_container_limit(self.client.container)
         cquota = r.values()[0]
         newquota = 2 * int(cquota)
-        r = self.client.set_container_quota(newquota)
-        r = self.client.get_container_quota(self.client.container)
+        r = self.client.set_container_limit(newquota)
+        r = self.client.get_container_limit(self.client.container)
         xquota = int(r.values()[0])
         self.assertEqual(newquota, xquota)
-        r = self.client.set_container_quota(cquota)
-        r = self.client.get_container_quota(self.client.container)
+        r = self.client.set_container_limit(cquota)
+        r = self.client.get_container_limit(self.client.container)
         xquota = r.values()[0]
         self.assertEqual(cquota, xquota)
 
@@ -564,13 +594,11 @@ class Pithos(livetest.Generic):
                 if_modified_since=now_formated,
                 success=(200, 304, 412))
             sc1 = r1.status_code
-            r1.release()
             r2 = self.client.object_head(
                 obj,
                 if_unmodified_since=now_formated,
                 success=(200, 304, 412))
             sc2 = r2.status_code
-            r2.release()
             self.assertNotEqual(sc1, sc2)
 
     def test_object_get(self):
@@ -625,13 +653,11 @@ class Pithos(livetest.Generic):
                 if_modified_since=now_formated,
                 success=(200, 304, 412))
             sc1 = r1.status_code
-            r1.release()
             r2 = self.client.object_get(
                 obj,
                 if_unmodified_since=now_formated,
                 success=(200, 304, 412))
             sc2 = r2.status_code
-            r2.release()
             self.assertNotEqual(sc1, sc2)
 
         """Upload an object to download"""
@@ -650,6 +676,20 @@ class Pithos(livetest.Generic):
             src_f.seek(pos)
             dnl_f.seek(pos)
             self.assertEqual(src_f.read(10), dnl_f.read(10))
+
+        """Upload a boring file"""
+        trg_fname = 'boringfile_%s' % self.now
+        src_f = self.create_boring_file(42)
+        print('\tUploading boring file...')
+        self.client.upload_object(trg_fname, src_f)
+        print('\tDownloading boring file...')
+        self.files.append(NamedTemporaryFile())
+        dnl_f = self.files[-1]
+        self.client.download_object(trg_fname, dnl_f)
+
+        print('\tCheck if files match...')
+        for i in range(42):
+            self.assertEqual(sample_block(src_f, i), sample_block(dnl_f, i))
 
     def test_object_put(self):
         """Test object_PUT"""
@@ -835,6 +875,7 @@ class Pithos(livetest.Generic):
         self._test_0110_object_copy()
 
     def _test_0110_object_copy(self):
+        #  TODO: check with source_account option
         self.client.container = self.c2
         obj = 'test2'
 
@@ -1243,3 +1284,18 @@ class Pithos(livetest.Generic):
             bytelist)
         f.seek(0)
         return f
+
+    def create_boring_file(self, num_of_blocks):
+        """Create a file with some blocks being the same"""
+        self.files.append(NamedTemporaryFile())
+        tmpFile = self.files[-1]
+        block_size = 4 * 1024 * 1024
+        print('\n\tCreate boring file of %s blocks' % num_of_blocks)
+        chars = chargen()
+        while num_of_blocks:
+            fslice = 3 if num_of_blocks > 3 else num_of_blocks
+            tmpFile.write(fslice * block_size * chars.next())
+            num_of_blocks -= fslice
+        print('\t\tDone')
+        tmpFile.seek(0)
+        return tmpFile

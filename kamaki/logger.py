@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-
-# Copyright 2011 GRNET S.A. All rights reserved.
+# Copyright 2013 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -33,47 +31,47 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from setuptools import setup
-from sys import version_info
-
-import kamaki
+import logging
 
 
-optional = ['ansicolors', 'mock>=1.0.1']
+LOG_FILE = [
+    '/var/log/kamaki.log',
+    '/var/log/kamaki/clients.log',
+    '/tmp/kamaki.log',
+    'kamaki.log']
 
-requires = ['objpool>=0.2', 'progress>=1.1']
 
-if version_info < (2, 7):
-    requires.append('argparse')
+def get_log_filename():
+    for logfile in LOG_FILE:
+        try:
+            with open(logfile, 'a+') as f:
+                f.seek(0)
+        except IOError:
+            continue
+        return logfile
+    print('Failed to open any logging locations, file-logging aborted')
 
-setup(
-    name='kamaki',
-    version=kamaki.__version__,
-    description='A command-line tool for managing clouds',
-    long_description=open('README.rst').read(),
-    url='http://code.grnet.gr/projects/kamaki',
-    license='BSD',
-    author='Synnefo development team',
-    author_email='synnefo-devel@googlegroups.com',
-    maintainer='Synnefo development team',
-    maintainer_email='synnefo-devel@googlegroups.com',
-    packages=[
-        'kamaki',
-        'kamaki.cli',
-        'kamaki.cli.commands',
-        'kamaki.clients',
-        'kamaki.clients.utils',
-        'kamaki.clients.livetest',
-        'kamaki.clients.image',
-        'kamaki.clients.storage',
-        'kamaki.clients.pithos',
-        'kamaki.clients.astakos',
-        'kamaki.clients.compute',
-        'kamaki.clients.cyclades',
-    ],
-    include_package_data=True,
-    entry_points={
-        'console_scripts': ['kamaki = kamaki.cli:main']
-    },
-    install_requires=requires
-)
+
+def set_log_filename(filename):
+    global LOG_FILE
+    LOG_FILE = [filename] + LOG_FILE
+
+
+def add_file_logger(
+        name, caller,
+        level=logging.DEBUG, prefix='', filename='/tmp/kamaki.log'):
+    try:
+        assert caller and filename
+        logger = logging.getLogger(name)
+        h = logging.FileHandler(filename)
+        fmt = logging.Formatter(
+            '%(asctime)s ' + caller + ' %(name)s-%(levelname)s: %(message)s')
+        h.setFormatter(fmt)
+        logger.addHandler(h)
+        logger.setLevel(level)
+    except Exception:
+        pass
+
+
+def get_logger(name):
+    return logging.getLogger(name)

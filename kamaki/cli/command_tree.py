@@ -31,6 +31,8 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+from kamaki.clients import Client
+
 
 class Command(object):
     """Store a command and the next-level (2 levels)"""
@@ -70,7 +72,7 @@ class Command(object):
 
     @property
     def is_command(self):
-        return self.cmd_class is not None
+        return self.cmd_class is not None and len(self.subcommands) == 0
 
     @property
     def has_description(self):
@@ -153,7 +155,7 @@ class CommandTree(object):
                 self._all_commands[path] = new_cmd
                 cmd.add_subcmd(new_cmd)
                 cmd = new_cmd
-        if cmd_class is not None:
+        if cmd_class:
             cmd.set_class(cmd_class)
         if description is not None:
             cmd.help = description

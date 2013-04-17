@@ -39,16 +39,24 @@ from kamaki.clients.image import ImageClient
 from kamaki.clients import ClientError
 
 
+IMGMETA = set([
+    'id', 'name', 'checksum', 'container-format', 'location', 'disk-format',
+    'is-public', 'status', 'deleted-at', 'updated-at', 'created-at', 'owner',
+    'size'])
+
+
 class Image(livetest.Generic):
     def setUp(self):
         self.now = time.mktime(time.gmtime())
 
         self.imgname = 'img_%s' % self.now
         url = self['image', 'url']
+        print('::::%s::::' % url)
         self.client = ImageClient(url, self['token'])
         cyclades_url = self['compute', 'url']
         self.cyclades = CycladesClient(cyclades_url, self['token'])
         self._imglist = {}
+        self._imgdetails = {}
 
     def test_000(self):
         self._prepare_img()
@@ -56,29 +64,30 @@ class Image(livetest.Generic):
 
     def _prepare_img(self):
         f = open(self['image', 'local_path'], 'rb')
-        (token, uuid) = (self['token'], self['store', 'account'])
+        (token, uuid) = (self['token'], self['file', 'account'])
         if not uuid:
             from kamaki.clients.astakos import AstakosClient
-            uuid = AstakosClient(self['astakos', 'url'], token).term('uuid')
+            uuid = AstakosClient(self['user', 'url'], token).term('uuid')
         from kamaki.clients.pithos import PithosClient
-        self.pithcli = PithosClient(self['store', 'url'], token, uuid)
+        self.pithcli = PithosClient(self['file', 'url'], token, uuid)
         cont = 'cont_%s' % self.now
         self.pithcli.container = cont
         self.obj = 'obj_%s' % self.now
         print('\t- Create container %s on Pithos server' % cont)
         self.pithcli.container_put()
         self.location = 'pithos://%s/%s/%s' % (uuid, cont, self.obj)
-        print('\t- Upload an image at %s...' % self.location)
+        print('\t- Upload an image at %s...\n' % self.location)
         self.pithcli.upload_object(self.obj, f)
         print('\t- ok')
         f.close()
 
-        self.client.register(
+        r = self.client.register(
             self.imgname,
             self.location,
             params=dict(is_public=True))
-        img = self._get_img_by_name(self.imgname)
-        self._imglist[self.imgname] = img
+        self._imglist[self.imgname] = dict(
+            name=r['x-image-meta-name'], id=r['x-image-meta-id'])
+        self._imgdetails[self.imgname] = r
 
     def tearDown(self):
         for img in self._imglist.values():
@@ -200,16 +209,9 @@ class Image(livetest.Generic):
         self.assertTrue(self._imglist)
         for img in self._imglist.values():
             self.assertTrue(img is not None)
-
-    def test_reregister(self):
-        """Test reregister"""
-        self._prepare_img()
-        self._test_reregister()
-
-    def _test_reregister(self):
-        self.client.reregister(
-            self.location,
-            properties=dict(my_property='some_value'))
+            r = set(self._imgdetails[img['name']].keys())
+            self.assertTrue(
+                r.issubset(['x-image-meta-%s' % k for k in IMGMETA]))
 
     def test_set_members(self):
         """Test set_members"""

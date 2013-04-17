@@ -6,31 +6,31 @@ APIs code
 Command Specifications
 ----------------------
 
-astakos
-^^^^^^^
+user
+^^^^
 
-.. automodule:: kamaki.cli.commands.astakos_cli
+.. automodule:: kamaki.cli.commands.user
     :members:
     :undoc-members:
 
 cyclades (server, flavor, network)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. automodule:: kamaki.cli.commands.cyclades_cli
+.. automodule:: kamaki.cli.commands.cyclades
     :members:
     :undoc-members:
 
-pithos (store)
-^^^^^^^^^^^^^^
+pithos (file)
+^^^^^^^^^^^^^
 
-.. automodule:: kamaki.cli.commands.pithos_cli
+.. automodule:: kamaki.cli.commands.pithos
     :members:
     :undoc-members:
 
 image
 ^^^^^
 
-.. automodule:: kamaki.cli.commands.image_cli
+.. automodule:: kamaki.cli.commands.image
     :members:
     :undoc-members:
 
@@ -40,14 +40,14 @@ Kamaki commands
 config
 """"""
 
-.. automodule:: kamaki.cli.commands.config_cli
+.. automodule:: kamaki.cli.commands.config
     :members:
     :undoc-members:
 
 history
 """""""
 
-.. automodule:: kamaki.cli.commands.history_cli
+.. automodule:: kamaki.cli.commands.history
     :members:
     :undoc-members:
 
@@ -121,19 +121,13 @@ utils
 The clients API
 ---------------
 
-Imports
-^^^^^^^
-
-.. toctree::
-    connection
-
 Modules list
 ^^^^^^^^^^^^
 
-compute_rest_api
+compute ReST API
 ^^^^^^^^^^^^^^^^
 
-.. automodule:: kamaki.clients.compute_rest_api
+.. automodule:: kamaki.clients.compute.rest_api
     :members:
     :show-inheritance:
     :undoc-members:
@@ -147,6 +141,14 @@ compute
     :show-inheritance:
     :undoc-members:
 
+
+cyclades ReST API
+^^^^^^^^^^^^^^^^^
+
+.. automodule:: kamaki.clients.cyclades.rest_api
+    :members:
+    :show-inheritance:
+    :undoc-members:
 
 cyclades
 ^^^^^^^^
@@ -165,6 +167,13 @@ storage
     :show-inheritance:
     :undoc-members:
 
+pithos_rest_api
+^^^^^^^^^^^^^^^
+
+.. automodule:: kamaki.clients.pithos.rest_api
+    :members:
+    :show-inheritance:
+    :undoc-members:
 
 pithos
 ^^^^^^
@@ -173,15 +182,6 @@ pithos
     :members:
     :show-inheritance:
     :undoc-members:
-
-pithos_rest_api
-^^^^^^^^^^^^^^^
-
-.. automodule:: kamaki.clients.pithos_rest_api
-    :members:
-    :show-inheritance:
-    :undoc-members:
-
 
 image
 ^^^^^

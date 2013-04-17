@@ -69,7 +69,7 @@ class generic(object):
                 if ce.status == 401:
                     raiseCLIError(ce, 'Authorization failed', details=[
                         'Make sure a valid token is provided:',
-                        '  to check if token is valid: /astakos authenticate',
+                        '  to check if token is valid: /user authenticate',
                         '  to set token: /config set [.server.]token <token>',
                         '  to get current token: /config get [server.]token'])
                 elif ce.status in range(-12, 200) + [302, 401, 403, 500]:
@@ -91,7 +91,7 @@ class generic(object):
         return _raise
 
 
-class astakos(object):
+class user(object):
 
     _token_details = [
         'To check default token: /config get token',
@@ -113,9 +113,9 @@ class astakos(object):
             if not getattr(client, 'base_url', False):
                 msg = 'Missing astakos server URL'
                 raise CLIError(msg, importance=3, details=[
-                    'Check if astakos.url is set correctly',
-                    'To get astakos url:   /config get astakos.url',
-                    'To set astakos url:   /config set astakos.url <URL>'])
+                    'Check if user.url is set correctly',
+                    'To get astakos url:   /config get user.url',
+                    'To set astakos url:   /config set user.url <URL>'])
             return r
         return _raise
 
@@ -230,7 +230,7 @@ class cyclades(object):
             except ClientError as ce:
                 if network_id and ce.status == 400:
                     msg = 'Network with id %s does not exist' % network_id,
-                    raiseCLIError(ce, msg, details=self.about_network_id)
+                    raiseCLIError(ce, msg, details=this.about_network_id)
                 elif network_id or ce.status == 421:
                     msg = 'Network with id %s is in use' % network_id,
                     raiseCLIError(ce, msg, details=[
@@ -406,15 +406,29 @@ class plankton(object):
 class pithos(object):
     container_howto = [
         'To specify a container:',
-        '  1. Set store.container variable (permanent)',
-        '     /config set store.container <container>',
+        '  1. Set file.container variable (permanent)',
+        '     /config set file.container <container>',
         '  2. --container=<container> (temporary, overrides 1)',
         '  3. Use the container:path format (temporary, overrides all)',
-        'For a list of containers: /store list']
+        'For a list of containers: /file list']
 
     @classmethod
     def connection(this, foo):
-        return generic._connection(foo, 'store.url')
+        return generic._connection(foo, 'file.url')
+
+    @classmethod
+    def account(this, foo):
+        def _raise(self, *args, **kwargs):
+            try:
+                return foo(self, *args, **kwargs)
+            except ClientError as ce:
+                if ce.status == 403:
+                    raiseCLIError(
+                        ce,
+                        'Invalid account credentials for this operation',
+                        details=['Check user account settings'])
+                raise
+        return _raise
 
     @classmethod
     def quota(this, foo):
@@ -425,10 +439,10 @@ class pithos(object):
                 if ce.status == 413:
                     raiseCLIError(ce, 'User quota exceeded', details=[
                         '* get quotas:',
-                        '  * upper total limit:      /store quota',
-                        '  * container limit:  /store quota <container>',
+                        '  * upper total limit:      /file quota',
+                        '  * container limit:  /file quota <container>',
                         '* set a higher quota (if permitted):',
-                        '    /store setquota <quota>[unit] <container>'
+                        '    /file setquota <quota>[unit] <container>'
                         '    as long as <container quota> <= <total quota>'])
                 raise
         return _raise
