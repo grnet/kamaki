@@ -388,7 +388,15 @@ def main():
         if parser.arguments['version'].value:
             exit(0)
 
+        log_file = parser.arguments['config'].get('global', 'log_file')
+        if log_file:
+            from kamaki.logger import set_log_filename
+            set_log_filename(log_file)
+
         _init_session(parser.arguments)
+
+        from kamaki.cli.utils import suggest_missing
+        suggest_missing()
 
         if parser.unparsed:
             run_one_cmd(exe, parser)

@@ -34,8 +34,19 @@
 from sys import stdout, stdin
 from re import compile as regex_compile
 from time import sleep
+from os import walk, path
 
 from kamaki.cli.errors import raiseCLIError
+
+suggest = dict(
+    ansicolors=dict(
+        active=False,
+        url='#install-ansicolors-progress',
+        description='Add colors to console responses'),
+    progress=dict(
+        active=False,
+        url='#install-ansicolors-progress',
+        description='Add progress bars to some commands'))
 
 try:
     from colors import magenta, red, yellow, bold
@@ -44,6 +55,24 @@ except ImportError:
     def dummy(val):
         return val
     red = yellow = magenta = bold = dummy
+    suggest['ansicolors']['active'] = True
+
+try:
+    from progress.bar import ShadyBar
+except ImportError:
+    suggest['progress']['active'] = True
+
+
+def suggest_missing(miss=None):
+    global suggest
+    kamaki_docs = 'http://www.synnefo.org/docs/kamaki/latest'
+    for k, v in (miss, suggest[miss]) if miss else suggest.items():
+        if v['active'] and stdout.isatty():
+            print('Suggestion: for better user experience install %s' % k)
+            print('\t%s' % v['description'])
+            print('\tIt is easy, here are the instructions:')
+            print('\t%s/installation.html%s' % (kamaki_docs, v['url']))
+            print('')
 
 
 def remove_colors():
@@ -99,6 +128,7 @@ def print_dict(
 
     counter = 1
     for key, val in sorted(d.items()):
+        key = '%s' % key
         if key in exclude:
             continue
         print_str = ''
@@ -106,8 +136,8 @@ def print_dict(
             print_str = '%s. ' % counter
             counter += 1
         print_str = '%s%s' % (' ' * (ident - len(print_str)), print_str)
-        print_str += ('%s' % key).strip()
-        print_str += ' ' * (margin - len(unicode(key).strip()))
+        print_str += key.strip()
+        print_str += ' ' * (margin - len(key.strip()))
         print_str += ': '
         if isinstance(val, dict):
             print(print_str)
@@ -126,7 +156,7 @@ def print_dict(
                 with_enumeration=recursive_enumeration,
                 recursive_enumeration=recursive_enumeration)
         else:
-            print print_str + ' ' + unicode(val).strip()
+            print print_str + ' ' + ('%s' % val).strip()
 
 
 def print_list(
@@ -158,7 +188,7 @@ def print_list(
                 isinstance(item, list) or
                 item in exclude))
         except ValueError:
-            margin = (2 + len(unicode(len(l)))) if enumerate else 1
+            margin = (2 + len(('%s' % len(l)))) if enumerate else 1
 
     counter = 1
     prefix = ''
@@ -242,9 +272,9 @@ def print_items(
         if isinstance(item, dict):
             title = sorted(set(title).intersection(item.keys()))
             if with_redundancy:
-                header = ' '.join(unicode(item[key]) for key in title)
+                header = ' '.join('%s' % item[key] for key in title)
             else:
-                header = ' '.join(unicode(item.pop(key)) for key in title)
+                header = ' '.join('%s' % item.pop(key) for key in title)
             print(bold(header))
         if isinstance(item, dict):
             print_dict(item, ident=1)
@@ -305,7 +335,7 @@ def dict2file(d, f, depth=0):
             f.write('\n')
             list2file(v, f, depth + 1)
         else:
-            f.write(' %s\n' % unicode(v))
+            f.write(' %s\n' % v)
 
 
 def list2file(l, f, depth=1):
@@ -315,7 +345,7 @@ def list2file(l, f, depth=1):
         elif isinstance(item, list):
             list2file(item, f, depth + 1)
         else:
-            f.write('%s%s\n' % ('\t' * depth, unicode(item)))
+            f.write('%s%s\n' % ('\t' * depth, item))
 
 # Split input auxiliary
 
@@ -434,3 +464,15 @@ if __name__ == '__main__':
         print('%s. Split this: (%s)' % (i + 1, example))
         ret = old_split_input(example)
         print('\t(%s) of size %s' % (ret, len(ret)))
+
+
+def get_path_size(testpath):
+    if path.isfile(testpath):
+        return path.getsize(testpath)
+    total_size = 0
+    for top, dirs, files in walk(path.abspath(testpath)):
+        for f in files:
+            f = path.join(top, f)
+            if path.isfile(f):
+                total_size += path.getsize(f)
+    return total_size

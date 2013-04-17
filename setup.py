@@ -40,9 +40,9 @@ import collections
 import kamaki
 
 
-optional = ['ansicolors',
-            'progress>=1.0.2']
-requires = ['objpool']
+optional = ['ansicolors', 'mock>=1.0.1']
+
+requires = ['objpool>=0.2', 'progress>=1.1']
 
 if version_info < (2, 7):
     requires.append('argparse')
@@ -63,12 +63,14 @@ setup(
         'kamaki.cli',
         'kamaki.cli.commands',
         'kamaki.clients',
+        'kamaki.clients.utils',
         'kamaki.clients.livetest',
-        'kamaki.clients.connection',
-        'kamaki.clients.commissioning',
-        'kamaki.clients.quotaholder',
-        'kamaki.clients.quotaholder.api',
-        'kamaki.clients.commissioning.utils'
+        'kamaki.clients.image',
+        'kamaki.clients.storage',
+        'kamaki.clients.pithos',
+        'kamaki.clients.astakos',
+        'kamaki.clients.compute',
+        'kamaki.clients.cyclades',
     ],
     include_package_data=True,
     entry_points={
