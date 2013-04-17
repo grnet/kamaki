@@ -34,6 +34,7 @@
 from sys import stdout, stdin
 from re import compile as regex_compile
 from time import sleep
+from os import walk, path
 
 from kamaki.cli.errors import raiseCLIError
 
@@ -463,3 +464,15 @@ if __name__ == '__main__':
         print('%s. Split this: (%s)' % (i + 1, example))
         ret = old_split_input(example)
         print('\t(%s) of size %s' % (ret, len(ret)))
+
+
+def get_path_size(testpath):
+    if path.isfile(testpath):
+        return path.getsize(testpath)
+    total_size = 0
+    for top, dirs, files in walk(path.abspath(testpath)):
+        for f in files:
+            f = path.join(top, f)
+            if path.isfile(f):
+                total_size += path.getsize(f)
+    return total_size

@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-
-# Copyright 2011 GRNET S.A. All rights reserved.
+# Copyright 2012 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -33,47 +31,48 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from setuptools import setup
-from sys import version_info
-
-import kamaki
+from kamaki.clients import Client, ClientError
 
 
-optional = ['ansicolors', 'mock>=1.0.1']
+class AstakosClient(Client):
+    """Synnefo Astakos API client"""
 
-requires = ['objpool>=0.2', 'progress>=1.1']
+    def __init__(self, base_url, token):
+        super(AstakosClient, self).__init__(base_url, token)
+        self._cache = {}
 
-if version_info < (2, 7):
-    requires.append('argparse')
+    def authenticate(self, token=None):
+        """Get authentication information and store it in this client
+        As long as the AstakosClient instance is alive, the latest
+        authentication information for this token will be available
 
-setup(
-    name='kamaki',
-    version=kamaki.__version__,
-    description='A command-line tool for managing clouds',
-    long_description=open('README.rst').read(),
-    url='http://code.grnet.gr/projects/kamaki',
-    license='BSD',
-    author='Synnefo development team',
-    author_email='synnefo-devel@googlegroups.com',
-    maintainer='Synnefo development team',
-    maintainer_email='synnefo-devel@googlegroups.com',
-    packages=[
-        'kamaki',
-        'kamaki.cli',
-        'kamaki.cli.commands',
-        'kamaki.clients',
-        'kamaki.clients.utils',
-        'kamaki.clients.livetest',
-        'kamaki.clients.image',
-        'kamaki.clients.storage',
-        'kamaki.clients.pithos',
-        'kamaki.clients.astakos',
-        'kamaki.clients.compute',
-        'kamaki.clients.cyclades',
-    ],
-    include_package_data=True,
-    entry_points={
-        'console_scripts': ['kamaki = kamaki.cli:main']
-    },
-    install_requires=requires
-)
+        :param token: (str) custom token to authenticate
+
+        :returns: (dict) authentication information
+        """
+        self.token = token or self.token
+        self._cache[self.token] = self.get('/im/authenticate').json
+        return self._cache[self.token]
+
+    def list(self):
+        """list cached user information"""
+        r = []
+        for k, v in self._cache.items():
+            r.append(dict(v))
+            r[-1].update(dict(auth_token=k))
+        return r
+
+    def info(self, token=None):
+        """Get (cached) user information"""
+        token_bu = self.token
+        token = token or self.token
+        try:
+            r = self._cache[token]
+        except KeyError:
+            r = self.authenticate(token)
+        self.token = token_bu
+        return r
+
+    def term(self, key, token=None):
+        """Get (cached) term, from user credentials"""
+        return self.info(token).get(key, None)

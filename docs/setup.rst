@@ -16,20 +16,22 @@ Kamaki interfaces rely on a list of configuration options. Be default, they are 
 
     Example 1.1: Set user token to myt0k3n==
 
-    $ kamaki set token myt0k3n==
+    $ kamaki config set token myt0k3n==
 
 Optional features
 -----------------
 
-For installing any all of the following, consult the `kamaki installation guide <installation.html#install-progress-and-or-ansicolors-optional>`_
+For installing any or all of the following, consult the `kamaki installation guide <installation.html#install-ansicolors>`_
 
 * ansicolors
     * Make command line / console user interface responses prettier with text formating (colors, bold, etc.)
     * Can be switched on/off in kamaki configuration file: colors=on/off
+    * Has not been tested on non unix / linux based platforms
 
-* progress 
-    * Attach progress bars to various kamaki commands (e.g. kamaki store upload)
-    * If desired, progress version should be 1.0.2 or better
+* mock 
+    * For kamaki contributors only
+    * Allow unittests to run on kamaki.clients package
+    * Needs mock version 1.X or better
 
 Any of the above features can be installed at any time before or after kamaki installation.
 
@@ -60,13 +62,13 @@ All kamaki commands can be used with the -o option in order to override configur
 
 .. code-block:: console
 
-    $ kamaki store list -o global.account=anotheraccount -o global.token=aT0k3n==
+    $ kamaki file list -o global.account=anotheraccount -o global.token=aT0k3n==
 
-will invoke *kamaki store list* with the specified options, but the initial global.account and global.token values will be restored to initial values afterwards.
+will invoke *kamaki file list* with the specified options, but the initial global.account and global.token values will be restored to initial values afterwards.
 
-.. note:: on-the-fly calls to store require users to explicetely provide the account uuid corresponding to this token. The account is actually the uuid field at the response of the following call::
+.. note:: on-the-fly calls to file require users to explicetely provide the account uuid corresponding to this token. The account is actually the uuid field at the response of the following call::
 
-    $kamaki astakos authenticate aT0k3n==
+    $kamaki user authenticate aT0k3n==
 
 Editing options
 ^^^^^^^^^^^^^^^
@@ -102,11 +104,11 @@ In the above example, if the kamaki configuration file does not exist, it will b
 
 The configuration file is formatted so that it can be parsed by the python ConfigParser module. It consists of command sections that are denoted with brackets. Every section contains variables with values. For example::
 
-    [store]
+    [file]
     url=https://okeanos.grnet.gr/pithos
     token=my0th3rT0k3n==
 
-two configuration options are created: *store.url* and *store.token*. These values will be loaded at every future kamaki execution.
+two configuration options are created: *file.url* and *file.token*. These values will be loaded at every future kamaki execution.
 
 Available options
 ^^^^^^^^^^^^^^^^^
@@ -118,14 +120,23 @@ The [global] group is treated by kamaki as a generic group for arbitrary options
 
 * global.token <user authentication token>
 
-* store.cli <UI command specifications for store>
+* global.log_file <logfile full path>
+    set a custom location for kamaki logging. Default values are /var/log/kamaki.log, /var/log/kamaki/clients.log /tmp/kamaki.log and ./kamaki.log 
+
+* global.log_token <on|off>
+    allow kamaki to log user tokens
+
+* global.log_data <on|off>
+    allow kamaki to log http data (by default, it logs only method, URL and headers)
+
+* file.cli <UI command specifications for file>
     a special package that is used to load storage commands to kamaki UIs. Don't touch this unless if you know what you are doing.
 
-* store.url <OOS storage or Pithos+ service url>
+* file.url <OOS storage or Pithos+ service url>
     the url of the OOS storage or Pithos+ service. Set to Okeanos.grnet.gr Pithos+ storage service by default. Users should set a different value if they need to use a different storage service.
 
-* store.token <token>
-    it set, it overrides possible global.token option for store level commands
+* file.token <token>
+    it set, it overrides possible global.token option for file level commands
 
 * compute.url <OOS compute or Cyclades service url>
     the url of the OOS compute or Cyclades service. Set to Okeanos.grnet.gr Cyclades IaaS service by default. Users should set a different value if they need to use a different IaaS service.
@@ -140,22 +151,59 @@ The [global] group is treated by kamaki as a generic group for arbitrary options
     a special package that is used to load cyclades virtual network commands to kamaki UIs. Don't touch this unless you know what you are doing.
 
 * image.url <Plankton image service url>
-    the url of the Plankton service. Set to Okeanos.grnet.gr Plankton service be default. Users should set a different value if they need to use a different service.
+    the url of the Plankton service. Set to Okeanos.grnet.gr Plankton service by default. Users should set a different value if they need to use a different service. Note that the *image compute* commands are depended on the compute.url instead.
 
-* image.cli <UI command specifications for Plankton and Cyclades image service>
+* image.cli <UI command specifications for Plankton (and Compute) image service>
     a special package that is used to load image-related commands to kamaki UIs. Don't touch this unless you know what you are doing.
 
-* astakos.url <Astakos authentication service url>
+* user.url <Astakos authentication service url>
     the url of the Astakos authentication service. Set to the Okeanos.grnet.gr Astakos service by default. Users should set a different value if they need to use a different service.
 
-* astakos.cli <UI command specifications for Astakos authentication service>
+* user.cli <UI command specifications for Astakos authentication service>
     a special package that is used to load astakos-related commands to kamaki UIs. Don't touch this unless you know what you are doing.
 
 * history.file <history file path>
     the path of a simple file for inter-session kamaki history. Make sure kamaki is executed in a context where this file is accessible for reading and writing. Kamaki automatically creates the file if it doesn't exist
 
-Hidden features
-^^^^^^^^^^^^^^^
+Additional features
+^^^^^^^^^^^^^^^^^^^
+
+Log file location
+"""""""""""""""""
+
+Kamaki log file path is set by the following command::
+
+    $ kamaki config set log_file <logfile path>
+
+By default, kamaki keeps a list of possible logfile locations::
+
+    /var/log/kamaki.log, /var/log/kamaki/clients.log, /tmp/kamaki.log, ./kamaki.log
+
+When initialized, kamaki attempts to open one of these locations for writing, in the order presented above and uses the first accessible for appending logs. If the log_file option is set, kamaki prepends the value of this option to the logfile list, so the custom location will be the first one kamaki will attetmpt to log at.
+
+Kamaki will not crush if the logging location is not accessible.
+
+Richer connection logs
+""""""""""""""""""""""
+
+Kamaki logs down the http requests and responses in /var/log/kamaki/clients.log (make sure it is accessible). The request and response data and user authentication information is excluded from the logs be default. The former may render the logs unreadable and the later are sensitive information. Users my activate data and / or token logging my setting the global options log_data and log_token respectively::
+
+    $ kamaki config set log_data on
+    $ kamaki config set log_token on
+
+Either or both of these options may be switched off either by setting them to ``off`` or by deleting them.
+
+    $ kamaki config set log_data off
+    $ kamaki config delete log_token
+
+Set custom thread limit
+"""""""""""""""""""""""
+
+Some operations (e.g. download and upload) may use threaded http connections for better performance. Kamaki.clients utilizes a sophisticated mechanism for dynamically adjusting the number of simultaneous threads running, but users may wish to enforce their own upper thread limit. In that case, the max_threads option may be set to the configuration file::
+
+    $ kamaki config set max_threads 3
+
+If the value is not a positive integer, kamaki will ignore it and a warning message will be logged.
 
 The livetest suite
 """"""""""""""""""
@@ -165,7 +213,7 @@ Kamaki contains a live test suite for the kamaki.clients API, where "live" means
 The livetest suite can be activated with the following option on the configuration file::
 
     [livetest]
-    cli=livetest_cli
+    cli=livetest
 
 In most tests, livetest will run as long as an Astakos identity manager service is accessible and kamaki is set up to authenticate a valid token on this server.
 
@@ -173,14 +221,14 @@ In specific, a setup file needs at least the following mandatory settings in the
 
 * If authentication information is used for default kamaki clients::
 
-    [astakos]
+    [user]
     url=<Astakos Identity Manager URL>
     token=<A valid user token>
 
 * else if this authentication information is only for testing add this under [livetest]::
 
-    astakos_url=<Astakos Identity Manager URL>
-    astakos_token=<A valid user token>
+    user_url=<Astakos Identity Manager URL>
+    user_token=<A valid user token>
 
 Each service tested in livetest might need some more options under the [livetest] label, as shown bellow:
 
@@ -247,13 +295,7 @@ or a specific method from a service (e.g. astakos authenticate)::
 
     $ kamaki livetest astakos authenticate
 
-The quotaholder client
-""""""""""""""""""""""
+The unit testing system
+"""""""""""""""""""""""
 
-A quotaholder client is introduced as an advanced feature. Quotaholder client is mostly used as a client library for accessing a synnefo quota service, but it can also be allowed as a kamaki command set, but setting the quotaholder.cli and quotaholder.url methods::
-
-    [quotaholder]
-    cli=quotaholder_cli
-    url=<URL of quotaholder service>
-
-Quotaholder is not tested in livetest
+Kamaki container a set of finegrained unit tests for the kamaki.clients package. This set is not used when kamaki is running. Instead, it is aimed to developers who debug or extent the kamaki clients library. For more information, check the `Going Agile <developers/extending-clients-api.html#going-agile>`_ entry at the `developers section <developers/extending-clients-api.html>`_.

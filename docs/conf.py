@@ -20,11 +20,11 @@ from sys import path, stderr
 import os
 
 try:
-    from objpool import http
-    http
+    from objpool.http import PooledHTTPConnection
+    PooledHTTPConnection
 except ImportError:
     stderr.write("`objpool` package is required to build kamaki docs.\n")
-    #exit()
+    # raise
 
 path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..'))
 

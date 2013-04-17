@@ -38,8 +38,8 @@ from kamaki.clients.astakos import AstakosClient
 class Astakos(livetest.Generic):
     def setUp(self):
         self.client = AstakosClient(
-            self['astakos', 'url'],
-            self['astakos', 'token'])
+            self['user', 'url'],
+            self['user', 'token'])
 
     def test_authenticate(self):
         self._test_0010_authenticate()
@@ -71,7 +71,7 @@ class Astakos(livetest.Generic):
     def _test_0020_get(self):
         for term in ('uuid', 'name', 'username'):
             self.assertEqual(
-                self.client.term(term, self['astakos', 'token']),
+                self.client.term(term, self['user', 'token']),
                 self['astakos', term])
         self.assertTrue(self['astakos', 'email'] in self.client.term('email'))
 
