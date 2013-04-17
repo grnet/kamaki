@@ -35,7 +35,7 @@ from kamaki.clients import Client, ClientError
 
 
 class AstakosClient(Client):
-    """GRNet Astakos API client"""
+    """Synnefo Astakos API client"""
 
     def __init__(self, base_url, token):
         super(AstakosClient, self).__init__(base_url, token)

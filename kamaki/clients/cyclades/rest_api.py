@@ -37,7 +37,7 @@ import json
 
 
 class CycladesRestClient(ComputeClient):
-    """GRNet Cyclades REST API Client"""
+    """Synnefo Cyclades REST API Client"""
 
     def servers_get(
             self,

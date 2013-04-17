@@ -66,7 +66,7 @@ def _range_up(start, end, a_range):
 
 
 class PithosClient(PithosRestClient):
-    """GRNet Pithos API client"""
+    """Synnefo Pithos+ API client"""
 
     def __init__(self, base_url, token, account=None, container=None):
         super(PithosClient, self).__init__(base_url, token, account, container)

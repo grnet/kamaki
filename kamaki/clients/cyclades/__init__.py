@@ -39,7 +39,7 @@ from kamaki.clients import ClientError
 
 
 class CycladesClient(CycladesRestClient):
-    """GRNet Cyclades API client"""
+    """Synnefo Cyclades Compute API client"""
 
     def start_server(self, server_id):
         """Submit a startup request
