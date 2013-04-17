@@ -1026,11 +1026,15 @@ class file_upload(_file_container_command):
     def _check_container_limit(self, path):
         cl_dict = self.client.get_container_limit()
         container_limit = int(cl_dict['x-container-policy-quota'])
+        r = self.client.container_get()
+        used_bytes = sum(int(o['bytes']) for o in r.json)
         path_size = get_path_size(path)
-        if path_size > container_limit:
-            raiseCLIError('Container(%s) limit(%s) < size(%s) of %s' % (
+        if path_size > (container_limit - used_bytes):
+            raiseCLIError(
+                'Container(%s) (limit(%s) - used(%s)) < size(%s) of %s' % (
                     self.client.container,
                     format_size(container_limit),
+                    format_size(used_bytes),
                     format_size(path_size),
                     path),
                 importance=1, details=[
