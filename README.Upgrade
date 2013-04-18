@@ -6,6 +6,7 @@ This document refers to users who:
 
 Notable changes:
 - Make progress (>= 1.1) module a requirement (was a suggestion)
+- log http requests to ~/.kamaki.log
 - Rename some command groups:
     store --> file
     astakos --> user
