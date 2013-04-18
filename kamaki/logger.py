@@ -32,10 +32,11 @@
 # or implied, of GRNET S.A.
 
 from os import chmod
+from os.path import expanduser
 import logging
 
 
-LOG_FILE = ['kamaki.log', '/tmp/kamaki.log']
+LOG_FILE = [expanduser('~/.kamaki.log')]
 
 
 def get_log_filename():
