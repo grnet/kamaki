@@ -121,7 +121,7 @@ The [global] group is treated by kamaki as a generic group for arbitrary options
 * global.token <user authentication token>
 
 * global.log_file <logfile full path>
-    set a custom location for kamaki logging. Default values are /var/log/kamaki.log, /var/log/kamaki/clients.log /tmp/kamaki.log and ./kamaki.log 
+    set a custom location for kamaki logging. Default values are ~/.kamaki.log, /tmp/kamaki.log and ./kamaki.log (in that order)
 
 * global.log_token <on|off>
     allow kamaki to log user tokens
@@ -177,7 +177,7 @@ Kamaki log file path is set by the following command::
 
 By default, kamaki keeps a list of possible logfile locations::
 
-    /var/log/kamaki.log, /var/log/kamaki/clients.log, /tmp/kamaki.log, ./kamaki.log
+    ~/.kamaki.log, /tmp/kamaki.log, ./kamaki.log
 
 When initialized, kamaki attempts to open one of these locations for writing, in the order presented above and uses the first accessible for appending logs. If the log_file option is set, kamaki prepends the value of this option to the logfile list, so the custom location will be the first one kamaki will attetmpt to log at.
 
