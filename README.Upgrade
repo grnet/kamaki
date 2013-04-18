@@ -1,0 +1,38 @@
+This document describes changes and steps to upgrade from kamaki 0.7.X to kamaki 0.8
+
+This document refers to users who:
+- use the kamaki command line
+- load configuration options with the kamaki.cli.config
+
+Notable changes:
+- Make progress (>= 1.1) module a requirement (was a suggestion)
+- Rename some command groups:
+    store --> file
+    astakos --> user
+- Rename some mandatory configuration options:
+    astakos.url --> user.url,
+    store.url --> file.url
+- Do not require <cmd group>.cli (cli specification) field in configuration file, use it only to override default values.
+- Change the naming convention for cli specifications by loosing the _cli suffix:
+    <cmd group>_cli --> <cmd group>
+- Seperate kamaki image commands based on whether they make requests to Plankton or Cyclades.
+    Plankton image commands: kamaki image <action>
+    Cyclades image commands: kamaki image compute <action>
+- Rename: kamaki image public --> kamaki image list
+- Change letter case for recursive download runtime argument:
+    kamaki store download -r <container>:<path> [local destination]
+    -->
+    kamaki file download -R <container>:<path> [local destination]
+
+
+Suggested upgrade method:
+1. Backup the .kamakirc file (usually stored as ~/.kamakirc). E.g.:
+    cp ~/.kamakirc ~/tmp/.kamakirc.bu
+2. Upgrade kamaki (refer to your installation method). E.g. if installed from pypi:
+    pip install --upgrade kamaki
+3. Download the script bellow:
+    For Linux, OS X, *nix, systems that run bash:
+        https://code.grnet.gr/attachments/download/2493/kamaki0.7to0.8.sh
+    For windows:
+        https://code.grnet.gr/attachments/download/2497/kamaki0.7to0.8.bat
+and run it from command line. This script will modify the default .kamakirc file in order to comply with version 0.8

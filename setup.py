@@ -50,9 +50,10 @@ if version_info < (2, 7):
 setup(
     name='kamaki',
     version=kamaki.__version__,
-    description='A command-line tool for managing clouds',
+    description='A command-line tool for managing www.synnefo.org clouds',
     long_description=open('README.rst').read(),
     url='http://code.grnet.gr/projects/kamaki',
+    download_url='https://code.grnet.gr/projects/kamaki/files',
     license='BSD',
     author='Synnefo development team',
     author_email='synnefo-devel@googlegroups.com',
@@ -72,6 +73,19 @@ setup(
         'kamaki.clients.compute',
         'kamaki.clients.cyclades',
     ],
+    classifiers=[
+        'Operating System :: OS Independent',
+        'Programming Language :: Python :: 2.6',
+        'Programming Language :: Python :: 2.7',
+        'Intended Audience :: Developers',
+        'Intended Audience :: System Administrators',
+        'Environment :: Console',
+        'License :: OSI Approved :: BSD License',
+        'Natural Language :: English',
+        'Topic :: System :: Shells',
+        'Topic :: Software Development :: Libraries :: Python Modules',
+        'Topic :: Utilities'
+        ],
     include_package_data=True,
     entry_points={
         'console_scripts': ['kamaki = kamaki.cli:main']
