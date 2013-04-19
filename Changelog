@@ -1,51 +1,10 @@
-CHANGELOG for version 0.8
+CHANGELOG for version 0.9
 
 Bug Fixes:
-- Race condition with HTTP request path when threading (#3526, #3527)
-- Fix bug where files with repeated blocks fail to upload (#3555)
-- Fixed non-ascii character issues when managing container or object names and
-    data in pithos+ client (#3256, #3325)
-- Made download cancellation more responsive (#3457)
-- Gracious behavior when deleting a deleted network (#3547)
-- Make OS/Storage list_object compatible to OS/Storage v2 (#3596)
-- Minor typos or oversights (#3403, #3444, #3509)
+
 
  Changes:
- - Rename some command groups: store --> file, astakos --> user (#3566)
- - Create a command subgroup for cyclades/compute image commands. Plankton image
-    commands: kamaki image <command>, Cyclades/Compute image commands:
-    kamaki image compute <command> (#3490)
- - Rename 'image public' --> 'image list' (#3566, 3490)
- - Redesign HTTP connection mechanism: use an objpool-provided context manager
-    and simplify the kamaki http management. Merge kamaki.clients.connection
-    to kamaki.clients (#3526, #3527)
-- Modify semantics for kamaki store *quota operations. Rename container quota
-    operations to containerlimit <get|set>. The term quota now refers to the
-    immutable account quota (#3541)
-- Remove quotaholder module from kamaki (#3587)
-- Create network uses a default network type (#3514)
-- Enforce uniformity to runtime arguments: first the short then the long form
-    e.g. -f, --force. Add a short or long format in common runtimes (#3456)
-- Change the names of command group specifications from <command>_cli to <api>.
-    Config files must be updated accordingly (#3566)
-- Require progress
+
 
 Features:
-- Allow request logging into a file. Let user set the log_file parameter in
-    configuration file to specify where to log. (#3441)
-- Remove token and http data logging let user allow them by setting log_token
-    and log_data configuration options (#3441)
-- Make maximum threads a configuration option (max_threads, #3546)
-- Suggest user to install ansicolors (#3367)
-- Extensive unittests in kamaki.clients, that cover all cases (#3228, #3229)
-- New runtime options in pithos+ client interface (now known as "kamaki file")
-    allow operations between differernt users/accounts (#3230)
-- Intuitive pithos+ client semantics. Affect copy, move, upload (#3310, 3536)
-- Expose connection pool size (all api methods, #3422) and etag-if-match
-    (upload, #3574)
-- Image register returns info on registered image, in success. Affected both
-    the api and the cli (#3512)
-- Add name and owner filtering to image list. Name can also be partially
-    filtered (#3513)
-- Upload the contents of a directory, recursively, check preconditions before
-    uploading (#3536)
+
