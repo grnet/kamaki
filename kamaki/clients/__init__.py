@@ -222,7 +222,8 @@ class ResponseManager(Logged):
                 self.request.LOG_TOKEN = self.LOG_TOKEN
                 self.request.LOG_DATA = self.LOG_DATA
                 r = self.request.perform(connection)
-                recvlog.info('[resp: %s] <-- [req: %s]\n' % (r, self.request))
+                recvlog.info('\n%s <-- %s <-- [req: %s]\n' % (
+                    self, r, self.request))
                 self._request_performed = True
                 self._status_code, self._status = r.status, r.reason
                 recvlog.info(
