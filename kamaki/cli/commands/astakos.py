@@ -47,8 +47,10 @@ class _user_init(_command_init):
     @errors.user.load
     def _run(self):
         token = self.config.get('user', 'token')\
-            or self.config.get('global', 'token')
-        base_url = self.config.get('user', 'url')\
+            or self.config.get('global', 'token')\
+            or self.config.get('astakos', 'token')
+        base_url = self.config.get('astakos', 'url')\
+            or self.config.get('user', 'url')\
             or self.config.get('global', 'url')
         self.client = AstakosClient(base_url=base_url, token=token)
         self._set_log_params()
