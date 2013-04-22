@@ -156,12 +156,14 @@ class _pithos_init(_command_init):
     @errors.generic.all
     def _run(self):
         self.token = self.config.get('file', 'token')\
-            or self.config.get('global', 'token')
-        self.base_url = self.config.get('file', 'url')\
+            or self.config.get('global', 'token')\
+            or self.config.get('store', 'token')
+        self.base_url = self.config.get('store', 'url')\
+            or self.config.get('file', 'url')\
             or self.config.get('global', 'url')
         self._set_account()
         self.container = self.config.get('file', 'container')\
-            or self.config.get('global', 'container')
+            or self.config.get('store', 'container')
         self.client = PithosClient(
             base_url=self.base_url,
             token=self.token,
@@ -174,13 +176,12 @@ class _pithos_init(_command_init):
         self._run()
 
     def _set_account(self):
-        user = AstakosClient(self.config.get('user', 'url'), self.token)
-        self.account = self['account'] or user.term('uuid')
-
-        """Backwards compatibility"""
-        self.account = self.account\
+        user_url = self.config.get('astakos', 'url')\
+            or self.config.get('user', 'url')
+        user = AstakosClient(user_url, self.token)
+        self.account = self['account'] or user.term('uuid')\
             or self.config.get('file', 'account')\
-            or self.config.get('global', 'account')
+            or self.config.get('store', 'account')
 
 
 class _file_account_command(_pithos_init):
