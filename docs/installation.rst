@@ -20,10 +20,9 @@ The following steps describe a command-line approach, but any graphic package ma
 
 * As root, append the following to */etc/apt/sources.list* ::
 
-    deb http://apt.dev.grnet.gr/ squeeze main
     deb http://apt2.dev.grnet.gr stable/
 
-* Make sure the GPG public key for the GRNET dev team is added:
+* Make sure the GPG public key for the Synnefo development team is added:
 
     .. code-block:: console
 
@@ -67,13 +66,23 @@ The following steps describe a command-line approach, but any graphic package ma
 
         $ sudo apt-get install kamaki
 
-Install ansicolors and/or progress (Optional but recommended)
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+Install ansicolors (optional but recommended)
+"""""""""""""""""""""""""""""""""""""""""""""
 
 .. code-block:: console
 
     $ sudo apt-get install python-ansicolors
-    $ sudo apt-get install python-progress
+
+Install mock (for developers only)
+""""""""""""""""""""""""""""""""""
+
+.. code-block:: console
+
+    $ sudo apt-get install python-mock
+
+.. warning:: kamaki.clients unit-tests need python-mock 1.X or better. e.g.::
+
+    $ sudo apt-get install python-mock=1.0.1
 
 .. _installing-from-pypi-ref:
 
@@ -111,37 +120,30 @@ Install kamaki
 
     $ pip install kamaki
 
-Install ansicolors / progress
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Install ansicolors
+""""""""""""""""""
 
-Packages **ansicolors** and **progress** are not required for running kamaki, but
-they are recommended as a user experience improvement. In specific, ansicolors
-adds colors to kamaki responses and progress adds progressbars to the commands
-that can make use of it (*/store download*, */store upload*, */server wait* etc.)
-
-Debian and Ubuntu
-"""""""""""""""""
-
-Follow the `Debian <#debian>`_ or `Ubuntu <#ubuntu>`_ installation procedure described earlier
-and then type:
+The **ansicolors** package is not required for running kamaki, but it is
+recommended as a user experience improvement. In specific, ansicolors
+adds colors to kamaki responses.
 
 .. code-block:: console
 
-    #For ansicolors
-    $ sudo apt-get install python-ansicolors
-
-    # For progress
-    $ sudo apt-get install python-progress
-
-From source
-"""""""""""
-
-If setuptools is not installed, `install them <http://pypi.python.org/pypi/setuptools>`_ and then type:
-
-.. code-block:: console
-
-    #For ansicolors
     $ pip install ansicolors
+
+Install mock
+""""""""""""
+
+The **mock** package is needed for running the prepared unit-tests in the kamaki.clients
+package. This feature is useful when extendnig / debugging kamaki functionality and is
+aimed to kamaki developers and contributors. Therefore, users can enjoy the full kamaki
+user experience without installing mock.
+
+.. code-block:: console
+
+    $ pip install mock
+
+.. warning:: mock version >= 1.X
 
     #For progress
     $ pip install progress
@@ -161,14 +163,14 @@ The full process is detailed in the following:
 Requirements
 ^^^^^^^^^^^^
 
-* Python 2.7 or better (`Official versions <http://www.python.org/getit>`_)
+* Python 2.7 (`Official versions <http://www.python.org/getit>`_)
 
 * Setuptools (`Official versions and workarounds <http://pypi.python.org/pypi/setuptools>`_)
 
-Users who have already set up python and setuptools (e.g. for another project) may skip python and / or setup tools installation.
+Users who have already set up python 2.7 and setuptools (e.g. for another project) may skip python and / or setup tools installation.
 
-Install python
-^^^^^^^^^^^^^^
+Install python 2.7
+^^^^^^^^^^^^^^^^^^
 
 Download and run the Windows installer from `here <http://www.python.org/getit>`_
 
@@ -183,11 +185,9 @@ The following will allow users to run python and python scripts from command lin
 
 * Without removing existing values, append the following to PATH::
 
-    C:\Python;C:\Python\Scripts
+    C:\Python27;C:\Python27\Scripts
 
 .. note:: Path values are separated by semicolons
-
-.. warning:: C:\\Python should be replaced with the actual python path in the system, e.g. C:\\Python27
 
 Install setuptools
 ^^^^^^^^^^^^^^^^^^
@@ -209,14 +209,5 @@ Install kamaki
 
 .. code-block:: console
 
-    $ easy_setup kamaki
-
-Install progress (optional)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-progress: command-line progress bars (in some commands)
-
-.. code-block:: console
-
-    $ easy_setup progress
+    $ easy_install kamaki
 

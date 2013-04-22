@@ -39,9 +39,9 @@ from sys import version_info
 import kamaki
 
 
-optional = ['ansicolors',
-            'progress>=1.0.2']
-requires = ['objpool>0.1.1']
+optional = ['ansicolors', 'mock>=1.0.1']
+
+requires = ['objpool>=0.2', 'progress>=1.1']
 
 if version_info < (2, 7):
     requires.append('argparse')
@@ -49,9 +49,10 @@ if version_info < (2, 7):
 setup(
     name='kamaki',
     version=kamaki.__version__,
-    description='A command-line tool for managing clouds',
+    description='A command-line tool for managing www.synnefo.org clouds',
     long_description=open('README.rst').read(),
     url='http://code.grnet.gr/projects/kamaki',
+    download_url='https://code.grnet.gr/projects/kamaki/files',
     license='BSD',
     author='Synnefo development team',
     author_email='synnefo-devel@googlegroups.com',
@@ -62,13 +63,28 @@ setup(
         'kamaki.cli',
         'kamaki.cli.commands',
         'kamaki.clients',
+        'kamaki.clients.utils',
         'kamaki.clients.livetest',
-        'kamaki.clients.connection',
-        'kamaki.clients.commissioning',
-        'kamaki.clients.quotaholder',
-        'kamaki.clients.quotaholder.api',
-        'kamaki.clients.commissioning.utils'
+        'kamaki.clients.image',
+        'kamaki.clients.storage',
+        'kamaki.clients.pithos',
+        'kamaki.clients.astakos',
+        'kamaki.clients.compute',
+        'kamaki.clients.cyclades',
     ],
+    classifiers=[
+        'Operating System :: OS Independent',
+        'Programming Language :: Python :: 2.6',
+        'Programming Language :: Python :: 2.7',
+        'Intended Audience :: Developers',
+        'Intended Audience :: System Administrators',
+        'Environment :: Console',
+        'License :: OSI Approved :: BSD License',
+        'Natural Language :: English',
+        'Topic :: System :: Shells',
+        'Topic :: Software Development :: Libraries :: Python Modules',
+        'Topic :: Utilities'
+        ],
     include_package_data=True,
     entry_points={
         'console_scripts': ['kamaki = kamaki.cli:main']

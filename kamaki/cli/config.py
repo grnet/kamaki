@@ -39,7 +39,7 @@ from ConfigParser import RawConfigParser, NoOptionError, NoSectionError
 try:
     from collections import OrderedDict
 except ImportError:
-    from kamaki.clients.commissioning.utils.ordereddict import OrderedDict
+    from kamaki.clients.utils.ordereddict import OrderedDict
 
 
 # Path to the file that stores the configuration
@@ -57,38 +57,41 @@ DEFAULTS = {
     'global': {
         'colors': 'off',
         'account':  '',
-        'token': ''
+        'token': '',
+        'log_file': os.path.expanduser('~/.kamaki.log'),
+        'log_token': 'off',
+        'log_data': 'off',
+        'max_threads': 7
     },
     'config': {
-        'cli': 'config_cli',
-        'description': 'Configuration commands'
+        'cli': 'config',
     },
     'history': {
-        'cli': 'history_cli',
+        'cli': 'history',
         'file': HISTORY_PATH
     },
-    'store': {
-        'cli': 'pithos_cli',
+    'file': {
+        'cli': 'pithos',
         'url': 'https://pithos.okeanos.grnet.gr/v1'
     },
     'compute': {
         'url': 'https://cyclades.okeanos.grnet.gr/api/v1.1'
     },
     'server': {
-        'cli': 'cyclades_cli'
+        'cli': 'cyclades'
     },
     'flavor': {
-        'cli': 'cyclades_cli'
+        'cli': 'cyclades'
     },
     'network': {
-        'cli': 'cyclades_cli'
+        'cli': 'cyclades'
     },
     'image': {
-        'cli': 'image_cli',
+        'cli': 'image',
         'url': 'https://cyclades.okeanos.grnet.gr/plankton'
     },
-    'astakos': {
-        'cli': 'astakos_cli',
+    'user': {
+        'cli': 'astakos',
         'url': 'https://accounts.okeanos.grnet.gr'
     }
 }
