@@ -31,14 +31,12 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+from os import chmod
+from os.path import expanduser
 import logging
 
 
-LOG_FILE = [
-    '/var/log/kamaki.log',
-    '/var/log/kamaki/clients.log',
-    '/tmp/kamaki.log',
-    'kamaki.log']
+LOG_FILE = [expanduser('~/.kamaki.log')]
 
 
 def get_log_filename():
@@ -46,6 +44,7 @@ def get_log_filename():
         try:
             with open(logfile, 'a+') as f:
                 f.seek(0)
+            chmod(logfile, 0600)
         except IOError:
             continue
         return logfile
