@@ -13,6 +13,7 @@ Notable changes:
 - Rename some mandatory configuration options:
     astakos.url --> user.url,
     store.url --> file.url
+Note: if the above config options are not changed, users can still use file and user commands, due to backword support for old command options. Support for astakos and store configuration options will not continue in version 0.9
 - Do not require <cmd group>.cli (cli specification) field in configuration file, use it only to override default values.
 - Change the naming convention for cli specifications by loosing the _cli suffix:
     <cmd group>_cli --> <cmd group>
