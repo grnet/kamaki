@@ -201,7 +201,7 @@ class image_register(_init_image):
         owner=ValueArgument('set image owner (admin only)', '--owner'),
         properties=KeyValueArgument(
             'add property in key=value form (can be repeated)',
-            ('-p, --property')),
+            ('-p', '--property')),
         is_public=FlagArgument('mark image as public', '--public'),
         size=IntArgument('set image size', '--size'),
         update=FlagArgument(

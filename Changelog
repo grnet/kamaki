@@ -1,3 +1,7 @@
+Hotfix 0.8.1
+
+Fix typo when parsing --config and --property
+
 CHANGELOG for version 0.8
 
 Bug Fixes:

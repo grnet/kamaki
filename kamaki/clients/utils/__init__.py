@@ -90,4 +90,3 @@ def path4url(*args):
     while '//' in r:
         r = r.replace('//', '/')
     return ('/%s' % r.strip('/')) if r else ''
-
