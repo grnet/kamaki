@@ -9,7 +9,7 @@ Homepage: https://code.grnet.gr/projects/kamaki
 
 Package: kamaki
 Architecture: all
-Depends: ${misc:Depends}, python-setuptools, python-objpool(>= 0.2), python-progress(>= 1.1)
+Depends: ${python:Depends}, ${misc:Depends}, python-setuptools, python-objpool(>= 0.2), python-progress(>= 1.1)
 Description: command-line tool for managing clouds
  Simple, yet intuitive, command-line tool for managing clouds.
  It is an initial implementation of the OpenStack Compute API,
