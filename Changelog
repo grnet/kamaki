@@ -3,8 +3,9 @@ CHANGELOG for version 0.9
 Bug Fixes:
 
 
- Changes:
+Changes:
 
+- Change context: kamaki-image-addproperty --> kamaki-image-compute-property
 
 Features:
 
