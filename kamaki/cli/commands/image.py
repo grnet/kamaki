@@ -415,7 +415,7 @@ class image_compute_properties(_init_cyclades):
 
 
 @command(image_cmds)
-class image_addproperty(_init_cyclades):
+class image_compute_addproperty(_init_cyclades):
     """Add an OS-related property to an image"""
 
     @errors.generic.all
