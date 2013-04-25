@@ -79,8 +79,8 @@ class Shell(Cmd):
 
     def precmd(self, line):
         if line.startswith('/'):
-            cur_cmd_path = self.prompt.replace(' ',
-                '_')[len(self._prefix):-len(self._suffix)]
+            start, end = len(self._prefix), -len(self._suffix)
+            cur_cmd_path = self.prompt.replace(' ', '_')[start:end]
             if cur_cmd_path != self.cmd_tree.name:
                 cur_cmd = self.cmd_tree.get_command(cur_cmd_path)
                 self._context_stack.append(self._backup())
@@ -94,8 +94,13 @@ class Shell(Cmd):
         return line
 
     def greet(self, version):
-        print('kamaki v%s - Interactive Shell\n\t(exit or ^D to exit)\n'\
-            % version)
+        print('kamaki v%s - Interactive Shell\n' % version)
+        print('\t/exit     \tterminate kamaki')
+        print('\texit or ^D\texit context')
+        print('\t? or help \tavailable commands')
+        print('\t?command  \thelp on command')
+        print('\t!<command>\texecute OS shell command')
+        print('')
 
     def set_prompt(self, new_prompt):
         self.prompt = '%s%s%s' % (self._prefix, new_prompt, self._suffix)
@@ -111,8 +116,8 @@ class Shell(Cmd):
 
     def do_exit(self, line):
         print('')
-        if self.prompt[len(self._prefix):-len(self._suffix)]\
-        == self.cmd_tree.name:
+        start, end = len(self._prefix), -len(self._suffix)
+        if self.prompt[start:end] == self.cmd_tree.name:
             exit(0)
         return True
 
@@ -198,7 +203,9 @@ class Shell(Cmd):
                     cmd_parser.parse(cmd_args)
 
                     for name, arg in instance.arguments.items():
-                        arg.value = getattr(cmd_parser.parsed, name,
+                        arg.value = getattr(
+                            cmd_parser.parsed,
+                            name,
                             arg.default)
 
                     exec_cmd(
@@ -209,8 +216,8 @@ class Shell(Cmd):
                         #    if not term.startswith('-')],
                 except (ClientError, CLIError) as err:
                     print_error_message(err)
-            elif ('-h' in cmd_args or '--help' in cmd_args) \
-            or len(cmd_args):  # print options
+            elif ('-h' in cmd_args or '--help' in cmd_args) or len(cmd_args):
+                # print options
                 print('%s' % cmd.help)
                 print_subcommands_help(cmd)
             else:  # change context
@@ -247,7 +254,7 @@ class Shell(Cmd):
                     except IndexError:
                         break
                 print('Syntax: %s %s' % (' '.join(clist[upto:]), cls.syntax))
-            else:
+            if cmd.subcommands:
                 print_subcommands_help(cmd)
 
         self._register_method(help_method, 'help_%s' % cmd.name)
@@ -259,8 +266,10 @@ class Shell(Cmd):
                 instance = cls(dict(arguments))
                 empty, sep, subname = subcmd.path.partition(cmd.path)
                 cmd_name = '%s %s' % (cmd.name, subname.replace('_', ' '))
-                print('\n%s\nSyntax:\t%s %s'\
-                    % (cls.description, cmd_name, cls.syntax))
+                print('\n%s\nSyntax:\t%s %s' % (
+                    cls.description,
+                    cmd_name,
+                    cls.syntax))
                 cmd_args = {}
                 for arg in instance.arguments.values():
                     cmd_args[','.join(arg.parsed_name)] = arg.help

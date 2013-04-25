@@ -42,9 +42,9 @@ The above example will be used throughout the present guide for clarification pu
 The CommandTree structure
 -------------------------
 
-CommandTree manages a command by its path. Each command is stored in multiple nodes on the tree, so that the last term is a leaf and the route from root to that leaf represents the command path. For example the commands *store upload*, *store list* and *store info* are stored together as shown bellow::
+CommandTree manages a command by its path. Each command is stored in multiple nodes on the tree, so that the last term is a leaf and the route from root to that leaf represents the command path. For example the commands *file upload*, *file list* and *file info* are stored together as shown bellow::
 
-    - store
+    - file
     ''''''''|- info
             |- list
             |- upload
@@ -125,7 +125,7 @@ The description of each command is the first line of the class commend. The foll
 Declare run-time argument
 -------------------------
 
-The argument mechanism allows the definition of run-time arguments. Some basic argument types are defined at the `argument module <code.html#module-kamaki.cli.argument>`_, but it is not uncommon to extent these classes in order to achieve specialized type checking and syntax control (e.g. at `pithos_cli module <code.html#module-kamaki.cli.commands.pithos_cli>`_).
+The argument mechanism allows the definition of run-time arguments. Some basic argument types are defined at the `argument module <code.html#module-kamaki.cli.argument>`_, but it is not uncommon to extent these classes in order to achieve specialized type checking and syntax control (e.g. at `pithos cli module <code.html#module-kamaki.cli.commands.pithos>`_).
 
 To declare a run-time argument on a specific command, the object class should initialize a dict called *arguments* , where Argument objects are stored. Each argument object is a possible run-time argument. Syntax checking happens at client level, while the type checking is implemented in the Argument code (thus, many different Argument types might be needed).
 

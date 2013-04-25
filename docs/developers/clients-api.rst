@@ -6,7 +6,7 @@ Kamaki features a clients API for building third-party client applications that 
 
 A good example of an application build on kamaki.clients is kamaki.cli, the command line interface of kamaki. 
 
-Since synnefo services are build as OpenStack extensions, an inheritance approach has been chosen for implementing clients for both. In specific, the *compute*, *storage* and *image* modules are clients of the OS compute, OS storage, respectively. On the contrary, all the other modules are Synnefo extensions (*cyclades* extents *compute*, *pithos* and *pithos_rest_api* extent *storage*) or novel synnefo services (e.g. *astakos*, *image* for *plankton*).
+Since synnefo services are build as OpenStack extensions, an inheritance approach has been chosen for implementing clients for both. In specific, the *compute*, *storage* and *image* modules are clients of the OS compute, OS storage, respectively. On the contrary, all the other modules are Synnefo extensions (*cyclades* extents *compute*, *pithos* and *pithos_rest_api* extent *storage*) or novel synnefo services (e.g. *astakos* for IM, *image* for *plankton*).
 
 Setup a client instance
 -----------------------
@@ -16,7 +16,7 @@ External applications may instantiate one or more kamaki clients.
 .. code-block:: python
     :emphasize-lines: 1
 
-    Example 1.1: Instantiate a Cyclades client
+    Example 1.1: Instantiate Cyclades and Pithos client
 
 
     from kamaki.clients.cyclades import CycladesClient
@@ -26,6 +26,14 @@ External applications may instantiate one or more kamaki clients.
     my_pithos_client = PithosClient(base_url, token, account, container)
 
 .. note:: *cyclades* and *pithos* clients inherit all methods of *compute* and *storage* clients respectively. Separate compute or storage objects should be used only when implementing applications for strict OS Compute or OS Storage services.
+
+.. note:: *account* variable is usually acquired by the following user call
+
+    .. code-block:: python
+
+        from kamaki.clients.astakos import AstakosClient
+        astakos = AstakosClient(astakos_base_url, token)
+        account = astakos.term('uuid')
 
 Use client methods
 ------------------

@@ -67,14 +67,16 @@ class CLIUnknownCommand(CLIError):
 
 
 class CLICmdSpecError(CLIError):
-    def __init__(self,
-        message='Command Specification Error', details=[], importance=0):
+    def __init__(
+            self, message='Command Specification Error',
+            details=[], importance=0):
         super(CLICmdSpecError, self).__init__(message, details, importance)
 
 
 class CLICmdIncompleteError(CLICmdSpecError):
-    def __init__(self,
-        message='Incomplete Command Error', details=[], importance=1):
+    def __init__(
+            self, message='Incomplete Command Error',
+            details=[], importance=1):
         super(CLICmdSpecError, self).__init__(message, details, importance)
 
 
@@ -111,10 +113,10 @@ def raiseCLIError(err, message='', importance=0, details=[]):
     else:
         origerr = stack[0]
 
-    message = unicode(message) if message else unicode(origerr)
+    message = '%s' % (message if message else origerr)
 
     try:
-        status = err.status
+        status = err.status or err.errno
     except AttributeError:
         status = None
 
@@ -128,6 +130,6 @@ def raiseCLIError(err, message='', importance=0, details=[]):
             status = int(err.status)
         except ValueError:
             raise CLIError(message, details, importance)
-        importance = status // 100
+        importance = importance if importance else status // 100
     importance = getattr(err, 'importance', importance)
     raise CLIError(message, details, importance)

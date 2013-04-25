@@ -31,13 +31,14 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-import logging
+from kamaki import logger
 
-sendlog = logging.getLogger('clients.send')
-recvlog = logging.getLogger('clients.recv')
+logger.add_file_logger('cli', __name__, filename=logger.get_log_filename())
+sendlog = logger.get_logger('cli')
 
 
 class _command_init(object):
+
     def __init__(self, arguments={}):
         if hasattr(self, 'arguments'):
             arguments.update(self.arguments)
@@ -46,6 +47,42 @@ class _command_init(object):
             self.config = self['config']
             #self.config = self.get_argument('config')
         except KeyError:
+            pass
+
+    def _set_log_params(self):
+        try:
+            self.client.LOG_TOKEN, self.client.LOG_DATA = (
+                self['config'].get('global', 'log_token') == 'on',
+                self['config'].get('global', 'log_data') == 'on')
+        except Exception as e:
+            sendlog.warning('Failed to read custom log settings: %s' % e)
+            sendlog.warning('\tdefaults for token and data logging are off')
+            pass
+
+    def _update_max_threads(self):
+        try:
+            max_threads = int(self['config'].get('global', 'max_threads'))
+            assert max_threads > 0
+            self.client.MAX_THREADS = max_threads
+        except Exception as e:
+            sendlog.warning('Failed to read custom thread settings: %s' % e)
+            sendlog.warning(
+                '\tdefault for max threads is %s' % self.client.MAX_THREADS)
+            pass
+
+    def _safe_progress_bar(self, msg, arg='progress_bar'):
+        """Try to get a progress bar, but do not raise errors"""
+        try:
+            progress_bar = self.arguments[arg]
+            gen = progress_bar.get_generator(msg)
+        except Exception:
+            return (None, None)
+        return (progress_bar, gen)
+
+    def _safe_progress_bar_finish(self, progress_bar):
+        try:
+            progress_bar.finish()
+        except Exception:
             pass
 
     def __getitem__(self, argterm):
