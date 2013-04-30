@@ -37,7 +37,7 @@ from kamaki.cli.utils import print_dict, print_items
 from kamaki.clients.image import ImageClient
 from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
 from kamaki.cli.argument import IntArgument
-from kamaki.cli.commands.cyclades_cli import _init_cyclades
+from kamaki.cli.commands.cyclades import _init_cyclades
 from kamaki.cli.commands import _command_init, errors
 
 
@@ -201,7 +201,7 @@ class image_register(_init_image):
         owner=ValueArgument('set image owner (admin only)', '--owner'),
         properties=KeyValueArgument(
             'add property in key=value form (can be repeated)',
-            ('-p, --property')),
+            ('-p', '--property')),
         is_public=FlagArgument('mark image as public', '--public'),
         size=IntArgument('set image size', '--size'),
         update=FlagArgument(

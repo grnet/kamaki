@@ -163,14 +163,14 @@ The full process is detailed in the following:
 Requirements
 ^^^^^^^^^^^^
 
-* Python 2.7 or better (`Official versions <http://www.python.org/getit>`_)
+* Python 2.7 (`Official versions <http://www.python.org/getit>`_)
 
 * Setuptools (`Official versions and workarounds <http://pypi.python.org/pypi/setuptools>`_)
 
-Users who have already set up python and setuptools (e.g. for another project) may skip python and / or setup tools installation.
+Users who have already set up python 2.7 and setuptools (e.g. for another project) may skip python and / or setup tools installation.
 
-Install python
-^^^^^^^^^^^^^^
+Install python 2.7
+^^^^^^^^^^^^^^^^^^
 
 Download and run the Windows installer from `here <http://www.python.org/getit>`_
 
@@ -185,11 +185,9 @@ The following will allow users to run python and python scripts from command lin
 
 * Without removing existing values, append the following to PATH::
 
-    C:\Python;C:\Python\Scripts
+    C:\Python27;C:\Python27\Scripts
 
 .. note:: Path values are separated by semicolons
-
-.. warning:: C:\\Python should be replaced with the actual python path in the system, e.g. C:\\Python27
 
 Install setuptools
 ^^^^^^^^^^^^^^^^^^
@@ -211,5 +209,5 @@ Install kamaki
 
 .. code-block:: console
 
-    $ easy_setup kamaki
+    $ easy_install kamaki
 
