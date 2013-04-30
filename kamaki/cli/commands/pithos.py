@@ -1032,7 +1032,7 @@ class file_upload(_file_container_command):
         r = self.client.container_get()
         used_bytes = sum(int(o['bytes']) for o in r.json)
         path_size = get_path_size(path)
-        if path_size > (container_limit - used_bytes):
+        if container_limit and path_size > (container_limit - used_bytes):
             raiseCLIError(
                 'Container(%s) (limit(%s) - used(%s)) < size(%s) of %s' % (
                     self.client.container,
