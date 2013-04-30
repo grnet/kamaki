@@ -156,12 +156,7 @@ class Image(livetest.Generic):
                     'size'):
                 self.assertTrue(term in img)
                 if img['properties']:
-                    for interm in (
-                            'osfamily',
-                            'users',
-                            'os',
-                            'root_partition',
-                            'description'):
+                    for interm in ('osfamily', 'users', 'root_partition'):
                         self.assertTrue(interm in img['properties'])
         size_max = 1000000000
         r2 = self.client.list_public(filters=dict(size_max=size_max))
