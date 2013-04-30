@@ -1033,7 +1033,7 @@ class file_upload(_file_container_command):
         r = self.client.container_get()
         used_bytes = sum(int(o['bytes']) for o in r.json)
         path_size = get_path_size(path)
-        if path_size > (container_limit - used_bytes):
+        if container_limit and path_size > (container_limit - used_bytes):
             raiseCLIError(
                 'Container(%s) (limit(%s) - used(%s)) < size(%s) of %s' % (
                     self.client.container,
@@ -1847,8 +1847,8 @@ class file_containerlimit_get(_file_container_command):
     def _run(self):
         reply = self.client.get_container_limit(self.container)
         if not self['in_bytes']:
-            for k in reply:
-                reply[k] = format_size(reply[k])
+            for k, v in reply.items():
+                reply[k] = 'unlimited' if '0' == v else format_size(v)
         print_dict(pretty_keys(reply, '-'))
 
     def main(self, container=None):
@@ -1864,6 +1864,7 @@ class file_containerlimit_set(_file_account_command):
     Users may specify a different unit, e.g:
     /file containerlimit set 2.3GB mycontainer
     Valid units: B, KiB (1024 B), KB (1000 B), MiB, MB, GiB, GB, TiB, TB
+    To set container limit to "unlimited", use 0
     """
 
     @errors.generic.all

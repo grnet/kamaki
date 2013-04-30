@@ -1,3 +1,8 @@
+Hot fix 0.8.2
+
+Make kamaki file upload/containerlimit * operations aware that 0 means
+"unlimited" when refering to container limits [#3684]
+
 Hotfix 0.8.1
 
 Fix typo when parsing --config and --property
