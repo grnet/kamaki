@@ -66,7 +66,7 @@ def _add_logger(name, level=None, filename=None, fmt=None):
     return get_logger(name)
 
 
-def add_file_logger(name, level=None, prefix='', filename=None):
+def add_file_logger(name, level=None, filename=None):
     try:
         return _add_logger(
             name, level, filename or get_log_filename(),

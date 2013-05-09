@@ -44,15 +44,13 @@ from objpool.http import PooledHTTPConnection
 
 from kamaki import logger
 
-LOG_FILE = logger.get_log_filename()
 TIMEOUT = 60.0   # seconds
 HTTP_METHODS = ['GET', 'POST', 'PUT', 'HEAD', 'DELETE', 'COPY', 'MOVE']
 
 log = logger.add_file_logger(__name__)
 log.debug('Logging location: %s' % logger.get_log_filename())
-
-sendlog = logger.add_file_logger('clients.send')
-recvlog = logger.add_file_logger('clients.recv')
+sendlog = logger.add_file_logger('%s.send' % __name__)
+recvlog = logger.add_file_logger('%s.recv' % __name__)
 
 
 def _encode(v):
