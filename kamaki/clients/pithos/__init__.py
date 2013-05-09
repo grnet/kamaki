@@ -198,12 +198,14 @@ class PithosClient(PithosRestClient):
         nblocks = 1 + (size - 1) // blocksize
         return (blocksize, blockhash, size, nblocks)
 
-    def _get_missing_hashes(
+    def _create_or_get_missing_hashes(
             self, obj, json,
             size=None,
             format='json',
             hashmap=True,
             content_type=None,
+            if_etag_match=None,
+            if_etag_not_match=None,
             content_encoding=None,
             content_disposition=None,
             permissions=None,
@@ -215,6 +217,8 @@ class PithosClient(PithosRestClient):
             hashmap=True,
             content_type=content_type,
             json=json,
+            if_etag_match=if_etag_match,
+            if_etag_not_match=if_etag_not_match,
             content_encoding=content_encoding,
             content_disposition=content_disposition,
             permissions=permissions,
@@ -222,7 +226,7 @@ class PithosClient(PithosRestClient):
             success=success)
         return None if r.status_code == 201 else r.json
 
-    def _culculate_blocks_for_upload(
+    def _calculate_blocks_for_upload(
             self, blocksize, blockhash, size, nblocks, hashes, hmap, fileobj,
             hash_cb=None):
         offset = 0
@@ -338,7 +342,7 @@ class PithosClient(PithosRestClient):
         if not content_type:
             content_type = 'application/octet-stream'
 
-        self._culculate_blocks_for_upload(
+        self._calculate_blocks_for_upload(
             *block_info,
             hashes=hashes,
             hmap=hmap,
@@ -346,10 +350,12 @@ class PithosClient(PithosRestClient):
             hash_cb=hash_cb)
 
         hashmap = dict(bytes=size, hashes=hashes)
-        missing = self._get_missing_hashes(
+        missing = self._create_or_get_missing_hashes(
             obj, hashmap,
             content_type=content_type,
             size=size,
+            if_etag_match=if_etag_match,
+            if_etag_not_match='*' if if_not_exist else None,
             content_encoding=content_encoding,
             content_disposition=content_disposition,
             permissions=sharing,
