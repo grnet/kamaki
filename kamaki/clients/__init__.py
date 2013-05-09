@@ -48,21 +48,11 @@ LOG_FILE = logger.get_log_filename()
 TIMEOUT = 60.0   # seconds
 HTTP_METHODS = ['GET', 'POST', 'PUT', 'HEAD', 'DELETE', 'COPY', 'MOVE']
 
-logger.add_file_logger('clients.send', __name__, filename=LOG_FILE)
-sendlog = logger.get_logger('clients.send')
-sendlog.debug('Logging location: %s' % LOG_FILE)
+log = logger.add_file_logger(__name__)
+log.debug('Logging location: %s' % logger.get_log_filename())
 
-logger.add_file_logger('data.send', __name__, filename=LOG_FILE)
-datasendlog = logger.get_logger('data.send')
-
-logger.add_file_logger('clients.recv', __name__, filename=LOG_FILE)
-recvlog = logger.get_logger('clients.recv')
-
-logger.add_file_logger('data.recv', __name__, filename=LOG_FILE)
-datarecvlog = logger.get_logger('data.recv')
-
-logger.add_file_logger('ClientError', __name__, filename=LOG_FILE)
-clienterrorlog = logger.get_logger('ClientError')
+sendlog = logger.add_file_logger('clients.send')
+recvlog = logger.add_file_logger('clients.recv')
 
 
 def _encode(v):
@@ -73,7 +63,7 @@ def _encode(v):
 
 class ClientError(Exception):
     def __init__(self, message, status=0, details=None):
-        clienterrorlog.debug('ClientError: msg[%s], sts[%s], dtl[%s]' % (
+        log.debug('ClientError: msg[%s], sts[%s], dtl[%s]' % (
             message,
             status,
             details))
@@ -169,7 +159,7 @@ class RequestManager(Logged):
         if self.data:
             sendlog.info('data size:%s\t[%s]' % (len(self.data), self))
             if self.LOG_DATA:
-                datasendlog.info(self.data)
+                sendlog.info(self.data)
         else:
             sendlog.info('data size:0\t[%s]' % self)
         sendlog.info('')
@@ -239,7 +229,7 @@ class ResponseManager(Logged):
                     len(self._content) if self._content else 0,
                     self))
                 if self.LOG_DATA and self._content:
-                    datarecvlog.info('%s\t[p: %s]' % (self._content, self))
+                    recvlog.info('%s\t[p: %s]' % (self._content, self))
         except Exception as err:
             from traceback import format_stack
             recvlog.debug('\n'.join(['%s' % type(err)] + format_stack()))
@@ -360,7 +350,7 @@ class Client(object):
         return threadlist
 
     def _raise_for_status(self, r):
-        clienterrorlog.debug('raise err from [%s] of type[%s]' % (r, type(r)))
+        log.debug('raise err from [%s] of type[%s]' % (r, type(r)))
         status_msg = getattr(r, 'status', None) or ''
         try:
             message = '%s %s\n' % (status_msg, r.text)

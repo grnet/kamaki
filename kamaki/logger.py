@@ -56,20 +56,30 @@ def set_log_filename(filename):
     LOG_FILE = [filename] + LOG_FILE
 
 
-def add_file_logger(
-        name, caller,
-        level=logging.DEBUG, prefix='', filename='/tmp/kamaki.log'):
+def _add_logger(name, level=None, filename=None, fmt=None):
+    log = logging.getLogger(name)
+    h = logging.FileHandler(filename) if (
+        filename) else logging.StreamHandler(filename)
+    h.setFormatter(logging.Formatter(fmt or '%(name)s %(message)s'))
+    log.addHandler(h)
+    log.setLevel(level or logging.DEBUG)
+    return get_logger(name)
+
+
+def add_file_logger(name, level=None, prefix='', filename=None):
     try:
-        assert caller and filename
-        logger = logging.getLogger(name)
-        h = logging.FileHandler(filename)
-        fmt = logging.Formatter(
-            '%(asctime)s ' + caller + ' %(name)s-%(levelname)s: %(message)s')
-        h.setFormatter(fmt)
-        logger.addHandler(h)
-        logger.setLevel(level)
+        return _add_logger(
+            name, level, filename or get_log_filename(),
+            fmt='%(name)s(%(levelname)s) %(asctime)s\n\t%(message)s')
     except Exception:
-        pass
+        return get_logger(name)
+
+
+def add_stream_logger(name, level=None):
+    try:
+        return _add_logger(name, level, fmt='%(name)s\n\t%(message)s')
+    except Exception:
+        return get_logger(name)
 
 
 def get_logger(name):
