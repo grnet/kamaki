@@ -1,3 +1,9 @@
+kamaki (0.8.3-1) stable; urgency=low
+
+  * New hotfix version
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Thu, 09 May 2013 17:18:59 +0300
+
 kamaki (0.8.2-1) stable; urgency=low
 
   * New hotfix version
