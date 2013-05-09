@@ -57,10 +57,11 @@ def set_log_filename(filename):
 
 
 def _add_logger(name, level=None, filename=None, fmt=None):
-    log = logging.getLogger(name)
+    log = get_logger(name)
     h = logging.FileHandler(filename) if (
-        filename) else logging.StreamHandler(filename)
-    h.setFormatter(logging.Formatter(fmt or '%(name)s %(message)s'))
+        filename) else logging.StreamHandler()
+    lfmt = logging.Formatter(fmt or '%(name)s\n %(message)s')
+    h.setFormatter(lfmt)
     log.addHandler(h)
     log.setLevel(level or logging.DEBUG)
     return get_logger(name)
@@ -77,7 +78,7 @@ def add_file_logger(name, level=None, filename=None):
 
 def add_stream_logger(name, level=None):
     try:
-        return _add_logger(name, level, fmt='%(name)s\n\t%(message)s')
+        return _add_logger(name, level)
     except Exception:
         return get_logger(name)
 

@@ -40,6 +40,7 @@ from kamaki.cli.argument import ArgumentParseManager
 from kamaki.cli.history import History
 from kamaki.cli.utils import print_dict, red, magenta, yellow
 from kamaki.cli.errors import CLIError
+from kamaki.logger import add_stream_logger, get_logger
 
 _help = False
 _debug = False
@@ -168,34 +169,24 @@ cmd_spec_locations = [
 def _setup_logging(silent=False, debug=False, verbose=False, include=False):
     """handle logging for clients package"""
 
-    def add_handler(name, level, prefix=''):
-        h = logging.StreamHandler()
-        fmt = logging.Formatter(prefix + '%(message)s')
-        h.setFormatter(fmt)
-        logger = logging.getLogger(name)
-        logger.addHandler(h)
-        logger.setLevel(level)
-
     if silent:
-        add_handler('', logging.CRITICAL)
+        add_stream_logger(__name__, logging.CRITICAL)
         return
 
     if debug:
-        add_handler('requests', logging.INFO, prefix='* ')
-        add_handler('clients.send', logging.DEBUG, prefix='> ')
-        add_handler('clients.recv', logging.DEBUG, prefix='< ')
-        add_handler('kamaki', logging.DEBUG, prefix='(debug): ')
+        add_stream_logger('kamaki.clients.send', logging.DEBUG)
+        add_stream_logger('kamaki.clients.recv', logging.DEBUG)
+        add_stream_logger(__name__, logging.DEBUG)
     elif verbose:
-        add_handler('requests', logging.INFO, prefix='* ')
-        add_handler('clients.send', logging.INFO, prefix='> ')
-        add_handler('clients.recv', logging.INFO, prefix='< ')
-        add_handler('kamaki', logging.INFO, prefix='(i): ')
+        add_stream_logger('kamaki.clients.send', logging.INFO)
+        add_stream_logger('kamaki.clients.recv', logging.INFO)
+        add_stream_logger(__name__, logging.INFO)
     if include:
-        add_handler('data.send', logging.INFO, prefix='>[data]: ')
-        add_handler('data.recv', logging.INFO, prefix='<[data]: ')
-    add_handler('kamaki', logging.WARNING, prefix='(warning): ')
+        add_stream_logger('kamaki.clients.send', logging.INFO)
+        add_stream_logger('kamaki.clients.recv', logging.INFO)
+    add_stream_logger(__name__, logging.WARNING)
     global kloger
-    kloger = logging.getLogger('kamaki')
+    kloger = get_logger(__name__)
 
 
 def _init_session(arguments):

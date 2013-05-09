@@ -33,7 +33,6 @@
 
 from sys import stdout
 from time import localtime, strftime
-from logging import getLogger
 from os import path, makedirs, walk
 
 from kamaki.cli import command
@@ -48,9 +47,6 @@ from kamaki.cli.argument import ProgressBarArgument
 from kamaki.cli.commands import _command_init, errors
 from kamaki.clients.pithos import PithosClient, ClientError
 from kamaki.clients.astakos import AstakosClient
-
-
-kloger = getLogger('kamaki')
 
 pithos_cmds = CommandTree('file', 'Pithos+/Storage API commands')
 _commands = [pithos_cmds]
