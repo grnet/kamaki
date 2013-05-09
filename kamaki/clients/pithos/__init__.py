@@ -350,7 +350,7 @@ class PithosClient(PithosRestClient):
             hash_cb=hash_cb)
 
         hashmap = dict(bytes=size, hashes=hashes)
-        missing = self.create_or_get_missing_hashes(
+        missing = self._create_or_get_missing_hashes(
             obj, hashmap,
             content_type=content_type,
             size=size,
