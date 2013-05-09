@@ -76,9 +76,9 @@ def add_file_logger(name, level=None, filename=None):
         return get_logger(name)
 
 
-def add_stream_logger(name, level=None):
+def add_stream_logger(name, level=None, fmt=None):
     try:
-        return _add_logger(name, level)
+        return _add_logger(name, level, fmt=fmt)
     except Exception:
         return get_logger(name)
 

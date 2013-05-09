@@ -173,17 +173,18 @@ def _setup_logging(silent=False, debug=False, verbose=False, include=False):
         add_stream_logger(__name__, logging.CRITICAL)
         return
 
+    sfmt, rfmt = '> %(message)s', '< %(message)s'
     if debug:
-        add_stream_logger('kamaki.clients.send', logging.DEBUG)
-        add_stream_logger('kamaki.clients.recv', logging.DEBUG)
+        add_stream_logger('kamaki.clients.send', logging.DEBUG, sfmt)
+        add_stream_logger('kamaki.clients.recv', logging.DEBUG, rfmt)
         add_stream_logger(__name__, logging.DEBUG)
     elif verbose:
-        add_stream_logger('kamaki.clients.send', logging.INFO)
-        add_stream_logger('kamaki.clients.recv', logging.INFO)
+        add_stream_logger('kamaki.clients.send', logging.INFO, sfmt)
+        add_stream_logger('kamaki.clients.recv', logging.INFO, rfmt)
         add_stream_logger(__name__, logging.INFO)
     if include:
-        add_stream_logger('kamaki.clients.send', logging.INFO)
-        add_stream_logger('kamaki.clients.recv', logging.INFO)
+        add_stream_logger('kamaki.clients.send', logging.INFO, sfmt)
+        add_stream_logger('kamaki.clients.recv', logging.INFO, rfmt)
     add_stream_logger(__name__, logging.WARNING)
     global kloger
     kloger = get_logger(__name__)
