@@ -42,13 +42,13 @@ from random import random
 
 from objpool.http import PooledHTTPConnection
 
-from kamaki.logger import add_file_logger, get_log_filename, get_logger
+from kamaki.logger import get_logger
+
 
 TIMEOUT = 60.0   # seconds
 HTTP_METHODS = ['GET', 'POST', 'PUT', 'HEAD', 'DELETE', 'COPY', 'MOVE']
 
-log = add_file_logger(__name__)
-log.debug('Logging location: %s' % get_log_filename())
+log = get_logger(__name__)
 sendlog = get_logger('%s.send' % __name__)
 recvlog = get_logger('%s.recv' % __name__)
 
