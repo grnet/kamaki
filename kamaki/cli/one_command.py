@@ -31,14 +31,14 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-from logging import getLogger
+from kamaki.logger import get_logger
 
 from kamaki.cli import get_command_group, set_command_params
 from kamaki.cli import print_subcommands_help, exec_cmd, update_parser_help
 from kamaki.cli import _groups_help, _load_spec_module
 
 
-kloger = getLogger('kamaki')
+kloger = get_logger('kamaki.cli')
 
 
 def _get_cmd_tree_from_spec(spec, cmd_tree_list):

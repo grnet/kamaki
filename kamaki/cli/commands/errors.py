@@ -32,17 +32,11 @@
 # or implied, of GRNET S.A.command
 
 from traceback import print_stack, print_exc
-import logging
 
 from kamaki.clients import ClientError
 from kamaki.cli.errors import CLIError, raiseCLIError, CLISyntaxError
 from kamaki.cli import _debug, kloger
 from kamaki.cli.utils import format_size
-
-sendlog = logging.getLogger('clients.send')
-datasendlog = logging.getLogger('data.send')
-recvlog = logging.getLogger('clients.recv')
-datarecvlog = logging.getLogger('data.recv')
 
 
 class generic(object):

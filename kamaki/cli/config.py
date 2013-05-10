@@ -58,13 +58,13 @@ DEFAULTS = {
         'colors': 'off',
         'account':  '',
         'token': '',
+        'log_file': os.path.expanduser('~/.kamaki.log'),
         'log_token': 'off',
         'log_data': 'off',
         'max_threads': 7
     },
     'config': {
         'cli': 'config',
-        'description': 'Configuration commands'
     },
     'history': {
         'cli': 'history',

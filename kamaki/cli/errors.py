@@ -31,10 +31,9 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-import logging
+from kamaki.logger import get_logger
 
-sendlog = logging.getLogger('clients.send')
-recvlog = logging.getLogger('clients.recv')
+log = get_logger('kamaki.cli')
 
 
 class CLIError(Exception):
@@ -101,7 +100,7 @@ def raiseCLIError(err, message='', importance=0, details=[]):
     try:
         stack = [e for e in stack if e != stack[1]]
     except KeyError:
-        recvlog.debug('\n   < '.join(stack))
+        log.debug('\n   < '.join(stack))
 
     details = ['%s' % details] if not isinstance(details, list)\
         else list(details)

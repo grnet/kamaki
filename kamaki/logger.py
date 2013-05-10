@@ -31,14 +31,12 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+from os import chmod
+from os.path import expanduser
 import logging
 
 
-LOG_FILE = [
-    '/var/log/kamaki.log',
-    '/var/log/kamaki/clients.log',
-    '/tmp/kamaki.log',
-    'kamaki.log']
+LOG_FILE = [expanduser('~/.kamaki.log')]
 
 
 def get_log_filename():
@@ -46,6 +44,7 @@ def get_log_filename():
         try:
             with open(logfile, 'a+') as f:
                 f.seek(0)
+            chmod(logfile, 0600)
         except IOError:
             continue
         return logfile
@@ -57,20 +56,31 @@ def set_log_filename(filename):
     LOG_FILE = [filename] + LOG_FILE
 
 
-def add_file_logger(
-        name, caller,
-        level=logging.DEBUG, prefix='', filename='/tmp/kamaki.log'):
+def _add_logger(name, level=None, filename=None, fmt=None):
+    log = get_logger(name)
+    h = logging.FileHandler(filename) if (
+        filename) else logging.StreamHandler()
+    lfmt = logging.Formatter(fmt or '%(name)s\n %(message)s')
+    h.setFormatter(lfmt)
+    log.addHandler(h)
+    log.setLevel(level or logging.DEBUG)
+    return log
+
+
+def add_file_logger(name, level=None, filename=None):
     try:
-        assert caller and filename
-        logger = logging.getLogger(name)
-        h = logging.FileHandler(filename)
-        fmt = logging.Formatter(
-            '%(asctime)s ' + caller + ' %(name)s-%(levelname)s: %(message)s')
-        h.setFormatter(fmt)
-        logger.addHandler(h)
-        logger.setLevel(level)
+        return _add_logger(
+            name, level, filename or get_log_filename(),
+            fmt='%(name)s(%(levelname)s) %(asctime)s\n\t%(message)s')
     except Exception:
-        pass
+        return get_logger(name)
+
+
+def add_stream_logger(name, level=None, fmt=None):
+    try:
+        return _add_logger(name, level, fmt=fmt)
+    except Exception:
+        return get_logger(name)
 
 
 def get_logger(name):

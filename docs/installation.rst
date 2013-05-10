@@ -111,7 +111,7 @@ With virtualenv users can setup kamaki and synnefo services in a sandbox environ
     $ virtualenv kamaki-env
     $ source kamaki-env/bin/activate
 
-A more detailed example of using virtual env can be found at the `snf-image-creator setup guide <http://docs.dev.grnet.gr/snf-image-creator/latest/install.html#python-virtual-environment>`_
+A more detailed example of using virtual env can be found at the `snf-image-creator setup guide <http://www.synnefo.org/docs/snf-image-creator/latest/install.html#python-virtual-environment>`_
 
 Install kamaki
 """"""""""""""

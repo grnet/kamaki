@@ -31,10 +31,9 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-from kamaki import logger
+from kamaki.logger import get_logger
 
-logger.add_file_logger('cli', __name__, filename=logger.get_log_filename())
-sendlog = logger.get_logger('cli')
+log = get_logger('kamaki.cli')
 
 
 class _command_init(object):
@@ -55,8 +54,8 @@ class _command_init(object):
                 self['config'].get('global', 'log_token') == 'on',
                 self['config'].get('global', 'log_data') == 'on')
         except Exception as e:
-            sendlog.warning('Failed to read custom log settings: %s' % e)
-            sendlog.warning('\tdefaults for token and data logging are off')
+            log.warning('Failed to read custom log settings: %s' % e)
+            log.warning('\tdefaults for token and data logging are off')
             pass
 
     def _update_max_threads(self):
@@ -65,8 +64,8 @@ class _command_init(object):
             assert max_threads > 0
             self.client.MAX_THREADS = max_threads
         except Exception as e:
-            sendlog.warning('Failed to read custom thread settings: %s' % e)
-            sendlog.warning(
+            log.warning('Failed to read custom thread settings: %s' % e)
+            log.warning(
                 '\tdefault for max threads is %s' % self.client.MAX_THREADS)
             pass
 
