@@ -40,7 +40,7 @@ from kamaki.cli.argument import ArgumentParseManager
 from kamaki.cli.history import History
 from kamaki.cli.utils import print_dict, red, magenta, yellow
 from kamaki.cli.errors import CLIError
-from kamaki import logger
+from kamaki.cli import logger
 
 _help = False
 _debug = False
@@ -384,9 +384,7 @@ def main():
 
         log_file = parser.arguments['config'].get('global', 'log_file')
         if log_file:
-            from kamaki.logger import set_log_filename
-            set_log_filename(log_file)
-
+            logger.set_log_filename(log_file)
         global filelog
         filelog = logger.add_file_logger(__name__.split('.')[0])
         filelog.info('Logging location: %s' % logger.get_log_filename())
