@@ -190,7 +190,7 @@ class Shell(Cmd):
                     else:
                         instance = cls(dict(cmd_parser.arguments))
                     cmd_parser.update_arguments(instance.arguments)
-                    instance.arguments.pop('config')
+                    #instance.arguments.pop('config')
                     cmd_parser.arguments = instance.arguments
                     cmd_parser.syntax = '%s %s' % (
                         subcmd.path.replace('_', ' '), cls.syntax)

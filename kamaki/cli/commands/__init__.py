@@ -33,7 +33,7 @@
 
 from kamaki.logger import get_logger
 
-log = get_logger('kamaki.cli')
+log = get_logger(__name__)
 
 
 class _command_init(object):
@@ -54,9 +54,8 @@ class _command_init(object):
                 self['config'].get('global', 'log_token') == 'on',
                 self['config'].get('global', 'log_data') == 'on')
         except Exception as e:
-            log.warning('Failed to read custom log settings: %s' % e)
-            log.warning('\tdefaults for token and data logging are off')
-            pass
+            log.warning('Failed to read custom log settings:'
+                '%s\n defaults for token and data logging are off' % e)
 
     def _update_max_threads(self):
         try:
@@ -64,10 +63,9 @@ class _command_init(object):
             assert max_threads > 0
             self.client.MAX_THREADS = max_threads
         except Exception as e:
-            log.warning('Failed to read custom thread settings: %s' % e)
-            log.warning(
-                '\tdefault for max threads is %s' % self.client.MAX_THREADS)
-            pass
+            log.warning('Failed to read custom thread settings: '
+                '%s, use default max threads (%s)' % (
+                    e, self.client.MAX_THREADS))
 
     def _safe_progress_bar(self, msg, arg='progress_bar'):
         """Try to get a progress bar, but do not raise errors"""

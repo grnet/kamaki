@@ -2,6 +2,7 @@ CHANGELOG for version 0.9
 
 Bug Fixes:
 
+- Stop shell from destroying the config instance
 
 Changes:
 
