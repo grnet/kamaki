@@ -37,6 +37,30 @@ import logging
 
 
 LOG_FILE = [expanduser('~/.kamaki.log')]
+ALL = 0
+
+_blacklist = {}
+
+
+def diactivate(name):
+    """Deactivate a logger. Can be restored"""
+    xlogger = logging.getLogger(name)
+    _blacklist[name] = xlogger.level
+    xlogger.setLevel(logging.CRITICAL)
+
+
+def activate(name):
+    """Restore a loggers settings"""
+    old_logger = logging.getLogger(name)
+    old_logger.setLevel(_blacklist.pop(name, old_logger.level))
+
+
+def if_logger_enabled(foo):
+    def wrap(name, *args, **kwargs):
+        if name in _blacklist:
+            return logging.getLogger(name)
+        return foo(name, *args, **kwargs)
+    return wrap
 
 
 def get_log_filename():
@@ -53,7 +77,7 @@ def get_log_filename():
 
 def set_log_filename(filename):
     global LOG_FILE
-    LOG_FILE = [filename] + LOG_FILE
+    LOG_FILE[0] = filename
 
 
 def _add_logger(name, level=None, filename=None, fmt=None):
@@ -67,6 +91,7 @@ def _add_logger(name, level=None, filename=None, fmt=None):
     return log
 
 
+@if_logger_enabled
 def add_file_logger(name, level=None, filename=None):
     try:
         return _add_logger(
@@ -76,6 +101,7 @@ def add_file_logger(name, level=None, filename=None):
         return get_logger(name)
 
 
+@if_logger_enabled
 def add_stream_logger(name, level=None, fmt=None):
     try:
         return _add_logger(name, level, fmt=fmt)
@@ -83,5 +109,6 @@ def add_stream_logger(name, level=None, fmt=None):
         return get_logger(name)
 
 
+@if_logger_enabled
 def get_logger(name):
     return logging.getLogger(name)

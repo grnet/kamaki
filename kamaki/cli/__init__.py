@@ -40,7 +40,7 @@ from kamaki.cli.argument import ArgumentParseManager
 from kamaki.cli.history import History
 from kamaki.cli.utils import print_dict, red, magenta, yellow
 from kamaki.cli.errors import CLIError
-from kamaki.logger import add_stream_logger, get_logger
+from kamaki import logger
 
 _help = False
 _debug = False
@@ -48,6 +48,7 @@ _include = False
 _verbose = False
 _colors = False
 kloger = None
+filelog = None
 
 #  command auxiliary methods
 
@@ -170,24 +171,25 @@ def _setup_logging(silent=False, debug=False, verbose=False, include=False):
     """handle logging for clients package"""
 
     if silent:
-        add_stream_logger(__name__, logging.CRITICAL)
+        logger.add_stream_logger(__name__, logging.CRITICAL)
         return
 
     sfmt, rfmt = '> %(message)s', '< %(message)s'
     if debug:
-        add_stream_logger('kamaki.clients.send', logging.DEBUG, sfmt)
-        add_stream_logger('kamaki.clients.recv', logging.DEBUG, rfmt)
-        add_stream_logger(__name__, logging.DEBUG)
+        print('Logging location: %s' % logger.get_log_filename())
+        logger.add_stream_logger('kamaki.clients.send', logging.DEBUG, sfmt)
+        logger.add_stream_logger('kamaki.clients.recv', logging.DEBUG, rfmt)
+        logger.add_stream_logger(__name__, logging.DEBUG)
     elif verbose:
-        add_stream_logger('kamaki.clients.send', logging.INFO, sfmt)
-        add_stream_logger('kamaki.clients.recv', logging.INFO, rfmt)
-        add_stream_logger(__name__, logging.INFO)
+        logger.add_stream_logger('kamaki.clients.send', logging.INFO, sfmt)
+        logger.add_stream_logger('kamaki.clients.recv', logging.INFO, rfmt)
+        logger.add_stream_logger(__name__, logging.INFO)
     if include:
-        add_stream_logger('kamaki.clients.send', logging.INFO, sfmt)
-        add_stream_logger('kamaki.clients.recv', logging.INFO, rfmt)
-    add_stream_logger(__name__, logging.WARNING)
+        logger.add_stream_logger('kamaki.clients.send', logging.INFO, sfmt)
+        logger.add_stream_logger('kamaki.clients.recv', logging.INFO, rfmt)
+    logger.add_stream_logger(__name__, logging.WARNING)
     global kloger
-    kloger = get_logger(__name__)
+    kloger = logger.get_logger(__name__)
 
 
 def _init_session(arguments):
@@ -384,6 +386,10 @@ def main():
         if log_file:
             from kamaki.logger import set_log_filename
             set_log_filename(log_file)
+
+        global filelog
+        filelog = logger.add_file_logger(__name__.split('.')[0])
+        filelog.info('Logging location: %s' % logger.get_log_filename())
 
         _init_session(parser.arguments)
 
