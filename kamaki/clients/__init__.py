@@ -42,15 +42,15 @@ from random import random
 
 from objpool.http import PooledHTTPConnection
 
-from kamaki.logger import add_file_logger, get_log_filename
+from kamaki.logger import add_file_logger, get_log_filename, get_logger
 
 TIMEOUT = 60.0   # seconds
 HTTP_METHODS = ['GET', 'POST', 'PUT', 'HEAD', 'DELETE', 'COPY', 'MOVE']
 
 log = add_file_logger(__name__)
 log.debug('Logging location: %s' % get_log_filename())
-sendlog = add_file_logger('%s.send' % __name__)
-recvlog = add_file_logger('%s.recv' % __name__)
+sendlog = get_logger('%s.send' % __name__)
+recvlog = get_logger('%s.recv' % __name__)
 
 
 def _encode(v):
@@ -143,7 +143,7 @@ class RequestManager(Logged):
         self.method, self.data = method, data
         self.scheme, self.netloc = self._connection_info(url, path, params)
 
-    def log(self):
+    def dump_log(self):
         sendlog.info('%s %s://%s%s\t[%s]' % (
             self.method,
             self.scheme,
@@ -173,7 +173,7 @@ class RequestManager(Logged):
             url=str(self.path),
             headers=self.headers,
             body=self.data)
-        self.log()
+        self.dump_log()
         keep_trying = TIMEOUT
         while keep_trying > 0:
             try:

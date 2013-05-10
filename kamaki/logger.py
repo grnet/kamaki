@@ -64,7 +64,7 @@ def _add_logger(name, level=None, filename=None, fmt=None):
     h.setFormatter(lfmt)
     log.addHandler(h)
     log.setLevel(level or logging.DEBUG)
-    return get_logger(name)
+    return log
 
 
 def add_file_logger(name, level=None, filename=None):
