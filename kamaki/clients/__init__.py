@@ -39,18 +39,17 @@ from time import time
 from httplib import ResponseNotReady
 from time import sleep
 from random import random
+from logging import getLogger
 
 from objpool.http import PooledHTTPConnection
-
-from kamaki.logger import get_logger
 
 
 TIMEOUT = 60.0   # seconds
 HTTP_METHODS = ['GET', 'POST', 'PUT', 'HEAD', 'DELETE', 'COPY', 'MOVE']
 
-log = get_logger(__name__)
-sendlog = get_logger('%s.send' % __name__)
-recvlog = get_logger('%s.recv' % __name__)
+log = getLogger(__name__)
+sendlog = getLogger('%s.send' % __name__)
+recvlog = getLogger('%s.recv' % __name__)
 
 
 def _encode(v):
