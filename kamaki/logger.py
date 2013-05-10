@@ -42,7 +42,7 @@ ALL = 0
 _blacklist = {}
 
 
-def diactivate(name):
+def deactivate(name):
     """Deactivate a logger. Can be restored"""
     xlogger = logging.getLogger(name)
     _blacklist[name] = xlogger.level
