@@ -6,6 +6,11 @@ Bug Fixes:
 Changes:
 
 - Change context: kamaki-image-addproperty --> kamaki-image-compute-property
+- http logger names are modified: clients.recv/send --> kamaki.clients.recv/send
 
 Features:
+
+- A logger module container a set of basic loging method for kamaki:
+   set/get_log_filename, add_file/strean_logger, get_logger
+  (#3668)
 
