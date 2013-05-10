@@ -34,11 +34,11 @@
 from kamaki.cli.config import Config
 from kamaki.cli.errors import CLISyntaxError, raiseCLIError
 from kamaki.cli.utils import split_input
-from kamaki.logger import get_logger
+
 from datetime import datetime as dtm
 from time import mktime
 
-
+from logging import getLogger
 from argparse import ArgumentParser, ArgumentError
 from argparse import RawDescriptionHelpFormatter
 
@@ -52,7 +52,7 @@ except ImportError:
     # progress not installed - pls, pip install progress
     pass
 
-log = get_logger('kamaki.cli')
+log = getLogger(__name__)
 
 
 class Argument(object):
@@ -354,7 +354,7 @@ class ProgressBarArgument(FlagArgument):
         try:
             KamakiProgressBar
         except NameError:
-            log.debug('WARNING: no progress bar functionality')
+            log.warning('WARNING: no progress bar functionality')
 
     def clone(self):
         """Get a modifiable copy of this bar"""
