@@ -3,6 +3,7 @@ CHANGELOG for version 0.9
 Bug Fixes:
 
 - Stop shell from destroying the config instance
+- Shell can manage all valid command line arguments [#3716]
 
 Changes:
 
@@ -15,4 +16,7 @@ Features:
 - A logger module container a set of basic loging method for kamaki [#3668]
    set/get_log_filename, add_file/strean_logger, get_logger
 - Implement logger.activate/deactivate for loggers [#3715]
+- Allow global args (e.g. -d for debug, -v for verbosity) to shell. They
+    should be used when invoking the shell. After that they are automatically
+    applied to all commands running in that kamaki shell. [#3716]
 
