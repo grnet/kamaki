@@ -31,21 +31,18 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-from kamaki.logger import get_logger
-
 from kamaki.cli import get_command_group, set_command_params
 from kamaki.cli import print_subcommands_help, exec_cmd, update_parser_help
 from kamaki.cli import _groups_help, _load_spec_module
-
-
-kloger = get_logger('kamaki.cli')
+from kamaki.cli import kloger
+from kamaki.cli.errors import CLIUnknownCommand
 
 
 def _get_cmd_tree_from_spec(spec, cmd_tree_list):
     for tree in cmd_tree_list:
         if tree.name == spec:
             return tree
-    return None
+    raise CLIUnknownCommand('Unknown command: %s' % spec)
 
 
 def _get_best_match_from_cmd_tree(cmd_tree, unparsed):
@@ -72,7 +69,13 @@ def run(parser, _help):
     _best_match = []
 
     spec_module = _load_spec_module(group, parser.arguments, '_commands')
-
+    if spec_module is None:
+        raise CLIUnknownCommand(
+            'Could not find specs for %s commands' % group,
+            details=[
+                'Make sure %s is a valid command group' % group,
+                'Refer to kamaki documentation for setting custom command',
+                'groups or overide existing ones'])
     cmd_tree = _get_cmd_tree_from_spec(group, spec_module._commands)
 
     if _best_match:
@@ -81,8 +84,7 @@ def run(parser, _help):
         cmd = _get_best_match_from_cmd_tree(cmd_tree, parser.unparsed)
         _best_match = cmd.path.split('_')
     if cmd is None:
-        kloger.info(
-            'Unexpected error: failed to load command (-d for details)')
+        kloger.info('Unexpected error: failed to load command (-d for more)')
         exit(1)
 
     update_parser_help(parser, cmd)
