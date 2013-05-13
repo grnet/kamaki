@@ -387,7 +387,7 @@ def main():
             logger.set_log_filename(log_file)
         global filelog
         filelog = logger.add_file_logger(__name__.split('.')[0])
-        filelog.info('Logging location: %s' % logger.get_log_filename())
+        filelog.info('Log call: %s' % ' '.join(argv))
 
         _init_session(parser.arguments)
 
