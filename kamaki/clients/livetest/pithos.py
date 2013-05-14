@@ -496,7 +496,9 @@ class Pithos(livetest.Generic):
         f = self.create_large_file(1024 * 1024 * 100)
         """Upload it at a directory in container"""
         self.client.create_directory('dir')
-        self.client.upload_object('/dir/sample.file', f)
+        r = self.client.upload_object('/dir/sample.file', f)
+        for term in ('content-length', 'content-type', 'x-object-version'):
+            self.assertTrue(term in r)
         """Check if file has been uploaded"""
         r = self.client.get_object_info('/dir/sample.file')
         self.assertTrue(int(r['content-length']) > 100000000)
@@ -665,7 +667,7 @@ class Pithos(livetest.Generic):
         f_size = 59247824
         src_f = self.create_large_file(f_size)
         print('\tUploading...')
-        self.client.upload_object(trg_fname, src_f)
+        r = self.client.upload_object(trg_fname, src_f)
         print('\tDownloading...')
         self.files.append(NamedTemporaryFile())
         dnl_f = self.files[-1]
