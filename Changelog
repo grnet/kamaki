@@ -23,4 +23,5 @@ Features:
     applied to all commands running in that kamaki shell. [#3716]
 - Implement a plankton-side image unregister [#3728]
 - Implement purging a non-empty container [#3662]
+- Add a -l option to upload, for listing uploaded objects details [#3730]
 
