@@ -112,6 +112,8 @@ class PithosClient(PithosRestClient):
             'write':[usr and/or grp names]}
 
         :param public: (bool)
+
+        :returns: (dict) created object metadata
         """
         self._assert_container()
 
@@ -128,7 +130,7 @@ class PithosClient(PithosRestClient):
             f = StringIO(data)
         else:
             data = f.read(size) if size else f.read()
-        self.object_put(
+        r = self.object_put(
             obj,
             data=data,
             etag=etag,
@@ -138,6 +140,7 @@ class PithosClient(PithosRestClient):
             permissions=sharing,
             public=public,
             success=201)
+        return r.headers
 
     def create_object_by_manifestation(
             self, obj,
@@ -162,9 +165,11 @@ class PithosClient(PithosRestClient):
             'write':[usr and/or grp names]}
 
         :param public: (bool)
+
+        :returns: (dict) created object metadata
         """
         self._assert_container()
-        self.object_put(
+        r = self.object_put(
             obj,
             content_length=0,
             etag=etag,
@@ -174,6 +179,7 @@ class PithosClient(PithosRestClient):
             permissions=sharing,
             public=public,
             manifest='%s/%s' % (self.container, obj))
+        return r.headers
 
     # upload_* auxiliary methods
     def _put_block_async(self, data, hash, upload_gen=None):
@@ -224,7 +230,7 @@ class PithosClient(PithosRestClient):
             permissions=permissions,
             public=public,
             success=success)
-        return None if r.status_code == 201 else r.json
+        return (None if r.status_code == 201 else r.json), r.headers
 
     def _calculate_blocks_for_upload(
             self, blocksize, blockhash, size, nblocks, hashes, hmap, fileobj,
@@ -350,7 +356,7 @@ class PithosClient(PithosRestClient):
             hash_cb=hash_cb)
 
         hashmap = dict(bytes=size, hashes=hashes)
-        missing = self._create_or_get_missing_hashes(
+        missing, obj_headers = self._create_or_get_missing_hashes(
             obj, hashmap,
             content_type=content_type,
             size=size,
@@ -362,7 +368,7 @@ class PithosClient(PithosRestClient):
             public=public)
 
         if missing is None:
-            return
+            return obj_headers
 
         if upload_cb:
             upload_gen = upload_cb(len(missing))
@@ -401,7 +407,7 @@ class PithosClient(PithosRestClient):
                 thread.join()
             raise
 
-        self.object_put(
+        r = self.object_put(
             obj,
             format='json',
             hashmap=True,
@@ -413,6 +419,7 @@ class PithosClient(PithosRestClient):
             permissions=sharing,
             public=public,
             success=201)
+        return r.headers
 
     # download_* auxiliary methods
     def _get_remote_blocks_info(self, obj, **restargs):

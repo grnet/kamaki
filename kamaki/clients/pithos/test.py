@@ -821,7 +821,10 @@ class PithosClient(TestCase):
         tmpFile = self._create_temp_file(num_of_blocks)
 
         # Without kwargs
-        self.client.upload_object(obj, tmpFile)
+        exp_headers = dict(id='container id', name='container name')
+        FR.headers = dict(exp_headers)
+        r = self.client.upload_object(obj, tmpFile)
+        self.assert_dicts_are_equal(r, exp_headers)
         self.assertEqual(GCI.mock_calls[-1], call())
         [call1, call2] = OP.mock_calls
 
@@ -888,9 +891,10 @@ class PithosClient(TestCase):
                 yield
 
             tmpFile.seek(0)
-            self.client.upload_object(
+            r = self.client.upload_object(
                 obj, tmpFile,
                 hash_cb=blck_gen, upload_cb=upld_gen)
+            self.assert_dicts_are_equal(r, exp_headers)
 
             for i, c in enumerate(OP.mock_calls[-mock_offset:]):
                 self.assertEqual(OP.mock_calls[i], c)
@@ -899,8 +903,9 @@ class PithosClient(TestCase):
         tmpFile.seek(0)
         ctype = 'video/mpeg'
         sharing = dict(read=['u1', 'g1', 'u2'], write=['u1'])
-        self.client.upload_object(obj, tmpFile,
+        r = self.client.upload_object(obj, tmpFile,
             content_type=ctype, sharing=sharing)
+        self.assert_dicts_are_equal(r, exp_headers)
         self.assertEqual(OP.mock_calls[-1][2]['content_type'], ctype)
         self.assert_dicts_are_equal(
             OP.mock_calls[-2][2]['permissions'],
@@ -916,7 +921,9 @@ class PithosClient(TestCase):
             content_disposition=ctype + 'd15p051710n',
             public=True,
             content_encoding='802.11')
-        self.client.upload_object(obj, tmpFile, **kwargs)
+        r = self.client.upload_object(obj, tmpFile, **kwargs)
+        self.assert_dicts_are_equal(r, exp_headers)
+
         kwargs.pop('if_not_exist')
         ematch = kwargs.pop('if_etag_match')
         etag = kwargs.pop('etag')
@@ -1044,7 +1051,8 @@ class PithosClient(TestCase):
                 content_disposition='some content_disposition',
                 public=True,
                 permissions=dict(read=['u1', 'g1', 'u2'], write=['u1']))
-        self.client.upload_object_unchunked(obj, tmpFile)
+        r = self.client.upload_object_unchunked(obj, tmpFile)
+        self.assert_dicts_are_equal(r, FR.headers)
         self.assertEqual(put.mock_calls[-1][1], (obj,))
         self.assertEqual(
             sorted(put.mock_calls[-1][2].keys()),
@@ -1054,7 +1062,8 @@ class PithosClient(TestCase):
         kwargs['size'] = kwargs.pop('data')
         kwargs['sharing'] = kwargs.pop('permissions')
         tmpFile.seek(0)
-        self.client.upload_object_unchunked(obj, tmpFile, **kwargs)
+        r = self.client.upload_object_unchunked(obj, tmpFile, **kwargs)
+        self.assert_dicts_are_equal(r, FR.headers)
         pmc = put.mock_calls[-1][2]
         for k, v in expected.items():
             if k == 'data':
@@ -1076,12 +1085,14 @@ class PithosClient(TestCase):
                 content_disposition='some content_disposition',
                 public=True,
                 sharing=dict(read=['u1', 'g1', 'u2'], write=['u1']))
-        self.client.create_object_by_manifestation(obj)
+        r = self.client.create_object_by_manifestation(obj)
+        self.assert_dicts_are_equal(r, FR.headers)
         expected = dict(content_length=0, manifest=manifest)
         for k in kwargs:
             expected['permissions' if k == 'sharing' else k] = None
         self.assertEqual(put.mock_calls[-1], call(obj, **expected))
-        self.client.create_object_by_manifestation(obj, **kwargs)
+        r = self.client.create_object_by_manifestation(obj, **kwargs)
+        self.assert_dicts_are_equal(r, FR.headers)
         expected.update(kwargs)
         expected['permissions'] = expected.pop('sharing')
         self.assertEqual(put.mock_calls[-1], call(obj, **expected))
