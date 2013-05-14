@@ -1019,7 +1019,10 @@ class file_upload(_file_container_command):
         overwrite=FlagArgument('Force (over)write', ('-f', '--force')),
         recursive=FlagArgument(
             'Recursively upload directory *contents* + subdirectories',
-            ('-R', '--recursive'))
+            ('-R', '--recursive')),
+        details=FlagArgument(
+            'Show a detailed list of uploaded objects at the end',
+            ('-l', '--details'))
     )
 
     def _check_container_limit(self, path):
@@ -1123,13 +1126,17 @@ class file_upload(_file_container_command):
             content_disposition=self['content_disposition'],
             sharing=self['sharing'],
             public=self['public'])
+        uploaded = []
         for f, rpath in self._path_pairs(local_path, remote_path):
             print('%s --> %s:%s' % (f.name, self.client.container, rpath))
             if self['unchunked']:
-                self.client.upload_object_unchunked(
+                r = self.client.upload_object_unchunked(
                     rpath, f,
                     etag=self['etag'], withHashFile=self['use_hashes'],
                     **params)
+                if self['details']:
+                    r['name'] = '%s: %s' % (self.client.container, rpath)
+                    uploaded.append(r)
             else:
                 try:
                     (progress_bar, upload_cb) = self._safe_progress_bar(
@@ -1140,16 +1147,22 @@ class file_upload(_file_container_command):
                             'Calculating block hashes')
                     else:
                         hash_cb = None
-                    self.client.upload_object(
+                    r = self.client.upload_object(
                         rpath, f,
                         hash_cb=hash_cb, upload_cb=upload_cb,
                         **params)
+                    if self['details']:
+                        r['name'] = '%s: %s' % (self.client.container, rpath)
+                        uploaded.append(r)
                 except Exception:
                     self._safe_progress_bar_finish(progress_bar)
                     raise
                 finally:
                     self._safe_progress_bar_finish(progress_bar)
-        print 'Upload completed'
+        if self['details']:
+            print_items(uploaded)
+        else:
+            print('Upload completed')
 
     def main(self, local_path, container____path__=None):
         super(self.__class__, self)._run(container____path__)
