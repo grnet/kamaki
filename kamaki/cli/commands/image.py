@@ -248,6 +248,21 @@ class image_register(_init_image):
 
 
 @command(image_cmds)
+class image_unregister(_init_image):
+    """Unregister an image (does not delete the image file)"""
+
+    @errors.generic.all
+    @errors.plankton.connection
+    @errors.plankton.id
+    def _run(self, image_id):
+        self.client.unregister(image_id)
+
+    def main(self, image_id):
+        super(self.__class__, self)._run()
+        self._run(image_id=image_id)
+
+
+@command(image_cmds)
 class image_members(_init_image):
     """Get image members"""
 
