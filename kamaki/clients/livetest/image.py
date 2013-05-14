@@ -51,7 +51,6 @@ class Image(livetest.Generic):
 
         self.imgname = 'img_%s' % self.now
         url = self['image', 'url']
-        print('::::%s::::' % url)
         self.client = ImageClient(url, self['token'])
         cyclades_url = self['compute', 'url']
         self.cyclades = CycladesClient(cyclades_url, self['token'])
@@ -207,6 +206,23 @@ class Image(livetest.Generic):
             r = set(self._imgdetails[img['name']].keys())
             self.assertTrue(
                 r.issubset(['x-image-meta-%s' % k for k in IMGMETA]))
+
+    def test_unregister(self):
+        """Test unregister"""
+        self._prepare_img()
+        self._test_unregister()
+
+    def _test_unregister(self):
+        try:
+            for img in self._imglist.values():
+                self.client.unregister(img['id'])
+                self._prepare_img()
+                break
+        except ClientError as ce:
+            if ce.status in (405,):
+                print 'IMAGE UNREGISTER is not supported by server: %s' % ce
+            else:
+                raise
 
     def test_set_members(self):
         """Test set_members"""
