@@ -1519,6 +1519,7 @@ class file_purge(_file_container_command):
 
     arguments = dict(
         yes=FlagArgument('Do not prompt for permission', '--yes'),
+        force=FlagArgument('purge even if not empty', ('-F', '--force'))
     )
 
     @errors.generic.all
@@ -1526,7 +1527,17 @@ class file_purge(_file_container_command):
     @errors.pithos.container
     def _run(self):
         if self['yes'] or ask_user('Purge container %s?' % self.container):
+            try:
                 self.client.purge_container()
+            except ClientError as ce:
+                if ce.status in (409,):
+                    if self['force']:
+                        self.client.del_container(delimiter='/')
+                        self.client.purge_container()
+                    else:
+                        raiseCLIError(ce, details=['Try -F to force-purge'])
+                else:
+                    raise
         else:
             print('Aborted')
 
