@@ -129,6 +129,14 @@ class ImageClient(Client):
         r = self.post(path, success=200, async_headers=async_headers)
         return filter_in(r.headers, 'X-Image-')
 
+    def unregister(self, image_id):
+        """Unregister an image
+
+        :param image_id: (str)
+        """
+        path = path4url('images', image_id)
+        self.delete(path, success=204)
+
     def list_members(self, image_id):
         """
         :param image_id: (str)
