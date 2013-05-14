@@ -236,6 +236,12 @@ class ImageClient(TestCase):
             call('X-Image-Meta-Name', img0_name),
             call('X-Image-Meta-Location', img0_location)])
 
+    @patch('%s.delete' % image_pkg)
+    def test_unregister(self, delete):
+        img_id = 'an1m4g3'
+        self.client.unregister(img_id)
+        delete.assert_called_once_with('/images/%s' % img_id, success=204)
+
     @patch('%s.put' % image_pkg, return_value=FR())
     def test_set_members(self, put):
         members = ['use3r-1d-0', 'us2r-1d-1', 'us3r-1d-2']
