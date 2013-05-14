@@ -10,6 +10,8 @@ Changes:
 - Change context: kamaki-image-addproperty --> kamaki-image-compute-property
 - http logger names: clients.recv/send --> kamaki.clients.recv/send
 - Move logger creation and control (except of the actuall logging) to cli
+- These PithosClient methods return the metadata of created object [#3656]:
+    upload_object, upload_object_unchunked, create_object_by_manifestation
 
 Features:
 
