@@ -19,4 +19,5 @@ Features:
 - Allow global args (e.g. -d for debug, -v for verbosity) to shell. They
     should be used when invoking the shell. After that they are automatically
     applied to all commands running in that kamaki shell. [#3716]
+- Implement a plankton-side image unregister [#3728]
 
