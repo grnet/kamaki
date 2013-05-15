@@ -513,7 +513,7 @@ class _source_destination_command(_file_container_command):
         add_prefix=ValueArgument('', '--add-prefix', default=''),
         add_suffix=ValueArgument('', '--add-suffix', default=''),
         prefix_replace=ValueArgument('', '--prefix-to-replace', default=''),
-        suffix_replace=ValueArgument('', '--suffix-to-replace', default='')
+        suffix_replace=ValueArgument('', '--suffix-to-replace', default=''),
     )
 
     def __init__(self, arguments={}):
@@ -555,7 +555,7 @@ class _source_destination_command(_file_container_command):
     def _get_all(self, prefix):
         return self.client.container_get(prefix=prefix).json
 
-    def _get_src_objects(self, src_path):
+    def _get_src_objects(self, src_path, source_version=None):
         """Get a list of the source objects to be called
 
         :param src_path: (str) source path
@@ -569,7 +569,8 @@ class _source_destination_command(_file_container_command):
         if self['prefix']:
             return (self._get_all, dict(prefix=src_path))
         try:
-            srcobj = self.client.get_object_info(src_path)
+            srcobj = self.client.get_object_info(
+                src_path, version=source_version)
         except ClientError as srcerr:
             if srcerr.status == 404:
                 raiseCLIError(
@@ -592,8 +593,8 @@ class _source_destination_command(_file_container_command):
         srcobj['name'] = src_path
         return srcobj
 
-    def src_dst_pairs(self, ds_path):
-        src_iter = self._get_src_objects(self.path)
+    def src_dst_pairs(self, dst_path, source_version=None):
+        src_iter = self._get_src_objects(self.path, source_version)
         src_N = isinstance(src_iter, tuple)
         add_prefix = self['add_prefix'].strip('/')
 
@@ -670,9 +671,6 @@ class file_copy(_source_destination_command):
         destination_container=ValueArgument(
             'use it if destination container name contains a : character',
             ('-D', '--dst-container')),
-        source_version=ValueArgument(
-            'copy specific version',
-            ('-S', '--source-version')),
         public=ValueArgument('make object publicly accessible', '--public'),
         content_type=ValueArgument(
             'change object\'s content type',
@@ -697,7 +695,10 @@ class file_copy(_source_destination_command):
         suffix_replace=ValueArgument(
             'Suffix of src to replace with add_suffix, if matched',
             '--suffix-to-replace',
-            default='')
+            default=''),
+        source_version=ValueArgument(
+            'copy specific version',
+            ('-S', '--source-version'))
     )
 
     @errors.generic.all
@@ -708,7 +709,8 @@ class file_copy(_source_destination_command):
         no_source_object = True
         src_account = self.client.account if (
             self['destination_account']) else None
-        for src_obj, dst_obj in self.src_dst_pairs(dst_path):
+        for src_obj, dst_obj in self.src_dst_pairs(
+                dst_path, self['source_version']):
             no_source_object = False
             self.dst_client.copy_object(
                 src_container=self.client.container,
@@ -725,8 +727,7 @@ class file_copy(_source_destination_command):
                 self.container))
 
     def main(
-            self,
-            source_container___path,
+            self, source_container___path,
             destination_container___path=None):
         super(file_copy, self)._run(
             source_container___path,
@@ -761,9 +762,6 @@ class file_move(_source_destination_command):
         destination_container=ValueArgument(
             'use it if destination container name contains a : character',
             ('-D', '--dst-container')),
-        source_version=ValueArgument(
-            'copy specific version',
-            '--source-version'),
         public=ValueArgument('make object publicly accessible', '--public'),
         content_type=ValueArgument(
             'change object\'s content type',
@@ -815,8 +813,7 @@ class file_move(_source_destination_command):
                 self.container))
 
     def main(
-            self,
-            source_container___path,
+            self, source_container___path,
             destination_container___path=None):
         super(self.__class__, self)._run(
             source_container___path,

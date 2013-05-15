@@ -5,6 +5,7 @@ Bug Fixes:
 - Stop shell from destroying the config instance
 - Shell can manage all valid command line arguments [#3716]
 - Restore 2nd level command syntax in shell [#3736]
+- Allow copy of deleted objects by refering to older version [#3737]
 
 Changes:
 
@@ -14,6 +15,9 @@ Changes:
 - These PithosClient methods return the metadata of created object [#3656]:
     upload_object, upload_object_unchunked, create_object_by_manifestation
 - Cache container info per upload session [#3735]
+- Disallow moving deleted objects by version [#3737]
+    This operation was implemented by accident, due to the symetry between
+    move and copy
 
 Features:
 
