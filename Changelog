@@ -12,6 +12,7 @@ Changes:
 - Move logger creation and control (except of the actuall logging) to cli
 - These PithosClient methods return the metadata of created object [#3656]:
     upload_object, upload_object_unchunked, create_object_by_manifestation
+- Cache container info per upload session [#3735]
 
 Features:
 
@@ -24,4 +25,5 @@ Features:
 - Implement a plankton-side image unregister [#3728]
 - Implement purging a non-empty container [#3662]
 - Add a -l option to upload, for listing uploaded objects details [#3730]
+- Add option to cache container info for upload_object [#3707]
 

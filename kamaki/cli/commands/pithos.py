@@ -1127,6 +1127,7 @@ class file_upload(_file_container_command):
             sharing=self['sharing'],
             public=self['public'])
         uploaded = []
+        container_info_cache = dict()
         for f, rpath in self._path_pairs(local_path, remote_path):
             print('%s --> %s:%s' % (f.name, self.client.container, rpath))
             if self['unchunked']:
@@ -1149,7 +1150,9 @@ class file_upload(_file_container_command):
                         hash_cb = None
                     r = self.client.upload_object(
                         rpath, f,
-                        hash_cb=hash_cb, upload_cb=upload_cb,
+                        hash_cb=hash_cb,
+                        upload_cb=upload_cb,
+                        container_info_cache=container_info_cache,
                         **params)
                     if self['details']:
                         r['name'] = '%s: %s' % (self.client.container, rpath)
