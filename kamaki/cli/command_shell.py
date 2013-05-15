@@ -160,7 +160,7 @@ class Shell(Cmd):
         self.__dict__ = oldcontext
 
     @staticmethod
-    def _create_help_method(cmd_name, args, descr):
+    def _create_help_method(cmd_name, args, descr, syntax):
         tmp_args = dict(args)
         tmp_args.pop('options', None)
         tmp_args.pop('debug', None)
@@ -170,6 +170,7 @@ class Shell(Cmd):
         tmp_args.pop('config', None)
         help_parser = ArgumentParseManager(cmd_name, tmp_args)
         help_parser.parser.description = descr
+        help_parser.syntax = syntax
         return help_parser.parser.print_help
 
     def _register_command(self, cmd_path):
@@ -205,7 +206,8 @@ class Shell(Cmd):
                     cmd_parser.syntax = '%s %s' % (
                         subcmd.path.replace('_', ' '), cls.syntax)
                     help_method = self._create_help_method(
-                        cmd.name, cmd_parser.arguments, subcmd.help)
+                        cmd.name, cmd_parser.arguments,
+                        subcmd.help, cmd_parser.syntax)
                     if '-h' in cmd_args or '--help' in cmd_args:
                         help_method()
                         if ldescr.strip():

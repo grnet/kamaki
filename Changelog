@@ -4,6 +4,7 @@ Bug Fixes:
 
 - Stop shell from destroying the config instance
 - Shell can manage all valid command line arguments [#3716]
+- Restore 2nd level command syntax in shell [#3736]
 
 Changes:
 
