@@ -592,7 +592,7 @@ class _source_destination_command(_file_container_command):
         srcobj['name'] = src_path
         return srcobj
 
-    def src_dst_pairs(self, ds_path):
+    def src_dst_pairs(self, dst_path):
         src_iter = self._get_src_objects(self.path)
         src_N = isinstance(src_iter, tuple)
         add_prefix = self['add_prefix'].strip('/')
@@ -725,8 +725,7 @@ class file_copy(_source_destination_command):
                 self.container))
 
     def main(
-            self,
-            source_container___path,
+            self, source_container___path,
             destination_container___path=None):
         super(file_copy, self)._run(
             source_container___path,
@@ -815,8 +814,7 @@ class file_move(_source_destination_command):
                 self.container))
 
     def main(
-            self,
-            source_container___path,
+            self, source_container___path,
             destination_container___path=None):
         super(self.__class__, self)._run(
             source_container___path,
