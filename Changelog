@@ -27,4 +27,5 @@ Features:
 - Implement purging a non-empty container [#3662]
 - Add a -l option to upload, for listing uploaded objects details [#3730]
 - Add option to cache container info for upload_object [#3707]
+- Add enumeration to all listing commands, make it optional [#3739]
 

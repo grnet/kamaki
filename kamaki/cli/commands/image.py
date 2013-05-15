@@ -103,7 +103,8 @@ class image_list(_init_image):
         limit=IntArgument('limit number of listed images', ('-n', '--number')),
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
-            '--more')
+            '--more'),
+        enum=FlagArgument('Enumerate results', '--enumerate')
     )
 
     def _filtered_by_owner(self, detail, *list_params):
@@ -150,16 +151,11 @@ class image_list(_init_image):
         if self['more']:
             print_items(
                 images,
-                title=('name',),
-                with_enumeration=True,
-                page_size=self['limit'] or 10)
+                with_enumeration=self['enum'], page_size=self['limit'] or 10)
         elif self['limit']:
-            print_items(
-                images[:self['limit']],
-                title=('name',),
-                with_enumeration=True)
+            print_items(images[:self['limit']], with_enumeration=self['enum'])
         else:
-            print_items(images, title=('name',), with_enumeration=True)
+            print_items(images, with_enumeration=self['enum'])
 
     def main(self):
         super(self.__class__, self)._run()
@@ -355,7 +351,8 @@ class image_compute_list(_init_cyclades):
         limit=IntArgument('limit number listed images', ('-n', '--number')),
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
-            '--more')
+            '--more'),
+        enum=FlagArgument('Enumerate results', '--enumerate')
     )
 
     def _make_results_pretty(self, images):
@@ -370,9 +367,11 @@ class image_compute_list(_init_cyclades):
         if self['detail']:
             self._make_results_pretty(images)
         if self['more']:
-            print_items(images, page_size=self['limit'] or 10)
+            print_items(
+                images,
+                page_size=self['limit'] or 10, with_enumeration=self['enum'])
         else:
-            print_items(images[:self['limit']])
+            print_items(images[:self['limit']], with_enumeration=self['enum'])
 
     def main(self):
         super(self.__class__, self)._run()

@@ -328,7 +328,8 @@ class file_list(_file_container_command):
             '--more'),
         exact_match=FlagArgument(
             'Show only objects that match exactly with path',
-            '--exact-match')
+            '--exact-match'),
+        enum=FlagArgument('Enumerate results', '--enumerate')
     )
 
     def print_objects(self, object_list):
@@ -348,12 +349,13 @@ class file_list(_file_container_command):
                 size = format_size(obj['bytes'])
                 pretty_obj['bytes'] = '%s (%s)' % (obj['bytes'], size)
             oname = bold(obj['name'])
+            prfx = ('%s%s. ' % (empty_space, index)) if self['enum'] else ''
             if self['detail']:
-                print('%s%s. %s' % (empty_space, index, oname))
+                print('%s%s' % (prfx, oname))
                 print_dict(pretty_keys(pretty_obj), exclude=('name'))
                 print
             else:
-                oname = '%s%s. %6s %s' % (empty_space, index, size, oname)
+                oname = '%s%9s %s' % (prfx, size, oname)
                 oname += '/' if isDir else ''
                 print(oname)
             if self['more']:
@@ -365,7 +367,8 @@ class file_list(_file_container_command):
         for index, container in enumerate(container_list):
             if 'bytes' in container:
                 size = format_size(container['bytes'])
-            cname = '%s. %s' % (index + 1, bold(container['name']))
+            prfx = ('%s. ' % (index + 1)) if self['enum'] else ''
+            cname = '%s%s' % (prfx, bold(container['name']))
             if self['detail']:
                 print(cname)
                 pretty_c = container.copy()

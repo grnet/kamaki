@@ -93,7 +93,8 @@ class server_list(_init_cyclades):
         limit=IntArgument('limit number of listed VMs', ('-n', '--number')),
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
-            '--more')
+            '--more'),
+        enum=FlagArgument('Enumerate results', '--enumerate')
     )
 
     def _make_results_pretty(self, servers):
@@ -122,10 +123,12 @@ class server_list(_init_cyclades):
         if self['more']:
             print_items(
                 servers,
-                page_size=self['limit'] if self['limit'] else 10)
+                page_size=self['limit'] if self['limit'] else 10,
+                with_enumeration=self['enum'])
         else:
             print_items(
-                servers[:self['limit'] if self['limit'] else len(servers)])
+                servers[:self['limit'] if self['limit'] else len(servers)],
+                with_enumeration=self['enum'])
 
     def main(self):
         super(self.__class__, self)._run()
@@ -495,7 +498,8 @@ class flavor_list(_init_cyclades):
         limit=IntArgument('limit # of listed flavors', ('-n', '--number')),
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
-            '--more')
+            '--more'),
+        enum=FlagArgument('Enumerate results', '--enumerate')
     )
 
     @errors.generic.all
@@ -503,7 +507,11 @@ class flavor_list(_init_cyclades):
     def _run(self):
         flavors = self.client.list_flavors(self['detail'])
         pg_size = 10 if self['more'] and not self['limit'] else self['limit']
-        print_items(flavors, with_redundancy=self['detail'], page_size=pg_size)
+        print_items(
+            flavors,
+            with_redundancy=self['detail'],
+            page_size=pg_size,
+            with_enumeration=self['enum'])
 
     def main(self):
         super(self.__class__, self)._run()
@@ -563,7 +571,8 @@ class network_list(_init_cyclades):
         limit=IntArgument('limit # of listed networks', ('-n', '--number')),
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
-            '--more')
+            '--more'),
+        enum=FlagArgument('Enumerate results', '--enumerate')
     )
 
     def _make_results_pretty(self, nets):
@@ -577,11 +586,15 @@ class network_list(_init_cyclades):
         if self['detail']:
             self._make_results_pretty(networks)
         if self['more']:
-            print_items(networks, page_size=self['limit'] or 10)
+            print_items(
+                networks,
+                page_size=self['limit'] or 10, with_enumeration=self['enum'])
         elif self['limit']:
-            print_items(networks[:self['limit']])
+            print_items(
+                networks[:self['limit']],
+                with_enumeration=self['enum'])
         else:
-            print_items(networks)
+            print_items(networks, with_enumeration=self['enum'])
 
     def main(self):
         super(self.__class__, self)._run()
