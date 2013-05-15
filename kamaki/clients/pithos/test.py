@@ -920,13 +920,17 @@ class PithosClient(TestCase):
             content_type=ctype,
             content_disposition=ctype + 'd15p051710n',
             public=True,
-            content_encoding='802.11')
+            content_encoding='802.11',
+            container_info_cache={})
         r = self.client.upload_object(obj, tmpFile, **kwargs)
         self.assert_dicts_are_equal(r, exp_headers)
 
         kwargs.pop('if_not_exist')
         ematch = kwargs.pop('if_etag_match')
         etag = kwargs.pop('etag')
+        self.assert_dicts_are_equal(
+            kwargs.pop('container_info_cache'),
+            {self.client.container: container_info})
         for arg, val in kwargs.items():
             self.assertEqual(OP.mock_calls[-2][2][arg], val)
         self.assertEqual(OP.mock_calls[-1][2]['if_etag_match'], ematch)
