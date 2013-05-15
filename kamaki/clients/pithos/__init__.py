@@ -196,8 +196,23 @@ class PithosClient(PithosRestClient):
             format='json')
         assert r.json[0] == hash, 'Local hash does not match server'
 
-    def _get_file_block_info(self, fileobj, size=None):
-        meta = self.get_container_info()
+    def _get_file_block_info(self, fileobj, size=None, cache=None):
+        """
+        :param fileobj: (file descriptor) source
+
+        :param size: (int) size of data to upload from source
+
+        :param cache: (dict) if provided, cache container info response to
+        avoid redundant calls
+        """
+        if isinstance(cache, dict):
+            try:
+                meta = cache[self.container]
+            except KeyError:
+                meta = self.get_container_info()
+                cache[self.container] = meta
+        else:
+            meta = self.get_container_info()
         blocksize = int(meta['x-container-block-size'])
         blockhash = meta['x-container-block-hash']
         size = size if size is not None else fstat(fileobj.fileno()).st_size
@@ -307,7 +322,8 @@ class PithosClient(PithosRestClient):
             content_disposition=None,
             content_type=None,
             sharing=None,
-            public=None):
+            public=None,
+            container_info_cache=None):
         """Upload an object using multiple connections (threads)
 
         :param obj: (str) remote object path
@@ -338,12 +354,15 @@ class PithosClient(PithosRestClient):
             'write':[usr and/or grp names]}
 
         :param public: (bool)
+
+        :param container_info_cache: (dict) if given, avoid redundant calls to
+        server for container info (block size and hash information)
         """
         self._assert_container()
 
         #init
         block_info = (blocksize, blockhash, size, nblocks) =\
-            self._get_file_block_info(f, size)
+            self._get_file_block_info(f, size, container_info_cache)
         (hashes, hmap, offset) = ([], {}, 0)
         if not content_type:
             content_type = 'application/octet-stream'
