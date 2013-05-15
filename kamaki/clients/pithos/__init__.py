@@ -361,8 +361,9 @@ class PithosClient(PithosRestClient):
         self._assert_container()
 
         #init
-        block_info = (blocksize, blockhash, size, nblocks) =\
-            self._get_file_block_info(f, size, container_info_cache)
+        block_info = (
+            blocksize, blockhash, size, nblocks) = self._get_file_block_info(
+                f, size, container_info_cache)
         (hashes, hmap, offset) = ([], {}, 0)
         if not content_type:
             content_type = 'application/octet-stream'

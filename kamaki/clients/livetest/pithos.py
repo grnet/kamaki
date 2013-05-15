@@ -663,11 +663,14 @@ class Pithos(livetest.Generic):
             self.assertNotEqual(sc1, sc2)
 
         """Upload an object to download"""
+        container_info_cache = dict()
         trg_fname = 'remotefile_%s' % self.now
         f_size = 59247824
         src_f = self.create_large_file(f_size)
         print('\tUploading...')
-        r = self.client.upload_object(trg_fname, src_f)
+        r = self.client.upload_object(
+            trg_fname, src_f,
+            container_info_cache=container_info_cache)
         print('\tDownloading...')
         self.files.append(NamedTemporaryFile())
         dnl_f = self.files[-1]
@@ -683,7 +686,9 @@ class Pithos(livetest.Generic):
         trg_fname = 'boringfile_%s' % self.now
         src_f = self.create_boring_file(42)
         print('\tUploading boring file...')
-        self.client.upload_object(trg_fname, src_f)
+        self.client.upload_object(
+            trg_fname, src_f,
+            container_info_cache=container_info_cache)
         print('\tDownloading boring file...')
         self.files.append(NamedTemporaryFile())
         dnl_f = self.files[-1]
