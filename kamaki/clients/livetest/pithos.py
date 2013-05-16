@@ -690,6 +690,16 @@ class Pithos(livetest.Generic):
                 range_str='%s-%s' % (pos, (pos + 128)))
             self.assertEqual(tmp_s, src_f.read(len(tmp_s)))
 
+        print('\tUploading KiBs as strings...')
+        trg_fname = 'fromString_%s' % self.now
+        src_size = 2 * 1024
+        src_f.seek(0)
+        src_str = src_f.read(src_size)
+        self.client.upload_from_string(trg_fname, src_str)
+        print('\tDownload as string and check...')
+        tmp_s = self.client.download_to_string(trg_fname)
+        self.assertEqual(tmp_s, src_str)
+
         """Upload a boring file"""
         trg_fname = 'boringfile_%s' % self.now
         src_f = self.create_boring_file(42)
