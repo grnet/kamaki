@@ -1103,6 +1103,37 @@ class PithosClient(TestCase):
 
     @patch('%s.get_object_hashmap' % pithos_pkg, return_value=object_hashmap)
     @patch('%s.object_get' % pithos_pkg, return_value=FR())
+    def test_download_to_string(self, GET, GOH):
+        FR.content = 'some sample content'
+        num_of_blocks = len(object_hashmap['hashes'])
+        r = self.client.download_to_string(obj)
+        expected_content = FR.content * num_of_blocks
+        self.assertEqual(expected_content, r)
+        self.assertEqual(len(GET.mock_calls), num_of_blocks)
+        self.assertEqual(GET.mock_calls[-1][1], (obj,))
+
+        kwargs = dict(
+            version='version',
+            range_str='10-20',
+            if_match='if and only if',
+            if_none_match='if and only not',
+            if_modified_since='what if not?',
+            if_unmodified_since='this happens if not!')
+        expargs = dict(kwargs)
+        expargs.pop('range_str')
+        for k in expargs:
+            expargs[k] = None
+        GOH.assert_called_once_with(obj, **expargs)
+
+        r = self.client.download_to_string(obj, **kwargs)
+        expargs['data_range'] = 'bytes=%s' % kwargs['range_str']
+        for k, v in expargs.items():
+            self.assertEqual(
+                GET.mock_calls[-1][2][k],
+                v or kwargs.get(k))
+
+    @patch('%s.get_object_hashmap' % pithos_pkg, return_value=object_hashmap)
+    @patch('%s.object_get' % pithos_pkg, return_value=FR())
     def test_download_object(self, GET, GOH):
         num_of_blocks = 8
         tmpFile = self._create_temp_file(num_of_blocks)

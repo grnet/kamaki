@@ -36,6 +36,7 @@ from threading import enumerate as activethreads
 from os import fstat
 from hashlib import new as newhashlib
 from time import time
+from StringIO import StringIO
 
 from binascii import hexlify
 
@@ -43,7 +44,6 @@ from kamaki.clients import SilentEvent, sendlog
 from kamaki.clients.pithos.rest_api import PithosRestClient
 from kamaki.clients.storage import ClientError
 from kamaki.clients.utils import path4url, filter_in
-from StringIO import StringIO
 
 
 def _pithos_hash(block, blockhash):
@@ -622,6 +622,71 @@ class PithosClient(PithosRestClient):
                 dst.truncate(total_size)
 
         self._complete_cb()
+
+    def download_to_string(
+            self, obj,
+            download_cb=None,
+            version=None,
+            range_str=None,
+            if_match=None,
+            if_none_match=None,
+            if_modified_since=None,
+            if_unmodified_since=None):
+        """Download an object to a string (multiple connections)
+
+        :param obj: (str) remote object path
+
+        :param download_cb: optional progress.bar object for downloading
+
+        :param version: (str) file version
+
+        :param range_str: (str) from, to are file positions (int) in bytes
+
+        :param if_match: (str)
+
+        :param if_none_match: (str)
+
+        :param if_modified_since: (str) formated date
+
+        :param if_unmodified_since: (str) formated date
+
+        :returns: (str) the whole object contents
+        """
+        restargs = dict(
+            version=version,
+            data_range=None if range_str is None else 'bytes=%s' % range_str,
+            if_match=if_match,
+            if_none_match=if_none_match,
+            if_modified_since=if_modified_since,
+            if_unmodified_since=if_unmodified_since)
+
+        (
+            blocksize,
+            blockhash,
+            total_size,
+            hash_list,
+            remote_hashes) = self._get_remote_blocks_info(obj, **restargs)
+        assert total_size >= 0
+
+        if download_cb:
+            self.progress_bar_gen = download_cb(len(hash_list))
+            self._cb_next()
+
+        ret = ''
+        for blockid, blockhash in enumerate(remote_hashes):
+            start = blocksize * blockid
+            is_last = start + blocksize > total_size
+            end = (total_size - 1) if is_last else (start + blocksize - 1)
+            (start, end) = _range_up(start, end, range_str)
+            if start == end:
+                continue
+            restargs['data_range'] = 'bytes=%s-%s' % (start, end)
+            r = self.object_get(obj, success=(200, 206), **restargs)
+            ret += r.content
+            self._cb_next()
+
+        self._complete_cb()
+        return ret
 
     #Command Progress Bar method
     def _cb_next(self, step=1):
