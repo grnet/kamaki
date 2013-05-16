@@ -689,7 +689,6 @@ class Pithos(livetest.Generic):
                 trg_fname,
                 range_str='%s-%s' % (pos, (pos + 128)))
             self.assertEqual(tmp_s, src_f.read(len(tmp_s)))
-
         print('\tUploading KiBs as strings...')
         trg_fname = 'fromString_%s' % self.now
         src_size = 2 * 1024
