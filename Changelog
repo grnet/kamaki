@@ -33,4 +33,5 @@ Features:
 - Add option to cache container info for upload_object [#3707]
 - Add enumeration to all listing commands, make it optional [#3739]
 - Add a download_to_string method in pithos client [#3608]
+- Add an upload_from_string method in pithos client [#3608]
 
