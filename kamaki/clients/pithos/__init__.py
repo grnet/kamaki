@@ -1363,11 +1363,13 @@ class PithosClient(PithosRestClient):
         :param content_type: (str)
 
         :param delimiter: (str)
+
+        :returns: (dict) response headers
         """
         self._assert_account()
         self.container = dst_container
         src_path = path4url(src_container, src_object)
-        self.object_put(
+        r = self.object_put(
             dst_object or src_object,
             success=201,
             copy_from=src_path,
@@ -1377,6 +1379,7 @@ class PithosClient(PithosRestClient):
             public=public,
             content_type=content_type,
             delimiter=delimiter)
+        return r.headers
 
     def move_object(
             self, src_container, src_object, dst_container,
@@ -1404,12 +1407,14 @@ class PithosClient(PithosRestClient):
         :param content_type: (str)
 
         :param delimiter: (str)
+
+        :returns: (dict) response headers
         """
         self._assert_account()
         self.container = dst_container
         dst_object = dst_object or src_object
         src_path = path4url(src_container, src_object)
-        self.object_put(
+        r = self.object_put(
             dst_object,
             success=201,
             move_from=src_path,
@@ -1419,6 +1424,7 @@ class PithosClient(PithosRestClient):
             public=public,
             content_type=content_type,
             delimiter=delimiter)
+        return r.headers
 
     def get_sharing_accounts(self, limit=None, marker=None, *args, **kwargs):
         """Get accounts that share with self.account

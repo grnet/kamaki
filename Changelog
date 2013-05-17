@@ -18,6 +18,8 @@ Changes:
 - Disallow moving deleted objects by version [#3737]
     This operation was implemented by accident, due to the symetry between
     move and copy
+- Add optional output for file methods [#3756, #3732]:
+    mkdir, touch, create, move, create, copy, move
 
 Features:
 
@@ -35,6 +37,4 @@ Features:
 - Add a download_to_string method in pithos client [#3608]
 - Add an upload_from_string method in pithos client [#3608]
 - Add pithos client method create_container [#3756]
-- Add output for file methods [#3756, #3732]:
-    mkdir, touch, create
 

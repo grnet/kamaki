@@ -727,7 +727,9 @@ class file_copy(_source_destination_command):
             default=''),
         source_version=ValueArgument(
             'copy specific version',
-            ('-S', '--source-version'))
+            ('-S', '--source-version')),
+        with_output=FlagArgument('show request headers', ('--with-output')),
+        json_output=FlagArgument('show headers in json', ('-j', '--json'))
     )
 
     @errors.generic.all
@@ -741,7 +743,7 @@ class file_copy(_source_destination_command):
         for src_obj, dst_obj in self.src_dst_pairs(
                 dst_path, self['source_version']):
             no_source_object = False
-            self.dst_client.copy_object(
+            r = self.dst_client.copy_object(
                 src_container=self.client.container,
                 src_object=src_obj,
                 dst_container=self.dst_client.container,
@@ -754,6 +756,11 @@ class file_copy(_source_destination_command):
             raiseCLIError('No object %s in container %s' % (
                 self.path,
                 self.container))
+        if self['json_output']:
+            print_json(r)
+        elif self['with_output']:
+            print_dict(r)
+
 
     def main(
             self, source_container___path,
@@ -815,7 +822,9 @@ class file_move(_source_destination_command):
         suffix_replace=ValueArgument(
             'Suffix of src to replace with add_suffix, if matched',
             '--suffix-to-replace',
-            default='')
+            default=''),
+        with_output=FlagArgument('show request headers', ('--with-output')),
+        json_output=FlagArgument('show headers in json', ('-j', '--json'))
     )
 
     @errors.generic.all
@@ -827,19 +836,22 @@ class file_move(_source_destination_command):
             self['destination_account']) else None
         for src_obj, dst_obj in self.src_dst_pairs(dst_path):
             no_source_object = False
-            self.dst_client.move_object(
+            r = self.dst_client.move_object(
                 src_container=self.container,
                 src_object=src_obj,
                 dst_container=self.dst_client.container,
                 dst_object=dst_obj,
                 source_account=src_account,
-                source_version=self['source_version'],
                 public=self['public'],
                 content_type=self['content_type'])
         if no_source_object:
             raiseCLIError('No object %s in container %s' % (
                 self.path,
                 self.container))
+        if self['json_output']:
+            print_json(r)
+        elif self['with_output']:
+            print_dict(r)
 
     def main(
             self, source_container___path,
