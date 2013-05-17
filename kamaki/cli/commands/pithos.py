@@ -40,7 +40,7 @@ from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import raiseCLIError, CLISyntaxError
 from kamaki.cli.utils import (
     format_size, to_bytes, print_dict, print_items, pretty_keys,
-    page_hold, bold, ask_user, get_path_size)
+    page_hold, bold, ask_user, get_path_size, print_json)
 from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
 from kamaki.cli.argument import KeyValueArgument, DateArgument
 from kamaki.cli.argument import ProgressBarArgument
@@ -329,10 +329,14 @@ class file_list(_file_container_command):
         exact_match=FlagArgument(
             'Show only objects that match exactly with path',
             '--exact-match'),
-        enum=FlagArgument('Enumerate results', '--enumerate')
+        enum=FlagArgument('Enumerate results', '--enumerate'),
+        json_output=FlagArgument('show output in json', ('-j', '--json'))
     )
 
     def print_objects(self, object_list):
+        if self['json_output']:
+            print_json(object_list)
+            return
         limit = int(self['limit']) if self['limit'] > 0 else len(object_list)
         for index, obj in enumerate(object_list):
             if self['exact_match'] and self.path and not (
@@ -362,6 +366,9 @@ class file_list(_file_container_command):
                 page_hold(index, limit, len(object_list))
 
     def print_containers(self, container_list):
+        if self['json_output']:
+            print_json(container_list)
+            return
         limit = int(self['limit']) if self['limit'] > 0\
             else len(container_list)
         for index, container in enumerate(container_list):
