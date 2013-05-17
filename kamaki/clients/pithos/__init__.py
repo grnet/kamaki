@@ -71,6 +71,30 @@ class PithosClient(PithosRestClient):
     def __init__(self, base_url, token, account=None, container=None):
         super(PithosClient, self).__init__(base_url, token, account, container)
 
+    def create_container(
+            self,
+            container=None, sizelimit=None, versioning=None, metadata=None):
+        """
+        :param container: (str) if not given, self.container is used instead
+
+        :param sizelimit: (int) container total size limit in bytes
+
+        :param versioning: (str) can be auto or whatever supported by server
+
+        :param metadata: (dict) Custom user-defined metadata of the form
+            { 'name1': 'value1', 'name2': 'value2', ... }
+
+        :returns: (dict) response headers
+        """
+        cnt_back_up = self.container
+        try:
+            self.container = container or cnt_back_up
+            r = self.container_put(
+                quota=sizelimit, versioning=versioning, metadata=metadata)
+            return r.headers
+        finally:
+            self.container = cnt_back_up
+
     def purge_container(self, container=None):
         """Delete an empty container and destroy associated blocks
         """

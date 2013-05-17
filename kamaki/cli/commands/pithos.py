@@ -432,6 +432,11 @@ class file_list(_file_container_command):
 class file_mkdir(_file_container_command):
     """Create a directory"""
 
+    arguments = dict(
+        with_output=FlagArgument('show response headers', ('--with-output')),
+        json_output=FlagArgument('show headers in json', ('-j', '--json'))
+    )
+
     __doc__ += '\n. '.join([
         'Kamaki hanldes directories the same way as OOS Storage and Pithos+:',
         'A   directory  is   an  object  with  type  "application/directory"',
@@ -443,7 +448,11 @@ class file_mkdir(_file_container_command):
     @errors.pithos.connection
     @errors.pithos.container
     def _run(self):
-        self.client.create_directory(self.path)
+        r = self.client.create_directory(self.path)
+        if self['json_output']:
+            print_json(r)
+        elif self['with_output']:
+            print_dict(r)
 
     def main(self, container___directory):
         super(self.__class__, self)._run(
@@ -462,14 +471,20 @@ class file_touch(_file_container_command):
         content_type=ValueArgument(
             'Set content type (default: application/octet-stream)',
             '--content-type',
-            default='application/octet-stream')
+            default='application/octet-stream'),
+        with_output=FlagArgument('show response headers', ('--with-output')),
+        json_output=FlagArgument('show headers in json', ('-j', '--json'))
     )
 
     @errors.generic.all
     @errors.pithos.connection
     @errors.pithos.container
     def _run(self):
-        self.client.create_object(self.path, self['content_type'])
+        r = self.client.create_object(self.path, self['content_type'])
+        if self['json_output']:
+            print_json(r)
+        elif self['with_output']:
+            print_dict(r)
 
     def main(self, container___path):
         super(file_touch, self)._run(
@@ -489,17 +504,24 @@ class file_create(_file_container_command):
         limit=IntArgument('set default container limit', '--limit'),
         meta=KeyValueArgument(
             'set container metadata (can be repeated)',
-            '--meta')
+            '--meta'),
+        with_output=FlagArgument('show request headers', ('--with-output')),
+        json_output=FlagArgument('show headers in json', ('-j', '--json'))
     )
 
     @errors.generic.all
     @errors.pithos.connection
     @errors.pithos.container
-    def _run(self):
-        self.client.container_put(
-            limit=self['limit'],
+    def _run(self, container):
+        r = self.client.create_container(
+            container=container,
+            sizelimit=self['limit'],
             versioning=self['versioning'],
             metadata=self['meta'])
+        if self['json_output']:
+            print_json(r)
+        elif self['with_output']:
+            print_dict(r)
 
     def main(self, container=None):
         super(self.__class__, self)._run(container)
@@ -507,7 +529,7 @@ class file_create(_file_container_command):
             raiseCLIError('Invalid container name %s' % container, details=[
                 'Did you mean "%s" ?' % self.container,
                 'Use --container for names containing :'])
-        self._run()
+        self._run(container)
 
 
 class _source_destination_command(_file_container_command):

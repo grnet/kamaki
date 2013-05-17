@@ -34,4 +34,7 @@ Features:
 - Add enumeration to all listing commands, make it optional [#3739]
 - Add a download_to_string method in pithos client [#3608]
 - Add an upload_from_string method in pithos client [#3608]
+- Add pithos client method create_container [#3756]
+- Add output for file methods [#3756, #3732]:
+    mkdir, touch, create
 
