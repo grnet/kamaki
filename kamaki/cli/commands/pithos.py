@@ -505,7 +505,7 @@ class file_create(_file_container_command):
         meta=KeyValueArgument(
             'set container metadata (can be repeated)',
             '--meta'),
-        with_output=FlagArgument('show request headers', ('--with-output')),
+        with_output=FlagArgument('show response headers', ('--with-output')),
         json_output=FlagArgument('show headers in json', ('-j', '--json'))
     )
 
@@ -514,10 +514,8 @@ class file_create(_file_container_command):
     @errors.pithos.container
     def _run(self, container):
         r = self.client.create_container(
-            container=container,
-            sizelimit=self['limit'],
-            versioning=self['versioning'],
-            metadata=self['meta'])
+            container=container, sizelimit=self['limit'],
+            versioning=self['versioning'], metadata=self['meta'])
         if self['json_output']:
             print_json(r)
         elif self['with_output']:
@@ -728,7 +726,7 @@ class file_copy(_source_destination_command):
         source_version=ValueArgument(
             'copy specific version',
             ('-S', '--source-version')),
-        with_output=FlagArgument('show request headers', ('--with-output')),
+        with_output=FlagArgument('show response headers', ('--with-output')),
         json_output=FlagArgument('show headers in json', ('-j', '--json'))
     )
 
@@ -823,7 +821,7 @@ class file_move(_source_destination_command):
             'Suffix of src to replace with add_suffix, if matched',
             '--suffix-to-replace',
             default=''),
-        with_output=FlagArgument('show request headers', ('--with-output')),
+        with_output=FlagArgument('show response headers', ('--with-output')),
         json_output=FlagArgument('show headers in json', ('-j', '--json'))
     )
 
@@ -879,7 +877,9 @@ class file_append(_file_container_command):
         progress_bar=ProgressBarArgument(
             'do not show progress bar',
             ('-N', '--no-progress-bar'),
-            default=False)
+            default=False),
+        with_output=FlagArgument('show response headers', ('--with-output')),
+        json_output=FlagArgument('show headers in json', ('-j', '--json'))
     )
 
     @errors.generic.all
@@ -890,7 +890,11 @@ class file_append(_file_container_command):
         (progress_bar, upload_cb) = self._safe_progress_bar('Appending')
         try:
             f = open(local_path, 'rb')
-            self.client.append_object(self.path, f, upload_cb)
+            r = self.client.append_object(self.path, f, upload_cb)
+            if self['json_output']:
+                print_json(r)
+            elif self['with_output']:
+                print_items(r)
         except Exception:
             self._safe_progress_bar_finish(progress_bar)
             raise
@@ -1061,9 +1065,10 @@ class file_upload(_file_container_command):
         recursive=FlagArgument(
             'Recursively upload directory *contents* + subdirectories',
             ('-R', '--recursive')),
-        details=FlagArgument(
-            'Show a detailed list of uploaded objects at the end',
-            ('-l', '--details'))
+        with_output=FlagArgument(
+            'Show uploaded objects response headers',
+            ('--with-output')),
+        json_output=FlagArgument('show headers in json', ('-j', '--json'))
     )
 
     def _check_container_limit(self, path):
@@ -1176,7 +1181,7 @@ class file_upload(_file_container_command):
                     rpath, f,
                     etag=self['etag'], withHashFile=self['use_hashes'],
                     **params)
-                if self['details']:
+                if self['with_output'] or self['json_output']:
                     r['name'] = '%s: %s' % (self.client.container, rpath)
                     uploaded.append(r)
             else:
@@ -1195,7 +1200,7 @@ class file_upload(_file_container_command):
                         upload_cb=upload_cb,
                         container_info_cache=container_info_cache,
                         **params)
-                    if self['details']:
+                    if self['with_output'] or self['json_output']:
                         r['name'] = '%s: %s' % (self.client.container, rpath)
                         uploaded.append(r)
                 except Exception:
@@ -1203,7 +1208,9 @@ class file_upload(_file_container_command):
                     raise
                 finally:
                     self._safe_progress_bar_finish(progress_bar)
-        if self['details']:
+        if self['json_output']:
+            print_json(uploaded)
+        elif self['with_output']:
             print_items(uploaded)
         else:
             print('Upload completed')
@@ -1232,7 +1239,7 @@ class file_cat(_file_container_command):
             '--if-unmodified-since'),
         object_version=ValueArgument(
             'get the specific version',
-            ('-j', '--object-version'))
+            ('-O', '--object-version'))
     )
 
     @errors.generic.all
@@ -1286,7 +1293,7 @@ class file_download(_file_container_command):
             '--if-unmodified-since'),
         object_version=ValueArgument(
             'get the specific version',
-            ('-j', '--object-version')),
+            ('-O', '--object-version')),
         poolsize=IntArgument('set pool size', '--with-pool-size'),
         progress_bar=ProgressBarArgument(
             'do not show progress bar',
@@ -1417,8 +1424,7 @@ class file_download(_file_container_command):
                     download_cb) = self._safe_progress_bar(
                         'Download %s' % rpath)
                 self.client.download_object(
-                    rpath,
-                    f,
+                    rpath, f,
                     download_cb=download_cb,
                     range_str=self['range'],
                     version=self['object_version'],
@@ -1442,7 +1448,6 @@ class file_download(_file_container_command):
                     finally:
                         stdout.flush()
                         timeout += 0.1
-
             print('\nDownload canceled by user')
             if local_path is not None:
                 print('to resume, re-run with --resume')
@@ -1474,7 +1479,8 @@ class file_hashmap(_file_container_command):
             '--if-unmodified-since'),
         object_version=ValueArgument(
             'get the specific version',
-            ('-j', '--object-version'))
+            ('-O', '--object-version')),
+        json_output=FlagArgument('show headers in json', ('-j', '--json'))
     )
 
     @errors.generic.all
@@ -1489,7 +1495,8 @@ class file_hashmap(_file_container_command):
             if_none_match=self['if_none_match'],
             if_modified_since=self['if_modified_since'],
             if_unmodified_since=self['if_unmodified_since'])
-        print_dict(data)
+        printer = print_json if self['json_output'] else print_dict
+        printer(data)
 
     def main(self, container___path):
         super(self.__class__, self)._run(
@@ -1522,7 +1529,9 @@ class file_delete(_file_container_command):
         yes=FlagArgument('Do not prompt for permission', '--yes'),
         recursive=FlagArgument(
             'empty dir or container and delete (if dir)',
-            ('-R', '--recursive'))
+            ('-R', '--recursive')),
+        with_output=FlagArgument('show response headers', ('--with-output')),
+        json_output=FlagArgument('show headers in json', ('-j', '--json'))
     )
 
     def __init__(self, arguments={}):
@@ -1537,10 +1546,11 @@ class file_delete(_file_container_command):
     @errors.pithos.container
     @errors.pithos.object_path
     def _run(self):
+        r = {}
         if self.path:
             if self['yes'] or ask_user(
                     'Delete %s:%s ?' % (self.container, self.path)):
-                self.client.del_object(
+                r = self.client.del_object(
                     self.path,
                     until=self['until'],
                     delimiter=self['delimiter'])
@@ -1552,11 +1562,16 @@ class file_delete(_file_container_command):
             else:
                 ask_msg = 'Delete container'
             if self['yes'] or ask_user('%s %s ?' % (ask_msg, self.container)):
-                self.client.del_container(
+                r = self.client.del_container(
                     until=self['until'],
                     delimiter=self['delimiter'])
             else:
                 print('Aborted')
+                return
+        if self['json_output']:
+            print_json(r)
+        elif self['with_output']:
+            print_dict(r)
 
     def main(self, container____path__=None):
         super(self.__class__, self)._run(container____path__)
@@ -1576,7 +1591,9 @@ class file_purge(_file_container_command):
 
     arguments = dict(
         yes=FlagArgument('Do not prompt for permission', '--yes'),
-        force=FlagArgument('purge even if not empty', ('-F', '--force'))
+        force=FlagArgument('purge even if not empty', ('-F', '--force')),
+        with_output=FlagArgument('show response headers', ('--with-output')),
+        json_output=FlagArgument('show headers in json', ('-j', '--json'))
     )
 
     @errors.generic.all
@@ -1585,16 +1602,20 @@ class file_purge(_file_container_command):
     def _run(self):
         if self['yes'] or ask_user('Purge container %s?' % self.container):
             try:
-                self.client.purge_container()
+                r = self.client.purge_container()
             except ClientError as ce:
                 if ce.status in (409,):
                     if self['force']:
                         self.client.del_container(delimiter='/')
-                        self.client.purge_container()
+                        r = self.client.purge_container()
                     else:
                         raiseCLIError(ce, details=['Try -F to force-purge'])
                 else:
                     raise
+            if self['json_output']:
+                print_json(r)
+            elif self['with_output']:
+                print_dict(r)
         else:
             print('Aborted')
 
@@ -1630,12 +1651,21 @@ class file_publish(_file_container_command):
 class file_unpublish(_file_container_command):
     """Unpublish an object"""
 
+    arguments = dict(
+        with_output=FlagArgument('show response headers', ('--with-output')),
+        json_output=FlagArgument('show headers in json', ('-j', '--json'))
+    )
+
     @errors.generic.all
     @errors.pithos.connection
     @errors.pithos.container
     @errors.pithos.object_path
     def _run(self):
-            self.client.unpublish_object(self.path)
+            r = self.client.unpublish_object(self.path)
+            if self['json_output']:
+                print_json(r)
+            elif self['with_output']:
+                print_dict(r)
 
     def main(self, container___path):
         super(self.__class__, self)._run(
@@ -1645,12 +1675,17 @@ class file_unpublish(_file_container_command):
 
 
 @command(pithos_cmds)
-class file_permissions(_file_container_command):
-    """Get read and write permissions of an object
-    Permissions are lists of users and user groups. There is read and write
+class file_permissions(_pithos_init):
+    """Manage user and group accessibility for objects
+    Permissions are lists of users and user groups. There are read and write
     permissions. Users and groups with write permission have also read
     permission.
     """
+
+
+@command(pithos_cmds)
+class file_permissions_get(_file_container_command):
+    """Get read and write permissions of an object"""
 
     @errors.generic.all
     @errors.pithos.connection
@@ -1668,14 +1703,14 @@ class file_permissions(_file_container_command):
 
 
 @command(pithos_cmds)
-class file_setpermissions(_file_container_command):
+class file_permissions_set(_file_container_command):
     """Set permissions for an object
     New permissions overwrite existing permissions.
     Permission format:
     -   read=<username>[,usergroup[,...]]
     -   write=<username>[,usegroup[,...]]
     E.g. to give read permissions for file F to users A and B and write for C:
-    .       /file setpermissions F read=A,B write=C
+    .       /file permissions set F read=A,B write=C
     """
 
     @errors.generic.all
@@ -1712,9 +1747,9 @@ class file_setpermissions(_file_container_command):
 
 
 @command(pithos_cmds)
-class file_delpermissions(_file_container_command):
+class file_permissions_delete(_file_container_command):
     """Delete all permissions set on object
-    To modify permissions, use /file setpermssions
+    To modify permissions, use /file permissions set
     """
 
     @errors.generic.all
@@ -1742,7 +1777,8 @@ class file_info(_file_container_command):
     arguments = dict(
         object_version=ValueArgument(
             'show specific version \ (applies only for objects)',
-            ('-j', '--object-version'))
+            ('-O', '--object-version')),
+        json_output=FlagArgument('show headers in json', ('-j', '--json'))
     )
 
     @errors.generic.all
@@ -1758,7 +1794,8 @@ class file_info(_file_container_command):
             r = self.client.get_object_info(
                 self.path,
                 version=self['object_version'])
-        print_dict(r)
+        printer = print_json if self['json_output'] else print_dict
+        printer(r)
 
     def main(self, container____path__=None):
         super(self.__class__, self)._run(container____path__)
@@ -1766,7 +1803,14 @@ class file_info(_file_container_command):
 
 
 @command(pithos_cmds)
-class file_meta(_file_container_command):
+class file_metadata(_pithos_init):
+    """Metadata are attached on objects. They are formed as key:value pairs.
+    They can have arbitary values.
+    """
+
+
+@command(pithos_cmds)
+class file_metadata_get(_file_container_command):
     """Get metadata for account, containers or objects"""
 
     arguments = dict(
@@ -1774,7 +1818,8 @@ class file_meta(_file_container_command):
         until=DateArgument('show metadata until then', '--until'),
         object_version=ValueArgument(
             'show specific version \ (applies only for objects)',
-            ('-j', '--object-version'))
+            ('-O', '--object-version')),
+        json_output=FlagArgument('show headers in json', ('-j', '--json'))
     )
 
     @errors.generic.all
@@ -1789,8 +1834,7 @@ class file_meta(_file_container_command):
             else:
                 r = self.client.get_account_meta(until=until)
                 r = pretty_keys(r, '-')
-            if r:
-                print(bold(self.client.account))
+            print(bold(self.client.account))
         elif self.path is None:
             if self['detail']:
                 r = self.client.get_container_info(until=until)
@@ -1811,10 +1855,10 @@ class file_meta(_file_container_command):
                 r = self.client.get_object_meta(
                     self.path,
                     version=self['object_version'])
-            if r:
                 r = pretty_keys(pretty_keys(r, '-'))
         if r:
-            print_dict(r)
+            printer = print_json if self['json_output'] else print_dict
+            printer(r)
 
     def main(self, container____path__=None):
         super(self.__class__, self)._run(container____path__)
@@ -1822,10 +1866,8 @@ class file_meta(_file_container_command):
 
 
 @command(pithos_cmds)
-class file_setmeta(_file_container_command):
-    """Set a piece of metadata for account, container or object
-    Metadata are formed as key:value pairs
-    """
+class file_metadata_set(_file_container_command):
+    """Set a piece of metadata for account, container or object"""
 
     @errors.generic.all
     @errors.pithos.connection
@@ -1845,12 +1887,11 @@ class file_setmeta(_file_container_command):
 
 
 @command(pithos_cmds)
-class file_delmeta(_file_container_command):
+class file_metadata_delete(_file_container_command):
     """Delete metadata with given key from account, container or object
-    Metadata are formed as key:value objects
-    - to get metadata of current account:     /file meta
-    - to get metadata of a container:         /file meta <container>
-    - to get metadata of an object:           /file meta <container>:<path>
+    - to get metadata of current account: /file metadata get
+    - to get metadata of a container:     /file metadata get <container>
+    - to get metadata of an object:       /file metadata get <container>:<path>
     """
 
     @errors.generic.all

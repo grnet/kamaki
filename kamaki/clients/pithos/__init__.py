@@ -101,9 +101,10 @@ class PithosClient(PithosRestClient):
         cnt_back_up = self.container
         try:
             self.container = container or cnt_back_up
-            self.container_delete(until=unicode(time()))
+            r = self.container_delete(until=unicode(time()))
         finally:
             self.container = cnt_back_up
+        return r.headers
 
     def upload_object_unchunked(
             self, obj, f,
@@ -838,25 +839,30 @@ class PithosClient(PithosRestClient):
         ret = [''] * num_of_blocks
         self._init_thread_limit()
         flying = dict()
-        for blockid, blockhash in enumerate(remote_hashes):
-            start = blocksize * blockid
-            is_last = start + blocksize > total_size
-            end = (total_size - 1) if is_last else (start + blocksize - 1)
-            (start, end) = _range_up(start, end, range_str)
-            if start < end:
-                self._watch_thread_limit(flying.values())
-                flying[blockid] = self._get_block_async(obj, **restargs)
-            for runid, thread in flying.items():
-                if (blockid + 1) == num_of_blocks:
-                    thread.join()
-                elif thread.isAlive():
-                    continue
-                if thread.exception:
-                    raise thread.exception
-                ret[runid] = thread.value.content
-                self._cb_next()
-                flying.pop(runid)
-        return ''.join(ret)
+        try:
+            for blockid, blockhash in enumerate(remote_hashes):
+                start = blocksize * blockid
+                is_last = start + blocksize > total_size
+                end = (total_size - 1) if is_last else (start + blocksize - 1)
+                (start, end) = _range_up(start, end, range_str)
+                if start < end:
+                    self._watch_thread_limit(flying.values())
+                    flying[blockid] = self._get_block_async(obj, **restargs)
+                for runid, thread in flying.items():
+                    if (blockid + 1) == num_of_blocks:
+                        thread.join()
+                    elif thread.isAlive():
+                        continue
+                    if thread.exception:
+                        raise thread.exception
+                    ret[runid] = thread.value.content
+                    self._cb_next()
+                    flying.pop(runid)
+            return ''.join(ret)
+        except KeyboardInterrupt:
+            sendlog.info('- - - wait for threads to finish')
+            for thread in activethreads():
+                thread.join()
 
     #Command Progress Bar method
     def _cb_next(self, step=1):
@@ -1028,6 +1034,7 @@ class PithosClient(PithosRestClient):
             raise ClientError(
                 'Container "%s" is not empty' % self.container,
                 r.status_code)
+        return r.headers
 
     def get_container_versioning(self, container=None):
         """
@@ -1128,7 +1135,8 @@ class PithosClient(PithosRestClient):
         :param delimiter: (str)
         """
         self._assert_container()
-        self.object_delete(obj, until=until, delimiter=delimiter)
+        r = self.object_delete(obj, until=until, delimiter=delimiter)
+        return r.headers
 
     def set_object_meta(self, obj, metapairs):
         """
@@ -1163,7 +1171,8 @@ class PithosClient(PithosRestClient):
         """
         :param obj: (str) remote object path
         """
-        self.object_post(obj, update=True, public=False)
+        r = self.object_post(obj, update=True, public=False)
+        return r.headers
 
     def get_object_info(self, obj, version=None):
         """
@@ -1255,22 +1264,45 @@ class PithosClient(PithosRestClient):
         filesize = fstat(source_file.fileno()).st_size
         nblocks = 1 + (filesize - 1) // blocksize
         offset = 0
+        headers = {}
         if upload_cb:
-            upload_gen = upload_cb(nblocks)
-            upload_gen.next()
-        for i in range(nblocks):
-            block = source_file.read(min(blocksize, filesize - offset))
-            offset += len(block)
-            self.object_post(
-                obj,
-                update=True,
-                content_range='bytes */*',
-                content_type='application/octet-stream',
-                content_length=len(block),
-                data=block)
+            self.progress_bar_gen = upload_cb(nblocks)
+            self._cb_next()
+        flying = {}
+        self._init_thread_limit()
+        try:
+            for i in range(nblocks):
+                block = source_file.read(min(blocksize, filesize - offset))
+                offset += len(block)
 
-            if upload_cb:
-                upload_gen.next()
+                self._watch_thread_limit(flying.values())
+                unfinished = {}
+                flying[i] = SilentEvent(
+                    method=self.object_post,
+                    obj=obj,
+                    update=True,
+                    content_range='bytes */*',
+                    content_type='application/octet-stream',
+                    content_length=len(block),
+                    data=block)
+                flying[i].start()
+
+                for key, thread in flying.items():
+                    if thread.isAlive():
+                        if i < nblocks:
+                            unfinished[key] = thread
+                            continue
+                        thread.join()
+                    if thread.exception:
+                        raise thread.exception
+                    headers[key] = thread.value.headers
+                    self._cb_next()
+                flying = unfinished
+        except KeyboardInterrupt:
+            sendlog.info('- - - wait for threads to finish')
+            for thread in activethreads():
+                thread.join()
+        return headers.values()
 
     def truncate_object(self, obj, upto_bytes):
         """

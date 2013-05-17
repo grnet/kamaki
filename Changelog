@@ -19,7 +19,9 @@ Changes:
     This operation was implemented by accident, due to the symetry between
     move and copy
 - Add optional output for file methods [#3756, #3732]:
-    mkdir, touch, create, move, create, copy, move
+    mkdir, touch, create, move, create, copy, move, append, delete, purge,
+    info, meta, upload
+- Transliterate permissions and metadata methods to (get, set delete) groups
 
 Features:
 

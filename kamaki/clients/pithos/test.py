@@ -1159,6 +1159,31 @@ class PithosClient(TestCase):
 
     #  Pithos+ only methods
 
+    @patch('%s.container_put' % pithos_pkg, return_value=FR())
+    def test_create_container(self, CP):
+        FR.headers = container_info
+        cont = 'an0th3r_c0n741n3r'
+
+        r = self.client.create_container()
+        self.assert_dicts_are_equal(r, container_info)
+        CP.assert_called_once_with(quota=None, versioning=None, metadata=None)
+
+        bu_cont = self.client.container
+        r = self.client.create_container(cont)
+        self.assertEqual(self.client.container, bu_cont)
+        self.assert_dicts_are_equal(r, container_info)
+        self.assertEqual(
+            CP.mock_calls[-1],
+            call(quota=None, versioning=None, metadata=None))
+
+        meta = dict(k1='v1', k2='v2')
+        r = self.client.create_container(cont, 42, 'auto', meta)
+        self.assertEqual(self.client.container, bu_cont)
+        self.assert_dicts_are_equal(r, container_info)
+        self.assertEqual(
+            CP.mock_calls[-1],
+            call(quota=42, versioning='auto', metadata=meta))
+
     @patch('%s.container_delete' % pithos_pkg, return_value=FR())
     def test_purge_container(self, CD):
         self.client.purge_container()
@@ -1672,7 +1697,7 @@ class PithosClient(TestCase):
                 upload_cb=append_gen if turn else None)
             self.assertEqual((turn + 1) * num_of_blocks, len(post.mock_calls))
             (args, kwargs) = post.mock_calls[-1][1:3]
-            self.assertEqual(args, (obj,))
+            self.assertEqual(kwargs['obj'], obj)
             self.assertEqual(kwargs['content_length'], len(kwargs['data']))
             fsize = num_of_blocks * int(kwargs['content_length'])
             self.assertEqual(fsize, file_size)
