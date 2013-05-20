@@ -6,6 +6,7 @@ Bug Fixes:
 - Shell can manage all valid command line arguments [#3716]
 - Restore 2nd level command syntax in shell [#3736]
 - Allow copy of deleted objects by refering to older version [#3737]
+- Add image.add_member missing content-length header
 
 Changes:
 
@@ -19,13 +20,23 @@ Changes:
     This operation was implemented by accident, due to the symetry between
     move and copy
 - Rename file-meta commands to file-metadata
-- Add optional output for file methods [#3756, #3732]:
+- Rename image-[add|del]member commands to members-[add|delete]
+- Remove update option from imagre-register
+- In image-compute split properties to properties-list and properties-get
+- Add optional output to methods[#3756, #3732]:
+    - file:
     mkdir, touch, create, move, copy, move, append, truncate, overwrite,
     manifest, upload, delete, purge, unpublish, permissions set/delete, info,
     metadata set/delete, containerlimit set, versioning set, group set/delete,
     upload, overwrite
-- Transliterate permissions, versioning, group and metadata methods to
-    get-set-delete command groups
+    - image:
+    unregister, members add/delete/set
+    -image compute:
+    delete, properties delete
+- Transliterate methods to list-get-set-delete command groups:
+    - file: permissions, versioning, group and metadata
+    - image: members, member
+    - image compute: properties
 
 Features:
 
