@@ -450,7 +450,7 @@ class image_compute_delete(_init_cyclades, _optional_output_cmd):
 
 @command(image_cmds)
 class image_compute_properties(_init_cyclades):
-    """Manage proeprties related to OS installation in an image"""
+    """Manage properties related to OS installation in an image"""
 
 
 @command(image_cmds)
