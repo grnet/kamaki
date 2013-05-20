@@ -18,10 +18,14 @@ Changes:
 - Disallow moving deleted objects by version [#3737]
     This operation was implemented by accident, due to the symetry between
     move and copy
+- Rename file-meta commands to file-metadata
 - Add optional output for file methods [#3756, #3732]:
-    mkdir, touch, create, move, create, copy, move, append, delete, purge,
-    info, meta, upload
-- Transliterate permissions and metadata methods to (get, set delete) groups
+    mkdir, touch, create, move, copy, move, append, truncate, overwrite,
+    manifest, upload, delete, purge, unpublish, permissions set/delete, info,
+    metadata set/delete, containerlimit set, versioning set, group set/delete,
+    upload, overwrite
+- Transliterate permissions, versioning, group and metadata methods to
+    get-set-delete command groups
 
 Features:
 
