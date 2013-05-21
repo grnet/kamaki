@@ -39,10 +39,14 @@ from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.utils import print_dict, print_items, print_json
 from kamaki.clients.image import ImageClient
+from kamaki.clients.pithos import PithosClient
+from kamaki.clients.astakos import AstakosClient
+from kamaki.clients import ClientError
 from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
 from kamaki.cli.argument import IntArgument
 from kamaki.cli.commands.cyclades import _init_cyclades
 from kamaki.cli.commands import _command_init, errors, _optional_output_cmd
+from kamaki.cli.errors import raiseCLIError
 
 
 image_cmds = CommandTree(
@@ -262,26 +266,77 @@ class image_register(_init_image):
         #    ('-u', '--update')),
         json_output=FlagArgument('Show results in json', ('-j', '--json')),
         property_file=ValueArgument(
-            'Load properties from a json-formated file. Contents:'
+            'Load properties from a json-formated file <img-file>.meta :'
             '{"key1": "val1", "key2": "val2", ...}',
-            ('--property-file'))
+            ('--property-file')),
+        prop_file_force=FlagArgument(
+            'Store remote property object, even it already exists',
+            ('-f', '--force-upload-property-file')),
+        no_prop_file_upload=FlagArgument(
+            'Do not store properties in remote property file',
+            ('--no-property-file-upload')),
+        container=ValueArgument(
+            'Remote image container', ('-C', '--container')),
+        fileowner=ValueArgument(
+            'UUID of the user who owns the image file', ('--fileowner'))
     )
+
+    def _get_uuid(self):
+        uuid = self['fileowner'] or self.config.get('image', 'fileowner')
+        if uuid:
+            return uuid
+        atoken = self.client.token
+        user = AstakosClient(self.config.get('user', 'url'), atoken)
+        return user.term('uuid')
+
+    def _get_pithos_client(self, uuid, container):
+        purl = self.config.get('file', 'url')
+        ptoken = self.client.token
+        return PithosClient(purl, ptoken, uuid, container)
+
+    def _store_remote_property_file(self, pclient, remote_path, properties):
+        return pclient.upload_from_string(
+            remote_path, _validate_image_props(properties, return_str=True))
+
+    def _get_container_path(self, container_path):
+        container = self['container'] or self.config.get('image', 'container')
+        if container:
+            return container, container_path
+
+        container, sep, path = container_path.partition(':')
+        if not sep or not container or not path:
+            raiseCLIError(
+                '%s is not a valid pithos remote location' % container_path,
+                details=[
+                    'To set "image" as container and "my_dir/img.diskdump" as',
+                    'the image path, try one of the following as '
+                    'container:path',
+                    '- <image container>:<remote path>',
+                    '    e.g. image:/my_dir/img.diskdump',
+                    '- <remote path> -C <image container>',
+                    '    e.g. /my_dir/img.diskdump -C image'])
+        return container, path
 
     @errors.generic.all
     @errors.plankton.connection
-    def _run(self, name, location):
-        if not location.startswith('pithos://'):
-            account = self.config.get('file', 'account') \
-                or self.config.get('global', 'account')
-            assert account, 'No user account provided'
-            if account[-1] == '/':
-                account = account[:-1]
-            container = self.config.get('file', 'container') \
-                or self.config.get('global', 'container')
-            if not container:
-                location = 'pithos://%s/%s' % (account, location)
-            else:
-                location = 'pithos://%s/%s/%s' % (account, container, location)
+    def _run(self, name, container_path):
+        container, path = self._get_container_path(container_path)
+        uuid = self._get_uuid()
+        prop_path = '%s.meta' % path
+
+        pclient = None if (
+            self['no_prop_file_upload']) else self._get_pithos_client(
+                uuid, container)
+        if pclient and not self['prop_file_force']:
+            try:
+                pclient.get_object_info(prop_path)
+                raiseCLIError('Property file %s: %s already exists' % (
+                    container, prop_path))
+            except ClientError as ce:
+                if ce.status != 404:
+                    raise
+
+        location = 'pithos://%s/%s/%s' % (uuid, container, path)
 
         params = {}
         for key in set([
@@ -301,9 +356,15 @@ class image_register(_init_image):
         printer = print_json if self['json_output'] else print_dict
         printer(self.client.register(name, location, params, properties))
 
-    def main(self, name, location):
+        if pclient:
+            prop_headers = pclient.upload_from_string(
+                prop_path, _validate_image_props(properties, return_str=True))
+            print('Property file location is %s: %s' % (container, prop_path))
+            print('\twith version %s' % prop_headers['x-object-version'])
+
+    def main(self, name, container___path):
         super(self.__class__, self)._run()
-        self._run(name, location)
+        self._run(name, container___path)
 
 
 @command(image_cmds)

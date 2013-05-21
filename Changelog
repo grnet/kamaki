@@ -54,4 +54,7 @@ Features:
 - Add a download_to_string method in pithos client [#3608]
 - Add an upload_from_string method in pithos client [#3608]
 - Add pithos client method create_container [#3756]
+- Store image properties on remote location after image registration [#3769]
+- Add runtime args to image register for forcing or unsettitng property
+    storage [#3769]
 

@@ -1645,7 +1645,7 @@ class file_permissions_set(_file_container_command, _optional_output_cmd):
     """
 
     @errors.generic.all
-    def format_permition_dict(self, permissions):
+    def format_permission_dict(self, permissions):
         read = False
         write = False
         for perms in permissions:
@@ -1666,13 +1666,13 @@ class file_permissions_set(_file_container_command, _optional_output_cmd):
     def _run(self, read, write):
         self._optional_output(self.client.set_object_sharing(
             self.path,
-            read_permition=read, write_permition=write))
+            read_permission=read, write_permission=write))
 
     def main(self, container___path, *permissions):
         super(self.__class__, self)._run(
             container___path,
             path_is_optional=False)
-        (read, write) = self.format_permition_dict(permissions)
+        (read, write) = self.format_permission_dict(permissions)
         self._run(read, write)
 
 

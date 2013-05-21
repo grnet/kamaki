@@ -1236,23 +1236,23 @@ class PithosClient(PithosRestClient):
 
     def set_object_sharing(
             self, obj,
-            read_permition=False, write_permition=False):
+            read_permission=False, write_permission=False):
         """Give read/write permisions to an object.
 
         :param obj: (str) remote object path
 
-        :param read_permition: (list - bool) users and user groups that get
-            read permition for this object - False means all previous read
+        :param read_permission: (list - bool) users and user groups that get
+            read permission for this object - False means all previous read
             permissions will be removed
 
-        :param write_perimition: (list - bool) of users and user groups to get
-           write permition for this object - False means all previous write
+        :param write_permission: (list - bool) of users and user groups to get
+           write permission for this object - False means all previous write
            permissions will be removed
 
         :returns: (dict) response headers
         """
 
-        perms = dict(read=read_permition or '', write=write_permition or '')
+        perms = dict(read=read_permission or '', write=write_permission or '')
         r = self.object_post(obj, update=True, permissions=perms)
         return r.headers
 
