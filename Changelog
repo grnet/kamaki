@@ -7,6 +7,7 @@ Bug Fixes:
 - Restore 2nd level command syntax in shell [#3736]
 - Allow copy of deleted objects by refering to older version [#3737]
 - Add image.add_member missing content-length header
+- Do not unpublish by default in all pithos low level requests [#3780]
 
 Changes:
 

@@ -1650,13 +1650,13 @@ class PithosClient(TestCase):
         read_perms = ['u1', 'g1', 'u2', 'g2']
         write_perms = ['u1', 'g1']
         for kwargs in (
-                dict(read_permition=read_perms, write_permition=write_perms),
-                dict(read_permition=read_perms),
-                dict(write_permition=write_perms),
+                dict(read_permission=read_perms, write_permission=write_perms),
+                dict(read_permission=read_perms),
+                dict(write_permission=write_perms),
                 dict()):
             self.client.set_object_sharing(obj, **kwargs)
-            kwargs['read'] = kwargs.pop('read_permition', '')
-            kwargs['write'] = kwargs.pop('write_permition', '')
+            kwargs['read'] = kwargs.pop('read_permission', '')
+            kwargs['write'] = kwargs.pop('write_permission', '')
             self.assertEqual(
                 OP.mock_calls[-1],
                 call(obj, update=True, permissions=kwargs))
