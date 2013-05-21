@@ -71,15 +71,40 @@ class PithosClient(PithosRestClient):
     def __init__(self, base_url, token, account=None, container=None):
         super(PithosClient, self).__init__(base_url, token, account, container)
 
+    def create_container(
+            self,
+            container=None, sizelimit=None, versioning=None, metadata=None):
+        """
+        :param container: (str) if not given, self.container is used instead
+
+        :param sizelimit: (int) container total size limit in bytes
+
+        :param versioning: (str) can be auto or whatever supported by server
+
+        :param metadata: (dict) Custom user-defined metadata of the form
+            { 'name1': 'value1', 'name2': 'value2', ... }
+
+        :returns: (dict) response headers
+        """
+        cnt_back_up = self.container
+        try:
+            self.container = container or cnt_back_up
+            r = self.container_put(
+                quota=sizelimit, versioning=versioning, metadata=metadata)
+            return r.headers
+        finally:
+            self.container = cnt_back_up
+
     def purge_container(self, container=None):
         """Delete an empty container and destroy associated blocks
         """
         cnt_back_up = self.container
         try:
             self.container = container or cnt_back_up
-            self.container_delete(until=unicode(time()))
+            r = self.container_delete(until=unicode(time()))
         finally:
             self.container = cnt_back_up
+        return r.headers
 
     def upload_object_unchunked(
             self, obj, f,
@@ -811,25 +836,30 @@ class PithosClient(PithosRestClient):
         ret = [''] * num_of_blocks
         self._init_thread_limit()
         flying = dict()
-        for blockid, blockhash in enumerate(remote_hashes):
-            start = blocksize * blockid
-            is_last = start + blocksize > total_size
-            end = (total_size - 1) if is_last else (start + blocksize - 1)
-            (start, end) = _range_up(start, end, range_str)
-            if start < end:
-                self._watch_thread_limit(flying.values())
-                flying[blockid] = self._get_block_async(obj, **restargs)
-            for runid, thread in flying.items():
-                if (blockid + 1) == num_of_blocks:
-                    thread.join()
-                elif thread.isAlive():
-                    continue
-                if thread.exception:
-                    raise thread.exception
-                ret[runid] = thread.value.content
-                self._cb_next()
-                flying.pop(runid)
-        return ''.join(ret)
+        try:
+            for blockid, blockhash in enumerate(remote_hashes):
+                start = blocksize * blockid
+                is_last = start + blocksize > total_size
+                end = (total_size - 1) if is_last else (start + blocksize - 1)
+                (start, end) = _range_up(start, end, range_str)
+                if start < end:
+                    self._watch_thread_limit(flying.values())
+                    flying[blockid] = self._get_block_async(obj, **restargs)
+                for runid, thread in flying.items():
+                    if (blockid + 1) == num_of_blocks:
+                        thread.join()
+                    elif thread.isAlive():
+                        continue
+                    if thread.exception:
+                        raise thread.exception
+                    ret[runid] = thread.value.content
+                    self._cb_next()
+                    flying.pop(runid)
+            return ''.join(ret)
+        except KeyboardInterrupt:
+            sendlog.info('- - - wait for threads to finish')
+            for thread in activethreads():
+                thread.join()
 
     #Command Progress Bar method
     def _cb_next(self, step=1):
@@ -893,7 +923,8 @@ class PithosClient(PithosRestClient):
 
         :param usernames: (list)
         """
-        self.account_post(update=True, groups={group: usernames})
+        r = self.account_post(update=True, groups={group: usernames})
+        return r
 
     def del_account_group(self, group):
         """
@@ -949,13 +980,15 @@ class PithosClient(PithosRestClient):
         :param metapairs: (dict) {key1:val1, key2:val2, ...}
         """
         assert(type(metapairs) is dict)
-        self.account_post(update=True, metadata=metapairs)
+        r = self.account_post(update=True, metadata=metapairs)
+        return r.headers
 
     def del_account_meta(self, metakey):
         """
         :param metakey: (str) metadatum key
         """
-        self.account_post(update=True, metadata={metakey: ''})
+        r = self.account_post(update=True, metadata={metakey: ''})
+        return r.headers
 
     """
     def set_account_quota(self, quota):
@@ -969,7 +1002,8 @@ class PithosClient(PithosRestClient):
         """
         "param versioning: (str)
         """
-        self.account_post(update=True, versioning=versioning)
+        r = self.account_post(update=True, versioning=versioning)
+        return r.headers
 
     def list_containers(self):
         """
@@ -1001,6 +1035,7 @@ class PithosClient(PithosRestClient):
             raise ClientError(
                 'Container "%s" is not empty' % self.container,
                 r.status_code)
+        return r.headers
 
     def get_container_versioning(self, container=None):
         """
@@ -1072,25 +1107,29 @@ class PithosClient(PithosRestClient):
         :param metapairs: (dict) {key1:val1, key2:val2, ...}
         """
         assert(type(metapairs) is dict)
-        self.container_post(update=True, metadata=metapairs)
+        r = self.container_post(update=True, metadata=metapairs)
+        return r.headers
 
     def del_container_meta(self, metakey):
         """
         :param metakey: (str) metadatum key
         """
-        self.container_post(update=True, metadata={metakey: ''})
+        r = self.container_post(update=True, metadata={metakey: ''})
+        return r.headers
 
     def set_container_limit(self, limit):
         """
         :param limit: (int)
         """
-        self.container_post(update=True, quota=limit)
+        r = self.container_post(update=True, quota=limit)
+        return r.headers
 
     def set_container_versioning(self, versioning):
         """
         :param versioning: (str)
         """
-        self.container_post(update=True, versioning=versioning)
+        r = self.container_post(update=True, versioning=versioning)
+        return r.headers
 
     def del_object(self, obj, until=None, delimiter=None):
         """
@@ -1101,7 +1140,8 @@ class PithosClient(PithosRestClient):
         :param delimiter: (str)
         """
         self._assert_container()
-        self.object_delete(obj, until=until, delimiter=delimiter)
+        r = self.object_delete(obj, until=until, delimiter=delimiter)
+        return r.headers
 
     def set_object_meta(self, obj, metapairs):
         """
@@ -1110,7 +1150,8 @@ class PithosClient(PithosRestClient):
         :param metapairs: (dict) {key1:val1, key2:val2, ...}
         """
         assert(type(metapairs) is dict)
-        self.object_post(obj, update=True, metadata=metapairs)
+        r = self.object_post(obj, update=True, metadata=metapairs)
+        return r.headers
 
     def del_object_meta(self, obj, metakey):
         """
@@ -1118,7 +1159,8 @@ class PithosClient(PithosRestClient):
 
         :param metakey: (str) metadatum key
         """
-        self.object_post(obj, update=True, metadata={metakey: ''})
+        r = self.object_post(obj, update=True, metadata={metakey: ''})
+        return r.headers
 
     def publish_object(self, obj):
         """
@@ -1136,7 +1178,8 @@ class PithosClient(PithosRestClient):
         """
         :param obj: (str) remote object path
         """
-        self.object_post(obj, update=True, public=False)
+        r = self.object_post(obj, update=True, public=False)
+        return r.headers
 
     def get_object_info(self, obj, version=None):
         """
@@ -1190,28 +1233,31 @@ class PithosClient(PithosRestClient):
 
     def set_object_sharing(
             self, obj,
-            read_permition=False, write_permition=False):
+            read_permission=False, write_permission=False):
         """Give read/write permisions to an object.
 
         :param obj: (str) remote object path
 
-        :param read_permition: (list - bool) users and user groups that get
-            read permition for this object - False means all previous read
+        :param read_permission: (list - bool) users and user groups that get
+            read permission for this object - False means all previous read
             permissions will be removed
 
-        :param write_perimition: (list - bool) of users and user groups to get
-           write permition for this object - False means all previous write
+        :param write_permission: (list - bool) of users and user groups to get
+           write permission for this object - False means all previous write
            permissions will be removed
+
+        :returns: (dict) response headers
         """
 
-        perms = dict(read=read_permition or '', write=write_permition or '')
-        self.object_post(obj, update=True, permissions=perms)
+        perms = dict(read=read_permission or '', write=write_permission or '')
+        r = self.object_post(obj, update=True, permissions=perms)
+        return r.headers
 
     def del_object_sharing(self, obj):
         """
         :param obj: (str) remote object path
         """
-        self.set_object_sharing(obj)
+        return self.set_object_sharing(obj)
 
     def append_object(self, obj, source_file, upload_cb=None):
         """
@@ -1228,36 +1274,62 @@ class PithosClient(PithosRestClient):
         filesize = fstat(source_file.fileno()).st_size
         nblocks = 1 + (filesize - 1) // blocksize
         offset = 0
+        headers = {}
         if upload_cb:
-            upload_gen = upload_cb(nblocks)
-            upload_gen.next()
-        for i in range(nblocks):
-            block = source_file.read(min(blocksize, filesize - offset))
-            offset += len(block)
-            self.object_post(
-                obj,
-                update=True,
-                content_range='bytes */*',
-                content_type='application/octet-stream',
-                content_length=len(block),
-                data=block)
+            self.progress_bar_gen = upload_cb(nblocks)
+            self._cb_next()
+        flying = {}
+        self._init_thread_limit()
+        try:
+            for i in range(nblocks):
+                block = source_file.read(min(blocksize, filesize - offset))
+                offset += len(block)
 
-            if upload_cb:
-                upload_gen.next()
+                self._watch_thread_limit(flying.values())
+                unfinished = {}
+                flying[i] = SilentEvent(
+                    method=self.object_post,
+                    obj=obj,
+                    update=True,
+                    content_range='bytes */*',
+                    content_type='application/octet-stream',
+                    content_length=len(block),
+                    data=block)
+                flying[i].start()
+
+                for key, thread in flying.items():
+                    if thread.isAlive():
+                        if i < nblocks:
+                            unfinished[key] = thread
+                            continue
+                        thread.join()
+                    if thread.exception:
+                        raise thread.exception
+                    headers[key] = thread.value.headers
+                    self._cb_next()
+                flying = unfinished
+        except KeyboardInterrupt:
+            sendlog.info('- - - wait for threads to finish')
+            for thread in activethreads():
+                thread.join()
+        return headers.values()
 
     def truncate_object(self, obj, upto_bytes):
         """
         :param obj: (str) remote object path
 
         :param upto_bytes: max number of bytes to leave on file
+
+        :returns: (dict) response headers
         """
-        self.object_post(
+        r = self.object_post(
             obj,
             update=True,
             content_range='bytes 0-%s/*' % upto_bytes,
             content_type='application/octet-stream',
             object_bytes=upto_bytes,
             source_object=path4url(self.container, obj))
+        return r.headers
 
     def overwrite_object(self, obj, start, end, source_file, upload_cb=None):
         """Overwrite a part of an object from local source file
@@ -1291,12 +1363,13 @@ class PithosClient(PithosRestClient):
         nblocks = 1 + (datasize - 1) // blocksize
         offset = 0
         if upload_cb:
-            upload_gen = upload_cb(nblocks)
-            upload_gen.next()
+            self.progress_bar_gen = upload_cb(nblocks)
+            self._cb_next()
+        headers = []
         for i in range(nblocks):
             read_size = min(blocksize, filesize - offset, datasize - offset)
             block = source_file.read(read_size)
-            self.object_post(
+            r = self.object_post(
                 obj,
                 update=True,
                 content_type='application/octet-stream',
@@ -1305,10 +1378,11 @@ class PithosClient(PithosRestClient):
                     start + offset,
                     start + offset + len(block) - 1),
                 data=block)
+            headers.append(dict(r.headers))
             offset += len(block)
 
-            if upload_cb:
-                upload_gen.next()
+            self._cb_next
+        return headers
 
     def copy_object(
             self, src_container, src_object, dst_container,
@@ -1336,11 +1410,13 @@ class PithosClient(PithosRestClient):
         :param content_type: (str)
 
         :param delimiter: (str)
+
+        :returns: (dict) response headers
         """
         self._assert_account()
         self.container = dst_container
         src_path = path4url(src_container, src_object)
-        self.object_put(
+        r = self.object_put(
             dst_object or src_object,
             success=201,
             copy_from=src_path,
@@ -1350,6 +1426,7 @@ class PithosClient(PithosRestClient):
             public=public,
             content_type=content_type,
             delimiter=delimiter)
+        return r.headers
 
     def move_object(
             self, src_container, src_object, dst_container,
@@ -1377,12 +1454,14 @@ class PithosClient(PithosRestClient):
         :param content_type: (str)
 
         :param delimiter: (str)
+
+        :returns: (dict) response headers
         """
         self._assert_account()
         self.container = dst_container
         dst_object = dst_object or src_object
         src_path = path4url(src_container, src_object)
-        self.object_put(
+        r = self.object_put(
             dst_object,
             success=201,
             move_from=src_path,
@@ -1392,6 +1471,7 @@ class PithosClient(PithosRestClient):
             public=public,
             content_type=content_type,
             delimiter=delimiter)
+        return r.headers
 
     def get_sharing_accounts(self, limit=None, marker=None, *args, **kwargs):
         """Get accounts that share with self.account

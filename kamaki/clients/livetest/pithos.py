@@ -393,22 +393,22 @@ class Pithos(livetest.Generic):
     def _test_0050_container_put(self):
         self.client.container = self.c2
 
-        r = self.client.container_put()
-        self.assertEqual(r.status_code, 202)
+        r = self.client.create_container()
+        self.assertTrue(isinstance(r, dict))
 
         r = self.client.get_container_limit(self.client.container)
         cquota = r.values()[0]
         newquota = 2 * int(cquota)
 
-        r = self.client.container_put(quota=newquota)
-        self.assertEqual(r.status_code, 202)
+        r = self.client.create_container(sizelimit=newquota)
+        self.assertTrue(isinstance(r, dict))
 
         r = self.client.get_container_limit(self.client.container)
         xquota = int(r.values()[0])
         self.assertEqual(newquota, xquota)
 
-        r = self.client.container_put(versioning='auto')
-        self.assertEqual(r.status_code, 202)
+        r = self.client.create_container(versioning='auto')
+        self.assertTrue(isinstance(r, dict))
 
         r = self.client.get_container_versioning(self.client.container)
         nvers = r.values()[0]
@@ -421,8 +421,8 @@ class Pithos(livetest.Generic):
         nvers = r.values()[0]
         self.assertEqual('none', nvers)
 
-        r = self.client.container_put(metadata={'m1': 'v1', 'm2': 'v2'})
-        self.assertEqual(r.status_code, 202)
+        r = self.client.create_container(metadata={'m1': 'v1', 'm2': 'v2'})
+        self.assertTrue(isinstance(r, dict))
 
         r = self.client.get_container_meta(self.client.container)
         self.assertTrue('x-container-meta-m1' in r)

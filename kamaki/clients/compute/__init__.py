@@ -233,7 +233,8 @@ class ComputeClient(ComputeRestClient):
         """
         :param image_id: (str)
         """
-        self.images_delete(image_id)
+        r = self.images_delete(image_id)
+        return r.headers
 
     def get_image_metadata(self, image_id, key=''):
         """
@@ -280,4 +281,5 @@ class ComputeClient(ComputeRestClient):
         :param key: (str) metadatum key
         """
         command = path4url('meta', key)
-        self.images_delete(image_id, command)
+        r = self.images_delete(image_id, command)
+        return r.headers
