@@ -306,7 +306,7 @@ class image_register(_init_image):
         container, sep, path = container_path.partition(':')
         if not sep or not container or not path:
             raiseCLIError(
-                '%s is not a valid pithos remote location' % container_path,
+                '%s is not a valid pithos+ remote location' % container_path,
                 details=[
                     'To set "image" as container and "my_dir/img.diskdump" as',
                     'the image path, try one of the following as '
@@ -348,10 +348,13 @@ class image_register(_init_image):
                 'is_public']).intersection(self.arguments):
             params[key] = self[key]
 
-            #load properties
-            properties = _load_image_props(self['property_file']) if (
-                self['property_file']) else dict()
-            properties.update(self['properties'])
+        #load properties
+        properties = dict()
+        if self['property_file']:
+            for k, v in _load_image_props(self['property_file']).items():
+                properties[k.lower()] = v
+        for k, v in self['properties'].items():
+            properties[k.lower()] = v
 
         printer = print_json if self['json_output'] else print_dict
         printer(self.client.register(name, location, params, properties))
