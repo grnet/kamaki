@@ -31,6 +31,10 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
+from json import load, dumps
+from os.path import abspath
+from logging import getLogger
+
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.utils import print_dict, print_items, print_json
@@ -52,6 +56,9 @@ about_image_id = [
     'To see a list of available image ids: /image list']
 
 
+log = getLogger(__name__)
+
+
 class _init_image(_command_init):
     @errors.generic.all
     def _run(self):
@@ -70,6 +77,48 @@ class _init_image(_command_init):
 
 
 # Plankton Image Commands
+
+
+def _validate_image_props(json_dict, return_str=False):
+    """
+    :param json_dict" (dict) json-formated, of the form
+        {"key1": "val1", "key2": "val2", ...}
+
+    :param return_str: (boolean) if true, return a json dump
+
+    :returns: (dict)
+
+    :raises TypeError, AttributeError: Invalid json format
+
+    :raises AssertionError: Valid json but invalid image properties dict
+    """
+    json_str = dumps(json_dict)
+    for k, v in json_dict.items():
+        dealbreaker = isinstance(v, dict) or isinstance(v, list)
+        assert not dealbreaker, 'Invalid property value for key %s' % k
+        dealbreaker = ' ' in k
+        assert not dealbreaker, 'Invalid key [%s]' % k
+        json_dict[k] = '%s' % v
+    return json_str if return_str else json_dict
+
+
+def _load_image_props(filepath):
+    """
+    :param filepath: (str) the (relative) path of the metafile
+
+    :returns: (dict) json_formated
+
+    :raises TypeError, AttributeError: Invalid json format
+
+    :raises AssertionError: Valid json but invalid image properties dict
+    """
+    with open(abspath(filepath)) as f:
+        meta_dict = load(f)
+        try:
+            return _validate_image_props(meta_dict)
+        except AssertionError:
+            log.debug('Failed to load properties from file %s' % filepath)
+            raise
 
 
 @command(image_cmds)
@@ -211,7 +260,11 @@ class image_register(_init_image):
         #update=FlagArgument(
         #    'update existing image properties',
         #    ('-u', '--update')),
-        json_output=FlagArgument('Show results in json', ('-j', '--json'))
+        json_output=FlagArgument('Show results in json', ('-j', '--json')),
+        property_file=ValueArgument(
+            'Load properties from a json-formated file. Contents:'
+            '{"key1": "val1", "key2": "val2", ...}',
+            ('--property-file'))
     )
 
     @errors.generic.all
@@ -240,7 +293,10 @@ class image_register(_init_image):
                 'is_public']).intersection(self.arguments):
             params[key] = self[key]
 
-            properties = self['properties']
+            #load properties
+            properties = _load_image_props(self['property_file']) if (
+                self['property_file']) else dict()
+            properties.update(self['properties'])
 
         printer = print_json if self['json_output'] else print_dict
         printer(self.client.register(name, location, params, properties))
