@@ -319,6 +319,7 @@ class image_register(_init_image):
         return container, path
 
     @errors.generic.all
+    @errors.plankton.image_file
     @errors.plankton.connection
     def _run(self, name, container_path):
         container, path = self._get_container_path(container_path)
@@ -351,9 +352,24 @@ class image_register(_init_image):
 
         #load properties
         properties = dict()
-        if self['property_file']:
-            for k, v in _load_image_props(self['property_file']).items():
-                properties[k.lower()] = v
+        pfile = self['property_file']
+        if pfile:
+            try:
+                for k, v in _load_image_props(pfile).items():
+                    properties[k.lower()] = v
+            except Exception as e:
+                raiseCLIError(
+                    e, 'Format error in property file %s' % pfile,
+                    details=[
+                        'Expected content format:',
+                        '  {',
+                        '    "key1": "value1",',
+                        '    "key2": "value2",',
+                        '    ...',
+                        '  }',
+                        '',
+                        'Parser:'
+                    ])
         for k, v in self['properties'].items():
             properties[k.lower()] = v
 
@@ -368,7 +384,7 @@ class image_register(_init_image):
                     property_file_location='%s:%s' % (container, prop_path),
                     headers=prop_headers))
             else:
-                print('Property file location is %s:%s with version %s' % (
+                print('Property file uploaded as %s:%s (version %s)' % (
                     container, prop_path, prop_headers['x-object-version']))
 
     def main(self, name, container___path):
