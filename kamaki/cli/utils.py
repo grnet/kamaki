@@ -35,6 +35,7 @@ from sys import stdout, stdin
 from re import compile as regex_compile
 from time import sleep
 from os import walk, path
+from json import dumps
 
 from kamaki.cli.errors import raiseCLIError
 
@@ -98,6 +99,14 @@ def pretty_keys(d, delim='_', recurcive=False):
             new_val = val
         new_d[new_key] = new_val
     return new_d
+
+
+def print_json(data):
+    """Print a list or dict as json in console
+
+    :param data: json-dumpable data
+    """
+    print(dumps(data, indent=2))
 
 
 def print_dict(

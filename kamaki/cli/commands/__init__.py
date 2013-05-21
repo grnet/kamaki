@@ -32,6 +32,8 @@
 # or implied, of GRNET S.A.command
 
 from kamaki.logger import get_logger
+from kamaki.cli.utils import print_json, print_items
+from kamaki.cli.argument import FlagArgument
 
 log = get_logger(__name__)
 
@@ -41,10 +43,11 @@ class _command_init(object):
     def __init__(self, arguments={}):
         if hasattr(self, 'arguments'):
             arguments.update(self.arguments)
+        if isinstance(self, _optional_output_cmd):
+            arguments.update(self.oo_arguments)
         self.arguments = dict(arguments)
         try:
             self.config = self['config']
-            #self.config = self.get_argument('config')
         except KeyError:
             pass
 
@@ -124,3 +127,17 @@ class _command_init(object):
         :raises KeyError: if argterm not in self.arguments of this object
         """
         return self[argterm]
+
+
+class _optional_output_cmd(object):
+
+    oo_arguments = dict(
+        with_output=FlagArgument('show response headers', ('--with-output')),
+        json_output=FlagArgument('show headers in json', ('-j', '--json'))
+    )
+
+    def _optional_output(self, r):
+        if self['json_output']:
+            print_json(r)
+        elif self['with_output']:
+            print_items([r] if isinstance(r, dict) else r)

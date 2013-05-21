@@ -99,7 +99,7 @@ class ImageClient(Client):
         return reply
 
     def register(self, name, location, params={}, properties={}):
-        """Register image put at location
+        """Register an image that is uploaded at location
 
         :param name: (str)
 
@@ -133,9 +133,12 @@ class ImageClient(Client):
         """Unregister an image
 
         :param image_id: (str)
+
+        :returns: (dict) response headers
         """
         path = path4url('images', image_id)
-        self.delete(path, success=204)
+        r = self.delete(path, success=204)
+        return r.headers
 
     def list_members(self, image_id):
         """
@@ -165,7 +168,9 @@ class ImageClient(Client):
         :param member: (str) user to allow access to current user's images
         """
         path = path4url('images', image_id, 'members', member)
-        self.put(path, success=204)
+        self.set_header('Content-Length', len(member))
+        r = self.put(path, success=204)
+        return r.headers
 
     def remove_member(self, image_id, member):
         """
@@ -174,7 +179,8 @@ class ImageClient(Client):
         :param member: (str) user to deprive from current user's images
         """
         path = path4url('images', image_id, 'members', member)
-        self.delete(path, success=204)
+        r = self.delete(path, success=204)
+        return r.headers
 
     def set_members(self, image_id, members):
         """
@@ -184,4 +190,5 @@ class ImageClient(Client):
         """
         path = path4url('images', image_id, 'members')
         req = {'memberships': [{'member_id': member} for member in members]}
-        self.put(path, json=req, success=204)
+        r = self.put(path, json=req, success=204)
+        return r.headers

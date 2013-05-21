@@ -40,11 +40,11 @@ from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import raiseCLIError, CLISyntaxError
 from kamaki.cli.utils import (
     format_size, to_bytes, print_dict, print_items, pretty_keys,
-    page_hold, bold, ask_user, get_path_size)
+    page_hold, bold, ask_user, get_path_size, print_json)
 from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
 from kamaki.cli.argument import KeyValueArgument, DateArgument
 from kamaki.cli.argument import ProgressBarArgument
-from kamaki.cli.commands import _command_init, errors
+from kamaki.cli.commands import _command_init, errors, _optional_output_cmd
 from kamaki.clients.pithos import PithosClient, ClientError
 from kamaki.clients.astakos import AstakosClient
 
@@ -329,10 +329,14 @@ class file_list(_file_container_command):
         exact_match=FlagArgument(
             'Show only objects that match exactly with path',
             '--exact-match'),
-        enum=FlagArgument('Enumerate results', '--enumerate')
+        enum=FlagArgument('Enumerate results', '--enumerate'),
+        json_output=FlagArgument('show output in json', ('-j', '--json'))
     )
 
     def print_objects(self, object_list):
+        if self['json_output']:
+            print_json(object_list)
+            return
         limit = int(self['limit']) if self['limit'] > 0 else len(object_list)
         for index, obj in enumerate(object_list):
             if self['exact_match'] and self.path and not (
@@ -362,6 +366,9 @@ class file_list(_file_container_command):
                 page_hold(index, limit, len(object_list))
 
     def print_containers(self, container_list):
+        if self['json_output']:
+            print_json(container_list)
+            return
         limit = int(self['limit']) if self['limit'] > 0\
             else len(container_list)
         for index, container in enumerate(container_list):
@@ -422,7 +429,7 @@ class file_list(_file_container_command):
 
 
 @command(pithos_cmds)
-class file_mkdir(_file_container_command):
+class file_mkdir(_file_container_command, _optional_output_cmd):
     """Create a directory"""
 
     __doc__ += '\n. '.join([
@@ -436,7 +443,7 @@ class file_mkdir(_file_container_command):
     @errors.pithos.connection
     @errors.pithos.container
     def _run(self):
-        self.client.create_directory(self.path)
+        self._optional_output(self.client.create_directory(self.path))
 
     def main(self, container___directory):
         super(self.__class__, self)._run(
@@ -446,7 +453,7 @@ class file_mkdir(_file_container_command):
 
 
 @command(pithos_cmds)
-class file_touch(_file_container_command):
+class file_touch(_file_container_command, _optional_output_cmd):
     """Create an empty object (file)
     If object exists, this command will reset it to 0 length
     """
@@ -462,7 +469,8 @@ class file_touch(_file_container_command):
     @errors.pithos.connection
     @errors.pithos.container
     def _run(self):
-        self.client.create_object(self.path, self['content_type'])
+        self._optional_output(
+            self.client.create_object(self.path, self['content_type']))
 
     def main(self, container___path):
         super(file_touch, self)._run(
@@ -472,7 +480,7 @@ class file_touch(_file_container_command):
 
 
 @command(pithos_cmds)
-class file_create(_file_container_command):
+class file_create(_file_container_command, _optional_output_cmd):
     """Create a container"""
 
     arguments = dict(
@@ -488,11 +496,12 @@ class file_create(_file_container_command):
     @errors.generic.all
     @errors.pithos.connection
     @errors.pithos.container
-    def _run(self):
-        self.client.container_put(
-            limit=self['limit'],
+    def _run(self, container):
+        self._optional_output(self.client.create_container(
+            container=container,
+            sizelimit=self['limit'],
             versioning=self['versioning'],
-            metadata=self['meta'])
+            metadata=self['meta']))
 
     def main(self, container=None):
         super(self.__class__, self)._run(container)
@@ -500,7 +509,7 @@ class file_create(_file_container_command):
             raiseCLIError('Invalid container name %s' % container, details=[
                 'Did you mean "%s" ?' % self.container,
                 'Use --container for names containing :'])
-        self._run()
+        self._run(container)
 
 
 class _source_destination_command(_file_container_command):
@@ -648,7 +657,7 @@ class _source_destination_command(_file_container_command):
 
 
 @command(pithos_cmds)
-class file_copy(_source_destination_command):
+class file_copy(_source_destination_command, _optional_output_cmd):
     """Copy objects from container to (another) container
     Semantics:
     copy cont:path dir
@@ -712,7 +721,7 @@ class file_copy(_source_destination_command):
         for src_obj, dst_obj in self.src_dst_pairs(
                 dst_path, self['source_version']):
             no_source_object = False
-            self.dst_client.copy_object(
+            r = self.dst_client.copy_object(
                 src_container=self.client.container,
                 src_object=src_obj,
                 dst_container=self.dst_client.container,
@@ -725,6 +734,7 @@ class file_copy(_source_destination_command):
             raiseCLIError('No object %s in container %s' % (
                 self.path,
                 self.container))
+        self._optional_output(r)
 
     def main(
             self, source_container___path,
@@ -739,7 +749,7 @@ class file_copy(_source_destination_command):
 
 
 @command(pithos_cmds)
-class file_move(_source_destination_command):
+class file_move(_source_destination_command, _optional_output_cmd):
     """Move/rename objects from container to (another) container
     Semantics:
     move cont:path dir
@@ -798,19 +808,19 @@ class file_move(_source_destination_command):
             self['destination_account']) else None
         for src_obj, dst_obj in self.src_dst_pairs(dst_path):
             no_source_object = False
-            self.dst_client.move_object(
+            r = self.dst_client.move_object(
                 src_container=self.container,
                 src_object=src_obj,
                 dst_container=self.dst_client.container,
                 dst_object=dst_obj,
                 source_account=src_account,
-                source_version=self['source_version'],
                 public=self['public'],
                 content_type=self['content_type'])
         if no_source_object:
             raiseCLIError('No object %s in container %s' % (
                 self.path,
                 self.container))
+        self._optional_output(r)
 
     def main(
             self, source_container___path,
@@ -827,7 +837,7 @@ class file_move(_source_destination_command):
 
 
 @command(pithos_cmds)
-class file_append(_file_container_command):
+class file_append(_file_container_command, _optional_output_cmd):
     """Append local file to (existing) remote object
     The remote object should exist.
     If the remote object is a directory, it is transformed into a file.
@@ -849,7 +859,8 @@ class file_append(_file_container_command):
         (progress_bar, upload_cb) = self._safe_progress_bar('Appending')
         try:
             f = open(local_path, 'rb')
-            self.client.append_object(self.path, f, upload_cb)
+            self._optional_output(
+                self.client.append_object(self.path, f, upload_cb))
         except Exception:
             self._safe_progress_bar_finish(progress_bar)
             raise
@@ -864,7 +875,7 @@ class file_append(_file_container_command):
 
 
 @command(pithos_cmds)
-class file_truncate(_file_container_command):
+class file_truncate(_file_container_command, _optional_output_cmd):
     """Truncate remote file up to a size (default is 0)"""
 
     @errors.generic.all
@@ -873,7 +884,7 @@ class file_truncate(_file_container_command):
     @errors.pithos.object_path
     @errors.pithos.object_size
     def _run(self, size=0):
-        self.client.truncate_object(self.path, size)
+        self._optional_output(self.client.truncate_object(self.path, size))
 
     def main(self, container___path, size=0):
         super(self.__class__, self)._run(container___path)
@@ -881,7 +892,7 @@ class file_truncate(_file_container_command):
 
 
 @command(pithos_cmds)
-class file_overwrite(_file_container_command):
+class file_overwrite(_file_container_command, _optional_output_cmd):
     """Overwrite part (from start to end) of a remote file
     overwrite local-path container 10 20
     .   will overwrite bytes from 10 to 20 of a remote file with the same name
@@ -915,15 +926,12 @@ class file_overwrite(_file_container_command):
         (progress_bar, upload_cb) = self._safe_progress_bar(
             'Overwrite %s bytes' % (end - start))
         try:
-            self.client.overwrite_object(
+            self._optional_output(self.client.overwrite_object(
                 obj=self.path,
                 start=start,
                 end=end,
                 source_file=f,
-                upload_cb=upload_cb)
-        except Exception:
-            self._safe_progress_bar_finish(progress_bar)
-            raise
+                upload_cb=upload_cb))
         finally:
             self._safe_progress_bar_finish(progress_bar)
 
@@ -936,7 +944,7 @@ class file_overwrite(_file_container_command):
 
 
 @command(pithos_cmds)
-class file_manifest(_file_container_command):
+class file_manifest(_file_container_command, _optional_output_cmd):
     """Create a remote file of uploaded parts by manifestation
     Remains functional for compatibility with OOS Storage. Users are advised
     to use the upload command instead.
@@ -973,13 +981,13 @@ class file_manifest(_file_container_command):
     @errors.pithos.container
     @errors.pithos.object_path
     def _run(self):
-        self.client.create_object_by_manifestation(
+        self._optional_output(self.client.create_object_by_manifestation(
             self.path,
             content_encoding=self['content_encoding'],
             content_disposition=self['content_disposition'],
             content_type=self['content_type'],
             sharing=self['sharing'],
-            public=self['public'])
+            public=self['public']))
 
     def main(self, container___path):
         super(self.__class__, self)._run(
@@ -989,7 +997,7 @@ class file_manifest(_file_container_command):
 
 
 @command(pithos_cmds)
-class file_upload(_file_container_command):
+class file_upload(_file_container_command, _optional_output_cmd):
     """Upload a file"""
 
     arguments = dict(
@@ -1019,10 +1027,7 @@ class file_upload(_file_container_command):
         overwrite=FlagArgument('Force (over)write', ('-f', '--force')),
         recursive=FlagArgument(
             'Recursively upload directory *contents* + subdirectories',
-            ('-R', '--recursive')),
-        details=FlagArgument(
-            'Show a detailed list of uploaded objects at the end',
-            ('-l', '--details'))
+            ('-R', '--recursive'))
     )
 
     def _check_container_limit(self, path):
@@ -1135,7 +1140,7 @@ class file_upload(_file_container_command):
                     rpath, f,
                     etag=self['etag'], withHashFile=self['use_hashes'],
                     **params)
-                if self['details']:
+                if self['with_output'] or self['json_output']:
                     r['name'] = '%s: %s' % (self.client.container, rpath)
                     uploaded.append(r)
             else:
@@ -1154,7 +1159,7 @@ class file_upload(_file_container_command):
                         upload_cb=upload_cb,
                         container_info_cache=container_info_cache,
                         **params)
-                    if self['details']:
+                    if self['with_output'] or self['json_output']:
                         r['name'] = '%s: %s' % (self.client.container, rpath)
                         uploaded.append(r)
                 except Exception:
@@ -1162,10 +1167,8 @@ class file_upload(_file_container_command):
                     raise
                 finally:
                     self._safe_progress_bar_finish(progress_bar)
-        if self['details']:
-            print_items(uploaded)
-        else:
-            print('Upload completed')
+        self._optional_output(r)
+        print('Upload completed')
 
     def main(self, local_path, container____path__=None):
         super(self.__class__, self)._run(container____path__)
@@ -1191,7 +1194,7 @@ class file_cat(_file_container_command):
             '--if-unmodified-since'),
         object_version=ValueArgument(
             'get the specific version',
-            ('-j', '--object-version'))
+            ('-O', '--object-version'))
     )
 
     @errors.generic.all
@@ -1245,7 +1248,7 @@ class file_download(_file_container_command):
             '--if-unmodified-since'),
         object_version=ValueArgument(
             'get the specific version',
-            ('-j', '--object-version')),
+            ('-O', '--object-version')),
         poolsize=IntArgument('set pool size', '--with-pool-size'),
         progress_bar=ProgressBarArgument(
             'do not show progress bar',
@@ -1376,8 +1379,7 @@ class file_download(_file_container_command):
                     download_cb) = self._safe_progress_bar(
                         'Download %s' % rpath)
                 self.client.download_object(
-                    rpath,
-                    f,
+                    rpath, f,
                     download_cb=download_cb,
                     range_str=self['range'],
                     version=self['object_version'],
@@ -1401,7 +1403,6 @@ class file_download(_file_container_command):
                     finally:
                         stdout.flush()
                         timeout += 0.1
-
             print('\nDownload canceled by user')
             if local_path is not None:
                 print('to resume, re-run with --resume')
@@ -1433,7 +1434,8 @@ class file_hashmap(_file_container_command):
             '--if-unmodified-since'),
         object_version=ValueArgument(
             'get the specific version',
-            ('-j', '--object-version'))
+            ('-O', '--object-version')),
+        json_output=FlagArgument('show headers in json', ('-j', '--json'))
     )
 
     @errors.generic.all
@@ -1448,7 +1450,8 @@ class file_hashmap(_file_container_command):
             if_none_match=self['if_none_match'],
             if_modified_since=self['if_modified_since'],
             if_unmodified_since=self['if_unmodified_since'])
-        print_dict(data)
+        printer = print_json if self['json_output'] else print_dict
+        printer(data)
 
     def main(self, container___path):
         super(self.__class__, self)._run(
@@ -1458,7 +1461,7 @@ class file_hashmap(_file_container_command):
 
 
 @command(pithos_cmds)
-class file_delete(_file_container_command):
+class file_delete(_file_container_command, _optional_output_cmd):
     """Delete a container [or an object]
     How to delete a non-empty container:
     - empty the container:  /file delete -R <container>
@@ -1499,10 +1502,9 @@ class file_delete(_file_container_command):
         if self.path:
             if self['yes'] or ask_user(
                     'Delete %s:%s ?' % (self.container, self.path)):
-                self.client.del_object(
+                self._optional_output(self.client.del_object(
                     self.path,
-                    until=self['until'],
-                    delimiter=self['delimiter'])
+                    until=self['until'], delimiter=self['delimiter']))
             else:
                 print('Aborted')
         else:
@@ -1511,9 +1513,8 @@ class file_delete(_file_container_command):
             else:
                 ask_msg = 'Delete container'
             if self['yes'] or ask_user('%s %s ?' % (ask_msg, self.container)):
-                self.client.del_container(
-                    until=self['until'],
-                    delimiter=self['delimiter'])
+                self._optional_output(self.client.del_container(
+                    until=self['until'], delimiter=self['delimiter']))
             else:
                 print('Aborted')
 
@@ -1523,7 +1524,7 @@ class file_delete(_file_container_command):
 
 
 @command(pithos_cmds)
-class file_purge(_file_container_command):
+class file_purge(_file_container_command, _optional_output_cmd):
     """Delete a container and release related data blocks
     Non-empty containers can not purged.
     To purge a container with content:
@@ -1544,16 +1545,17 @@ class file_purge(_file_container_command):
     def _run(self):
         if self['yes'] or ask_user('Purge container %s?' % self.container):
             try:
-                self.client.purge_container()
+                r = self.client.purge_container()
             except ClientError as ce:
                 if ce.status in (409,):
                     if self['force']:
                         self.client.del_container(delimiter='/')
-                        self.client.purge_container()
+                        r = self.client.purge_container()
                     else:
                         raiseCLIError(ce, details=['Try -F to force-purge'])
                 else:
                     raise
+            self._optional_output(r)
         else:
             print('Aborted')
 
@@ -1586,7 +1588,7 @@ class file_publish(_file_container_command):
 
 
 @command(pithos_cmds)
-class file_unpublish(_file_container_command):
+class file_unpublish(_file_container_command, _optional_output_cmd):
     """Unpublish an object"""
 
     @errors.generic.all
@@ -1594,7 +1596,7 @@ class file_unpublish(_file_container_command):
     @errors.pithos.container
     @errors.pithos.object_path
     def _run(self):
-            self.client.unpublish_object(self.path)
+            self._optional_output(self.client.unpublish_object(self.path))
 
     def main(self, container___path):
         super(self.__class__, self)._run(
@@ -1604,12 +1606,17 @@ class file_unpublish(_file_container_command):
 
 
 @command(pithos_cmds)
-class file_permissions(_file_container_command):
-    """Get read and write permissions of an object
-    Permissions are lists of users and user groups. There is read and write
+class file_permissions(_pithos_init):
+    """Manage user and group accessibility for objects
+    Permissions are lists of users and user groups. There are read and write
     permissions. Users and groups with write permission have also read
     permission.
     """
+
+
+@command(pithos_cmds)
+class file_permissions_get(_file_container_command):
+    """Get read and write permissions of an object"""
 
     @errors.generic.all
     @errors.pithos.connection
@@ -1627,14 +1634,14 @@ class file_permissions(_file_container_command):
 
 
 @command(pithos_cmds)
-class file_setpermissions(_file_container_command):
+class file_permissions_set(_file_container_command, _optional_output_cmd):
     """Set permissions for an object
     New permissions overwrite existing permissions.
     Permission format:
     -   read=<username>[,usergroup[,...]]
     -   write=<username>[,usegroup[,...]]
     E.g. to give read permissions for file F to users A and B and write for C:
-    .       /file setpermissions F read=A,B write=C
+    .       /file permissions set F read=A,B write=C
     """
 
     @errors.generic.all
@@ -1657,10 +1664,9 @@ class file_setpermissions(_file_container_command):
     @errors.pithos.container
     @errors.pithos.object_path
     def _run(self, read, write):
-        self.client.set_object_sharing(
+        self._optional_output(self.client.set_object_sharing(
             self.path,
-            read_permition=read,
-            write_permition=write)
+            read_permition=read, write_permition=write))
 
     def main(self, container___path, *permissions):
         super(self.__class__, self)._run(
@@ -1671,9 +1677,9 @@ class file_setpermissions(_file_container_command):
 
 
 @command(pithos_cmds)
-class file_delpermissions(_file_container_command):
+class file_permissions_delete(_file_container_command, _optional_output_cmd):
     """Delete all permissions set on object
-    To modify permissions, use /file setpermssions
+    To modify permissions, use /file permissions set
     """
 
     @errors.generic.all
@@ -1681,7 +1687,7 @@ class file_delpermissions(_file_container_command):
     @errors.pithos.container
     @errors.pithos.object_path
     def _run(self):
-        self.client.del_object_sharing(self.path)
+        self._optional_output(self.client.del_object_sharing(self.path))
 
     def main(self, container___path):
         super(self.__class__, self)._run(
@@ -1701,7 +1707,8 @@ class file_info(_file_container_command):
     arguments = dict(
         object_version=ValueArgument(
             'show specific version \ (applies only for objects)',
-            ('-j', '--object-version'))
+            ('-O', '--object-version')),
+        json_output=FlagArgument('show headers in json', ('-j', '--json'))
     )
 
     @errors.generic.all
@@ -1717,7 +1724,8 @@ class file_info(_file_container_command):
             r = self.client.get_object_info(
                 self.path,
                 version=self['object_version'])
-        print_dict(r)
+        printer = print_json if self['json_output'] else print_dict
+        printer(r)
 
     def main(self, container____path__=None):
         super(self.__class__, self)._run(container____path__)
@@ -1725,7 +1733,14 @@ class file_info(_file_container_command):
 
 
 @command(pithos_cmds)
-class file_meta(_file_container_command):
+class file_metadata(_pithos_init):
+    """Metadata are attached on objects. They are formed as key:value pairs.
+    They can have arbitary values.
+    """
+
+
+@command(pithos_cmds)
+class file_metadata_get(_file_container_command):
     """Get metadata for account, containers or objects"""
 
     arguments = dict(
@@ -1733,7 +1748,8 @@ class file_meta(_file_container_command):
         until=DateArgument('show metadata until then', '--until'),
         object_version=ValueArgument(
             'show specific version \ (applies only for objects)',
-            ('-j', '--object-version'))
+            ('-O', '--object-version')),
+        json_output=FlagArgument('show headers in json', ('-j', '--json'))
     )
 
     @errors.generic.all
@@ -1748,8 +1764,7 @@ class file_meta(_file_container_command):
             else:
                 r = self.client.get_account_meta(until=until)
                 r = pretty_keys(r, '-')
-            if r:
-                print(bold(self.client.account))
+            print(bold(self.client.account))
         elif self.path is None:
             if self['detail']:
                 r = self.client.get_container_info(until=until)
@@ -1770,10 +1785,10 @@ class file_meta(_file_container_command):
                 r = self.client.get_object_meta(
                     self.path,
                     version=self['object_version'])
-            if r:
                 r = pretty_keys(pretty_keys(r, '-'))
         if r:
-            print_dict(r)
+            printer = print_json if self['json_output'] else print_dict
+            printer(r)
 
     def main(self, container____path__=None):
         super(self.__class__, self)._run(container____path__)
@@ -1781,10 +1796,8 @@ class file_meta(_file_container_command):
 
 
 @command(pithos_cmds)
-class file_setmeta(_file_container_command):
-    """Set a piece of metadata for account, container or object
-    Metadata are formed as key:value pairs
-    """
+class file_metadata_set(_file_container_command, _optional_output_cmd):
+    """Set a piece of metadata for account, container or object"""
 
     @errors.generic.all
     @errors.pithos.connection
@@ -1792,11 +1805,12 @@ class file_setmeta(_file_container_command):
     @errors.pithos.object_path
     def _run(self, metakey, metaval):
         if not self.container:
-            self.client.set_account_meta({metakey: metaval})
+            r = self.client.set_account_meta({metakey: metaval})
         elif not self.path:
-            self.client.set_container_meta({metakey: metaval})
+            r = self.client.set_container_meta({metakey: metaval})
         else:
-            self.client.set_object_meta(self.path, {metakey: metaval})
+            r = self.client.set_object_meta(self.path, {metakey: metaval})
+        self._optional_output(r)
 
     def main(self, metakey, metaval, container____path__=None):
         super(self.__class__, self)._run(container____path__)
@@ -1804,12 +1818,11 @@ class file_setmeta(_file_container_command):
 
 
 @command(pithos_cmds)
-class file_delmeta(_file_container_command):
+class file_metadata_delete(_file_container_command, _optional_output_cmd):
     """Delete metadata with given key from account, container or object
-    Metadata are formed as key:value objects
-    - to get metadata of current account:     /file meta
-    - to get metadata of a container:         /file meta <container>
-    - to get metadata of an object:           /file meta <container>:<path>
+    - to get metadata of current account: /file metadata get
+    - to get metadata of a container:     /file metadata get <container>
+    - to get metadata of an object:       /file metadata get <container>:<path>
     """
 
     @errors.generic.all
@@ -1818,11 +1831,12 @@ class file_delmeta(_file_container_command):
     @errors.pithos.object_path
     def _run(self, metakey):
         if self.container is None:
-            self.client.del_account_meta(metakey)
+            r = self.client.del_account_meta(metakey)
         elif self.path is None:
-            self.client.del_container_meta(metakey)
+            r = self.client.del_container_meta(metakey)
         else:
-            self.client.del_object_meta(self.path, metakey)
+            r = self.client.del_object_meta(self.path, metakey)
+        self._optional_output(r)
 
     def main(self, metakey, container____path__=None):
         super(self.__class__, self)._run(container____path__)
@@ -1919,7 +1933,7 @@ class file_containerlimit_set(_file_account_command):
     def _run(self, limit):
         if self.container:
             self.client.container = self.container
-        self.client.set_container_limit(limit)
+        self._optional_output(self.client.set_container_limit(limit))
 
     def main(self, limit, container=None):
         super(self.__class__, self)._run()
@@ -1929,7 +1943,12 @@ class file_containerlimit_set(_file_account_command):
 
 
 @command(pithos_cmds)
-class file_versioning(_file_account_command):
+class file_versioning(_pithos_init):
+    """Manage the versioning scheme of current pithos user account"""
+
+
+@command(pithos_cmds)
+class file_versioning_get(_file_account_command):
     """Get  versioning for account or container"""
 
     @errors.generic.all
@@ -1949,7 +1968,7 @@ class file_versioning(_file_account_command):
 
 
 @command(pithos_cmds)
-class file_setversioning(_file_account_command):
+class file_versioning_set(_file_account_command, _optional_output_cmd):
     """Set versioning mode (auto, none) for account or container"""
 
     def _check_versioning(self, versioning):
@@ -1964,9 +1983,10 @@ class file_setversioning(_file_account_command):
     def _run(self, versioning):
         if self.container:
             self.client.container = self.container
-            self.client.set_container_versioning(versioning)
+            r = self.client.set_container_versioning(versioning)
         else:
-            self.client.set_account_versioning(versioning)
+            r = self.client.set_account_versioning(versioning)
+        self._optional_output(r)
 
     def main(self, versioning, container=None):
         super(self.__class__, self)._run()
@@ -1974,7 +1994,12 @@ class file_setversioning(_file_account_command):
 
 
 @command(pithos_cmds)
-class file_group(_file_account_command):
+class file_group(_pithos_init):
+    """Manage access groups and group members"""
+
+
+@command(pithos_cmds)
+class file_group_get(_file_account_command):
     """Get groups and group members"""
 
     @errors.generic.all
@@ -1989,13 +2014,13 @@ class file_group(_file_account_command):
 
 
 @command(pithos_cmds)
-class file_setgroup(_file_account_command):
+class file_group_set(_file_account_command, _optional_output_cmd):
     """Set a user group"""
 
     @errors.generic.all
     @errors.pithos.connection
     def _run(self, groupname, *users):
-        self.client.set_account_group(groupname, users)
+        self._optional_output(self.client.set_account_group(groupname, users))
 
     def main(self, groupname, *users):
         super(self.__class__, self)._run()
@@ -2006,13 +2031,13 @@ class file_setgroup(_file_account_command):
 
 
 @command(pithos_cmds)
-class file_delgroup(_file_account_command):
+class file_group_delete(_file_account_command, _optional_output_cmd):
     """Delete a user group"""
 
     @errors.generic.all
     @errors.pithos.connection
     def _run(self, groupname):
-        self.client.del_account_group(groupname)
+        self._optional_output(self.client.del_account_group(groupname))
 
     def main(self, groupname):
         super(self.__class__, self)._run()
