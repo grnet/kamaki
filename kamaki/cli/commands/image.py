@@ -96,7 +96,7 @@ def _validate_image_props(json_dict, return_str=False):
 
     :raises AssertionError: Valid json but invalid image properties dict
     """
-    json_str = dumps(json_dict)
+    json_str = dumps(json_dict, indent=2)
     for k, v in json_dict.items():
         dealbreaker = isinstance(v, dict) or isinstance(v, list)
         assert not dealbreaker, 'Invalid property value for key %s' % k
@@ -307,6 +307,7 @@ class image_register(_init_image):
         if not sep or not container or not path:
             raiseCLIError(
                 '%s is not a valid pithos+ remote location' % container_path,
+                importance=2,
                 details=[
                     'To set "image" as container and "my_dir/img.diskdump" as',
                     'the image path, try one of the following as '
@@ -362,8 +363,13 @@ class image_register(_init_image):
         if pclient:
             prop_headers = pclient.upload_from_string(
                 prop_path, _validate_image_props(properties, return_str=True))
-            print('Property file location is %s: %s' % (container, prop_path))
-            print('\twith version %s' % prop_headers['x-object-version'])
+            if self['json_output']:
+                print_json(dict(
+                    property_file_location='%s:%s' % (container, prop_path),
+                    headers=prop_headers))
+            else:
+                print('Property file location is %s:%s with version %s' % (
+                    container, prop_path, prop_headers['x-object-version']))
 
     def main(self, name, container___path):
         super(self.__class__, self)._run()
