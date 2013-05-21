@@ -520,12 +520,9 @@ class PithosClient(PithosRestClient):
         if not content_type:
             content_type = 'application/octet-stream'
 
-        num_of_blocks, blockmod = size / blocksize, size % blocksize
-        num_of_blocks += (1 if blockmod else 0) if num_of_blocks else blockmod
-
         hashes = []
         hmap = {}
-        for blockid in range(num_of_blocks):
+        for blockid in range(nblocks):
             start = blockid * blocksize
             block = input_str[start: (start + blocksize)]
             hashes.append(_pithos_hash(block, blockhash))
@@ -547,8 +544,8 @@ class PithosClient(PithosRestClient):
         num_of_missing = len(missing)
 
         if upload_cb:
-            self.progress_bar_gen = upload_cb(num_of_blocks)
-            for i in range(num_of_blocks + 1 - num_of_missing):
+            self.progress_bar_gen = upload_cb(nblocks)
+            for i in range(nblocks + 1 - num_of_missing):
                 self._cb_next()
 
         tries = 7
