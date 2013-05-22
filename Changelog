@@ -19,7 +19,7 @@ Changes:
 - Disallow moving deleted objects by version [#3737]
     This operation was implemented by accident, due to the symetry between
     move and copy
-- Rename file-meta commands to file-metadata
+- Rename file/server-meta commands to file/server-metadata
 - Rename image-[add|del]member commands to members-[add|delete]
 - Remove update option from imagre-register
 - In image-compute split properties to properties-list and properties-get
@@ -33,10 +33,13 @@ Changes:
     unregister, members add/delete/set
     -image compute:
     delete, properties delete
+    - server: rename, delete, reboot, start, shutdown, firewall-set
+    
 - Transliterate methods to list-get-set-delete command groups:
     - file: permissions, versioning, group and metadata
     - image: members, member
     - image compute: properties
+    - server: firewall, metadata
 
 Features:
 
@@ -54,4 +57,5 @@ Features:
 - Add a download_to_string method in pithos client [#3608]
 - Add an upload_from_string method in pithos client [#3608]
 - Add pithos client method create_container [#3756]
+- Add server-firewall-get command to get a VMs firewall profile
 

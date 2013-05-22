@@ -45,17 +45,23 @@ class CycladesClient(CycladesRestClient):
         """Submit a startup request
 
         :param server_id: integer (str or int)
+
+        :returns: (dict) response headers
         """
         req = {'start': {}}
-        self.servers_post(server_id, 'action', json_data=req, success=202)
+        r = self.servers_post(server_id, 'action', json_data=req, success=202)
+        return r.headers
 
     def shutdown_server(self, server_id):
         """Submit a shutdown request
 
         :param server_id: integer (str or int)
+
+        :returns: (dict) response headers
         """
         req = {'shutdown': {}}
-        self.servers_post(server_id, 'action', json_data=req, success=202)
+        r = self.servers_post(server_id, 'action', json_data=req, success=202)
+        return r.headers
 
     def get_server_console(self, server_id):
         """
@@ -89,9 +95,12 @@ class CycladesClient(CycladesRestClient):
         :param server_id: integer (str or int)
 
         :param profile: (str) ENABLED | DISABLED | PROTECTED
+
+        :returns: (dict) response headers
         """
         req = {'firewallProfile': {'profile': profile}}
-        self.servers_post(server_id, 'action', json_data=req, success=202)
+        r = self.servers_post(server_id, 'action', json_data=req, success=202)
+        return r.headers
 
     def list_servers(self, detail=False, changes_since=None):
         """
