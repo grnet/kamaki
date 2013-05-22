@@ -33,9 +33,10 @@
 
 from kamaki.cli import command
 from kamaki.clients.astakos import AstakosClient
-from kamaki.cli.utils import print_dict
+from kamaki.cli.utils import print_dict, print_json
 from kamaki.cli.commands import _command_init, errors
 from kamaki.cli.command_tree import CommandTree
+from kamaki.cli.argument import FlagArgument
 
 user_cmds = CommandTree('user', 'Astakos API commands')
 _commands = [user_cmds]
@@ -68,12 +69,16 @@ class user_authenticate(_user_init):
     Token can also be provided as a parameter
     """
 
+    arguments = dict(
+        json_output=FlagArgument('show output in json', ('-j', '--json'))
+    )
+
     @errors.generic.all
     @errors.user.authenticate
     def _run(self, custom_token=None):
         super(self.__class__, self)._run()
-        reply = self.client.authenticate(custom_token)
-        print_dict(reply)
+        printer = print_json if self['json_output'] else print_dict
+        printer(self.client.authenticate(custom_token))
 
     def main(self, custom_token=None):
         self._run(custom_token)
