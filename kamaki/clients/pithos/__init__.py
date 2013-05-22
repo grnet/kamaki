@@ -1116,6 +1116,8 @@ class PithosClient(PithosRestClient):
     def del_container_meta(self, metakey):
         """
         :param metakey: (str) metadatum key
+
+        :returns: (dict) response headers
         """
         r = self.container_post(update=True, metadata={metakey: ''})
         return r.headers

@@ -38,7 +38,8 @@ from kamaki.clients.image import ImageClient
 from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
 from kamaki.cli.argument import IntArgument
 from kamaki.cli.commands.cyclades import _init_cyclades
-from kamaki.cli.commands import _command_init, errors, _optional_output_cmd
+from kamaki.cli.commands import _command_init, errors
+from kamaki.cli.commands import _optional_output_cmd, _optional_json
 
 
 image_cmds = CommandTree(
@@ -73,7 +74,7 @@ class _init_image(_command_init):
 
 
 @command(image_cmds)
-class image_list(_init_image):
+class image_list(_init_image, _optional_json):
     """List images accessible by user"""
 
     arguments = dict(
@@ -104,8 +105,7 @@ class image_list(_init_image):
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
             '--more'),
-        enum=FlagArgument('Enumerate results', '--enumerate'),
-        json_output=FlagArgument('Show results in json', ('-j', '--json'))
+        enum=FlagArgument('Enumerate results', '--enumerate')
     )
 
     def _filtered_by_owner(self, detail, *list_params):
@@ -148,18 +148,13 @@ class image_list(_init_image):
         else:
             images = self.client.list_public(detail, filters, order)
 
-        if self['json_output']:
-            print_json(images)
-            return
         images = self._filtered_by_name(images)
+        kwargs = dict(with_enumeration=self['enum'])
         if self['more']:
-            print_items(
-                images,
-                with_enumeration=self['enum'], page_size=self['limit'] or 10)
+            kwargs['page_size'] = self['limit'] or 10
         elif self['limit']:
-            print_items(images[:self['limit']], with_enumeration=self['enum'])
-        else:
-            print_items(images, with_enumeration=self['enum'])
+            images = images[:self['limit']]
+        self._print(images, **kwargs)
 
     def main(self):
         super(self.__class__, self)._run()
@@ -167,7 +162,7 @@ class image_list(_init_image):
 
 
 @command(image_cmds)
-class image_meta(_init_image):
+class image_meta(_init_image, _optional_json):
     """Get image metadata
     Image metadata include:
     - image file information (location, size, etc.)
@@ -175,16 +170,11 @@ class image_meta(_init_image):
     - image os properties (os, fs, etc.)
     """
 
-    arguments = dict(
-        json_output=FlagArgument('Show results in json', ('-j', '--json'))
-    )
-
     @errors.generic.all
     @errors.plankton.connection
     @errors.plankton.id
     def _run(self, image_id):
-        printer = print_json if self['json_output'] else print_dict
-        printer(self.client.get_meta(image_id))
+        self._print([self.client.get_meta(image_id)])
 
     def main(self, image_id):
         super(self.__class__, self)._run()
@@ -192,7 +182,7 @@ class image_meta(_init_image):
 
 
 @command(image_cmds)
-class image_register(_init_image):
+class image_register(_init_image, _optional_json):
     """(Re)Register an image"""
 
     arguments = dict(
@@ -207,11 +197,7 @@ class image_register(_init_image):
             'add property in key=value form (can be repeated)',
             ('-p', '--property')),
         is_public=FlagArgument('mark image as public', '--public'),
-        size=IntArgument('set image size', '--size'),
-        #update=FlagArgument(
-        #    'update existing image properties',
-        #    ('-u', '--update')),
-        json_output=FlagArgument('Show results in json', ('-j', '--json'))
+        size=IntArgument('set image size', '--size')
     )
 
     @errors.generic.all
@@ -239,11 +225,9 @@ class image_register(_init_image):
                 'size',
                 'is_public']).intersection(self.arguments):
             params[key] = self[key]
+        properties = self['properties']
 
-            properties = self['properties']
-
-        printer = print_json if self['json_output'] else print_dict
-        printer(self.client.register(name, location, params, properties))
+        self._print([self.client.register(name, location, params, properties)])
 
     def main(self, name, location):
         super(self.__class__, self)._run()
@@ -266,21 +250,13 @@ class image_unregister(_init_image, _optional_output_cmd):
 
 
 @command(image_cmds)
-class image_shared(_init_image):
+class image_shared(_init_image, _optional_json):
     """List images shared by a member"""
-
-    arguments = dict(
-        json_output=FlagArgument('Show results in json', ('-j', '--json'))
-    )
 
     @errors.generic.all
     @errors.plankton.connection
     def _run(self, member):
-        r = self.client.list_shared(member)
-        if self['json_output']:
-            print_json(r)
-        else:
-            print_items(r, title=('image_id',))
+        self._print(self.client.list_shared(member), title=('image_id',))
 
     def main(self, member):
         super(self.__class__, self)._run()
@@ -293,22 +269,14 @@ class image_members(_init_image):
 
 
 @command(image_cmds)
-class image_members_list(_init_image):
+class image_members_list(_init_image, _optional_json):
     """List members of an image"""
-
-    arguments = dict(
-        json_output=FlagArgument('Show results in json', ('-j', '--json'))
-    )
 
     @errors.generic.all
     @errors.plankton.connection
     @errors.plankton.id
     def _run(self, image_id):
-        members = self.client.list_members(image_id)
-        if self['json_output']:
-            print_json(members)
-        else:
-            print_items(members, title=('member_id',), with_redundancy=True)
+        self._print(self.client.list_members(image_id), title=('member_id',))
 
     def main(self, image_id):
         super(self.__class__, self)._run()
@@ -369,7 +337,7 @@ class image_compute(_init_cyclades):
 
 
 @command(image_cmds)
-class image_compute_list(_init_cyclades):
+class image_compute_list(_init_cyclades, _optional_json):
     """List images"""
 
     arguments = dict(
@@ -378,8 +346,7 @@ class image_compute_list(_init_cyclades):
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
             '--more'),
-        enum=FlagArgument('Enumerate results', '--enumerate'),
-        json_output=FlagArgument('Show results in json', ('-j', '--json'))
+        enum=FlagArgument('Enumerate results', '--enumerate')
     )
 
     def _make_results_pretty(self, images):
@@ -391,17 +358,14 @@ class image_compute_list(_init_cyclades):
     @errors.cyclades.connection
     def _run(self):
         images = self.client.list_images(self['detail'])
-        if self['json_output']:
-            print_json(images)
-            return
-        if self['detail']:
+        if self['detail'] and not self['json_output']:
             self._make_results_pretty(images)
+        kwargs = dict(with_enumeration=self['enum'])
         if self['more']:
-            print_items(
-                images,
-                page_size=self['limit'] or 10, with_enumeration=self['enum'])
+            kwargs['page_size'] = self['limit'] or 10
         else:
-            print_items(images[:self['limit']], with_enumeration=self['enum'])
+            images = images[:self['limit']]
+        self._print(images, **kwargs)
 
     def main(self):
         super(self.__class__, self)._run()
@@ -409,24 +373,17 @@ class image_compute_list(_init_cyclades):
 
 
 @command(image_cmds)
-class image_compute_info(_init_cyclades):
+class image_compute_info(_init_cyclades, _optional_json):
     """Get detailed information on an image"""
-
-    arguments = dict(
-        json_output=FlagArgument('Show results in json', ('-j', '--json'))
-    )
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.plankton.id
     def _run(self, image_id):
         image = self.client.get_image_details(image_id)
-        if self['json_output']:
-            print_json(image)
-            return
-        if 'metadata' in image:
+        if (not self['json_output']) and 'metadata' in image:
             image['metadata'] = image['metadata']['values']
-        print_dict(image)
+        self._print([image])
 
     def main(self, image_id):
         super(self.__class__, self)._run()
@@ -454,19 +411,14 @@ class image_compute_properties(_init_cyclades):
 
 
 @command(image_cmds)
-class image_compute_properties_list(_init_cyclades):
+class image_compute_properties_list(_init_cyclades, _optional_json):
     """List all image properties"""
-
-    arguments = dict(
-        json_output=FlagArgument('Show results in json', ('-j', '--json'))
-    )
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.plankton.id
     def _run(self, image_id):
-        printer = print_json if self['json_output'] else print_dict
-        printer(self.client.get_image_metadata(image_id))
+        self._print(self.client.get_image_metadata(image_id), print_dict)
 
     def main(self, image_id):
         super(self.__class__, self)._run()
@@ -474,20 +426,15 @@ class image_compute_properties_list(_init_cyclades):
 
 
 @command(image_cmds)
-class image_compute_properties_get(_init_cyclades):
+class image_compute_properties_get(_init_cyclades, _optional_json):
     """Get an image property"""
-
-    arguments = dict(
-        json_output=FlagArgument('Show results in json', ('-j', '--json'))
-    )
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.plankton.id
     @errors.plankton.metadata
     def _run(self, image_id, key):
-        printer = print_json if self['json_output'] else print_dict
-        printer(self.client.get_image_metadata(image_id, key))
+        self._print(self.client.get_image_metadata(image_id, key), print_dict)
 
     def main(self, image_id, key):
         super(self.__class__, self)._run()
@@ -495,20 +442,16 @@ class image_compute_properties_get(_init_cyclades):
 
 
 @command(image_cmds)
-class image_compute_properties_add(_init_cyclades):
+class image_compute_properties_add(_init_cyclades, _optional_json):
     """Add a property to an image"""
-
-    arguments = dict(
-        json_output=FlagArgument('Show results in json', ('-j', '--json'))
-    )
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.plankton.id
     @errors.plankton.metadata
     def _run(self, image_id, key, val):
-        printer = print_json if self['json_output'] else print_dict
-        printer(self.client.create_image_metadata(image_id, key, val))
+        self._print(
+            self.client.create_image_metadata(image_id, key, val), print_dict)
 
     def main(self, image_id, key, val):
         super(self.__class__, self)._run()
@@ -516,25 +459,22 @@ class image_compute_properties_add(_init_cyclades):
 
 
 @command(image_cmds)
-class image_compute_properties_set(_init_cyclades):
+class image_compute_properties_set(_init_cyclades, _optional_json):
     """Add / update a set of properties for an image
     proeprties must be given in the form key=value, e.v.
     /image compute properties set <image-id> key1=val1 key2=val2
     """
-    arguments = dict(
-        json_output=FlagArgument('Show results in json', ('-j', '--json'))
-    )
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.plankton.id
     def _run(self, image_id, keyvals):
-        metadata = dict()
+        meta = dict()
         for keyval in keyvals:
             key, val = keyval.split('=')
-            metadata[key] = val
-        printer = print_json if self['json_output'] else print_dict
-        printer(self.client.update_image_metadata(image_id, **metadata))
+            meta[key] = val
+        self._print(
+            self.client.update_image_metadata(image_id, **meta), print_dict)
 
     def main(self, image_id, *key_equals_value):
         super(self.__class__, self)._run()

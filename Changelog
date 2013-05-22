@@ -7,6 +7,7 @@ Bug Fixes:
 - Restore 2nd level command syntax in shell [#3736]
 - Allow copy of deleted objects by refering to older version [#3737]
 - Add image.add_member missing content-length header
+- Unquote http respons headers
 
 Changes:
 
@@ -34,13 +35,22 @@ Changes:
     -image compute:
     delete, properties delete
     - server: rename, delete, reboot, start, shutdown, firewall-set
-    
+    - network: rename, delete, connect
+- Add optional json for methods with output [#3732]
+    - file:
+    list, hashmap, permissions-get, info, metadata-get, quota,
+    containerlimit-get, group-list, sharers, versions
+    - server: list, info, create, console, addr, metadata-list/set, stats
+    - image: list, meta, register, shared, list
+    - image compute: list, info, properties-list/get/add/set
+    - flavor: list, info
+    - network: info, list, create
+    - astakos: authenticate
 - Transliterate methods to list-get-set-delete command groups:
     - file: permissions, versioning, group and metadata
     - image: members, member
     - image compute: properties
     - server: firewall, metadata
-
 Features:
 
 - A logger module container a set of basic loging method for kamaki [#3668]

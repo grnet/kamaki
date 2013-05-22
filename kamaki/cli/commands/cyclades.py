@@ -38,7 +38,8 @@ from kamaki.cli.errors import raiseCLIError, CLISyntaxError
 from kamaki.clients.cyclades import CycladesClient, ClientError
 from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
 from kamaki.cli.argument import ProgressBarArgument, DateArgument, IntArgument
-from kamaki.cli.commands import _command_init, errors, _optional_output_cmd
+from kamaki.cli.commands import _command_init, errors
+from kamaki.cli.commands import _optional_output_cmd, _optional_json
 
 from base64 import b64encode
 from os.path import exists
@@ -80,7 +81,7 @@ class _init_cyclades(_command_init):
 
 
 @command(server_cmds)
-class server_list(_init_cyclades):
+class server_list(_init_cyclades, _optional_json):
     """List Virtual Machines accessible by user"""
 
     __doc__ += about_authentication
@@ -94,8 +95,7 @@ class server_list(_init_cyclades):
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
             '--more'),
-        enum=FlagArgument('Enumerate results', '--enumerate'),
-        json_output=FlagArgument('show output in json', ('-j', '--json'))
+        enum=FlagArgument('Enumerate results', '--enumerate')
     )
 
     def _make_results_pretty(self, servers):
@@ -118,21 +118,16 @@ class server_list(_init_cyclades):
     @errors.cyclades.date
     def _run(self):
         servers = self.client.list_servers(self['detail'], self['since'])
-        if self['json_output']:
-            print_json(servers)
-            return
-        if self['detail']:
+
+        if self['detail'] and not self['json_output']:
             self._make_results_pretty(servers)
 
+        kwargs = dict(with_enumeration=self['enum'])
         if self['more']:
-            print_items(
-                servers,
-                page_size=self['limit'] if self['limit'] else 10,
-                with_enumeration=self['enum'])
-        else:
-            print_items(
-                servers[:self['limit'] if self['limit'] else len(servers)],
-                with_enumeration=self['enum'])
+            kwargs['page_size'] = self['limit'] if self['limit'] else 10
+        elif self['limit']:
+            servers = servers[:self['limit']]
+        self._print(servers, **kwargs)
 
     def main(self):
         super(self.__class__, self)._run()
@@ -140,7 +135,7 @@ class server_list(_init_cyclades):
 
 
 @command(server_cmds)
-class server_info(_init_cyclades):
+class server_info(_init_cyclades, _optional_json):
     """Detailed information on a Virtual Machine
     Contains:
     - name, id, status, create/update dates
@@ -149,11 +144,7 @@ class server_info(_init_cyclades):
     - hardware flavor and os image ids
     """
 
-    arguments = dict(
-        json_output=FlagArgument('show output in json', ('-j', '--json'))
-    )
-
-    def _print(self, server):
+    def _pretty(self, server):
         addr_dict = {}
         if 'attachments' in server:
             atts = server.pop('attachments')
@@ -173,8 +164,7 @@ class server_info(_init_cyclades):
     @errors.cyclades.connection
     @errors.cyclades.server_id
     def _run(self, server_id):
-        printer = print_json if self['json_output'] else self._print
-        printer(self.client.get_server_details(server_id))
+        self._print(self.client.get_server_details(server_id), self._pretty)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -216,7 +206,7 @@ class PersonalityArgument(KeyValueArgument):
 
 
 @command(server_cmds)
-class server_create(_init_cyclades):
+class server_create(_init_cyclades, _optional_json):
     """Create a server (aka Virtual Machine)
     Parameters:
     - name: (single quoted text)
@@ -226,9 +216,7 @@ class server_create(_init_cyclades):
 
     arguments = dict(
         personality=PersonalityArgument(
-            (80 * ' ').join(howto_personality),
-            ('-p', '--personality')),
-        json_output=FlagArgument('show output in json', ('-j', '--json'))
+            (80 * ' ').join(howto_personality), ('-p', '--personality'))
     )
 
     @errors.generic.all
@@ -236,12 +224,8 @@ class server_create(_init_cyclades):
     @errors.plankton.id
     @errors.cyclades.flavor_id
     def _run(self, name, flavor_id, image_id):
-        printer = print_json if self['json_output'] else print_dict
-        printer(self.client.create_server(
-            name,
-            int(flavor_id),
-            image_id,
-            self['personality']))
+        self._print([self.client.create_server(
+            name, int(flavor_id), image_id, self['personality'])])
 
     def main(self, name, flavor_id, image_id):
         super(self.__class__, self)._run()
@@ -332,7 +316,7 @@ class server_shutdown(_init_cyclades, _optional_output_cmd):
 
 
 @command(server_cmds)
-class server_console(_init_cyclades):
+class server_console(_init_cyclades, _optional_json):
     """Get a VNC console to access an existing server (VM)
     Console connection information provided (at least):
     - host: (url or address) a VNC host
@@ -340,16 +324,11 @@ class server_console(_init_cyclades):
     - password: for VNC authorization
     """
 
-    arguments = dict(
-        json_output=FlagArgument('show output in json', ('-j', '--json'))
-    )
-
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.server_id
     def _run(self, server_id):
-        printer = print_json if self['json_output'] else print_dict
-        printer(self.client.get_server_console(int(server_id)))
+        self._print([self.client.get_server_console(int(server_id))])
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -399,12 +378,11 @@ class server_firewall_get(_init_cyclades):
 
 
 @command(server_cmds)
-class server_addr(_init_cyclades):
+class server_addr(_init_cyclades, _optional_json):
     """List the addresses of all network interfaces on a server (VM)"""
 
     arguments = dict(
-        enum=FlagArgument('Enumerate results', '--enumerate'),
-        json_output=FlagArgument('show output in json', ('-j', '--json'))
+        enum=FlagArgument('Enumerate results', '--enumerate')
     )
 
     @errors.generic.all
@@ -412,12 +390,8 @@ class server_addr(_init_cyclades):
     @errors.cyclades.server_id
     def _run(self, server_id):
         reply = self.client.list_server_nics(int(server_id))
-        if self['json_output']:
-            print_json(reply)
-        else:
-            print_items(
-                reply,
-                with_enumeration=self['enum'] and len(reply) > 1)
+        self._print(
+            reply, with_enumeration=self['enum'] and len(reply) > 1)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -430,20 +404,16 @@ class server_metadata(_init_cyclades):
 
 
 @command(server_cmds)
-class server_metadata_list(_init_cyclades):
+class server_metadata_list(_init_cyclades, _optional_json):
     """Get server metadata"""
-
-    arguments = dict(
-        json_output=FlagArgument('show output in json', ('-j', '--json'))
-    )
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.server_id
     @errors.cyclades.metadata
     def _run(self, server_id, key=''):
-        printer = print_json if self['json_output'] else print_dict
-        printer(self.client.get_server_metadata(int(server_id), key))
+        self._print(
+            [self.client.get_server_metadata(int(server_id), key)], title=())
 
     def main(self, server_id, key=''):
         super(self.__class__, self)._run()
@@ -451,7 +421,7 @@ class server_metadata_list(_init_cyclades):
 
 
 @command(server_cmds)
-class server_metadata_set(_init_cyclades):
+class server_metadata_set(_init_cyclades, _optional_json):
     """Set / update server(VM) metadata
     Metadata should be given in key/value pairs in key=value format
     For example:
@@ -459,16 +429,12 @@ class server_metadata_set(_init_cyclades):
     Old, unreferenced metadata will remain intact
     """
 
-    arguments = dict(
-        json_output=FlagArgument('show output in json', ('-j', '--json'))
-    )
-
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.server_id
     def _run(self, server_id, keyvals):
+        assert keyvals, 'Please, add some metadata ( key=value)'
         metadata = dict()
-        print('TO ANALYZE:', keyvals)
         for keyval in keyvals:
             k, sep, v = keyval.partition('=')
             if sep and k:
@@ -481,8 +447,9 @@ class server_metadata_set(_init_cyclades):
                         'For example:',
                         '/server metadata set <server id>'
                         'key1=value1 key2=value2'])
-        printer = print_json if self['json_output'] else print_dict
-        printer(self.client.update_server_metadata(int(server_id), **metadata))
+        self._print(
+            [self.client.update_server_metadata(int(server_id), **metadata)],
+            title=())
 
     def main(self, server_id, *key_equals_val):
         super(self.__class__, self)._run()
@@ -507,19 +474,14 @@ class server_metadata_delete(_init_cyclades, _optional_output_cmd):
 
 
 @command(server_cmds)
-class server_stats(_init_cyclades):
+class server_stats(_init_cyclades, _optional_json):
     """Get server (VM) statistics"""
-
-    arguments = dict(
-        json_output=FlagArgument('show output in json', ('-j', '--json'))
-    )
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.server_id
     def _run(self, server_id):
-        printer = print_json if self['json_output'] else print_dict
-        printer(self.client.get_server_stats(int(server_id)))
+        self._print([self.client.get_server_stats(int(server_id))])
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -566,7 +528,7 @@ class server_wait(_init_cyclades):
 
 
 @command(flavor_cmds)
-class flavor_list(_init_cyclades):
+class flavor_list(_init_cyclades, _optional_json):
     """List available hardware flavors"""
 
     arguments = dict(
@@ -575,19 +537,15 @@ class flavor_list(_init_cyclades):
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
             '--more'),
-        enum=FlagArgument('Enumerate results', '--enumerate'),
-        json_output=FlagArgument('show output in json', ('-j', '--json'))
+        enum=FlagArgument('Enumerate results', '--enumerate')
     )
 
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self):
         flavors = self.client.list_flavors(self['detail'])
-        if self['json_output']:
-            print_json(flavors)
-            return
         pg_size = 10 if self['more'] and not self['limit'] else self['limit']
-        print_items(
+        self._print(
             flavors,
             with_redundancy=self['detail'],
             page_size=pg_size,
@@ -599,21 +557,16 @@ class flavor_list(_init_cyclades):
 
 
 @command(flavor_cmds)
-class flavor_info(_init_cyclades):
+class flavor_info(_init_cyclades, _optional_json):
     """Detailed information on a hardware flavor
     To get a list of available flavors and flavor ids, try /flavor list
     """
-
-    arguments = dict(
-        json_output=FlagArgument('show output in json', ('-j', '--json'))
-    )
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.flavor_id
     def _run(self, flavor_id):
-        printer = print_json if self['json_output'] else print_dict
-        printer(self.client.get_flavor_details(int(flavor_id)))
+        self._print([self.client.get_flavor_details(int(flavor_id))])
 
     def main(self, flavor_id):
         super(self.__class__, self)._run()
@@ -621,14 +574,10 @@ class flavor_info(_init_cyclades):
 
 
 @command(network_cmds)
-class network_info(_init_cyclades):
+class network_info(_init_cyclades, _optional_json):
     """Detailed information on a network
     To get a list of available networks and network ids, try /network list
     """
-
-    arguments = dict(
-        json_output=FlagArgument('show output in json', ('-j', '--json'))
-    )
 
     @classmethod
     def _make_result_pretty(self, net):
@@ -642,11 +591,9 @@ class network_info(_init_cyclades):
     @errors.cyclades.network_id
     def _run(self, network_id):
         network = self.client.get_network_details(int(network_id))
-        if self['json_output']:
-            print_json(network)
-            return
         self._make_result_pretty(network)
-        print_dict(network, exclude=('id'))
+        #print_dict(network, exclude=('id'))
+        self._print(network, print_dict, exclude=('id'))
 
     def main(self, network_id):
         super(self.__class__, self)._run()
@@ -654,7 +601,7 @@ class network_info(_init_cyclades):
 
 
 @command(network_cmds)
-class network_list(_init_cyclades):
+class network_list(_init_cyclades, _optional_json):
     """List networks"""
 
     arguments = dict(
@@ -663,8 +610,7 @@ class network_list(_init_cyclades):
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
             '--more'),
-        enum=FlagArgument('Enumerate results', '--enumerate'),
-        json_output=FlagArgument('show output in json', ('-j', '--json'))
+        enum=FlagArgument('Enumerate results', '--enumerate')
     )
 
     def _make_results_pretty(self, nets):
@@ -675,21 +621,14 @@ class network_list(_init_cyclades):
     @errors.cyclades.connection
     def _run(self):
         networks = self.client.list_networks(self['detail'])
-        if self['json_output']:
-            print_json(networks)
-            return
         if self['detail']:
             self._make_results_pretty(networks)
+        kwargs = dict(with_enumeration=self['enum'])
         if self['more']:
-            print_items(
-                networks,
-                page_size=self['limit'] or 10, with_enumeration=self['enum'])
+            kwargs['page_size'] = self['limit'] or 10
         elif self['limit']:
-            print_items(
-                networks[:self['limit']],
-                with_enumeration=self['enum'])
-        else:
-            print_items(networks, with_enumeration=self['enum'])
+            networks = networks[:self['limit']]
+        self._print(networks, **kwargs)
 
     def main(self):
         super(self.__class__, self)._run()
@@ -697,7 +636,7 @@ class network_list(_init_cyclades):
 
 
 @command(network_cmds)
-class network_create(_init_cyclades):
+class network_create(_init_cyclades, _optional_json):
     """Create an (unconnected) network"""
 
     arguments = dict(
@@ -708,21 +647,19 @@ class network_create(_init_cyclades):
             'Valid network types are '
             'CUSTOM, IP_LESS_ROUTED, MAC_FILTERED (default), PHYSICAL_VLAN',
             '--with-type',
-            default='MAC_FILTERED'),
-        json_output=FlagArgument('show output in json', ('-j', '--json'))
+            default='MAC_FILTERED')
     )
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.network_max
     def _run(self, name):
-        printer = print_json if self['json_output'] else print_dict
-        printer(self.client.create_network(
+        self._print([self.client.create_network(
             name,
             cidr=self['cidr'],
             gateway=self['gateway'],
             dhcp=self['dhcp'],
-            type=self['type']))
+            type=self['type'])])
 
     def main(self, name):
         super(self.__class__, self)._run()

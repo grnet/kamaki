@@ -326,7 +326,7 @@ file (Storage/Pithos+)
     download      :  Download a file or directory
     group         :  Manage access groups and group members
         delete:  Delete a user group
-        get   :  Get groups and group members
+        list  :  List groups and group members
         set   :  Set a user group
     hashmap       :  Get the hashmap of an object
     info          :  Get information for account [, container [or object]]
