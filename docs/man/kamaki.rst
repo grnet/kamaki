@@ -116,14 +116,17 @@ server commands
 * console   Get a VNC console to access an existing server (VM)
 * create    Create a server (aka Virtual Machine)
 * delete    Delete a server (VM)
-* delmeta   Delete server (VM) metadata
-* firewall  Set the server (VM) firewall profile on VMs public network
+* firewall  Set the server (VM) firewall profile for public networks
+    * set   Set the firewall profile
+    * get   Get the firewall profile
 * info      Detailed information on a Virtual Machine
 * list      List Virtual Machines accessible by user
-* meta      Get a server's metadatum
+* metadata  Manage a server metadata
+    * list      List server metadata
+    * set       Add or update server metadata
+    * delete    Delete a piece of server metadata
 * reboot    Reboot a server (VM)
 * rename    Set/update a server (VM) name
-* setmeta   set server (VM) metadata
 * shutdown  Shutdown an active server (VM)
 * start     Start an existing server (VM)
 * stats     Get server (VM) statistics
@@ -188,7 +191,7 @@ file commands
 * download       Download a file or directory
 * group          Manage access groups and group members
     * delete     Delete a user group
-    * get        Get groups and group members
+    * list       List groups and group members
     * set        Set a user group
 * hashmap        Get the hashmap of an object
 * info           Get information for account [, container [or object]]

@@ -146,19 +146,21 @@ To see the command groups, use -h or --help like in example 1.3.1. In the same w
 
     Options:
      - - - -
-    addmeta :  Add server metadata
     addr    :  List a server's nic address
     console :  Get a VNC console
     create  :  Create a server
     delete  :  Delete a server
-    delmeta :  Delete server metadata
-    firewall:  Set the server's firewall profile
+    firewall:  Manage the server's firewall profile
+        set:  Set the server's firewall profile
+        get:  Get the server's firewall profile
     info    :  Get server details
     list    :  List servers
-    meta    :  Get a server's metadata
+    metadata:  Manage server metadata
+        list  :  Get a server metadata
+        set   :  Add or update server metadata
+        delete:  Delete a piece of server metadata
     reboot  :  Reboot a server
     rename  :  Update a server's name
-    setmeta :  Update server's metadata
     shutdown:  Shutdown a server
     start   :  Start a server
     stats   :  Get server statistics

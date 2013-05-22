@@ -8,6 +8,7 @@ Bug Fixes:
 - Allow copy of deleted objects by refering to older version [#3737]
 - Add image.add_member missing content-length header
 - Do not unpublish by default in all pithos low level requests [#3780]
+- Unquote http respons headers
 
 Changes:
 
@@ -20,7 +21,7 @@ Changes:
 - Disallow moving deleted objects by version [#3737]
     This operation was implemented by accident, due to the symetry between
     move and copy
-- Rename file-meta commands to file-metadata
+- Rename file/server-meta commands to file/server-metadata
 - Rename image-[add|del]member commands to members-[add|delete]
 - Remove update option from imagre-register
 - In image-compute split properties to properties-list and properties-get
@@ -34,11 +35,23 @@ Changes:
     unregister, members add/delete/set
     -image compute:
     delete, properties delete
+    - server: rename, delete, reboot, start, shutdown, firewall-set
+    - network: rename, delete, connect
+- Add optional json for methods with output [#3732]
+    - file:
+    list, hashmap, permissions-get, info, metadata-get, quota,
+    containerlimit-get, group-list, sharers, versions
+    - server: list, info, create, console, addr, metadata-list/set, stats
+    - image: list, meta, register, shared, list
+    - image compute: list, info, properties-list/get/add/set
+    - flavor: list, info
+    - network: info, list, create
+    - astakos: authenticate
 - Transliterate methods to list-get-set-delete command groups:
     - file: permissions, versioning, group and metadata
     - image: members, member
     - image compute: properties
-
+    - server: firewall, metadata
 Features:
 
 - A logger module container a set of basic loging method for kamaki [#3668]
@@ -58,4 +71,5 @@ Features:
 - Store image properties on remote location after image registration [#3769]
 - Add runtime args to image register for forcing or unsettitng property
     storage [#3769]
+- Add server-firewall-get command to get a VMs firewall profile
 

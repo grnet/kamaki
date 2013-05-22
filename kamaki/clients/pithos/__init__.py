@@ -1113,6 +1113,8 @@ class PithosClient(PithosRestClient):
     def del_container_meta(self, metakey):
         """
         :param metakey: (str) metadatum key
+
+        :returns: (dict) response headers
         """
         r = self.container_post(update=True, metadata={metakey: ''})
         return r.headers
@@ -1267,7 +1269,6 @@ class PithosClient(PithosRestClient):
 
         :param upload_db: progress.bar for uploading
         """
-
         self._assert_container()
         meta = self.get_container_info()
         blocksize = int(meta['x-container-block-size'])
@@ -1312,6 +1313,9 @@ class PithosClient(PithosRestClient):
             sendlog.info('- - - wait for threads to finish')
             for thread in activethreads():
                 thread.join()
+        finally:
+            from time import sleep
+            sleep(1.1 * len(activethreads()))
         return headers.values()
 
     def truncate_object(self, obj, upto_bytes):

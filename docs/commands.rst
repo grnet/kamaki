@@ -137,19 +137,22 @@ server (Compute/Cyclades)
 
 .. code-block:: text
 
-    addmeta :  Add server metadata
     addr    :  List a server's nic address
     console :  Get a VNC console
     create  :  Create a server
     delete  :  Delete a server
-    delmeta :  Delete server metadata
-    firewall:  Set the server's firewall profile
+    firewall:  Manage server's firewall profile
+        set :  Set the server's firewall profile
+        get :  Get the server's firewall profile
     info    :  Get server details
     list    :  List servers
+    metadata:  Manage Server Metadata
+        list  :  List server metadata
+        set   :  Add / update server metadata
+        delete:  Delete a piece of server metadata
     meta    :  Get a server's metadata
     reboot  :  Reboot a server
     rename  :  Update a server's name
-    setmeta :  Update server's metadata
     shutdown:  Shutdown a server
     start   :  Start a server
     stats   :  Get server statistics
@@ -323,7 +326,7 @@ file (Storage/Pithos+)
     download      :  Download a file or directory
     group         :  Manage access groups and group members
         delete:  Delete a user group
-        get   :  Get groups and group members
+        list  :  List groups and group members
         set   :  Set a user group
     hashmap       :  Get the hashmap of an object
     info          :  Get information for account [, container [or object]]

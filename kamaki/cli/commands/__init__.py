@@ -45,6 +45,8 @@ class _command_init(object):
             arguments.update(self.arguments)
         if isinstance(self, _optional_output_cmd):
             arguments.update(self.oo_arguments)
+        if isinstance(self, _optional_json):
+            arguments.update(self.oj_arguments)
         self.arguments = dict(arguments)
         try:
             self.config = self['config']
@@ -129,6 +131,9 @@ class _command_init(object):
         return self[argterm]
 
 
+#  feature classes - inherit them to get special features for your commands
+
+
 class _optional_output_cmd(object):
 
     oo_arguments = dict(
@@ -141,3 +146,16 @@ class _optional_output_cmd(object):
             print_json(r)
         elif self['with_output']:
             print_items([r] if isinstance(r, dict) else r)
+
+
+class _optional_json(object):
+
+    oj_arguments = dict(
+        json_output=FlagArgument('show headers in json', ('-j', '--json'))
+    )
+
+    def _print(self, output, print_method=print_items, **print_method_kwargs):
+        if self['json_output']:
+            print_json(output)
+        else:
+            print_method(output, **print_method_kwargs)

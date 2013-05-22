@@ -45,17 +45,23 @@ class CycladesClient(CycladesRestClient):
         """Submit a startup request
 
         :param server_id: integer (str or int)
+
+        :returns: (dict) response headers
         """
         req = {'start': {}}
-        self.servers_post(server_id, 'action', json_data=req, success=202)
+        r = self.servers_post(server_id, 'action', json_data=req, success=202)
+        return r.headers
 
     def shutdown_server(self, server_id):
         """Submit a shutdown request
 
         :param server_id: integer (str or int)
+
+        :returns: (dict) response headers
         """
         req = {'shutdown': {}}
-        self.servers_post(server_id, 'action', json_data=req, success=202)
+        r = self.servers_post(server_id, 'action', json_data=req, success=202)
+        return r.headers
 
     def get_server_console(self, server_id):
         """
@@ -89,9 +95,12 @@ class CycladesClient(CycladesRestClient):
         :param server_id: integer (str or int)
 
         :param profile: (str) ENABLED | DISABLED | PROTECTED
+
+        :returns: (dict) response headers
         """
         req = {'firewallProfile': {'profile': profile}}
-        self.servers_post(server_id, 'action', json_data=req, success=202)
+        r = self.servers_post(server_id, 'action', json_data=req, success=202)
+        return r.headers
 
     def list_servers(self, detail=False, changes_since=None):
         """
@@ -184,18 +193,24 @@ class CycladesClient(CycladesRestClient):
         :param network_id: integer (str or int)
 
         :param new_name: (str)
+
+        :returns: (dict) response headers
         """
         req = {'network': {'name': new_name}}
-        self.networks_put(network_id=network_id, json_data=req)
+        r = self.networks_put(network_id=network_id, json_data=req)
+        return r.headers
 
     def delete_network(self, network_id):
         """
         :param network_id: integer (str or int)
 
+        :returns: (dict) response headers
+
         :raises ClientError: 421 Network in use
         """
         try:
-            self.networks_delete(network_id)
+            r = self.networks_delete(network_id)
+            return r.headers
         except ClientError as err:
             if err.status == 421:
                 err.details = [
@@ -208,9 +223,12 @@ class CycladesClient(CycladesRestClient):
         :param server_id: integer (str or int)
 
         :param network_id: integer (str or int)
+
+        :returns: (dict) response headers
         """
         req = {'add': {'serverRef': server_id}}
-        self.networks_post(network_id, 'action', json_data=req)
+        r = self.networks_post(network_id, 'action', json_data=req)
+        return r.headers
 
     def disconnect_server(self, server_id, nic_id):
         """

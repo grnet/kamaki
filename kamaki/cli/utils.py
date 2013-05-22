@@ -109,6 +109,10 @@ def print_json(data):
     print(dumps(data, indent=2))
 
 
+def pretty_dict(d, *args, **kwargs):
+    print_dict(pretty_keys(d, *args, **kwargs))
+
+
 def print_dict(
         d, exclude=(), ident=0,
         with_enumeration=False, recursive_enumeration=False):

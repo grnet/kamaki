@@ -33,12 +33,13 @@
 
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.utils import print_dict, print_list, print_items
+from kamaki.cli.utils import print_dict
 from kamaki.cli.errors import raiseCLIError, CLISyntaxError
 from kamaki.clients.cyclades import CycladesClient, ClientError
 from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
 from kamaki.cli.argument import ProgressBarArgument, DateArgument, IntArgument
 from kamaki.cli.commands import _command_init, errors
+from kamaki.cli.commands import _optional_output_cmd, _optional_json
 
 from base64 import b64encode
 from os.path import exists
@@ -80,7 +81,7 @@ class _init_cyclades(_command_init):
 
 
 @command(server_cmds)
-class server_list(_init_cyclades):
+class server_list(_init_cyclades, _optional_json):
     """List Virtual Machines accessible by user"""
 
     __doc__ += about_authentication
@@ -117,18 +118,16 @@ class server_list(_init_cyclades):
     @errors.cyclades.date
     def _run(self):
         servers = self.client.list_servers(self['detail'], self['since'])
-        if self['detail']:
+
+        if self['detail'] and not self['json_output']:
             self._make_results_pretty(servers)
 
+        kwargs = dict(with_enumeration=self['enum'])
         if self['more']:
-            print_items(
-                servers,
-                page_size=self['limit'] if self['limit'] else 10,
-                with_enumeration=self['enum'])
-        else:
-            print_items(
-                servers[:self['limit'] if self['limit'] else len(servers)],
-                with_enumeration=self['enum'])
+            kwargs['page_size'] = self['limit'] if self['limit'] else 10
+        elif self['limit']:
+            servers = servers[:self['limit']]
+        self._print(servers, **kwargs)
 
     def main(self):
         super(self.__class__, self)._run()
@@ -136,7 +135,7 @@ class server_list(_init_cyclades):
 
 
 @command(server_cmds)
-class server_info(_init_cyclades):
+class server_info(_init_cyclades, _optional_json):
     """Detailed information on a Virtual Machine
     Contains:
     - name, id, status, create/update dates
@@ -145,7 +144,7 @@ class server_info(_init_cyclades):
     - hardware flavor and os image ids
     """
 
-    def _print(self, server):
+    def _pretty(self, server):
         addr_dict = {}
         if 'attachments' in server:
             atts = server.pop('attachments')
@@ -165,8 +164,7 @@ class server_info(_init_cyclades):
     @errors.cyclades.connection
     @errors.cyclades.server_id
     def _run(self, server_id):
-        server = self.client.get_server_details(server_id)
-        self._print(server)
+        self._print(self.client.get_server_details(server_id), self._pretty)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -208,7 +206,7 @@ class PersonalityArgument(KeyValueArgument):
 
 
 @command(server_cmds)
-class server_create(_init_cyclades):
+class server_create(_init_cyclades, _optional_json):
     """Create a server (aka Virtual Machine)
     Parameters:
     - name: (single quoted text)
@@ -218,8 +216,7 @@ class server_create(_init_cyclades):
 
     arguments = dict(
         personality=PersonalityArgument(
-            ' /// '.join(howto_personality),
-            ('-p', '--personality'))
+            (80 * ' ').join(howto_personality), ('-p', '--personality'))
     )
 
     @errors.generic.all
@@ -227,12 +224,8 @@ class server_create(_init_cyclades):
     @errors.plankton.id
     @errors.cyclades.flavor_id
     def _run(self, name, flavor_id, image_id):
-        r = self.client.create_server(
-            name,
-            int(flavor_id),
-            image_id,
-            self['personality'])
-        print_dict(r)
+        self._print([self.client.create_server(
+            name, int(flavor_id), image_id, self['personality'])])
 
     def main(self, name, flavor_id, image_id):
         super(self.__class__, self)._run()
@@ -240,7 +233,7 @@ class server_create(_init_cyclades):
 
 
 @command(server_cmds)
-class server_rename(_init_cyclades):
+class server_rename(_init_cyclades, _optional_output_cmd):
     """Set/update a server (VM) name
     VM names are not unique, therefore multiple servers may share the same name
     """
@@ -249,7 +242,8 @@ class server_rename(_init_cyclades):
     @errors.cyclades.connection
     @errors.cyclades.server_id
     def _run(self, server_id, new_name):
-        self.client.update_server_name(int(server_id), new_name)
+        self._optional_output(
+            self.client.update_server_name(int(server_id), new_name))
 
     def main(self, server_id, new_name):
         super(self.__class__, self)._run()
@@ -257,14 +251,14 @@ class server_rename(_init_cyclades):
 
 
 @command(server_cmds)
-class server_delete(_init_cyclades):
+class server_delete(_init_cyclades, _optional_output_cmd):
     """Delete a server (VM)"""
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.server_id
     def _run(self, server_id):
-            self.client.delete_server(int(server_id))
+            self._optional_output(self.client.delete_server(int(server_id)))
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -272,7 +266,7 @@ class server_delete(_init_cyclades):
 
 
 @command(server_cmds)
-class server_reboot(_init_cyclades):
+class server_reboot(_init_cyclades, _optional_output_cmd):
     """Reboot a server (VM)"""
 
     arguments = dict(
@@ -283,7 +277,8 @@ class server_reboot(_init_cyclades):
     @errors.cyclades.connection
     @errors.cyclades.server_id
     def _run(self, server_id):
-        self.client.reboot_server(int(server_id), self['hard'])
+        self._optional_output(
+            self.client.reboot_server(int(server_id), self['hard']))
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -291,14 +286,14 @@ class server_reboot(_init_cyclades):
 
 
 @command(server_cmds)
-class server_start(_init_cyclades):
+class server_start(_init_cyclades, _optional_output_cmd):
     """Start an existing server (VM)"""
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.server_id
     def _run(self, server_id):
-        self.client.start_server(int(server_id))
+        self._optional_output(self.client.start_server(int(server_id)))
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -306,14 +301,14 @@ class server_start(_init_cyclades):
 
 
 @command(server_cmds)
-class server_shutdown(_init_cyclades):
+class server_shutdown(_init_cyclades, _optional_output_cmd):
     """Shutdown an active server (VM)"""
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.server_id
     def _run(self, server_id):
-        self.client.shutdown_server(int(server_id))
+        self._optional_output(self.client.shutdown_server(int(server_id)))
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -321,7 +316,7 @@ class server_shutdown(_init_cyclades):
 
 
 @command(server_cmds)
-class server_console(_init_cyclades):
+class server_console(_init_cyclades, _optional_json):
     """Get a VNC console to access an existing server (VM)
     Console connection information provided (at least):
     - host: (url or address) a VNC host
@@ -333,8 +328,7 @@ class server_console(_init_cyclades):
     @errors.cyclades.connection
     @errors.cyclades.server_id
     def _run(self, server_id):
-        r = self.client.get_server_console(int(server_id))
-        print_dict(r)
+        self._print([self.client.get_server_console(int(server_id))])
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -343,6 +337,11 @@ class server_console(_init_cyclades):
 
 @command(server_cmds)
 class server_firewall(_init_cyclades):
+    """Manage server (VM) firewall profiles for public networks"""
+
+
+@command(server_cmds)
+class server_firewall_set(_init_cyclades, _optional_output_cmd):
     """Set the server (VM) firewall profile on VMs public network
     Values for profile:
     - DISABLED: Shutdown firewall
@@ -355,9 +354,8 @@ class server_firewall(_init_cyclades):
     @errors.cyclades.server_id
     @errors.cyclades.firewall
     def _run(self, server_id, profile):
-        self.client.set_firewall_profile(
-            server_id=int(server_id),
-            profile=('%s' % profile).upper())
+        self._optional_output(self.client.set_firewall_profile(
+            server_id=int(server_id), profile=('%s' % profile).upper()))
 
     def main(self, server_id, profile):
         super(self.__class__, self)._run()
@@ -365,15 +363,14 @@ class server_firewall(_init_cyclades):
 
 
 @command(server_cmds)
-class server_addr(_init_cyclades):
-    """List the addresses of all network interfaces on a server (VM)"""
+class server_firewall_get(_init_cyclades):
+    """Get the server (VM) firewall profile for its public network"""
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.server_id
     def _run(self, server_id):
-        reply = self.client.list_server_nics(int(server_id))
-        print_list(reply, with_enumeration=len(reply) > 1)
+        print(self.client.get_firewall_profile(server_id))
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -381,18 +378,42 @@ class server_addr(_init_cyclades):
 
 
 @command(server_cmds)
-class server_meta(_init_cyclades):
-    """Get a server's metadatum
-    Metadata are formed as key:value pairs where key is used to retrieve them
-    """
+class server_addr(_init_cyclades, _optional_json):
+    """List the addresses of all network interfaces on a server (VM)"""
+
+    arguments = dict(
+        enum=FlagArgument('Enumerate results', '--enumerate')
+    )
+
+    @errors.generic.all
+    @errors.cyclades.connection
+    @errors.cyclades.server_id
+    def _run(self, server_id):
+        reply = self.client.list_server_nics(int(server_id))
+        self._print(
+            reply, with_enumeration=self['enum'] and len(reply) > 1)
+
+    def main(self, server_id):
+        super(self.__class__, self)._run()
+        self._run(server_id=server_id)
+
+
+@command(server_cmds)
+class server_metadata(_init_cyclades):
+    """Manage Server metadata (key:value pairs of server attributes)"""
+
+
+@command(server_cmds)
+class server_metadata_list(_init_cyclades, _optional_json):
+    """Get server metadata"""
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.server_id
     @errors.cyclades.metadata
     def _run(self, server_id, key=''):
-        r = self.client.get_server_metadata(int(server_id), key)
-        print_dict(r)
+        self._print(
+            [self.client.get_server_metadata(int(server_id), key)], title=())
 
     def main(self, server_id, key=''):
         super(self.__class__, self)._run()
@@ -400,26 +421,43 @@ class server_meta(_init_cyclades):
 
 
 @command(server_cmds)
-class server_setmeta(_init_cyclades):
-    """set server (VM) metadata
-    Metadata are formed as key:value pairs, both needed to set one
+class server_metadata_set(_init_cyclades, _optional_json):
+    """Set / update server(VM) metadata
+    Metadata should be given in key/value pairs in key=value format
+    For example:
+        /server metadata set <server id> key1=value1 key2=value2
+    Old, unreferenced metadata will remain intact
     """
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.server_id
-    def _run(self, server_id, key, val):
-        metadata = {key: val}
-        r = self.client.update_server_metadata(int(server_id), **metadata)
-        print_dict(r)
+    def _run(self, server_id, keyvals):
+        assert keyvals, 'Please, add some metadata ( key=value)'
+        metadata = dict()
+        for keyval in keyvals:
+            k, sep, v = keyval.partition('=')
+            if sep and k:
+                metadata[k] = v
+            else:
+                raiseCLIError(
+                    'Invalid piece of metadata %s' % keyval,
+                    importance=2, details=[
+                        'Correct metadata format: key=val',
+                        'For example:',
+                        '/server metadata set <server id>'
+                        'key1=value1 key2=value2'])
+        self._print(
+            [self.client.update_server_metadata(int(server_id), **metadata)],
+            title=())
 
-    def main(self, server_id, key, val):
+    def main(self, server_id, *key_equals_val):
         super(self.__class__, self)._run()
-        self._run(server_id=server_id, key=key, val=val)
+        self._run(server_id=server_id, keyvals=key_equals_val)
 
 
 @command(server_cmds)
-class server_delmeta(_init_cyclades):
+class server_metadata_delete(_init_cyclades, _optional_output_cmd):
     """Delete server (VM) metadata"""
 
     @errors.generic.all
@@ -427,7 +465,8 @@ class server_delmeta(_init_cyclades):
     @errors.cyclades.server_id
     @errors.cyclades.metadata
     def _run(self, server_id, key):
-        self.client.delete_server_metadata(int(server_id), key)
+        self._optional_output(
+            self.client.delete_server_metadata(int(server_id), key))
 
     def main(self, server_id, key):
         super(self.__class__, self)._run()
@@ -435,15 +474,14 @@ class server_delmeta(_init_cyclades):
 
 
 @command(server_cmds)
-class server_stats(_init_cyclades):
+class server_stats(_init_cyclades, _optional_json):
     """Get server (VM) statistics"""
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.server_id
     def _run(self, server_id):
-        r = self.client.get_server_stats(int(server_id))
-        print_dict(r, exclude=('serverRef',))
+        self._print([self.client.get_server_stats(int(server_id))])
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -490,7 +528,7 @@ class server_wait(_init_cyclades):
 
 
 @command(flavor_cmds)
-class flavor_list(_init_cyclades):
+class flavor_list(_init_cyclades, _optional_json):
     """List available hardware flavors"""
 
     arguments = dict(
@@ -507,7 +545,7 @@ class flavor_list(_init_cyclades):
     def _run(self):
         flavors = self.client.list_flavors(self['detail'])
         pg_size = 10 if self['more'] and not self['limit'] else self['limit']
-        print_items(
+        self._print(
             flavors,
             with_redundancy=self['detail'],
             page_size=pg_size,
@@ -519,7 +557,7 @@ class flavor_list(_init_cyclades):
 
 
 @command(flavor_cmds)
-class flavor_info(_init_cyclades):
+class flavor_info(_init_cyclades, _optional_json):
     """Detailed information on a hardware flavor
     To get a list of available flavors and flavor ids, try /flavor list
     """
@@ -528,8 +566,7 @@ class flavor_info(_init_cyclades):
     @errors.cyclades.connection
     @errors.cyclades.flavor_id
     def _run(self, flavor_id):
-        flavor = self.client.get_flavor_details(int(flavor_id))
-        print_dict(flavor)
+        self._print([self.client.get_flavor_details(int(flavor_id))])
 
     def main(self, flavor_id):
         super(self.__class__, self)._run()
@@ -537,7 +574,7 @@ class flavor_info(_init_cyclades):
 
 
 @command(network_cmds)
-class network_info(_init_cyclades):
+class network_info(_init_cyclades, _optional_json):
     """Detailed information on a network
     To get a list of available networks and network ids, try /network list
     """
@@ -555,7 +592,8 @@ class network_info(_init_cyclades):
     def _run(self, network_id):
         network = self.client.get_network_details(int(network_id))
         self._make_result_pretty(network)
-        print_dict(network, exclude=('id'))
+        #print_dict(network, exclude=('id'))
+        self._print(network, print_dict, exclude=('id'))
 
     def main(self, network_id):
         super(self.__class__, self)._run()
@@ -563,7 +601,7 @@ class network_info(_init_cyclades):
 
 
 @command(network_cmds)
-class network_list(_init_cyclades):
+class network_list(_init_cyclades, _optional_json):
     """List networks"""
 
     arguments = dict(
@@ -585,16 +623,12 @@ class network_list(_init_cyclades):
         networks = self.client.list_networks(self['detail'])
         if self['detail']:
             self._make_results_pretty(networks)
+        kwargs = dict(with_enumeration=self['enum'])
         if self['more']:
-            print_items(
-                networks,
-                page_size=self['limit'] or 10, with_enumeration=self['enum'])
+            kwargs['page_size'] = self['limit'] or 10
         elif self['limit']:
-            print_items(
-                networks[:self['limit']],
-                with_enumeration=self['enum'])
-        else:
-            print_items(networks, with_enumeration=self['enum'])
+            networks = networks[:self['limit']]
+        self._print(networks, **kwargs)
 
     def main(self):
         super(self.__class__, self)._run()
@@ -602,7 +636,7 @@ class network_list(_init_cyclades):
 
 
 @command(network_cmds)
-class network_create(_init_cyclades):
+class network_create(_init_cyclades, _optional_json):
     """Create an (unconnected) network"""
 
     arguments = dict(
@@ -620,13 +654,12 @@ class network_create(_init_cyclades):
     @errors.cyclades.connection
     @errors.cyclades.network_max
     def _run(self, name):
-        r = self.client.create_network(
+        self._print([self.client.create_network(
             name,
             cidr=self['cidr'],
             gateway=self['gateway'],
             dhcp=self['dhcp'],
-            type=self['type'])
-        print_items([r])
+            type=self['type'])])
 
     def main(self, name):
         super(self.__class__, self)._run()
@@ -634,14 +667,15 @@ class network_create(_init_cyclades):
 
 
 @command(network_cmds)
-class network_rename(_init_cyclades):
+class network_rename(_init_cyclades, _optional_output_cmd):
     """Set the name of a network"""
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.network_id
     def _run(self, network_id, new_name):
-        self.client.update_network_name(int(network_id), new_name)
+        self._optional_output(
+                self.client.update_network_name(int(network_id), new_name))
 
     def main(self, network_id, new_name):
         super(self.__class__, self)._run()
@@ -649,7 +683,7 @@ class network_rename(_init_cyclades):
 
 
 @command(network_cmds)
-class network_delete(_init_cyclades):
+class network_delete(_init_cyclades, _optional_output_cmd):
     """Delete a network"""
 
     @errors.generic.all
@@ -657,7 +691,7 @@ class network_delete(_init_cyclades):
     @errors.cyclades.network_id
     @errors.cyclades.network_in_use
     def _run(self, network_id):
-        self.client.delete_network(int(network_id))
+        self._optional_output(self.client.delete_network(int(network_id)))
 
     def main(self, network_id):
         super(self.__class__, self)._run()
@@ -665,7 +699,7 @@ class network_delete(_init_cyclades):
 
 
 @command(network_cmds)
-class network_connect(_init_cyclades):
+class network_connect(_init_cyclades, _optional_output_cmd):
     """Connect a server to a network"""
 
     @errors.generic.all
@@ -673,7 +707,8 @@ class network_connect(_init_cyclades):
     @errors.cyclades.server_id
     @errors.cyclades.network_id
     def _run(self, server_id, network_id):
-        self.client.connect_server(int(server_id), int(network_id))
+        self._optional_output(
+                self.client.connect_server(int(server_id), int(network_id)))
 
     def main(self, server_id, network_id):
         super(self.__class__, self)._run()
@@ -696,12 +731,14 @@ class network_disconnect(_init_cyclades):
     @errors.cyclades.server_id
     @errors.cyclades.nic_id
     def _run(self, nic_id, server_id):
-        if not self.client.disconnect_server(server_id, nic_id):
+        num_of_disconnected = self.client.disconnect_server(server_id, nic_id)
+        if not num_of_disconnected:
             raise ClientError(
                 'Network Interface %s not found on server %s' % (
                     nic_id,
                     server_id),
                 status=404)
+        print('Disconnected %s connections' % num_of_disconnected)
 
     def main(self, nic_id):
         super(self.__class__, self)._run()

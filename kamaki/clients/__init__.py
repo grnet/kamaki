@@ -31,7 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from urllib2 import quote
+from urllib2 import quote, unquote
 from urlparse import urlparse
 from threading import Thread
 from json import dumps, loads
@@ -212,13 +212,14 @@ class ResponseManager(Logged):
                 recvlog.info('\n%s <-- %s <-- [req: %s]\n' % (
                     self, r, self.request))
                 self._request_performed = True
-                self._status_code, self._status = r.status, r.reason
+                self._status_code, self._status = r.status, unquote(r.reason)
                 recvlog.info(
                     '%d %s\t[p: %s]' % (self.status_code, self.status, self))
                 self._headers = dict()
                 for k, v in r.getheaders():
                     if (not self.LOG_TOKEN) and k.lower() == 'x-auth-token':
                         continue
+                    v = unquote(v)
                     self._headers[k] = v
                     recvlog.info('  %s: %s\t[p: %s]' % (k, v, self))
                 self._content = r.read()
