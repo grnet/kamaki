@@ -1167,7 +1167,7 @@ class file_upload(_file_container_command, _optional_output_cmd):
                     raise
                 finally:
                     self._safe_progress_bar_finish(progress_bar)
-        self._optional_output(r)
+        self._optional_output(uploaded)
         print('Upload completed')
 
     def main(self, local_path, container____path__=None):
