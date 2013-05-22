@@ -1315,7 +1315,7 @@ class PithosClient(PithosRestClient):
                 thread.join()
         finally:
             from time import sleep
-            sleep(1.1 * len(activethreads()))
+            sleep(2 * len(activethreads()))
         return headers.values()
 
     def truncate_object(self, obj, upto_bytes):
