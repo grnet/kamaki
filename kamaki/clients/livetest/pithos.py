@@ -1161,8 +1161,8 @@ class Pithos(livetest.Generic):
         """Check permissions"""
         self.client.set_object_sharing(
             obj,
-            read_permition=['u4', 'u5'],
-            write_permition=['u4'])
+            read_permission=['u4', 'u5'],
+            write_permission=['u4'])
         r = self.client.get_object_sharing(obj)
         self.assertTrue('read' in r)
         self.assertTrue('u5' in r['read'])
