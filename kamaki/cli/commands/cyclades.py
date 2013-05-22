@@ -575,13 +575,17 @@ class flavor_list(_init_cyclades):
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
             '--more'),
-        enum=FlagArgument('Enumerate results', '--enumerate')
+        enum=FlagArgument('Enumerate results', '--enumerate'),
+        json_output=FlagArgument('show output in json', ('-j', '--json'))
     )
 
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self):
         flavors = self.client.list_flavors(self['detail'])
+        if self['json_output']:
+            print_json(flavors)
+            return
         pg_size = 10 if self['more'] and not self['limit'] else self['limit']
         print_items(
             flavors,
@@ -600,12 +604,16 @@ class flavor_info(_init_cyclades):
     To get a list of available flavors and flavor ids, try /flavor list
     """
 
+    arguments = dict(
+        json_output=FlagArgument('show output in json', ('-j', '--json'))
+    )
+
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.flavor_id
     def _run(self, flavor_id):
-        flavor = self.client.get_flavor_details(int(flavor_id))
-        print_dict(flavor)
+        printer = print_json if self['json_output'] else print_dict
+        printer(self.client.get_flavor_details(int(flavor_id)))
 
     def main(self, flavor_id):
         super(self.__class__, self)._run()
@@ -617,6 +625,10 @@ class network_info(_init_cyclades):
     """Detailed information on a network
     To get a list of available networks and network ids, try /network list
     """
+
+    arguments = dict(
+        json_output=FlagArgument('show output in json', ('-j', '--json'))
+    )
 
     @classmethod
     def _make_result_pretty(self, net):
@@ -630,6 +642,9 @@ class network_info(_init_cyclades):
     @errors.cyclades.network_id
     def _run(self, network_id):
         network = self.client.get_network_details(int(network_id))
+        if self['json_output']:
+            print_json(network)
+            return
         self._make_result_pretty(network)
         print_dict(network, exclude=('id'))
 
@@ -648,7 +663,8 @@ class network_list(_init_cyclades):
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
             '--more'),
-        enum=FlagArgument('Enumerate results', '--enumerate')
+        enum=FlagArgument('Enumerate results', '--enumerate'),
+        json_output=FlagArgument('show output in json', ('-j', '--json'))
     )
 
     def _make_results_pretty(self, nets):
@@ -659,6 +675,9 @@ class network_list(_init_cyclades):
     @errors.cyclades.connection
     def _run(self):
         networks = self.client.list_networks(self['detail'])
+        if self['json_output']:
+            print_json(networks)
+            return
         if self['detail']:
             self._make_results_pretty(networks)
         if self['more']:
@@ -689,20 +708,21 @@ class network_create(_init_cyclades):
             'Valid network types are '
             'CUSTOM, IP_LESS_ROUTED, MAC_FILTERED (default), PHYSICAL_VLAN',
             '--with-type',
-            default='MAC_FILTERED')
+            default='MAC_FILTERED'),
+        json_output=FlagArgument('show output in json', ('-j', '--json'))
     )
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.network_max
     def _run(self, name):
-        r = self.client.create_network(
+        printer = print_json if self['json_output'] else print_dict
+        printer(self.client.create_network(
             name,
             cidr=self['cidr'],
             gateway=self['gateway'],
             dhcp=self['dhcp'],
-            type=self['type'])
-        print_items([r])
+            type=self['type']))
 
     def main(self, name):
         super(self.__class__, self)._run()
@@ -710,14 +730,15 @@ class network_create(_init_cyclades):
 
 
 @command(network_cmds)
-class network_rename(_init_cyclades):
+class network_rename(_init_cyclades, _optional_output_cmd):
     """Set the name of a network"""
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.network_id
     def _run(self, network_id, new_name):
-        self.client.update_network_name(int(network_id), new_name)
+        self._optional_output(
+                self.client.update_network_name(int(network_id), new_name))
 
     def main(self, network_id, new_name):
         super(self.__class__, self)._run()
@@ -725,7 +746,7 @@ class network_rename(_init_cyclades):
 
 
 @command(network_cmds)
-class network_delete(_init_cyclades):
+class network_delete(_init_cyclades, _optional_output_cmd):
     """Delete a network"""
 
     @errors.generic.all
@@ -733,7 +754,7 @@ class network_delete(_init_cyclades):
     @errors.cyclades.network_id
     @errors.cyclades.network_in_use
     def _run(self, network_id):
-        self.client.delete_network(int(network_id))
+        self._optional_output(self.client.delete_network(int(network_id)))
 
     def main(self, network_id):
         super(self.__class__, self)._run()
@@ -741,7 +762,7 @@ class network_delete(_init_cyclades):
 
 
 @command(network_cmds)
-class network_connect(_init_cyclades):
+class network_connect(_init_cyclades, _optional_output_cmd):
     """Connect a server to a network"""
 
     @errors.generic.all
@@ -749,7 +770,8 @@ class network_connect(_init_cyclades):
     @errors.cyclades.server_id
     @errors.cyclades.network_id
     def _run(self, server_id, network_id):
-        self.client.connect_server(int(server_id), int(network_id))
+        self._optional_output(
+                self.client.connect_server(int(server_id), int(network_id)))
 
     def main(self, server_id, network_id):
         super(self.__class__, self)._run()
@@ -772,12 +794,14 @@ class network_disconnect(_init_cyclades):
     @errors.cyclades.server_id
     @errors.cyclades.nic_id
     def _run(self, nic_id, server_id):
-        if not self.client.disconnect_server(server_id, nic_id):
+        num_of_disconnected = self.client.disconnect_server(server_id, nic_id)
+        if not num_of_disconnected:
             raise ClientError(
                 'Network Interface %s not found on server %s' % (
                     nic_id,
                     server_id),
                 status=404)
+        print('Disconnected %s connections' % num_of_disconnected)
 
     def main(self, nic_id):
         super(self.__class__, self)._run()
