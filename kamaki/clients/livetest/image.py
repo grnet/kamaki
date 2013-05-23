@@ -85,7 +85,7 @@ class Image(livetest.Generic):
             self.location,
             params=dict(is_public=True))
         self._imglist[self.imgname] = dict(
-            name=r['x-image-meta-name'], id=r['x-image-meta-id'])
+            name=r['name'], id=r['id'])
         self._imgdetails[self.imgname] = r
 
     def tearDown(self):
@@ -154,7 +154,7 @@ class Image(livetest.Generic):
                     'properties',
                     'size'):
                 self.assertTrue(term in img)
-                if img['properties']:
+                if len(img['properties']):
                     for interm in ('osfamily', 'users', 'root_partition'):
                         self.assertTrue(interm in img['properties'])
         size_max = 1000000000
@@ -185,13 +185,14 @@ class Image(livetest.Generic):
                 'container-format'):
             self.assertTrue(term in r)
             for interm in (
-                    'kernel',
-                    'osfamily',
-                    'users',
-                    'gui', 'sortorder',
-                    'root-partition',
-                    'os',
-                    'description'):
+                    'KERNEL',
+                    'OSFAMILY',
+                    'USERS',
+                    'GUI',
+                    'SORTORDER',
+                    'ROOT_PARTITION',
+                    'OS',
+                    'DESCRIPTION'):
                 self.assertTrue(interm in r['properties'])
 
     def test_register(self):
@@ -204,8 +205,7 @@ class Image(livetest.Generic):
         for img in self._imglist.values():
             self.assertTrue(img is not None)
             r = set(self._imgdetails[img['name']].keys())
-            self.assertTrue(
-                r.issubset(['x-image-meta-%s' % k for k in IMGMETA]))
+            self.assertTrue(r.issubset(IMGMETA.union(['properties'])))
 
     def test_unregister(self):
         """Test unregister"""

@@ -358,22 +358,6 @@ class plankton(object):
         '* get a list of image ids: /image list',
         '* details of image: /flavor info <image id>']
 
-    remote_image_file = [
-        'Suggested usage:',
-        '  /image register <image container>:<uploaded image file path>',
-        'To set "image" as image container and "my_dir/img.diskdump" as',
-        'the remote image file path, try one of the following:',
-        '- <image container>:<remote path>',
-        '    e.g. image:/my_dir/img.diskdump',
-        '- <remote path> -C <image container>',
-        '    e.g. /my_dir/img.diskdump -C image',
-        'To check if the image file is accessible to current user:',
-        '  /file list <image container>',
-        'If the file is located under a different user id "us3r1d"',
-        ' use the --fileowner=us3r1d  argument e.g.:',
-        '  /image register "my" image:my_dir/img.diskdump --fileowner=us3r1d',
-        'Note: The form pithos://<userid>/<container>/<path> is deprecated']
-
     @classmethod
     def connection(this, foo):
         return generic._connection(foo, 'image.url')
@@ -409,20 +393,6 @@ class plankton(object):
                         ce.status == 400 and 'metadata' in ce_msg):
                     msg = 'No properties with key %s in this image' % key
                     raiseCLIError(ce, msg)
-                raise
-        return _raise
-
-    @classmethod
-    def image_file(this, foo):
-        def _raise(self, name, container_path):
-            try:
-                return foo(self, name, container_path)
-            except ClientError as ce:
-                if ce.status in (400,):
-                    raiseCLIError(
-                        ce,
-                        'Nonexistent location for %s' % container_path,
-                        importance=2, details=this.remote_image_file)
                 raise
         return _raise
 

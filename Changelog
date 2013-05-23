@@ -23,7 +23,7 @@ Changes:
     move and copy
 - Rename file/server-meta commands to file/server-metadata
 - Rename image-[add|del]member commands to members-[add|delete]
-- Remove update option from imagre-register
+- Remove update option from image-register
 - In image-compute split properties to properties-list and properties-get
 - Add optional output to methods[#3756, #3732]:
     - file:
@@ -52,6 +52,9 @@ Changes:
     - image: members, member
     - image compute: properties
     - server: firewall, metadata
+- Add a _format_image_headers method and use it in image_register and get_meta
+    for uniform image meta output [#3797]
+
 Features:
 
 - A logger module container a set of basic loging method for kamaki [#3668]
@@ -71,5 +74,7 @@ Features:
 - Store image properties on remote location after image registration [#3769]
 - Add runtime args to image register for forcing or unsettitng property
     storage [#3769]
+- Expand runtime args of image register for managing metadata and metada file
+    dumps and loads [#3797]
 - Add server-firewall-get command to get a VMs firewall profile
 
