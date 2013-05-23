@@ -532,7 +532,7 @@ class PithosRestClient(TestCase):
                         perm_str += ';' if perm_str else ''
                         perm_str += '%s=%s' % (ptype, ','.join(pval))
                 exp += [call('X-Object-Sharing', perm_str)]
-            exp += [call('X-Object-Public', public)]
+            exp += [call('X-Object-Public', public, public is not None)]
             for k, v in metas.items():
                 exp += [call('X-Object-Meta-%s' % k, v)]
             self.assertEqual(SH.mock_calls[- len(exp):], exp)
@@ -586,7 +586,7 @@ class PithosRestClient(TestCase):
                         perm_str += ';' if perm_str else ''
                         perm_str += '%s=%s' % (ptype, ','.join(pval))
                 exp += [call('X-Object-Sharing', perm_str)]
-            exp += [call('X-Object-Public', public)]
+            exp += [call('X-Object-Public', public, public is not None)]
             for k, v in metas.items():
                 exp += [call('X-Object-Meta-%s' % k, v)]
             self.assertEqual(SH.mock_calls[- len(exp):], exp)
@@ -638,7 +638,7 @@ class PithosRestClient(TestCase):
                         perm_str += ';' if perm_str else ''
                         perm_str += '%s=%s' % (ptype, ','.join(pval))
                 exp += [call('X-Object-Sharing', perm_str)]
-            exp += [call('X-Object-Public', public)]
+            exp += [call('X-Object-Public', public, public is not None)]
             for k, v in metas.items():
                 exp += [call('X-Object-Meta-%s' % k, v)]
             self.assertEqual(SH.mock_calls[- len(exp):], exp)
@@ -700,7 +700,7 @@ class PithosRestClient(TestCase):
                         perm_str += ';' if perm_str else ''
                         perm_str += '%s=%s' % (ptype, ','.join(pval))
                 exp += [call('X-Object-Sharing', perm_str)]
-            exp += [call('X-Object-Public', public)]
+            exp += [call('X-Object-Public', public, public is not None)]
             for k, v in metas.items():
                 exp += [call('X-Object-Meta-%s' % k, v)]
             self.assertEqual(SH.mock_calls[- len(exp):], exp)
