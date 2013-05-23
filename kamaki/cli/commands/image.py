@@ -57,8 +57,15 @@ image_cmds = CommandTree(
 _commands = [image_cmds]
 
 
-about_image_id = [
-    'To see a list of available image ids: /image list']
+howto_image_file = [
+    'Kamaki commands to:',
+    ' get current user uuid: /user authenticate',
+    ' check available containers: /file list',
+    ' create a new container: /file create <container>',
+    ' check container contents: /file list <container>',
+    ' upload files: /file upload <image file> <container>']
+
+about_image_id = ['To see a list of available image ids: /image list']
 
 
 log = getLogger(__name__)
@@ -84,14 +91,14 @@ class _init_image(_command_init):
 # Plankton Image Commands
 
 
-def _validate_image_props(json_dict, return_str=False):
+def _validate_image_meta(json_dict, return_str=False):
     """
     :param json_dict" (dict) json-formated, of the form
         {"key1": "val1", "key2": "val2", ...}
 
     :param return_str: (boolean) if true, return a json dump
 
-    :returns: (dict)
+    :returns: (dict) if return_str is not True, else return str
 
     :raises TypeError, AttributeError: Invalid json format
 
@@ -99,15 +106,22 @@ def _validate_image_props(json_dict, return_str=False):
     """
     json_str = dumps(json_dict, indent=2)
     for k, v in json_dict.items():
-        dealbreaker = isinstance(v, dict) or isinstance(v, list)
-        assert not dealbreaker, 'Invalid property value for key %s' % k
-        dealbreaker = ' ' in k
-        assert not dealbreaker, 'Invalid key [%s]' % k
+        if k.lower() == 'properties':
+            for pk, pv in v.items():
+                prop_ok = not (isinstance(pv, dict) or isinstance(pv, list))
+                assert prop_ok, 'Invalid property value for key %s' % pk
+                key_ok = not (' ' in k or '-' in k)
+                assert key_ok, 'Invalid property key %s' % k
+            continue
+        meta_ok = not (isinstance(v, dict) or isinstance(v, list))
+        assert meta_ok, 'Invalid value for meta key %s' % k
+        meta_ok = ' ' not in k
+        assert meta_ok, 'Invalid meta key [%s]' % k
         json_dict[k] = '%s' % v
     return json_str if return_str else json_dict
 
 
-def _load_image_props(filepath):
+def _load_image_meta(filepath):
     """
     :param filepath: (str) the (relative) path of the metafile
 
@@ -120,10 +134,30 @@ def _load_image_props(filepath):
     with open(abspath(filepath)) as f:
         meta_dict = load(f)
         try:
-            return _validate_image_props(meta_dict)
+            return _validate_image_meta(meta_dict)
         except AssertionError:
             log.debug('Failed to load properties from file %s' % filepath)
             raise
+
+
+def _validate_image_location(location):
+    """
+    :param location: (str) pithos://<uuid>/<container>/<img-file-path>
+
+    :returns: (<uuid>, <container>, <img-file-path>)
+
+    :raises AssertionError: if location is invalid
+    """
+    prefix = 'pithos://'
+    msg = 'Invalid prefix for location %s , try: %s' % (location, prefix)
+    assert location.startswith(prefix), msg
+    service, sep, rest = location.partition('://')
+    assert sep and rest, 'Location %s is missing uuid' % location
+    uuid, sep, rest = rest.partition('/')
+    assert sep and rest, 'Location %s is missing container' % location
+    container, sep, img_path = rest.partition('/')
+    assert sep and img_path, 'Location %s is missing image path' % location
+    return uuid, container, img_path
 
 
 @command(image_cmds)
@@ -244,90 +278,64 @@ class image_register(_init_image, _optional_json):
             'set container format',
             '--container-format'),
         disk_format=ValueArgument('set disk format', '--disk-format'),
-        #id=ValueArgument('set image ID', '--id'),
         owner=ValueArgument('set image owner (admin only)', '--owner'),
         properties=KeyValueArgument(
             'add property in key=value form (can be repeated)',
             ('-p', '--property')),
         is_public=FlagArgument('mark image as public', '--public'),
         size=IntArgument('set image size', '--size'),
-        property_file=ValueArgument(
-            'Load properties from a json-formated file <img-file>.meta :'
-            '{"key1": "val1", "key2": "val2", ...}',
-            ('--property-file')),
-        prop_file_force=FlagArgument(
-            'Store remote property object, even it already exists',
-            ('-f', '--force-upload-property-file')),
-        no_prop_file_upload=FlagArgument(
-            'Do not store properties in remote property file',
-            ('--no-property-file-upload')),
-        container=ValueArgument(
-            'Remote image container', ('-C', '--container')),
-        fileowner=ValueArgument(
-            'UUID of the user who owns the image file', ('--fileowner'))
+        metafile=ValueArgument(
+            'Load metadata from a json-formated file <img-file>.meta :'
+            '{"key1": "val1", "key2": "val2", ..., "properties: {...}"}',
+            ('--metafile')),
+        metafile_force=FlagArgument(
+            'Store remote metadata object, even if it already exists',
+            ('-f', '--force')),
+        no_metafile_upload=FlagArgument(
+            'Do not store metadata in remote meta file',
+            ('--no-metafile-upload')),
 
     )
 
     def _get_uuid(self):
-        uuid = self['fileowner'] or self.config.get('image', 'fileowner')
-        if uuid:
-            return uuid
         atoken = self.client.token
         user = AstakosClient(self.config.get('user', 'url'), atoken)
         return user.term('uuid')
 
-    def _get_pithos_client(self, uuid, container):
+    def _get_pithos_client(self, container):
+        if self['no_metafile_upload']:
+            return None
         purl = self.config.get('file', 'url')
         ptoken = self.client.token
-        return PithosClient(purl, ptoken, uuid, container)
+        return PithosClient(purl, ptoken, self._get_uuid(), container)
 
-    def _store_remote_property_file(self, pclient, remote_path, properties):
+    def _store_remote_metafile(self, pclient, remote_path, metadata):
         return pclient.upload_from_string(
-            remote_path, _validate_image_props(properties, return_str=True))
+            remote_path, _validate_image_meta(metadata, return_str=True))
 
-    def _get_container_path(self, container_path):
-        container = self['container'] or self.config.get('image', 'container')
-        if container:
-            return container, container_path
-
-        container, sep, path = container_path.partition(':')
-        if not sep or not container or not path:
-            raiseCLIError(
-                '%s is not a valid pithos+ remote location' % container_path,
-                importance=2,
-                details=[
-                    'To set "image" as container and "my_dir/img.diskdump" as',
-                    'the image path, try one of the following as '
-                    'container:path',
-                    '- <image container>:<remote path>',
-                    '    e.g. image:/my_dir/img.diskdump',
-                    '- <remote path> -C <image container>',
-                    '    e.g. /my_dir/img.diskdump -C image'])
-        return container, path
-
-    @errors.generic.all
-    @errors.plankton.image_file
-    @errors.plankton.connection
-    def _run(self, name, container_path):
-        container, path = self._get_container_path(container_path)
-        uuid = self._get_uuid()
-        prop_path = '%s.meta' % path
-
-        pclient = None if (
-            self['no_prop_file_upload']) else self._get_pithos_client(
-                uuid, container)
-        if pclient and not self['prop_file_force']:
+    def _load_params_from_file(self, location):
+        params, properties = dict(), dict()
+        pfile = self['metafile']
+        if pfile:
             try:
-                pclient.get_object_info(prop_path)
-                raiseCLIError('Property file %s: %s already exists' % (
-                    container, prop_path))
-            except ClientError as ce:
-                if ce.status != 404:
-                    raise
+                for k, v in _load_image_meta(pfile).items():
+                    key = k.lower().replace('-', '_')
+                    if k == 'properties':
+                        for pk, pv in v.items():
+                            properties[pk.upper().replace('-', '_')] = pv
+                    elif key == 'name':
+                            continue
+                    elif key == 'location':
+                        if location:
+                            continue
+                        location = v
+                    else:
+                        params[key] = v
+            except Exception as e:
+                raiseCLIError(e, 'Invalid json metadata config file')
+        return params, properties, location
 
-        location = 'pithos://%s/%s/%s' % (uuid, container, path)
-
-        params = {}
+    def _load_params_from_args(self, params, properties):
         for key in set([
                 'checksum',
                 'container_format',
@@ -336,47 +344,78 @@ class image_register(_init_image, _optional_json):
                 'size',
                 'is_public']).intersection(self.arguments):
             params[key] = self[key]
-        properties = self['properties']
-
-        #load properties
-        properties = dict()
-        pfile = self['property_file']
-        if pfile:
-            try:
-                for k, v in _load_image_props(pfile).items():
-                    properties[k.lower()] = v
-            except Exception as e:
-                raiseCLIError(
-                    e, 'Format error in property file %s' % pfile,
-                    details=[
-                        'Expected content format:',
-                        '  {',
-                        '    "key1": "value1",',
-                        '    "key2": "value2",',
-                        '    ...',
-                        '  }',
-                        '',
-                        'Parser:'
-                    ])
         for k, v in self['properties'].items():
-            properties[k.lower()] = v
+            properties[k.upper().replace('-', '_')] = v
 
-        self._print([self.client.register(name, location, params, properties)])
+    def _validate_location(self, location):
+        if not location:
+            raiseCLIError(
+                'No image file location provided',
+                importance=2, details=[
+                    'An image location is needed. Image location format:',
+                    '  pithos://<uuid>/<container>/<path>',
+                    ' an image file at the above location must exist.'
+                    ] + howto_image_file)
+        try:
+            return _validate_image_location(location)
+        except AssertionError as ae:
+            raiseCLIError(
+                ae, 'Invalid image location format',
+                importance=1, details=[
+                    'Valid image location format:',
+                    '  pithos://<uuid>/<container>/<img-file-path>'
+                    ] + howto_image_file)
 
+    @errors.generic.all
+    @errors.plankton.connection
+    def _run(self, name, location):
+        (params, properties, location) = self._load_params_from_file(location)
+        uuid, container, img_path = self._validate_location(location)
+        self._load_params_from_args(params, properties)
+        pclient = self._get_pithos_client(container)
+
+        #check if metafile exists
+        meta_path = '%s.meta' % img_path
+        if pclient and not self['metafile_force']:
+            try:
+                pclient.get_object_info(meta_path)
+                raiseCLIError('Metadata file %s:%s already exists' % (
+                    container, meta_path))
+            except ClientError as ce:
+                if ce.status != 404:
+                    raise
+
+        #register the image
+        try:
+            r = self.client.register(name, location, params, properties)
+        except ClientError as ce:
+            if ce.status in (400, ):
+                raiseCLIError(
+                    ce, 'Nonexistent image file location %s' % location,
+                    details=[
+                        'Make sure the image file exists'] + howto_image_file)
+            raise
+        self._print(r, print_dict)
+
+        #upload the metadata file
         if pclient:
-            prop_headers = pclient.upload_from_string(
-                prop_path, _validate_image_props(properties, return_str=True))
+            try:
+                meta_headers = pclient.upload_from_string(
+                    meta_path, dumps(r, indent=2))
+            except TypeError:
+                print('Failed to dump metafile %s:%s' % (container, meta_path))
+                return
             if self['json_output']:
                 print_json(dict(
-                    property_file_location='%s:%s' % (container, prop_path),
-                    headers=prop_headers))
+                    metafile_location='%s:%s' % (container, meta_path),
+                    headers=meta_headers))
             else:
-                print('Property file uploaded as %s:%s (version %s)' % (
-                    container, prop_path, prop_headers['x-object-version']))
+                print('Metadata file uploaded as %s:%s (version %s)' % (
+                    container, meta_path, meta_headers['x-object-version']))
 
-    def main(self, name, container___path):
+    def main(self, name, location=None):
         super(self.__class__, self)._run()
-        self._run(name, container___path)
+        self._run(name, location)
 
 
 @command(image_cmds)

@@ -74,5 +74,7 @@ Features:
 - Store image properties on remote location after image registration [#3769]
 - Add runtime args to image register for forcing or unsettitng property
     storage [#3769]
+- Expand runtime args of image register for managing metadata and metada file
+    dumps and loads [#3797]
 - Add server-firewall-get command to get a VMs firewall profile
 
