@@ -35,6 +35,22 @@ from kamaki.clients import Client, ClientError
 from kamaki.clients.utils import path4url, filter_in
 
 
+def _format_image_headers(headers):
+    reply = dict(properties=dict())
+    meta_prefix = 'x-image-meta-'
+    property_prefix = 'x-image-meta-property-'
+
+    for key, val in headers.items():
+        key = key.lower()
+        if key.startswith(property_prefix):
+            key = key[len(property_prefix):].upper().replace('-', '_')
+            reply['properties'][key] = val
+        elif key.startswith(meta_prefix):
+            key = key[len(meta_prefix):]
+            reply[key] = val
+    return reply
+
+
 class ImageClient(Client):
     """Synnefo Plankton API client"""
 
@@ -80,23 +96,7 @@ class ImageClient(Client):
         path = path4url('images', image_id)
         r = self.head(path, success=200)
 
-        reply = {}
-        properties = {}
-        meta_prefix = 'x-image-meta-'
-        property_prefix = 'x-image-meta-property-'
-
-        for key, val in r.headers.items():
-            key = key.lower()
-            if key.startswith(property_prefix):
-                key = key[len(property_prefix):]
-                properties[key] = val
-            elif key.startswith(meta_prefix):
-                key = key[len(meta_prefix):]
-                reply[key] = val
-
-        if properties:
-            reply['properties'] = properties
-        return reply
+        return _format_image_headers(r.headers)
 
     def register(self, name, location, params={}, properties={}):
         """Register an image that is uploaded at location
@@ -110,7 +110,7 @@ class ImageClient(Client):
 
         :param properties: (dict) image properties (X-Image-Meta-Property)
 
-        :returns: (dict) details of the created image
+        :returns: (dict) metadata of the created image
         """
         path = path4url('images') + '/'
         self.set_header('X-Image-Meta-Name', name)
@@ -127,7 +127,8 @@ class ImageClient(Client):
             async_headers['x-image-meta-property-%s' % key] = val
 
         r = self.post(path, success=200, async_headers=async_headers)
-        return filter_in(r.headers, 'X-Image-')
+
+        return _format_image_headers(r.headers)
 
     def unregister(self, image_id):
         """Unregister an image

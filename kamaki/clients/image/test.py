@@ -228,7 +228,8 @@ class ImageClient(TestCase):
             params=params, properties=props)
         expectedict = dict(example_image_headers)
         expectedict.pop('extraheaders')
-        self.assert_dicts_are_equal(expectedict, r)
+        from kamaki.clients.image import _format_image_headers
+        self.assert_dicts_are_equal(_format_image_headers(expectedict), r)
         self.assertEqual(
             post.mock_calls[-1],
             call('/images/', async_headers=async_headers, success=200))
