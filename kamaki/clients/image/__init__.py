@@ -32,7 +32,7 @@
 # or implied, of GRNET S.A.
 
 from kamaki.clients import Client, ClientError
-from kamaki.clients.utils import path4url, filter_in
+from kamaki.clients.utils import path4url
 
 
 def _format_image_headers(headers):

@@ -47,7 +47,7 @@ class ComputeClient(ComputeRestClient):
         """
         detail = 'detail' if detail else ''
         r = self.servers_get(command=detail)
-        return r.json['servers']['values']
+        return r.json['servers']
 
     def get_server_details(self, server_id, **kwargs):
         """Return detailed info for a server
@@ -83,7 +83,7 @@ class ComputeClient(ComputeRestClient):
         metadata = {}
         for key in ('os', 'users'):
             try:
-                metadata[key] = image['metadata']['values'][key]
+                metadata[key] = image['metadata'][key]
             except KeyError:
                 pass
         if metadata:
@@ -151,9 +151,9 @@ class ComputeClient(ComputeRestClient):
 
         :returns: a key:val dict of requests metadata
         """
-        command = path4url('meta', key)
+        command = path4url('metadata', key)
         r = self.servers_get(server_id, command)
-        return r.json['meta'] if key else r.json['metadata']['values']
+        return r.json['meta'] if key else r.json['metadata']
 
     def create_server_metadata(self, server_id, key, val):
         """
@@ -168,7 +168,7 @@ class ComputeClient(ComputeRestClient):
         req = {'meta': {key: val}}
         r = self.servers_put(
             server_id,
-            'meta/' + key,
+            'metadata/' + key,
             json_data=req,
             success=201)
         return r.json['meta']
@@ -182,7 +182,9 @@ class ComputeClient(ComputeRestClient):
         :returns: dict of updated key:val metadata
         """
         req = {'metadata': metadata}
-        r = self.servers_post(server_id, 'meta', json_data=req, success=201)
+        r = self.servers_post(
+            server_id, 'metadata',
+            json_data=req, success=201)
         return r.json['metadata']
 
     def delete_server_metadata(self, server_id, key):
@@ -193,7 +195,7 @@ class ComputeClient(ComputeRestClient):
 
         :returns: (dict) response headers
         """
-        r = self.servers_delete(server_id, 'meta/' + key)
+        r = self.servers_delete(server_id, 'metadata/' + key)
         return r.headers
 
     def list_flavors(self, detail=False):
@@ -203,7 +205,7 @@ class ComputeClient(ComputeRestClient):
         :returns: (dict) flavor info
         """
         r = self.flavors_get(command='detail' if detail else '')
-        return r.json['flavors']['values']
+        return r.json['flavors']
 
     def get_flavor_details(self, flavor_id):
         """
@@ -222,7 +224,7 @@ class ComputeClient(ComputeRestClient):
         """
         detail = 'detail' if detail else ''
         r = self.images_get(command=detail)
-        return r.json['images']['values']
+        return r.json['images']
 
     def get_image_details(self, image_id, **kwargs):
         """
@@ -254,9 +256,9 @@ class ComputeClient(ComputeRestClient):
 
         :returns (dict) metadata if key not set, specific metadatum otherwise
         """
-        command = path4url('meta', key)
+        command = path4url('metadata', key)
         r = self.images_get(image_id, command)
-        return r.json['meta'] if key else r.json['metadata']['values']
+        return r.json['meta'] if key else r.json['metadata']
 
     def create_image_metadata(self, image_id, key, val):
         """
@@ -269,7 +271,7 @@ class ComputeClient(ComputeRestClient):
         :returns: (dict) updated metadata
         """
         req = {'meta': {key: val}}
-        r = self.images_put(image_id, 'meta/' + key, json_data=req)
+        r = self.images_put(image_id, 'metadata/' + key, json_data=req)
         return r.json['meta']
 
     def update_image_metadata(self, image_id, **metadata):
@@ -281,7 +283,7 @@ class ComputeClient(ComputeRestClient):
         :returns: updated metadata
         """
         req = {'metadata': metadata}
-        r = self.images_post(image_id, 'meta', json_data=req)
+        r = self.images_post(image_id, 'metadata', json_data=req)
         return r.json['metadata']
 
     def delete_image_metadata(self, image_id, key):
@@ -292,6 +294,6 @@ class ComputeClient(ComputeRestClient):
 
         :returns: (dict) response headers
         """
-        command = path4url('meta', key)
+        command = path4url('metadata', key)
         r = self.images_delete(image_id, command)
         return r.headers
