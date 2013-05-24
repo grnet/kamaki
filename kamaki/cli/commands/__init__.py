@@ -31,7 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-from kamaki.logger import get_logger
+from kamaki.cli.logger import get_logger
 from kamaki.cli.utils import print_json, print_items
 from kamaki.cli.argument import FlagArgument
 

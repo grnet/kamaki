@@ -63,9 +63,7 @@ DEFAULTS = {
         'log_data': 'off',
         'max_threads': 7
     },
-    'config': {
-        'cli': 'config',
-    },
+    'config': {'cli': 'config'},
     'history': {
         'cli': 'history',
         'file': HISTORY_PATH
@@ -74,18 +72,10 @@ DEFAULTS = {
         'cli': 'pithos',
         'url': 'https://pithos.okeanos.grnet.gr/v1'
     },
-    'compute': {
-        'url': 'https://cyclades.okeanos.grnet.gr/api/v1.1'
-    },
-    'server': {
-        'cli': 'cyclades'
-    },
-    'flavor': {
-        'cli': 'cyclades'
-    },
-    'network': {
-        'cli': 'cyclades'
-    },
+    'compute': {'url': 'https://cyclades.okeanos.grnet.gr/api/v1.1'},
+    'server': {'cli': 'cyclades'},
+    'flavor': {'cli': 'cyclades'},
+    'network': {'cli': 'cyclades'},
     'image': {
         'cli': 'image',
         'url': 'https://cyclades.okeanos.grnet.gr/plankton'
