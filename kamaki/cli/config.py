@@ -50,7 +50,7 @@ HISTORY_PATH = os.path.expanduser('~/.kamaki.history')
 CONFIG_ENV = 'KAMAKI_CONFIG'
 
 HEADER = """
-# Kamaki configuration file
+# Kamaki configuration file v2
 """
 
 DEFAULTS = {
