@@ -31,7 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from kamaki.logger import get_logger
+from kamaki.cli.logger import get_logger
 
 log = get_logger('kamaki.cli')
 

@@ -153,7 +153,7 @@ class ComputeClient(ComputeRestClient):
         """
         command = path4url('metadata', key)
         r = self.servers_get(server_id, command)
-        return r.json['meta'] if key else r.json['metadata']
+        return r.json['metadata']
 
     def create_server_metadata(self, server_id, key, val):
         """
@@ -165,13 +165,13 @@ class ComputeClient(ComputeRestClient):
 
         :returns: dict of updated key:val metadata
         """
-        req = {'meta': {key: val}}
+        req = {'metadata': {key: val}}
         r = self.servers_put(
             server_id,
             'metadata/' + key,
             json_data=req,
             success=201)
-        return r.json['meta']
+        return r.json['metadata']
 
     def update_server_metadata(self, server_id, **metadata):
         """
@@ -202,7 +202,7 @@ class ComputeClient(ComputeRestClient):
         """
         :param detail: (bool) detailed flavor info if set, short if not
 
-        :returns: (dict) flavor info
+        :returns: (list) flavor info
         """
         r = self.flavors_get(command='detail' if detail else '')
         return r.json['flavors']
@@ -258,7 +258,7 @@ class ComputeClient(ComputeRestClient):
         """
         command = path4url('metadata', key)
         r = self.images_get(image_id, command)
-        return r.json['meta'] if key else r.json['metadata']
+        return r.json['metadata']
 
     def create_image_metadata(self, image_id, key, val):
         """
@@ -270,9 +270,9 @@ class ComputeClient(ComputeRestClient):
 
         :returns: (dict) updated metadata
         """
-        req = {'meta': {key: val}}
+        req = {'metadata': {key: val}}
         r = self.images_put(image_id, 'metadata/' + key, json_data=req)
-        return r.json['meta']
+        return r.json['metadata']
 
     def update_image_metadata(self, image_id, **metadata):
         """

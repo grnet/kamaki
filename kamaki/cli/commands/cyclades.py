@@ -98,29 +98,11 @@ class server_list(_init_cyclades, _optional_json):
         enum=FlagArgument('Enumerate results', '--enumerate')
     )
 
-    def _make_results_pretty(self, servers):
-        for server in servers:
-            addr_dict = {}
-            if 'attachments' in server:
-                for addr in server['attachments']['values']:
-                    ips = addr.pop('values', [])
-                    for ip in ips:
-                        addr['IPv%s' % ip['version']] = ip['addr']
-                    if 'firewallProfile' in addr:
-                        addr['firewall'] = addr.pop('firewallProfile')
-                    addr_dict[addr.pop('id')] = addr
-                server['attachments'] = addr_dict if addr_dict else None
-            if 'metadata' in server:
-                server['metadata'] = server['metadata']['values']
-
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.date
     def _run(self):
         servers = self.client.list_servers(self['detail'], self['since'])
-
-        if self['detail'] and not self['json_output']:
-            self._make_results_pretty(servers)
 
         kwargs = dict(with_enumeration=self['enum'])
         if self['more']:
@@ -144,27 +126,11 @@ class server_info(_init_cyclades, _optional_json):
     - hardware flavor and os image ids
     """
 
-    def _pretty(self, server):
-        addr_dict = {}
-        if 'attachments' in server:
-            atts = server.pop('attachments')
-            for addr in atts['values']:
-                ips = addr.pop('values', [])
-                for ip in ips:
-                    addr['IPv%s' % ip['version']] = ip['addr']
-                if 'firewallProfile' in addr:
-                    addr['firewall'] = addr.pop('firewallProfile')
-                addr_dict[addr.pop('id')] = addr
-            server['attachments'] = addr_dict if addr_dict else None
-        if 'metadata' in server:
-            server['metadata'] = server['metadata']['values']
-        print_dict(server, ident=1)
-
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.server_id
     def _run(self, server_id):
-        self._print(self.client.get_server_details(server_id), self._pretty)
+        self._print(self.client.get_server_details(server_id), print_dict)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -224,8 +190,10 @@ class server_create(_init_cyclades, _optional_json):
     @errors.plankton.id
     @errors.cyclades.flavor_id
     def _run(self, name, flavor_id, image_id):
-        self._print([self.client.create_server(
-            name, int(flavor_id), image_id, self['personality'])])
+        self._print(
+            self.client.create_server(
+                name, int(flavor_id), image_id, self['personality']),
+            print_dict)
 
     def main(self, name, flavor_id, image_id):
         super(self.__class__, self)._run()
@@ -328,7 +296,8 @@ class server_console(_init_cyclades, _optional_json):
     @errors.cyclades.connection
     @errors.cyclades.server_id
     def _run(self, server_id):
-        self._print([self.client.get_server_console(int(server_id))])
+        self._print(
+            self.client.get_server_console(int(server_id)), print_dict)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -413,7 +382,7 @@ class server_metadata_list(_init_cyclades, _optional_json):
     @errors.cyclades.metadata
     def _run(self, server_id, key=''):
         self._print(
-            [self.client.get_server_metadata(int(server_id), key)], title=())
+            self.client.get_server_metadata(int(server_id), key), print_dict)
 
     def main(self, server_id, key=''):
         super(self.__class__, self)._run()
@@ -448,8 +417,8 @@ class server_metadata_set(_init_cyclades, _optional_json):
                         '/server metadata set <server id>'
                         'key1=value1 key2=value2'])
         self._print(
-            [self.client.update_server_metadata(int(server_id), **metadata)],
-            title=())
+            self.client.update_server_metadata(int(server_id), **metadata),
+            print_dict)
 
     def main(self, server_id, *key_equals_val):
         super(self.__class__, self)._run()
@@ -481,7 +450,7 @@ class server_stats(_init_cyclades, _optional_json):
     @errors.cyclades.connection
     @errors.cyclades.server_id
     def _run(self, server_id):
-        self._print([self.client.get_server_stats(int(server_id))])
+        self._print(self.client.get_server_stats(int(server_id)), print_dict)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -566,7 +535,8 @@ class flavor_info(_init_cyclades, _optional_json):
     @errors.cyclades.connection
     @errors.cyclades.flavor_id
     def _run(self, flavor_id):
-        self._print([self.client.get_flavor_details(int(flavor_id))])
+        self._print(
+            self.client.get_flavor_details(int(flavor_id)), print_dict)
 
     def main(self, flavor_id):
         super(self.__class__, self)._run()
@@ -579,20 +549,11 @@ class network_info(_init_cyclades, _optional_json):
     To get a list of available networks and network ids, try /network list
     """
 
-    @classmethod
-    def _make_result_pretty(self, net):
-        if 'attachments' in net:
-            att = net['attachments']['values']
-            count = len(att)
-            net['attachments'] = att if count else None
-
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.network_id
     def _run(self, network_id):
         network = self.client.get_network_details(int(network_id))
-        self._make_result_pretty(network)
-        #print_dict(network, exclude=('id'))
         self._print(network, print_dict, exclude=('id'))
 
     def main(self, network_id):
@@ -613,16 +574,10 @@ class network_list(_init_cyclades, _optional_json):
         enum=FlagArgument('Enumerate results', '--enumerate')
     )
 
-    def _make_results_pretty(self, nets):
-        for net in nets:
-            network_info._make_result_pretty(net)
-
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self):
         networks = self.client.list_networks(self['detail'])
-        if self['detail']:
-            self._make_results_pretty(networks)
         kwargs = dict(with_enumeration=self['enum'])
         if self['more']:
             kwargs['page_size'] = self['limit'] or 10
@@ -654,12 +609,12 @@ class network_create(_init_cyclades, _optional_json):
     @errors.cyclades.connection
     @errors.cyclades.network_max
     def _run(self, name):
-        self._print([self.client.create_network(
+        self._print(self.client.create_network(
             name,
             cidr=self['cidr'],
             gateway=self['gateway'],
             dhcp=self['dhcp'],
-            type=self['type'])])
+            type=self['type']), print_dict)
 
     def main(self, name):
         super(self.__class__, self)._run()

@@ -54,6 +54,8 @@ Changes:
     - server: firewall, metadata
 - Add a _format_image_headers method and use it in image_register and get_meta
     for uniform image meta output [#3797]
+- Rename meta-->metadata and remove values @lib [#3633]
+
 
 Features:
 

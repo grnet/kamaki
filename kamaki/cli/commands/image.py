@@ -533,21 +533,14 @@ class image_compute_list(_init_cyclades, _optional_json):
         enum=FlagArgument('Enumerate results', '--enumerate')
     )
 
-    def _make_results_pretty(self, images):
-        for img in images:
-            if 'metadata' in img:
-                img['metadata'] = img['metadata']['values']
-
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self):
         images = self.client.list_images(self['detail'])
-        if self['detail'] and not self['json_output']:
-            self._make_results_pretty(images)
         kwargs = dict(with_enumeration=self['enum'])
         if self['more']:
             kwargs['page_size'] = self['limit'] or 10
-        else:
+        elif self['limit']:
             images = images[:self['limit']]
         self._print(images, **kwargs)
 
@@ -565,9 +558,7 @@ class image_compute_info(_init_cyclades, _optional_json):
     @errors.plankton.id
     def _run(self, image_id):
         image = self.client.get_image_details(image_id)
-        if (not self['json_output']) and 'metadata' in image:
-            image['metadata'] = image['metadata']['values']
-        self._print([image])
+        self._print(image, print_dict)
 
     def main(self, image_id):
         super(self.__class__, self)._run()
