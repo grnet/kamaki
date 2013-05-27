@@ -34,10 +34,11 @@
 from astakosclient import AstakosClient
 
 from kamaki.cli import command
+from kamaki.cli.errors import CLISyntaxError
 from kamaki.cli.commands import _command_init, errors, _optional_json
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.utils import print_dict
-from kamaki.cli.argument import FlagArgument
+from kamaki.cli.argument import FlagArgument, ValueArgument
 from kamaki.cli.logger import add_stream_logger
 
 snfastakos_cmds = CommandTree('astakos', 'astakosclient CLI')
@@ -49,10 +50,15 @@ log = add_stream_logger(__name__)
 
 class _astakos_init(_command_init):
 
+    def __init__(self, arguments=dict()):
+        super(_astakos_init, self).__init__(arguments)
+        self['token'] = ValueArgument('Custom token', '--token')
+
     @errors.generic.all
     #@errors.user.load
     def _run(self):
-        self.token = self.config.get('astakos', 'token')\
+        self.token = self['token']\
+            or self.config.get('astakos', 'token')\
             or self.config.get('user', 'token')\
             or self.config.get('global', 'token')
         base_url = self.config.get('astakos', 'url')\
@@ -80,15 +86,134 @@ class astakos_authenticate(_astakos_init, _optional_json):
         usage=FlagArgument('also return usage information', ('--with-usage'))
     )
 
-    #@errors.generic.all
+    @errors.generic.all
     #@errors.user.authenticate
-    def _run(self, token=None):
+    def _run(self):
         print('KAMAKI LOG: call get_user_info(%s, %s)' % (
-            token or self.token, self['usage']))
+            self.token, self['usage']))
         self._print(
-            self.client.get_user_info(token or self.token, self['usage']),
+            self.client.get_user_info(self.token, self['usage']),
             print_dict)
 
-    def main(self, custom_token=None):
+    def main(self):
         super(self.__class__, self)._run()
-        self._run(custom_token)
+        self._run()
+
+
+@command(snfastakos_cmds)
+class astakos_username(_astakos_init, _optional_json):
+    """Get username(s) from uuid(s)"""
+
+    arguments = dict(
+        service_token=ValueArgument(
+            'Use service token instead', '--service-token')
+    )
+
+    def _run(self, uuids):
+        assert uuids and isinstance(uuids, list), 'No valid uuids'
+        if 1 == len(uuids):
+            self._print(self.client.get_username(self.token, uuids[0]))
+        else:
+            self._print(
+                self.client.get_username(self.token, uuids), print_dict)
+
+    def main(self, uuid, *more_uuids):
+        super(self.__class__, self)._run()
+        self._run([uuid] + list(more_uuids))
+
+
+@command(snfastakos_cmds)
+class astakos_uuid(_astakos_init, _optional_json):
+    """Get uuid(s) from username(s)"""
+
+    def _run(self, usernames):
+        assert usernames and isinstance(usernames, list), 'No valid usernames'
+        if 1 == len(usernames):
+            self._print(self.client.get_uuid(self.token, usernames[0]))
+        else:
+            self._print(
+                self.client.get_uuids(self.token, usernames), print_dict)
+
+    def main(self, usernames, *more_usernames):
+        super(self.__class__, self)._run()
+        self._run([usernames] + list(more_usernames))
+
+
+@command(snfastakos_cmds)
+class astakos_quotas(_astakos_init, _optional_json):
+    """Get user (or service) quotas"""
+
+    def _run(self):
+            self._print(self.client.get_quotas(self.token), print_dict)
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
+
+
+@command(snfastakos_cmds)
+class astakos_services(_astakos_init):
+    """Astakos operations filtered by services"""
+
+
+@command(snfastakos_cmds)
+class astakos_services_list(_astakos_init):
+    """List available services"""
+
+    def _run(self):
+        self._print(self.client.get_services())
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
+
+
+@command(snfastakos_cmds)
+class astakos_services_username(_astakos_init, _optional_json):
+    """Get service username(s) from uuid(s)"""
+
+    def _run(self, stoken, uuids):
+        assert uuids and isinstance(uuids, list), 'No valid uuids'
+        if 1 == len(uuids):
+            self._print(self.client.service_get_username(stoken, uuids[0]))
+        else:
+            self._print(
+                self.client.service_get_usernames(stoken, uuids), print_dict)
+
+    def main(self, service_token, uuid, *more_uuids):
+        super(self.__class__, self)._run()
+        self._run(service_token, [uuid] + list(more_uuids))
+
+
+@command(snfastakos_cmds)
+class astakos_services_uuid(_astakos_init, _optional_json):
+    """Get service uuid(s) from username(s)"""
+
+    def _run(self, stoken, usernames):
+        assert usernames and isinstance(usernames, list), 'No valid usernames'
+        if 1 == len(usernames):
+            self._print(self.client.service_get_uuid(self.token, usernames[0]))
+        else:
+            self._print(
+                self.client.service_get_uuids(self.token, usernames),
+                print_dict)
+
+    def main(self, service_token, usernames, *more_usernames):
+        super(self.__class__, self)._run()
+        self._run(service_token, [usernames] + list(more_usernames))
+
+
+@command(snfastakos_cmds)
+class astakos_services_quotas(_astakos_init, _optional_json):
+    """Get user (or service) quotas"""
+
+    arguments = dict(
+        uuid=ValueArgument('A user unique id to get quotas for', '--uuid')
+    )
+
+    def _run(self, stoken):
+        self._print(self.client.service_get_quotas(stoken, self['uuid']))
+
+    def main(self, service_token):
+        super(self.__class__, self)._run()
+        self._run(service_token)
