@@ -1,4 +1,4 @@
-.TH "KAMAKI" "1" "April 23, 2013" "0.8" "Kamaki"
+.TH "KAMAKI" "1" "May 28, 2013" "0.8" "Kamaki"
 .SH NAME
 kamaki \- Command-line tool for managing clouds
 .
@@ -173,21 +173,37 @@ create    Create a server (aka Virtual Machine)
 .IP \(bu 2
 delete    Delete a server (VM)
 .IP \(bu 2
-delmeta   Delete server (VM) metadata
+.INDENT 2.0
+.TP
+.B firewall  Set the server (VM) firewall profile for public networks
+.INDENT 7.0
 .IP \(bu 2
-firewall  Set the server (VM) firewall profile on VMs public network
+set   Set the firewall profile
+.IP \(bu 2
+get   Get the firewall profile
+.UNINDENT
+.UNINDENT
 .IP \(bu 2
 info      Detailed information on a Virtual Machine
 .IP \(bu 2
 list      List Virtual Machines accessible by user
 .IP \(bu 2
-meta      Get a server\(aqs metadatum
+.INDENT 2.0
+.TP
+.B metadata  Manage a server metadata
+.INDENT 7.0
+.IP \(bu 2
+list      List server metadata
+.IP \(bu 2
+set       Add or update server metadata
+.IP \(bu 2
+delete    Delete a piece of server metadata
+.UNINDENT
+.UNINDENT
 .IP \(bu 2
 reboot    Reboot a server (VM)
 .IP \(bu 2
 rename    Set/update a server (VM) name
-.IP \(bu 2
-setmeta   set server (VM) metadata
 .IP \(bu 2
 shutdown  Shutdown an active server (VM)
 .IP \(bu 2
@@ -207,50 +223,58 @@ info       get flavor details
 .SS image commands
 .INDENT 0.0
 .IP \(bu 2
-addmember     Add a member to an image
+list           List images accessible by user
 .IP \(bu 2
-addproperty   Add an OS\-related property to an image
+meta           Get image metadata
 .IP \(bu 2
-delete        Delete an image (image file remains intact)
+register       (Re)Register an image
 .IP \(bu 2
-delmember     Remove a member from an image
-.IP \(bu 2
-delproperty   Delete a property of an image
-.IP \(bu 2
-info          Get detailed information on an image
-.IP \(bu 2
-members       Get image members
-.IP \(bu 2
-meta          Get image metadata
-.IP \(bu 2
-properties    Get properties related to OS installation in an image
-.IP \(bu 2
-list          List images accessible by user
-.IP \(bu 2
-register      (Re)Register an image
-.IP \(bu 2
-setmembers    Set the members of an image
-.IP \(bu 2
-setproperty   Update an existing property in an image
-.IP \(bu 2
-shared        List images shared by a member
+unregister     Unregister an image (does not delete the image file)
 .IP \(bu 2
 .INDENT 2.0
 .TP
-.B compute       Compute Image API commands
+.B shared         List shared images
 .INDENT 7.0
 .IP \(bu 2
-list          List images
+compute        Compute Image API commands
 .IP \(bu 2
-delete        Delete image
+list       List images
 .IP \(bu 2
-info          Get image details
+delete     Delete image
 .IP \(bu 2
-properties    Get image properties
+info       Get image details
 .IP \(bu 2
-delproperty   Delete an image property
+.INDENT 2.0
+.TP
+.B properties Manage properties related to OS installation in an image
+.INDENT 7.0
 .IP \(bu 2
-setproperty   Update an image property
+add    Add a property to an image
+.IP \(bu 2
+delete Delete a property from an image
+.IP \(bu 2
+get    Get an image property
+.IP \(bu 2
+list   List all image properties
+.IP \(bu 2
+set    Add / update a set of properties for an image
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.UNINDENT
+.IP \(bu 2
+.INDENT 2.0
+.TP
+.B members        Manage members (users who can modify an image)
+.INDENT 7.0
+.IP \(bu 2
+add        Add a member to an image
+.IP \(bu 2
+delete     Remove a member from an image
+.IP \(bu 2
+list       List members of an image
+.IP \(bu 2
+set        Set the members of an image
 .UNINDENT
 .UNINDENT
 .UNINDENT
@@ -274,75 +298,110 @@ rename        Set the name of a network
 .SS file commands
 .INDENT 0.0
 .IP \(bu 2
-append                Append local file to (existing) remote object
+append         Append local file to remote
 .IP \(bu 2
-cat                   Print remote file contents to console
+cat            Print a file to console
 .IP \(bu 2
-copy                  Copy an object from container to (another) container
+copy           Copy an object
 .IP \(bu 2
-create                Create a container
+.INDENT 2.0
+.TP
+.B containerlimit Container size limit commands
+.INDENT 7.0
 .IP \(bu 2
-delete                Delete a container [or an object]
+set        Set container data limit
 .IP \(bu 2
-delgroup              Delete a user group
+get        Get container data limit
+.UNINDENT
+.UNINDENT
 .IP \(bu 2
-delmeta               Delete metadata from account, container or object
+create         Create a container
 .IP \(bu 2
-delpermissions        Delete all permissions set on object
+delete         Delete a container [or an object]
 .IP \(bu 2
-download              Download remote object(s) as local file(s)
+download       Download a file or directory
 .IP \(bu 2
-group                 Get groups and group members
+.INDENT 2.0
+.TP
+.B group          Manage access groups and group members
+.INDENT 7.0
 .IP \(bu 2
-hashmap               Get the hash\-map of an object
+delete     Delete a user group
 .IP \(bu 2
-info                  Get detailed info for account, containers or objects
+list       List groups and group members
 .IP \(bu 2
-list                  List containers, object trees or objects in a directory
+set        Set a user group
+.UNINDENT
+.UNINDENT
 .IP \(bu 2
-manifest              Create a remote file of uploaded parts by manifestation
+hashmap        Get the hashmap of an object
 .IP \(bu 2
-meta                  Get metadata for account, containers or objects
+info           Get information for account [, container [or object]]
 .IP \(bu 2
-mkdir                 Create a directory
+list           List containers, object trees or objects in a directory
 .IP \(bu 2
-move                  Copy an object
+manifest       Create a remote file with uploaded parts by manifestation
 .IP \(bu 2
-overwrite             Overwrite part (from start to end) of a remote file
+.INDENT 2.0
+.TP
+.B metadata       Metadata are attached on objects (key:value pairs)
+.INDENT 7.0
 .IP \(bu 2
-permissions           Get read and write permissions of an object
+delete     Delete metadata with given key
 .IP \(bu 2
-publish               Publish the object and print the public url
+get        Get metadatum
 .IP \(bu 2
-purge                 Delete a container and release related data blocks
+set        Set a piece of metadata
+.UNINDENT
+.UNINDENT
 .IP \(bu 2
-quota                 Get quota (in KB) for account or container
+mkdir          Create a directory
 .IP \(bu 2
-setgroup              Set a user group
+move           Copy an object
 .IP \(bu 2
-setmeta               Set a piece of metadata for account, container or object
+overwrite      Overwrite part (from start to end) of a remote file
 .IP \(bu 2
-setpermissions        Set permissions for an object
+.INDENT 2.0
+.TP
+.B permissions    Manage user and group accessibility for objects
+.INDENT 7.0
 .IP \(bu 2
-containerlimit set    Set new limit for container
+delete     Delete all permissions set on object
 .IP \(bu 2
-containerlimit get    Get container limit
+get        Get read and write permissions of an object
 .IP \(bu 2
-setversioning         Set versioning mode (auto, none) for account or container
+set        Set permissions for an object
+.UNINDENT
+.UNINDENT
 .IP \(bu 2
-sharers               List the accounts that share objects with current user
+publish        Publish an object
 .IP \(bu 2
-touch                 Create an empty object (file)
+purge          Purge a container
 .IP \(bu 2
-truncate              Truncate remote file up to a size
+quota          Get  quota for account
 .IP \(bu 2
-unpublish             Unpublish an object
+sharers        List the accounts that share objects with default account
 .IP \(bu 2
-upload                Upload a file or directory
+touch          Create an empty object (file)
 .IP \(bu 2
-versioning            Get  versioning for account or container
+truncate       Truncate remote file up to a size
 .IP \(bu 2
-versions              Get the list of object versions
+unpublish      Unpublish an object
+.IP \(bu 2
+upload         Upload a file or directory
+.IP \(bu 2
+.INDENT 2.0
+.TP
+.B versioning     Manage the versioning scheme of current pithos user account
+.INDENT 7.0
+.IP \(bu 2
+get        Get  versioning for account or container
+.IP \(bu 2
+set        Set versioning mode (auto, none) for account or container
+.IP \(bu 2
+versions   Get the version list of an object
+.UNINDENT
+.UNINDENT
 .UNINDENT
 .SS test commands (hidden)
 .INDENT 0.0
