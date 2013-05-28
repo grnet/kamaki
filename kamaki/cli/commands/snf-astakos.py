@@ -35,7 +35,7 @@ from astakosclient import AstakosClient
 
 from kamaki.cli import command
 from kamaki.cli.errors import CLISyntaxError
-from kamaki.cli.commands import _command_init, errors, _optional_json
+from kamaki.cli.commands import _command_init, _optional_json
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.utils import print_dict
 from kamaki.cli.argument import FlagArgument, ValueArgument
@@ -54,8 +54,6 @@ class _astakos_init(_command_init):
         super(_astakos_init, self).__init__(arguments)
         self['token'] = ValueArgument('Custom token', '--token')
 
-    @errors.generic.all
-    #@errors.user.load
     def _run(self):
         self.token = self['token']\
             or self.config.get('astakos', 'token')\
@@ -86,14 +84,9 @@ class astakos_authenticate(_astakos_init, _optional_json):
         usage=FlagArgument('also return usage information', ('--with-usage'))
     )
 
-    @errors.generic.all
-    #@errors.user.authenticate
     def _run(self):
-        print('KAMAKI LOG: call get_user_info(%s, %s)' % (
-            self.token, self['usage']))
         self._print(
-            self.client.get_user_info(self.token, self['usage']),
-            print_dict)
+            self.client.get_user_info(self.token, self['usage']), print_dict)
 
     def main(self):
         super(self.__class__, self)._run()
@@ -157,7 +150,7 @@ class astakos_services(_astakos_init):
 
 
 @command(snfastakos_cmds)
-class astakos_services_list(_astakos_init):
+class astakos_services_list(_astakos_init, _optional_json):
     """List available services"""
 
     def _run(self):

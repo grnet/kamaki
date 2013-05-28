@@ -87,6 +87,13 @@ DEFAULTS = {
 }
 
 
+try:
+    import astakosclient
+    DEFAULTS.update(astakos=dict(cli='snf-astakos'))
+except ImportError:
+    pass
+
+
 class Config(RawConfigParser):
     def __init__(self, path=None):
         RawConfigParser.__init__(self, dict_type=OrderedDict)
