@@ -83,4 +83,3 @@ Features:
 - Implement an optional astakosclient cli exposed as "astakos", with the following methods:
     authenticate, uuid, username, quotas, service uuid/username/quotas
 
-
