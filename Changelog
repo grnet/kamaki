@@ -80,4 +80,7 @@ Features:
 - Expand runtime args of image register for managing metadata and metada file
     dumps and loads [#3797]
 - Add server-firewall-get command to get a VMs firewall profile
+- Implement an optional astakosclient cli exposed as "astakos", with the following methods:
+    authenticate, uuid, username, quotas, service uuid/username/quotas
+
 
