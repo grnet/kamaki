@@ -62,7 +62,7 @@ vm_recv = dict(server=dict(
     suspended=False,
     progress=0,
     id=31173,
-    metadata=dict(values=dict(os="debian", users="root"))))
+    metadata=dict(os="debian", users="root")))
 img_recv = dict(image=dict(
     status="ACTIVE",
     updated="2013-02-26T11:10:14+00:00",
@@ -70,7 +70,7 @@ img_recv = dict(image=dict(
     created="2013-02-26T11:03:29+00:00",
     progress=100,
     id=img_ref,
-    metadata=dict(values=dict(
+    metadata=dict(
         partition_table="msdos",
         kernel="2.6.32",
         osfamily="linux",
@@ -79,15 +79,15 @@ img_recv = dict(image=dict(
         sortorder="1",
         os="debian",
         root_partition="1",
-        description="Debian 6.0.7 (Squeeze) Base System"))))
-vm_list = dict(servers=dict(values=[
+        description="Debian 6.0.7 (Squeeze) Base System")))
+vm_list = dict(servers=[
     dict(name='n1', id=1),
-    dict(name='n2', id=2)]))
-flavor_list = dict(flavors=dict(values=[
+    dict(name='n2', id=2)])
+flavor_list = dict(flavors=[
     dict(id=41, name="C1R1024D20"),
     dict(id=42, name="C1R1024D40"),
-    dict(id=43, name="C1R1028D20")]))
-img_list = dict(images=dict(values=[
+    dict(id=43, name="C1R1028D20")])
+img_list = dict(images=[
     dict(name="maelstrom", id="0fb03e45-7d5a-4515-bd4e-e6bbf6457f06"),
     dict(name="edx_saas", id="1357163d-5fd8-488e-a117-48734c526206"),
     dict(name="Debian_Wheezy_Base", id="1f8454f0-8e3e-4b6c-ab8e-5236b728dffe"),
@@ -95,7 +95,7 @@ img_list = dict(images=dict(values=[
     dict(name="Ubuntu Desktop", id="37bc522c-c479-4085-bfb9-464f9b9e2e31"),
     dict(name="Ubuntu 12.10", id="3a24fef9-1a8c-47d1-8f11-e07bd5e544fd"),
     dict(name="Debian Base", id="40ace203-6254-4e17-a5cb-518d55418a7d"),
-    dict(name="ubuntu_bundled", id="5336e265-5c7c-4127-95cb-2bf832a79903")]))
+    dict(name="ubuntu_bundled", id="5336e265-5c7c-4127-95cb-2bf832a79903")])
 
 
 class FR(object):
@@ -282,7 +282,7 @@ class ComputeClient(TestCase):
             r = self.client.list_servers(detail)
             self.assertEqual(SG.mock_calls[-1], call(
                 command='detail' if detail else ''))
-            for i, vm in enumerate(vm_list['servers']['values']):
+            for i, vm in enumerate(vm_list['servers']):
                 self.assert_dicts_are_equal(r[i], vm)
             self.assertEqual(i + 1, len(r))
 
@@ -314,28 +314,29 @@ class ComputeClient(TestCase):
     def test_create_server_metadata(self, SP):
         vm_id = vm_recv['server']['id']
         metadata = dict(m1='v1', m2='v2', m3='v3')
-        FR.json = dict(meta=vm_recv['server'])
+        FR.json = dict(metadata=vm_recv['server'])
         for k, v in metadata.items():
             r = self.client.create_server_metadata(vm_id, k, v)
             self.assert_dicts_are_equal(r, vm_recv['server'])
             self.assertEqual(SP.mock_calls[-1], call(
-                vm_id, 'meta/%s' % k,
-                json_data=dict(meta={k: v}), success=201))
+                vm_id, 'metadata/%s' % k,
+                json_data=dict(metadata={k: v}), success=201))
 
     @patch('%s.servers_get' % compute_pkg, return_value=FR())
     def test_get_server_metadata(self, SG):
         vm_id = vm_recv['server']['id']
         metadata = dict(m1='v1', m2='v2', m3='v3')
-        FR.json = dict(metadata=dict(values=metadata))
+        FR.json = dict(metadata=metadata)
         r = self.client.get_server_metadata(vm_id)
-        SG.assert_called_once_with(vm_id, '/meta')
+        SG.assert_called_once_with(vm_id, '/metadata')
         self.assert_dicts_are_equal(r, metadata)
 
         for k, v in metadata.items():
-            FR.json = dict(meta={k: v})
+            FR.json = dict(metadata={k: v})
             r = self.client.get_server_metadata(vm_id, k)
             self.assert_dicts_are_equal(r, {k: v})
-            self.assertEqual(SG.mock_calls[-1], call(vm_id, '/meta/%s' % k))
+            self.assertEqual(
+                SG.mock_calls[-1], call(vm_id, '/metadata/%s' % k))
 
     @patch('%s.servers_post' % compute_pkg, return_value=FR())
     def test_update_server_metadata(self, SP):
@@ -345,7 +346,7 @@ class ComputeClient(TestCase):
         r = self.client.update_server_metadata(vm_id, **metadata)
         self.assert_dicts_are_equal(r, metadata)
         SP.assert_called_once_with(
-            vm_id, 'meta',
+            vm_id, 'metadata',
             json_data=dict(metadata=metadata), success=201)
 
     @patch('%s.servers_delete' % compute_pkg, return_value=FR())
@@ -353,7 +354,7 @@ class ComputeClient(TestCase):
         vm_id = vm_recv['server']['id']
         key = 'metakey'
         self.client.delete_server_metadata(vm_id, key)
-        SD.assert_called_once_with(vm_id, 'meta/' + key)
+        SD.assert_called_once_with(vm_id, 'metadata/' + key)
 
     @patch('%s.flavors_get' % compute_pkg, return_value=FR())
     def test_list_flavors(self, FG):
@@ -361,14 +362,14 @@ class ComputeClient(TestCase):
         for cmd in ('', 'detail'):
             r = self.client.list_flavors(detail=(cmd == 'detail'))
             self.assertEqual(FG.mock_calls[-1], call(command=cmd))
-            self.assert_dicts_are_equal(dict(values=r), flavor_list['flavors'])
+            self.assertEqual(r, flavor_list['flavors'])
 
     @patch('%s.flavors_get' % compute_pkg, return_value=FR())
     def test_get_flavor_details(self, FG):
-        FR.json = dict(flavor=flavor_list['flavors'])
+        FR.json = dict(flavor=flavor_list['flavors'][0])
         r = self.client.get_flavor_details(fid)
         FG.assert_called_once_with(fid)
-        self.assert_dicts_are_equal(r, flavor_list['flavors'])
+        self.assert_dicts_are_equal(r, flavor_list['flavors'][0])
 
     @patch('%s.images_get' % compute_pkg, return_value=FR())
     def test_list_images(self, IG):
@@ -376,7 +377,7 @@ class ComputeClient(TestCase):
         for cmd in ('', 'detail'):
             r = self.client.list_images(detail=(cmd == 'detail'))
             self.assertEqual(IG.mock_calls[-1], call(command=cmd))
-            expected = img_list['images']['values']
+            expected = img_list['images']
             for i in range(len(r)):
                 self.assert_dicts_are_equal(expected[i], r[i])
 
@@ -390,12 +391,12 @@ class ComputeClient(TestCase):
     @patch('%s.images_get' % compute_pkg, return_value=FR())
     def test_get_image_metadata(self, IG):
         for key in ('', '50m3k3y'):
-            FR.json = dict(meta=img_recv['image']) if (
-                key) else dict(metadata=dict(values=img_recv['image']))
+            FR.json = dict(metadata=img_recv['image']) if (
+                key) else dict(metadata=img_recv['image'])
             r = self.client.get_image_metadata(img_ref, key)
             self.assertEqual(IG.mock_calls[-1], call(
                 '%s' % img_ref,
-                '/meta%s' % (('/%s' % key) if key else '')))
+                '/metadata%s' % (('/%s' % key) if key else '')))
             self.assert_dicts_are_equal(img_recv['image'], r)
 
     @patch('%s.servers_delete' % compute_pkg, return_value=FR())
@@ -412,11 +413,11 @@ class ComputeClient(TestCase):
     @patch('%s.images_put' % compute_pkg, return_value=FR())
     def test_create_image_metadata(self, IP):
         (key, val) = ('k1', 'v1')
-        FR.json = dict(meta=img_recv['image'])
+        FR.json = dict(metadata=img_recv['image'])
         r = self.client.create_image_metadata(img_ref, key, val)
         IP.assert_called_once_with(
-            img_ref, 'meta/%s' % key,
-            json_data=dict(meta={key: val}))
+            img_ref, 'metadata/%s' % key,
+            json_data=dict(metadata={key: val}))
         self.assert_dicts_are_equal(r, img_recv['image'])
 
     @patch('%s.images_post' % compute_pkg, return_value=FR())
@@ -425,7 +426,7 @@ class ComputeClient(TestCase):
         FR.json = dict(metadata=metadata)
         r = self.client.update_image_metadata(img_ref, **metadata)
         IP.assert_called_once_with(
-            img_ref, 'meta',
+            img_ref, 'metadata',
             json_data=dict(metadata=metadata))
         self.assert_dicts_are_equal(r, metadata)
 
@@ -433,7 +434,7 @@ class ComputeClient(TestCase):
     def test_delete_image_metadata(self, ID):
         key = 'metakey'
         self.client.delete_image_metadata(img_ref, key)
-        ID.assert_called_once_with(img_ref, '/meta/%s' % key)
+        ID.assert_called_once_with(img_ref, '/metadata/%s' % key)
 
 
 if __name__ == '__main__':

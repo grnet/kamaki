@@ -393,22 +393,22 @@ class Pithos(livetest.Generic):
     def _test_0050_container_put(self):
         self.client.container = self.c2
 
-        r = self.client.container_put()
-        self.assertEqual(r.status_code, 202)
+        r = self.client.create_container()
+        self.assertTrue(isinstance(r, dict))
 
         r = self.client.get_container_limit(self.client.container)
         cquota = r.values()[0]
         newquota = 2 * int(cquota)
 
-        r = self.client.container_put(quota=newquota)
-        self.assertEqual(r.status_code, 202)
+        r = self.client.create_container(sizelimit=newquota)
+        self.assertTrue(isinstance(r, dict))
 
         r = self.client.get_container_limit(self.client.container)
         xquota = int(r.values()[0])
         self.assertEqual(newquota, xquota)
 
-        r = self.client.container_put(versioning='auto')
-        self.assertEqual(r.status_code, 202)
+        r = self.client.create_container(versioning='auto')
+        self.assertTrue(isinstance(r, dict))
 
         r = self.client.get_container_versioning(self.client.container)
         nvers = r.values()[0]
@@ -421,8 +421,8 @@ class Pithos(livetest.Generic):
         nvers = r.values()[0]
         self.assertEqual('none', nvers)
 
-        r = self.client.container_put(metadata={'m1': 'v1', 'm2': 'v2'})
-        self.assertEqual(r.status_code, 202)
+        r = self.client.create_container(metadata={'m1': 'v1', 'm2': 'v2'})
+        self.assertTrue(isinstance(r, dict))
 
         r = self.client.get_container_meta(self.client.container)
         self.assertTrue('x-container-meta-m1' in r)
@@ -496,7 +496,9 @@ class Pithos(livetest.Generic):
         f = self.create_large_file(1024 * 1024 * 100)
         """Upload it at a directory in container"""
         self.client.create_directory('dir')
-        self.client.upload_object('/dir/sample.file', f)
+        r = self.client.upload_object('/dir/sample.file', f)
+        for term in ('content-length', 'content-type', 'x-object-version'):
+            self.assertTrue(term in r)
         """Check if file has been uploaded"""
         r = self.client.get_object_info('/dir/sample.file')
         self.assertTrue(int(r['content-length']) > 100000000)
@@ -661,27 +663,49 @@ class Pithos(livetest.Generic):
             self.assertNotEqual(sc1, sc2)
 
         """Upload an object to download"""
+        container_info_cache = dict()
         trg_fname = 'remotefile_%s' % self.now
         f_size = 59247824
         src_f = self.create_large_file(f_size)
         print('\tUploading...')
-        self.client.upload_object(trg_fname, src_f)
+        r = self.client.upload_object(
+            trg_fname, src_f,
+            container_info_cache=container_info_cache)
         print('\tDownloading...')
         self.files.append(NamedTemporaryFile())
         dnl_f = self.files[-1]
         self.client.download_object(trg_fname, dnl_f)
 
         print('\tCheck if files match...')
-        for pos in (0, f_size / 2, f_size - 20):
+        for pos in (0, f_size / 2, f_size - 128):
             src_f.seek(pos)
             dnl_f.seek(pos)
-            self.assertEqual(src_f.read(10), dnl_f.read(10))
+            self.assertEqual(src_f.read(64), dnl_f.read(64))
+
+        print('\tDownload KiBs to string and check again...')
+        for pos in (0, f_size / 2, f_size - 256):
+            src_f.seek(pos)
+            tmp_s = self.client.download_to_string(
+                trg_fname,
+                range_str='%s-%s' % (pos, (pos + 128)))
+            self.assertEqual(tmp_s, src_f.read(len(tmp_s)))
+        print('\tUploading KiBs as strings...')
+        trg_fname = 'fromString_%s' % self.now
+        src_size = 2 * 1024
+        src_f.seek(0)
+        src_str = src_f.read(src_size)
+        self.client.upload_from_string(trg_fname, src_str)
+        print('\tDownload as string and check...')
+        tmp_s = self.client.download_to_string(trg_fname)
+        self.assertEqual(tmp_s, src_str)
 
         """Upload a boring file"""
         trg_fname = 'boringfile_%s' % self.now
         src_f = self.create_boring_file(42)
         print('\tUploading boring file...')
-        self.client.upload_object(trg_fname, src_f)
+        self.client.upload_object(
+            trg_fname, src_f,
+            container_info_cache=container_info_cache)
         print('\tDownloading boring file...')
         self.files.append(NamedTemporaryFile())
         dnl_f = self.files[-1]
@@ -1137,8 +1161,8 @@ class Pithos(livetest.Generic):
         """Check permissions"""
         self.client.set_object_sharing(
             obj,
-            read_permition=['u4', 'u5'],
-            write_permition=['u4'])
+            read_permission=['u4', 'u5'],
+            write_permission=['u4'])
         r = self.client.get_object_sharing(obj)
         self.assertTrue('read' in r)
         self.assertTrue('u5' in r['read'])

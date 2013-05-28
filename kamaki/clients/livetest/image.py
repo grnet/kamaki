@@ -51,7 +51,6 @@ class Image(livetest.Generic):
 
         self.imgname = 'img_%s' % self.now
         url = self['image', 'url']
-        print('::::%s::::' % url)
         self.client = ImageClient(url, self['token'])
         cyclades_url = self['compute', 'url']
         self.cyclades = CycladesClient(cyclades_url, self['token'])
@@ -86,7 +85,7 @@ class Image(livetest.Generic):
             self.location,
             params=dict(is_public=True))
         self._imglist[self.imgname] = dict(
-            name=r['x-image-meta-name'], id=r['x-image-meta-id'])
+            name=r['name'], id=r['id'])
         self._imgdetails[self.imgname] = r
 
     def tearDown(self):
@@ -155,7 +154,7 @@ class Image(livetest.Generic):
                     'properties',
                     'size'):
                 self.assertTrue(term in img)
-                if img['properties']:
+                if len(img['properties']):
                     for interm in ('osfamily', 'users', 'root_partition'):
                         self.assertTrue(interm in img['properties'])
         size_max = 1000000000
@@ -186,13 +185,14 @@ class Image(livetest.Generic):
                 'container-format'):
             self.assertTrue(term in r)
             for interm in (
-                    'kernel',
-                    'osfamily',
-                    'users',
-                    'gui', 'sortorder',
-                    'root-partition',
-                    'os',
-                    'description'):
+                    'KERNEL',
+                    'OSFAMILY',
+                    'USERS',
+                    'GUI',
+                    'SORTORDER',
+                    'ROOT_PARTITION',
+                    'OS',
+                    'DESCRIPTION'):
                 self.assertTrue(interm in r['properties'])
 
     def test_register(self):
@@ -205,8 +205,24 @@ class Image(livetest.Generic):
         for img in self._imglist.values():
             self.assertTrue(img is not None)
             r = set(self._imgdetails[img['name']].keys())
-            self.assertTrue(
-                r.issubset(['x-image-meta-%s' % k for k in IMGMETA]))
+            self.assertTrue(r.issubset(IMGMETA.union(['properties'])))
+
+    def test_unregister(self):
+        """Test unregister"""
+        self._prepare_img()
+        self._test_unregister()
+
+    def _test_unregister(self):
+        try:
+            for img in self._imglist.values():
+                self.client.unregister(img['id'])
+                self._prepare_img()
+                break
+        except ClientError as ce:
+            if ce.status in (405,):
+                print 'IMAGE UNREGISTER is not supported by server: %s' % ce
+            else:
+                raise
 
     def test_set_members(self):
         """Test set_members"""

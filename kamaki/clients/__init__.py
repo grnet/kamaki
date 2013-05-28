@@ -31,7 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from urllib2 import quote
+from urllib2 import quote, unquote
 from urlparse import urlparse
 from threading import Thread
 from json import dumps, loads
@@ -39,18 +39,17 @@ from time import time
 from httplib import ResponseNotReady
 from time import sleep
 from random import random
+from logging import getLogger
 
 from objpool.http import PooledHTTPConnection
 
-from kamaki.logger import add_file_logger, get_log_filename, get_logger
 
 TIMEOUT = 60.0   # seconds
 HTTP_METHODS = ['GET', 'POST', 'PUT', 'HEAD', 'DELETE', 'COPY', 'MOVE']
 
-log = add_file_logger(__name__)
-log.debug('Logging location: %s' % get_log_filename())
-sendlog = get_logger('%s.send' % __name__)
-recvlog = get_logger('%s.recv' % __name__)
+log = getLogger(__name__)
+sendlog = getLogger('%s.send' % __name__)
+recvlog = getLogger('%s.recv' % __name__)
 
 
 def _encode(v):
@@ -213,13 +212,14 @@ class ResponseManager(Logged):
                 recvlog.info('\n%s <-- %s <-- [req: %s]\n' % (
                     self, r, self.request))
                 self._request_performed = True
-                self._status_code, self._status = r.status, r.reason
+                self._status_code, self._status = r.status, unquote(r.reason)
                 recvlog.info(
                     '%d %s\t[p: %s]' % (self.status_code, self.status, self))
                 self._headers = dict()
                 for k, v in r.getheaders():
                     if (not self.LOG_TOKEN) and k.lower() == 'x-auth-token':
                         continue
+                    v = unquote(v)
                     self._headers[k] = v
                     recvlog.info('  %s: %s\t[p: %s]' % (k, v, self))
                 self._content = r.read()

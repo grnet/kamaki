@@ -81,7 +81,7 @@ class AstakosClient(TestCase):
     @patch('%s.get' % astakos_pkg, return_value=FR())
     def _authenticate(self, get):
         r = self.client.authenticate()
-        self.assertEqual(get.mock_calls[-1], call('/im/authenticate'))
+        self.assertEqual(get.mock_calls[-1], call('/astakos/api/authenticate'))
         self.cached = True
         return r
 

@@ -33,8 +33,7 @@
 
 from kamaki.cli import command
 from kamaki.clients.astakos import AstakosClient
-from kamaki.cli.utils import print_dict
-from kamaki.cli.commands import _command_init, errors
+from kamaki.cli.commands import _command_init, errors, _optional_json
 from kamaki.cli.command_tree import CommandTree
 
 user_cmds = CommandTree('user', 'Astakos API commands')
@@ -59,7 +58,7 @@ class _user_init(_command_init):
 
 
 @command(user_cmds)
-class user_authenticate(_user_init):
+class user_authenticate(_user_init, _optional_json):
     """Authenticate a user
     Get user information (e.g. unique account name) from token
     Token should be set in settings:
@@ -72,8 +71,9 @@ class user_authenticate(_user_init):
     @errors.user.authenticate
     def _run(self, custom_token=None):
         super(self.__class__, self)._run()
-        reply = self.client.authenticate(custom_token)
-        print_dict(reply)
+        self._print(
+            [self.client.authenticate(custom_token)],
+            title=('uuid', 'name',), with_redundancy=True)
 
     def main(self, custom_token=None):
         self._run(custom_token)

@@ -386,7 +386,7 @@ class plankton(object):
         def _raise(self, *args, **kwargs):
             key = kwargs.get('key', None)
             try:
-                foo(self, *args, **kwargs)
+                return foo(self, *args, **kwargs)
             except ClientError as ce:
                 ce_msg = ('%s' % ce).lower()
                 if ce.status == 404 or (

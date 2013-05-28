@@ -45,17 +45,23 @@ class CycladesClient(CycladesRestClient):
         """Submit a startup request
 
         :param server_id: integer (str or int)
+
+        :returns: (dict) response headers
         """
         req = {'start': {}}
-        self.servers_post(server_id, 'action', json_data=req, success=202)
+        r = self.servers_post(server_id, 'action', json_data=req, success=202)
+        return r.headers
 
     def shutdown_server(self, server_id):
         """Submit a shutdown request
 
         :param server_id: integer (str or int)
+
+        :returns: (dict) response headers
         """
         req = {'shutdown': {}}
-        self.servers_post(server_id, 'action', json_data=req, success=202)
+        r = self.servers_post(server_id, 'action', json_data=req, success=202)
+        return r.headers
 
     def get_server_console(self, server_id):
         """
@@ -77,7 +83,7 @@ class CycladesClient(CycladesRestClient):
         """
         r = self.get_server_details(server_id)
         try:
-            return r['attachments']['values'][0]['firewallProfile']
+            return r['attachments'][0]['firewallProfile']
         except KeyError:
             raise ClientError(
                 'No Firewall Profile',
@@ -89,9 +95,12 @@ class CycladesClient(CycladesRestClient):
         :param server_id: integer (str or int)
 
         :param profile: (str) ENABLED | DISABLED | PROTECTED
+
+        :returns: (dict) response headers
         """
         req = {'firewallProfile': {'profile': profile}}
-        self.servers_post(server_id, 'action', json_data=req, success=202)
+        r = self.servers_post(server_id, 'action', json_data=req, success=202)
+        return r.headers
 
     def list_servers(self, detail=False, changes_since=None):
         """
@@ -103,7 +112,7 @@ class CycladesClient(CycladesRestClient):
         """
         detail = 'detail' if detail else ''
         r = self.servers_get(command=detail, changes_since=changes_since)
-        return r.json['servers']['values']
+        return r.json['servers']
 
     def list_server_nics(self, server_id):
         """
@@ -112,7 +121,7 @@ class CycladesClient(CycladesRestClient):
         :returns: (dict) network interface connections
         """
         r = self.servers_get(server_id, 'ips')
-        return r.json['addresses']['values']
+        return r.json['addresses']
 
     def get_server_stats(self, server_id):
         """
@@ -131,7 +140,7 @@ class CycladesClient(CycladesRestClient):
         """
         detail = 'detail' if detail else ''
         r = self.networks_get(command=detail)
-        return r.json['networks']['values']
+        return r.json['networks']
 
     def list_network_nics(self, network_id):
         """
@@ -140,7 +149,7 @@ class CycladesClient(CycladesRestClient):
         :returns: (list)
         """
         r = self.networks_get(network_id=network_id)
-        return r.json['network']['attachments']['values']
+        return r.json['network']['attachments']
 
     def create_network(
             self, name,
@@ -184,18 +193,24 @@ class CycladesClient(CycladesRestClient):
         :param network_id: integer (str or int)
 
         :param new_name: (str)
+
+        :returns: (dict) response headers
         """
         req = {'network': {'name': new_name}}
-        self.networks_put(network_id=network_id, json_data=req)
+        r = self.networks_put(network_id=network_id, json_data=req)
+        return r.headers
 
     def delete_network(self, network_id):
         """
         :param network_id: integer (str or int)
 
+        :returns: (dict) response headers
+
         :raises ClientError: 421 Network in use
         """
         try:
-            self.networks_delete(network_id)
+            r = self.networks_delete(network_id)
+            return r.headers
         except ClientError as err:
             if err.status == 421:
                 err.details = [
@@ -208,9 +223,12 @@ class CycladesClient(CycladesRestClient):
         :param server_id: integer (str or int)
 
         :param network_id: integer (str or int)
+
+        :returns: (dict) response headers
         """
         req = {'add': {'serverRef': server_id}}
-        self.networks_post(network_id, 'action', json_data=req)
+        r = self.networks_post(network_id, 'action', json_data=req)
+        return r.headers
 
     def disconnect_server(self, server_id, nic_id):
         """

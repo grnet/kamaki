@@ -64,22 +64,26 @@ image (Plankton commands + Compute Image subcommands)
 
 .. code-block:: text
 
-    addmember  :  Add a member to an image
-    addproperty:  Add an image property
-    delmember  :  Remove a member from an image
     list       :  List images accessible by user
-    members    :  Get image members
     meta       :  Get image metadata
     register   :  (Re)Register an image
-    setmembers :  Set the members of an image
+    unregister :  Unregister an image (does not delete the image file)
     shared     :  List shared images
     compute    :  Compute Image API commands
         list       :  List images
         delete     :  Delete image
         info       :  Get image details
-        properties :  Get image properties
-        delproperty:  Delete an image property
-        setproperty:  Update an image property
+        properties :  Manage properties related to OS installation in an image
+            add   :  Add a property to an image
+            delete:  Delete a property from an image
+            get   :  Get an image property
+            list  :  List all image properties
+            set   :  Add / update a set of properties for an image
+    members    :  Manage members (users who can modify an image)
+        add    :  Add a member to an image
+        delete :  Remove a member from an image
+        list   :  List members of an image
+        set    :  Set the members of an image
 
 Showcase: Pick an image and list the properties
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -133,19 +137,22 @@ server (Compute/Cyclades)
 
 .. code-block:: text
 
-    addmeta :  Add server metadata
     addr    :  List a server's nic address
     console :  Get a VNC console
     create  :  Create a server
     delete  :  Delete a server
-    delmeta :  Delete server metadata
-    firewall:  Set the server's firewall profile
+    firewall:  Manage server's firewall profile
+        set :  Set the server's firewall profile
+        get :  Get the server's firewall profile
     info    :  Get server details
     list    :  List servers
+    metadata:  Manage Server Metadata
+        list  :  List server metadata
+        set   :  Add / update server metadata
+        delete:  Delete a piece of server metadata
     meta    :  Get a server's metadata
     reboot  :  Reboot a server
     rename  :  Update a server's name
-    setmeta :  Update server's metadata
     shutdown:  Shutdown a server
     start   :  Start a server
     stats   :  Get server statistics
@@ -311,38 +318,42 @@ file (Storage/Pithos+)
     append        :  Append local file to remote
     cat           :  Print a file to console
     copy          :  Copy an object
+    containerlimit:  Container size limit commands
+        set       :  Set container data limit
+        get       :  Get container data limit
     create        :  Create a container
     delete        :  Delete a container [or an object]
-    delgroup      :  Delete a user group
-    delmeta       :  Delete an existing metadatum for an account [, container [or object]]
-    delpermissions:  Delete all sharing permissions
     download      :  Download a file or directory
-    group         :  Get user groups details
+    group         :  Manage access groups and group members
+        delete:  Delete a user group
+        list  :  List groups and group members
+        set   :  Set a user group
     hashmap       :  Get the hashmap of an object
     info          :  Get information for account [, container [or object]]
     list          :  List containers, object trees or objects in a directory
     manifest      :  Create a remote file with uploaded parts by manifestation
-    meta          :  Get custom meta-content for account [, container [or object]]
+    metadata      :  Metadata are attached on objects (key:value pairs)
+        delete:  Delete metadata with given key
+        get   :  Get metadatum
+        set   :  Set a piece of metadata
     mkdir         :  Create a directory
     move          :  Copy an object
     overwrite     :  Overwrite part (from start to end) of a remote file
-    permissions   :  Get object read/write permissions
+    permissions   :  Manage user and group accessibility for objects
+        delete:  Delete all permissions set on object
+        get   :  Get read and write permissions of an object
+        set   :  Set permissions for an object
     publish       :  Publish an object
     purge         :  Purge a container
     quota         :  Get  quota for account
-    setgroup      :  Create/update a new user group
-    setmeta       :  Set a new metadatum for account [, container [or object]]
-    setpermissions:  Set sharing permissions
-    containerlimit:  Container size limit commands
-        set       :  Set container data limit
-        get       :  Get container data limit
-    setversioning :  Set new versioning (auto, none) for account [or container]
     sharers       :  List the accounts that share objects with default account
     touch         :  Create an empty object (file)
     truncate      :  Truncate remote file up to a size
     unpublish     :  Unpublish an object
     upload        :  Upload a file or directory
-    versioning    :  Get  versioning for account [or container ]
+    versioning    :  Manage the versioning scheme of current pithos user account
+        get:  Get  versioning for account or container
+        set:  Set versioning mode (auto, none) for account or container
     versions      :  Get the version list of an object
 
 Showcase: Upload and download a file

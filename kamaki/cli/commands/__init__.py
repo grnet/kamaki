@@ -31,9 +31,11 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-from kamaki.logger import get_logger
+from kamaki.cli.logger import get_logger
+from kamaki.cli.utils import print_json, print_items
+from kamaki.cli.argument import FlagArgument
 
-log = get_logger('kamaki.cli')
+log = get_logger(__name__)
 
 
 class _command_init(object):
@@ -41,10 +43,13 @@ class _command_init(object):
     def __init__(self, arguments={}):
         if hasattr(self, 'arguments'):
             arguments.update(self.arguments)
+        if isinstance(self, _optional_output_cmd):
+            arguments.update(self.oo_arguments)
+        if isinstance(self, _optional_json):
+            arguments.update(self.oj_arguments)
         self.arguments = dict(arguments)
         try:
             self.config = self['config']
-            #self.config = self.get_argument('config')
         except KeyError:
             pass
 
@@ -54,9 +59,8 @@ class _command_init(object):
                 self['config'].get('global', 'log_token') == 'on',
                 self['config'].get('global', 'log_data') == 'on')
         except Exception as e:
-            log.warning('Failed to read custom log settings: %s' % e)
-            log.warning('\tdefaults for token and data logging are off')
-            pass
+            log.warning('Failed to read custom log settings:'
+                '%s\n defaults for token and data logging are off' % e)
 
     def _update_max_threads(self):
         try:
@@ -64,10 +68,9 @@ class _command_init(object):
             assert max_threads > 0
             self.client.MAX_THREADS = max_threads
         except Exception as e:
-            log.warning('Failed to read custom thread settings: %s' % e)
-            log.warning(
-                '\tdefault for max threads is %s' % self.client.MAX_THREADS)
-            pass
+            log.warning('Failed to read custom thread settings: '
+                '%s, use default max threads (%s)' % (
+                    e, self.client.MAX_THREADS))
 
     def _safe_progress_bar(self, msg, arg='progress_bar'):
         """Try to get a progress bar, but do not raise errors"""
@@ -126,3 +129,33 @@ class _command_init(object):
         :raises KeyError: if argterm not in self.arguments of this object
         """
         return self[argterm]
+
+
+#  feature classes - inherit them to get special features for your commands
+
+
+class _optional_output_cmd(object):
+
+    oo_arguments = dict(
+        with_output=FlagArgument('show response headers', ('--with-output')),
+        json_output=FlagArgument('show headers in json', ('-j', '--json'))
+    )
+
+    def _optional_output(self, r):
+        if self['json_output']:
+            print_json(r)
+        elif self['with_output']:
+            print_items([r] if isinstance(r, dict) else r)
+
+
+class _optional_json(object):
+
+    oj_arguments = dict(
+        json_output=FlagArgument('show headers in json', ('-j', '--json'))
+    )
+
+    def _print(self, output, print_method=print_items, **print_method_kwargs):
+        if self['json_output']:
+            print_json(output)
+        else:
+            print_method(output, **print_method_kwargs)
