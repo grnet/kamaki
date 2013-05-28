@@ -83,7 +83,7 @@ class CycladesClient(CycladesRestClient):
         """
         r = self.get_server_details(server_id)
         try:
-            return r['attachments']['values'][0]['firewallProfile']
+            return r['attachments'][0]['firewallProfile']
         except KeyError:
             raise ClientError(
                 'No Firewall Profile',
@@ -112,7 +112,7 @@ class CycladesClient(CycladesRestClient):
         """
         detail = 'detail' if detail else ''
         r = self.servers_get(command=detail, changes_since=changes_since)
-        return r.json['servers']['values']
+        return r.json['servers']
 
     def list_server_nics(self, server_id):
         """
@@ -121,7 +121,7 @@ class CycladesClient(CycladesRestClient):
         :returns: (dict) network interface connections
         """
         r = self.servers_get(server_id, 'ips')
-        return r.json['addresses']['values']
+        return r.json['addresses']
 
     def get_server_stats(self, server_id):
         """
@@ -140,7 +140,7 @@ class CycladesClient(CycladesRestClient):
         """
         detail = 'detail' if detail else ''
         r = self.networks_get(command=detail)
-        return r.json['networks']['values']
+        return r.json['networks']
 
     def list_network_nics(self, network_id):
         """
@@ -149,7 +149,7 @@ class CycladesClient(CycladesRestClient):
         :returns: (list)
         """
         r = self.networks_get(network_id=network_id)
-        return r.json['network']['attachments']['values']
+        return r.json['network']['attachments']
 
     def create_network(
             self, name,

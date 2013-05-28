@@ -52,10 +52,10 @@ vm_recv = dict(server=dict(
     suspended=False,
     progress=0,
     id=31173,
-    metadata=dict(values=dict(os="debian", users="root"))))
-vm_list = dict(servers=dict(values=[
+    metadata=dict(os="debian", users="root")))
+vm_list = dict(servers=[
     dict(name='n1', id=1),
-    dict(name='n2', id=2)]))
+    dict(name='n2', id=2)])
 net_send = dict(network=dict(dhcp=False, name='someNet'))
 net_recv = dict(network=dict(
     status="PENDING",
@@ -70,13 +70,13 @@ net_recv = dict(network=dict(
     cidr="192.168.1.0/24",
     type="MAC_FILTERED",
     gateway=None,
-    attachments=dict(values=[dict(name='att1'), dict(name='att2')])))
-net_list = dict(networks=dict(values=[
+    attachments=[dict(name='att1'), dict(name='att2')]))
+net_list = dict(networks=[
     dict(id=1, name='n1'),
     dict(id=2, name='n2'),
-    dict(id=3, name='n3')]))
-firewalls = dict(attachments=dict(values=[
-    dict(firewallProfile='50m3_pr0f1L3', otherStuff='57uff')]))
+    dict(id=3, name='n3')])
+firewalls = dict(attachments=[
+    dict(firewallProfile='50m3_pr0f1L3', otherStuff='57uff')])
 
 
 class FR(object):
@@ -233,7 +233,7 @@ class CycladesClient(TestCase):
             self.assertEqual(SG.mock_calls[-1], call(
                 command='detail' if detail else '',
                 changes_since=since))
-            expected = vm_list['servers']['values']
+            expected = vm_list['servers']
             for i, vm in enumerate(r):
                 self.assert_dicts_are_equal(vm, expected[i])
             self.assertEqual(i + 1, len(expected))
@@ -267,7 +267,7 @@ class CycladesClient(TestCase):
 
     def test_get_firewall_profile(self):
         vm_id = vm_recv['server']['id']
-        v = firewalls['attachments']['values'][0]['firewallProfile']
+        v = firewalls['attachments'][0]['firewallProfile']
         with patch.object(
                 cyclades.CycladesClient, 'get_server_details',
                 return_value=firewalls) as GSD:
@@ -285,7 +285,7 @@ class CycladesClient(TestCase):
     @patch('%s.servers_post' % cyclades_pkg, return_value=FR())
     def test_set_firewall_profile(self, SP):
         vm_id = vm_recv['server']['id']
-        v = firewalls['attachments']['values'][0]['firewallProfile']
+        v = firewalls['attachments'][0]['firewallProfile']
         self.client.set_firewall_profile(vm_id, v)
         SP.assert_called_once_with(
             vm_id, 'action',
@@ -354,11 +354,11 @@ class CycladesClient(TestCase):
     @patch('%s.servers_get' % cyclades_pkg, return_value=FR())
     def test_list_server_nics(self, SG):
         vm_id = vm_recv['server']['id']
-        nics = dict(addresses=dict(values=[dict(id='nic1'), dict(id='nic2')]))
+        nics = dict(addresses=[dict(id='nic1'), dict(id='nic2')])
         FR.json = nics
         r = self.client.list_server_nics(vm_id)
         SG.assert_called_once_with(vm_id, 'ips')
-        expected = nics['addresses']['values']
+        expected = nics['addresses']
         for i in range(len(r)):
             self.assert_dicts_are_equal(r[i], expected[i])
         self.assertEqual(i + 1, len(r))
@@ -366,7 +366,7 @@ class CycladesClient(TestCase):
     @patch('%s.networks_get' % cyclades_pkg, return_value=FR())
     def test_list_networks(self, NG):
         FR.json = net_list
-        expected = net_list['networks']['values']
+        expected = net_list['networks']
         for detail in ('', 'detail'):
             r = self.client.list_networks(detail=True if detail else False)
             self.assertEqual(NG.mock_calls[-1], call(command=detail))
@@ -380,7 +380,7 @@ class CycladesClient(TestCase):
         FR.json = net_recv
         r = self.client.list_network_nics(net_id)
         NG.assert_called_once_with(network_id=net_id)
-        expected = net_recv['network']['attachments']['values']
+        expected = net_recv['network']['attachments']
         for i in range(len(r)):
             self.assert_dicts_are_equal(r[i], expected[i])
 
