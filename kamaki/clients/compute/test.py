@@ -240,6 +240,65 @@ class ComputeRestClient(TestCase):
                 '/%s/os-floating-ip-pools' % tenant_id,
                 success=success, **kwargs))
 
+    @patch('%s.get' % rest_pkg, return_value=FR())
+    def test_floating_ips_get(self, get):
+        for args in product(
+                ('tenant1', 'tenant2'),
+                (200, 204),
+                ({}, {'k': 'v'})):
+            tenant_id, success, kwargs = args
+            r = self.client.floating_ips_get(tenant_id, success, **kwargs)
+            self.assertTrue(isinstance(r, FR))
+            self.assertEqual(get.mock_calls[-1], call(
+                '/%s/os-floating-ips' % tenant_id,
+                success=success, **kwargs))
+
+    @patch('%s.set_header' % rest_pkg)
+    @patch('%s.post' % rest_pkg, return_value=FR())
+    def test_floating_ips_post(self, post, SH):
+        for args in product(
+                ('tenant1', 'tenant2'),
+                (None, [dict(json="data"), dict(data="json")]),
+                (202, 204),
+                ({}, {'k': 'v'})):
+            (tenant_id, json_data, success, kwargs) = args
+            self.client.floating_ips_post(*args[:3], **kwargs)
+            if json_data:
+                json_data = dumps(json_data)
+                self.assertEqual(SH.mock_calls[-2:], [
+                    call('Content-Type', 'application/json'),
+                    call('Content-Length', len(json_data))])
+            self.assertEqual(post.mock_calls[-1], call(
+                '/%s/os-floating-ips' % tenant_id,
+                data=json_data, success=success,
+                **kwargs))
+
+    @patch('%s.get' % rest_pkg, return_value=FR())
+    def test_floating_ip_get(self, get):
+        for args in product(
+                ('tenant1', 'tenant2'),
+                (200, 204),
+                ({}, {'k': 'v'})):
+            tenant_id, success, kwargs = args
+            r = self.client.floating_ip_get(tenant_id, success, **kwargs)
+            self.assertTrue(isinstance(r, FR))
+            self.assertEqual(get.mock_calls[-1], call(
+                '/%s/os-floating-ip' % tenant_id,
+                success=success, **kwargs))
+
+    @patch('%s.delete' % rest_pkg, return_value=FR())
+    def test_floating_ip_delete(self, delete):
+        for args in product(
+                ('tenant1', 'tenant2'),
+                (204,),
+                ({}, {'k': 'v'})):
+            tenant_id, success, kwargs = args
+            r = self.client.floating_ip_delete(tenant_id, success, **kwargs)
+            self.assertTrue(isinstance(r, FR))
+            self.assertEqual(delete.mock_calls[-1], call(
+                '/%s/os-floating-ip' % tenant_id,
+                success=success, **kwargs))
+
 
 class ComputeClient(TestCase):
 

@@ -34,6 +34,7 @@
 from mock import patch, call
 from unittest import TestCase
 from itertools import product
+from json import dumps
 
 from kamaki.clients import ClientError, cyclades
 
@@ -214,6 +215,60 @@ class CycladesRestClient(TestCase):
             self.assertTrue(isinstance(r, FR))
             self.assertEqual(get.mock_calls[-1], call(
                 '/os-floating-ip-pools', success=success, **kwargs))
+
+    @patch('%s.get' % rest_pkg, return_value=FR())
+    def test_floating_ips_get(self, get):
+        for args in product(
+                (200, 204),
+                ({}, {'k': 'v'})):
+            success, kwargs = args
+            r = self.client.floating_ips_get(success, **kwargs)
+            self.assertTrue(isinstance(r, FR))
+            self.assertEqual(get.mock_calls[-1], call(
+                '/os-floating-ips', success=success, **kwargs))
+
+    @patch('%s.set_header' % rest_pkg)
+    @patch('%s.post' % rest_pkg, return_value=FR())
+    def test_floating_ips_post(self, post, SH):
+        for args in product(
+                (None, [dict(json="data"), dict(data="json")]),
+                (202, 204),
+                ({}, {'k': 'v'})):
+            (json_data, success, kwargs) = args
+            self.client.floating_ips_post(*args[:2], **kwargs)
+            if json_data:
+                json_data = dumps(json_data)
+                self.assertEqual(SH.mock_calls[-2:], [
+                    call('Content-Type', 'application/json'),
+                    call('Content-Length', len(json_data))])
+            self.assertEqual(post.mock_calls[-1], call(
+                '/os-floating-ips',
+                data=json_data, success=success,
+                **kwargs))
+
+    @patch('%s.get' % rest_pkg, return_value=FR())
+    def test_floating_ip_get(self, get):
+        for args in product(
+                ('fip1', 'fip2'),
+                (200, 204),
+                ({}, {'k': 'v'})):
+            fip, success, kwargs = args
+            r = self.client.floating_ip_get(fip, success, **kwargs)
+            self.assertTrue(isinstance(r, FR))
+            self.assertEqual(get.mock_calls[-1], call(
+                '/os-floating-ip/%s' % fip, success=success, **kwargs))
+
+    @patch('%s.delete' % rest_pkg, return_value=FR())
+    def test_floating_ip_delete(self, delete):
+        for args in product(
+                ('fip1', 'fip2'),
+                (200, 204),
+                ({}, {'k': 'v'})):
+            fip, success, kwargs = args
+            r = self.client.floating_ip_delete(fip, success, **kwargs)
+            self.assertTrue(isinstance(r, FR))
+            self.assertEqual(delete.mock_calls[-1], call(
+                '/os-floating-ip/%s' % fip, success=success, **kwargs))
 
 
 class CycladesClient(TestCase):
