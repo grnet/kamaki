@@ -165,3 +165,7 @@ class CycladesRestClient(ComputeClient):
 
         path = path4url('networks', network_id, command)
         return self.put(path, data=data, success=success, **kwargs)
+
+    def floating_ip_pools_get(self, success=200, **kwargs):
+        path = path4url('os-floating-ip-pools')
+        return self.get(path, success=success, **kwargs)

@@ -237,3 +237,7 @@ class ComputeRestClient(Client):
 
         path = path4url('images', image_id, command)
         return self.put(path, data=data, success=success, **kwargs)
+
+    def floating_ip_pools_get(self, tenant_id, success=200, **kwargs):
+        path = path4url(tenant_id, 'os-floating-ip-pools')
+        return self.get(path, success=success, **kwargs)

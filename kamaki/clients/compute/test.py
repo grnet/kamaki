@@ -227,6 +227,19 @@ class ComputeRestClient(TestCase):
     def test_images_put(self):
         self._test_put('images')
 
+    @patch('%s.get' % rest_pkg, return_value=FR())
+    def test_floating_ip_pools_get(self, get):
+        for args in product(
+                ('tenant1', 'tenant2'),
+                (200, 204),
+                ({}, {'k': 'v'})):
+            tenant_id, success, kwargs = args
+            r = self.client.floating_ip_pools_get(tenant_id, success, **kwargs)
+            self.assertTrue(isinstance(r, FR))
+            self.assertEqual(get.mock_calls[-1], call(
+                '/%s/os-floating-ip-pools' % tenant_id,
+                success=success, **kwargs))
+
 
 class ComputeClient(TestCase):
 

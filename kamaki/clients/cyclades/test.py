@@ -204,6 +204,17 @@ class CycladesRestClient(TestCase):
                 data=json_data, success=success,
                 **kwargs))
 
+    @patch('%s.get' % rest_pkg, return_value=FR())
+    def test_floating_ip_pools_get(self, get):
+        for args in product(
+                (200, 204),
+                ({}, {'k': 'v'})):
+            success, kwargs = args
+            r = self.client.floating_ip_pools_get(success, **kwargs)
+            self.assertTrue(isinstance(r, FR))
+            self.assertEqual(get.mock_calls[-1], call(
+                '/os-floating-ip-pools', success=success, **kwargs))
+
 
 class CycladesClient(TestCase):
 
