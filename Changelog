@@ -5,5 +5,11 @@ Bug Fixes:
 Changes:
 
 Features:
-
+- Implement floating ip methods for compute and cyclades clients [#3862]
+ ComputeRestClient: floating_ip_pools_get, floating_ips_get/post/delete
+ CycladesRestClient: floating_ip_pools_get, floating_ips_get/post/delete
+ ComputeClient: get_floating_ip_pools, get_floating_ips,
+    alloc/get_delete_floating_ip
+ CycladesClient: get_floating_ip_pools, get_floating_ips,
+    alloc/get_delete_floating_ip, dis/assoc_floating_ip_to_server
 

@@ -170,22 +170,18 @@ class CycladesRestClient(ComputeClient):
         path = path4url('os-floating-ip-pools')
         return self.get(path, success=success, **kwargs)
 
-    def floating_ips_get(self, success=200, **kwargs):
-        path = path4url('os-floating-ips')
+    def floating_ips_get(self, fip_id='', success=200, **kwargs):
+        path = path4url('os-floating-ips', fip_id)
         return self.get(path, success=success, **kwargs)
 
-    def floating_ips_post(self, json_data, success=201, **kwargs):
-        path = path4url('os-floating-ips')
+    def floating_ips_post(self, json_data, fip_id='', success=201, **kwargs):
+        path = path4url('os-floating-ips', fip_id)
         if json_data is not None:
             json_data = json.dumps(json_data)
             self.set_header('Content-Type', 'application/json')
             self.set_header('Content-Length', len(json_data))
         return self.post(path, data=json_data, success=success, **kwargs)
 
-    def floating_ip_get(self, floating_ip_id, success=200, **kwargs):
-        path = path4url('os-floating-ip', floating_ip_id)
-        return self.get(path, success=success, **kwargs)
-
-    def floating_ip_delete(self, floating_ip_id, success=200, **kwargs):
-        path = path4url('os-floating-ip', floating_ip_id)
+    def floating_ips_delete(self, fip_id, success=200, **kwargs):
+        path = path4url('os-floating-ips', fip_id)
         return self.delete(path, success=success, **kwargs)
