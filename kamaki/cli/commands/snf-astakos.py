@@ -39,7 +39,7 @@ from kamaki.cli.commands import _command_init, _optional_json
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.utils import print_dict
 from kamaki.cli.argument import FlagArgument, ValueArgument
-from kamaki.cli.logger import add_file_logger, get_logger
+from kamaki.cli.logger import add_file_logger, get_logger, logging
 
 snfastakos_cmds = CommandTree('astakos', 'astakosclient CLI')
 _commands = [snfastakos_cmds]
@@ -63,7 +63,7 @@ class _astakos_init(_command_init):
             or self.config.get('user', 'url')\
             or self.config.get('global', 'url')
         self.client = AstakosClient(
-            base_url, logger=add_file_logger('astakosclient'))
+            base_url, logger=add_file_logger('astakosclient', logging.DEBUG))
         self._set_log_params()
         self._update_max_threads()
 
