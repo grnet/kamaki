@@ -50,39 +50,47 @@ HISTORY_PATH = os.path.expanduser('~/.kamaki.history')
 CONFIG_ENV = 'KAMAKI_CONFIG'
 
 HEADER = """
-# Kamaki configuration file v2
+# Kamaki configuration file v3
 """
 
 DEFAULTS = {
     'global': {
         'colors': 'off',
-        'account':  '',
         'token': '',
         'log_file': os.path.expanduser('~/.kamaki.log'),
         'log_token': 'off',
         'log_data': 'off',
-        'max_threads': 7
+        'max_threads': 7,
+        'url': 'https://accounts.okeanos.grnet.gr/astakos/identity/v2.0/'
     },
-    'config': {'cli': 'config'},
+    'cli': {
+        'user': 'astakos',
+        'file': 'pithos',
+        'server': 'cyclades',
+        'flavor': 'cyclades',
+        'network': 'cyclades',
+        'image': 'image',
+        'config': 'config',
+        'history': 'history'
+    },
     'history': {
-        'cli': 'history',
         'file': HISTORY_PATH
     },
-    'file': {
-        'cli': 'pithos',
-        'url': 'https://pithos.okeanos.grnet.gr/v1'
+    'pithos': {
+        'type': 'object-storage',
+        'version': 'v2'
     },
-    'compute': {'url': 'https://cyclades.okeanos.grnet.gr/api/v1.1'},
-    'server': {'cli': 'cyclades'},
-    'flavor': {'cli': 'cyclades'},
-    'network': {'cli': 'cyclades'},
-    'image': {
-        'cli': 'image',
-        'url': 'https://cyclades.okeanos.grnet.gr/plankton'
+    'cyclades': {
+        'type': 'compute',
+        'version': 'v2.0'
+        },
+    'plankton': {
+        'type': 'image',
+        'version': 'v2.0'
     },
-    'user': {
-        'cli': 'astakos',
-        'url': 'https://accounts.okeanos.grnet.gr'
+    'astakos': {
+        'type': 'identity',
+        'version': 'v2.0'
     }
 }
 
