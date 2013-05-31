@@ -54,7 +54,7 @@ class generic(object):
         return _raise
 
     @classmethod
-    def _connection(this, foo, base_url):
+    def _connection(this, foo):
         def _raise(self, *args, **kwargs):
             try:
                 foo(self, *args, **kwargs)
@@ -68,9 +68,7 @@ class generic(object):
                         '  to get current token: /config get [server.]token'])
                 elif ce.status in range(-12, 200) + [302, 401, 403, 500]:
                     raiseCLIError(ce, importance=3, details=[
-                        'Check if service is up or set to url %s' % base_url,
-                        '  to get url: /config get %s' % base_url,
-                        '  to set url: /config set %s <URL>' % base_url])
+                        'Check if serviceis up'])
                 elif ce.status == 404 and 'kamakihttpresponse' in ce_msg:
                     client = getattr(self, 'client', None)
                     if not client:
@@ -78,9 +76,9 @@ class generic(object):
                     url = getattr(client, 'base_url', '<empty>')
                     msg = 'Invalid service url %s' % url
                     raiseCLIError(ce, msg, details=[
-                        'Please, check if service url is correctly set',
-                        '* to get current url: /config get compute.url',
-                        '* to set url: /config set compute.url <URL>'])
+                        'Check if authentication url is correct',
+                        '  check current url:   /config get url',
+                        '  set new auth. url:   /config set url'])
                 raise
         return _raise
 
@@ -90,8 +88,8 @@ class user(object):
     _token_details = [
         'To check default token: /config get token',
         'If set/update a token:',
-        '*  (permanent):    /config set token <token>',
-        '*  (temporary):    re-run with <token> parameter']
+        '*  (permanent):  /config set token <token>',
+        '*  (temporary):  re-run with <token> parameter']
 
     @classmethod
     def load(this, foo):
@@ -105,11 +103,11 @@ class user(object):
                 kloger.warning(
                     'No permanent token (try: kamaki config set token <tkn>)')
             if not getattr(client, 'base_url', False):
-                msg = 'Missing astakos server URL'
+                msg = 'Missing synnefo URL'
                 raise CLIError(msg, importance=3, details=[
-                    'Check if user.url is set correctly',
-                    'To get astakos url:   /config get user.url',
-                    'To set astakos url:   /config set user.url <URL>'])
+                    'Check if authentication url is correct',
+                        '  check current url:  /config get url',
+                        '  set new auth. url:  /config set url'])
             return r
         return _raise
 
@@ -164,7 +162,7 @@ class cyclades(object):
 
     @classmethod
     def connection(this, foo):
-        return generic._connection(foo, 'compute.url')
+        return generic._connection(foo)
 
     @classmethod
     def date(this, foo):
@@ -360,7 +358,7 @@ class plankton(object):
 
     @classmethod
     def connection(this, foo):
-        return generic._connection(foo, 'image.url')
+        return generic._connection(foo)
 
     @classmethod
     def id(this, foo):
@@ -408,7 +406,7 @@ class pithos(object):
 
     @classmethod
     def connection(this, foo):
-        return generic._connection(foo, 'file.url')
+        return generic._connection(foo)
 
     @classmethod
     def account(this, foo):

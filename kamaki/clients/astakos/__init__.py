@@ -35,8 +35,6 @@ from kamaki.clients import Client, ClientError
 from logging import getLogger
 
 
-
-
 class AstakosClient(Client):
     """Synnefo Astakos API client"""
 
@@ -138,5 +136,9 @@ class AstakosClient(Client):
         return r['user']
 
     def term(self, key, token=None):
+        """Get (cached) term, from user credentials"""
+        return self.user_term(key, token)
+
+    def user_term(self, key, token=None):
         """Get (cached) term, from user credentials"""
         return self.user_info(token).get(key, None)

@@ -167,7 +167,10 @@ class ConfigArgument(Argument):
         return self.value.get(group, term)
 
     def get_groups(self):
-        return self.value.apis()
+        return self.value.keys('cli')
+
+    def get_cli_specs(self):
+        return self.value.items('cli')
 
 _config_arg = ConfigArgument(
     1, 'Path to configuration file',

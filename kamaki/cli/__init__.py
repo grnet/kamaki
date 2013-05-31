@@ -208,20 +208,26 @@ def _init_session(arguments):
         remove_colors()
     _silent = arguments['silent'].value
     _setup_logging(_silent, _debug, _verbose, _include)
+    global_url = arguments['config'].get('global', 'url')
+    global_token = arguments['config'].get('global', 'token')
+    from kamaki.clients.astakos import AstakosClient as AuthCachedClient
+    return AuthCachedClient(global_url, global_token)
 
 
 def _load_spec_module(spec, arguments, module):
-    spec_name = arguments['config'].get(spec, 'cli')
-    if spec_name is None:
+    #spec_name = arguments['config'].get('cli', spec)
+    if not spec:
         return None
     pkg = None
     for location in cmd_spec_locations:
-        location += spec_name if location == '' else '.%s' % spec_name
+        location += spec if location == '' else '.%s' % spec
         try:
             pkg = __import__(location, fromlist=[module])
             return pkg
-        except ImportError:
+        except ImportError as ie:
             continue
+    if not pkg:
+        kloger.debug('Loading cmd grp %s failed: %s' % (spec, ie))
     return pkg
 
 
@@ -229,43 +235,44 @@ def _groups_help(arguments):
     global _debug
     global kloger
     descriptions = {}
-    for spec in arguments['config'].get_groups():
+    for cmd_group, spec in arguments['config'].get_cli_specs():
         pkg = _load_spec_module(spec, arguments, '_commands')
         if pkg:
-            cmds = None
-            try:
-                _cnf = arguments['config']
-                cmds = [cmd for cmd in getattr(pkg, '_commands') if _cnf.get(
-                    cmd.name, 'cli')]
-            except AttributeError:
-                if _debug:
-                    kloger.warning('No description for %s' % spec)
+            cmds = getattr(pkg, '_commands')
+            #try:
+            #   #_cnf = arguments['config']
+            #   #cmds = [cmd for cmd in getattr(pkg, '_commands') if _cnf.get(
+            #   #    'cli', cmd.name)]
+            #except AttributeError:
+            #   if _debug:
+            #       kloger.warning('No description for %s' % cmd_group)
             try:
                 for cmd in cmds:
                     descriptions[cmd.name] = cmd.description
             except TypeError:
                 if _debug:
-                    kloger.warning('no cmd specs in module %s' % spec)
+                    kloger.warning(
+                        'No cmd description for module %s' % cmd_group)
         elif _debug:
-            kloger.warning('Loading of %s cmd spec failed' % spec)
+            kloger.warning('Loading of %s cmd spec failed' % cmd_group)
     print('\nOptions:\n - - - -')
     print_dict(descriptions)
 
 
 def _load_all_commands(cmd_tree, arguments):
     _cnf = arguments['config']
-    specs = [spec for spec in _cnf.get_groups() if _cnf.get(spec, 'cli')]
-    for spec in specs:
+    #specs = [spec for spec in _cnf.get_groups() if _cnf.get(spec, 'cli')]
+    for cmd_group, spec in _cnf.get_cli_specs():
         try:
             spec_module = _load_spec_module(spec, arguments, '_commands')
             spec_commands = getattr(spec_module, '_commands')
         except AttributeError:
             if _debug:
                 global kloger
-                kloger.warning('No valid description for %s' % spec)
+                kloger.warning('No valid description for %s' % cmd_group)
             continue
         for spec_tree in spec_commands:
-            if spec_tree.name == spec:
+            if spec_tree.name == cmd_group:
                 cmd_tree.add_tree(spec_tree)
                 break
 
@@ -314,7 +321,7 @@ def print_error_message(cli_err):
         errmsg = red(errmsg)
     stdout.write(errmsg)
     for errmsg in cli_err.details:
-        print('| %s' % errmsg)
+        print('|  %s' % errmsg)
 
 
 def exec_cmd(instance, cmd_args, help_method):
@@ -358,20 +365,20 @@ def set_command_params(parameters):
 
 #  CLI Choice:
 
-def run_one_cmd(exe_string, parser):
+def run_one_cmd(exe_string, parser, auth_base):
     global _history
     _history = History(
         parser.arguments['config'].get('history', 'file'))
     _history.add(' '.join([exe_string] + argv[1:]))
     from kamaki.cli import one_command
-    one_command.run(parser, _help)
+    one_command.run(auth_base, parser, _help)
 
 
-def run_shell(exe_string, parser):
+def run_shell(exe_string, parser, auth_base):
     from command_shell import _init_shell
     shell = _init_shell(exe_string, parser)
     _load_all_commands(shell.cmd_tree, parser.arguments)
-    shell.run(parser)
+    shell.run(auth_base, parser)
 
 
 def main():
@@ -389,18 +396,18 @@ def main():
         filelog = logger.add_file_logger(__name__.split('.')[0])
         filelog.info('* Initial Call *\n%s\n- - -' % ' '.join(argv))
 
-        _init_session(parser.arguments)
+        auth_base = _init_session(parser.arguments)
 
         from kamaki.cli.utils import suggest_missing
         suggest_missing()
 
         if parser.unparsed:
-            run_one_cmd(exe, parser)
+            run_one_cmd(exe, parser, auth_base)
         elif _help:
             parser.parser.print_help()
             _groups_help(parser.arguments)
         else:
-            run_shell(exe, parser)
+            run_shell(exe, parser, auth_base)
     except CLIError as err:
         print_error_message(err)
         if _debug:
