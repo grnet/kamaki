@@ -35,8 +35,6 @@ from kamaki.clients import Client, ClientError
 from logging import getLogger
 
 
-
-
 class AstakosClient(Client):
     """Synnefo Astakos API client"""
 
