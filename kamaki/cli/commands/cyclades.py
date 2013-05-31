@@ -70,8 +70,10 @@ class _init_cyclades(_command_init):
     def _run(self, service='compute'):
         token = self.config.get(service, 'token')\
             or self.config.get('global', 'token')
-        base_url = self.config.get(service, 'url')\
-            or self.config.get('global', 'url')
+        cyclades_endpoints = self.auth_base.get_service_endpoints(
+            self.config.get('cyclades', 'type'),
+            self.config.get('cyclades', 'version'))
+        base_url = cyclades_endpoints['publicURL']
         self.client = CycladesClient(base_url=base_url, token=token)
         self._set_log_params()
         self._update_max_threads()

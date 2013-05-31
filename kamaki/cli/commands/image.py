@@ -77,6 +77,10 @@ class _init_image(_command_init):
         token = self.config.get('image', 'token')\
             or self.config.get('compute', 'token')\
             or self.config.get('global', 'token')
+        plankton_endpoints = self.auth_base.get_service_endpoints(
+            self.config.get('plankton', 'type'),
+            self.config.get('plankton', 'version'))
+        base_url = plankton_endpoints['publicURL']
         base_url = self.config.get('image', 'url')\
             or self.config.get('compute', 'url')\
             or self.config.get('global', 'url')
@@ -305,7 +309,10 @@ class image_register(_init_image, _optional_json):
     def _get_pithos_client(self, container):
         if self['no_metafile_upload']:
             return None
-        purl = self.config.get('file', 'url')
+        pithos_endpoints = self.auth_base.get_service_endpoints(
+            self.config.get('pithos', 'type'),
+            self.config.get('pithos', 'version'))
+        purl = pithos_endpoints['publicURL']
         ptoken = self.client.token
         return PithosClient(purl, ptoken, self._get_uuid(), container)
 

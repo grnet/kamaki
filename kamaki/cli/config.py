@@ -108,11 +108,19 @@ class Config(RawConfigParser):
             for option, val in options.items():
                 self.set(section, option, val)
 
+    def _get_dict(self, section, include_defaults=True):
+        try:
+            d = dict(DEFAULTS[section]) if include_defaults else {}
+        except KeyError:
+            d = {}
+        try:
+            d.update(RawConfigParser.items(self, section))
+        except NoSectionError:
+            pass
+        return d
+
     def reload(self):
         self = self.__init__(self.path)
-
-    def apis(self):
-        return [api for api in self.sections() if api != 'global']
 
     def get(self, section, option):
         value = self._overrides.get(section, {}).get(option)
@@ -137,15 +145,12 @@ class Config(RawConfigParser):
         except NoSectionError:
             pass
 
+    def keys(self, section, include_defaults=True):
+        d = self._get_dict(section, include_defaults)
+        return d.keys()
+
     def items(self, section, include_defaults=True):
-        try:
-            d = dict(DEFAULTS[section]) if include_defaults else {}
-        except KeyError:
-            d = {}
-        try:
-            d.update(RawConfigParser.items(self, section))
-        except NoSectionError:
-            pass
+        d = self._get_dict(section, include_defaults)
         return d.items()
 
     def override(self, section, option, value):

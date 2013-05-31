@@ -68,6 +68,7 @@ class Shell(Cmd):
     _context_stack = []
     _prompt_stack = []
     _parser = None
+    auth_base = None
 
     undoc_header = 'interactive shell commands:'
 
@@ -197,11 +198,11 @@ class Shell(Cmd):
                     if subcmd.path == 'history_run':
                         instance = cls(
                             dict(cmd_parser.arguments),
-                            self.cmd_tree)
+                            cmd_tree=self.cmd_tree)
                     else:
-                        instance = cls(dict(cmd_parser.arguments))
+                        instance = cls(
+                            dict(cmd_parser.arguments), self.auth_base)
                     cmd_parser.update_arguments(instance.arguments)
-                    #instance.arguments.pop('config')
                     cmd_parser.arguments = instance.arguments
                     cmd_parser.syntax = '%s %s' % (
                         subcmd.path.replace('_', ' '), cls.syntax)
@@ -296,7 +297,8 @@ class Shell(Cmd):
         hdr = tmp_partition[0].strip()
         return '%s commands:' % hdr
 
-    def run(self, parser, path=''):
+    def run(self, auth_base, parser, path=''):
+        self.auth_base = auth_base
         self._parser = parser
         self._history = History(
             parser.arguments['config'].get('history', 'file'))
