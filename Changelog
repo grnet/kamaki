@@ -1,3 +1,17 @@
 CHANGELOG for version 0.10
 
+Bug Fixes:
+
+Changes:
+
+- Adjust astakos authenticate to the new url shchem of synnefo >= 0.14 [#3832, #3874]
+  as a side effect, some renamings in astakos.AstakosClient:
+   info --> user_info, user --> list_users
+
+Features:
+
+- Implement an optional astakosclient cli exposed as "astakos", with the following methods:
+    authenticate, uuid, username, quotas, service uuid/username/quotas
+- Add some astakos/keystone kamaki-lib api calls [#3874], used to access astakos-calls cache:
+  get_services, get_service_details, get_service_endpoints
 
