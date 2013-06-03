@@ -50,39 +50,47 @@ HISTORY_PATH = os.path.expanduser('~/.kamaki.history')
 CONFIG_ENV = 'KAMAKI_CONFIG'
 
 HEADER = """
-# Kamaki configuration file v2
+# Kamaki configuration file v3
 """
 
 DEFAULTS = {
     'global': {
         'colors': 'off',
-        'account':  '',
         'token': '',
         'log_file': os.path.expanduser('~/.kamaki.log'),
         'log_token': 'off',
         'log_data': 'off',
-        'max_threads': 7
+        'max_threads': 7,
+        'url': 'https://accounts.okeanos.grnet.gr/astakos/identity/v2.0/'
     },
-    'config': {'cli': 'config'},
+    'cli': {
+        'user': 'astakos',
+        'file': 'pithos',
+        'server': 'cyclades',
+        'flavor': 'cyclades',
+        'network': 'cyclades',
+        'image': 'image',
+        'config': 'config',
+        'history': 'history'
+    },
     'history': {
-        'cli': 'history',
         'file': HISTORY_PATH
     },
-    'file': {
-        'cli': 'pithos',
-        'url': 'https://pithos.okeanos.grnet.gr/v1'
+    'pithos': {
+        'type': 'object-storage',
+        'version': 'v2'
     },
-    'compute': {'url': 'https://cyclades.okeanos.grnet.gr/api/v1.1'},
-    'server': {'cli': 'cyclades'},
-    'flavor': {'cli': 'cyclades'},
-    'network': {'cli': 'cyclades'},
-    'image': {
-        'cli': 'image',
-        'url': 'https://cyclades.okeanos.grnet.gr/plankton'
+    'cyclades': {
+        'type': 'compute',
+        'version': 'v2.0'
+        },
+    'plankton': {
+        'type': 'image',
+        'version': 'v2.0'
     },
-    'user': {
-        'cli': 'astakos',
-        'url': 'https://accounts.okeanos.grnet.gr'
+    'astakos': {
+        'type': 'identity',
+        'version': 'v2.0'
     }
 }
 
@@ -100,11 +108,19 @@ class Config(RawConfigParser):
             for option, val in options.items():
                 self.set(section, option, val)
 
+    def _get_dict(self, section, include_defaults=True):
+        try:
+            d = dict(DEFAULTS[section]) if include_defaults else {}
+        except KeyError:
+            d = {}
+        try:
+            d.update(RawConfigParser.items(self, section))
+        except NoSectionError:
+            pass
+        return d
+
     def reload(self):
         self = self.__init__(self.path)
-
-    def apis(self):
-        return [api for api in self.sections() if api != 'global']
 
     def get(self, section, option):
         value = self._overrides.get(section, {}).get(option)
@@ -129,15 +145,12 @@ class Config(RawConfigParser):
         except NoSectionError:
             pass
 
+    def keys(self, section, include_defaults=True):
+        d = self._get_dict(section, include_defaults)
+        return d.keys()
+
     def items(self, section, include_defaults=True):
-        try:
-            d = dict(DEFAULTS[section]) if include_defaults else {}
-        except KeyError:
-            d = {}
-        try:
-            d.update(RawConfigParser.items(self, section))
-        except NoSectionError:
-            pass
+        d = self._get_dict(section, include_defaults)
         return d.items()
 
     def override(self, section, option, value):

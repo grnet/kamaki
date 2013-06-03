@@ -55,6 +55,23 @@ class CLIError(Exception):
             self.importance = 0
 
 
+class CLIBaseUrlError(CLIError):
+    def __init__(self, message='', details=[], importance=2, service=None):
+        message = message or 'No url for %s' % service.lower()
+        details = details or [
+            'Two options to resolve this:',
+            'A. (recommended) Let kamaki discover the endpoint URLs for all',
+            'services by setting a single Authentication URL:',
+            '  /config set auth_url <AUTH_URL>',
+            'B. (advanced users) Explicitly set a valid %s endpoint URL' % (
+                service.upper()),
+            'Note: auth_url option has a higher priority, so delete it to',
+            'make that work',
+            '  /config delete auth_url',
+            '  /config set %s.url <%s_URL>' % (service, service.upper())]
+        super(CLIBaseUrlError, self).__init__(message, details, importance)
+
+
 class CLISyntaxError(CLIError):
     def __init__(self, message='Syntax Error', details=[], importance=1):
         super(CLISyntaxError, self).__init__(message, details, importance)

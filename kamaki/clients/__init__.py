@@ -315,6 +315,7 @@ class Client(object):
     LOG_DATA = False
 
     def __init__(self, base_url, token):
+        assert base_url, 'No base_url for client %s' % self
         self.base_url = base_url
         self.token = token
         self.headers, self.params = dict(), dict()

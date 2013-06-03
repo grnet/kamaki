@@ -45,7 +45,7 @@ from kamaki.clients import ClientError
 from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
 from kamaki.cli.argument import IntArgument
 from kamaki.cli.commands.cyclades import _init_cyclades
-from kamaki.cli.errors import raiseCLIError
+from kamaki.cli.errors import raiseCLIError, CLIBaseUrlError
 from kamaki.cli.commands import _command_init, errors
 from kamaki.cli.commands import _optional_output_cmd, _optional_json
 
@@ -75,11 +75,18 @@ class _init_image(_command_init):
     @errors.generic.all
     def _run(self):
         token = self.config.get('image', 'token')\
-            or self.config.get('compute', 'token')\
             or self.config.get('global', 'token')
-        base_url = self.config.get('image', 'url')\
-            or self.config.get('compute', 'url')\
-            or self.config.get('global', 'url')
+
+        if getattr(self, 'auth_base', False):
+            plankton_endpoints = self.auth_base.get_service_endpoints(
+                self.config.get('plankton', 'type'),
+                self.config.get('plankton', 'version'))
+            base_url = plankton_endpoints['publicURL']
+        else:
+            base_url = self.config.get('plankton', 'url')
+        if not base_url:
+            raise CLIBaseUrlError(service='plankton')
+
         self.client = ImageClient(base_url=base_url, token=token)
         self._set_log_params()
         self._update_max_threads()
@@ -299,14 +306,30 @@ class image_register(_init_image, _optional_json):
 
     def _get_uuid(self):
         atoken = self.client.token
-        user = AstakosClient(self.config.get('user', 'url'), atoken)
-        return user.term('uuid')
+        #user = AstakosClient(self.config.get('user', 'url'), atoken)
+        #return user.term('uuid')
+        if getattr(self, 'auth_base', False):
+            return self.auth_base.term('uuid', atoken)
+        else:
+            astakos_url = self.config.get('astakos', 'url')
+            if not astakos_url:
+                raise CLIBaseUrlError(service='astakos')
+            user = AstakosClient(astakos_url, atoken)
+            return user.term('uuid')
 
     def _get_pithos_client(self, container):
         if self['no_metafile_upload']:
             return None
-        purl = self.config.get('file', 'url')
         ptoken = self.client.token
+        if getattr(self, 'auth_base', False):
+            pithos_endpoints = self.auth_base.get_service_endpoints(
+                self.config.get('pithos', 'type'),
+                self.config.get('pithos', 'version'))
+            purl = pithos_endpoints['publicURL']
+        else:
+            purl = self.config.get('pithos', 'url')
+            if not purl:
+                raise CLIBaseUrlError(service='pithos')
         return PithosClient(purl, ptoken, self._get_uuid(), container)
 
     def _store_remote_metafile(self, pclient, remote_path, metadata):
