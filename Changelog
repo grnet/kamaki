@@ -4,7 +4,7 @@ Bug Fixes:
 
 Changes:
 
-- Adjust astakos authenticate to the new url shchem of synnefo >= 0.14 [#3832, #3874]
+- Adjust astakos authenticate to the new url scheme of synnefo >= 0.14 [#3832, #3874]
   as a side effect, some renamings in astakos.AstakosClient:
    info --> user_info, user --> list_users
 

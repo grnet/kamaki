@@ -81,9 +81,9 @@ class _init_image(_command_init):
             self.config.get('plankton', 'type'),
             self.config.get('plankton', 'version'))
         base_url = plankton_endpoints['publicURL']
-        base_url = self.config.get('image', 'url')\
-            or self.config.get('compute', 'url')\
-            or self.config.get('global', 'url')
+        #base_url = self.config.get('image', 'url')\
+        #    or self.config.get('compute', 'url')\
+        #    or self.config.get('global', 'url')
         self.client = ImageClient(base_url=base_url, token=token)
         self._set_log_params()
         self._update_max_threads()
@@ -303,8 +303,9 @@ class image_register(_init_image, _optional_json):
 
     def _get_uuid(self):
         atoken = self.client.token
-        user = AstakosClient(self.config.get('user', 'url'), atoken)
-        return user.term('uuid')
+        #user = AstakosClient(self.config.get('user', 'url'), atoken)
+        #return user.term('uuid')
+        self.auth_base.term('uuid', atoken)
 
     def _get_pithos_client(self, container):
         if self['no_metafile_upload']:

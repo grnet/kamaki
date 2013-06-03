@@ -53,7 +53,7 @@ class AstakosClient(Client):
         :returns: (dict) authentication information
         """
         self.token = token or self.token
-        self._cache[self.token] = self.get('/tokens').json
+        self._cache[self.token] = self.post('/tokens').json
         return self._cache[self.token]
 
     def get_services(self, token=None):
