@@ -124,6 +124,7 @@ class user(object):
                     ) if token else 'No token provided',
                     details = [] if token else this._token_details
                     raiseCLIError(ce, msg, details=details)
+                raise ce
             self._raise = foo
         return _raise
 
