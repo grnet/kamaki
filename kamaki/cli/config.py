@@ -77,7 +77,7 @@ DEFAULTS = {
         'file': HISTORY_PATH
     },
     'pithos': {
-        'type': 'object-storage',
+        'type': 'object-store',
         'version': 'v2'
     },
     'cyclades': {
