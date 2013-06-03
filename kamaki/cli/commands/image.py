@@ -309,7 +309,7 @@ class image_register(_init_image, _optional_json):
         #user = AstakosClient(self.config.get('user', 'url'), atoken)
         #return user.term('uuid')
         if getattr(self, 'auth_base', False):
-            return self.auth_base.term('uuid', atoken)
+            return self.auth_base.term('id', atoken)
         else:
             astakos_url = self.config.get('astakos', 'url')
             if not astakos_url:
