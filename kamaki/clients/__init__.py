@@ -115,7 +115,7 @@ class RequestManager(Logged):
 
         :returns: (scheme, netloc)
         """
-        url = _encode(url) if url else 'http://127.0.0.1/'
+        url = _encode(str(url)) if url else 'http://127.0.0.1/'
         url += '' if url.endswith('/') else '/'
         if path:
             url += _encode(path[1:] if path.startswith('/') else path)

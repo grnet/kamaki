@@ -104,7 +104,6 @@ class AstakosClient(Client):
         service = self.get_service_details(service_type, token)
         matches = []
         for endpoint in service['endpoints']:
-
             if (not version) or (
                     endpoint['versionId'].lower() == version.lower()):
                 matches.append(endpoint)
