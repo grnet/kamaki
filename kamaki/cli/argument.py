@@ -167,7 +167,10 @@ class ConfigArgument(Argument):
         return self.value.get(group, term)
 
     def get_groups(self):
-        return self.value.apis()
+        return self.value.keys('cli')
+
+    def get_cli_specs(self):
+        return self.value.items('cli')
 
 _config_arg = ConfigArgument(
     1, 'Path to configuration file',
@@ -395,31 +398,20 @@ class ProgressBarArgument(FlagArgument):
 
 _arguments = dict(
     config=_config_arg,
+    cloud=ValueArgument('Chose a remote cloud to connect to', ('--cloud')),
     help=Argument(0, 'Show help message', ('-h', '--help')),
     debug=FlagArgument('Include debug output', ('-d', '--debug')),
     include=FlagArgument(
-        'Include raw connection data in the output',
-        ('-i', '--include')),
+        'Include raw connection data in the output', ('-i', '--include')),
     silent=FlagArgument('Do not output anything', ('-s', '--silent')),
     verbose=FlagArgument('More info at response', ('-v', '--verbose')),
     version=VersionArgument('Print current version', ('-V', '--version')),
     options=CmdLineConfigArgument(
-        _config_arg,
-        'Override a config value',
-        ('-o', '--options'))
+        _config_arg, 'Override a config value', ('-o', '--options'))
 )
-"""Initial command line interface arguments"""
 
 
-"""
-Mechanism:
-    init_parser
-    parse_known_args
-    manage top-level user arguments input
-    find user-requested command
-    add command-specific arguments to dict
-    update_arguments
-"""
+#  Initial command line interface arguments
 
 
 class ArgumentParseManager(object):

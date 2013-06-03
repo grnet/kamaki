@@ -40,7 +40,7 @@ log = get_logger(__name__)
 
 class _command_init(object):
 
-    def __init__(self, arguments={}):
+    def __init__(self, arguments={}, auth_base=None):
         if hasattr(self, 'arguments'):
             arguments.update(self.arguments)
         if isinstance(self, _optional_output_cmd):
@@ -52,6 +52,7 @@ class _command_init(object):
             self.config = self['config']
         except KeyError:
             pass
+        self.auth_base = auth_base or getattr(self, 'auth_base', None)
 
     def _set_log_params(self):
         try:

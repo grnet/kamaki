@@ -50,8 +50,8 @@ log = add_stream_logger(__name__)
 
 class _astakos_init(_command_init):
 
-    def __init__(self, arguments=dict()):
-        super(_astakos_init, self).__init__(arguments)
+    def __init__(self, arguments=dict(), auth_base=None):
+        super(_astakos_init, self).__init__(arguments, auth_base)
         self['token'] = ValueArgument('Custom token', '--token')
 
     @errors.generic.all
@@ -61,9 +61,10 @@ class _astakos_init(_command_init):
             or self.config.get('astakos', 'token')\
             or self.config.get('user', 'token')\
             or self.config.get('global', 'token')
-        base_url = self.config.get('astakos', 'url')\
-            or self.config.get('user', 'url')\
-            or self.config.get('global', 'url')
+        astakos_endpoints = self.auth_base.get_service_endpoints(
+            self.config.get('astakos', 'type'),
+            self.config.get('astakos', 'version'))
+        base_url = astakos_endpoints['publicURL']
         self.client = AstakosClient(base_url, logger=log)
         self._set_log_params()
         self._update_max_threads()

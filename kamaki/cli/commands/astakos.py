@@ -35,6 +35,7 @@ from kamaki.cli import command
 from kamaki.clients.astakos import AstakosClient
 from kamaki.cli.commands import _command_init, errors, _optional_json
 from kamaki.cli.command_tree import CommandTree
+from kamaki.cli.errors import CLIBaseUrlError
 
 user_cmds = CommandTree('user', 'Astakos API commands')
 _commands = [user_cmds]
@@ -45,11 +46,20 @@ class _user_init(_command_init):
     @errors.generic.all
     @errors.user.load
     def _run(self):
-        token = self.config.get('user', 'token')\
-            or self.config.get('global', 'token')
-        base_url = self.config.get('user', 'url')\
-            or self.config.get('global', 'url')
-        self.client = AstakosClient(base_url=base_url, token=token)
+        #token = self.config.get('user', 'token')\
+        #    or self.config.get('global', 'token')
+        #base_url = self.config.get('global', 'url')
+        #self.client = AstakosClient(base_url=base_url, token=token)
+        if getattr(self, 'auth_base', False):
+            self.client = self.auth_base
+        else:
+            token = self.config.get('astakos', 'token')\
+                or self.config.get('global', 'token')
+            base_url = self.config.get('astakos', 'url')
+            if not base_url:
+                raise CLIBaseUrlError(service='astakos')
+            self.client = AstakosClient(base_url=base_url, token=token)
+
         self._set_log_params()
         self._update_max_threads()
 
@@ -71,9 +81,8 @@ class user_authenticate(_user_init, _optional_json):
     @errors.user.authenticate
     def _run(self, custom_token=None):
         super(self.__class__, self)._run()
-        self._print(
-            [self.client.authenticate(custom_token)],
-            title=('uuid', 'name',), with_redundancy=True)
+        r = self.client.authenticate(custom_token)
+        self._print([r], title=('uuid', 'name',), with_redundancy=True)
 
     def main(self, custom_token=None):
         self._run(custom_token)

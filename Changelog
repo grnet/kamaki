@@ -4,7 +4,7 @@ Bug Fixes:
 
 Changes:
 
-- Adjust astakos authenticate to the new url shchem of synnefo >= 0.14 [#3832, #3874]
+- Adjust astakos authenticate to the new url scheme of synnefo >= 0.14 [#3832, #3874]
   as a side effect, some renamings in astakos.AstakosClient:
    info --> user_info, user --> list_users
 
@@ -14,4 +14,5 @@ Features:
     authenticate, uuid, username, quotas, service uuid/username/quotas
 - Add some astakos/keystone kamaki-lib api calls [#3874], used to access astakos-calls cache:
   get_services, get_service_details, get_service_endpoints
+- Implement --cloud arg to switch between clouds [#3913]
 

@@ -160,7 +160,7 @@ class history_run(_init_history):
 
     _cmd_tree = None
 
-    def __init__(self, arguments={}, cmd_tree=None):
+    def __init__(self, arguments={}, auth_base=None, cmd_tree=None):
         super(self.__class__, self).__init__(arguments)
         self._cmd_tree = cmd_tree
 

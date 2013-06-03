@@ -53,7 +53,9 @@ class AstakosClient(Client):
         :returns: (dict) authentication information
         """
         self.token = token or self.token
-        self._cache[self.token] = self.get('/tokens').json
+        body = dict(auth=dict(token=dict(id=self.token)))
+        self.set_headers('content-type', 'application/json')
+        self._cache[self.token] = self.post('/tokens', data=body).json
         return self._cache[self.token]
 
     def get_services(self, token=None):
@@ -136,5 +138,9 @@ class AstakosClient(Client):
         return r['user']
 
     def term(self, key, token=None):
+        """Get (cached) term, from user credentials"""
+        return self.user_term(key, token)
+
+    def user_term(self, key, token=None):
         """Get (cached) term, from user credentials"""
         return self.user_info(token).get(key, None)

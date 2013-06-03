@@ -34,7 +34,7 @@
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.utils import print_dict
-from kamaki.cli.errors import raiseCLIError, CLISyntaxError
+from kamaki.cli.errors import raiseCLIError, CLISyntaxError, CLIBaseUrlError
 from kamaki.clients.cyclades import CycladesClient, ClientError
 from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
 from kamaki.cli.argument import ProgressBarArgument, DateArgument, IntArgument
@@ -70,8 +70,17 @@ class _init_cyclades(_command_init):
     def _run(self, service='compute'):
         token = self.config.get(service, 'token')\
             or self.config.get('global', 'token')
-        base_url = self.config.get(service, 'url')\
-            or self.config.get('global', 'url')
+
+        if getattr(self, 'auth_base', False):
+            cyclades_endpoints = self.auth_base.get_service_endpoints(
+                self.config.get('cyclades', 'type'),
+                self.config.get('cyclades', 'version'))
+            base_url = cyclades_endpoints['publicURL']
+        else:
+            base_url = self.config.get('cyclades', 'url')
+        if not base_url:
+            raise CLIBaseUrlError(service='cyclades')
+
         self.client = CycladesClient(base_url=base_url, token=token)
         self._set_log_params()
         self._update_max_threads()

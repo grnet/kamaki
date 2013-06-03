@@ -37,7 +37,7 @@ from os import path, makedirs, walk
 
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.errors import raiseCLIError, CLISyntaxError
+from kamaki.cli.errors import raiseCLIError, CLISyntaxError, CLIBaseUrlError
 from kamaki.cli.utils import (
     format_size, to_bytes, print_dict, print_items, pretty_keys, pretty_dict,
     page_hold, bold, ask_user, get_path_size, print_json)
@@ -147,15 +147,23 @@ class _pithos_init(_command_init):
     @staticmethod
     def _is_dir(remote_dict):
         return 'application/directory' == remote_dict.get(
-            'content_type',
-            remote_dict.get('content-type', ''))
+            'content_type', remote_dict.get('content-type', ''))
 
     @errors.generic.all
     def _run(self):
         self.token = self.config.get('file', 'token')\
             or self.config.get('global', 'token')
-        self.base_url = self.config.get('file', 'url')\
-            or self.config.get('global', 'url')
+
+        if getattr(self, 'auth_base', False):
+            pithos_endpoints = self.auth_base.get_service_endpoints(
+                self.config.get('pithos', 'type'),
+                self.config.get('pithos', 'version'))
+            self.base_url = pithos_endpoints['publicURL']
+        else:
+            self.base_url = self.config.get('pithos', 'url')
+        if not self.base_url:
+            raise CLIBaseUrlError(service='pithos')
+
         self._set_account()
         self.container = self.config.get('file', 'container')\
             or self.config.get('global', 'container')
@@ -171,20 +179,21 @@ class _pithos_init(_command_init):
         self._run()
 
     def _set_account(self):
-        user = AstakosClient(self.config.get('user', 'url'), self.token)
-        self.account = self['account'] or user.term('uuid')
-
-        """Backwards compatibility"""
-        self.account = self.account\
-            or self.config.get('file', 'account')\
-            or self.config.get('global', 'account')
+        if getattr(self, 'base_url', False):
+            self.account = self.auth_base.user_term('uuid', self.token)
+        else:
+            astakos_url = self.config('astakos', 'get')
+            if not astakos_url:
+                raise CLIBaseUrlError(service='astakos')
+            astakos = AstakosClient(astakos_url, self.token)
+            self.account = astakos.user_term('uuid')
 
 
 class _file_account_command(_pithos_init):
     """Base class for account level storage commands"""
 
-    def __init__(self, arguments={}):
-        super(_file_account_command, self).__init__(arguments)
+    def __init__(self, arguments={}, auth_base=None):
+        super(_file_account_command, self).__init__(arguments, auth_base)
         self['account'] = ValueArgument(
             'Set user account (not permanent)',
             ('-A', '--account'))
@@ -207,8 +216,8 @@ class _file_container_command(_file_account_command):
     container = None
     path = None
 
-    def __init__(self, arguments={}):
-        super(_file_container_command, self).__init__(arguments)
+    def __init__(self, arguments={}, auth_base=None):
+        super(_file_container_command, self).__init__(arguments, auth_base)
         self['container'] = ValueArgument(
             'Set container to work with (temporary)',
             ('-C', '--container'))
@@ -525,9 +534,10 @@ class _source_destination_command(_file_container_command):
         suffix_replace=ValueArgument('', '--suffix-to-replace', default=''),
     )
 
-    def __init__(self, arguments={}):
+    def __init__(self, arguments={}, auth_base=None):
         self.arguments.update(arguments)
-        super(_source_destination_command, self).__init__(self.arguments)
+        super(_source_destination_command, self).__init__(
+            self.arguments, auth_base)
 
     def _run(self, source_container___path, path_is_optional=False):
         super(_source_destination_command, self)._run(
@@ -1480,8 +1490,8 @@ class file_delete(_file_container_command, _optional_output_cmd):
             ('-R', '--recursive'))
     )
 
-    def __init__(self, arguments={}):
-        super(self.__class__, self).__init__(arguments)
+    def __init__(self, arguments={}, auth_base=None):
+        super(self.__class__, self).__init__(arguments, auth_base)
         self['delimiter'] = DelimiterArgument(
             self,
             parsed_name='--delimiter',
