@@ -164,6 +164,7 @@ class Shell(Cmd):
     def _create_help_method(cmd_name, args, descr, syntax):
         tmp_args = dict(args)
         tmp_args.pop('options', None)
+        tmp_args.pop('cloud', None)
         tmp_args.pop('debug', None)
         tmp_args.pop('verbose', None)
         tmp_args.pop('include', None)

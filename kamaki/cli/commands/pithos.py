@@ -37,7 +37,7 @@ from os import path, makedirs, walk
 
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.errors import raiseCLIError, CLISyntaxError
+from kamaki.cli.errors import raiseCLIError, CLISyntaxError, CLIBaseUrlError
 from kamaki.cli.utils import (
     format_size, to_bytes, print_dict, print_items, pretty_keys, pretty_dict,
     page_hold, bold, ask_user, get_path_size, print_json)
@@ -147,17 +147,23 @@ class _pithos_init(_command_init):
     @staticmethod
     def _is_dir(remote_dict):
         return 'application/directory' == remote_dict.get(
-            'content_type',
-            remote_dict.get('content-type', ''))
+            'content_type', remote_dict.get('content-type', ''))
 
     @errors.generic.all
     def _run(self):
         self.token = self.config.get('file', 'token')\
             or self.config.get('global', 'token')
-        pithos_endpoints = self.auth_base.get_service_endpoints(
-            self.config.get('pithos', 'type'),
-            self.config.get('pithos', 'version'))
-        self.base_url = pithos_endpoints['publicURL']
+
+        if getattr(self, 'auth_base', False):
+            pithos_endpoints = self.auth_base.get_service_endpoints(
+                self.config.get('pithos', 'type'),
+                self.config.get('pithos', 'version'))
+            self.base_url = pithos_endpoints['publicURL']
+        else:
+            self.base_url = self.config.get('pithos', 'url')
+        if not self.base_url:
+            raise CLIBaseUrlError(service='pithos')
+
         self._set_account()
         self.container = self.config.get('file', 'container')\
             or self.config.get('global', 'container')

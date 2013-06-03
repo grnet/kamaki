@@ -45,7 +45,7 @@ from kamaki.clients import ClientError
 from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
 from kamaki.cli.argument import IntArgument
 from kamaki.cli.commands.cyclades import _init_cyclades
-from kamaki.cli.errors import raiseCLIError
+from kamaki.cli.errors import raiseCLIError, CLIBaseUrlError
 from kamaki.cli.commands import _command_init, errors
 from kamaki.cli.commands import _optional_output_cmd, _optional_json
 
@@ -75,15 +75,18 @@ class _init_image(_command_init):
     @errors.generic.all
     def _run(self):
         token = self.config.get('image', 'token')\
-            or self.config.get('compute', 'token')\
             or self.config.get('global', 'token')
-        plankton_endpoints = self.auth_base.get_service_endpoints(
-            self.config.get('plankton', 'type'),
-            self.config.get('plankton', 'version'))
-        base_url = plankton_endpoints['publicURL']
-        #base_url = self.config.get('image', 'url')\
-        #    or self.config.get('compute', 'url')\
-        #    or self.config.get('global', 'url')
+
+        if getattr(self, 'auth_base', False):
+            plankton_endpoints = self.auth_base.get_service_endpoints(
+                self.config.get('plankton', 'type'),
+                self.config.get('plankton', 'version'))
+            base_url = plankton_endpoints['publicURL']
+        else:
+            base_url = self.config.get('plankton', 'url')
+        if not base_url:
+            raise CLIBaseUrlError(service='plankton')
+
         self.client = ImageClient(base_url=base_url, token=token)
         self._set_log_params()
         self._update_max_threads()

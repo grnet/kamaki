@@ -226,7 +226,12 @@ def _init_session(arguments):
         global_url = _cnf.get('global', 'auth_url')
     global_token = _cnf.get('global', 'token')
     from kamaki.clients.astakos import AstakosClient as AuthCachedClient
-    return AuthCachedClient(global_url, global_token)
+    try:
+        return AuthCachedClient(global_url, global_token)
+    except AssertionError as ae:
+        kloger.warning('WARNING: Failed to load auth_url %s [ %s ]' % (
+            global_url, ae))
+        return None
 
 
 def _load_spec_module(spec, arguments, module):
