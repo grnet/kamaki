@@ -201,15 +201,30 @@ def _init_session(arguments):
     _include = arguments['include'].value
     global _verbose
     _verbose = arguments['verbose'].value
+    _cnf = arguments['config']
     global _colors
-    _colors = arguments['config'].get('global', 'colors')
+    _colors = _cnf.get('global', 'colors')
     if not (stdout.isatty() and _colors == 'on'):
         from kamaki.cli.utils import remove_colors
         remove_colors()
     _silent = arguments['silent'].value
     _setup_logging(_silent, _debug, _verbose, _include)
-    global_url = arguments['config'].get('global', 'url')
-    global_token = arguments['config'].get('global', 'token')
+    picked_cloud = arguments['cloud'].value
+    if picked_cloud:
+        global_url = _cnf.get('remotes', picked_cloud)
+        if not global_url:
+            raise CLIError(
+                'No remote cloud "%s" in kamaki configuration' % picked_cloud,
+                importance=3, details=[
+                    'To check if this remote cloud alias is declared:',
+                    '  /config get remotes.%s' % picked_cloud,
+                    'To set a remote authentication URI aliased as "%s"' % (
+                        picked_cloud),
+                    '  /config set remotes.%s <URI>' % picked_cloud
+                ])
+    else:
+        global_url = _cnf.get('global', 'auth_url')
+    global_token = _cnf.get('global', 'token')
     from kamaki.clients.astakos import AstakosClient as AuthCachedClient
     return AuthCachedClient(global_url, global_token)
 
