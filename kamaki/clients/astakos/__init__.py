@@ -106,13 +106,13 @@ class AstakosClient(Client):
         for endpoint in service['endpoints']:
 
             if (not version) or (
-                    endpoint['version_id'].lower() == version.lower()):
+                    endpoint['versionId'].lower() == version.lower()):
                 matches.append(endpoint)
         if len(matches) != 1:
             raise ClientError(
                 '%s endpoints match type %s %s' % (
                     len(matches), service_type,
-                    ('and version_id %s' % version) if version else ''),
+                    ('and versionId %s' % version) if version else ''),
                 601)
         return matches[0]
 
