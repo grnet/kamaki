@@ -78,7 +78,7 @@ DEFAULTS = {
     },
     'pithos': {
         'type': 'object-store',
-        'version': 'v2'
+        'version': 'v1'
     },
     'cyclades': {
         'type': 'compute',
@@ -86,7 +86,7 @@ DEFAULTS = {
         },
     'plankton': {
         'type': 'image',
-        'version': 'v2.0'
+        'version': 'v1.0'
     },
     'astakos': {
         'type': 'identity',
