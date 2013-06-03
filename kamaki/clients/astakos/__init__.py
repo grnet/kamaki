@@ -69,7 +69,7 @@ class AstakosClient(Client):
             r = self.authenticate(token)
         finally:
             self.token = token_bu
-        return r['serviceCatalog']
+        return r['access']['serviceCatalog']
 
     def get_service_details(self, service_type, token=None):
         """
@@ -120,7 +120,7 @@ class AstakosClient(Client):
         """list cached users information"""
         r = []
         for k, v in self._cache.items():
-            r.append(dict(v['user']))
+            r.append(dict(v['access']['user']))
             r[-1].update(dict(auth_token=k))
         return r
 
@@ -134,7 +134,7 @@ class AstakosClient(Client):
             r = self.authenticate(token)
         finally:
             self.token = token_bu
-        return r['user']
+        return r['access']['user']
 
     def term(self, key, token=None):
         """Get (cached) term, from user credentials"""
