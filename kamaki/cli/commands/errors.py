@@ -68,7 +68,7 @@ class generic(object):
                         '  to get current token: /config get [server.]token'])
                 elif ce.status in range(-12, 200) + [302, 401, 403, 500]:
                     raiseCLIError(ce, importance=3, details=[
-                        'Check if serviceis up'])
+                        'Check if service is up'])
                 elif ce.status == 404 and 'kamakihttpresponse' in ce_msg:
                     client = getattr(self, 'client', None)
                     if not client:

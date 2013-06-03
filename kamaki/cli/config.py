@@ -77,16 +77,16 @@ DEFAULTS = {
         'file': HISTORY_PATH
     },
     'pithos': {
-        'type': 'object-storage',
-        'version': 'v2'
+        'type': 'object-store',
+        'version': 'v1'
     },
     'cyclades': {
         'type': 'compute',
         'version': 'v2.0'
         },
-    'plankton': {
+    'image': {
         'type': 'image',
-        'version': 'v2.0'
+        'version': ''
     },
     'astakos': {
         'type': 'identity',

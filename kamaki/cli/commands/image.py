@@ -309,13 +309,13 @@ class image_register(_init_image, _optional_json):
         #user = AstakosClient(self.config.get('user', 'url'), atoken)
         #return user.term('uuid')
         if getattr(self, 'auth_base', False):
-            return self.auth_base.term('uuid', atoken)
+            return self.auth_base.term('id', atoken)
         else:
             astakos_url = self.config.get('astakos', 'url')
             if not astakos_url:
                 raise CLIBaseUrlError(service='astakos')
             user = AstakosClient(astakos_url, atoken)
-            return user.term('uuid')
+            return user.term('id')
 
     def _get_pithos_client(self, container):
         if self['no_metafile_upload']:
