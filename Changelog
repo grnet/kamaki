@@ -86,3 +86,5 @@ Features:
 - Add some astakos/keystone kamaki-lib api calls [#3874], used to access astakos-calls cache:
   get_services, get_service_details, get_service_endpoints
 - Implement --cloud arg to switch between clouds [#3913]
+- Automatically discover service endpoints by following the auth_url config variable
+  If auth_url not set, use <service>.url explicit endpoint instead
