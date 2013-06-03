@@ -84,9 +84,9 @@ DEFAULTS = {
         'type': 'compute',
         'version': 'v2.0'
         },
-    'plankton': {
+    'image': {
         'type': 'image',
-        'version': 'v1.0'
+        'version': ''
     },
     'astakos': {
         'type': 'identity',
