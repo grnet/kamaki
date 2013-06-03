@@ -308,16 +308,28 @@ class image_register(_init_image, _optional_json):
         atoken = self.client.token
         #user = AstakosClient(self.config.get('user', 'url'), atoken)
         #return user.term('uuid')
-        self.auth_base.term('uuid', atoken)
+        if getattr(self, 'auth_base', False):
+            return self.auth_base.term('uuid', atoken)
+        else:
+            astakos_url = self.config.get('astakos', 'url')
+            if not astakos_url:
+                raise CLIBaseUrlError(service='astakos')
+            user = AstakosClient(astakos_url, atoken)
+            return user.term('uuid')
 
     def _get_pithos_client(self, container):
         if self['no_metafile_upload']:
             return None
-        pithos_endpoints = self.auth_base.get_service_endpoints(
-            self.config.get('pithos', 'type'),
-            self.config.get('pithos', 'version'))
-        purl = pithos_endpoints['publicURL']
         ptoken = self.client.token
+        if getattr(self, 'auth_base', False):
+            pithos_endpoints = self.auth_base.get_service_endpoints(
+                self.config.get('pithos', 'type'),
+                self.config.get('pithos', 'version'))
+            purl = pithos_endpoints['publicURL']
+        else:
+            purl = self.config.get('pithos', 'url')
+            if not purl:
+                raise CLIBaseUrlError(service='pithos')
         return PithosClient(purl, ptoken, self._get_uuid(), container)
 
     def _store_remote_metafile(self, pclient, remote_path, metadata):

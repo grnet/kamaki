@@ -179,7 +179,14 @@ class _pithos_init(_command_init):
         self._run()
 
     def _set_account(self):
-        self.account = self.auth_base.user_term('uuid', self.token)
+        if getattr(self, 'base_url', False):
+            self.account = self.auth_base.user_term('uuid', self.token)
+        else:
+            astakos_url = self.config('astakos', 'get')
+            if not astakos_url:
+                raise CLIBaseUrlError(service='astakos')
+            astakos = AstakosClient(astakos_url, self.token)
+            self.account = astakos.user_term('uuid')
 
 
 class _file_account_command(_pithos_init):
