@@ -160,12 +160,16 @@ class _pithos_init(_command_init):
                 self.config.get('pithos', 'version'))
             self.base_url = pithos_endpoints['publicURL']
         else:
-            self.base_url = self.config.get('pithos', 'url')
+            self.base_url = self.config.get('file', 'url')\
+                or self.config.get('store', 'url')\
+                or self.config.get('pithos', 'url')
         if not self.base_url:
             raise CLIBaseUrlError(service='pithos')
 
         self._set_account()
         self.container = self.config.get('file', 'container')\
+            or self.config.get('store', 'container')\
+            or self.config.get('pithos', 'container')\
             or self.config.get('global', 'container')
         self.client = PithosClient(
             base_url=self.base_url,
@@ -179,10 +183,11 @@ class _pithos_init(_command_init):
         self._run()
 
     def _set_account(self):
-        if getattr(self, 'base_url', False):
+        if getattr(self, 'auth_base', False):
             self.account = self.auth_base.user_term('id', self.token)
         else:
-            astakos_url = self.config('astakos', 'get')
+            astakos_url = self.config.get('user', 'url')\
+                or self.config.get('astakos', 'url')
             if not astakos_url:
                 raise CLIBaseUrlError(service='astakos')
             astakos = AstakosClient(astakos_url, self.token)

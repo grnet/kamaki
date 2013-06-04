@@ -75,15 +75,17 @@ class _init_image(_command_init):
     @errors.generic.all
     def _run(self):
         token = self.config.get('image', 'token')\
+            or self.config.get('plankton', 'token')\
             or self.config.get('global', 'token')
 
         if getattr(self, 'auth_base', False):
             plankton_endpoints = self.auth_base.get_service_endpoints(
-                self.config.get('plankton', 'type'),
-                self.config.get('plankton', 'version'))
+                self.config.get('image', 'type'),
+                self.config.get('image', 'version'))
             base_url = plankton_endpoints['publicURL']
         else:
-            base_url = self.config.get('plankton', 'url')
+            base_url = self.config.get('image', 'url')\
+                or self.config.get('plankton', 'url')
         if not base_url:
             raise CLIBaseUrlError(service='plankton')
 
@@ -304,14 +306,13 @@ class image_register(_init_image, _optional_json):
 
     )
 
-    def _get_uuid(self):
+    def _get_user_id(self):
         atoken = self.client.token
-        #user = AstakosClient(self.config.get('user', 'url'), atoken)
-        #return user.term('uuid')
         if getattr(self, 'auth_base', False):
             return self.auth_base.term('id', atoken)
         else:
-            astakos_url = self.config.get('astakos', 'url')
+            astakos_url = self.config.get('user', 'url')\
+                or self.config.get('astakos', 'url')
             if not astakos_url:
                 raise CLIBaseUrlError(service='astakos')
             user = AstakosClient(astakos_url, atoken)
@@ -327,10 +328,11 @@ class image_register(_init_image, _optional_json):
                 self.config.get('pithos', 'version'))
             purl = pithos_endpoints['publicURL']
         else:
-            purl = self.config.get('pithos', 'url')
+            purl = self.config.get('file', 'url')\
+                or self.config.get('pithos', 'url')
             if not purl:
                 raise CLIBaseUrlError(service='pithos')
-        return PithosClient(purl, ptoken, self._get_uuid(), container)
+        return PithosClient(purl, ptoken, self._get_user_id(), container)
 
     def _store_remote_metafile(self, pclient, remote_path, metadata):
         return pclient.upload_from_string(

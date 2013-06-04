@@ -50,7 +50,7 @@ HISTORY_PATH = os.path.expanduser('~/.kamaki.history')
 CONFIG_ENV = 'KAMAKI_CONFIG'
 
 HEADER = """
-# Kamaki configuration file v3
+# Kamaki configuration file v3 (kamaki >= v0.9)
 """
 
 DEFAULTS = {
@@ -72,6 +72,9 @@ DEFAULTS = {
         'image': 'image',
         'config': 'config',
         'history': 'history'
+        #  Optional command specs:
+        #  'livetest': 'livetest',
+        #  'astakos': 'snf-astakos'
     },
     'history': {
         'file': HISTORY_PATH
