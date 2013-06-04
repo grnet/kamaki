@@ -32,15 +32,19 @@
 # or implied, of GRNET S.A.
 
 import os
+from logging import getLogger
 
 from collections import defaultdict
 from ConfigParser import RawConfigParser, NoOptionError, NoSectionError
+from re import match
 
 try:
     from collections import OrderedDict
 except ImportError:
     from kamaki.clients.utils.ordereddict import OrderedDict
 
+
+log = getLogger(__name__)
 
 # Path to the file that stores the configuration
 CONFIG_PATH = os.path.expanduser('~/.kamakirc')
@@ -60,43 +64,66 @@ DEFAULTS = {
         'log_token': 'off',
         'log_data': 'off',
         'max_threads': 7,
-        'history_file': HISTORY_PATH
-    },
-    'cli': {
-        'user': 'astakos',
-        'file': 'pithos',
-        'server': 'cyclades',
-        'flavor': 'cyclades',
-        'network': 'cyclades',
-        'image': 'image',
-        'config': 'config',
-        'history': 'history'
+        'history_file': HISTORY_PATH,
+        'user_cli': 'astakos',
+        'file_cli': 'pithos',
+        'server_cli': 'cyclades',
+        'flavor_cli': 'cyclades',
+        'network_cli': 'cyclades',
+        'image_cli': 'image',
+        'config_cli': 'config',
+        'history_cli': 'history'
         #  Optional command specs:
         #  'livetest': 'livetest',
         #  'astakos': 'snf-astakos'
     },
-    'remote0': {
-        'remote_url': '',
-        'remote_token': ''
-        #'pithos_type': 'object-store',
-        #'pithos_version': 'v1',
-        #'cyclades_type': 'compute',
-        #'cyclades_version': 'v2.0',
-        #'image_type': 'image',
-        #'image_version': '',
-        #'astakos_type': 'identity',
-        #'astakos_version': 'v2.0'
+    'remotes':
+    {
+        'default': {
+            'url': '',
+            'token': ''
+            #'pithos_type': 'object-store',
+            #'pithos_version': 'v1',
+            #'cyclades_type': 'compute',
+            #'cyclades_version': 'v2.0',
+            #'plankton_type': 'image',
+            #'plankton_version': '',
+            #'astakos_type': 'identity',
+            #'astakos_version': 'v2.0'
+        }
     }
 }
 
 
 class Config(RawConfigParser):
-    def __init__(self, path=None):
+    def __init__(self, path=None, with_defaults=True):
         RawConfigParser.__init__(self, dict_type=OrderedDict)
         self.path = path or os.environ.get(CONFIG_ENV, CONFIG_PATH)
         self._overrides = defaultdict(dict)
-        self._load_defaults()
+        if with_defaults:
+            self._load_defaults()
         self.read(self.path)
+
+    @staticmethod
+    def _remote_name(full_section_name):
+        matcher = match('remote "(\w+)"', full_section_name)
+        return matcher.groups()[0] if matcher else None
+
+    def guess_version(self):
+        checker = Config(self.path, with_defaults=False)
+        sections = checker.sections()
+        log.warning('Config file heuristic 1: global section ?')
+        if 'global' in sections:
+            if checker.get('global', 'url') or checker.get('global', 'token'):
+                log.warning('..... config file has an old global section')
+                return 2.0
+        log.warning('Config file heuristic 2: at least 1 remote section ?')
+        for section in sections:
+            if self._remote_name(section):
+                log.warning('... found %s section' % section)
+                return 3.0
+        log.warning('All heuristics failed, cannot decide')
+        return 0.0
 
     def _load_defaults(self):
         for section, options in DEFAULTS.items():

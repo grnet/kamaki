@@ -202,6 +202,12 @@ def _init_session(arguments):
     global _verbose
     _verbose = arguments['verbose'].value
     _cnf = arguments['config']
+
+    guess = _cnf.value.guess_version()
+    if guess < 3.0:
+        print('PLEASE DO NOT PANIC: EXIT THE BUILDING QUIETLY')
+    raise CLIError('STOP HERE, PLEASE %s' % guess)
+
     global _colors
     _colors = _cnf.get('global', 'colors')
     if not (stdout.isatty() and _colors == 'on'):
@@ -259,13 +265,6 @@ def _groups_help(arguments):
         pkg = _load_spec_module(spec, arguments, '_commands')
         if pkg:
             cmds = getattr(pkg, '_commands')
-            #try:
-            #   #_cnf = arguments['config']
-            #   #cmds = [cmd for cmd in getattr(pkg, '_commands') if _cnf.get(
-            #   #    'cli', cmd.name)]
-            #except AttributeError:
-            #   if _debug:
-            #       kloger.warning('No description for %s' % cmd_group)
             try:
                 for cmd in cmds:
                     descriptions[cmd.name] = cmd.description
