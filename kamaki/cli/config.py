@@ -113,17 +113,19 @@ class Config(RawConfigParser):
         checker = Config(self.path, with_defaults=False)
         sections = checker.sections()
         log.warning('Config file heuristic 1: global section ?')
+        v = 0.0
         if 'global' in sections:
             if checker.get('global', 'url') or checker.get('global', 'token'):
                 log.warning('..... config file has an old global section')
-                return 2.0
+                v = 2.0
         log.warning('Config file heuristic 2: at least 1 remote section ?')
         for section in sections:
             if self._remote_name(section):
                 log.warning('... found %s section' % section)
-                return 3.0
+                v = 3.0
         log.warning('All heuristics failed, cannot decide')
-        return 0.0
+        del checker
+        return v
 
     def _load_defaults(self):
         for section, options in DEFAULTS.items():
