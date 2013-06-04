@@ -104,28 +104,37 @@ class Config(RawConfigParser):
             self._load_defaults()
         self.read(self.path)
 
+        assert False, 'Config.__init__: translate remotes to dict first'
+
     @staticmethod
     def _remote_name(full_section_name):
         matcher = match('remote "(\w+)"', full_section_name)
         return matcher.groups()[0] if matcher else None
 
+    def rescue_old_file(self):
+        pass
+        # global.url, global.token --> remote.default.url, remote.default.token
+        # remove global.url, global.token
+        # translation for <service> or <command> settings
+        # <service> or <command group> settings --> translation --> global
+
     def guess_version(self):
         checker = Config(self.path, with_defaults=False)
         sections = checker.sections()
         log.warning('Config file heuristic 1: global section ?')
-        v = 0.0
         if 'global' in sections:
             if checker.get('global', 'url') or checker.get('global', 'token'):
                 log.warning('..... config file has an old global section')
-                v = 2.0
+                return 2.0
+        log.warning('........ nope')
         log.warning('Config file heuristic 2: at least 1 remote section ?')
         for section in sections:
             if self._remote_name(section):
                 log.warning('... found %s section' % section)
-                v = 3.0
+                return 3.0
+        log.warning('........ nope')
         log.warning('All heuristics failed, cannot decide')
-        del checker
-        return v
+        return 0.0
 
     def _load_defaults(self):
         for section, options in DEFAULTS.items():
@@ -185,4 +194,5 @@ class Config(RawConfigParser):
             os.chmod(self.path, 0600)
             f.write(HEADER.lstrip())
             f.flush()
+            assert False, 'Config.write: Trasnlate remotes to file first'
             RawConfigParser.write(self, f)

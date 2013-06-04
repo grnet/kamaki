@@ -205,8 +205,24 @@ def _init_session(arguments):
 
     guess = _cnf.value.guess_version()
     if guess < 3.0:
-        print('PLEASE DO NOT PANIC: EXIT THE BUILDING QUIETLY')
-    raise CLIError('STOP HERE, PLEASE %s' % guess)
+        print('Missing an updated configuration file')
+        print('Updating configuration file without missing any information')
+        #_cnf.value.rescue_old_file()
+        print('... ... ... DONE')
+        raise CLIError(
+            'Invalid configuration file %s' % _cnf.value.path,
+            importance=2, details=[
+                'Kamaki is now using a single authentication URL and token',
+                'To check if the single authentication URL is set:',
+                '  /config get remote.default.token',
+                'To check if the single authentication token is set:',
+                '  /config get remote.default.token',
+                'To set the default authentication URL and token:'
+                '  /config set remote.default.url <URL>',
+                '  /config set remote.default.token <token>'])
+    raise CLIError(
+        'Your file is OK, but kamaki is under contruction, sorry',
+        importance=3, details=['DO NOT PANIC, EXIT THE BUILDING QUIETLY'])
 
     global _colors
     _colors = _cnf.get('global', 'colors')
