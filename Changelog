@@ -9,6 +9,7 @@ Bug Fixes:
 - Add image.add_member missing content-length header
 - Do not unpublish by default in all pithos low level requests [#3780]
 - Unquote http respons headers
+- Do not break compatibility with kamaki config file v2 (for kamaki 0.8.X)
 
 Changes:
 
