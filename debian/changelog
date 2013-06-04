@@ -1,3 +1,9 @@
+kamaki (0.8.3-0ubuntu1) precise; urgency=low
+
+  * New upstream version
+
+ -- Nikos Skalkotos <skalkoto@grnet.gr>  Thu, 25 Apr 2013 17:40:35 +0300
+
 kamaki (0.8.1-0ubuntu2) precise; urgency=low
 
   * Add missing (>= 0.2) version dependency for objpool
