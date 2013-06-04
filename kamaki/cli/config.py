@@ -56,12 +56,11 @@ HEADER = """
 DEFAULTS = {
     'global': {
         'colors': 'off',
-        'token': '',
         'log_file': os.path.expanduser('~/.kamaki.log'),
         'log_token': 'off',
         'log_data': 'off',
         'max_threads': 7,
-        'url': 'https://accounts.okeanos.grnet.gr/astakos/identity/v2.0/'
+        'history_file': HISTORY_PATH
     },
     'cli': {
         'user': 'astakos',
@@ -76,24 +75,17 @@ DEFAULTS = {
         #  'livetest': 'livetest',
         #  'astakos': 'snf-astakos'
     },
-    'history': {
-        'file': HISTORY_PATH
-    },
-    'pithos': {
-        'type': 'object-store',
-        'version': 'v1'
-    },
-    'cyclades': {
-        'type': 'compute',
-        'version': 'v2.0'
-        },
-    'image': {
-        'type': 'image',
-        'version': ''
-    },
-    'astakos': {
-        'type': 'identity',
-        'version': 'v2.0'
+    'remote0': {
+        'remote_url': '',
+        'remote_token': ''
+        #'pithos_type': 'object-store',
+        #'pithos_version': 'v1',
+        #'cyclades_type': 'compute',
+        #'cyclades_version': 'v2.0',
+        #'image_type': 'image',
+        #'image_version': '',
+        #'astakos_type': 'identity',
+        #'astakos_version': 'v2.0'
     }
 }
 

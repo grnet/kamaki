@@ -138,6 +138,7 @@ class RangeArgument(ValueArgument):
         (start, end) = (int(start), int(end))
         self._value = '%s-%s' % (start, end)
 
+
 # Command specs
 
 
@@ -200,8 +201,7 @@ class _file_account_command(_pithos_init):
     def __init__(self, arguments={}, auth_base=None):
         super(_file_account_command, self).__init__(arguments, auth_base)
         self['account'] = ValueArgument(
-            'Set user account (not permanent)',
-            ('-A', '--account'))
+            'Set user account (not permanent)', ('-A', '--account'))
 
     def _run(self, custom_account=None):
         super(_file_account_command, self)._run()
@@ -224,8 +224,7 @@ class _file_container_command(_file_account_command):
     def __init__(self, arguments={}, auth_base=None):
         super(_file_container_command, self).__init__(arguments, auth_base)
         self['container'] = ValueArgument(
-            'Set container to work with (temporary)',
-            ('-C', '--container'))
+            'Set container to work with (temporary)', ('-C', '--container'))
 
     def extract_container_and_path(
             self,
@@ -321,22 +320,17 @@ class file_list(_file_container_command, _optional_json):
         prefix=ValueArgument('output starting with prefix', '--prefix'),
         delimiter=ValueArgument('show output up to delimiter', '--delimiter'),
         path=ValueArgument(
-            'show output starting with prefix up to /',
-            '--path'),
+            'show output starting with prefix up to /', '--path'),
         meta=ValueArgument(
-            'show output with specified meta keys',
-            '--meta',
+            'show output with specified meta keys', '--meta',
             default=[]),
         if_modified_since=ValueArgument(
-            'show output modified since then',
-            '--if-modified-since'),
+            'show output modified since then', '--if-modified-since'),
         if_unmodified_since=ValueArgument(
-            'show output not modified since then',
-            '--if-unmodified-since'),
+            'show output not modified since then', '--if-unmodified-since'),
         until=DateArgument('show metadata until then', '--until'),
         format=ValueArgument(
-            'format to parse until data (default: d/m/Y H:M:S )',
-            '--format'),
+            'format to parse until data (default: d/m/Y H:M:S )', '--format'),
         shared=FlagArgument('show only shared', '--shared'),
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
@@ -499,12 +493,10 @@ class file_create(_file_container_command, _optional_output_cmd):
 
     arguments = dict(
         versioning=ValueArgument(
-            'set container versioning (auto/none)',
-            '--versioning'),
+            'set container versioning (auto/none)', '--versioning'),
         limit=IntArgument('set default container limit', '--limit'),
         meta=KeyValueArgument(
-            'set container metadata (can be repeated)',
-            '--meta')
+            'set container metadata (can be repeated)', '--meta')
     )
 
     @errors.generic.all
@@ -599,8 +591,7 @@ class _source_destination_command(_file_container_command):
             if srcerr.status == 404:
                 raiseCLIError(
                     'Source object %s not in source container %s' % (
-                        src_path,
-                        self.client.container),
+                        src_path, self.client.container),
                     details=['Hint: --with-prefix to match multiple objects'])
             elif srcerr.status not in (204,):
                 raise
@@ -610,8 +601,7 @@ class _source_destination_command(_file_container_command):
             if not self['recursive']:
                 raiseCLIError(
                     'Object %s of cont. %s is a dir' % (
-                        src_path,
-                        self.client.container),
+                        src_path, self.client.container),
                     details=['Use --recursive to access directories'])
             return (self._get_all, dict(prefix=src_path))
         srcobj['name'] = src_path
@@ -660,8 +650,7 @@ class _source_destination_command(_file_container_command):
             yield (name, self._get_new_object(dst_path or name, add_prefix))
         else:
             raiseCLIError('Source path %s conflicts with suffix %s' % (
-                src_iter['name'],
-                self['suffix']))
+                src_iter['name'], self['suffix']))
 
     def _get_new_object(self, obj, add_prefix):
         if self['prefix_replace'] and obj.startswith(self['prefix_replace']):
@@ -690,25 +679,21 @@ class file_copy(_source_destination_command, _optional_output_cmd):
 
     arguments = dict(
         destination_account=ValueArgument(
-            'Account to copy to',
-            ('-a', '--dst-account')),
+            'Account to copy to', ('-a', '--dst-account')),
         destination_container=ValueArgument(
             'use it if destination container name contains a : character',
             ('-D', '--dst-container')),
         public=ValueArgument('make object publicly accessible', '--public'),
         content_type=ValueArgument(
-            'change object\'s content type',
-            '--content-type'),
+            'change object\'s content type', '--content-type'),
         recursive=FlagArgument(
-            'copy directory and contents',
-            ('-R', '--recursive')),
+            'copy directory and contents', ('-R', '--recursive')),
         prefix=FlagArgument(
             'Match objects prefixed with src path (feels like src_path*)',
             '--with-prefix',
             default=''),
         suffix=ValueArgument(
-            'Suffix of source objects (feels like *suffix)',
-            '--with-suffix',
+            'Suffix of source objects (feels like *suffix)', '--with-suffix',
             default=''),
         add_prefix=ValueArgument('Prefix targets', '--add-prefix', default=''),
         add_suffix=ValueArgument('Suffix targets', '--add-suffix', default=''),
@@ -721,8 +706,7 @@ class file_copy(_source_destination_command, _optional_output_cmd):
             '--suffix-to-replace',
             default=''),
         source_version=ValueArgument(
-            'copy specific version',
-            ('-S', '--source-version'))
+            'copy specific version', ('-S', '--source-version'))
     )
 
     @errors.generic.all
@@ -747,8 +731,7 @@ class file_copy(_source_destination_command, _optional_output_cmd):
                 content_type=self['content_type'])
         if no_source_object:
             raiseCLIError('No object %s in container %s' % (
-                self.path,
-                self.container))
+                self.path, self.container))
         self._optional_output(r)
 
     def main(
@@ -782,25 +765,21 @@ class file_move(_source_destination_command, _optional_output_cmd):
 
     arguments = dict(
         destination_account=ValueArgument(
-            'Account to move to',
-            ('-a', '--dst-account')),
+            'Account to move to', ('-a', '--dst-account')),
         destination_container=ValueArgument(
             'use it if destination container name contains a : character',
             ('-D', '--dst-container')),
         public=ValueArgument('make object publicly accessible', '--public'),
         content_type=ValueArgument(
-            'change object\'s content type',
-            '--content-type'),
+            'change object\'s content type', '--content-type'),
         recursive=FlagArgument(
-            'copy directory and contents',
-            ('-R', '--recursive')),
+            'copy directory and contents', ('-R', '--recursive')),
         prefix=FlagArgument(
             'Match objects prefixed with src path (feels like src_path*)',
             '--with-prefix',
             default=''),
         suffix=ValueArgument(
-            'Suffix of source objects (feels like *suffix)',
-            '--with-suffix',
+            'Suffix of source objects (feels like *suffix)', '--with-suffix',
             default=''),
         add_prefix=ValueArgument('Prefix targets', '--add-prefix', default=''),
         add_suffix=ValueArgument('Suffix targets', '--add-suffix', default=''),
@@ -884,8 +863,7 @@ class file_append(_file_container_command, _optional_output_cmd):
 
     def main(self, local_path, container___path):
         super(self.__class__, self)._run(
-            container___path,
-            path_is_optional=False)
+            container___path, path_is_optional=False)
         self._run(local_path)
 
 
@@ -952,8 +930,7 @@ class file_overwrite(_file_container_command, _optional_output_cmd):
 
     def main(self, local_path, container___path, start, end):
         super(self.__class__, self)._run(
-            container___path,
-            path_is_optional=None)
+            container___path, path_is_optional=None)
         self.path = self.path or path.basename(local_path)
         self._run(local_path=local_path, start=start, end=end)
 
@@ -974,14 +951,11 @@ class file_manifest(_file_container_command, _optional_output_cmd):
     arguments = dict(
         etag=ValueArgument('check written data', '--etag'),
         content_encoding=ValueArgument(
-            'set MIME content type',
-            '--content-encoding'),
+            'set MIME content type', '--content-encoding'),
         content_disposition=ValueArgument(
-            'the presentation style of the object',
-            '--content-disposition'),
+            'the presentation style of the object', '--content-disposition'),
         content_type=ValueArgument(
-            'specify content type',
-            '--content-type',
+            'specify content type', '--content-type',
             default='application/octet-stream'),
         sharing=SharingArgument(
             '\n'.join([
@@ -1006,8 +980,7 @@ class file_manifest(_file_container_command, _optional_output_cmd):
 
     def main(self, container___path):
         super(self.__class__, self)._run(
-            container___path,
-            path_is_optional=False)
+            container___path, path_is_optional=False)
         self.run()
 
 
@@ -1017,16 +990,13 @@ class file_upload(_file_container_command, _optional_output_cmd):
 
     arguments = dict(
         use_hashes=FlagArgument(
-            'provide hashmap file instead of data',
-            '--use-hashes'),
+            'provide hashmap file instead of data', '--use-hashes'),
         etag=ValueArgument('check written data', '--etag'),
         unchunked=FlagArgument('avoid chunked transfer mode', '--unchunked'),
         content_encoding=ValueArgument(
-            'set MIME content type',
-            '--content-encoding'),
+            'set MIME content type', '--content-encoding'),
         content_disposition=ValueArgument(
-            'specify objects presentation style',
-            '--content-disposition'),
+            'specify objects presentation style', '--content-disposition'),
         content_type=ValueArgument('specify content type', '--content-type'),
         sharing=SharingArgument(
             help='\n'.join([
@@ -1199,17 +1169,13 @@ class file_cat(_file_container_command):
         range=RangeArgument('show range of data', '--range'),
         if_match=ValueArgument('show output if ETags match', '--if-match'),
         if_none_match=ValueArgument(
-            'show output if ETags match',
-            '--if-none-match'),
+            'show output if ETags match', '--if-none-match'),
         if_modified_since=DateArgument(
-            'show output modified since then',
-            '--if-modified-since'),
+            'show output modified since then', '--if-modified-since'),
         if_unmodified_since=DateArgument(
-            'show output unmodified since then',
-            '--if-unmodified-since'),
+            'show output unmodified since then', '--if-unmodified-since'),
         object_version=ValueArgument(
-            'get the specific version',
-            ('-O', '--object-version'))
+            'get the specific version', ('-O', '--object-version'))
     )
 
     @errors.generic.all
@@ -1229,8 +1195,7 @@ class file_cat(_file_container_command):
 
     def main(self, container___path):
         super(self.__class__, self)._run(
-            container___path,
-            path_is_optional=False)
+            container___path, path_is_optional=False)
         self._run()
 
 
@@ -1253,17 +1218,13 @@ class file_download(_file_container_command):
         range=RangeArgument('show range of data', '--range'),
         if_match=ValueArgument('show output if ETags match', '--if-match'),
         if_none_match=ValueArgument(
-            'show output if ETags match',
-            '--if-none-match'),
+            'show output if ETags match', '--if-none-match'),
         if_modified_since=DateArgument(
-            'show output modified since then',
-            '--if-modified-since'),
+            'show output modified since then', '--if-modified-since'),
         if_unmodified_since=DateArgument(
-            'show output unmodified since then',
-            '--if-unmodified-since'),
+            'show output unmodified since then', '--if-unmodified-since'),
         object_version=ValueArgument(
-            'get the specific version',
-            ('-O', '--object-version')),
+            'get the specific version', ('-O', '--object-version')),
         poolsize=IntArgument('set pool size', '--with-pool-size'),
         progress_bar=ProgressBarArgument(
             'do not show progress bar',
@@ -1382,7 +1343,6 @@ class file_download(_file_container_command):
     @errors.pithos.object_path
     @errors.pithos.local_path
     def _run(self, local_path):
-        #outputs = self._outputs(local_path)
         poolsize = self['poolsize']
         if poolsize:
             self.client.MAX_THREADS = int(poolsize)
@@ -1590,8 +1550,7 @@ class file_publish(_file_container_command):
 
     def main(self, container___path):
         super(self.__class__, self)._run(
-            container___path,
-            path_is_optional=False)
+            container___path, path_is_optional=False)
         self._run()
 
 
@@ -1608,8 +1567,7 @@ class file_unpublish(_file_container_command, _optional_output_cmd):
 
     def main(self, container___path):
         super(self.__class__, self)._run(
-            container___path,
-            path_is_optional=False)
+            container___path, path_is_optional=False)
         self._run()
 
 
@@ -1648,8 +1606,7 @@ class file_permissions_get(_file_container_command, _optional_json):
 
     def main(self, container___path):
         super(self.__class__, self)._run(
-            container___path,
-            path_is_optional=False)
+            container___path, path_is_optional=False)
         self._run()
 
 
@@ -1685,14 +1642,12 @@ class file_permissions_set(_file_container_command, _optional_output_cmd):
     @errors.pithos.object_path
     def _run(self, read, write):
         self._optional_output(self.client.set_object_sharing(
-            self.path,
-            read_permission=read, write_permission=write))
+            self.path, read_permission=read, write_permission=write))
 
     def main(self, container___path, *permissions):
         super(self.__class__, self)._run(
-            container___path,
-            path_is_optional=False)
-        (read, write) = self.format_permission_dict(permissions)
+            container___path, path_is_optional=False)
+        read, write = self.format_permission_dict(permissions)
         self._run(read, write)
 
 
@@ -1711,8 +1666,7 @@ class file_permissions_delete(_file_container_command, _optional_output_cmd):
 
     def main(self, container___path):
         super(self.__class__, self)._run(
-            container___path,
-            path_is_optional=False)
+            container___path, path_is_optional=False)
         self._run()
 
 
@@ -1741,8 +1695,7 @@ class file_info(_file_container_command, _optional_json):
             r = self.client.get_container_info(self.container)
         else:
             r = self.client.get_object_info(
-                self.path,
-                version=self['object_version'])
+                self.path, version=self['object_version'])
         self._print(r, print_dict)
 
     def main(self, container____path__=None):
@@ -1978,10 +1931,6 @@ class file_versioning_get(_file_account_command, _optional_json):
     @errors.pithos.connection
     @errors.pithos.container
     def _run(self):
-        #if self.container:
-        #    r = self.client.get_container_versioning(self.container)
-        #else:
-        #    r = self.client.get_account_versioning()
         self._print(
             self.client.get_container_versioning(self.container) if (
                 self.container) else self.client.get_account_versioning(),
