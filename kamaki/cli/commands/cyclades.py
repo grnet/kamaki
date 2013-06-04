@@ -77,7 +77,8 @@ class _init_cyclades(_command_init):
                 self.config.get('cyclades', 'version'))
             base_url = cyclades_endpoints['publicURL']
         else:
-            base_url = self.config.get('cyclades', 'url')
+            base_url = self.config.get('compute', 'url')\
+                or self.config.get('cyclades', 'url')
         if not base_url:
             raise CLIBaseUrlError(service='cyclades')
 
