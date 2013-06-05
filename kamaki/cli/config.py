@@ -79,7 +79,7 @@ DEFAULTS = {
         #  'livetest_cli': 'livetest',
         #  'astakos_cli': 'snf-astakos'
     },
-    'remotes':
+    'remote':
     {
         'default': {
             'url': '',
@@ -220,8 +220,8 @@ class Config(RawConfigParser):
                 return 2.0
         log.warning('........ nope')
         log.warning('Config file heuristic 2: at least 1 remote section ?')
-        if 'remotes' in sections:
-            for r in self.keys('remotes'):
+        if 'remote' in sections:
+            for r in self.keys('remote'):
                 log.warning('... found remote "%s"' % r)
                 return 3.0
         log.warning('........ nope')
@@ -238,18 +238,24 @@ class Config(RawConfigParser):
 
         :raises KeyError: if remote or remote's option does not exist
         """
-        r = self.get('remotes', remote)
+        r = self.get('remote', remote)
         if not r:
             raise KeyError('Remote "%s" does not exist' % remote)
         return r[option]
 
+    def get_global(self, option):
+        return self.get('global', option)
+
     def set_remote(self, remote, option, value):
         try:
-            d = self.get('remotes', remote)
+            d = self.get('remote', remote)
         except KeyError:
             pass
         d[option] = value
-        self.set('remotes', remote, d)
+        self.set('remote', remote, d)
+
+    def set_global(self, option, value):
+        self.set('global', option, value)
 
     def _load_defaults(self):
         for section, options in DEFAULTS.items():
@@ -305,10 +311,10 @@ class Config(RawConfigParser):
         self._overrides[section][option] = value
 
     def write(self):
-        for r, d in self.items('remotes'):
+        for r, d in self.items('remote'):
             for k, v in d.items():
                 self.set('remote "%s"' % r, k, v)
-        self.remove_section('remotes')
+        self.remove_section('remote')
 
         with open(self.path, 'w') as f:
             os.chmod(self.path, 0600)

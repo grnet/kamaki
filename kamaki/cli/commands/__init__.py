@@ -34,13 +34,15 @@
 from kamaki.cli.logger import get_logger
 from kamaki.cli.utils import print_json, print_items
 from kamaki.cli.argument import FlagArgument
+from kamaki.cli.errors import CLIError
+from kamaki.clients import Client
 
 log = get_logger(__name__)
 
 
 class _command_init(object):
 
-    def __init__(self, arguments={}, auth_base=None):
+    def __init__(self, arguments={}, auth_base_or_remote=None):
         if hasattr(self, 'arguments'):
             arguments.update(self.arguments)
         if isinstance(self, _optional_output_cmd):
@@ -52,20 +54,25 @@ class _command_init(object):
             self.config = self['config']
         except KeyError:
             pass
-        self.auth_base = auth_base or getattr(self, 'auth_base', None)
+        if isinstance(auth_base_or_remote, Client):
+            self.auth_base = auth_base_or_remote
+        elif not getattr(self, 'auth_base', None):
+            self.remote = auth_base_or_remote
+            if not self.remote:
+                raise CLIError('CRITICAL: No cloud specified', 3)
 
     def _set_log_params(self):
         try:
             self.client.LOG_TOKEN, self.client.LOG_DATA = (
-                self['config'].get('global', 'log_token') == 'on',
-                self['config'].get('global', 'log_data') == 'on')
+                self['config'].get_global('log_token').lower() == 'on',
+                self['config'].get_global('log_data').lower() == 'on')
         except Exception as e:
             log.warning('Failed to read custom log settings:'
                 '%s\n defaults for token and data logging are off' % e)
 
     def _update_max_threads(self):
         try:
-            max_threads = int(self['config'].get('global', 'max_threads'))
+            max_threads = int(self['config'].get_global('max_threads'))
             assert max_threads > 0
             self.client.MAX_THREADS = max_threads
         except Exception as e:

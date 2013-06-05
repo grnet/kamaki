@@ -302,7 +302,7 @@ class Shell(Cmd):
         self.auth_base = auth_base
         self._parser = parser
         self._history = History(
-            parser.arguments['config'].get('history', 'file'))
+            parser.arguments['config'].get_global('history_file'))
         if path:
             cmd = self.cmd_tree.get_command(path)
             intro = cmd.path.replace('_', ' ')
