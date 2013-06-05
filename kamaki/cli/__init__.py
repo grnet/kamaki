@@ -192,6 +192,31 @@ def _setup_logging(silent=False, debug=False, verbose=False, include=False):
     kloger = logger.get_logger(__name__)
 
 
+def _check_config_version(cnf):
+    guess = cnf.guess_version()
+    if guess < 3.0:
+        print('Configuration file "%s" is not updated to v3.0' % (
+            cnf.path))
+        print('Calculating changes while preserving information ...')
+        lost_terms = cnf.rescue_old_file()
+        if lost_terms:
+            print 'The following information will not be preserved:'
+            print '...', '\n... '.join(lost_terms)
+        print('... DONE')
+        print('Kamaki is ready to transform config file to version 3.0')
+        stdout.write('Overwrite file %s ? [Y, y] ' % cnf.path)
+        from sys import stdin
+        reply = stdin.readline()
+        if reply in ('Y\n', 'y\n'):
+            cnf.write()
+            print('... DONE')
+        else:
+            print('... ABORTING')
+            raise CLIError(
+                'Invalid format for config file %s' % cnf.path,
+                importance=3, details=['Please, update config file to v3.0'])
+
+
 def _init_session(arguments):
     global _help
     _help = arguments['help'].value
@@ -202,26 +227,9 @@ def _init_session(arguments):
     global _verbose
     _verbose = arguments['verbose'].value
     _cnf = arguments['config']
-
-    guess = _cnf.value.guess_version()
-    if guess < 3.0:
-        print('Missing an updated configuration file')
-        print('Updating configuration file without missing any information')
-        #_cnf.value.rescue_old_file()
-        print('... ... ... DONE')
-        raise CLIError(
-            'Invalid configuration file %s' % _cnf.value.path,
-            importance=2, details=[
-                'Kamaki is now using a single authentication URL and token',
-                'To check if the single authentication URL is set:',
-                '  /config get remote.default.token',
-                'To check if the single authentication token is set:',
-                '  /config get remote.default.token',
-                'To set the default authentication URL and token:'
-                '  /config set remote.default.url <URL>',
-                '  /config set remote.default.token <token>'])
+    _check_config_version(_cnf.value)
     raise CLIError(
-        'Your file is OK, but kamaki is under contruction, sorry',
+        'Your file is OK, but i am not ready to proceed',
         importance=3, details=['DO NOT PANIC, EXIT THE BUILDING QUIETLY'])
 
     global _colors

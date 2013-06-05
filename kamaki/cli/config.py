@@ -38,6 +38,8 @@ from collections import defaultdict
 from ConfigParser import RawConfigParser, NoOptionError, NoSectionError
 from re import match
 
+from kamaki.cli.errors import CLISyntaxError
+
 try:
     from collections import OrderedDict
 except ImportError:
@@ -74,8 +76,8 @@ DEFAULTS = {
         'config_cli': 'config',
         'history_cli': 'history'
         #  Optional command specs:
-        #  'livetest': 'livetest',
-        #  'astakos': 'snf-astakos'
+        #  'livetest_cli': 'livetest',
+        #  'astakos_cli': 'snf-astakos'
     },
     'remotes':
     {
@@ -104,7 +106,12 @@ class Config(RawConfigParser):
             self._load_defaults()
         self.read(self.path)
 
-        assert False, 'Config.__init__: translate remotes to dict first'
+        for section in self.sections():
+            r = self._remote_name(section)
+            if r:
+                for k, v in self.items(section):
+                    self.set_remote(r, k, v)
+                self.remove_section(section)
 
     @staticmethod
     def _remote_name(full_section_name):
@@ -112,11 +119,96 @@ class Config(RawConfigParser):
         return matcher.groups()[0] if matcher else None
 
     def rescue_old_file(self):
-        pass
-        # global.url, global.token --> remote.default.url, remote.default.token
-        # remove global.url, global.token
-        # translation for <service> or <command> settings
-        # <service> or <command group> settings --> translation --> global
+        lost_terms = []
+        global_terms = DEFAULTS['global'].keys()
+        translations = dict(
+            config=dict(serv='', cmd='config'),
+            history=dict(serv='', cmd='history'),
+            pithos=dict(serv='pithos', cmd='file'),
+            file=dict(serv='pithos', cmd='file'),
+            store=dict(serv='pithos', cmd='file'),
+            storage=dict(serv='pithos', cmd='file'),
+            image=dict(serv='plankton', cmd='image'),
+            plankton=dict(serv='plankton', cmd='image'),
+            compute=dict(serv='compute', cmd=''),
+            cyclades=dict(serv='compute', cmd='server'),
+            server=dict(serv='compute', cmd='server'),
+            flavor=dict(serv='compute', cmd='flavor'),
+            network=dict(serv='compute', cmd='network'),
+            astakos=dict(serv='astakos', cmd='user'),
+            user=dict(serv='astakos', cmd='user'),
+        )
+
+        for s in self.sections():
+            if s in ('global'):
+                # global.url, global.token -->
+                # remote.default.url, remote.default.token
+                for term in set(self.keys(s)).difference(global_terms):
+                    if term not in ('url', 'token'):
+                        lost_terms.append('%s.%s = %s' % (
+                            s, term, self.get(s, term)))
+                        self.remove_option(s, term)
+                        continue
+                    gval = self.get(s, term)
+                    cval = self.get_remote('default', term)
+                    if gval and cval and (
+                        gval.lower().strip('/') != cval.lower().strip('/')):
+                            raise CLISyntaxError(
+                                'Conflicting values for default %s' % term,
+                                importance=2, details=[
+                                    ' global.%s:  %s' % (term, gval),
+                                    ' remote.default.%s:  %s' % (term, cval),
+                                    'Please remove one of them manually:',
+                                    ' /config delete global.%s' % term,
+                                    ' or'
+                                    ' /config delete remote.default.%s' % term,
+                                    'and try again'])
+                    elif gval:
+                        print('... rescue %s.%s => remote.default.%s' % (
+                            s, term, term))
+                        self.set_remote('default', term, gval)
+                    self.remove_option(s, term)
+            # translation for <service> or <command> settings
+            # <service> or <command group> settings --> translation --> global
+            elif s in translations:
+
+                if s in ('history',):
+                    k = 'file'
+                    v = self.get(s, k)
+                    if v:
+                        print('... rescue %s.%s => global.%s_%s' % (
+                            s, k, s, k))
+                        self.set('global', '%s_%s' % (s, k), v)
+                        self.remove_option(s, k)
+
+                trn = translations[s]
+                for k, v in self.items(s, False):
+                    if v and k in ('cli',):
+                        print('... rescue %s.%s => global.%s_cli' % (
+                            s, k, trn['cmd']))
+                        self.set('global', 'file_cli', v)
+                    elif v and k in ('url', 'token'):
+                        print(
+                            '... rescue %s.%s => remote.default.%s_%s' % (
+                                s, k, trn['serv'], k))
+                        self.set_remote('default', 'pithos_%s' % k, v)
+                    elif v:
+                        lost_terms.append('%s.%s = %s' % (s, k, v))
+                self.remove_section(s)
+        #  self.pretty_print()
+        return lost_terms
+
+    def pretty_print(self):
+        for s in self.sections():
+            print s
+            for k, v in self.items(s):
+                if isinstance(v, dict):
+                    print '\t', k, '=> {'
+                    for ki, vi in v.items():
+                        print '\t\t', ki, '=>', vi
+                    print('\t}')
+                else:
+                    print '\t', k, '=>', v
 
     def guess_version(self):
         checker = Config(self.path, with_defaults=False)
@@ -128,13 +220,36 @@ class Config(RawConfigParser):
                 return 2.0
         log.warning('........ nope')
         log.warning('Config file heuristic 2: at least 1 remote section ?')
-        for section in sections:
-            if self._remote_name(section):
-                log.warning('... found %s section' % section)
+        if 'remotes' in sections:
+            for r in self.keys('remotes'):
+                log.warning('... found remote "%s"' % r)
                 return 3.0
         log.warning('........ nope')
         log.warning('All heuristics failed, cannot decide')
         return 0.0
+
+    def get_remote(self, remote, option):
+        """
+        :param remote: (str) remote cloud alias
+
+        :param option: (str) option in remote cloud section
+
+        :returns: (str) the value assigned on this option
+
+        :raises KeyError: if remote or remote's option does not exist
+        """
+        r = self.get('remotes', remote)
+        if not r:
+            raise KeyError('Remote "%s" does not exist' % remote)
+        return r[option]
+
+    def set_remote(self, remote, option, value):
+        try:
+            d = self.get('remotes', remote)
+        except KeyError:
+            pass
+        d[option] = value
+        self.set('remotes', remote, d)
 
     def _load_defaults(self):
         for section, options in DEFAULTS.items():
@@ -190,9 +305,13 @@ class Config(RawConfigParser):
         self._overrides[section][option] = value
 
     def write(self):
+        for r, d in self.items('remotes'):
+            for k, v in d.items():
+                self.set('remote "%s"' % r, k, v)
+        self.remove_section('remotes')
+
         with open(self.path, 'w') as f:
             os.chmod(self.path, 0600)
             f.write(HEADER.lstrip())
             f.flush()
-            assert False, 'Config.write: Trasnlate remotes to file first'
             RawConfigParser.write(self, f)
