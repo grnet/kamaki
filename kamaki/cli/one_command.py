@@ -96,7 +96,7 @@ def run(remote_base, cloud, parser, _help):
         exit(0)
 
     cls = cmd.get_class()
-    executable = cls(parser.arguments, remote_base)
+    executable = cls(parser.arguments, remote_base, cloud)
     parser.update_arguments(executable.arguments)
     #parsed, unparsed = parse_known_args(parser, executable.arguments)
     for term in _best_match:

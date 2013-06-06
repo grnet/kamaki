@@ -69,6 +69,7 @@ class Shell(Cmd):
     _prompt_stack = []
     _parser = None
     auth_base = None
+    cloud = None
 
     undoc_header = 'interactive shell commands:'
 
@@ -202,7 +203,9 @@ class Shell(Cmd):
                             cmd_tree=self.cmd_tree)
                     else:
                         instance = cls(
-                            dict(cmd_parser.arguments), self.auth_base)
+                            dict(cmd_parser.arguments),
+                            self.auth_base,
+                            self.cloud)
                     cmd_parser.update_arguments(instance.arguments)
                     cmd_parser.arguments = instance.arguments
                     cmd_parser.syntax = '%s %s' % (

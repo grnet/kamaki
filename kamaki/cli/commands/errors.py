@@ -50,7 +50,7 @@ class generic(object):
                 if _debug:
                     print_stack()
                     print_exc(e)
-                if isinstance(e, CLIError):
+                if isinstance(e, CLIError) or isinstance(e, ClientError):
                     raiseCLIError(e)
                 raiseCLIError(e, details=['%s, -d for debug info' % type(e)])
         return _raise
