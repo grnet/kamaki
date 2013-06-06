@@ -192,6 +192,12 @@ class Config(RawConfigParser):
                             '... rescue %s.%s => remote.default.%s_%s' % (
                                 s, k, trn['serv'], k))
                         self.set_remote('default', 'pithos_%s' % k, v)
+                    elif (k in ('container', 'uuid')) and (
+                            trn['serv'] in ('pithos',)):
+                        print(
+                            '... rescue %s.%s => remote.default.pithos_%s' % (
+                                    s, k, k))
+                        self.set_remote('default', 'pithos_%s' % k, v)
                     elif v:
                         lost_terms.append('%s.%s = %s' % (s, k, v))
                 self.remove_section(s)
