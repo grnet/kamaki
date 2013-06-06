@@ -298,8 +298,9 @@ class Shell(Cmd):
         hdr = tmp_partition[0].strip()
         return '%s commands:' % hdr
 
-    def run(self, auth_base, parser, path=''):
+    def run(self, auth_base, cloud, parser, path=''):
         self.auth_base = auth_base
+        self.cloud = cloud
         self._parser = parser
         self._history = History(
             parser.arguments['config'].get_global('history_file'))

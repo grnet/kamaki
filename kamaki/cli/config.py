@@ -248,9 +248,9 @@ class Config(RawConfigParser):
 
     def set_remote(self, remote, option, value):
         try:
-            d = self.get('remote', remote)
+            d = self.get('remote', remote) or dict()
         except KeyError:
-            pass
+            d = dict()
         d[option] = value
         self.set('remote', remote, d)
 
@@ -298,6 +298,11 @@ class Config(RawConfigParser):
             RawConfigParser.remove_option(self, section, option)
         except NoSectionError:
             pass
+
+    def remove_from_remote(self, remote, option):
+        d = self.get('remote', remote)
+        if isinstance(d, dict):
+            d.pop(option)
 
     def keys(self, section, include_defaults=True):
         d = self._get_dict(section, include_defaults)

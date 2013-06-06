@@ -34,15 +34,13 @@
 from kamaki.cli.logger import get_logger
 from kamaki.cli.utils import print_json, print_items
 from kamaki.cli.argument import FlagArgument
-from kamaki.cli.errors import CLIError
-from kamaki.clients import Client
 
 log = get_logger(__name__)
 
 
 class _command_init(object):
 
-    def __init__(self, arguments={}, auth_base_or_remote=None):
+    def __init__(self, arguments={}, auth_base=None, cloud=None):
         if hasattr(self, 'arguments'):
             arguments.update(self.arguments)
         if isinstance(self, _optional_output_cmd):
@@ -54,12 +52,8 @@ class _command_init(object):
             self.config = self['config']
         except KeyError:
             pass
-        if isinstance(auth_base_or_remote, Client):
-            self.auth_base = auth_base_or_remote
-        elif not getattr(self, 'auth_base', None):
-            self.remote = auth_base_or_remote
-            if not self.remote:
-                raise CLIError('CRITICAL: No cloud specified', 3)
+        self.auth_base = auth_base or getattr(self, 'auth_base', None)
+        self.cloud = cloud or getattr(self, 'cloud', None)
 
     def _set_log_params(self):
         try:

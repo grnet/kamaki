@@ -222,6 +222,9 @@ def _check_config_version(cnf):
 
 
 def _init_session(arguments, is_non_API=False):
+    """
+    :returns: (AuthCachedClient, str) authenticator and cloud remote name
+    """
     global _help
     _help = arguments['help'].value
     global _debug
@@ -242,7 +245,7 @@ def _init_session(arguments, is_non_API=False):
     _setup_logging(_silent, _debug, _verbose, _include)
 
     if _help or is_non_API:
-        return None
+        return None, None
 
     cloud = arguments['cloud'].value or 'default'
     if not cloud in _cnf.value.keys('remote'):
@@ -253,26 +256,23 @@ def _init_session(arguments, is_non_API=False):
                 'single authentication URL and token:',
                 '  kamaki config set remote.%s.url <URL>' % cloud,
                 '  kamaki config set remote.%s.token <t0k3n>' % cloud])
-    url = _cnf.get_remote(cloud, 'url')
-    if not url:
-        kloger.warning(
-            'WARNING: No remote.%s.url, use service urls instead' % cloud)
-        return cloud
-    token = _cnf.get_remote(cloud, 'token')
-    if not token:
-        raise CLIError(
-            'No authentication token provided for %s cloud' % cloud,
-            importance=3, details=[
-                'Get and set a token for %s cloud:' % cloud,
-                '  kamaki config set remote.%s.token <t0k3n>' % cloud])
+    auth_args = dict()
+    for term in ('url', 'token'):
+        auth_args[term] = _cnf.get_remote(cloud, term)
+        if not auth_args[term]:
+            raise CLIError(
+                'No authentication %s provided for %s cloud' % (term, cloud),
+                importance=3, details=[
+                    'Get and set a %s for %s cloud:' % (term, cloud),
+                    '  kamaki config set remote.%s.%s <t0k3n>' % (term, cloud)
+                ])
 
     from kamaki.clients.astakos import AstakosClient as AuthCachedClient
     try:
-        return AuthCachedClient(url, token)
+        return AuthCachedClient(auth_args['url'], auth_args['token']), cloud
     except AssertionError as ae:
-        kloger.warning(
-            'WARNING: Failed to load auth_url %s [ %s ]' % (url, ae))
-        return None
+        kloger.warning('WARNING: Failed to load authenticator [%s]' % ae)
+        return None, cloud
 
 
 def _load_spec_module(spec, arguments, module):
@@ -417,20 +417,20 @@ def set_command_params(parameters):
 
 #  CLI Choice:
 
-def run_one_cmd(exe_string, parser, auth_base):
+def run_one_cmd(exe_string, parser, auth_base, cloud):
     global _history
     _history = History(
         parser.arguments['config'].get_global('history_file'))
     _history.add(' '.join([exe_string] + argv[1:]))
     from kamaki.cli import one_command
-    one_command.run(auth_base, parser, _help)
+    one_command.run(auth_base, cloud, parser, _help)
 
 
-def run_shell(exe_string, parser, auth_base):
+def run_shell(exe_string, parser, auth_base, cloud):
     from command_shell import _init_shell
     shell = _init_shell(exe_string, parser)
     _load_all_commands(shell.cmd_tree, parser.arguments)
-    shell.run(auth_base, parser)
+    shell.run(auth_base, cloud, parser)
 
 
 def is_non_API(parser):
@@ -458,18 +458,18 @@ def main():
         filelog = logger.add_file_logger(__name__.split('.')[0])
         filelog.info('* Initial Call *\n%s\n- - -' % ' '.join(argv))
 
-        remote_base = _init_session(parser.arguments, is_non_API(parser))
+        auth_base, cloud = _init_session(parser.arguments, is_non_API(parser))
 
         from kamaki.cli.utils import suggest_missing
         suggest_missing()
 
         if parser.unparsed:
-            run_one_cmd(exe, parser, remote_base)
+            run_one_cmd(exe, parser, auth_base, cloud)
         elif _help:
             parser.parser.print_help()
             _groups_help(parser.arguments)
         else:
-            run_shell(exe, parser, remote_base)
+            run_shell(exe, parser, auth_base, cloud)
     except CLIError as err:
         print_error_message(err)
         if _debug:

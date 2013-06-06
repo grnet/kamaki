@@ -55,7 +55,7 @@ def _get_best_match_from_cmd_tree(cmd_tree, unparsed):
     return None
 
 
-def run(remote_base, parser, _help):
+def run(remote_base, cloud, parser, _help):
     group = get_command_group(list(parser.unparsed), parser.arguments)
     if not group:
         parser.parser.print_help()
