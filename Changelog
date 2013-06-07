@@ -1,4 +1,12 @@
+Hot fix 0.8.4 and 0.8.5
+
+- Typo in file-copy/move
+- Fix down/upload where / was user instead of os-specific seperator [#3954]
+- Make sure all url-params are url-encoded [#3956]
+
 Hot fix 0.8.3
+
+Fix bug #3954 by using os-specific seperators in all cases in up/download
 
 Honour if_etag_match and if_not_exist preconditions even when file blocks are
 already uploaded [#3708]

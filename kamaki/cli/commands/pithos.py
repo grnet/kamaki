@@ -594,7 +594,7 @@ class _source_destination_command(_file_container_command):
         srcobj['name'] = src_path
         return srcobj
 
-    def src_dst_pairs(self, ds_path):
+    def src_dst_pairs(self, dst_path):
         src_iter = self._get_src_objects(self.path)
         src_N = isinstance(src_iter, tuple)
         add_prefix = self['add_prefix'].strip('/')
@@ -1091,7 +1091,9 @@ class file_upload(_file_container_command):
                 for f in files:
                     fpath = path.join(top, f)
                     if path.isfile(fpath):
-                        yield open(fpath, 'rb'), '%s/%s' % (rel_path, f)
+                        rel_path = rel_path.replace(path.sep, '/')
+                        pathfix = f.replace(path.sep, '/')
+                        yield open(fpath, 'rb'), '%s/%s' % (rel_path, pathfix)
                     else:
                         print('%s is not a regular file' % fpath)
         else:
@@ -1100,7 +1102,7 @@ class file_upload(_file_container_command):
             try:
                 robj = self.client.get_object_info(rpath)
                 if remote_path and self._is_dir(robj):
-                    rpath += '/%s' % short_path
+                    rpath += '/%s' % (short_path.replace(path.sep, '/'))
                     self.client.get_object_info(rpath)
                 if not self['overwrite']:
                     raiseCLIError(
@@ -1276,7 +1278,7 @@ class file_download(_file_container_command):
                 raiseCLIError(
                     'Illegal download: Remote object %s is a directory' % (
                         self.path),
-                    details=['To download a directory, try --recursive'])
+                    details=['To download a directory, try --recursive or -R'])
             if '/' in self.path.strip('/') and not local_path:
                 raiseCLIError(
                     'Illegal download: remote object %s contains "/"' % (
@@ -1290,8 +1292,7 @@ class file_download(_file_container_command):
             if self.path:
                 raiseCLIError(
                     'No matching path %s on container %s' % (
-                        self.path,
-                        self.container),
+                        self.path, self.container),
                     details=[
                         'To list the contents of %s, try:' % self.container,
                         '   /file list %s' % self.container])
@@ -1304,7 +1305,9 @@ class file_download(_file_container_command):
         lprefix = path.abspath(local_path or path.curdir)
         if path.isdir(lprefix):
             for rpath, remote_is_dir in remotes:
-                lpath = '/%s/%s' % (lprefix.strip('/'), rpath.strip('/'))
+                lpath = path.sep.join([
+                    lprefix[:-1] if lprefix.endswith(path.sep) else lprefix,
+                    rpath.strip('/').replace('/', path.sep)])
                 if remote_is_dir:
                     if path.exists(lpath) and path.isdir(lpath):
                         continue
@@ -1353,7 +1356,6 @@ class file_download(_file_container_command):
     @errors.pithos.object_path
     @errors.pithos.local_path
     def _run(self, local_path):
-        #outputs = self._outputs(local_path)
         poolsize = self['poolsize']
         if poolsize:
             self.client.MAX_THREADS = int(poolsize)
