@@ -1356,7 +1356,6 @@ class file_download(_file_container_command):
     @errors.pithos.object_path
     @errors.pithos.local_path
     def _run(self, local_path):
-        #outputs = self._outputs(local_path)
         poolsize = self['poolsize']
         if poolsize:
             self.client.MAX_THREADS = int(poolsize)

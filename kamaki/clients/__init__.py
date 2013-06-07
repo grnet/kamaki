@@ -372,11 +372,11 @@ class Client(object):
     def set_header(self, name, value, iff=True):
         """Set a header 'name':'value'"""
         if value is not None and iff:
-            self.headers[name] = value
+            self.headers[name] = unicode(value)
 
     def set_param(self, name, value=None, iff=True):
         if iff:
-            self.params[name] = value
+            self.params[name] = unicode(value)
 
     def request(
             self, method, path,
