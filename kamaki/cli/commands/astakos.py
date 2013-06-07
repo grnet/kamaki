@@ -33,9 +33,11 @@
 
 from kamaki.cli import command
 from kamaki.clients.astakos import AstakosClient
-from kamaki.cli.commands import _command_init, errors, _optional_json
+from kamaki.cli.commands import (
+    _command_init, errors, _optional_json, addLogSettings)
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import CLIBaseUrlError
+from kamaki.cli.utils import print_dict
 
 user_cmds = CommandTree('user', 'Astakos API commands')
 _commands = [user_cmds]
@@ -45,23 +47,21 @@ class _user_init(_command_init):
 
     @errors.generic.all
     @errors.user.load
+    @addLogSettings
     def _run(self):
-        #token = self.config.get('user', 'token')\
-        #    or self.config.get('global', 'token')
-        #base_url = self.config.get('global', 'url')
-        #self.client = AstakosClient(base_url=base_url, token=token)
+        if getattr(self, 'cloud', False):
+            base_url = self._custom_url('astakos')
+            if base_url:
+                token = self._custom_token('astakos')\
+                    or self.config.get_remote(self.cloud, 'token')
+                self.client = AstakosClient(base_url=base_url, token=token)
+                return
+        else:
+            self.cloud = 'default'
         if getattr(self, 'auth_base', False):
             self.client = self.auth_base
-        else:
-            token = self.config.get('astakos', 'token')\
-                or self.config.get('global', 'token')
-            base_url = self.config.get('astakos', 'url')
-            if not base_url:
-                raise CLIBaseUrlError(service='astakos')
-            self.client = AstakosClient(base_url=base_url, token=token)
-
-        self._set_log_params()
-        self._update_max_threads()
+            return
+        raise CLIBaseUrlError(service='astakos')
 
     def main(self):
         self._run()
@@ -77,12 +77,16 @@ class user_authenticate(_user_init, _optional_json):
     Token can also be provided as a parameter
     """
 
+    @staticmethod
+    def _print_access(r):
+        print_dict(r['access'])
+
     @errors.generic.all
     @errors.user.authenticate
     def _run(self, custom_token=None):
         super(self.__class__, self)._run()
         r = self.client.authenticate(custom_token)
-        self._print([r], title=('uuid', 'name',), with_redundancy=True)
+        self._print(r, self._print_access)
 
     def main(self, custom_token=None):
         self._run(custom_token)

@@ -192,7 +192,39 @@ def _setup_logging(silent=False, debug=False, verbose=False, include=False):
     kloger = logger.get_logger(__name__)
 
 
-def _init_session(arguments):
+def _check_config_version(cnf):
+    guess = cnf.guess_version()
+    if guess < 3.0:
+        print('Config file format version >= 3.0 is required')
+        print('Configuration file "%s" format is not up to date' % (
+            cnf.path))
+        print('but kamaki can fix this:')
+        print('Calculating changes while preserving information')
+        lost_terms = cnf.rescue_old_file()
+        print('... DONE')
+        if lost_terms:
+            print 'The following information will NOT be preserved:'
+            print '\t', '\n\t'.join(lost_terms)
+        print('Kamaki is ready to convert the config file to version 3.0')
+        stdout.write('Overwrite file %s ? [Y, y] ' % cnf.path)
+        from sys import stdin
+        reply = stdin.readline()
+        if reply in ('Y\n', 'y\n'):
+            cnf.write()
+            print('... DONE')
+        else:
+            print('... ABORTING')
+            raise CLIError(
+                'Invalid format for config file %s' % cnf.path,
+                importance=3, details=[
+                    'Please, update config file to v3.0',
+                    'For automatic conversion, rerun and say Y'])
+
+
+def _init_session(arguments, is_non_API=False):
+    """
+    :returns: (AuthCachedClient, str) authenticator and cloud remote name
+    """
     global _help
     _help = arguments['help'].value
     global _debug
@@ -202,40 +234,48 @@ def _init_session(arguments):
     global _verbose
     _verbose = arguments['verbose'].value
     _cnf = arguments['config']
+    _check_config_version(_cnf.value)
+
     global _colors
-    _colors = _cnf.get('global', 'colors')
+    _colors = _cnf.value.get_global('colors')
     if not (stdout.isatty() and _colors == 'on'):
         from kamaki.cli.utils import remove_colors
         remove_colors()
     _silent = arguments['silent'].value
     _setup_logging(_silent, _debug, _verbose, _include)
-    picked_cloud = arguments['cloud'].value
-    if picked_cloud:
-        global_url = _cnf.get('remotes', picked_cloud)
-        if not global_url:
+
+    if _help or is_non_API:
+        return None, None
+
+    cloud = arguments['cloud'].value or 'default'
+    if not cloud in _cnf.value.keys('remote'):
+        raise CLIError(
+            'No cloud remote "%s" is configured' % cloud,
+            importance=3, details=[
+                'To configure a new cloud remote, find and set the',
+                'single authentication URL and token:',
+                '  kamaki config set remote.%s.url <URL>' % cloud,
+                '  kamaki config set remote.%s.token <t0k3n>' % cloud])
+    auth_args = dict()
+    for term in ('url', 'token'):
+        auth_args[term] = _cnf.get_remote(cloud, term)
+        if not auth_args[term]:
             raise CLIError(
-                'No remote cloud "%s" in kamaki configuration' % picked_cloud,
+                'No authentication %s provided for %s cloud' % (term, cloud),
                 importance=3, details=[
-                    'To check if this remote cloud alias is declared:',
-                    '  /config get remotes.%s' % picked_cloud,
-                    'To set a remote authentication URI aliased as "%s"' % (
-                        picked_cloud),
-                    '  /config set remotes.%s <URI>' % picked_cloud
+                    'Get and set a %s for %s cloud:' % (term, cloud),
+                    '  kamaki config set remote.%s.%s <t0k3n>' % (term, cloud)
                 ])
-    else:
-        global_url = _cnf.get('global', 'auth_url')
-    global_token = _cnf.get('global', 'token')
+
     from kamaki.clients.astakos import AstakosClient as AuthCachedClient
     try:
-        return AuthCachedClient(global_url, global_token)
+        return AuthCachedClient(auth_args['url'], auth_args['token']), cloud
     except AssertionError as ae:
-        kloger.warning('WARNING: Failed to load auth_url %s [ %s ]' % (
-            global_url, ae))
-        return None
+        kloger.warning('WARNING: Failed to load authenticator [%s]' % ae)
+        return None, cloud
 
 
 def _load_spec_module(spec, arguments, module):
-    #spec_name = arguments['config'].get('cli', spec)
     if not spec:
         return None
     pkg = None
@@ -259,13 +299,6 @@ def _groups_help(arguments):
         pkg = _load_spec_module(spec, arguments, '_commands')
         if pkg:
             cmds = getattr(pkg, '_commands')
-            #try:
-            #   #_cnf = arguments['config']
-            #   #cmds = [cmd for cmd in getattr(pkg, '_commands') if _cnf.get(
-            #   #    'cli', cmd.name)]
-            #except AttributeError:
-            #   if _debug:
-            #       kloger.warning('No description for %s' % cmd_group)
             try:
                 for cmd in cmds:
                     descriptions[cmd.name] = cmd.description
@@ -281,7 +314,6 @@ def _groups_help(arguments):
 
 def _load_all_commands(cmd_tree, arguments):
     _cnf = arguments['config']
-    #specs = [spec for spec in _cnf.get_groups() if _cnf.get(spec, 'cli')]
     for cmd_group, spec in _cnf.get_cli_specs():
         try:
             spec_module = _load_spec_module(spec, arguments, '_commands')
@@ -385,20 +417,30 @@ def set_command_params(parameters):
 
 #  CLI Choice:
 
-def run_one_cmd(exe_string, parser, auth_base):
+def run_one_cmd(exe_string, parser, auth_base, cloud):
     global _history
     _history = History(
-        parser.arguments['config'].get('history', 'file'))
+        parser.arguments['config'].get_global('history_file'))
     _history.add(' '.join([exe_string] + argv[1:]))
     from kamaki.cli import one_command
-    one_command.run(auth_base, parser, _help)
+    one_command.run(auth_base, cloud, parser, _help)
 
 
-def run_shell(exe_string, parser, auth_base):
+def run_shell(exe_string, parser, auth_base, cloud):
     from command_shell import _init_shell
     shell = _init_shell(exe_string, parser)
     _load_all_commands(shell.cmd_tree, parser.arguments)
-    shell.run(auth_base, parser)
+    shell.run(auth_base, cloud, parser)
+
+
+def is_non_API(parser):
+    nonAPIs = ('history', 'config')
+    for term in parser.unparsed:
+        if not term.startswith('-'):
+            if term in nonAPIs:
+                return True
+            return False
+    return False
 
 
 def main():
@@ -409,25 +451,25 @@ def main():
         if parser.arguments['version'].value:
             exit(0)
 
-        log_file = parser.arguments['config'].get('global', 'log_file')
+        log_file = parser.arguments['config'].get_global('log_file')
         if log_file:
             logger.set_log_filename(log_file)
         global filelog
         filelog = logger.add_file_logger(__name__.split('.')[0])
         filelog.info('* Initial Call *\n%s\n- - -' % ' '.join(argv))
 
-        auth_base = _init_session(parser.arguments)
+        auth_base, cloud = _init_session(parser.arguments, is_non_API(parser))
 
         from kamaki.cli.utils import suggest_missing
         suggest_missing()
 
         if parser.unparsed:
-            run_one_cmd(exe, parser, auth_base)
+            run_one_cmd(exe, parser, auth_base, cloud)
         elif _help:
             parser.parser.print_help()
             _groups_help(parser.arguments)
         else:
-            run_shell(exe, parser, auth_base)
+            run_shell(exe, parser, auth_base, cloud)
     except CLIError as err:
         print_error_message(err)
         if _debug:

@@ -46,7 +46,7 @@ from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
 from kamaki.cli.argument import IntArgument
 from kamaki.cli.commands.cyclades import _init_cyclades
 from kamaki.cli.errors import raiseCLIError, CLIBaseUrlError
-from kamaki.cli.commands import _command_init, errors
+from kamaki.cli.commands import _command_init, errors, addLogSettings
 from kamaki.cli.commands import _optional_output_cmd, _optional_json
 
 
@@ -73,23 +73,27 @@ log = getLogger(__name__)
 
 class _init_image(_command_init):
     @errors.generic.all
+    @addLogSettings
     def _run(self):
-        token = self.config.get('image', 'token')\
-            or self.config.get('global', 'token')
-
+        if getattr(self, 'cloud', None):
+            img_url = self._custom_url('image') or self._custom_url('plankton')
+            if img_url:
+                token = self._custom_token('image')\
+                    or self._custom_token('plankton')\
+                    or self.config.get_remote(self.cloud, 'token')
+                self.client = ImageClient(base_url=img_url, token=token)
+                return
         if getattr(self, 'auth_base', False):
             plankton_endpoints = self.auth_base.get_service_endpoints(
-                self.config.get('plankton', 'type'),
-                self.config.get('plankton', 'version'))
+                self._custom_type('image')\
+                or self._custom_type('plankton') or 'image',
+                self._custom_version('image')\
+                or self._custom_version('plankton') or '')
             base_url = plankton_endpoints['publicURL']
+            token = self.auth_base.token
         else:
-            base_url = self.config.get('plankton', 'url')
-        if not base_url:
             raise CLIBaseUrlError(service='plankton')
-
         self.client = ImageClient(base_url=base_url, token=token)
-        self._set_log_params()
-        self._update_max_threads()
 
     def main(self):
         self._run()
@@ -304,14 +308,13 @@ class image_register(_init_image, _optional_json):
 
     )
 
-    def _get_uuid(self):
+    def _get_user_id(self):
         atoken = self.client.token
-        #user = AstakosClient(self.config.get('user', 'url'), atoken)
-        #return user.term('uuid')
         if getattr(self, 'auth_base', False):
             return self.auth_base.term('id', atoken)
         else:
-            astakos_url = self.config.get('astakos', 'url')
+            astakos_url = self.config.get('user', 'url')\
+                or self.config.get('astakos', 'url')
             if not astakos_url:
                 raise CLIBaseUrlError(service='astakos')
             user = AstakosClient(astakos_url, atoken)
@@ -327,10 +330,11 @@ class image_register(_init_image, _optional_json):
                 self.config.get('pithos', 'version'))
             purl = pithos_endpoints['publicURL']
         else:
-            purl = self.config.get('pithos', 'url')
+            purl = self.config.get('file', 'url')\
+                or self.config.get('pithos', 'url')
             if not purl:
                 raise CLIBaseUrlError(service='pithos')
-        return PithosClient(purl, ptoken, self._get_uuid(), container)
+        return PithosClient(purl, ptoken, self._get_user_id(), container)
 
     def _store_remote_metafile(self, pclient, remote_path, metadata):
         return pclient.upload_from_string(

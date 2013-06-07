@@ -144,11 +144,7 @@ class RequestManager(Logged):
 
     def dump_log(self):
         sendlog.info('%s %s://%s%s\t[%s]' % (
-            self.method,
-            self.scheme,
-            self.netloc,
-            self.path,
-            self))
+            self.method, self.scheme, self.netloc, self.path, self))
         for key, val in self.headers.items():
             if (not self.LOG_TOKEN) and key.lower() == 'x-auth-token':
                 continue

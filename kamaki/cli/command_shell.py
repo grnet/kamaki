@@ -69,6 +69,7 @@ class Shell(Cmd):
     _prompt_stack = []
     _parser = None
     auth_base = None
+    cloud = None
 
     undoc_header = 'interactive shell commands:'
 
@@ -202,7 +203,9 @@ class Shell(Cmd):
                             cmd_tree=self.cmd_tree)
                     else:
                         instance = cls(
-                            dict(cmd_parser.arguments), self.auth_base)
+                            dict(cmd_parser.arguments),
+                            self.auth_base,
+                            self.cloud)
                     cmd_parser.update_arguments(instance.arguments)
                     cmd_parser.arguments = instance.arguments
                     cmd_parser.syntax = '%s %s' % (
@@ -298,11 +301,12 @@ class Shell(Cmd):
         hdr = tmp_partition[0].strip()
         return '%s commands:' % hdr
 
-    def run(self, auth_base, parser, path=''):
+    def run(self, auth_base, cloud, parser, path=''):
         self.auth_base = auth_base
+        self.cloud = cloud
         self._parser = parser
         self._history = History(
-            parser.arguments['config'].get('history', 'file'))
+            parser.arguments['config'].get_global('history_file'))
         if path:
             cmd = self.cmd_tree.get_command(path)
             intro = cmd.path.replace('_', ' ')

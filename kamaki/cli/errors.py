@@ -55,20 +55,38 @@ class CLIError(Exception):
             self.importance = 0
 
 
+class CLIUnimplemented(CLIError):
+    def __init__(
+            self,
+            message='I \'M SORRY, DAVE.\nI \'M AFRAID I CAN\'T DO THAT.',
+            details=[
+                '      _        |',
+                '   _-- --_     |',
+                '  --     --    |',
+                ' --   .   --   |',
+                ' -_       _-   |',
+                '   -_   _-     |',
+                '      -        |'],
+            importance=3):
+        super(CLIUnimplemented, self).__init__(message, details, importance)
+
+
 class CLIBaseUrlError(CLIError):
     def __init__(self, message='', details=[], importance=2, service=None):
         message = message or 'No url for %s' % service.lower()
         details = details or [
             'Two options to resolve this:',
             'A. (recommended) Let kamaki discover the endpoint URLs for all',
-            'services by setting a single Authentication URL:',
-            '  /config set auth_url <AUTH_URL>',
+            'services by setting a single Authentication URL and token:',
+            '  /config set remote.default.url <AUTH_URL>',
+            '  /config set remote.default.token <t0k3n>',
             'B. (advanced users) Explicitly set a valid %s endpoint URL' % (
                 service.upper()),
-            'Note: auth_url option has a higher priority, so delete it to',
+            'Note: url option has a higher priority, so delete it to',
             'make that work',
-            '  /config delete auth_url',
-            '  /config set %s.url <%s_URL>' % (service, service.upper())]
+            '  /config delete remote.default.url',
+            '  /config set remote.%s.url <%s_URL>' % (
+                service, service.upper())]
         super(CLIBaseUrlError, self).__init__(message, details, importance)
 
 
