@@ -44,12 +44,18 @@ _commands = [config_cmds]
 
 about_options = '\nAbout options:\
     \n. syntax: [group.]option\
-    \n. example: file.uuid\
+    \n. example: global.log_file\
     \n. special case: <option> is equivalent to global.<option>\
     \n. configuration file syntax:\
     \n.   [group]\
     \n.   option=value\
-    \n.   (more options can be set per group)'
+    \n.   (more options can be set per group)\
+    \n. special case: named cloud remotes.\
+    \n. E.g. for a cloud "demo":\
+    \n.   [remote "demo"]\
+    \n.   url = <http://single/authentication/url/for/demo/site>\
+    \n.   token = <auth_token_from_demo_site>\
+    \n. which are referenced as remote.demo.url , remote.demo.token'
 
 
 @command(config_cmds)

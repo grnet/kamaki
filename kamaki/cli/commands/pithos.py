@@ -1219,7 +1219,7 @@ class file_download(_file_container_command):
     If local destination is a directory:
     *   download <container>:<path> <local dir> -R
     will download all files on <container> prefixed as <path>,
-    to <local dir>/<full path>
+    to <local dir>/<full path> (or <local dir>\<full path> in windows)
     *   download <container>:<path> <local dir> --exact-match
     will download only one file, exactly matching <path>
     ATTENTION: to download cont:dir1/dir2/file there must exist objects
@@ -1733,7 +1733,7 @@ class file_metadata_get(_file_container_command, _optional_json):
         detail=FlagArgument('show detailed output', ('-l', '--details')),
         until=DateArgument('show metadata until then', '--until'),
         object_version=ValueArgument(
-            'show specific version \ (applies only for objects)',
+            'show specific version (applies only for objects)',
             ('-O', '--object-version'))
     )
 

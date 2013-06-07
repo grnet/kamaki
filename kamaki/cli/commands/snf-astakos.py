@@ -82,9 +82,10 @@ class astakos_authenticate(_astakos_init, _optional_json):
     """Authenticate a user
     Get user information (e.g. unique account name) from token
     Token should be set in settings:
-    *  check if a token is set    /config get token
-    *  permanently set a token    /config set token <token>
+    *  check if a token is set    /config get remote.default.token
+    *  permanently set a token    /config set remote.default.token <token>
     Token can also be provided as a parameter
+    (To use a named cloud remote, use its name instead of "default")
     """
 
     arguments = dict(

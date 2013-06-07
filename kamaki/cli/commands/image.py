@@ -59,7 +59,7 @@ _commands = [image_cmds]
 
 howto_image_file = [
     'Kamaki commands to:',
-    ' get current user uuid: /user authenticate',
+    ' get current user id: /user authenticate',
     ' check available containers: /file list',
     ' create a new container: /file create <container>',
     ' check container contents: /file list <container>',
@@ -153,9 +153,9 @@ def _load_image_meta(filepath):
 
 def _validate_image_location(location):
     """
-    :param location: (str) pithos://<uuid>/<container>/<img-file-path>
+    :param location: (str) pithos://<user-id>/<container>/<img-file-path>
 
-    :returns: (<uuid>, <container>, <img-file-path>)
+    :returns: (<user-id>, <container>, <img-file-path>)
 
     :raises AssertionError: if location is invalid
     """
@@ -163,7 +163,7 @@ def _validate_image_location(location):
     msg = 'Invalid prefix for location %s , try: %s' % (location, prefix)
     assert location.startswith(prefix), msg
     service, sep, rest = location.partition('://')
-    assert sep and rest, 'Location %s is missing uuid' % location
+    assert sep and rest, 'Location %s is missing user-id' % location
     uuid, sep, rest = rest.partition('/')
     assert sep and rest, 'Location %s is missing container' % location
     container, sep, img_path = rest.partition('/')
@@ -380,7 +380,7 @@ class image_register(_init_image, _optional_json):
                 'No image file location provided',
                 importance=2, details=[
                     'An image location is needed. Image location format:',
-                    '  pithos://<uuid>/<container>/<path>',
+                    '  pithos://<user-id>/<container>/<path>',
                     ' an image file at the above location must exist.'
                     ] + howto_image_file)
         try:
@@ -390,7 +390,7 @@ class image_register(_init_image, _optional_json):
                 ae, 'Invalid image location format',
                 importance=1, details=[
                     'Valid image location format:',
-                    '  pithos://<uuid>/<container>/<img-file-path>'
+                    '  pithos://<user-id>/<container>/<img-file-path>'
                     ] + howto_image_file)
 
     @errors.generic.all

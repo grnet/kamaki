@@ -38,6 +38,10 @@ from kamaki.cli.errors import CLIError, raiseCLIError, CLISyntaxError
 from kamaki.cli import _debug, kloger
 from kamaki.cli.utils import format_size
 
+CLOUDNAME = [
+    'Note: If you use a named cloud remote, use its name',
+    'instead of "default"']
+
 
 class generic(object):
 
@@ -66,8 +70,10 @@ class generic(object):
                     raiseCLIError(ce, 'Authorization failed', details=[
                         'Make sure a valid token is provided:',
                         '  to check if token is valid: /user authenticate',
-                        '  to set token: /config set [.server.]token <token>',
-                        '  to get current token: /config get [server.]token'])
+                        '  to set token:',
+                        '    /config set remote.default.token <token>',
+                        '  to get current token:',
+                        '    /config get remote.default.token'] + CLOUDNAME)
                 elif ce.status in range(-12, 200) + [302, 401, 403, 500]:
                     raiseCLIError(ce, importance=3, details=[
                         'Check if service is up'])
@@ -79,8 +85,10 @@ class generic(object):
                     msg = 'Invalid service url %s' % url
                     raiseCLIError(ce, msg, details=[
                         'Check if authentication url is correct',
-                        '  check current url:   /config get url',
-                        '  set new auth. url:   /config set url'])
+                        '  check current url:',
+                        '    /config get remote.default.url',
+                        '  set new auth. url:',
+                        '    /config set remote.default.url'] + CLOUDNAME)
                 raise
         return _raise
 
@@ -88,10 +96,10 @@ class generic(object):
 class user(object):
 
     _token_details = [
-        'To check default token: /config get token',
+        'To check default token: /config get remote.default.token',
         'If set/update a token:',
-        '*  (permanent):  /config set token <token>',
-        '*  (temporary):  re-run with <token> parameter']
+        '*  (permanent):  /config set remote.default.token <token>',
+        '*  (temporary):  re-run with <token> parameter'] + CLOUDNAME
 
     @classmethod
     def load(this, foo):
@@ -103,13 +111,16 @@ class user(object):
                 raiseCLIError(ae, 'Client setup failure', importance=3)
             if not getattr(client, 'token', False):
                 kloger.warning(
-                    'No permanent token (try: kamaki config set token <tkn>)')
+                    'No permanent token (try:'
+                    ' kamaki config set remote.default.token <tkn>)')
             if not getattr(client, 'base_url', False):
-                msg = 'Missing synnefo URL'
+                msg = 'Missing synnefo authentication URL'
                 raise CLIError(msg, importance=3, details=[
                     'Check if authentication url is correct',
-                        '  check current url:  /config get url',
-                        '  set new auth. url:  /config set url'])
+                        '  check current url:',
+                        '    /config get remote.default.url',
+                        '  set new auth. url:',
+                        '    /config set remote.default.url'] + CLOUDNAME)
             return r
         return _raise
 
@@ -401,10 +412,10 @@ class plankton(object):
 class pithos(object):
     container_howto = [
         'To specify a container:',
-        '  1. Set file.container variable (permanent)',
-        '     /config set file.container <container>',
-        '  2. --container=<container> (temporary, overrides 1)',
-        '  3. Use the container:path format (temporary, overrides all)',
+        '  1. --container=<container> (temporary, overrides all)',
+        '  2. Use the container:path format (temporary, overrides 3)',
+        '  3. Set pithos_container variable (permanent)',
+        '     /config set pithos_container <container>',
         'For a list of containers: /file list']
 
     @classmethod
@@ -435,10 +446,10 @@ class pithos(object):
                     raiseCLIError(ce, 'User quota exceeded', details=[
                         '* get quotas:',
                         '  * upper total limit:      /file quota',
-                        '  * container limit:  /file quota <container>',
-                        '* set a higher quota (if permitted):',
-                        '    /file setquota <quota>[unit] <container>'
-                        '    as long as <container quota> <= <total quota>'])
+                        '  * container limit:',
+                        '    /file containerlimit get <container>',
+                        '* set a higher container limit:',
+                        '    /file containerlimit set <limit> <container>'])
                 raise
         return _raise
 
