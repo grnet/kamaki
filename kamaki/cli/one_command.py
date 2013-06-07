@@ -55,7 +55,7 @@ def _get_best_match_from_cmd_tree(cmd_tree, unparsed):
     return None
 
 
-def run(auth_base, parser, _help):
+def run(remote_base, cloud, parser, _help):
     group = get_command_group(list(parser.unparsed), parser.arguments)
     if not group:
         parser.parser.print_help()
@@ -68,7 +68,7 @@ def run(auth_base, parser, _help):
     global _best_match
     _best_match = []
 
-    group_spec = parser.arguments['config'].get('cli', group)
+    group_spec = parser.arguments['config'].get('global', '%s_cli' % group)
     spec_module = _load_spec_module(group_spec, parser.arguments, '_commands')
     if spec_module is None:
         raise CLIUnknownCommand(
@@ -96,7 +96,7 @@ def run(auth_base, parser, _help):
         exit(0)
 
     cls = cmd.get_class()
-    executable = cls(parser.arguments, auth_base)
+    executable = cls(parser.arguments, remote_base, cloud)
     parser.update_arguments(executable.arguments)
     #parsed, unparsed = parse_known_args(parser, executable.arguments)
     for term in _best_match:

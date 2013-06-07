@@ -167,14 +167,25 @@ class ConfigArgument(Argument):
         return self.value.get(group, term)
 
     def get_groups(self):
-        return self.value.keys('cli')
+        suffix = '_cli'
+        slen = len(suffix)
+        return [term[:-slen] for term in self.value.keys('global') if (
+            term.endswith(suffix))]
 
     def get_cli_specs(self):
-        return self.value.items('cli')
+        suffix = '_cli'
+        slen = len(suffix)
+        return [(k[:-slen], v) for k, v in self.value.items('global') if (
+            k.endswith(suffix))]
+
+    def get_global(self, option):
+        return self.value.get_global(option)
+
+    def get_remote(self, remote, option):
+        return self.value.get_remote(remote, option)
 
 _config_arg = ConfigArgument(
-    1, 'Path to configuration file',
-    ('-c', '--config'))
+    1, 'Path to configuration file', ('-c', '--config'))
 
 
 class CmdLineConfigArgument(Argument):
