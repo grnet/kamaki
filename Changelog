@@ -1,5 +1,7 @@
 Hot fix 0.8.3
 
+Fix bug #3954 by using os-specific seperators in all cases in up/download
+
 Honour if_etag_match and if_not_exist preconditions even when file blocks are
 already uploaded [#3708]
 
