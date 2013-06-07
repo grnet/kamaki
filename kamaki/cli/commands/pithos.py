@@ -594,7 +594,7 @@ class _source_destination_command(_file_container_command):
         srcobj['name'] = src_path
         return srcobj
 
-    def src_dst_pairs(self, ds_path):
+    def src_dst_pairs(self, dst_path):
         src_iter = self._get_src_objects(self.path)
         src_N = isinstance(src_iter, tuple)
         add_prefix = self['add_prefix'].strip('/')
