@@ -53,7 +53,7 @@ _commands = [server_cmds, flavor_cmds, network_cmds]
 
 about_authentication = '\nUser Authentication:\
     \n* to check authentication: /user authenticate\
-    \n* to set authentication token: /config set token <token>'
+    \n* to set authentication token: /config set remote.default.token <token>'
 
 howto_personality = [
     'Defines a file to be injected to VMs personality.',
