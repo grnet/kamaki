@@ -283,16 +283,33 @@ class Config(RawConfigParser):
         self = self.__init__(self.path)
 
     def get(self, section, option):
+        """
+        :param section: (str) HINT: for remotes, use remote.<section>
+
+        :param option: (str)
+
+        :returns: (str) the value stored at section: {option: value}
+        """
         value = self._overrides.get(section, {}).get(option)
         if value is not None:
             return value
-
+        if section.startswith('remote.'):
+            return self.get_remote(section[len('remote.'):], option)
         try:
             return RawConfigParser.get(self, section, option)
         except (NoSectionError, NoOptionError):
             return DEFAULTS.get(section, {}).get(option)
 
     def set(self, section, option, value):
+        """
+        :param section: (str) HINT: for remotes use remote.<section>
+
+        :param option: (str)
+
+        :param value: str
+        """
+        if section.startswith('remote.'):
+            return self.set_remote(section[len('remote.')], option, value)
         if section not in RawConfigParser.sections(self):
             self.add_section(section)
         RawConfigParser.set(self, section, option, value)

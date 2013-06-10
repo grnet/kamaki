@@ -38,51 +38,44 @@ from kamaki.clients.astakos import AstakosClient
 class Astakos(livetest.Generic):
     def setUp(self):
         self.client = AstakosClient(
-            self['user', 'url'],
-            self['user', 'token'])
+            self['remote.default', 'url'],
+            self['remote.default', 'token'])
+        with open(self['astakos', 'details']) as f:
+            self._astakos_details = eval(f.read())
 
     def test_authenticate(self):
         self._test_0010_authenticate()
 
     def _test_0010_authenticate(self):
         r = self.client.authenticate()
-        for term in (
-                'name',
-                'username',
-                'auth_token_expires',
-                'auth_token_created',
-                'uuid',
-                'id',
-                'email'):
-            self.assertTrue(term in r)
+        self.assert_dicts_are_equal(r, self._astakos_details)
 
-    def test_info(self):
-        self._test_0020_info()
+    def test_user_info(self):
+        self._test_0020_user_info()
 
-    def _test_0020_info(self):
+    def _test_0020_user_info(self):
         self.assertTrue(set([
+            'roles',
             'name',
-            'username',
-            'uuid']).issubset(self.client.info().keys()))
+            'id']).issubset(self.client.user_info().keys()))
 
     def test_get(self):
         self._test_0020_get()
 
     def _test_0020_get(self):
-        for term in ('uuid', 'name', 'username'):
+        for term in ('id', 'name', 'roles'):
             self.assertEqual(
-                self.client.term(term, self['user', 'token']),
-                self['astakos', term])
-        self.assertTrue(self['astakos', 'email'] in self.client.term('email'))
+                self.client.term(term, self['remote.default', 'token']),
+                self['astakos', term] or ([] if term == 'roles' else ''))
 
-    def test_list(self):
+    def test_list_users(self):
         self.client.authenticate()
-        self._test_0020_list()
+        self._test_0020_list_users()
 
-    def _test_0020_list(self):
-        terms = set(['name', 'username', 'uuid', 'email', 'auth_token'])
+    def _test_0020_list_users(self):
+        terms = set(['name', 'id'])
         uuid = 0
-        for r in self.client.list():
+        for r in self.client.list_users():
             self.assertTrue(terms.issubset(r.keys()))
-            self.assertTrue(uuid != r['uuid'] if uuid else True)
-            uuid = r['uuid']
+            self.assertTrue(uuid != r['id'] if uuid else True)
+            uuid = r['id']
