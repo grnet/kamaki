@@ -35,6 +35,7 @@ import time
 
 from kamaki.clients import livetest, ClientError
 from kamaki.clients.cyclades import CycladesClient
+from kamaki.clients.astakos import AstakosClient
 
 
 class Cyclades(livetest.Generic):
@@ -59,7 +60,11 @@ class Cyclades(livetest.Generic):
         self.netname1 = 'net' + unicode(self.now)
         self.netname2 = 'net' + unicode(self.now) + '_v2'
 
-        self.client = CycladesClient(self['compute', 'url'], self['token'])
+        self.remote = 'remote.%s' % self['testremote']
+        aurl, self.token = self[self.remote, 'url'], self[self.remote, 'token']
+        self.auth_base = AstakosClient(aurl, self.token)
+        curl = self.auth_base.get_service_endpoints('compute')['publicURL']
+        self.client = CycladesClient(curl, self.token)
 
     def tearDown(self):
         """Destoy servers used in testing"""

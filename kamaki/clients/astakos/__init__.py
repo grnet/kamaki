@@ -69,7 +69,7 @@ class AstakosClient(Client):
             r = self.authenticate(token)
         finally:
             self.token = token_bu
-        return r['serviceCatalog']
+        return r['access']['serviceCatalog']
 
     def get_service_details(self, service_type, token=None):
         """
@@ -104,15 +104,14 @@ class AstakosClient(Client):
         service = self.get_service_details(service_type, token)
         matches = []
         for endpoint in service['endpoints']:
-
             if (not version) or (
-                    endpoint['version_id'].lower() == version.lower()):
+                    endpoint['versionId'].lower() == version.lower()):
                 matches.append(endpoint)
         if len(matches) != 1:
             raise ClientError(
                 '%s endpoints match type %s %s' % (
                     len(matches), service_type,
-                    ('and version_id %s' % version) if version else ''),
+                    ('and versionId %s' % version) if version else ''),
                 601)
         return matches[0]
 
@@ -120,7 +119,7 @@ class AstakosClient(Client):
         """list cached users information"""
         r = []
         for k, v in self._cache.items():
-            r.append(dict(v['user']))
+            r.append(dict(v['access']['user']))
             r[-1].update(dict(auth_token=k))
         return r
 
@@ -134,7 +133,7 @@ class AstakosClient(Client):
             r = self.authenticate(token)
         finally:
             self.token = token_bu
-        return r['user']
+        return r['access']['user']
 
     def term(self, key, token=None):
         """Get (cached) term, from user credentials"""

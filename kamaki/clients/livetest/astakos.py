@@ -31,58 +31,104 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from kamaki.clients import livetest
+from itertools import product
+
+from kamaki.clients import livetest, ClientError
 from kamaki.clients.astakos import AstakosClient
 
 
 class Astakos(livetest.Generic):
     def setUp(self):
+        self.remote = 'remote.%s' % self['testremote']
         self.client = AstakosClient(
-            self['user', 'url'],
-            self['user', 'token'])
+            self[self.remote, 'url'], self[self.remote, 'token'])
+        with open(self['astakos', 'details']) as f:
+            self._astakos_details = eval(f.read())
 
     def test_authenticate(self):
         self._test_0010_authenticate()
 
     def _test_0010_authenticate(self):
         r = self.client.authenticate()
-        for term in (
-                'name',
-                'username',
-                'auth_token_expires',
-                'auth_token_created',
-                'uuid',
-                'id',
-                'email'):
-            self.assertTrue(term in r)
+        self.assert_dicts_are_equal(r, self._astakos_details)
 
-    def test_info(self):
-        self._test_0020_info()
+    def test_get_services(self):
+        self._test_0020_get_services()
 
-    def _test_0020_info(self):
+    def _test_0020_get_services(self):
+        for args in (tuple(), (self[self.remote, 'token'],)):
+            r = self.client.get_services(*args)
+            services = self._astakos_details['access']['serviceCatalog']
+            self.assertEqual(len(services), len(r))
+            for i, service in enumerate(services):
+                self.assert_dicts_are_equal(r[i], service)
+        self.assertRaises(ClientError, self.client.get_services, 'wrong_token')
+
+    def test_get_service_details(self):
+        self._test_0020_get_service_details()
+
+    def _test_0020_get_service_details(self):
+        parsed_services = dict()
+        for args in product(
+                self._astakos_details['access']['serviceCatalog'],
+                ([tuple(), (self[self.remote, 'token'],)])):
+            service = args[0]
+            if service['type'] in parsed_services:
+                continue
+            r = self.client.get_service_details(service['type'], *args[1])
+            self.assert_dicts_are_equal(r, service)
+            parsed_services[service['type']] = True
+        self.assertRaises(
+            ClientError, self.client.get_service_details, 'wrong_token')
+
+    def test_get_service_endpoints(self):
+        self._test_0020_get_service_endpoints()
+
+    def _test_0020_get_service_endpoints(self):
+        parsed_services = dict()
+        for args in product(
+                self._astakos_details['access']['serviceCatalog'],
+                ([], [self[self.remote, 'token']])):
+            service = args[0]
+            if service['type'] in parsed_services:
+                continue
+            for endpoint, with_id in product(
+                    service['endpoints'], (True, False)):
+                vid = endpoint['versionId'] if (
+                    with_id and endpoint['versionId']) else None
+                end_args = [service['type'], vid] + args[1]
+                r = self.client.get_service_endpoints(*end_args)
+                self.assert_dicts_are_equal(r, endpoint)
+            parsed_services[service['type']] = True
+        self.assertRaises(
+            ClientError, self.client.get_service_endpoints, 'wrong_token')
+
+    def test_user_info(self):
+        self._test_0020_user_info()
+
+    def _test_0020_user_info(self):
         self.assertTrue(set([
+            'roles',
             'name',
-            'username',
-            'uuid']).issubset(self.client.info().keys()))
+            'id']).issubset(self.client.user_info().keys()))
 
     def test_get(self):
         self._test_0020_get()
 
     def _test_0020_get(self):
-        for term in ('uuid', 'name', 'username'):
+        for term in ('id', 'name', 'roles'):
             self.assertEqual(
-                self.client.term(term, self['user', 'token']),
-                self['astakos', term])
-        self.assertTrue(self['astakos', 'email'] in self.client.term('email'))
+                self.client.term(term, self[self.remote, 'token']),
+                self['astakos', term] or ([] if term == 'roles' else ''))
 
-    def test_list(self):
+    def test_list_users(self):
         self.client.authenticate()
-        self._test_0020_list()
+        self._test_0020_list_users()
 
-    def _test_0020_list(self):
-        terms = set(['name', 'username', 'uuid', 'email', 'auth_token'])
+    def _test_0020_list_users(self):
+        terms = set(['name', 'id'])
         uuid = 0
-        for r in self.client.list():
+        for r in self.client.list_users():
             self.assertTrue(terms.issubset(r.keys()))
-            self.assertTrue(uuid != r['uuid'] if uuid else True)
-            uuid = r['uuid']
+            self.assertTrue(uuid != r['id'] if uuid else True)
+            uuid = r['id']

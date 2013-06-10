@@ -38,7 +38,7 @@ from kamaki.cli.errors import raiseCLIError, CLISyntaxError, CLIBaseUrlError
 from kamaki.clients.cyclades import CycladesClient, ClientError
 from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
 from kamaki.cli.argument import ProgressBarArgument, DateArgument, IntArgument
-from kamaki.cli.commands import _command_init, errors
+from kamaki.cli.commands import _command_init, errors, addLogSettings
 from kamaki.cli.commands import _optional_output_cmd, _optional_json
 
 from base64 import b64encode
@@ -53,7 +53,7 @@ _commands = [server_cmds, flavor_cmds, network_cmds]
 
 about_authentication = '\nUser Authentication:\
     \n* to check authentication: /user authenticate\
-    \n* to set authentication token: /config set token <token>'
+    \n* to set authentication token: /config set remote.default.token <token>'
 
 howto_personality = [
     'Defines a file to be injected to VMs personality.',
@@ -67,23 +67,29 @@ howto_personality = [
 
 class _init_cyclades(_command_init):
     @errors.generic.all
+    @addLogSettings
     def _run(self, service='compute'):
-        token = self.config.get(service, 'token')\
-            or self.config.get('global', 'token')
-
+        if getattr(self, 'cloud', None):
+            base_url = self._custom_url(service)\
+                or self._custom_url('cyclades')
+            if base_url:
+                token = self._custom_token(service)\
+                    or self._custom_token('cyclades')\
+                    or self.config.get_remote('token')
+                self.client = CycladesClient(
+                    base_url=base_url, token=token)
+                return
+        else:
+            self.cloud = 'default'
         if getattr(self, 'auth_base', False):
             cyclades_endpoints = self.auth_base.get_service_endpoints(
-                self.config.get('cyclades', 'type'),
-                self.config.get('cyclades', 'version'))
+                self._custom_type('cyclades') or 'compute',
+                self._custom_version('cyclades') or '')
             base_url = cyclades_endpoints['publicURL']
+            token = self.auth_base.token
+            self.client = CycladesClient(base_url=base_url, token=token)
         else:
-            base_url = self.config.get('cyclades', 'url')
-        if not base_url:
             raise CLIBaseUrlError(service='cyclades')
-
-        self.client = CycladesClient(base_url=base_url, token=token)
-        self._set_log_params()
-        self._update_max_threads()
 
     def main(self):
         self._run()

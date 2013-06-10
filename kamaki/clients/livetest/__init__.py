@@ -126,6 +126,14 @@ class Generic(TestCase):
             action_gen.next()
         self._safe_progress_bar_finish(action_bar)
 
+    def assert_dicts_are_equal(self, d1, d2):
+        self.assertTrue(set(d1) == set(d2))
+        for k, v in d1.items():
+            if isinstance(v, dict):
+                self.assert_dicts_are_equal(d1[k], d2[k])
+            else:
+                self.assertEqual(v, d2[k])
+
     def assert_dicts_are_deeply_equal(self, d1, d2):
         (st1, st2) = (set(d1.keys()), set(d2.keys()))
         diff1 = st1.difference(st2)

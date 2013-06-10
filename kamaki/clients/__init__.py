@@ -115,7 +115,7 @@ class RequestManager(Logged):
 
         :returns: (scheme, netloc)
         """
-        url = _encode(url) if url else 'http://127.0.0.1/'
+        url = _encode(str(url)) if url else 'http://127.0.0.1/'
         url += '' if url.endswith('/') else '/'
         if path:
             url += _encode(path[1:] if path.startswith('/') else path)
@@ -144,11 +144,7 @@ class RequestManager(Logged):
 
     def dump_log(self):
         sendlog.info('%s %s://%s%s\t[%s]' % (
-            self.method,
-            self.scheme,
-            self.netloc,
-            self.path,
-            self))
+            self.method, self.scheme, self.netloc, self.path, self))
         for key, val in self.headers.items():
             if (not self.LOG_TOKEN) and key.lower() == 'x-auth-token':
                 continue
@@ -361,11 +357,11 @@ class Client(object):
     def set_header(self, name, value, iff=True):
         """Set a header 'name':'value'"""
         if value is not None and iff:
-            self.headers[name] = value
+            self.headers[name] = unicode(value)
 
     def set_param(self, name, value=None, iff=True):
         if iff:
-            self.params[name] = value
+            self.params[name] = unicode(value)
 
     def request(
             self, method, path,
