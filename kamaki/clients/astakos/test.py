@@ -38,41 +38,45 @@ from kamaki.clients import astakos, ClientError
 
 
 example = dict(
-    serviceCatalog=[
-        dict(name='service name 1', type='compute', endpoints=[
-            dict(version_id='v1', publicUrl='http://1.1.1.1/v1'),
-            dict(version_id='v2', publicUrl='http://1.1.1.1/v2')]),
-        dict(name='service name 2', type='image', endpoints=[
-            dict(version_id='v2', publicUrl='http://1.1.1.1/v2'),
-            dict(version_id='v2.1', publicUrl='http://1.1.1.1/v2/xtra')])
-        ],
-    user=dict(
-        name='Simple Name',
-        username='User Full Name',
-        auth_token_expires='1362583796000',
-        auth_token_created='1359991796000',
-        email=['user@example.gr'],
-        id=42,
-        uuid='aus3r-uu1d-f0r-73s71ng-as7ak0s')
+    access=dict(
+        serviceCatalog=[
+            dict(name='service name 1', type='compute', endpoints=[
+                dict(versionId='v1', publicUrl='http://1.1.1.1/v1'),
+                dict(versionId='v2', publicUrl='http://1.1.1.1/v2')]),
+            dict(name='service name 2', type='image', endpoints=[
+                dict(versionId='v2', publicUrl='http://1.1.1.1/v2'),
+                dict(versionId='v2.1', publicUrl='http://1.1.1.1/v2/xtra')])
+            ],
+        user=dict(
+            name='Simple Name',
+            username='User Full Name',
+            auth_token_expires='1362583796000',
+            auth_token_created='1359991796000',
+            email=['user@example.gr'],
+            id=42,
+            uuid='aus3r-uu1d-f0r-73s71ng-as7ak0s')
+        )
     )
 
 example0 = dict(
-    serviceCatalog=[
-        dict(name='service name 1', type='compute', endpoints=[
-            dict(version_id='v1', publicUrl='http://1.1.1.1/v1'),
-            dict(version_id='v2', publicUrl='http://1.1.1.1/v2')]),
-        dict(name='service name 3', type='object-storage', endpoints=[
-            dict(version_id='v2', publicUrl='http://1.1.1.1/v2'),
-            dict(version_id='v2.1', publicUrl='http://1.1.1.1/v2/xtra')])
-        ],
-    user=dict(
-        name='Simple Name 0',
-        username='User Full Name 0',
-        auth_token_expires='1362585796000',
-        auth_token_created='1359931796000',
-        email=['user0@example.gr'],
-        id=42,
-        uuid='aus3r-uu1d-507-73s71ng-as7ak0s')
+    access=dict(
+        serviceCatalog=[
+            dict(name='service name 1', type='compute', endpoints=[
+                dict(versionId='v1', publicUrl='http://1.1.1.1/v1'),
+                dict(versionId='v2', publicUrl='http://1.1.1.1/v2')]),
+            dict(name='service name 3', type='object-storage', endpoints=[
+                dict(versionId='v2', publicUrl='http://1.1.1.1/v2'),
+                dict(versionId='v2.1', publicUrl='http://1.1.1.1/v2/xtra')])
+            ],
+        user=dict(
+            name='Simple Name 0',
+            username='User Full Name 0',
+            auth_token_expires='1362585796000',
+            auth_token_created='1359931796000',
+            email=['user0@example.gr'],
+            id=42,
+            uuid='aus3r-uu1d-507-73s71ng-as7ak0s')
+        )
     )
 
 
@@ -106,10 +110,11 @@ class AstakosClient(TestCase):
     def tearDown(self):
         FR.json = example
 
-    @patch('%s.get' % astakos_pkg, return_value=FR())
-    def _authenticate(self, get):
+    @patch('%s.post' % astakos_pkg, return_value=FR())
+    def _authenticate(self, post):
         r = self.client.authenticate()
-        self.assertEqual(get.mock_calls[-1], call('/tokens'))
+        send_body = dict(auth=dict(token=dict(id=self.token)))
+        self.assertEqual(post.mock_calls[-1], call('/tokens', json=send_body))
         self.cached = True
         return r
 
@@ -121,7 +126,7 @@ class AstakosClient(TestCase):
         if not self.cached:
             self._authenticate()
         slist = self.client.get_services()
-        self.assertEqual(slist, example['serviceCatalog'])
+        self.assertEqual(slist, example['access']['serviceCatalog'])
 
     def test_get_service_details(self):
         if not self.cached:
@@ -129,7 +134,8 @@ class AstakosClient(TestCase):
         stype = '#FAIL'
         self.assertRaises(ClientError, self.client.get_service_details, stype)
         stype = 'compute'
-        expected = [s for s in example['serviceCatalog'] if s['type'] == stype]
+        expected = [s for s in example['access']['serviceCatalog'] if (
+            s['type'] == stype)]
         self.assert_dicts_are_equal(
             self.client.get_service_details(stype), expected[0])
 
@@ -139,25 +145,26 @@ class AstakosClient(TestCase):
         stype, version = 'compute', 'V2'
         self.assertRaises(
             ClientError, self.client.get_service_endpoints, stype)
-        expected = [s for s in example['serviceCatalog'] if s['type'] == stype]
+        expected = [s for s in example['access']['serviceCatalog'] if (
+            s['type'] == stype)]
         expected = [e for e in expected[0]['endpoints'] if (
-            e['version_id'] == version.lower())]
+            e['versionId'] == version.lower())]
         self.assert_dicts_are_equal(
             self.client.get_service_endpoints(stype, version), expected[0])
 
     def test_user_info(self):
         if not self.cached:
             self._authenticate()
-        self.assertTrue(set(
-            example['user'].keys()).issubset(self.client.user_info().keys()))
+        self.assertTrue(set(example['access']['user'].keys()).issubset(
+            self.client.user_info().keys()))
 
     def test_item(self):
         if not self.cached:
             self._authenticate()
-        for term, val in example['user'].items():
+        for term, val in example['access']['user'].items():
             self.assertEqual(self.client.term(term, self.token), val)
         self.assertTrue(
-            example['user']['email'][0] in self.client.term('email'))
+            example['access']['user']['email'][0] in self.client.term('email'))
 
     def test_list_users(self):
         if not self.cached:

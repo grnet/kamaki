@@ -69,13 +69,13 @@ class Pithos(livetest.Generic):
     files = []
 
     def setUp(self):
-        self.client = PithosClient(
-            self['file', 'url'],
-            self['file', 'token'],
-            AstakosClient(
-                self['user', 'url'],
-                self['file', 'token']
-            ).term('uuid'))
+        self.remote = 'remote.%s' % self['testremote']
+        aurl, self.token = self[self.remote, 'url'], self[self.remote, 'token']
+        self.auth_base = AstakosClient(aurl, self.token)
+        purl = self.auth_base.get_service_endpoints(
+            'object-store')['publicURL']
+        self.uuid = self.auth_base.user_term('id')
+        self.client = PithosClient(purl, self.token, self.uuid)
 
         self.now = time.mktime(time.gmtime())
         self.now_unformated = datetime.datetime.utcnow()
