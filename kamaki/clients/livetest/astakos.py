@@ -31,7 +31,9 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from kamaki.clients import livetest
+from itertools import product
+
+from kamaki.clients import livetest, ClientError
 from kamaki.clients.astakos import AstakosClient
 
 
@@ -49,6 +51,57 @@ class Astakos(livetest.Generic):
     def _test_0010_authenticate(self):
         r = self.client.authenticate()
         self.assert_dicts_are_equal(r, self._astakos_details)
+
+    def test_get_services(self):
+        self._test_0020_get_services()
+
+    def _test_0020_get_services(self):
+        for args in (tuple(), (self['remote.default', 'token'],)):
+            r = self.client.get_services(*args)
+            services = self._astakos_details['access']['serviceCatalog']
+            self.assertEqual(len(services), len(r))
+            for i, service in enumerate(services):
+                self.assert_dicts_are_equal(r[i], service)
+        self.assertRaises(ClientError, self.client.get_services, 'wrong_token')
+
+    def test_get_service_details(self):
+        self._test_0020_get_service_details()
+
+    def _test_0020_get_service_details(self):
+        parsed_services = dict()
+        for args in product(
+                self._astakos_details['access']['serviceCatalog'],
+                ([tuple(), (self['remote.default', 'token'],)])):
+            service = args[0]
+            if service['type'] in parsed_services:
+                continue
+            r = self.client.get_service_details(service['type'], *args[1])
+            self.assert_dicts_are_equal(r, service)
+            parsed_services[service['type']] = True
+        self.assertRaises(
+            ClientError, self.client.get_service_details, 'wrong_token')
+
+    def test_get_service_endpoints(self):
+        self._test_0020_get_service_endpoints()
+
+    def _test_0020_get_service_endpoints(self):
+        parsed_services = dict()
+        for args in product(
+                self._astakos_details['access']['serviceCatalog'],
+                ([], [self['remote.default', 'token']])):
+            service = args[0]
+            if service['type'] in parsed_services:
+                continue
+            for endpoint, with_id in product(
+                    service['endpoints'], (True, False)):
+                vid = endpoint['versionId'] if (
+                    with_id and endpoint['versionId']) else None
+                end_args = [service['type'], vid] + args[1]
+                r = self.client.get_service_endpoints(*end_args)
+                self.assert_dicts_are_equal(r, endpoint)
+            parsed_services[service['type']] = True
+        self.assertRaises(
+            ClientError, self.client.get_service_endpoints, 'wrong_token')
 
     def test_user_info(self):
         self._test_0020_user_info()
