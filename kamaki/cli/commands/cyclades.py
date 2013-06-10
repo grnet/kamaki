@@ -408,8 +408,7 @@ class server_metadata_list(_init_cyclades, _optional_json):
 class server_metadata_set(_init_cyclades, _optional_json):
     """Set / update server(VM) metadata
     Metadata should be given in key/value pairs in key=value format
-    For example:
-        /server metadata set <server id> key1=value1 key2=value2
+    For example: /server metadata set <server id> key1=value1 key2=value2
     Old, unreferenced metadata will remain intact
     """
 
