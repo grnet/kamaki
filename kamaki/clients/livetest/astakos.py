@@ -39,9 +39,9 @@ from kamaki.clients.astakos import AstakosClient
 
 class Astakos(livetest.Generic):
     def setUp(self):
+        self.remote = 'remote.%s' % self['testremote']
         self.client = AstakosClient(
-            self['remote.default', 'url'],
-            self['remote.default', 'token'])
+            self[self.remote, 'url'], self[self.remote, 'token'])
         with open(self['astakos', 'details']) as f:
             self._astakos_details = eval(f.read())
 
@@ -56,7 +56,7 @@ class Astakos(livetest.Generic):
         self._test_0020_get_services()
 
     def _test_0020_get_services(self):
-        for args in (tuple(), (self['remote.default', 'token'],)):
+        for args in (tuple(), (self[self.remote, 'token'],)):
             r = self.client.get_services(*args)
             services = self._astakos_details['access']['serviceCatalog']
             self.assertEqual(len(services), len(r))
@@ -71,7 +71,7 @@ class Astakos(livetest.Generic):
         parsed_services = dict()
         for args in product(
                 self._astakos_details['access']['serviceCatalog'],
-                ([tuple(), (self['remote.default', 'token'],)])):
+                ([tuple(), (self[self.remote, 'token'],)])):
             service = args[0]
             if service['type'] in parsed_services:
                 continue
@@ -88,7 +88,7 @@ class Astakos(livetest.Generic):
         parsed_services = dict()
         for args in product(
                 self._astakos_details['access']['serviceCatalog'],
-                ([], [self['remote.default', 'token']])):
+                ([], [self[self.remote, 'token']])):
             service = args[0]
             if service['type'] in parsed_services:
                 continue
@@ -118,7 +118,7 @@ class Astakos(livetest.Generic):
     def _test_0020_get(self):
         for term in ('id', 'name', 'roles'):
             self.assertEqual(
-                self.client.term(term, self['remote.default', 'token']),
+                self.client.term(term, self[self.remote, 'token']),
                 self['astakos', term] or ([] if term == 'roles' else ''))
 
     def test_list_users(self):

@@ -34,6 +34,7 @@
 import time
 
 from kamaki.clients import livetest
+from kamaki.clients.astakos import AstakosClient as AstakosCachedClient
 from kamaki.clients.cyclades import CycladesClient
 from kamaki.clients.image import ImageClient
 from kamaki.clients import ClientError
@@ -48,12 +49,16 @@ IMGMETA = set([
 class Image(livetest.Generic):
     def setUp(self):
         self.now = time.mktime(time.gmtime())
-
+        self.remote = 'remote.%s' % self['testremote']
+        aurl, self.token = self[self.remote, 'url'], self[self.remote, 'token']
+        self.auth_base = AstakosCachedClient(aurl, self.token)
         self.imgname = 'img_%s' % self.now
-        url = self['image', 'url']
-        self.client = ImageClient(url, self['token'])
-        cyclades_url = self['compute', 'url']
-        self.cyclades = CycladesClient(cyclades_url, self['token'])
+        url = self.auth_base.get_service_endpoints('image')['publicURL']
+        self.token = self.auth_base.token
+        self.client = ImageClient(url, self.token)
+        cyclades_url = self.auth_base.get_service_endpoints(
+            'compute')['publicURL']
+        self.cyclades = CycladesClient(cyclades_url, self.token)
         self._imglist = {}
         self._imgdetails = {}
 
@@ -63,12 +68,11 @@ class Image(livetest.Generic):
 
     def _prepare_img(self):
         f = open(self['image', 'local_path'], 'rb')
-        (token, uuid) = (self['token'], self['file', 'account'])
-        if not uuid:
-            from kamaki.clients.astakos import AstakosClient
-            uuid = AstakosClient(self['user', 'url'], token).term('uuid')
+        (token, uuid) = (self.token, self.auth_base.user_term('id'))
+        purl = self.auth_base.get_service_endpoints(
+            'object-store')['publicURL']
         from kamaki.clients.pithos import PithosClient
-        self.pithcli = PithosClient(self['file', 'url'], token, uuid)
+        self.pithcli = PithosClient(purl, token, uuid)
         cont = 'cont_%s' % self.now
         self.pithcli.container = cont
         self.obj = 'obj_%s' % self.now
@@ -107,14 +111,6 @@ class Image(livetest.Generic):
                 return img
         return None
 
-    def assert_dicts_are_deeply_equal(self, d1, d2):
-        for k, v in d1.items():
-            self.assertTrue(k in d2)
-            if isinstance(v, dict):
-                self.assert_dicts_are_deeply_equal(v, d2[k])
-            else:
-                self.assertEqual(unicode(v), unicode(d2[k]))
-
     def test_list_public(self):
         """Test list_public"""
         self._test_list_public()
@@ -135,7 +131,7 @@ class Image(livetest.Generic):
         self.assertTrue(r, r0)
         r0.reverse()
         for i, img in enumerate(r):
-            self.assert_dicts_are_deeply_equal(img, r0[i])
+            self.assert_dicts_are_equal(img, r0[i])
         r1 = self.client.list_public(detail=True)
         for img in r1:
             for term in (
