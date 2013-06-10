@@ -9,7 +9,7 @@ Command Specifications
 user
 ^^^^
 
-.. automodule:: kamaki.cli.commands.user
+.. automodule:: kamaki.cli.commands.astakos
     :members:
     :undoc-members:
 

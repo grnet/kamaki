@@ -1,2 +1,86 @@
-This document describes changes and steps to upgrade from kamaki 0.8.X to kamaki 0.9
+This document describes changes and steps to upgrade from kamaki 0.8.X to
+kamaki 0.9
+
+Configuration file
+------------------
+Kamaki 0.9 uses a redesigned configuration file. The new configuration file
+version is v3.
+
+The new file consists of at least two groups: global and remote "default". The
+global field holds all settings releated to kamaki client and cli
+functionality. The remote "default" field holds authentication information for
+connecting to the cloud.
+
+A sample configuration file:
+
+  # Kamaki configuration file v3 (kamaki >= v0.9)
+  [global]
+  colors = on
+
+  [remote "default"]
+  url = https://astakos.example.com/astakos/identity/v2.0/
+  token = myu53r70k3n==
+
+How to convert an old configuration file
+----------------------------------------
+When loading a kamaki command, kamaki inspect the configuration file. If the
+configuration file is judged to be a valid v3 kamaki configuration file, the
+kamaki command will be executed normally. Otherwise, kamaki will attempt to
+convert the file.
+
+Step 1: backup the kamaki configuraiton file ( usually $HOME/.kamakirc )
+
+Step 2: Run a cloud kamaki command. We suggest the following:
+
+  kamaki user authenticate
+
+Step 3: Kamaki will create a list of suggested modifications. Users may permit
+or deny these changes (y or n). To convert the file, press y .
+
+In case of a denial, kamaki will exit. Otherwise the configuration file will
+be converted.
+
+Kamaki attempts to preserve as much information as possible, by performing
+option renames and moving values under the correct groups. In any case,
+kamaki prints on console all actions, whether modifications or deletions, so
+that no information is lost.
+
+Single authentication url
+-------------------------
+Since Synnefo version 0.14, cloud clients can be authenticated onb a single
+URL, which is common for the whole cloud system. The authentication mechanism
+provides all information nessecary for running any available cloud service.
+
+Kamaki takes advantage of this feature, requiring users to remove all
+service-specific settings and using a single authentication URL,token pair for
+the whole cloud. This affects all CLI users, whether they use cyclades,
+plankton or pithos.
+
+For example, instead of this:
+
+  [global]
+  token = myu53r70k3n==
+
+  [user]
+  url = https://astakos.example.com/
+
+  [file]
+  url = https://pithos.example.com/pithos/v1
+  container = image
+
+  [image]
+  url = https://image.example.com/plankton/v1
+
+the new configuration file may look like this:
+
+  [global]
+  pithos_container = image
+
+  [remote "default"]
+  url = https://astakos.example.com/astakos/identity/v2.0/
+  token = myu53r70k3n==
+
+Kamaki will use the default url to authenticate the synnefo user and then it
+will automatically retrieve the astakos, image and pithos urls needed for the
+rest of the operations.
 
