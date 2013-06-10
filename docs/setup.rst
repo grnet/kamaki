@@ -1,27 +1,121 @@
 Setup
 =====
 
-Kamaki is easy to install from source or as a package. Some ui features are optional and can be install separately. Kamaki behavior can be configured in the kamaki config file.
+Kamaki is easy to install from source or as a package. Some advanced or ui features
+are optional and can be installed separately. Kamaki behavior can be configured in
+the kamaki config file.
 
 Quick Setup
 -----------
 
-Kamaki interfaces rely on a list of configuration options. Be default, they are configured to communicate with the `Okeanos IaaS <http://okeanos.grnet.gr>`_.
+Existing kamaki users should consult the
+`migration guide <#migrating-from-kamaki-0-8-x-to-0-9>`_ first.
 
-.. note:: It is essential for users to get a configuration token (okeanos.grnet.gr users go `here <https://accounts.okeanos.grnet.gr/im/>`_) and provide it to kamaki:
+Kamaki has to be configured to use a specific Synnefo deployment.
 
+Since Synnefo version 0.14, each deployment offers a single authentication
+url, which has to be set as the default url for kamaki (Example 1.1).
+
+.. code-block:: console
+    :emphasize-lines: 1, 2
+
+    Example 1.1: Set https://astakos.example.com/astakos/identity/v2.0/ as the
+    default single authentication url 
+    
+    $ kamaki config set remote.default.url https://astakos.example.com/astakos/identity/v2.0/
+
+Kamaki also needs a user authentication token (Example 1.2).
 
 .. code-block:: console
     :emphasize-lines: 1
 
-    Example 1.1: Set user token to myt0k3n==
+    Example 1.2: Set user token to myt0k3n==
 
-    $ kamaki config set token myt0k3n==
+    $ kamaki config set remote.default.token myt0k3n==
+
+Migrating from kamaki 0.8.X to 0.9
+----------------------------------
+
+This section refers to running installations of kamaki version <= 0.8.X
+To check the current kamaki version:
+
+.. code-block:: console
+
+    $ kamaki -V
+
+Existing kamaki users should convert their configuration files to v3. To do
+that, kamaki 0.9 inspects the configuration file and suggests a list of config
+file transformations, which are performed automatically on user permission.
+This mechanism is invoked when the first API-releated kamaki command is fired.
+We suggest the command of the example 2.1.
+
+.. code-block:: console
+    :emphasize-lines: 1
+
+    Example 2.1: Try to authenticate user but convert config file instead
+
+    $ kamaki user authenticate
+    Config file format version >= 3.0 is required
+    Configuration file "/home/exampleuser/.kamakirc" format is not up to date
+    but kamaki can fix this:
+    Calculating changes while preserving information
+    ... rescue global.token => remote.default.token
+    ... rescue config.cli => global.config_cli
+    ... rescue history.file => global.history_file
+    ... DONE
+    The following information will NOT be preserved:
+        global.account = 
+        global.data_log = on
+        user.account = exampleuser@example.com
+        user.url = https://accounts.okeanos.grnet.gr
+        compute.url = https://cyclades.okeanos.grnet.gr/api/v1.1
+        file.url = https://pithos.okeanos.grnet.gr/v1
+        image.url = https://cyclades.okeanos.grnet.gr/plankton
+
+    Kamaki is ready to convert the config file to version 3.0
+    Overwrite file /home/exampleuser/.kamakirc ? [Y, y]
+
+At this point, we should examine the kamaki output. Most options are renamed to
+be accessible by the new kamaki.
+
+Let's take a look at the discarded options:
+
+* global.account and user.account are not used anymore. The same is true for
+    store.account and pithos.account which were ways to explicitly set a user
+    account name to a pithos call. After the latest Synnefo evolutions, these
+    features are meaningless and therefore omitted.
+
+* global.data_log option has never been a valid kamaki config option. In this
+    example, the user accidentally mixed the terms "log_data" (which is a valid
+    kamaki config option) with "data_log". To fix this, the user should set the
+    correct option after the conversion is complete (Example 2.2)
+
+Users should press *y* when they are ready. Kamaki has now modified the default
+config file to conform with kamaki config file v3. Now users should rescue
+unrescued information (if any).
+
+.. code-block:: console
+    :emphasize-lines: 1
+
+    Example 2.2: Rescue misspelled log_data option
+
+    $ kamaki config set log_data on
+
+In order to convert more files, users may run kamaki with the -c option
+(Example 2.3) and apply the steps described above.
+
+.. code-block:: console
+    :emphasize-lines: 1
+
+    Example 2.3: Use kamaki to update a configuration file called ".myfilerc"
+
+    $ kamaki -c .myfilerc user authenticate
 
 Optional features
 -----------------
 
-For installing any or all of the following, consult the `kamaki installation guide <installation.html#install-ansicolors>`_
+For installing any or all of the following, consult the
+`kamaki installation guide <installation.html#install-ansicolors>`_
 
 * ansicolors
     * Make command line / console user interface responses prettier with text formating (colors, bold, etc.)
