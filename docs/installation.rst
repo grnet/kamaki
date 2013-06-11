@@ -89,6 +89,32 @@ Install mock (for developers only)
 
     $ sudo apt-get install python-mock=1.0.1
 
+.. hint:: To activate functional tests in kamaki. enable the preconfigured
+    *livetest* command group:
+
+    .. code-block:: console
+
+        $ kamaki config set livetest_cli livetest
+
+
+Install astakosclient (optional)
+""""""""""""""""""""""""""""""""
+
+A seperate project called
+`astakosclient <https://pypi.python.org/pypi/astakosclient>`_ can be used for
+advanced user and service management.
+
+.. code-block:: console
+
+    $ apt-get install python-astakosclient
+
+.. hint:: To activate astakosclient commands in kamaki, enable the
+    preconfigured *astakos* command group:
+
+    .. code-block:: console
+
+        $ kamaki config set astakos_cli astakos
+
 .. _installing-from-pypi-ref:
 
 Installing from pypi
@@ -127,8 +153,8 @@ Install kamaki
 
     $ pip install kamaki
 
-Install ansicolors (optional)
-"""""""""""""""""""""""""""""
+Install ansicolors
+""""""""""""""""""
 
 The **ansicolors** package is not required for running kamaki, but it is
 recommended as a user experience improvement. In specific, ansicolors
@@ -152,6 +178,31 @@ mock.
     $ pip install mock
 
 .. warning:: mock version >= 1.X
+
+.. hint:: To activate functional tests in kamaki. enable the preconfigured
+    *livetest* command group:
+
+    .. code-block:: console
+
+        $ kamaki config set livetest_cli livetest
+
+Install astakosclient
+"""""""""""""""""""""
+
+A seperate project called
+`astakosclient <https://pypi.python.org/pypi/astakosclient>`_ can be used for
+advanced user and service management.
+
+.. code-block:: console
+
+    $ pip install astakosclient
+
+.. hint:: To activate astakosclient commands in kamaki, enable the
+    preconfigured *astakos* command group:
+
+    .. code-block:: console
+
+        $ kamaki config set astakos_cli astakos
 
 Mac OS X
 --------
