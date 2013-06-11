@@ -206,7 +206,7 @@ def _check_config_version(cnf):
             print 'The following information will NOT be preserved:'
             print '\t', '\n\t'.join(lost_terms)
         print('Kamaki is ready to convert the config file to version 3.0')
-        stdout.write('Overwrite file %s ? [Y, y] ' % cnf.path)
+        stdout.write('Create (overwrite) file %s ? [y/N] ' % cnf.path)
         from sys import stdin
         reply = stdin.readline()
         if reply in ('Y\n', 'y\n'):

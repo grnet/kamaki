@@ -11,27 +11,18 @@ Quick Setup
 Existing kamaki users should consult the
 `migration guide <#migrating-from-kamaki-0-8-x-to-0-9>`_ first.
 
-Kamaki has to be configured to use a specific Synnefo deployment.
-
-Since Synnefo version 0.14, each deployment offers a single authentication
-url, which has to be set as the default url for kamaki (Example 1.1).
+Kamaki has to be configured to use a specific Synnefo deployment url and a user
+token.
 
 .. code-block:: console
-    :emphasize-lines: 1, 2
-
-    Example 1.1: Set https://astakos.example.com/astakos/identity/v2.0/ as the
-    default single authentication url 
     
-    $ kamaki config set remote.default.url https://astakos.example.com/astakos/identity/v2.0/
-
-Kamaki also needs a user authentication token (Example 1.2).
-
-.. code-block:: console
-    :emphasize-lines: 1
-
-    Example 1.2: Set user token to myt0k3n==
-
+    $ kamaki config set remote.default.url <cloud-authentication-URL>
     $ kamaki config set remote.default.token myt0k3n==
+
+Since Synnefo version 0.14, a synnefo cloud remote UI offers a single
+authentication URL, which can to be set as the default URL for kamaki. All
+service-specific URLs are now retrieved and handled automatically. Users of
+synnefo clouds >= 0.14 are advised against using any service-specific URLs.
 
 Migrating from kamaki 0.8.X to 0.9
 ----------------------------------
@@ -46,13 +37,13 @@ To check the current kamaki version:
 Existing kamaki users should convert their configuration files to v3. To do
 that, kamaki 0.9 inspects the configuration file and suggests a list of config
 file transformations, which are performed automatically on user permission.
-This mechanism is invoked when the first API-releated kamaki command is fired.
-We suggest the command of the example 2.1.
+This mechanism is invoked when the first API-related kamaki command is fired.
+We suggest the `user authenticate` command, as shown on example 2.1.
 
 .. code-block:: console
     :emphasize-lines: 1
 
-    Example 2.1: Try to authenticate user but convert config file instead
+    Example 2.1: Convert config file while authenticating user "exampleuser"
 
     $ kamaki user authenticate
     Config file format version >= 3.0 is required
@@ -76,19 +67,21 @@ We suggest the command of the example 2.1.
     Overwrite file /home/exampleuser/.kamakirc ? [Y, y]
 
 At this point, we should examine the kamaki output. Most options are renamed to
-be accessible by the new kamaki.
+be understood by the new kamaki.
 
 Let's take a look at the discarded options:
 
-* global.account and user.account are not used anymore. The same is true for
-    store.account and pithos.account which were ways to explicitly set a user
-    account name to a pithos call. After the latest Synnefo evolutions, these
-    features are meaningless and therefore omitted.
+* `global.account` and `user.account` are not used anymore.
+    The same is true for the synonyms `store.account` and `pithos.account`.
+    These options were used to explicitly set a user account or uuid to a
+    pithos call. In the latest Synnefo version (>= 0.14), these features are
+    meaningless and therefore omitted.
 
-* global.data_log option has never been a valid kamaki config option. In this
-    example, the user accidentally mixed the terms "log_data" (which is a valid
-    kamaki config option) with "data_log". To fix this, the user should set the
-    correct option after the conversion is complete (Example 2.2)
+* `global.data_log` option has never been a valid kamaki config option.
+    In this example, the user accidentally misspelled the terms `log_data`
+    (which is a valid kamaki config option) as `data_log`. To fix this, the
+    user should set the correct option after the conversion is complete
+    (Example 2.2).
 
 Users should press *y* when they are ready. Kamaki has now modified the default
 config file to conform with kamaki config file v3. Now users should rescue
@@ -101,8 +94,9 @@ unrescued information (if any).
 
     $ kamaki config set log_data on
 
-In order to convert more files, users may run kamaki with the -c option
-(Example 2.3) and apply the steps described above.
+In order to convert more files, users may run kamaki with the -c option, which
+runs kamaki with a different configuration file (Example 2.3) and apply the
+steps described above.
 
 .. code-block:: console
     :emphasize-lines: 1
@@ -110,6 +104,107 @@ In order to convert more files, users may run kamaki with the -c option
     Example 2.3: Use kamaki to update a configuration file called ".myfilerc"
 
     $ kamaki -c .myfilerc user authenticate
+
+Multiple cloud remotes
+----------------------
+
+The following refers to users of multiple Synnefo and/or Open Stack
+deployments. In the following, a Synnefo or Open Stack cloud deployment will
+frequently be called as a **remote** or a **cloud remote**.
+
+Kamaki supports accessing multiple cloud remotes from the same kamaki setup.
+Bofore kamaki 0.9, this was possible only by using multiple config files. Since
+0.9, kamaki supports multiple cloud remotes in the same configuration.
+
+Each cloud remote corresponds to a Synnefo (or Open Stack) cloud deployment.
+Since Synnefo version 0.14, each deployment offers a single point of
+authentication, as an **authentication URL** and **token** pair. Users can
+retrieve this information through the cloud UI.
+
+Once a user has retrieved one URL/token pair per cloud remote, it is time to
+assign a name to each cloud and let kamaki know about them.
+
+For example, let the user have access to two remote clouds with the following authentication information ::
+
+    cloud alias: devel
+    authentication URL: https://devel.example.com/astakos/identity/v2.0/
+    authentication token: myd3v3170k3n==
+
+    cloud alias: testing
+    autentication URL: https://testing.example.com/astakos/identity/v2.0/
+    authentication token: my73571ng70k3n==
+
+.. note:: the cloud alias is arbitrary and decided by the user. It is just a
+    name to call a cloud setup in the kamaki context.
+
+The user should let kamaki know about these setups:
+
+.. code-block:: console
+
+    $ kamaki config set remote.devel.url https://devel.example.com/astakos/identity/v2.0/
+    $ kamaki config set remote.devel.token myd3v3170k3n==
+    $
+    $ kamaki config set remote.testing.url https://testing.example.com/astakos/identity/v2.0/
+    $ kamaki config set remote.testing.token my73571ng70k3n==
+    $
+
+To check if all settings are loaded, a user may list all remotes, as shown
+bellow:
+
+.. code-block:: console
+
+    $ kamaki config get remote
+     remote.default.url = https://example.com/astakos.identity/v2.0/
+     remote.default.url = myd3f4u1770k3n==
+     remote.devel.url = https://devel.example.com/astakos/identity/v2.0/
+     remote.devel.token = myd3v3170k3n==
+     remote.testing.url = https://testing.example.com/astakos/identity/v2.0/
+     remote.testing.token = my73571ng70k3n==
+    $
+
+or query kamaki for a specific cloud remote:
+
+.. code-block:: console
+
+    $ kamaki config get remote.devel
+     remote.devel.url = https://devel.example.com/astakos/identity/v2.0/
+     remote.devel.token = myd3v3170k3n==
+    $
+
+Now kamaki can use any of there remotes, with the **- - cloud** attribute. If
+the **- - cloud** option is ommited, kamaki will query the `default` cloud remote.
+
+One way to test this, is the `user athenticate` command:
+
+.. code-block:: console
+
+    $ kamaki --cloud=devel user authenticate
+     ...
+     user          : 
+        id         :  725d5de4-1bab-45ac-9e98-38a60a8c543c
+        name       :  Devel User
+    $
+    $ kamaki --cloud=testing user authenticate
+     ...
+     user          : 
+        id         :  4ed5d527-bab1-ca54-89e9-c345c8a06a83
+        name       :  Testing User
+    $
+    $ kamaki --cloud=default user authenticate
+     ...
+     user          : 
+        id         :  4d3f4u17-u53r-4u7h-451n-4u7h3n7ic473
+        name       :  Default User
+    $
+    $ kamaki user authenticate
+     ...
+     user          : 
+        id         :  4d3f4u17-u53r-4u7h-451n-4u7h3n7ic473
+        name       :  Default User
+    $
+
+In interactive cell, the cloud remote is picked when invoking the shell, with
+the **- - cloud** option.
 
 Optional features
 -----------------
@@ -127,27 +222,54 @@ For installing any or all of the following, consult the
     * Allow unittests to run on kamaki.clients package
     * Needs mock version 1.X or better
 
+* astakosclient
+    * For advanced users mostly
+    * Allows the use of a full astakos command line client
+
 Any of the above features can be installed at any time before or after kamaki installation.
 
 Configuration options
 ---------------------
 
-Kamaki comes with preset default values to all configuration options. All vital configuration options are set to use the okeanos.grnet.gr cloud services. User information is not included and should be provided either through the kamaki config command or by editing the configuration file.
+There are two kinds of configuration options:
 
-Kamaki configuration options are vital for correct Kamaki behavior. An incorrect option may render some command groups dysfunctional. There are two ways of managing configuration options: edit the config file or use the kamaki config command.
+* kamaki-related (global)
+    interface settings and constants of the kamaki internal mechanism, e.g.
+    colors in the output, maximum threads per connection, custom logging or
+    history files, etc.
 
-Using multiple setups
-^^^^^^^^^^^^^^^^^^^^^
+* cloud-related (remote.XXX)
+    information needed to connect and use one or more remote clouds. There are
+    some mandatory options (url, token) and some advanced / optional (e.g.
+    service-specific url overrides or versions)
 
-Kamaki setups are stored in configuration files. By default, a Kamaki installation stores options in *.kamakirc* file located at the user home directory.
+Kamaki comes with preset default values to all kamaki-releated configuration
+options. Cloud-related information is not included in presets and should be
+provided. Kamaki-related options can also be modified.
 
-If a user needs to switch between different setups, Kamaki can explicitly load configuration files with the --config option:
+There are two ways of managing configuration options: edit the config file or
+use the kamaki config command.
+
+Using multiple configuration files
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Kamaki setups are stored in configuration files. By default, a Kamaki
+installation stores options in *.kamakirc* file located at the user home
+directory.
+
+
+If a user needs to switch between different kamaki-related setups, Kamaki can
+explicitly load configuration files with the **- - config** (or **- c**)
+option:
 
 .. code-block:: console
 
     $ kamaki --config <custom_config_file_path> [other options]
 
-Using many different configuration files for different cloud services is encouraged.
+.. note:: For access to multiple cloud remotes, users do NOT need to create
+    multiple configuration files. Instead, we suggest using a single
+    configuration file with multiple remote setups. More details can be found
+    at the `multiple remotes guide <#multiple-cloud-remotes>`_.
 
 Modifying options at runtime
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -156,13 +278,10 @@ All kamaki commands can be used with the -o option in order to override configur
 
 .. code-block:: console
 
-    $ kamaki file list -o global.account=anotheraccount -o global.token=aT0k3n==
+    $ kamaki file list -o global.pithos_container=anothercontainer
 
-will invoke *kamaki file list* with the specified options, but the initial global.account and global.token values will be restored to initial values afterwards.
-
-.. note:: on-the-fly calls to file require users to explicetely provide the account uuid corresponding to this token. The account is actually the uuid field at the response of the following call::
-
-    $kamaki user authenticate aT0k3n==
+will invoke *kamaki file list* with the specified options, but the initial
+global.pithos_container values will not be modified.
 
 Editing options
 ^^^^^^^^^^^^^^^
@@ -173,46 +292,103 @@ Kamaki config command allows users to see and manage all configuration options.
     lists all configuration options currently used by a Kamaki installation
 
 * kamaki config get <group.option>
-    show the value of a specific configuration option. Options must be of the form group.option
+    show the value of a specific configuration option. Options must be of the
+    form *group.option*. The term *option* is equivalent to *global.option*
 
 * kamaki config set <group.option> <value>
-    set the group.option to value
+    set the group.option to value. If no group is given, the defaults to
+    *global*
 
 * kamaki config delete <group.option>
-    delete a configuration option
+    delete a configuration option. If no group is given, the defaults to
+    *global*
 
 The above commands cause option values to be permanently stored in the Kamaki configuration file.
+
+The commands above can also be used for **cloud remotes** handling, using the
+`remote.` prefix. The remote handling cases are similar but with slightly
+different semantics:
+
+* kamaki config get remote[.<cloud alias>[.option]]
+    * remote
+        list all cloud remotes (including `default`) and their settings
+    * remote.<cloud alias>
+        list settings of the cloud remote aliased as <cloud alias>. If no
+        special is configured, use the term `remote.default`
+    * remote.<cloud alias>.<option>
+        show the value of the specified option. If no special alias is
+        configured, use `remote.default.<option>`
+
+* kamaki config set remote.<cloud alias>.<option> <value>
+    If the remote alias <cloud alias> does not exist, create it. Then, create
+    (or update) the option <option> of this cloud remote, by setting its value
+    to <value>.
+
+* kamaki config delete remote.<cloud alias>[.<option>]
+    * remote.<cloud alias>
+        delete the cloud alias <cloud alias> and all its options
+    * remote.<cloud alias>.<option>
+        delete the <option> and its value from the cloud remote aliased as
+        <cloud alias>
 
 Editing the configuration file
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The configuration file is a simple text file that can be created by the user.
 
-A simple way to create the configuration file is to set a configuration option using the kamaki config command. For example:
+.. note:: users of kamaki < 0.9 can use kamaki 0.9.X to automatically convert
+    their old configuration files to the new config file version (>= 3.0). To
+    do this, follow `these instructions <#migrating-from-kamaki-0-8-x-to-0-9>`_
+    
+A simple way to create the configuration file is to set a configuration option
+using the kamaki config command. For example:
 
 .. code-block:: console
 
-    $ kamaki config set token myT0k3N==
+    $ kamaki config set global.log_file /home/exampleuser/logs/kamaki.log
 
-In the above example, if the kamaki configuration file does not exist, it will be created with all the default values plus the *global.token* option set to *myT0k3n==* value.
+In the above example, if the kamaki configuration file does not exist, it will
+be created with all the default values plus the *global.log_file* option set to
+`/home/exampleuser/logs/kamaki.log`
 
 The configuration file is formatted so that it can be parsed by the python ConfigParser module. It consists of command sections that are denoted with brackets. Every section contains variables with values. For example::
 
-    [file]
-    url=https://okeanos.grnet.gr/pithos
-    token=my0th3rT0k3n==
+    [global]
+    log_file = /home/exampleuser/logs/kamaki.log
+    max_threads = 7
+    colors = off
 
-two configuration options are created: *file.url* and *file.token*. These values will be loaded at every future kamaki execution.
+    [remote "default"]
+    url =
+    token =
+
+A bunch of configuration options are created and set to their default options,
+except the log_file option which is set to whatever the specified value.
+
+The [remote "default"] section is special and is used to configure the default
+cloud remote. Kamaki will not be able to run without setting the url and token
+values to that section.
+
+More cloud remotes can be created  on the side of the default remote, e.g
+using the examples at the `multiple remotes guide <#multiple-cloud-remotes>`_::
+
+    [remote "devel"]
+    url = https://devel.example.com/astakos/identity/v2.0/
+    token = myd3v3170k3n==
+
+    [remote "testing"]
+    url = https://testing.example.com/astakos/identity/v2.0/
+    token = my73571ng70k3n==
 
 Available options
 ^^^^^^^^^^^^^^^^^
 
-The [global] group is treated by kamaki as a generic group for arbitrary options, and it is used as a super-group for vital Kamaki options, namely token, url, cli. In case of conflict, the most specific options overrides the global ones.
+The [global] group is treated by kamaki as a generic group for kamaki-related
+settings, namely command cli specifications, the thread limit, console colors,
+history and log files, log detail options and pithos-specific options.
 
 * global.colors <on|off>
     enable / disable colors in command line based uis. Requires ansicolors, otherwise it is ignored
-
-* global.token <user authentication token>
 
 * global.log_file <logfile full path>
     set a custom location for kamaki logging. Default value is ~/.kamaki.log
@@ -221,159 +397,100 @@ The [global] group is treated by kamaki as a generic group for arbitrary options
     allow kamaki to log user tokens
 
 * global.log_data <on|off>
-    allow kamaki to log http data (by default, it logs only method, URL and headers)
+    allow kamaki to log http data (by default, it logs only method, URL and
+    headers)
 
-* file.cli <UI command specifications for file>
-    a special package that is used to load storage commands to kamaki UIs. Don't touch this unless if you know what you are doing.
+* global.file_cli <UI command specifications for file>
+    a special package that is used to load storage commands to kamaki UIs.
+    Don't touch this unless if you know what you are doing.
 
-* file.url <OOS storage or Pithos+ service url>
-    the url of the OOS storage or Pithos+ service. Set to Okeanos.grnet.gr Pithos+ storage service by default. Users should set a different value if they need to use a different storage service.
+* global.cyclades_cli <UI command specifications for cyclades>
+    a special package that is used to load cyclades commands to kamaki UIs.
+    Don't touch this unless you know what you are doing.
 
-* file.token <token>
-    it set, it overrides possible global.token option for file level commands
+* global.flavor_cli <UI command specifications for VM flavors>
+    a special package that is used to load cyclades VM flavor commands to
+    kamaki UIs. Don't touch this unless you know what you are doing.
 
-* compute.url <OOS compute or Cyclades service url>
-    the url of the OOS compute or Cyclades service. Set to Okeanos.grnet.gr Cyclades IaaS service by default. Users should set a different value if they need to use a different IaaS service.
+* global.network_cli <UI command specifications for virtual networks>
+    a special package that is used to load cyclades virtual network commands to
+    kamaki UIs. Don't touch this unless you know what you are doing.
 
-* cyclades.cli <UI command specifications for cyclades>
-    a special package that is used to load cyclades commands to kamaki UIs. Don't touch this unless you know what you are doing.
-
-* flavor.cli <UI command specifications for VM flavors>
-    a special package that is used to load cyclades VM flavor commands to kamaki UIs. Don't touch this unless you know what you are doing.
-
-* network.cli <UI command specifications for virtual networks>
-    a special package that is used to load cyclades virtual network commands to kamaki UIs. Don't touch this unless you know what you are doing.
-
-* image.url <Plankton image service url>
-    the url of the Plankton service. Set to Okeanos.grnet.gr Plankton service by default. Users should set a different value if they need to use a different service. Note that the *image compute* commands are depended on the compute.url instead.
-
-* image.cli <UI command specifications for Plankton (and Compute) image service>
+* global.image_cli <UI command specs for Plankton or Compute image service>
     a special package that is used to load image-related commands to kamaki UIs. Don't touch this unless you know what you are doing.
 
-* user.url <Astakos authentication service url>
-    the url of the Astakos authentication service. Set to the Okeanos.grnet.gr Astakos service by default. Users should set a different value if they need to use a different service.
+* global.user_cli <UI command specs for Astakos authentication service>
+    a special package that is used to load astakos-related commands to kamaki
+    UIs. Don't touch this unless you know what you are doing.
 
-* user.cli <UI command specifications for Astakos authentication service>
-    a special package that is used to load astakos-related commands to kamaki UIs. Don't touch this unless you know what you are doing.
-
-* history.file <history file path>
-    the path of a simple file for inter-session kamaki history. Make sure kamaki is executed in a context where this file is accessible for reading and writing. Kamaki automatically creates the file if it doesn't exist
+* global.history_file <history file path>
+    the path of a simple file for inter-session kamaki history. Make sure
+    kamaki is executed in a context where this file is accessible for reading
+    and writing. Kamaki automatically creates the file if it doesn't exist
 
 Additional features
 ^^^^^^^^^^^^^^^^^^^
 
-Log file location
-"""""""""""""""""
-
-Kamaki log file path is set by the following command::
-
-    $ kamaki config set log_file <logfile path>
-
-By default, kamaki logs at ~/.kamaki.log
-
-When initialized, kamaki attempts to open one of these locations for writing, in the order presented above and uses the first accessible for appending logs. If the log_file option is set, kamaki prepends the value of this option to the logfile list, so the custom location will be the first one kamaki will attetmpt to log at.
-
-Kamaki will not crush if the logging location is not accessible.
-
-Richer connection logs
-""""""""""""""""""""""
-
-Kamaki logs down the http requests and responses in /var/log/kamaki/clients.log (make sure it is accessible). The request and response data and user authentication information is excluded from the logs be default. The former may render the logs unreadable and the later are sensitive information. Users my activate data and / or token logging my setting the global options log_data and log_token respectively::
-
-    $ kamaki config set log_data on
-    $ kamaki config set log_token on
-
-Either or both of these options may be switched off either by setting them to ``off`` or by deleting them.
-
-    $ kamaki config set log_data off
-    $ kamaki config delete log_token
-
-Set custom thread limit
-"""""""""""""""""""""""
-
-Some operations (e.g. download and upload) may use threaded http connections for better performance. Kamaki.clients utilizes a sophisticated mechanism for dynamically adjusting the number of simultaneous threads running, but users may wish to enforce their own upper thread limit. In that case, the max_threads option may be set to the configuration file::
-
-    $ kamaki config set max_threads 3
-
-If the value is not a positive integer, kamaki will ignore it and a warning message will be logged.
-
 The livetest suite
 """"""""""""""""""
 
-Kamaki contains a live test suite for the kamaki.clients API, where "live" means that the tests are performed against active services that up and running. The live test package is named "livetest", it is accessible as kamaki.clients.livetest and it is designed to check the actual relation between kamaki and synnefo services.
+Kamaki contains a live test suite for the kamaki.clients API, where "live"
+means that the tests are performed against active services that up and running.
+The live test package is named "livetest", it is accessible as kamaki.clients.
+livetest and it is designed to check the actual relation between kamaki and
+synnefo services.
 
 The livetest suite can be activated with the following option on the configuration file::
 
-    [livetest]
-    cli=livetest
+    [global]
+    livetest_cli=livetest
 
-In most tests, livetest will run as long as an Astakos identity manager service is accessible and kamaki is set up to authenticate a valid token on this server.
+or with this kamaki command::
 
-In specific, a setup file needs at least the following mandatory settings in the configuration file:
+    kamaki config set livetest_cli livetest
 
-* If authentication information is used for default kamaki clients::
+In most tests, livetest will run as long as the default remote is configured
+correctly. Some commands, though, need some extra settings related to the cloud
+the test is performed against, or the example files used in kamaki.
 
-    [user]
-    url=<Astakos Identity Manager URL>
-    token=<A valid user token>
+Here is a list of settings needed:
 
-* else if this authentication information is only for testing add this under [livetest]::
+* for all tests::
+    * livetest.testremote = <the cloud alias this test will run against>
 
-    user_url=<Astakos Identity Manager URL>
-    user_token=<A valid user token>
+* for astakos client::
+    * livetest.astakos_details = <A file with an authentication output>
+        To create this file, pipeline the output of an authentication command
+        with the -j option for raw jason output
 
-Each service tested in livetest might need some more options under the [livetest] label, as shown bellow:
+        .. code-block:: console
 
-* kamaki livetest astakos::
+            $ kamaki user authenticate -j > astakos.details
 
-    astakos_email = <The valid email of testing user>
-    astakos_name = <The exact "real" name of testing user>
-    astakos_username = <The username of the testing user>
-    astakos_uuid = <The valid unique user id of the testing user>
+    * livetest.astakos_name = <The exact "real" name of testing user>
+    * livetest.astakos_id = <The valid unique user id of the testing user>
 
-* kamaki livetest pithos::
+* for image client:
+    * livetest.image_details = <A file with the image's metadata>
+        To create this file, pipeline the output of an image metadata command
+        with the -j option for raw jason output
 
-    astakos_uuid = <The valid unique user id of the testing user>
+        .. code-block:: console
 
-* kamaki livetest cyclades / image::
+            $ kamaki image meta <img id> -j > img.details
 
-    image_id = <A valid image id used for testing>
-    image_local_path = <The local path of the testing image>
-    image_details = <A text file containing testing image details in a python dict>
+    * livetest.image_id = <A valid image id used for testing>
+    * livetest.image_local_path = <The local path of the testing image>
 
-    - example image.details content:
-    {
-        u'id': u'b3e68235-3abd-4d60-adfe-1379a4f8d3fe',
-        u'metadata': {
-            u'values': {
-                u'description': u'Debian 6.0.6 (Squeeze) Base System',
-                u'gui': u'No GUI',
-                u'kernel': u'2.6.32',
-                u'os': u'debian',
-                u'osfamily': u'linux',
-                u'root_partition': u'1',
-                u'sortorder': u'1',
-                u'users': u'root'
-            }
-        },
-        u'name': u'Debian Base',
-        u'progress': u'100',
-        u'status': u'ACTIVE',
-        u'created': u'2012-11-19T14:54:57+00:00',
-        u'updated': u'2012-11-19T15:29:51+00:00'
-    }
+* for flavors (part of the compute client):
+    * livetest.flavor_details = <A file with the flavor details>
+        To create this file, pipeline the output of a flavor info command
+        with the -j option for raw jason output
 
-    flavor_details = <A text file containing the testing images' flavor details in a python dict>
+        .. code-block:: console
 
-    - example flavor.details content:
-    {
-        u'name': u'C1R1drbd',
-        u'ram': 1024,
-        u'id': 1,
-        u'SNF:disk_template': u'drbd',
-        u'disk': 20,
-        u'cpu': 1
-    }
+            $ kamaki flavor info <flavor id> -j > flavor.details
+
 
 After setup, kamaki can run all tests::
 
@@ -390,4 +507,9 @@ or a specific method from a service (e.g. astakos authenticate)::
 The unit testing system
 """""""""""""""""""""""
 
-Kamaki container a set of finegrained unit tests for the kamaki.clients package. This set is not used when kamaki is running. Instead, it is aimed to developers who debug or extent the kamaki clients library. For more information, check the `Going Agile <developers/extending-clients-api.html#going-agile>`_ entry at the `developers section <developers/extending-clients-api.html>`_.
+Kamaki container a set of finegrained unit tests for the kamaki.clients
+package. This set is not used when kamaki is running. Instead, it is aimed to
+developers who debug or extent the kamaki clients library. For more
+information, check the
+`Going Agile <developers/extending-clients-api.html#going-agile>`_ entry at the
+`developers section <developers/extending-clients-api.html>`_.
