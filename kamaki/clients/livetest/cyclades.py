@@ -54,14 +54,14 @@ class Cyclades(livetest.Generic):
         self.servname1 = 'serv' + unicode(self.now)
         self.servname2 = self.servname1 + '_v2'
         self.servname1 += '_v1'
-        self.flavorid = 1
+        self.flavorid = self._flavor_details['id']
         #servers have to be created at the begining...
         self.networks = {}
         self.netname1 = 'net' + unicode(self.now)
         self.netname2 = 'net' + unicode(self.now) + '_v2'
 
-        self.remote = 'remote.%s' % self['testremote']
-        aurl, self.token = self[self.remote, 'url'], self[self.remote, 'token']
+        self.cloud = 'cloud.%s' % self['testcloud']
+        aurl, self.token = self[self.cloud, 'url'], self[self.cloud, 'token']
         self.auth_base = AstakosClient(aurl, self.token)
         curl = self.auth_base.get_service_endpoints('compute')['publicURL']
         self.client = CycladesClient(curl, self.token)
