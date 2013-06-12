@@ -61,7 +61,7 @@ for c in '%s' % __version__:
     if c not in '0.123456789':
         break
     version += c
-HEADER = '# Kamaki configuration file v%s' % version
+HEADER = '# Kamaki configuration file v%s\n' % version
 
 DEFAULTS = {
     'global': {
@@ -156,7 +156,10 @@ class Config(RawConfigParser):
                         self.remove_option(s, term)
                         continue
                     gval = self.get(s, term)
-                    cval = self.get_cloud('default', term)
+                    try:
+                        cval = self.get_cloud('default', term)
+                    except KeyError:
+                        cval = ''
                     if gval and cval and (
                         gval.lower().strip('/') != cval.lower().strip('/')):
                             raise CLISyntaxError(
@@ -225,13 +228,13 @@ class Config(RawConfigParser):
         if 'global' in sections:
             if checker.get('global', 'url') or checker.get('global', 'token'):
                 log.warning('..... config file has an old global section')
-                return 8.0
+                return 0.8
         log.warning('........ nope')
         log.warning('Config file heuristic 2: missing all cloud sections ?')
         if 'cloud' in sections:
             for r in self.keys('cloud'):
                 log.warning('... found cloud "%s"' % r)
-                return 9.0
+                return 0.9
         log.warning('........ yep')
         log.warning('All heuristics failed, cannot decide')
         return 0.0

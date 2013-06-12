@@ -76,6 +76,7 @@ class CLIBaseUrlError(CLIError):
         message = message or 'No url for %s' % service.lower()
         details = details or [
             'Two options to resolve this:',
+            '(Use the correct cloud name, instead of "default")',
             'A. (recommended) Let kamaki discover the endpoint URLs for all',
             'services by setting a single Authentication URL and token:',
             '  /config set cloud.default.url <AUTH_URL>',
