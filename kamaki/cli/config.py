@@ -187,11 +187,6 @@ class Config(RawConfigParser):
                         print('... rescue %s.%s => global.%s_cli' % (
                             s, k, trn['cmd']))
                         self.set('global', 'file_cli', v)
-                    elif v and k in ('url', 'token'):
-                        print(
-                            '... rescue %s.%s => remote.default.%s_%s' % (
-                                s, k, trn['serv'], k))
-                        self.set_remote('default', 'pithos_%s' % k, v)
                     elif (k in ('container', 'uuid')) and (
                             trn['serv'] in ('pithos',)):
                         print(

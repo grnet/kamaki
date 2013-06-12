@@ -4,27 +4,57 @@ Overview
 History
 -------
 
-Here, at the *Greek Research and Technology Network*, we have been developing an IaaS cloud management software called **synnefo** (or **+nefo**) that is accessed and managed via an extended OpenStack Compute API v1.1. Synnefo has been deployed in many environments to cover multiple needs. For example, the `~okeanos <http://okeanos.grnet.gr>`_ IaaS service, running in our data centers, is used to offer services for the Greek Research and Academic Community.
+Kamaki was created on 2011 by the Synnefo (http://www.synnefo.org) development
+team of the *Greek Research and Technology Network (GRNET)*, initially as an
+internal project and later as a multipurpose tool for all users.
 
-From the early start, we needed a simple command-line tool to test the OpenStack API. That's why we developed *kamaki*, which proved to be powerful and intuitive enough, to be used not only for testing purposes but also as a complete Openstack Compute API v1.1 client, able to manage our cloud from the command line.
+Synnefo is an IaaS system which is based on and extents OpenStack.
+Synnefo has been deployed in many environments to cover multiple needs. The
+most notable, deployment is probably the GRNET's
+`~okeanos <http://okeanos.grnet.gr>`_ IaaS service, running in GRNET data
+centers, is used to offer cloud services to the Greek Research and Academic
+Community.
 
-Once it proved so useful to us, we decided to open the source, so the community can benefit from it, and *kamaki* can benefit from the community too.
+Kamaki was originally conceived as a handy tool for the developers of *Synnefo*
+and the administrators of *Okeanos*. The initial purpose of kamaki was to
+provide an easy to use command line client for accessing the various ReST APIs
+of Synnefo.
+
+Kamaki has been designed to act as a command line client as well as a python
+library for client developers. It is widely used in various synnefo and okeanos
+components. Third parties are also encouraged to use the kamaki library for
+developing their own python-based cloud-client applications.
+
+As Synnefo became a full, scalable and stable cloud solution, kamaki also
+evolved to an intuitive, multipurpose tool, available to a wider user base.
+For example, it is used as the main Pithos+ client at Linux and other Unix-like
+environments. It can be easily set up in all popular platforms, including
+recent Linux, OS X and Windows releases.
 
 Who uses *kamaki*?
 ------------------
 
-Kamaki is targeted to new and advanced users who need an intuitive managerial console tool to manage a local or remote synnefo cloud installation.
+Kamaki is targeted to new and advanced users who need an intuitive managerial console tool to manage a local or remote synnefo cloud installation, without
+excluding users who need to use just parts of the cloud system (e.g. only
+Pihtos+ storage service or only Image services)
 
-*kamaki* is currently used (i) internally by the Synnefo development team to test the synnefo software, (ii) by the deployment team which operates the GRNET ~okeanos service and (iii) by the testers using the ~okeanos service or other synnefo installations and want to access the services from command line.
+*kamaki* is currently used
 
-What's more, (iv) *kamaki* clients API is used in synnefo as an API for accessing remote services as well as (v) for building manager tools of various synnefo functions (e.g. image registration).
+* internally by the Synnefo development team to test the synnefo software,
 
+* by the deployment team which operates the GRNET ~okeanos service
+
+* as the main Pithos+ client at Linux and other Unix-like environments
+
+* by third party Synnefo deploys who need to test and debug their cloud setup
+
+* as an API library for other components in the Synnefo universe.
 
 Contributing and helping out
 ----------------------------
 
-The *kamaki* development team values your help and depends on community feedback for feature evolution. Any contributions and bug reports will be highly appreciated. Using *kamaki* and sending us feedback is also a good start.
-
+The *kamaki* development team values your help and depends on community feedback for feature evolution. Any contributions and bug reports will be
+highly appreciated.
 
 Community & Support
 -------------------
