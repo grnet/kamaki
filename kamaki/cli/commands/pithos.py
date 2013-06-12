@@ -153,11 +153,11 @@ class _pithos_init(_command_init):
 
     @DontRaiseKeyError
     def _custom_container(self):
-        return self.config.get_remote(self.cloud, 'pithos_container')
+        return self.config.get_cloud(self.cloud, 'pithos_container')
 
     @DontRaiseKeyError
     def _custom_uuid(self):
-        return self.config.get_remote(self.cloud, 'pithos_uuid')
+        return self.config.get_cloud(self.cloud, 'pithos_uuid')
 
     def _set_account(self):
         self.account = self._custom_uuid()
