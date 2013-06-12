@@ -255,13 +255,10 @@ def _init_session(arguments, is_non_API=False):
             cloud = _cnf.value.keys('cloud')[0]
         else:
             raise CLIError(
-                'Found %s clouds but none of them is set as default' % (
-                    num_of_clouds),
+                'Found %s clouds but none of them is set as default',
                 importance=2, details=[
                     'Please, choose one of the following cloud names:',
                     ', '.join(_cnf.value.keys('cloud')),
-                    'To see all cloud settings:',
-                    '  kamaki config get cloud.<cloud name>',
                     'To set a default cloud:',
                     '  kamaki config set default_cloud <cloud name>',
                     'To pick a cloud for the current session, use --cloud:',
@@ -285,8 +282,7 @@ def _init_session(arguments, is_non_API=False):
                 'No authentication %s provided for cloud "%s"' % (term, cloud),
                 importance=3, details=[
                     'Set a %s for cloud %s:' % (term, cloud),
-                    '  kamaki config set cloud.%s.%s <%s>' % (
-                        cloud, term, term)])
+                    '  kamaki config set cloud.%s.%s <t0k3n>' % (cloud, term)])
 
     from kamaki.clients.astakos import AstakosClient as AuthCachedClient
     try:
