@@ -39,8 +39,7 @@ from kamaki.cli import _debug, kloger
 from kamaki.cli.utils import format_size
 
 CLOUDNAME = [
-    'Note: If you use a named cloud remote, use its name',
-    'instead of "default"']
+    'Note: If you use a named cloud, use its name instead of "default"']
 
 
 class generic(object):
@@ -71,9 +70,9 @@ class generic(object):
                         'Make sure a valid token is provided:',
                         '  to check if token is valid: /user authenticate',
                         '  to set token:',
-                        '    /config set remote.default.token <token>',
+                        '    /config set cloud.default.token <token>',
                         '  to get current token:',
-                        '    /config get remote.default.token'] + CLOUDNAME)
+                        '    /config get cloud.default.token'] + CLOUDNAME)
                 elif ce.status in range(-12, 200) + [302, 401, 403, 500]:
                     raiseCLIError(ce, importance=3, details=[
                         'Check if service is up'])
@@ -86,9 +85,9 @@ class generic(object):
                     raiseCLIError(ce, msg, details=[
                         'Check if authentication url is correct',
                         '  check current url:',
-                        '    /config get remote.default.url',
+                        '    /config get cloud.default.url',
                         '  set new auth. url:',
-                        '    /config set remote.default.url'] + CLOUDNAME)
+                        '    /config set cloud.default.url'] + CLOUDNAME)
                 raise
         return _raise
 
@@ -96,9 +95,9 @@ class generic(object):
 class user(object):
 
     _token_details = [
-        'To check default token: /config get remote.default.token',
+        'To check default token: /config get cloud.default.token',
         'If set/update a token:',
-        '*  (permanent):  /config set remote.default.token <token>',
+        '*  (permanent):  /config set cloud.default.token <token>',
         '*  (temporary):  re-run with <token> parameter'] + CLOUDNAME
 
     @classmethod
@@ -112,15 +111,15 @@ class user(object):
             if not getattr(client, 'token', False):
                 kloger.warning(
                     'No permanent token (try:'
-                    ' kamaki config set remote.default.token <tkn>)')
+                    ' kamaki config set cloud.default.token <tkn>)')
             if not getattr(client, 'base_url', False):
                 msg = 'Missing synnefo authentication URL'
                 raise CLIError(msg, importance=3, details=[
                     'Check if authentication url is correct',
                         '  check current url:',
-                        '    /config get remote.default.url',
+                        '    /config get cloud.default.url',
                         '  set new auth. url:',
-                        '    /config set remote.default.url'] + CLOUDNAME)
+                        '    /config set cloud.default.url'] + CLOUDNAME)
             return r
         return _raise
 

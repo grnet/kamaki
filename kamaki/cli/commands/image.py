@@ -80,7 +80,7 @@ class _init_image(_command_init):
             if img_url:
                 token = self._custom_token('image')\
                     or self._custom_token('plankton')\
-                    or self.config.get_remote(self.cloud, 'token')
+                    or self.config.get_cloud(self.cloud, 'token')
                 self.client = ImageClient(base_url=img_url, token=token)
                 return
         if getattr(self, 'auth_base', False):

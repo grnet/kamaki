@@ -79,14 +79,14 @@ class CLIBaseUrlError(CLIError):
             'A. (recommended) Let kamaki discover the endpoint URLs for all',
 
             'services by setting a single Authentication URL and token:',
-            '  /config set remote.default.url <AUTH_URL>',
-            '  /config set remote.default.token <t0k3n>',
+            '  /config set cloud.default.url <AUTH_URL>',
+            '  /config set cloud.default.token <t0k3n>',
             'B. (advanced users) Explicitly set a valid %s endpoint URL' % (
                 service.upper()),
             'Note: url option has a higher priority, so delete it to',
             'make that work',
-            '  /config delete remote.default.url',
-            '  /config set remote.%s.url <%s_URL>' % (
+            '  /config delete cloud.default.url',
+            '  /config set cloud.%s.url <%s_URL>' % (
                 service, service.upper())]
         super(CLIBaseUrlError, self).__init__(message, details, importance)
 
