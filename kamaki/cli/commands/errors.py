@@ -81,12 +81,12 @@ class generic(object):
                     if not client:
                         raise
                     url = getattr(client, 'base_url', '<empty>')
-                    msg = 'Invalid service url %s' % url
+                    msg = 'Invalid service URL %s' % url
                     raiseCLIError(ce, msg, details=[
-                        'Check if authentication url is correct',
-                        '  check current url:',
+                        'Check if authentication URL is correct',
+                        '  check current URL:',
                         '    /config get cloud.default.url',
-                        '  set new auth. url:',
+                        '  set new authentication URL:',
                         '    /config set cloud.default.url'] + CLOUDNAME)
                 raise
         return _raise
@@ -115,10 +115,10 @@ class user(object):
             if not getattr(client, 'base_url', False):
                 msg = 'Missing synnefo authentication URL'
                 raise CLIError(msg, importance=3, details=[
-                    'Check if authentication url is correct',
-                        '  check current url:',
+                    'Check if authentication URL is correct',
+                        '  check current URL:',
                         '    /config get cloud.default.url',
-                        '  set new auth. url:',
+                        '  set new auth. URL:',
                         '    /config set cloud.default.url'] + CLOUDNAME)
             return r
         return _raise
