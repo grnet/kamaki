@@ -76,19 +76,19 @@ class _command_init(object):
 
     @DontRaiseKeyError
     def _custom_url(self, service):
-        return self.config.get_remote(self.cloud, '%s_url' % service)
+        return self.config.get_cloud(self.cloud, '%s_url' % service)
 
     @DontRaiseKeyError
     def _custom_token(self, service):
-        return self.config.get_remote(self.cloud, '%s_token' % service)
+        return self.config.get_cloud(self.cloud, '%s_token' % service)
 
     @DontRaiseKeyError
     def _custom_type(self, service):
-        return self.config.get_remote(self.cloud, '%s_type' % service)
+        return self.config.get_cloud(self.cloud, '%s_type' % service)
 
     @DontRaiseKeyError
     def _custom_version(self, service):
-        return self.config.get_remote(self.cloud, '%s_version' % service)
+        return self.config.get_cloud(self.cloud, '%s_version' % service)
 
     def _set_log_params(self):
         try:
@@ -96,7 +96,7 @@ class _command_init(object):
                 self['config'].get_global('log_token').lower() == 'on',
                 self['config'].get_global('log_data').lower() == 'on')
         except Exception as e:
-            log.warning('Failed to read custom log settings:'
+            log.debug('Failed to read custom log settings:'
                 '%s\n defaults for token and data logging are off' % e)
 
     def _update_max_threads(self):

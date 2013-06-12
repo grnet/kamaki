@@ -80,15 +80,15 @@ class _init_image(_command_init):
             if img_url:
                 token = self._custom_token('image')\
                     or self._custom_token('plankton')\
-                    or self.config.get_remote(self.cloud, 'token')
+                    or self.config.get_cloud(self.cloud, 'token')
                 self.client = ImageClient(base_url=img_url, token=token)
                 return
         if getattr(self, 'auth_base', False):
             plankton_endpoints = self.auth_base.get_service_endpoints(
-                self._custom_type('image')\
-                or self._custom_type('plankton') or 'image',
-                self._custom_version('image')\
-                or self._custom_version('plankton') or '')
+                self._custom_type('image') or self._custom_type(
+                    'plankton') or 'image',
+                self._custom_version('image') or self._custom_version(
+                    'plankton') or '')
             base_url = plankton_endpoints['publicURL']
             token = self.auth_base.token
         else:

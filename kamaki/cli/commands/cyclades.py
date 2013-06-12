@@ -53,7 +53,7 @@ _commands = [server_cmds, flavor_cmds, network_cmds]
 
 about_authentication = '\nUser Authentication:\
     \n* to check authentication: /user authenticate\
-    \n* to set authentication token: /config set remote.default.token <token>'
+    \n* to set authentication token: /config set cloud.default.token <token>'
 
 howto_personality = [
     'Defines a file to be injected to VMs personality.',
@@ -75,7 +75,7 @@ class _init_cyclades(_command_init):
             if base_url:
                 token = self._custom_token(service)\
                     or self._custom_token('cyclades')\
-                    or self.config.get_remote('token')
+                    or self.config.get_cloud('token')
                 self.client = CycladesClient(
                     base_url=base_url, token=token)
                 return
@@ -408,8 +408,7 @@ class server_metadata_list(_init_cyclades, _optional_json):
 class server_metadata_set(_init_cyclades, _optional_json):
     """Set / update server(VM) metadata
     Metadata should be given in key/value pairs in key=value format
-    For example:
-        /server metadata set <server id> key1=value1 key2=value2
+    For example: /server metadata set <server id> key1=value1 key2=value2
     Old, unreferenced metadata will remain intact
     """
 

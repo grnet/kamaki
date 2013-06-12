@@ -381,7 +381,7 @@ class PithosClient(PithosRestClient):
         :param public: (bool)
 
         :param container_info_cache: (dict) if given, avoid redundant calls to
-        server for container info (block size and hash information)
+            server for container info (block size and hash information)
         """
         self._assert_container()
 
@@ -510,7 +510,7 @@ class PithosClient(PithosRestClient):
         :param public: (bool)
 
         :param container_info_cache: (dict) if given, avoid redundant calls to
-        server for container info (block size and hash information)
+            server for container info (block size and hash information)
         """
         self._assert_container()
 
@@ -963,7 +963,7 @@ class PithosClient(PithosRestClient):
 
     def get_account_meta(self, until=None):
         """
-        :meta until: (str) formated date
+        :param until: (str) formated date
 
         :returns: (dict)
         """

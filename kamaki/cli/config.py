@@ -39,6 +39,7 @@ from ConfigParser import RawConfigParser, NoOptionError, NoSectionError
 from re import match
 
 from kamaki.cli.errors import CLISyntaxError
+from kamaki import __version__
 
 try:
     from collections import OrderedDict
@@ -55,12 +56,16 @@ HISTORY_PATH = os.path.expanduser('~/.kamaki.history')
 # Name of a shell variable to bypass the CONFIG_PATH value
 CONFIG_ENV = 'KAMAKI_CONFIG'
 
-HEADER = """
-# Kamaki configuration file v3 (kamaki >= v0.9)
-"""
+version = ''
+for c in '%s' % __version__:
+    if c not in '0.123456789':
+        break
+    version += c
+HEADER = '# Kamaki configuration file v%s\n' % version
 
 DEFAULTS = {
     'global': {
+        'default_cloud': '',
         'colors': 'off',
         'log_file': os.path.expanduser('~/.kamaki.log'),
         'log_token': 'off',
@@ -79,20 +84,20 @@ DEFAULTS = {
         #  'livetest_cli': 'livetest',
         #  'astakos_cli': 'snf-astakos'
     },
-    'remote':
+    'cloud':
     {
-        'default': {
-            'url': '',
-            'token': ''
-            #'pithos_type': 'object-store',
-            #'pithos_version': 'v1',
-            #'cyclades_type': 'compute',
-            #'cyclades_version': 'v2.0',
-            #'plankton_type': 'image',
-            #'plankton_version': '',
-            #'astakos_type': 'identity',
-            #'astakos_version': 'v2.0'
-        }
+        #'default': {
+        #    'url': '',
+        #    'token': ''
+        #    'pithos_type': 'object-store',
+        #    'pithos_version': 'v1',
+        #    'cyclades_type': 'compute',
+        #    'cyclades_version': 'v2.0',
+        #    'plankton_type': 'image',
+        #    'plankton_version': '',
+        #    'astakos_type': 'identity',
+        #    'astakos_version': 'v2.0'
+        #}
     }
 }
 
@@ -107,15 +112,15 @@ class Config(RawConfigParser):
         self.read(self.path)
 
         for section in self.sections():
-            r = self._remote_name(section)
+            r = self._cloud_name(section)
             if r:
                 for k, v in self.items(section):
-                    self.set_remote(r, k, v)
+                    self.set_cloud(r, k, v)
                 self.remove_section(section)
 
     @staticmethod
-    def _remote_name(full_section_name):
-        matcher = match('remote "(\w+)"', full_section_name)
+    def _cloud_name(full_section_name):
+        matcher = match('cloud "(\w+)"', full_section_name)
         return matcher.groups()[0] if matcher else None
 
     def rescue_old_file(self):
@@ -139,10 +144,11 @@ class Config(RawConfigParser):
             user=dict(serv='astakos', cmd='user'),
         )
 
+        self.set('global', 'default_cloud', 'default')
         for s in self.sections():
             if s in ('global'):
                 # global.url, global.token -->
-                # remote.default.url, remote.default.token
+                # cloud.default.url, cloud.default.token
                 for term in set(self.keys(s)).difference(global_terms):
                     if term not in ('url', 'token'):
                         lost_terms.append('%s.%s = %s' % (
@@ -150,23 +156,26 @@ class Config(RawConfigParser):
                         self.remove_option(s, term)
                         continue
                     gval = self.get(s, term)
-                    cval = self.get_remote('default', term)
+                    try:
+                        cval = self.get_cloud('default', term)
+                    except KeyError:
+                        cval = ''
                     if gval and cval and (
                         gval.lower().strip('/') != cval.lower().strip('/')):
                             raise CLISyntaxError(
                                 'Conflicting values for default %s' % term,
                                 importance=2, details=[
                                     ' global.%s:  %s' % (term, gval),
-                                    ' remote.default.%s:  %s' % (term, cval),
+                                    ' cloud.default.%s:  %s' % (term, cval),
                                     'Please remove one of them manually:',
                                     ' /config delete global.%s' % term,
                                     ' or'
-                                    ' /config delete remote.default.%s' % term,
+                                    ' /config delete cloud.default.%s' % term,
                                     'and try again'])
                     elif gval:
-                        print('... rescue %s.%s => remote.default.%s' % (
+                        print('... rescue %s.%s => cloud.default.%s' % (
                             s, term, term))
-                        self.set_remote('default', term, gval)
+                        self.set_cloud('default', term, gval)
                     self.remove_option(s, term)
             # translation for <service> or <command> settings
             # <service> or <command group> settings --> translation --> global
@@ -186,19 +195,12 @@ class Config(RawConfigParser):
                     if v and k in ('cli',):
                         print('... rescue %s.%s => global.%s_cli' % (
                             s, k, trn['cmd']))
-                        self.set('global', 'file_cli', v)
-                    elif v and k in ('url', 'token'):
-                        print(
-                            '... rescue %s.%s => remote.default.%s_%s' % (
-                                s, k, trn['serv'], k))
-                        self.set_remote('default', 'pithos_%s' % k, v)
-                    elif (k in ('container', 'uuid')) and (
-                            trn['serv'] in ('pithos',)):
-                        print(
-                            '... rescue %s.%s => remote.default.pithos_%s' % (
+                        self.set('global', '%s_cli' % trn['cmd'], v)
+                    elif k in ('container',) and trn['serv'] in ('pithos',):
+                        print('... rescue %s.%s => cloud.default.pithos_%s' % (
                                     s, k, k))
-                        self.set_remote('default', 'pithos_%s' % k, v)
-                    elif v:
+                        self.set_cloud('default', 'pithos_%s' % k, v)
+                    else:
                         lost_terms.append('%s.%s = %s' % (s, k, v))
                 self.remove_section(s)
         #  self.pretty_print()
@@ -217,48 +219,51 @@ class Config(RawConfigParser):
                     print '\t', k, '=>', v
 
     def guess_version(self):
+        """
+        :returns: (float) version of the config file or 0.0 if unrecognized
+        """
         checker = Config(self.path, with_defaults=False)
         sections = checker.sections()
-        log.warning('Config file heuristic 1: global section ?')
+        log.warning('Config file heuristic 1: old global section ?')
         if 'global' in sections:
             if checker.get('global', 'url') or checker.get('global', 'token'):
                 log.warning('..... config file has an old global section')
-                return 2.0
+                return 0.8
         log.warning('........ nope')
-        log.warning('Config file heuristic 2: at least 1 remote section ?')
-        if 'remote' in sections:
-            for r in self.keys('remote'):
-                log.warning('... found remote "%s"' % r)
-                return 3.0
-        log.warning('........ nope')
+        log.warning('Config file heuristic 2: missing all cloud sections ?')
+        if 'cloud' in sections:
+            for r in self.keys('cloud'):
+                log.warning('... found cloud "%s"' % r)
+                return 0.9
+        log.warning('........ yep')
         log.warning('All heuristics failed, cannot decide')
         return 0.0
 
-    def get_remote(self, remote, option):
+    def get_cloud(self, cloud, option):
         """
-        :param remote: (str) remote cloud alias
+        :param cloud: (str) cloud alias
 
-        :param option: (str) option in remote cloud section
+        :param option: (str) option in cloud section
 
         :returns: (str) the value assigned on this option
 
-        :raises KeyError: if remote or remote's option does not exist
+        :raises KeyError: if cloud or cloud's option does not exist
         """
-        r = self.get('remote', remote)
+        r = self.get('cloud', cloud)
         if not r:
-            raise KeyError('Remote "%s" does not exist' % remote)
+            raise KeyError('Cloud "%s" does not exist' % cloud)
         return r[option]
 
     def get_global(self, option):
         return self.get('global', option)
 
-    def set_remote(self, remote, option, value):
+    def set_cloud(self, cloud, option, value):
         try:
-            d = self.get('remote', remote) or dict()
+            d = self.get('cloud', cloud) or dict()
         except KeyError:
             d = dict()
         d[option] = value
-        self.set('remote', remote, d)
+        self.set('cloud', cloud, d)
 
     def set_global(self, option, value):
         self.set('global', option, value)
@@ -284,7 +289,7 @@ class Config(RawConfigParser):
 
     def get(self, section, option):
         """
-        :param section: (str) HINT: for remotes, use remote.<section>
+        :param section: (str) HINT: for clouds, use cloud.<section>
 
         :param option: (str)
 
@@ -293,8 +298,9 @@ class Config(RawConfigParser):
         value = self._overrides.get(section, {}).get(option)
         if value is not None:
             return value
-        if section.startswith('remote.'):
-            return self.get_remote(section[len('remote.'):], option)
+        prefix = 'cloud.'
+        if section.startswith(prefix):
+            return self.get_cloud(section[len(prefix):], option)
         try:
             return RawConfigParser.get(self, section, option)
         except (NoSectionError, NoOptionError):
@@ -302,14 +308,15 @@ class Config(RawConfigParser):
 
     def set(self, section, option, value):
         """
-        :param section: (str) HINT: for remotes use remote.<section>
+        :param section: (str) HINT: for remotes use cloud.<section>
 
         :param option: (str)
 
         :param value: str
         """
-        if section.startswith('remote.'):
-            return self.set_remote(section[len('remote.')], option, value)
+        prefix = 'cloud.'
+        if section.startswith(prefix):
+            return self.set_cloud(section[len(prefix)], option, value)
         if section not in RawConfigParser.sections(self):
             self.add_section(section)
         RawConfigParser.set(self, section, option, value)
@@ -322,8 +329,8 @@ class Config(RawConfigParser):
         except NoSectionError:
             pass
 
-    def remove_from_remote(self, remote, option):
-        d = self.get('remote', remote)
+    def remote_from_cloud(self, cloud, option):
+        d = self.get('cloud', cloud)
         if isinstance(d, dict):
             d.pop(option)
 
@@ -339,10 +346,10 @@ class Config(RawConfigParser):
         self._overrides[section][option] = value
 
     def write(self):
-        for r, d in self.items('remote'):
+        for r, d in self.items('cloud'):
             for k, v in d.items():
-                self.set('remote "%s"' % r, k, v)
-        self.remove_section('remote')
+                self.set('cloud "%s"' % r, k, v)
+        self.remove_section('cloud')
 
         with open(self.path, 'w') as f:
             os.chmod(self.path, 0600)
