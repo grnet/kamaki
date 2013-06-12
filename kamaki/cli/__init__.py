@@ -482,7 +482,9 @@ def main():
         auth_base, cloud = _init_session(parser.arguments, is_non_API(parser))
 
         from kamaki.cli.utils import suggest_missing
-        suggest_missing()
+        global _colors
+        exclude = ['ansicolors'] if not _colors == 'on' else []
+        suggest_missing(exclude=exclude)
 
         if parser.unparsed:
             run_one_cmd(exe, parser, auth_base, cloud)
