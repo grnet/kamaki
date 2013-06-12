@@ -49,8 +49,8 @@ IMGMETA = set([
 class Image(livetest.Generic):
     def setUp(self):
         self.now = time.mktime(time.gmtime())
-        self.remote = 'remote.%s' % self['testremote']
-        aurl, self.token = self[self.remote, 'url'], self[self.remote, 'token']
+        self.cloud = 'cloud.%s' % self['testcloud']
+        aurl, self.token = self[self.cloud, 'url'], self[self.cloud, 'token']
         self.auth_base = AstakosCachedClient(aurl, self.token)
         self.imgname = 'img_%s' % self.now
         url = self.auth_base.get_service_endpoints('image')['publicURL']

@@ -69,8 +69,8 @@ class Pithos(livetest.Generic):
     files = []
 
     def setUp(self):
-        self.remote = 'remote.%s' % self['testremote']
-        aurl, self.token = self[self.remote, 'url'], self[self.remote, 'token']
+        self.cloud = 'cloud.%s' % self['testcloud']
+        aurl, self.token = self[self.cloud, 'url'], self[self.cloud, 'token']
         self.auth_base = AstakosClient(aurl, self.token)
         purl = self.auth_base.get_service_endpoints(
             'object-store')['publicURL']
