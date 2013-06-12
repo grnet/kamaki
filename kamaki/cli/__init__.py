@@ -223,7 +223,7 @@ def _check_config_version(cnf):
 
 def _init_session(arguments, is_non_API=False):
     """
-    :returns: (AuthCachedClient, str) authenticator and cloud remote name
+    :returns: (AuthCachedClient, str) authenticator and cloud name
     """
     global _help
     _help = arguments['help'].value
@@ -248,23 +248,23 @@ def _init_session(arguments, is_non_API=False):
         return None, None
 
     cloud = arguments['cloud'].value or 'default'
-    if not cloud in _cnf.value.keys('remote'):
+    if not cloud in _cnf.value.keys('cloud'):
         raise CLIError(
-            'No cloud remote "%s" is configured' % cloud,
+            'No cloud "%s" is configured' % cloud,
             importance=3, details=[
-                'To configure a new cloud remote, find and set the',
+                'To configure a new cloud, find and set the',
                 'single authentication URL and token:',
-                '  kamaki config set remote.%s.url <URL>' % cloud,
-                '  kamaki config set remote.%s.token <t0k3n>' % cloud])
+                '  kamaki config set cloud.%s.url <URL>' % cloud,
+                '  kamaki config set cloud.%s.token <t0k3n>' % cloud])
     auth_args = dict()
     for term in ('url', 'token'):
-        auth_args[term] = _cnf.get_remote(cloud, term)
+        auth_args[term] = _cnf.get_cloud(cloud, term)
         if not auth_args[term]:
             raise CLIError(
                 'No authentication %s provided for %s cloud' % (term, cloud),
                 importance=3, details=[
                     'Get and set a %s for %s cloud:' % (term, cloud),
-                    '  kamaki config set remote.%s.%s <t0k3n>' % (term, cloud)
+                    '  kamaki config set cloud.%s.%s <t0k3n>' % (term, cloud)
                 ])
 
     from kamaki.clients.astakos import AstakosClient as AuthCachedClient
