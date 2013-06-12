@@ -73,16 +73,17 @@ class CLIUnimplemented(CLIError):
 
 class CLIBaseUrlError(CLIError):
     def __init__(self, message='', details=[], importance=2, service=None):
-        message = message or 'No url for %s' % service.lower()
+        message = message or 'No URL for %s' % service.lower()
         details = details or [
             'Two options to resolve this:',
+            '(Use the correct cloud name, instead of "default")',
             'A. (recommended) Let kamaki discover the endpoint URLs for all',
             'services by setting a single Authentication URL and token:',
             '  /config set cloud.default.url <AUTH_URL>',
             '  /config set cloud.default.token <t0k3n>',
             'B. (advanced users) Explicitly set a valid %s endpoint URL' % (
                 service.upper()),
-            'Note: url option has a higher priority, so delete it to',
+            'Note: URL option has a higher priority, so delete it to',
             'make that work',
             '  /config delete cloud.default.url',
             '  /config set cloud.%s.url <%s_URL>' % (
