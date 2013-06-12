@@ -39,15 +39,10 @@ from json import dumps
 
 from kamaki.cli.errors import raiseCLIError
 
-suggest = dict(
-    ansicolors=dict(
+suggest = dict(ansicolors=dict(
         active=False,
         url='#install-ansicolors-progress',
-        description='Add colors to console responses'),
-    progress=dict(
-        active=False,
-        url='#install-ansicolors-progress',
-        description='Add progress bars to some commands'))
+        description='Add colors to console responses'))
 
 try:
     from colors import magenta, red, yellow, bold

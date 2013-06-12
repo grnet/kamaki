@@ -45,8 +45,8 @@ from kamaki.clients import ClientError
 from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
 from kamaki.cli.argument import IntArgument
 from kamaki.cli.commands.cyclades import _init_cyclades
-from kamaki.cli.errors import raiseCLIError
-from kamaki.cli.commands import _command_init, errors
+from kamaki.cli.errors import raiseCLIError, CLIBaseUrlError
+from kamaki.cli.commands import _command_init, errors, addLogSettings
 from kamaki.cli.commands import _optional_output_cmd, _optional_json
 
 
@@ -59,7 +59,7 @@ _commands = [image_cmds]
 
 howto_image_file = [
     'Kamaki commands to:',
-    ' get current user uuid: /user authenticate',
+    ' get current user id: /user authenticate',
     ' check available containers: /file list',
     ' create a new container: /file create <container>',
     ' check container contents: /file list <container>',
@@ -73,16 +73,27 @@ log = getLogger(__name__)
 
 class _init_image(_command_init):
     @errors.generic.all
+    @addLogSettings
     def _run(self):
-        token = self.config.get('image', 'token')\
-            or self.config.get('compute', 'token')\
-            or self.config.get('global', 'token')
-        base_url = self.config.get('image', 'url')\
-            or self.config.get('compute', 'url')\
-            or self.config.get('global', 'url')
+        if getattr(self, 'cloud', None):
+            img_url = self._custom_url('image') or self._custom_url('plankton')
+            if img_url:
+                token = self._custom_token('image')\
+                    or self._custom_token('plankton')\
+                    or self.config.get_cloud(self.cloud, 'token')
+                self.client = ImageClient(base_url=img_url, token=token)
+                return
+        if getattr(self, 'auth_base', False):
+            plankton_endpoints = self.auth_base.get_service_endpoints(
+                self._custom_type('image') or self._custom_type(
+                    'plankton') or 'image',
+                self._custom_version('image') or self._custom_version(
+                    'plankton') or '')
+            base_url = plankton_endpoints['publicURL']
+            token = self.auth_base.token
+        else:
+            raise CLIBaseUrlError(service='plankton')
         self.client = ImageClient(base_url=base_url, token=token)
-        self._set_log_params()
-        self._update_max_threads()
 
     def main(self):
         self._run()
@@ -142,9 +153,9 @@ def _load_image_meta(filepath):
 
 def _validate_image_location(location):
     """
-    :param location: (str) pithos://<uuid>/<container>/<img-file-path>
+    :param location: (str) pithos://<user-id>/<container>/<img-file-path>
 
-    :returns: (<uuid>, <container>, <img-file-path>)
+    :returns: (<user-id>, <container>, <img-file-path>)
 
     :raises AssertionError: if location is invalid
     """
@@ -152,7 +163,7 @@ def _validate_image_location(location):
     msg = 'Invalid prefix for location %s , try: %s' % (location, prefix)
     assert location.startswith(prefix), msg
     service, sep, rest = location.partition('://')
-    assert sep and rest, 'Location %s is missing uuid' % location
+    assert sep and rest, 'Location %s is missing user-id' % location
     uuid, sep, rest = rest.partition('/')
     assert sep and rest, 'Location %s is missing container' % location
     container, sep, img_path = rest.partition('/')
@@ -297,17 +308,33 @@ class image_register(_init_image, _optional_json):
 
     )
 
-    def _get_uuid(self):
+    def _get_user_id(self):
         atoken = self.client.token
-        user = AstakosClient(self.config.get('user', 'url'), atoken)
-        return user.term('uuid')
+        if getattr(self, 'auth_base', False):
+            return self.auth_base.term('id', atoken)
+        else:
+            astakos_url = self.config.get('user', 'url')\
+                or self.config.get('astakos', 'url')
+            if not astakos_url:
+                raise CLIBaseUrlError(service='astakos')
+            user = AstakosClient(astakos_url, atoken)
+            return user.term('id')
 
     def _get_pithos_client(self, container):
         if self['no_metafile_upload']:
             return None
-        purl = self.config.get('file', 'url')
         ptoken = self.client.token
-        return PithosClient(purl, ptoken, self._get_uuid(), container)
+        if getattr(self, 'auth_base', False):
+            pithos_endpoints = self.auth_base.get_service_endpoints(
+                self.config.get('pithos', 'type'),
+                self.config.get('pithos', 'version'))
+            purl = pithos_endpoints['publicURL']
+        else:
+            purl = self.config.get('file', 'url')\
+                or self.config.get('pithos', 'url')
+            if not purl:
+                raise CLIBaseUrlError(service='pithos')
+        return PithosClient(purl, ptoken, self._get_user_id(), container)
 
     def _store_remote_metafile(self, pclient, remote_path, metadata):
         return pclient.upload_from_string(
@@ -353,7 +380,7 @@ class image_register(_init_image, _optional_json):
                 'No image file location provided',
                 importance=2, details=[
                     'An image location is needed. Image location format:',
-                    '  pithos://<uuid>/<container>/<path>',
+                    '  pithos://<user-id>/<container>/<path>',
                     ' an image file at the above location must exist.'
                     ] + howto_image_file)
         try:
@@ -363,7 +390,7 @@ class image_register(_init_image, _optional_json):
                 ae, 'Invalid image location format',
                 importance=1, details=[
                     'Valid image location format:',
-                    '  pithos://<uuid>/<container>/<img-file-path>'
+                    '  pithos://<user-id>/<container>/<img-file-path>'
                     ] + howto_image_file)
 
     @errors.generic.all

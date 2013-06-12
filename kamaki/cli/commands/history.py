@@ -75,7 +75,7 @@ class _init_history(_command_init):
     @errors.generic.all
     @errors.history.init
     def _run(self):
-        self.history = History(self.config.get('history', 'file'))
+        self.history = History(self.config.get_global('history_file'))
 
     def main(self):
         self._run()
@@ -160,7 +160,7 @@ class history_run(_init_history):
 
     _cmd_tree = None
 
-    def __init__(self, arguments={}, cmd_tree=None):
+    def __init__(self, arguments={}, auth_base=None, cmd_tree=None):
         super(self.__class__, self).__init__(arguments)
         self._cmd_tree = cmd_tree
 

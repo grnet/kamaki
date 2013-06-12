@@ -34,8 +34,9 @@
 from astakosclient import AstakosClient
 
 from kamaki.cli import command
-from kamaki.cli.errors import CLISyntaxError
-from kamaki.cli.commands import _command_init, errors, _optional_json
+from kamaki.cli.errors import CLIBaseUrlError
+from kamaki.cli.commands import (
+    _command_init, errors, _optional_json, addLogSettings)
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.utils import print_dict
 from kamaki.cli.argument import FlagArgument, ValueArgument
@@ -50,23 +51,27 @@ log = add_stream_logger(__name__)
 
 class _astakos_init(_command_init):
 
-    def __init__(self, arguments=dict()):
-        super(_astakos_init, self).__init__(arguments)
+    def __init__(self, arguments=dict(), auth_base=None, cloud=None):
+        super(_astakos_init, self).__init__(arguments, auth_base, cloud)
         self['token'] = ValueArgument('Custom token', '--token')
 
     @errors.generic.all
     #@errors.user.load
+    @addLogSettings
     def _run(self):
-        self.token = self['token']\
-            or self.config.get('astakos', 'token')\
-            or self.config.get('user', 'token')\
-            or self.config.get('global', 'token')
-        base_url = self.config.get('astakos', 'url')\
-            or self.config.get('user', 'url')\
-            or self.config.get('global', 'url')
+        self.cloud = self.cloud if self.cloud else 'default'
+        self.token = self['token'] or self._custom_token('astakos')\
+            or self.config.get_cloud(self.cloud, 'token')
+        if getattr(self, 'auth_base', False):
+            astakos_endpoints = self.auth_base.get_service_endpoints(
+                self._custom_type('astakos') or 'identity',
+                self._custom_version('astakos') or '')
+            base_url = astakos_endpoints['publicURL']
+        else:
+            base_url = self._custom_url('astakos')
+        if not base_url:
+            raise CLIBaseUrlError(service='astakos')
         self.client = AstakosClient(base_url, logger=log)
-        self._set_log_params()
-        self._update_max_threads()
 
     def main(self):
         self._run()
@@ -77,9 +82,10 @@ class astakos_authenticate(_astakos_init, _optional_json):
     """Authenticate a user
     Get user information (e.g. unique account name) from token
     Token should be set in settings:
-    *  check if a token is set    /config get token
-    *  permanently set a token    /config set token <token>
+    *  check if a token is set    /config get cloud.default.token
+    *  permanently set a token    /config set cloud.default.token <token>
     Token can also be provided as a parameter
+    (To use a named cloud, use its name instead of "default")
     """
 
     arguments = dict(
