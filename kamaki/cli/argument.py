@@ -181,8 +181,8 @@ class ConfigArgument(Argument):
     def get_global(self, option):
         return self.value.get_global(option)
 
-    def get_remote(self, remote, option):
-        return self.value.get_remote(remote, option)
+    def get_cloud(self, cloud, option):
+        return self.value.get_cloud(cloud, option)
 
 _config_arg = ConfigArgument(
     1, 'Path to configuration file', ('-c', '--config'))
@@ -409,7 +409,7 @@ class ProgressBarArgument(FlagArgument):
 
 _arguments = dict(
     config=_config_arg,
-    cloud=ValueArgument('Chose a remote cloud to connect to', ('--cloud')),
+    cloud=ValueArgument('Chose a cloud to connect to', ('--cloud')),
     help=Argument(0, 'Show help message', ('-h', '--help')),
     debug=FlagArgument('Include debug output', ('-d', '--debug')),
     include=FlagArgument(

@@ -76,19 +76,19 @@ class _command_init(object):
 
     @DontRaiseKeyError
     def _custom_url(self, service):
-        return self.config.get_remote(self.cloud, '%s_url' % service)
+        return self.config.get_cloud(self.cloud, '%s_url' % service)
 
     @DontRaiseKeyError
     def _custom_token(self, service):
-        return self.config.get_remote(self.cloud, '%s_token' % service)
+        return self.config.get_cloud(self.cloud, '%s_token' % service)
 
     @DontRaiseKeyError
     def _custom_type(self, service):
-        return self.config.get_remote(self.cloud, '%s_type' % service)
+        return self.config.get_cloud(self.cloud, '%s_type' % service)
 
     @DontRaiseKeyError
     def _custom_version(self, service):
-        return self.config.get_remote(self.cloud, '%s_version' % service)
+        return self.config.get_cloud(self.cloud, '%s_version' % service)
 
     def _set_log_params(self):
         try:

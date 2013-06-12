@@ -53,7 +53,7 @@ _commands = [server_cmds, flavor_cmds, network_cmds]
 
 about_authentication = '\nUser Authentication:\
     \n* to check authentication: /user authenticate\
-    \n* to set authentication token: /config set remote.default.token <token>'
+    \n* to set authentication token: /config set cloud.default.token <token>'
 
 howto_personality = [
     'Defines a file to be injected to VMs personality.',
@@ -75,7 +75,7 @@ class _init_cyclades(_command_init):
             if base_url:
                 token = self._custom_token(service)\
                     or self._custom_token('cyclades')\
-                    or self.config.get_remote('token')
+                    or self.config.get_cloud('token')
                 self.client = CycladesClient(
                     base_url=base_url, token=token)
                 return

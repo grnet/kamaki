@@ -61,7 +61,7 @@ class _astakos_init(_command_init):
     def _run(self):
         self.cloud = self.cloud if self.cloud else 'default'
         self.token = self['token'] or self._custom_token('astakos')\
-            or self.config.get_remote(self.cloud, 'token')
+            or self.config.get_cloud(self.cloud, 'token')
         if getattr(self, 'auth_base', False):
             astakos_endpoints = self.auth_base.get_service_endpoints(
                 self._custom_type('astakos') or 'identity',
@@ -82,10 +82,10 @@ class astakos_authenticate(_astakos_init, _optional_json):
     """Authenticate a user
     Get user information (e.g. unique account name) from token
     Token should be set in settings:
-    *  check if a token is set    /config get remote.default.token
-    *  permanently set a token    /config set remote.default.token <token>
+    *  check if a token is set    /config get cloud.default.token
+    *  permanently set a token    /config set cloud.default.token <token>
     Token can also be provided as a parameter
-    (To use a named cloud remote, use its name instead of "default")
+    (To use a named cloud, use its name instead of "default")
     """
 
     arguments = dict(
