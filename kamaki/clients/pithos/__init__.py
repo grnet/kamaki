@@ -963,7 +963,7 @@ class PithosClient(PithosRestClient):
 
     def get_account_meta(self, until=None):
         """
-        :meta until: (str) formated date
+        :param until: (str) formated date
 
         :returns: (dict)
         """
