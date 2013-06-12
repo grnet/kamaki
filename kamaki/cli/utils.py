@@ -51,6 +51,8 @@ except ImportError:
     def dummy(val):
         return val
     red = yellow = magenta = bold = dummy
+    #from kamaki.cli import _colors
+    #if _colors.lower() == 'on':
     suggest['ansicolors']['active'] = True
 
 try:
@@ -59,10 +61,16 @@ except ImportError:
     suggest['progress']['active'] = True
 
 
-def suggest_missing(miss=None):
+def suggest_missing(miss=None, exclude=[]):
     global suggest
+    sgs = dict(suggest)
+    for exc in exclude:
+        try:
+            sgs.pop(exc)
+        except KeyError:
+            pass
     kamaki_docs = 'http://www.synnefo.org/docs/kamaki/latest'
-    for k, v in (miss, suggest[miss]) if miss else suggest.items():
+    for k, v in (miss, sgs[miss]) if miss else sgs.items():
         if v['active'] and stdout.isatty():
             print('Suggestion: for better user experience install %s' % k)
             print('\t%s' % v['description'])

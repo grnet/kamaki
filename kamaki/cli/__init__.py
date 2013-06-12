@@ -194,8 +194,8 @@ def _setup_logging(silent=False, debug=False, verbose=False, include=False):
 
 def _check_config_version(cnf):
     guess = cnf.guess_version()
-    if guess < 3.0:
-        print('Config file format version >= 3.0 is required')
+    if guess < 0.9:
+        print('Config file format version >= 9.0 is required')
         print('Configuration file "%s" format is not up to date' % (
             cnf.path))
         print('but kamaki can fix this:')
@@ -247,7 +247,25 @@ def _init_session(arguments, is_non_API=False):
     if _help or is_non_API:
         return None, None
 
-    cloud = arguments['cloud'].value or 'default'
+    cloud = arguments['cloud'].value or _cnf.value.get(
+        'global', 'default_cloud')
+    if not cloud:
+        num_of_clouds = len(_cnf.value.keys('cloud'))
+        if num_of_clouds == 1:
+            cloud = _cnf.value.keys('cloud')[0]
+        else:
+            raise CLIError(
+                'Found %s clouds but none of them is set as default' % (
+                    num_of_clouds),
+                importance=2, details=[
+                    'Please, choose one of the following cloud names:',
+                    ', '.join(_cnf.value.keys('cloud')),
+                    'To see all cloud settings:',
+                    '  kamaki config get cloud.<cloud name>',
+                    'To set a default cloud:',
+                    '  kamaki config set default_cloud <cloud name>',
+                    'To pick a cloud for the current session, use --cloud:',
+                    '  kamaki --cloud=<cloud name> ...'])
     if not cloud in _cnf.value.keys('cloud'):
         raise CLIError(
             'No cloud "%s" is configured' % cloud,
@@ -258,14 +276,17 @@ def _init_session(arguments, is_non_API=False):
                 '  kamaki config set cloud.%s.token <t0k3n>' % cloud])
     auth_args = dict()
     for term in ('url', 'token'):
-        auth_args[term] = _cnf.get_cloud(cloud, term)
+        try:
+            auth_args[term] = _cnf.get_cloud(cloud, term)
+        except KeyError:
+            auth_args[term] = ''
         if not auth_args[term]:
             raise CLIError(
-                'No authentication %s provided for %s cloud' % (term, cloud),
+                'No authentication %s provided for cloud "%s"' % (term, cloud),
                 importance=3, details=[
-                    'Get and set a %s for %s cloud:' % (term, cloud),
-                    '  kamaki config set cloud.%s.%s <t0k3n>' % (term, cloud)
-                ])
+                    'Set a %s for cloud %s:' % (term, cloud),
+                    '  kamaki config set cloud.%s.%s <%s>' % (
+                        cloud, term, term)])
 
     from kamaki.clients.astakos import AstakosClient as AuthCachedClient
     try:
@@ -461,7 +482,9 @@ def main():
         auth_base, cloud = _init_session(parser.arguments, is_non_API(parser))
 
         from kamaki.cli.utils import suggest_missing
-        suggest_missing()
+        global _colors
+        exclude = ['ansicolors'] if not _colors == 'on' else []
+        suggest_missing(exclude=exclude)
 
         if parser.unparsed:
             run_one_cmd(exe, parser, auth_base, cloud)
