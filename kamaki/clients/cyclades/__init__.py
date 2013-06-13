@@ -316,3 +316,106 @@ class CycladesClient(CycladesRestClient):
                     pass
             return r['status']
         return False
+
+    def get_floating_ip_pools(self):
+        """
+        :returns: (dict) {floating_ip_pools:[{name: ...}, ...]}
+        """
+        r = self.floating_ip_pools_get()
+        return r.json
+
+    def get_floating_ips(self):
+        """
+        :returns: (dict) {floating_ips:[
+            {fixed_ip: ..., id: ..., instance_id: ..., ip: ..., pool: ...},
+            ... ]}
+        """
+        r = self.floating_ips_get()
+        return r.json
+
+    def alloc_floating_ip(self, pool=None, address=None):
+        """
+        :param pool: (str) pool of ips to allocate from
+
+        :param address: (str) ip address to request
+
+        :returns: (dict) {
+                fixed_ip: ..., id: ..., instance_id: ..., ip: ..., pool: ...
+            }
+        """
+        json_data = dict()
+        if pool:
+            json_data['pool'] = pool
+            if address:
+                json_data['address'] = address
+        r = self.floating_ips_post(json_data)
+        return r.json['floating_ip']
+
+    def get_floating_ip(self, fip_id):
+        """
+        :param fip_id: (str) floating ip id
+
+        :returns: (dict)
+            {fixed_ip: ..., id: ..., instance_id: ..., ip: ..., pool: ...},
+
+        :raises AssertionError: if fip_id is emtpy
+        """
+        assert fip_id, 'floating ip id is needed for get_floating_ip'
+        r = self.floating_ips_get(fip_id)
+        return r.json['floating_ip']
+
+    def delete_floating_ip(self, fip_id=None):
+        """
+        :param fip_id: (str) floating ip id (if None, all ips are deleted)
+
+        :returns: (dict) request headers
+
+        :raises AssertionError: if fip_id is emtpy
+        """
+        assert fip_id, 'floating ip id is needed for delete_floating_ip'
+        r = self.floating_ips_delete(fip_id)
+        return r.headers
+
+    def assoc_floating_ip_to_server(self, server_id, address):
+        """Associate the address ip to server with server_id
+
+        :param server_id: (int)
+
+        :param address: (str) the ip address to assign to server (vm)
+
+        :returns: (dict) request headers
+
+        :raises ValueError: if server_id cannot be converted to int
+
+        :raises ValueError: if server_id is not of a int-convertable type
+
+        :raises AssertionError: if address is emtpy
+        """
+        server_id = int(server_id)
+        assert address, 'address is needed for assoc_floating_ip_to_server'
+        r = self.servers_post(
+            server_id, 'action',
+            json_data=dict(addFloatingIp=dict(address=address)))
+        return r.headers
+
+    def disassoc_floating_ip_to_server(self, server_id, address):
+        """Disassociate an address ip from the server with server_id
+
+        :param server_id: (int)
+
+        :param address: (str) the ip address to assign to server (vm)
+
+        :returns: (dict) request headers
+
+        :raises ValueError: if server_id cannot be converted to int
+
+        :raises ValueError: if server_id is not of a int-convertable type
+
+        :raises AssertionError: if address is emtpy
+        """
+        server_id = int(server_id)
+        assert address, 'address is needed for disassoc_floating_ip_to_server'
+        r = self.servers_post(
+            server_id, 'action',
+            json_data=dict(removeFloatingIp=dict(address=address)))
+        return r.headers

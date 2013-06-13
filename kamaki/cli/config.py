@@ -102,6 +102,13 @@ DEFAULTS = {
 }
 
 
+try:
+    import astakosclient
+    DEFAULTS.update(astakos=dict(cli='snf-astakos'))
+except ImportError:
+    pass
+
+
 class Config(RawConfigParser):
     def __init__(self, path=None, with_defaults=True):
         RawConfigParser.__init__(self, dict_type=OrderedDict)
@@ -230,14 +237,14 @@ class Config(RawConfigParser):
                 log.warning('..... config file has an old global section')
                 return 0.8
         log.warning('........ nope')
-        log.warning('Config file heuristic 2: missing all cloud sections ?')
+        log.warning('Config file heuristic 2: Any cloud sections ?')
         if 'cloud' in sections:
             for r in self.keys('cloud'):
                 log.warning('... found cloud "%s"' % r)
                 return 0.9
-        log.warning('........ yep')
+        log.warning('........ nope')
         log.warning('All heuristics failed, cannot decide')
-        return 0.0
+        return 0.9
 
     def get_cloud(self, cloud, option):
         """

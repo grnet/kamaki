@@ -33,7 +33,7 @@
 
 import logging
 from sys import argv, exit, stdout
-from os.path import basename
+from os.path import basename, exists
 from inspect import getargspec
 
 from kamaki.cli.argument import ArgumentParseManager
@@ -194,10 +194,9 @@ def _setup_logging(silent=False, debug=False, verbose=False, include=False):
 
 def _check_config_version(cnf):
     guess = cnf.guess_version()
-    if guess < 0.9:
+    if exists(cnf.path) and guess < 0.9:
         print('Config file format version >= 9.0 is required')
-        print('Configuration file "%s" format is not up to date' % (
-            cnf.path))
+        print('Configuration file: %s' % cnf.path)
         print('but kamaki can fix this:')
         print('Calculating changes while preserving information')
         lost_terms = cnf.rescue_old_file()
@@ -234,6 +233,10 @@ def _init_session(arguments, is_non_API=False):
     global _verbose
     _verbose = arguments['verbose'].value
     _cnf = arguments['config']
+
+    if _help or is_non_API:
+        return None, None
+
     _check_config_version(_cnf.value)
 
     global _colors
@@ -244,16 +247,13 @@ def _init_session(arguments, is_non_API=False):
     _silent = arguments['silent'].value
     _setup_logging(_silent, _debug, _verbose, _include)
 
-    if _help or is_non_API:
-        return None, None
-
     cloud = arguments['cloud'].value or _cnf.value.get(
         'global', 'default_cloud')
     if not cloud:
         num_of_clouds = len(_cnf.value.keys('cloud'))
         if num_of_clouds == 1:
             cloud = _cnf.value.keys('cloud')[0]
-        else:
+        elif num_of_clouds > 1:
             raise CLIError(
                 'Found %s clouds but none of them is set as default' % (
                     num_of_clouds),
@@ -268,12 +268,15 @@ def _init_session(arguments, is_non_API=False):
                     '  kamaki --cloud=<cloud name> ...'])
     if not cloud in _cnf.value.keys('cloud'):
         raise CLIError(
-            'No cloud "%s" is configured' % cloud,
+            'No cloud%s is configured' % ((' "%s"' % cloud) if cloud else ''),
             importance=3, details=[
-                'To configure a new cloud, find and set the',
+                'To configure a new cloud "%s", find and set the' % (
+                    cloud or '<cloud name>'),
                 'single authentication URL and token:',
-                '  kamaki config set cloud.%s.url <URL>' % cloud,
-                '  kamaki config set cloud.%s.token <t0k3n>' % cloud])
+                '  kamaki config set cloud.%s.url <URL>' % (
+                    cloud or '<cloud name>'),
+                '  kamaki config set cloud.%s.token <t0k3n>' % (
+                    cloud or '<cloud name>')])
     auth_args = dict()
     for term in ('url', 'token'):
         try:
