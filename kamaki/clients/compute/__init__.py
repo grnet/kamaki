@@ -293,3 +293,61 @@ class ComputeClient(ComputeRestClient):
         command = path4url('metadata', key)
         r = self.images_delete(image_id, command)
         return r.headers
+
+    def get_floating_ip_pools(self, tenant_id):
+        """
+        :param tenant_id: (str)
+
+        :returns: (dict) {floating_ip_pools:[{name: ...}, ...]}
+        """
+        r = self.floating_ip_pools_get(tenant_id)
+        return r.json
+
+    def get_floating_ips(self, tenant_id):
+        """
+        :param tenant_id: (str)
+
+        :returns: (dict) {floating_ips:[
+            {fixed_ip: ..., id: ..., instance_id: ..., ip: ..., pool: ...},
+            ... ]}
+        """
+        r = self.floating_ips_get(tenant_id)
+        return r.json
+
+    def alloc_floating_ip(self, tenant_id, pool=None):
+        """
+        :param tenant_id: (str)
+
+        :param pool: (str) pool of ips to allocate from
+
+        :returns: (dict) {
+                fixed_ip: ..., id: ..., instance_id: ..., ip: ..., pool: ...
+            }
+        """
+        json_data = dict(pool=pool) if pool else dict()
+        r = self.floating_ips_post(tenant_id, json_data)
+        return r.json['floating_ip']
+
+    def get_floating_ip(self, tenant_id, fip_id=None):
+        """
+        :param tenant_id: (str)
+
+        :param fip_id: (str) floating ip id (if None, all ips are returned)
+
+        :returns: (list) [
+            {fixed_ip: ..., id: ..., instance_id: ..., ip: ..., pool: ...},
+            ... ]
+        """
+        r = self.floating_ips_get(tenant_id, fip_id)
+        return r.json['floating_ips']
+
+    def delete_floating_ip(self, tenant_id, fip_id=None):
+        """
+        :param tenant_id: (str)
+
+        :param fip_id: (str) floating ip id (if None, all ips are deleted)
+
+        :returns: (dict) request headers
+        """
+        r = self.floating_ips_delete(tenant_id, fip_id)
+        return r.headers

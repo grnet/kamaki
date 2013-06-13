@@ -227,6 +227,71 @@ class ComputeRestClient(TestCase):
     def test_images_put(self):
         self._test_put('images')
 
+    @patch('%s.get' % rest_pkg, return_value=FR())
+    def test_floating_ip_pools_get(self, get):
+        for args in product(
+                ('tenant1', 'tenant2'),
+                (200, 204),
+                ({}, {'k': 'v'})):
+            tenant_id, success, kwargs = args
+            r = self.client.floating_ip_pools_get(tenant_id, success, **kwargs)
+            self.assertTrue(isinstance(r, FR))
+            self.assertEqual(get.mock_calls[-1], call(
+                '/%s/os-floating-ip-pools' % tenant_id,
+                success=success, **kwargs))
+
+    @patch('%s.get' % rest_pkg, return_value=FR())
+    def test_floating_ips_get(self, get):
+        for args in product(
+                ('tenant1', 'tenant2'),
+                ('', '192.193.194.195'),
+                (200, 204),
+                ({}, {'k': 'v'})):
+            tenant_id, ip, success, kwargs = args
+            r = self.client.floating_ips_get(*args[:3], **kwargs)
+            self.assertTrue(isinstance(r, FR))
+            expected = '' if not ip else '/%s' % ip
+            self.assertEqual(get.mock_calls[-1], call(
+                '/%s/os-floating-ips%s' % (tenant_id, expected),
+                success=success, **kwargs))
+
+    @patch('%s.set_header' % rest_pkg)
+    @patch('%s.post' % rest_pkg, return_value=FR())
+    def test_floating_ips_post(self, post, SH):
+        for args in product(
+                ('tenant1', 'tenant2'),
+                (None, [dict(json="data"), dict(data="json")]),
+                ('', '192.193.194.195'),
+                (202, 204),
+                ({}, {'k': 'v'})):
+            (tenant_id, json_data, ip, success, kwargs) = args
+            self.client.floating_ips_post(*args[:4], **kwargs)
+            if json_data:
+                json_data = dumps(json_data)
+                self.assertEqual(SH.mock_calls[-2:], [
+                    call('Content-Type', 'application/json'),
+                    call('Content-Length', len(json_data))])
+            expected = '' if not ip else '/%s' % ip
+            self.assertEqual(post.mock_calls[-1], call(
+                '/%s/os-floating-ips%s' % (tenant_id, expected),
+                data=json_data, success=success,
+                **kwargs))
+
+    @patch('%s.delete' % rest_pkg, return_value=FR())
+    def test_floating_ips_delete(self, delete):
+        for args in product(
+                ('tenant1', 'tenant2'),
+                ('', '192.193.194.195'),
+                (204,),
+                ({}, {'k': 'v'})):
+            tenant_id, ip, success, kwargs = args
+            r = self.client.floating_ips_delete(*args[:3], **kwargs)
+            self.assertTrue(isinstance(r, FR))
+            expected = '' if not ip else '/%s' % ip
+            self.assertEqual(delete.mock_calls[-1], call(
+                '/%s/os-floating-ips%s' % (tenant_id, expected),
+                success=success, **kwargs))
+
 
 class ComputeClient(TestCase):
 
@@ -435,6 +500,63 @@ class ComputeClient(TestCase):
         key = 'metakey'
         self.client.delete_image_metadata(img_ref, key)
         ID.assert_called_once_with(img_ref, '/metadata/%s' % key)
+
+    @patch('%s.floating_ip_pools_get' % compute_pkg, return_value=FR())
+    def test_get_floating_ip_pools(self, get):
+        tid = 't3n@nt_1d'
+        r = self.client.get_floating_ip_pools(tid)
+        self.assert_dicts_are_equal(r, FR.json)
+        self.assertEqual(get.mock_calls[-1], call(tid))
+
+    @patch('%s.floating_ips_get' % compute_pkg, return_value=FR())
+    def test_get_floating_ips(self, get):
+        tid = 't3n@nt_1d'
+        r = self.client.get_floating_ips(tid)
+        self.assert_dicts_are_equal(r, FR.json)
+        self.assertEqual(get.mock_calls[-1], call(tid))
+
+    @patch('%s.floating_ips_post' % compute_pkg, return_value=FR())
+    def test_alloc_floating_ip(self, post):
+        FR.json = dict(floating_ip=dict(
+            fixed_ip='fip',
+            id=1,
+            instance_id='lala',
+            ip='102.0.0.1',
+            pool='pisine'))
+        for args in product(
+                ('t1', 't2'),
+                (None, 'pisine')):
+            r = self.client.alloc_floating_ip(*args)
+            tenant_id, pool = args
+            self.assert_dicts_are_equal(r, FR.json['floating_ip'])
+            expected = dict(pool=pool) if pool else dict()
+            self.assertEqual(post.mock_calls[-1], call(tenant_id, expected))
+
+    @patch('%s.floating_ips_get' % compute_pkg, return_value=FR())
+    def test_get_floating_ip(self, get):
+        FR.json = dict(floating_ips=[dict(
+            fixed_ip='fip',
+            id=1,
+            instance_id='lala',
+            ip='102.0.0.1',
+            pool='pisine'), ])
+        for args in product(
+                ('t1', 't2'),
+                (None, 'fip')):
+            r = self.client.get_floating_ip(*args)
+            tenant_id, fip = args
+            self.assertEqual(r, FR.json['floating_ips'])
+            self.assertEqual(get.mock_calls[-1], call(tenant_id, fip))
+
+    @patch('%s.floating_ips_delete' % compute_pkg, return_value=FR())
+    def test_delete_floating_ip(self, delete):
+        for args in product(
+                ('t1', 't2'),
+                (None, 'fip')):
+            r = self.client.delete_floating_ip(*args)
+            tenant_id, fip = args
+            self.assertEqual(r, FR.headers)
+            self.assertEqual(delete.mock_calls[-1], call(tenant_id, fip))
 
 
 if __name__ == '__main__':
