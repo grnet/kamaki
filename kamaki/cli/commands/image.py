@@ -326,14 +326,12 @@ class image_register(_init_image, _optional_json):
         ptoken = self.client.token
         if getattr(self, 'auth_base', False):
             pithos_endpoints = self.auth_base.get_service_endpoints(
-                self.config.get('pithos', 'type'),
-                self.config.get('pithos', 'version'))
+                'object-store')
             purl = pithos_endpoints['publicURL']
         else:
-            purl = self.config.get('file', 'url')\
-                or self.config.get('pithos', 'url')
-            if not purl:
-                raise CLIBaseUrlError(service='pithos')
+            purl = self.config.get_cloud('pithos', 'url')
+        if not purl:
+            raise CLIBaseUrlError(service='pithos')
         return PithosClient(purl, ptoken, self._get_user_id(), container)
 
     def _store_remote_metafile(self, pclient, remote_path, metadata):
