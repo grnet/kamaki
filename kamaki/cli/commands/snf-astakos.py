@@ -40,13 +40,13 @@ from kamaki.cli.commands import (
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.utils import print_dict
 from kamaki.cli.argument import FlagArgument, ValueArgument
-from kamaki.cli.logger import add_stream_logger
+from kamaki.cli.logger import add_file_logger, get_logger, logging
 
 snfastakos_cmds = CommandTree('astakos', 'astakosclient CLI')
 _commands = [snfastakos_cmds]
 
 
-log = add_stream_logger(__name__)
+log = get_logger(__name__)
 
 
 class _astakos_init(_command_init):
@@ -92,14 +92,9 @@ class astakos_authenticate(_astakos_init, _optional_json):
         usage=FlagArgument('also return usage information', ('--with-usage'))
     )
 
-    @errors.generic.all
-    #@errors.user.authenticate
     def _run(self):
-        print('KAMAKI LOG: call get_user_info(%s, %s)' % (
-            self.token, self['usage']))
         self._print(
-            self.client.get_user_info(self.token, self['usage']),
-            print_dict)
+            self.client.get_user_info(self.token, self['usage']), print_dict)
 
     def main(self):
         super(self.__class__, self)._run()
@@ -163,7 +158,7 @@ class astakos_services(_astakos_init):
 
 
 @command(snfastakos_cmds)
-class astakos_services_list(_astakos_init):
+class astakos_services_list(_astakos_init, _optional_json):
     """List available services"""
 
     def _run(self):
