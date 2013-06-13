@@ -952,14 +952,14 @@ class PithosClient(PithosRestClient):
             'X-Account-Policy-Quota',
             exactMatch=True)
 
-    def get_account_versioning(self):
-        """
-        :returns: (dict)
-        """
-        return filter_in(
-            self.get_account_info(),
-            'X-Account-Policy-Versioning',
-            exactMatch=True)
+    #def get_account_versioning(self):
+    #    """
+    #    :returns: (dict)
+    #    """
+    #    return filter_in(
+    #        self.get_account_info(),
+    #        'X-Account-Policy-Versioning',
+    #        exactMatch=True)
 
     def get_account_meta(self, until=None):
         """
@@ -990,20 +990,18 @@ class PithosClient(PithosRestClient):
         r = self.account_post(update=True, metadata={metakey: ''})
         return r.headers
 
-    """
-    def set_account_quota(self, quota):
-        ""
-        :param quota: (int)
-        ""
-        self.account_post(update=True, quota=quota)
-    """
+    #def set_account_quota(self, quota):
+    #    """
+    #    :param quota: (int)
+    #    """
+    #    self.account_post(update=True, quota=quota)
 
-    def set_account_versioning(self, versioning):
-        """
-        "param versioning: (str)
-        """
-        r = self.account_post(update=True, versioning=versioning)
-        return r.headers
+    #def set_account_versioning(self, versioning):
+    #    """
+    #    :param versioning: (str)
+    #    """
+    #    r = self.account_post(update=True, versioning=versioning)
+    #    return r.headers
 
     def list_containers(self):
         """

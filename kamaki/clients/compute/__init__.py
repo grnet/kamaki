@@ -153,7 +153,7 @@ class ComputeClient(ComputeRestClient):
         """
         command = path4url('metadata', key)
         r = self.servers_get(server_id, command)
-        return r.json['metadata']
+        return r.json['meta']
 
     def create_server_metadata(self, server_id, key, val):
         """
@@ -165,13 +165,10 @@ class ComputeClient(ComputeRestClient):
 
         :returns: dict of updated key:val metadata
         """
-        req = {'metadata': {key: val}}
+        req = {'meta': {key: val}}
         r = self.servers_put(
-            server_id,
-            'metadata/' + key,
-            json_data=req,
-            success=201)
-        return r.json['metadata']
+            server_id, 'metadata/' + key, json_data=req, success=201)
+        return r.json['meta']
 
     def update_server_metadata(self, server_id, **metadata):
         """
@@ -183,8 +180,7 @@ class ComputeClient(ComputeRestClient):
         """
         req = {'metadata': metadata}
         r = self.servers_post(
-            server_id, 'metadata',
-            json_data=req, success=201)
+            server_id, 'metadata', json_data=req, success=201)
         return r.json['metadata']
 
     def delete_server_metadata(self, server_id, key):
@@ -258,7 +254,7 @@ class ComputeClient(ComputeRestClient):
         """
         command = path4url('metadata', key)
         r = self.images_get(image_id, command)
-        return r.json['metadata']
+        return r.json['meta']
 
     def create_image_metadata(self, image_id, key, val):
         """
@@ -270,9 +266,9 @@ class ComputeClient(ComputeRestClient):
 
         :returns: (dict) updated metadata
         """
-        req = {'metadata': {key: val}}
+        req = {'meta': {key: val}}
         r = self.images_put(image_id, 'metadata/' + key, json_data=req)
-        return r.json['metadata']
+        return r.json['meta']
 
     def update_image_metadata(self, image_id, **metadata):
         """
