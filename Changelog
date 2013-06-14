@@ -1,3 +1,7 @@
+Hot fix 0.8.6
+
+- Restore kamaki uploads ability to recognise . as a directory
+
 Hot fix 0.8.4 and 0.8.5
 
 - Typo in file-copy/move
