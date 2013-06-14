@@ -1171,7 +1171,7 @@ class file_upload(_file_container_command, _optional_output_cmd):
 
     def main(self, local_path, container____path__=None):
         super(self.__class__, self)._run(container____path__)
-        remote_path = self.path or path.basename(local_path)
+        remote_path = self.path or path.basename(path.abspath(local_path))
         self._run(local_path=local_path, remote_path=remote_path)
 
 
