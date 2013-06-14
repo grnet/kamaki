@@ -167,8 +167,8 @@ class Pithos(livetest.Generic):
         r = self.client.get_account_quota()
         self.assertTrue('x-account-policy-quota' in r)
 
-        r = self.client.get_account_versioning()
-        self.assertTrue('x-account-policy-versioning' in r)
+        #r = self.client.get_account_versioning()
+        #self.assertTrue('x-account-policy-versioning' in r)
 
         """Check if(un)modified_since"""
         for format in self.client.DATE_FORMATS:
@@ -292,7 +292,7 @@ class Pithos(livetest.Generic):
         #print(unicode(r))
         #r = self.client.get_account_quota()
         #self.assertEqual(r['x-account-policy-quota'], newquota)
-        self.client.set_account_versioning('auto')
+        #self.client.set_account_versioning('auto')
 
     def test_container_head(self):
         """Test container_HEAD"""

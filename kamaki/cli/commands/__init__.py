@@ -96,7 +96,7 @@ class _command_init(object):
                 self['config'].get_global('log_token').lower() == 'on',
                 self['config'].get_global('log_data').lower() == 'on')
         except Exception as e:
-            log.warning('Failed to read custom log settings:'
+            log.debug('Failed to read custom log settings:'
                 '%s\n defaults for token and data logging are off' % e)
 
     def _update_max_threads(self):

@@ -153,7 +153,7 @@ class ComputeClient(ComputeRestClient):
         """
         command = path4url('metadata', key)
         r = self.servers_get(server_id, command)
-        return r.json['metadata']
+        return r.json['meta']
 
     def create_server_metadata(self, server_id, key, val):
         """
@@ -165,13 +165,10 @@ class ComputeClient(ComputeRestClient):
 
         :returns: dict of updated key:val metadata
         """
-        req = {'metadata': {key: val}}
+        req = {'meta': {key: val}}
         r = self.servers_put(
-            server_id,
-            'metadata/' + key,
-            json_data=req,
-            success=201)
-        return r.json['metadata']
+            server_id, 'metadata/' + key, json_data=req, success=201)
+        return r.json['meta']
 
     def update_server_metadata(self, server_id, **metadata):
         """
@@ -183,8 +180,7 @@ class ComputeClient(ComputeRestClient):
         """
         req = {'metadata': metadata}
         r = self.servers_post(
-            server_id, 'metadata',
-            json_data=req, success=201)
+            server_id, 'metadata', json_data=req, success=201)
         return r.json['metadata']
 
     def delete_server_metadata(self, server_id, key):
@@ -258,7 +254,7 @@ class ComputeClient(ComputeRestClient):
         """
         command = path4url('metadata', key)
         r = self.images_get(image_id, command)
-        return r.json['metadata']
+        return r.json['meta']
 
     def create_image_metadata(self, image_id, key, val):
         """
@@ -270,9 +266,9 @@ class ComputeClient(ComputeRestClient):
 
         :returns: (dict) updated metadata
         """
-        req = {'metadata': {key: val}}
+        req = {'meta': {key: val}}
         r = self.images_put(image_id, 'metadata/' + key, json_data=req)
-        return r.json['metadata']
+        return r.json['meta']
 
     def update_image_metadata(self, image_id, **metadata):
         """
@@ -296,4 +292,62 @@ class ComputeClient(ComputeRestClient):
         """
         command = path4url('metadata', key)
         r = self.images_delete(image_id, command)
+        return r.headers
+
+    def get_floating_ip_pools(self, tenant_id):
+        """
+        :param tenant_id: (str)
+
+        :returns: (dict) {floating_ip_pools:[{name: ...}, ...]}
+        """
+        r = self.floating_ip_pools_get(tenant_id)
+        return r.json
+
+    def get_floating_ips(self, tenant_id):
+        """
+        :param tenant_id: (str)
+
+        :returns: (dict) {floating_ips:[
+            {fixed_ip: ..., id: ..., instance_id: ..., ip: ..., pool: ...},
+            ... ]}
+        """
+        r = self.floating_ips_get(tenant_id)
+        return r.json
+
+    def alloc_floating_ip(self, tenant_id, pool=None):
+        """
+        :param tenant_id: (str)
+
+        :param pool: (str) pool of ips to allocate from
+
+        :returns: (dict) {
+                fixed_ip: ..., id: ..., instance_id: ..., ip: ..., pool: ...
+            }
+        """
+        json_data = dict(pool=pool) if pool else dict()
+        r = self.floating_ips_post(tenant_id, json_data)
+        return r.json['floating_ip']
+
+    def get_floating_ip(self, tenant_id, fip_id=None):
+        """
+        :param tenant_id: (str)
+
+        :param fip_id: (str) floating ip id (if None, all ips are returned)
+
+        :returns: (list) [
+            {fixed_ip: ..., id: ..., instance_id: ..., ip: ..., pool: ...},
+            ... ]
+        """
+        r = self.floating_ips_get(tenant_id, fip_id)
+        return r.json['floating_ips']
+
+    def delete_floating_ip(self, tenant_id, fip_id=None):
+        """
+        :param tenant_id: (str)
+
+        :param fip_id: (str) floating ip id (if None, all ips are deleted)
+
+        :returns: (dict) request headers
+        """
+        r = self.floating_ips_delete(tenant_id, fip_id)
         return r.headers

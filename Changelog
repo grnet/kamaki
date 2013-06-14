@@ -14,4 +14,11 @@ Features:
     authenticate, uuid, username, quotas, service uuid/username/quotas
 - Add some astakos/keystone kamaki-lib api calls [#3874], used to access astakos-calls cache:
   get_services, get_service_details, get_service_endpoints
+- Implement floating ip methods for compute and cyclades clients [#3862]
+ ComputeRestClient: floating_ip_pools_get, floating_ips_get/post/delete
+ CycladesRestClient: floating_ip_pools_get, floating_ips_get/post/delete
+ ComputeClient: get_floating_ip_pools, get_floating_ips,
+    alloc/get_delete_floating_ip
+ CycladesClient: get_floating_ip_pools, get_floating_ips,
+    alloc/get_delete_floating_ip, dis/assoc_floating_ip_to_server
 

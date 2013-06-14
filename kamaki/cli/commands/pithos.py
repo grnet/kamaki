@@ -1171,7 +1171,7 @@ class file_upload(_file_container_command, _optional_output_cmd):
 
     def main(self, local_path, container____path__=None):
         super(self.__class__, self)._run(container____path__)
-        remote_path = self.path or path.basename(local_path)
+        remote_path = self.path or path.basename(path.abspath(local_path))
         self._run(local_path=local_path, remote_path=remote_path)
 
 
@@ -1947,11 +1947,9 @@ class file_versioning_get(_file_account_command, _optional_json):
     @errors.pithos.container
     def _run(self):
         self._print(
-            self.client.get_container_versioning(self.container) if (
-                self.container) else self.client.get_account_versioning(),
-            print_dict)
+            self.client.get_container_versioning(self.container), print_dict)
 
-    def main(self, container=None):
+    def main(self, container):
         super(self.__class__, self)._run()
         self.container = container
         self._run()
@@ -1971,14 +1969,11 @@ class file_versioning_set(_file_account_command, _optional_output_cmd):
     @errors.pithos.connection
     @errors.pithos.container
     def _run(self, versioning):
-        if self.container:
-            self.client.container = self.container
-            r = self.client.set_container_versioning(versioning)
-        else:
-            r = self.client.set_account_versioning(versioning)
+        self.client.container = self.container
+        r = self.client.set_container_versioning(versioning)
         self._optional_output(r)
 
-    def main(self, versioning, container=None):
+    def main(self, versioning, container):
         super(self.__class__, self)._run()
         self._run(self._check_versioning(versioning))
 
