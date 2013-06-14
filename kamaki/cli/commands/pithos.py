@@ -1560,8 +1560,7 @@ class file_publish(_file_container_command):
     @errors.pithos.container
     @errors.pithos.object_path
     def _run(self):
-        url = self.client.publish_object(self.path)
-        print(url)
+        print self.client.publish_object(self.path)
 
     def main(self, container___path):
         super(self.__class__, self)._run(

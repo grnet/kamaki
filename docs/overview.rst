@@ -8,9 +8,9 @@ Kamaki was created on 2011 by the Synnefo (http://www.synnefo.org) development
 team of the *Greek Research and Technology Network (GRNET)*, initially as an
 internal project and later as a multipurpose tool for all users.
 
-Synnefo is an IaaS system which is based on and extents OpenStack.
-Synnefo has been deployed in many environments to cover multiple needs. The
-most notable, deployment is probably the GRNET's
+Synnefo is an IaaS system which implements and extents OpenStack. Synnefo has
+been deployed in many environments to cover multiple needs. The most notable
+deployment is probably the GRNET's
 `~okeanos <http://okeanos.grnet.gr>`_ IaaS service, running in GRNET data
 centers, is used to offer cloud services to the Greek Research and Academic
 Community.
