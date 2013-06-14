@@ -153,7 +153,7 @@ class ComputeClient(ComputeRestClient):
         """
         command = path4url('metadata', key)
         r = self.servers_get(server_id, command)
-        return r.json['meta']
+        return r.json['meta' if key else 'metadata']
 
     def create_server_metadata(self, server_id, key, val):
         """
@@ -254,7 +254,7 @@ class ComputeClient(ComputeRestClient):
         """
         command = path4url('metadata', key)
         r = self.images_get(image_id, command)
-        return r.json['meta']
+        return r.json['meta' if key else 'metadata']
 
     def create_image_metadata(self, image_id, key, val):
         """
