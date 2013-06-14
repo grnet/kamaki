@@ -104,7 +104,7 @@ DEFAULTS = {
 
 try:
     import astakosclient
-    DEFAULTS.update(astakos=dict(cli='snf-astakos'))
+    DEFAULTS['global'].update(dict(astakos_cli='snf-astakos'))
 except ImportError:
     pass
 

@@ -153,8 +153,9 @@ def print_dict(
             counter += 1
         print_str = '%s%s' % (' ' * (ident - len(print_str)), print_str)
         print_str += key.strip()
+        print_str += ':'
         print_str += ' ' * (margin - len(key.strip()))
-        print_str += ': '
+        #print_str += ':'
         if isinstance(val, dict):
             print(print_str)
             print_dict(

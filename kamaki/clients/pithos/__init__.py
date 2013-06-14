@@ -1170,6 +1170,7 @@ class PithosClient(PithosRestClient):
         """
         self.object_post(obj, update=True, public=True)
         info = self.get_object_info(obj)
+        return info['x-object-public']
         pref, sep, rest = self.base_url.partition('//')
         base = rest.split('/')[0]
         return '%s%s%s/%s' % (pref, sep, base, info['x-object-public'])
