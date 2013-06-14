@@ -13,8 +13,8 @@ have it up and running in all platforms running python 2.6 or 2.7.
 
 * Synnefo Linux packages: `http://apt.dev.grnet.gr <http://apt.dev.grnet.gr>`_
 
-Linux and Unix-like enviroments
--------------------------------
+Linux and Unix-like environments
+--------------------------------
 
 Debian:
 ^^^^^^^
