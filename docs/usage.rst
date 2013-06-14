@@ -22,10 +22,14 @@ for the cloud kamaki should communicate with by default:
 .. code-block:: console
     :emphasize-lines: 1
 
-    Example 1.1: Set default authentication user and token
+    Example 1.1: Set authentication URL, user token and cloud alias "default"
 
-    $ kamaki config set remote.default.url <authentication URL>
-    $ kamaki config set remote.default.token myt0k3n==
+    $ kamaki config set cloud.default.url <authentication URL>
+    $ kamaki config set cloud.default.token myt0k3n==
+
+.. note:: The term *default* can be replaced by any arbitary term chosen by
+    the user. This term will serve as a cloud alias for kamaki users, and can
+    be easily modified.
 
 Shell vs one-command
 --------------------
@@ -36,8 +40,8 @@ messages. Still, there are some differences.
 
 In favor of interactive shell behavior:
 
-* tab completion for commands (if supported by host OS)
-* session history with ↑ or ↓ keys
+* tab completion for commands (if supported by host command line shell)
+* session history with ↑ or ↓ keys (if supported by host command line shell)
 * shorter commands with command context switching
 * re-run old commands with /history
 
@@ -67,7 +71,7 @@ To use kamaki as a shell, run:
 
     Example 2.2.2: Run kamaki shell with custom configuration file
 
-    $ kamaki --config myconfig.file
+    $ kamaki -c myconfig.file
 
 
 Run as one-command
@@ -126,20 +130,20 @@ and of a command in that group (list) are shown.
                             Path to configuration file
       -o OPTIONS, --options OPTIONS
                             Override a config value
-      --cloud CLOUD         Chose a remote cloud to connect to
+      --cloud CLOUD         Chose a cloud to connect to
       -h, --help            Show help message
 
     Options:
      - - - -
-    config  :  Kamaki configurations
-    file    :  Pithos+/Storage API commands
-    flavor  :  Cyclades/Compute API flavor commands
-    history :  Kamaki command history
-    image   :  Cyclades/Plankton API image commands
+    config :  Kamaki configurations
+    file   :  Pithos+/Storage API commands
+    flavor :  Cyclades/Compute API flavor commands
+    history:  Kamaki command history
+    image  :  Cyclades/Plankton API image commands
     image compute:  Cyclades/Compute API image commands
-    network :  Cyclades/Compute API network commands
-    server  :  Cyclades/Compute API server commands
-    user    :  Astakos API commands
+    network:  Cyclades/Compute API network commands
+    server :  Cyclades/Compute API server commands
+    user   :  Astakos API commands
 
 .. code-block:: console
     :emphasize-lines: 1,2
@@ -161,7 +165,7 @@ and of a command in that group (list) are shown.
                             Path to configuration file
       -o OPTIONS, --options OPTIONS
                             Override a config value
-      --cloud CLOUD         Chose a remote cloud to connect to
+      --cloud CLOUD         Chose a cloud to connect to
       -h, --help            Show help message
 
     Options:
@@ -195,7 +199,7 @@ and of a command in that group (list) are shown.
     List Virtual Machines accessible by user
     User Authentication:    
     * to check authentication: /user authenticate    
-    * to set authentication token: /config set remote.default.token <token>
+    * to set authentication token: /config set cloud.default.token <token>
 
     optional arguments:
     -v, --verbose         More info at response
@@ -207,7 +211,7 @@ and of a command in that group (list) are shown.
                           Path to configuration file
     -o OPTIONS, --options OPTIONS
                           Override a config value
-    --cloud CLOUD         Chose a remote cloud to connect to
+    --cloud CLOUD         Chose a cloud to connect to
     -h, --help            Show help message
     --since SINCE         show only items since date (' d/m/Y H:M:S ')
     --enumerate           Enumerate results
@@ -333,7 +337,7 @@ Kamaki commands can be used along with advanced shell features.
     Example 3.4.1: List the trash container contents, containing c1_
     
 
-    $ kamaki file list -o global.pithos_container=trash| grep c1_
+    $ kamaki file list -o cloud.default.pithos_container=trash| grep c1_
     c1_1370859409.0 20KB
     c1_1370859414.0 9MB
     c1_1370859409.1 110B
@@ -610,21 +614,21 @@ for the Astakos identity manager of preference) which has to be set to kamaki.
     [file]: /user authenticate
     (401) UNAUTHORIZED Invalid X-Auth-Token
 
-    [file]: /config get remote.default.token
+    [file]: /config get cloud.default.token
     my3xp1r3dt0k3n==
 
-    [file]: /config set remote.default.token myfr35ht0k3n==
+    [file]: /config set cloud.default.token myfr35ht0k3n==
 
-    [file]: /config get remote.default
-    remote.default.url = https://astakos.example.com/astakos/identity/2.0/
-    remote.default.token = myfr35ht0k3n==
+    [file]: /config get cloud.default
+    cloud.default.url = https://astakos.example.com/astakos/identity/2.0/
+    cloud.default.token = myfr35ht0k3n==
 
     [file]: list
     1.  pithos (10MB, 2 objects)
     2.  trash (0B, 0 objects)
 
 .. note:: The error messages on this example where shortened for clarity.
-Actual kamaki error messages are more helpful and descriptive.
+    Actual kamaki error messages are more helpful and descriptive.
 
 The following example compares some equivalent calls that run
 *user-authenticate* after a *file-list* 401 failure.
@@ -669,7 +673,7 @@ The following example compares some equivalent calls that run
 Using config
 ^^^^^^^^^^^^
 
-The configuration mechanism of kamaki is detailed at the
+The configuration mechanism of kamaki is detailed in the
 `setup section <setup.html>`_ and it is common for both interaction modes. In
 specific, the configuration mechanism is implemented as a command group, namely
 `config`. Using the config commands is as straightforward as any other kamaki
@@ -693,7 +697,7 @@ a *file.container* setting.
 .. code-block:: console
     :emphasize-lines: 1
 
-    Example 4.4.1: Set default storage container
+    Example 4.4.1: Set default storage container (cloud: default)
 
 
     [file]: list
@@ -705,7 +709,7 @@ a *file.container* setting.
     1.  D mydir/
     2.  20M mydir/rndm_local.file
     
-    [file]: /config set pithos_container mycontainer
+    [file]: /config set cloud.default.pithos_container mycontainer
 
     [file]: list
     1.  D mydir/
@@ -718,10 +722,10 @@ deleted, as shown in example 4.4.2
 .. code-block:: console
     :emphasize-lines: 1
 
-    Example 4.4.2: Delete a setting option
+    Example 4.4.2: Delete a setting option (cloud: default)
 
 
-    [file]: /config delete pithos_container
+    [file]: /config delete cloud.default.pithos_container
 
     [file]: list
     1.  mycontainer (32MB, 2 objects)

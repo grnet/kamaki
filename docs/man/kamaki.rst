@@ -180,7 +180,7 @@ network commands
 file commands
 **************
 
-* append         Append local file to remote
+* append         Append local file to remote file
 * cat            Print a file to console
 * copy           Copy an object
 * containerlimit Container size limit commands

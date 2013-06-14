@@ -197,14 +197,14 @@ def _check_config_version(cnf):
     if exists(cnf.path) and guess < 0.9:
         print('Config file format version >= 9.0 is required')
         print('Configuration file: %s' % cnf.path)
-        print('but kamaki can fix this:')
+        print('Attempting to fix this:')
         print('Calculating changes while preserving information')
         lost_terms = cnf.rescue_old_file()
         print('... DONE')
         if lost_terms:
             print 'The following information will NOT be preserved:'
             print '\t', '\n\t'.join(lost_terms)
-        print('Kamaki is ready to convert the config file to version 3.0')
+        print('Kamaki is ready to convert the config file')
         stdout.write('Create (overwrite) file %s ? [y/N] ' % cnf.path)
         from sys import stdin
         reply = stdin.readline()
@@ -216,7 +216,7 @@ def _check_config_version(cnf):
             raise CLIError(
                 'Invalid format for config file %s' % cnf.path,
                 importance=3, details=[
-                    'Please, update config file to v3.0',
+                    'Please, update config file',
                     'For automatic conversion, rerun and say Y'])
 
 

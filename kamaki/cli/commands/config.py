@@ -76,7 +76,7 @@ class config_list(_command_init):
                 if section in ('cloud',):
                     prefix = '%s.%s' % (section, key)
                     for k, v in val.items():
-                        print('%s..%s = %s' % (prefix, k, v))
+                        print('%s.%s = %s' % (prefix, k, v))
                 else:
                     print('%s.%s = %s' % (section, key, val))
 

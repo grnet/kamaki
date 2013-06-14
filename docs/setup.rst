@@ -11,34 +11,44 @@ Quick Setup
 Existing kamaki users should consult the
 `migration guide <#migrating-from-kamaki-0-8-x-to-0-9>`_ first.
 
-Kamaki has to be configured to use a specific Synnefo deployment url and a user
-token.
+Kamaki has to be configured for a specific Synnefo deployment, with an
+authentication url and user token pair. Users should also pick an alias to name
+the cloud configuration. This can be any single word, e.g. "default", "mycloud"
+or whatever suits kamaki users.
 
 .. code-block:: console
     
-    $ kamaki config set remote.default.url <cloud-authentication-URL>
-    $ kamaki config set remote.default.token myt0k3n==
+    $ kamaki config set cloud.<cloud alias>.url <cloud-authentication-URL>
+    $ kamaki config set cloud.<cloud alias>.token myt0k3n==
 
-Since Synnefo version 0.14, a synnefo cloud remote UI offers a single
-authentication URL, which can to be set as the default URL for kamaki. All
-service-specific URLs are now retrieved and handled automatically. Users of
-synnefo clouds >= 0.14 are advised against using any service-specific URLs.
+If only one cloud is configured, kamaki automatically picks it as the default.
+Otherwise, a default cloud should be specified:
+
+.. code-block:: console
+
+    $ kamaki config set default_cloud <cloud alias>
+
+Since Synnefo version 0.14, a synnefo cloud UI offers a single authentication
+URL, which should be set as the cloud URL for kamaki. All service-specific URLs
+are retrieved and handled automatically by kamaki, through this URL. Users of
+synnefo clouds >=0.14 are advised against using any service-specific URLs.
 
 Migrating from kamaki 0.8.X to 0.9
 ----------------------------------
 
-This section refers to running installations of kamaki version <= 0.8.X
-To check the current kamaki version:
+This section refers to running installations of kamaki version <= 0.8.X To
+check the current kamaki version:
 
 .. code-block:: console
 
     $ kamaki -V
 
-Existing kamaki users should convert their configuration files to v3. To do
-that, kamaki 0.9 inspects the configuration file and suggests a list of config
-file transformations, which are performed automatically on user permission.
-This mechanism is invoked when the first API-related kamaki command is fired.
-We suggest the `user authenticate` command, as shown on example 2.1.
+Existing kamaki users should convert their configuration files to v9. To do
+that, kamaki 0.9 can inspect the configuration file and suggests a list of
+config file transformations, which are performed automatically (after users'
+permission). This mechanism is invoked when an API-related kamaki command is
+fired. On example 2.1 we suggest using the `user authenticate` command to fire
+the kamaki config file conversion mechanism.
 
 .. code-block:: console
     :emphasize-lines: 1
@@ -46,11 +56,11 @@ We suggest the `user authenticate` command, as shown on example 2.1.
     Example 2.1: Convert config file while authenticating user "exampleuser"
 
     $ kamaki user authenticate
-    Config file format version >= 3.0 is required
-    Configuration file "/home/exampleuser/.kamakirc" format is not up to date
+    Config file format version >= 9.0 is required
+    Configuration file: "/home/exampleuser/.kamakirc"
     but kamaki can fix this:
     Calculating changes while preserving information
-    ... rescue global.token => remote.default.token
+    ... rescue global.token => cloud.default.token
     ... rescue config.cli => global.config_cli
     ... rescue history.file => global.history_file
     ... DONE
@@ -63,7 +73,7 @@ We suggest the `user authenticate` command, as shown on example 2.1.
         file.url = https://pithos.okeanos.grnet.gr/v1
         image.url = https://cyclades.okeanos.grnet.gr/plankton
 
-    Kamaki is ready to convert the config file to version 3.0
+    Kamaki is ready to convert the config file to version 9.0
     Overwrite file /home/exampleuser/.kamakirc ? [Y, y]
 
 At this point, we should examine the kamaki output. Most options are renamed to
@@ -78,7 +88,7 @@ Let's take a look at the discarded options:
     meaningless and therefore omitted.
 
 * `global.data_log` option has never been a valid kamaki config option.
-    In this example, the user accidentally misspelled the terms `log_data`
+    In this example, the user accidentally misspelled the term `log_data`
     (which is a valid kamaki config option) as `data_log`. To fix this, the
     user should set the correct option after the conversion is complete
     (Example 2.2).
@@ -105,26 +115,26 @@ steps described above.
 
     $ kamaki -c .myfilerc user authenticate
 
-Multiple cloud remotes
-----------------------
+Multiple clouds
+---------------
 
 The following refers to users of multiple Synnefo and/or Open Stack
 deployments. In the following, a Synnefo or Open Stack cloud deployment will
-frequently be called as a **remote** or a **cloud remote**.
+frequently be called as a **cloud**.
 
-Kamaki supports accessing multiple cloud remotes from the same kamaki setup.
-Bofore kamaki 0.9, this was possible only by using multiple config files. Since
-0.9, kamaki supports multiple cloud remotes in the same configuration.
+Kamaki supports accessing multiple clouds from the same kamaki setup. Before
+kamaki 0.9, this was possible only by using multiple config files. Since 0.9,
+kamaki supports multiple clouds in the same configuration.
 
-Each cloud remote corresponds to a Synnefo (or Open Stack) cloud deployment.
+Each cloud corresponds to a Synnefo (or Open Stack) cloud deployment.
 Since Synnefo version 0.14, each deployment offers a single point of
 authentication, as an **authentication URL** and **token** pair. Users can
 retrieve this information through the cloud UI.
 
-Once a user has retrieved one URL/token pair per cloud remote, it is time to
-assign a name to each cloud and let kamaki know about them.
+Once a user has retrieved one URL/token pair per cloud, it is time to assign a
+name to each cloud and let kamaki know about them.
 
-For example, let the user have access to two remote clouds with the following authentication information ::
+For example, let the user have access to two clouds with the following authentication information ::
 
     cloud alias: devel
     authentication URL: https://devel.example.com/astakos/identity/v2.0/
@@ -141,38 +151,38 @@ The user should let kamaki know about these setups:
 
 .. code-block:: console
 
-    $ kamaki config set remote.devel.url https://devel.example.com/astakos/identity/v2.0/
-    $ kamaki config set remote.devel.token myd3v3170k3n==
+    $ kamaki config set cloud.devel.url https://devel.example.com/astakos/identity/v2.0/
+    $ kamaki config set cloud.devel.token myd3v3170k3n==
     $
-    $ kamaki config set remote.testing.url https://testing.example.com/astakos/identity/v2.0/
-    $ kamaki config set remote.testing.token my73571ng70k3n==
+    $ kamaki config set cloud.testing.url https://testing.example.com/astakos/identity/v2.0/
+    $ kamaki config set cloud.testing.token my73571ng70k3n==
     $
 
-To check if all settings are loaded, a user may list all remotes, as shown
+To check if all settings are loaded, a user may list all clouds, as shown
 bellow:
 
 .. code-block:: console
 
-    $ kamaki config get remote
-     remote.default.url = https://example.com/astakos.identity/v2.0/
-     remote.default.url = myd3f4u1770k3n==
-     remote.devel.url = https://devel.example.com/astakos/identity/v2.0/
-     remote.devel.token = myd3v3170k3n==
-     remote.testing.url = https://testing.example.com/astakos/identity/v2.0/
-     remote.testing.token = my73571ng70k3n==
+    $ kamaki config getcloud 
+     cloud.default.url = https://example.com/astakos.identity/v2.0/
+     cloud.default.url = myd3f4u1770k3n==
+     cloud.devel.url = https://devel.example.com/astakos/identity/v2.0/
+     cloud.devel.token = myd3v3170k3n==
+     cloud.testing.url = https://testing.example.com/astakos/identity/v2.0/
+     cloud.testing.token = my73571ng70k3n==
     $
 
-or query kamaki for a specific cloud remote:
+or query kamaki for a specific cloud:
 
 .. code-block:: console
 
-    $ kamaki config get remote.devel
-     remote.devel.url = https://devel.example.com/astakos/identity/v2.0/
-     remote.devel.token = myd3v3170k3n==
+    $ kamaki config get cloud.devel
+     cloud.devel.url = https://devel.example.com/astakos/identity/v2.0/
+     cloud.devel.token = myd3v3170k3n==
     $
 
-Now kamaki can use any of there remotes, with the **- - cloud** attribute. If
-the **- - cloud** option is ommited, kamaki will query the `default` cloud remote.
+Now kamaki can use any of these clouds, with the **- - cloud** attribute. If
+the **- - cloud** option is ommited, kamaki will query the `default` cloud.
 
 One way to test this, is the `user athenticate` command:
 
@@ -203,7 +213,7 @@ One way to test this, is the `user athenticate` command:
         name       :  Default User
     $
 
-In interactive cell, the cloud remote is picked when invoking the shell, with
+In interactive cell, the cloud is picked when invoking the shell, with
 the **- - cloud** option.
 
 Optional features
@@ -213,20 +223,21 @@ For installing any or all of the following, consult the
 `kamaki installation guide <installation.html#install-ansicolors>`_
 
 * ansicolors
-    * Make command line / console user interface responses prettier with text formating (colors, bold, etc.)
-    * Can be switched on/off in kamaki configuration file: colors=on/off
+    * Add colors to command line / console output
+    * Can be switched on/off in kamaki configuration file: `colors = on/off`
     * Has not been tested on non unix / linux based platforms
 
 * mock 
     * For kamaki contributors only
-    * Allow unittests to run on kamaki.clients package
+    * Allow unit tests to run on kamaki.clients package
     * Needs mock version 1.X or better
 
 * astakosclient
     * For advanced users mostly
     * Allows the use of a full astakos command line client
 
-Any of the above features can be installed at any time before or after kamaki installation.
+Any of the above features can be installed at any time before or after kamaki
+installation.
 
 Configuration options
 ---------------------
@@ -238,14 +249,14 @@ There are two kinds of configuration options:
     colors in the output, maximum threads per connection, custom logging or
     history files, etc.
 
-* cloud-related (remote.XXX)
-    information needed to connect and use one or more remote clouds. There are
-    some mandatory options (url, token) and some advanced / optional (e.g.
-    service-specific url overrides or versions)
+* cloud-related
+    information needed to connect and use one or more clouds. There are some
+    mandatory options (URL, token) and some advanced / optional (e.g.
+    service-specific URL overrides or versions)
 
 Kamaki comes with preset default values to all kamaki-releated configuration
 options. Cloud-related information is not included in presets and should be
-provided. Kamaki-related options can also be modified.
+provided by the user. Kamaki-related options can also be modified.
 
 There are two ways of managing configuration options: edit the config file or
 use the kamaki config command.
@@ -257,19 +268,17 @@ Kamaki setups are stored in configuration files. By default, a Kamaki
 installation stores options in *.kamakirc* file located at the user home
 directory.
 
-
 If a user needs to switch between different kamaki-related setups, Kamaki can
-explicitly load configuration files with the **- - config** (or **- c**)
-option:
+explicitly load configuration files with the **- - config** (or **- c**) option
 
 .. code-block:: console
 
     $ kamaki --config <custom_config_file_path> [other options]
 
-.. note:: For access to multiple cloud remotes, users do NOT need to create
-    multiple configuration files. Instead, we suggest using a single
-    configuration file with multiple remote setups. More details can be found
-    at the `multiple remotes guide <#multiple-cloud-remotes>`_.
+.. note:: For accessing multiple clouds, users do NOT need to create multiple
+    configuration files. Instead, we suggest using a single configuration file
+    with multiple cloud setups. More details can be found at the
+    `multiple clouds guide <#multiple-clouds>`_.
 
 Modifying options at runtime
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -297,7 +306,7 @@ Kamaki config command allows users to see and manage all configuration options.
 
 * kamaki config set <group.option> <value>
     set the group.option to value. If no group is given, the defaults to
-    *global*
+    *global*.
 
 * kamaki config delete <group.option>
     delete a configuration option. If no group is given, the defaults to
@@ -305,31 +314,37 @@ Kamaki config command allows users to see and manage all configuration options.
 
 The above commands cause option values to be permanently stored in the Kamaki configuration file.
 
-The commands above can also be used for **cloud remotes** handling, using the
-`remote.` prefix. The remote handling cases are similar but with slightly
-different semantics:
+The commands above can also be used for **clouds** handling, using the `cloud.`
+prefix. The cloud handling cases are similar but with slightly different
+semantics:
 
-* kamaki config get remote[.<cloud alias>[.option]]
-    * remote
-        list all cloud remotes (including `default`) and their settings
-    * remote.<cloud alias>
-        list settings of the cloud remote aliased as <cloud alias>. If no
-        special is configured, use the term `remote.default`
-    * remote.<cloud alias>.<option>
+* kamaki config get cloud[.<cloud alias>[.option]]
+    * cloud 
+        list all clouds and their settings
+    * cloud.<cloud alias>
+        list settings of the cloud aliased as <cloud alias>. If no
+        special is configured, use the term `cloud.default`
+    * cloud.<cloud alias>.<option>
         show the value of the specified option. If no special alias is
-        configured, use `remote.default.<option>`
+        configured, use `cloud.default.<option>`
 
-* kamaki config set remote.<cloud alias>.<option> <value>
-    If the remote alias <cloud alias> does not exist, create it. Then, create
-    (or update) the option <option> of this cloud remote, by setting its value
+* kamaki config set cloud.<cloud alias>.<option> <value>
+    If the cloud alias <cloud alias> does not exist, create it. Then, create
+    (or update) the option <option> of this cloud, by setting its value
     to <value>.
 
-* kamaki config delete remote.<cloud alias>[.<option>]
-    * remote.<cloud alias>
+* kamaki config delete cloud.<cloud alias>[.<option>]
+    * cloud.<cloud alias>
         delete the cloud alias <cloud alias> and all its options
-    * remote.<cloud alias>.<option>
-        delete the <option> and its value from the cloud remote aliased as
+    * cloud.<cloud alias>.<option>
+        delete the <option> and its value from the cloud cloud aliased as
         <cloud alias>
+
+.. note:: To see if a default cloud is configured, get the default_cloud value
+
+    .. code-block:: console
+
+        $ kamaki config get default_cloud
 
 Editing the configuration file
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -358,25 +373,25 @@ The configuration file is formatted so that it can be parsed by the python Confi
     max_threads = 7
     colors = off
 
-    [remote "default"]
+    [cloud "default"]
     url =
     token =
 
 A bunch of configuration options are created and set to their default options,
 except the log_file option which is set to whatever the specified value.
 
-The [remote "default"] section is special and is used to configure the default
-cloud remote. Kamaki will not be able to run without setting the url and token
+The [cloud "default"] section is special and is used to configure the default
+cloud cloud. Kamaki will not be able to run without setting the url and token
 values to that section.
 
-More cloud remotes can be created  on the side of the default remote, e.g
-using the examples at the `multiple remotes guide <#multiple-cloud-remotes>`_::
+More clouds can be created  on the side of the default cloud, e.g using the
+examples at the `multiple clouds guide <#multiple-clouds>`_ ::
 
-    [remote "devel"]
+    [cloud "devel"]
     url = https://devel.example.com/astakos/identity/v2.0/
     token = myd3v3170k3n==
 
-    [remote "testing"]
+    [cloud "testing"]
     url = https://testing.example.com/astakos/identity/v2.0/
     token = my73571ng70k3n==
 
@@ -449,14 +464,14 @@ or with this kamaki command::
 
     kamaki config set livetest_cli livetest
 
-In most tests, livetest will run as long as the default remote is configured
+In most tests, livetest will run as long as the default cloud is configured
 correctly. Some commands, though, need some extra settings related to the cloud
 the test is performed against, or the example files used in kamaki.
 
 Here is a list of settings needed:
 
 * for all tests::
-    * livetest.testremote = <the cloud alias this test will run against>
+    * livetest.testcloud = <the cloud alias this test will run against>
 
 * for astakos client::
     * livetest.astakos_details = <A file with an authentication output>
