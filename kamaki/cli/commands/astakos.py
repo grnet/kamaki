@@ -86,7 +86,13 @@ class user_authenticate(_user_init, _optional_json):
     @errors.user.authenticate
     def _run(self, custom_token=None):
         super(self.__class__, self)._run()
-        r = self.client.authenticate(custom_token)
+        token_bu = self.client.token
+        try:
+            r = self.client.authenticate(custom_token)
+        except Exception:
+            #recover old token
+            self.client.token = token_bu
+            raise
         self._print(r, self._print_access)
 
     def main(self, custom_token=None):
