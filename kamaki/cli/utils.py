@@ -209,6 +209,7 @@ def print_list(
 
     counter = 1
     prefix = ''
+    item_sep = False
     for item in sorted(l):
         if item in exclude:
             continue
@@ -218,6 +219,10 @@ def print_list(
             prefix = '%s%s' % (' ' * (ident - len(prefix)), prefix)
         else:
             prefix = ' ' * ident
+        if item_sep:
+            print '%s. . . . . . .' % prefix
+        else:
+            item_sep = True
         if isinstance(item, dict):
             if with_enumeration:
                 print(prefix)
