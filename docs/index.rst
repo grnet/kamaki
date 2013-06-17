@@ -30,7 +30,7 @@ Contents:
    setup
    usage
    commands
-   scenarios
+   examples
    devguide
 
 
