@@ -52,6 +52,7 @@ log = getLogger(__name__)
 # Path to the file that stores the configuration
 CONFIG_PATH = os.path.expanduser('~/.kamakirc')
 HISTORY_PATH = os.path.expanduser('~/.kamaki.history')
+CLOUD_PREFIX = 'cloud'
 
 # Name of a shell variable to bypass the CONFIG_PATH value
 CONFIG_ENV = 'KAMAKI_CONFIG'
@@ -84,7 +85,7 @@ DEFAULTS = {
         #  'livetest_cli': 'livetest',
         #  'astakos_cli': 'snf-astakos'
     },
-    'cloud':
+    CLOUD_PREFIX:
     {
         #'default': {
         #    'url': '',
@@ -120,7 +121,7 @@ class Config(RawConfigParser):
 
     @staticmethod
     def _cloud_name(full_section_name):
-        matcher = match('cloud "(\w+)"', full_section_name)
+        matcher = match(CLOUD_PREFIX + ' "(\w+)"', full_section_name)
         return matcher.groups()[0] if matcher else None
 
     def rescue_old_file(self):
@@ -144,7 +145,7 @@ class Config(RawConfigParser):
             user=dict(serv='astakos', cmd='user'),
         )
 
-        self.set('global', 'default_cloud', 'default')
+        self.set('global', 'default_' + CLOUD_PREFIX, 'default')
         for s in self.sections():
             if s in ('global'):
                 # global.url, global.token -->
@@ -166,15 +167,17 @@ class Config(RawConfigParser):
                                 'Conflicting values for default %s' % term,
                                 importance=2, details=[
                                     ' global.%s:  %s' % (term, gval),
-                                    ' cloud.default.%s:  %s' % (term, cval),
+                                    ' %s.default.%s:  %s' % (
+                                        CLOUD_PREFIX, term, cval),
                                     'Please remove one of them manually:',
                                     ' /config delete global.%s' % term,
                                     ' or'
-                                    ' /config delete cloud.default.%s' % term,
+                                    ' /config delete %s.default.%s' % (
+                                        CLOUD_PREFIX, term),
                                     'and try again'])
                     elif gval:
-                        print('... rescue %s.%s => cloud.default.%s' % (
-                            s, term, term))
+                        print('... rescue %s.%s => %s.default.%s' % (
+                            s, term, CLOUD_PREFIX, term))
                         self.set_cloud('default', term, gval)
                     self.remove_option(s, term)
             # translation for <service> or <command> settings
@@ -197,8 +200,8 @@ class Config(RawConfigParser):
                             s, k, trn['cmd']))
                         self.set('global', '%s_cli' % trn['cmd'], v)
                     elif k in ('container',) and trn['serv'] in ('pithos',):
-                        print('... rescue %s.%s => cloud.default.pithos_%s' % (
-                                    s, k, k))
+                        print('... rescue %s.%s => %s.default.pithos_%s' % (
+                                    s, k, CLOUD_PREFIX, k))
                         self.set_cloud('default', 'pithos_%s' % k, v)
                     else:
                         lost_terms.append('%s.%s = %s' % (s, k, v))
@@ -231,8 +234,8 @@ class Config(RawConfigParser):
                 return 0.8
         log.warning('........ nope')
         log.warning('Config file heuristic 2: Any cloud sections ?')
-        if 'cloud' in sections:
-            for r in self.keys('cloud'):
+        if CLOUD_PREFIX in sections:
+            for r in self.keys(CLOUD_PREFIX):
                 log.warning('... found cloud "%s"' % r)
                 return 0.9
         log.warning('........ nope')
@@ -249,7 +252,7 @@ class Config(RawConfigParser):
 
         :raises KeyError: if cloud or cloud's option does not exist
         """
-        r = self.get('cloud', cloud)
+        r = self.get(CLOUD_PREFIX, cloud)
         if not r:
             raise KeyError('Cloud "%s" does not exist' % cloud)
         return r[option]
@@ -259,11 +262,11 @@ class Config(RawConfigParser):
 
     def set_cloud(self, cloud, option, value):
         try:
-            d = self.get('cloud', cloud) or dict()
+            d = self.get(CLOUD_PREFIX, cloud) or dict()
         except KeyError:
             d = dict()
         d[option] = value
-        self.set('cloud', cloud, d)
+        self.set(CLOUD_PREFIX, cloud, d)
 
     def set_global(self, option, value):
         self.set('global', option, value)
@@ -298,7 +301,7 @@ class Config(RawConfigParser):
         value = self._overrides.get(section, {}).get(option)
         if value is not None:
             return value
-        prefix = 'cloud.'
+        prefix = CLOUD_PREFIX + '.'
         if section.startswith(prefix):
             return self.get_cloud(section[len(prefix):], option)
         try:
@@ -314,7 +317,7 @@ class Config(RawConfigParser):
 
         :param value: str
         """
-        prefix = 'cloud.'
+        prefix = CLOUD_PREFIX + '.'
         if section.startswith(prefix):
             return self.set_cloud(section[len(prefix)], option, value)
         if section not in RawConfigParser.sections(self):
@@ -330,7 +333,7 @@ class Config(RawConfigParser):
             pass
 
     def remote_from_cloud(self, cloud, option):
-        d = self.get('cloud', cloud)
+        d = self.get(CLOUD_PREFIX, cloud)
         if isinstance(d, dict):
             d.pop(option)
 
@@ -346,13 +349,19 @@ class Config(RawConfigParser):
         self._overrides[section][option] = value
 
     def write(self):
-        for r, d in self.items('cloud'):
-            for k, v in d.items():
-                self.set('cloud "%s"' % r, k, v)
-        self.remove_section('cloud')
+        cld_bu = dict(self._get_dict(CLOUD_PREFIX))
+        try:
+            for r, d in self.items(CLOUD_PREFIX):
+                for k, v in d.items():
+                    self.set(CLOUD_PREFIX + ' "%s"' % r, k, v)
+            self.remove_section(CLOUD_PREFIX)
 
-        with open(self.path, 'w') as f:
-            os.chmod(self.path, 0600)
-            f.write(HEADER.lstrip())
-            f.flush()
-            RawConfigParser.write(self, f)
+            with open(self.path, 'w') as f:
+                os.chmod(self.path, 0600)
+                f.write(HEADER.lstrip())
+                f.flush()
+                RawConfigParser.write(self, f)
+        finally:
+            if CLOUD_PREFIX not in self.sections():
+                self.add_section(CLOUD_PREFIX)
+            self._get_dict(CLOUD_PREFIX).update(cld_bu)
