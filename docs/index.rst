@@ -30,6 +30,7 @@ Contents:
    setup
    usage
    commands
+   scenarios
    devguide
 
 
