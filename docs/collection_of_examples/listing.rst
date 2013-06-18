@@ -67,6 +67,10 @@ List virtual machines (servers)
     [kamaki]: server list
     4201 example server 1
     4202 example server 2
+    4203 example server 3
+    4204 example server 4
+    4205 example server 5
+    4206 example server 6
 
 List networks
 
@@ -91,29 +95,35 @@ List images from Image API and from Compute APIs
 .. code-block:: console
 
     [kamaki]: image list
-    cde9858c-0656-4da1-8cbd-33481b29a8bd Debian Base
+    f1r57-1m4g3-1d Debian Base Alpha
     .container_format: bare
     .disk_format:      diskdump
     .size:             474066944
     .status:           available
-    a5ca5997-c580-4d62-b012-05c5329f8e2d Debian Base
+    53c0nd-1m4g3-1d Beta Debian Base
     .container_format: bare
     .disk_format:      diskdump
     .size:             474066944
     .status:           available
     [kamaki]: image compute list
-    a5ca5997-c580-4d62-b012-05c5329f8e2d Debian Base
-    cde9858c-0656-4da1-8cbd-33481b29a8bd Debian Base
+    f1r57-1m4g3-1d Debian Base Alpha
+    53c0nd-1m4g3-1d Beta Debian Base
     [kamaki]:
 
 Detailed pithos listing
 -----------------------
 
-List pithos containers with details
+Enter contect
 
 .. code-block:: console
 
     [kamaki]: file
+    [file]:
+
+List pithos containers with details
+
+.. code-block:: console
+
     [file]: list -l
     pithos
     bytes:    0 (0B)
@@ -223,7 +233,7 @@ List contents of container `pithos`
     version:   1083
     [kamaki]:
 
-List only videos and exit "file" context
+List only objects starting with "video" and exit "file" context
 
 .. code-block:: console
 
@@ -257,4 +267,374 @@ List only videos and exit "file" context
     type:      video/mpeg
     uuid:      4195e8c3-9b9a-4e97-8c20-fdfef34892fe
     version:   1083
+
+
+Exit context
+
+.. code-block:: console
+
+    [file]: exit
+    [kamaki]:
+
+Detailed Server Listing
+-----------------------
+
+Enter context
+
+.. code-block:: console
+
+    [kamaki]: server
+    [server]:
+
+List only 3, then list three by three, all with enumeration
+
+.. code-block:: console
+
+    [server]: list -n 3 --enumerate
+    1. 4201 example server 1
+    2. 4202 example server 2
+    3. 4203 example server 3
+    4. 4204 example server 4
+    5. 4205 example server 5
+    6. 4206 example server 6
+    [server]: list -n 3 --more --enumerate
+    1. 4201 example server 1
+    2. 4202 example server 2
+    3. 4203 example server 3
+    (3 listed - 3 more - "enter" to continue)
+    <press "enter">
+    4. 4204 example server 4
+    5. 4205 example server 5
+    6. 4206 example server 6
+    [server]:
+
+Get json output returned by the compute API server (only first two VMs)
+
+.. code-block:: console
+
+    [server]: list -j -n 2
+    [
+        {
+            "name": "example server 1", 
+            "links": [
+              {
+                "href": "https://example.com/compute/v2.0/servers/4201",
+                "rel": "self"
+              }, 
+              {
+                "href": "https://example.com/compute/v2.0/servers/4201",
+                "rel": "bookmark"
+              }
+            ], 
+            "id": 4201
+          },
+          {
+            "name": "example server 2", 
+            "links": [
+              {
+                "href": "https://example.com/compute/v2.0/servers/4202",
+                "rel": "self"
+              }, 
+              {
+                "href": "https://example.com/compute/v2.0/servers/4202",
+                "rel": "bookmark"
+              }
+            ], 
+            "id": 4202
+          }
+    ]
+    [server]:
+
+Server details (first two only)
+
+.. code-block:: console
+
+    [server]: list -l -n 2
+    4201 my example server 1
+        accessIPv4:      
+        accessIPv6:      
+        addresses:      
+                    42:
+                           OS-EXT-IPS:type: fixed
+                           addr:            192.168.12.4
+                           version:         4
+                        . . . . . . .
+                           OS-EXT-IPS:type: fixed
+                           addr:            2001:648:2ffc:1222:a800:2ff:fee3:49f1
+                           version:         6
+        attachments:    
+                       firewallProfile: DISABLED
+                       id:              nic-37231-0
+                       ipv4:            192.168.12.4
+                       ipv6:            2001:648:2ffc:1222:a800:2ff:fee3:49f1
+                       mac_address:     aa:00:02:e3:49:f8
+                       network_id:      4161
+        config_drive:    
+        created:         2013-05-11T18:03:41.471605+00:00
+        diagnostics:    
+                       created:     2013-05-11T18:04:23.298132+00:00
+                       details:     None
+                       level:       DEBUG
+                       message:     Image customization finished successfully.
+                       source:      image-info
+                       source_date: 2013-05-11T18:04:23.286869+00:00
+        flavor:         
+                    id:    1
+                    links:
+                            href: https://example.com/compute/v2.0/flavors/1
+                            rel:  bookmark
+                         . . . . . . .
+                            href: https://example.com/compute/v2.0/flavors/1
+                            rel:  self
+        hostId:          
+        image:          
+                    id:    f1r57-1m4g3-1d
+                    links:
+                            href: https://example.com/compute/v2.0/images/f1r57-1m4g3-1d
+                            rel:  bookmark
+                         . . . . . . .
+                            href: https://example.com/compute/v2.0/images/f1r57-1m4g3-1d
+                            rel:  self
+                         . . . . . . .
+                            href: https:/example.com/image/v1.0/images/f1r57-1m4g3-1d
+                            rel:  alternate
+        key_name:        None
+        links:          
+                       href: https://example.com/compute/v2.0/servers/4201
+                       rel:  bookmark
+                    . . . . . . .
+                       href: https://example.com/compute/v2.0/servers/4201
+                       rel:  self
+        metadata:       
+                    os:    ubuntu
+                    users: user
+        progress:        100
+        security_groups:
+                       name: default
+        status:          ACTIVE
+        suspended:       False
+        tenant_id:       s0m3-u53r-1d
+        updated:         2013-06-17T07:57:50.054550+00:00
+        user_id:         s0m3-u53r-1d
+    4202 my example server 2
+        accessIPv4:      
+        accessIPv6:      
+        addresses:      
+                    42:
+                           OS-EXT-IPS:type: fixed
+                           addr:            192.168.12.4
+                           version:         4
+                        . . . . . . .
+                           OS-EXT-IPS:type: fixed
+                           addr:            2002:648:2ffc:1222:a800:2ff:fee3:49f1
+                           version:         6
+        attachments:    
+                       firewallProfile: DISABLED
+                       id:              nic-37231-0
+                       ipv4:            192.168.12.4
+                       ipv6:            2002:648:2ffc:1222:a800:2ff:fee3:49f1
+                       mac_address:     aa:00:02:e3:49:f8
+                       network_id:      42
+        config_drive:    
+        created:         2013-05-11T18:03:41.471605+00:00
+        diagnostics:    
+                       created:     2013-05-11T18:04:23.298132+00:00
+                       details:     None
+                       level:       DEBUG
+                       message:     Image customization finished successfully.
+                       source:      image-info
+                       source_date: 2013-05-11T18:04:23.286869+00:00
+        flavor:         
+                    id:    2
+                    links:
+                            href: https://example.com/compute/v2.0/flavors/2
+                            rel:  bookmark
+                         . . . . . . .
+                            href: https://example.com/compute/v2.0/flavors/2
+                            rel:  self
+        hostId:          
+        image:          
+                    id:    53c0nd-1m4g3-1d
+                    links:
+                            href: https://example.com/compute/v2.0/images/53c0nd-1m4g3-1d
+                            rel:  bookmark
+                         . . . . . . .
+                            href: https://example.com/compute/v2.0/images/53c0nd-1m4g3-1d
+                            rel:  self
+                         . . . . . . .
+                            href: https:/example.com/image/v1.0/images/53c0nd-1m4g3-1d
+                            rel:  alternate
+        key_name:        None
+        links:          
+                       href: https://example.com/compute/v2.0/servers/4202
+                       rel:  bookmark
+                    . . . . . . .
+                       href: https://example.com/compute/v2.0/servers/4202
+                       rel:  self
+        metadata:       
+                    os:    ubuntu
+                    users: user
+        progress:        100
+        security_groups:
+                       name: default
+        status:          ACTIVE
+        suspended:       False
+        tenant_id:       s0m3-u53r-1d
+        updated:         2013-06-17T07:57:50.054550+00:00
+        user_id:         s0m3-u53r-1d
+    [server]:
+
+Exit context
+
+.. code-block:: console
+
+    [server]: exit
+    [kamaki]:
+
+.. note:: `network` and `flavor list` behave in the same way as `server list`
+
+Detailed image listing
+----------------------
+
+Enter context
+
+.. code-block:: console
+
+    [kamaki]: image
+    [image]:
+
+Detailed listing
+
+.. code-block:: console
+
+    [image]: list -l
+    f1r57-1m4g3-1d Debian Base Alpha
+        checksum:         9344d77620cde1dd77da556e5f72ed4de8533931f86c857b70badda34b26d782
+        container_format: bare
+        created_at:       2013-06-03 16:44:16
+        deleted_at:       
+        disk_format:      diskdump
+        is_public:        True
+        location:         pithos://s0m3-u53r-1d/pithos/debian_base1.diskdump
+        owner:            s0m3-u53r-1d
+        properties:      
+                    description:    Debian 6.0.6 (Squeeze) Base System
+                    gui:            No GUI
+                    kernel:         2.6.32
+                    os:             debian
+                    osfamily:       linux
+                    root_partition: 1
+                    sortorder:      1
+                    users:          root
+        size:             474066944
+        status:           available
+        updated_at:       2013-06-03 16:44:16
+    53c0nd-1m4g3-1d Beta Debian Base
+        checksum:         9344d77620cde1dd77da556e5f72ed4de8533931f86c857b70badda34b26d782
+        container_format: bare
+        created_at:       2013-06-03 16:44:16
+        deleted_at:       
+        disk_format:      diskdump
+        is_public:        True
+        location:         pithos://s0m3-u53r-1d/pithos/debian_base2.diskdump
+        owner:            s0m3-u53r-1d
+        properties:      
+                    description:    Debian 6.0.6 (Squeeze) Base System
+                    gui:            No GUI
+                    kernel:         2.6.32
+                    os:             debian
+                    osfamily:       linux
+                    root_partition: 1
+                    sortorder:      1
+                    users:          root
+        size:             474066944
+        status:           available
+        updated_at:       2013-06-03 16:44:16
+    [image]: compute list
+    f1r57-1m4g3-1d Debian Base Alpha
+        created:   2013-06-03T16:21:53+00:00
+        links:    
+             href: https://example.com/cyclades/compute/v2.0/images/f1r57-1m4g3-1d
+             rel:  bookmark
+          . . . . . . .
+             href: https://example.com/cyclades/compute/v2.0/images/f1r57-1m4g3-1d
+             rel:  self
+          . . . . . . .
+             href: https://example.com/cyclades/image/v1.0/images/f1r57-1m4g3-1d
+             rel:  alternate
+        metadata: 
+          description:    Debian 6.0.6 (Squeeze) Base System
+          gui:            No GUI
+          kernel:         2.6.32
+          os:             debian
+          osfamily:       linux
+          root_partition: 1
+          sortorder:      1
+          users:          root
+        progress:  100
+        status:    ACTIVE
+        tenant_id: s0m3-u53r-1d
+        updated:   2013-06-03T16:21:53+00:00
+        user_id:   s0m3-u53r-1d
+    53c0nd-1m4g3-1d Beta Debian Base
+        created:   2013-06-03T16:21:53+00:00
+        links:    
+             href: https://example.com/cyclades/compute/v2.0/images/53c0nd-1m4g3-1d
+             rel:  bookmark
+          . . . . . . .
+             href: https://example.com/cyclades/compute/v2.0/images/53c0nd-1m4g3-1d
+             rel:  self
+          . . . . . . .
+             href: https://example.com/cyclades/image/v1.0/images/53c0nd-1m4g3-1d
+             rel:  alternate
+        metadata: 
+          description:    Debian 6.0.6 (Squeeze) Base System
+          gui:            No GUI
+          kernel:         2.6.32
+          os:             debian
+          osfamily:       linux
+          root_partition: 1
+          sortorder:      1
+          users:          root
+        progress:  100
+        status:    ACTIVE
+        tenant_id: s0m3-u53r-1d
+        updated:   2013-06-03T16:21:53+00:00
+        user_id:   s0m3-u53r-1d
+    [image]:
+
+Filter listing by prefix, suffix or words in image names
+
+.. code-block:: console
+
+    [image]: list --name-prefix=Debian
+    f1r57-1m4g3-1d Debian Base Alpha
+    [image]: list --name-suffix=Base
+    53c0nd-1m4g3-1d Beta Debian Base
+    [image]: list --name-like=Alpha
+    f1r57-1m4g3-1d Debian Base Alpha
+    [image]: list --name-like=Beta
+    53c0nd-1m4g3-1d Beta Debian Base
+    [image]: list --name-like="Debian Base"
+    f1r57-1m4g3-1d Debian Base Alpha
+    53c0nd-1m4g3-1d Beta Debian Base
+    [image]:
+
+Filter by owner and container format
+
+.. code-block:: console
+
+    [image]: list --owner=s0m3-u53r-1d
+    f1r57-1m4g3-1d Debian Base Alpha
+    53c0nd-1m4g3-1d Beta Debian Base
+    [image]: list --container-format=bare
+    f1r57-1m4g3-1d Debian Base Alpha
+    53c0nd-1m4g3-1d Beta Debian Base
+    [image]:
+
+Exit context:
+
+.. code-block:: console
+
+    [image]: exit
     [kamaki]:
