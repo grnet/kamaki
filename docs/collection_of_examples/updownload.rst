@@ -151,3 +151,11 @@ Download all
 .. note:: Kamaki determined that all files have already been calculated. This
     operation examines all local files against the remote objects and
     downloads only missing data.
+
+Exit Context
+------------
+
+.. code-block:: console
+
+    [file]: exit
+    [kamaki]:

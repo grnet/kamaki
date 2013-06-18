@@ -1,29 +1,3 @@
-Publish and share
------------------
-
-Check permissions
-^^^^^^^^^^^^^^^^^
-
-Publish
-^^^^^^^
-
-Share with users and groups
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Share with all
-^^^^^^^^^^^^^^
-
-Shared with me
---------------
-
-Users who share objects with me
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-List shared objects
-^^^^^^^^^^^^^^^^^^^
-
-Copy shared objects
-^^^^^^^^^^^^^^^^^^^
 
 Image register
 --------------
