@@ -368,7 +368,7 @@ class Config(RawConfigParser):
         self._overrides[section][option] = value
 
     def write(self):
-        cld_bu = dict(self._get_dict(CLOUD_PREFIX))
+        cld_bu = self._get_dict(CLOUD_PREFIX)
         try:
             for r, d in self.items(CLOUD_PREFIX):
                 for k, v in d.items():
@@ -383,4 +383,5 @@ class Config(RawConfigParser):
         finally:
             if CLOUD_PREFIX not in self.sections():
                 self.add_section(CLOUD_PREFIX)
-            self._get_dict(CLOUD_PREFIX).update(cld_bu)
+            for cloud, d in cld_bu.items():
+                self.set(CLOUD_PREFIX, cloud, d)
