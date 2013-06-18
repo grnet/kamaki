@@ -70,7 +70,6 @@ class config_list(_command_init):
 
     @errors.generic.all
     def _run(self):
-        print 'ANY PROBLEMOS?'
         for section in sorted(self.config.sections()):
             items = self.config.items(section)
             for key, val in sorted(items):
