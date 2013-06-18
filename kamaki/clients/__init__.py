@@ -36,7 +36,7 @@ from urlparse import urlparse
 from threading import Thread
 from json import dumps, loads
 from time import time
-from httplib import ResponseNotReady
+from httplib import ResponseNotReady, HTTPException
 from time import sleep
 from random import random
 from logging import getLogger
@@ -185,10 +185,15 @@ class RequestManager(Logged):
 class ResponseManager(Logged):
     """Manage the http request and handle the response data, headers, etc."""
 
-    def __init__(self, request, poolsize=None):
+    def __init__(self, request, poolsize=None, connection_retry_limit=0):
         """
         :param request: (RequestManager)
+
+        :param poolsize: (int) the size of the connection pool
+
+        :param connection_retry_limit: (int)
         """
+        self.CONNECTION_TRY_LIMIT = 1 + connection_retry_limit
         self.request = request
         self._request_performed = False
         self.poolsize = poolsize
@@ -198,39 +203,51 @@ class ResponseManager(Logged):
             return
 
         pool_kw = dict(size=self.poolsize) if self.poolsize else dict()
-        try:
-            with PooledHTTPConnection(
-                    self.request.netloc, self.request.scheme,
-                    **pool_kw) as connection:
-                self.request.LOG_TOKEN = self.LOG_TOKEN
-                self.request.LOG_DATA = self.LOG_DATA
-                r = self.request.perform(connection)
-                recvlog.info('\n%s <-- %s <-- [req: %s]\n' % (
-                    self, r, self.request))
-                self._request_performed = True
-                self._status_code, self._status = r.status, unquote(r.reason)
-                recvlog.info(
-                    '%d %s\t[p: %s]' % (self.status_code, self.status, self))
-                self._headers = dict()
-                for k, v in r.getheaders():
-                    if (not self.LOG_TOKEN) and k.lower() == 'x-auth-token':
-                        continue
-                    v = unquote(v)
-                    self._headers[k] = v
-                    recvlog.info('  %s: %s\t[p: %s]' % (k, v, self))
-                self._content = r.read()
-                recvlog.info('data size: %s\t[p: %s]' % (
-                    len(self._content) if self._content else 0,
-                    self))
-                if self.LOG_DATA and self._content:
-                    recvlog.info('%s\t[p: %s]' % (self._content, self))
-        except Exception as err:
-            from traceback import format_stack
-            recvlog.debug('\n'.join(['%s' % type(err)] + format_stack()))
-            raise ClientError(
-                'Failed while http-connecting to %s (%s)' % (
-                    self.request.url,
-                    err))
+        for retries in range(1, self.CONNECTION_TRY_LIMIT + 1):
+            try:
+                with PooledHTTPConnection(
+                        self.request.netloc, self.request.scheme,
+                        **pool_kw) as connection:
+                    self.request.LOG_TOKEN = self.LOG_TOKEN
+                    self.request.LOG_DATA = self.LOG_DATA
+                    r = self.request.perform(connection)
+                    recvlog.info('\n%s <-- %s <-- [req: %s]\n' % (
+                        self, r, self.request))
+                    self._request_performed = True
+                    self._status_code, self._status = r.status, unquote(
+                        r.reason)
+                    recvlog.info(
+                        '%d %s\t[p: %s]' % (
+                            self.status_code, self.status, self))
+                    self._headers = dict()
+                    for k, v in r.getheaders():
+                        if (not self.LOG_TOKEN) and (
+                                k.lower() == 'x-auth-token'):
+                            continue
+                        v = unquote(v)
+                        self._headers[k] = v
+                        recvlog.info('  %s: %s\t[p: %s]' % (k, v, self))
+                    self._content = r.read()
+                    recvlog.info('data size: %s\t[p: %s]' % (
+                        len(self._content) if self._content else 0,
+                        self))
+                    if self.LOG_DATA and self._content:
+                        recvlog.info('%s\t[p: %s]' % (self._content, self))
+                break
+            except Exception as err:
+                if isinstance(err, HTTPException):
+                    if retries >= self.CONNECTION_TRY_LIMIT:
+                        raise ClientError(
+                            'Connection to %s failed %s times (%s: %s )' % (
+                                self.request.url, retries, type(err), err))
+                else:
+                    from traceback import format_stack
+                    recvlog.debug(
+                        '\n'.join(['%s' % type(err)] + format_stack()))
+                    raise ClientError(
+                        'Failed while http-connecting to %s (%s)' % (
+                            self.request.url,
+                            err))
 
     @property
     def status_code(self):
@@ -309,6 +326,7 @@ class Client(object):
         '%a, %d %b %Y %H:%M:%S GMT']
     LOG_TOKEN = False
     LOG_DATA = False
+    CONNECTION_RETRY_LIMIT = 0
 
     def __init__(self, base_url, token):
         assert base_url, 'No base_url for client %s' % self
@@ -395,7 +413,8 @@ class Client(object):
                 method, self.base_url, path,
                 data=data, headers=headers, params=params)
             #  req.log()
-            r = ResponseManager(req)
+            r = ResponseManager(
+                req, connection_retry_limit=self.CONNECTION_RETRY_LIMIT)
             r.LOG_TOKEN, r.LOG_DATA = self.LOG_TOKEN, self.LOG_DATA
         finally:
             self.headers = dict()
