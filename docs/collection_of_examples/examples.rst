@@ -1,15 +1,3 @@
-Upload and download
--------------------
-
-Upload a file, download an object
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Recursive upload (directory)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Recursive download (path prefix)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 Publish and share
 -----------------
 
