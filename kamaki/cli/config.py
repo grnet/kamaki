@@ -35,7 +35,7 @@ import os
 from logging import getLogger
 
 from collections import defaultdict
-from ConfigParser import RawConfigParser, NoOptionError, NoSectionError
+from ConfigParser import RawConfigParser, NoOptionError, NoSectionError, Error
 from re import match
 
 from kamaki.cli.errors import CLISyntaxError
@@ -45,6 +45,10 @@ try:
     from collections import OrderedDict
 except ImportError:
     from kamaki.clients.utils.ordereddict import OrderedDict
+
+
+class InvalidCloudNameError(Error):
+    """A valid cloud name is accepted by this regex: ([@#$:-\w]+)"""
 
 
 log = getLogger(__name__)
@@ -128,8 +132,14 @@ class Config(RawConfigParser):
 
     @staticmethod
     def _cloud_name(full_section_name):
-        matcher = match(CLOUD_PREFIX + ' "(\w+)"', full_section_name)
-        return matcher.groups()[0] if matcher else None
+        if not full_section_name.startswith(CLOUD_PREFIX + ' '):
+            return None
+        matcher = match(CLOUD_PREFIX + ' "([@#$:\-\w]+)"', full_section_name)
+        if matcher:
+            return matcher.groups()[0]
+        else:
+            icn = full_section_name[len(CLOUD_PREFIX) + 1:]
+            raise InvalidCloudNameError('Invalid Cloud Name %s' % icn)
 
     def rescue_old_file(self):
         lost_terms = []
@@ -326,7 +336,9 @@ class Config(RawConfigParser):
         """
         prefix = CLOUD_PREFIX + '.'
         if section.startswith(prefix):
-            return self.set_cloud(section[len(prefix)], option, value)
+            cloud = self._cloud_name(
+                CLOUD_PREFIX + ' "' + section[len(prefix):] + '"')
+            return self.set_cloud(cloud, option, value)
         if section not in RawConfigParser.sections(self):
             self.add_section(section)
         RawConfigParser.set(self, section, option, value)
