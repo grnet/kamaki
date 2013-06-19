@@ -11,3 +11,4 @@ Examples
     collection_of_examples/sharing
     collection_of_examples/imageregister
     collection_of_examples/server
+    collection_of_examples/network
