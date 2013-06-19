@@ -1,16 +1,4 @@
 
-Image register
---------------
-
-Upload and register image
-^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Register with metadata template
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Upload and register multiple images
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 virtual machines
 ----------------
 

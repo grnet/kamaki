@@ -438,7 +438,7 @@ class image_register(_init_image, _optional_json):
                 print('Metadata file uploaded as %s:%s (version %s)' % (
                     container, meta_path, meta_headers['x-object-version']))
 
-    def main(self, name, location=None):
+    def main(self, name, location):
         super(self.__class__, self)._run()
         self._run(name, location)
 
