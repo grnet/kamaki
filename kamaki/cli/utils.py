@@ -498,3 +498,9 @@ def get_path_size(testpath):
             if path.isfile(f):
                 total_size += path.getsize(f)
     return total_size
+
+
+def remove_from_items(list_of_dicts, key_to_remove):
+    for item in list_of_dicts:
+        assert isinstance(item, dict), 'Item %s not a dict' % item
+        item.pop(key_to_remove, None)
