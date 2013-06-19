@@ -9,3 +9,4 @@ Examples
     collection_of_examples/listing
     collection_of_examples/updownload
     collection_of_examples/sharing
+    collection_of_examples/imageregister

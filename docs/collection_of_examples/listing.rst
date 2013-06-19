@@ -509,14 +509,14 @@ Detailed listing
 
     [image]: list -l
     f1r57-1m4g3-1d Debian Base Alpha
-        checksum:         9344d77620cde1dd77da556e5f72ed4de8533931f86c857b70badda34b26d782
+        checksum:         9344d77620cde1dd77da...7b70badda34b26d782
         container_format: bare
         created_at:       2013-06-03 16:44:16
         deleted_at:       
         disk_format:      diskdump
         is_public:        True
-        location:         pithos://s0m3-u53r-1d/pithos/debian_base1.diskdump
-        owner:            s0m3-u53r-1d
+        location:         pithos://s0m3-5up3r-u53r-1d/pithos/debian_base1.diskdump
+        owner:            s0m3-5up3r-u53r-1d
         properties:      
                     description:    Debian 6.0.6 (Squeeze) Base System
                     gui:            No GUI
@@ -530,14 +530,14 @@ Detailed listing
         status:           available
         updated_at:       2013-06-03 16:44:16
     53c0nd-1m4g3-1d Beta Debian Base
-        checksum:         9344d77620cde1dd77da556e5f72ed4de8533931f86c857b70badda34b26d782
+        checksum:         9344d77620cde1dd77da...7b70badda34b26d782
         container_format: bare
         created_at:       2013-06-03 16:44:16
         deleted_at:       
         disk_format:      diskdump
         is_public:        True
-        location:         pithos://s0m3-u53r-1d/pithos/debian_base2.diskdump
-        owner:            s0m3-u53r-1d
+        location:         pithos://s0m3-5up3r-u53r-1d/pithos/debian_base2.diskdump
+        owner:            s0m3-5up3r-u53r-1d
         properties:      
                     description:    Debian 6.0.6 (Squeeze) Base System
                     gui:            No GUI
@@ -573,9 +573,9 @@ Detailed listing
           users:          root
         progress:  100
         status:    ACTIVE
-        tenant_id: s0m3-u53r-1d
+        tenant_id: s0m3-5up3r-u53r-1d
         updated:   2013-06-03T16:21:53+00:00
-        user_id:   s0m3-u53r-1d
+        user_id:   s0m3-5up3r-u53r-1d
     53c0nd-1m4g3-1d Beta Debian Base
         created:   2013-06-03T16:21:53+00:00
         links:    
@@ -598,9 +598,9 @@ Detailed listing
           users:          root
         progress:  100
         status:    ACTIVE
-        tenant_id: s0m3-u53r-1d
+        tenant_id: s0m3-5up3r-u53r-1d
         updated:   2013-06-03T16:21:53+00:00
-        user_id:   s0m3-u53r-1d
+        user_id:   s0m3-5up3r-u53r-1d
     [image]:
 
 Filter listing by prefix, suffix or words in image names
