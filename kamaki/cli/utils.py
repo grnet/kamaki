@@ -211,7 +211,7 @@ def print_list(
     prefix = ''
     item_sep = False
     for item in sorted(l):
-        if item in exclude:
+        if ('%s' % item) in exclude:
             continue
         elif with_enumeration:
             prefix = '%s. ' % counter
