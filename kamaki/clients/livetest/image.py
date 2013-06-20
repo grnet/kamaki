@@ -34,6 +34,7 @@
 import time
 
 from kamaki.clients import livetest
+from kamaki.clients.astakos import AstakosClient as AstakosCachedClient
 from kamaki.clients.cyclades import CycladesClient
 from kamaki.clients.image import ImageClient
 from kamaki.clients import ClientError
@@ -48,13 +49,16 @@ IMGMETA = set([
 class Image(livetest.Generic):
     def setUp(self):
         self.now = time.mktime(time.gmtime())
-
+        self.cloud = 'cloud.%s' % self['testcloud']
+        aurl, self.token = self[self.cloud, 'url'], self[self.cloud, 'token']
+        self.auth_base = AstakosCachedClient(aurl, self.token)
         self.imgname = 'img_%s' % self.now
-        url = self['image', 'url']
-        print('::::%s::::' % url)
-        self.client = ImageClient(url, self['token'])
-        cyclades_url = self['compute', 'url']
-        self.cyclades = CycladesClient(cyclades_url, self['token'])
+        url = self.auth_base.get_service_endpoints('image')['publicURL']
+        self.token = self.auth_base.token
+        self.client = ImageClient(url, self.token)
+        cyclades_url = self.auth_base.get_service_endpoints(
+            'compute')['publicURL']
+        self.cyclades = CycladesClient(cyclades_url, self.token)
         self._imglist = {}
         self._imgdetails = {}
 
@@ -64,12 +68,11 @@ class Image(livetest.Generic):
 
     def _prepare_img(self):
         f = open(self['image', 'local_path'], 'rb')
-        (token, uuid) = (self['token'], self['file', 'account'])
-        if not uuid:
-            from kamaki.clients.astakos import AstakosClient
-            uuid = AstakosClient(self['user', 'url'], token).term('uuid')
+        (token, uuid) = (self.token, self.auth_base.user_term('id'))
+        purl = self.auth_base.get_service_endpoints(
+            'object-store')['publicURL']
         from kamaki.clients.pithos import PithosClient
-        self.pithcli = PithosClient(self['file', 'url'], token, uuid)
+        self.pithcli = PithosClient(purl, token, uuid)
         cont = 'cont_%s' % self.now
         self.pithcli.container = cont
         self.obj = 'obj_%s' % self.now
@@ -86,7 +89,7 @@ class Image(livetest.Generic):
             self.location,
             params=dict(is_public=True))
         self._imglist[self.imgname] = dict(
-            name=r['x-image-meta-name'], id=r['x-image-meta-id'])
+            name=r['name'], id=r['id'])
         self._imgdetails[self.imgname] = r
 
     def tearDown(self):
@@ -108,14 +111,6 @@ class Image(livetest.Generic):
                 return img
         return None
 
-    def assert_dicts_are_deeply_equal(self, d1, d2):
-        for k, v in d1.items():
-            self.assertTrue(k in d2)
-            if isinstance(v, dict):
-                self.assert_dicts_are_deeply_equal(v, d2[k])
-            else:
-                self.assertEqual(unicode(v), unicode(d2[k]))
-
     def test_list_public(self):
         """Test list_public"""
         self._test_list_public()
@@ -136,7 +131,7 @@ class Image(livetest.Generic):
         self.assertTrue(r, r0)
         r0.reverse()
         for i, img in enumerate(r):
-            self.assert_dicts_are_deeply_equal(img, r0[i])
+            self.assert_dicts_are_equal(img, r0[i])
         r1 = self.client.list_public(detail=True)
         for img in r1:
             for term in (
@@ -155,15 +150,10 @@ class Image(livetest.Generic):
                     'properties',
                     'size'):
                 self.assertTrue(term in img)
-                if img['properties']:
-                    for interm in (
-                            'osfamily',
-                            'users',
-                            'os',
-                            'root_partition',
-                            'description'):
+                if len(img['properties']):
+                    for interm in ('osfamily', 'users', 'root_partition'):
                         self.assertTrue(interm in img['properties'])
-        size_max = 1000000000
+        size_max = 1000000000000
         r2 = self.client.list_public(filters=dict(size_max=size_max))
         self.assertTrue(len(r2) <= len(r))
         for img in r2:
@@ -191,13 +181,14 @@ class Image(livetest.Generic):
                 'container-format'):
             self.assertTrue(term in r)
             for interm in (
-                    'kernel',
-                    'osfamily',
-                    'users',
-                    'gui', 'sortorder',
-                    'root-partition',
-                    'os',
-                    'description'):
+                    'KERNEL',
+                    'OSFAMILY',
+                    'USERS',
+                    'GUI',
+                    'SORTORDER',
+                    'ROOT_PARTITION',
+                    'OS',
+                    'DESCRIPTION'):
                 self.assertTrue(interm in r['properties'])
 
     def test_register(self):
@@ -210,8 +201,24 @@ class Image(livetest.Generic):
         for img in self._imglist.values():
             self.assertTrue(img is not None)
             r = set(self._imgdetails[img['name']].keys())
-            self.assertTrue(
-                r.issubset(['x-image-meta-%s' % k for k in IMGMETA]))
+            self.assertTrue(r.issubset(IMGMETA.union(['properties'])))
+
+    def test_unregister(self):
+        """Test unregister"""
+        self._prepare_img()
+        self._test_unregister()
+
+    def _test_unregister(self):
+        try:
+            for img in self._imglist.values():
+                self.client.unregister(img['id'])
+                self._prepare_img()
+                break
+        except ClientError as ce:
+            if ce.status in (405,):
+                print 'IMAGE UNREGISTER is not supported by server: %s' % ce
+            else:
+                raise
 
     def test_set_members(self):
         """Test set_members"""

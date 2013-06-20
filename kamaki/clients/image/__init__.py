@@ -32,7 +32,23 @@
 # or implied, of GRNET S.A.
 
 from kamaki.clients import Client, ClientError
-from kamaki.clients.utils import path4url, filter_in
+from kamaki.clients.utils import path4url
+
+
+def _format_image_headers(headers):
+    reply = dict(properties=dict())
+    meta_prefix = 'x-image-meta-'
+    property_prefix = 'x-image-meta-property-'
+
+    for key, val in headers.items():
+        key = key.lower()
+        if key.startswith(property_prefix):
+            key = key[len(property_prefix):].upper().replace('-', '_')
+            reply['properties'][key] = val
+        elif key.startswith(meta_prefix):
+            key = key[len(meta_prefix):]
+            reply[key] = val
+    return reply
 
 
 class ImageClient(Client):
@@ -80,26 +96,10 @@ class ImageClient(Client):
         path = path4url('images', image_id)
         r = self.head(path, success=200)
 
-        reply = {}
-        properties = {}
-        meta_prefix = 'x-image-meta-'
-        property_prefix = 'x-image-meta-property-'
-
-        for key, val in r.headers.items():
-            key = key.lower()
-            if key.startswith(property_prefix):
-                key = key[len(property_prefix):]
-                properties[key] = val
-            elif key.startswith(meta_prefix):
-                key = key[len(meta_prefix):]
-                reply[key] = val
-
-        if properties:
-            reply['properties'] = properties
-        return reply
+        return _format_image_headers(r.headers)
 
     def register(self, name, location, params={}, properties={}):
-        """Register image put at location
+        """Register an image that is uploaded at location
 
         :param name: (str)
 
@@ -110,7 +110,7 @@ class ImageClient(Client):
 
         :param properties: (dict) image properties (X-Image-Meta-Property)
 
-        :returns: (dict) details of the created image
+        :returns: (dict) metadata of the created image
         """
         path = path4url('images') + '/'
         self.set_header('X-Image-Meta-Name', name)
@@ -127,7 +127,19 @@ class ImageClient(Client):
             async_headers['x-image-meta-property-%s' % key] = val
 
         r = self.post(path, success=200, async_headers=async_headers)
-        return filter_in(r.headers, 'X-Image-')
+
+        return _format_image_headers(r.headers)
+
+    def unregister(self, image_id):
+        """Unregister an image
+
+        :param image_id: (str)
+
+        :returns: (dict) response headers
+        """
+        path = path4url('images', image_id)
+        r = self.delete(path, success=204)
+        return r.headers
 
     def list_members(self, image_id):
         """
@@ -157,7 +169,9 @@ class ImageClient(Client):
         :param member: (str) user to allow access to current user's images
         """
         path = path4url('images', image_id, 'members', member)
-        self.put(path, success=204)
+        self.set_header('Content-Length', len(member))
+        r = self.put(path, success=204)
+        return r.headers
 
     def remove_member(self, image_id, member):
         """
@@ -166,7 +180,8 @@ class ImageClient(Client):
         :param member: (str) user to deprive from current user's images
         """
         path = path4url('images', image_id, 'members', member)
-        self.delete(path, success=204)
+        r = self.delete(path, success=204)
+        return r.headers
 
     def set_members(self, image_id, members):
         """
@@ -176,4 +191,5 @@ class ImageClient(Client):
         """
         path = path4url('images', image_id, 'members')
         req = {'memberships': [{'member_id': member} for member in members]}
-        self.put(path, json=req, success=204)
+        r = self.put(path, json=req, success=204)
+        return r.headers

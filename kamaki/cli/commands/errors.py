@@ -32,17 +32,14 @@
 # or implied, of GRNET S.A.command
 
 from traceback import print_stack, print_exc
-import logging
 
 from kamaki.clients import ClientError
 from kamaki.cli.errors import CLIError, raiseCLIError, CLISyntaxError
 from kamaki.cli import _debug, kloger
 from kamaki.cli.utils import format_size
 
-sendlog = logging.getLogger('clients.send')
-datasendlog = logging.getLogger('data.send')
-recvlog = logging.getLogger('clients.recv')
-datarecvlog = logging.getLogger('data.recv')
+CLOUDNAME = [
+    'Note: If you use a named cloud, use its name instead of "default"']
 
 
 class generic(object):
@@ -56,11 +53,13 @@ class generic(object):
                 if _debug:
                     print_stack()
                     print_exc(e)
-                raiseCLIError(e)
+                if isinstance(e, CLIError) or isinstance(e, ClientError):
+                    raiseCLIError(e)
+                raiseCLIError(e, details=['%s, -d for debug info' % type(e)])
         return _raise
 
     @classmethod
-    def _connection(this, foo, base_url):
+    def _connection(this, foo):
         def _raise(self, *args, **kwargs):
             try:
                 foo(self, *args, **kwargs)
@@ -70,23 +69,25 @@ class generic(object):
                     raiseCLIError(ce, 'Authorization failed', details=[
                         'Make sure a valid token is provided:',
                         '  to check if token is valid: /user authenticate',
-                        '  to set token: /config set [.server.]token <token>',
-                        '  to get current token: /config get [server.]token'])
+                        '  to set token:',
+                        '    /config set cloud.default.token <token>',
+                        '  to get current token:',
+                        '    /config get cloud.default.token'] + CLOUDNAME)
                 elif ce.status in range(-12, 200) + [302, 401, 403, 500]:
                     raiseCLIError(ce, importance=3, details=[
-                        'Check if service is up or set to url %s' % base_url,
-                        '  to get url: /config get %s' % base_url,
-                        '  to set url: /config set %s <URL>' % base_url])
+                        'Check if service is up'])
                 elif ce.status == 404 and 'kamakihttpresponse' in ce_msg:
                     client = getattr(self, 'client', None)
                     if not client:
                         raise
                     url = getattr(client, 'base_url', '<empty>')
-                    msg = 'Invalid service url %s' % url
+                    msg = 'Invalid service URL %s' % url
                     raiseCLIError(ce, msg, details=[
-                        'Please, check if service url is correctly set',
-                        '* to get current url: /config get compute.url',
-                        '* to set url: /config set compute.url <URL>'])
+                        'Check if authentication URL is correct',
+                        '  check current URL:',
+                        '    /config get cloud.default.url',
+                        '  set new authentication URL:',
+                        '    /config set cloud.default.url'] + CLOUDNAME)
                 raise
         return _raise
 
@@ -94,10 +95,10 @@ class generic(object):
 class user(object):
 
     _token_details = [
-        'To check default token: /config get token',
+        'To check default token: /config get cloud.default.token',
         'If set/update a token:',
-        '*  (permanent):    /config set token <token>',
-        '*  (temporary):    re-run with <token> parameter']
+        '*  (permanent):  /config set cloud.default.token <token>',
+        '*  (temporary):  re-run with <token> parameter'] + CLOUDNAME
 
     @classmethod
     def load(this, foo):
@@ -109,13 +110,16 @@ class user(object):
                 raiseCLIError(ae, 'Client setup failure', importance=3)
             if not getattr(client, 'token', False):
                 kloger.warning(
-                    'No permanent token (try: kamaki config set token <tkn>)')
+                    'No permanent token (try:'
+                    ' kamaki config set cloud.default.token <tkn>)')
             if not getattr(client, 'base_url', False):
-                msg = 'Missing astakos server URL'
+                msg = 'Missing synnefo authentication URL'
                 raise CLIError(msg, importance=3, details=[
-                    'Check if user.url is set correctly',
-                    'To get astakos url:   /config get user.url',
-                    'To set astakos url:   /config set user.url <URL>'])
+                    'Check if authentication URL is correct',
+                        '  check current URL:',
+                        '    /config get cloud.default.url',
+                        '  set new auth. URL:',
+                        '    /config set cloud.default.url'] + CLOUDNAME)
             return r
         return _raise
 
@@ -132,6 +136,7 @@ class user(object):
                     ) if token else 'No token provided',
                     details = [] if token else this._token_details
                     raiseCLIError(ce, msg, details=details)
+                raise ce
             self._raise = foo
         return _raise
 
@@ -170,7 +175,7 @@ class cyclades(object):
 
     @classmethod
     def connection(this, foo):
-        return generic._connection(foo, 'compute.url')
+        return generic._connection(foo)
 
     @classmethod
     def date(this, foo):
@@ -366,7 +371,7 @@ class plankton(object):
 
     @classmethod
     def connection(this, foo):
-        return generic._connection(foo, 'image.url')
+        return generic._connection(foo)
 
     @classmethod
     def id(this, foo):
@@ -392,7 +397,7 @@ class plankton(object):
         def _raise(self, *args, **kwargs):
             key = kwargs.get('key', None)
             try:
-                foo(self, *args, **kwargs)
+                return foo(self, *args, **kwargs)
             except ClientError as ce:
                 ce_msg = ('%s' % ce).lower()
                 if ce.status == 404 or (
@@ -406,15 +411,15 @@ class plankton(object):
 class pithos(object):
     container_howto = [
         'To specify a container:',
-        '  1. Set file.container variable (permanent)',
-        '     /config set file.container <container>',
-        '  2. --container=<container> (temporary, overrides 1)',
-        '  3. Use the container:path format (temporary, overrides all)',
+        '  1. --container=<container> (temporary, overrides all)',
+        '  2. Use the container:path format (temporary, overrides 3)',
+        '  3. Set pithos_container variable (permanent)',
+        '     /config set pithos_container <container>',
         'For a list of containers: /file list']
 
     @classmethod
     def connection(this, foo):
-        return generic._connection(foo, 'file.url')
+        return generic._connection(foo)
 
     @classmethod
     def account(this, foo):
@@ -440,10 +445,10 @@ class pithos(object):
                     raiseCLIError(ce, 'User quota exceeded', details=[
                         '* get quotas:',
                         '  * upper total limit:      /file quota',
-                        '  * container limit:  /file quota <container>',
-                        '* set a higher quota (if permitted):',
-                        '    /file setquota <quota>[unit] <container>'
-                        '    as long as <container quota> <= <total quota>'])
+                        '  * container limit:',
+                        '    /file containerlimit get <container>',
+                        '* set a higher container limit:',
+                        '    /file containerlimit set <limit> <container>'])
                 raise
         return _raise
 

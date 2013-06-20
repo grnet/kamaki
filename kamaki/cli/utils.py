@@ -35,18 +35,14 @@ from sys import stdout, stdin
 from re import compile as regex_compile
 from time import sleep
 from os import walk, path
+from json import dumps
 
 from kamaki.cli.errors import raiseCLIError
 
-suggest = dict(
-    ansicolors=dict(
+suggest = dict(ansicolors=dict(
         active=False,
         url='#install-ansicolors-progress',
-        description='Add colors to console responses'),
-    progress=dict(
-        active=False,
-        url='#install-ansicolors-progress',
-        description='Add progress bars to some commands'))
+        description='Add colors to console responses'))
 
 try:
     from colors import magenta, red, yellow, bold
@@ -55,6 +51,8 @@ except ImportError:
     def dummy(val):
         return val
     red = yellow = magenta = bold = dummy
+    #from kamaki.cli import _colors
+    #if _colors.lower() == 'on':
     suggest['ansicolors']['active'] = True
 
 try:
@@ -63,10 +61,16 @@ except ImportError:
     suggest['progress']['active'] = True
 
 
-def suggest_missing(miss=None):
+def suggest_missing(miss=None, exclude=[]):
     global suggest
+    sgs = dict(suggest)
+    for exc in exclude:
+        try:
+            sgs.pop(exc)
+        except KeyError:
+            pass
     kamaki_docs = 'http://www.synnefo.org/docs/kamaki/latest'
-    for k, v in (miss, suggest[miss]) if miss else suggest.items():
+    for k, v in (miss, sgs[miss]) if miss else sgs.items():
         if v['active'] and stdout.isatty():
             print('Suggestion: for better user experience install %s' % k)
             print('\t%s' % v['description'])
@@ -98,6 +102,18 @@ def pretty_keys(d, delim='_', recurcive=False):
             new_val = val
         new_d[new_key] = new_val
     return new_d
+
+
+def print_json(data):
+    """Print a list or dict as json in console
+
+    :param data: json-dumpable data
+    """
+    print(dumps(data, indent=2))
+
+
+def pretty_dict(d, *args, **kwargs):
+    print_dict(pretty_keys(d, *args, **kwargs))
 
 
 def print_dict(
@@ -137,8 +153,9 @@ def print_dict(
             counter += 1
         print_str = '%s%s' % (' ' * (ident - len(print_str)), print_str)
         print_str += key.strip()
+        print_str += ':'
         print_str += ' ' * (margin - len(key.strip()))
-        print_str += ': '
+        #print_str += ':'
         if isinstance(val, dict):
             print(print_str)
             print_dict(
@@ -192,8 +209,9 @@ def print_list(
 
     counter = 1
     prefix = ''
+    item_sep = False
     for item in sorted(l):
-        if item in exclude:
+        if ('%s' % item) in exclude:
             continue
         elif with_enumeration:
             prefix = '%s. ' % counter
@@ -201,6 +219,10 @@ def print_list(
             prefix = '%s%s' % (' ' * (ident - len(prefix)), prefix)
         else:
             prefix = ' ' * ident
+        if item_sep:
+            print '%s. . . . . . .' % prefix
+        else:
+            item_sep = True
         if isinstance(item, dict):
             if with_enumeration:
                 print(prefix)
@@ -476,3 +498,9 @@ def get_path_size(testpath):
             if path.isfile(f):
                 total_size += path.getsize(f)
     return total_size
+
+
+def remove_from_items(list_of_dicts, key_to_remove):
+    for item in list_of_dicts:
+        assert isinstance(item, dict), 'Item %s not a dict' % item
+        item.pop(key_to_remove, None)

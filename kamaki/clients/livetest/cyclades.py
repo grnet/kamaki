@@ -35,13 +35,14 @@ import time
 
 from kamaki.clients import livetest, ClientError
 from kamaki.clients.cyclades import CycladesClient
+from kamaki.clients.astakos import AstakosClient
 
 
 class Cyclades(livetest.Generic):
     """Set up a Cyclades test"""
     def setUp(self):
         print
-        with open(self['image', 'details']) as f:
+        with open(self['cmpimage', 'details']) as f:
             self.img_details = eval(f.read())
         self.img = self.img_details['id']
         with open(self['flavor', 'details']) as f:
@@ -53,13 +54,17 @@ class Cyclades(livetest.Generic):
         self.servname1 = 'serv' + unicode(self.now)
         self.servname2 = self.servname1 + '_v2'
         self.servname1 += '_v1'
-        self.flavorid = 1
+        self.flavorid = self._flavor_details['id']
         #servers have to be created at the begining...
         self.networks = {}
         self.netname1 = 'net' + unicode(self.now)
         self.netname2 = 'net' + unicode(self.now) + '_v2'
 
-        self.client = CycladesClient(self['compute', 'url'], self['token'])
+        self.cloud = 'cloud.%s' % self['testcloud']
+        aurl, self.token = self[self.cloud, 'url'], self[self.cloud, 'token']
+        self.auth_base = AstakosClient(aurl, self.token)
+        curl = self.auth_base.get_service_endpoints('compute')['publicURL']
+        self.client = CycladesClient(curl, self.token)
 
     def tearDown(self):
         """Destoy servers used in testing"""
@@ -77,16 +82,13 @@ class Cyclades(livetest.Generic):
             self.img)
         self.server2 = self._create_server(
             self.servname2,
-            self.flavorid + 2,
+            self.flavorid,
             self.img)
         super(self.__class__, self).test_000()
 
     def _create_server(self, servername, flavorid, imageid, personality=None):
         server = self.client.create_server(
-            servername,
-            flavorid,
-            imageid,
-            personality)
+            servername, flavorid, imageid, personality)
         print('CREATE VM %s (%s)' % (server['id'], server['name']))
         self.servers[servername] = server
         return server
@@ -162,6 +164,7 @@ class Cyclades(livetest.Generic):
 
     def _has_status(self, servid, status):
         r = self.client.get_server_details(servid)
+        #print 'MY STATUS IS ', r['status']
         return r['status'] == status
 
     def _wait_for_status(self, servid, status):
@@ -183,7 +186,7 @@ class Cyclades(livetest.Generic):
         c2 = SilentEvent(
             self._create_server,
             self.servname2,
-            self.flavorid + 2,
+            self.flavorid,
             self.img)
         c3 = SilentEvent(
             self._create_server,
@@ -193,7 +196,7 @@ class Cyclades(livetest.Generic):
         c4 = SilentEvent(
             self._create_server,
             self.servname2,
-            self.flavorid + 2,
+            self.flavorid,
             self.img)
         c5 = SilentEvent(
             self._create_server,
@@ -203,7 +206,7 @@ class Cyclades(livetest.Generic):
         c6 = SilentEvent(
             self._create_server,
             self.servname2,
-            self.flavorid + 2,
+            self.flavorid,
             self.img)
         c7 = SilentEvent(
             self._create_server,
@@ -213,7 +216,7 @@ class Cyclades(livetest.Generic):
         c8 = SilentEvent(
             self._create_server,
             self.servname2,
-            self.flavorid + 2,
+            self.flavorid,
             self.img)
         c1.start()
         c2.start()
@@ -235,8 +238,8 @@ class Cyclades(livetest.Generic):
 
     def _test_0010_create_server(self):
         self.assertEqual(self.server1["name"], self.servname1)
-        self.assertEqual(self.server1["flavorRef"], self.flavorid)
-        self.assertEqual(self.server1["imageRef"], self.img)
+        self.assertEqual(self.server1["flavor"]["id"], self.flavorid)
+        self.assertEqual(self.server1["image"]["id"], self.img)
         self.assertEqual(self.server1["status"], "BUILD")
 
     def test_list_servers(self):
@@ -247,7 +250,7 @@ class Cyclades(livetest.Generic):
             self.img)
         self.server2 = self._create_server(
             self.servname2,
-            self.flavorid + 2,
+            self.flavorid,
             self.img)
         self._test_0020_list_servers()
 
@@ -260,9 +263,9 @@ class Cyclades(livetest.Generic):
         for i in range(len(servers)):
             for field in (
                     'created',
-                    'flavorRef',
+                    'flavor',
                     'hostId',
-                    'imageRef',
+                    'image',
                     'progress',
                     'status',
                     'updated'):
@@ -292,8 +295,8 @@ class Cyclades(livetest.Generic):
     def _test_0040_get_server_details(self):
         r = self.client.get_server_details(self.server1['id'])
         self.assertEqual(r["name"], self.servname1)
-        self.assertEqual(r["flavorRef"], self.flavorid)
-        self.assertEqual(r["imageRef"], self.img)
+        self.assertEqual(r["flavor"]["id"], self.flavorid)
+        self.assertEqual(r["image"]["id"], self.img)
         self.assertEqual(r["status"], "ACTIVE")
 
     def test_update_server_name(self):
@@ -358,7 +361,7 @@ class Cyclades(livetest.Generic):
             'mymeta val')
         self.assertTrue('mymeta' in r1)
         r2 = self.client.get_server_metadata(self.server1['id'], 'mymeta')
-        self.assert_dicts_are_deeply_equal(r1, r2)
+        self.assert_dicts_are_equal(r1, r2)
 
     def test_get_server_metadata(self):
         """Test get server_metadata"""
@@ -369,10 +372,8 @@ class Cyclades(livetest.Generic):
         self._test_0090_get_server_metadata()
 
     def _test_0090_get_server_metadata(self):
-        self.client.create_server_metadata(
-            self.server1['id'],
-            'mymeta_0',
-            'val_0')
+        self.client.update_server_metadata(
+            self.server1['id'], mymeta_0='val_0')
         r = self.client.get_server_metadata(self.server1['id'], 'mymeta_0')
         self.assertEqual(r['mymeta_0'], 'val_0')
 
@@ -385,29 +386,22 @@ class Cyclades(livetest.Generic):
         self._test_0100_update_server_metadata()
 
     def _test_0100_update_server_metadata(self):
-        r1 = self.client.create_server_metadata(
-            self.server1['id'],
-            'mymeta3',
-            'val2')
+        r1 = self.client.update_server_metadata(
+            self.server1['id'], mymeta3='val2')
         self.assertTrue('mymeta3'in r1)
         r2 = self.client.update_server_metadata(
-            self.server1['id'],
-            mymeta3='val3')
+            self.server1['id'], mymeta3='val3')
         self.assertTrue(r2['mymeta3'], 'val3')
 
     def test_delete_server_metadata(self):
         """Test delete_server_metadata"""
         self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
+            self.servname1, self.flavorid, self.img)
         self._test_0110_delete_server_metadata()
 
     def _test_0110_delete_server_metadata(self):
-        r1 = self.client.create_server_metadata(
-            self.server1['id'],
-            'mymeta',
-            'val')
+        r1 = self.client.update_server_metadata(
+            self.server1['id'], mymeta='val')
         self.assertTrue('mymeta' in r1)
         self.client.delete_server_metadata(self.server1['id'], 'mymeta')
         try:
@@ -432,20 +426,20 @@ class Cyclades(livetest.Generic):
 
     def _test_0130_get_flavor_details(self):
         r = self.client.get_flavor_details(self.flavorid)
-        self.assert_dicts_are_deeply_equal(self._flavor_details, r)
+        self.assert_dicts_are_equal(self._flavor_details, r)
 
-    def test_list_images(self):
-        """Test list_images"""
-        self._test_0140_list_images()
+    #def test_list_images(self):
+    #    """Test list_images"""
+    #    self._test_0140_list_images()
 
-    def _test_0140_list_images(self):
-        r = self.client.list_images()
-        self.assertTrue(len(r) > 1)
-        r = self.client.list_images(detail=True)
-        for detailed_img in r:
-            if detailed_img['id'] == self.img:
-                break
-        self.assert_dicts_are_deeply_equal(detailed_img, self.img_details)
+    #def _test_0140_list_images(self):
+    #    r = self.client.list_images()
+    #    self.assertTrue(len(r) > 1)
+    #    r = self.client.list_images(detail=True)
+    #    for detailed_img in r:
+    #        if detailed_img['id'] == self.img:
+    #            break
+    #    self.assert_dicts_are_equal(detailed_img, self.img_details)
 
     def test_get_image_details(self):
         """Test image_details"""
@@ -453,7 +447,7 @@ class Cyclades(livetest.Generic):
 
     def _test_0150_get_image_details(self):
         r = self.client.get_image_details(self.img)
-        self.assert_dicts_are_deeply_equal(r, self.img_details)
+        self.assert_dicts_are_equal(r, self.img_details)
 
     def test_get_image_metadata(self):
         """Test get_image_metadata"""
@@ -461,9 +455,9 @@ class Cyclades(livetest.Generic):
 
     def _test_0160_get_image_metadata(self):
         r = self.client.get_image_metadata(self.img)
-        self.assert_dicts_are_deeply_equal(
-            self.img_details['metadata']['values'], r)
-        for key, val in self.img_details['metadata']['values'].items():
+        self.assert_dicts_are_equal(
+            self.img_details['metadata'], r)
+        for key, val in self.img_details['metadata'].items():
             r = self.client.get_image_metadata(self.img, key)
             self.assertEqual(r[key], val)
 
@@ -503,7 +497,7 @@ class Cyclades(livetest.Generic):
         """Test get_server_console"""
         self.server2 = self._create_server(
             self.servname2,
-            self.flavorid + 2,
+            self.flavorid,
             self.img)
         self._wait_for_status(self.server2['id'], 'BUILD')
         self._test_0190_get_server_console()
@@ -595,7 +589,7 @@ class Cyclades(livetest.Generic):
         chosen.pop('updated')
         net1 = dict(self.network1)
         net1.pop('updated')
-        self.assert_dicts_are_deeply_equal(chosen, net1)
+        self.assert_dicts_are_equal(chosen, net1)
         full_args = dict(
                 cidr='192.168.1.0/24',
                 gateway='192.168.1.1',
@@ -738,7 +732,7 @@ class Cyclades(livetest.Generic):
         r.pop('status')
         r.pop('updated', None)
         r.pop('attachments')
-        self.assert_dicts_are_deeply_equal(net1, r)
+        self.assert_dicts_are_equal(net1, r)
 
     def test_update_network_name(self):
         self.network2 = self._create_network(self.netname2)

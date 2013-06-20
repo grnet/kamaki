@@ -41,6 +41,9 @@ from kamaki.cli.utils import print_dict, split_input
 from kamaki.cli.history import History
 from kamaki.cli.errors import CLIError
 from kamaki.clients import ClientError
+from kamaki.cli.logger import add_file_logger
+
+log = add_file_logger(__name__)
 
 
 def _init_shell(exe_string, parser):
@@ -65,6 +68,8 @@ class Shell(Cmd):
     _context_stack = []
     _prompt_stack = []
     _parser = None
+    auth_base = None
+    cloud = None
 
     undoc_header = 'interactive shell commands:'
 
@@ -156,6 +161,21 @@ class Shell(Cmd):
     def _restore(self, oldcontext):
         self.__dict__ = oldcontext
 
+    @staticmethod
+    def _create_help_method(cmd_name, args, descr, syntax):
+        tmp_args = dict(args)
+        tmp_args.pop('options', None)
+        tmp_args.pop('cloud', None)
+        tmp_args.pop('debug', None)
+        tmp_args.pop('verbose', None)
+        tmp_args.pop('include', None)
+        tmp_args.pop('silent', None)
+        tmp_args.pop('config', None)
+        help_parser = ArgumentParseManager(cmd_name, tmp_args)
+        help_parser.parser.description = descr
+        help_parser.syntax = syntax
+        return help_parser.parser.print_help
+
     def _register_command(self, cmd_path):
         cmd = self.cmd_tree.get_command(cmd_path)
         arguments = self._parser.arguments
@@ -168,14 +188,8 @@ class Shell(Cmd):
             """
             subcmd, cmd_args = cmd.parse_out(split_input(line))
             self._history.add(' '.join([cmd.path.replace('_', ' '), line]))
-            tmp_args = dict(self._parser.arguments)
-            tmp_args.pop('options', None)
-            tmp_args.pop('debug', None)
-            tmp_args.pop('verbose', None)
-            tmp_args.pop('include', None)
-            tmp_args.pop('silent', None)
-            cmd_parser = ArgumentParseManager(cmd.name, dict(tmp_args))
-
+            cmd_parser = ArgumentParseManager(
+                cmd.name, dict(self._parser.arguments))
             cmd_parser.parser.description = subcmd.help
 
             # exec command or change context
@@ -186,16 +200,21 @@ class Shell(Cmd):
                     if subcmd.path == 'history_run':
                         instance = cls(
                             dict(cmd_parser.arguments),
-                            self.cmd_tree)
+                            cmd_tree=self.cmd_tree)
                     else:
-                        instance = cls(dict(cmd_parser.arguments))
+                        instance = cls(
+                            dict(cmd_parser.arguments),
+                            self.auth_base,
+                            self.cloud)
                     cmd_parser.update_arguments(instance.arguments)
-                    instance.arguments.pop('config')
                     cmd_parser.arguments = instance.arguments
                     cmd_parser.syntax = '%s %s' % (
                         subcmd.path.replace('_', ' '), cls.syntax)
+                    help_method = self._create_help_method(
+                        cmd.name, cmd_parser.arguments,
+                        subcmd.help, cmd_parser.syntax)
                     if '-h' in cmd_args or '--help' in cmd_args:
-                        cmd_parser.parser.print_help()
+                        help_method()
                         if ldescr.strip():
                             print('\nDetails:')
                             print('%s' % ldescr)
@@ -208,10 +227,7 @@ class Shell(Cmd):
                             name,
                             arg.default)
 
-                    exec_cmd(
-                        instance,
-                        cmd_parser.unparsed,
-                        cmd_parser.parser.print_help)
+                    exec_cmd(instance, cmd_parser.unparsed, help_method)
                         #[term for term in cmd_parser.unparsed\
                         #    if not term.startswith('-')],
                 except (ClientError, CLIError) as err:
@@ -285,10 +301,12 @@ class Shell(Cmd):
         hdr = tmp_partition[0].strip()
         return '%s commands:' % hdr
 
-    def run(self, parser, path=''):
+    def run(self, auth_base, cloud, parser, path=''):
+        self.auth_base = auth_base
+        self.cloud = cloud
         self._parser = parser
         self._history = History(
-            parser.arguments['config'].get('history', 'file'))
+            parser.arguments['config'].get_global('history_file'))
         if path:
             cmd = self.cmd_tree.get_command(path)
             intro = cmd.path.replace('_', ' ')
