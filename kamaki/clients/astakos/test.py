@@ -34,26 +34,50 @@
 from mock import patch, call
 from unittest import TestCase
 
-from kamaki.clients import astakos
+from kamaki.clients import astakos, ClientError
 
 
 example = dict(
-        name='Simple Name',
-        username='User Full Name',
-        auth_token_expires='1362583796000',
-        auth_token_created='1359991796000',
-        email=['user@example.gr'],
-        id=42,
-        uuid='aus3r-uu1d-f0r-73s71ng-as7ak0s')
+    access=dict(
+        serviceCatalog=[
+            dict(name='service name 1', type='compute', endpoints=[
+                dict(versionId='v1', publicUrl='http://1.1.1.1/v1'),
+                dict(versionId='v2', publicUrl='http://1.1.1.1/v2')]),
+            dict(name='service name 2', type='image', endpoints=[
+                dict(versionId='v2', publicUrl='http://1.1.1.1/v2'),
+                dict(versionId='v2.1', publicUrl='http://1.1.1.1/v2/xtra')])
+            ],
+        user=dict(
+            name='Simple Name',
+            username='User Full Name',
+            auth_token_expires='1362583796000',
+            auth_token_created='1359991796000',
+            email=['user@example.gr'],
+            id=42,
+            uuid='aus3r-uu1d-f0r-73s71ng-as7ak0s')
+        )
+    )
 
 example0 = dict(
-        name='Simple Name 0',
-        username='User Full Name 0',
-        auth_token_expires='1362583796001',
-        auth_token_created='1359991796001',
-        email=['user0@example.gr'],
-        id=32,
-        uuid='an07h2r-us3r-uu1d-f0r-as7ak0s')
+    access=dict(
+        serviceCatalog=[
+            dict(name='service name 1', type='compute', endpoints=[
+                dict(versionId='v1', publicUrl='http://1.1.1.1/v1'),
+                dict(versionId='v2', publicUrl='http://1.1.1.1/v2')]),
+            dict(name='service name 3', type='object-storage', endpoints=[
+                dict(versionId='v2', publicUrl='http://1.1.1.1/v2'),
+                dict(versionId='v2.1', publicUrl='http://1.1.1.1/v2/xtra')])
+            ],
+        user=dict(
+            name='Simple Name 0',
+            username='User Full Name 0',
+            auth_token_expires='1362585796000',
+            auth_token_created='1359931796000',
+            email=['user0@example.gr'],
+            id=42,
+            uuid='aus3r-uu1d-507-73s71ng-as7ak0s')
+        )
+    )
 
 
 class FR(object):
@@ -70,6 +94,14 @@ class AstakosClient(TestCase):
 
     cached = False
 
+    def assert_dicts_are_equal(self, d1, d2):
+        for k, v in d1.items():
+            self.assertTrue(k in d2)
+            if isinstance(v, dict):
+                self.assert_dicts_are_equal(v, d2[k])
+            else:
+                self.assertEqual(unicode(v), unicode(d2[k]))
+
     def setUp(self):
         self.url = 'https://astakos.example.com'
         self.token = 'ast@k0sT0k3n=='
@@ -78,40 +110,68 @@ class AstakosClient(TestCase):
     def tearDown(self):
         FR.json = example
 
-    @patch('%s.get' % astakos_pkg, return_value=FR())
-    def _authenticate(self, get):
+    @patch('%s.post' % astakos_pkg, return_value=FR())
+    def _authenticate(self, post):
         r = self.client.authenticate()
-        self.assertEqual(get.mock_calls[-1], call('/im/authenticate'))
+        send_body = dict(auth=dict(token=dict(id=self.token)))
+        self.assertEqual(post.mock_calls[-1], call('/tokens', json=send_body))
         self.cached = True
         return r
 
     def test_authenticate(self):
         r = self._authenticate()
-        for term, val in example.items():
-            self.assertTrue(term in r)
-            self.assertEqual(val, r[term])
+        self.assert_dicts_are_equal(r, example)
 
-    def test_info(self):
+    def test_get_services(self):
         if not self.cached:
             self._authenticate()
-            return self.test_info()
-        self.assertTrue(set(
-            example.keys()).issubset(self.client.info().keys()))
+        slist = self.client.get_services()
+        self.assertEqual(slist, example['access']['serviceCatalog'])
 
-    def test_get(self):
+    def test_get_service_details(self):
         if not self.cached:
             self._authenticate()
-            return self.test_get()
-        for term, val in example.items():
+        stype = '#FAIL'
+        self.assertRaises(ClientError, self.client.get_service_details, stype)
+        stype = 'compute'
+        expected = [s for s in example['access']['serviceCatalog'] if (
+            s['type'] == stype)]
+        self.assert_dicts_are_equal(
+            self.client.get_service_details(stype), expected[0])
+
+    def test_get_service_endpoints(self):
+        if not self.cached:
+            self._authenticate()
+        stype, version = 'compute', 'V2'
+        self.assertRaises(
+            ClientError, self.client.get_service_endpoints, stype)
+        expected = [s for s in example['access']['serviceCatalog'] if (
+            s['type'] == stype)]
+        expected = [e for e in expected[0]['endpoints'] if (
+            e['versionId'] == version.lower())]
+        self.assert_dicts_are_equal(
+            self.client.get_service_endpoints(stype, version), expected[0])
+
+    def test_user_info(self):
+        if not self.cached:
+            self._authenticate()
+        self.assertTrue(set(example['access']['user'].keys()).issubset(
+            self.client.user_info().keys()))
+
+    def test_item(self):
+        if not self.cached:
+            self._authenticate()
+        for term, val in example['access']['user'].items():
             self.assertEqual(self.client.term(term, self.token), val)
-        self.assertTrue(example['email'][0] in self.client.term('email'))
+        self.assertTrue(
+            example['access']['user']['email'][0] in self.client.term('email'))
 
-    def test_list(self):
+    def test_list_users(self):
         if not self.cached:
             self._authenticate
         FR.json = example0
         self._authenticate()
-        r = self.client.list()
+        r = self.client.list_users()
         self.assertTrue(len(r) == 1)
         self.assertEqual(r[0]['auth_token'], self.token)
 

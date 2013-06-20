@@ -31,10 +31,9 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-import logging
+from kamaki.cli.logger import get_logger
 
-sendlog = logging.getLogger('clients.send')
-recvlog = logging.getLogger('clients.recv')
+log = get_logger('kamaki.cli')
 
 
 class CLIError(Exception):
@@ -54,6 +53,43 @@ class CLIError(Exception):
             self.importance = int(importance)
         except ValueError:
             self.importance = 0
+
+
+class CLIUnimplemented(CLIError):
+    def __init__(
+            self,
+            message='I \'M SORRY, DAVE.\nI \'M AFRAID I CAN\'T DO THAT.',
+            details=[
+                '      _        |',
+                '   _-- --_     |',
+                '  --     --    |',
+                ' --   .   --   |',
+                ' -_       _-   |',
+                '   -_   _-     |',
+                '      -        |'],
+            importance=3):
+        super(CLIUnimplemented, self).__init__(message, details, importance)
+
+
+class CLIBaseUrlError(CLIError):
+    def __init__(self, message='', details=[], importance=2, service=None):
+        message = message or 'No URL for %s' % service.lower()
+        details = details or [
+            'Two options to resolve this:',
+            '(Use the correct cloud name, instead of "default")',
+            'A. (recommended) Let kamaki discover the endpoint URLs for all',
+
+            'services by setting a single Authentication URL and token:',
+            '  /config set cloud.default.url <AUTH_URL>',
+            '  /config set cloud.default.token <t0k3n>',
+            'B. (advanced users) Explicitly set a valid %s endpoint URL' % (
+                service.upper()),
+            'Note: URL option has a higher priority, so delete it to',
+            'make that work',
+            '  /config delete cloud.default.url',
+            '  /config set cloud.%s.url <%s_URL>' % (
+                service, service.upper())]
+        super(CLIBaseUrlError, self).__init__(message, details, importance)
 
 
 class CLISyntaxError(CLIError):
@@ -101,7 +137,7 @@ def raiseCLIError(err, message='', importance=0, details=[]):
     try:
         stack = [e for e in stack if e != stack[1]]
     except KeyError:
-        recvlog.debug('\n   < '.join(stack))
+        log.debug('\n   < '.join(stack))
 
     details = ['%s' % details] if not isinstance(details, list)\
         else list(details)

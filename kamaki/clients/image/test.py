@@ -228,13 +228,20 @@ class ImageClient(TestCase):
             params=params, properties=props)
         expectedict = dict(example_image_headers)
         expectedict.pop('extraheaders')
-        self.assert_dicts_are_equal(expectedict, r)
+        from kamaki.clients.image import _format_image_headers
+        self.assert_dicts_are_equal(_format_image_headers(expectedict), r)
         self.assertEqual(
             post.mock_calls[-1],
             call('/images/', async_headers=async_headers, success=200))
         self.assertEqual(SH.mock_calls[-2:], [
             call('X-Image-Meta-Name', img0_name),
             call('X-Image-Meta-Location', img0_location)])
+
+    @patch('%s.delete' % image_pkg)
+    def test_unregister(self, delete):
+        img_id = 'an1m4g3'
+        self.client.unregister(img_id)
+        delete.assert_called_once_with('/images/%s' % img_id, success=204)
 
     @patch('%s.put' % image_pkg, return_value=FR())
     def test_set_members(self, put):

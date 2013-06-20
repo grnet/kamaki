@@ -34,11 +34,11 @@
 from kamaki.cli.config import Config
 from kamaki.cli.errors import CLISyntaxError, raiseCLIError
 from kamaki.cli.utils import split_input
-from logging import getLogger
+
 from datetime import datetime as dtm
 from time import mktime
 
-
+from logging import getLogger
 from argparse import ArgumentParser, ArgumentError
 from argparse import RawDescriptionHelpFormatter
 
@@ -52,7 +52,7 @@ except ImportError:
     # progress not installed - pls, pip install progress
     pass
 
-kloger = getLogger('kamaki')
+log = getLogger(__name__)
 
 
 class Argument(object):
@@ -167,11 +167,25 @@ class ConfigArgument(Argument):
         return self.value.get(group, term)
 
     def get_groups(self):
-        return self.value.apis()
+        suffix = '_cli'
+        slen = len(suffix)
+        return [term[:-slen] for term in self.value.keys('global') if (
+            term.endswith(suffix))]
+
+    def get_cli_specs(self):
+        suffix = '_cli'
+        slen = len(suffix)
+        return [(k[:-slen], v) for k, v in self.value.items('global') if (
+            k.endswith(suffix))]
+
+    def get_global(self, option):
+        return self.value.get_global(option)
+
+    def get_cloud(self, cloud, option):
+        return self.value.get_cloud(cloud, option)
 
 _config_arg = ConfigArgument(
-    1, 'Path to configuration file',
-    ('-c', '--config'))
+    1, 'Path to configuration file', ('-c', '--config'))
 
 
 class CmdLineConfigArgument(Argument):
@@ -354,7 +368,7 @@ class ProgressBarArgument(FlagArgument):
         try:
             KamakiProgressBar
         except NameError:
-            kloger.debug('WARNING: no progress bar functionality')
+            log.warning('WARNING: no progress bar functionality')
 
     def clone(self):
         """Get a modifiable copy of this bar"""
@@ -395,31 +409,20 @@ class ProgressBarArgument(FlagArgument):
 
 _arguments = dict(
     config=_config_arg,
+    cloud=ValueArgument('Chose a cloud to connect to', ('--cloud')),
     help=Argument(0, 'Show help message', ('-h', '--help')),
     debug=FlagArgument('Include debug output', ('-d', '--debug')),
     include=FlagArgument(
-        'Include raw connection data in the output',
-        ('-i', '--include')),
+        'Include raw connection data in the output', ('-i', '--include')),
     silent=FlagArgument('Do not output anything', ('-s', '--silent')),
     verbose=FlagArgument('More info at response', ('-v', '--verbose')),
     version=VersionArgument('Print current version', ('-V', '--version')),
     options=CmdLineConfigArgument(
-        _config_arg,
-        'Override a config value',
-        ('-o', '--options'))
+        _config_arg, 'Override a config value', ('-o', '--options'))
 )
-"""Initial command line interface arguments"""
 
 
-"""
-Mechanism:
-    init_parser
-    parse_known_args
-    manage top-level user arguments input
-    find user-requested command
-    add command-specific arguments to dict
-    update_arguments
-"""
+#  Initial command line interface arguments
 
 
 class ArgumentParseManager(object):
