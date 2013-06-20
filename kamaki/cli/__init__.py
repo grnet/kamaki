@@ -285,11 +285,12 @@ def _init_session(arguments, is_non_API=False):
             auth_args[term] = ''
         if not auth_args[term]:
             raise CLIError(
-                'No authentication %s provided for cloud "%s"' % (term, cloud),
+                'No authentication %s provided for cloud "%s"' % (
+                    term.upper(), cloud),
                 importance=3, details=[
-                    'Set a %s for cloud %s:' % (term, cloud),
+                    'Set a %s for cloud %s:' % (term.upper(), cloud),
                     '  kamaki config set cloud.%s.%s <%s>' % (
-                        cloud, term, term)])
+                        cloud, term, term.upper())])
 
     from kamaki.clients.astakos import AstakosClient as AuthCachedClient
     try:

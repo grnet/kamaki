@@ -410,11 +410,11 @@ class CycladesClient(TestCase):
     @patch('%s.servers_get' % cyclades_pkg, return_value=FR())
     def test_list_server_nics(self, SG):
         vm_id = vm_recv['server']['id']
-        nics = dict(addresses=[dict(id='nic1'), dict(id='nic2')])
+        nics = dict(attachments=[dict(id='nic1'), dict(id='nic2')])
         FR.json = nics
         r = self.client.list_server_nics(vm_id)
         SG.assert_called_once_with(vm_id, 'ips')
-        expected = nics['addresses']
+        expected = nics['attachments']
         for i in range(len(r)):
             self.assert_dicts_are_equal(r[i], expected[i])
         self.assertEqual(i + 1, len(r))

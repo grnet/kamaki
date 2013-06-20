@@ -33,7 +33,7 @@
 
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.utils import print_dict
+from kamaki.cli.utils import print_dict, remove_from_items
 from kamaki.cli.errors import raiseCLIError, CLISyntaxError, CLIBaseUrlError
 from kamaki.clients.cyclades import CycladesClient, ClientError
 from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
@@ -53,7 +53,7 @@ _commands = [server_cmds, flavor_cmds, network_cmds]
 
 about_authentication = '\nUser Authentication:\
     \n* to check authentication: /user authenticate\
-    \n* to set authentication token: /config set cloud.default.token <token>'
+    \n* to set authentication token: /config set cloud.<cloud>.token <token>'
 
 howto_personality = [
     'Defines a file to be injected to VMs personality.',
@@ -118,6 +118,8 @@ class server_list(_init_cyclades, _optional_json):
     @errors.cyclades.date
     def _run(self):
         servers = self.client.list_servers(self['detail'], self['since'])
+        if not (self['detail'] or self['json_output']):
+            remove_from_items(servers, 'links')
 
         kwargs = dict(with_enumeration=self['enum'])
         if self['more']:
@@ -527,6 +529,8 @@ class flavor_list(_init_cyclades, _optional_json):
     @errors.cyclades.connection
     def _run(self):
         flavors = self.client.list_flavors(self['detail'])
+        if not (self['detail'] or self['json_output']):
+            remove_from_items(flavors, 'links')
         pg_size = 10 if self['more'] and not self['limit'] else self['limit']
         self._print(
             flavors,
@@ -592,6 +596,8 @@ class network_list(_init_cyclades, _optional_json):
     @errors.cyclades.connection
     def _run(self):
         networks = self.client.list_networks(self['detail'])
+        if not (self['detail'] or self['json_output']):
+            remove_from_items(networks, 'links')
         kwargs = dict(with_enumeration=self['enum'])
         if self['more']:
             kwargs['page_size'] = self['limit'] or 10
