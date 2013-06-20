@@ -314,13 +314,13 @@ class ComputeClient(TestCase):
     def test_create_server_metadata(self, SP):
         vm_id = vm_recv['server']['id']
         metadata = dict(m1='v1', m2='v2', m3='v3')
-        FR.json = dict(metadata=vm_recv['server'])
+        FR.json = dict(meta=vm_recv['server'])
         for k, v in metadata.items():
             r = self.client.create_server_metadata(vm_id, k, v)
             self.assert_dicts_are_equal(r, vm_recv['server'])
             self.assertEqual(SP.mock_calls[-1], call(
                 vm_id, 'metadata/%s' % k,
-                json_data=dict(metadata={k: v}), success=201))
+                json_data=dict(meta={k: v}), success=201))
 
     @patch('%s.servers_get' % compute_pkg, return_value=FR())
     def test_get_server_metadata(self, SG):
@@ -328,11 +328,12 @@ class ComputeClient(TestCase):
         metadata = dict(m1='v1', m2='v2', m3='v3')
         FR.json = dict(metadata=metadata)
         r = self.client.get_server_metadata(vm_id)
+        FR.json = dict(meta=metadata)
         SG.assert_called_once_with(vm_id, '/metadata')
         self.assert_dicts_are_equal(r, metadata)
 
         for k, v in metadata.items():
-            FR.json = dict(metadata={k: v})
+            FR.json = dict(meta={k: v})
             r = self.client.get_server_metadata(vm_id, k)
             self.assert_dicts_are_equal(r, {k: v})
             self.assertEqual(
@@ -391,7 +392,7 @@ class ComputeClient(TestCase):
     @patch('%s.images_get' % compute_pkg, return_value=FR())
     def test_get_image_metadata(self, IG):
         for key in ('', '50m3k3y'):
-            FR.json = dict(metadata=img_recv['image']) if (
+            FR.json = dict(meta=img_recv['image']) if (
                 key) else dict(metadata=img_recv['image'])
             r = self.client.get_image_metadata(img_ref, key)
             self.assertEqual(IG.mock_calls[-1], call(
@@ -413,11 +414,11 @@ class ComputeClient(TestCase):
     @patch('%s.images_put' % compute_pkg, return_value=FR())
     def test_create_image_metadata(self, IP):
         (key, val) = ('k1', 'v1')
-        FR.json = dict(metadata=img_recv['image'])
+        FR.json = dict(meta=img_recv['image'])
         r = self.client.create_image_metadata(img_ref, key, val)
         IP.assert_called_once_with(
             img_ref, 'metadata/%s' % key,
-            json_data=dict(metadata={key: val}))
+            json_data=dict(meta={key: val}))
         self.assert_dicts_are_equal(r, img_recv['image'])
 
     @patch('%s.images_post' % compute_pkg, return_value=FR())

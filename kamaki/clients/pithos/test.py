@@ -1422,12 +1422,12 @@ class PithosClient(TestCase):
         GAI.assert_called_once_with()
         self.assertEqual(r[key], account_info[key])
 
-    @patch('%s.get_account_info' % pithos_pkg, return_value=account_info)
-    def test_get_account_versioning(self, GAI):
-        key = 'x-account-policy-versioning'
-        r = self.client.get_account_versioning()
-        GAI.assert_called_once_with()
-        self.assertEqual(r[key], account_info[key])
+    #@patch('%s.get_account_info' % pithos_pkg, return_value=account_info)
+    #def test_get_account_versioning(self, GAI):
+    #    key = 'x-account-policy-versioning'
+    #    r = self.client.get_account_versioning()
+    #    GAI.assert_called_once_with()
+    #    self.assertEqual(r[key], account_info[key])
 
     def test_get_account_meta(self):
         key = 'x-account-meta-'
@@ -1473,19 +1473,17 @@ class PithosClient(TestCase):
         self.client.set_account_meta(metas)
         post.assert_called_once_with(update=True, metadata=metas)
 
-    """
-    @patch('%s.account_post' % pithos_pkg, return_value=FR())
-    def test_set_account_quota(self, post):
-        qu = 1024
-        self.client.set_account_quota(qu)
-        post.assert_called_once_with(update=True, quota=qu)
-    """
+    #@patch('%s.account_post' % pithos_pkg, return_value=FR())
+    #def test_set_account_quota(self, post):
+    #    qu = 1024
+    #    self.client.set_account_quota(qu)
+    #    post.assert_called_once_with(update=True, quota=qu)
 
-    @patch('%s.account_post' % pithos_pkg, return_value=FR())
-    def test_set_account_versioning(self, post):
-        vrs = 'n3wV3r51on1ngTyp3'
-        self.client.set_account_versioning(vrs)
-        post.assert_called_once_with(update=True, versioning=vrs)
+    #@patch('%s.account_post' % pithos_pkg, return_value=FR())
+    #def test_set_account_versioning(self, post):
+    #    vrs = 'n3wV3r51on1ngTyp3'
+    #    self.client.set_account_versioning(vrs)
+    #    post.assert_called_once_with(update=True, versioning=vrs)
 
     @patch('%s.container_delete' % pithos_pkg, return_value=FR())
     def test_del_container(self, delete):
@@ -1601,7 +1599,7 @@ class PithosClient(TestCase):
     def test_publish_object(self, post):
         oinfo = dict(object_info)
         val = 'pubL1c'
-        oinfo['x-object-public'] = val
+        oinfo['x-object-public'] = 'https://www.example.com/' + val
         with patch.object(
                 pithos.PithosClient, 'get_object_info',
                 return_value=oinfo) as GOF:

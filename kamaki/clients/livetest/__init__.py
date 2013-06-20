@@ -135,7 +135,8 @@ class Generic(TestCase):
                 self.assertEqual(v, d2[k])
 
     def assert_dicts_are_deeply_equal(self, d1, d2):
-        (st1, st2) = (set(d1.keys()), set(d2.keys()))
+        st1 = set([unicode(k) for k in d1])
+        st2 = set([unicode(k) for k in d2])
         diff1 = st1.difference(st2)
         diff2 = st2.difference(st1)
         self.assertTrue(

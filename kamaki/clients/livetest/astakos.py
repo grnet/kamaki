@@ -116,10 +116,10 @@ class Astakos(livetest.Generic):
         self._test_0020_get()
 
     def _test_0020_get(self):
-        for term in ('id', 'name', 'roles'):
+        for term in ('id', 'name'):
             self.assertEqual(
                 self.client.term(term, self[self.cloud, 'token']),
-                self['astakos', term] or ([] if term == 'roles' else ''))
+                self['astakos', term] or '')
 
     def test_list_users(self):
         self.client.authenticate()
