@@ -1,3 +1,9 @@
+kamaki (0.9-1) squeeze; urgency=low
+
+  * New upstream version
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Thu, 20 Jun 2013 16:42:20 +0300
+
 kamaki (0.8.6-1) squeeze; urgency=low
 
   * New hotfix version
