@@ -1,78 +1,95 @@
-Hot fix 0.8.6
-
-- Restore kamaki uploads ability to recognise . as a directory
-
-Hot fix 0.8.4 and 0.8.5
-
-- Typo in file-copy/move
-- Fix down/upload where / was user instead of os-specific seperator [#3954]
-- Make sure all url-params are url-encoded [#3956]
-
-Hot fix 0.8.3
-
-Fix bug #3954 by using os-specific seperators in all cases in up/download
-
-Honour if_etag_match and if_not_exist preconditions even when file blocks are
-already uploaded [#3708]
-
-Hot fix 0.8.2
-
-Make kamaki file upload/containerlimit * operations aware that 0 means
-"unlimited" when refering to container limits [#3684]
-
-Hotfix 0.8.1
-
-Fix typo when parsing --config and --property
-
-CHANGELOG for version 0.8
+CHANGELOG for version 0.9
 
 Bug Fixes:
-- Race condition with HTTP request path when threading (#3526, #3527)
-- Fix bug where files with repeated blocks fail to upload (#3555)
-- Fixed non-ascii character issues when managing container or object names and
-    data in pithos+ client (#3256, #3325)
-- Made download cancellation more responsive (#3457)
-- Gracious behavior when deleting a deleted network (#3547)
-- Make OS/Storage list_object compatible to OS/Storage v2 (#3596)
-- Minor typos or oversights (#3403, #3444, #3509)
 
- Changes:
- - Rename some command groups: store --> file, astakos --> user (#3566) but keep
-    backward compatibility (#3647) in config file (#3647)
- - Create a command subgroup for cyclades/compute image commands. Plankton image
-    commands: kamaki image <command>, Cyclades/Compute image commands:
-    kamaki image compute <command> (#3490)
- - Rename 'image public' --> 'image list' (#3566, 3490)
- - Redesign HTTP connection mechanism: use an objpool-provided context manager
-    and simplify the kamaki http management. Merge kamaki.clients.connection
-    to kamaki.clients (#3526, #3527)
-- Modify semantics for kamaki store *quota operations. Rename container quota
-    operations to containerlimit <get|set>. The term quota now refers to the
-    immutable account quota (#3541)
-- Remove quotaholder module from kamaki (#3587)
-- Create network uses a default network type (#3514)
-- Enforce uniformity to runtime arguments: first the short then the long form
-    e.g. -f, --force. Add a short or long format in common runtimes (#3456)
-- Change the names of command group specifications from <command>_cli to <api>.
-    Config files must be updated accordingly (#3566)
-- Require progress
+- Stop shell from destroying the config instance
+- Shell can manage all valid command line arguments [#3716]
+- Restore 2nd level command syntax in shell [#3736]
+- Allow copy of deleted objects by refering to older version [#3737]
+- Add image.add_member missing content-length header
+- Do not unpublish by default in all pithos low level requests [#3780]
+- Unquote http respons headers
+
+Changes:
+
+- Change context: kamaki-image-addproperty --> kamaki-image-compute-property
+- http logger names: clients.recv/send --> kamaki.clients.recv/send
+- Move logger creation and control (except of the actuall logging) to cli
+- These PithosClient methods return the metadata of created object [#3656]:
+    upload_object, upload_object_unchunked, create_object_by_manifestation
+- Cache container info per upload session [#3735]
+- Disallow moving deleted objects by version [#3737]
+    This operation was implemented by accident, due to the symetry between
+    move and copy
+- Rename file/server-meta commands to file/server-metadata
+- Rename image-[add|del]member commands to members-[add|delete]
+- Remove update option from image-register
+- In image-compute split properties to properties-list and properties-get
+- Add optional output to methods[#3756, #3732]:
+    - file:
+    mkdir, touch, create, move, copy, move, append, truncate, overwrite,
+    manifest, upload, delete, purge, unpublish, permissions set/delete, info,
+    metadata set/delete, containerlimit set, versioning set, group set/delete,
+    upload, overwrite
+    - image:
+    unregister, members add/delete/set
+    -image compute:
+    delete, properties delete
+    - server: rename, delete, reboot, start, shutdown, firewall-set
+    - network: rename, delete, connect
+- Add optional json for methods with output [#3732]
+    - file:
+    list, hashmap, permissions-get, info, metadata-get, quota,
+    containerlimit-get, group-list, sharers, versions
+    - server: list, info, create, console, addr, metadata-list/set, stats
+    - image: list, meta, register, shared, list
+    - image compute: list, info, properties-list/get/add/set
+    - flavor: list, info
+    - network: info, list, create
+    - astakos: authenticate
+- Transliterate methods to list-get-set-delete command groups:
+    - file: permissions, versioning, group and metadata
+    - image: members, member
+    - image compute: properties
+    - server: firewall, metadata
+- Add a _format_image_headers method and use it in image_register and get_meta
+    for uniform image meta output [#3797]
+- Rename meta-->metadata and remove values @lib [#3633]
+- Adjust authenticate to new url schema of synnefo>=0.14 [#3832, #3874]
+  as a side effect, some renamings in astakos.AstakosClient:
+   info --> user_info, user --> list_users
+- Modify command spec inits to use multiple clouds and explicit URLs [#3934]
 
 Features:
-- Allow request logging into a file. Let user set the log_file parameter in
-    configuration file to specify where to log. (#3441)
-- Remove token and http data logging let user allow them by setting log_token
-    and log_data configuration options (#3441)
-- Make maximum threads a configuration option (max_threads, #3546)
-- Suggest user to install ansicolors (#3367)
-- Extensive unittests in kamaki.clients, that cover all cases (#3228, #3229)
-- New runtime options in pithos+ client interface (now known as "kamaki file")
-    allow operations between differernt users/accounts (#3230)
-- Intuitive pithos+ client semantics. Affect copy, move, upload (#3310, 3536)
-- Expose connection pool size (all api methods, #3422) and etag-if-match
-    (upload, #3574)
-- Image register returns info on registered image, in success. Affected both
-    the api and the cli (#3512)
-- Add name and owner filtering to image list. Name can also be partially
-    filtered (#3513)
-- Upload the contents of a directory, recursively, check preconditions before
-    uploading (#3536)
+
+- A logger module container a set of basic loging method for kamaki [#3668]
+   set/get_log_filename, add_file/strean_logger, get_logger
+- Implement logger.activate/deactivate for loggers [#3715]
+- Allow global args (e.g. -d for debug, -v for verbosity) to shell. They
+    should be used when invoking the shell. After that they are automatically
+    applied to all commands running in that kamaki shell. [#3716]
+- Implement a plankton-side image unregister [#3728]
+- Implement purging a non-empty container [#3662]
+- Add a -l option to upload, for listing uploaded objects details [#3730]
+- Add option to cache container info for upload_object [#3707]
+- Add enumeration to all listing commands, make it optional [#3739]
+- Add a download_to_string method in pithos client [#3608]
+- Add an upload_from_string method in pithos client [#3608]
+- Add pithos client method create_container [#3756]
+- Store image properties on remote location after image registration [#3769]
+- Add runtime args to image register for forcing or unsettitng property
+    storage [#3769]
+- Expand runtime args of image register for managing metadata and metada file
+    dumps and loads [#3797]
+- Add server-firewall-get command to get a VMs firewall profile
+- Implement an optional astakosclient cli exposed as "astakos", with the
+  following methods:
+    authenticate, uuid, username, quotas, service uuid/username/quotas
+- Add some astakos/keystone kamaki-lib api calls [#3874], used to access
+  astakos-calls cache:
+  get_services, get_service_details, get_service_endpoints
+- Implement --cloud arg to switch between clouds [#3913]
+- Automatically discover service endpoints by following the auth_url config
+  variable If auth_url not set, use <service>.url explicit endpoint instead
+- Apply new config file format (v3), auto-convert old files [#3934]
+

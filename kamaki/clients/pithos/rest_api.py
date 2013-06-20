@@ -513,7 +513,7 @@ class PithosRestClient(StorageClient):
             content_disposition=None,
             manifest=None,
             permissions=None,
-            public=False,
+            public=None,
             metadata=None,
             *args, **kwargs):
         """ Full Pithos+ PUT at object level
@@ -564,8 +564,7 @@ class PithosRestClient(StorageClient):
             { 'read':[user1, group1, user2, ...],
             'write':['user3, group2, group3, ...] }
 
-        :param public: (bool) If true, Object is publicly accessible,
-            if false, not
+        :param public: (bool) If true, Object is published, False, unpublished
 
         :param metadata: (dict) Optional user defined metadata in the form
             {'meta-key-1':'meta-value-1', 'meta-key-2':'meta-value-2', ...}
@@ -602,7 +601,7 @@ class PithosRestClient(StorageClient):
                         perms += ';' if perms else ''
                         perms += '%s=%s' % (perm_type, ','.join(perm_list))
             self.set_header('X-Object-Sharing', perms)
-        self.set_header('X-Object-Public', public)
+        self.set_header('X-Object-Public', public, public is not None)
         if metadata:
             for key, val in metadata.items():
                 self.set_header('X-Object-Meta-' + key, val)
@@ -623,7 +622,7 @@ class PithosRestClient(StorageClient):
             content_disposition=None,
             source_version=None,
             permissions=None,
-            public=False,
+            public=None,
             metadata=None,
             *args, **kwargs):
         """ Full Pithos+ COPY at object level
@@ -660,7 +659,7 @@ class PithosRestClient(StorageClient):
             { 'read':[user1, group1, user2, ...],
             'write':['user3, group2, group3, ...] }
 
-        :param public: (bool) If true, Object is publicly accessible
+        :param public: (bool) If true, Object is published, False, unpublished
 
         :param metadata: (dict) Optional user defined metadata in the form
             {'meta-key-1':'meta-value-1', 'meta-key-2':'meta-value-2', ...}
@@ -692,7 +691,7 @@ class PithosRestClient(StorageClient):
                     perms += ';' if perms else ''
                     perms += '%s=%s' % (perm_type, ','.join(perm_list))
             self.set_header('X-Object-Sharing', perms)
-        self.set_header('X-Object-Public', public)
+        self.set_header('X-Object-Public', public, public is not None)
         if metadata:
             for key, val in metadata.items():
                 self.set_header('X-Object-Meta-' + key, val)
@@ -713,7 +712,7 @@ class PithosRestClient(StorageClient):
             content_encoding=None,
             content_disposition=None,
             permissions={},
-            public=False,
+            public=None,
             metadata={},
             *args, **kwargs):
         """ Full Pithos+ COPY at object level
@@ -750,7 +749,7 @@ class PithosRestClient(StorageClient):
             { 'read':[user1, group1, user2, ...],
             'write':['user3, group2, group3, ...] }
 
-        :param public: (bool) If true, Object is publicly accessible
+        :param public: (bool) If true, Object is published, False, unpublished
 
         :param metadata: (dict) Optional user defined metadata in the form
             {'meta-key-1':'meta-value-1', 'meta-key-2':'meta-value-2', ...}
@@ -779,7 +778,7 @@ class PithosRestClient(StorageClient):
                     perms += ';' if perms else ''
                     perms += '%s=%s' % (perm_type, ','.join(perm_list))
             self.set_header('X-Object-Sharing', perms)
-        self.set_header('X-Object-Public', public)
+        self.set_header('X-Object-Public', public, public is not None)
         if metadata:
             for key, val in metadata.items():
                 self.set_header('X-Object-Meta-' + key, val)
@@ -806,7 +805,7 @@ class PithosRestClient(StorageClient):
             object_bytes=None,
             manifest=None,
             permissions={},
-            public=False,
+            public=None,
             metadata={},
             *args, **kwargs):
         """ Full Pithos+ POST at object level
@@ -854,7 +853,7 @@ class PithosRestClient(StorageClient):
             { 'read':[user1, group1, user2, ...],
             'write':['user3, group2, group3, ...] }
 
-        :param public: (bool) If true, Object is publicly accessible
+        :param public: (bool) If true, Object is published, False, unpublished
 
         :param metadata: (dict) Optional user defined metadata in the form
             {'meta-key-1':'meta-value-1', 'meta-key-2':'meta-value-2', ...}
@@ -892,7 +891,7 @@ class PithosRestClient(StorageClient):
                     perms += ';' if perms else ''
                     perms += '%s=%s' % (perm_type, ','.join(perm_list))
             self.set_header('X-Object-Sharing', perms)
-        self.set_header('X-Object-Public', public)
+        self.set_header('X-Object-Public', public, public is not None)
         for key, val in metadata.items():
             self.set_header('X-Object-Meta-' + key, val)
 

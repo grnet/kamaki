@@ -116,14 +116,17 @@ server commands
 * console   Get a VNC console to access an existing server (VM)
 * create    Create a server (aka Virtual Machine)
 * delete    Delete a server (VM)
-* delmeta   Delete server (VM) metadata
-* firewall  Set the server (VM) firewall profile on VMs public network
+* firewall  Set the server (VM) firewall profile for public networks
+    * set   Set the firewall profile
+    * get   Get the firewall profile
 * info      Detailed information on a Virtual Machine
 * list      List Virtual Machines accessible by user
-* meta      Get a server's metadatum
+* metadata  Manage a server metadata
+    * list      List server metadata
+    * set       Add or update server metadata
+    * delete    Delete a piece of server metadata
 * reboot    Reboot a server (VM)
 * rename    Set/update a server (VM) name
-* setmeta   set server (VM) metadata
 * shutdown  Shutdown an active server (VM)
 * start     Start an existing server (VM)
 * stats     Get server (VM) statistics
@@ -140,27 +143,26 @@ flavor commands
 image commands
 **************
 
-* addmember     Add a member to an image
-* addproperty   Add an OS-related property to an image
-* delete        Delete an image (image file remains intact)
-* delmember     Remove a member from an image
-* delproperty   Delete a property of an image
-* info          Get detailed information on an image
-* members       Get image members
-* meta          Get image metadata
-* properties    Get properties related to OS installation in an image
-* list          List images accessible by user
-* register      (Re)Register an image
-* setmembers    Set the members of an image
-* setproperty   Update an existing property in an image
-* shared        List images shared by a member
-* compute       Compute Image API commands
-    * list          List images
-    * delete        Delete image
-    * info          Get image details
-    * properties    Get image properties
-    * delproperty   Delete an image property
-    * setproperty   Update an image property
+* list           List images accessible by user
+* meta           Get image metadata
+* register       (Re)Register an image
+* unregister     Unregister an image (does not delete the image file)
+* shared         List shared images
+    * compute        Compute Image API commands
+    * list       List images
+    * delete     Delete image
+    * info       Get image details
+    * properties Manage properties related to OS installation in an image
+        * add    Add a property to an image
+        * delete Delete a property from an image
+        * get    Get an image property
+        * list   List all image properties
+        * set    Add / update a set of properties for an image
+* members        Manage members (users who can modify an image)
+    * add        Add a member to an image
+    * delete     Remove a member from an image
+    * list       List members of an image
+    * set        Set the members of an image
 
 
 network commands
@@ -178,41 +180,46 @@ network commands
 file commands
 **************
 
-* append                Append local file to (existing) remote object
-* cat                   Print remote file contents to console
-* copy                  Copy an object from container to (another) container
-* create                Create a container
-* delete                Delete a container [or an object]
-* delgroup              Delete a user group
-* delmeta               Delete metadata from account, container or object
-* delpermissions        Delete all permissions set on object
-* download              Download remote object(s) as local file(s)
-* group                 Get groups and group members
-* hashmap               Get the hash-map of an object
-* info                  Get detailed info for account, containers or objects
-* list                  List containers, object trees or objects in a directory
-* manifest              Create a remote file of uploaded parts by manifestation
-* meta                  Get metadata for account, containers or objects
-* mkdir                 Create a directory
-* move                  Copy an object
-* overwrite             Overwrite part (from start to end) of a remote file
-* permissions           Get read and write permissions of an object
-* publish               Publish the object and print the public url
-* purge                 Delete a container and release related data blocks
-* quota                 Get quota (in KB) for account or container
-* setgroup              Set a user group
-* setmeta               Set a piece of metadata for account, container or object
-* setpermissions        Set permissions for an object
-* containerlimit set    Set new limit for container
-* containerlimit get    Get container limit
-* setversioning         Set versioning mode (auto, none) for account or container
-* sharers               List the accounts that share objects with current user
-* touch                 Create an empty object (file)
-* truncate              Truncate remote file up to a size
-* unpublish             Unpublish an object
-* upload                Upload a file or directory
-* versioning            Get  versioning for account or container
-* versions              Get the list of object versions
+* append         Append local file to remote file
+* cat            Print a file to console
+* copy           Copy an object
+* containerlimit Container size limit commands
+    * set        Set container data limit
+    * get        Get container data limit
+* create         Create a container
+* delete         Delete a container [or an object]
+* download       Download a file or directory
+* group          Manage access groups and group members
+    * delete     Delete a user group
+    * list       List groups and group members
+    * set        Set a user group
+* hashmap        Get the hashmap of an object
+* info           Get information for account [, container [or object]]
+* list           List containers, object trees or objects in a directory
+* manifest       Create a remote file with uploaded parts by manifestation
+* metadata       Metadata are attached on objects (key:value pairs)
+    * delete     Delete metadata with given key
+    * get        Get metadatum
+    * set        Set a piece of metadata
+* mkdir          Create a directory
+* move           Copy an object
+* overwrite      Overwrite part (from start to end) of a remote file
+* permissions    Manage user and group accessibility for objects
+    * delete     Delete all permissions set on object
+    * get        Get read and write permissions of an object
+    * set        Set permissions for an object
+* publish        Publish an object
+* purge          Purge a container
+* quota          Get  quota for account
+* sharers        List the accounts that share objects with default account
+* touch          Create an empty object (file)
+* truncate       Truncate remote file up to a size
+* unpublish      Unpublish an object
+* upload         Upload a file or directory
+* versioning     Manage the versioning scheme of current pithos user account
+    * get        Get  versioning for account or container
+    * set        Set versioning mode (auto, none) for account or container
+    * versions   Get the version list of an object
 
 
 test commands (hidden)

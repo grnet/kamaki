@@ -31,22 +31,31 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+from sys import stdout
+
 from kamaki.cli import command
 from kamaki.cli.argument import FlagArgument
 from kamaki.cli.commands import _command_init, errors
 from kamaki.cli.command_tree import CommandTree
+from kamaki.cli.errors import CLIError, CLISyntaxError
 
 config_cmds = CommandTree('config', 'Kamaki configurations')
 _commands = [config_cmds]
 
 about_options = '\nAbout options:\
     \n. syntax: [group.]option\
-    \n. example: file.account\
+    \n. example: global.log_file\
     \n. special case: <option> is equivalent to global.<option>\
     \n. configuration file syntax:\
     \n.   [group]\
     \n.   option=value\
-    \n.   (more options can be set per group)'
+    \n.   (more options can be set per group)\
+    \n. special case: named clouds.\
+    \n. E.g. for a cloud "demo":\
+    \n.   [cloud "demo"]\
+    \n.   url = <http://single/authentication/url/for/demo/site>\
+    \n.   token = <auth_token_from_demo_site>\
+    \n. which are referenced as cloud.demo.url , cloud.demo.token'
 
 
 @command(config_cmds)
@@ -64,7 +73,12 @@ class config_list(_command_init):
         for section in sorted(self.config.sections()):
             items = self.config.items(section)
             for key, val in sorted(items):
-                print('%s.%s = %s' % (section, key, val))
+                if section in ('cloud',):
+                    prefix = '%s.%s' % (section, key)
+                    for k, v in val.items():
+                        print('%s.%s = %s' % (prefix, k, v))
+                else:
+                    print('%s.%s = %s' % (section, key, val))
 
     def main(self):
         self._run()
@@ -79,9 +93,25 @@ class config_get(_command_init):
     @errors.generic.all
     def _run(self, option):
         section, sep, key = option.rpartition('.')
-        section = section or 'global'
-        value = self.config.get(section, key)
-        if value:
+        if not sep:
+            match = False
+            for k in self.config.keys(key):
+                match = True
+                if option != 'cloud':
+                    stdout.write('%s.%s =' % (option, k))
+                self._run('%s.%s' % (option, k))
+            if match:
+                return
+            section = 'global'
+        prefix = 'cloud.'
+        get, section = (
+            self.config.get_cloud, section[len(prefix):]) if (
+                section.startswith(prefix)) else (self.config.get, section)
+        value = get(section, key)
+        if isinstance(value, dict):
+            for k, v in value.items():
+                print('%s.%s.%s = %s' % (section, key, k, v))
+        elif value:
             print(value)
 
     def main(self, option):
@@ -97,8 +127,19 @@ class config_set(_command_init):
     @errors.generic.all
     def _run(self, option, value):
         section, sep, key = option.rpartition('.')
-        section = section or 'global'
-        self.config.set(section, key, value)
+        prefix = 'cloud.'
+        if section.startswith(prefix):
+            self.config.set_cloud(section[len(prefix):], key, value)
+        elif section in ('cloud',):
+            raise CLISyntaxError(
+                'Invalid syntax for cloud definition', importance=2, details=[
+                    'To define a cloud "%s"' % key,
+                    'set the cloud\'s authentication url and token:',
+                    '  /config set cloud.%s.url <URL>' % key,
+                    '  /config set cloud.%s.token <t0k3n>' % key])
+        else:
+            section = section or 'global'
+            self.config.set(section, key, value)
         self.config.write()
         self.config.reload()
 
@@ -123,7 +164,15 @@ class config_delete(_command_init):
     def _run(self, option):
         section, sep, key = option.rpartition('.')
         section = section or 'global'
-        self.config.remove_option(section, key, self['default'])
+        prefix = 'cloud.'
+        if section.startswith(prefix):
+            cloud = section[len(prefix):]
+            try:
+                self.config.remove_from_cloud(cloud, key)
+            except KeyError:
+                raise CLIError('Field %s does not exist' % option)
+        else:
+            self.config.remove_option(section, key, self['default'])
         self.config.write()
         self.config.reload()
 
