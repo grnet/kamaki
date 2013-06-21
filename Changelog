@@ -22,4 +22,8 @@ Features:
  CycladesClient: get_floating_ip_pools, get_floating_ips,
     alloc/get_delete_floating_ip, dis/assoc_floating_ip_to_server
 - Add Examples to documentation
+- Implement floating IP commands
+    floatingip list/create/delete/info/pools
+    server ip attach/detach
+
 
