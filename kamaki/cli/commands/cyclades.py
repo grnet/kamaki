@@ -50,7 +50,7 @@ flavor_cmds = CommandTree('flavor', 'Cyclades/Compute API flavor commands')
 network_cmds = CommandTree('network', 'Cyclades/Compute API network commands')
 floatingip_cmds = CommandTree(
     'floatingip', 'Cyclades/Compute API floating ip commands')
-_commands = [server_cmds, flavor_cmds, network_cmds]
+_commands = [server_cmds, flavor_cmds, network_cmds, floatingip_cmds]
 
 
 about_authentication = '\nUser Authentication:\
