@@ -50,6 +50,7 @@ class generic(object):
             try:
                 return foo(self, *args, **kwargs)
             except Exception as e:
+                print 'BUH?'
                 if _debug:
                     print_stack()
                     print_exc(e)

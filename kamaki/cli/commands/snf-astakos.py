@@ -40,7 +40,7 @@ from kamaki.cli.commands import (
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.utils import print_dict
 from kamaki.cli.argument import FlagArgument, ValueArgument
-from kamaki.cli.logger import add_file_logger, get_logger, logging
+from kamaki.cli.logger import get_logger
 
 snfastakos_cmds = CommandTree('astakos', 'astakosclient CLI')
 _commands = [snfastakos_cmds]
