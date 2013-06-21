@@ -1,17 +1,20 @@
 Installation
 ============
 
-This guide describes the standard installation process for kamaki, with the aspiration of covering as much cases as possible. Although kamaki was initially targeted to advanced Linux/Unix-like users, it should be quite straightforward to install and have it up and running in most popular platforms.
+This guide describes the standard installation process for kamaki, with the
+aspiration of covering as much cases as possible. Although kamaki was initially
+targeted to Linux/Unix-like users, it is quite straightforward to install and
+have it up and running in all platforms running python 2.6 or 2.7.
 
 
 * Kamaki repository: `http://code.grnet.gr/git/kamaki <http://code.grnet.gr/git/kamaki>`_
 
 * Kamaki at pypi: `http://pypi.python.org/pypi/kamaki <https://pypi.python.org/pypi/kamaki>`_
 
-* Synnefo Linux packages: `http://apt2.dev.grnet.gr <http://apt2.dev.grnet.gr>`_
+* Synnefo Linux packages: `http://apt.dev.grnet.gr <http://apt.dev.grnet.gr>`_
 
-Linux and Unix-like enviroments
--------------------------------
+Linux and Unix-like environments
+--------------------------------
 
 Debian:
 ^^^^^^^
@@ -20,7 +23,9 @@ The following steps describe a command-line approach, but any graphic package ma
 
 * As root, append the following to */etc/apt/sources.list* ::
 
-    deb http://apt2.dev.grnet.gr stable/
+    deb http://apt.dev.grnet.gr wheezy/
+
+.. warning:: Debian Squeeze users may replace "wheezy" with "squeeze"
 
 * Make sure the GPG public key for the Synnefo development team is added:
 
@@ -84,6 +89,32 @@ Install mock (for developers only)
 
     $ sudo apt-get install python-mock=1.0.1
 
+.. hint:: To activate functional tests in kamaki. enable the preconfigured
+    *livetest* command group:
+
+    .. code-block:: console
+
+        $ kamaki config set livetest_cli livetest
+
+
+Install astakosclient (optional)
+""""""""""""""""""""""""""""""""
+
+A seperate project called
+`astakosclient <https://pypi.python.org/pypi/astakosclient>`_ can be used for
+advanced user and service management.
+
+.. code-block:: console
+
+    $ apt-get install python-astakosclient
+
+.. hint:: To activate astakosclient commands in kamaki, enable the
+    preconfigured *astakos* command group:
+
+    .. code-block:: console
+
+        $ kamaki config set astakos_cli astakos
+
 .. _installing-from-pypi-ref:
 
 Installing from pypi
@@ -94,7 +125,7 @@ Requirements
 
 Essential:
 
- * Python 2.6 or better [http://www.python.org]
+ * Python 2.6 or 2.7 [http://www.python.org]
  * Python setuptools [http://pypi.python.org/pypi/setuptools]
 
 Optional:
@@ -104,14 +135,16 @@ Optional:
 Setup a virtual enviroment (optional)
 """""""""""""""""""""""""""""""""""""
 
-With virtualenv users can setup kamaki and synnefo services in a sandbox environment.
+With virtualenv users can setup kamaki and synnefo services in a sandbox
+environment.
 
 .. code-block:: console
 
     $ virtualenv kamaki-env
     $ source kamaki-env/bin/activate
 
-A more detailed example of using virtual env can be found at the `snf-image-creator setup guide <http://www.synnefo.org/docs/snf-image-creator/latest/install.html#python-virtual-environment>`_
+A more detailed example of using virtual env can be found at the 
+`snf-image-creator setup guide <http://www.synnefo.org/docs/snf-image-creator/latest/install.html#python-virtual-environment>`_
 
 Install kamaki
 """"""""""""""
@@ -131,13 +164,14 @@ adds colors to kamaki responses.
 
     $ pip install ansicolors
 
-Install mock
-""""""""""""
+Install mock (developers only)
+""""""""""""""""""""""""""""""
 
-The **mock** package is needed for running the prepared unit-tests in the kamaki.clients
-package. This feature is useful when extendnig / debugging kamaki functionality and is
-aimed to kamaki developers and contributors. Therefore, users can enjoy the full kamaki
-user experience without installing mock.
+The **mock** package is needed for running the prepared unit-tests in the
+kamaki.clients package. This feature is useful when extending / debugging
+kamaki functionality and is aimed to kamaki developers and contributors.
+Therefore, users can enjoy the full kamaki user experience without installing
+mock.
 
 .. code-block:: console
 
@@ -145,15 +179,42 @@ user experience without installing mock.
 
 .. warning:: mock version >= 1.X
 
+.. hint:: To activate functional tests in kamaki. enable the preconfigured
+    *livetest* command group:
+
+    .. code-block:: console
+
+        $ kamaki config set livetest_cli livetest
+
+Install astakosclient
+"""""""""""""""""""""
+
+A seperate project called
+`astakosclient <https://pypi.python.org/pypi/astakosclient>`_ can be used for
+advanced user and service management.
+
+.. code-block:: console
+
+    $ pip install astakosclient
+
+.. hint:: To activate astakosclient commands in kamaki, enable the
+    preconfigured *astakos* command group:
+
+    .. code-block:: console
+
+        $ kamaki config set astakos_cli astakos
+
 Mac OS X
 --------
 
-Kamaki can be installed on Mac OS X systems from source, by following the steps at :ref:`installing-from-pypi-ref`.
+Kamaki can be installed on Mac OS X systems from source, by following the steps
+at :ref:`installing-from-pypi-ref`.
 
 Windows
 -------
 
-Kamaki can be installed on Windows by following the pypi method. Installing the requirements is a bit different than in other systems. 
+Kamaki can be installed on Windows by following the pypi method. Installing the
+requirements is a bit different than in other systems. 
 
 The full process is detailed in the following:
 
@@ -164,48 +225,61 @@ Requirements
 
 * Setuptools (`Official versions and workarounds <http://pypi.python.org/pypi/setuptools>`_)
 
-Users who have already set up python and setuptools (e.g. for another project) may skip python and / or setup tools installation.
+Users who have already set up and wokring python and setuptools (e.g. for
+another project) may skip python and / or setup tools installation.
 
 Install python
 ^^^^^^^^^^^^^^
 
-Download and run the Windows installer from `here <http://www.python.org/getit>`_
+Download and run the Windows installer from
+`here <http://www.python.org/getit>`_
 
-Users should pick the installer that fits their windows version and architecture.
+Users should pick the installer that fits their windows version and machine
+architecture.
 
 Add python to windows path
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The following will allow users to run python and python scripts from command line.
+The following will allow users to run python and python scripts from command
+line.
 
-* Select **System** from the Control Panel, select the **Advanced** tab, the **Environment Variables** button and then find the **PATH** (user or system) and **edit**
+* Select **System** from the Control Panel, select the **Advanced** tab, the
+    **Environment Variables** button and then find the **PATH** (user or
+    system) and **edit**
 
 * Without removing existing values, append the following to PATH::
 
-    C:\Python;C:\Python\Scripts
+    ;C:\Python27;C:\Python27\Scripts
 
 .. note:: Path values are separated by semicolons
 
-.. warning:: C:\\Python should be replaced with the actual python path in the system, e.g. C:\\Python27
+.. warning:: In case of a different version, C:\\Python27 should be replaced
+    with the actual python path in the system
 
 Install setuptools
 ^^^^^^^^^^^^^^^^^^
 
-According to the corresponding `python org page <http://pypi.python.org/pypi/setuptools>`_, the setuptools installer doesn't currently work on 64bit machines.
+According to the corresponding
+`python org page <http://pypi.python.org/pypi/setuptools>`_, the setuptools
+installer doesn't currently work on 64bit machines.
 
-* Users with 32-bit operating systems should download and run the graphic installer
+* Users with 32-bit operating systems should download and run the graphic
+    installer
 
-* Users with 64-bit machines should download the `ez_setup.py <http://peak.telecommunity.com/dist/ez_setup.py>`_ script and install it from a command shell. In the following example, the script was downloaded at C:\\Downloads::
+* Users with 64-bit machines should download the
+    `ez_setup.py <http://peak.telecommunity.com/dist/ez_setup.py>`_ script and
+    install it from a command shell. In the following example, the script was
+    downloaded at C:\\Downloads::
 
-    C:\> cd Downloads
-    C:\Downloads\> python ez_setup.py
-    ...
-    Installation finished
-    C:\Downloads\>
+        C:\> cd Downloads
+        C:\Downloads\> python ez_setup.py
+        ...
+        Installation finished
+        C:\Downloads\>
 
 Install kamaki
 ^^^^^^^^^^^^^^
 
 .. code-block:: console
 
-    $ easy_setup kamaki
+    $ easy_install kamaki

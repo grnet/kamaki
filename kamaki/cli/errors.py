@@ -55,6 +55,42 @@ class CLIError(Exception):
             self.importance = 0
 
 
+class CLIUnimplemented(CLIError):
+    def __init__(
+            self,
+            message='I \'M SORRY, DAVE.\nI \'M AFRAID I CAN\'T DO THAT.',
+            details=[
+                '      _        |',
+                '   _-- --_     |',
+                '  --     --    |',
+                ' --   .   --   |',
+                ' -_       _-   |',
+                '   -_   _-     |',
+                '      -        |'],
+            importance=3):
+        super(CLIUnimplemented, self).__init__(message, details, importance)
+
+
+class CLIBaseUrlError(CLIError):
+    def __init__(self, message='', details=[], importance=2, service=None):
+        message = message or 'No URL for %s' % service.lower()
+        details = details or [
+            'Two options to resolve this:',
+            '(Use the correct cloud name, instead of "default")',
+            'A. (recommended) Let kamaki discover the endpoint URLs for all',
+            'services by setting a single Authentication URL and token:',
+            '  /config set cloud.default.url <AUTH_URL>',
+            '  /config set cloud.default.token <t0k3n>',
+            'B. (advanced users) Explicitly set a valid %s endpoint URL' % (
+                service.upper()),
+            'Note: URL option has a higher priority, so delete it to',
+            'make that work',
+            '  /config delete cloud.default.url',
+            '  /config set cloud.%s.url <%s_URL>' % (
+                service, service.upper())]
+        super(CLIBaseUrlError, self).__init__(message, details, importance)
+
+
 class CLISyntaxError(CLIError):
     def __init__(self, message='Syntax Error', details=[], importance=1):
         super(CLISyntaxError, self).__init__(message, details, importance)

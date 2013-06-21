@@ -48,12 +48,14 @@ class History(object):
         return True
 
     def get(self, match_terms=None, limit=0):
-        f = open(self.filepath, 'r')
-        result = ['%s.  \t%s' % (
-            i + 1, line) for i, line in enumerate(f.readlines())
-            if self._match(line, match_terms)]
-        offset = len(result) - limit if limit and len(result) > limit else 0
-        return result[offset:]
+        print 'HER?', self.filepath
+        with open(self.filepath, 'r') as f:
+            result = ['%s.  \t%s' % (
+                i + 1, line) for i, line in enumerate(f.readlines())
+                if self._match(line, match_terms)]
+            offset = len(result) - limit if (
+                limit and len(result) > limit) else 0
+            return result[offset:]
 
     def add(self, line):
         f = open(self.filepath, 'a+')

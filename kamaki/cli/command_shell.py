@@ -68,6 +68,8 @@ class Shell(Cmd):
     _context_stack = []
     _prompt_stack = []
     _parser = None
+    auth_base = None
+    cloud = None
 
     undoc_header = 'interactive shell commands:'
 
@@ -163,6 +165,7 @@ class Shell(Cmd):
     def _create_help_method(cmd_name, args, descr, syntax):
         tmp_args = dict(args)
         tmp_args.pop('options', None)
+        tmp_args.pop('cloud', None)
         tmp_args.pop('debug', None)
         tmp_args.pop('verbose', None)
         tmp_args.pop('include', None)
@@ -197,11 +200,13 @@ class Shell(Cmd):
                     if subcmd.path == 'history_run':
                         instance = cls(
                             dict(cmd_parser.arguments),
-                            self.cmd_tree)
+                            cmd_tree=self.cmd_tree)
                     else:
-                        instance = cls(dict(cmd_parser.arguments))
+                        instance = cls(
+                            dict(cmd_parser.arguments),
+                            self.auth_base,
+                            self.cloud)
                     cmd_parser.update_arguments(instance.arguments)
-                    #instance.arguments.pop('config')
                     cmd_parser.arguments = instance.arguments
                     cmd_parser.syntax = '%s %s' % (
                         subcmd.path.replace('_', ' '), cls.syntax)
@@ -296,10 +301,12 @@ class Shell(Cmd):
         hdr = tmp_partition[0].strip()
         return '%s commands:' % hdr
 
-    def run(self, parser, path=''):
+    def run(self, auth_base, cloud, parser, path=''):
+        self.auth_base = auth_base
+        self.cloud = cloud
         self._parser = parser
         self._history = History(
-            parser.arguments['config'].get('history', 'file'))
+            parser.arguments['config'].get_global('history_file'))
         if path:
             cmd = self.cmd_tree.get_command(path)
             intro = cmd.path.replace('_', ' ')

@@ -138,6 +138,7 @@ class FakeResp(object):
     HEADERS = dict(k='v', k1='v1', k2='v2')
     reason = 'some reason'
     status = 42
+    status_code = 200
 
     def read(self):
         return self.READ
@@ -271,31 +272,6 @@ class FR(object):
     status_code = 200
 
 
-class FakeConnection(object):
-    """A fake Connection class"""
-
-    headers = dict()
-    params = dict()
-
-    def __init__(self):
-        pass
-
-    def set_header(self, name, value):
-        pass
-
-    def reset_headers(self):
-        self.headers = {}
-
-    def set_param(self, name, value):
-        self.params = {}
-
-    def reset_params(self):
-        pass
-
-    def perform_request(self, *args):
-        return FR()
-
-
 class Client(TestCase):
 
     def assert_dicts_are_equal(self, d1, d2):
@@ -311,14 +287,13 @@ class Client(TestCase):
         from kamaki.clients import ClientError as CE
         self.base_url = 'http://example.com'
         self.token = 's0m370k3n=='
-        self.client = Client(self.base_url, self.token, FakeConnection())
+        self.client = Client(self.base_url, self.token)
         self.CE = CE
 
     def tearDown(self):
         FR.text = None
         FR.status = None
         FR.status_code = 200
-        FakeConnection.headers = dict()
         self.client.token = self.token
 
     def test___init__(self):
@@ -330,7 +305,6 @@ class Client(TestCase):
             '%A, %d-%b-%y %H:%M:%S GMT',
             '%a, %d %b %Y %H:%M:%S GMT']
         self.assertEqual(self.client.DATE_FORMATS, DATE_FORMATS)
-        self.assertTrue(isinstance(self.client.http_client, FakeConnection))
 
     def test__init_thread_limit(self):
         exp = 'Nothing set here'
@@ -394,36 +368,30 @@ class Client(TestCase):
                 self.assertEqual('%s' % ce, '%s %s\n' % (sts_code or '', msg))
                 self.assertEqual(ce.status, sts_code or 0)
 
-    @patch('%s.FakeConnection.set_header' % __name__)
+    @patch('kamaki.clients.Client.set_header')
     def test_set_header(self, SH):
-        num_of_calls = 0
         for name, value, condition in product(
                 ('n4m3', '', None),
                 ('v41u3', None, 42),
                 (True, False, None, 1, '')):
             self.client.set_header(name, value, iff=condition)
-            if value is not None and condition:
-                self.assertEqual(SH.mock_calls[-1], call(name, value))
-                num_of_calls += 1
-            else:
-                self.assertEqual(num_of_calls, len(SH.mock_calls))
+            self.assertEqual(
+                SH.mock_calls[-1], call(name, value, iff=condition))
 
-    @patch('%s.FakeConnection.set_param' % __name__)
+    @patch('kamaki.clients.Client.set_param')
     def test_set_param(self, SP):
-        num_of_calls = 0
         for name, value, condition in product(
                 ('n4m3', '', None),
                 ('v41u3', None, 42),
                 (True, False, None, 1, '')):
             self.client.set_param(name, value, iff=condition)
-            if condition:
-                self.assertEqual(SP.mock_calls[-1], call(name, value))
-                num_of_calls += 1
-            else:
-                self.assertEqual(num_of_calls, len(SP.mock_calls))
+            self.assertEqual(
+                SP.mock_calls[-1], call(name, value, iff=condition))
 
-    @patch('%s.FakeConnection.perform_request' % __name__, return_value=FR())
-    def test_request(self, PR):
+    @patch('kamaki.clients.RequestManager', return_value=FR)
+    @patch('kamaki.clients.ResponseManager', return_value=FakeResp())
+    @patch('kamaki.clients.ResponseManager.__init__')
+    def test_request(self, Requ, RespInit, Resp):
         for args in product(
                 ('get', '', dict(method='get')),
                 ('/some/path', None, ['some', 'path']),
@@ -433,35 +401,18 @@ class Client(TestCase):
                     success=400,
                     json=dict(k2='v2', k1='v1')))):
             method, path, kwargs = args[0], args[1], args[-1]
-            args = args[:-1]
-            if not (isinstance(method, str) and method and isinstance(
-                    path, str) and path):
+            FakeResp.status_code = kwargs.get('success', 200)
+            if not (method and (
+                    isinstance(method, str) or isinstance(
+                        method, unicode)) and (
+                    isinstance(path, str) or isinstance(path, unicode))):
                 self.assertRaises(
-                    AssertionError,
-                    self.client.request,
-                    *args, **kwargs)
-            else:
-                atoken = 'a70k3n_%s' % randint(1, 30)
-                self.client.token = atoken
-                if 'success' in kwargs:
-                    self.assertRaises(
-                        self.CE,
-                        self.client.request,
-                        *args, **kwargs)
-                    FR.status_code = kwargs['success']
-                else:
-                    FR.status_code = 200
-                self.client.request(*args, **kwargs)
-                data = kwargs.get(
-                    'data',
-                    '{"k2": "v2", "k1": "v1"}' if 'json' in kwargs else None)
-                self.assertEqual(self.client.http_client.url, self.base_url)
-                self.assertEqual(self.client.http_client.path, path)
-                self.assertEqual(
-                    PR.mock_calls[-1],
-                    call(method, data, *args[2:]))
-                self.assertEqual(self.client.http_client.headers, dict())
-                self.assertEqual(self.client.http_client.params, dict())
+                    AssertionError, self.client.request, method, path,
+                    **kwargs)
+                continue
+            self.client.request(method, path, **kwargs)
+            self.assertEqual(
+                RespInit.mock_calls[-1], call(FR, connection_retry_limit=0))
 
     @patch('kamaki.clients.Client.request', return_value='lala')
     def _test_foo(self, foo, request):

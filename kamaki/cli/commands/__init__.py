@@ -38,9 +38,28 @@ from kamaki.cli.argument import FlagArgument
 log = get_logger(__name__)
 
 
+def DontRaiseKeyError(foo):
+    def wrap(*args, **kwargs):
+        try:
+            return foo(*args, **kwargs)
+        except KeyError:
+            return None
+    return wrap
+
+
+def addLogSettings(foo):
+    def wrap(self, *args, **kwargs):
+        try:
+            return foo(self, *args, **kwargs)
+        finally:
+            self._set_log_params()
+            self._update_max_threads
+    return wrap
+
+
 class _command_init(object):
 
-    def __init__(self, arguments={}):
+    def __init__(self, arguments={}, auth_base=None, cloud=None):
         if hasattr(self, 'arguments'):
             arguments.update(self.arguments)
         if isinstance(self, _optional_output_cmd):
@@ -52,25 +71,39 @@ class _command_init(object):
             self.config = self['config']
         except KeyError:
             pass
+        self.auth_base = auth_base or getattr(self, 'auth_base', None)
+        self.cloud = cloud or getattr(self, 'cloud', None)
+
+    @DontRaiseKeyError
+    def _custom_url(self, service):
+        return self.config.get_cloud(self.cloud, '%s_url' % service)
+
+    @DontRaiseKeyError
+    def _custom_token(self, service):
+        return self.config.get_cloud(self.cloud, '%s_token' % service)
+
+    @DontRaiseKeyError
+    def _custom_type(self, service):
+        return self.config.get_cloud(self.cloud, '%s_type' % service)
+
+    @DontRaiseKeyError
+    def _custom_version(self, service):
+        return self.config.get_cloud(self.cloud, '%s_version' % service)
 
     def _set_log_params(self):
         try:
             self.client.LOG_TOKEN, self.client.LOG_DATA = (
-                self['config'].get('global', 'log_token') == 'on',
-                self['config'].get('global', 'log_data') == 'on')
+                self['config'].get_global('log_token').lower() == 'on',
+                self['config'].get_global('log_data').lower() == 'on')
         except Exception as e:
-            log.warning('Failed to read custom log settings:'
+            log.debug('Failed to read custom log settings:'
                 '%s\n defaults for token and data logging are off' % e)
 
     def _update_max_threads(self):
-        try:
-            max_threads = int(self['config'].get('global', 'max_threads'))
+        if getattr(self, 'client', None):
+            max_threads = int(self['config'].get_global('max_threads'))
             assert max_threads > 0
             self.client.MAX_THREADS = max_threads
-        except Exception as e:
-            log.warning('Failed to read custom thread settings: '
-                '%s, use default max threads (%s)' % (
-                    e, self.client.MAX_THREADS))
 
     def _safe_progress_bar(self, msg, arg='progress_bar'):
         """Try to get a progress bar, but do not raise errors"""

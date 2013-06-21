@@ -69,13 +69,13 @@ class Pithos(livetest.Generic):
     files = []
 
     def setUp(self):
-        self.client = PithosClient(
-            self['file', 'url'],
-            self['file', 'token'],
-            AstakosClient(
-                self['user', 'url'],
-                self['file', 'token']
-            ).term('uuid'))
+        self.cloud = 'cloud.%s' % self['testcloud']
+        aurl, self.token = self[self.cloud, 'url'], self[self.cloud, 'token']
+        self.auth_base = AstakosClient(aurl, self.token)
+        purl = self.auth_base.get_service_endpoints(
+            'object-store')['publicURL']
+        self.uuid = self.auth_base.user_term('id')
+        self.client = PithosClient(purl, self.token, self.uuid)
 
         self.now = time.mktime(time.gmtime())
         self.now_unformated = datetime.datetime.utcnow()
@@ -167,8 +167,8 @@ class Pithos(livetest.Generic):
         r = self.client.get_account_quota()
         self.assertTrue('x-account-policy-quota' in r)
 
-        r = self.client.get_account_versioning()
-        self.assertTrue('x-account-policy-versioning' in r)
+        #r = self.client.get_account_versioning()
+        #self.assertTrue('x-account-policy-versioning' in r)
 
         """Check if(un)modified_since"""
         for format in self.client.DATE_FORMATS:
@@ -292,7 +292,7 @@ class Pithos(livetest.Generic):
         #print(unicode(r))
         #r = self.client.get_account_quota()
         #self.assertEqual(r['x-account-policy-quota'], newquota)
-        self.client.set_account_versioning('auto')
+        #self.client.set_account_versioning('auto')
 
     def test_container_head(self):
         """Test container_HEAD"""
