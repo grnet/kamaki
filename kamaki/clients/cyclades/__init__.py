@@ -377,7 +377,7 @@ class CycladesClient(CycladesRestClient):
         r = self.floating_ips_delete(fip_id)
         return r.headers
 
-    def assoc_floating_ip_to_server(self, server_id, address):
+    def attach_floating_ip(self, server_id, address):
         """Associate the address ip to server with server_id
 
         :param server_id: (int)
@@ -393,13 +393,13 @@ class CycladesClient(CycladesRestClient):
         :raises AssertionError: if address is emtpy
         """
         server_id = int(server_id)
-        assert address, 'address is needed for assoc_floating_ip_to_server'
+        assert address, 'address is needed for attach_floating_ip'
         r = self.servers_post(
             server_id, 'action',
             json_data=dict(addFloatingIp=dict(address=address)))
         return r.headers
 
-    def disassoc_floating_ip_to_server(self, server_id, address):
+    def detach_floating_ip(self, server_id, address):
         """Disassociate an address ip from the server with server_id
 
         :param server_id: (int)
@@ -415,7 +415,7 @@ class CycladesClient(CycladesRestClient):
         :raises AssertionError: if address is emtpy
         """
         server_id = int(server_id)
-        assert address, 'address is needed for disassoc_floating_ip_to_server'
+        assert address, 'address is needed for detach_floating_ip'
         r = self.servers_post(
             server_id, 'action',
             json_data=dict(removeFloatingIp=dict(address=address)))
