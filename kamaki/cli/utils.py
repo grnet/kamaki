@@ -39,6 +39,10 @@ from json import dumps
 
 from kamaki.cli.errors import raiseCLIError
 
+
+IDENT_TAB = 4
+
+
 suggest = dict(ansicolors=dict(
         active=False,
         url='#install-ansicolors-progress',
@@ -109,7 +113,7 @@ def print_json(data):
 
     :param data: json-dumpable data
     """
-    print(dumps(data, indent=2))
+    print(dumps(data, indent=IDENT_TAB))
 
 
 def pretty_dict(d, *args, **kwargs):
@@ -117,132 +121,99 @@ def pretty_dict(d, *args, **kwargs):
 
 
 def print_dict(
-        d, exclude=(), ident=0,
+        d,
+        exclude=(), indent=0,
         with_enumeration=False, recursive_enumeration=False):
+    """Pretty-print a dictionary object
+    <indent>key: <non iterable item>
+    <indent>key:
+    <indent + IDENT_TAB><pretty-print iterable>
+
+    :param d: (dict)
+
+    :param exclude: (iterable of strings) keys to exclude from printing
+
+    :param indent: (int) initial indentation (recursive)
+
+    :param with_enumeration: (bool) enumerate 1st-level keys
+
+    :param recursive_enumeration: (bool) recursively enumerate iterables (does
+        not enumerate 1st level keys)
+
+    :raises CLIError: if preconditions fail
     """
-    Pretty-print a dictionary object
+    assert isinstance(d, dict), 'print_dict input must be a dict'
+    assert indent >= 0, 'print_dict indent must be >= 0'
 
-    :param d: (dict) the input
-
-    :param excelude: (set or list) keys to exclude from printing
-
-    :param ident: (int) initial indentation (recursive)
-
-    :param with_enumeration: (bool) enumerate each 1st level key if true
-
-    :recursive_enumeration: (bool) recursively enumerate dicts and lists of
-        2nd level or deeper
-
-    :raises CLIError: (TypeError wrapper) non-dict input
-    """
-    if not isinstance(d, dict):
-        raiseCLIError(TypeError('Cannot dict_print a non-dict object'))
-
-    if d:
-        margin = max(len(('%s' % key).strip()) for key in d.keys() if (
-            key not in exclude))
-
-    counter = 1
-    for key, val in sorted(d.items()):
-        key = '%s' % key
-        if key in exclude:
+    for i, (k, v) in enumerate(d.items()):
+        k = ('%s' % k).strip()
+        if k in exclude:
             continue
-        print_str = ''
-        if with_enumeration:
-            print_str = '%s. ' % counter
-            counter += 1
-        print_str = '%s%s' % (' ' * (ident - len(print_str)), print_str)
-        print_str += key.strip()
-        print_str += ':'
-        print_str += ' ' * (margin - len(key.strip()))
-        #print_str += ':'
-        if isinstance(val, dict):
-            print(print_str)
+        print_str = ' ' * indent
+        print_str += '%s.' % (i + 1) if with_enumeration else ''
+        print_str += '%s:' % k
+        if isinstance(v, dict):
+            print print_str
             print_dict(
-                val,
-                exclude=exclude,
-                ident=margin + ident,
-                with_enumeration=recursive_enumeration,
-                recursive_enumeration=recursive_enumeration)
-        elif isinstance(val, list):
-            print(print_str)
+                v, exclude, indent + IDENT_TAB,
+                recursive_enumeration, recursive_enumeration)
+        elif isinstance(v, list) or isinstance(v, tuple):
+            print print_str
             print_list(
-                val,
-                exclude=exclude,
-                ident=margin + ident,
-                with_enumeration=recursive_enumeration,
-                recursive_enumeration=recursive_enumeration)
+                v, exclude, indent + IDENT_TAB,
+                recursive_enumeration, recursive_enumeration)
         else:
-            print print_str + ' ' + ('%s' % val).strip()
+            print '%s %s' % (print_str, v)
 
 
 def print_list(
-        l, exclude=(), ident=0,
+        l,
+        exclude=(), indent=0,
         with_enumeration=False, recursive_enumeration=False):
+    """Pretty-print a list of items
+    <indent>key: <non iterable item>
+    <indent>key:
+    <indent + IDENT_TAB><pretty-print iterable>
+
+    :param l: (list)
+
+    :param exclude: (iterable of strings) items to exclude from printing
+
+    :param indent: (int) initial indentation (recursive)
+
+    :param with_enumeration: (bool) enumerate 1st-level items
+
+    :param recursive_enumeration: (bool) recursively enumerate iterables (does
+        not enumerate 1st level keys)
+
+    :raises CLIError: if preconditions fail
     """
-    Pretty-print a list object
+    assert isinstance(l, list) or isinstance(l, tuple), (
+        'print_list prinbts a list or tuple')
+    assert indent >= 0, 'print_list indent must be >= 0'
 
-    :param l: (list) the input
-
-    :param excelude: (object - anytype) values to exclude from printing
-
-    :param ident: (int) initial indentation (recursive)
-
-    :param with_enumeration: (bool) enumerate each 1st level value if true
-
-    :recursive_enumeration: (bool) recursively enumerate dicts and lists of
-        2nd level or deeper
-
-    :raises CLIError: (TypeError wrapper) non-list input
-    """
-    if not isinstance(l, list):
-        raiseCLIError(TypeError('Cannot list_print a non-list object'))
-
-    if l:
-        try:
-            margin = max(len(('%s' % item).strip()) for item in l if not (
-                isinstance(item, dict) or
-                isinstance(item, list) or
-                item in exclude))
-        except ValueError:
-            margin = (2 + len(('%s' % len(l)))) if enumerate else 1
-
-    counter = 1
-    prefix = ''
-    item_sep = False
-    for item in sorted(l):
-        if ('%s' % item) in exclude:
-            continue
-        elif with_enumeration:
-            prefix = '%s. ' % counter
-            counter += 1
-            prefix = '%s%s' % (' ' * (ident - len(prefix)), prefix)
-        else:
-            prefix = ' ' * ident
-        if item_sep:
-            print '%s. . . . . . .' % prefix
-        else:
-            item_sep = True
+    for i, item in enumerate(l):
+        print_str = ' ' * indent
+        print_str += '%s.' % (i + 1) if with_enumeration else ''
         if isinstance(item, dict):
             if with_enumeration:
-                print(prefix)
+                print print_str
             print_dict(
-                item,
-                exclude=exclude,
-                ident=margin + ident,
-                with_enumeration=recursive_enumeration,
-                recursive_enumeration=recursive_enumeration)
-        elif isinstance(item, list):
+                item, exclude, indent,
+                recursive_enumeration, recursive_enumeration)
+        elif isinstance(item, list) or isinstance(item, tuple):
             if with_enumeration:
-                print(prefix)
+                print print_str
             print_list(
-                item,
-                exclude=exclude,
-                ident=margin + ident,
-                with_enumeration=recursive_enumeration,
-                recursive_enumeration=recursive_enumeration)
+                item, exclude, indent + IDENT_TAB,
+                recursive_enumeration, recursive_enumeration)
         else:
-            print('%s%s' % (prefix, item))
+            item = ('%s' % item).strip()
+            if item in exclude:
+                continue
+            print '%s%s' % (print_str, item)
+        if (i + 1) < len(l):
+            print
 
 
 def page_hold(index, limit, maxlen):
@@ -274,9 +245,13 @@ def print_items(
     Objects of next level don't inherit enumeration (default: off) or titles
 
     :param items: (list) items are lists or dict
+
     :param title: (tuple) keys to use their values as title
+
     :param with_enumeration: (boolean) enumerate items (order id on title)
+
     :param with_redundancy: (boolean) values in title also appear on body
+
     :param page_size: (int) show results in pages of page_size items, enter to
         continue
     """
@@ -299,9 +274,9 @@ def print_items(
                 header = ' '.join('%s' % item.pop(key) for key in title)
             print(bold(header))
         if isinstance(item, dict):
-            print_dict(item, ident=1)
+            print_dict(item, indent=IDENT_TAB)
         elif isinstance(item, list):
-            print_list(item, ident=1)
+            print_list(item, indent=IDENT_TAB)
         else:
             print(' %s' % item)
         page_hold(i + 1, page_size, len(items))
@@ -433,17 +408,17 @@ def split_input(line):
     return terms
 
 
-def ask_user(msg, true_resp=['Y', 'y']):
+def ask_user(msg, true_resp=('y', )):
     """Print msg and read user response
 
     :param true_resp: (tuple of chars)
 
     :returns: (bool) True if reponse in true responses, False otherwise
     """
-    stdout.write('%s (%s or enter for yes):' % (msg, ', '.join(true_resp)))
+    stdout.write('%s [%s/N]: ' % (msg, ', '.join(true_resp)))
     stdout.flush()
     user_response = stdin.readline()
-    return user_response[0] in true_resp + ['\n']
+    return user_response[0].lower() in true_resp
 
 
 def spiner(size=None):

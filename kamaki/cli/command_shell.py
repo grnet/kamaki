@@ -289,7 +289,7 @@ class Shell(Cmd):
                 cmd_args = {}
                 for arg in instance.arguments.values():
                     cmd_args[','.join(arg.parsed_name)] = arg.help
-                print_dict(cmd_args, ident=2)
+                print_dict(cmd_args, indent=2)
                 stdout.write('%s %s' % (self.prompt, line))
             return subcmd.get_subnames()
         self._register_method(complete_method, 'complete_%s' % cmd.name)
