@@ -428,18 +428,18 @@ class Cyclades(livetest.Generic):
         r = self.client.get_flavor_details(self.flavorid)
         self.assert_dicts_are_equal(self._flavor_details, r)
 
-    #def test_list_images(self):
-    #    """Test list_images"""
-    #    self._test_0140_list_images()
+    def test_list_images(self):
+        """Test list_images"""
+        self._test_0140_list_images()
 
-    #def _test_0140_list_images(self):
-    #    r = self.client.list_images()
-    #    self.assertTrue(len(r) > 1)
-    #    r = self.client.list_images(detail=True)
-    #    for detailed_img in r:
-    #        if detailed_img['id'] == self.img:
-    #            break
-    #    self.assert_dicts_are_equal(detailed_img, self.img_details)
+    def _test_0140_list_images(self):
+        r = self.client.list_images()
+        self.assertTrue(len(r) > 1)
+        r = self.client.list_images(detail=True)
+        for detailed_img in r:
+            if detailed_img['id'] == self.img:
+                break
+        self.assert_dicts_are_equal(detailed_img, self.img_details)
 
     def test_get_image_details(self):
         """Test image_details"""
