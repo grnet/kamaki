@@ -87,12 +87,40 @@ class _server_wait(object):
                 currect_status,
                 wait_cb=wait_cb)
         except Exception:
-            self._safe_progress_bar_finish(progress_bar)
             raise
         finally:
             self._safe_progress_bar_finish(progress_bar)
         if new_mode:
             print('Server %s is now in %s mode' % (server_id, new_mode))
+        else:
+            raiseCLIError(None, 'Time out')
+
+
+class _network_wait(object):
+
+    wait_arguments = dict(
+        progress_bar=ProgressBarArgument(
+            'do not show progress bar',
+            ('-N', '--no-progress-bar'),
+            False
+        )
+    )
+
+    def _wait(self, net_id, currect_status):
+        (progress_bar, wait_cb) = self._safe_progress_bar(
+            'Network %s still in %s mode' % (net_id, currect_status))
+
+        try:
+            new_mode = self.client.wait_network(
+                net_id,
+                currect_status,
+                wait_cb=wait_cb)
+        except Exception:
+            raise
+        finally:
+            self._safe_progress_bar_finish(progress_bar)
+        if new_mode:
+            print('Network %s is now in %s mode' % (net_id, new_mode))
         else:
             raiseCLIError(None, 'Time out')
 
@@ -776,6 +804,21 @@ class network_disconnect(_init_cyclades):
         super(self.__class__, self)._run()
         server_id = self._server_id_from_nic(nic_id=nic_id)
         self._run(nic_id=nic_id, server_id=server_id)
+
+
+@command(network_cmds)
+class network_wait(_init_cyclades, _network_wait):
+    """Wait for server to finish [PENDING, ACTIVE, DELETED]"""
+
+    @errors.generic.all
+    @errors.cyclades.connection
+    @errors.cyclades.network_id
+    def _run(self, network_id, currect_status):
+        self._wait(network_id, currect_status)
+
+    def main(self, network_id, currect_status='PENDING'):
+        super(self.__class__, self)._run()
+        self._run(network_id=network_id, currect_status=currect_status)
 
 
 @command(floatingip_cmds)
