@@ -46,9 +46,6 @@ snfastakos_cmds = CommandTree('astakos', 'astakosclient CLI')
 _commands = [snfastakos_cmds]
 
 
-log = get_logger(__name__)
-
-
 class _astakos_init(_command_init):
 
     def __init__(self, arguments=dict(), auth_base=None, cloud=None):
@@ -71,7 +68,8 @@ class _astakos_init(_command_init):
             base_url = self._custom_url('astakos')
         if not base_url:
             raise CLIBaseUrlError(service='astakos')
-        self.client = AstakosClient(base_url, logger=log)
+        self.client = AstakosClient(
+            base_url, logger=get_logger('kamaki.clients'))
 
     def main(self):
         self._run()
