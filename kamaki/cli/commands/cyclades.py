@@ -696,7 +696,7 @@ class network_list(_init_cyclades, _optional_json):
 
 
 @command(network_cmds)
-class network_create(_init_cyclades, _optional_json):
+class network_create(_init_cyclades, _optional_json, _network_wait):
     """Create an (unconnected) network"""
 
     arguments = dict(
@@ -707,19 +707,24 @@ class network_create(_init_cyclades, _optional_json):
             'Valid network types are '
             'CUSTOM, IP_LESS_ROUTED, MAC_FILTERED (default), PHYSICAL_VLAN',
             '--with-type',
-            default='MAC_FILTERED')
+            default='MAC_FILTERED'),
+        wait=FlagArgument('Wait network to build', ('-w', '--wait'))
     )
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.network_max
     def _run(self, name):
-        self._print(self.client.create_network(
+        r = self.client.create_network(
             name,
             cidr=self['cidr'],
             gateway=self['gateway'],
             dhcp=self['dhcp'],
-            type=self['type']), print_dict)
+            type=self['type'])
+        self._print(r, print_dict)
+
+        if self['wait']:
+            self._wait(r['id'], 'PENDING')
 
     def main(self, name):
         super(self.__class__, self)._run()
@@ -743,15 +748,30 @@ class network_rename(_init_cyclades, _optional_output_cmd):
 
 
 @command(network_cmds)
-class network_delete(_init_cyclades, _optional_output_cmd):
+class network_delete(_init_cyclades, _optional_output_cmd, _network_wait):
     """Delete a network"""
+
+    arguments = dict(
+        wait=FlagArgument('Wait network to build', ('-w', '--wait'))
+    )
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.network_id
     @errors.cyclades.network_in_use
     def _run(self, network_id):
-        self._optional_output(self.client.delete_network(int(network_id)))
+        status = 'DELETED'
+        if self['wait']:
+            r = self.client.get_network_details(network_id)
+            status = r['status']
+            if status in ('DELETED', ):
+                return
+
+        r = self.client.delete_network(int(network_id))
+        self._optional_output(r)
+
+        if self['wait']:
+            self._wait(network_id, status)
 
     def main(self, network_id):
         super(self.__class__, self)._run()
