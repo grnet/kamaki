@@ -67,6 +67,36 @@ howto_personality = [
     '  MODEL: permition in octal (e.g. 0777 or o+rwx)']
 
 
+class _server_wait(object):
+
+    wait_arguments = dict(
+        progress_bar=ProgressBarArgument(
+            'do not show progress bar',
+            ('-N', '--no-progress-bar'),
+            False
+        )
+    )
+
+    def _wait(self, server_id, currect_status):
+        (progress_bar, wait_cb) = self._safe_progress_bar(
+            'Server %s still in %s mode' % (server_id, currect_status))
+
+        try:
+            new_mode = self.client.wait_server(
+                server_id,
+                currect_status,
+                wait_cb=wait_cb)
+        except Exception:
+            self._safe_progress_bar_finish(progress_bar)
+            raise
+        finally:
+            self._safe_progress_bar_finish(progress_bar)
+        if new_mode:
+            print('Server %s is now in %s mode' % (server_id, new_mode))
+        else:
+            raiseCLIError(None, 'Time out')
+
+
 class _init_cyclades(_command_init):
     @errors.generic.all
     @addLogSettings
@@ -191,7 +221,7 @@ class PersonalityArgument(KeyValueArgument):
 
 
 @command(server_cmds)
-class server_create(_init_cyclades, _optional_json):
+class server_create(_init_cyclades, _optional_json, _server_wait):
     """Create a server (aka Virtual Machine)
     Parameters:
     - name: (single quoted text)
@@ -201,7 +231,8 @@ class server_create(_init_cyclades, _optional_json):
 
     arguments = dict(
         personality=PersonalityArgument(
-            (80 * ' ').join(howto_personality), ('-p', '--personality'))
+            (80 * ' ').join(howto_personality), ('-p', '--personality')),
+        wait=FlagArgument('Wait server to build', ('-w', '--wait'))
     )
 
     @errors.generic.all
@@ -209,10 +240,11 @@ class server_create(_init_cyclades, _optional_json):
     @errors.plankton.id
     @errors.cyclades.flavor_id
     def _run(self, name, flavor_id, image_id):
-        self._print(
-            self.client.create_server(
-                name, int(flavor_id), image_id, self['personality']),
-            print_dict)
+        r = self.client.create_server(
+            name, int(flavor_id), image_id, self['personality'])
+        self._print(r, print_dict)
+        if self['wait']:
+            self._wait(r['id'], r['status'])
 
     def main(self, name, flavor_id, image_id):
         super(self.__class__, self)._run()
@@ -238,34 +270,27 @@ class server_rename(_init_cyclades, _optional_output_cmd):
 
 
 @command(server_cmds)
-class server_delete(_init_cyclades, _optional_output_cmd):
+class server_delete(_init_cyclades, _optional_output_cmd, _server_wait):
     """Delete a server (VM)"""
 
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.server_id
-    def _run(self, server_id):
-            self._optional_output(self.client.delete_server(int(server_id)))
-
-    def main(self, server_id):
-        super(self.__class__, self)._run()
-        self._run(server_id=server_id)
-
-
-@command(server_cmds)
-class server_reboot(_init_cyclades, _optional_output_cmd):
-    """Reboot a server (VM)"""
-
     arguments = dict(
-        hard=FlagArgument('perform a hard reboot', ('-f', '--force'))
+        wait=FlagArgument('Wait server to be destroyed', ('-w', '--wait'))
     )
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.server_id
     def _run(self, server_id):
-        self._optional_output(
-            self.client.reboot_server(int(server_id), self['hard']))
+            status = 'DELETED'
+            if self['wait']:
+                details = self.client.get_server_details(server_id)
+                status = details['status']
+
+            r = self.client.delete_server(int(server_id))
+            self._optional_output(r)
+
+            if self['wait']:
+                self._wait(server_id, status)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -273,14 +298,53 @@ class server_reboot(_init_cyclades, _optional_output_cmd):
 
 
 @command(server_cmds)
-class server_start(_init_cyclades, _optional_output_cmd):
+class server_reboot(_init_cyclades, _optional_output_cmd, _server_wait):
+    """Reboot a server (VM)"""
+
+    arguments = dict(
+        hard=FlagArgument('perform a hard reboot', ('-f', '--force')),
+        wait=FlagArgument('Wait server to be destroyed', ('-w', '--wait'))
+    )
+
+    @errors.generic.all
+    @errors.cyclades.connection
+    @errors.cyclades.server_id
+    def _run(self, server_id):
+        r = self.client.reboot_server(int(server_id), self['hard'])
+        self._optional_output(r)
+
+        if self['wait']:
+            self._wait(server_id, 'REBOOT')
+
+    def main(self, server_id):
+        super(self.__class__, self)._run()
+        self._run(server_id=server_id)
+
+
+@command(server_cmds)
+class server_start(_init_cyclades, _optional_output_cmd, _server_wait):
     """Start an existing server (VM)"""
 
+    arguments = dict(
+        wait=FlagArgument('Wait server to be destroyed', ('-w', '--wait'))
+    )
+
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.server_id
     def _run(self, server_id):
-        self._optional_output(self.client.start_server(int(server_id)))
+        status = 'ACTIVE'
+        if self['wait']:
+            details = self.client.get_server_details(server_id)
+            status = details['status']
+            if status in ('ACTIVE', ):
+                return
+
+        r = self.client.start_server(int(server_id))
+        self._optional_output(r)
+
+        if self['wait']:
+            self._wait(server_id, status)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -288,14 +352,29 @@ class server_start(_init_cyclades, _optional_output_cmd):
 
 
 @command(server_cmds)
-class server_shutdown(_init_cyclades, _optional_output_cmd):
+class server_shutdown(_init_cyclades, _optional_output_cmd, _server_wait):
     """Shutdown an active server (VM)"""
+
+    arguments = dict(
+        wait=FlagArgument('Wait server to be destroyed', ('-w', '--wait'))
+    )
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.server_id
     def _run(self, server_id):
-        self._optional_output(self.client.shutdown_server(int(server_id)))
+        status = 'STOPPED'
+        if self['wait']:
+            details = self.client.get_server_details(server_id)
+            status = details['status']
+            if status in ('STOPPED', ):
+                return
+
+        r = self.client.shutdown_server(int(server_id))
+        self._optional_output(r)
+
+        if self['wait']:
+            self._wait(server_id, status)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -476,38 +555,14 @@ class server_stats(_init_cyclades, _optional_json):
 
 
 @command(server_cmds)
-class server_wait(_init_cyclades):
+class server_wait(_init_cyclades, _server_wait):
     """Wait for server to finish [BUILD, STOPPED, REBOOT, ACTIVE]"""
-
-    arguments = dict(
-        progress_bar=ProgressBarArgument(
-            'do not show progress bar',
-            ('-N', '--no-progress-bar'),
-            False
-        )
-    )
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.server_id
     def _run(self, server_id, currect_status):
-        (progress_bar, wait_cb) = self._safe_progress_bar(
-            'Server %s still in %s mode' % (server_id, currect_status))
-
-        try:
-            new_mode = self.client.wait_server(
-                server_id,
-                currect_status,
-                wait_cb=wait_cb)
-        except Exception:
-            self._safe_progress_bar_finish(progress_bar)
-            raise
-        finally:
-            self._safe_progress_bar_finish(progress_bar)
-        if new_mode:
-            print('Server %s is now in %s mode' % (server_id, new_mode))
-        else:
-            raiseCLIError(None, 'Time out')
+        self._wait(server_id, currect_status)
 
     def main(self, server_id, currect_status='BUILD'):
         super(self.__class__, self)._run()
