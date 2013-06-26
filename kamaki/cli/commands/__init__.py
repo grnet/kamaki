@@ -66,6 +66,10 @@ class _command_init(object):
             arguments.update(self.oo_arguments)
         if isinstance(self, _optional_json):
             arguments.update(self.oj_arguments)
+        try:
+            arguments.update(self.wait_arguments)
+        except AttributeError:
+            pass
         self.arguments = dict(arguments)
         try:
             self.config = self['config']

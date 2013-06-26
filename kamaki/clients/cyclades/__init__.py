@@ -257,13 +257,61 @@ class CycladesClient(CycladesRestClient):
             req = dict(remove=dict(attachment=nic))
             self.networks_post(netid, 'action', json_data=req)
 
+    def _wait(
+            self, item_id, current_status, get_status,
+            delay=1, max_wait=100, wait_cb=None):
+        """Wait for item while its status is current_status
+
+        :param server_id: integer (str or int)
+
+        :param current_status: (str)
+
+        :param get_status: (method(self, item_id)) if called, returns
+            (status, progress %) If no way to tell progress, return None
+
+        :param delay: time interval between retries
+
+        :param wait_cb: if set a progress bar is used to show progress
+
+        :returns: (str) the new mode if successful, (bool) False if timed out
+        """
+        status, progress = get_status(self, item_id)
+        if status != current_status:
+            return status
+        old_wait = total_wait = 0
+
+        if wait_cb:
+            wait_gen = wait_cb(1 + max_wait // delay)
+            wait_gen.next()
+
+        while status == current_status and total_wait <= max_wait:
+            if wait_cb:
+                try:
+                    for i in range(total_wait - old_wait):
+                        wait_gen.next()
+                except Exception:
+                    break
+            else:
+                stdout.write('.')
+                stdout.flush()
+            old_wait = total_wait
+            total_wait = progress or (total_wait + 1)
+            sleep(delay)
+            status, progress = get_status(self, item_id)
+
+        if total_wait < max_wait:
+            if wait_cb:
+                try:
+                    for i in range(max_wait):
+                        wait_gen.next()
+                except:
+                    pass
+        return status if status != current_status else False
+
     def wait_server(
-            self,
-            server_id,
+            self, server_id,
             current_status='BUILD',
-            delay=0.5,
-            max_wait=128,
-            wait_cb=None):
+            delay=1, max_wait=100, wait_cb=None):
         """Wait for server while its status is current_status
 
         :param server_id: integer (str or int)
@@ -276,47 +324,37 @@ class CycladesClient(CycladesRestClient):
 
         :returns: (str) the new mode if succesfull, (bool) False if timed out
         """
-        r = self.get_server_details(server_id)
-        if r['status'] != current_status:
-            return r['status']
-        old_wait = total_wait = 0
 
-        if current_status == 'BUILD':
-            max_wait = 100
-            wait_gen = wait_cb(max_wait) if wait_cb else None
-        elif wait_cb:
-            wait_gen = wait_cb(1 + max_wait // delay)
-            wait_gen.next()
-
-        while r['status'] == current_status and total_wait <= max_wait:
-            if current_status == 'BUILD':
-                total_wait = int(r['progress'])
-                if wait_cb:
-                    for i in range(int(old_wait), int(total_wait)):
-                        wait_gen.next()
-                    old_wait = total_wait
-                else:
-                    stdout.write('.')
-                    stdout.flush()
-            else:
-                if wait_cb:
-                    wait_gen.next()
-                else:
-                    stdout.write('.')
-                    stdout.flush()
-                total_wait += delay
-            sleep(delay)
+        def get_status(self, server_id):
             r = self.get_server_details(server_id)
+            return r['status'], (r.get('progress', None) if (
+                            current_status in ('BUILD', )) else None)
 
-        if r['status'] != current_status:
-            if wait_cb:
-                try:
-                    while True:
-                        wait_gen.next()
-                except:
-                    pass
-            return r['status']
-        return False
+        return self._wait(
+            server_id, current_status, get_status, delay, max_wait, wait_cb)
+
+    def wait_network(
+            self, net_id,
+            current_status='LALA', delay=1, max_wait=100, wait_cb=None):
+        """Wait for network while its status is current_status
+
+        :param net_id: integer (str or int)
+
+        :param current_status: (str) PENDING | ACTIVE | DELETED
+
+        :param delay: time interval between retries
+
+        :param wait_cb: if set a progressbar is used to show progress
+
+        :returns: (str) the new mode if succesfull, (bool) False if timed out
+        """
+
+        def get_status(self, net_id):
+            r = self.get_network_details(net_id)
+            return r['status'], None
+
+        return self._wait(
+            net_id, current_status, get_status, delay, max_wait, wait_cb)
 
     def get_floating_ip_pools(self):
         """
