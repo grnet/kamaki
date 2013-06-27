@@ -32,6 +32,7 @@
 # or implied, of GRNET S.A.command
 
 from kamaki.cli import command
+from kamaki.cli.argument import ValueArgument
 from kamaki.clients.astakos import AstakosClient
 from kamaki.cli.commands import (
     _command_init, errors, _optional_json, addLogSettings)
@@ -106,6 +107,23 @@ class user_list(_user_init, _optional_json):
     @errors.generic.all
     def _run(self, custom_token=None):
         self._print(self.client.list_users())
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
+
+
+@command(user_cmds)
+class user_info(_user_init, _optional_json):
+    """Get info for current or selected user"""
+
+    arguments = dict(
+        token=ValueArgument('Use this  instead of current token', ('--token'))
+    )
+
+    @errors.generic.all
+    def _run(self):
+        self._print(self.client.user_info(self['token']), print_dict)
 
     def main(self):
         super(self.__class__, self)._run()
