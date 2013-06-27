@@ -210,7 +210,7 @@ class Pithos(livetest.Generic):
         r = self.client.account_get(show_only_shared=True)
         self.assertTrue(self.c1 in [c['name'] for c in r.json])
 
-        r = self.client.account_get(until=1342609206)
+        r = self.client.account_get(until=1342609206.0)
         self.assertTrue(len(r.json) <= fullLen)
 
         """Check if(un)modified_since"""
