@@ -39,7 +39,7 @@ from inspect import getargspec
 from kamaki.cli.argument import ArgumentParseManager
 from kamaki.cli.history import History
 from kamaki.cli.utils import print_dict, red, magenta, yellow
-from kamaki.cli.errors import CLIError
+from kamaki.cli.errors import CLIError, CLICmdSpecError
 from kamaki.cli import logger
 
 _help = False
@@ -146,9 +146,13 @@ def command(cmd_tree, prefix='', descedants_depth=1):
                 kloger.warning('%s failed max_len test' % cls_name)
             return None
 
-        (
-            cls.description, sep, cls.long_description
-        ) = cls.__doc__.partition('\n')
+        try:
+            (
+                cls.description, sep, cls.long_description
+            ) = cls.__doc__.partition('\n')
+        except AttributeError:
+            raise CLICmdSpecError(
+                'No commend in %s (acts as cmd description)' % cls.__name__)
         _construct_command_syntax(cls)
 
         cmd_tree.add_command(cls_name, cls.description, cls)

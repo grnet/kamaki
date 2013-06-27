@@ -1,4 +1,4 @@
-# Copyright 2012 GRNET S.A. All rights reserved.
+# Copyright 2012-2013 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -117,6 +117,8 @@ class AstakosClient(Client):
 
     def list_users(self):
         """list cached users information"""
+        if not self._cache:
+            self.authenticate()
         r = []
         for k, v in self._cache.items():
             r.append(dict(v['access']['user']))

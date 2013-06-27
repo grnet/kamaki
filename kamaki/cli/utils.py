@@ -1,4 +1,4 @@
-# Copyright 2011 GRNET S.A. All rights reserved.
+# Copyright 2011-2013 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -40,7 +40,7 @@ from json import dumps
 from kamaki.cli.errors import raiseCLIError
 
 
-IDENT_TAB = 4
+INDENT_TAB = 4
 
 
 suggest = dict(ansicolors=dict(
@@ -113,7 +113,7 @@ def print_json(data):
 
     :param data: json-dumpable data
     """
-    print(dumps(data, indent=IDENT_TAB))
+    print(dumps(data, indent=INDENT_TAB))
 
 
 def pretty_dict(d, *args, **kwargs):
@@ -127,7 +127,7 @@ def print_dict(
     """Pretty-print a dictionary object
     <indent>key: <non iterable item>
     <indent>key:
-    <indent + IDENT_TAB><pretty-print iterable>
+    <indent + INDENT_TAB><pretty-print iterable>
 
     :param d: (dict)
 
@@ -155,12 +155,12 @@ def print_dict(
         if isinstance(v, dict):
             print print_str
             print_dict(
-                v, exclude, indent + IDENT_TAB,
+                v, exclude, indent + INDENT_TAB,
                 recursive_enumeration, recursive_enumeration)
         elif isinstance(v, list) or isinstance(v, tuple):
             print print_str
             print_list(
-                v, exclude, indent + IDENT_TAB,
+                v, exclude, indent + INDENT_TAB,
                 recursive_enumeration, recursive_enumeration)
         else:
             print '%s %s' % (print_str, v)
@@ -173,7 +173,7 @@ def print_list(
     """Pretty-print a list of items
     <indent>key: <non iterable item>
     <indent>key:
-    <indent + IDENT_TAB><pretty-print iterable>
+    <indent + INDENT_TAB><pretty-print iterable>
 
     :param l: (list)
 
@@ -192,28 +192,33 @@ def print_list(
         'print_list prinbts a list or tuple')
     assert indent >= 0, 'print_list indent must be >= 0'
 
+    counter = 0
     for i, item in enumerate(l):
         print_str = ' ' * indent
         print_str += '%s.' % (i + 1) if with_enumeration else ''
         if isinstance(item, dict):
             if with_enumeration:
                 print print_str
+            elif counter and counter < len(l):
+                print
             print_dict(
-                item, exclude, indent,
+                item, exclude,
+                indent + (INDENT_TAB if with_enumeration else 0),
                 recursive_enumeration, recursive_enumeration)
         elif isinstance(item, list) or isinstance(item, tuple):
             if with_enumeration:
                 print print_str
+            elif counter and counter < len(l):
+                print
             print_list(
-                item, exclude, indent + IDENT_TAB,
+                item, exclude, indent + INDENT_TAB,
                 recursive_enumeration, recursive_enumeration)
         else:
             item = ('%s' % item).strip()
             if item in exclude:
                 continue
             print '%s%s' % (print_str, item)
-        if (i + 1) < len(l):
-            print
+        counter += 1
 
 
 def page_hold(index, limit, maxlen):
@@ -257,6 +262,12 @@ def print_items(
     """
     if not items:
         return
+    elif not (
+            isinstance(items, dict) or isinstance(
+                items, list) or isinstance(items, dict)):
+        print '%s' % items
+        return
+
     try:
         page_size = int(page_size) if int(page_size) > 0 else len(items)
     except:
@@ -274,9 +285,9 @@ def print_items(
                 header = ' '.join('%s' % item.pop(key) for key in title)
             print(bold(header))
         if isinstance(item, dict):
-            print_dict(item, indent=IDENT_TAB)
+            print_dict(item, indent=INDENT_TAB)
         elif isinstance(item, list):
-            print_list(item, indent=IDENT_TAB)
+            print_list(item, indent=INDENT_TAB)
         else:
             print(' %s' % item)
         page_hold(i + 1, page_size, len(items))

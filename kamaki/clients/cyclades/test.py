@@ -545,7 +545,7 @@ class CycladesClient(TestCase):
         self.assertEqual(delete.mock_calls[-1], call(fip))
 
     @patch('%s.servers_post' % cyclades_pkg, return_value=FR())
-    def test_assoc_floating_ip_to_server(self, spost):
+    def test_attach_floating_ip(self, spost):
         vmid, addr = 42, 'anIpAddress'
         for err, args in {
                 ValueError: ['not a server id', addr],
@@ -553,15 +553,15 @@ class CycladesClient(TestCase):
                 AssertionError: [vmid, None],
                 AssertionError: [vmid, '']}.items():
             self.assertRaises(
-                err, self.client.assoc_floating_ip_to_server, *args)
-        r = self.client.assoc_floating_ip_to_server(vmid, addr)
+                err, self.client.attach_floating_ip, *args)
+        r = self.client.attach_floating_ip(vmid, addr)
         self.assert_dicts_are_equal(r, FR.headers)
         expected = dict(addFloatingIp=dict(address=addr))
         self.assertEqual(
             spost.mock_calls[-1], call(vmid, 'action', json_data=expected))
 
     @patch('%s.servers_post' % cyclades_pkg, return_value=FR())
-    def test_disassoc_floating_ip_to_server(self, spost):
+    def test_detach_floating_ip(self, spost):
         vmid, addr = 42, 'anIpAddress'
         for err, args in {
                 ValueError: ['not a server id', addr],
@@ -569,8 +569,8 @@ class CycladesClient(TestCase):
                 AssertionError: [vmid, None],
                 AssertionError: [vmid, '']}.items():
             self.assertRaises(
-                err, self.client.disassoc_floating_ip_to_server, *args)
-        r = self.client.disassoc_floating_ip_to_server(vmid, addr)
+                err, self.client.detach_floating_ip, *args)
+        r = self.client.detach_floating_ip(vmid, addr)
         self.assert_dicts_are_equal(r, FR.headers)
         expected = dict(removeFloatingIp=dict(address=addr))
         self.assertEqual(

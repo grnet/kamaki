@@ -1,4 +1,4 @@
-# Copyright 2012 GRNET S.A. All rights reserved.
+# Copyright 2012-2013 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -199,13 +199,12 @@ class Shell(Cmd):
                     ldescr = getattr(cls, 'long_description', '')
                     if subcmd.path == 'history_run':
                         instance = cls(
-                            dict(cmd_parser.arguments),
+                            dict(cmd_parser.arguments), self.auth_base,
                             cmd_tree=self.cmd_tree)
                     else:
                         instance = cls(
                             dict(cmd_parser.arguments),
-                            self.auth_base,
-                            self.cloud)
+                            self.auth_base, self.cloud)
                     cmd_parser.update_arguments(instance.arguments)
                     cmd_parser.arguments = instance.arguments
                     cmd_parser.syntax = '%s %s' % (
@@ -223,9 +222,7 @@ class Shell(Cmd):
 
                     for name, arg in instance.arguments.items():
                         arg.value = getattr(
-                            cmd_parser.parsed,
-                            name,
-                            arg.default)
+                            cmd_parser.parsed, name, arg.default)
 
                     exec_cmd(instance, cmd_parser.unparsed, help_method)
                         #[term for term in cmd_parser.unparsed\
@@ -283,9 +280,7 @@ class Shell(Cmd):
                 empty, sep, subname = subcmd.path.partition(cmd.path)
                 cmd_name = '%s %s' % (cmd.name, subname.replace('_', ' '))
                 print('\n%s\nSyntax:\t%s %s' % (
-                    cls.description,
-                    cmd_name,
-                    cls.syntax))
+                    cls.description, cmd_name, cls.syntax))
                 cmd_args = {}
                 for arg in instance.arguments.values():
                     cmd_args[','.join(arg.parsed_name)] = arg.help

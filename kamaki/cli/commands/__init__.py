@@ -1,4 +1,4 @@
-# Copyright 2011-2012 GRNET S.A. All rights reserved.
+# Copyright 2011-2013 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -66,6 +66,10 @@ class _command_init(object):
             arguments.update(self.oo_arguments)
         if isinstance(self, _optional_json):
             arguments.update(self.oj_arguments)
+        try:
+            arguments.update(self.wait_arguments)
+        except AttributeError:
+            pass
         self.arguments = dict(arguments)
         try:
             self.config = self['config']

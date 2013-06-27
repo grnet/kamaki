@@ -38,15 +38,12 @@ from kamaki.cli.errors import CLIBaseUrlError
 from kamaki.cli.commands import (
     _command_init, errors, _optional_json, addLogSettings)
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.utils import print_dict
+from kamaki.cli.utils import print_dict, format_size
 from kamaki.cli.argument import FlagArgument, ValueArgument
 from kamaki.cli.logger import get_logger
 
 snfastakos_cmds = CommandTree('astakos', 'astakosclient CLI')
 _commands = [snfastakos_cmds]
-
-
-log = get_logger(__name__)
 
 
 class _astakos_init(_command_init):
@@ -66,12 +63,14 @@ class _astakos_init(_command_init):
             astakos_endpoints = self.auth_base.get_service_endpoints(
                 self._custom_type('astakos') or 'identity',
                 self._custom_version('astakos') or '')
-            base_url = astakos_endpoints['publicURL']
+            base_url = astakos_endpoints['SNF:uiURL']
+            base_url = ''.join(base_url.split('/ui'))
         else:
             base_url = self._custom_url('astakos')
         if not base_url:
             raise CLIBaseUrlError(service='astakos')
-        self.client = AstakosClient(base_url, logger=log)
+        self.client = AstakosClient(
+            base_url, logger=get_logger('kamaki.clients'))
 
     def main(self):
         self._run()
@@ -144,8 +143,22 @@ class astakos_uuid(_astakos_init, _optional_json):
 class astakos_quotas(_astakos_init, _optional_json):
     """Get user (or service) quotas"""
 
+    @staticmethod
+    def _print_with_format(d):
+        """ Print d with size formating when needed
+        :param d: (dict) {system: {<service>: {usage: ..., limit: ..., }, ...}}
+        """
+        newd = dict()
+        for k, service in d['system'].items():
+            newd[k] = dict(service)
+            for term in ('usage', 'limit'):
+                if term in service:
+                    newd[k][term] = format_size(service[term])
+        print_dict(newd)
+
     def _run(self):
-            self._print(self.client.get_quotas(self.token), print_dict)
+            self._print(
+                self.client.get_quotas(self.token), self._print_with_format)
 
     def main(self):
         super(self.__class__, self)._run()
