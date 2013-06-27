@@ -41,6 +41,7 @@ class AstakosClient(Client):
     def __init__(self, base_url, token=None):
         super(AstakosClient, self).__init__(base_url, token)
         self._cache = {}
+        self._uuids = {}
         self.log = getLogger('__name__')
 
     def authenticate(self, token=None):
@@ -54,8 +55,14 @@ class AstakosClient(Client):
         """
         self.token = token or self.token
         body = dict(auth=dict(token=dict(id=self.token)))
-        self._cache[self.token] = self.post('/tokens', json=body).json
-        return self._cache[self.token]
+        r = self.post('/tokens', json=body).json
+        uuid = r['access']['user']['id']
+        self._uuids[self.token] = uuid
+        self._cache[uuid] = r
+        return self._cache[uuid]
+
+    def get_token(self, uuid):
+        return self._cache[uuid]['access']['token']['id']
 
     def get_services(self, token=None):
         """
@@ -64,7 +71,7 @@ class AstakosClient(Client):
         token_bu = self.token or token
         token = token or self.token
         try:
-            r = self._cache[token]
+            r = self._cache[self._uuids[token]]
         except KeyError:
             r = self.authenticate(token)
         finally:
@@ -122,7 +129,7 @@ class AstakosClient(Client):
         r = []
         for k, v in self._cache.items():
             r.append(dict(v['access']['user']))
-            r[-1].update(dict(auth_token=k))
+            r[-1].update(dict(auth_token=self.get_token(k)))
         return r
 
     def user_info(self, token=None):
@@ -130,7 +137,7 @@ class AstakosClient(Client):
         token_bu = self.token or token
         token = token or self.token
         try:
-            r = self._cache[token]
+            r = self._cache[self._uuids[token]]
         except KeyError:
             r = self.authenticate(token)
         finally:
