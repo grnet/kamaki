@@ -37,6 +37,30 @@ import logging
 
 
 LOG_FILE = [expanduser('~/.kamaki.log')]
+ALL = 0
+
+_blacklist = {}
+
+
+def deactivate(name):
+    """Deactivate a logger. Can be restored"""
+    xlogger = logging.getLogger(name)
+    _blacklist[name] = xlogger.level
+    xlogger.setLevel(logging.CRITICAL)
+
+
+def activate(name):
+    """Restore a loggers settings"""
+    old_logger = logging.getLogger(name)
+    old_logger.setLevel(_blacklist.pop(name, old_logger.level))
+
+
+def if_logger_enabled(foo):
+    def wrap(name, *args, **kwargs):
+        if name in _blacklist:
+            return logging.getLogger(name)
+        return foo(name, *args, **kwargs)
+    return wrap
 
 
 def get_log_filename():
@@ -53,24 +77,38 @@ def get_log_filename():
 
 def set_log_filename(filename):
     global LOG_FILE
-    LOG_FILE = [filename] + LOG_FILE
+    LOG_FILE[0] = filename
 
 
-def add_file_logger(
-        name, caller,
-        level=logging.DEBUG, prefix='', filename='/tmp/kamaki.log'):
+def _add_logger(name, level=None, filename=None, fmt=None):
+    log = get_logger(name)
+    h = logging.FileHandler(filename) if (
+        filename) else logging.StreamHandler()
+    lfmt = logging.Formatter(fmt or '%(name)s\n %(message)s')
+    h.setFormatter(lfmt)
+    log.addHandler(h)
+    log.setLevel(level or logging.DEBUG)
+    return log
+
+
+@if_logger_enabled
+def add_file_logger(name, level=None, filename=None):
     try:
-        assert caller and filename
-        logger = logging.getLogger(name)
-        h = logging.FileHandler(filename)
-        fmt = logging.Formatter(
-            '%(asctime)s ' + caller + ' %(name)s-%(levelname)s: %(message)s')
-        h.setFormatter(fmt)
-        logger.addHandler(h)
-        logger.setLevel(level)
+        return _add_logger(
+            name, level, filename or get_log_filename(),
+            fmt='%(name)s(%(levelname)s) %(asctime)s\n\t%(message)s')
     except Exception:
-        pass
+        return get_logger(name)
 
 
+@if_logger_enabled
+def add_stream_logger(name, level=None, fmt=None):
+    try:
+        return _add_logger(name, level, fmt=fmt)
+    except Exception:
+        return get_logger(name)
+
+
+@if_logger_enabled
 def get_logger(name):
     return logging.getLogger(name)

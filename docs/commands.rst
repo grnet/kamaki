@@ -1,7 +1,10 @@
 List of commands
 ================
 
-The commands described bellow are grouped by service. The examples showcase a sample set of group commands. The kamaki interactive shell (check `Usage section <usage.html#interactive-shell>`_ for details) is chosen as the execution environment.
+The commands described bellow are grouped by service. The examples showcase a
+sample set of group commands. The kamaki interactive shell (check
+`Usage section <usage.html#interactive-shell>`_ for details) is chosen as the
+execution environment.
 
 
 user (Identity Manager)
@@ -14,7 +17,9 @@ user (Identity Manager)
 Showcase: get user information
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-In the following, the token has been set in a previous step (see `setup section <setup.html>`_ or the `quick setup guide <usage.html#quick-setup>`_)
+In the following, the token has been set in a previous step (see
+`setup section <setup.html>`_ or the
+`quick setup guide <usage.html#quick-setup>`_)
 
 .. code-block:: console
     :emphasize-lines: 1,4
@@ -24,14 +29,13 @@ In the following, the token has been set in a previous step (see `setup section 
 
     * Authenticate user *
     [user]: authenticate
-    auth_token_created:  2012-11-13T14:12:40.917034
-    auth_token_expires:  2012-12-13T14:12:40.917035
-    email             :  
-                       myaccount@grnet.gr
-                       myotheraccount@grnet.gr
-    name              :  My Real Name
-    username          :  usually@an.email.org
-    uuid              :  ab1cde23-45fg-6h7i-8j9k-10l1m11no2pq
+    ...
+    user:
+        name:  My Real Name
+        uuid:  ab1cde23-45fg-6h7i-8j9k-10l1m11no2pq
+
+.. note:: actual call returns a full list of service endpoints accessible to
+    the user with a specific token
 
 flavor (Compute/Cyclades)
 -------------------------
@@ -53,33 +57,37 @@ Showcase: show details for flavor with id 43
     * Get details about flavor with id 43 *
     [flavor]: info 43
     SNF:disk_template:  drbd
-    cpu              :  4
-    disk             :  10
-    id               :  43
-    name             :  C4R2048D10
-    ram              :  2048
+    cpu :  4
+    disk:  10
+    id  :  43
+    name:  C4R2048D10
+    ram :  2048
 
 image (Plankton commands + Compute Image subcommands)
 -----------------------------------------------------
 
 .. code-block:: text
 
-    addmember  :  Add a member to an image
-    addproperty:  Add an image property
-    delmember  :  Remove a member from an image
-    list       :  List images accessible by user
-    members    :  Get image members
-    meta       :  Get image metadata
-    register   :  (Re)Register an image
-    setmembers :  Set the members of an image
-    shared     :  List shared images
-    compute    :  Compute Image API commands
-        list       :  List images
-        delete     :  Delete image
-        info       :  Get image details
-        properties :  Get image properties
-        delproperty:  Delete an image property
-        setproperty:  Update an image property
+    list      :  List images accessible by user
+    meta      :  Get image metadata
+    register  :  (Re)Register an image
+    unregister:  Unregister an image (does not delete the image file)
+    shared    :  List shared images
+    compute   :  Compute Image API commands
+        list      :  List images
+        delete    :  Delete image
+        info      :  Get image details
+        properties:  Manage properties related to OS installation in an image
+            add   :  Add a property to an image
+            delete:  Delete a property from an image
+            get   :  Get an image property
+            list  :  List all image properties
+            set   :  Add / update a set of properties for an image
+    members   :  Manage members (users who can modify an image)
+        add   :  Add a member to an image
+        delete:  Remove a member from an image
+        list  :  List members of an image
+        set   :  Set the members of an image
 
 Showcase: Pick an image and list the properties
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -92,25 +100,25 @@ Showcase: Pick an image and list the properties
 
     * list all available images *
     [image]: list
-    1. Windows Server 2008
+    926ab1c5-2d85-49d4-aebe-0fce712789b9 Windows Server 2008
      container_format:  bare
      disk_format     :  diskdump
      id              :  926ab1c5-2d85-49d4-aebe-0fce712789b9
      size            :  11917066240
      status          :  available
-    2. Windows Server 2012
+    78262ee7-949e-4d70-af3a-85360c3de57a Windows Server 2012
      container_format:  bare
      disk_format     :  diskdump
      id              :  78262ee7-949e-4d70-af3a-85360c3de57a
      size            :  11697913856
      status          :  available
-    3. ubuntu
+    5ed5a29b-292c-4fe0-b32c-2e2b65628635 ubuntu
      container_format:  bare
      disk_format     :  diskdump
      id              :  5ed5a29b-292c-4fe0-b32c-2e2b65628635
      size            :  2578100224
      status          :  available
-    4. Debian_Wheezy_Base
+    1f8454f0-8e3e-4b6c-ab8e-5236b728dffe Debian_Wheezy_Base
      container_format:  bare
      disk_format     :  diskdump
      id              :  1f8454f0-8e3e-4b6c-ab8e-5236b728dffe
@@ -133,19 +141,22 @@ server (Compute/Cyclades)
 
 .. code-block:: text
 
-    addmeta :  Add server metadata
     addr    :  List a server's nic address
     console :  Get a VNC console
     create  :  Create a server
     delete  :  Delete a server
-    delmeta :  Delete server metadata
-    firewall:  Set the server's firewall profile
+    firewall:  Manage server's firewall profile
+        set :  Set the server's firewall profile
+        get :  Get the server's firewall profile
     info    :  Get server details
     list    :  List servers
+    metadata:  Manage Server Metadata
+        list  :  List server metadata
+        set   :  Add / update server metadata
+        delete:  Delete a piece of server metadata
     meta    :  Get a server's metadata
     reboot  :  Reboot a server
     rename  :  Update a server's name
-    setmeta :  Update server's metadata
     shutdown:  Shutdown a server
     start   :  Start a server
     stats   :  Get server statistics
@@ -163,7 +174,7 @@ Showcase: Create a server
     * See server-create help *
     [server]: create -h
     usage: create <name> <flavor id> <image id>
-            [--personality PERSONALITY] [-h] [--config CONFIG]
+            [--personality PERSONALITY] [-h] [--config CONFIG] [--cloud CLOUD]
 
     Create a server
 
@@ -176,6 +187,7 @@ Showcase: Create a server
       -i, --include         Include protocol headers in the output
       --config CONFIG       Path to configuration file
       -s, --silent          Do not output anything
+      --cloud CLOUD         Chose a cloud to connect to
 
     * List all available images *
     [server]: /image compute list
@@ -209,9 +221,8 @@ Showcase: Create a server
     id       :  11687
     imageRef :  b2dffe52-64a4-48c3-8a4c-8214cc3165cf
     metadata : 
-             values: 
-                   os   :  debian
-                   users:  root
+               os   :  debian
+               users:  root
     name     :  My Small Debian Server
     progress :  0
     status   :  BUILD
@@ -274,18 +285,18 @@ Showcase: Connect a network to a VM
     [network]: info 1409
       attachments: 
                  nic-11687-1
-      cidr       :  192.168.1.0/24
-      cidr6      :  None
-      created    :  2012-11-23T17:17:20.560098+00:00
-      dhcp       :  True
-      gateway    :  None
-      gateway6   :  None
-      id         :  1409
-      name       :  my network
-      public     :  False
-      status     :  ACTIVE
-      type       :  PRIVATE_MAC_FILTERED
-      updated    :  2012-11-23T17:18:25.095225+00:00
+      cidr    :  192.168.1.0/24
+      cidr6   :  None
+      created :  2012-11-23T17:17:20.560098+00:00
+      dhcp    :  True
+      gateway :  None
+      gateway6:  None
+      id      :  1409
+      name    :  my network
+      public  :  False
+      status  :  ACTIVE
+      type    :  MAC_FILTERED
+      updated :  2012-11-23T17:18:25.095225+00:00
 
     * Get connectivity details on VM with id 11687 *
     [network]: /server addr 11687
@@ -311,38 +322,42 @@ file (Storage/Pithos+)
     append        :  Append local file to remote
     cat           :  Print a file to console
     copy          :  Copy an object
+    containerlimit:  Container size limit commands
+        set       :  Set container data limit
+        get       :  Get container data limit
     create        :  Create a container
     delete        :  Delete a container [or an object]
-    delgroup      :  Delete a user group
-    delmeta       :  Delete an existing metadatum for an account [, container [or object]]
-    delpermissions:  Delete all sharing permissions
     download      :  Download a file or directory
-    group         :  Get user groups details
+    group         :  Manage access groups and group members
+        delete:  Delete a user group
+        list  :  List groups and group members
+        set   :  Set a user group
     hashmap       :  Get the hashmap of an object
     info          :  Get information for account [, container [or object]]
     list          :  List containers, object trees or objects in a directory
     manifest      :  Create a remote file with uploaded parts by manifestation
-    meta          :  Get custom meta-content for account [, container [or object]]
+    metadata      :  Metadata are attached on objects (key:value pairs)
+        delete:  Delete metadata with given key
+        get   :  Get metadatum
+        set   :  Set a piece of metadata
     mkdir         :  Create a directory
     move          :  Copy an object
     overwrite     :  Overwrite part (from start to end) of a remote file
-    permissions   :  Get object read/write permissions
+    permissions   :  Manage user and group accessibility for objects
+        delete:  Delete all permissions set on object
+        get   :  Get read and write permissions of an object
+        set   :  Set permissions for an object
     publish       :  Publish an object
     purge         :  Purge a container
     quota         :  Get  quota for account
-    setgroup      :  Create/update a new user group
-    setmeta       :  Set a new metadatum for account [, container [or object]]
-    setpermissions:  Set sharing permissions
-    containerlimit:  Container size limit commands
-        set       :  Set container data limit
-        get       :  Get container data limit
-    setversioning :  Set new versioning (auto, none) for account [or container]
     sharers       :  List the accounts that share objects with default account
     touch         :  Create an empty object (file)
     truncate      :  Truncate remote file up to a size
     unpublish     :  Unpublish an object
     upload        :  Upload a file or directory
-    versioning    :  Get  versioning for account [or container ]
+    versioning    :  Manage the versioning scheme of current pithos user account
+        get:  Get  versioning for account or container
+        set:  Set versioning mode (auto, none) for account or container
     versions      :  Get the version list of an object
 
 Showcase: Upload and download a file
@@ -420,8 +435,12 @@ Showcase: Upload and download a file
     -rw-rw-r-- 1 ******** ******** 20M Nov 26 15:42 rndm_remote.file
     [file]: !diff rndm_local.file rndm_remote.file
 
-.. Note:: In kamaki shell, ! is used to execute OS shell commands (bash in the above)
+.. Note:: In kamaki shell, ! is used to execute OS shell commands (e.g. bash)
 
-.. warning:: The container:object/path syntax does not function if the container and / or the object path contain one or more : characters. To use containers and objects with : use the --container and --dst-container arguments, e.g. to copy test.py object from grnet:dev container to grnet:deploy ::
+.. warning:: The container:object/path syntax does not function if the
+    container and / or the object path contain one or more : characters. To use
+    containers and objects with : use the --container and --dst-container
+    arguments, e.g. to copy test.py object from grnet:dev container to
+    grnet:deploy ::
 
         $ kamaki file copy --container=grnet:dev test.py --dst-container=grnet:deploy
