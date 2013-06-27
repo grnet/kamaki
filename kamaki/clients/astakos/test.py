@@ -60,6 +60,13 @@ example = dict(
 
 example0 = dict(
     access=dict(
+         token=dict(
+            expires="2013-07-14T10:07:42.481134+00:00",
+            id="ast@k0sT0k3n==",
+            tenant=dict(
+                id="42",
+                name="Simple Name 0")
+        ),
         serviceCatalog=[
             dict(name='service name 1', type='compute', endpoints=[
                 dict(versionId='v1', publicUrl='http://1.1.1.1/v1'),
@@ -168,7 +175,7 @@ class AstakosClient(TestCase):
 
     def test_list_users(self):
         if not self.cached:
-            self._authenticate
+            self._authenticate()
         FR.json = example0
         self._authenticate()
         r = self.client.list_users()

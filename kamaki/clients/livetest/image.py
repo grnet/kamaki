@@ -151,7 +151,7 @@ class Image(livetest.Generic):
                     'size'):
                 self.assertTrue(term in img)
                 if len(img['properties']):
-                    for interm in ('osfamily', 'users', 'root_partition'):
+                    for interm in ('osfamily', 'root_partition'):
                         self.assertTrue(interm in img['properties'])
         size_max = 1000000000000
         r2 = self.client.list_public(filters=dict(size_max=size_max))
@@ -181,11 +181,8 @@ class Image(livetest.Generic):
                 'container-format'):
             self.assertTrue(term in r)
             for interm in (
-                    'KERNEL',
                     'OSFAMILY',
                     'USERS',
-                    'GUI',
-                    'SORTORDER',
                     'ROOT_PARTITION',
                     'OS',
                     'DESCRIPTION'):
