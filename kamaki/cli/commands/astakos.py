@@ -32,13 +32,12 @@
 # or implied, of GRNET S.A.command
 
 from kamaki.cli import command
-from kamaki.cli.argument import ValueArgument
 from kamaki.clients.astakos import AstakosClient
 from kamaki.cli.commands import (
     _command_init, errors, _optional_json, addLogSettings)
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.errors import CLIBaseUrlError
-from kamaki.cli.utils import print_dict
+from kamaki.cli.errors import CLIBaseUrlError, CLIError
+from kamaki.cli.utils import print_dict, ask_user
 
 user_cmds = CommandTree('user', 'Astakos API commands')
 _commands = [user_cmds]
@@ -89,6 +88,12 @@ class user_authenticate(_user_init, _optional_json):
         token_bu = self.client.token
         try:
             r = self.client.authenticate(custom_token)
+            if (token_bu != self.client.token and
+                    ask_user('Permanently save token as cloud.%s.token ?' % (
+                        self.cloud))):
+                self.config.set_cloud(
+                    self.cloud, 'token', self.client.token)
+                self.config.write()
         except Exception:
             #recover old token
             self.client.token = token_bu
@@ -114,17 +119,49 @@ class user_list(_user_init, _optional_json):
 
 
 @command(user_cmds)
-class user_info(_user_init, _optional_json):
-    """Get info for current or selected user"""
-
-    arguments = dict(
-        token=ValueArgument('Use this  instead of current token', ('--token'))
-    )
+class user_get(_user_init, _optional_json):
+    """Get session user"""
 
     @errors.generic.all
     def _run(self):
-        self._print(self.client.user_info(self['token']), print_dict)
+        self._print(self.client.user_info(), print_dict)
 
     def main(self):
         super(self.__class__, self)._run()
         self._run()
+
+
+@command(user_cmds)
+class user_set(_user_init, _optional_json):
+    """Set session user by id
+    To enrich your options, authenticate more users:
+    /user authenticate <other user token>
+    To list authenticated users
+    /user list
+    To get the current session user
+    /user get
+    """
+
+    @errors.generic.all
+    def _run(self, uuid):
+        for user in self.client.list_users():
+            if user.get('id', None) in (uuid,):
+                ntoken = user['auth_token']
+                if ntoken == self.client.token:
+                    print('%s (%s) is already the session user' % (
+                        self.client.user_term('name'),
+                        self.client.user_term('id')))
+                    return
+                self.client.token = user['auth_token']
+                print('Session user set to %s (%s)' % (
+                        self.client.user_term('name'),
+                        self.client.user_term('id')))
+                return
+        raise CLIError(
+            'User with UUID %s not authenticated in current session' % uuid,
+            details=[
+                'To authenticate a user', '  /user authenticate <t0k3n>'])
+
+    def main(self, uuid):
+        super(self.__class__, self)._run()
+        self._run(uuid)
