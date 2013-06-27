@@ -117,6 +117,8 @@ class AstakosClient(Client):
 
     def list_users(self):
         """list cached users information"""
+        if not self._cache:
+            self.authenticate()
         r = []
         for k, v in self._cache.items():
             r.append(dict(v['access']['user']))

@@ -85,7 +85,6 @@ class user_authenticate(_user_init, _optional_json):
     @errors.generic.all
     @errors.user.authenticate
     def _run(self, custom_token=None):
-        super(self.__class__, self)._run()
         token_bu = self.client.token
         try:
             r = self.client.authenticate(custom_token)
@@ -96,4 +95,18 @@ class user_authenticate(_user_init, _optional_json):
         self._print(r, self._print_access)
 
     def main(self, custom_token=None):
+        super(self.__class__, self)._run()
         self._run(custom_token)
+
+
+@command(user_cmds)
+class user_list(_user_init, _optional_json):
+    """Get service endpoints"""
+
+    @errors.generic.all
+    def _run(self, custom_token=None):
+        self._print(self.client.list_users())
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
