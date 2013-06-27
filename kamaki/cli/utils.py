@@ -262,6 +262,12 @@ def print_items(
     """
     if not items:
         return
+    elif not (
+            isinstance(items, dict) or isinstance(
+                items, list) or isinstance(items, dict)):
+        print '%s' % items
+        return
+
     try:
         page_size = int(page_size) if int(page_size) > 0 else len(items)
     except:
