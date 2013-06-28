@@ -41,6 +41,8 @@ from kamaki.cli.history import History
 from kamaki.cli.utils import print_dict, red, magenta, yellow
 from kamaki.cli.errors import CLIError, CLICmdSpecError
 from kamaki.cli import logger
+from kamaki.clients.astakos import AstakosClient as AuthCachedClient
+from kamaki.clients import ClientError
 
 _help = False
 _debug = False
@@ -285,7 +287,7 @@ def _init_session(arguments, is_non_API=False):
     for term in ('url', 'token'):
         try:
             auth_args[term] = _cnf.get_cloud(cloud, term)
-        except KeyError:
+        except KeyError or IndexError:
             auth_args[term] = ''
         if not auth_args[term]:
             raise CLIError(
@@ -296,9 +298,23 @@ def _init_session(arguments, is_non_API=False):
                     '  kamaki config set cloud.%s.%s <%s>' % (
                         cloud, term, term.upper())])
 
-    from kamaki.clients.astakos import AstakosClient as AuthCachedClient
     try:
-        return AuthCachedClient(auth_args['url'], auth_args['token']), cloud
+        auth_base = None
+        for token in reversed(auth_args['token'].split()):
+            try:
+                if auth_base:
+                    auth_base.authenticate(token)
+                else:
+                    auth_base = AuthCachedClient(
+                        auth_args['url'], auth_args['token'])
+                    auth_base.authenticate(token)
+            except ClientError as ce:
+                if ce.status in (401, ):
+                    kloger.warning(
+                        'WARNING: Failed to authorize token %s' % token)
+                else:
+                    raise
+        return auth_base, cloud
     except AssertionError as ae:
         kloger.warning('WARNING: Failed to load authenticator [%s]' % ae)
         return None, cloud
