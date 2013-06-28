@@ -114,7 +114,7 @@ class user_authenticate(_user_init, _optional_json):
 
 @command(user_cmds)
 class user_list(_user_init, _optional_json):
-    """Get service endpoints"""
+    """List all authenticated users"""
 
     @errors.generic.all
     def _run(self, custom_token=None):
