@@ -46,12 +46,12 @@ from kamaki.cli.logger import add_file_logger
 log = add_file_logger(__name__)
 
 
-def _init_shell(exe_string, parser):
+def _init_shell(exe_string, parser, username='', userid=''):
     parser.arguments.pop('version', None)
     shell = Shell()
     shell.set_prompt(exe_string)
     from kamaki import __version__ as version
-    shell.greet(version)
+    shell.greet(version, username, userid)
     shell.do_EOF = shell.do_exit
     from kamaki.cli.command_tree import CommandTree
     shell.cmd_tree = CommandTree(
@@ -98,7 +98,7 @@ class Shell(Cmd):
             return line[1:]
         return line
 
-    def greet(self, version):
+    def greet(self, version, username='', userid=''):
         print('kamaki v%s - Interactive Shell\n' % version)
         print('\t/exit     \tterminate kamaki')
         print('\texit or ^D\texit context')
@@ -106,6 +106,8 @@ class Shell(Cmd):
         print('\t?command  \thelp on command')
         print('\t!<command>\texecute OS shell command')
         print('')
+        if username or userid:
+            print('Session user is %s (uuid: %s)' % (username, userid))
 
     def set_prompt(self, new_prompt):
         self.prompt = '%s%s%s' % (self._prefix, new_prompt, self._suffix)
