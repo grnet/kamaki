@@ -45,6 +45,14 @@ _commands = [user_cmds]
 
 class _user_init(_command_init):
 
+    def _write_main_token(self, token):
+        tokens = self.config.get_cloud(self.cloud, 'token').split()
+        if token in tokens:
+            tokens.remove(token)
+        tokens.insert(0, token)
+        self.config.set_cloud(self.cloud, 'token', ' '.join(tokens))
+        self.config.write()
+
     @errors.generic.all
     @errors.user.load
     @addLogSettings
@@ -54,6 +62,7 @@ class _user_init(_command_init):
             if base_url:
                 token = self._custom_token('astakos')\
                     or self.config.get_cloud(self.cloud, 'token')
+                token = token.split()[0] if ' ' in token else token
                 self.client = AstakosClient(base_url=base_url, token=token)
                 return
         else:
@@ -91,9 +100,7 @@ class user_authenticate(_user_init, _optional_json):
             if (token_bu != self.client.token and
                     ask_user('Permanently save token as cloud.%s.token ?' % (
                         self.cloud))):
-                self.config.set_cloud(
-                    self.cloud, 'token', self.client.token)
-                self.config.write()
+                self._write_main_token(self.client.token)
         except Exception:
             #recover old token
             self.client.token = token_bu
@@ -156,6 +163,9 @@ class user_set(_user_init, _optional_json):
                 print('Session user set to %s (%s)' % (
                         self.client.user_term('name'),
                         self.client.user_term('id')))
+                if ask_user('Permanently make %s the main user?' % (
+                        self.client.user_term('name'))):
+                    self._write_main_token(self.client.token)
                 return
         raise CLIError(
             'User with UUID %s not authenticated in current session' % uuid,
