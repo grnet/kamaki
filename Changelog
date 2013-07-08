@@ -1,6 +1,8 @@
 CHANGELOG for version 0.10
 
 Bug Fixes:
+- Avoid loading optional cmd groups specified in same pkg with mantatory
+    comand groups, except if user requests otherwise ( #4114 )
 
 Changes:
 
