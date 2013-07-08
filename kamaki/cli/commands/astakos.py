@@ -81,7 +81,7 @@ class user_authenticate(_user_init, _optional_json):
     """Authenticate a user
     Get user information (e.g. unique account name) from token
     Token should be set in settings:
-    *  check if a token is set    /config get cloud.default.token
+    *  check if a token is set    /config whoami cloud.default.token
     *  permanently set a token    /config set cloud.default.token <token>
     Token can also be provided as a parameter
     (In case of another named cloud, use its name instead of default)
@@ -146,7 +146,7 @@ class user_set(_user_init, _optional_json):
     To list authenticated users
     /user list
     To get the current session user
-    /user get
+    /user whoami
     """
 
     @errors.generic.all
