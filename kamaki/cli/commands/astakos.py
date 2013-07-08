@@ -114,7 +114,7 @@ class user_authenticate(_user_init, _optional_json):
 
 @command(user_cmds)
 class user_list(_user_init, _optional_json):
-    """Get service endpoints"""
+    """List all authenticated users"""
 
     @errors.generic.all
     def _run(self, custom_token=None):
@@ -126,8 +126,8 @@ class user_list(_user_init, _optional_json):
 
 
 @command(user_cmds)
-class user_get(_user_init, _optional_json):
-    """Get session user"""
+class user_whoami(_user_init, _optional_json):
+    """Get current session user information"""
 
     @errors.generic.all
     def _run(self):

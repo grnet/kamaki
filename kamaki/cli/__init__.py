@@ -473,7 +473,12 @@ def run_one_cmd(exe_string, parser, auth_base, cloud):
 
 def run_shell(exe_string, parser, auth_base, cloud):
     from command_shell import _init_shell
-    shell = _init_shell(exe_string, parser)
+    try:
+        username, userid = (
+            auth_base.user_term('name'), auth_base.user_term('id'))
+    except Exception:
+        username, userid = '', ''
+    shell = _init_shell(exe_string, parser, username, userid)
     _load_all_commands(shell.cmd_tree, parser.arguments)
     shell.run(auth_base, cloud, parser)
 
