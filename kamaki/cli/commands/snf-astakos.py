@@ -31,6 +31,8 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
+from json import loads
+
 from astakosclient import AstakosClient, AstakosClientException
 
 from kamaki.cli import command
@@ -428,12 +430,49 @@ class astakos_commission_resolve(_astakos_init, _optional_json):
         super(self.__class__, self)._run()
         self._run()
 
-# commission pending
-# commission info
-# commission action
-# commission accept
-# commission reject
-# commission resolve
+
+@command(snfastakos_cmds)
+class astakos_commission_issue(_astakos_init, _optional_json):
+    """Issue commissions as a json string (special privileges required)
+    Parameters:
+    holder      -- user's id (string)
+    source      -- commission's source (ex system) (string)
+    provisions  -- resources with their quantity (json-dict from string to int)
+    name        -- description of the commission (string)
+    """
+
+    arguments = dict(
+        force=FlagArgument('Force commission', '--force'),
+        accept=FlagArgument('Do not wait for verification', '--accept')
+    )
+
+    @errors.generic.all
+    @astakoserror
+    def _run(
+            self, holder, source, provisions, name=''):
+        provisions = loads(provisions)
+        self._print(self.client.issue_one_commission(
+            self.token, holder, source, provisions, name,
+            self['force'], self['accept']))
+
+    def main(self, holder, source, provisions, name=''):
+        super(self.__class__, self)._run()
+        self._run(holder, source, provisions, name)
+
+
+@command(snfastakos_cmds)
+class astakos_commission_issuejson(_astakos_init, _optional_json):
+    """Issue commissions as a json string (special privileges required)"""
+
+    @errors.generic.all
+    @astakoserror
+    def _run(self, info_json):
+        infodict = loads(info_json)
+        self._print(self.client.issue_commission(self.token, infodict))
+
+    def main(self, info_json):
+        super(self.__class__, self)._run()
+        self._run(info_json)
 
 # XXX issue_commission, issue_one_commission
 
