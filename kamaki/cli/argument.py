@@ -442,8 +442,7 @@ class ArgumentParseManager(object):
             the parsers arguments specification
         """
         self.parser = ArgumentParser(
-            add_help=False,
-            formatter_class=RawDescriptionHelpFormatter)
+            add_help=False, formatter_class=RawDescriptionHelpFormatter)
         self.syntax = '%s <cmd_group> [<cmd_subbroup> ...] <cmd>' % exe
         if arguments:
             self.arguments = arguments
@@ -513,14 +512,11 @@ class ArgumentParseManager(object):
             self.update_parser()
 
     def parse(self, new_args=None):
-        """Do parse user input"""
+        """Parse user input"""
         try:
-            if new_args:
-                self._parsed, unparsed = self.parser.parse_known_args(new_args)
-            else:
-                self._parsed, unparsed = self.parser.parse_known_args()
+            pkargs = (new_args,) if new_args else ()
+            self._parsed, unparsed = self.parser.parse_known_args(*pkargs)
         except SystemExit:
-            # deal with the fact that argparse error system is STUPID
             raiseCLIError(CLISyntaxError('Argument Syntax Error'))
         for name, arg in self.arguments.items():
             arg.value = getattr(self._parsed, name, arg.default)

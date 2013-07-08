@@ -137,6 +137,10 @@ class CommandTree(object):
         self.name = name
         self.description = description
 
+    def exclude(self, groups_to_exclude=[]):
+        for group in groups_to_exclude:
+            self.groups.pop(group, None)
+
     def add_command(self, command_path, description=None, cmd_class=None):
         terms = command_path.split('_')
         try:

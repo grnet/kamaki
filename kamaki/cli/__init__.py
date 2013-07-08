@@ -340,13 +340,15 @@ def _groups_help(arguments):
     global _debug
     global kloger
     descriptions = {}
+    acceptable_groups = arguments['config'].get_groups()
     for cmd_group, spec in arguments['config'].get_cli_specs():
         pkg = _load_spec_module(spec, arguments, '_commands')
         if pkg:
             cmds = getattr(pkg, '_commands')
             try:
                 for cmd in cmds:
-                    descriptions[cmd.name] = cmd.description
+                    if cmd.name in acceptable_groups:
+                        descriptions[cmd.name] = cmd.description
             except TypeError:
                 if _debug:
                     kloger.warning(

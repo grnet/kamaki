@@ -88,6 +88,7 @@ DEFAULTS = {
         #  Optional command specs:
         #  'livetest_cli': 'livetest',
         #  'astakos_cli': 'snf-astakos'
+        #  'floating_cli': 'cyclades'
     },
     CLOUD_PREFIX:
     {
