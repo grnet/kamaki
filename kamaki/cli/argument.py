@@ -68,6 +68,7 @@ class Argument(object):
             self.help = help
         if parsed_name:
             self.parsed_name = parsed_name
+        assert self.parsed_name, 'No parsed name for argument %s' % self
         self.default = default
 
     @property
@@ -241,6 +242,21 @@ class ValueArgument(Argument):
 
     def __init__(self, help='', parsed_name=None, default=None):
         super(ValueArgument, self).__init__(1, help, parsed_name, default)
+
+
+class CommaSeparatedListArgument(ValueArgument):
+    """
+    :value type: string
+    :value returns: list of the comma separated values
+    """
+
+    @property
+    def value(self):
+        return self._value or list()
+
+    @value.setter
+    def value(self, newvalue):
+        self._value = newvalue.split(',') if newvalue else list()
 
 
 class IntArgument(ValueArgument):
@@ -442,8 +458,7 @@ class ArgumentParseManager(object):
             the parsers arguments specification
         """
         self.parser = ArgumentParser(
-            add_help=False,
-            formatter_class=RawDescriptionHelpFormatter)
+            add_help=False, formatter_class=RawDescriptionHelpFormatter)
         self.syntax = '%s <cmd_group> [<cmd_subbroup> ...] <cmd>' % exe
         if arguments:
             self.arguments = arguments
@@ -513,14 +528,11 @@ class ArgumentParseManager(object):
             self.update_parser()
 
     def parse(self, new_args=None):
-        """Do parse user input"""
+        """Parse user input"""
         try:
-            if new_args:
-                self._parsed, unparsed = self.parser.parse_known_args(new_args)
-            else:
-                self._parsed, unparsed = self.parser.parse_known_args()
+            pkargs = (new_args,) if new_args else ()
+            self._parsed, unparsed = self.parser.parse_known_args(*pkargs)
         except SystemExit:
-            # deal with the fact that argparse error system is STUPID
             raiseCLIError(CLISyntaxError('Argument Syntax Error'))
         for name, arg in self.arguments.items():
             arg.value = getattr(self._parsed, name, arg.default)

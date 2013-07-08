@@ -310,6 +310,10 @@ class Shell(Cmd):
         else:
             intro = self.cmd_tree.name
 
+        acceptable = parser.arguments['config'].get_groups()
+        total = self.cmd_tree.get_group_names()
+        self.cmd_tree.exclude(set(total).difference(acceptable))
+
         for subcmd in self.cmd_tree.get_subcommands(path):
             self._register_command(subcmd.path)
 
