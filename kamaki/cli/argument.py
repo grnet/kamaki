@@ -68,6 +68,7 @@ class Argument(object):
             self.help = help
         if parsed_name:
             self.parsed_name = parsed_name
+        assert self.parsed_name, 'No parsed name for argument %s' % self
         self.default = default
 
     @property
@@ -241,6 +242,21 @@ class ValueArgument(Argument):
 
     def __init__(self, help='', parsed_name=None, default=None):
         super(ValueArgument, self).__init__(1, help, parsed_name, default)
+
+
+class CommaSeparatedListArgument(ValueArgument):
+    """
+    :value type: string
+    :value returns: list of the comma separated values
+    """
+
+    @property
+    def value(self):
+        return self._value or list()
+
+    @value.setter
+    def value(self, newvalue):
+        self._value = newvalue.split(',') if newvalue else list()
 
 
 class IntArgument(ValueArgument):
