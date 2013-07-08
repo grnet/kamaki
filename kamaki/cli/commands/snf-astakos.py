@@ -40,6 +40,7 @@ from kamaki.cli.commands import (
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.utils import print_dict, format_size
 from kamaki.cli.argument import FlagArgument, ValueArgument
+from kamaki.cli.argument import CommaSeparatedListArgument
 from kamaki.cli.logger import get_logger
 
 snfastakos_cmds = CommandTree('astakos', 'astakosclient CLI')
@@ -78,7 +79,8 @@ class _astakos_init(_command_init):
                 self._custom_type('astakos') or 'identity',
                 self._custom_version('astakos') or '')
             base_url = astakos_endpoints['SNF:uiURL']
-            base_url = ''.join(base_url.split('/ui'))
+            base_url = base_url[:-3]
+            #base_url = ''.join(base_url.split('/ui'))
         else:
             base_url = self._custom_url('astakos')
         if not base_url:
@@ -262,18 +264,6 @@ class astakos_services_quotas(_astakos_init, _optional_json):
         super(self.__class__, self)._run()
         self._run(service_token)
 
-# resources
-# feedback
-# endpoints
-
-# XXX issue_commission, issue_one_commission
-# get_pending_commissions
-# get_commission_info
-# commission_action
-# accept_commission
-# reject_commission
-# resolve_commissions
-
 
 @command(snfastakos_cmds)
 class astakos_resources(_astakos_init, _optional_json):
@@ -293,15 +283,10 @@ class astakos_resources(_astakos_init, _optional_json):
 class astakos_feedback(_astakos_init):
     """Send feedback to astakos server"""
 
-    arguments = dict(
-        token=ValueArgument('Use this token instead', '--token')
-    )
-
     @errors.generic.all
     @astakoserror
     def _run(self, msg, more_info=None):
-        self.client.send_feedback(
-            self['token'] or self.token, msg, more_info or '')
+        self.client.send_feedback(self.token, msg, more_info or '')
 
     def main(self, message, more_info=None):
         super(self.__class__, self)._run()
@@ -312,22 +297,145 @@ class astakos_feedback(_astakos_init):
 class astakos_endpoints(_astakos_init, _optional_json):
     """Get endpoints service endpoints"""
 
-    arguments = dict(
-        token=ValueArgument('Use this token instead', '--token'),
-        uuid=ValueArgument('User uuid', '--uuid')
-    )
+    arguments = dict(uuid=ValueArgument('User uuid', '--uuid'))
 
     @errors.generic.all
     @astakoserror
     def _run(self):
         self._print(
-            self.client.get_endpoints(
-                self['token'] or self.token, self['uuid']),
+            self.client.get_endpoints(self.token, self['uuid']),
             print_dict)
 
     def main(self):
         super(self.__class__, self)._run()
         self._run()
+
+
+@command(snfastakos_cmds)
+class astakos_commission(_astakos_init):
+    """Manage commissions (special privileges required)"""
+
+
+@command(snfastakos_cmds)
+class astakos_commission_pending(_astakos_init, _optional_json):
+    """List pending commissions (special privileges required)"""
+
+    @errors.generic.all
+    @astakoserror
+    def _run(self):
+        self._print(self.client.get_pending_commissions(self.token))
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
+
+
+@command(snfastakos_cmds)
+class astakos_commission_info(_astakos_init, _optional_json):
+    """Get commission info (special privileges required)"""
+
+    @errors.generic.all
+    @astakoserror
+    def _run(self, commission_id):
+        commission_id = int(commission_id)
+        self._print(
+            self.client.get_commission_info(self.token, commission_id),
+            print_dict)
+
+    def main(self, commission_id):
+        super(self.__class__, self)._run()
+        self._run(commission_id)
+
+
+@command(snfastakos_cmds)
+class astakos_commission_action(_astakos_init, _optional_json):
+    """Invoke an action in a commission (special privileges required)
+    Actions can be accept or reject
+    """
+
+    actions = ('accept', 'reject')
+
+    @errors.generic.all
+    @astakoserror
+    def _run(self, commission_id, action):
+        commission_id = int(commission_id)
+        action = action.lower()
+        assert action in self.actions, 'Actions can be %s' % (
+            ' or '.join(self.actions))
+        self._print(
+            self.client.commission_acction(self.token, commission_id, action),
+            print_dict)
+
+    def main(self, commission_id, action):
+        super(self.__class__, self)._run()
+        self._run(commission_id, action)
+
+
+@command(snfastakos_cmds)
+class astakos_commission_accept(_astakos_init):
+    """Accept a pending commission  (special privileges required)"""
+
+    @errors.generic.all
+    @astakoserror
+    def _run(self, commission_id):
+        commission_id = int(commission_id)
+        self.client.accept_commission(self.token, commission_id)
+
+    def main(self, commission_id):
+        super(self.__class__, self)._run()
+        self._run(commission_id)
+
+
+@command(snfastakos_cmds)
+class astakos_commission_reject(_astakos_init):
+    """Reject a pending commission  (special privileges required)"""
+
+    @errors.generic.all
+    @astakoserror
+    def _run(self, commission_id):
+        commission_id = int(commission_id)
+        self.client.reject_commission(self.token, commission_id)
+
+    def main(self, commission_id):
+        super(self.__class__, self)._run()
+        self._run(commission_id)
+
+
+@command(snfastakos_cmds)
+class astakos_commission_resolve(_astakos_init, _optional_json):
+    """Resolve multiple commissions  (special privileges required)"""
+
+    arguments = dict(
+        accept=CommaSeparatedListArgument(
+            'commission ids to accept (e.g. --accept=11,12,13,...',
+            '--accept'),
+        reject=CommaSeparatedListArgument(
+            'commission ids to reject (e.g. --reject=11,12,13,...',
+            '--reject'),
+    )
+
+    @errors.generic.all
+    @astakoserror
+    def _run(self):
+        print 'accepted ', self['accept']
+        print 'rejected ', self['reject']
+        self._print(
+            self.client.resolve_commissions(
+                self.token, self['accept'], self['reject']),
+            print_dict)
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
+
+# commission pending
+# commission info
+# commission action
+# commission accept
+# commission reject
+# commission resolve
+
+# XXX issue_commission, issue_one_commission
 
 
 @command(snfastakos_cmds)
@@ -337,7 +445,8 @@ class astakos_test(_astakos_init):
     @errors.generic.all
     @astakoserror
     def _run(self, *args):
-        pass
+        r = self.client.get_pending_commissions(self.token)
+        print r
 
     def main(self, *args):
         super(self.__class__, self)._run()

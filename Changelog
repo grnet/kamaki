@@ -32,5 +32,6 @@ Features:
 - Implement network_wait [#3862]
 - Implement user_list/set/whoami to switch between session users [#3632, #3660]
 - Expose more astakosclient methods in a 1to1 fashion [#4115]:
-    resources, feedback, endpoints
+    resources, feedback, endpoints,
+    commission_pending/info/action/accept/reject/resolve
 
