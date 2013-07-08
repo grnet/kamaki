@@ -28,6 +28,5 @@ Features:
     server ip attach/detach
 - Implement --wait for server_create/delete/start/reboot/shutdown [#3867]
 - Implement network_wait [#3862]
-- Implement user_list/set/get to switch between session users [#3632, #3660]
-
+- Implement user_list/set/whoami to switch between session users [#3632, #3660]
 
