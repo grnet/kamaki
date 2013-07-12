@@ -71,38 +71,14 @@ class Command(object):
 
     @property
     def is_command(self):
-        return self.cmd_class is not None and len(self.subcommands) == 0
-
-    @property
-    def has_description(self):
-        return len(self.help.strip()) > 0
-
-    @property
-    def description(self):
-        return self.help
+        return len(self.subcommands) == 0 if self.cmd_class else False
 
     @property
     def parent_path(self):
-        parentpath, sep, name = self.path.rpartition('_')
-        return parentpath
-
-    def set_class(self, cmd_class):
-        self.cmd_class = cmd_class
-
-    def get_class(self):
-        return self.cmd_class
-
-    def has_subname(self, subname):
-        return subname in self.subcommands
-
-    def get_subnames(self):
-        return self.subcommands.keys()
-
-    def get_subcommands(self):
-        return self.subcommands.values()
-
-    def sublen(self):
-        return len(self.subcommands)
+        try:
+            return self.path[self.path.rindex('_') + 1:]
+        except ValueError:
+            return ''
 
     def parse_out(self, args):
         cmd = self
@@ -121,7 +97,7 @@ class Command(object):
             self.name,
             self.is_command,
             self.help))
-        for cmd in self.get_subcommands():
+        for cmd in self.subcommands.values():
             cmd.pretty_print(recursive)
 
 
@@ -159,7 +135,7 @@ class CommandTree(object):
                 cmd.add_subcmd(new_cmd)
                 cmd = new_cmd
         if cmd_class:
-            cmd.set_class(cmd_class)
+            cmd.cmd_class = cmd_class
         if description is not None:
             cmd.help = description
 
@@ -205,21 +181,14 @@ class CommandTree(object):
     def get_description(self, path):
         return self._all_commands[path].help
 
-    def set_class(self, path, cmd_class):
-        self._all_commands[path].set_class(cmd_class)
-
-    def get_class(self, path):
-        return self._all_commands[path].get_class()
-
     def get_subnames(self, path=None):
         if path in (None, ''):
             return self.get_group_names()
-        return self._all_commands[path].get_subnames()
+        return self._all_commands[path].subcommands.keys()
 
     def get_subcommands(self, path=None):
-        if path in (None, ''):
-            return self.get_groups()
-        return self._all_commands[path].get_subcommands()
+        return self._all_commands[path].subcommands.values() if (
+            path) else self.get_groups()
 
     def get_parent(self, path):
         if '_' not in path:

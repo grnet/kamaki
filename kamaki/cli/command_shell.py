@@ -197,7 +197,7 @@ class Shell(Cmd):
             # exec command or change context
             if subcmd.is_command:  # exec command
                 try:
-                    cls = subcmd.get_class()
+                    cls = subcmd.cmd_class
                     ldescr = getattr(cls, 'long_description', '')
                     if subcmd.path == 'history_run':
                         instance = cls(
@@ -241,7 +241,7 @@ class Shell(Cmd):
                 old_prompt = self.prompt
                 new_context._roll_command(cmd.parent_path)
                 new_context.set_prompt(subcmd.path.replace('_', ' '))
-                newcmds = [subcmd for subcmd in subcmd.get_subcommands()]
+                newcmds = [subcmd for subcmd in subcmd.subcommands.values()]
                 for subcmd in newcmds:
                     new_context._register_command(subcmd.path)
                 new_context.cmdloop()
@@ -253,7 +253,7 @@ class Shell(Cmd):
         def help_method(self):
             print('%s (%s -h for more options)' % (cmd.help, cmd.name))
             if cmd.is_command:
-                cls = cmd.get_class()
+                cls = cmd.cmd_class
                 ldescr = getattr(cls, 'long_description', '')
                 #_construct_command_syntax(cls)
                 plist = self.prompt[len(self._prefix):-len(self._suffix)]
@@ -277,12 +277,12 @@ class Shell(Cmd):
         def complete_method(self, text, line, begidx, endidx):
             subcmd, cmd_args = cmd.parse_out(split_input(line)[1:])
             if subcmd.is_command:
-                cls = subcmd.get_class()
+                cls = subcmd.cmd_class
                 instance = cls(dict(arguments))
                 empty, sep, subname = subcmd.path.partition(cmd.path)
                 cmd_name = '%s %s' % (cmd.name, subname.replace('_', ' '))
                 print('\n%s\nSyntax:\t%s %s' % (
-                    cls.description, cmd_name, cls.syntax))
+                    cls.help, cmd_name, cls.syntax))
                 cmd_args = {}
                 for arg in instance.arguments.values():
                     cmd_args[','.join(arg.parsed_name)] = arg.help

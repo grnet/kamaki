@@ -348,11 +348,11 @@ def _groups_help(arguments):
             try:
                 for cmd in cmds:
                     if cmd.name in acceptable_groups:
-                        descriptions[cmd.name] = cmd.description
+                        descriptions[cmd.name] = cmd.help
             except TypeError:
                 if _debug:
                     kloger.warning(
-                        'No cmd description for module %s' % cmd_group)
+                        'No cmd description (help) for module %s' % cmd_group)
         elif _debug:
             kloger.warning('Loading of %s cmd spec failed' % cmd_group)
     print('\nOptions:\n - - - -')
@@ -381,9 +381,9 @@ def _load_all_commands(cmd_tree, arguments):
 
 def print_subcommands_help(cmd):
     printout = {}
-    for subcmd in cmd.get_subcommands():
+    for subcmd in cmd.subcommands.values():
         spec, sep, print_path = subcmd.path.partition('_')
-        printout[print_path.replace('_', ' ')] = subcmd.description
+        printout[print_path.replace('_', ' ')] = subcmd.help
     if printout:
         print('\nOptions:\n - - - -')
         print_dict(printout)
@@ -396,18 +396,14 @@ def update_parser_help(parser, cmd):
 
     description = ''
     if cmd.is_command:
-        cls = cmd.get_class()
+        cls = cmd.cmd_class
         parser.syntax += ' ' + cls.syntax
         parser.update_arguments(cls().arguments)
-        description = getattr(cls, 'long_description', '')
-        description = description.strip()
+        description = getattr(cls, 'long_description', '').strip()
     else:
         parser.syntax += ' <...>'
-    if cmd.has_description:
-        parser.parser.description = cmd.help + (
-            ('\n%s' % description) if description else '')
-    else:
-        parser.parser.description = description
+    parser.parser.description = (
+        cmd.help + ('\n' if description else '')) if cmd.help else description
 
 
 def print_error_message(cli_err):
