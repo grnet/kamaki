@@ -75,6 +75,99 @@ class Command(TestCase):
                 except Exception as e:
                     self.assertTrue(isinstance(e, AssertionError))
 
+    def test_add_subcmd(self):
+        cmd = command_tree.Command('cmd')
+        for subname in (None, 'cmd0', 'cmd_cmd0'):
+            if subname:
+                subcmd = command_tree.Command(subname)
+                if subname.startswith(cmd.name + '_'):
+                    self.assertTrue(cmd.add_subcmd(subcmd))
+                    self.assertTrue(subcmd.name in cmd.subcommands)
+                else:
+                    self.assertFalse(cmd.add_subcmd(subcmd))
+                    self.assertTrue(len(cmd.subcommands) == 0)
+            else:
+                self.assertRaises(cmd.add_subcmd, subname, AttributeError)
+
+    def test_get_subcmd(self):
+        cmd = command_tree.Command('cmd')
+        cmd.subcommands = dict(
+            cmd0a=command_tree.Command('cmd_cmd0a', subcommands=dict(
+                cmd1=command_tree.Command('cmd_cmd0a_cmd1'))),
+            cmd0b=command_tree.Command('cmd_cmd0b'))
+        for subname in ('', None, 'cmd0a', 'cmd1', 'cmd0b'):
+            try:
+                expected = cmd.subcommands[subname] if subname else None
+            except KeyError:
+                expected = None
+            self.assertEqual(cmd.get_subcmd(subname), expected)
+
+    def test_contains(self):
+        cmd = command_tree.Command('cmd')
+        for subname in ('', 'cmd0'):
+            self.assertFalse(cmd.contains(subname))
+        cmd.subcommands = dict(
+            cmd0a=command_tree.Command('cmd_cmd0a'),
+            cmd0b=command_tree.Command('cmd_cmd0b'))
+        for subname in ('cmd0a', 'cmd0b'):
+            self.assertTrue(cmd.contains(subname))
+        for subname in ('', 'cmd0c'):
+            self.assertFalse(cmd.contains(subname))
+        cmd.subcommands['cmd0a'].subcommands = dict(
+            cmd1=command_tree.Command('cmd_cmd0a_cmd1'))
+        for subname in ('cmd0a', 'cmd0b'):
+            self.assertTrue(cmd.contains(subname))
+        for subname in ('', 'cmd0c', 'cmd1', 'cmd0a_cmd1'):
+            self.assertFalse(cmd.contains(subname))
+
+    def test_is_command(self):
+        cmd = command_tree.Command('cmd')
+        cmd.subcommands = dict(
+            itis=command_tree.Command('cmd_itis', cmd_class=Command),
+            itsnot=command_tree.Command('cmd_itsnot'))
+        self.assertFalse(cmd.is_command)
+        self.assertTrue(cmd.subcommands['itis'].is_command)
+        self.assertFalse(cmd.subcommands['itsnot'].is_command)
+
+    def test_parent_path(self):
+        cmd = command_tree.Command('cmd')
+        cmd.subcommands = dict(
+            cmd0a=command_tree.Command('cmd_cmd0a', subcommands=dict(
+                cmd1=command_tree.Command('cmd_cmd0a_cmd1'))),
+            cmd0b=command_tree.Command('cmd_cmd0b'))
+        self.assertEqual(cmd.parent_path, '')
+        self.assertEqual(cmd.subcommands['cmd0a'].parent_path, cmd.path)
+        self.assertEqual(cmd.subcommands['cmd0b'].parent_path, cmd.path)
+        cmd0a = cmd.subcommands['cmd0a']
+        self.assertEqual(cmd0a.subcommands['cmd1'].parent_path, cmd0a.path)
+
+    def test_parse_out(self):
+        cmd = command_tree.Command('cmd')
+        cmd.subcommands = dict(
+            cmd0a=command_tree.Command('cmd_cmd0a', subcommands=dict(
+                cmd1=command_tree.Command('cmd_cmd0a_cmd1'))),
+            cmd0b=command_tree.Command('cmd_cmd0b'))
+        for invalids in (None, 42, 0.88):
+            self.assertRaises(TypeError, cmd.parse_out, invalids)
+        for c, l, expc, expl in (
+                (cmd, ['cmd'], cmd, ['cmd']),
+                (cmd, ['XXX'], cmd, ['XXX']),
+                (cmd, ['cmd0a'], cmd.subcommands['cmd0a'], []),
+                (cmd, ['XXX', 'cmd0a'], cmd, ['XXX', 'cmd0a']),
+                (cmd, ['cmd0a', 'XXX'], cmd.subcommands['cmd0a'], ['XXX']),
+                (cmd, ['cmd0a', 'cmd0b'], cmd.subcommands['cmd0a'], ['cmd0b']),
+                (cmd, ['cmd0b', 'XXX'], cmd.subcommands['cmd0b'], ['XXX']),
+                (
+                    cmd, ['cmd0a', 'cmd1'],
+                    cmd.subcommands['cmd0a'].subcommands['cmd1'], []),
+                (
+                    cmd, ['cmd0a', 'cmd1', 'XXX'],
+                    cmd.subcommands['cmd0a'].subcommands['cmd1'], ['XXX']),
+                (
+                    cmd, ['cmd0a', 'XXX', 'cmd1'],
+                    cmd.subcommands['cmd0a'], ['XXX', 'cmd1'])):
+            self.assertEqual((expc, expl), c.parse_out(l))
+
 
 if __name__ == '__main__':
     from sys import argv

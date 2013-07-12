@@ -76,11 +76,20 @@ class Command(object):
     @property
     def parent_path(self):
         try:
-            return self.path[self.path.rindex('_') + 1:]
+            return self.path[:self.path.rindex('_')]
         except ValueError:
             return ''
 
     def parse_out(self, args):
+        """Find the deepest subcommand matching a series of terms
+        but stop the first time a term doesn't match
+
+        :param args: (list) terms to match commands against
+
+        :returns: (parsed out command, the rest of the arguments)
+
+        :raises TypeError: if args is not inalterable
+        """
         cmd = self
         index = 0
         for term in args:
