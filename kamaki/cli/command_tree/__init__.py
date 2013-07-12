@@ -31,8 +31,6 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from kamaki.clients import Client
-
 
 class Command(object):
     """Store a command and the next-level (2 levels)"""
@@ -43,14 +41,15 @@ class Command(object):
     help = ' '
 
     def __init__(self, path, help=' ', subcommands={}, cmd_class=None):
+        assert path, 'Cannot initialize a command without a command path'
         self.path = path
-        self.help = help
-        self.subcommands = dict(subcommands)
-        self.cmd_class = cmd_class
+        self.help = help or ''
+        self.subcommands = dict(subcommands) if subcommands else {}
+        self.cmd_class = cmd_class or None
 
     @property
     def name(self):
-        if self._name is None:
+        if not self._name:
             self._name = self.path.split('_')[-1]
         return str(self._name)
 
