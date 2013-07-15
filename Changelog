@@ -1,3 +1,13 @@
+Hotfix 0.9.1
+
+BugFix:
+
+- Restore history-run functionality
+
+Feature:
+
+- Accept ~ as a character for a cloud name [#4126]
+
 CHANGELOG for version 0.9
 
 Bug Fixes:
