@@ -38,7 +38,7 @@ from inspect import getmembers, isclass
 from itertools import product
 from random import randint
 
-from kamaki.cli.command_tree.test import Command
+from kamaki.cli.command_tree.test import Command, CommandTree
 
 
 #  TestCase auxiliary methods

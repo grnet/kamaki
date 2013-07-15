@@ -40,12 +40,6 @@ from kamaki.cli import command_tree
 
 class Command(TestCase):
 
-    def setUp(self):
-        pass
-
-    def tearDown(self):
-        pass
-
     def test___init__(self):
         for args in product(
                 (None, '', 'cmd'),
@@ -169,7 +163,58 @@ class Command(TestCase):
             self.assertEqual((expc, expl), c.parse_out(l))
 
 
+class CommandTree(TestCase):
+
+    def setUp(self):
+        cmd = command_tree.Command('cmd', subcommands=dict(
+            cmd0a=command_tree.Command('cmd_cmd0a', subcommands=dict(
+                cmd1a=command_tree.Command(
+                    'cmd_cmd0a_cmd1a', subcommands=dict(
+                        cmd2=command_tree.Command('cmd_cmd0a_cmd1a_cmd2'),
+                    )
+                ),
+                cmd1b=command_tree.Command(
+                    'cmd_cmd0a_cmd1b', subcommands=dict(
+                        cmd2=command_tree.Command('cmd_cmd0a_cmd1b_cmd2'),
+                    )
+                )
+            )),
+            cmd0b=command_tree.Command('cmd_cmd0b'),
+            cmd0c=command_tree.Command('cmd_cmd0c', subcommands=dict(
+                cmd1a=command_tree.Command('cmd_cmd0c_cmd1a'),
+                cmd1b=command_tree.Command(
+                    'cmd_cmd0c_cmd1b', subcommands=dict(
+                        cmd2=command_tree.Command('cmd_cmd0c_cmd1b_cmd2'),
+                    )
+                )
+            ))
+        ))
+        self.commands = [
+            cmd,
+            cmd.subcommands['cmd0a'],
+            cmd.subcommands['cmd0a'].subcommands['cmd1a'],
+            cmd.subcommands['cmd0a'].subcommands['cmd1a'].subcommands['cmd2'],
+            cmd.subcommands['cmd0a'].subcommands['cmd1b'],
+            cmd.subcommands['cmd0a'].subcommands['cmd1b'].subcommands['cmd2'],
+            cmd.subcommands['cmd0b'],
+            cmd.subcommands['cmd0c'],
+            cmd.subcommands['cmd0c'].subcommands['cmd1a'],
+            cmd.subcommands['cmd0c'].subcommands['cmd1b'],
+            cmd.subcommands['cmd0c'].subcommands['cmd1b'].subcommands['cmd2'],
+        ]
+
+    def tearDown(self):
+        for cmd in self.commands:
+            del cmd
+        del self.commands
+
+    def test___init__(self):
+        ctree = command_tree.CommandTree('sampleTree', 'a sample Tree')
+        ctree.pretty_print()
+
+
 if __name__ == '__main__':
     from sys import argv
     from kamaki.cli.test import runTestCase
     runTestCase(Command, 'Command', argv[1:])
+    runTestCase(CommandTree, 'CommandTree', argv[1:])
