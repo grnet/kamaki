@@ -150,7 +150,7 @@ class Shell(Cmd):
             pass
 
     def _roll_command(self, cmd_path=None):
-        for subname in self.cmd_tree.get_subnames(cmd_path):
+        for subname in self.cmd_tree.subnames(cmd_path):
             self._unregister_method('do_%s' % subname)
             self._unregister_method('complete_%s' % subname)
             self._unregister_method('help_%s' % subname)
@@ -288,7 +288,7 @@ class Shell(Cmd):
                     cmd_args[','.join(arg.parsed_name)] = arg.help
                 print_dict(cmd_args, indent=2)
                 stdout.write('%s %s' % (self.prompt, line))
-            return subcmd.get_subnames()
+            return subcmd.subnames()
         self._register_method(complete_method, 'complete_%s' % cmd.name)
 
     @property
@@ -311,7 +311,7 @@ class Shell(Cmd):
             intro = self.cmd_tree.name
 
         acceptable = parser.arguments['config'].get_groups()
-        total = self.cmd_tree.get_group_names()
+        total = self.cmd_tree.groups.keys()
         self.cmd_tree.exclude(set(total).difference(acceptable))
 
         for subcmd in self.cmd_tree.get_subcommands(path):

@@ -165,18 +165,30 @@ class Command(TestCase):
 
 class CommandTree(TestCase):
 
+    def _add_commands(self, ctree):
+        for cmd in self.commands:
+            ctree.add_command(cmd.path, cmd.help, cmd.cmd_class)
+
+    def _commands_are_equal(self, c1, c2):
+        self.assertEqual(c1.path, c2.path)
+        self.assertEqual(c1.name, c2.name)
+        self.assertEqual(c1.cmd_class, c2.cmd_class)
+        self.assertEqual(c1.help, c2.help)
+
     def setUp(self):
         cmd = command_tree.Command('cmd', subcommands=dict(
             cmd0a=command_tree.Command('cmd_cmd0a', subcommands=dict(
                 cmd1a=command_tree.Command(
                     'cmd_cmd0a_cmd1a', subcommands=dict(
-                        cmd2=command_tree.Command('cmd_cmd0a_cmd1a_cmd2'),
-                    )
+                        cmd2=command_tree.Command(
+                            'cmd_cmd0a_cmd1a_cmd2', cmd_class=Command)
+                        ),
                 ),
                 cmd1b=command_tree.Command(
                     'cmd_cmd0a_cmd1b', subcommands=dict(
-                        cmd2=command_tree.Command('cmd_cmd0a_cmd1b_cmd2'),
-                    )
+                        cmd2=command_tree.Command(
+                            'cmd_cmd0a_cmd1b_cmd2', cmd_class=Command)
+                        ),
                 )
             )),
             cmd0b=command_tree.Command('cmd_cmd0b'),
@@ -184,8 +196,9 @@ class CommandTree(TestCase):
                 cmd1a=command_tree.Command('cmd_cmd0c_cmd1a'),
                 cmd1b=command_tree.Command(
                     'cmd_cmd0c_cmd1b', subcommands=dict(
-                        cmd2=command_tree.Command('cmd_cmd0c_cmd1b_cmd2'),
-                    )
+                        cmd2=command_tree.Command(
+                            'cmd_cmd0c_cmd1b_cmd2', cmd_class=Command)
+                        ),
                 )
             ))
         ))
@@ -201,6 +214,7 @@ class CommandTree(TestCase):
             cmd.subcommands['cmd0c'].subcommands['cmd1a'],
             cmd.subcommands['cmd0c'].subcommands['cmd1b'],
             cmd.subcommands['cmd0c'].subcommands['cmd1b'].subcommands['cmd2'],
+            command_tree.Command('othercmd')
         ]
 
     def tearDown(self):
@@ -209,8 +223,155 @@ class CommandTree(TestCase):
         del self.commands
 
     def test___init__(self):
-        ctree = command_tree.CommandTree('sampleTree', 'a sample Tree')
-        ctree.pretty_print()
+        name, description = 'sampleTree', 'a sample Tree'
+        ctree = command_tree.CommandTree(name)
+        for attr, exp in (
+                ('groups', {}), ('_all_commands', {}),
+                ('name', name), ('description', '')):
+            self.assertEqual(getattr(ctree, attr), exp)
+        ctree = command_tree.CommandTree(name, description)
+        for attr, exp in (
+                ('groups', {}), ('_all_commands', {}),
+                ('name', name), ('description', description)):
+            self.assertEqual(getattr(ctree, attr), exp)
+
+    def test_exclude(self):
+        ctree = command_tree.CommandTree('excludeTree', 'test exclude group')
+        exp = dict()
+        for cmd in self.commands[0:6]:
+            ctree.groups[cmd.name] = cmd
+            exp[cmd.name] = cmd
+        self.assertEqual(exp, ctree.groups)
+        ctree.exclude(exp.keys()[1::2])
+        for key in exp.keys()[1::2]:
+            exp.pop(key)
+        self.assertEqual(exp, ctree.groups)
+
+    def test_add_command(self):
+        ctree = command_tree.CommandTree('addCommand', 'test add_command')
+        self._add_commands(ctree)
+        for cmd in self.commands:
+            self.assertTrue(cmd, ctree._all_commands)
+            if cmd.path.count('_'):
+                self.assertFalse(cmd.name in ctree.groups)
+            else:
+                self.assertTrue(cmd.name in ctree.groups)
+                self._commands_are_equal(cmd, ctree.groups[cmd.name])
+
+    def test_find_best_match(self):
+        ctree = command_tree.CommandTree('bestMatch', 'test find_best_match')
+        for cmd in self.commands:
+            terms = cmd.path.split('_')
+            best_match, rest = ctree.find_best_match(terms)
+            if len(terms) > 1:
+                self.assertEqual(best_match.path, '_'.join(terms[:-1]))
+            else:
+                self.assertEqual(best_match, None)
+            self.assertEqual(rest, terms[-1:])
+            ctree.add_command(cmd.path, cmd.help, cmd.cmd_class)
+            best_match, rest = ctree.find_best_match(terms)
+            self._commands_are_equal(best_match, cmd)
+            self.assertEqual(rest, [])
+
+    def test_add_tree(self):
+        ctree = command_tree.CommandTree('tree', 'the main tree')
+        ctree1 = command_tree.CommandTree('tree1', 'the first tree')
+        ctree2 = command_tree.CommandTree('tree2', 'the second tree')
+
+        cmds = list(self.commands)
+        del self.commands
+        cmds1, cmds2 = cmds[:6], cmds[6:]
+        self.commands = cmds1
+        self._add_commands(ctree1)
+        self.commands = cmds2
+        self._add_commands(ctree2)
+        self.commands = cmds
+
+        def check_all(
+                p1=False, p2=False, p3=False, p4=False, p5=False, p6=False):
+            for cmd in cmds[:6]:
+                self.assertEquals(cmd.path in ctree._all_commands, p1)
+                self.assertEquals(cmd.path in ctree1._all_commands, p2)
+                if cmd.path != 'cmd':
+                    self.assertEquals(cmd.path in ctree2._all_commands, p3)
+            for cmd in cmds[6:]:
+                self.assertEquals(cmd.path in ctree._all_commands, p4)
+                if cmd.path != 'cmd':
+                    self.assertEquals(cmd.path in ctree1._all_commands, p5)
+                self.assertEquals(cmd.path in ctree2._all_commands, p6)
+
+        check_all(False, True, False, False, False, True)
+        ctree.add_tree(ctree1)
+        check_all(True, True, False, False, False, True)
+        ctree.add_tree(ctree2)
+        check_all(True, True, False, True, False, True)
+        ctree2.add_tree(ctree1)
+        check_all(True, True, True, True, False, True)
+
+    def test_has_command(self):
+        ctree = command_tree.CommandTree('treeHasCommand', 'test has_command')
+        for cmd in self.commands:
+            self.assertFalse(ctree.has_command(cmd.path))
+        self._add_commands(ctree)
+        for cmd in self.commands:
+            self.assertTrue(ctree.has_command(cmd.path))
+        self.assertFalse(ctree.has_command('NON_EXISTING_COMMAND'))
+
+    def test_get_command(self):
+        ctree = command_tree.CommandTree('treeGetCommand', 'test get_command')
+        for cmd in self.commands:
+            self.assertRaises(KeyError, ctree.get_command, cmd.path)
+        self._add_commands(ctree)
+        for cmd in self.commands:
+            self._commands_are_equal(ctree.get_command(cmd.path), cmd)
+        self.assertRaises(KeyError, ctree.get_command, 'NON_EXISTNG_COMMAND')
+
+    def test_subnames(self):
+        ctree = command_tree.CommandTree('treeSubnames', 'test subnames')
+        self.assertEqual(ctree.subnames(), [])
+        self.assertRaises(KeyError, ctree.subnames, 'cmd')
+        self._add_commands(ctree)
+        for l1, l2 in (
+                (ctree.subnames(), ['cmd', 'othercmd']),
+                (ctree.subnames('cmd'), ['cmd0a', 'cmd0b', 'cmd0c']),
+                (ctree.subnames('cmd_cmd0a'), ['cmd1a', 'cmd1b']),
+                (ctree.subnames('cmd_cmd0a_cmd1a'), ['cmd2', ]),
+                (ctree.subnames('cmd_cmd0a_cmd1b'), ['cmd2', ]),
+                (ctree.subnames('cmd_cmd0a_cmd1a_cmd2'), []),
+                (ctree.subnames('cmd_cmd0a_cmd1b_cmd2'), []),
+                (ctree.subnames('cmd_cmd0b'), []),
+                (ctree.subnames('cmd_cmd0c'), ['cmd1a', 'cmd1b']),
+                (ctree.subnames('cmd_cmd0c_cmd1a'), []),
+                (ctree.subnames('cmd_cmd0c_cmd1b'), ['cmd2', ]),
+                (ctree.subnames('cmd_cmd0c_cmd1b_cmd2'), []),
+                (ctree.subnames('othercmd'), [])):
+            l1.sort(), l2.sort(), self.assertEqual(l1, l2)
+        self.assertRaises(KeyError, ctree.subnames, 'NON_EXISTNG_CMD')
+
+    def test_get_subcommands(self):
+        ctree = command_tree.CommandTree('treeSub', 'test get_subcommands')
+        self.assertEqual(ctree.get_subcommands(), [])
+        self.assertRaises(KeyError, ctree.get_subcommands, 'cmd')
+        self._add_commands(ctree)
+        for s1, l2 in (
+            ('', ['cmd', 'othercmd']),
+            ('cmd', ['cmd0a', 'cmd0b', 'cmd0c']),
+            ('cmd_cmd0a', ['cmd1a', 'cmd1b']),
+            ('cmd_cmd0a_cmd1a', ['cmd2', ]),
+            ('cmd_cmd0a_cmd1b', ['cmd2', ]),
+            ('cmd_cmd0a_cmd1a_cmd2', []),
+            ('cmd_cmd0a_cmd1b_cmd2', []),
+            ('cmd_cmd0b', []),
+            ('cmd_cmd0c', ['cmd1a', 'cmd1b']),
+            ('cmd_cmd0c_cmd1a', []),
+            ('cmd_cmd0c_cmd1b', ['cmd2', ]),
+            ('cmd_cmd0c_cmd1b_cmd2', []),
+            ('othercmd', [])
+        ):
+            l1 = [cmd.path for cmd in ctree.get_subcommands(s1)]
+            l2 = ['_'.join([s1, i]) for i in l2] if s1 else l2
+            l1.sort(), l2.sort(), self.assertEqual(l1, l2)
+        self.assertRaises(KeyError, ctree.get_subcommands, 'NON_EXISTNG_CMD')
 
 
 if __name__ == '__main__':

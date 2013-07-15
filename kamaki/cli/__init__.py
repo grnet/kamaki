@@ -346,9 +346,9 @@ def _groups_help(arguments):
         if pkg:
             cmds = getattr(pkg, '_commands')
             try:
-                for cmd in cmds:
-                    if cmd.name in acceptable_groups:
-                        descriptions[cmd.name] = cmd.help
+                for cmd_tree in cmds:
+                    if cmd_tree.name in acceptable_groups:
+                        descriptions[cmd_tree.name] = cmd_tree.description
             except TypeError:
                 if _debug:
                     kloger.warning(
