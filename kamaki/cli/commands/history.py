@@ -161,7 +161,7 @@ class history_run(_init_history):
     _cmd_tree = None
 
     def __init__(self, arguments={}, auth_base=None, cmd_tree=None):
-        super(self.__class__, self).__init__(arguments)
+        super(self.__class__, self).__init__(arguments, auth_base=auth_base)
         self._cmd_tree = cmd_tree
 
     @errors.generic.all
@@ -171,7 +171,9 @@ class history_run(_init_history):
         if not cmd.is_command:
             return
         try:
-            instance = cmd.get_class()(self.arguments)
+            instance = cmd.get_class()(
+                self.arguments,
+                auth_base=getattr(self, 'auth_base', None))
             instance.config = self.config
             prs = ArgumentParseManager(
                 cmd.path.split(),
