@@ -340,8 +340,8 @@ def _groups_help(arguments):
     global _debug
     global kloger
     descriptions = {}
-    acceptable_groups = arguments['config'].get_groups()
-    for cmd_group, spec in arguments['config'].get_cli_specs():
+    acceptable_groups = arguments['config'].groups
+    for cmd_group, spec in arguments['config'].cli_specs:
         pkg = _load_spec_module(spec, arguments, '_commands')
         if pkg:
             cmds = getattr(pkg, '_commands')
@@ -361,7 +361,7 @@ def _groups_help(arguments):
 
 def _load_all_commands(cmd_tree, arguments):
     _cnf = arguments['config']
-    for cmd_group, spec in _cnf.get_cli_specs():
+    for cmd_group, spec in _cnf.cli_specs:
         try:
             spec_module = _load_spec_module(spec, arguments, '_commands')
             spec_commands = getattr(spec_module, '_commands')
@@ -436,7 +436,7 @@ def exec_cmd(instance, cmd_args, help_method):
 
 
 def get_command_group(unparsed, arguments):
-    groups = arguments['config'].get_groups()
+    groups = arguments['config'].groups
     for term in unparsed:
         if term.startswith('-'):
             continue

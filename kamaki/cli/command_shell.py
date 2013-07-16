@@ -310,7 +310,7 @@ class Shell(Cmd):
         else:
             intro = self.cmd_tree.name
 
-        acceptable = parser.arguments['config'].get_groups()
+        acceptable = parser.arguments['config'].groups
         total = self.cmd_tree.groups.keys()
         self.cmd_tree.exclude(set(total).difference(acceptable))
 

@@ -34,9 +34,11 @@
 #from mock import patch, call
 from unittest import TestCase
 from StringIO import StringIO
+from sys import stdin, stdout
 #from itertools import product
 
 from kamaki.cli import argument
+from kamaki.cli.config import Config
 
 
 class Argument(TestCase):
@@ -85,7 +87,71 @@ class Argument(TestCase):
             del arp
 
 
+class ConfigArgument(TestCase):
+
+    #  A cloud name in config with a URL but no TOKEN
+    SEMI_CLOUD = 'production'
+
+    # A cloud name that is not configured in config
+    INVALID_CLOUD = 'QWERTY_123456'
+
+    def setUp(self):
+        argument._config_arg = argument.ConfigArgument('Recovered Path')
+
+    def test_value(self):
+        c = argument._config_arg
+        self.assertEqual(c.value, None)
+        exp = '/some/random/path'
+        c.value = exp
+        self.assertTrue(isinstance(c.value, Config))
+        self.assertEqual(c.file_path, exp)
+        self.assertEqual(c.value.path, exp)
+
+    def test_get(self):
+        c = argument._config_arg
+        c.value = None
+        self.assertEqual(c.value.get('global', 'config_cli'), 'config')
+
+    def test_groups(self):
+        c = argument._config_arg
+        c.value = None
+        self.assertTrue(set(c.groups).issuperset([
+            'image', 'config', 'history']))
+
+    def test_cli_specs(self):
+        c = argument._config_arg
+        c.value = None
+        self.assertTrue(set(c.cli_specs).issuperset([
+            ('image', 'image'), ('config', 'config'), ('history', 'history')]))
+
+    def test_get_global(self):
+        c = argument._config_arg
+        c.value = None
+        for k, v in (
+                ('config_cli', 'config'),
+                ('image_cli', 'image'),
+                ('history_cli', 'history')):
+            self.assertEqual(c.get_global(k), v)
+
+    def test_get_cloud(self):
+        """test_get_cloud (!! hard-set SEMI/INVALID_CLOUD to run this !!)"""
+        c = argument._config_arg
+        c.value = None
+        if not self.SEMI_CLOUD:
+            stdout.write(
+                '\n\tA cloud name set in config file with URL but no TOKEN: ')
+            self.SEMI_CLOUD = stdin.readline()[:-1]
+        self.assertTrue(len(c.get_cloud(self.SEMI_CLOUD, 'url')) > 0)
+        self.assertRaises(KeyError, c.get_cloud, self.SEMI_CLOUD, 'token')
+
+        if not self.INVALID_CLOUD:
+            stdout.write('\tok\n\tA cloud name NOT in your config file: ')
+            self.INVALID_CLOUD = stdin.readline()[:-1]
+        self.assertRaises(KeyError, c.get_cloud, self.INVALID_CLOUD, 'url')
+
+
 if __name__ == '__main__':
     from sys import argv
     from kamaki.cli.test import runTestCase
     runTestCase(Argument, 'Argument', argv[1:])
+    runTestCase(ConfigArgument, 'ConfigArgument', argv[1:])

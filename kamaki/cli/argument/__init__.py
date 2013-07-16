@@ -98,21 +98,21 @@ class Argument(object):
 class ConfigArgument(Argument):
     """Manage a kamaki configuration (file)"""
 
-    _config_file = None
+    def __init__(self, help, parsed_name=('-c', '--config')):
+        super(ConfigArgument, self).__init__(1, help, parsed_name, None)
+        self.file_path = None
 
     @property
     def value(self):
-        """A Config object"""
-        super(self.__class__, self).value
-        return super(self.__class__, self).value
+        return super(ConfigArgument, self).value
 
     @value.setter
     def value(self, config_file):
         if config_file:
             self._value = Config(config_file)
-            self._config_file = config_file
-        elif self._config_file:
-            self._value = Config(self._config_file)
+            self.file_path = config_file
+        elif self.file_path:
+            self._value = Config(self.file_path)
         else:
             self._value = Config()
 
@@ -120,13 +120,15 @@ class ConfigArgument(Argument):
         """Get a configuration setting from the Config object"""
         return self.value.get(group, term)
 
-    def get_groups(self):
+    @property
+    def groups(self):
         suffix = '_cli'
         slen = len(suffix)
         return [term[:-slen] for term in self.value.keys('global') if (
             term.endswith(suffix))]
 
-    def get_cli_specs(self):
+    @property
+    def cli_specs(self):
         suffix = '_cli'
         slen = len(suffix)
         return [(k[:-slen], v) for k, v in self.value.items('global') if (
@@ -139,8 +141,7 @@ class ConfigArgument(Argument):
         return self.value.get_cloud(cloud, option)
 
 
-_config_arg = ConfigArgument(
-    1, 'Path to configuration file', ('-c', '--config'))
+_config_arg = ConfigArgument('Path to config file')
 
 
 class CmdLineConfigArgument(Argument):
