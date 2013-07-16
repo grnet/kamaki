@@ -31,14 +31,11 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from mock import patch, call
 from unittest import makeSuite, TestSuite, TextTestRunner, TestCase
-from time import sleep
 from inspect import getmembers, isclass
-from itertools import product
-from random import randint
 
 from kamaki.cli.command_tree.test import Command, CommandTree
+from kamaki.cli.argument.test import Argument
 
 
 #  TestCase auxiliary methods

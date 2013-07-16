@@ -57,64 +57,32 @@ log = getLogger(__name__)
 
 class Argument(object):
     """An argument that can be parsed from command line or otherwise.
-    This is the general Argument class. It is suggested to extent this
+    This is the top-level Argument class. It is suggested to extent this
     class into more specific argument types.
     """
 
     def __init__(self, arity, help=None, parsed_name=None, default=None):
         self.arity = int(arity)
-
-        if help:
-            self.help = help
-        if parsed_name:
-            self.parsed_name = parsed_name
-        assert self.parsed_name, 'No parsed name for argument %s' % self
-        self.default = default
+        self.help = '%s' % help or ''
+        self.parsed_name = parsed_name
+        self.default = default or (None if self.arity else False)
 
     @property
     def parsed_name(self):
-        """the string which will be recognised by the parser as an instance
-            of this argument
         """
-        return getattr(self, '_parsed_name', None)
+        :returns: (str) of the form --smth or -s is recognised as a call to an
+            argument instance
+        """
+        return getattr(self, '_parsed_name', [])
 
     @parsed_name.setter
     def parsed_name(self, newname):
+        assert newname, 'No parsed name for argument %s' % self
         self._parsed_name = getattr(self, '_parsed_name', [])
         if isinstance(newname, list) or isinstance(newname, tuple):
             self._parsed_name += list(newname)
         else:
             self._parsed_name.append('%s' % newname)
-
-    @property
-    def help(self):
-        """a user friendly help message"""
-        return getattr(self, '_help', None)
-
-    @help.setter
-    def help(self, newhelp):
-        self._help = '%s' % newhelp
-
-    @property
-    def arity(self):
-        """negative for repeating, 0 for flag, 1 or more for values"""
-        return getattr(self, '_arity', None)
-
-    @arity.setter
-    def arity(self, newarity):
-        newarity = int(newarity)
-        self._arity = newarity
-
-    @property
-    def default(self):
-        """the value of this argument when not set"""
-        if not hasattr(self, '_default'):
-            self._default = False if self.arity == 0 else None
-        return self._default
-
-    @default.setter
-    def default(self, newdefault):
-        self._default = newdefault
 
     @property
     def value(self):
