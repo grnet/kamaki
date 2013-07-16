@@ -450,14 +450,13 @@ class file_list(_file_container_command, _optional_json):
 
 @command(pithos_cmds)
 class file_mkdir(_file_container_command, _optional_output_cmd):
-    """Create a directory"""
-
-    __doc__ += '\n. '.join([
-        'Kamaki hanldes directories the same way as OOS Storage and Pithos+:',
-        'A   directory  is   an  object  with  type  "application/directory"',
-        'An object with path  dir/name can exist even if  dir does not exist',
-        'or even if dir  is  a non  directory  object.  Users can modify dir',
-        'without affecting the dir/name object in any way.'])
+    """Create a directory
+    Kamaki hanldes directories the same way as OOS Storage and Pithos+:
+    A directory  is   an  object  with  type  "application/directory"
+    An object with path  dir/name can exist even if  dir does not exist
+    or even if dir  is  a non  directory  object.  Users can modify dir '
+    without affecting the dir/name object in any way.
+    """
 
     @errors.generic.all
     @errors.pithos.connection
@@ -533,7 +532,7 @@ class file_create(_file_container_command, _optional_output_cmd):
 class _source_destination_command(_file_container_command):
 
     arguments = dict(
-        destination_account=ValueArgument('', ('a', '--dst-account')),
+        destination_account=ValueArgument('', ('-a', '--dst-account')),
         recursive=FlagArgument('', ('-R', '--recursive')),
         prefix=FlagArgument('', '--with-prefix', default=''),
         suffix=ValueArgument('', '--with-suffix', default=''),
