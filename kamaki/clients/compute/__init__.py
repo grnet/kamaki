@@ -320,9 +320,7 @@ class ComputeClient(ComputeRestClient):
 
         :param pool: (str) pool of ips to allocate from
 
-        :returns: (dict) {
-                fixed_ip: ..., id: ..., instance_id: ..., ip: ..., pool: ...
-            }
+        :returns: (dict) {fixed_ip: . id: . instance_id: . ip: . pool: .}
         """
         json_data = dict(pool=pool) if pool else dict()
         r = self.floating_ips_post(tenant_id, json_data)

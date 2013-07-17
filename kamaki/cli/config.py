@@ -352,7 +352,7 @@ class Config(RawConfigParser):
         except NoSectionError:
             pass
 
-    def remote_from_cloud(self, cloud, option):
+    def remove_from_cloud(self, cloud, option):
         d = self.get(CLOUD_PREFIX, cloud)
         if isinstance(d, dict):
             d.pop(option)

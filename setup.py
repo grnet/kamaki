@@ -62,6 +62,7 @@ setup(
     packages=[
         'kamaki',
         'kamaki.cli',
+        'kamaki.cli.command_tree',
         'kamaki.cli.commands',
         'kamaki.clients',
         'kamaki.clients.utils',

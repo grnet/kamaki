@@ -31,8 +31,6 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from kamaki.clients import Client
-
 
 class Command(object):
     """Store a command and the next-level (2 levels)"""
@@ -43,14 +41,15 @@ class Command(object):
     help = ' '
 
     def __init__(self, path, help=' ', subcommands={}, cmd_class=None):
+        assert path, 'Cannot initialize a command without a command path'
         self.path = path
-        self.help = help
-        self.subcommands = dict(subcommands)
-        self.cmd_class = cmd_class
+        self.help = help or ''
+        self.subcommands = dict(subcommands) if subcommands else {}
+        self.cmd_class = cmd_class or None
 
     @property
     def name(self):
-        if self._name is None:
+        if not self._name:
             self._name = self.path.split('_')[-1]
         return str(self._name)
 
@@ -72,40 +71,25 @@ class Command(object):
 
     @property
     def is_command(self):
-        return self.cmd_class is not None and len(self.subcommands) == 0
-
-    @property
-    def has_description(self):
-        return len(self.help.strip()) > 0
-
-    @property
-    def description(self):
-        return self.help
+        return len(self.subcommands) == 0 if self.cmd_class else False
 
     @property
     def parent_path(self):
-        parentpath, sep, name = self.path.rpartition('_')
-        return parentpath
-
-    def set_class(self, cmd_class):
-        self.cmd_class = cmd_class
-
-    def get_class(self):
-        return self.cmd_class
-
-    def has_subname(self, subname):
-        return subname in self.subcommands
-
-    def get_subnames(self):
-        return self.subcommands.keys()
-
-    def get_subcommands(self):
-        return self.subcommands.values()
-
-    def sublen(self):
-        return len(self.subcommands)
+        try:
+            return self.path[:self.path.rindex('_')]
+        except ValueError:
+            return ''
 
     def parse_out(self, args):
+        """Find the deepest subcommand matching a series of terms
+        but stop the first time a term doesn't match
+
+        :param args: (list) terms to match commands against
+
+        :returns: (parsed out command, the rest of the arguments)
+
+        :raises TypeError: if args is not inalterable
+        """
         cmd = self
         index = 0
         for term in args:
@@ -117,25 +101,19 @@ class Command(object):
         return cmd, args[index:]
 
     def pretty_print(self, recursive=False):
-        print('Path: %s (Name: %s) is_cmd: %s\n\thelp: %s' % (
-            self.path,
-            self.name,
-            self.is_command,
-            self.help))
-        for cmd in self.get_subcommands():
+        print('%s\t\t(Name: %s is_cmd: %s help: %s)' % (
+            self.path, self.name, self.is_command, self.help))
+        for cmd in self.subcommands.values():
             cmd.pretty_print(recursive)
 
 
 class CommandTree(object):
 
-    groups = {}
-    _all_commands = {}
-    name = None
-    description = None
-
     def __init__(self, name, description=''):
         self.name = name
         self.description = description
+        self.groups = dict()
+        self._all_commands = dict()
 
     def exclude(self, groups_to_exclude=[]):
         for group in groups_to_exclude:
@@ -159,17 +137,17 @@ class CommandTree(object):
                 self._all_commands[path] = new_cmd
                 cmd.add_subcmd(new_cmd)
                 cmd = new_cmd
-        if cmd_class:
-            cmd.set_class(cmd_class)
-        if description is not None:
-            cmd.help = description
+        cmd.cmd_class = cmd_class or None
+        cmd.help = description or None
 
     def find_best_match(self, terms):
         """Find a command that best matches a given list of terms
 
-        :param terms: (list of str) match them against paths in cmd_tree
+        :param terms: (list of str) match against paths in cmd_tree, e.g.
+            ['aa', 'bb', 'cc'] matches aa_bb_cc
 
-        :returns: (Command, list) the matching command, the remaining terms
+        :returns: (Command, list) the matching command, the remaining terms or
+            None
         """
         path = []
         for term in terms:
@@ -186,7 +164,10 @@ class CommandTree(object):
         tdesc = new_tree.description
         self.groups.update(new_tree.groups)
         self._all_commands.update(new_tree._all_commands)
-        self.set_description(tname, tdesc)
+        try:
+            self._all_commands[tname].help = tdesc
+        except KeyError:
+            self.add_command(tname, tdesc)
 
     def has_command(self, path):
         return path in self._all_commands
@@ -194,60 +175,14 @@ class CommandTree(object):
     def get_command(self, path):
         return self._all_commands[path]
 
-    def get_groups(self):
-        return self.groups.values()
-
-    def get_group_names(self):
-        return self.groups.keys()
-
-    def set_description(self, path, description):
-        self._all_commands[path].help = description
-
-    def get_description(self, path):
-        return self._all_commands[path].help
-
-    def set_class(self, path, cmd_class):
-        self._all_commands[path].set_class(cmd_class)
-
-    def get_class(self, path):
-        return self._all_commands[path].get_class()
-
-    def get_subnames(self, path=None):
+    def subnames(self, path=None):
         if path in (None, ''):
-            return self.get_group_names()
-        return self._all_commands[path].get_subnames()
+            return self.groups.keys()
+        return self._all_commands[path].subcommands.keys()
 
     def get_subcommands(self, path=None):
-        if path in (None, ''):
-            return self.get_groups()
-        return self._all_commands[path].get_subcommands()
-
-    def get_parent(self, path):
-        if '_' not in path:
-            return None
-        terms = path.split('_')
-        parent_path = '_'.join(terms[:-1])
-        return self._all_commands[parent_path]
-
-    def get_closest_ancestor_command(self, path):
-        path, sep, name = path.rpartition('_')
-        while len(path) > 0:
-            cmd = self._all_commands[path]
-            if cmd.is_command:
-                return cmd
-            path, sep, name = path.rpartition('_')
-        return None
-
-        if '_' not in path:
-            return None
-        terms = path.split()[:-1]
-        while len(terms) > 0:
-            tmp_path = '_'.join(terms)
-            cmd = self._all_commands[tmp_path]
-            if cmd.is_command:
-                return cmd
-            terms = terms[:-1]
-        raise KeyError('No ancestor commands')
+        return self._all_commands[path].subcommands.values() if (
+            path) else self.groups.values()
 
     def pretty_print(self, group=None):
         if group is None:
