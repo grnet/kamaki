@@ -10,6 +10,7 @@ Changes:
   as a side effect, some renamings in astakos.AstakosClient:
    info --> user_info, user --> list_users
 - Simplify listings (kamaki.cli.utils: print methods)
+- Enrich client API docs with examples and astakos endpoint information [#4135]
 
 Features:
 
