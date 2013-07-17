@@ -95,7 +95,7 @@ def run(auth_base, cloud, parser, _help):
         print_subcommands_help(cmd)
         exit(0)
 
-    cls = cmd.get_class()
+    cls = cmd.cmd_class
     executable = cls(parser.arguments, auth_base, cloud)
     parser.update_arguments(executable.arguments)
     #parsed, unparsed = parse_known_args(parser, executable.arguments)

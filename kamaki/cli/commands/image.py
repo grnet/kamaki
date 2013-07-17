@@ -404,8 +404,10 @@ class image_register(_init_image, _optional_json):
         if pclient and not self['metafile_force']:
             try:
                 pclient.get_object_info(meta_path)
-                raiseCLIError('Metadata file %s:%s already exists' % (
-                    container, meta_path))
+                raiseCLIError(
+                    'Metadata file %s:%s already exists, abort' % (
+                        container, meta_path),
+                    details=['Registration ABORTED', 'Try -f to overwrite'])
             except ClientError as ce:
                 if ce.status != 404:
                     raise

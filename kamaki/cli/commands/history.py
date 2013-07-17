@@ -171,7 +171,7 @@ class history_run(_init_history):
         if not cmd.is_command:
             return
         try:
-            instance = cmd.get_class()(
+            instance = cmd.cmd_class(
                 self.arguments,
                 auth_base=getattr(self, 'auth_base', None))
             instance.config = self.config
@@ -180,7 +180,7 @@ class history_run(_init_history):
                 dict(instance.arguments))
             prs.syntax = '%s %s' % (
                 cmd.path.replace('_', ' '),
-                cmd.get_class().syntax)
+                cmd.cmd_class.syntax)
             prs.parse(args)
             exec_cmd(instance, prs.unparsed, prs.parser.print_help)
         except (CLIError, ClientError) as err:

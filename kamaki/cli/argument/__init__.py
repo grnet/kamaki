@@ -57,68 +57,29 @@ log = getLogger(__name__)
 
 class Argument(object):
     """An argument that can be parsed from command line or otherwise.
-    This is the general Argument class. It is suggested to extent this
+    This is the top-level Argument class. It is suggested to extent this
     class into more specific argument types.
     """
 
     def __init__(self, arity, help=None, parsed_name=None, default=None):
         self.arity = int(arity)
+        self.help = '%s' % help or ''
 
-        if help:
-            self.help = help
-        if parsed_name:
-            self.parsed_name = parsed_name
-        assert self.parsed_name, 'No parsed name for argument %s' % self
-        self.default = default
+        assert parsed_name, 'No parsed name for argument %s' % self
+        self.parsed_name = list(parsed_name) if isinstance(
+            parsed_name, list) or isinstance(parsed_name, tuple) else (
+                '%s' % parsed_name).split()
+        for name in self.parsed_name:
+            assert name.count(' ') == 0, '%s: Invalid parse name "%s"' % (
+                self, name)
+            msg = '%s: Invalid parse name "%s" should start with a "-"' % (
+                    self, name)
+            assert name.startswith('-'), msg
 
-    @property
-    def parsed_name(self):
-        """the string which will be recognised by the parser as an instance
-            of this argument
-        """
-        return getattr(self, '_parsed_name', None)
-
-    @parsed_name.setter
-    def parsed_name(self, newname):
-        self._parsed_name = getattr(self, '_parsed_name', [])
-        if isinstance(newname, list) or isinstance(newname, tuple):
-            self._parsed_name += list(newname)
-        else:
-            self._parsed_name.append('%s' % newname)
-
-    @property
-    def help(self):
-        """a user friendly help message"""
-        return getattr(self, '_help', None)
-
-    @help.setter
-    def help(self, newhelp):
-        self._help = '%s' % newhelp
-
-    @property
-    def arity(self):
-        """negative for repeating, 0 for flag, 1 or more for values"""
-        return getattr(self, '_arity', None)
-
-    @arity.setter
-    def arity(self, newarity):
-        newarity = int(newarity)
-        self._arity = newarity
-
-    @property
-    def default(self):
-        """the value of this argument when not set"""
-        if not hasattr(self, '_default'):
-            self._default = False if self.arity == 0 else None
-        return self._default
-
-    @default.setter
-    def default(self, newdefault):
-        self._default = newdefault
+        self.default = default or (None if self.arity else False)
 
     @property
     def value(self):
-        """the value of the argument"""
         return getattr(self, '_value', self.default)
 
     @value.setter
@@ -127,39 +88,31 @@ class Argument(object):
 
     def update_parser(self, parser, name):
         """Update argument parser with self info"""
-        action = 'append' if self.arity < 0\
-            else 'store_true' if self.arity == 0\
-            else 'store'
+        action = 'append' if self.arity < 0 else (
+            'store' if self.arity else 'store_true')
         parser.add_argument(
             *self.parsed_name,
-            dest=name,
-            action=action,
-            default=self.default,
-            help=self.help)
-
-    def main(self):
-        """Overide this method to give functionality to your args"""
-        raise NotImplementedError
+            dest=name, action=action, default=self.default, help=self.help)
 
 
 class ConfigArgument(Argument):
     """Manage a kamaki configuration (file)"""
 
-    _config_file = None
+    def __init__(self, help, parsed_name=('-c', '--config')):
+        super(ConfigArgument, self).__init__(1, help, parsed_name, None)
+        self.file_path = None
 
     @property
     def value(self):
-        """A Config object"""
-        super(self.__class__, self).value
-        return super(self.__class__, self).value
+        return super(ConfigArgument, self).value
 
     @value.setter
     def value(self, config_file):
         if config_file:
             self._value = Config(config_file)
-            self._config_file = config_file
-        elif self._config_file:
-            self._value = Config(self._config_file)
+            self.file_path = config_file
+        elif self.file_path:
+            self._value = Config(self.file_path)
         else:
             self._value = Config()
 
@@ -167,13 +120,15 @@ class ConfigArgument(Argument):
         """Get a configuration setting from the Config object"""
         return self.value.get(group, term)
 
-    def get_groups(self):
+    @property
+    def groups(self):
         suffix = '_cli'
         slen = len(suffix)
         return [term[:-slen] for term in self.value.keys('global') if (
             term.endswith(suffix))]
 
-    def get_cli_specs(self):
+    @property
+    def cli_specs(self):
         suffix = '_cli'
         slen = len(suffix)
         return [(k[:-slen], v) for k, v in self.value.items('global') if (
@@ -185,8 +140,8 @@ class ConfigArgument(Argument):
     def get_cloud(self, cloud, option):
         return self.value.get_cloud(cloud, option)
 
-_config_arg = ConfigArgument(
-    1, 'Path to configuration file', ('-c', '--config'))
+
+_config_arg = ConfigArgument('Path to config file')
 
 
 class CmdLineConfigArgument(Argument):
@@ -337,11 +292,7 @@ class VersionArgument(FlagArgument):
     @value.setter
     def value(self, newvalue):
         self._value = newvalue
-        self.main()
-
-    def main(self):
-        """Print current version"""
-        if self.value:
+        if newvalue:
             import kamaki
             print('kamaki %s' % kamaki.__version__)
 
