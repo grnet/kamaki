@@ -31,14 +31,16 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-#from mock import patch, call
+from mock import patch, call
 from unittest import TestCase
 from StringIO import StringIO
-from sys import stdin, stdout
 #from itertools import product
 
 from kamaki.cli import argument
 from kamaki.cli.config import Config
+
+
+cnf_path = 'kamaki.cli.config.Config'
 
 
 class Argument(TestCase):
@@ -89,12 +91,6 @@ class Argument(TestCase):
 
 class ConfigArgument(TestCase):
 
-    #  A cloud name in config with a URL but no TOKEN
-    SEMI_CLOUD = 'production'
-
-    # A cloud name that is not configured in config
-    INVALID_CLOUD = 'QWERTY_123456'
-
     def setUp(self):
         argument._config_arg = argument.ConfigArgument('Recovered Path')
 
@@ -110,19 +106,33 @@ class ConfigArgument(TestCase):
     def test_get(self):
         c = argument._config_arg
         c.value = None
-        self.assertEqual(c.value.get('global', 'config_cli'), 'config')
+        with patch('%s.get' % cnf_path, return_value='config') as get:
+            self.assertEqual(c.value.get('global', 'config_cli'), 'config')
+            self.assertEqual(get.mock_calls[-1], call('global', 'config_cli'))
 
-    def test_groups(self):
+    @patch('%s.keys' % cnf_path, return_value=(
+        'image_cli', 'config_cli', 'history_cli', 'file'))
+    def test_groups(self, keys):
         c = argument._config_arg
         c.value = None
-        self.assertTrue(set(c.groups).issuperset([
-            'image', 'config', 'history']))
+        cset = set(c.groups)
+        self.assertTrue(cset.issuperset(['image', 'config', 'history']))
+        self.assertEqual(keys.mock_calls[-1], call('global'))
+        self.assertFalse('file' in cset)
+        self.assertEqual(keys.mock_calls[-1], call('global'))
 
-    def test_cli_specs(self):
+    @patch('%s.items' % cnf_path, return_value=(
+        ('image_cli', 'image'), ('file', 'pithos'),
+        ('config_cli', 'config'), ('history_cli', 'history')))
+    def test_cli_specs(self, items):
         c = argument._config_arg
         c.value = None
-        self.assertTrue(set(c.cli_specs).issuperset([
+        cset = set(c.cli_specs)
+        self.assertTrue(cset.issuperset([
             ('image', 'image'), ('config', 'config'), ('history', 'history')]))
+        self.assertEqual(items.mock_calls[-1], call('global'))
+        self.assertFalse(cset.issuperset([('file', 'pithos'), ]))
+        self.assertEqual(items.mock_calls[-1], call('global'))
 
     def test_get_global(self):
         c = argument._config_arg
@@ -131,23 +141,24 @@ class ConfigArgument(TestCase):
                 ('config_cli', 'config'),
                 ('image_cli', 'image'),
                 ('history_cli', 'history')):
-            self.assertEqual(c.get_global(k), v)
+            with patch('%s.get_global' % cnf_path, return_value=v) as gg:
+                self.assertEqual(c.get_global(k), v)
+                self.assertEqual(gg.mock_calls[-1], call(k))
 
     def test_get_cloud(self):
-        """test_get_cloud (!! hard-set SEMI/INVALID_CLOUD to run this !!)"""
         c = argument._config_arg
         c.value = None
-        if not self.SEMI_CLOUD:
-            stdout.write(
-                '\n\tA cloud name set in config file with URL but no TOKEN: ')
-            self.SEMI_CLOUD = stdin.readline()[:-1]
-        self.assertTrue(len(c.get_cloud(self.SEMI_CLOUD, 'url')) > 0)
-        self.assertRaises(KeyError, c.get_cloud, self.SEMI_CLOUD, 'token')
-
-        if not self.INVALID_CLOUD:
-            stdout.write('\tok\n\tA cloud name NOT in your config file: ')
-            self.INVALID_CLOUD = stdin.readline()[:-1]
-        self.assertRaises(KeyError, c.get_cloud, self.INVALID_CLOUD, 'url')
+        with patch(
+                '%s.get_cloud' % cnf_path,
+                return_value='http://cloud') as get_cloud:
+            self.assertTrue(len(c.get_cloud('mycloud', 'url')) > 0)
+            self.assertEqual(get_cloud.mock_calls[-1],  call('mycloud', 'url'))
+        with patch(
+                '%s.get_cloud' % cnf_path,
+                side_effect=KeyError('no token')) as get_cloud:
+            self.assertRaises(KeyError, c.get_cloud, 'mycloud', 'token')
+        invalidcloud = 'PLEASE_DO_NOT_EVER_NAME_YOUR_CLOUD_LIKE_THIS111'
+        self.assertRaises(KeyError, c.get_cloud, invalidcloud, 'url')
 
 
 if __name__ == '__main__':
