@@ -36,6 +36,7 @@ from inspect import getmembers, isclass
 
 from kamaki.cli.command_tree.test import Command, CommandTree
 from kamaki.cli.argument.test import Argument, ConfigArgument
+from kamaki.cli.argument.test import RuntimeConfigArgument
 
 
 #  TestCase auxiliary methods

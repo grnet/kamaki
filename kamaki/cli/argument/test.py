@@ -34,7 +34,7 @@
 from mock import patch, call
 from unittest import TestCase
 from StringIO import StringIO
-#from itertools import product
+from itertools import product
 
 from kamaki.cli import argument
 from kamaki.cli.config import Config
@@ -161,8 +161,23 @@ class ConfigArgument(TestCase):
         self.assertRaises(KeyError, c.get_cloud, invalidcloud, 'url')
 
 
+class RuntimeConfigArgument(TestCase):
+
+    def setUp(self):
+        argument._config_arg = argument.ConfigArgument('Recovered Path')
+
+    @patch('kamaki.cli.argument.Argument.__init__')
+    def test___init__(self, arg):
+        config, help, pname, default = 'config', 'help', 'pname', 'default'
+        rca = argument.RuntimeConfigArgument(config, help, pname, default)
+        self.assertTrue(isinstance(rca, argument.RuntimeConfigArgument))
+        self.assertEqual(rca._config_arg, config)
+        self.assertEqual(arg.mock_calls[-1], call(1, help, pname, default))
+
+
 if __name__ == '__main__':
     from sys import argv
     from kamaki.cli.test import runTestCase
     runTestCase(Argument, 'Argument', argv[1:])
     runTestCase(ConfigArgument, 'ConfigArgument', argv[1:])
+    runTestCase(RuntimeConfigArgument, 'RuntimeConfigArgument', argv[1:])

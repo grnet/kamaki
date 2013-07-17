@@ -144,7 +144,7 @@ class ConfigArgument(Argument):
 _config_arg = ConfigArgument('Path to config file')
 
 
-class CmdLineConfigArgument(Argument):
+class RuntimeConfigArgument(Argument):
     """Set a run-time setting option (not persistent)"""
 
     def __init__(self, config_arg, help='', parsed_name=None, default=None):
@@ -384,7 +384,7 @@ _arguments = dict(
     silent=FlagArgument('Do not output anything', ('-s', '--silent')),
     verbose=FlagArgument('More info at response', ('-v', '--verbose')),
     version=VersionArgument('Print current version', ('-V', '--version')),
-    options=CmdLineConfigArgument(
+    options=RuntimeConfigArgument(
         _config_arg, 'Override a config value', ('-o', '--options'))
 )
 
