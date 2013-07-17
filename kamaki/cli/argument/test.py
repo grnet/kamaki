@@ -174,6 +174,22 @@ class RuntimeConfigArgument(TestCase):
         self.assertEqual(rca._config_arg, config)
         self.assertEqual(arg.mock_calls[-1], call(1, help, pname, default))
 
+    @patch('%s.override' % cnf_path)
+    def test_value(self, override):
+        config, help, pname, default = argument._config_arg, 'help', '-n', 'df'
+        config.value = None
+        rca = argument.RuntimeConfigArgument(config, help, pname, default)
+        self.assertEqual(rca.value, default)
+
+        for options in ('grp', 'grp.opt', 'k v', '=nokey', 2.8, None, 42, ''):
+            self.assertRaises(TypeError, rca.value, options)
+
+        for options in ('key=val', 'grp.key=val', 'dotted.opt.key=val'):
+            rca.value = options
+            option, sep, val = options.partition('=')
+            grp, sep, key = option.partition('.')
+            grp, key = (grp, key) if key else ('global', grp)
+            self.assertEqual(override.mock_calls[-1], call(grp, key, val))
 
 if __name__ == '__main__':
     from sys import argv

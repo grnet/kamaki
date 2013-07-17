@@ -153,8 +153,7 @@ class RuntimeConfigArgument(Argument):
 
     @property
     def value(self):
-        """A key=val option"""
-        return super(self.__class__, self).value
+        return super(RuntimeConfigArgument, self).value
 
     @value.setter
     def value(self, options):
