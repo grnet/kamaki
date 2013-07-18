@@ -222,9 +222,6 @@ class IntArgument(ValueArgument):
 
     @value.setter
     def value(self, newvalue):
-        if newvalue == self.default:
-            self._value = self.default
-            return
         try:
             self._value = int(newvalue)
         except ValueError:

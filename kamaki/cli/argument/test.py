@@ -34,9 +34,9 @@
 from mock import patch, call
 from unittest import TestCase
 from StringIO import StringIO
-from itertools import product
+#from itertools import product
 
-from kamaki.cli import argument
+from kamaki.cli import argument, errors
 from kamaki.cli.config import Config
 
 
@@ -212,6 +212,26 @@ class ValueArgument(TestCase):
         arg.assert_called_once(1, help, pname, default)
 
 
+class IntArgument(TestCase):
+
+    def test_value(self):
+        ia = argument.IntArgument(parsed_name='--ia')
+        self.assertEqual(ia.value, None)
+        for v in (1, 0, -1, 923455555555555555555555555555555):
+            ia.value = v
+            self.assertEqual(ia.value, v)
+        for v in ('1', '-1', 2.8):
+            ia.value = v
+            self.assertEqual(ia.value, int(v))
+        for v, err in (
+                ('invalid', errors.CLIError),
+                (None, TypeError), (False, TypeError), ([1, 2, 3], TypeError)):
+            try:
+                ia.value = v
+            except Exception as e:
+                self.assertTrue(isinstance(e, err))
+
+
 if __name__ == '__main__':
     from sys import argv
     from kamaki.cli.test import runTestCase
@@ -220,3 +240,4 @@ if __name__ == '__main__':
     runTestCase(RuntimeConfigArgument, 'RuntimeConfigArgument', argv[1:])
     runTestCase(FlagArgument, 'FlagArgument', argv[1:])
     runTestCase(FlagArgument, 'ValueArgument', argv[1:])
+    runTestCase(IntArgument, 'IntArgument', argv[1:])
