@@ -231,18 +231,10 @@ class IntArgument(ValueArgument):
 
 
 class DateArgument(ValueArgument):
-    """
-    :value type: a string formated in an acceptable date format
 
-    :value returns: same date in first of DATE_FORMATS
-    """
+    DATE_FORMAT = '%a %b %d %H:%M:%S %Y'
 
-    DATE_FORMATS = [
-        "%a %b %d %H:%M:%S %Y",
-        "%A, %d-%b-%y %H:%M:%S GMT",
-        "%a, %d %b %Y %H:%M:%S GMT"]
-
-    INPUT_FORMATS = DATE_FORMATS + ["%d-%m-%Y", "%H:%M:%S %d-%m-%Y"]
+    INPUT_FORMATS = [DATE_FORMAT, '%d-%m-%Y', '%H:%M:%S %d-%m-%Y']
 
     @property
     def timestamp(self):
@@ -252,7 +244,7 @@ class DateArgument(ValueArgument):
     @property
     def formated(self):
         v = getattr(self, '_value', self.default)
-        return v.strftime(self.DATE_FORMATS[0]) if v else None
+        return v.strftime(self.DATE_FORMAT) if v else None
 
     @property
     def value(self):
@@ -260,8 +252,7 @@ class DateArgument(ValueArgument):
 
     @value.setter
     def value(self, newvalue):
-        if newvalue:
-            self._value = self.format_date(newvalue)
+        self._value = self.format_date(newvalue)
 
     def format_date(self, datestr):
         for format in self.INPUT_FORMATS:
@@ -269,12 +260,10 @@ class DateArgument(ValueArgument):
                 t = dtm.strptime(datestr, format)
             except ValueError:
                 continue
-            return t  # .strftime(self.DATE_FORMATS[0])
-        raiseCLIError(
-            None,
-            'Date Argument Error',
-            details='%s not a valid date. correct formats:\n\t%s' % (
-                datestr, self.INPUT_FORMATS))
+            return t  # .strftime(self.DATE_FORMAT)
+        raiseCLIError(None, 'Date Argument Error', details=[
+            '%s not a valid date' % datestr,
+            'Correct formats:\n\t%s' % self.INPUT_FORMATS])
 
 
 class VersionArgument(FlagArgument):

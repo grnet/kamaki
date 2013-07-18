@@ -31,9 +31,10 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from mock import patch, call
+from mock import patch, call, MagicMock
 from unittest import TestCase
 from StringIO import StringIO
+from datetime import datetime
 #from itertools import product
 
 from kamaki.cli import argument, errors
@@ -232,6 +233,45 @@ class IntArgument(TestCase):
                 self.assertTrue(isinstance(e, err))
 
 
+class DateArgument(TestCase):
+
+    def test_timestamp(self):
+        da = argument.DateArgument(parsed_name='--date')
+        self.assertEqual(da.timestamp, None)
+        date, format, exp = '24-10-1917', '%d-%m-%Y', -1646964000.0
+        da._value = argument.dtm.strptime(date, format)
+        self.assertEqual(da.timestamp, exp)
+
+    def test_formated(self):
+        da = argument.DateArgument(parsed_name='--date')
+        self.assertEqual(da.formated, None)
+        date, format, exp = (
+            '24-10-1917', '%d-%m-%Y', 'Wed Oct 24 00:00:00 1917')
+        da._value = argument.dtm.strptime(date, format)
+        self.assertEqual(da.formated, exp)
+
+    @patch('kamaki.cli.argument.DateArgument.timestamp')
+    @patch('kamaki.cli.argument.DateArgument.format_date')
+    def test_value(self, format_date, timestamp):
+        da = argument.DateArgument(parsed_name='--date')
+        self.assertTrue(isinstance(da.value, MagicMock))
+        da.value = 'Something'
+        format_date.assert_called_once(call('Something'))
+
+    def test_format_date(self):
+        da = argument.DateArgument(parsed_name='--date')
+        for datestr, exp in (
+                ('Wed Oct 24 01:02:03 1917', datetime(1917, 10, 24, 1, 2, 3)),
+                ('24-10-1917', datetime(1917, 10, 24)),
+                ('01:02:03 24-10-1917', datetime(1917, 10, 24, 1, 2, 3))):
+            self.assertEqual(da.format_date(datestr), exp)
+        for datestr, err in (
+                ('32-40-20134', errors.CLIError),
+                ('Wednesday, 24 Oct 2017', errors.CLIError),
+                (None, TypeError), (0.8, TypeError)):
+            self.assertRaises(err, da.format_date, datestr)
+
+
 if __name__ == '__main__':
     from sys import argv
     from kamaki.cli.test import runTestCase
@@ -241,3 +281,4 @@ if __name__ == '__main__':
     runTestCase(FlagArgument, 'FlagArgument', argv[1:])
     runTestCase(FlagArgument, 'ValueArgument', argv[1:])
     runTestCase(IntArgument, 'IntArgument', argv[1:])
+    runTestCase(DateArgument, 'DateArgument', argv[1:])
