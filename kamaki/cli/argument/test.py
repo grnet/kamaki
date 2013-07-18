@@ -191,9 +191,32 @@ class RuntimeConfigArgument(TestCase):
             grp, key = (grp, key) if key else ('global', grp)
             self.assertEqual(override.mock_calls[-1], call(grp, key, val))
 
+
+class FlagArgument(TestCase):
+
+    @patch('kamaki.cli.argument.Argument.__init__')
+    def test___init__(self, arg):
+        help, pname, default = 'help', 'pname', 'default'
+        fa = argument.FlagArgument(help, pname, default)
+        self.assertTrue(isinstance(fa, argument.FlagArgument))
+        arg.assert_called_once(0, help, pname, default)
+
+
+class ValueArgument(TestCase):
+
+    @patch('kamaki.cli.argument.Argument.__init__')
+    def test___init__(self, arg):
+        help, pname, default = 'help', 'pname', 'default'
+        fa = argument.ValueArgument(help, pname, default)
+        self.assertTrue(isinstance(fa, argument.ValueArgument))
+        arg.assert_called_once(1, help, pname, default)
+
+
 if __name__ == '__main__':
     from sys import argv
     from kamaki.cli.test import runTestCase
     runTestCase(Argument, 'Argument', argv[1:])
     runTestCase(ConfigArgument, 'ConfigArgument', argv[1:])
     runTestCase(RuntimeConfigArgument, 'RuntimeConfigArgument', argv[1:])
+    runTestCase(FlagArgument, 'FlagArgument', argv[1:])
+    runTestCase(FlagArgument, 'ValueArgument', argv[1:])
