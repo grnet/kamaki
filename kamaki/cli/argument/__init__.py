@@ -223,7 +223,8 @@ class IntArgument(ValueArgument):
     @value.setter
     def value(self, newvalue):
         try:
-            self._value = int(newvalue)
+            self._value = self.default if (
+                newvalue == self.default) else int(newvalue)
         except ValueError:
             raiseCLIError(CLISyntaxError(
                 'IntArgument Error',
@@ -252,7 +253,7 @@ class DateArgument(ValueArgument):
 
     @value.setter
     def value(self, newvalue):
-        self._value = self.format_date(newvalue)
+        self._value = self.format_date(newvalue) if newvalue else self.default
 
     def format_date(self, datestr):
         for format in self.INPUT_FORMATS:
