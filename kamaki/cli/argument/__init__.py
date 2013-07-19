@@ -315,9 +315,7 @@ class ProgressBarArgument(FlagArgument):
     def clone(self):
         """Get a modifiable copy of this bar"""
         newarg = ProgressBarArgument(
-            self.help,
-            self.parsed_name,
-            self.default)
+            self.help, self.parsed_name, self.default)
         newarg._value = self._value
         return newarg
 

@@ -319,6 +319,55 @@ class KeyValueArgument(TestCase):
             assert_dicts_are_equal(self, kva.value, exp)
 
 
+class ProgressBarArgument(TestCase):
+
+    class PseudoBar(object):
+            message = ''
+            suffix = ''
+
+            def start():
+                pass
+
+    @patch('kamaki.cli.argument.FlagArgument.__init__')
+    def test___init__(self, init):
+        help, pname, default = 'help', '--progress', 'default'
+        pba = argument.ProgressBarArgument(help, pname, default)
+        self.assertTrue(isinstance(pba, argument.ProgressBarArgument))
+        self.assertEqual(pba.suffix, '%(percent)d%%')
+        init.assert_called_once(help, pname, default)
+
+    def test_clone(self):
+        pba = argument.ProgressBarArgument(parsed_name='--progress')
+        pba.value = None
+        pba_clone = pba.clone()
+        self.assertTrue(isinstance(pba, argument.ProgressBarArgument))
+        self.assertTrue(isinstance(pba_clone, argument.ProgressBarArgument))
+        self.assertNotEqual(pba, pba_clone)
+        self.assertEqual(pba.parsed_name, pba_clone.parsed_name)
+
+    def test_get_generator(self):
+        pba = argument.ProgressBarArgument(parsed_name='--progress')
+        pba.value = None
+        msg, msg_len = 'message', 40
+        with patch('kamaki.cli.argument.KamakiProgressBar.start') as start:
+            pba.get_generator(msg, msg_len)
+            self.assertTrue(isinstance(pba.bar, argument.KamakiProgressBar))
+            self.assertNotEqual(pba.bar.message, msg)
+            self.assertEqual(
+                pba.bar.message, '%s%s' % (msg, ' ' * (msg_len - len(msg))))
+            self.assertEqual(pba.bar.suffix, '%(percent)d%% - %(eta)ds')
+            start.assert_called_once()
+
+    def test_finish(self):
+        pba = argument.ProgressBarArgument(parsed_name='--progress')
+        pba.value = None
+        self.assertEqual(pba.finish(), None)
+        pba.bar = argument.KamakiProgressBar()
+        with patch('kamaki.cli.argument.KamakiProgressBar.finish') as finish:
+            pba.finish()
+            finish.assert_called_once()
+
+
 if __name__ == '__main__':
     from sys import argv
     from kamaki.cli.test import runTestCase
@@ -331,3 +380,4 @@ if __name__ == '__main__':
     runTestCase(DateArgument, 'DateArgument', argv[1:])
     runTestCase(VersionArgument, 'VersionArgument', argv[1:])
     runTestCase(KeyValueArgument, 'KeyValueArgument', argv[1:])
+    runTestCase(ProgressBarArgument, 'ProgressBarArgument', argv[1:])

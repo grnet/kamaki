@@ -38,7 +38,7 @@ from kamaki.cli.command_tree.test import Command, CommandTree
 from kamaki.cli.argument.test import (
     Argument, ConfigArgument, RuntimeConfigArgument, FlagArgument,
     ValueArgument, IntArgument, DateArgument, VersionArgument,
-    KeyValueArgument)
+    KeyValueArgument, ProgressBarArgument)
 
 
 #  TestCase auxiliary methods
