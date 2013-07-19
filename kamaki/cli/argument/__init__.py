@@ -41,16 +41,7 @@ from time import mktime
 from logging import getLogger
 from argparse import ArgumentParser, ArgumentError
 from argparse import RawDescriptionHelpFormatter
-
-try:
-    from progress.bar import ShadyBar as KamakiProgressBar
-except ImportError:
-    try:
-        from progress.bar import Bar as KamakiProgressBar
-    except ImportError:
-        pass
-    # progress not installed - pls, pip install progress
-    pass
+from progress.bar import ShadyBar as KamakiProgressBar
 
 log = getLogger(__name__)
 
@@ -320,10 +311,6 @@ class ProgressBarArgument(FlagArgument):
     def __init__(self, help='', parsed_name='', default=True):
         self.suffix = '%(percent)d%%'
         super(ProgressBarArgument, self).__init__(help, parsed_name, default)
-        try:
-            KamakiProgressBar
-        except NameError:
-            log.warning('WARNING: no progress bar functionality')
 
     def clone(self):
         """Get a modifiable copy of this bar"""

@@ -367,7 +367,7 @@ class plankton(object):
     about_image_id = [
         'How to pick a suitable image:',
         '* get a list of image ids: /image list',
-        '* details of image: /flavor info <image id>']
+        '* details of image: /image meta <image id>']
 
     @classmethod
     def connection(this, foo):
