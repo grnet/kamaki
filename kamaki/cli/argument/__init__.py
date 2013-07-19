@@ -368,12 +368,6 @@ _arguments = dict(
 class ArgumentParseManager(object):
     """Manage (initialize and update) an ArgumentParser object"""
 
-    parser = None
-    _arguments = {}
-    _parser_modified = False
-    _parsed = None
-    _unparsed = None
-
     def __init__(self, exe, arguments=None):
         """
         :param exe: (str) the basic command (e.g. 'kamaki')
@@ -389,6 +383,7 @@ class ArgumentParseManager(object):
         else:
             global _arguments
             self.arguments = _arguments
+        self._parser_modified, self._parsed, self._unparsed = False, None, None
         self.parse()
 
     @property
@@ -402,13 +397,12 @@ class ArgumentParseManager(object):
 
     @property
     def arguments(self):
-        """(dict) arguments the parser should be aware of"""
+        """:returns: (dict) arguments the parser should be aware of"""
         return self._arguments
 
     @arguments.setter
     def arguments(self, new_arguments):
-        if new_arguments:
-            assert isinstance(new_arguments, dict)
+        assert isinstance(new_arguments, dict), 'Arguments must be in a dict'
         self._arguments = new_arguments
         self.update_parser()
 
@@ -431,8 +425,7 @@ class ArgumentParseManager(object):
 
         :param arguments: if not given, update self.arguments instead
         """
-        if not arguments:
-            arguments = self._arguments
+        arguments = arguments or self._arguments
 
         for name, arg in arguments.items():
             try:

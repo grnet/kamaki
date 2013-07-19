@@ -368,6 +368,95 @@ class ProgressBarArgument(TestCase):
             finish.assert_called_once()
 
 
+class ArgumentParseManager(TestCase):
+
+    @patch('kamaki.cli.argument.ArgumentParseManager.parse')
+    @patch('kamaki.cli.argument.ArgumentParseManager.update_parser')
+    def test___init__(self, parse, update_parser):
+        for arguments in (None, {'k1': 'v1', 'k2': 'v2'}):
+            apm = argument.ArgumentParseManager('exe', arguments)
+            self.assertTrue(isinstance(apm, argument.ArgumentParseManager))
+
+            self.assertTrue(isinstance(apm.parser, argument.ArgumentParser))
+            self.assertFalse(apm.parser.add_help)
+            self.assertEqual(
+                apm.parser.formatter_class,
+                argument.RawDescriptionHelpFormatter)
+
+            self.assertEqual(
+                apm.syntax, 'exe <cmd_group> [<cmd_subbroup> ...] <cmd>')
+            assert_dicts_are_equal(
+                self, apm.arguments,
+                arguments or argument._arguments)
+            self.assertFalse(apm._parser_modified)
+            self.assertEqual(apm._parsed, None)
+            self.assertEqual(apm._unparsed, None)
+            self.assertEqual(parse.mock_calls[-1], call())
+            if arguments:
+                update_parser.assert_called_once()
+
+    def test_syntax(self):
+        apm = argument.ArgumentParseManager('exe')
+        self.assertEqual(
+            apm.syntax, 'exe <cmd_group> [<cmd_subbroup> ...] <cmd>')
+        apm.syntax = 'some syntax'
+        self.assertEqual(apm.syntax, 'some syntax')
+
+    @patch('kamaki.cli.argument.ArgumentParseManager.update_parser')
+    def test_arguments(self, update_parser):
+        apm = argument.ArgumentParseManager('exe')
+        assert_dicts_are_equal(self, apm.arguments, argument._arguments)
+        update_parser.assert_called_once()
+        exp = {'k1': 'v1', 'k2': 'v2'}
+        apm.arguments = exp
+        assert_dicts_are_equal(self, apm.arguments, exp)
+        self.assertEqual(update_parser.mock_calls[-1], call())
+        try:
+            apm.arguments = None
+        except Exception as e:
+            self.assertTrue(isinstance(e, AssertionError))
+
+    @patch('kamaki.cli.argument.ArgumentParseManager.parse')
+    def test_parsed(self, parse):
+        apm = argument.ArgumentParseManager('exe')
+        self.assertEqual(apm.parsed, None)
+        exp = 'you have been parsed'
+        apm._parsed = exp
+        self.assertEqual(apm.parsed, exp)
+        apm._parser_modified = True
+        apm._parsed = exp + ' v2'
+        self.assertEqual(apm.parsed, exp + ' v2')
+        self.assertEqual(parse.mock_calls, [call(), call()])
+
+    @patch('kamaki.cli.argument.ArgumentParseManager.parse')
+    def test_unparsed(self, parse):
+        apm = argument.ArgumentParseManager('exe')
+        self.assertEqual(apm.unparsed, None)
+        exp = 'you have been unparsed'
+        apm._unparsed = exp
+        self.assertEqual(apm.unparsed, exp)
+        apm._parser_modified = True
+        apm._unparsed = exp + ' v2'
+        self.assertEqual(apm.unparsed, exp + ' v2')
+        self.assertEqual(parse.mock_calls, [call(), call()])
+
+    @patch('kamaki.cli.argument.Argument.update_parser')
+    def test_update_parser(self, update_parser):
+        apm = argument.ArgumentParseManager('exe')
+        body_count = len(update_parser.mock_calls)
+        exp = len(argument._arguments)
+        self.assertEqual(body_count, exp)
+        apm.update_parser()
+        exp = len(apm.arguments) + body_count
+        body_count = len(update_parser.mock_calls)
+        self.assertEqual(body_count, exp)
+        expd = dict(
+            k1=argument.Argument(0, parsed_name='-a'),
+            k2=argument.Argument(0, parsed_name='-b'))
+        apm.update_parser(expd)
+        body_count = len(update_parser.mock_calls)
+        self.assertEqual(body_count, exp + 2)
+
 if __name__ == '__main__':
     from sys import argv
     from kamaki.cli.test import runTestCase
@@ -381,3 +470,4 @@ if __name__ == '__main__':
     runTestCase(VersionArgument, 'VersionArgument', argv[1:])
     runTestCase(KeyValueArgument, 'KeyValueArgument', argv[1:])
     runTestCase(ProgressBarArgument, 'ProgressBarArgument', argv[1:])
+    runTestCase(ArgumentParseManager, 'ArgumentParseManager', argv[1:])
