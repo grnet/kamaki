@@ -41,6 +41,15 @@ from kamaki.cli import argument, errors
 from kamaki.cli.config import Config
 
 
+def assert_dicts_are_equal(test_case, d1, d2):
+    for k, v in d1.items():
+        test_case.assertTrue(k in d2)
+        if isinstance(v, dict):
+            test_case.assert_dicts_are_equal(v, d2[k])
+        else:
+            test_case.assertEqual(unicode(v), unicode(d2[k]))
+
+
 cnf_path = 'kamaki.cli.config.Config'
 
 
@@ -272,6 +281,44 @@ class DateArgument(TestCase):
             self.assertRaises(err, da.format_date, datestr)
 
 
+class VersionArgument(TestCase):
+
+    def test_value(self):
+        va = argument.VersionArgument(parsed_name='--version')
+        self.assertTrue(va, argument.VersionArgument)
+        va.value = 'some value'
+        self.assertEqual(va.value, 'some value')
+
+
+class KeyValueArgument(TestCase):
+
+    @patch('kamaki.cli.argument.Argument.__init__')
+    def test___init__(self, init):
+        help, pname, default = 'help', 'pname', 'default'
+        kva = argument.KeyValueArgument(help, pname, default)
+        self.assertTrue(isinstance(kva, argument.KeyValueArgument))
+        self.assertEqual(init.mock_calls[-1], call(-1, help, pname, default))
+
+    def test_value(self):
+        kva = argument.KeyValueArgument(parsed_name='--keyval')
+        self.assertEqual(kva.value, None)
+        for kvpairs in (
+                'strval', 'key=val', 2.8, 42, None,
+                ('key', 'val'), ('key val'), ['=val', 'key=val'],
+                ['key1=val1', 'key2 val2'], ('key1 = val1', )):
+            self.assertRaises(errors.CLIError, kva.value, kvpairs)
+        for kvpairs, exp in (
+                (('key=val', ), {'key': 'val'}),
+                (['key1=val1', 'key2=val2'], {'key1': 'val1', 'key2': 'val2'}),
+                (
+                    ('k1=v1 v2', 'k3=', 'k 4=v4'),
+                    {'k1': 'v1 v2', 'k3': '', 'k 4': 'v4'}),
+                (('k=v1', 'k=v2', 'k=v3'), {'k': 'v3'})
+            ):
+            kva.value = kvpairs
+            assert_dicts_are_equal(self, kva.value, exp)
+
+
 if __name__ == '__main__':
     from sys import argv
     from kamaki.cli.test import runTestCase
@@ -282,3 +329,5 @@ if __name__ == '__main__':
     runTestCase(FlagArgument, 'ValueArgument', argv[1:])
     runTestCase(IntArgument, 'IntArgument', argv[1:])
     runTestCase(DateArgument, 'DateArgument', argv[1:])
+    runTestCase(VersionArgument, 'VersionArgument', argv[1:])
+    runTestCase(KeyValueArgument, 'KeyValueArgument', argv[1:])
