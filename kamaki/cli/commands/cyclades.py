@@ -431,6 +431,26 @@ class server_console(_init_cyclades, _optional_json):
 
 
 @command(server_cmds)
+class server_resize(_init_cyclades, _optional_output_cmd):
+    """Set a different flavor for an existing server
+    To get server ids and flavor ids:
+    /server list
+    /flavor list
+    """
+
+    @errors.generic.all
+    @errors.cyclades.connection
+    @errors.cyclades.server_id
+    @errors.cyclades.flavor_id
+    def _run(self, server_id, flavor_id):
+        self._optional_output(self.client.resize_server(server_id, flavor_id))
+
+    def main(self, server_id, flavor_id):
+        super(self.__class__, self)._run()
+        self._run(server_id=server_id, flavor_id=flavor_id)
+
+
+@command(server_cmds)
 class server_firewall(_init_cyclades):
     """Manage server (VM) firewall profiles for public networks"""
 
