@@ -300,7 +300,7 @@ class KeyValueArgument(Argument):
             for pair in keyvalue_pairs:
                 key, sep, val = pair.partition('=')
                 assert sep, ' %s misses a "=" (usage: key1=val1 )\n' % (pair)
-            self._value[key] = val
+                self._value[key] = val
         except Exception as e:
             raiseCLIError(e, 'KeyValueArgument Syntax Error')
 
