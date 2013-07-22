@@ -51,6 +51,7 @@ def assert_dicts_are_equal(test_case, d1, d2):
 
 
 cnf_path = 'kamaki.cli.config.Config'
+arg_path = 'kamaki.cli.argument'
 
 
 class Argument(TestCase):
@@ -176,7 +177,7 @@ class RuntimeConfigArgument(TestCase):
     def setUp(self):
         argument._config_arg = argument.ConfigArgument('Recovered Path')
 
-    @patch('kamaki.cli.argument.Argument.__init__')
+    @patch('%s.Argument.__init__' % arg_path)
     def test___init__(self, arg):
         config, help, pname, default = 'config', 'help', 'pname', 'default'
         rca = argument.RuntimeConfigArgument(config, help, pname, default)
@@ -204,7 +205,7 @@ class RuntimeConfigArgument(TestCase):
 
 class FlagArgument(TestCase):
 
-    @patch('kamaki.cli.argument.Argument.__init__')
+    @patch('%s.Argument.__init__' % arg_path)
     def test___init__(self, arg):
         help, pname, default = 'help', 'pname', 'default'
         fa = argument.FlagArgument(help, pname, default)
@@ -214,7 +215,7 @@ class FlagArgument(TestCase):
 
 class ValueArgument(TestCase):
 
-    @patch('kamaki.cli.argument.Argument.__init__')
+    @patch('%s.Argument.__init__' % arg_path)
     def test___init__(self, arg):
         help, pname, default = 'help', 'pname', 'default'
         fa = argument.ValueArgument(help, pname, default)
@@ -259,8 +260,8 @@ class DateArgument(TestCase):
         da._value = argument.dtm.strptime(date, format)
         self.assertEqual(da.formated, exp)
 
-    @patch('kamaki.cli.argument.DateArgument.timestamp')
-    @patch('kamaki.cli.argument.DateArgument.format_date')
+    @patch('%s.DateArgument.timestamp' % arg_path)
+    @patch('%s.DateArgument.format_date' % arg_path)
     def test_value(self, format_date, timestamp):
         da = argument.DateArgument(parsed_name='--date')
         self.assertTrue(isinstance(da.value, MagicMock))
@@ -292,7 +293,7 @@ class VersionArgument(TestCase):
 
 class KeyValueArgument(TestCase):
 
-    @patch('kamaki.cli.argument.Argument.__init__')
+    @patch('%s.Argument.__init__' % arg_path)
     def test___init__(self, init):
         help, pname, default = 'help', 'pname', 'default'
         kva = argument.KeyValueArgument(help, pname, default)
@@ -331,7 +332,7 @@ class ProgressBarArgument(TestCase):
             def start():
                 pass
 
-    @patch('kamaki.cli.argument.FlagArgument.__init__')
+    @patch('%s.FlagArgument.__init__' % arg_path)
     def test___init__(self, init):
         help, pname, default = 'help', '--progress', 'default'
         pba = argument.ProgressBarArgument(help, pname, default)
@@ -352,7 +353,7 @@ class ProgressBarArgument(TestCase):
         pba = argument.ProgressBarArgument(parsed_name='--progress')
         pba.value = None
         msg, msg_len = 'message', 40
-        with patch('kamaki.cli.argument.KamakiProgressBar.start') as start:
+        with patch('%s.KamakiProgressBar.start' % arg_path) as start:
             pba.get_generator(msg, msg_len)
             self.assertTrue(isinstance(pba.bar, argument.KamakiProgressBar))
             self.assertNotEqual(pba.bar.message, msg)
@@ -366,15 +367,15 @@ class ProgressBarArgument(TestCase):
         pba.value = None
         self.assertEqual(pba.finish(), None)
         pba.bar = argument.KamakiProgressBar()
-        with patch('kamaki.cli.argument.KamakiProgressBar.finish') as finish:
+        with patch('%s.KamakiProgressBar.finish' % arg_path) as finish:
             pba.finish()
             finish.assert_called_once()
 
 
 class ArgumentParseManager(TestCase):
 
-    @patch('kamaki.cli.argument.ArgumentParseManager.parse')
-    @patch('kamaki.cli.argument.ArgumentParseManager.update_parser')
+    @patch('%s.ArgumentParseManager.parse' % arg_path)
+    @patch('%s.ArgumentParseManager.update_parser' % arg_path)
     def test___init__(self, parse, update_parser):
         for arguments in (None, {'k1': 'v1', 'k2': 'v2'}):
             apm = argument.ArgumentParseManager('exe', arguments)
@@ -405,7 +406,7 @@ class ArgumentParseManager(TestCase):
         apm.syntax = 'some syntax'
         self.assertEqual(apm.syntax, 'some syntax')
 
-    @patch('kamaki.cli.argument.ArgumentParseManager.update_parser')
+    @patch('%s.ArgumentParseManager.update_parser' % arg_path)
     def test_arguments(self, update_parser):
         apm = argument.ArgumentParseManager('exe')
         assert_dicts_are_equal(self, apm.arguments, argument._arguments)
@@ -419,7 +420,7 @@ class ArgumentParseManager(TestCase):
         except Exception as e:
             self.assertTrue(isinstance(e, AssertionError))
 
-    @patch('kamaki.cli.argument.ArgumentParseManager.parse')
+    @patch('%s.ArgumentParseManager.parse' % arg_path)
     def test_parsed(self, parse):
         apm = argument.ArgumentParseManager('exe')
         self.assertEqual(apm.parsed, None)
@@ -431,7 +432,7 @@ class ArgumentParseManager(TestCase):
         self.assertEqual(apm.parsed, exp + ' v2')
         self.assertEqual(parse.mock_calls, [call(), call()])
 
-    @patch('kamaki.cli.argument.ArgumentParseManager.parse')
+    @patch('%s.ArgumentParseManager.parse' % arg_path)
     def test_unparsed(self, parse):
         apm = argument.ArgumentParseManager('exe')
         self.assertEqual(apm.unparsed, None)
@@ -443,7 +444,8 @@ class ArgumentParseManager(TestCase):
         self.assertEqual(apm.unparsed, exp + ' v2')
         self.assertEqual(parse.mock_calls, [call(), call()])
 
-    @patch('kamaki.cli.argument.Argument.update_parser')
+    @patch('%s.Argument.update_parser' % arg_path
+        )
     def test_update_parser(self, update_parser):
         apm = argument.ArgumentParseManager('exe')
         body_count = len(update_parser.mock_calls)
@@ -459,6 +461,23 @@ class ArgumentParseManager(TestCase):
         apm.update_parser(expd)
         body_count = len(update_parser.mock_calls)
         self.assertEqual(body_count, exp + 2)
+
+    def test_update_arguments(self):
+        (inp, cor, exp) = (
+            {'k1': 'v1', 'k2': 'v3'}, {'k2': 'v2'}, {'k1': 'v1', 'k2': 'v2'})
+        apm = argument.ArgumentParseManager('exe')
+        with patch(
+                '%s.ArgumentParseManager.update_parser' % arg_path) as UP:
+            apm.update_arguments(None)
+            self.assertEqual(len(UP.mock_calls), 0)
+            apm._arguments = inp
+            apm.update_arguments(cor)
+            assert_dicts_are_equal(self, apm.arguments, exp)
+            UP.assert_called_once_with()
+
+    def test_parse(self):
+        raise errors.CLIUnimplemented()
+
 
 if __name__ == '__main__':
     from sys import argv
