@@ -67,7 +67,7 @@ class Argument(object):
                     self, name)
             assert name.startswith('-'), msg
 
-        self.default = default or (None if self.arity else False)
+        self.default = default if (default or self.arity) else False
 
     @property
     def value(self):
@@ -296,13 +296,13 @@ class KeyValueArgument(Argument):
         :param keyvalue_pairs: (str) ['key1=val1', 'key2=val2', ...]
         """
         self._value = {}
-        for pair in keyvalue_pairs:
-            key, sep, val = pair.partition('=')
-            if not sep:
-                raiseCLIError(
-                    CLISyntaxError('Argument syntax error '),
-                    details='%s is missing a "=" (usage: key1=val1 )\n' % pair)
+        try:
+            for pair in keyvalue_pairs:
+                key, sep, val = pair.partition('=')
+                assert sep, ' %s misses a "=" (usage: key1=val1 )\n' % (pair)
             self._value[key] = val
+        except Exception as e:
+            raiseCLIError(e, 'KeyValueArgument Syntax Error')
 
 
 class ProgressBarArgument(FlagArgument):

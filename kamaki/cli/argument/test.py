@@ -75,7 +75,7 @@ class Argument(TestCase):
                 isinstance(parsed_name, list)) else [parsed_name, ]
             self.assertEqual(exp_name, a.parsed_name)
 
-            exp_default = default or (None if arity else False)
+            exp_default = default if (default or arity) else False
             self.assertEqual(exp_default, a.default)
 
     def test_value(self):
@@ -301,12 +301,15 @@ class KeyValueArgument(TestCase):
 
     def test_value(self):
         kva = argument.KeyValueArgument(parsed_name='--keyval')
-        self.assertEqual(kva.value, None)
+        self.assertEqual(kva.value, {})
         for kvpairs in (
                 'strval', 'key=val', 2.8, 42, None,
                 ('key', 'val'), ('key val'), ['=val', 'key=val'],
                 ['key1=val1', 'key2 val2'], ('key1 = val1', )):
-            self.assertRaises(errors.CLIError, kva.value, kvpairs)
+            try:
+                kva.value = kvpairs
+            except Exception as e:
+                self.assertTrue(isinstance(e, errors.CLIError))
         for kvpairs, exp in (
                 (('key=val', ), {'key': 'val'}),
                 (['key1=val1', 'key2=val2'], {'key1': 'val1', 'key2': 'val2'}),
