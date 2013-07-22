@@ -38,13 +38,48 @@ External applications may instantiate one or more kamaki clients.
     should be used only when implementing applications for strict OS Compute or
     OS Storage services.
 
-.. note:: *account* variable is usually acquired by the following user call
+Using endpoints to initialize services
+--------------------------------------
 
-    .. code-block:: python
+The OpenStack identity service, which is implemented my the Synnefo/Astakos
+server, can be used to get the base_url values needed for initializing any
+kamaki client. Kamaki simplifies this proccess with the astakos client.
 
-        from kamaki.clients.astakos import AstakosClient
-        astakos = AstakosClient(astakos_base_url, token)
-        account = astakos.term('uuid')
+First, an astakos client must be initialized (Example 1.2). An
+AUTHENTICATION_URL and a TOKEN can be acquired from the synnefo deployment UI.
+
+.. code-block:: python
+    :emphasize-lines: 1
+
+    Example 1.2: Initialize an astakos client
+
+    from kamaki.clients.astakos import AstakosClient
+    my_astakos_client = AstakosClient(AUTHENTICATION_URL, TOKEN)
+        
+
+Next, the astakos client can be used to retrieve the base_url values for the
+servcers of interest. In this case (Example 1.3) they are *cyclades*
+and *pithos*. A number of endpoints is assigned to each service, but kamaki
+clients only need the one labeled as ``publicURL``.
+
+.. code-block:: python
+    :emphasize-lines: 1
+
+    Example 1.3: Retrieve cyclades and pithos base_url values
+
+    cyclades_endpoints = my_astakos_client.get_service_endpoints('compute')
+    cyclades_base_url = cyclades_endpoints['publicURL']
+
+    pithos_endpoints = my_astakos_client.get_service_endpoints('object-store')
+    pithos_base_url = pithos_endpoints['publicURL']
+
+The ``get_service_endpoints`` method gets the service name as an argument. Here
+are the service names for the most popular kamaki clients::
+
+    storage, pithos     -->     object-store
+    compute, cyclades   -->     compute
+    image               -->     image
+    astakos             -->     identity
 
 Use client methods
 ------------------
@@ -61,7 +96,7 @@ output.
 .. code-block:: python
     :emphasize-lines: 1,2
 
-    Example 1.2: Print server name and OS for server with server_id
+    Example 1.4: Print server name and OS for server with server_id
                 Print objects in container mycont
 
 
@@ -75,7 +110,7 @@ output.
 .. code-block:: console
     :emphasize-lines: 1
 
-    Run of examples 1.1 + 1.2
+    Run of examples 1.1 + 1.4
 
 
     $ python test_script.py
@@ -98,23 +133,41 @@ A ClientError contains::
     status      An optional error code, e.g. after a server error.
     details     Optional list of messages with error details.
 
-The following example concatenates examples 1.1 and 1.2 plus error handling
+The following example concatenates examples 1.1 to 1.4 plus error handling
 
 .. code-block:: python
 
-    Example 1.3: Error handling
+    Example 1.5: Error handling
 
-
+    from kamaki.clients.astakos import AstakosClient
     from kamaki.clients.cyclades import CycladesClient
     from kamaki.clients.pithos import PithosClient
 
     try:
-        my_cyclades_client = CycladesClient(base_url, token)
+        my_astakos_client = AstakosClient(AUTHENTICATION_URL, TOKEN)
+    except ClientError:
+        print('Failed to authenticate user token')
+        return 1
+
+    try:
+        cyclades_endpoints = my_astakos_client.get_service_endpoints('compute')
+        cyclades_base_url = cyclades_endpoints['publicURL']
+    except ClientError:
+        print('Failed to get endpoints for cyclades')
+
+    try:
+        my_cyclades_client = CycladesClient(cyclades_base_url, token)
     except ClientError:
         print('Failed to initialize Cyclades client')
 
     try:
-        my_pithos_client = PithosClient(base_url, token, account, container)
+        pithos_endpoints = my_astakos_client.get_service_endpoints('object-store')
+        pithos_base_url = pithos_endpoints['publicURL']
+    except ClientError:
+        print('Failed to get endpoints for pithos')
+
+    try:
+        my_pithos_client = PithosClient(pithos_base_url, token, account, container)
     except ClientError:
         print('Failed to initialize Pithos+ client')
 
@@ -132,3 +185,60 @@ The following example concatenates examples 1.1 and 1.2 plus error handling
         if e.details:
             for detail in e.details:
                 print('- %s' % detail)
+
+
+Scripts
+-------
+
+Batch-create servers
+''''''''''''''''''''
+
+.. code-block:: python
+
+    #/usr/bin/python
+
+    from kamaki.clients.astakos import AstakosClient
+    from kamaki.clients.cyclades import CycladesClient
+
+    AUTHENTICATION_URL = 'https://accounts.example.com/identity/v2.0'
+    TOKEN = 'replace this with your token'
+
+    user = AstakosClient(AUTHENTICATION_URL, TOKEN)
+
+    cyclades_endpoints = user.get_endpoints('compute')
+    CYCLADES_URL = cyclades_endpoints['publicURL']
+    cyclades = CycladesClient(CYCLADES_URL, TOKEN)
+
+    #  (name, flavor-id, image-id)
+    servers = [
+        ('My Debian Server', 1, 'my-debian-base-image-id'),
+        ('My Windows Server', 3, 'my-windows-8-image-id'),
+        ('My Ubuntu Server', 3, 'my-ubuntu-12-image-id'),
+    ]
+
+    for name, flavor_id, image_id in servers:
+        cyclades.create_server(name, flavor_id, image_id)
+
+
+Batch-create 4 servers of the same kind
+'''''''''''''''''''''''''''''''''''''''
+
+.. code-block:: python
+
+    #/usr/bin/python
+
+    from kamaki.clients.astakos import AstakosClient
+    from kamaki.clients.cyclades import CycladesClient
+
+    AUTHENTICATION_URL = 'https://accounts.example.com/identity/v2.0'
+    TOKEN = 'replace this with your token'
+
+    user = AstakosClient(AUTHENTICATION_URL, TOKEN)
+
+    cyclades_endpoints = user.get_endpoints('compute')
+    CYCLADES_URL = cyclades_endpoints['publicURL']
+    cyclades = CycladesClient(CYCLADES_URL, TOKEN)
+
+    for i in range(4):
+        name, flavor_id, image_id = 'Server %s' % (i + 1), 3, 'some-image-id'
+        cyclades.create_server(name, flavor_id, image_id)

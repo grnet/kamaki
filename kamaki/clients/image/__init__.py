@@ -76,7 +76,7 @@ class ImageClient(Client):
             for key, value in filters.items():
                 if value:
                     async_params[key] = value
-        if order.startswith('-'):
+        if order and order.startswith('-'):
             async_params['sort_dir'] = 'desc'
             order = order[1:]
         else:

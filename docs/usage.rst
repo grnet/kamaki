@@ -183,6 +183,7 @@ and of a command in that group (list) are shown.
     shutdown:  Shutdown an active server (VM)
     start   :  Start an existing server (VM)
     stats   :  Get server (VM) statistics
+    resize  :  Set a different flavor for an existing server
     wait    :  Wait for server to finish [BUILD, STOPPED, REBOOT, ACTIVE]
 
 .. code-block:: console

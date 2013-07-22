@@ -375,6 +375,13 @@ class ComputeClient(TestCase):
                 vm_id, 'action',
                 json_data=dict(reboot=dict(type='HARD' if hard else 'SOFT'))))
 
+    @patch('%s.servers_post' % compute_pkg, return_value=FR())
+    def test_resize_server(self, SP):
+        vm_id, flavor = vm_recv['server']['id'], flavor_list['flavors'][1]
+        self.client.resize_server(vm_id, flavor['id'])
+        exp = dict(resize=dict(flavorRef=flavor['id']))
+        SP.assert_called_once_with(vm_id, 'action', json_data=exp)
+
     @patch('%s.servers_put' % compute_pkg, return_value=FR())
     def test_create_server_metadata(self, SP):
         vm_id = vm_recv['server']['id']

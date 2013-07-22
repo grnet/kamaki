@@ -143,6 +143,18 @@ class ComputeClient(ComputeRestClient):
         r = self.servers_post(server_id, 'action', json_data=req)
         return r.headers
 
+    def resize_server(self, server_id, flavor_id):
+        """
+        :param server_id: (str)
+
+        :param flavor_id: (int)
+
+        :returns: (dict) request headers
+        """
+        req = {'resize': {'flavorRef': flavor_id}}
+        r = self.servers_post(server_id, 'action', json_data=req)
+        return r.headers
+
     def get_server_metadata(self, server_id, key=''):
         """
         :param server_id: integer (str or int)

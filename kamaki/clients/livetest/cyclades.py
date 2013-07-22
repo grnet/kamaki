@@ -77,13 +77,9 @@ class Cyclades(livetest.Generic):
     def test_000(self):
         "Prepare a full Cyclades test scenario"
         self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
+            self.servname1, self.flavorid, self.img)
         self.server2 = self._create_server(
-            self.servname2,
-            self.flavorid,
-            self.img)
+            self.servname2, self.flavorid, self.img)
         super(self.__class__, self).test_000()
 
     def _create_server(self, servername, flavorid, imageid, personality=None):
@@ -339,6 +335,20 @@ class Cyclades(livetest.Generic):
         self.assertTrue(self._has_status(self.server1['id'], 'REBOOT'))
         self.client.reboot_server(self.server2['id'], hard=True)
         self.assertTrue(self._has_status(self.server2['id'], 'REBOOT'))
+
+    def test_resize_server(self):
+        """Modify the flavor of a server"""
+        self.server1 = self._create_server(
+            self.servname1, self.flavorid, self.img)
+        self._test_0065_resize_server()
+        self.delete_server(self.server1['id'])
+        self.server1 = self._create_server(
+            self.servname1, self.flavorid, self.img)
+
+    def test_0065_resize_server(self):
+        self.client.resize_server(self.servname1, self.flavorid + 1, self.img)
+        srv = self.client.get_flavor_details(self.server1['id'])
+        self.assertEqual(srv['flavor']['id'], self.flavorid + 1)
 
     def _test_0070_wait_test_servers_to_reboot(self):
         """Pseudo-test to wait for VMs to load"""
