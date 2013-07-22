@@ -160,6 +160,7 @@ server (Compute/Cyclades)
     shutdown:  Shutdown a server
     start   :  Start a server
     stats   :  Get server statistics
+    resize  :  Set a different flavor for an existing server
     wait    :  Wait for server to finish
 
 Showcase: Create a server

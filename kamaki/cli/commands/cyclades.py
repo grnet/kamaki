@@ -434,8 +434,8 @@ class server_console(_init_cyclades, _optional_json):
 class server_resize(_init_cyclades, _optional_output_cmd):
     """Set a different flavor for an existing server
     To get server ids and flavor ids:
-      /server list
-      /flavor list
+    /server list
+    /flavor list
     """
 
     @errors.generic.all
