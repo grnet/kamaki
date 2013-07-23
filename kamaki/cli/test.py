@@ -35,7 +35,10 @@ from unittest import makeSuite, TestSuite, TextTestRunner, TestCase
 from inspect import getmembers, isclass
 
 from kamaki.cli.command_tree.test import Command, CommandTree
-from kamaki.cli.argument.test import Argument, ConfigArgument
+from kamaki.cli.argument.test import (
+    Argument, ConfigArgument, RuntimeConfigArgument, FlagArgument,
+    ValueArgument, IntArgument, DateArgument, VersionArgument,
+    KeyValueArgument, ProgressBarArgument, ArgumentParseManager)
 
 
 #  TestCase auxiliary methods
