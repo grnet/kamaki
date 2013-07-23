@@ -36,4 +36,5 @@ Features:
     resources, feedback, endpoints,
     commission_pending/info/action/accept/reject/resolve/issuejson/issue
 - Implement resize_server and expose it as server resize [#4153]
+- Expose the project API of astakosclient to kamaki CLI [#4155]
 
