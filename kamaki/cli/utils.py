@@ -51,18 +51,10 @@ suggest = dict(ansicolors=dict(
 try:
     from colors import magenta, red, yellow, bold
 except ImportError:
-    # No colours? No worries, use dummy foo instead
     def dummy(val):
         return val
     red = yellow = magenta = bold = dummy
-    #from kamaki.cli import _colors
-    #if _colors.lower() == 'on':
     suggest['ansicolors']['active'] = True
-
-try:
-    from progress.bar import ShadyBar
-except ImportError:
-    suggest['progress']['active'] = True
 
 
 def suggest_missing(miss=None, exclude=[]):
