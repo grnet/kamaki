@@ -476,7 +476,11 @@ class ArgumentParseManager(TestCase):
             UP.assert_called_once_with()
 
     def test_parse(self):
-        raise errors.CLIUnimplemented()
+        apm = argument.ArgumentParseManager('exe')
+        parsed, unparsed = apm.parser.parse_known_args()
+        apm.parse()
+        self.assertEqual(apm._parsed, parsed)
+        self.assertEqual(apm.unparsed, unparsed)
 
 
 if __name__ == '__main__':
