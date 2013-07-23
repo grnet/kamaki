@@ -31,7 +31,9 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-from json import loads
+from json import loads, load
+from sys import stdin
+from os.path import abspath
 
 from astakosclient import AstakosClient, AstakosClientException
 
@@ -46,7 +48,8 @@ from kamaki.cli.argument import CommaSeparatedListArgument
 from kamaki.cli.logger import get_logger
 
 snfastakos_cmds = CommandTree('astakos', 'astakosclient CLI')
-_commands = [snfastakos_cmds]
+snfproject_cmds = CommandTree('project', 'Synnefo project management CLI')
+_commands = [snfastakos_cmds, snfproject_cmds]
 
 
 def astakoserror(foo):
@@ -477,16 +480,356 @@ class astakos_commission_issuejson(_astakos_init, _optional_json):
 # XXX issue_commission, issue_one_commission
 
 
-@command(snfastakos_cmds)
-class astakos_test(_astakos_init):
-    """Test an astakos command"""
+# Project commands
+
+
+_project_specs = """
+    {
+        "name": name,
+        "owner": uuid,
+        "homepage": homepage,         # optional
+        "description": description,   # optional
+        "comments": comments,         # optional
+        "start_date": date,           # optional
+        "end_date": date,
+        "join_policy": "auto" | "moderated" | "closed",  # default: "moderated"
+        "leave_policy": "auto" | "moderated" | "closed", # default: "auto"
+        "resources": {
+            "cyclades.vm": {
+                "project_capacity": int or null,
+                 "member_capacity": int
+            }
+        }
+  }
+  """
+
+
+def apply_notification(foo):
+    def wrap(self, *args, **kwargs):
+        r = foo(self, *args, **kwargs)
+        print 'Application is submitted successfully'
+        return r
+    return wrap
+
+
+@command(snfproject_cmds)
+class project_list(_astakos_init, _optional_json):
+    """List all projects"""
+
+    arguments = dict(
+        name=ValueArgument('Filter by name', ('--with-name', )),
+        state=ValueArgument('Filter by state', ('--with-state', )),
+        owner=ValueArgument('Filter by owner', ('--with-owner', ))
+    )
 
     @errors.generic.all
     @astakoserror
-    def _run(self, *args):
-        r = self.client.get_pending_commissions(self.token)
-        print r
+    def _run(self):
+        self._print(self.client.get_projects(
+            self.token, self['name'], self['state'], self['owner']))
 
-    def main(self, *args):
+    def main(self):
         super(self.__class__, self)._run()
-        self._run(*args)
+        self._run()
+
+
+@command(snfproject_cmds)
+class project_info(_astakos_init, _optional_json):
+    """Get details for a project"""
+
+    @errors.generic.all
+    @astakoserror
+    def _run(self, project_id):
+        self._print(
+            self.client.get_projects(self.token, project_id), print_dict)
+
+    def main(self, project_id):
+        super(self.__class__, self)._run()
+        self._run(project_id)
+
+
+@command(snfproject_cmds)
+class project_create(_astakos_init, _optional_json):
+    """Apply for a new project (input a json-dict)
+    Project details must be provided as a json-formated dict from the standard
+    input, or through a file
+    """
+
+    __doc__ += _project_specs
+
+    arguments = dict(
+        specs_path=ValueArgument(
+            'Specification file path (content must be in json)', '--spec-file')
+    )
+
+    @errors.generic.all
+    @astakoserror
+    @apply_notification
+    def _run(self):
+        input_stream = open(abspath(self['specs_path'])) if (
+            self['specs_path']) else stdin
+        specs = load(input_stream)
+        self._print(self.client.create_project(self.token, specs), print_dict)
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
+
+
+@command(snfproject_cmds)
+class project_modify(_astakos_init, _optional_json):
+    """Modify a project (input a json-dict)
+    Project details must be provided as a json-formated dict from the standard
+    input, or through a file
+    """
+
+    __doc__ += _project_specs
+
+    arguments = dict(
+        specs_path=ValueArgument(
+            'Specification file path (content must be in json)', '--spec-file')
+    )
+
+    @errors.generic.all
+    @astakoserror
+    @apply_notification
+    def _run(self, project_id):
+        input_stream = open(abspath(self['specs_path'])) if (
+            self['specs_path']) else stdin
+        specs = load(input_stream)
+        self._print(
+            self.client.modify_project(self.token, project_id, specs),
+            print_dict)
+
+    def main(self, project_id):
+        super(self.__class__, self)._run()
+        self._run(project_id)
+
+
+class _project_action(_astakos_init):
+
+    action = ''
+
+    @errors.generic.all
+    @astakoserror
+    @apply_notification
+    def _run(self, project_id, quote_a_reason):
+        self.client.project_action(
+            self.token, project_id, self.action, quote_a_reason)
+
+    def main(self, project_id, quote_a_reason=''):
+        super(_project_action, self)._run()
+        self._run(project_id, quote_a_reason)
+
+
+@command(snfproject_cmds)
+class project_suspend(_project_action):
+    """Apply for a project suspension"""
+    action = 'suspend'
+
+
+@command(snfproject_cmds)
+class project_unsuspend(_project_action):
+    """Apply for a project un-suspension"""
+    action = 'unsuspend'
+
+
+@command(snfproject_cmds)
+class project_terminate(_project_action):
+    """Apply for a project termination"""
+    action = 'terminate'
+
+
+@command(snfproject_cmds)
+class project_reinstate(_project_action):
+    """Apply for a project reinstatement"""
+    action = 'reinstate'
+
+
+@command(snfproject_cmds)
+class project_application(_project_action):
+    """Application management commands"""
+
+
+@command(snfproject_cmds)
+class project_application_list(_astakos_init, _optional_json):
+    """List all applications (old and new)"""
+
+    arguments = dict(
+        project=ValueArgument('Filter by project id', '--with-project-id')
+    )
+
+    @errors.generic.all
+    @astakoserror
+    def _run(self):
+        self._print(self.client.get_applications(self.token, self['project']))
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
+
+
+@command(snfproject_cmds)
+class project_application_info(_astakos_init, _optional_json):
+    """Get details on an application"""
+
+    @errors.generic.all
+    @astakoserror
+    def _run(self, app_id):
+        self._print(
+            self.client.get_application(self.token, app_id), print_dict)
+
+    def main(self, application_id):
+        super(self.__class__, self)._run()
+        self._run(application_id)
+
+
+class _application_action(_astakos_init):
+
+    action = ''
+
+    @errors.generic.all
+    @astakoserror
+    def _run(self, app_id, quote_a_reason):
+        self.client.application_action(
+            self.token, app_id, self.action, quote_a_reason)
+
+    def main(self, application_id, quote_a_reason=''):
+        super(_application_action, self)._run()
+        self._run(application_id, quote_a_reason)
+
+
+@command(snfproject_cmds)
+class project_application_approve(_application_action):
+    """Approve an application (special privileges needed)"""
+    action = 'approve'
+
+
+@command(snfproject_cmds)
+class project_application_deny(_application_action):
+    """Deny an application (special privileges needed)"""
+    action = 'deny'
+
+
+@command(snfproject_cmds)
+class project_application_dismiss(_application_action):
+    """Dismiss your denied application"""
+    action = 'dismiss'
+
+
+@command(snfproject_cmds)
+class project_application_cancel(_application_action):
+    """Cancel your application"""
+    action = 'cancel'
+
+
+@command(snfproject_cmds)
+class project_membership(_astakos_init):
+    """Project membership management commands"""
+
+
+@command(snfproject_cmds)
+class project_membership_list(_astakos_init, _optional_json):
+    """List all memberships"""
+
+    arguments = dict(
+        project=ValueArgument('Filter by project id', '--with-project-id')
+    )
+
+    @errors.generic.all
+    @astakoserror
+    def _run(self):
+        self._print(self.client.get_memberships(self['project']))
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
+
+
+@command(snfproject_cmds)
+class project_membership_info(_astakos_init, _optional_json):
+    """Details on a membership"""
+
+    @errors.generic.all
+    @astakoserror
+    def _run(self, memb_id):
+        self._print(self.client.get_membership(memb_id), print_dict)
+
+    def main(self, membership_id):
+        super(self.__class__, self)._run()
+        self._run(membership_id)
+
+
+class _membership_action(_astakos_init, _optional_json):
+
+    action = ''
+
+    @errors.generic.all
+    @astakoserror
+    def _run(self, memb_id, quote_a_reason):
+        self._print(
+            self.client.membership_action(
+                self.token, memb_id, self.action, quote_a_reason),
+            print_dict)
+
+    def main(self, membership_id, quote_a_reason=''):
+        super(_membership_action, self)._run()
+        self._run(membership_id, quote_a_reason)
+
+
+@command(snfproject_cmds)
+class project_membership_leave(_membership_action):
+    """Leave a project you have membership to"""
+    action = 'leave'
+
+
+@command(snfproject_cmds)
+class project_membership_cancel(_membership_action):
+    """Cancel your (probably pending) membership to a project"""
+    action = 'cancel'
+
+
+@command(snfproject_cmds)
+class project_membership_accept(_membership_action):
+    """Accept a membership for a project you manage"""
+    action = 'accept'
+
+
+@command(snfproject_cmds)
+class project_membership_reject(_membership_action):
+    """Reject a membership for project you manage"""
+    action = 'reject'
+
+
+@command(snfproject_cmds)
+class project_membership_remove(_membership_action):
+    """Remove a membership for a project you manage"""
+    action = 'remove'
+
+
+@command(snfproject_cmds)
+class project_membership_join(_astakos_init):
+    """Get a membership to a project"""
+
+    @errors.generic.all
+    @astakoserror
+    def _run(self, project_id):
+        print self.client.join_project(self.token, project_id)
+
+    def main(self, project_id):
+        super(_membership_action, self)._run()
+        self._run(project_id)
+
+
+@command(snfproject_cmds)
+class project_membership_enroll(_astakos_init):
+    """Enroll somebody to a project you manage"""
+
+    @errors.generic.all
+    @astakoserror
+    def _run(self, project_id, email):
+        print self.client.enroll_member(self.token, project_id, email)
+
+    def main(self, project_id, email):
+        super(_membership_action, self)._run()
+        self._run(project_id, email)
