@@ -301,13 +301,16 @@ class ComputeClient(ComputeRestClient):
         r = self.servers_delete(server_id, key)
         return r.headers
 
-    def list_flavors(self, detail=False):
+    def list_flavors(self, detail=False, response_headers=dict(
+            previous=None, next=None)):
         """
         :param detail: (bool) detailed flavor info if set, short if not
 
         :returns: (list) flavor info
         """
-        r = self.flavors_get(command='detail' if detail else '')
+        r = self.flavors_get(detail=bool(detail))
+        for k, v in response_headers.items():
+            response_headers[k] = r.headers.get(k, v)
         return r.json['flavors']
 
     def get_flavor_details(self, flavor_id):
@@ -319,14 +322,16 @@ class ComputeClient(ComputeRestClient):
         r = self.flavors_get(flavor_id)
         return r.json['flavor']
 
-    def list_images(self, detail=False):
+    def list_images(self, detail=False, response_headers=dict(
+            next=None, previous=None)):
         """
         :param detail: (bool) detailed info if set, short if not
 
         :returns: dict id,name + full info if detail
         """
-        detail = 'detail' if detail else ''
-        r = self.images_get(command=detail)
+        r = self.images_get(detail=bool(detail))
+        for k, v in response_headers.items():
+            response_headers[k] = r.headers.get(k, v)
         return r.json['images']
 
     def get_image_details(self, image_id, **kwargs):
@@ -351,7 +356,8 @@ class ComputeClient(ComputeRestClient):
         r = self.images_delete(image_id)
         return r.headers
 
-    def get_image_metadata(self, image_id, key=''):
+    def get_image_metadata(self, image_id, key='', response_headers=dict(
+            previous=None, next=None)):
         """
         :param image_id: (str)
 
@@ -359,8 +365,9 @@ class ComputeClient(ComputeRestClient):
 
         :returns (dict) metadata if key not set, specific metadatum otherwise
         """
-        command = path4url('metadata', key)
-        r = self.images_get(image_id, command)
+        r = self.images_metadata_get(image_id, key)
+        for k, v in response_headers.items():
+            response_headers[k] = r.headers.get(k, v)
         return r.json['meta' if key else 'metadata']
 
     def create_image_metadata(self, image_id, key, val):
@@ -377,7 +384,9 @@ class ComputeClient(ComputeRestClient):
         r = self.images_put(image_id, 'metadata/' + key, json_data=req)
         return r.json['meta']
 
-    def update_image_metadata(self, image_id, **metadata):
+    def update_image_metadata(
+            self, image_id,
+            response_headers=dict(previous=None, next=None), **metadata):
         """
         :param image_id: (str)
 
@@ -386,7 +395,9 @@ class ComputeClient(ComputeRestClient):
         :returns: updated metadata
         """
         req = {'metadata': metadata}
-        r = self.images_post(image_id, 'metadata', json_data=req)
+        r = self.images_metadata_post(image_id, json_data=req)
+        for k, v in response_headers.items():
+            response_headers[k] = r.headers.get(k, v)
         return r.json['metadata']
 
     def delete_image_metadata(self, image_id, key):

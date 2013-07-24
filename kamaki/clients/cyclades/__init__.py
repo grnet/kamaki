@@ -151,9 +151,8 @@ class CycladesClient(CycladesRestClient):
 
         :returns: (dict) network interface connections
         """
-        r = self.servers_get(server_id, 'ips')
+        r = self.servers_ips_get(server_id)
         return r.json['attachments']
-        #return r.json['addresses']
 
     def get_server_stats(self, server_id):
         """
@@ -161,7 +160,7 @@ class CycladesClient(CycladesRestClient):
 
         :returns: (dict) auto-generated graphs of statistics (urls)
         """
-        r = self.servers_get(server_id, 'stats')
+        r = self.servers_stats_get(server_id)
         return r.json['stats']
 
     def list_networks(self, detail=False):

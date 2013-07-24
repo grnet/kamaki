@@ -39,6 +39,11 @@ import json
 class CycladesRestClient(ComputeClient):
     """Synnefo Cyclades REST API Client"""
 
+    def servers_stats_get(self, server_id, success=200, **kwargs):
+        """GET base_url/servers/<server_id>/stats"""
+        path = path4url('servers', server_id, 'stats')
+        return self.get(path, success=success, **kwargs)
+
     def networks_get(
             self,
             network_id='',
