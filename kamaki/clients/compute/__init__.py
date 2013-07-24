@@ -39,27 +39,83 @@ from kamaki.clients.utils import path4url
 class ComputeClient(ComputeRestClient):
     """OpenStack Compute API 1.1 client"""
 
-    def list_servers(self, detail=False):
+    def list_servers(
+            self,
+            detail=False,
+            changes_since=None,
+            image=None,
+            flavor=None,
+            name=None,
+            marker=None,
+            limit=None,
+            status=None,
+            host=None,
+            response_headers=dict(previous=None, next=None)):
         """
         :param detail: if true, append full server details to each item
 
+        :param response_headers: (dict) use it to get previous/next responses
+            Keep the existing dict format to actually get the server responses
+            Use it with very long lists or with marker
+
         :returns: list of server ids and names
         """
-        detail = 'detail' if detail else ''
-        r = self.servers_get(command=detail)
+        r = self.servers_get(
+            detail=bool(detail),
+            changes_since=changes_since,
+            image=image,
+            flavor=flavor,
+            name=name,
+            marker=marker,
+            limit=limit,
+            status=status,
+            host=host)
+        response_headers['previous'] = r.headers.get('previous', None)
+        response_headers['next'] = r.headers.get('next', None)
         return r.json['servers']
 
-    def get_server_details(self, server_id, **kwargs):
+    def get_server_details(
+            self, server_id,
+            changes_since=None,
+            image=None,
+            flavor=None,
+            name=None,
+            marker=None,
+            limit=None,
+            status=None,
+            host=None,
+            response_headers=dict(previous=None, next=None),
+            **kwargs):
         """Return detailed info for a server
 
         :param server_id: integer (int or str)
 
         :returns: dict with server details
         """
-        r = self.servers_get(server_id, **kwargs)
+        r = self.servers_get(
+            server_id,
+            changes_since=changes_since,
+            image=image,
+            flavor=flavor,
+            name=name,
+            marker=marker,
+            limit=limit,
+            status=status,
+            host=host,
+            **kwargs)
+        response_headers['previous'] = r.headers.get('previous', None)
+        response_headers['next'] = r.headers.get('next', None)
         return r.json['server']
 
-    def create_server(self, name, flavor_id, image_id, personality=None):
+    def create_server(
+            self, name, flavor_id, image_id,
+            security_group=None,
+            user_data=None,
+            availability_zone=None,
+            server=None,
+            metadata=None,
+            personality=None,
+            response_headers=dict(location=None)):
         """Submit request to create a new server
 
         :param name: (str)
@@ -68,6 +124,8 @@ class ComputeClient(ComputeRestClient):
 
         :param image_id: (str) id denoting the OS image to run on the VM
 
+        :param metadata: (dict) vm metadata
+
         :param personality: a list of (file path, file contents) tuples,
             describing files to be injected into VM upon creation.
 
@@ -75,37 +133,21 @@ class ComputeClient(ComputeRestClient):
 
         :raises ClientError: wraps request errors
         """
-        req = {'server': {'name': name,
-                          'flavorRef': flavor_id,
-                          'imageRef': image_id}}
+        req = {'server': {
+            'name': name, 'flavorRef': flavor_id, 'imageRef': image_id}}
 
-        image = self.get_image_details(image_id)
-        metadata = {}
-        for key in ('os', 'users'):
-            try:
-                metadata[key] = image['metadata'][key]
-            except KeyError:
-                pass
         if metadata:
             req['server']['metadata'] = metadata
 
         if personality:
             req['server']['personality'] = personality
 
-        try:
-            r = self.servers_post(json_data=req)
-        except ClientError as err:
-            try:
-                if isinstance(err.details, list):
-                    tmp_err = err.details
-                else:
-                    errd = '%s' % err.details
-                    tmp_err = errd.split(',')
-                tmp_err = tmp_err[0].split(':')
-                tmp_err = tmp_err[2].split('"')
-                err.message = tmp_err[1]
-            finally:
-                raise err
+        r = self.servers_post(
+            json_data=req,
+            security_group=security_group,
+            user_data=user_data,
+            availability_zone=availability_zone)
+        response_headers['location'] = r.headers.get('location', None)
         return r.json['server']
 
     def update_server_name(self, server_id, new_name):

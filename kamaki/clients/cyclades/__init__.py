@@ -41,6 +41,59 @@ from kamaki.clients import ClientError
 class CycladesClient(CycladesRestClient):
     """Synnefo Cyclades Compute API client"""
 
+    def create_server(
+            self, name, flavor_id, image_id,
+            metadata=None, personality=None):
+        """Submit request to create a new server
+
+        :param name: (str)
+
+        :param flavor_id: integer id denoting a preset hardware configuration
+
+        :param image_id: (str) id denoting the OS image to run on the VM
+
+        :param metadata: (dict) vm metadata updated by os/users image metadata
+
+        :param personality: a list of (file path, file contents) tuples,
+            describing files to be injected into VM upon creation.
+
+        :returns: a dict with the new VMs details
+
+        :raises ClientError: wraps request errors
+        """
+        req = {'server': {'name': name,
+                          'flavorRef': flavor_id,
+                          'imageRef': image_id}}
+
+        image = self.get_image_details(image_id)
+        metadata = metadata or dict()
+        for key in ('os', 'users'):
+            try:
+                metadata[key] = image['metadata'][key]
+            except KeyError:
+                pass
+        if metadata:
+            req['server']['metadata'] = metadata
+
+        if personality:
+            req['server']['personality'] = personality
+
+        try:
+            r = self.servers_post(json_data=req)
+        except ClientError as err:
+            try:
+                if isinstance(err.details, list):
+                    tmp_err = err.details
+                else:
+                    errd = '%s' % err.details
+                    tmp_err = errd.split(',')
+                tmp_err = tmp_err[0].split(':')
+                tmp_err = tmp_err[2].split('"')
+                err.message = tmp_err[1]
+            finally:
+                raise err
+        return r.json['server']
+
     def start_server(self, server_id):
         """Submit a startup request
 
