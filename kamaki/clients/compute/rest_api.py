@@ -250,12 +250,23 @@ class ComputeRestClient(Client):
         path = path4url('servers', server_id, 'metadata', key)
         return self.delete(path, success=success, **kwargs)
 
+    def servers_actions_post(
+            self, server_id, json_data=None, success=202, **kwargs):
+        """POST base_url/servers/<server_id>/action
+
+        :returns: request response
+        """
+        if json_data:
+            json_data = json.dumps(json_data)
+            self.set_header('Content-Type', 'application/json')
+            self.set_header('Content-Length', len(json_data))
+        path = path4url('servers', server_id, 'action')
+        return self.post(path, data=json_data, success=success, **kwargs)
+
     """
     def servers_actions_post
     def servers_ips_get
-    """
 
-    """
     def servers_get(self, server_id='', command='', success=200, **kwargs):
         ""GET base_url/servers[/server_id][/command] request
 
@@ -270,23 +281,6 @@ class ComputeRestClient(Client):
         :returns: request response
         ""
         path = path4url('servers', server_id, command)
-    ""
-
-    def servers_delete(self, server_id='', command='', success=204, **kwargs):
-        ""DEL ETE base_url/servers[/server_id][/command] request
-
-        :param server_id: integer (as int or str)
-
-        :param command: 'ips', 'stats', or ''
-
-        :param success: success code or list or tupple of accepted success
-            codes. if server response code is not in this list, a ClientError
-            raises
-
-        :returns: request response
-        ""
-        path = path4url('servers', server_id, command)
-        return self.delete(path, success=success, **kwargs)
 
     def servers_post(
             self,
@@ -317,36 +311,6 @@ class ComputeRestClient(Client):
 
         path = path4url('servers', server_id, command)
         return self.post(path, data=data, success=success, **kwargs)
-
-    def servers_put(
-            self,
-            server_id='',
-            command='',
-            json_data=None,
-            success=204,
-            **kwargs):
-        ""PUT base_url/servers[/server_id]/[command] request
-
-        :param server_id: integer (as int or str)
-
-        :param command: 'ips', 'stats', or ''
-
-        :param json_data: a json-formated dict that will be send as data
-
-        :param success: success code or list or tupple of accepted success
-            codes. if server response code is not in this list, a ClientError
-            raises
-
-        :returns: request response
-        ""
-        data = json_data
-        if json_data is not None:
-            data = json.dumps(json_data)
-            self.set_header('Content-Type', 'application/json')
-            self.set_header('Content-Length', len(data))
-
-        path = path4url('servers', server_id, command)
-        return self.put(path, data=data, success=success, **kwargs)
     """
 
     def flavors_get(self, flavor_id='', command='', success=200, **kwargs):

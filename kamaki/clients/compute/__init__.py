@@ -175,15 +175,33 @@ class ComputeClient(ComputeRestClient):
         r = self.servers_delete(server_id)
         return r.headers
 
+    def change_admin_password(self, server_id, new_password):
+        """
+        :param server_id: (int)
+
+        :param new_password: (str)
+        """
+        req = {"changePassword": {"adminPass": new_password}}
+        r = self.servers_action_post(server_id, json_data=req)
+        return r.headers
+
+    def rebuild_server(self, server_id, response_headers=dict(location=None)):
+        """OS"""
+        server = self.get_server_details(server_id)
+        r = self.servers_action_post(
+            server_id, json_data=dict(rebuild=server['server']))
+        for k, v in response_headers.items():
+            response_headers[k] = r.headers.get(k, v)
+        return r.json['server']
+
     def reboot_server(self, server_id, hard=False):
         """
         :param server_id: integer (str or int)
 
         :param hard: perform a hard reboot if true, soft reboot otherwise
         """
-        boot_type = 'HARD' if hard else 'SOFT'
-        req = {'reboot': {'type': boot_type}}
-        r = self.servers_post(server_id, 'action', json_data=req)
+        req = {'reboot': {'type': 'HARD' if hard else 'SOFT'}}
+        r = self.servers_action_post(server_id, json_data=req)
         return r.headers
 
     def resize_server(self, server_id, flavor_id):
@@ -195,7 +213,37 @@ class ComputeClient(ComputeRestClient):
         :returns: (dict) request headers
         """
         req = {'resize': {'flavorRef': flavor_id}}
-        r = self.servers_post(server_id, 'action', json_data=req)
+        r = self.servers_action_post(server_id, json_data=req)
+        return r.headers
+
+    def confirm_resize_server(self, server_id):
+        """OS"""
+        r = self.servers_action_post(
+            server_id, json_data=dict(confirmResize=None))
+        return r.headers
+
+    def revert_resize_server(self, server_id):
+        """OS"""
+        r = self.servers_action_post(
+            server_id, json_data=dict(revertResize=None))
+        return r.headers
+
+    def create_server_image(self, server_id, image_name, **metadata):
+        """OpenStack method for taking snapshots"""
+        req = dict(createImage=dict(name=image_name, metadata=metadata))
+        r = self.servers_action_post(server_id, json_data=req)
+        return r.headers['location']
+
+    def start_server(self, server_id):
+        """OS Extentions"""
+        req = {'os-start': None}
+        r = self.servers_action_post(server_id, json_data=req, success=202)
+        return r.headers
+
+    def shutdown_server(self, server_id):
+        """OS Extentions"""
+        req = {'os-stop': None}
+        r = self.servers_action_post(server_id, json_data=req, success=202)
         return r.headers
 
     def get_server_metadata(self, server_id, key='', response_headers=dict(
