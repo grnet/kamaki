@@ -61,10 +61,6 @@ class CycladesClient(CycladesRestClient):
 
         :raises ClientError: wraps request errors
         """
-        req = {'server': {'name': name,
-                          'flavorRef': flavor_id,
-                          'imageRef': image_id}}
-
         image = self.get_image_details(image_id)
         metadata = metadata or dict()
         for key in ('os', 'users'):
@@ -72,27 +68,10 @@ class CycladesClient(CycladesRestClient):
                 metadata[key] = image['metadata'][key]
             except KeyError:
                 pass
-        if metadata:
-            req['server']['metadata'] = metadata
 
-        if personality:
-            req['server']['personality'] = personality
-
-        try:
-            r = self.servers_post(json_data=req)
-        except ClientError as err:
-            try:
-                if isinstance(err.details, list):
-                    tmp_err = err.details
-                else:
-                    errd = '%s' % err.details
-                    tmp_err = errd.split(',')
-                tmp_err = tmp_err[0].split(':')
-                tmp_err = tmp_err[2].split('"')
-                err.message = tmp_err[1]
-            finally:
-                raise err
-        return r.json['server']
+        return super(CycladesClient, self).create_server(
+            name, flavor_id, image_id,
+            metadata=metadata, personality=personality)
 
     def start_server(self, server_id):
         """Submit a startup request
@@ -163,8 +142,7 @@ class CycladesClient(CycladesRestClient):
 
         :returns: list of server ids and names
         """
-        detail = 'detail' if detail else ''
-        r = self.servers_get(command=detail, changes_since=changes_since)
+        r = self.servers_get(detail=bool(detail), changes_since=changes_since)
         return r.json['servers']
 
     def list_server_nics(self, server_id):

@@ -171,7 +171,10 @@ class ComputeRestClient(Client):
         path = path4url('servers')
         return self.post(path, data=json_data, success=success, **kwargs)
 
-    def servers_put(self, server_id, json_data=None, success=204, **kwargs):
+    def servers_put(
+            self,
+            server_id, server_name=None, json_data=None, success=204,
+            **kwargs):
         """PUT base_url/servers/<server_id>
 
         :param json_data: a json-formated dict that will be send as data
@@ -182,6 +185,8 @@ class ComputeRestClient(Client):
 
         :returns: request response
         """
+        self.set_param('server', server_name, iff=server_name)
+
         if json_data:
             json_data = json.dumps(json_data)
             self.set_header('Content-Type', 'application/json')
@@ -203,15 +208,49 @@ class ComputeRestClient(Client):
         path = path4url('servers', server_id)
         return self.delete(path, success=success, **kwargs)
 
+    def servers_metadata_get(self, server_id, key=None, success=200, **kwargs):
+        """GET base_url/servers/<server_id>/metadata[/key]
+
+        :returns: request response
+        """
+        path = path4url('servers', server_id, 'metadata', key or '')
+        return self.get(path, success=success, **kwargs)
+
+    def servers_metadata_post(
+            self, server_id, json_data=None, success=202, **kwargs):
+        """POST base_url/servers/<server_id>/metadata
+
+        :returns: request response
+        """
+        if json_data:
+            json_data = json.dumps(json_data)
+            self.set_header('Content-Type', 'application/json')
+            self.set_header('Content-Length', len(json_data))
+        path = path4url('servers', server_id, 'metadata')
+        return self.post(path, data=json_data, success=success, **kwargs)
+
+    def servers_metadata_put(
+            self, server_id, key=None, json_data=None, success=204, **kwargs):
+        """PUT base_url/servers/<server_id>/metadata[/key]
+
+        :returns: request response
+        """
+        if json_data:
+            json_data = json.dumps(json_data)
+            self.set_header('Content-Type', 'application/json')
+            self.set_header('Content-Length', len(json_data))
+        path = path4url('servers', server_id, 'metadata', key or '')
+        return self.put(path, data=json_data, success=success, **kwargs)
+
+    def servers_metadata_delete(self, server_id, key, success=204, **kwargs):
+        """DEL ETE base_url/servers/<server_id>/metadata[/key]
+
+        :returns: request response
+        """
+        path = path4url('servers', server_id, 'metadata', key)
+        return self.delete(path, success=success, **kwargs)
+
     """
-    def servers_get
-    def servers_post
-    def servers_put
-    def servers_delete
-    def servers_metadata_get
-    def servers_metadata_post
-    def servers_metadata_put
-    def servers_metadata_delete
     def servers_actions_post
     def servers_ips_get
     """
@@ -231,11 +270,10 @@ class ComputeRestClient(Client):
         :returns: request response
         ""
         path = path4url('servers', server_id, command)
-        return self.get(path, success=success, **kwargs)
-    """
+    ""
 
     def servers_delete(self, server_id='', command='', success=204, **kwargs):
-        """DEL ETE base_url/servers[/server_id][/command] request
+        ""DEL ETE base_url/servers[/server_id][/command] request
 
         :param server_id: integer (as int or str)
 
@@ -246,11 +284,10 @@ class ComputeRestClient(Client):
             raises
 
         :returns: request response
-        """
+        ""
         path = path4url('servers', server_id, command)
         return self.delete(path, success=success, **kwargs)
 
-    """
     def servers_post(
             self,
             server_id='',
