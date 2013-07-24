@@ -70,8 +70,8 @@ class ComputeClient(ComputeRestClient):
             limit=limit,
             status=status,
             host=host)
-        response_headers['previous'] = r.headers.get('previous', None)
-        response_headers['next'] = r.headers.get('next', None)
+        for k, v in response_headers.items():
+            response_headers[k] = r.headers.get(k, v)
         return r.json['servers']
 
     def get_server_details(
@@ -103,8 +103,8 @@ class ComputeClient(ComputeRestClient):
             status=status,
             host=host,
             **kwargs)
-        response_headers['previous'] = r.headers.get('previous', None)
-        response_headers['next'] = r.headers.get('next', None)
+        for k, v in response_headers.items():
+            response_headers[k] = r.headers.get(k, v)
         return r.json['server']
 
     def create_server(
@@ -147,7 +147,8 @@ class ComputeClient(ComputeRestClient):
             security_group=security_group,
             user_data=user_data,
             availability_zone=availability_zone)
-        response_headers['location'] = r.headers.get('location', None)
+        for k, v in response_headers.items():
+            response_headers[k] = r.headers.get(k, v)
         return r.json['server']
 
     def update_server_name(self, server_id, new_name):
@@ -197,7 +198,8 @@ class ComputeClient(ComputeRestClient):
         r = self.servers_post(server_id, 'action', json_data=req)
         return r.headers
 
-    def get_server_metadata(self, server_id, key=''):
+    def get_server_metadata(self, server_id, key='', response_headers=dict(
+            previous=None, next=None)):
         """
         :param server_id: integer (str or int)
 
@@ -205,8 +207,9 @@ class ComputeClient(ComputeRestClient):
 
         :returns: a key:val dict of requests metadata
         """
-        command = path4url('metadata', key)
-        r = self.servers_get(server_id, command)
+        r = self.servers_metadata_get(server_id, key)
+        for k, v in response_headers.items():
+            response_headers[k] = r.headers.get(k, v)
         return r.json['meta' if key else 'metadata']
 
     def create_server_metadata(self, server_id, key, val):
@@ -220,11 +223,12 @@ class ComputeClient(ComputeRestClient):
         :returns: dict of updated key:val metadata
         """
         req = {'meta': {key: val}}
-        r = self.servers_put(
-            server_id, 'metadata/' + key, json_data=req, success=201)
+        r = self.servers_put(server_id, key, json_data=req, success=201)
         return r.json['meta']
 
-    def update_server_metadata(self, server_id, **metadata):
+    def update_server_metadata(
+            self, server_id,
+            response_headers=dict(previous=None, next=None), **metadata):
         """
         :param server_id: integer (str or int)
 
@@ -233,8 +237,9 @@ class ComputeClient(ComputeRestClient):
         :returns: dict of updated key:val metadata
         """
         req = {'metadata': metadata}
-        r = self.servers_post(
-            server_id, 'metadata', json_data=req, success=201)
+        r = self.servers_post(server_id, json_data=req, success=201)
+        for k, v in response_headers.items():
+            response_headers[k] = r.headers.get(k, v)
         return r.json['metadata']
 
     def delete_server_metadata(self, server_id, key):
@@ -245,7 +250,7 @@ class ComputeClient(ComputeRestClient):
 
         :returns: (dict) response headers
         """
-        r = self.servers_delete(server_id, 'metadata/' + key)
+        r = self.servers_delete(server_id, key)
         return r.headers
 
     def list_flavors(self, detail=False):
