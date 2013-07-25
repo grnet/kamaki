@@ -35,6 +35,7 @@ from mock import patch, call
 from unittest import TestCase
 from itertools import product
 from json import dumps
+from sys import stdout
 
 from kamaki.clients import ClientError, compute
 
@@ -119,30 +120,81 @@ class ComputeRestClient(TestCase):
         FR.json = vm_recv
 
     @patch('%s.get' % rest_pkg, return_value=FR())
-    def _test_get(self, service, get):
-        for args in product(
+    def test_limits_get(self, get):
+        self.client.limits_get(success='some_val')
+        get.assert_called_once_with('/limits', success='some_val')
+
+    @patch('%s.set_param' % rest_pkg)
+    @patch('%s.get' % rest_pkg, return_value=FR())
+    def _test_get(self, service, params, get, set_param):
+        param_args = [({}, {k: k}, {k: v[1]}) for k, v in params.items()]
+        num_of_its = ''
+        stdout.write('# of iterations: ')
+        i = 0
+        for i, args in enumerate(product(
                 ('', '%s_id' % service),
-                ('', 'cmd'),
+                (None, False, True),
                 (200, 204),
-                ({}, {'k': 'v'})):
-            (srv_id, command, success, kwargs) = args
+                ({}, {'k': 'v'}),
+                *param_args)):
+            (srv_id, detail, success, kwargs) = args[:4]
+            kwargs['success'] = success
+            srv_kwargs = dict()
+            for param in args[4:]:
+                srv_kwargs.update(param)
+            srv_kwargs.update(kwargs)
             method = getattr(self.client, '%s_get' % service)
-            method(*args[:3], **kwargs)
-            srv_str = '/%s' % srv_id if srv_id else ''
-            cmd_str = '/%s' % command if command else ''
-            self.assertEqual(get.mock_calls[-1], call(
-                '/%s%s%s' % (service, srv_str, cmd_str),
-                success=success,
-                **kwargs))
+            method(*args[:2], **srv_kwargs)
+            srv_str = '/detail' if detail else (
+                '/%s' % srv_id) if srv_id else ''
+            self.assertEqual(
+                get.mock_calls[-1],
+                call('/%s%s' % (service, srv_str), **kwargs))
+            param_calls = []
+            for k, v in params.items():
+                real_v = srv_kwargs.get(k, v[1]) if not srv_id else v[1]
+                param_calls.append(call(v[0], real_v, iff=real_v))
+            actual = set_param.mock_calls[- len(param_calls):]
+            self.assertEqual(sorted(actual), sorted(param_calls))
+
+            if not i % 1000:
+                stdout.write('\b' * len(num_of_its))
+                num_of_its = '%s' % i
+                stdout.write(num_of_its)
+                stdout.flush()
+        print ('\b' * len(num_of_its)) + ('%s' % i)
 
     def test_servers_get(self):
-        self._test_get('servers')
+        params = dict(
+            changes_since=('changes-since', None),
+            image=('image', None),
+            flavor=('flavor', None),
+            name=('name', None),
+            marker=('marker', None),
+            limit=('limit', None),
+            status=('status', None),
+            host=('host', None))
+        self._test_get('servers', params)
 
     def test_flavors_get(self):
-        self._test_get('flavors')
+        params = dict(
+            changes_since=('changes-since', None),
+            minDisk=('minDisk', None),
+            minRam=('minRam', None),
+            marker=('marker', None),
+            limit=('limit', None))
+        self._test_get('flavors', params)
 
     def test_images_get(self):
-        self._test_get('images')
+        param = dict(
+            changes_since=('changes-since', None),
+            server_name=('server', None),
+            name=('name', None),
+            status=('status', None),
+            marker=('marker', None),
+            limit=('limit', None),
+            type=('type', None))
+        self._test_get('images', param)
 
     @patch('%s.delete' % rest_pkg, return_value=FR())
     def _test_delete(self, service, delete):
