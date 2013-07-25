@@ -376,7 +376,7 @@ class ComputeRestClient(Client):
         :returns: request response
         """
         path = path4url('images', image_id, 'metadata', key)
-        return self.put(path, success=success, **kwargs)
+        return self.delete(path, success=success, **kwargs)
 
     def flavors_get(
             self,
@@ -420,16 +420,16 @@ class ComputeRestClient(Client):
         return self.get(path, success=success, **kwargs)
 
     def floating_ip_pools_get(self, tenant_id, success=200, **kwargs):
-        path = path4url(tenant_id, 'os-floating-ip-pools')
+        path = path4url('os-floating-ip-pools')
         return self.get(path, success=success, **kwargs)
 
     def floating_ips_get(self, tenant_id, ip='', success=200, **kwargs):
-        path = path4url(tenant_id, 'os-floating-ips', ip or '')
+        path = path4url('os-floating-ips', ip or '')
         return self.get(path, success=success, **kwargs)
 
     def floating_ips_post(
             self, tenant_id, json_data, ip='', success=201, **kwargs):
-        path = path4url(tenant_id, 'os-floating-ips', ip or '')
+        path = path4url('os-floating-ips', ip or '')
         if json_data is not None:
             json_data = json.dumps(json_data)
             self.set_header('Content-Type', 'application/json')
@@ -437,5 +437,5 @@ class ComputeRestClient(Client):
         return self.post(path, data=json_data, success=success, **kwargs)
 
     def floating_ips_delete(self, tenant_id, ip='', success=204, **kwargs):
-        path = path4url(tenant_id, 'os-floating-ips', ip or '')
+        path = path4url('os-floating-ips', ip or '')
         return self.delete(path, success=success, **kwargs)

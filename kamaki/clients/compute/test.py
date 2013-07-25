@@ -127,10 +127,10 @@ class ComputeRestClient(TestCase):
     @patch('%s.set_param' % rest_pkg)
     @patch('%s.get' % rest_pkg, return_value=FR())
     def _test_get(self, service, params, get, set_param):
+        method = getattr(self.client, '%s_get' % service)
         param_args = [({}, {k: k}, {k: v[1]}) for k, v in params.items()]
-        num_of_its = ''
+        num_of_its, i = '', 0
         stdout.write('# of iterations: ')
-        i = 0
         for i, args in enumerate(product(
                 ('', '%s_id' % service),
                 (None, False, True),
@@ -143,7 +143,6 @@ class ComputeRestClient(TestCase):
             for param in args[4:]:
                 srv_kwargs.update(param)
             srv_kwargs.update(kwargs)
-            method = getattr(self.client, '%s_get' % service)
             method(*args[:2], **srv_kwargs)
             srv_str = '/detail' if detail else (
                 '/%s' % srv_id) if srv_id else ''
@@ -153,6 +152,43 @@ class ComputeRestClient(TestCase):
             param_calls = []
             for k, v in params.items():
                 real_v = srv_kwargs.get(k, v[1]) if not srv_id else v[1]
+                param_calls.append(call(v[0], real_v, iff=real_v))
+            actual = set_param.mock_calls[- len(param_calls):]
+            self.assertEqual(sorted(actual), sorted(param_calls))
+
+            if not i % 1000:
+                stdout.write('\b' * len(num_of_its))
+                num_of_its = '%s' % i
+                stdout.write(num_of_its)
+                stdout.flush()
+        print ('\b' * len(num_of_its)) + ('%s' % i)
+
+    @patch('%s.set_param' % rest_pkg)
+    @patch('%s.get' % rest_pkg, return_value=FR())
+    def _test_srv_cmd_get(self, srv, cmd, params, get, set_param):
+        method = getattr(self.client, '%s_%s_get' % (srv, cmd))
+        param_args = [({}, {k: k}, {k: v[1]}) for k, v in params.items()]
+        num_of_its, i = '', 0
+        stdout.write('# of iterations: ')
+        for i, args in enumerate(product(
+                ('some_server_id', 'other_server_id'),
+                (None, 'xtra_id'),
+                ((304, 200), (1000)),
+                ({}, {'k': 'v'}),
+                *param_args)):
+            srv_id, xtra_id, success, kwargs = args[:4]
+            kwargs['success'] = success
+            srv_kwargs = dict()
+            for param in args[4:]:
+                srv_kwargs.update(param)
+            srv_kwargs.update(kwargs)
+            method(*args[:2], **srv_kwargs)
+            srv_str = '/%s/%s/%s' % (srv, srv_id, cmd)
+            srv_str += ('/%s' % xtra_id) if xtra_id else ''
+            self.assertEqual(get.mock_calls[-1], call(srv_str, **kwargs))
+            param_calls = []
+            for k, v in params.items():
+                real_v = srv_kwargs.get(k, v[1])
                 param_calls.append(call(v[0], real_v, iff=real_v))
             actual = set_param.mock_calls[- len(param_calls):]
             self.assertEqual(sorted(actual), sorted(param_calls))
@@ -176,6 +212,13 @@ class ComputeRestClient(TestCase):
             host=('host', None))
         self._test_get('servers', params)
 
+    def test_servers_metadata_get(self):
+        self._test_srv_cmd_get('servers', 'metadata', {})
+
+    def test_servers_ips_get(self):
+        params = dict(changes_since=('changes-since', None))
+        self._test_srv_cmd_get('servers', 'ips', params)
+
     def test_flavors_get(self):
         params = dict(
             changes_since=('changes-since', None),
@@ -196,28 +239,41 @@ class ComputeRestClient(TestCase):
             type=('type', None))
         self._test_get('images', param)
 
+    def test_images_metadata_get(self):
+        self._test_srv_cmd_get('images', 'metadata', {})
+
     @patch('%s.delete' % rest_pkg, return_value=FR())
-    def _test_delete(self, service, delete):
+    def _test_delete(self, srv, cmd, delete):
+        method = getattr(
+            self.client, '%s_%sdelete' % (srv, ('%s_' % cmd) if cmd else ''))
+        cmd_params = ('some_cmd_value', 'some_other_value') if cmd else ()
         for args in product(
-                ('', '%s_id' % service),
-                ('', 'cmd'),
+                ('%s_id' % srv, 'some_value'),
                 (204, 208),
-                ({}, {'k': 'v'})):
-            (srv_id, command, success, kwargs) = args
-            method = getattr(self.client, '%s_delete' % service)
-            method(*args[:3], **kwargs)
-            vm_str = '/%s' % srv_id if srv_id else ''
-            cmd_str = '/%s' % command if command else ''
-            self.assertEqual(delete.mock_calls[-1], call(
-                '/%s%s%s' % (service, vm_str, cmd_str),
-                success=success,
-                **kwargs))
+                ({}, {'k': 'v'}),
+                *cmd_params):
+            (srv_id, success, kwargs) = args[:3]
+            kwargs['success'] = success
+            cmd_value = args[-1] if cmd else ''
+            method_args = (srv_id, cmd_value) if cmd else (srv_id)
+            method(*method_args, **kwargs)
+            srv_str = '/%s/%s' % (srv, srv_id)
+            cmd_str = ('/%s/%s' % (cmd, cmd_value)) if cmd else ''
+            self.assertEqual(
+                delete.mock_calls[-1],
+                call('%s%s' % (srv_str, cmd_str), **kwargs))
 
     def test_servers_delete(self):
-        self._test_delete('servers')
+        self._test_delete('servers', None)
+
+    def test_servers_metadata_delete(self):
+        self._test_delete('servers', 'metadata')
 
     def test_images_delete(self):
-        self._test_delete('images')
+        self._test_delete('images', None)
+
+    def test_images_metadata_delete(self):
+        self._test_delete('images', 'metadata')
 
     @patch('%s.set_header' % rest_pkg)
     @patch('%s.post' % rest_pkg, return_value=FR())
