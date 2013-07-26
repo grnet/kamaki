@@ -39,27 +39,82 @@ from kamaki.clients.utils import path4url
 class ComputeClient(ComputeRestClient):
     """OpenStack Compute API 1.1 client"""
 
-    def list_servers(self, detail=False):
+    def list_servers(
+            self,
+            detail=False,
+            changes_since=None,
+            image=None,
+            flavor=None,
+            name=None,
+            marker=None,
+            limit=None,
+            status=None,
+            host=None,
+            response_headers=dict(previous=None, next=None)):
         """
         :param detail: if true, append full server details to each item
 
+        :param response_headers: (dict) use it to get previous/next responses
+            Keep the existing dict format to actually get the server responses
+            Use it with very long lists or with marker
+
         :returns: list of server ids and names
         """
-        detail = 'detail' if detail else ''
-        r = self.servers_get(command=detail)
+        r = self.servers_get(
+            detail=bool(detail),
+            changes_since=changes_since,
+            image=image,
+            flavor=flavor,
+            name=name,
+            marker=marker,
+            limit=limit,
+            status=status,
+            host=host)
+        for k, v in response_headers.items():
+            response_headers[k] = r.headers.get(k, v)
         return r.json['servers']
 
-    def get_server_details(self, server_id, **kwargs):
+    def get_server_details(
+            self, server_id,
+            changes_since=None,
+            image=None,
+            flavor=None,
+            name=None,
+            marker=None,
+            limit=None,
+            status=None,
+            host=None,
+            response_headers=dict(previous=None, next=None),
+            **kwargs):
         """Return detailed info for a server
 
         :param server_id: integer (int or str)
 
         :returns: dict with server details
         """
-        r = self.servers_get(server_id, **kwargs)
+        r = self.servers_get(
+            server_id,
+            changes_since=changes_since,
+            image=image,
+            flavor=flavor,
+            name=name,
+            marker=marker,
+            limit=limit,
+            status=status,
+            host=host,
+            **kwargs)
+        for k, v in response_headers.items():
+            response_headers[k] = r.headers.get(k, v)
         return r.json['server']
 
-    def create_server(self, name, flavor_id, image_id, personality=None):
+    def create_server(
+            self, name, flavor_id, image_id,
+            security_group=None,
+            user_data=None,
+            availability_zone=None,
+            metadata=None,
+            personality=None,
+            response_headers=dict(location=None)):
         """Submit request to create a new server
 
         :param name: (str)
@@ -68,6 +123,8 @@ class ComputeClient(ComputeRestClient):
 
         :param image_id: (str) id denoting the OS image to run on the VM
 
+        :param metadata: (dict) vm metadata
+
         :param personality: a list of (file path, file contents) tuples,
             describing files to be injected into VM upon creation.
 
@@ -75,37 +132,22 @@ class ComputeClient(ComputeRestClient):
 
         :raises ClientError: wraps request errors
         """
-        req = {'server': {'name': name,
-                          'flavorRef': flavor_id,
-                          'imageRef': image_id}}
+        req = {'server': {
+            'name': name, 'flavorRef': flavor_id, 'imageRef': image_id}}
 
-        image = self.get_image_details(image_id)
-        metadata = {}
-        for key in ('os', 'users'):
-            try:
-                metadata[key] = image['metadata'][key]
-            except KeyError:
-                pass
         if metadata:
             req['server']['metadata'] = metadata
 
         if personality:
             req['server']['personality'] = personality
 
-        try:
-            r = self.servers_post(json_data=req)
-        except ClientError as err:
-            try:
-                if isinstance(err.details, list):
-                    tmp_err = err.details
-                else:
-                    errd = '%s' % err.details
-                    tmp_err = errd.split(',')
-                tmp_err = tmp_err[0].split(':')
-                tmp_err = tmp_err[2].split('"')
-                err.message = tmp_err[1]
-            finally:
-                raise err
+        r = self.servers_post(
+            json_data=req,
+            security_group=security_group,
+            user_data=user_data,
+            availability_zone=availability_zone)
+        for k, v in response_headers.items():
+            response_headers[k] = r.headers.get(k, v)
         return r.json['server']
 
     def update_server_name(self, server_id, new_name):
@@ -132,15 +174,33 @@ class ComputeClient(ComputeRestClient):
         r = self.servers_delete(server_id)
         return r.headers
 
+    def change_admin_password(self, server_id, new_password):
+        """
+        :param server_id: (int)
+
+        :param new_password: (str)
+        """
+        req = {"changePassword": {"adminPass": new_password}}
+        r = self.servers_action_post(server_id, json_data=req)
+        return r.headers
+
+    def rebuild_server(self, server_id, response_headers=dict(location=None)):
+        """OS"""
+        server = self.get_server_details(server_id)
+        r = self.servers_action_post(
+            server_id, json_data=dict(rebuild=server['server']))
+        for k, v in response_headers.items():
+            response_headers[k] = r.headers.get(k, v)
+        return r.json['server']
+
     def reboot_server(self, server_id, hard=False):
         """
         :param server_id: integer (str or int)
 
         :param hard: perform a hard reboot if true, soft reboot otherwise
         """
-        boot_type = 'HARD' if hard else 'SOFT'
-        req = {'reboot': {'type': boot_type}}
-        r = self.servers_post(server_id, 'action', json_data=req)
+        req = {'reboot': {'type': 'HARD' if hard else 'SOFT'}}
+        r = self.servers_action_post(server_id, json_data=req)
         return r.headers
 
     def resize_server(self, server_id, flavor_id):
@@ -152,10 +212,41 @@ class ComputeClient(ComputeRestClient):
         :returns: (dict) request headers
         """
         req = {'resize': {'flavorRef': flavor_id}}
-        r = self.servers_post(server_id, 'action', json_data=req)
+        r = self.servers_action_post(server_id, json_data=req)
         return r.headers
 
-    def get_server_metadata(self, server_id, key=''):
+    def confirm_resize_server(self, server_id):
+        """OS"""
+        r = self.servers_action_post(
+            server_id, json_data=dict(confirmResize=None))
+        return r.headers
+
+    def revert_resize_server(self, server_id):
+        """OS"""
+        r = self.servers_action_post(
+            server_id, json_data=dict(revertResize=None))
+        return r.headers
+
+    def create_server_image(self, server_id, image_name, **metadata):
+        """OpenStack method for taking snapshots"""
+        req = dict(createImage=dict(name=image_name, metadata=metadata))
+        r = self.servers_action_post(server_id, json_data=req)
+        return r.headers['location']
+
+    def start_server(self, server_id):
+        """OS Extentions"""
+        req = {'os-start': None}
+        r = self.servers_action_post(server_id, json_data=req, success=202)
+        return r.headers
+
+    def shutdown_server(self, server_id):
+        """OS Extentions"""
+        req = {'os-stop': None}
+        r = self.servers_action_post(server_id, json_data=req, success=202)
+        return r.headers
+
+    def get_server_metadata(self, server_id, key='', response_headers=dict(
+            previous=None, next=None)):
         """
         :param server_id: integer (str or int)
 
@@ -163,8 +254,9 @@ class ComputeClient(ComputeRestClient):
 
         :returns: a key:val dict of requests metadata
         """
-        command = path4url('metadata', key)
-        r = self.servers_get(server_id, command)
+        r = self.servers_metadata_get(server_id, key)
+        for k, v in response_headers.items():
+            response_headers[k] = r.headers.get(k, v)
         return r.json['meta' if key else 'metadata']
 
     def create_server_metadata(self, server_id, key, val):
@@ -178,11 +270,13 @@ class ComputeClient(ComputeRestClient):
         :returns: dict of updated key:val metadata
         """
         req = {'meta': {key: val}}
-        r = self.servers_put(
-            server_id, 'metadata/' + key, json_data=req, success=201)
+        r = self.servers_metadata_put(
+            server_id, key, json_data=req, success=201)
         return r.json['meta']
 
-    def update_server_metadata(self, server_id, **metadata):
+    def update_server_metadata(
+            self, server_id,
+            response_headers=dict(previous=None, next=None), **metadata):
         """
         :param server_id: integer (str or int)
 
@@ -191,8 +285,9 @@ class ComputeClient(ComputeRestClient):
         :returns: dict of updated key:val metadata
         """
         req = {'metadata': metadata}
-        r = self.servers_post(
-            server_id, 'metadata', json_data=req, success=201)
+        r = self.servers_metadata_post(server_id, json_data=req, success=201)
+        for k, v in response_headers.items():
+            response_headers[k] = r.headers.get(k, v)
         return r.json['metadata']
 
     def delete_server_metadata(self, server_id, key):
@@ -203,16 +298,19 @@ class ComputeClient(ComputeRestClient):
 
         :returns: (dict) response headers
         """
-        r = self.servers_delete(server_id, 'metadata/' + key)
+        r = self.servers_metadata_delete(server_id, key)
         return r.headers
 
-    def list_flavors(self, detail=False):
+    def list_flavors(self, detail=False, response_headers=dict(
+            previous=None, next=None)):
         """
         :param detail: (bool) detailed flavor info if set, short if not
 
         :returns: (list) flavor info
         """
-        r = self.flavors_get(command='detail' if detail else '')
+        r = self.flavors_get(detail=bool(detail))
+        for k, v in response_headers.items():
+            response_headers[k] = r.headers.get(k, v)
         return r.json['flavors']
 
     def get_flavor_details(self, flavor_id):
@@ -224,14 +322,16 @@ class ComputeClient(ComputeRestClient):
         r = self.flavors_get(flavor_id)
         return r.json['flavor']
 
-    def list_images(self, detail=False):
+    def list_images(self, detail=False, response_headers=dict(
+            next=None, previous=None)):
         """
         :param detail: (bool) detailed info if set, short if not
 
         :returns: dict id,name + full info if detail
         """
-        detail = 'detail' if detail else ''
-        r = self.images_get(command=detail)
+        r = self.images_get(detail=bool(detail))
+        for k, v in response_headers.items():
+            response_headers[k] = r.headers.get(k, v)
         return r.json['images']
 
     def get_image_details(self, image_id, **kwargs):
@@ -256,7 +356,8 @@ class ComputeClient(ComputeRestClient):
         r = self.images_delete(image_id)
         return r.headers
 
-    def get_image_metadata(self, image_id, key=''):
+    def get_image_metadata(self, image_id, key='', response_headers=dict(
+            previous=None, next=None)):
         """
         :param image_id: (str)
 
@@ -264,8 +365,9 @@ class ComputeClient(ComputeRestClient):
 
         :returns (dict) metadata if key not set, specific metadatum otherwise
         """
-        command = path4url('metadata', key)
-        r = self.images_get(image_id, command)
+        r = self.images_metadata_get(image_id, key)
+        for k, v in response_headers.items():
+            response_headers[k] = r.headers.get(k, v)
         return r.json['meta' if key else 'metadata']
 
     def create_image_metadata(self, image_id, key, val):
@@ -279,10 +381,12 @@ class ComputeClient(ComputeRestClient):
         :returns: (dict) updated metadata
         """
         req = {'meta': {key: val}}
-        r = self.images_put(image_id, 'metadata/' + key, json_data=req)
+        r = self.images_metadata_put(image_id, key, json_data=req)
         return r.json['meta']
 
-    def update_image_metadata(self, image_id, **metadata):
+    def update_image_metadata(
+            self, image_id,
+            response_headers=dict(previous=None, next=None), **metadata):
         """
         :param image_id: (str)
 
@@ -291,7 +395,9 @@ class ComputeClient(ComputeRestClient):
         :returns: updated metadata
         """
         req = {'metadata': metadata}
-        r = self.images_post(image_id, 'metadata', json_data=req)
+        r = self.images_metadata_post(image_id, json_data=req)
+        for k, v in response_headers.items():
+            response_headers[k] = r.headers.get(k, v)
         return r.json['metadata']
 
     def delete_image_metadata(self, image_id, key):
@@ -302,8 +408,7 @@ class ComputeClient(ComputeRestClient):
 
         :returns: (dict) response headers
         """
-        command = path4url('metadata', key)
-        r = self.images_delete(image_id, command)
+        r = self.images_metadata_delete(image_id, key)
         return r.headers
 
     def get_floating_ip_pools(self, tenant_id):
