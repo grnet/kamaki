@@ -36,6 +36,7 @@ from unittest import TestCase
 from itertools import product
 from json import dumps
 from sys import stdout
+import json
 
 from kamaki.clients import ClientError, compute
 
@@ -131,11 +132,6 @@ class ComputeRestClient(TestCase):
     def tearDown(self):
         FR.json = vm_recv
 
-    @patch('%s.get' % rest_pkg, return_value=FR())
-    def test_limits_get(self, get):
-        self.client.limits_get(success='some_val')
-        get.assert_called_once_with('/limits', success='some_val')
-
     @patch('%s.set_param' % rest_pkg)
     @patch('%s.get' % rest_pkg, return_value=FR())
     def _test_get(self, service, params, get, set_param):
@@ -183,6 +179,7 @@ class ComputeRestClient(TestCase):
                 ({}, {'k': 'v'}),
                 *param_args)):
             srv_id, xtra_id, success, kwargs = args[:4]
+            kwargs = dict(kwargs)
             kwargs['success'] = success
             srv_kwargs = dict()
             for param in args[4:]:
@@ -192,6 +189,97 @@ class ComputeRestClient(TestCase):
             srv_str = '/%s/%s/%s' % (srv, srv_id, cmd)
             srv_str += ('/%s' % xtra_id) if xtra_id else ''
             self.assertEqual(get.mock_calls[-1], call(srv_str, **kwargs))
+            param_calls = []
+            for k, v in params.items():
+                real_v = srv_kwargs.get(k, v[1])
+                param_calls.append(call(v[0], real_v, iff=real_v))
+            actual = set_param.mock_calls[- len(param_calls):]
+            self.assertEqual(sorted(actual), sorted(param_calls))
+
+            num_of_its = print_iterations(num_of_its, i)
+        print ('\b' * len('%s' % num_of_its)) + ('%s' % i)
+
+    @patch('%s.set_header' % rest_pkg)
+    @patch('%s.set_param' % rest_pkg)
+    @patch('%s.post' % rest_pkg, return_value=FR())
+    def _test_post(self, srv, cmd, params, post, set_param, set_header):
+        method = getattr(
+            self.client, '%s_%spost' % (srv, ('%s_' % cmd) if cmd else ''))
+        param_args = [({}, {k: k}, {k: v[1]}) for k, v in params.items()]
+        num_of_its = 0
+        for i, args in enumerate(product(
+                ('%s_id' % srv, 'some_value'),
+                (
+                    None,
+                    {'some': {'data': 'in json'}},
+                    ['k1', {'k2': 'v2', 'k3': 'v3'}, 'k4']),
+                (202, 1453),
+                ({}, {'k': 'v'}),
+                *param_args)):
+            srv_id, json_data, success, kwargs = args[:4]
+            kwargs = dict(kwargs)
+            cmd_args = (srv_id, ) if cmd else ()
+            kwargs['success'] = success
+            srv_kwargs = dict()
+            for param in args[4:]:
+                srv_kwargs.update(param)
+            srv_kwargs.update(kwargs)
+            srv_kwargs['json_data'] = json_data
+            method(*cmd_args, **srv_kwargs)
+            srv_str = '/%s%s' % (
+                srv, (('/%s/%s' % (srv_id, cmd)) if cmd else ''))
+            kwargs['data'] = json.dumps(json_data) if json_data else None
+            self.assertEqual(post.mock_calls[-1], call(srv_str, **kwargs))
+
+            param_calls = []
+            for k, v in params.items():
+                real_v = srv_kwargs.get(k, v[1])
+                param_calls.append(call(v[0], real_v, iff=real_v))
+            actual = set_param.mock_calls[- len(param_calls):]
+            self.assertEqual(sorted(actual), sorted(param_calls))
+
+            if json_data:
+                self.assertEqual(set_header.mock_calls[-2:], [
+                    call('Content-Type', 'application/json'),
+                    call('Content-Length', len(kwargs['data']))])
+
+            num_of_its = print_iterations(num_of_its, i)
+        print ('\b' * len('%s' % num_of_its)) + ('%s' % i)
+
+    @patch('%s.set_header' % rest_pkg)
+    @patch('%s.set_param' % rest_pkg)
+    @patch('%s.put' % rest_pkg, return_value=FR())
+    def _test_put(self, srv, cmd, params, put, set_param, set_headers):
+        method = getattr(self.client, '%s_%sput' % (
+            srv, ('%s_' % cmd) if cmd else ''))
+        param_args = [({}, {k: k}, {k: v[1]}) for k, v in params.items()]
+        num_of_its = 0
+        for i, args in enumerate(product(
+                ('some_value', '%s_id' % srv),
+                (None, [dict(json="data"), dict(data="json")]),
+                (204, 504),
+                ({}, {'k': 'v'}),
+                *param_args)):
+            srv_id, json_data, success, kwargs = args[:4]
+            kwargs = dict(kwargs)
+            kwargs['success'] = success
+            srv_kwargs = dict()
+            for param in args[4:]:
+                srv_kwargs.update(param)
+            srv_kwargs.update(kwargs)
+            srv_kwargs['json_data'] = json_data
+            method(srv_id, **srv_kwargs)
+            srv_str = '/%s/%s%s' % (srv, srv_id, ('/%s' % cmd if cmd else ''))
+
+            if json_data:
+                json_data = dumps(json_data)
+                self.assertEqual(set_headers.mock_calls[-2:], [
+                    call('Content-Type', 'application/json'),
+                    call('Content-Length', len(json_data))])
+            self.assertEqual(
+                put.mock_calls[-1],
+                call(srv_str, data=json_data, **kwargs))
+
             param_calls = []
             for k, v in params.items():
                 real_v = srv_kwargs.get(k, v[1])
@@ -214,6 +302,7 @@ class ComputeRestClient(TestCase):
                 ({}, {'k': 'v'}),
                 *cmd_params)):
             (srv_id, success, kwargs) = args[:3]
+            kwargs = dict(kwargs)
             kwargs['success'] = success
             cmd_value = args[-1] if cmd else ''
             method_args = (srv_id, cmd_value) if cmd else (srv_id, )
@@ -225,6 +314,11 @@ class ComputeRestClient(TestCase):
                 call('%s%s' % (srv_str, cmd_str), **kwargs))
             num_of_its = print_iterations(num_of_its, i)
         print ('\b' * len('%s' % num_of_its)) + ('%s' % i)
+
+    @patch('%s.get' % rest_pkg, return_value=FR())
+    def test_limits_get(self, get):
+        self.client.limits_get(success='some_val')
+        get.assert_called_once_with('/limits', success='some_val')
 
     def test_servers_get(self):
         params = dict(
@@ -238,21 +332,37 @@ class ComputeRestClient(TestCase):
             host=('host', None))
         self._test_get('servers', params)
 
+    def test_servers_post(self):
+        params = dict(
+            security_group=('security_group', None),
+            user_data=('user_data', None),
+            availability_zone=('availability_zone', None))
+        self._test_post('servers', None, params)
+
+    def test_servers_put(self):
+        self._test_put('servers', None, dict(server_name=('server', None)))
+
+    def test_servers_delete(self):
+        self._test_delete('servers', None)
+
     def test_servers_metadata_get(self):
         self._test_srv_cmd_get('servers', 'metadata', {})
+
+    def test_servers_metadata_post(self):
+        self._test_post('servers', 'metadata', {})
+
+    def test_servers_metadata_put(self):
+        self._test_put('servers', 'metadata', {})
+
+    def test_images_metadata_delete(self):
+        self._test_delete('images', 'metadata')
+
+    def test_servers_action_post(self):
+        self._test_post('servers', 'action', {})
 
     def test_servers_ips_get(self):
         params = dict(changes_since=('changes-since', None))
         self._test_srv_cmd_get('servers', 'ips', params)
-
-    def test_flavors_get(self):
-        params = dict(
-            changes_since=('changes-since', None),
-            minDisk=('minDisk', None),
-            minRam=('minRam', None),
-            marker=('marker', None),
-            limit=('limit', None))
-        self._test_get('flavors', params)
 
     def test_images_get(self):
         param = dict(
@@ -265,120 +375,64 @@ class ComputeRestClient(TestCase):
             type=('type', None))
         self._test_get('images', param)
 
+    def test_images_delete(self):
+        self._test_delete('images', None)
+
     def test_images_metadata_get(self):
         self._test_srv_cmd_get('images', 'metadata', {})
 
-    def test_servers_delete(self):
-        self._test_delete('servers', None)
+    def test_images_metadata_post(self):
+        self._test_post('images', 'metadata', {})
+
+    def test_images_metadata_put(self):
+        self._test_put('images', 'metadata', {})
 
     def test_servers_metadata_delete(self):
         self._test_delete('servers', 'metadata')
 
-    def test_images_delete(self):
-        self._test_delete('images', None)
-
-    def test_images_metadata_delete(self):
-        self._test_delete('images', 'metadata')
-
-    @patch('%s.set_header' % rest_pkg)
-    @patch('%s.post' % rest_pkg, return_value=FR())
-    def _test_post(self, service, post, SH):
-        for args in product(
-                ('', '%s_id' % service),
-                ('', 'cmd'),
-                (None, [dict(json="data"), dict(data="json")]),
-                (202, 204),
-                ({}, {'k': 'v'})):
-            (srv_id, command, json_data, success, kwargs) = args
-            method = getattr(self.client, '%s_post' % service)
-            method(*args[:4], **kwargs)
-            vm_str = '/%s' % srv_id if srv_id else ''
-            cmd_str = '/%s' % command if command else ''
-            if json_data:
-                json_data = dumps(json_data)
-                self.assertEqual(SH.mock_calls[-2:], [
-                    call('Content-Type', 'application/json'),
-                    call('Content-Length', len(json_data))])
-            self.assertEqual(post.mock_calls[-1], call(
-                '/%s%s%s' % (service, vm_str, cmd_str),
-                data=json_data, success=success,
-                **kwargs))
-
-    def test_servers_post(self):
-        self._test_post('servers')
-
-    def test_images_post(self):
-        self._test_post('images')
-
-    @patch('%s.set_header' % rest_pkg)
-    @patch('%s.put' % rest_pkg, return_value=FR())
-    def _test_put(self, service, put, SH):
-        for args in product(
-                ('', '%s_id' % service),
-                ('', 'cmd'),
-                (None, [dict(json="data"), dict(data="json")]),
-                (204, 504),
-                ({}, {'k': 'v'})):
-            (server_id, command, json_data, success, kwargs) = args
-            method = getattr(self.client, '%s_put' % service)
-            method(*args[:4], **kwargs)
-            vm_str = '/%s' % server_id if server_id else ''
-            cmd_str = '/%s' % command if command else ''
-            if json_data:
-                json_data = dumps(json_data)
-                self.assertEqual(SH.mock_calls[-2:], [
-                    call('Content-Type', 'application/json'),
-                    call('Content-Length', len(json_data))])
-            self.assertEqual(put.mock_calls[-1], call(
-                '/%s%s%s' % (service, vm_str, cmd_str),
-                data=json_data, success=success,
-                **kwargs))
-
-    def test_servers_put(self):
-        self._test_put('servers')
-
-    def test_images_put(self):
-        self._test_put('images')
+    def test_flavors_get(self):
+        params = dict(
+            changes_since=('changes-since', None),
+            minDisk=('minDisk', None),
+            minRam=('minRam', None),
+            marker=('marker', None),
+            limit=('limit', None))
+        self._test_get('flavors', params)
 
     @patch('%s.get' % rest_pkg, return_value=FR())
     def test_floating_ip_pools_get(self, get):
         for args in product(
-                ('tenant1', 'tenant2'),
                 (200, 204),
                 ({}, {'k': 'v'})):
-            tenant_id, success, kwargs = args
-            r = self.client.floating_ip_pools_get(tenant_id, success, **kwargs)
+            success, kwargs = args
+            r = self.client.floating_ip_pools_get(success, **kwargs)
             self.assertTrue(isinstance(r, FR))
             self.assertEqual(get.mock_calls[-1], call(
-                '/%s/os-floating-ip-pools' % tenant_id,
-                success=success, **kwargs))
+                '/os-floating-ip-pools', success=success, **kwargs))
 
     @patch('%s.get' % rest_pkg, return_value=FR())
     def test_floating_ips_get(self, get):
         for args in product(
-                ('tenant1', 'tenant2'),
                 ('', '192.193.194.195'),
                 (200, 204),
                 ({}, {'k': 'v'})):
-            tenant_id, ip, success, kwargs = args
-            r = self.client.floating_ips_get(*args[:3], **kwargs)
+            ip, success, kwargs = args
+            r = self.client.floating_ips_get(*args[:2], **kwargs)
             self.assertTrue(isinstance(r, FR))
             expected = '' if not ip else '/%s' % ip
             self.assertEqual(get.mock_calls[-1], call(
-                '/%s/os-floating-ips%s' % (tenant_id, expected),
-                success=success, **kwargs))
+                '/os-floating-ips%s' % expected, success=success, **kwargs))
 
     @patch('%s.set_header' % rest_pkg)
     @patch('%s.post' % rest_pkg, return_value=FR())
     def test_floating_ips_post(self, post, SH):
         for args in product(
-                ('tenant1', 'tenant2'),
                 (None, [dict(json="data"), dict(data="json")]),
                 ('', '192.193.194.195'),
                 (202, 204),
                 ({}, {'k': 'v'})):
-            (tenant_id, json_data, ip, success, kwargs) = args
-            self.client.floating_ips_post(*args[:4], **kwargs)
+            json_data, ip, success, kwargs = args
+            self.client.floating_ips_post(*args[:3], **kwargs)
             if json_data:
                 json_data = dumps(json_data)
                 self.assertEqual(SH.mock_calls[-2:], [
@@ -386,24 +440,22 @@ class ComputeRestClient(TestCase):
                     call('Content-Length', len(json_data))])
             expected = '' if not ip else '/%s' % ip
             self.assertEqual(post.mock_calls[-1], call(
-                '/%s/os-floating-ips%s' % (tenant_id, expected),
+                '/os-floating-ips%s' % expected,
                 data=json_data, success=success,
                 **kwargs))
 
     @patch('%s.delete' % rest_pkg, return_value=FR())
     def test_floating_ips_delete(self, delete):
         for args in product(
-                ('tenant1', 'tenant2'),
                 ('', '192.193.194.195'),
                 (204,),
                 ({}, {'k': 'v'})):
-            tenant_id, ip, success, kwargs = args
-            r = self.client.floating_ips_delete(*args[:3], **kwargs)
+            ip, success, kwargs = args
+            r = self.client.floating_ips_delete(*args[:2], **kwargs)
             self.assertTrue(isinstance(r, FR))
             expected = '' if not ip else '/%s' % ip
             self.assertEqual(delete.mock_calls[-1], call(
-                '/%s/os-floating-ips%s' % (tenant_id, expected),
-                success=success, **kwargs))
+                '/os-floating-ips%s' % expected, success=success, **kwargs))
 
 
 class ComputeClient(TestCase):

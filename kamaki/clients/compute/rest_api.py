@@ -109,12 +109,6 @@ class ComputeRestClient(Client):
             security_group=None,
             user_data=None,
             availability_zone=None,
-            server=None,
-            imageRef=None,
-            flavorRef=None,
-            name=None,
-            metadata=None,
-            personality=None,
             json_data=None,
             success=202,
             **kwargs):
@@ -131,37 +125,13 @@ class ComputeRestClient(Client):
 
         :param availability_zone: (str)
 
-        :param server: Server
-
-        :param imageRef: ID or full URL.
-
-        :param flavorRef: ID or full URL.
-
-        :param name: (str) The name of the new server
-
-        :param metadata: (dict) Metadata key: value pairs. max size of the key
-            and value is 255 bytes each.
-
-        :param personality: (str) File path and contents (text only) to inject
-            into the server at launch. The maximum size of the file path data
-            is 255 bytes. The maximum limit refers to the number of bytes in
-            the decoded data and not the number of characters in the encoded
-            data.
-
         :returns: request response
         """
 
-        self.set_param(security_group, security_group, iff=security_group)
-        self.set_param(user_data, user_data, iff=user_data)
+        self.set_param('security_group', security_group, iff=security_group)
+        self.set_param('user_data', user_data, iff=user_data)
         self.set_param(
-            availability_zone, availability_zone, iff=availability_zone)
-        self.set_param(server, server, iff=server)
-        self.set_param(imageRef, imageRef, iff=imageRef)
-        self.set_param(flavorRef, flavorRef, iff=flavorRef)
-        self.set_param(name, name, iff=name)
-        if metadata:  # don't json.dump None
-            self.set_param(metadata, json.dumps(metadata))
-        self.set_param(personality, personality, iff=personality)
+            'availability_zone', availability_zone, iff=availability_zone)
 
         if json_data:
             json_data = json.dumps(json_data)
@@ -250,7 +220,7 @@ class ComputeRestClient(Client):
         path = path4url('servers', server_id, 'metadata', key)
         return self.delete(path, success=success, **kwargs)
 
-    def servers_actions_post(
+    def servers_action_post(
             self, server_id, json_data=None, success=202, **kwargs):
         """POST base_url/servers/<server_id>/action
 
@@ -419,16 +389,15 @@ class ComputeRestClient(Client):
         path = path4url('flavors', 'detail' if detail else (flavor_id or ''))
         return self.get(path, success=success, **kwargs)
 
-    def floating_ip_pools_get(self, tenant_id, success=200, **kwargs):
+    def floating_ip_pools_get(self, success=200, **kwargs):
         path = path4url('os-floating-ip-pools')
         return self.get(path, success=success, **kwargs)
 
-    def floating_ips_get(self, tenant_id, ip='', success=200, **kwargs):
+    def floating_ips_get(self, ip='', success=200, **kwargs):
         path = path4url('os-floating-ips', ip or '')
         return self.get(path, success=success, **kwargs)
 
-    def floating_ips_post(
-            self, tenant_id, json_data, ip='', success=201, **kwargs):
+    def floating_ips_post(self, json_data, ip='', success=201, **kwargs):
         path = path4url('os-floating-ips', ip or '')
         if json_data is not None:
             json_data = json.dumps(json_data)
@@ -436,6 +405,6 @@ class ComputeRestClient(Client):
             self.set_header('Content-Length', len(json_data))
         return self.post(path, data=json_data, success=success, **kwargs)
 
-    def floating_ips_delete(self, tenant_id, ip='', success=204, **kwargs):
+    def floating_ips_delete(self, ip='', success=204, **kwargs):
         path = path4url('os-floating-ips', ip or '')
         return self.delete(path, success=success, **kwargs)
