@@ -478,10 +478,7 @@ class ComputeClient(TestCase):
         FR.status_code = 200
         FR.json = vm_recv
 
-    @patch(
-        '%s.get_image_details' % compute_pkg,
-        return_value=img_recv['image'])
-    def test_create_server(self, GID):
+    def test_create_server(self):
         with patch.object(
                 compute.ComputeClient, 'servers_post',
                 side_effect=ClientError(
@@ -492,26 +489,70 @@ class ComputeClient(TestCase):
                 self.client.create_server,
                 vm_name, fid, img_ref)
 
-        with patch.object(
-                compute.ComputeClient, 'servers_post',
-                return_value=FR()) as post:
-            r = self.client.create_server(vm_name, fid, img_ref)
-            self.assertEqual(r, FR.json['server'])
-            self.assertEqual(GID.mock_calls[-1], call(img_ref))
-            self.assertEqual(post.mock_calls[-1], call(json_data=vm_send))
-            prsn = 'Personality string (does not work with real servers)'
-            self.client.create_server(vm_name, fid, img_ref, prsn)
-            expected = dict(server=dict(vm_send['server']))
-            expected['server']['personality'] = prsn
-            self.assertEqual(post.mock_calls[-1], call(json_data=expected))
+        for params in product(
+                ('security_group', None),
+                ('user_data', None),
+                ('availability_zone', None),
+                (None, {'os': 'debian', 'users': 'root'})):
+            kwargs = dict()
+            for i, k in enumerate((
+                    'security_group', 'user_data', 'availability_zone')):
+                if params[i]:
+                    kwargs[k] = params[i]
+            with patch.object(
+                    compute.ComputeClient, 'servers_post',
+                    return_value=FR()) as post:
+                r = self.client.create_server(vm_name, fid, img_ref, **kwargs)
+                self.assertEqual(r, FR.json['server'])
+                exp_json = dict(server=dict(
+                    flavorRef=fid, name=vm_name, imageRef=img_ref))
+                for k in set([
+                        'security_group',
+                        'user_data',
+                        'availability_zone']).difference(kwargs):
+                    kwargs[k] = None
+                self.assertEqual(
+                    post.mock_calls[-1], call(json_data=exp_json, **kwargs))
+                prsn = 'Personality string (does not work with real servers)'
+                self.client.create_server(
+                    vm_name, fid, img_ref, personality=prsn, **kwargs)
+                exp_json['server']['personality'] = prsn
+                self.assertEqual(
+                    post.mock_calls[-1], call(json_data=exp_json, **kwargs))
+                kwargs.pop('personality', None)
+                exp_json['server'].pop('personality', None)
+                mtdt = 'Metadata dict here'
+                self.client.create_server(
+                    vm_name, fid, img_ref, metadata=mtdt, **kwargs)
+                exp_json['server']['metadata'] = mtdt
+                self.assertEqual(
+                    post.mock_calls[-1], call(json_data=exp_json, **kwargs))
 
     @patch('%s.servers_get' % compute_pkg, return_value=FR())
     def test_list_servers(self, SG):
         FR.json = vm_list
-        for detail in (False, True):
-            r = self.client.list_servers(detail)
-            self.assertEqual(SG.mock_calls[-1], call(
-                command='detail' if detail else ''))
+        for args in product(
+                (False, True),
+                ({}, dict(status='status')),
+                ({}, dict(name='name')),
+                ({}, dict(image='image')),
+                ({}, dict(flavor='flavor')),
+                ({}, dict(host='host')),
+                ({}, dict(limit='limit')),
+                ({}, dict(marker='marker')),
+                ({}, dict(changes_since='changes_since'))):
+            detail = args[0]
+            kwargs = dict()
+            for param in args[1:]:
+                kwargs.update(param)
+            r = self.client.list_servers(detail, **kwargs)
+            for k in set([
+                    'status', 'name',
+                    'image', 'flavor',
+                    'host', 'limit',
+                    'marker', 'changes_since']).difference(kwargs):
+                kwargs[k] = None
+            self.assertEqual(SG.mock_calls[-1], call(detail=detail, **kwargs))
             for i, vm in enumerate(vm_list['servers']):
                 self.assert_dicts_are_equal(r[i], vm)
             self.assertEqual(i + 1, len(r))
@@ -519,9 +560,27 @@ class ComputeClient(TestCase):
     @patch('%s.servers_get' % compute_pkg, return_value=FR())
     def test_get_server_details(self, SG):
         vm_id = vm_recv['server']['id']
-        r = self.client.get_server_details(vm_id)
-        SG.assert_called_once_with(vm_id)
-        self.assert_dicts_are_equal(r, vm_recv['server'])
+        for args in product(
+                ({}, dict(status='status')),
+                ({}, dict(name='name')),
+                ({}, dict(image='image')),
+                ({}, dict(flavor='flavor')),
+                ({}, dict(host='host')),
+                ({}, dict(limit='limit')),
+                ({}, dict(marker='marker')),
+                ({}, dict(changes_since='changes_since'))):
+            kwargs = dict()
+            for param in args:
+                kwargs.update(param)
+            r = self.client.get_server_details(vm_id, **kwargs)
+            for k in set([
+                    'status', 'name',
+                    'image', 'flavor',
+                    'host', 'limit',
+                    'marker', 'changes_since']).difference(kwargs):
+                kwargs[k] = None
+            self.assertEqual(SG.mock_calls[-1], call(vm_id, **kwargs))
+            self.assert_dicts_are_equal(r, vm_recv['server'])
 
     @patch('%s.servers_put' % compute_pkg, return_value=FR())
     def test_update_server_name(self, SP):
@@ -531,23 +590,22 @@ class ComputeClient(TestCase):
         SP.assert_called_once_with(vm_id, json_data=dict(
             server=dict(name=new_name)))
 
-    @patch('%s.servers_post' % compute_pkg, return_value=FR())
+    @patch('%s.servers_action_post' % compute_pkg, return_value=FR())
     def test_reboot_server(self, SP):
         vm_id = vm_recv['server']['id']
         for hard in (None, True):
             self.client.reboot_server(vm_id, hard=hard)
-            self.assertEqual(SP.mock_calls[-1], call(
-                vm_id, 'action',
-                json_data=dict(reboot=dict(type='HARD' if hard else 'SOFT'))))
+            self.assertEqual(SP.mock_calls[-1], call(vm_id, json_data=dict(
+                reboot=dict(type='HARD' if hard else 'SOFT'))))
 
-    @patch('%s.servers_post' % compute_pkg, return_value=FR())
+    @patch('%s.servers_action_post' % compute_pkg, return_value=FR())
     def test_resize_server(self, SP):
         vm_id, flavor = vm_recv['server']['id'], flavor_list['flavors'][1]
         self.client.resize_server(vm_id, flavor['id'])
         exp = dict(resize=dict(flavorRef=flavor['id']))
-        SP.assert_called_once_with(vm_id, 'action', json_data=exp)
+        SP.assert_called_once_with(vm_id, json_data=exp)
 
-    @patch('%s.servers_put' % compute_pkg, return_value=FR())
+    @patch('%s.servers_metadata_put' % compute_pkg, return_value=FR())
     def test_create_server_metadata(self, SP):
         vm_id = vm_recv['server']['id']
         metadata = dict(m1='v1', m2='v2', m3='v3')
@@ -556,17 +614,17 @@ class ComputeClient(TestCase):
             r = self.client.create_server_metadata(vm_id, k, v)
             self.assert_dicts_are_equal(r, vm_recv['server'])
             self.assertEqual(SP.mock_calls[-1], call(
-                vm_id, 'metadata/%s' % k,
+                vm_id, '%s' % k,
                 json_data=dict(meta={k: v}), success=201))
 
-    @patch('%s.servers_get' % compute_pkg, return_value=FR())
+    @patch('%s.servers_metadata_get' % compute_pkg, return_value=FR())
     def test_get_server_metadata(self, SG):
         vm_id = vm_recv['server']['id']
         metadata = dict(m1='v1', m2='v2', m3='v3')
         FR.json = dict(metadata=metadata)
         r = self.client.get_server_metadata(vm_id)
         FR.json = dict(meta=metadata)
-        SG.assert_called_once_with(vm_id, '/metadata')
+        SG.assert_called_once_with(vm_id, '')
         self.assert_dicts_are_equal(r, metadata)
 
         for k, v in metadata.items():
@@ -574,9 +632,9 @@ class ComputeClient(TestCase):
             r = self.client.get_server_metadata(vm_id, k)
             self.assert_dicts_are_equal(r, {k: v})
             self.assertEqual(
-                SG.mock_calls[-1], call(vm_id, '/metadata/%s' % k))
+                SG.mock_calls[-1], call(vm_id, '%s' % k))
 
-    @patch('%s.servers_post' % compute_pkg, return_value=FR())
+    @patch('%s.servers_metadata_post' % compute_pkg, return_value=FR())
     def test_update_server_metadata(self, SP):
         vm_id = vm_recv['server']['id']
         metadata = dict(m1='v1', m2='v2', m3='v3')
@@ -584,22 +642,21 @@ class ComputeClient(TestCase):
         r = self.client.update_server_metadata(vm_id, **metadata)
         self.assert_dicts_are_equal(r, metadata)
         SP.assert_called_once_with(
-            vm_id, 'metadata',
-            json_data=dict(metadata=metadata), success=201)
+            vm_id, json_data=dict(metadata=metadata), success=201)
 
-    @patch('%s.servers_delete' % compute_pkg, return_value=FR())
+    @patch('%s.servers_metadata_delete' % compute_pkg, return_value=FR())
     def test_delete_server_metadata(self, SD):
         vm_id = vm_recv['server']['id']
         key = 'metakey'
         self.client.delete_server_metadata(vm_id, key)
-        SD.assert_called_once_with(vm_id, 'metadata/' + key)
+        SD.assert_called_once_with(vm_id, key)
 
     @patch('%s.flavors_get' % compute_pkg, return_value=FR())
     def test_list_flavors(self, FG):
         FR.json = flavor_list
-        for cmd in ('', 'detail'):
-            r = self.client.list_flavors(detail=(cmd == 'detail'))
-            self.assertEqual(FG.mock_calls[-1], call(command=cmd))
+        for detail in ('', 'detail'):
+            r = self.client.list_flavors(detail=bool(detail))
+            self.assertEqual(FG.mock_calls[-1], call(detail=bool(detail)))
             self.assertEqual(r, flavor_list['flavors'])
 
     @patch('%s.flavors_get' % compute_pkg, return_value=FR())
@@ -612,9 +669,9 @@ class ComputeClient(TestCase):
     @patch('%s.images_get' % compute_pkg, return_value=FR())
     def test_list_images(self, IG):
         FR.json = img_list
-        for cmd in ('', 'detail'):
-            r = self.client.list_images(detail=(cmd == 'detail'))
-            self.assertEqual(IG.mock_calls[-1], call(command=cmd))
+        for detail in ('', 'detail'):
+            r = self.client.list_images(detail=detail)
+            self.assertEqual(IG.mock_calls[-1], call(detail=bool(detail)))
             expected = img_list['images']
             for i in range(len(r)):
                 self.assert_dicts_are_equal(expected[i], r[i])
@@ -626,15 +683,13 @@ class ComputeClient(TestCase):
         IG.assert_called_once_with(img_ref)
         self.assert_dicts_are_equal(r, img_recv['image'])
 
-    @patch('%s.images_get' % compute_pkg, return_value=FR())
+    @patch('%s.images_metadata_get' % compute_pkg, return_value=FR())
     def test_get_image_metadata(self, IG):
         for key in ('', '50m3k3y'):
             FR.json = dict(meta=img_recv['image']) if (
                 key) else dict(metadata=img_recv['image'])
             r = self.client.get_image_metadata(img_ref, key)
-            self.assertEqual(IG.mock_calls[-1], call(
-                '%s' % img_ref,
-                '/metadata%s' % (('/%s' % key) if key else '')))
+            self.assertEqual(IG.mock_calls[-1], call(img_ref, key or ''))
             self.assert_dicts_are_equal(img_recv['image'], r)
 
     @patch('%s.servers_delete' % compute_pkg, return_value=FR())
@@ -648,31 +703,30 @@ class ComputeClient(TestCase):
         self.client.delete_image(img_ref)
         ID.assert_called_once_with(img_ref)
 
-    @patch('%s.images_put' % compute_pkg, return_value=FR())
+    @patch('%s.images_metadata_put' % compute_pkg, return_value=FR())
     def test_create_image_metadata(self, IP):
         (key, val) = ('k1', 'v1')
         FR.json = dict(meta=img_recv['image'])
         r = self.client.create_image_metadata(img_ref, key, val)
         IP.assert_called_once_with(
-            img_ref, 'metadata/%s' % key,
+            img_ref, '%s' % key,
             json_data=dict(meta={key: val}))
         self.assert_dicts_are_equal(r, img_recv['image'])
 
-    @patch('%s.images_post' % compute_pkg, return_value=FR())
+    @patch('%s.images_metadata_post' % compute_pkg, return_value=FR())
     def test_update_image_metadata(self, IP):
         metadata = dict(m1='v1', m2='v2', m3='v3')
         FR.json = dict(metadata=metadata)
         r = self.client.update_image_metadata(img_ref, **metadata)
         IP.assert_called_once_with(
-            img_ref, 'metadata',
-            json_data=dict(metadata=metadata))
+            img_ref, json_data=dict(metadata=metadata))
         self.assert_dicts_are_equal(r, metadata)
 
-    @patch('%s.images_delete' % compute_pkg, return_value=FR())
+    @patch('%s.images_metadata_delete' % compute_pkg, return_value=FR())
     def test_delete_image_metadata(self, ID):
         key = 'metakey'
         self.client.delete_image_metadata(img_ref, key)
-        ID.assert_called_once_with(img_ref, '/metadata/%s' % key)
+        ID.assert_called_once_with(img_ref, '%s' % key)
 
     @patch('%s.floating_ip_pools_get' % compute_pkg, return_value=FR())
     def test_get_floating_ip_pools(self, get):

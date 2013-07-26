@@ -112,7 +112,6 @@ class ComputeClient(ComputeRestClient):
             security_group=None,
             user_data=None,
             availability_zone=None,
-            server=None,
             metadata=None,
             personality=None,
             response_headers=dict(location=None)):
@@ -271,7 +270,8 @@ class ComputeClient(ComputeRestClient):
         :returns: dict of updated key:val metadata
         """
         req = {'meta': {key: val}}
-        r = self.servers_put(server_id, key, json_data=req, success=201)
+        r = self.servers_metadata_put(
+            server_id, key, json_data=req, success=201)
         return r.json['meta']
 
     def update_server_metadata(
@@ -285,7 +285,7 @@ class ComputeClient(ComputeRestClient):
         :returns: dict of updated key:val metadata
         """
         req = {'metadata': metadata}
-        r = self.servers_post(server_id, json_data=req, success=201)
+        r = self.servers_metadata_post(server_id, json_data=req, success=201)
         for k, v in response_headers.items():
             response_headers[k] = r.headers.get(k, v)
         return r.json['metadata']
@@ -298,7 +298,7 @@ class ComputeClient(ComputeRestClient):
 
         :returns: (dict) response headers
         """
-        r = self.servers_delete(server_id, key)
+        r = self.servers_metadata_delete(server_id, key)
         return r.headers
 
     def list_flavors(self, detail=False, response_headers=dict(
@@ -381,7 +381,7 @@ class ComputeClient(ComputeRestClient):
         :returns: (dict) updated metadata
         """
         req = {'meta': {key: val}}
-        r = self.images_put(image_id, 'metadata/' + key, json_data=req)
+        r = self.images_metadata_put(image_id, key, json_data=req)
         return r.json['meta']
 
     def update_image_metadata(
@@ -408,8 +408,7 @@ class ComputeClient(ComputeRestClient):
 
         :returns: (dict) response headers
         """
-        command = path4url('metadata', key)
-        r = self.images_delete(image_id, command)
+        r = self.images_metadata_delete(image_id, key)
         return r.headers
 
     def get_floating_ip_pools(self, tenant_id):
