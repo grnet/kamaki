@@ -134,17 +134,6 @@ class CycladesClient(CycladesRestClient):
         r = self.servers_action_post(server_id, json_data=req, success=202)
         return r.headers
 
-    def list_servers(self, detail=False, changes_since=None):
-        """
-        :param detail: (bool) append full server details to each item if true
-
-        :param changes_since: (date)
-
-        :returns: list of server ids and names
-        """
-        r = self.servers_get(detail=bool(detail), changes_since=changes_since)
-        return r.json['servers']
-
     def list_server_nics(self, server_id):
         """
         :param server_id: integer (str or int)
