@@ -108,6 +108,18 @@ class FR(object):
     status_code = 200
 
 
+def print_iterations(old, new):
+    if new:
+        if new % 1000:
+            return old
+        stdout.write('\b' * len('%s' % old))
+        stdout.write('%s' % new)
+    else:
+        stdout.write('# of loops:  ')
+    stdout.flush()
+    return new
+
+
 class ComputeRestClient(TestCase):
 
     """Set up a ComputesRest thorough test"""
@@ -129,8 +141,7 @@ class ComputeRestClient(TestCase):
     def _test_get(self, service, params, get, set_param):
         method = getattr(self.client, '%s_get' % service)
         param_args = [({}, {k: k}, {k: v[1]}) for k, v in params.items()]
-        num_of_its, i = '', 0
-        stdout.write('# of iterations: ')
+        num_of_its = 0
         for i, args in enumerate(product(
                 ('', '%s_id' % service),
                 (None, False, True),
@@ -156,20 +167,15 @@ class ComputeRestClient(TestCase):
             actual = set_param.mock_calls[- len(param_calls):]
             self.assertEqual(sorted(actual), sorted(param_calls))
 
-            if not i % 1000:
-                stdout.write('\b' * len(num_of_its))
-                num_of_its = '%s' % i
-                stdout.write(num_of_its)
-                stdout.flush()
-        print ('\b' * len(num_of_its)) + ('%s' % i)
+            num_of_its = print_iterations(num_of_its, i)
+        print ('\b' * len('%s' % num_of_its)) + ('%s' % i)
 
     @patch('%s.set_param' % rest_pkg)
     @patch('%s.get' % rest_pkg, return_value=FR())
     def _test_srv_cmd_get(self, srv, cmd, params, get, set_param):
         method = getattr(self.client, '%s_%s_get' % (srv, cmd))
         param_args = [({}, {k: k}, {k: v[1]}) for k, v in params.items()]
-        num_of_its, i = '', 0
-        stdout.write('# of iterations: ')
+        num_of_its = 0
         for i, args in enumerate(product(
                 ('some_server_id', 'other_server_id'),
                 (None, 'xtra_id'),
@@ -193,12 +199,32 @@ class ComputeRestClient(TestCase):
             actual = set_param.mock_calls[- len(param_calls):]
             self.assertEqual(sorted(actual), sorted(param_calls))
 
-            if not i % 1000:
-                stdout.write('\b' * len(num_of_its))
-                num_of_its = '%s' % i
-                stdout.write(num_of_its)
-                stdout.flush()
-        print ('\b' * len(num_of_its)) + ('%s' % i)
+            num_of_its = print_iterations(num_of_its, i)
+        print ('\b' * len('%s' % num_of_its)) + ('%s' % i)
+
+    @patch('%s.delete' % rest_pkg, return_value=FR())
+    def _test_delete(self, srv, cmd, delete):
+        method = getattr(
+            self.client, '%s_%sdelete' % (srv, ('%s_' % cmd) if cmd else ''))
+        cmd_params = ('some_cmd_value', 'some_other_value') if cmd else ()
+        num_of_its = 0
+        for i, args in enumerate(product(
+                ('%s_id' % srv, 'some_value'),
+                (204, 208),
+                ({}, {'k': 'v'}),
+                *cmd_params)):
+            (srv_id, success, kwargs) = args[:3]
+            kwargs['success'] = success
+            cmd_value = args[-1] if cmd else ''
+            method_args = (srv_id, cmd_value) if cmd else (srv_id, )
+            method(*method_args, **kwargs)
+            srv_str = '/%s/%s' % (srv, srv_id)
+            cmd_str = ('/%s/%s' % (cmd, cmd_value)) if cmd else ''
+            self.assertEqual(
+                delete.mock_calls[-1],
+                call('%s%s' % (srv_str, cmd_str), **kwargs))
+            num_of_its = print_iterations(num_of_its, i)
+        print ('\b' * len('%s' % num_of_its)) + ('%s' % i)
 
     def test_servers_get(self):
         params = dict(
@@ -241,27 +267,6 @@ class ComputeRestClient(TestCase):
 
     def test_images_metadata_get(self):
         self._test_srv_cmd_get('images', 'metadata', {})
-
-    @patch('%s.delete' % rest_pkg, return_value=FR())
-    def _test_delete(self, srv, cmd, delete):
-        method = getattr(
-            self.client, '%s_%sdelete' % (srv, ('%s_' % cmd) if cmd else ''))
-        cmd_params = ('some_cmd_value', 'some_other_value') if cmd else ()
-        for args in product(
-                ('%s_id' % srv, 'some_value'),
-                (204, 208),
-                ({}, {'k': 'v'}),
-                *cmd_params):
-            (srv_id, success, kwargs) = args[:3]
-            kwargs['success'] = success
-            cmd_value = args[-1] if cmd else ''
-            method_args = (srv_id, cmd_value) if cmd else (srv_id)
-            method(*method_args, **kwargs)
-            srv_str = '/%s/%s' % (srv, srv_id)
-            cmd_str = ('/%s/%s' % (cmd, cmd_value)) if cmd else ''
-            self.assertEqual(
-                delete.mock_calls[-1],
-                call('%s%s' % (srv_str, cmd_str), **kwargs))
 
     def test_servers_delete(self):
         self._test_delete('servers', None)
