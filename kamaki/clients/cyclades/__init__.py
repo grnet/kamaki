@@ -41,6 +41,38 @@ from kamaki.clients import ClientError
 class CycladesClient(CycladesRestClient):
     """Synnefo Cyclades Compute API client"""
 
+    def create_server(
+            self, name, flavor_id, image_id,
+            metadata=None, personality=None):
+        """Submit request to create a new server
+
+        :param name: (str)
+
+        :param flavor_id: integer id denoting a preset hardware configuration
+
+        :param image_id: (str) id denoting the OS image to run on the VM
+
+        :param metadata: (dict) vm metadata updated by os/users image metadata
+
+        :param personality: a list of (file path, file contents) tuples,
+            describing files to be injected into VM upon creation.
+
+        :returns: a dict with the new VMs details
+
+        :raises ClientError: wraps request errors
+        """
+        image = self.get_image_details(image_id)
+        metadata = metadata or dict()
+        for key in ('os', 'users'):
+            try:
+                metadata[key] = image['metadata'][key]
+            except KeyError:
+                pass
+
+        return super(CycladesClient, self).create_server(
+            name, flavor_id, image_id,
+            metadata=metadata, personality=personality)
+
     def start_server(self, server_id):
         """Submit a startup request
 
@@ -49,7 +81,7 @@ class CycladesClient(CycladesRestClient):
         :returns: (dict) response headers
         """
         req = {'start': {}}
-        r = self.servers_post(server_id, 'action', json_data=req, success=202)
+        r = self.servers_action_post(server_id, json_data=req, success=202)
         return r.headers
 
     def shutdown_server(self, server_id):
@@ -60,7 +92,7 @@ class CycladesClient(CycladesRestClient):
         :returns: (dict) response headers
         """
         req = {'shutdown': {}}
-        r = self.servers_post(server_id, 'action', json_data=req, success=202)
+        r = self.servers_action_post(server_id, json_data=req, success=202)
         return r.headers
 
     def get_server_console(self, server_id):
@@ -70,7 +102,7 @@ class CycladesClient(CycladesRestClient):
         :returns: (dict) info to set a VNC connection to VM
         """
         req = {'console': {'type': 'vnc'}}
-        r = self.servers_post(server_id, 'action', json_data=req, success=200)
+        r = self.servers_action_post(server_id, json_data=req, success=200)
         return r.json['console']
 
     def get_firewall_profile(self, server_id):
@@ -99,20 +131,8 @@ class CycladesClient(CycladesRestClient):
         :returns: (dict) response headers
         """
         req = {'firewallProfile': {'profile': profile}}
-        r = self.servers_post(server_id, 'action', json_data=req, success=202)
+        r = self.servers_action_post(server_id, json_data=req, success=202)
         return r.headers
-
-    def list_servers(self, detail=False, changes_since=None):
-        """
-        :param detail: (bool) append full server details to each item if true
-
-        :param changes_since: (date)
-
-        :returns: list of server ids and names
-        """
-        detail = 'detail' if detail else ''
-        r = self.servers_get(command=detail, changes_since=changes_since)
-        return r.json['servers']
 
     def list_server_nics(self, server_id):
         """
@@ -120,9 +140,8 @@ class CycladesClient(CycladesRestClient):
 
         :returns: (dict) network interface connections
         """
-        r = self.servers_get(server_id, 'ips')
+        r = self.servers_ips_get(server_id)
         return r.json['attachments']
-        #return r.json['addresses']
 
     def get_server_stats(self, server_id):
         """
@@ -130,7 +149,7 @@ class CycladesClient(CycladesRestClient):
 
         :returns: (dict) auto-generated graphs of statistics (urls)
         """
-        r = self.servers_get(server_id, 'stats')
+        r = self.servers_stats_get(server_id)
         return r.json['stats']
 
     def list_networks(self, detail=False):
@@ -432,9 +451,8 @@ class CycladesClient(CycladesRestClient):
         """
         server_id = int(server_id)
         assert address, 'address is needed for attach_floating_ip'
-        r = self.servers_post(
-            server_id, 'action',
-            json_data=dict(addFloatingIp=dict(address=address)))
+        req = dict(addFloatingIp=dict(address=address))
+        r = self.servers_action_post(server_id, json_data=req)
         return r.headers
 
     def detach_floating_ip(self, server_id, address):
@@ -454,7 +472,6 @@ class CycladesClient(CycladesRestClient):
         """
         server_id = int(server_id)
         assert address, 'address is needed for detach_floating_ip'
-        r = self.servers_post(
-            server_id, 'action',
-            json_data=dict(removeFloatingIp=dict(address=address)))
+        req = dict(removeFloatingIp=dict(address=address))
+        r = self.servers_action_post(server_id, json_data=req)
         return r.headers

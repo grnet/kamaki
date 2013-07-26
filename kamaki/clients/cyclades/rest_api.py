@@ -39,29 +39,9 @@ import json
 class CycladesRestClient(ComputeClient):
     """Synnefo Cyclades REST API Client"""
 
-    def servers_get(
-            self,
-            server_id='',
-            command='',
-            success=200,
-            changes_since=None,
-            **kwargs):
-        """GET base_url/servers[/server_id][/command] request
-
-        :param server_id: integer (as int or str)
-
-        :param command: 'ips', 'stats', or ''
-
-        :param success: success code or list or tupple of accepted success
-            codes. if server response code is not in this list, a ClientError
-            raises
-
-        :param changes_since: (date)
-
-        :returns: request response
-        """
-        path = path4url('servers', server_id, command)
-        self.set_param('changes-since', changes_since, changes_since)
+    def servers_stats_get(self, server_id, success=200, **kwargs):
+        """GET base_url/servers/<server_id>/stats"""
+        path = path4url('servers', server_id, 'stats')
         return self.get(path, success=success, **kwargs)
 
     def networks_get(
@@ -165,23 +145,3 @@ class CycladesRestClient(ComputeClient):
 
         path = path4url('networks', network_id, command)
         return self.put(path, data=data, success=success, **kwargs)
-
-    def floating_ip_pools_get(self, success=200, **kwargs):
-        path = path4url('os-floating-ip-pools')
-        return self.get(path, success=success, **kwargs)
-
-    def floating_ips_get(self, fip_id='', success=200, **kwargs):
-        path = path4url('os-floating-ips', fip_id)
-        return self.get(path, success=success, **kwargs)
-
-    def floating_ips_post(self, json_data, fip_id='', success=201, **kwargs):
-        path = path4url('os-floating-ips', fip_id)
-        if json_data is not None:
-            json_data = json.dumps(json_data)
-            self.set_header('Content-Type', 'application/json')
-            self.set_header('Content-Length', len(json_data))
-        return self.post(path, data=json_data, success=success, **kwargs)
-
-    def floating_ips_delete(self, fip_id, success=200, **kwargs):
-        path = path4url('os-floating-ips', fip_id)
-        return self.delete(path, success=success, **kwargs)

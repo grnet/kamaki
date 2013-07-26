@@ -103,28 +103,6 @@ class CycladesRestClient(TestCase):
     def tearDown(self):
         FR.json = vm_recv
 
-    @patch('%s.set_param' % rest_pkg)
-    @patch('%s.get' % rest_pkg, return_value=FR())
-    def test_servers_get(self, get, SP):
-        for args in product(
-                ('', 'vm_id'),
-                ('', 'cmd'),
-                (200, 204),
-                (None, '50m3-d473'),
-                ({}, {'k': 'v'})):
-            (srv_id, command, success, changes_since, kwargs) = args
-            self.client.servers_get(*args[:4], **kwargs)
-            srv_str = '/%s' % srv_id if srv_id else ''
-            cmd_str = '/%s' % command if command else ''
-            self.assertEqual(get.mock_calls[-1], call(
-                '/servers%s%s' % (srv_str, cmd_str),
-                success=success,
-                **kwargs))
-            if changes_since:
-                self.assertEqual(
-                    SP.mock_calls[-1],
-                    call('changes-since', changes_since, changes_since))
-
     @patch('%s.get' % rest_pkg, return_value=FR())
     def test_networks_get(self, get):
         for args in product(
@@ -281,44 +259,28 @@ class CycladesClient(TestCase):
         FR.status_code = 200
         FR.json = vm_recv
 
-    @patch('%s.servers_get' % cyclades_pkg, return_value=FR())
-    def test_list_servers(self, SG):
-        FR.json = vm_list
-        for detail, since in ((0, 0), (True, 0), (0, 'd473'), (True, 'd473')):
-            r = self.client.list_servers(detail=detail, changes_since=since)
-            self.assertEqual(SG.mock_calls[-1], call(
-                command='detail' if detail else '',
-                changes_since=since))
-            expected = vm_list['servers']
-            for i, vm in enumerate(r):
-                self.assert_dicts_are_equal(vm, expected[i])
-            self.assertEqual(i + 1, len(expected))
-
-    @patch('%s.servers_post' % cyclades_pkg, return_value=FR())
+    @patch('%s.servers_action_post' % cyclades_pkg, return_value=FR())
     def test_shutdown_server(self, SP):
         vm_id = vm_recv['server']['id']
         self.client.shutdown_server(vm_id)
         SP.assert_called_once_with(
-            vm_id, 'action',
-            json_data=dict(shutdown=dict()), success=202)
+            vm_id, json_data=dict(shutdown=dict()), success=202)
 
-    @patch('%s.servers_post' % cyclades_pkg, return_value=FR())
+    @patch('%s.servers_action_post' % cyclades_pkg, return_value=FR())
     def test_start_server(self, SP):
         vm_id = vm_recv['server']['id']
         self.client.start_server(vm_id)
         SP.assert_called_once_with(
-            vm_id, 'action',
-            json_data=dict(start=dict()), success=202)
+            vm_id, json_data=dict(start=dict()), success=202)
 
-    @patch('%s.servers_post' % cyclades_pkg, return_value=FR())
+    @patch('%s.servers_action_post' % cyclades_pkg, return_value=FR())
     def test_get_server_console(self, SP):
         cnsl = dict(console=dict(info1='i1', info2='i2', info3='i3'))
         FR.json = cnsl
         vm_id = vm_recv['server']['id']
         r = self.client.get_server_console(vm_id)
         SP.assert_called_once_with(
-            vm_id, 'action',
-            json_data=dict(console=dict(type='vnc')), success=200)
+            vm_id, json_data=dict(console=dict(type='vnc')), success=200)
         self.assert_dicts_are_equal(r, cnsl['console'])
 
     def test_get_firewall_profile(self):
@@ -338,23 +300,13 @@ class CycladesClient(TestCase):
                 self.client.get_firewall_profile,
                 vm_id)
 
-    @patch('%s.servers_post' % cyclades_pkg, return_value=FR())
+    @patch('%s.servers_action_post' % cyclades_pkg, return_value=FR())
     def test_set_firewall_profile(self, SP):
         vm_id = vm_recv['server']['id']
         v = firewalls['attachments'][0]['firewallProfile']
         self.client.set_firewall_profile(vm_id, v)
-        SP.assert_called_once_with(
-            vm_id, 'action',
-            json_data=dict(firewallProfile=dict(profile=v)), success=202)
-
-    @patch('%s.servers_get' % cyclades_pkg, return_value=FR())
-    def test_get_server_stats(self, SG):
-        vm_id = vm_recv['server']['id']
-        stats = dict(stat1='v1', stat2='v2', stat3='v3', stat4='v4')
-        FR.json = dict(stats=stats)
-        r = self.client.get_server_stats(vm_id)
-        SG.assert_called_once_with(vm_id, 'stats')
-        self.assert_dicts_are_equal(stats, r)
+        SP.assert_called_once_with(vm_id, json_data=dict(
+            firewallProfile=dict(profile=v)), success=202)
 
     @patch('%s.networks_post' % cyclades_pkg, return_value=FR())
     def test_create_network(self, NP):
@@ -407,13 +359,13 @@ class CycladesClient(TestCase):
                 json_data=dict(remove=dict(attachment=nic_id)))
             self.assertEqual(r, 1)
 
-    @patch('%s.servers_get' % cyclades_pkg, return_value=FR())
+    @patch('%s.servers_ips_get' % cyclades_pkg, return_value=FR())
     def test_list_server_nics(self, SG):
         vm_id = vm_recv['server']['id']
         nics = dict(attachments=[dict(id='nic1'), dict(id='nic2')])
         FR.json = nics
         r = self.client.list_server_nics(vm_id)
-        SG.assert_called_once_with(vm_id, 'ips')
+        SG.assert_called_once_with(vm_id)
         expected = nics['attachments']
         for i in range(len(r)):
             self.assert_dicts_are_equal(r[i], expected[i])
@@ -544,7 +496,7 @@ class CycladesClient(TestCase):
         self.assert_dicts_are_equal(r, FR.headers)
         self.assertEqual(delete.mock_calls[-1], call(fip))
 
-    @patch('%s.servers_post' % cyclades_pkg, return_value=FR())
+    @patch('%s.servers_action_post' % cyclades_pkg, return_value=FR())
     def test_attach_floating_ip(self, spost):
         vmid, addr = 42, 'anIpAddress'
         for err, args in {
@@ -557,10 +509,9 @@ class CycladesClient(TestCase):
         r = self.client.attach_floating_ip(vmid, addr)
         self.assert_dicts_are_equal(r, FR.headers)
         expected = dict(addFloatingIp=dict(address=addr))
-        self.assertEqual(
-            spost.mock_calls[-1], call(vmid, 'action', json_data=expected))
+        self.assertEqual(spost.mock_calls[-1], call(vmid, json_data=expected))
 
-    @patch('%s.servers_post' % cyclades_pkg, return_value=FR())
+    @patch('%s.servers_action_post' % cyclades_pkg, return_value=FR())
     def test_detach_floating_ip(self, spost):
         vmid, addr = 42, 'anIpAddress'
         for err, args in {
@@ -573,8 +524,7 @@ class CycladesClient(TestCase):
         r = self.client.detach_floating_ip(vmid, addr)
         self.assert_dicts_are_equal(r, FR.headers)
         expected = dict(removeFloatingIp=dict(address=addr))
-        self.assertEqual(
-            spost.mock_calls[-1], call(vmid, 'action', json_data=expected))
+        self.assertEqual(spost.mock_calls[-1], call(vmid, json_data=expected))
 
 
 if __name__ == '__main__':
