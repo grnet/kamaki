@@ -14,6 +14,8 @@ The image location format::
 
     pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump
 
+The crussial element in an image location is the container (e.g. `pithos`) and
+the image object path (e.g. `debian_base3.diskdump`).
 
 Register an image
 -----------------
@@ -34,7 +36,7 @@ Register the image object with the name 'Debian Base Alpha'
 
 .. code-block:: console
 
-    [kamaki]: image register 'Debian Base Alpha' pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump
+    [kamaki]: image register 'Debian Base Alpha' pithos:debian_base3.diskdump
     checksum:         3cb03556ec971f...e8dd6190443b560cb7
     container-format: bare
     created-at:       2013-06-19 08:00:22
@@ -52,7 +54,7 @@ Register the image object with the name 'Debian Base Alpha'
     Metadata file uploaded as pithos:debian_base3.diskdump.meta (version 1352)
     [kamaki]:
 
-.. note:: The `image register` command automatically create a meta file and
+.. note:: The `image register` command automatically creates a meta file and
     uploads it to the same location as the image. The meta file can be
     downloaded and reused for more image registrations.
 
@@ -157,7 +159,7 @@ Attempt to register with properties
 
 .. code-block:: console
 
-    [kamaki]: image register 'Debian Base Gama' pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump -p OS=Linux -p user=someuser
+    [kamaki]: image register 'Debian Base Gama' pithos:debian_base3.diskdump -p OS=Linux -p user=someuser
     Metadata file pithos:debian_base3.diskdump.meta already exists
     [kamaki]:
 
@@ -165,7 +167,7 @@ It's true that the metafile is already there, but we can override it (**-f**)
 
 .. code-block:: console
 
-    [kamaki]: image register -f 'Debian Base Gama' pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump -p OS=Linux -p user=someuser
+    [kamaki]: image register -f 'Debian Base Gama' pithos:debian_base3.diskdump -p OS=Linux -p user=someuser
     [kamaki]:
 
 Register with a meta file
@@ -218,7 +220,7 @@ Register the image (don't forget the -f parameter, to override the metafile).
 
 .. code-block:: console
 
-    [kamaki]: image register -f 'Debian Base Delta' pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump --metafile=debian_base3.diskdump.meta
+    [kamaki]: image register -f 'Debian Base Delta' pithos:debian_base3.diskdump --metafile=debian_base3.diskdump.meta
     checksum:         3cb03556ec971f...e8dd6190443b560cb7
     container-format: bare
     created-at:       2013-06-19 08:00:22
@@ -272,7 +274,7 @@ Let's compine the metafile with a command line attribute `user: admin`
 
 .. code-block:: console
 
-    [kamaki]: image register -f 'Debian Base Delta' pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump --metafile=debian_base3.diskdump.meta
+    [kamaki]: image register -f 'Debian Base Delta' pithos:debian_base3.diskdump --metafile=debian_base3.diskdump.meta
     checksum:         3cb03556ec971f...e8dd6190443b560cb7
     container-format: bare
     created-at:       2013-06-19 08:00:22
@@ -326,7 +328,7 @@ Register the image without uploading a metafile
 
 .. code-block:: console
 
-    [kamaki]: image register 'Debian Base Delta' pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump --metafile=debian_base3.diskdump.meta --no-metafile-upload
+    [kamaki]: image register 'Debian Base Delta' pithos:debian_base3.diskdump --metafile=debian_base3.diskdump.meta --no-metafile-upload
     checksum:         3cb03556ec971f...e8dd6190443b560cb7
     container-format: bare
     created-at:       2013-06-19 08:00:22
@@ -436,7 +438,7 @@ images:
     container=... # e.g. pithos
 
     for path in images/*.diskdump; do
-        location=pithos://$userid/$container/${path}
+        location=$container:${path}
         kamaki image register $path $location
     done
 
@@ -449,7 +451,7 @@ VMs) by adding the **--public** flag argument when calling `image register`.
 .. code-block:: console
 
     $ for path in images/*.diskdump; do
-        location=pithos://s0m3-u53r-1d/pithos/${path}
+        location=pithos:${path}
         echo "- - - Register ${path} - - -"
         kamaki image register $path $location --public
     done

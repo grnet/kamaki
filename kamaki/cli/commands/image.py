@@ -153,9 +153,9 @@ def _load_image_meta(filepath):
 
 def _validate_image_location(location):
     """
-    :param location: (str) pithos://<user-id>/<container>/<img-file-path>
+    :param location: (str) pithos://<user-id>/<container>/<image-path>
 
-    :returns: (<user-id>, <container>, <img-file-path>)
+    :returns: (<user-id>, <container>, <image-path>)
 
     :raises AssertionError: if location is invalid
     """
@@ -305,7 +305,10 @@ class image_register(_init_image, _optional_json):
         no_metafile_upload=FlagArgument(
             'Do not store metadata in remote meta file',
             ('--no-metafile-upload')),
-
+        container=ValueArgument(
+            'Pithos+ container containing the image file',
+            ('-C', '--container')),
+        uuid=ValueArgument('Custom user uuid', '--uuid')
     )
 
     def _get_user_id(self):
@@ -379,7 +382,7 @@ class image_register(_init_image, _optional_json):
                 importance=2, details=[
                     'An image location is needed. Image location format:',
                     '  pithos://<user-id>/<container>/<path>',
-                    ' an image file at the above location must exist.'
+                    ' where an image file at the above location must exist.'
                     ] + howto_image_file)
         try:
             return _validate_image_location(location)
@@ -391,11 +394,29 @@ class image_register(_init_image, _optional_json):
                     '  pithos://<user-id>/<container>/<img-file-path>'
                     ] + howto_image_file)
 
+    def _mine_location(self, container_path):
+        uuid = self['uuid'] or self._get_user_id()
+        if self['container']:
+            return uuid, self['container'], container_path
+        container, sep, path = container_path.partition(':')
+        if not (bool(container) and bool(path)):
+            raiseCLIError(
+                'Incorrect container-path format', importance=1, details=[
+                'Use : to seperate container form path',
+                '  <container>:<image-path>',
+                'OR',
+                'Use -C to specifiy a container',
+                '  -C <container> <image-path>'] + howto_image_file)
+
+        return uuid, container, path
+
     @errors.generic.all
     @errors.plankton.connection
-    def _run(self, name, location):
-        (params, properties, location) = self._load_params_from_file(location)
-        uuid, container, img_path = self._validate_location(location)
+    def _run(self, name, uuid, container, img_path):
+        location = 'pithos://%s/%s/%s' % (uuid, container, img_path)
+        (params, properties, new_loc) = self._load_params_from_file(location)
+        if location != new_loc:
+            uuid, container, img_path = self._validate_location(new_loc)
         self._load_params_from_args(params, properties)
         pclient = self._get_pithos_client(container)
 
@@ -440,9 +461,9 @@ class image_register(_init_image, _optional_json):
                 print('Metadata file uploaded as %s:%s (version %s)' % (
                     container, meta_path, meta_headers['x-object-version']))
 
-    def main(self, name, location):
+    def main(self, name, container___image_path):
         super(self.__class__, self)._run()
-        self._run(name, location)
+        self._run(name, *self._mine_location(container___image_path))
 
 
 @command(image_cmds)
