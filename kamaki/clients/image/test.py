@@ -224,8 +224,7 @@ class ImageClient(TestCase):
                     props['%s%s' % (proprfx, args[i])] = k
             async_headers.update(props)
         r = self.client.register(
-            img0_name, img0_location,
-            params=params, properties=props)
+            img0_name, img0_location, params=params, properties=props)
         expectedict = dict(example_image_headers)
         expectedict.pop('extraheaders')
         from kamaki.clients.image import _format_image_headers
@@ -236,6 +235,13 @@ class ImageClient(TestCase):
         self.assertEqual(SH.mock_calls[-2:], [
             call('X-Image-Meta-Name', img0_name),
             call('X-Image-Meta-Location', img0_location)])
+        img1_location = ('some_uuid', 'some_container', 'some/path')
+        r = self.client.register(
+            img0_name, img1_location, params=params, properties=props)
+        img1_location = 'pithos://%s' % '/'.join(img1_location)
+        self.assertEqual(SH.mock_calls[-2:], [
+            call('X-Image-Meta-Name', img0_name),
+            call('X-Image-Meta-Location', img1_location)])
 
     @patch('%s.delete' % image_pkg)
     def test_unregister(self, delete):

@@ -1111,6 +1111,7 @@ class Pithos(livetest.Generic):
     def _test_0130_object_post(self):
         self.client.container = self.c2
         obj = 'test2'
+
         """create a filesystem file"""
         self.files.append(NamedTemporaryFile())
         newf = self.files[-1]
@@ -1118,6 +1119,7 @@ class Pithos(livetest.Generic):
             'ello!\n',
             'This is a test line\n',
             'inside a test file\n'])
+
         """create a file on container"""
         r = self.client.object_put(
             obj,
@@ -1182,15 +1184,13 @@ class Pithos(livetest.Generic):
 
         """Check if_etag_(not)match"""
         etag = r['etag']
-        """
         r = self.client.object_post(
             obj,
             update=True,
             public=True,
             if_etag_not_match=etag,
             success=(412, 202, 204))
-        self.assertEqual(r.status_code, 412)
-        """
+        #self.assertEqual(r.status_code, 412)
 
         r = self.client.object_post(
             obj,
