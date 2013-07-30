@@ -103,7 +103,9 @@ class ImageClient(Client):
 
         :param name: (str)
 
-        :param location: (str) pithos://<account>/<container>/<path>
+        :param location: (str or iterable) if iterable, then
+            (user_uuid, container, image_path) else if string
+            pithos://<user_uuid>/<container>/<image object>
 
         :param params: (dict) image metadata (X-Image-Meta) can be id, store,
             disc_format, container_format, size, checksum, is_public, owner
@@ -114,6 +116,9 @@ class ImageClient(Client):
         """
         path = path4url('images') + '/'
         self.set_header('X-Image-Meta-Name', name)
+        location = location if (
+            isinstance(location, str) or isinstance(location, unicode)) else (
+                'pithos://%s' % '/'.join(location))
         self.set_header('X-Image-Meta-Location', location)
 
         async_headers = {}
