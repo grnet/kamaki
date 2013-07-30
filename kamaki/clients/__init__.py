@@ -320,12 +320,9 @@ class SilentEvent(Thread):
 class Client(object):
 
     MAX_THREADS = 7
-    DATE_FORMATS = [
-        '%a %b %d %H:%M:%S %Y',
-        '%A, %d-%b-%y %H:%M:%S GMT',
-        '%a, %d %b %Y %H:%M:%S GMT']
+    DATE_FORMATS = ['%a %b %d %H:%M:%S %Y', ]
     LOG_TOKEN = False
-    LOG_DATA = False
+    LOG_DATA = True
     CONNECTION_RETRY_LIMIT = 0
 
     def __init__(self, base_url, token):
