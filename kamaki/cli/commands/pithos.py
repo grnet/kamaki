@@ -40,7 +40,7 @@ from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import raiseCLIError, CLISyntaxError, CLIBaseUrlError
 from kamaki.cli.utils import (
     format_size, to_bytes, print_dict, print_items, pretty_keys, pretty_dict,
-    page_hold, bold, ask_user, get_path_size, print_json)
+    page_hold, bold, ask_user, get_path_size, print_json, guess_mime_type)
 from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
 from kamaki.cli.argument import KeyValueArgument, DateArgument
 from kamaki.cli.argument import ProgressBarArgument
@@ -365,6 +365,8 @@ class file_list(_file_container_command, _optional_json):
             pretty_obj = obj.copy()
             index += 1
             empty_space = ' ' * (len(str(len(object_list))) - len(str(index)))
+            if 'subdir' in obj:
+                continue
             if obj['content_type'] == 'application/directory':
                 isDir = True
                 size = 'D'
@@ -981,11 +983,12 @@ class file_manifest(_file_container_command, _optional_output_cmd):
     @errors.pithos.container
     @errors.pithos.object_path
     def _run(self):
+        ctype, cenv = guess_mime_type(self.path)
         self._optional_output(self.client.create_object_by_manifestation(
             self.path,
-            content_encoding=self['content_encoding'],
+            content_encoding=self['content_encoding'] or cenc,
             content_disposition=self['content_disposition'],
-            content_type=self['content_type'],
+            content_type=self['content_type'], or ctype,
             sharing=self['sharing'],
             public=self['public']))
 
@@ -1133,6 +1136,10 @@ class file_upload(_file_container_command, _optional_output_cmd):
         container_info_cache = dict()
         for f, rpath in self._path_pairs(local_path, remote_path):
             print('%s --> %s:%s' % (f.name, self.client.container, rpath))
+            if not (self['content_type'] and self['content_encoding']):
+                ctype, cenc = guess_mime_type(f.name)
+                params['content_type'] = self['content_type'] or ctype
+                params['content_encoding'] = self['content_encoding'] or cenc
             if self['unchunked']:
                 r = self.client.upload_object_unchunked(
                     rpath, f,

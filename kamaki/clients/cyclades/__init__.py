@@ -398,8 +398,7 @@ class CycladesClient(CycladesRestClient):
         :param address: (str) ip address to request
 
         :returns: (dict) {
-                fixed_ip: ..., id: ..., instance_id: ..., ip: ..., pool: ...
-            }
+            fixed_ip: ..., id: ..., instance_id: ..., ip: ..., pool: ...}
         """
         json_data = dict()
         if pool:

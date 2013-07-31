@@ -38,12 +38,32 @@ External applications may instantiate one or more kamaki clients.
     should be used only when implementing applications for strict OS Compute or
     OS Storage services.
 
-Using endpoints to initialize services
---------------------------------------
+Using endpoints to get the base_url
+-----------------------------------
 
-The OpenStack identity service, which is implemented my the Synnefo/Astakos
-server, can be used to get the base_url values needed for initializing any
-kamaki client. Kamaki simplifies this proccess with the astakos client.
+In OpenStack, each service (e.g. `compute`, `object-store`, etc.) has a number
+of `endpoints`. These `endpoints` are actually URIs that are needed as prefixes
+for the API calls the kamaki client generates. In this context, we need just
+one of these these `endpoints`, the `publicURL`, which is also referred to as
+`base_url` in kamaki client libraries.
+
+In general, this is the suggested way of getting the base_url::
+
+    1. From the deployment UI get the AUTHENTICATION_URL and TOKEN
+        (Example 1.2)
+    2. Use them to instantiate an AstakosClient
+        (Example 1.2)
+    3. Use AstakosClient instance to get the endpoints of the service of interest
+        (Example 1.3)
+    4. The 'publicURL' endpoint is the base_url we are looking for
+        (Example 1.3)
+
+The AstakosClient is a client for the Synnefo/Astakos server. Synnefo/Astakos
+is an advanced identity server based on OpenStack identity specifications.
+Therefore, it can be used to get the `base_url` values needed for initializing
+kamaki clients. Kamaki simplifies this process with the astakos client library.
+
+Let's review the process with examples.
 
 First, an astakos client must be initialized (Example 1.2). An
 AUTHENTICATION_URL and a TOKEN can be acquired from the synnefo deployment UI.
@@ -58,7 +78,7 @@ AUTHENTICATION_URL and a TOKEN can be acquired from the synnefo deployment UI.
         
 
 Next, the astakos client can be used to retrieve the base_url values for the
-servcers of interest. In this case (Example 1.3) they are *cyclades*
+servers of interest. In this case (Example 1.3) they are *cyclades*
 and *pithos*. A number of endpoints is assigned to each service, but kamaki
 clients only need the one labeled as ``publicURL``.
 

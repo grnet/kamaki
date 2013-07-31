@@ -456,6 +456,7 @@ class PithosClient(PithosRestClient):
             format='json',
             hashmap=True,
             content_type=content_type,
+            content_encoding=content_encoding,
             if_etag_match=if_etag_match,
             if_etag_not_match='*' if if_not_exist else None,
             etag=etag,
