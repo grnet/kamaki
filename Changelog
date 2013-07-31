@@ -40,4 +40,5 @@ Features:
 - Expose the project API of astakosclient to kamaki CLI [#4155]
 - Full support for compute v2 basic API [#4139]
 - Use container:path format in register [#3778]
+- Guess mimetype when uploading and use it in upload [#4196]
 
