@@ -215,7 +215,7 @@ Batch-create servers
 
 .. code-block:: python
 
-    #/usr/bin/python
+    #! /usr/bin/python
 
     from kamaki.clients.astakos import AstakosClient
     from kamaki.clients.cyclades import CycladesClient
@@ -245,7 +245,7 @@ Batch-create 4 servers of the same kind
 
 .. code-block:: python
 
-    #/usr/bin/python
+    #! /usr/bin/python
 
     from kamaki.clients.astakos import AstakosClient
     from kamaki.clients.cyclades import CycladesClient
@@ -262,3 +262,38 @@ Batch-create 4 servers of the same kind
     for i in range(4):
         name, flavor_id, image_id = 'Server %s' % (i + 1), 3, 'some-image-id'
         cyclades.create_server(name, flavor_id, image_id)
+
+Register a banch of pre-uploaded images
+'''''''''''''''''''''''''''''''''''''''
+
+.. code-block:: python
+
+    #! /usr/bin/python
+
+    from kamaki.clients import ClientError
+    from kamaki.clients.astakos import AstakosClient
+    from kamaki.clients.pithos import PithosClient
+    from kamaki.clients.image import ImageClient
+
+    AUTHENTICATION_URL = 'https://accounts.example.com/identity/v2.0'
+    TOKEN = 'replace this with your token'
+    IMAGE_CONTAINER = 'images'
+
+    astakos = AstakosClient(AUTHENTICATION_URL, TOKEN)
+    USER_UUID = astakos.user_term('uuid')
+
+    PITHOS_URL = astakos.get_endpoints('object-store')['publicURL']
+    pithos = PithosClient(PITHOS_URL, TOKEN, USER_UUID, IMAGE_CONTAINER)
+
+    IMAGE_URL = astakos.get_endpoints('image')['publicURL']
+    plankton = ImageClient(IMAGE_URL, TOKEN)
+
+    for img in pithos.list_objects():
+        IMAGE_PATH = img['name']
+        try:
+            r = plankton.register(
+                name='Image %s' % img,
+                location=(USER_UUID, IMAGE_CONTAINER, IMAGE_PATH))
+            print 'Image %s registered with id %s' % (r['name'], r['id'])
+        except ClientError:
+            print 'Failed to register image %s' % IMAGE_PATH
