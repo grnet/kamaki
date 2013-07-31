@@ -365,6 +365,8 @@ class file_list(_file_container_command, _optional_json):
             pretty_obj = obj.copy()
             index += 1
             empty_space = ' ' * (len(str(len(object_list))) - len(str(index)))
+            if 'subdir' in obj:
+                continue
             if obj['content_type'] == 'application/directory':
                 isDir = True
                 size = 'D'
