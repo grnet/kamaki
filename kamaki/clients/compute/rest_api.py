@@ -64,13 +64,11 @@ class ComputeRestClient(Client):
             host=None,
             success=200,
             **kwargs):
-        """GET base_url/servers/['detail'|<server_id>]
+        """GET base_url/servers/['detail' | <server_id>]
 
         :param server_id: (int or int str) ignored if detail
 
         :param detail: (boolean)
-
-        --- Parameters ---
 
         :param changes-since: A time/date stamp for when the server last
             changed status
@@ -115,8 +113,6 @@ class ComputeRestClient(Client):
         """POST base_url/servers
 
         :param json_data: a json-formated dict that will be send as data
-
-        --- Parameters
 
         :param security_group: (str)
 
