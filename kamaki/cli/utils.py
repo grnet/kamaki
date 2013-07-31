@@ -75,6 +75,20 @@ def suggest_missing(miss=None, exclude=[]):
             print('')
 
 
+def guess_mime_type(
+        filename,
+        default_content_type='application/octet-stream',
+        default_encoding=None):
+    assert filename, 'Cannot guess mimetype for empty filename'
+    try:
+        from mimetypes import guess_type
+        ctype, cenc = guess_type(filename)
+        return ctype or default_content_type, cenc or default_encoding
+    except ImportError:
+        print 'WARNING: Cannot import mimetypes, using defaults'
+        return (default_content_type, default_encoding)
+
+
 def remove_colors():
     global bold
     global red
