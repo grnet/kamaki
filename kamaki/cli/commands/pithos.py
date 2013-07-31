@@ -983,12 +983,12 @@ class file_manifest(_file_container_command, _optional_output_cmd):
     @errors.pithos.container
     @errors.pithos.object_path
     def _run(self):
-        ctype, cenv = guess_mime_type(self.path)
+        ctype, cenc = guess_mime_type(self.path)
         self._optional_output(self.client.create_object_by_manifestation(
             self.path,
             content_encoding=self['content_encoding'] or cenc,
             content_disposition=self['content_disposition'],
-            content_type=self['content_type'], or ctype,
+            content_type=self['content_type'] or ctype,
             sharing=self['sharing'],
             public=self['public']))
 
