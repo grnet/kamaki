@@ -1028,7 +1028,8 @@ class PithosClient(TestCase):
         tmpFile.seek(0)
         ctype = 'video/mpeg'
         sharing = dict(read=['u1', 'g1', 'u2'], write=['u1'])
-        r = self.client.upload_object(obj, tmpFile,
+        r = self.client.upload_object(
+            obj, tmpFile,
             content_type=ctype, sharing=sharing)
         self.assert_dicts_are_equal(r, exp_headers)
         self.assertEqual(OP.mock_calls[-1][2]['content_type'], ctype)

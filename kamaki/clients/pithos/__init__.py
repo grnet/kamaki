@@ -445,7 +445,7 @@ class PithosClient(PithosRestClient):
                 try:
                     details = ['%s' % thread.exception for thread in missing]
                 except Exception:
-                    details = []
+                    details = ['Also, failed to read thread exceptions']
                 raise ClientError(
                     '%s blocks failed to upload' % len(missing),
                     details=details)
@@ -596,6 +596,7 @@ class PithosClient(PithosRestClient):
             format='json',
             hashmap=True,
             content_type=content_type,
+            content_encoding=content_encoding,
             if_etag_match=if_etag_match,
             if_etag_not_match='*' if if_not_exist else None,
             etag=etag,
