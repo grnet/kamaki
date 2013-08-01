@@ -442,9 +442,13 @@ class PithosClient(PithosRestClient):
                 else:
                     break
             if missing:
+                try:
+                    details = ['%s' % thread.exception for thread in missing]
+                except Exception:
+                    details = []
                 raise ClientError(
                     '%s blocks failed to upload' % len(missing),
-                    details=['%s' % thread.exception for thread in missing])
+                    details=details)
         except KeyboardInterrupt:
             sendlog.info('- - - wait for threads to finish')
             for thread in activethreads():
