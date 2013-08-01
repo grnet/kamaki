@@ -32,7 +32,7 @@
 # or implied, of GRNET S.A.command
 
 from json import load, dumps
-from os.path import abspath
+from os import path
 from logging import getLogger
 
 from kamaki.cli import command
@@ -43,7 +43,7 @@ from kamaki.clients.pithos import PithosClient
 from kamaki.clients.astakos import AstakosClient
 from kamaki.clients import ClientError
 from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
-from kamaki.cli.argument import IntArgument
+from kamaki.cli.argument import IntArgument, ProgressBarArgument
 from kamaki.cli.commands.cyclades import _init_cyclades
 from kamaki.cli.errors import raiseCLIError, CLIBaseUrlError
 from kamaki.cli.commands import _command_init, errors, addLogSettings
@@ -142,7 +142,7 @@ def _load_image_meta(filepath):
 
     :raises AssertionError: Valid json but invalid image properties dict
     """
-    with open(abspath(filepath)) as f:
+    with open(path.abspath(filepath)) as f:
         meta_dict = load(f)
         try:
             return _validate_image_meta(meta_dict)
@@ -283,6 +283,8 @@ class image_meta(_init_image, _optional_json):
 class image_register(_init_image, _optional_json):
     """(Re)Register an image"""
 
+    container_info_cache = {}
+
     arguments = dict(
         checksum=ValueArgument('set image checksum', '--checksum'),
         container_format=ValueArgument(
@@ -308,7 +310,13 @@ class image_register(_init_image, _optional_json):
         container=ValueArgument(
             'Pithos+ container containing the image file',
             ('-C', '--container')),
-        uuid=ValueArgument('Custom user uuid', '--uuid')
+        uuid=ValueArgument('Custom user uuid', '--uuid'),
+        local_image_path=ValueArgument(
+            'Local image file path to upload and register '
+            '(still need target file in the form container:remote-path )',
+            '--upload-image-file'),
+        progress_bar=ProgressBarArgument(
+            'Do not use progress bar', '--no-progress-bar', default=False)
     )
 
     def _get_user_id(self):
@@ -339,7 +347,8 @@ class image_register(_init_image, _optional_json):
 
     def _store_remote_metafile(self, pclient, remote_path, metadata):
         return pclient.upload_from_string(
-            remote_path, _validate_image_meta(metadata, return_str=True))
+            remote_path, _validate_image_meta(metadata, return_str=True),
+            container_info_cache=self.container_info_cache)
 
     def _load_params_from_file(self, location):
         params, properties = dict(), dict()
@@ -413,6 +422,19 @@ class image_register(_init_image, _optional_json):
     @errors.generic.all
     @errors.plankton.connection
     def _run(self, name, uuid, container, img_path):
+        if self['local_image_path']:
+            with open(self['local_image_path']) as f:
+                pithos = self._get_pithos_client(container)
+                (pbar, upload_cb) = self._safe_progress_bar('Uploading')
+                if pbar:
+                    hash_bar = pbar.clone()
+                    hash_cb = hash_bar.get_generator('Calculating hashes')
+                pithos.upload_object(
+                    img_path, f,
+                    hash_cb=hash_cb, upload_cb=upload_cb,
+                    container_info_cache=self.container_info_cache)
+                pbar.finish()
+
         location = 'pithos://%s/%s/%s' % (uuid, container, img_path)
         (params, properties, new_loc) = self._load_params_from_file(location)
         if location != new_loc:
@@ -449,7 +471,8 @@ class image_register(_init_image, _optional_json):
         if pclient:
             try:
                 meta_headers = pclient.upload_from_string(
-                    meta_path, dumps(r, indent=2))
+                    meta_path, dumps(r, indent=2),
+                    container_info_cache=self.container_info_cache)
             except TypeError:
                 print('Failed to dump metafile %s:%s' % (container, meta_path))
                 return

@@ -41,4 +41,6 @@ Features:
 - Full support for compute v2 basic API [#4139]
 - Use container:path format in register [#3778]
 - Guess mimetype when uploading and use it in upload [#4196]
+- Add upload local image abilities to register [#4206]
+    New register args: --update-image-file=/local/path, --no-progress-bar
 
