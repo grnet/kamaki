@@ -1100,7 +1100,8 @@ class file_upload(_file_container_command, _optional_output_cmd):
                         print('%s is not a regular file' % fpath)
         else:
             if not path.isfile(lpath):
-                raiseCLIError('%s is not a regular file' % lpath)
+                raiseCLIError(('%s is not  aregular file' % lpath) if (
+                    path.exists(lpath)) else '%s does not exist' % lpath)
             try:
                 robj = self.client.get_object_info(rpath)
                 if remote_path and self._is_dir(robj):
