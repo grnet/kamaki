@@ -54,8 +54,16 @@ def _pithos_hash(block, blockhash):
 
 def _range_up(start, end, a_range):
     if a_range:
-        (rstart, rend) = a_range.split('-')
-        (rstart, rend) = (int(rstart), int(rend))
+        rstart, sep, rend = a_range.partition('-')
+        if rstart:
+            if sep:
+                rstart, rend = int(rstart), int(rend)
+            else:
+                rstart, rend = 0, int(rstart)
+        elif sep:
+            return (0, - int(rend))
+        else:
+            return (0, 0)
         if rstart > end or rend < start:
             return (0, 0)
         if rstart > start:
@@ -634,7 +642,8 @@ class PithosClient(PithosRestClient):
                 is_last = start + blocksize > total_size
                 end = (total_size - 1) if is_last else (start + blocksize - 1)
                 (start, end) = _range_up(start, end, crange)
-                args['data_range'] = 'bytes=%s-%s' % (start, end)
+                args['data_range'] = 'bytes=%s-%s' % (
+                    (start, end) if end >= 0 else ('', - end))
                 r = self.object_get(obj, success=(200, 206), **args)
                 self._cb_next()
                 dst.write(r.content)
@@ -704,7 +713,8 @@ class PithosClient(PithosRestClient):
                     self._cb_next()
                     continue
                 restargs['async_headers'] = {
-                    'Range': 'bytes=%s-%s' % (start, end)}
+                    'Range': 'bytes=%s-%s' % (
+                        (start, end) if end >= 0 else ('', - end))}
                 flying[key] = self._get_block_async(obj, **restargs)
                 blockid_dict[key] = unsaved
 
@@ -848,7 +858,7 @@ class PithosClient(PithosRestClient):
                 is_last = start + blocksize > total_size
                 end = (total_size - 1) if is_last else (start + blocksize - 1)
                 (start, end) = _range_up(start, end, range_str)
-                if start < end:
+                if start < end or end < 0:
                     self._watch_thread_limit(flying.values())
                     flying[blockid] = self._get_block_async(obj, **restargs)
                 for runid, thread in flying.items():
