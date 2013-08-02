@@ -31,8 +31,11 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from kamaki.clients import Client, ClientError
 from logging import getLogger
+from json import dumps
+
+from kamaki.clients import Client, ClientError
+from kamaki.clients.utils import path4url
 
 
 class AstakosClient(Client):
@@ -151,3 +154,15 @@ class AstakosClient(Client):
     def user_term(self, key, token=None):
         """Get (cached) term, from user credentials"""
         return self.user_info(token).get(key, None)
+
+    def post_user_catalogs(self, uuids):
+        """POST base_url/user_catalogs
+
+        :param uuids: (list or tuple) user uuids
+
+        :returns: (dict) {uuid1: name1, uuid2: name2, ...}
+        """
+        account_url = self.get_service_endpoints('account')['publicURL']
+        account = AstakosClient(account_url, self.token)
+        json_data = dict(uuids=uuids)
+        return account.post('user_catalogs', json=json_data)
