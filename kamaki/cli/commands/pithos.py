@@ -1100,7 +1100,7 @@ class file_upload(_file_container_command, _optional_output_cmd):
                         print('%s is not a regular file' % fpath)
         else:
             if not path.isfile(lpath):
-                raiseCLIError(('%s is not  aregular file' % lpath) if (
+                raiseCLIError(('%s is not a regular file' % lpath) if (
                     path.exists(lpath)) else '%s does not exist' % lpath)
             try:
                 robj = self.client.get_object_info(rpath)
@@ -2047,10 +2047,19 @@ class file_sharers(_file_account_command, _optional_json):
     @errors.pithos.connection
     def _run(self):
         accounts = self.client.get_sharing_accounts(marker=self['marker'])
+        uuids = [acc['name'] for acc in accounts]
+        try:
+            astakos_responce = self.auth_base.post_user_catalogs(uuids)
+            usernames = astakos_responce.json
+            r = usernames['uuid_catalog']
+        except Exception as e:
+            print 'WARNING: failed to call user_catalogs, %s' % e
+            r = dict(sharer_uuid=uuids)
+            usernames = accounts
         if self['json_output'] or self['detail']:
-            self._print(accounts)
+            self._print(usernames)
         else:
-            self._print([acc['name'] for acc in accounts])
+            self._print(r, print_dict)
 
     def main(self):
         super(self.__class__, self)._run()

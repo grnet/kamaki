@@ -12,6 +12,7 @@ Changes:
    info --> user_info, user --> list_users
 - Simplify listings (kamaki.cli.utils: print methods)
 - Enrich client API docs with examples and astakos endpoint information [#4135]
+- Show user names in /file sharers [#4203]
 
 Features:
 
@@ -43,4 +44,6 @@ Features:
 - Guess mimetype when uploading and use it in upload [#4196]
 - Add upload local image abilities to register [#4206]
     New register args: --update-image-file=/local/path, --no-progress-bar
+- Implement an astakos.post_user_catalogs call for getting usernames from a
+    list of user uuids [#4203]
 

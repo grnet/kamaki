@@ -140,7 +140,7 @@ class astakos_user_name(_astakos_init, _optional_json):
             self._print(self.client.get_username(self.token, uuids[0]))
         else:
             self._print(
-                self.client.get_username(self.token, uuids), print_dict)
+                self.client.get_usernames(self.token, uuids), print_dict)
 
     def main(self, uuid, *more_uuids):
         super(self.__class__, self)._run()
