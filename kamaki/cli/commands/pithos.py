@@ -135,9 +135,14 @@ class RangeArgument(ValueArgument):
         if newvalue is None:
             self._value = self.default
             return
-        (start, end) = newvalue.split('-')
-        (start, end) = (int(start), int(end))
-        self._value = '%s-%s' % (start, end)
+        start, sep, end = newvalue.partition('-')
+        if sep:
+            if start:
+                self._value = '%s-%s' % (int(start), int(end))
+            else:
+                self._value = '-%s' % int(end)
+        else:
+            self._value = '%s' % int(start)
 
 
 # Command specs

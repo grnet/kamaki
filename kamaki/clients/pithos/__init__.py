@@ -626,14 +626,14 @@ class PithosClient(PithosRestClient):
         return (blocksize, blockhash, total_size, hashmap['hashes'], map_dict)
 
     def _dump_blocks_sync(
-            self, obj, remote_hashes, blocksize, total_size, dst, range,
+            self, obj, remote_hashes, blocksize, total_size, dst, crange,
             **args):
         for blockid, blockhash in enumerate(remote_hashes):
             if blockhash:
                 start = blocksize * blockid
                 is_last = start + blocksize > total_size
                 end = (total_size - 1) if is_last else (start + blocksize - 1)
-                (start, end) = _range_up(start, end, range)
+                (start, end) = _range_up(start, end, crange)
                 args['data_range'] = 'bytes=%s-%s' % (start, end)
                 r = self.object_get(obj, success=(200, 206), **args)
                 self._cb_next()
