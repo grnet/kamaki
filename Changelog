@@ -46,4 +46,5 @@ Features:
     New register args: --update-image-file=/local/path, --no-progress-bar
 - Implement an astakos.post_user_catalogs call for getting usernames from a
     list of user uuids [#4203]
+- Use multiformed ranges in file/pithos [#4059]
 
