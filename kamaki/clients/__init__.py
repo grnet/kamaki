@@ -322,7 +322,7 @@ class Client(object):
     MAX_THREADS = 7
     DATE_FORMATS = ['%a %b %d %H:%M:%S %Y', ]
     LOG_TOKEN = False
-    LOG_DATA = True
+    LOG_DATA = False
     CONNECTION_RETRY_LIMIT = 0
 
     def __init__(self, base_url, token):

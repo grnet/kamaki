@@ -556,9 +556,12 @@ class Pithos(livetest.Generic):
         r = self.client.object_head(obj)
         self.assertEqual(r.status_code, 200)
         etag = r.headers['etag']
+        real_version = r.headers['x-object-version']
 
-        r = self.client.object_head(obj, version=40)
-        self.assertEqual(r.headers['x-object-version'], '40')
+        self.assertRaises(
+            ClientError, self.client.object_head, obj, version=-10)
+        r = self.client.object_head(obj, version=real_version)
+        self.assertEqual(r.headers['x-object-version'], real_version)
 
         r = self.client.object_head(obj, if_etag_match=etag)
         self.assertEqual(r.status_code, 200)
@@ -568,8 +571,8 @@ class Pithos(livetest.Generic):
         self.assertNotEqual(r.status_code, 200)
 
         r = self.client.object_head(
-            obj, version=40, if_etag_match=etag, success=412)
-        self.assertEqual(r.status_code, 412)
+            obj, version=real_version, if_etag_match=etag, success=200)
+        self.assertEqual(r.status_code, 200)
 
         """Check and if(un)modified_since"""
         for format in self.client.DATE_FORMATS:
@@ -1254,6 +1257,7 @@ class Pithos(livetest.Generic):
 
     def create_large_file(self, size):
         """Create a large file at fs"""
+        print
         self.files.append(NamedTemporaryFile())
         f = self.files[-1]
         Ki = size / 8

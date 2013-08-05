@@ -131,18 +131,23 @@ class RangeArgument(ValueArgument):
         return getattr(self, '_value', self.default)
 
     @value.setter
-    def value(self, newvalue):
-        if newvalue is None:
+    def value(self, newvalues):
+        if not newvalues:
             self._value = self.default
             return
-        start, sep, end = newvalue.partition('-')
-        if sep:
-            if start:
-                self._value = '%s-%s' % (int(start), int(end))
+        self._value = ''
+        for newvalue in newvalues.split(','):
+            self._value = ('%s,' % self._value) if self._value else ''
+            start, sep, end = newvalue.partition('-')
+            if sep:
+                if start:
+                    start, end = (int(start), int(end))
+                    assert start <= end, 'Invalid range value %s' % newvalue
+                    self._value += '%s-%s' % (int(start), int(end))
+                else:
+                    self._value += '-%s' % int(end)
             else:
-                self._value = '-%s' % int(end)
-        else:
-            self._value = '%s' % int(start)
+                self._value += '%s' % int(start)
 
 
 # Command specs
