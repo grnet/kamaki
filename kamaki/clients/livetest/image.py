@@ -85,9 +85,7 @@ class Image(livetest.Generic):
         f.close()
 
         r = self.client.register(
-            self.imgname,
-            self.location,
-            params=dict(is_public=True))
+            self.imgname, self.location, params=dict(is_public=True))
         self._imglist[self.imgname] = dict(
             name=r['name'], id=r['id'])
         self._imgdetails[self.imgname] = r
