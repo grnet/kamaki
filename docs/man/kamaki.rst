@@ -119,6 +119,14 @@ server commands
 * firewall  Set the server (VM) firewall profile for public networks
     * set   Set the firewall profile
     * get   Get the firewall profile
+* ip        Manage floating IPs for the servers
+    * attach    Attach a floating ip to a server with server_id
+    * info      A floating IPs' details
+    * detach    Detach floating ip from server
+    * list      List all floating ips
+    * create    Create a new floating IP
+    * delete    Delete a floating ip
+    * pools     List all floating pools of floating ips
 * info      Detailed information on a Virtual Machine
 * list      List Virtual Machines accessible by user
 * metadata  Manage a server metadata
