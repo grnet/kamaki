@@ -919,8 +919,7 @@ class server_ip_create(_init_cyclades, _optional_json):
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self, ip=None):
-        self._print(
-            self.client.alloc_floating_ip(self['pool'], ip), print_dict)
+        self._print([self.client.alloc_floating_ip(self['pool'], ip)])
 
     def main(self, requested_address=None):
         super(self.__class__, self)._run()
@@ -958,7 +957,7 @@ class server_ip_attach(_init_cyclades, _optional_output_cmd):
 
 
 @command(server_cmds)
-class server_ip_detach(_init_cyclades):
+class server_ip_detach(_init_cyclades, _optional_output_cmd):
     """Detach floating IP from server
     """
 

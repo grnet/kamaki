@@ -403,8 +403,8 @@ class CycladesClient(CycladesRestClient):
         json_data = dict()
         if pool:
             json_data['pool'] = pool
-            if address:
-                json_data['address'] = address
+        if address:
+            json_data['address'] = address
         r = self.floating_ips_post(json_data)
         return r.json['floating_ip']
 

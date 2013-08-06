@@ -393,7 +393,7 @@ class ComputeRestClient(Client):
         path = path4url('os-floating-ips', ip or '')
         return self.get(path, success=success, **kwargs)
 
-    def floating_ips_post(self, json_data, ip='', success=201, **kwargs):
+    def floating_ips_post(self, json_data, ip='', success=200, **kwargs):
         path = path4url('os-floating-ips', ip or '')
         if json_data is not None:
             json_data = json.dumps(json_data)
