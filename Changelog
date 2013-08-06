@@ -17,7 +17,7 @@ Changes:
 Features:
 
 - Add unittests in the folowing kamaki.cli packages: [#4058]
-    command_tree, argument, history
+    command_tree, argument, history, logger
 - Implement an optional astakosclient cli exposed as "astakos", with the following methods:
     authenticate, uuid, username, quotas, service uuid/username/quotas
 - Add some astakos/keystone kamaki-lib api calls [#3874], used to access astakos-calls cache:
@@ -31,8 +31,7 @@ Features:
     alloc/get_delete_floating_ip, dis/assoc_floating_ip_to_server
 - Add Examples to documentation
 - Implement floating IP commands
-    floatingip list/create/delete/info/pools
-    server ip attach/detach
+    server ip list/create/delete/info/pools/attach/detach
 - Implement --wait for server_create/delete/start/reboot/shutdown [#3867]
 - Implement network_wait [#3862]
 - Implement user_list/set/whoami to switch between session users [#3632, #3660]
