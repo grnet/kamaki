@@ -34,6 +34,8 @@
 from unittest import makeSuite, TestSuite, TextTestRunner, TestCase
 from inspect import getmembers, isclass
 from tempfile import NamedTemporaryFile
+from mock import patch, call
+from itertools import product
 
 from kamaki.cli.command_tree.test import Command, CommandTree
 from kamaki.cli.argument.test import (
@@ -129,6 +131,152 @@ class History(TestCase):
         for i in range(1, len(sample_history)):
             self.assertEqual(history.retrieve(i), sample_history[i - 1])
             self.assertEqual(history.retrieve(- i), sample_history[- i - 1])
+
+
+class LoggerMethods(TestCase):
+
+    class PseudoLogger(object):
+        level = 'some level'
+        _setLevel_calls = []
+        _addHandler_calls = []
+
+        def setLevel(self, *args):
+            self._setLevel_calls.append(args)
+
+        def addHandler(self, *args):
+            self._addHandler_calls.append(args)
+
+    class PseudoHandler(object):
+        _setFormatter_calls = []
+
+        def setFormatter(self, *args):
+            self._setFormatter_calls.append(args)
+
+    def setUp(self):
+        from kamaki.cli.logger import LOG_FILE, _blacklist
+        self.LF, self.BL = list(LOG_FILE), dict(_blacklist)
+
+    def tearDown(self):
+        self.PseudoLogger._setLevel_calls = []
+        self.PseudoLogger._addHandler_calls = []
+        self.PseudoLogger._setFormatter_calls = []
+        from kamaki.cli.logger import LOG_FILE, _blacklist
+        for e in LOG_FILE:
+            LOG_FILE.pop()
+        for e in self.LF:
+            LOG_FILE.append(e)
+        _blacklist.clear()
+        _blacklist.update(self.BL)
+
+    @patch('kamaki.cli.logger.logging.getLogger', return_value=PseudoLogger())
+    def test_deactivate(self, GL):
+        from kamaki.cli.logger import deactivate, _blacklist
+        self.assertEqual(_blacklist, {})
+        deactivate('some logger')
+        GL.assert_called_once_with('some logger')
+        self.assertEqual(
+            _blacklist.get('some logger', None), self.PseudoLogger.level)
+        from logging import CRITICAL
+        self.assertEqual(self.PseudoLogger._setLevel_calls[-1], (CRITICAL, ))
+
+    @patch('kamaki.cli.logger.logging.getLogger', return_value=PseudoLogger())
+    def test_activate(self, GL):
+        from kamaki.cli.logger import activate
+        activate('another logger')
+        GL.assert_called_once_with('another logger')
+        self.assertEqual(
+            self.PseudoLogger._setLevel_calls[-1], (self.PseudoLogger.level, ))
+
+    def test_get_log_filename(self):
+        from kamaki.cli.logger import get_log_filename, LOG_FILE
+        f = NamedTemporaryFile()
+        for e in LOG_FILE:
+            LOG_FILE.pop()
+        LOG_FILE.append(f.name)
+        self.assertEqual(get_log_filename(), f.name)
+        LOG_FILE.pop()
+        LOG_FILE.append(2 * f.name)
+        print('\n  Should print error msg here: ')
+        self.assertEqual(get_log_filename(), None)
+
+    def test_set_log_filename(self):
+        from kamaki.cli.logger import set_log_filename, LOG_FILE
+        for n in ('some name', 'some other name'):
+            set_log_filename(n)
+            self.assertEqual(LOG_FILE[0], n)
+
+    @patch('kamaki.cli.logger.get_logger', return_value=PseudoLogger())
+    @patch('kamaki.cli.logger.logging.Formatter', return_value='f0rm4t')
+    @patch(
+        'kamaki.cli.logger.logging.StreamHandler',
+        return_value=PseudoHandler())
+    @patch(
+        'kamaki.cli.logger.logging.FileHandler',
+        return_value=PseudoHandler())
+    def test__add_logger(self, FH, SH, F, GL):
+        from kamaki.cli.logger import _add_logger
+        from logging import DEBUG
+        stdf, cnt = '%(name)s\n %(message)s', 0
+        for name, level, filename, fmt in product(
+                ('my logger', ),
+                ('my level', None),
+                ('my filename', None),
+                ('my fmt', None)):
+            log = _add_logger(name, level, filename, fmt)
+            self.assertTrue(isinstance(log, self.PseudoLogger))
+            self.assertEqual(GL.mock_calls[-1], call(name))
+            if filename:
+                self.assertEqual(FH.mock_calls[-1], call(filename))
+            else:
+                self.assertEqual(SH.mock_calls[-1], call())
+            self.assertEqual(F.mock_calls[-1], call(fmt or stdf))
+            self.assertEqual(
+                self.PseudoHandler._setFormatter_calls[-1], ('f0rm4t', ))
+            cnt += 1
+            self.assertEqual(len(self.PseudoLogger._addHandler_calls), cnt)
+            h = self.PseudoLogger._addHandler_calls[-1]
+            self.assertTrue(isinstance(h[0], self.PseudoHandler))
+            l = self.PseudoLogger._setLevel_calls[-1]
+            self.assertEqual(l, (level or DEBUG, ))
+
+    @patch('kamaki.cli.logger.get_log_filename', return_value='my log fname')
+    @patch('kamaki.cli.logger.get_logger', return_value='my get logger ret')
+    def test_add_file_logger(self, GL, GLF):
+        from kamaki.cli.logger import add_file_logger
+        with patch('kamaki.cli.logger._add_logger', return_value='AL') as AL:
+            GLFcount = GLF.call_count
+            for name, level, filename in product(
+                    ('my name'), ('my level', None), ('my filename', None)):
+                self.assertEqual(add_file_logger(name, level, filename), 'AL')
+                self.assertEqual(AL.mock_calls[-1], call(
+                    name, level, filename or 'my log fname',
+                    fmt='%(name)s(%(levelname)s) %(asctime)s\n\t%(message)s'))
+                if filename:
+                    self.assertEqual(GLFcount, GLF.call_count)
+                else:
+                    GLFcount = GLF.call_count
+                    self.assertEqual(GLF.mock_calls[-1], call())
+        with patch('kamaki.cli.logger._add_logger', side_effect=Exception):
+            self.assertEqual(add_file_logger('X'), 'my get logger ret')
+            GL.assert_called_once_with('X')
+
+    @patch('kamaki.cli.logger.get_logger', return_value='my get logger ret')
+    def test_add_stream_logger(self, GL):
+        from kamaki.cli.logger import add_stream_logger
+        with patch('kamaki.cli.logger._add_logger', return_value='AL') as AL:
+            for name, level, fmt in product(
+                    ('my name'), ('my level', None), ('my fmt', None)):
+                self.assertEqual(add_stream_logger(name, level, fmt), 'AL')
+                self.assertEqual(AL.mock_calls[-1], call(name, level, fmt=fmt))
+        with patch('kamaki.cli.logger._add_logger', side_effect=Exception):
+            self.assertEqual(add_stream_logger('X'), 'my get logger ret')
+            GL.assert_called_once_with('X')
+
+    @patch('kamaki.cli.logger.logging.getLogger', return_value=PseudoLogger())
+    def test_get_logger(self, GL):
+        from kamaki.cli.logger import get_logger
+        get_logger('my logger name')
+        GL.assert_called_once_with('my logger name')
 
 
 #  TestCase auxiliary methods
