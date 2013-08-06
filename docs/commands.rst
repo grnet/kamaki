@@ -148,6 +148,14 @@ server (Compute/Cyclades)
     firewall:  Manage server's firewall profile
         set :  Set the server's firewall profile
         get :  Get the server's firewall profile
+    ip      :  Manage floating IPs for the servers
+        attach:  Attach a floating ip to a server with server_id
+        info  :  A floating IPs' details
+        detach:  Detach floating ip from server
+        list  :  List all floating ips
+        create:  Create a new floating IP
+        delete:  Delete a floating ip
+        pools :  List all floating pools of floating ips
     info    :  Get server details
     list    :  List servers
     metadata:  Manage Server Metadata
