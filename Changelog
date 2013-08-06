@@ -16,6 +16,8 @@ Changes:
 
 Features:
 
+- Add unittests in the folowing kamaki.cli packages: [#4058]
+    command_tree, argument, history
 - Implement an optional astakosclient cli exposed as "astakos", with the following methods:
     authenticate, uuid, username, quotas, service uuid/username/quotas
 - Add some astakos/keystone kamaki-lib api calls [#3874], used to access astakos-calls cache:

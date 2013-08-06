@@ -33,12 +33,102 @@
 
 from unittest import makeSuite, TestSuite, TextTestRunner, TestCase
 from inspect import getmembers, isclass
+from tempfile import NamedTemporaryFile
 
 from kamaki.cli.command_tree.test import Command, CommandTree
 from kamaki.cli.argument.test import (
     Argument, ConfigArgument, RuntimeConfigArgument, FlagArgument,
     ValueArgument, IntArgument, DateArgument, VersionArgument,
     KeyValueArgument, ProgressBarArgument, ArgumentParseManager)
+
+
+class History(TestCase):
+
+    def setUp(self):
+        from kamaki.cli.history import History as HClass
+        self.HCLASS = HClass
+        self.file = NamedTemporaryFile()
+
+    def tearDown(self):
+        self.file.close()
+
+    def test__match(self):
+        self.assertRaises(AttributeError, self.HCLASS._match, 'ok', 42)
+        self.assertRaises(TypeError, self.HCLASS._match, 2.71, 'ok')
+        for args, expected in (
+                (('XXX', None), True),
+                ((None, None), True),
+                (('this line has some terms', 'some terms'), True),
+                (('this line has some terms', 'some bad terms'), False),
+                (('small line', 'not so small line terms'), False),
+                ((['line', 'with', 'some', 'terms'], 'some terms'), True),
+                ((['line', 'with', 'some terms'], 'some terms'), False)):
+            self.assertEqual(self.HCLASS._match(*args), expected)
+
+    def test_get(self):
+        history = self.HCLASS(self.file.name)
+        self.assertEqual(history.get(), [])
+
+        sample_history = (
+            'kamaki history show\n',
+            'kamaki file list\n',
+            'kamaki touch pithos:f1\n',
+            'kamaki file info pithos:f1\n')
+        self.file.write(''.join(sample_history))
+        self.file.flush()
+
+        expected = ['%s.  \t%s' % (
+            i + 1, event) for i, event in enumerate(sample_history)]
+        self.assertEqual(history.get(), expected)
+        self.assertEqual(history.get('kamaki'), expected)
+        self.assertEqual(history.get('file kamaki'), expected[1::2])
+        self.assertEqual(history.get('pithos:f1'), expected[2:])
+        self.assertEqual(history.get('touch pithos:f1'), expected[2:3])
+
+        for limit in range(len(sample_history)):
+            self.assertEqual(history.get(limit=limit), expected[-limit:])
+            self.assertEqual(
+                history.get('kamaki', limit=limit), expected[-limit:])
+
+    def test_add(self):
+        history = self.HCLASS(self.file.name)
+        some_strings = ('a brick', 'two bricks', 'another brick', 'A wall!')
+        for i, line in enumerate(some_strings):
+            history.add(line)
+            self.file.seek(0)
+            self.assertEqual(
+                self.file.read(), '\n'.join(some_strings[:(i + 1)]) + '\n')
+
+    def test_clean(self):
+        content = 'a brick\ntwo bricks\nanother brick\nA wall!\n'
+        self.file.write(content)
+        self.file.flush()
+        self.file.seek(0)
+        self.assertEqual(self.file.read(), content)
+        history = self.HCLASS(self.file.name)
+        history.clean()
+        self.file.seek(0)
+        self.assertEqual(self.file.read(), '')
+
+    def test_retrieve(self):
+        sample_history = (
+            'kamaki history show\n',
+            'kamaki file list\n',
+            'kamaki touch pithos:f1\n',
+            'kamaki file info pithos:f1\n',
+            'current / last command is always excluded')
+        self.file.write(''.join(sample_history))
+        self.file.flush()
+
+        history = self.HCLASS(self.file.name)
+        self.assertRaises(ValueError, history.retrieve, 'must be number')
+        self.assertRaises(TypeError, history.retrieve, [1, 2, 3])
+
+        for i in (0, len(sample_history), -len(sample_history)):
+            self.assertEqual(history.retrieve(i), None)
+        for i in range(1, len(sample_history)):
+            self.assertEqual(history.retrieve(i), sample_history[i - 1])
+            self.assertEqual(history.retrieve(- i), sample_history[- i - 1])
 
 
 #  TestCase auxiliary methods
