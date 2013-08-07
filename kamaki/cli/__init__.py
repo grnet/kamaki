@@ -332,7 +332,13 @@ def _load_spec_module(spec, arguments, module):
         except ImportError as ie:
             continue
     if not pkg:
-        kloger.debug('Loading cmd grp %s failed: %s' % (spec, ie))
+        msg = 'Loading command group %s failed: %s' % (spec, ie)
+        try:
+            kloger.debug(msg)
+        except AttributeError:
+            print msg
+            print 'HINT: use a text editor to remove all global.*_cli'
+            print '      settings from the configuration file'
     return pkg
 
 
