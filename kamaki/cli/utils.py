@@ -100,17 +100,14 @@ def remove_colors():
     red = yellow = magenta = bold = dummy
 
 
-def pretty_keys(d, delim='_', recurcive=False):
-    """<term>delim<term> to <term> <term> transformation
-    """
-    new_d = {}
-    for key, val in d.items():
-        new_key = key.split(delim)[-1]
-        if recurcive and isinstance(val, dict):
-            new_val = pretty_keys(val, delim, recurcive)
-        else:
-            new_val = val
-        new_d[new_key] = new_val
+def pretty_keys(d, delim='_', recursive=False):
+    """<term>delim<term> to <term> <term> transformation"""
+    new_d = dict(d)
+    for k, v in d.items():
+        new_v = new_d.pop(k)
+        new_d[k.replace(delim, ' ').strip()] = pretty_keys(
+            new_v, delim, True) if (
+                recursive and isinstance(v, dict)) else new_v
     return new_d
 
 
