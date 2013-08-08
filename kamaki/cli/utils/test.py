@@ -33,7 +33,7 @@
 
 from unittest import TestCase
 #from tempfile import NamedTemporaryFile
-#from mock import patch, call
+from mock import patch, call
 from itertools import product
 
 
@@ -63,48 +63,143 @@ class UtilsMethods(TestCase):
             else:
                 self.assertRaises(AssertionError, guess_mime_type, *args)
 
-    def test_pretty_keys(self):
-        from kamaki.cli.utils import pretty_keys
-        for args, exp in (
+    @patch('kamaki.cli.utils.dumps', return_value='(dumps output)')
+    @patch('kamaki.cli.utils._print')
+    def test_print_json(self, PR, JD):
+        from kamaki.cli.utils import print_json, INDENT_TAB
+        print_json('some data')
+        JD.assert_called_once_with('some data', indent=INDENT_TAB)
+        PR.assert_called_once_with('(dumps output)')
+
+    @patch('kamaki.cli.utils._print')
+    def test_print_dict(self, PR):
+        from kamaki.cli.utils import print_dict, INDENT_TAB
+        call_counter = 0
+        self.assertRaises(AssertionError, print_dict, 'non-dict think')
+        self.assertRaises(AssertionError, print_dict, {}, indent=-10)
+        for args in product(
                 (
-                    ({'k1': 'v1', 'k1_k2': 'v2'}, ),
-                    {'k1': 'v1', 'k1 k2': 'v2'}),
-                (
-                    ({'k1': 'v1', 'k1_k2': 'v2'}, '1'),
-                    {'k': 'v1', 'k _k2': 'v2'}),
-                (
-                    ({'k1_k2': 'v1', 'k1': {'k2': 'v2', 'k2_k3': 'v3'}}, ),
-                    {'k1 k2': 'v1', 'k1': {'k2': 'v2', 'k2_k3': 'v3'}}),
-                (
-                    (
-                        {'k1_k2': 'v1', 'k1': {'k2': 'v2', 'k2_k3': 'v3'}},
-                        '_',
-                        True),
-                    {'k1 k2': 'v1', 'k1': {'k2': 'v2', 'k2 k3': 'v3'}}),
-                (
-                    (
-                        {
-                            'k1_k2': {'k_1': 'v_1', 'k_2': {'k_3': 'v_3'}},
-                            'k1': {'k2': 'v2', 'k2_k3': 'v3'}},
-                        '_',
-                        True),
+                    {'k1': 'v1'},
+                    {'k1': 'v1', 'k2': 'v2'},
+                    {'k1': 'v1', 'k2': 'v2', 'k3': 'v3'},
+                    {'k1': 'v1', 'k2': {'k1': 'v1', 'k2': 'v2'}, 'k3': 'v3'},
                     {
-                        'k1 k2': {'k 1': 'v_1', 'k 2': {'k 3': 'v_3'}},
-                        'k1': {'k2': 'v2', 'k2 k3': 'v3'}}),
-                (
-                    (
-                        {
-                            'k1_k2': {'k_1': 'v_1', 'k_2': {'k_3': 'v_3'}},
-                            'k1': {'k2': 'v2', 'k2_k3': 'v3'}},
-                        '1',
-                        True),
+                        'k1': {'k1': 'v1', 'k2': 'v2'},
+                        'k2': [1, 2, 3],
+                        'k3': 'v3'},
                     {
-                        'k _k2': {'k_': 'v_1', 'k_2': {'k_3': 'v_3'}},
-                        'k': {'k2': 'v2', 'k2_k3': 'v3'}})
-            ):
-            initial = dict(args[0])
-            self.assert_dicts_are_equal(pretty_keys(*args), exp)
-            self.assert_dicts_are_equal(initial, args[0])
+                        'k1': {'k1': 'v1', 'k2': 'v2'},
+                        'k2': 42,
+                        'k3': {'k1': 1, 'k2': [1, 2, 3]}},
+                    {
+                        'k1': {
+                            'k1': 'v1',
+                            'k2': [1, 2, 3],
+                            'k3': {'k1': [(1, 2)]}},
+                        'k2': (3, 4, 5),
+                        'k3': {'k1': 1, 'k2': [1, 2, 3]}}),
+                (tuple(), ('k1', ), ('k1', 'k2')),
+                (0, 1, 2, 9), (False, True), (False, True)):
+            d, exclude, indent, with_enumeration, recursive_enumeration = args
+            with patch('kamaki.cli.utils.print_dict') as PD:
+                with patch('kamaki.cli.utils.print_list') as PL:
+                    pd_calls, pl_calls = 0, 0
+                    print_dict(*args)
+                    exp_calls = []
+                    for i, (k, v) in enumerate(d.items()):
+                        if k in exclude:
+                            continue
+                        str_k = ' ' * indent
+                        str_k += '%s.' % (i + 1) if with_enumeration else ''
+                        str_k += '%s:' % k
+                        if isinstance(v, dict):
+                            self.assertEqual(
+                                PD.mock_calls[pd_calls],
+                                call(
+                                    v,
+                                    exclude,
+                                    indent + INDENT_TAB,
+                                    recursive_enumeration,
+                                    recursive_enumeration))
+                            pd_calls += 1
+                            exp_calls.append(call(str_k))
+                        elif isinstance(v, list) or isinstance(v, tuple):
+                            self.assertEqual(
+                                PL.mock_calls[pl_calls],
+                                call(
+                                    v,
+                                    exclude,
+                                    indent + INDENT_TAB,
+                                    recursive_enumeration,
+                                    recursive_enumeration))
+                            pl_calls += 1
+                            exp_calls.append(call(str_k))
+                        else:
+                            exp_calls.append(call('%s %s' % (str_k, v)))
+                    real_calls = PR.mock_calls[call_counter:]
+                    call_counter = len(PR.mock_calls)
+                    self.assertEqual(sorted(real_calls), sorted(exp_calls))
+
+    @patch('kamaki.cli.utils._print')
+    def test_print_list(self, PR):
+        from kamaki.cli.utils import print_list, INDENT_TAB
+        call_counter = 0
+        self.assertRaises(AssertionError, print_list, 'non-list non-tuple')
+        self.assertRaises(AssertionError, print_list, {}, indent=-10)
+        for args in product(
+                (
+                    ['v1', ],
+                    ('v2', 'v3'),
+                    [1, '2', 'v3'],
+                    ({'k1': 'v1'}, 2, 'v3'),
+                    [(1, 2), 'v2', [(3, 4), {'k3': [5, 6], 'k4': 7}]]),
+                (tuple(), ('v1', ), ('v1', 1), ('v1', 'k3')),
+                (0, 1, 2, 9), (False, True), (False, True)):
+            l, exclude, indent, with_enumeration, recursive_enumeration = args
+            with patch('kamaki.cli.utils.print_dict') as PD:
+                with patch('kamaki.cli.utils.print_list') as PL:
+                    pd_calls, pl_calls = 0, 0
+                    print_list(*args)
+                    exp_calls = []
+                    for i, v in enumerate(l):
+                        str_v = ' ' * indent
+                        str_v += '%s.' % (i + 1) if with_enumeration else ''
+                        if isinstance(v, dict):
+                            if with_enumeration:
+                                exp_calls.append(call(str_v))
+                            elif i and i < len(l):
+                                exp_calls.append(call())
+                            self.assertEqual(
+                                PD.mock_calls[pd_calls],
+                                call(
+                                    v,
+                                    exclude,
+                                    indent + (
+                                        INDENT_TAB if with_enumeration else 0),
+                                    recursive_enumeration,
+                                    recursive_enumeration))
+                            pd_calls += 1
+                        elif isinstance(v, list) or isinstance(v, tuple):
+                            if with_enumeration:
+                                exp_calls.append(call(str_v))
+                            elif i and i < len(l):
+                                exp_calls.append(call())
+                            self.assertEqual(
+                                PL.mock_calls[pl_calls],
+                                call(
+                                    v,
+                                    exclude,
+                                    indent + INDENT_TAB,
+                                    recursive_enumeration,
+                                    recursive_enumeration))
+                            pl_calls += 1
+                        elif ('%s' % v) in exclude:
+                            continue
+                        else:
+                            exp_calls.append(call('%s%s' % (str_v, v)))
+                    real_calls = PR.mock_calls[call_counter:]
+                    call_counter = len(PR.mock_calls)
+                    self.assertEqual(sorted(real_calls), sorted(exp_calls))
 
 
 if __name__ == '__main__':

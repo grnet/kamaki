@@ -57,6 +57,11 @@ except ImportError:
     suggest['ansicolors']['active'] = True
 
 
+def _print(w):
+    """Print wrapper is used to help unittests check what is printed"""
+    print w
+
+
 def suggest_missing(miss=None, exclude=[]):
     global suggest
     sgs = dict(suggest)
@@ -116,7 +121,7 @@ def print_json(data):
 
     :param data: json-dumpable data
     """
-    print(dumps(data, indent=INDENT_TAB))
+    _print(dumps(data, indent=INDENT_TAB))
 
 
 def pretty_dict(d, *args, **kwargs):
@@ -156,17 +161,17 @@ def print_dict(
         print_str += '%s.' % (i + 1) if with_enumeration else ''
         print_str += '%s:' % k
         if isinstance(v, dict):
-            print print_str
+            _print(print_str)
             print_dict(
                 v, exclude, indent + INDENT_TAB,
                 recursive_enumeration, recursive_enumeration)
         elif isinstance(v, list) or isinstance(v, tuple):
-            print print_str
+            _print(print_str)
             print_list(
                 v, exclude, indent + INDENT_TAB,
                 recursive_enumeration, recursive_enumeration)
         else:
-            print '%s %s' % (print_str, v)
+            _print('%s %s' % (print_str, v))
 
 
 def print_list(
@@ -195,24 +200,23 @@ def print_list(
         'print_list prinbts a list or tuple')
     assert indent >= 0, 'print_list indent must be >= 0'
 
-    counter = 0
     for i, item in enumerate(l):
         print_str = ' ' * indent
         print_str += '%s.' % (i + 1) if with_enumeration else ''
         if isinstance(item, dict):
             if with_enumeration:
-                print print_str
-            elif counter and counter < len(l):
-                print
+                _print(print_str)
+            elif i and i < len(l):
+                _print('')
             print_dict(
                 item, exclude,
                 indent + (INDENT_TAB if with_enumeration else 0),
                 recursive_enumeration, recursive_enumeration)
         elif isinstance(item, list) or isinstance(item, tuple):
             if with_enumeration:
-                print print_str
-            elif counter and counter < len(l):
-                print
+                _print(print_str)
+            elif i and i < len(l):
+                _print()
             print_list(
                 item, exclude, indent + INDENT_TAB,
                 recursive_enumeration, recursive_enumeration)
@@ -220,8 +224,7 @@ def print_list(
             item = ('%s' % item).strip()
             if item in exclude:
                 continue
-            print '%s%s' % (print_str, item)
-        counter += 1
+            _print('%s%s' % (print_str, item))
 
 
 def page_hold(index, limit, maxlen):
