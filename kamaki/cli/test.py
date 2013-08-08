@@ -42,6 +42,7 @@ from kamaki.cli.argument.test import (
     Argument, ConfigArgument, RuntimeConfigArgument, FlagArgument,
     ValueArgument, IntArgument, DateArgument, VersionArgument,
     KeyValueArgument, ProgressBarArgument, ArgumentParseManager)
+from kamaki.cli.utils.test import UtilsMethods
 
 
 class History(TestCase):
@@ -277,76 +278,6 @@ class LoggerMethods(TestCase):
         from kamaki.cli.logger import get_logger
         get_logger('my logger name')
         GL.assert_called_once_with('my logger name')
-
-
-class UtilsMethods(TestCase):
-
-    def assert_dicts_are_equal(self, d1, d2):
-        for k, v in d1.items():
-            self.assertTrue(k in d2)
-            if isinstance(v, dict):
-                self.assert_dicts_are_equal(v, d2[k])
-            else:
-                self.assertEqual(unicode(v), unicode(d2[k]))
-
-    def test_guess_mime_type(self):
-        from kamaki.cli.utils import guess_mime_type
-        from mimetypes import guess_type
-        for args in product(
-                ('file.txt', 'file.png', 'file.zip', 'file.gz', None, 'X'),
-                ('a type', None),
-                ('an/encoding', None)):
-            filename, ctype, cencoding = args
-            if filename:
-                exp_type, exp_enc = guess_type(filename)
-                self.assertEqual(
-                    guess_mime_type(*args),
-                    (exp_type or ctype, exp_enc or cencoding))
-            else:
-                self.assertRaises(AssertionError, guess_mime_type, *args)
-
-    def test_pretty_keys(self):
-        from kamaki.cli.utils import pretty_keys
-        for args, exp in (
-                (
-                    ({'k1': 'v1', 'k1_k2': 'v2'}, ),
-                    {'k1': 'v1', 'k1 k2': 'v2'}),
-                (
-                    ({'k1': 'v1', 'k1_k2': 'v2'}, '1'),
-                    {'k': 'v1', 'k _k2': 'v2'}),
-                (
-                    ({'k1_k2': 'v1', 'k1': {'k2': 'v2', 'k2_k3': 'v3'}}, ),
-                    {'k1 k2': 'v1', 'k1': {'k2': 'v2', 'k2_k3': 'v3'}}),
-                (
-                    (
-                        {'k1_k2': 'v1', 'k1': {'k2': 'v2', 'k2_k3': 'v3'}},
-                        '_',
-                        True),
-                    {'k1 k2': 'v1', 'k1': {'k2': 'v2', 'k2 k3': 'v3'}}),
-                (
-                    (
-                        {
-                            'k1_k2': {'k_1': 'v_1', 'k_2': {'k_3': 'v_3'}},
-                            'k1': {'k2': 'v2', 'k2_k3': 'v3'}},
-                        '_',
-                        True),
-                    {
-                        'k1 k2': {'k 1': 'v_1', 'k 2': {'k 3': 'v_3'}},
-                        'k1': {'k2': 'v2', 'k2 k3': 'v3'}}),
-                (
-                    (
-                        {
-                            'k1_k2': {'k_1': 'v_1', 'k_2': {'k_3': 'v_3'}},
-                            'k1': {'k2': 'v2', 'k2_k3': 'v3'}},
-                        '1',
-                        True),
-                    {
-                        'k _k2': {'k_': 'v_1', 'k_2': {'k_3': 'v_3'}},
-                        'k': {'k2': 'v2', 'k2_k3': 'v3'}})
-            ):
-            initial = dict(args[0])
-            self.assert_dicts_are_equal(pretty_keys(*args), exp)
-            self.assert_dicts_are_equal(initial, args[0])
 
 
 #  TestCase auxiliary methods
