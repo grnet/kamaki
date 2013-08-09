@@ -62,6 +62,11 @@ def _print(w):
     print w
 
 
+def _write(w):
+    """stdout.write wrapper is used to help unittests check what is printed"""
+    stdout.write(w)
+
+
 def suggest_missing(miss=None, exclude=[]):
     global suggest
     sgs = dict(suggest)
@@ -229,22 +234,17 @@ def print_list(
 
 def page_hold(index, limit, maxlen):
     """Check if there are results to show, and hold the page when needed
-    :param index: (int) > 0
+    :param index: (int) > 0, index of current element
     :param limit: (int) 0 < limit <= max, page hold if limit mod index == 0
     :param maxlen: (int) Don't hold if index reaches maxlen
 
     :returns: True if there are more to show, False if all results are shown
     """
-    if index >= limit and index % limit == 0:
-        if index >= maxlen:
-            return False
-        else:
-            print('(%s listed - %s more - "enter" to continue)' % (
-                index,
-                maxlen - index))
-            c = ' '
-            while c != '\n':
-                c = stdin.read(1)
+    if index >= maxlen:
+        return False
+    if index and index % limit == 0:
+        raw_input('(%s listed - %s more - "enter" to continue)' % (
+            index, maxlen - index))
     return True
 
 
@@ -266,36 +266,32 @@ def print_items(
     :param page_size: (int) show results in pages of page_size items, enter to
         continue
     """
-    if not items:
-        return
-    elif not (
-            isinstance(items, dict) or isinstance(
-                items, list) or isinstance(items, dict)):
-        print '%s' % items
+    if not (isinstance(items, dict) or isinstance(items, list) or isinstance(
+                items, tuple)):
+        _print('%s' % items if items is not None else '')
         return
 
+    page_size = int(page_size)
     try:
-        page_size = int(page_size) if int(page_size) > 0 else len(items)
+        page_size = page_size if page_size > 0 else len(items)
     except:
         page_size = len(items)
     num_of_pages = len(items) // page_size
     num_of_pages += 1 if len(items) % page_size else 0
     for i, item in enumerate(items):
         if with_enumeration:
-            stdout.write('%s. ' % (i + 1))
+            _write('%s. ' % (i + 1))
         if isinstance(item, dict):
-            title = sorted(set(title).intersection(item.keys()))
-            if with_redundancy:
-                header = ' '.join('%s' % item[key] for key in title)
-            else:
-                header = ' '.join('%s' % item.pop(key) for key in title)
-            print(bold(header))
-        if isinstance(item, dict):
+            item = dict(item)
+            title = sorted(set(title).intersection(item))
+            pick = item.get if with_redundancy else item.pop
+            header = ' '.join('%s' % pick(key) for key in title)
+            _print(bold(header))
             print_dict(item, indent=INDENT_TAB)
-        elif isinstance(item, list):
+        elif isinstance(item, list) or isinstance(item, tuple):
             print_list(item, indent=INDENT_TAB)
         else:
-            print(' %s' % item)
+            _print(' %s' % item)
         page_hold(i + 1, page_size, len(items))
 
 

@@ -201,6 +201,91 @@ class UtilsMethods(TestCase):
                     call_counter = len(PR.mock_calls)
                     self.assertEqual(sorted(real_calls), sorted(exp_calls))
 
+    @patch('__builtin__.raw_input')
+    def test_page_hold(self, RI):
+        from kamaki.cli.utils import page_hold
+        ri_counter = 0
+        for args, expected in (
+                ((0, 0, 0), False),
+                ((1, 3, 10), True),
+                ((3, 3, 10), True),
+                ((5, 3, 10), True),
+                ((6, 3, 10), True),
+                ((10, 3, 10), False),
+                ((11, 3, 10), False)):
+            self.assertEqual(page_hold(*args), expected)
+            index, limit, maxlen = args
+            if index and index < maxlen and index % limit == 0:
+                self.assertEqual(ri_counter + 1, len(RI.mock_calls))
+                self.assertEqual(RI.mock_calls[-1], call(
+                    '(%s listed - %s more - "enter" to continue)' % (
+                        index, maxlen - index)))
+            else:
+                self.assertEqual(ri_counter, len(RI.mock_calls))
+            ri_counter = len(RI.mock_calls)
+
+    @patch('kamaki.cli.utils._print')
+    @patch('kamaki.cli.utils._write')
+    @patch('kamaki.cli.utils.print_dict')
+    @patch('kamaki.cli.utils.print_list')
+    @patch('kamaki.cli.utils.page_hold')
+    @patch('kamaki.cli.utils.bold', return_value='bold')
+    def test_print_items(self, bold, PH, PL, PD, WR, PR):
+        from kamaki.cli.utils import print_items, INDENT_TAB
+        for args in product(
+                (
+                    42, None, 'simple outputs',
+                    [1, 2, 3], {1: 1, 2: 2}, (3, 4),
+                    ({'k': 1, 'id': 2}, [5, 6, 7], (8, 9), '10')),
+                (('id', 'name'), ('something', 2), ('lala', )),
+                (False, True),
+                (False, True),
+                (0, 1, 2, 10)):
+            items, title, with_enumeration, with_redundancy, page_size = args
+            wr_counter, pr_counter = len(WR.mock_calls), len(PR.mock_calls)
+            pl_counter, pd_counter = len(PL.mock_calls), len(PD.mock_calls)
+            bold_counter, ph_counter = len(bold.mock_calls), len(PH.mock_calls)
+            print_items(*args)
+            if not (isinstance(items, dict) or isinstance(
+                    items, list) or isinstance(items, tuple)):
+                self.assertEqual(PR.mock_calls[-1], call(
+                    '%s' % items if items is not None else ''))
+            else:
+                for i, item in enumerate(items):
+                    if with_enumeration:
+                        self.assertEqual(
+                            WR.mock_calls[wr_counter],
+                            call('%s. ' % (i + 1)))
+                        wr_counter += 1
+                    if isinstance(item, dict):
+                        title = sorted(set(title).intersection(item))
+                        pick = item.get if with_redundancy else item.pop
+                        header = ' '.join('%s' % pick(key) for key in title)
+                        self.assertEqual(
+                            bold.mock_calls[bold_counter], call(header))
+                        self.assertEqual(
+                            PR.mock_calls[pr_counter], call('bold'))
+                        self.assertEqual(
+                            PD.mock_calls[pd_counter],
+                            call(item, indent=INDENT_TAB))
+                        pr_counter += 1
+                        pd_counter += 1
+                        bold_counter += 1
+                    elif isinstance(item, list) or isinstance(item, tuple):
+                        self.assertEqual(
+                            PL.mock_calls[pl_counter],
+                            call(item, indent=INDENT_TAB))
+                        pl_counter += 1
+                    else:
+                        self.assertEqual(
+                            PR.mock_calls[pr_counter], call(' %s' % item))
+                        pr_counter += 1
+                    page_size = page_size if page_size > 0 else len(items)
+                    self.assertEqual(
+                        PH.mock_calls[ph_counter],
+                        call(i + 1, page_size, len(items)))
+                    ph_counter += 1
+
 
 if __name__ == '__main__':
     from sys import argv
