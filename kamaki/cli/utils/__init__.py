@@ -67,6 +67,16 @@ def _write(w):
     stdout.write(w)
 
 
+def _flush():
+    """stdout.flush wrapper is used to help unittests check what is called"""
+    stdout.flush()
+
+
+def _readline():
+    """stdout.readline wrapper is used to help unittests"""
+    return stdout.readline()
+
+
 def suggest_missing(miss=None, exclude=[]):
     global suggest
     sgs = dict(suggest)
@@ -295,17 +305,22 @@ def print_items(
         page_hold(i + 1, page_size, len(items))
 
 
-def format_size(size):
-    units = ('B', 'KiB', 'MiB', 'GiB', 'TiB')
+def format_size(size, decimal_factors=False):
+    units = ('B', 'KB', 'MB', 'GB', 'TB') if decimal_factors else (
+        'B', 'KiB', 'MiB', 'GiB', 'TiB')
+    step = 1000 if decimal_factors else 1024
+    fstep = float(step)
     try:
         size = float(size)
-    except ValueError as err:
-        raiseCLIError(err, 'Cannot format %s in bytes' % size)
-    for unit in units:
-        if size < 1024:
+    except (ValueError, TypeError) as err:
+        raiseCLIError(err, 'Cannot format %s in bytes' % (
+            ','.join(size) if isinstance(size, tuple) else size))
+    for i, unit in enumerate(units):
+        if size < step or i + 1 == len(units):
             break
-        size /= 1024.0
+        size /= fstep
     s = ('%.2f' % size)
+    s = s.replace('%s' % step, '%s.99' % (step - 1)) if size <= fstep else s
     while '.' in s and s[-1] in ('0', '.'):
         s = s[:-1]
     return s + unit
@@ -317,6 +332,9 @@ def to_bytes(size, format):
     :param format: (case insensitive) KiB, KB, MiB, MB, GiB, GB, TiB, TB
 
     :returns: (int) the size in bytes
+    :raises ValueError: if invalid size or format
+    :raises AttributeError: if format is not str
+    :raises TypeError: if size is not arithmetic or convertible to arithmetic
     """
     format = format.upper()
     if format == 'B':
@@ -337,25 +355,25 @@ def to_bytes(size, format):
 
 def dict2file(d, f, depth=0):
     for k, v in d.items():
-        f.write('%s%s: ' % ('\t' * depth, k))
+        f.write('%s%s: ' % (' ' * INDENT_TAB * depth, k))
         if isinstance(v, dict):
             f.write('\n')
             dict2file(v, f, depth + 1)
-        elif isinstance(v, list):
+        elif isinstance(v, list) or isinstance(v, tuple):
             f.write('\n')
             list2file(v, f, depth + 1)
         else:
-            f.write(' %s\n' % v)
+            f.write('%s\n' % v)
 
 
 def list2file(l, f, depth=1):
     for item in l:
         if isinstance(item, dict):
             dict2file(item, f, depth + 1)
-        elif isinstance(item, list):
+        elif isinstance(item, list) or isinstance(item, tuple):
             list2file(item, f, depth + 1)
         else:
-            f.write('%s%s\n' % ('\t' * depth, item))
+            f.write('%s%s\n' % (' ' * INDENT_TAB * depth, item))
 
 # Split input auxiliary
 
@@ -365,38 +383,14 @@ def _parse_with_regex(line, regex):
     return (re_parser.split(line), re_parser.findall(line))
 
 
-def _sub_split(line):
-    terms = []
-    (sub_trivials, sub_interesting) = _parse_with_regex(line, ' ".*?" ')
-    for subi, subipart in enumerate(sub_interesting):
-        terms += sub_trivials[subi].split()
-        terms.append(subipart[2:-2])
-    terms += sub_trivials[-1].split()
-    return terms
-
-
-def old_split_input(line):
-    """Use regular expressions to split a line correctly"""
-    line = ' %s ' % line
-    (trivial_parts, interesting_parts) = _parse_with_regex(line, ' \'.*?\' ')
-    terms = []
-    for i, ipart in enumerate(interesting_parts):
-        terms += _sub_split(trivial_parts[i])
-        terms.append(ipart[2:-2])
-    terms += _sub_split(trivial_parts[-1])
-    return terms
-
-
 def _get_from_parsed(parsed_str):
     try:
         parsed_str = parsed_str.strip()
     except:
         return None
-    if parsed_str:
-        if parsed_str[0] == parsed_str[-1] and parsed_str[0] in ("'", '"'):
-            return [parsed_str[1:-1]]
-        return parsed_str.split(' ')
-    return None
+    return ([parsed_str[1:-1]] if (
+        parsed_str[0] == parsed_str[-1] and parsed_str[0] in ("'", '"')) else (
+            parsed_str.split(' '))) if parsed_str else None
 
 
 def split_input(line):
@@ -405,8 +399,6 @@ def split_input(line):
     reg_expr = '\'.*?\'|".*?"|^[\S]*$'
     (trivial_parts, interesting_parts) = _parse_with_regex(line, reg_expr)
     assert(len(trivial_parts) == 1 + len(interesting_parts))
-    #print('  [split_input] trivial_parts %s are' % trivial_parts)
-    #print('  [split_input] interesting_parts %s are' % interesting_parts)
     terms = []
     for i, tpart in enumerate(trivial_parts):
         part = _get_from_parsed(tpart)
@@ -428,52 +420,24 @@ def ask_user(msg, true_resp=('y', )):
 
     :returns: (bool) True if reponse in true responses, False otherwise
     """
-    stdout.write('%s [%s/N]: ' % (msg, ', '.join(true_resp)))
-    stdout.flush()
-    user_response = stdin.readline()
+    _write('%s [%s/N]: ' % (msg, ', '.join(true_resp)))
+    _flush()
+    user_response = _readline()
     return user_response[0].lower() in true_resp
 
 
 def spiner(size=None):
     spins = ('/', '-', '\\', '|')
-    stdout.write(' ')
+    _write(' ')
     size = size or -1
     i = 0
     while size - i:
-        stdout.write('\b%s' % spins[i % len(spins)])
-        stdout.flush()
+        _write('\b%s' % spins[i % len(spins)])
+        _flush()
         i += 1
         sleep(0.1)
         yield
     yield
-
-if __name__ == '__main__':
-    examples = [
-        'la_la le_le li_li',
-        '\'la la\' \'le le\' \'li li\'',
-        '\'la la\' le_le \'li li\'',
-        'la_la \'le le\' li_li',
-        'la_la \'le le\' \'li li\'',
-        '"la la" "le le" "li li"',
-        '"la la" le_le "li li"',
-        'la_la "le le" li_li',
-        '"la_la" "le le" "li li"',
-        '\'la la\' "le le" \'li li\'',
-        'la_la \'le le\' "li li"',
-        'la_la \'le le\' li_li',
-        '\'la la\' le_le "li li"',
-        '"la la" le_le \'li li\'',
-        '"la la" \'le le\' li_li',
-        'la_la \'le\'le\' "li\'li"',
-        '"la \'le le\' la"',
-        '\'la "le le" la\'',
-        '\'la "la" la\' "le \'le\' le" li_"li"_li',
-        '\'\' \'L\' "" "A"']
-
-    for i, example in enumerate(examples):
-        print('%s. Split this: (%s)' % (i + 1, example))
-        ret = old_split_input(example)
-        print('\t(%s) of size %s' % (ret, len(ret)))
 
 
 def get_path_size(testpath):
