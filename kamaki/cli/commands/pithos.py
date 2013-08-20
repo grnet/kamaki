@@ -39,8 +39,8 @@ from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import raiseCLIError, CLISyntaxError, CLIBaseUrlError
 from kamaki.cli.utils import (
-    format_size, to_bytes, print_dict, print_items, pretty_keys, pretty_dict,
-    page_hold, bold, ask_user, get_path_size, print_json, guess_mime_type)
+    format_size, to_bytes, print_dict, print_items, page_hold, bold, ask_user,
+    get_path_size, print_json, guess_mime_type)
 from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
 from kamaki.cli.argument import KeyValueArgument, DateArgument
 from kamaki.cli.argument import ProgressBarArgument
@@ -388,7 +388,7 @@ class file_list(_file_container_command, _optional_json):
             prfx = ('%s%s. ' % (empty_space, index)) if self['enum'] else ''
             if self['detail']:
                 print('%s%s' % (prfx, oname))
-                print_dict(pretty_keys(pretty_obj), exclude=('name'))
+                print_dict(pretty_obj, exclude=('name'))
                 print
             else:
                 oname = '%s%9s %s' % (prfx, size, oname)
@@ -413,7 +413,7 @@ class file_list(_file_container_command, _optional_json):
                 pretty_c = container.copy()
                 if 'bytes' in container:
                     pretty_c['bytes'] = '%s (%s)' % (container['bytes'], size)
-                print_dict(pretty_keys(pretty_c), exclude=('name'))
+                print_dict(pretty_c, exclude=('name'))
                 print
             else:
                 if 'count' in container and 'bytes' in container:
@@ -1761,11 +1761,7 @@ class file_metadata_get(_file_container_command, _optional_json):
         until = self['until']
         r = None
         if self.container is None:
-            if self['detail']:
-                r = self.client.get_account_info(until=until)
-            else:
-                r = self.client.get_account_meta(until=until)
-                r = pretty_keys(r, '-')
+            r = self.client.get_account_info(until=until)
         elif self.path is None:
             if self['detail']:
                 r = self.client.get_container_info(until=until)
@@ -1774,9 +1770,9 @@ class file_metadata_get(_file_container_command, _optional_json):
                 ometa = self.client.get_container_object_meta(until=until)
                 r = {}
                 if cmeta:
-                    r['container-meta'] = pretty_keys(cmeta, '-')
+                    r['container-meta'] = cmeta
                 if ometa:
-                    r['object-meta'] = pretty_keys(ometa, '-')
+                    r['object-meta'] = ometa
         else:
             if self['detail']:
                 r = self.client.get_object_info(
@@ -1786,7 +1782,6 @@ class file_metadata_get(_file_container_command, _optional_json):
                 r = self.client.get_object_meta(
                     self.path,
                     version=self['object_version'])
-                r = pretty_keys(pretty_keys(r, '-'))
         if r:
             self._print(r, print_dict)
 
@@ -1859,7 +1854,7 @@ class file_quota(_file_account_command, _optional_json):
             if not self['in_bytes']:
                 for k in output:
                     output[k] = format_size(output[k])
-            pretty_dict(output, '-')
+            print_dict(output, '-')
 
         self._print(self.client.get_account_quota(), pretty_print)
 
@@ -1889,7 +1884,7 @@ class file_containerlimit_get(_file_container_command, _optional_json):
             if not self['in_bytes']:
                 for k, v in output.items():
                     output[k] = 'unlimited' if '0' == v else format_size(v)
-            pretty_dict(output, '-')
+            print_dict(output, '-')
 
         self._print(
             self.client.get_container_limit(self.container), pretty_print)
@@ -2006,7 +2001,7 @@ class file_group_list(_file_account_command, _optional_json):
     @errors.generic.all
     @errors.pithos.connection
     def _run(self):
-        self._print(self.client.get_account_group(), pretty_dict, delim='-')
+        self._print(self.client.get_account_group(), print_dict, delim='-')
 
     def main(self):
         super(self.__class__, self)._run()
