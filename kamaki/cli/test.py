@@ -42,6 +42,7 @@ from kamaki.cli.argument.test import (
     Argument, ConfigArgument, RuntimeConfigArgument, FlagArgument,
     ValueArgument, IntArgument, DateArgument, VersionArgument,
     KeyValueArgument, ProgressBarArgument, ArgumentParseManager)
+from kamaki.cli.utils.test import UtilsMethods
 
 
 class History(TestCase):
