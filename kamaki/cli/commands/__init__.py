@@ -94,6 +94,16 @@ class _command_init(object):
     def _custom_version(self, service):
         return self.config.get_cloud(self.cloud, '%s_version' % service)
 
+    def _uuid2username(self, uuid):
+        r = self.auth_base.post_user_catalogs([uuid])
+        uuids = r.json['uuid_catalog']
+        return uuids.get(uuid, None)
+
+    def _username2uuid(self, username):
+        r = self.auth_base.post_user_catalogs(displaynames=[username])
+        names = r.json['displayname_catalog']
+        return names.get(username, None)
+
     def _set_log_params(self):
         try:
             self.client.LOG_TOKEN, self.client.LOG_DATA = (

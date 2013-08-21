@@ -199,6 +199,7 @@ class image_list(_init_image, _optional_json):
         size_max=IntArgument('filter by maximum size', '--size-max'),
         status=ValueArgument('filter by status', '--status'),
         owner=ValueArgument('filter by owner', '--owner'),
+        owner_name=ValueArgument('filter by owners username', '--owner-name'),
         order=ValueArgument(
             'order by FIELD ( - to reverse order)',
             '--order',
@@ -213,19 +214,27 @@ class image_list(_init_image, _optional_json):
 
     def _filtered_by_owner(self, detail, *list_params):
         images = []
-        MINKEYS = set([
-            'id', 'size', 'status', 'disk_format', 'container_format', 'name'])
+        ouuid = self['owner'] or self._username2uuid(self['owner_name'])
+        if not ouuid:
+            return images
         for img in self.client.list_public(True, *list_params):
-            if img['owner'] == self['owner']:
+            if img['owner'] == ouuid:
                 if not detail:
-                    for key in set(img.keys()).difference(MINKEYS):
+                    for key in set(img.keys()).difference(self.PERMANENTS):
                         img.pop(key)
                 images.append(img)
         return images
 
     def _filtered_by_name(self, images):
         np, ns, nl = self['name_pref'], self['name_suff'], self['name_like']
-        return [img for img in images if (
+
+        def augment_owner(img):
+            uuid = img.get('owner', None)
+            if uuid and not self['json_output']:
+                img['owner'] = '%s (%s)' % (uuid, self._uuid2username(uuid))
+            return img
+
+        return [augment_owner(img) for img in images if (
             (not np) or img['name'].lower().startswith(np.lower())) and (
             (not ns) or img['name'].lower().endswith(ns.lower())) and (
             (not nl) or nl.lower() in img['name'].lower())]
@@ -259,7 +268,7 @@ class image_list(_init_image, _optional_json):
 
         order = self['order']
         detail = self['detail'] or self['prop']
-        if self['owner']:
+        if self['owner'] or self['owner_name']:
             images = self._filtered_by_owner(detail, filters, order)
         else:
             images = self.client.list_public(detail, filters, order)
