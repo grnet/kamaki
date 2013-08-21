@@ -175,6 +175,10 @@ def _validate_image_location(location):
 class image_list(_init_image, _optional_json):
     """List images accessible by user"""
 
+    PERMANENTS = (
+        'id', 'name',
+        'status', 'container_format', 'disk_format', 'size')
+
     arguments = dict(
         detail=FlagArgument('show detailed output', ('-l', '--details')),
         container_format=ValueArgument(
@@ -203,7 +207,8 @@ class image_list(_init_image, _optional_json):
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
             '--more'),
-        enum=FlagArgument('Enumerate results', '--enumerate')
+        enum=FlagArgument('Enumerate results', '--enumerate'),
+        prop=KeyValueArgument('filter by property key=value', ('--property'))
     )
 
     def _filtered_by_owner(self, detail, *list_params):
@@ -225,6 +230,19 @@ class image_list(_init_image, _optional_json):
             (not ns) or img['name'].lower().endswith(ns.lower())) and (
             (not nl) or nl.lower() in img['name'].lower())]
 
+    def _filtered_by_properties(self, images):
+        new_images = []
+        for img in images:
+            if set(self['prop'].items()).difference(img['properties'].items()):
+                continue
+            if self['detail']:
+                new_images.append(dict(img))
+            else:
+                new_images.append(dict())
+                for k in set(img).intersection(self.PERMANENTS):
+                    new_images[-1][k] = img[k]
+        return new_images
+
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self):
@@ -240,13 +258,15 @@ class image_list(_init_image, _optional_json):
             filters[arg] = self[arg]
 
         order = self['order']
-        detail = self['detail']
+        detail = self['detail'] or self['prop']
         if self['owner']:
             images = self._filtered_by_owner(detail, filters, order)
         else:
             images = self.client.list_public(detail, filters, order)
 
         images = self._filtered_by_name(images)
+        if self['prop']:
+            images = self._filtered_by_properties(images)
         kwargs = dict(with_enumeration=self['enum'])
         if self['more']:
             kwargs['page_size'] = self['limit'] or 10

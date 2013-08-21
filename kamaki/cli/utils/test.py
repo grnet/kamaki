@@ -248,8 +248,8 @@ class UtilsMethods(TestCase):
             print_items(*args)
             if not (isinstance(items, dict) or isinstance(
                     items, list) or isinstance(items, tuple)):
-                self.assertEqual(PR.mock_calls[-1], call(
-                    '%s' % items if items is not None else ''))
+                if items:
+                    self.assertEqual(PR.mock_calls[-1], call('%s' % items))
             else:
                 for i, item in enumerate(items):
                     if with_enumeration:

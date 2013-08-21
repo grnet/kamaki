@@ -302,7 +302,7 @@ class KeyValueArgument(TestCase):
 
     def test_value(self):
         kva = argument.KeyValueArgument(parsed_name='--keyval')
-        self.assertEqual(kva.value, {})
+        self.assertEqual(kva.value, [])
         for kvpairs in (
                 'strval', 'key=val', 2.8, 42, None,
                 ('key', 'val'), ('key val'), ['=val', 'key=val'],
@@ -311,6 +311,8 @@ class KeyValueArgument(TestCase):
                 kva.value = kvpairs
             except Exception as e:
                 self.assertTrue(isinstance(e, errors.CLIError))
+        old = dict()
+        kva = argument.KeyValueArgument(parsed_name='--keyval')
         for kvpairs, exp in (
                 (('key=val', ), {'key': 'val'}),
                 (['key1=val1', 'key2=val2'], {'key1': 'val1', 'key2': 'val2'}),
@@ -320,7 +322,8 @@ class KeyValueArgument(TestCase):
                 (('k=v1', 'k=v2', 'k=v3'), {'k': 'v3'})
             ):
             kva.value = kvpairs
-            assert_dicts_are_equal(self, kva.value, exp)
+            old.update(exp)
+            assert_dicts_are_equal(self, kva.value, old)
 
 
 class ProgressBarArgument(TestCase):

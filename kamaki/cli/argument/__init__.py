@@ -280,7 +280,7 @@ class KeyValueArgument(Argument):
     :syntax: --<arg> key1=value1 --<arg> key2=value2 ...
     """
 
-    def __init__(self, help='', parsed_name=None, default={}):
+    def __init__(self, help='', parsed_name=None, default=[]):
         super(KeyValueArgument, self).__init__(-1, help, parsed_name, default)
 
     @property
@@ -295,7 +295,7 @@ class KeyValueArgument(Argument):
         """
         :param keyvalue_pairs: (str) ['key1=val1', 'key2=val2', ...]
         """
-        self._value = {}
+        self._value = getattr(self, '_value', self.value) or {}
         try:
             for pair in keyvalue_pairs:
                 key, sep, val = pair.partition('=')
