@@ -276,9 +276,11 @@ def print_items(
     :param page_size: (int) show results in pages of page_size items, enter to
         continue
     """
+    if not items:
+        return
     if not (isinstance(items, dict) or isinstance(items, list) or isinstance(
                 items, tuple)):
-        _print('%s' % items if items is not None else '')
+        _print('%s' % items)
         return
 
     page_size = int(page_size)
