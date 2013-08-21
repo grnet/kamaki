@@ -94,15 +94,18 @@ class _command_init(object):
     def _custom_version(self, service):
         return self.config.get_cloud(self.cloud, '%s_version' % service)
 
+    def _uuids2usernames(self, uuids):
+        return self.auth_base.post_user_catalogs(uuids).json['uuid_catalog']
+
+    def _usernames2uuids(self, username):
+        return self.auth_base.post_user_catalogs(
+            displaynames=username).json['displayname_catalog']
+
     def _uuid2username(self, uuid):
-        r = self.auth_base.post_user_catalogs([uuid])
-        uuids = r.json['uuid_catalog']
-        return uuids.get(uuid, None)
+        return self._uuids2usernames([uuid]).get(uuid, None)
 
     def _username2uuid(self, username):
-        r = self.auth_base.post_user_catalogs(displaynames=[username])
-        names = r.json['displayname_catalog']
-        return names.get(username, None)
+        return self._usernames2uuids([username]).get(username, None)
 
     def _set_log_params(self):
         try:

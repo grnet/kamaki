@@ -227,17 +227,24 @@ class image_list(_init_image, _optional_json):
 
     def _filtered_by_name(self, images):
         np, ns, nl = self['name_pref'], self['name_suff'], self['name_like']
+        uuids = {}
 
-        def augment_owner(img):
-            uuid = img.get('owner', None)
-            if uuid and not self['json_output']:
-                img['owner'] = '%s (%s)' % (uuid, self._uuid2username(uuid))
+        def fish_uuids(img):
+            if self['detail'] and not self['json_output']:
+                uuids[img['owner']] = ''
             return img
 
-        return [augment_owner(img) for img in images if (
+        r = [fish_uuids(img) for img in images if (
             (not np) or img['name'].lower().startswith(np.lower())) and (
             (not ns) or img['name'].lower().endswith(ns.lower())) and (
             (not nl) or nl.lower() in img['name'].lower())]
+
+        if self['detail'] and not self['json_output']:
+            uuids = self._uuids2usernames(uuids.keys())
+            for img in r:
+                img['owner'] += ' (%s)' % uuids[img['owner']]
+
+        return r
 
     def _filtered_by_properties(self, images):
         new_images = []
