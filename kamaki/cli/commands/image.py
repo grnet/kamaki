@@ -209,7 +209,10 @@ class image_list(_init_image, _optional_json):
             'output results in pages (-n to set items per page, default 10)',
             '--more'),
         enum=FlagArgument('Enumerate results', '--enumerate'),
-        prop=KeyValueArgument('filter by property key=value', ('--property'))
+        prop=KeyValueArgument('filter by property key=value', ('--property')),
+        prop_like=KeyValueArgument(
+            'fliter by property key=value where value is part of actual value',
+            ('--property-like'))
     )
 
     def _filtered_by_owner(self, detail, *list_params):
@@ -227,31 +230,37 @@ class image_list(_init_image, _optional_json):
 
     def _filtered_by_name(self, images):
         np, ns, nl = self['name_pref'], self['name_suff'], self['name_like']
-        uuids = {}
-
-        def fish_uuids(img):
-            if self['detail'] and not self['json_output']:
-                uuids[img['owner']] = ''
-            return img
-
-        r = [fish_uuids(img) for img in images if (
+        return [img for img in images if (
             (not np) or img['name'].lower().startswith(np.lower())) and (
             (not ns) or img['name'].lower().endswith(ns.lower())) and (
             (not nl) or nl.lower() in img['name'].lower())]
 
-        if self['detail'] and not self['json_output']:
-            uuids = self._uuids2usernames(uuids.keys())
-            for img in r:
-                img['owner'] += ' (%s)' % uuids[img['owner']]
-
-        return r
+    def _add_owner_name(self, images):
+        uuids = self._uuids2usernames(
+            list(set([img['owner'] for img in images])))
+        for img in images:
+            img['owner'] += ' (%s)' % uuids[img['owner']]
+        return images
 
     def _filtered_by_properties(self, images):
         new_images = []
+
+        def like_properties(props):
+            plike = self['prop_like']
+            for k, v in plike.items():
+                likestr = props.get(k, '').lower()
+                if v.lower() not in likestr:
+                    return False
+            return True
+
         for img in images:
-            if set(self['prop'].items()).difference(img['properties'].items()):
+            props = img['properties']
+            if (
+                    self['prop'] and set(
+                        self['prop'].items()).difference(props.items())) or (
+                    self['prop_like'] and not like_properties(props)):
                 continue
-            if self['detail']:
+            elif self['detail']:
                 new_images.append(dict(img))
             else:
                 new_images.append(dict())
@@ -274,14 +283,16 @@ class image_list(_init_image, _optional_json):
             filters[arg] = self[arg]
 
         order = self['order']
-        detail = self['detail'] or self['prop']
+        detail = self['detail'] or self['prop'] or self['prop_like']
         if self['owner'] or self['owner_name']:
             images = self._filtered_by_owner(detail, filters, order)
         else:
             images = self.client.list_public(detail, filters, order)
 
         images = self._filtered_by_name(images)
-        if self['prop']:
+        if self['detail'] and not self['json_output']:
+            images = self._add_owner_name(images)
+        if self['prop'] or self['prop_like']:
             images = self._filtered_by_properties(images)
         kwargs = dict(with_enumeration=self['enum'])
         if self['more']:
