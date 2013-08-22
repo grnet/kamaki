@@ -477,6 +477,26 @@ class UtilsMethods(TestCase):
             remove_from_items([tmp1, tmp2], k)
             self.assert_dicts_are_equal(tmp1, tmp2)
 
+    def test_filter_dicts_by_dict(self):
+        from kamaki.cli.utils import filter_dicts_by_dict
+
+        dlist = [
+            dict(k1='v1', k2='v2', k3='v3'),
+            dict(k1='v1'),
+            dict(k2='v2', k3='v3'),
+            dict(k1='V1', k3='V3'),
+            dict()]
+        for l, f, em, cs, exp in (
+                (dlist, dlist[2], True, False, dlist[0:1] + dlist[2:3]),
+                (dlist, dlist[1], True, False, dlist[0:2] + dlist[3:4]),
+                (dlist, dlist[1], True, True, dlist[0:2]),
+                (dlist, {'k3': 'v'}, True, False, []),
+                (dlist, {'k3': 'v'}, False, False, dlist[0:1] + dlist[2:4]),
+                (dlist, {'k3': 'v'}, False, True, dlist[0:1] + dlist[2:3]),
+                (dlist, {'k3': 'v'}, True, True, []),
+                ):
+            self.assertEqual(exp, filter_dicts_by_dict(l, f, em, cs))
+
 
 if __name__ == '__main__':
     from sys import argv

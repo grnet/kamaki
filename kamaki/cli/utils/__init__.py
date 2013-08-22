@@ -31,7 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from sys import stdout, stdin
+from sys import stdout
 from re import compile as regex_compile
 from time import sleep
 from os import walk, path
@@ -458,3 +458,37 @@ def remove_from_items(list_of_dicts, key_to_remove):
     for item in list_of_dicts:
         assert isinstance(item, dict), 'Item %s not a dict' % item
         item.pop(key_to_remove, None)
+
+
+def filter_dicts_by_dict(
+    list_of_dicts, filters,
+    exact_match=True, case_sensitive=False):
+    """
+    :param list_of_dicts: (list) each dict contains "raw" key-value pairs
+
+    :param filters: (dict) filters in key-value form
+
+    :param exact_match: (bool) if false, check if the filter value is part of
+        the actual value
+
+    :param case_sensitive: (bool) revers to values only (not keys)
+
+    :returns: (list) only the dicts that match all filters
+    """
+    new_dicts = []
+    for d in list_of_dicts:
+        if set(filters).difference(d):
+            continue
+        match = True
+        for k, v in filters.items():
+            dv, v = ('%s' % d[k]), ('%s' % v)
+            if not case_sensitive:
+                dv, v = dv.lower(), v.lower()
+            if not ((
+                    exact_match and v == dv) or (
+                    (not exact_match) and v in dv)):
+                match = False
+                break
+        if match:
+            new_dicts.append(d)
+    return new_dicts

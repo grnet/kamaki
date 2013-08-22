@@ -212,7 +212,7 @@ class image_list(_init_image, _optional_json):
         prop=KeyValueArgument('filter by property key=value', ('--property')),
         prop_like=KeyValueArgument(
             'fliter by property key=value where value is part of actual value',
-            ('--property-like'))
+            ('--property-like')),
     )
 
     def _filtered_by_owner(self, detail, *list_params):
@@ -642,19 +642,65 @@ class image_compute(_init_cyclades):
 class image_compute_list(_init_cyclades, _optional_json):
     """List images"""
 
+    PERMANENTS = ('id', 'name')
+
     arguments = dict(
         detail=FlagArgument('show detailed output', ('-l', '--details')),
         limit=IntArgument('limit number listed images', ('-n', '--number')),
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
             '--more'),
-        enum=FlagArgument('Enumerate results', '--enumerate')
+        enum=FlagArgument('Enumerate results', '--enumerate'),
+        meta=KeyValueArgument(
+            'filter by metadata key=value (can be repeated)', ('--metadata')),
+        meta_like=KeyValueArgument(
+            'filter by metadata key=value (can be repeated)',
+            ('--metadata-like'))
     )
+
+    def _filter_by_metadata(self, images):
+        new_images = []
+
+        def like_metadata(meta):
+            mlike = self['meta_like']
+            for k, v in mlike.items():
+                likestr = meta.get(k, '').lower()
+                if v.lower() not in likestr:
+                    return False
+            return True
+
+        for img in images:
+            meta = img['metadata']
+            if (
+                    self['meta'] and set(
+                        self['meta'].items()).difference(meta.items())) or (
+                    self['meta_like'] and not like_metadata(meta)):
+                continue
+            elif self['detail']:
+                new_images.append(dict(img))
+            else:
+                new_images.append(dict())
+                for k in set(img).intersection(self.PERMANENTS):
+                    new_images[-1][k] = img[k]
+        return new_images
+
+    def _add_name(self, images, key='user_id'):
+        uuids = self._uuids2usernames(
+            list(set([img[key] for img in images])))
+        for img in images:
+            img[key] += ' (%s)' % uuids[img[key]]
+        return images
 
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self):
-        images = self.client.list_images(self['detail'])
+        withmeta = bool(self['meta'] or self['meta_like'])
+        detail = self['detail'] or withmeta
+        images = self.client.list_images(detail)
+        if withmeta:
+            images = self._filter_by_metadata(images)
+        if self['detail'] and not self['json_output']:
+            images = self._add_name(self._add_name(images, 'tenant_id'))
         kwargs = dict(with_enumeration=self['enum'])
         if self['more']:
             kwargs['page_size'] = self['limit'] or 10
