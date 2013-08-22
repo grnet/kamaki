@@ -37,7 +37,7 @@ from logging import getLogger
 
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.utils import print_dict, print_json
+from kamaki.cli.utils import print_dict, print_json, filter_dicts_by_dict
 from kamaki.clients.image import ImageClient
 from kamaki.clients.pithos import PithosClient
 from kamaki.clients.astakos import AstakosClient
@@ -215,18 +215,9 @@ class image_list(_init_image, _optional_json):
             ('--property-like')),
     )
 
-    def _filtered_by_owner(self, detail, *list_params):
-        images = []
+    def _filtered_by_owner(self, images):
         ouuid = self['owner'] or self._username2uuid(self['owner_name'])
-        if not ouuid:
-            return images
-        for img in self.client.list_public(True, *list_params):
-            if img['owner'] == ouuid:
-                if not detail:
-                    for key in set(img.keys()).difference(self.PERMANENTS):
-                        img.pop(key)
-                images.append(img)
-        return images
+        return filter_dicts_by_dict(images, dict(owner=ouuid))
 
     def _filtered_by_name(self, images):
         np, ns, nl = self['name_pref'], self['name_suff'], self['name_like']
@@ -245,27 +236,30 @@ class image_list(_init_image, _optional_json):
     def _filtered_by_properties(self, images):
         new_images = []
 
-        def like_properties(props):
-            plike = self['prop_like']
-            for k, v in plike.items():
-                likestr = props.get(k, '').lower()
-                if v.lower() not in likestr:
-                    return False
-            return True
+        # def like_properties(props):
+        #     plike = self['prop_like']
+        #     for k, v in plike.items():
+        #         likestr = props.get(k, '').lower()
+        #         if v.lower() not in likestr:
+        #             return False
+        #     return True
 
         for img in images:
-            props = img['properties']
-            if (
-                    self['prop'] and set(
-                        self['prop'].items()).difference(props.items())) or (
-                    self['prop_like'] and not like_properties(props)):
-                continue
-            elif self['detail']:
-                new_images.append(dict(img))
-            else:
-                new_images.append(dict())
-                for k in set(img).intersection(self.PERMANENTS):
-                    new_images[-1][k] = img[k]
+            props = [dict(img['properties'])]
+            if self['prop']:
+                props = filter_dicts_by_dict(props, self['prop'])
+            if props and self['prop_like']:
+                props = filter_dicts_by_dict(
+                    props, self['prop_like'], exact_match=False)
+            if props:
+                new_images.append(img)
+
+            #if (
+            #        self['prop'] and set(
+            #            self['prop'].items()).difference(props.items())) or (
+            #        self['prop_like'] and not like_properties(props)):
+            #    continue
+            #new_images.append(img)
         return new_images
 
     @errors.generic.all
@@ -283,17 +277,24 @@ class image_list(_init_image, _optional_json):
             filters[arg] = self[arg]
 
         order = self['order']
-        detail = self['detail'] or self['prop'] or self['prop_like']
-        if self['owner'] or self['owner_name']:
-            images = self._filtered_by_owner(detail, filters, order)
-        else:
-            images = self.client.list_public(detail, filters, order)
+        detail = self['detail'] or (
+            self['prop'] or self['prop_like']) or (
+            self['owner'] or self['owner_name'])
 
-        images = self._filtered_by_name(images)
-        if self['detail'] and not self['json_output']:
-            images = self._add_owner_name(images)
+        images = self.client.list_public(detail, filters, order)
+
+        if self['owner'] or self['owner_name']:
+            images = self._filtered_by_owner(images)
         if self['prop'] or self['prop_like']:
             images = self._filtered_by_properties(images)
+        images = self._filtered_by_name(images)
+
+        if self['detail'] and not self['json_output']:
+            images = self._add_owner_name(images)
+        elif detail and not self['detail']:
+            for img in images:
+                for key in set(img).difference(self.PERMANENTS):
+                    img.pop(key)
         kwargs = dict(with_enumeration=self['enum'])
         if self['more']:
             kwargs['page_size'] = self['limit'] or 10
@@ -661,27 +662,15 @@ class image_compute_list(_init_cyclades, _optional_json):
     def _filter_by_metadata(self, images):
         new_images = []
 
-        def like_metadata(meta):
-            mlike = self['meta_like']
-            for k, v in mlike.items():
-                likestr = meta.get(k, '').lower()
-                if v.lower() not in likestr:
-                    return False
-            return True
-
         for img in images:
-            meta = img['metadata']
-            if (
-                    self['meta'] and set(
-                        self['meta'].items()).difference(meta.items())) or (
-                    self['meta_like'] and not like_metadata(meta)):
-                continue
-            elif self['detail']:
-                new_images.append(dict(img))
-            else:
-                new_images.append(dict())
-                for k in set(img).intersection(self.PERMANENTS):
-                    new_images[-1][k] = img[k]
+            meta = [dict(img['metadata'])]
+            if self['meta']:
+                meta = filter_dicts_by_dict(meta, self['meta'])
+            if meta and self['meta_like']:
+                meta = filter_dicts_by_dict(
+                    meta, self['meta_like'], exact_match=False)
+            if meta:
+                new_images.append(img)
         return new_images
 
     def _add_name(self, images, key='user_id'):

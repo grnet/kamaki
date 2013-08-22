@@ -494,6 +494,7 @@ class UtilsMethods(TestCase):
                 (dlist, {'k3': 'v'}, False, False, dlist[0:1] + dlist[2:4]),
                 (dlist, {'k3': 'v'}, False, True, dlist[0:1] + dlist[2:3]),
                 (dlist, {'k3': 'v'}, True, True, []),
+                (dlist, dlist[4], True, False, dlist),
                 ):
             self.assertEqual(exp, filter_dicts_by_dict(l, f, em, cs))
 
