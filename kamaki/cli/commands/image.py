@@ -235,15 +235,6 @@ class image_list(_init_image, _optional_json):
 
     def _filtered_by_properties(self, images):
         new_images = []
-
-        # def like_properties(props):
-        #     plike = self['prop_like']
-        #     for k, v in plike.items():
-        #         likestr = props.get(k, '').lower()
-        #         if v.lower() not in likestr:
-        #             return False
-        #     return True
-
         for img in images:
             props = [dict(img['properties'])]
             if self['prop']:
@@ -253,13 +244,6 @@ class image_list(_init_image, _optional_json):
                     props, self['prop_like'], exact_match=False)
             if props:
                 new_images.append(img)
-
-            #if (
-            #        self['prop'] and set(
-            #            self['prop'].items()).difference(props.items())) or (
-            #        self['prop_like'] and not like_properties(props)):
-            #    continue
-            #new_images.append(img)
         return new_images
 
     @errors.generic.all
@@ -652,6 +636,18 @@ class image_compute_list(_init_cyclades, _optional_json):
             'output results in pages (-n to set items per page, default 10)',
             '--more'),
         enum=FlagArgument('Enumerate results', '--enumerate'),
+        name=ValueArgument('filter by name', '--name'),
+        name_pref=ValueArgument(
+            'filter by name prefix (case insensitive)',
+            '--name-prefix'),
+        name_suff=ValueArgument(
+            'filter by name suffix (case insensitive)',
+            '--name-suffix'),
+        name_like=ValueArgument(
+            'print only if name contains this (case insensitive)',
+            '--name-like'),
+        user_id=ValueArgument('filter by user_id', '--user-id'),
+        user_name=ValueArgument('filter by username', '--user-name'),
         meta=KeyValueArgument(
             'filter by metadata key=value (can be repeated)', ('--metadata')),
         meta_like=KeyValueArgument(
@@ -659,9 +655,15 @@ class image_compute_list(_init_cyclades, _optional_json):
             ('--metadata-like'))
     )
 
+    def _filtered_by_name(self, images):
+        np, ns, nl = self['name_pref'], self['name_suff'], self['name_like']
+        return [img for img in images if (
+            (not np) or img['name'].lower().startswith(np.lower())) and (
+            (not ns) or img['name'].lower().endswith(ns.lower())) and (
+            (not nl) or nl.lower() in img['name'].lower())]
+
     def _filter_by_metadata(self, images):
         new_images = []
-
         for img in images:
             meta = [dict(img['metadata'])]
             if self['meta']:
@@ -672,6 +674,10 @@ class image_compute_list(_init_cyclades, _optional_json):
             if meta:
                 new_images.append(img)
         return new_images
+
+    def _filter_by_user(self, images):
+        uuid = self['user_id'] or self._username2uuid(self['user_name'])
+        return filter_dicts_by_dict(images, dict(user_id=uuid))
 
     def _add_name(self, images, key='user_id'):
         uuids = self._uuids2usernames(
@@ -684,12 +690,20 @@ class image_compute_list(_init_cyclades, _optional_json):
     @errors.cyclades.connection
     def _run(self):
         withmeta = bool(self['meta'] or self['meta_like'])
-        detail = self['detail'] or withmeta
+        withuser = bool(self['user_id'] or self['user_name'])
+        detail = self['detail'] or withmeta or withuser
         images = self.client.list_images(detail)
+        images = self._filtered_by_name(images)
+        if withuser:
+            images = self._filter_by_user(images)
         if withmeta:
             images = self._filter_by_metadata(images)
         if self['detail'] and not self['json_output']:
             images = self._add_name(self._add_name(images, 'tenant_id'))
+        elif detail and not self['detail']:
+            for img in images:
+                for key in set(img).difference(self.PERMANENTS):
+                    img.pop(key)
         kwargs = dict(with_enumeration=self['enum'])
         if self['more']:
             kwargs['page_size'] = self['limit'] or 10
