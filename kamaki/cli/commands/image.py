@@ -803,7 +803,7 @@ class image_compute_properties_add(_init_cyclades, _optional_json):
 @command(image_cmds)
 class image_compute_properties_set(_init_cyclades, _optional_json):
     """Add / update a set of properties for an image
-    proeprties must be given in the form key=value, e.v.
+    properties must be given in the form key=value, e.v.
     /image compute properties set <image-id> key1=val1 key2=val2
     """
 
