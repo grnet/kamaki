@@ -33,7 +33,8 @@
 
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.utils import print_dict, remove_from_items
+from kamaki.cli.utils import (
+    print_dict, remove_from_items, filter_dicts_by_dict)
 from kamaki.cli.errors import raiseCLIError, CLISyntaxError, CLIBaseUrlError
 from kamaki.clients.cyclades import CycladesClient, ClientError
 from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
@@ -157,6 +158,8 @@ class _init_cyclades(_command_init):
 class server_list(_init_cyclades, _optional_json):
     """List Virtual Machines accessible by user"""
 
+    PERMANENTS = ('id', 'name')
+
     __doc__ += about_authentication
 
     arguments = dict(
@@ -168,17 +171,89 @@ class server_list(_init_cyclades, _optional_json):
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
             '--more'),
-        enum=FlagArgument('Enumerate results', '--enumerate')
+        enum=FlagArgument('Enumerate results', '--enumerate'),
+        name=ValueArgument('filter by name', '--name'),
+        name_pref=ValueArgument(
+            'filter by name prefix (case insensitive)', '--name-prefix'),
+        name_suff=ValueArgument(
+            'filter by name suffix (case insensitive)', '--name-suffix'),
+        name_like=ValueArgument(
+            'print only if name contains this (case insensitive)',
+            '--name-like'),
+        flavor_id=ValueArgument('filter by flavor id', ('--flavor-id')),
+        image_id=ValueArgument('filter by image id', ('--image-id')),
+        meta=KeyValueArgument('filter by metadata key=values', ('--metadata')),
+        meta_like=KeyValueArgument(
+            'print only if in key=value, the value is part of actual value',
+            ('--metadata-like')),
     )
+
+    def _filtered_by_name(self, servers):
+        if self['name']:
+            servers = filter_dicts_by_dict(servers, dict(name=self['name']))
+        np, ns, nl = self['name_pref'], self['name_suff'], self['name_like']
+        return [img for img in servers if (
+            (not np) or img['name'].lower().startswith(np.lower())) and (
+            (not ns) or img['name'].lower().endswith(ns.lower())) and (
+            (not nl) or nl.lower() in img['name'].lower())]
+
+    def _filtered_by_image(self, servers):
+        iid = self['image_id']
+        new_servers = []
+        for srv in servers:
+            if srv['image']['id'] == iid:
+                new_servers.append(srv)
+        return new_servers
+
+    def _filtered_by_flavor(self, servers):
+        fid = self['flavor_id']
+        new_servers = []
+        for srv in servers:
+            if '%s' % srv['flavor']['id'] == '%s' % fid:
+                new_servers.append(srv)
+        return new_servers
+
+    def _filtered_by_metadata(self, servers):
+        new_servers = []
+        for srv in servers:
+            if not 'metadata' in srv:
+                continue
+            meta = [dict(srv['metadata'])]
+            if self['meta']:
+                meta = filter_dicts_by_dict(meta, self['meta'])
+            if meta and self['meta_like']:
+                meta = filter_dicts_by_dict(
+                    meta, self['meta_like'], exact_match=False)
+            if meta:
+                new_servers.append(srv)
+        return new_servers
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.date
     def _run(self):
-        servers = self.client.list_servers(self['detail'], self['since'])
+        withimage = bool(self['image_id'])
+        withflavor = bool(self['flavor_id'])
+        withmeta = bool(self['meta'] or self['meta_like'])
+        detail = self['detail'] or withimage or withflavor or withmeta
+        servers = self.client.list_servers(detail, self['since'])
+
+        servers = self._filtered_by_name(servers)
+        if withimage:
+            servers = self._filtered_by_image(servers)
+        if withflavor:
+            servers = self._filtered_by_flavor(servers)
+        if withmeta:
+            servers = self._filtered_by_metadata(servers)
+
         if not (self['detail'] or self['json_output']):
             remove_from_items(servers, 'links')
-
+        #if self['detail'] and not self['json_output']:
+        #    servers = self._add_owner_name(servers)
+        if detail and not self['detail']:
+            for srv in servers:
+                for key in set(srv).difference(self.PERMANENTS):
+                    srv.pop(key)
         kwargs = dict(with_enumeration=self['enum'])
         if self['more']:
             kwargs['page_size'] = self['limit'] if self['limit'] else 10
