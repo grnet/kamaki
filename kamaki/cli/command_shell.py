@@ -73,6 +73,9 @@ class Shell(Cmd):
 
     undoc_header = 'interactive shell commands:'
 
+    def emptyline(self):
+        self.lastcmd = ''
+
     def postcmd(self, post, line):
         if self._context_stack:
             self._roll_command()

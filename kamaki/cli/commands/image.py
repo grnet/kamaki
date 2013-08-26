@@ -37,7 +37,7 @@ from logging import getLogger
 
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.utils import print_dict, print_json
+from kamaki.cli.utils import print_dict, print_json, filter_dicts_by_dict
 from kamaki.clients.image import ImageClient
 from kamaki.clients.pithos import PithosClient
 from kamaki.clients.astakos import AstakosClient
@@ -47,7 +47,8 @@ from kamaki.cli.argument import IntArgument, ProgressBarArgument
 from kamaki.cli.commands.cyclades import _init_cyclades
 from kamaki.cli.errors import raiseCLIError, CLIBaseUrlError
 from kamaki.cli.commands import _command_init, errors, addLogSettings
-from kamaki.cli.commands import _optional_output_cmd, _optional_json
+from kamaki.cli.commands import (
+    _optional_output_cmd, _optional_json, _name_filter, _id_filter)
 
 
 image_cmds = CommandTree(
@@ -172,8 +173,12 @@ def _validate_image_location(location):
 
 
 @command(image_cmds)
-class image_list(_init_image, _optional_json):
+class image_list(_init_image, _optional_json, _name_filter, _id_filter):
     """List images accessible by user"""
+
+    PERMANENTS = (
+        'id', 'name',
+        'status', 'container_format', 'disk_format', 'size')
 
     arguments = dict(
         detail=FlagArgument('show detailed output', ('-l', '--details')),
@@ -181,20 +186,11 @@ class image_list(_init_image, _optional_json):
             'filter by container format',
             '--container-format'),
         disk_format=ValueArgument('filter by disk format', '--disk-format'),
-        name=ValueArgument('filter by name', '--name'),
-        name_pref=ValueArgument(
-            'filter by name prefix (case insensitive)',
-            '--name-prefix'),
-        name_suff=ValueArgument(
-            'filter by name suffix (case insensitive)',
-            '--name-suffix'),
-        name_like=ValueArgument(
-            'print only if name contains this (case insensitive)',
-            '--name-like'),
         size_min=IntArgument('filter by minimum size', '--size-min'),
         size_max=IntArgument('filter by maximum size', '--size-max'),
         status=ValueArgument('filter by status', '--status'),
         owner=ValueArgument('filter by owner', '--owner'),
+        owner_name=ValueArgument('filter by owners username', '--owner-name'),
         order=ValueArgument(
             'order by FIELD ( - to reverse order)',
             '--order',
@@ -203,27 +199,36 @@ class image_list(_init_image, _optional_json):
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
             '--more'),
-        enum=FlagArgument('Enumerate results', '--enumerate')
+        enum=FlagArgument('Enumerate results', '--enumerate'),
+        prop=KeyValueArgument('filter by property key=value', ('--property')),
+        prop_like=KeyValueArgument(
+            'fliter by property key=value where value is part of actual value',
+            ('--property-like')),
     )
 
-    def _filtered_by_owner(self, detail, *list_params):
-        images = []
-        MINKEYS = set([
-            'id', 'size', 'status', 'disk_format', 'container_format', 'name'])
-        for img in self.client.list_public(True, *list_params):
-            if img['owner'] == self['owner']:
-                if not detail:
-                    for key in set(img.keys()).difference(MINKEYS):
-                        img.pop(key)
-                images.append(img)
+    def _filter_by_owner(self, images):
+        ouuid = self['owner'] or self._username2uuid(self['owner_name'])
+        return filter_dicts_by_dict(images, dict(owner=ouuid))
+
+    def _add_owner_name(self, images):
+        uuids = self._uuids2usernames(
+            list(set([img['owner'] for img in images])))
+        for img in images:
+            img['owner'] += ' (%s)' % uuids[img['owner']]
         return images
 
-    def _filtered_by_name(self, images):
-        np, ns, nl = self['name_pref'], self['name_suff'], self['name_like']
-        return [img for img in images if (
-            (not np) or img['name'].lower().startswith(np.lower())) and (
-            (not ns) or img['name'].lower().endswith(ns.lower())) and (
-            (not nl) or nl.lower() in img['name'].lower())]
+    def _filter_by_properties(self, images):
+        new_images = []
+        for img in images:
+            props = [dict(img['properties'])]
+            if self['prop']:
+                props = filter_dicts_by_dict(props, self['prop'])
+            if props and self['prop_like']:
+                props = filter_dicts_by_dict(
+                    props, self['prop_like'], exact_match=False)
+            if props:
+                new_images.append(img)
+        return new_images
 
     @errors.generic.all
     @errors.cyclades.connection
@@ -240,13 +245,25 @@ class image_list(_init_image, _optional_json):
             filters[arg] = self[arg]
 
         order = self['order']
-        detail = self['detail']
-        if self['owner']:
-            images = self._filtered_by_owner(detail, filters, order)
-        else:
-            images = self.client.list_public(detail, filters, order)
+        detail = self['detail'] or (
+            self['prop'] or self['prop_like']) or (
+            self['owner'] or self['owner_name'])
 
-        images = self._filtered_by_name(images)
+        images = self.client.list_public(detail, filters, order)
+
+        if self['owner'] or self['owner_name']:
+            images = self._filter_by_owner(images)
+        if self['prop'] or self['prop_like']:
+            images = self._filter_by_properties(images)
+        images = self._filter_by_id(images)
+        images = self._non_exact_name_filter(images)
+
+        if self['detail'] and not self['json_output']:
+            images = self._add_owner_name(images)
+        elif detail and not self['detail']:
+            for img in images:
+                for key in set(img).difference(self.PERMANENTS):
+                    img.pop(key)
         kwargs = dict(with_enumeration=self['enum'])
         if self['more']:
             kwargs['page_size'] = self['limit'] or 10
@@ -592,8 +609,11 @@ class image_compute(_init_cyclades):
 
 
 @command(image_cmds)
-class image_compute_list(_init_cyclades, _optional_json):
+class image_compute_list(
+        _init_cyclades, _optional_json, _name_filter, _id_filter):
     """List images"""
+
+    PERMANENTS = ('id', 'name')
 
     arguments = dict(
         detail=FlagArgument('show detailed output', ('-l', '--details')),
@@ -601,13 +621,59 @@ class image_compute_list(_init_cyclades, _optional_json):
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
             '--more'),
-        enum=FlagArgument('Enumerate results', '--enumerate')
+        enum=FlagArgument('Enumerate results', '--enumerate'),
+        user_id=ValueArgument('filter by user_id', '--user-id'),
+        user_name=ValueArgument('filter by username', '--user-name'),
+        meta=KeyValueArgument(
+            'filter by metadata key=value (can be repeated)', ('--metadata')),
+        meta_like=KeyValueArgument(
+            'filter by metadata key=value (can be repeated)',
+            ('--metadata-like'))
     )
+
+    def _filter_by_metadata(self, images):
+        new_images = []
+        for img in images:
+            meta = [dict(img['metadata'])]
+            if self['meta']:
+                meta = filter_dicts_by_dict(meta, self['meta'])
+            if meta and self['meta_like']:
+                meta = filter_dicts_by_dict(
+                    meta, self['meta_like'], exact_match=False)
+            if meta:
+                new_images.append(img)
+        return new_images
+
+    def _filter_by_user(self, images):
+        uuid = self['user_id'] or self._username2uuid(self['user_name'])
+        return filter_dicts_by_dict(images, dict(user_id=uuid))
+
+    def _add_name(self, images, key='user_id'):
+        uuids = self._uuids2usernames(
+            list(set([img[key] for img in images])))
+        for img in images:
+            img[key] += ' (%s)' % uuids[img[key]]
+        return images
 
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self):
-        images = self.client.list_images(self['detail'])
+        withmeta = bool(self['meta'] or self['meta_like'])
+        withuser = bool(self['user_id'] or self['user_name'])
+        detail = self['detail'] or withmeta or withuser
+        images = self.client.list_images(detail)
+        images = self._filter_by_name(images)
+        images = self._filter_by_id(images)
+        if withuser:
+            images = self._filter_by_user(images)
+        if withmeta:
+            images = self._filter_by_metadata(images)
+        if self['detail'] and not self['json_output']:
+            images = self._add_name(self._add_name(images, 'tenant_id'))
+        elif detail and not self['detail']:
+            for img in images:
+                for key in set(img).difference(self.PERMANENTS):
+                    img.pop(key)
         kwargs = dict(with_enumeration=self['enum'])
         if self['more']:
             kwargs['page_size'] = self['limit'] or 10
@@ -707,7 +773,7 @@ class image_compute_properties_add(_init_cyclades, _optional_json):
 @command(image_cmds)
 class image_compute_properties_set(_init_cyclades, _optional_json):
     """Add / update a set of properties for an image
-    proeprties must be given in the form key=value, e.v.
+    properties must be given in the form key=value, e.v.
     /image compute properties set <image-id> key1=val1 key2=val2
     """
 
@@ -717,13 +783,14 @@ class image_compute_properties_set(_init_cyclades, _optional_json):
     def _run(self, image_id, keyvals):
         meta = dict()
         for keyval in keyvals:
-            key, val = keyval.split('=')
+            key, sep, val = keyval.partition('=')
             meta[key] = val
         self._print(
             self.client.update_image_metadata(image_id, **meta), print_dict)
 
     def main(self, image_id, *key_equals_value):
         super(self.__class__, self)._run()
+        print key_equals_value
         self._run(image_id=image_id, keyvals=key_equals_value)
 
 
