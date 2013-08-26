@@ -482,6 +482,7 @@ class image_register(_init_image, _optional_json):
                     details=[
                         'Make sure the image file exists'] + howto_image_file)
             raise
+        r['owner'] += '( %s)' % self._uuid2username(r['owner'])
         self._print(r, print_dict)
 
         #upload the metadata file
@@ -528,11 +529,15 @@ class image_shared(_init_image, _optional_json):
     @errors.generic.all
     @errors.plankton.connection
     def _run(self, member):
-        self._print(self.client.list_shared(member), title=('image_id',))
+        r = self.client.list_shared(member)
+        if r:
+            uuid = self._username2uuid(member)
+            r = self.client.list_shared(uuid) if uuid else []
+        self._print(r, title=('image_id',))
 
-    def main(self, member):
+    def main(self, member_id_or_username):
         super(self.__class__, self)._run()
-        self._run(member)
+        self._run(member_id_or_username)
 
 
 @command(image_cmds)
@@ -548,7 +553,13 @@ class image_members_list(_init_image, _optional_json):
     @errors.plankton.connection
     @errors.plankton.id
     def _run(self, image_id):
-        self._print(self.client.list_members(image_id), title=('member_id',))
+        members = self.client.list_members(image_id)
+        if not self['json_output']:
+            uuids = [member['member_id'] for member in members]
+            usernames = self._uuids2usernames(uuids)
+            for member in members:
+                member['member_id'] += ' (%s)' % usernames[member['member_id']]
+        self._print(members, title=('member_id',))
 
     def main(self, image_id):
         super(self.__class__, self)._run()
@@ -565,9 +576,9 @@ class image_members_add(_init_image, _optional_output_cmd):
     def _run(self, image_id=None, member=None):
             self._optional_output(self.client.add_member(image_id, member))
 
-    def main(self, image_id, member):
+    def main(self, image_id, member_id):
         super(self.__class__, self)._run()
-        self._run(image_id=image_id, member=member)
+        self._run(image_id=image_id, member=member_id)
 
 
 @command(image_cmds)
@@ -595,9 +606,9 @@ class image_members_set(_init_image, _optional_output_cmd):
     def _run(self, image_id, members):
             self._optional_output(self.client.set_members(image_id, members))
 
-    def main(self, image_id, *members):
+    def main(self, image_id, *member_ids):
         super(self.__class__, self)._run()
-        self._run(image_id=image_id, members=members)
+        self._run(image_id=image_id, members=member_ids)
 
 
 # Compute Image Commands
@@ -695,6 +706,10 @@ class image_compute_info(_init_cyclades, _optional_json):
     @errors.plankton.id
     def _run(self, image_id):
         image = self.client.get_image_details(image_id)
+        uuids = [image['user_id'], image['tenant_id']]
+        usernames = self._uuids2usernames(uuids)
+        image['user_id'] += ' (%s)' % usernames[image['user_id']]
+        image['tenant_id'] += ' (%s)' % usernames[image['tenant_id']]
         self._print(image, print_dict)
 
     def main(self, image_id):

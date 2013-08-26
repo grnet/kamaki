@@ -292,7 +292,11 @@ class server_info(_init_cyclades, _optional_json):
     @errors.cyclades.connection
     @errors.cyclades.server_id
     def _run(self, server_id):
-        self._print(self.client.get_server_details(server_id), print_dict)
+        vm = self.client.get_server_details(server_id)
+        uuids = self._uuids2usernames([vm['user_id'], vm['tenant_id']])
+        vm['user_id'] += ' (%s)' % uuids[vm['user_id']]
+        vm['tenant_id'] += ' (%s)' % uuids[vm['tenant_id']]
+        self._print(vm, print_dict)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -355,6 +359,9 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
     def _run(self, name, flavor_id, image_id):
         r = self.client.create_server(
             name, int(flavor_id), image_id, self['personality'])
+        usernames = self._uuids2usernames([r['user_id'], r['tenant_id']])
+        r['user_id'] += ' (%s)' % usernames[r['user_id']]
+        r['tenant_id'] += ' (%s)' % usernames[r['tenant_id']]
         self._print(r, print_dict)
         if self['wait']:
             self._wait(r['id'], r['status'])
@@ -781,6 +788,20 @@ class flavor_info(_init_cyclades, _optional_json):
         self._run(flavor_id=flavor_id)
 
 
+def _add_name(self, net):
+        user_id, tenant_id, uuids = net['user_id'], net['tenant_id'], []
+        if user_id:
+            uuids.append(user_id)
+        if tenant_id:
+            uuids.append(tenant_id)
+        if uuids:
+            usernames = self._uuids2usernames(uuids)
+            if user_id:
+                net['user_id'] += ' (%s)' % usernames[user_id]
+            if tenant_id:
+                net['tenant_id'] += ' (%s)' % usernames[tenant_id]
+
+
 @command(network_cmds)
 class network_info(_init_cyclades, _optional_json):
     """Detailed information on a network
@@ -792,6 +813,7 @@ class network_info(_init_cyclades, _optional_json):
     @errors.cyclades.network_id
     def _run(self, network_id):
         network = self.client.get_network_details(int(network_id))
+        _add_name(self, network)
         self._print(network, print_dict, exclude=('id'))
 
     def main(self, network_id):
@@ -920,8 +942,8 @@ class network_create(_init_cyclades, _optional_json, _network_wait):
             gateway=self['gateway'],
             dhcp=self['dhcp'],
             type=self['type'])
+        _add_name(self, r)
         self._print(r, print_dict)
-
         if self['wait']:
             self._wait(r['id'], 'PENDING')
 
