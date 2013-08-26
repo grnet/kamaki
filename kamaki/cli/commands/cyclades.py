@@ -40,7 +40,8 @@ from kamaki.clients.cyclades import CycladesClient, ClientError
 from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
 from kamaki.cli.argument import ProgressBarArgument, DateArgument, IntArgument
 from kamaki.cli.commands import _command_init, errors, addLogSettings
-from kamaki.cli.commands import _optional_output_cmd, _optional_json
+from kamaki.cli.commands import (
+    _optional_output_cmd, _optional_json, _name_filter, _id_filter)
 
 from base64 import b64encode
 from os.path import exists
@@ -155,7 +156,7 @@ class _init_cyclades(_command_init):
 
 
 @command(server_cmds)
-class server_list(_init_cyclades, _optional_json):
+class server_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
     """List Virtual Machines accessible by user"""
 
     PERMANENTS = ('id', 'name')
@@ -172,14 +173,6 @@ class server_list(_init_cyclades, _optional_json):
             'output results in pages (-n to set items per page, default 10)',
             '--more'),
         enum=FlagArgument('Enumerate results', '--enumerate'),
-        name=ValueArgument('filter by name', '--name'),
-        name_pref=ValueArgument(
-            'filter by name prefix (case insensitive)', '--name-prefix'),
-        name_suff=ValueArgument(
-            'filter by name suffix (case insensitive)', '--name-suffix'),
-        name_like=ValueArgument(
-            'print only if name contains this (case insensitive)',
-            '--name-like'),
         flavor_id=ValueArgument('filter by flavor id', ('--flavor-id')),
         image_id=ValueArgument('filter by image id', ('--image-id')),
         meta=KeyValueArgument('filter by metadata key=values', ('--metadata')),
@@ -187,15 +180,6 @@ class server_list(_init_cyclades, _optional_json):
             'print only if in key=value, the value is part of actual value',
             ('--metadata-like')),
     )
-
-    def _filtered_by_name(self, servers):
-        if self['name']:
-            servers = filter_dicts_by_dict(servers, dict(name=self['name']))
-        np, ns, nl = self['name_pref'], self['name_suff'], self['name_like']
-        return [img for img in servers if (
-            (not np) or img['name'].lower().startswith(np.lower())) and (
-            (not ns) or img['name'].lower().endswith(ns.lower())) and (
-            (not nl) or nl.lower() in img['name'].lower())]
 
     def _add_user_name(self, servers):
         uuids = self._uuids2usernames(list(set(
@@ -206,7 +190,7 @@ class server_list(_init_cyclades, _optional_json):
             srv['tenant_id'] += ' (%s)' % uuids[srv['tenant_id']]
         return servers
 
-    def _filtered_by_image(self, servers):
+    def _filter_by_image(self, servers):
         iid = self['image_id']
         new_servers = []
         for srv in servers:
@@ -214,7 +198,7 @@ class server_list(_init_cyclades, _optional_json):
                 new_servers.append(srv)
         return new_servers
 
-    def _filtered_by_flavor(self, servers):
+    def _filter_by_flavor(self, servers):
         fid = self['flavor_id']
         new_servers = []
         for srv in servers:
@@ -222,7 +206,7 @@ class server_list(_init_cyclades, _optional_json):
                 new_servers.append(srv)
         return new_servers
 
-    def _filtered_by_metadata(self, servers):
+    def _filter_by_metadata(self, servers):
         new_servers = []
         for srv in servers:
             if not 'metadata' in srv:
@@ -247,13 +231,14 @@ class server_list(_init_cyclades, _optional_json):
         detail = self['detail'] or withimage or withflavor or withmeta
         servers = self.client.list_servers(detail, self['since'])
 
-        servers = self._filtered_by_name(servers)
+        servers = self._filter_by_name(servers)
+        servers = self._filter_by_id(servers)
         if withimage:
-            servers = self._filtered_by_image(servers)
+            servers = self._filter_by_image(servers)
         if withflavor:
-            servers = self._filtered_by_flavor(servers)
+            servers = self._filter_by_flavor(servers)
         if withmeta:
-            servers = self._filtered_by_metadata(servers)
+            servers = self._filter_by_metadata(servers)
 
         if self['detail'] and not self['json_output']:
             servers = self._add_user_name(servers)
@@ -700,7 +685,7 @@ class server_wait(_init_cyclades, _server_wait):
 
 
 @command(flavor_cmds)
-class flavor_list(_init_cyclades, _optional_json):
+class flavor_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
     """List available hardware flavors"""
 
     arguments = dict(
@@ -716,6 +701,8 @@ class flavor_list(_init_cyclades, _optional_json):
     @errors.cyclades.connection
     def _run(self):
         flavors = self.client.list_flavors(self['detail'])
+        flavors = self._filter_by_name(flavors)
+        flavors = self._filter_by_id(flavors)
         if not (self['detail'] or self['json_output']):
             remove_from_items(flavors, 'links')
         pg_size = 10 if self['more'] and not self['limit'] else self['limit']
@@ -767,7 +754,7 @@ class network_info(_init_cyclades, _optional_json):
 
 
 @command(network_cmds)
-class network_list(_init_cyclades, _optional_json):
+class network_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
     """List networks"""
 
     arguments = dict(
@@ -783,6 +770,8 @@ class network_list(_init_cyclades, _optional_json):
     @errors.cyclades.connection
     def _run(self):
         networks = self.client.list_networks(self['detail'])
+        networks = self._filter_by_name(networks)
+        networks = self._filter_by_id(networks)
         if not (self['detail'] or self['json_output']):
             remove_from_items(networks, 'links')
         kwargs = dict(with_enumeration=self['enum'])
