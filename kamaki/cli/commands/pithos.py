@@ -46,7 +46,8 @@ from kamaki.cli.argument import KeyValueArgument, DateArgument
 from kamaki.cli.argument import ProgressBarArgument
 from kamaki.cli.commands import _command_init, errors
 from kamaki.cli.commands import addLogSettings, DontRaiseKeyError
-from kamaki.cli.commands import _optional_output_cmd, _optional_json
+from kamaki.cli.commands import (
+    _optional_output_cmd, _optional_json, _name_filter)
 from kamaki.clients.pithos import PithosClient, ClientError
 from kamaki.clients.astakos import AstakosClient
 
@@ -326,7 +327,7 @@ class _file_container_command(_file_account_command):
 
 
 @command(pithos_cmds)
-class file_list(_file_container_command, _optional_json):
+class file_list(_file_container_command, _optional_json, _name_filter):
     """List containers, object trees or objects in a directory
     Use with:
     1 no parameters : containers in current account
@@ -339,7 +340,6 @@ class file_list(_file_container_command, _optional_json):
         detail=FlagArgument('detailed output', ('-l', '--list')),
         limit=IntArgument('limit number of listed items', ('-n', '--number')),
         marker=ValueArgument('output greater that marker', '--marker'),
-        prefix=ValueArgument('output starting with prefix', '--prefix'),
         delimiter=ValueArgument('show output up to delimiter', '--delimiter'),
         path=ValueArgument(
             'show output starting with prefix up to /', '--path'),
@@ -439,9 +439,10 @@ class file_list(_file_container_command, _optional_json):
                 if_unmodified_since=self['if_unmodified_since'],
                 until=self['until'],
                 show_only_shared=self['shared'])
-            self._print(r.json, self.print_containers)
+            files = self._filter_by_name(r.json)
+            self._print(files, self.print_containers)
         else:
-            prefix = self.path or self['prefix']
+            prefix = (self.path and not self['name']) or self['name_pref']
             r = self.client.container_get(
                 limit=False if self['more'] else self['limit'],
                 marker=self['marker'],
@@ -453,7 +454,8 @@ class file_list(_file_container_command, _optional_json):
                 until=self['until'],
                 meta=self['meta'],
                 show_only_shared=self['shared'])
-            self._print(r.json, self.print_objects)
+            files = self._filter_by_name(r.json)
+            self._print(files, self.print_objects)
 
     def main(self, container____path__=None):
         super(self.__class__, self)._run(container____path__)

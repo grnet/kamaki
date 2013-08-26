@@ -47,7 +47,8 @@ from kamaki.cli.argument import IntArgument, ProgressBarArgument
 from kamaki.cli.commands.cyclades import _init_cyclades
 from kamaki.cli.errors import raiseCLIError, CLIBaseUrlError
 from kamaki.cli.commands import _command_init, errors, addLogSettings
-from kamaki.cli.commands import _optional_output_cmd, _optional_json
+from kamaki.cli.commands import (
+    _optional_output_cmd, _optional_json, _name_filter, _id_filter)
 
 
 image_cmds = CommandTree(
@@ -172,7 +173,7 @@ def _validate_image_location(location):
 
 
 @command(image_cmds)
-class image_list(_init_image, _optional_json):
+class image_list(_init_image, _optional_json, _name_filter, _id_filter):
     """List images accessible by user"""
 
     PERMANENTS = (
@@ -185,14 +186,6 @@ class image_list(_init_image, _optional_json):
             'filter by container format',
             '--container-format'),
         disk_format=ValueArgument('filter by disk format', '--disk-format'),
-        name=ValueArgument('filter by name', '--name'),
-        name_pref=ValueArgument(
-            'filter by name prefix (case insensitive)', '--name-prefix'),
-        name_suff=ValueArgument(
-            'filter by name suffix (case insensitive)', '--name-suffix'),
-        name_like=ValueArgument(
-            'print only if name contains this (case insensitive)',
-            '--name-like'),
         size_min=IntArgument('filter by minimum size', '--size-min'),
         size_max=IntArgument('filter by maximum size', '--size-max'),
         status=ValueArgument('filter by status', '--status'),
@@ -213,16 +206,9 @@ class image_list(_init_image, _optional_json):
             ('--property-like')),
     )
 
-    def _filtered_by_owner(self, images):
+    def _filter_by_owner(self, images):
         ouuid = self['owner'] or self._username2uuid(self['owner_name'])
         return filter_dicts_by_dict(images, dict(owner=ouuid))
-
-    def _filtered_by_name(self, images):
-        np, ns, nl = self['name_pref'], self['name_suff'], self['name_like']
-        return [img for img in images if (
-            (not np) or img['name'].lower().startswith(np.lower())) and (
-            (not ns) or img['name'].lower().endswith(ns.lower())) and (
-            (not nl) or nl.lower() in img['name'].lower())]
 
     def _add_owner_name(self, images):
         uuids = self._uuids2usernames(
@@ -231,7 +217,7 @@ class image_list(_init_image, _optional_json):
             img['owner'] += ' (%s)' % uuids[img['owner']]
         return images
 
-    def _filtered_by_properties(self, images):
+    def _filter_by_properties(self, images):
         new_images = []
         for img in images:
             props = [dict(img['properties'])]
@@ -266,10 +252,11 @@ class image_list(_init_image, _optional_json):
         images = self.client.list_public(detail, filters, order)
 
         if self['owner'] or self['owner_name']:
-            images = self._filtered_by_owner(images)
+            images = self._filter_by_owner(images)
         if self['prop'] or self['prop_like']:
-            images = self._filtered_by_properties(images)
-        images = self._filtered_by_name(images)
+            images = self._filter_by_properties(images)
+        images = self._filter_by_id(images)
+        images = self._non_exact_name_filter(images)
 
         if self['detail'] and not self['json_output']:
             images = self._add_owner_name(images)
@@ -622,7 +609,8 @@ class image_compute(_init_cyclades):
 
 
 @command(image_cmds)
-class image_compute_list(_init_cyclades, _optional_json):
+class image_compute_list(
+        _init_cyclades, _optional_json, _name_filter, _id_filter):
     """List images"""
 
     PERMANENTS = ('id', 'name')
@@ -634,16 +622,6 @@ class image_compute_list(_init_cyclades, _optional_json):
             'output results in pages (-n to set items per page, default 10)',
             '--more'),
         enum=FlagArgument('Enumerate results', '--enumerate'),
-        name=ValueArgument('filter by name', '--name'),
-        name_pref=ValueArgument(
-            'filter by name prefix (case insensitive)',
-            '--name-prefix'),
-        name_suff=ValueArgument(
-            'filter by name suffix (case insensitive)',
-            '--name-suffix'),
-        name_like=ValueArgument(
-            'print only if name contains this (case insensitive)',
-            '--name-like'),
         user_id=ValueArgument('filter by user_id', '--user-id'),
         user_name=ValueArgument('filter by username', '--user-name'),
         meta=KeyValueArgument(
@@ -652,13 +630,6 @@ class image_compute_list(_init_cyclades, _optional_json):
             'filter by metadata key=value (can be repeated)',
             ('--metadata-like'))
     )
-
-    def _filtered_by_name(self, images):
-        np, ns, nl = self['name_pref'], self['name_suff'], self['name_like']
-        return [img for img in images if (
-            (not np) or img['name'].lower().startswith(np.lower())) and (
-            (not ns) or img['name'].lower().endswith(ns.lower())) and (
-            (not nl) or nl.lower() in img['name'].lower())]
 
     def _filter_by_metadata(self, images):
         new_images = []
@@ -691,7 +662,8 @@ class image_compute_list(_init_cyclades, _optional_json):
         withuser = bool(self['user_id'] or self['user_name'])
         detail = self['detail'] or withmeta or withuser
         images = self.client.list_images(detail)
-        images = self._filtered_by_name(images)
+        images = self._filter_by_name(images)
+        images = self._filter_by_id(images)
         if withuser:
             images = self._filter_by_user(images)
         if withmeta:
