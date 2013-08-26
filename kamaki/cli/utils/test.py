@@ -413,6 +413,7 @@ class UtilsMethods(TestCase):
     def test_split_input(self):
         from kamaki.cli.utils import split_input
         for line, expected in (
+                ('set key="v1"', ['set', 'key=v1']),
                 ('unparsable', ['unparsable']),
                 ('"parsable"', ['parsable']),
                 ('"parse" out', ['parse', 'out']),

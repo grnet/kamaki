@@ -73,8 +73,8 @@ def _flush():
 
 
 def _readline():
-    """stdout.readline wrapper is used to help unittests"""
-    return stdout.readline()
+    """raw_input wrapper is used to help unittests"""
+    return raw_input()
 
 
 def suggest_missing(miss=None, exclude=[]):
@@ -283,7 +283,7 @@ def print_items(
         _print('%s' % items)
         return
 
-    page_size = int(page_size)
+    page_size = int(page_size or 0)
     try:
         page_size = page_size if page_size > 0 else len(items)
     except:
