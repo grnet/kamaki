@@ -175,6 +175,11 @@ class server_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
         enum=FlagArgument('Enumerate results', '--enumerate'),
         flavor_id=ValueArgument('filter by flavor id', ('--flavor-id')),
         image_id=ValueArgument('filter by image id', ('--image-id')),
+        user_id=ValueArgument('filter by user id', ('--user-id')),
+        user_name=ValueArgument('filter by user name', ('--user-name')),
+        status=ValueArgument(
+            'filter by status (ACTIVE, STOPPED, REBOOT, ERROR, etc.)',
+            ('--status')),
         meta=KeyValueArgument('filter by metadata key=values', ('--metadata')),
         meta_like=KeyValueArgument(
             'print only if in key=value, the value is part of actual value',
@@ -189,6 +194,15 @@ class server_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
             srv['user_id'] += ' (%s)' % uuids[srv['user_id']]
             srv['tenant_id'] += ' (%s)' % uuids[srv['tenant_id']]
         return servers
+
+    def _apply_common_filters(self, servers):
+        common_filters = dict()
+        if self['status']:
+            common_filters['status'] = self['status']
+        if self['user_id'] or self['user_name']:
+            uuid = self['user_id'] or self._username2uuid(self['user_name'])
+            common_filters['user_id'] = uuid
+        return filter_dicts_by_dict(servers, common_filters)
 
     def _filter_by_image(self, servers):
         iid = self['image_id']
@@ -228,11 +242,15 @@ class server_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
         withimage = bool(self['image_id'])
         withflavor = bool(self['flavor_id'])
         withmeta = bool(self['meta'] or self['meta_like'])
-        detail = self['detail'] or withimage or withflavor or withmeta
+        withcommons = bool(
+            self['status'] or self['user_id'] or self['user_name'])
+        detail = self['detail'] or (
+            withimage or withflavor or withmeta or withcommons)
         servers = self.client.list_servers(detail, self['since'])
 
         servers = self._filter_by_name(servers)
         servers = self._filter_by_id(servers)
+        servers = self._apply_common_filters(servers)
         if withimage:
             servers = self._filter_by_image(servers)
         if withflavor:
@@ -688,23 +706,51 @@ class server_wait(_init_cyclades, _server_wait):
 class flavor_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
     """List available hardware flavors"""
 
+    PERMANENTS = ('id', 'name')
+
     arguments = dict(
         detail=FlagArgument('show detailed output', ('-l', '--details')),
         limit=IntArgument('limit # of listed flavors', ('-n', '--number')),
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
             '--more'),
-        enum=FlagArgument('Enumerate results', '--enumerate')
+        enum=FlagArgument('Enumerate results', '--enumerate'),
+        ram=ValueArgument('filter by ram', ('--ram')),
+        vcpus=ValueArgument('filter by number of VCPUs', ('--vcpus')),
+        disk=ValueArgument('filter by disk size in GB', ('--disk')),
+        disk_template=ValueArgument(
+            'filter by disk_templace', ('--disk-template'))
     )
+
+    def _apply_common_filters(self, flavors):
+        common_filters = dict()
+        if self['ram']:
+            common_filters['ram'] = self['ram']
+        if self['vcpus']:
+            common_filters['vcpus'] = self['vcpus']
+        if self['disk']:
+            common_filters['disk'] = self['disk']
+        if self['disk_template']:
+            common_filters['SNF:disk_template'] = self['disk_template']
+        return filter_dicts_by_dict(flavors, common_filters)
 
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self):
-        flavors = self.client.list_flavors(self['detail'])
+        withcommons = self['ram'] or self['vcpus'] or (
+            self['disk'] or self['disk_template'])
+        detail = self['detail'] or withcommons
+        flavors = self.client.list_flavors(detail)
         flavors = self._filter_by_name(flavors)
         flavors = self._filter_by_id(flavors)
+        if withcommons:
+            flavors = self._apply_common_filters(flavors)
         if not (self['detail'] or self['json_output']):
             remove_from_items(flavors, 'links')
+        if detail and not self['detail']:
+            for flv in flavors:
+                for key in set(flv).difference(self.PERMANENTS):
+                    flv.pop(key)
         pg_size = 10 if self['more'] and not self['limit'] else self['limit']
         self._print(
             flavors,

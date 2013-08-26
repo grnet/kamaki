@@ -340,7 +340,6 @@ class file_list(_file_container_command, _optional_json, _name_filter):
         detail=FlagArgument('detailed output', ('-l', '--list')),
         limit=IntArgument('limit number of listed items', ('-n', '--number')),
         marker=ValueArgument('output greater that marker', '--marker'),
-        prefix=ValueArgument('output starting with prefix', '--prefix'),
         delimiter=ValueArgument('show output up to delimiter', '--delimiter'),
         path=ValueArgument(
             'show output starting with prefix up to /', '--path'),
@@ -443,7 +442,7 @@ class file_list(_file_container_command, _optional_json, _name_filter):
             files = self._filter_by_name(r.json)
             self._print(files, self.print_containers)
         else:
-            prefix = self.path or self['prefix'] or self['name_prefix']
+            prefix = (self.path and not self['name']) or self['name_pref']
             r = self.client.container_get(
                 limit=False if self['more'] else self['limit'],
                 marker=self['marker'],
