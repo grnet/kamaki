@@ -197,6 +197,13 @@ class server_list(_init_cyclades, _optional_json):
             (not ns) or img['name'].lower().endswith(ns.lower())) and (
             (not nl) or nl.lower() in img['name'].lower())]
 
+    def _add_user_name(self, servers):
+        uuids = self._uuids2usernames(
+            list(set([srv['user_id'] for srv in servers])))
+        for srv in servers:
+            srv['user_id'] += ' (%s)' % uuids[srv['user_id']]
+        return servers
+
     def _filtered_by_image(self, servers):
         iid = self['image_id']
         new_servers = []
@@ -246,10 +253,10 @@ class server_list(_init_cyclades, _optional_json):
         if withmeta:
             servers = self._filtered_by_metadata(servers)
 
-        if not (self['detail'] or self['json_output']):
+        if self['detail'] and not self['json_output']:
+            servers = self._add_user_name(servers)
+        elif not (self['detail'] or self['json_output']):
             remove_from_items(servers, 'links')
-        #if self['detail'] and not self['json_output']:
-        #    servers = self._add_owner_name(servers)
         if detail and not self['detail']:
             for srv in servers:
                 for key in set(srv).difference(self.PERMANENTS):
