@@ -803,23 +803,85 @@ class network_info(_init_cyclades, _optional_json):
 class network_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
     """List networks"""
 
+    PERMANENTS = ('id', 'name')
+
     arguments = dict(
         detail=FlagArgument('show detailed output', ('-l', '--details')),
         limit=IntArgument('limit # of listed networks', ('-n', '--number')),
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
             '--more'),
-        enum=FlagArgument('Enumerate results', '--enumerate')
+        enum=FlagArgument('Enumerate results', '--enumerate'),
+        status=ValueArgument('filter by status', ('--status')),
+        public=FlagArgument('only public networks', ('--public')),
+        private=FlagArgument('only private networks', ('--private')),
+        dhcp=FlagArgument('show networks with dhcp', ('--with-dhcp')),
+        no_dhcp=FlagArgument('show networks without dhcp', ('--without-dhcp')),
+        user_id=ValueArgument('filter by user id', ('--user-id')),
+        user_name=ValueArgument('filter by user name', ('--user-name')),
+        gateway=ValueArgument('filter by gateway (IPv4)', ('--gateway')),
+        gateway6=ValueArgument('filter by gateway (IPv6)', ('--gateway6')),
+        cidr=ValueArgument('filter by cidr (IPv4)', ('--cidr')),
+        cidr6=ValueArgument('filter by cidr (IPv6)', ('--cidr6')),
+        type=ValueArgument('filter by type', ('--type')),
     )
+
+    def _apply_common_filters(self, networks):
+        common_filter = dict()
+        if self['public']:
+            if self['private']:
+                return []
+            common_filter['public'] = self['public']
+        elif self['private']:
+            common_filter['public'] = False
+        if self['dhcp']:
+            if self['no_dhcp']:
+                return []
+            common_filter['dhcp'] = True
+        elif self['no_dhcp']:
+            common_filter['dhcp'] = False
+        if self['user_id'] or self['user_name']:
+            uuid = self['user_id'] or self._username2uuid(self['user_name'])
+            common_filter['user_id'] = uuid
+        for term in ('status', 'gateway', 'gateway6', 'cidr', 'cidr6', 'type'):
+            if self[term]:
+                common_filter[term] = self[term]
+        return filter_dicts_by_dict(networks, common_filter)
+
+    def _add_name(self, networks, key='user_id'):
+        uuids = self._uuids2usernames(
+            list(set([net[key] for net in networks])))
+        for net in networks:
+            v = net.get(key, None)
+            if v:
+                net[key] += ' (%s)' % uuids[net[key]]
+        return networks
 
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self):
-        networks = self.client.list_networks(self['detail'])
+        withcommons = False
+        for term in (
+                'status', 'public', 'private', 'user_id', 'user_name', 'type',
+                'gateway', 'gateway6', 'cidr', 'cidr6', 'dhcp', 'no_dhcp'):
+            if self[term]:
+                withcommons = True
+                break
+        detail = self['detail'] or withcommons
+        networks = self.client.list_networks(detail)
         networks = self._filter_by_name(networks)
         networks = self._filter_by_id(networks)
+        if withcommons:
+            networks = self._apply_common_filters(networks)
         if not (self['detail'] or self['json_output']):
             remove_from_items(networks, 'links')
+        if detail and not self['detail']:
+            for net in networks:
+                for key in set(net).difference(self.PERMANENTS):
+                    net.pop(key)
+        if self['detail'] and not self['json_output']:
+            self._add_name(networks)
+            self._add_name(networks, 'tenant_id')
         kwargs = dict(with_enumeration=self['enum'])
         if self['more']:
             kwargs['page_size'] = self['limit'] or 10
