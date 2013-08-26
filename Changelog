@@ -13,6 +13,7 @@ Changes:
 - Simplify listings (kamaki.cli.utils: print methods)
 - Enrich client API docs with examples and astakos endpoint information [#4135]
 - Show user names in /file sharers [#4203]
+- Show user name in image list, server list [#4228]
 
 Features:
 
@@ -48,4 +49,5 @@ Features:
 - Implement an astakos.post_user_catalogs call for getting usernames from a
     list of user uuids [#4203]
 - Use multiformed ranges in file/pithos [#4059]
+- Implement more filters in image list, server list [#4220]
 

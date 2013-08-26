@@ -198,10 +198,12 @@ class server_list(_init_cyclades, _optional_json):
             (not nl) or nl.lower() in img['name'].lower())]
 
     def _add_user_name(self, servers):
-        uuids = self._uuids2usernames(
-            list(set([srv['user_id'] for srv in servers])))
+        uuids = self._uuids2usernames(list(set(
+                [srv['user_id'] for srv in servers] +
+                [srv['tenant_id'] for srv in servers])))
         for srv in servers:
             srv['user_id'] += ' (%s)' % uuids[srv['user_id']]
+            srv['tenant_id'] += ' (%s)' % uuids[srv['tenant_id']]
         return servers
 
     def _filtered_by_image(self, servers):
