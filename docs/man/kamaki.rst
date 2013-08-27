@@ -153,7 +153,10 @@ image commands
 **************
 
 * list           List images accessible by user
-* meta           Get image metadata
+* meta           Manage image metadata
+    * list      Get image metadata
+    * set       Add / update metadata and properties for an image
+    * delete    Remove/empty image metadata and/or custom properties
 * register       (Re)Register an image
 * unregister     Unregister an image (does not delete the image file)
 * shared         List shared images
@@ -162,7 +165,6 @@ image commands
     * delete     Delete image
     * info       Get image details
     * properties Manage properties related to OS installation in an image
-        * add    Add a property to an image
         * delete Delete a property from an image
         * get    Get an image property
         * list   List all image properties
