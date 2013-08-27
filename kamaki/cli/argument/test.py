@@ -291,6 +291,16 @@ class VersionArgument(TestCase):
         self.assertEqual(va.value, 'some value')
 
 
+class RepeatableArgument(TestCase):
+
+    @patch('%s.Argument.__init__' % arg_path)
+    def test___init__(self, init):
+        help, pname, default = 'help', 'pname', 'default'
+        kva = argument.RepeatableArgument(help, pname, default)
+        self.assertTrue(isinstance(kva, argument.RepeatableArgument))
+        self.assertEqual(init.mock_calls[-1], call(-1, help, pname, default))
+
+
 class KeyValueArgument(TestCase):
 
     @patch('%s.Argument.__init__' % arg_path)
@@ -497,6 +507,7 @@ if __name__ == '__main__':
     runTestCase(IntArgument, 'IntArgument', argv[1:])
     runTestCase(DateArgument, 'DateArgument', argv[1:])
     runTestCase(VersionArgument, 'VersionArgument', argv[1:])
+    runTestCase(RepeatableArgument, 'RepeatableArgument', argv[1:])
     runTestCase(KeyValueArgument, 'KeyValueArgument', argv[1:])
     runTestCase(ProgressBarArgument, 'ProgressBarArgument', argv[1:])
     runTestCase(ArgumentParseManager, 'ArgumentParseManager', argv[1:])

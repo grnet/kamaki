@@ -218,5 +218,6 @@ class ImageClient(Client):
             self.set_header('X-Image-Meta-Owner', owner_id)
         for k, v in properties.items():
             self.set_header('X-Image-Meta-Property-%s' % k, v)
+        self.set_header('Content-Length', 0)
         r = self.put(path, success=200)
         return r.headers

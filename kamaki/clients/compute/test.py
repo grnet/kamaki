@@ -703,15 +703,15 @@ class ComputeClient(TestCase):
         self.client.delete_image(img_ref)
         ID.assert_called_once_with(img_ref)
 
-    @patch('%s.images_metadata_put' % compute_pkg, return_value=FR())
-    def test_create_image_metadata(self, IP):
-        (key, val) = ('k1', 'v1')
-        FR.json = dict(meta=img_recv['image'])
-        r = self.client.create_image_metadata(img_ref, key, val)
-        IP.assert_called_once_with(
-            img_ref, '%s' % key,
-            json_data=dict(meta={key: val}))
-        self.assert_dicts_are_equal(r, img_recv['image'])
+    # @patch('%s.images_metadata_put' % compute_pkg, return_value=FR())
+    # def test_create_image_metadata(self, IP):
+    #     (key, val) = ('k1', 'v1')
+    #     FR.json = dict(meta=img_recv['image'])
+    #     r = self.client.create_image_metadata(img_ref, key, val)
+    #     IP.assert_called_once_with(
+    #         img_ref, '%s' % key,
+    #         json_data=dict(meta={key: val}))
+    #     self.assert_dicts_are_equal(r, img_recv['image'])
 
     @patch('%s.images_metadata_post' % compute_pkg, return_value=FR())
     def test_update_image_metadata(self, IP):

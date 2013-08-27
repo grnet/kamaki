@@ -304,7 +304,7 @@ class ImageClient(TestCase):
             (image_id, name, disk_format, container_format,
             status, public, owner_id, properties) = args
             self.assertEqual(r, FR.headers)
-            header_calls = []
+            header_calls = [call('Content-Length', 0), ]
             prf = 'X-Image-Meta-'
             if name:
                 header_calls.append(call('%sName' % prf, name))

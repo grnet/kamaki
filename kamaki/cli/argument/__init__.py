@@ -274,8 +274,16 @@ class VersionArgument(FlagArgument):
             print('kamaki %s' % kamaki.__version__)
 
 
+class RepeatableArgument(Argument):
+    """A value argument that can be repeated"""
+
+    def __init__(self, help='', parsed_name=None, default=[]):
+        super(RepeatableArgument, self).__init__(
+            -1, help, parsed_name, default)
+
+
 class KeyValueArgument(Argument):
-    """A Value Argument that can be repeated
+    """A Key=Value Argument that can be repeated
 
     :syntax: --<arg> key1=value1 --<arg> key2=value2 ...
     """
