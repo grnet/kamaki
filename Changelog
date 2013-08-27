@@ -14,6 +14,7 @@ Changes:
 - Enrich client API docs with examples and astakos endpoint information [#4135]
 - Show user names in /file sharers [#4203]
 - Show user name in image/server/network list [#4228]
+- Remove kamaki compute image properties add [#4231]
 
 Features:
 
@@ -50,4 +51,5 @@ Features:
     list of user uuids [#4203]
 - Use multiformed ranges in file/pithos [#4059]
 - Implement more filters in image/network/flavor/server/file list [#4220]
+- Implement /image meta list/set/delete [#4231]  metadata and properties
 

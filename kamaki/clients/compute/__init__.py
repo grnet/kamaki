@@ -370,19 +370,19 @@ class ComputeClient(ComputeRestClient):
             response_headers[k] = r.headers.get(k, v)
         return r.json['meta' if key else 'metadata']
 
-    def create_image_metadata(self, image_id, key, val):
-        """
-        :param image_id: integer (str or int)
+    # def create_image_metadata(self, image_id, key, val):
+    #     """
+    #     :param image_id: integer (str or int)
 
-        :param key: (str) metadatum key
+    #     :param key: (str) metadatum key
 
-        :param val: (str) metadatum value
+    #     :param val: (str) metadatum value
 
-        :returns: (dict) updated metadata
-        """
-        req = {'meta': {key: val}}
-        r = self.images_metadata_put(image_id, key, json_data=req)
-        return r.json['meta']
+    #     :returns: (dict) updated metadata
+    #     """
+    #     req = {'meta': {key: val}}
+    #     r = self.images_metadata_put(image_id, key, json_data=req)
+    #     return r.json['meta']
 
     def update_image_metadata(
             self, image_id,

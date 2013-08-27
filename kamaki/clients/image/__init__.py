@@ -198,3 +198,26 @@ class ImageClient(Client):
         req = {'memberships': [{'member_id': member} for member in members]}
         r = self.put(path, json=req, success=204)
         return r.headers
+
+    def update_image(
+            self, image_id,
+            name=None, disk_format=None, container_format=None,
+            status=None, public=None, owner_id=None, **properties):
+        path = path4url('images', image_id)
+        if name is not None:
+            self.set_header('X-Image-Meta-Name', name)
+        if disk_format is not None:
+            self.set_header('X-Image-Meta-Disk-Format', disk_format)
+        if container_format is not None:
+            self.set_header('X-Image-Meta-Container-Format', container_format)
+        if status is not None:
+            self.set_header('X-Image-Meta-Status', status)
+        if public is not None:
+            self.set_header('X-Image-Meta-Is-Public', bool(public))
+        if owner_id is not None:
+            self.set_header('X-Image-Meta-Owner', owner_id)
+        for k, v in properties.items():
+            self.set_header('X-Image-Meta-Property-%s' % k, v)
+        self.set_header('Content-Length', 0)
+        r = self.put(path, success=200)
+        return r.headers

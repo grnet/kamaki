@@ -42,8 +42,9 @@ from kamaki.clients.image import ImageClient
 from kamaki.clients.pithos import PithosClient
 from kamaki.clients.astakos import AstakosClient
 from kamaki.clients import ClientError
-from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
-from kamaki.cli.argument import IntArgument, ProgressBarArgument
+from kamaki.cli.argument import (
+    FlagArgument, ValueArgument, RepeatableArgument, KeyValueArgument,
+    IntArgument, ProgressBarArgument)
 from kamaki.cli.commands.cyclades import _init_cyclades
 from kamaki.cli.errors import raiseCLIError, CLIBaseUrlError
 from kamaki.cli.commands import _command_init, errors, addLogSettings
@@ -277,7 +278,12 @@ class image_list(_init_image, _optional_json, _name_filter, _id_filter):
 
 
 @command(image_cmds)
-class image_meta(_init_image, _optional_json):
+class image_meta(_init_image):
+    """Manage image metadata and custom properties"""
+
+
+@command(image_cmds)
+class image_meta_list(_init_image, _optional_json):
     """Get image metadata
     Image metadata include:
     - image file information (location, size, etc.)
@@ -289,7 +295,104 @@ class image_meta(_init_image, _optional_json):
     @errors.plankton.connection
     @errors.plankton.id
     def _run(self, image_id):
-        self._print([self.client.get_meta(image_id)])
+        meta = self.client.get_meta(image_id)
+        if not self['json_output']:
+            meta['owner'] += ' (%s)' % self._uuid2username(meta['owner'])
+        self._print(meta, print_dict)
+
+    def main(self, image_id):
+        super(self.__class__, self)._run()
+        self._run(image_id=image_id)
+
+
+@command(image_cmds)
+class image_meta_set(_init_image, _optional_output_cmd):
+    """Add / update metadata and properties for an image
+    The original image preserves the values that are not affected
+    """
+
+    arguments = dict(
+        name=ValueArgument('Set a new name', ('--name')),
+        disk_format=ValueArgument('Set a new disk format', ('--disk-format')),
+        container_format=ValueArgument(
+            'Set a new container format', ('--container-format')),
+        status=ValueArgument('Set a new status', ('--status')),
+        publish=FlagArgument('publish the image', ('--publish')),
+        unpublish=FlagArgument('unpublish the image', ('--unpublish')),
+        properties=KeyValueArgument(
+            'set property in key=value form (can be repeated)',
+            ('-p', '--property'))
+    )
+
+    def _check_empty(self):
+        for term in (
+                'name', 'disk_format', 'container_format', 'status', 'publish',
+                'unpublish', 'properties'):
+            if self['term']:
+                if self['publish'] and self['unpublish']:
+                    raiseCLIError(
+                        '--publish and --unpublish are mutually exclusive')
+                return
+        raiseCLIError(
+            'Nothing to update, please use arguments (-h for a list)')
+
+    @errors.generic.all
+    @errors.plankton.connection
+    @errors.plankton.id
+    def _run(self, image_id):
+        self._check_empty()
+        meta = self.client.get_meta(image_id)
+        for k, v in self['properties'].items():
+            meta['properties'][k.upper()] = v
+        self._optional_output(self.client.update_image(
+            image_id,
+            name=self['name'],
+            disk_format=self['disk_format'],
+            container_format=self['container_format'],
+            status=self['status'],
+            public=self['publish'] or self['unpublish'] or None,
+            **meta['properties']))
+
+    def main(self, image_id):
+        super(self.__class__, self)._run()
+        self._run(image_id=image_id)
+
+
+@command(image_cmds)
+class image_meta_delete(_init_image, _optional_output_cmd):
+    """Remove/empty image metadata and/or custom properties"""
+
+    arguments = dict(
+        disk_format=FlagArgument('Empty disk format', ('--disk-format')),
+        container_format=FlagArgument(
+            'Empty container format', ('--container-format')),
+        status=FlagArgument('Empty status', ('--status')),
+        properties=RepeatableArgument(
+            'Property keys to remove', ('-p', '--property'))
+    )
+
+    def _check_empty(self):
+        for term in (
+                'disk_format', 'container_format', 'status', 'properties'):
+            if self[term]:
+                return
+        raiseCLIError(
+            'Nothing to update, please use arguments (-h for a list)')
+
+    @errors.generic.all
+    @errors.plankton.connection
+    @errors.plankton.id
+    def _run(self, image_id):
+        self._check_empty()
+        meta = self.client.get_meta(image_id)
+        for k in self['properties']:
+            meta['properties'].pop(k.upper(), None)
+        self._optional_output(self.client.update_image(
+            image_id,
+            disk_format='' if self['disk_format'] else None,
+            container_format='' if self['container_format'] else None,
+            status='' if self['status'] else None,
+            **meta['properties']))
 
     def main(self, image_id):
         super(self.__class__, self)._run()
@@ -308,7 +411,7 @@ class image_register(_init_image, _optional_json):
             'set container format',
             '--container-format'),
         disk_format=ValueArgument('set disk format', '--disk-format'),
-        owner=ValueArgument('set image owner (admin only)', '--owner'),
+        #owner=ValueArgument('set image owner (admin only)', '--owner'),
         properties=KeyValueArgument(
             'add property in key=value form (can be repeated)',
             ('-p', '--property')),
@@ -610,7 +713,6 @@ class image_members_set(_init_image, _optional_output_cmd):
         super(self.__class__, self)._run()
         self._run(image_id=image_id, members=member_ids)
 
-
 # Compute Image Commands
 
 
@@ -768,21 +870,21 @@ class image_compute_properties_get(_init_cyclades, _optional_json):
         self._run(image_id=image_id, key=key)
 
 
-@command(image_cmds)
-class image_compute_properties_add(_init_cyclades, _optional_json):
-    """Add a property to an image"""
-
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.plankton.id
-    @errors.plankton.metadata
-    def _run(self, image_id, key, val):
-        self._print(
-            self.client.create_image_metadata(image_id, key, val), print_dict)
-
-    def main(self, image_id, key, val):
-        super(self.__class__, self)._run()
-        self._run(image_id=image_id, key=key, val=val)
+#@command(image_cmds)
+#class image_compute_properties_add(_init_cyclades, _optional_json):
+#    """Add a property to an image"""
+#
+#    @errors.generic.all
+#    @errors.cyclades.connection
+#    @errors.plankton.id
+#    @errors.plankton.metadata
+#    def _run(self, image_id, key, val):
+#        self._print(
+#            self.client.create_image_metadata(image_id, key, val), print_dict)
+#
+#    def main(self, image_id, key, val):
+#        super(self.__class__, self)._run()
+#        self._run(image_id=image_id, key=key, val=val)
 
 
 @command(image_cmds)
