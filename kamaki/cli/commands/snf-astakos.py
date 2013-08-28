@@ -801,7 +801,7 @@ class project_membership_accept(_membership_action):
 
 @command(snfproject_cmds)
 class project_membership_reject(_membership_action):
-    """Reject a membership for project you manage"""
+    """Reject a membership for a project you manage"""
     action = 'reject'
 
 
@@ -813,7 +813,7 @@ class project_membership_remove(_membership_action):
 
 @command(snfproject_cmds)
 class project_membership_join(_astakos_init):
-    """Get a membership to a project"""
+    """Join a project"""
 
     @errors.generic.all
     @astakoserror
