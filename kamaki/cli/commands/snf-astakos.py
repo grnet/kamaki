@@ -771,10 +771,8 @@ class _membership_action(_astakos_init, _optional_json):
     @errors.generic.all
     @astakoserror
     def _run(self, memb_id, quote_a_reason):
-        self._print(
-            self.client.membership_action(
-                self.token, memb_id, self.action, quote_a_reason),
-            print_dict)
+        self._print(self.client.membership_action(
+            self.token, memb_id, self.action, quote_a_reason))
 
     def main(self, membership_id, quote_a_reason=''):
         super(_membership_action, self)._run()
