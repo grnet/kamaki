@@ -213,9 +213,14 @@ class IntArgument(ValueArgument):
 
     @value.setter
     def value(self, newvalue):
+        if newvalue == self.default:
+            self._value = newvalue
+            return
         try:
-            self._value = self.default if (
-                newvalue == self.default) else int(newvalue)
+            if int(newvalue) == float(newvalue):
+                self._value = int(newvalue)
+            else:
+                raise ValueError('Raise int argument error')
         except ValueError:
             raiseCLIError(CLISyntaxError(
                 'IntArgument Error',
@@ -274,8 +279,16 @@ class VersionArgument(FlagArgument):
             print('kamaki %s' % kamaki.__version__)
 
 
+class RepeatableArgument(Argument):
+    """A value argument that can be repeated"""
+
+    def __init__(self, help='', parsed_name=None, default=[]):
+        super(RepeatableArgument, self).__init__(
+            -1, help, parsed_name, default)
+
+
 class KeyValueArgument(Argument):
-    """A Value Argument that can be repeated
+    """A Key=Value Argument that can be repeated
 
     :syntax: --<arg> key1=value1 --<arg> key2=value2 ...
     """

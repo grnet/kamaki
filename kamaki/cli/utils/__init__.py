@@ -411,7 +411,10 @@ def split_input(line):
         except IndexError:
             break
         if part:
-            terms += part
+            if tpart and not tpart[-1].endswith(' '):
+                terms[-1] += ' '.join(part)
+            else:
+                terms += part
     return terms
 
 

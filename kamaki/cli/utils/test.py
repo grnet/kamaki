@@ -418,10 +418,10 @@ class UtilsMethods(TestCase):
                 ('"parsable"', ['parsable']),
                 ('"parse" out', ['parse', 'out']),
                 ('"one', ['"one']),
-                ('two" or" more"', ['two', ' or', 'more"']),
+                ('two" or" more"', ['two or', 'more"']),
                 ('Go "down \'deep " deeper \'bottom \' up" go\' up" !', [
                     'Go', "down 'deep ", 'deeper', 'bottom ',
-                    'up', " go' up", '!']),
+                    'up go\' up', '!']),
                 ('Is "this" a \'parsed\' string?', [
                     'Is', 'this', 'a', 'parsed', 'string?'])):
             self.assertEqual(split_input(line), expected)

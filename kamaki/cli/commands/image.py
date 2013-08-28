@@ -42,8 +42,9 @@ from kamaki.clients.image import ImageClient
 from kamaki.clients.pithos import PithosClient
 from kamaki.clients.astakos import AstakosClient
 from kamaki.clients import ClientError
-from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
-from kamaki.cli.argument import IntArgument, ProgressBarArgument
+from kamaki.cli.argument import (
+    FlagArgument, ValueArgument, RepeatableArgument, KeyValueArgument,
+    IntArgument, ProgressBarArgument)
 from kamaki.cli.commands.cyclades import _init_cyclades
 from kamaki.cli.errors import raiseCLIError, CLIBaseUrlError
 from kamaki.cli.commands import _command_init, errors, addLogSettings
@@ -277,7 +278,12 @@ class image_list(_init_image, _optional_json, _name_filter, _id_filter):
 
 
 @command(image_cmds)
-class image_meta(_init_image, _optional_json):
+class image_meta(_init_image):
+    """Manage image metadata and custom properties"""
+
+
+@command(image_cmds)
+class image_info(_init_image, _optional_json):
     """Get image metadata
     Image metadata include:
     - image file information (location, size, etc.)
@@ -289,7 +295,104 @@ class image_meta(_init_image, _optional_json):
     @errors.plankton.connection
     @errors.plankton.id
     def _run(self, image_id):
-        self._print([self.client.get_meta(image_id)])
+        meta = self.client.get_meta(image_id)
+        if not self['json_output']:
+            meta['owner'] += ' (%s)' % self._uuid2username(meta['owner'])
+        self._print(meta, print_dict)
+
+    def main(self, image_id):
+        super(self.__class__, self)._run()
+        self._run(image_id=image_id)
+
+
+@command(image_cmds)
+class image_meta_set(_init_image, _optional_output_cmd):
+    """Add / update metadata and properties for an image
+    The original image preserves the values that are not affected
+    """
+
+    arguments = dict(
+        name=ValueArgument('Set a new name', ('--name')),
+        disk_format=ValueArgument('Set a new disk format', ('--disk-format')),
+        container_format=ValueArgument(
+            'Set a new container format', ('--container-format')),
+        status=ValueArgument('Set a new status', ('--status')),
+        publish=FlagArgument('publish the image', ('--publish')),
+        unpublish=FlagArgument('unpublish the image', ('--unpublish')),
+        properties=KeyValueArgument(
+            'set property in key=value form (can be repeated)',
+            ('-p', '--property'))
+    )
+
+    def _check_empty(self):
+        for term in (
+                'name', 'disk_format', 'container_format', 'status', 'publish',
+                'unpublish', 'properties'):
+            if self['term']:
+                if self['publish'] and self['unpublish']:
+                    raiseCLIError(
+                        '--publish and --unpublish are mutually exclusive')
+                return
+        raiseCLIError(
+            'Nothing to update, please use arguments (-h for a list)')
+
+    @errors.generic.all
+    @errors.plankton.connection
+    @errors.plankton.id
+    def _run(self, image_id):
+        self._check_empty()
+        meta = self.client.get_meta(image_id)
+        for k, v in self['properties'].items():
+            meta['properties'][k.upper()] = v
+        self._optional_output(self.client.update_image(
+            image_id,
+            name=self['name'],
+            disk_format=self['disk_format'],
+            container_format=self['container_format'],
+            status=self['status'],
+            public=self['publish'] or self['unpublish'] or None,
+            **meta['properties']))
+
+    def main(self, image_id):
+        super(self.__class__, self)._run()
+        self._run(image_id=image_id)
+
+
+@command(image_cmds)
+class image_meta_delete(_init_image, _optional_output_cmd):
+    """Remove/empty image metadata and/or custom properties"""
+
+    arguments = dict(
+        disk_format=FlagArgument('Empty disk format', ('--disk-format')),
+        container_format=FlagArgument(
+            'Empty container format', ('--container-format')),
+        status=FlagArgument('Empty status', ('--status')),
+        properties=RepeatableArgument(
+            'Property keys to remove', ('-p', '--property'))
+    )
+
+    def _check_empty(self):
+        for term in (
+                'disk_format', 'container_format', 'status', 'properties'):
+            if self[term]:
+                return
+        raiseCLIError(
+            'Nothing to update, please use arguments (-h for a list)')
+
+    @errors.generic.all
+    @errors.plankton.connection
+    @errors.plankton.id
+    def _run(self, image_id):
+        self._check_empty()
+        meta = self.client.get_meta(image_id)
+        for k in self['properties']:
+            meta['properties'].pop(k.upper(), None)
+        self._optional_output(self.client.update_image(
+            image_id,
+            disk_format='' if self['disk_format'] else None,
+            container_format='' if self['container_format'] else None,
+            status='' if self['status'] else None,
+            **meta['properties']))
 
     def main(self, image_id):
         super(self.__class__, self)._run()
@@ -308,7 +411,7 @@ class image_register(_init_image, _optional_json):
             'set container format',
             '--container-format'),
         disk_format=ValueArgument('set disk format', '--disk-format'),
-        owner=ValueArgument('set image owner (admin only)', '--owner'),
+        #owner=ValueArgument('set image owner (admin only)', '--owner'),
         properties=KeyValueArgument(
             'add property in key=value form (can be repeated)',
             ('-p', '--property')),
@@ -482,6 +585,7 @@ class image_register(_init_image, _optional_json):
                     details=[
                         'Make sure the image file exists'] + howto_image_file)
             raise
+        r['owner'] += '( %s)' % self._uuid2username(r['owner'])
         self._print(r, print_dict)
 
         #upload the metadata file
@@ -528,11 +632,15 @@ class image_shared(_init_image, _optional_json):
     @errors.generic.all
     @errors.plankton.connection
     def _run(self, member):
-        self._print(self.client.list_shared(member), title=('image_id',))
+        r = self.client.list_shared(member)
+        if r:
+            uuid = self._username2uuid(member)
+            r = self.client.list_shared(uuid) if uuid else []
+        self._print(r, title=('image_id',))
 
-    def main(self, member):
+    def main(self, member_id_or_username):
         super(self.__class__, self)._run()
-        self._run(member)
+        self._run(member_id_or_username)
 
 
 @command(image_cmds)
@@ -548,7 +656,13 @@ class image_members_list(_init_image, _optional_json):
     @errors.plankton.connection
     @errors.plankton.id
     def _run(self, image_id):
-        self._print(self.client.list_members(image_id), title=('member_id',))
+        members = self.client.list_members(image_id)
+        if not self['json_output']:
+            uuids = [member['member_id'] for member in members]
+            usernames = self._uuids2usernames(uuids)
+            for member in members:
+                member['member_id'] += ' (%s)' % usernames[member['member_id']]
+        self._print(members, title=('member_id',))
 
     def main(self, image_id):
         super(self.__class__, self)._run()
@@ -565,9 +679,9 @@ class image_members_add(_init_image, _optional_output_cmd):
     def _run(self, image_id=None, member=None):
             self._optional_output(self.client.add_member(image_id, member))
 
-    def main(self, image_id, member):
+    def main(self, image_id, member_id):
         super(self.__class__, self)._run()
-        self._run(image_id=image_id, member=member)
+        self._run(image_id=image_id, member=member_id)
 
 
 @command(image_cmds)
@@ -595,10 +709,9 @@ class image_members_set(_init_image, _optional_output_cmd):
     def _run(self, image_id, members):
             self._optional_output(self.client.set_members(image_id, members))
 
-    def main(self, image_id, *members):
+    def main(self, image_id, *member_ids):
         super(self.__class__, self)._run()
-        self._run(image_id=image_id, members=members)
-
+        self._run(image_id=image_id, members=member_ids)
 
 # Compute Image Commands
 
@@ -695,6 +808,10 @@ class image_compute_info(_init_cyclades, _optional_json):
     @errors.plankton.id
     def _run(self, image_id):
         image = self.client.get_image_details(image_id)
+        uuids = [image['user_id'], image['tenant_id']]
+        usernames = self._uuids2usernames(uuids)
+        image['user_id'] += ' (%s)' % usernames[image['user_id']]
+        image['tenant_id'] += ' (%s)' % usernames[image['tenant_id']]
         self._print(image, print_dict)
 
     def main(self, image_id):
@@ -753,21 +870,21 @@ class image_compute_properties_get(_init_cyclades, _optional_json):
         self._run(image_id=image_id, key=key)
 
 
-@command(image_cmds)
-class image_compute_properties_add(_init_cyclades, _optional_json):
-    """Add a property to an image"""
-
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.plankton.id
-    @errors.plankton.metadata
-    def _run(self, image_id, key, val):
-        self._print(
-            self.client.create_image_metadata(image_id, key, val), print_dict)
-
-    def main(self, image_id, key, val):
-        super(self.__class__, self)._run()
-        self._run(image_id=image_id, key=key, val=val)
+#@command(image_cmds)
+#class image_compute_properties_add(_init_cyclades, _optional_json):
+#    """Add a property to an image"""
+#
+#    @errors.generic.all
+#    @errors.cyclades.connection
+#    @errors.plankton.id
+#    @errors.plankton.metadata
+#    def _run(self, image_id, key, val):
+#        self._print(
+#            self.client.create_image_metadata(image_id, key, val), print_dict)
+#
+#    def main(self, image_id, key, val):
+#        super(self.__class__, self)._run()
+#        self._run(image_id=image_id, key=key, val=val)
 
 
 @command(image_cmds)
@@ -790,7 +907,6 @@ class image_compute_properties_set(_init_cyclades, _optional_json):
 
     def main(self, image_id, *key_equals_value):
         super(self.__class__, self)._run()
-        print key_equals_value
         self._run(image_id=image_id, keyvals=key_equals_value)
 
 

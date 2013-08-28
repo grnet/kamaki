@@ -43,7 +43,7 @@ from kamaki.cli.commands import (
     _command_init, errors, _optional_json, addLogSettings)
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.utils import print_dict, format_size
-from kamaki.cli.argument import FlagArgument, ValueArgument
+from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
 from kamaki.cli.argument import CommaSeparatedListArgument
 from kamaki.cli.logger import get_logger
 
@@ -541,7 +541,7 @@ class project_info(_astakos_init, _optional_json):
     @astakoserror
     def _run(self, project_id):
         self._print(
-            self.client.get_projects(self.token, project_id), print_dict)
+            self.client.get_project(self.token, project_id), print_dict)
 
     def main(self, project_id):
         super(self.__class__, self)._run()
@@ -612,7 +612,6 @@ class _project_action(_astakos_init):
 
     @errors.generic.all
     @astakoserror
-    @apply_notification
     def _run(self, project_id, quote_a_reason):
         self.client.project_action(
             self.token, project_id, self.action, quote_a_reason)
@@ -624,30 +623,30 @@ class _project_action(_astakos_init):
 
 @command(snfproject_cmds)
 class project_suspend(_project_action):
-    """Apply for a project suspension"""
+    """Suspend a project (special privileges needed)"""
     action = 'suspend'
 
 
 @command(snfproject_cmds)
 class project_unsuspend(_project_action):
-    """Apply for a project un-suspension"""
+    """Resume a suspended project (special privileges needed)"""
     action = 'unsuspend'
 
 
 @command(snfproject_cmds)
 class project_terminate(_project_action):
-    """Apply for a project termination"""
+    """Terminate a project (special privileges needed)"""
     action = 'terminate'
 
 
 @command(snfproject_cmds)
 class project_reinstate(_project_action):
-    """Apply for a project reinstatement"""
+    """Reinstate a terminated project (special privileges needed)"""
     action = 'reinstate'
 
 
 @command(snfproject_cmds)
-class project_application(_project_action):
+class project_application(_astakos_init):
     """Application management commands"""
 
 
@@ -656,7 +655,7 @@ class project_application_list(_astakos_init, _optional_json):
     """List all applications (old and new)"""
 
     arguments = dict(
-        project=ValueArgument('Filter by project id', '--with-project-id')
+        project=IntArgument('Filter by project id', '--with-project-id')
     )
 
     @errors.generic.all
@@ -733,13 +732,13 @@ class project_membership_list(_astakos_init, _optional_json):
     """List all memberships"""
 
     arguments = dict(
-        project=ValueArgument('Filter by project id', '--with-project-id')
+        project=IntArgument('Filter by project id', '--with-project-id')
     )
 
     @errors.generic.all
     @astakoserror
     def _run(self):
-        self._print(self.client.get_memberships(self['project']))
+        self._print(self.client.get_memberships(self.token, self['project']))
 
     def main(self):
         super(self.__class__, self)._run()
@@ -753,7 +752,8 @@ class project_membership_info(_astakos_init, _optional_json):
     @errors.generic.all
     @astakoserror
     def _run(self, memb_id):
-        self._print(self.client.get_membership(memb_id), print_dict)
+        self._print(self.client.get_membership(self.token, memb_id),
+                    print_dict)
 
     def main(self, membership_id):
         super(self.__class__, self)._run()
@@ -767,10 +767,8 @@ class _membership_action(_astakos_init, _optional_json):
     @errors.generic.all
     @astakoserror
     def _run(self, memb_id, quote_a_reason):
-        self._print(
-            self.client.membership_action(
-                self.token, memb_id, self.action, quote_a_reason),
-            print_dict)
+        self._print(self.client.membership_action(
+            self.token, memb_id, self.action, quote_a_reason))
 
     def main(self, membership_id, quote_a_reason=''):
         super(_membership_action, self)._run()
@@ -797,7 +795,7 @@ class project_membership_accept(_membership_action):
 
 @command(snfproject_cmds)
 class project_membership_reject(_membership_action):
-    """Reject a membership for project you manage"""
+    """Reject a membership for a project you manage"""
     action = 'reject'
 
 
@@ -809,7 +807,7 @@ class project_membership_remove(_membership_action):
 
 @command(snfproject_cmds)
 class project_membership_join(_astakos_init):
-    """Get a membership to a project"""
+    """Join a project"""
 
     @errors.generic.all
     @astakoserror
@@ -817,7 +815,7 @@ class project_membership_join(_astakos_init):
         print self.client.join_project(self.token, project_id)
 
     def main(self, project_id):
-        super(_membership_action, self)._run()
+        super(project_membership_join, self)._run()
         self._run(project_id)
 
 
@@ -831,5 +829,5 @@ class project_membership_enroll(_astakos_init):
         print self.client.enroll_member(self.token, project_id, email)
 
     def main(self, project_id, email):
-        super(_membership_action, self)._run()
+        super(project_membership_join, self)._run()
         self._run(project_id, email)

@@ -1509,7 +1509,7 @@ class file_delete(_file_container_command, _optional_output_cmd):
                     until=self['until'], delimiter=self['delimiter']))
             else:
                 print('Aborted')
-        else:
+        elif self.container:
             if self['recursive']:
                 ask_msg = 'Delete container contents'
             else:
@@ -1519,6 +1519,8 @@ class file_delete(_file_container_command, _optional_output_cmd):
                     until=self['until'], delimiter=self['delimiter']))
             else:
                 print('Aborted')
+        else:
+            raiseCLIError('Nothing to delete, please provide container[:path]')
 
     def main(self, container____path__=None):
         super(self.__class__, self)._run(container____path__)
@@ -2054,19 +2056,15 @@ class file_sharers(_file_account_command, _optional_json):
     @errors.pithos.connection
     def _run(self):
         accounts = self.client.get_sharing_accounts(marker=self['marker'])
-        uuids = [acc['name'] for acc in accounts]
-        try:
-            astakos_responce = self.auth_base.post_user_catalogs(uuids)
-            usernames = astakos_responce.json
-            r = usernames['uuid_catalog']
-        except Exception as e:
-            print 'WARNING: failed to call user_catalogs, %s' % e
-            r = dict(sharer_uuid=uuids)
-            usernames = accounts
-        if self['json_output'] or self['detail']:
-            self._print(usernames)
-        else:
-            self._print(r, print_dict)
+        if not self['json_output']:
+            usernames = self._uuids2usernames(
+                [acc['name'] for acc in accounts])
+            for item in accounts:
+                uuid = item['name']
+                item['id'], item['name'] = uuid, usernames[uuid]
+                if not self['detail']:
+                    item.pop('last_modified')
+        self._print(accounts)
 
     def main(self):
         super(self.__class__, self)._run()

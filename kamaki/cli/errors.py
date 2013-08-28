@@ -41,7 +41,7 @@ class CLIError(Exception):
     def __init__(self, message, details=[], importance=0):
         """
         @message is the main message of the Error
-        @detauls is a list of previous errors
+        @defaults is a list of previous errors
         @importance of the output for the user
             Suggested values: 0, 1, 2, 3
         """
