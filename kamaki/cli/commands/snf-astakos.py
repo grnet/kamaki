@@ -612,7 +612,6 @@ class _project_action(_astakos_init):
 
     @errors.generic.all
     @astakoserror
-    @apply_notification
     def _run(self, project_id, quote_a_reason):
         self.client.project_action(
             self.token, project_id, self.action, quote_a_reason)
@@ -624,25 +623,25 @@ class _project_action(_astakos_init):
 
 @command(snfproject_cmds)
 class project_suspend(_project_action):
-    """Apply for a project suspension"""
+    """Suspend a project (special privileges needed)"""
     action = 'suspend'
 
 
 @command(snfproject_cmds)
 class project_unsuspend(_project_action):
-    """Apply for a project un-suspension"""
+    """Resume a suspended project (special privileges needed)"""
     action = 'unsuspend'
 
 
 @command(snfproject_cmds)
 class project_terminate(_project_action):
-    """Apply for a project termination"""
+    """Terminate a project (special privileges needed)"""
     action = 'terminate'
 
 
 @command(snfproject_cmds)
 class project_reinstate(_project_action):
-    """Apply for a project reinstatement"""
+    """Reinstate a terminated project (special privileges needed)"""
     action = 'reinstate'
 
 
