@@ -774,6 +774,7 @@ class _membership_action(_astakos_init, _optional_json):
         self._print(
             self.client.membership_action(
                 self.token, memb_id, self.action, quote_a_reason),
+            ### this is not a dict
             print_dict)
 
     def main(self, membership_id, quote_a_reason=''):
