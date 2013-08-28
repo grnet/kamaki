@@ -43,7 +43,7 @@ from kamaki.cli.commands import (
     _command_init, errors, _optional_json, addLogSettings)
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.utils import print_dict, format_size
-from kamaki.cli.argument import FlagArgument, ValueArgument
+from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
 from kamaki.cli.argument import CommaSeparatedListArgument
 from kamaki.cli.logger import get_logger
 
@@ -655,7 +655,7 @@ class project_application_list(_astakos_init, _optional_json):
     """List all applications (old and new)"""
 
     arguments = dict(
-        project=ValueArgument('Filter by project id', '--with-project-id')
+        project=IntArgument('Filter by project id', '--with-project-id')
     )
 
     @errors.generic.all
@@ -732,16 +732,13 @@ class project_membership_list(_astakos_init, _optional_json):
     """List all memberships"""
 
     arguments = dict(
-        project=ValueArgument('Filter by project id', '--with-project-id')
+        project=IntArgument('Filter by project id', '--with-project-id')
     )
 
     @errors.generic.all
     @astakoserror
     def _run(self):
-        project = self['project']
-        if project is not None:
-            project = int(project)
-        self._print(self.client.get_memberships(self.token, project))
+        self._print(self.client.get_memberships(self.token, self['project']))
 
     def main(self):
         super(self.__class__, self)._run()

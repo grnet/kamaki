@@ -213,9 +213,14 @@ class IntArgument(ValueArgument):
 
     @value.setter
     def value(self, newvalue):
+        if newvalue == self.default:
+            self._value = newvalue
+            return
         try:
-            self._value = self.default if (
-                newvalue == self.default) else int(newvalue)
+            if int(newvalue) == float(newvalue):
+                self._value = int(newvalue)
+            else:
+                raise ValueError('Raise int argument error')
         except ValueError:
             raiseCLIError(CLISyntaxError(
                 'IntArgument Error',

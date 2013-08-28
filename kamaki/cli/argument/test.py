@@ -228,14 +228,16 @@ class IntArgument(TestCase):
     def test_value(self):
         ia = argument.IntArgument(parsed_name='--ia')
         self.assertEqual(ia.value, None)
-        for v in (1, 0, -1, 923455555555555555555555555555555):
+        for v in (1, 0, -1):
             ia.value = v
             self.assertEqual(ia.value, v)
-        for v in ('1', '-1', 2.8):
+        for v in ('1', '-1'):
             ia.value = v
             self.assertEqual(ia.value, int(v))
         for v, err in (
                 ('invalid', errors.CLIError),
+                (2.8, errors.CLIError),
+                (923455555555555555555555555555555, errors.CLIError),
                 (None, TypeError), (False, TypeError), ([1, 2, 3], TypeError)):
             try:
                 ia.value = v
