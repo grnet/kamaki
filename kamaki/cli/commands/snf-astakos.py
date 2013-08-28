@@ -818,7 +818,7 @@ class project_membership_join(_astakos_init):
         print self.client.join_project(self.token, project_id)
 
     def main(self, project_id):
-        super(_membership_action, self)._run()
+        super(project_membership_join, self)._run()
         self._run(project_id)
 
 
@@ -832,5 +832,5 @@ class project_membership_enroll(_astakos_init):
         print self.client.enroll_member(self.token, project_id, email)
 
     def main(self, project_id, email):
-        super(_membership_action, self)._run()
+        super(project_membership_join, self)._run()
         self._run(project_id, email)
