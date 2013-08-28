@@ -1,3 +1,9 @@
+kamaki (0.10~rc1-2) Squeeze; urgency=low
+
+  * Fixed tag release candidate
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Wed, 28 Aug 2013 18:09:30 +0300
+
 kamaki (0.10~rc1-1) UNRELEASED; urgency=low
 
   * New Release Candidate
