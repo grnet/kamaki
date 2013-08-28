@@ -898,18 +898,15 @@ class image_compute_properties_set(_init_cyclades, _optional_json):
     @errors.cyclades.connection
     @errors.plankton.id
     def _run(self, image_id, keyvals):
-        print keyvals
         meta = dict()
         for keyval in keyvals:
             key, sep, val = keyval.partition('=')
             meta[key] = val
-        print meta
         self._print(
             self.client.update_image_metadata(image_id, **meta), print_dict)
 
     def main(self, image_id, *key_equals_value):
         super(self.__class__, self)._run()
-        print key_equals_value
         self._run(image_id=image_id, keyvals=key_equals_value)
 
 
