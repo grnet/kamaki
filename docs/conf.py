@@ -59,7 +59,14 @@ try:
     PooledHTTPConnection
 except ImportError:
     stderr.write("`objpool` package is required to build kamaki docs.\n")
-    # raise
+    raise
+
+try:
+    from progress.bar import ShadyBar
+    ShadyBar
+except ImportError:
+    stderr.write("`progress` package is required to build kamaki docs.\n")
+    raise
 
 path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..'))
 

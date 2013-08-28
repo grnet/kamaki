@@ -4,6 +4,7 @@ Bug Fixes:
 - Avoid loading optional cmd groups specified in same pkg with mantatory
     comand groups, except if user requests otherwise ( #4114 )
 - Ignore subdir output in container_get with prefix+delimiter [#4134]
+- Fix the split-input bug in repeatable k=v args [#4232]
 
 Changes:
 
