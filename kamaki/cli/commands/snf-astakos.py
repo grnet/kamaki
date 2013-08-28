@@ -646,7 +646,7 @@ class project_reinstate(_project_action):
 
 
 @command(snfproject_cmds)
-class project_application(_project_action):
+class project_application(_astakos_init):
     """Application management commands"""
 
 
