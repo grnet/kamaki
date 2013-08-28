@@ -255,11 +255,11 @@ Let's rename the image:
     [kamaki]: image meta set 7h1rd-1m4g3-1d --name='Changed Name'
     [kamaki]:
 
-If we, now, list the image metadata, we will see that the name is changed:
+If we, now, get the image metadata, we will see that the name is changed:
 
 .. code-block:: console
 
-    [kamaki]: image meta list 7h1rd-1m4g3-1d
+    [kamaki]: image info 7h1rd-1m4g3-1d
     checksum:         3cb03556ec971f...e8dd6190443b560cb7
     container-format: bare
     created-at:       2013-06-19 08:00:22
@@ -306,7 +306,7 @@ These operations can be used for properties with the same semantics:
 .. code-block:: console
 
     [kamaki]: image meta set 7h1rd-1m4g3-1d -p user=user
-    [kamaki]: image meta list 7h1rd-1m4g3-1d
+    [kamaki]: image info 7h1rd-1m4g3-1d
     ...
     properties:
             OS:     Linux
@@ -320,7 +320,7 @@ Just to test the feature, let's create a property "greet" with value
 .. code-block:: console
 
     [kamaki]: image meta set 7h1rd-1m4g3-1d -p greet='Hi there' -p user=root
-    [kamaki]: image meta list 7h1rd-1m4g3-1d
+    [kamaki]: image info 7h1rd-1m4g3-1d
     ...
     properties:
             OS:     Linux
@@ -328,7 +328,7 @@ Just to test the feature, let's create a property "greet" with value
             GREET:  Hi there
     ...
     [kamaki]: image meta delete 7h1rd-1m4g3-1d -p greet
-    [kamaki]: image meta list 7h1rd-1m4g3-1d
+    [kamaki]: image info 7h1rd-1m4g3-1d
     ...
     properties:
             OS:     Linux

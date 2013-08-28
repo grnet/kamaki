@@ -492,7 +492,7 @@ Here is a list of settings needed:
 
         .. code-block:: console
 
-            $ kamaki image meta list <img id> -j > img.details
+            $ kamaki image info <img id> -j > img.details
 
     * livetest.image_id = <A valid image id used for testing>
     * livetest.image_local_path = <The local path of the testing image>

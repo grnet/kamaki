@@ -283,7 +283,7 @@ class image_meta(_init_image):
 
 
 @command(image_cmds)
-class image_meta_list(_init_image, _optional_json):
+class image_info(_init_image, _optional_json):
     """Get image metadata
     Image metadata include:
     - image file information (location, size, etc.)

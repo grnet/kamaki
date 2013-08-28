@@ -153,8 +153,8 @@ image commands
 **************
 
 * list           List images accessible by user
+* info           Get image metadata
 * meta           Manage image metadata
-    * list      Get image metadata
     * set       Add / update metadata and properties for an image
     * delete    Remove/empty image metadata and/or custom properties
 * register       (Re)Register an image
