@@ -739,7 +739,10 @@ class project_membership_list(_astakos_init, _optional_json):
     @errors.generic.all
     @astakoserror
     def _run(self):
-        self._print(self.client.get_memberships(self.token, self['project']))
+        project = self['project']
+        if project is not None:
+            project = int(project)
+        self._print(self.client.get_memberships(self.token, project))
 
     def main(self):
         super(self.__class__, self)._run()
