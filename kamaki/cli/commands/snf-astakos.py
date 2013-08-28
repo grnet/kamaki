@@ -739,7 +739,7 @@ class project_membership_list(_astakos_init, _optional_json):
     @errors.generic.all
     @astakoserror
     def _run(self):
-        self._print(self.client.get_memberships(self['project']))
+        self._print(self.client.get_memberships(self.token, self['project']))
 
     def main(self):
         super(self.__class__, self)._run()
@@ -753,7 +753,8 @@ class project_membership_info(_astakos_init, _optional_json):
     @errors.generic.all
     @astakoserror
     def _run(self, memb_id):
-        self._print(self.client.get_membership(memb_id), print_dict)
+        self._print(self.client.get_membership(self.token, memb_id),
+                    print_dict)
 
     def main(self, membership_id):
         super(self.__class__, self)._run()
