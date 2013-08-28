@@ -541,7 +541,7 @@ class project_info(_astakos_init, _optional_json):
     @astakoserror
     def _run(self, project_id):
         self._print(
-            self.client.get_projects(self.token, project_id), print_dict)
+            self.client.get_project(self.token, project_id), print_dict)
 
     def main(self, project_id):
         super(self.__class__, self)._run()
