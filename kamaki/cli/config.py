@@ -75,6 +75,7 @@ DEFAULTS = {
         'log_file': os.path.expanduser('~/.kamaki.log'),
         'log_token': 'off',
         'log_data': 'off',
+        'log_pid': 'off',
         'max_threads': 7,
         'history_file': HISTORY_PATH,
         'user_cli': 'astakos',

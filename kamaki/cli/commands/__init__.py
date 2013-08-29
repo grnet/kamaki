@@ -113,12 +113,23 @@ class _command_init(object):
 
     def _set_log_params(self):
         try:
-            self.client.LOG_TOKEN, self.client.LOG_DATA = (
-                self['config'].get_global('log_token').lower() == 'on',
+            self.client.LOG_TOKEN = (
+                self['config'].get_global('log_token').lower() == 'on')
+        except Exception as e:
+            log.debug('Failed to read custom log_token setting:'
+                '%s\n default for log_token is off' % e)
+        try:
+            self.client.LOG_DATA = (
                 self['config'].get_global('log_data').lower() == 'on')
         except Exception as e:
-            log.debug('Failed to read custom log settings:'
-                '%s\n defaults for token and data logging are off' % e)
+            log.debug('Failed to read custom log_data setting:'
+                '%s\n default for log_data is off' % e)
+        try:
+            self.client.LOG_PID = (
+                self['config'].get_global('log_pid').lower() == 'on')
+        except Exception as e:
+            log.debug('Failed to read custom log_pid setting:'
+                '%s\n default for log_pid is off' % e)
 
     def _update_max_threads(self):
         if getattr(self, 'client', None):
