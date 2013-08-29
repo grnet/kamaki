@@ -1,4 +1,4 @@
-CHANGELOG for version 0.10
+CHANGELOG for version 0.11
 
 Bug Fixes:
 - Avoid loading optional cmd groups specified in same pkg with mantatory
