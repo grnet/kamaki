@@ -4,5 +4,9 @@ Bug Fixes:
 
 Changes:
 
+- Logs do not contain kamaki.clients pids by default [#4242]
+
 Features:
+
+- New config option log_pid (default: off) can allow pid-logging [#4242]
 
