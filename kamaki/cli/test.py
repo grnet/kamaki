@@ -312,6 +312,30 @@ class CLIError(TestCase):
         clie = CLIError(message, details, 'non int')
         self.assertEqual(clie.importance, 0)
 
+    def test_raiseCLIError(self):
+        from kamaki.cli.errors import raiseCLIError, CLIError
+        for err, message, importance, details in (
+                (Exception('msg'), '', 0, []),
+                (Exception('msg'), 'orther msg', 0, []),
+                (Exception('msg'), 'orther msg', 0, ['d1', 'd2']),
+                (Exception('msg'), '', 10, []),
+                (Exception('msg'), '', None, []),
+                (CLIError('some msg'), '', None, ['d1', 'd2'])
+            ):
+            try:
+                raiseCLIError(err, message, importance, details)
+            except CLIError as clie:
+                exp_msg = '%s' % (message or err)
+                exp_msg += '' if exp_msg.endswith('\n') else '\n'
+                self.assertEqual('%s' % clie, exp_msg)
+                self.assertEqual(clie.importance, importance or 0)
+                exp_d = list(details) if isinstance(details, list) else [
+                    '%s' % (details or '')]
+                base_msg = '%s' % err
+                if message and base_msg != message:
+                    exp_d.append(base_msg)
+                self.assertEqual(clie.details, exp_d)
+
 
 class CLIUnimplemented(TestCase):
 
