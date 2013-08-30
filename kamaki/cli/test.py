@@ -281,6 +281,111 @@ class LoggerMethods(TestCase):
         GL.assert_called_once_with('my logger name')
 
 
+_RET = None
+
+
+class PseudoException(object):
+
+    def __init__(self, *args):
+        global _RET
+        _RET = args
+
+
+class CLIError(TestCase):
+
+    @patch('__builtin__.super', return_value=PseudoException())
+    def test___init__(self, S):
+        from kamaki.cli.errors import CLIError
+        global _RET
+        for message, details, importance in (
+                ('some msg', [], 0),
+                ('some msg\n', 'details', 0),
+                ('some msg', ['details1', 'details2'], 10)):
+            clie = CLIError(message, details, importance)
+            self.assertEqual(S.mock_calls[-1], call(CLIError, clie))
+            self.assertEqual(_RET[0], (message + '\n') if (
+                message and not message.endswith('\n')) else message)
+            self.assertEqual(clie.details, (list(details) if (
+                isinstance(details, list)) else ['%s' % details]) if (
+                    details) else [])
+            self.assertEqual(clie.importance, int(importance))
+        clie = CLIError(message, details, 'non int')
+        self.assertEqual(clie.importance, 0)
+
+
+class CLIUnimplemented(TestCase):
+
+    def test___init__(self):
+        from kamaki.cli.errors import CLIUnimplemented
+        cliu = CLIUnimplemented()
+        self.assertEqual(
+            '%s' % cliu,
+            'I \'M SORRY, DAVE.\nI \'M AFRAID I CAN\'T DO THAT.\n')
+        self.assertEqual(cliu.details, [
+            '      _        |',
+            '   _-- --_     |',
+            '  --     --    |',
+            ' --   .   --   |',
+            ' -_       _-   |',
+            '   -_   _-     |',
+            '      -        |'])
+        self.assertEqual(cliu.importance, 3)
+
+
+class CLIBaseUrlError(TestCase):
+
+    def test___init__(self):
+        from kamaki.cli.errors import CLIBaseUrlError
+        for service in ('', 'some service'):
+            clibue = CLIBaseUrlError(service=service)
+            self.assertEqual('%s' % clibue, 'No URL for %s\n' % service)
+            self.assertEqual(clibue.details, [
+                'Two ways to resolve this:',
+                '(Use the correct cloud name, instead of "default")',
+                'A. (recommended) Let kamaki discover endpoint URLs for all',
+                'services by setting a single Authentication URL and token:',
+                '  /config set cloud.default.url <AUTH_URL>',
+                '  /config set cloud.default.token <t0k3n>',
+                'B. (advanced users) Explicitly set an %s endpoint URL' % (
+                    service.upper()),
+                'Note: URL option has a higher priority, so delete it to',
+                'make that work',
+                '  /config delete cloud.default.url',
+                '  /config set cloud.%s.url <%s_URL>' % (
+                    service, service.upper())])
+            self.assertEqual(clibue.importance, 2)
+
+
+class CLISyntaxError(TestCase):
+
+    def test___init__(self):
+        from kamaki.cli.errors import CLISyntaxError
+        clise = CLISyntaxError()
+        self.assertEqual('%s' % clise, 'Syntax Error\n')
+        self.assertEqual(clise.details, [])
+        self.assertEqual(clise.importance, 1)
+
+
+class CLIUnknownCommand(TestCase):
+
+    def test___init__(self):
+        from kamaki.cli.errors import CLIUnknownCommand
+        cliec = CLIUnknownCommand()
+        self.assertEqual('%s' % cliec, 'Unknown Command\n')
+        self.assertEqual(cliec.details, [])
+        self.assertEqual(cliec.importance, 1)
+
+
+class CLICmdSpecError(TestCase):
+
+    def test___init__(self):
+        from kamaki.cli.errors import CLICmdSpecError
+        clicse = CLICmdSpecError()
+        self.assertEqual('%s' % clicse, 'Command Specification Error\n')
+        self.assertEqual(clicse.details, [])
+        self.assertEqual(clicse.importance, 0)
+
+
 #  TestCase auxiliary methods
 
 def runTestCase(cls, test_name, args=[], failure_collector=[]):
