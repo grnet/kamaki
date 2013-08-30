@@ -9,4 +9,6 @@ Changes:
 Features:
 
 - New config option log_pid (default: off) can allow pid-logging [#4242]
+- Expand kamaki.cli unitests for the following packages ( [#4058] ):
+  errors
 
