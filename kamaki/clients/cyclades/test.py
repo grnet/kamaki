@@ -470,8 +470,8 @@ class CycladesClient(TestCase):
             json_data = dict()
             if pool:
                 json_data['pool'] = pool
-                if address:
-                    json_data['address'] = address
+            if address:
+                json_data['address'] = address
             self.assertEqual(post.mock_calls[-1], call(json_data))
 
     @patch('%s.floating_ips_get' % cyclades_pkg, return_value=FR())
