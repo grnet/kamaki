@@ -155,14 +155,17 @@ class AstakosClient(Client):
         """Get (cached) term, from user credentials"""
         return self.user_info(token).get(key, None)
 
-    def post_user_catalogs(self, uuids):
+    def post_user_catalogs(self, uuids=None, displaynames=None):
         """POST base_url/user_catalogs
 
         :param uuids: (list or tuple) user uuids
 
-        :returns: (dict) {uuid1: name1, uuid2: name2, ...}
+        :param displaynames: (list or tuple) usernames (mut. excl. to uuids)
+
+        :returns: (dict) {uuid1: name1, uuid2: name2, ...} or oposite
         """
         account_url = self.get_service_endpoints('account')['publicURL']
         account = AstakosClient(account_url, self.token)
-        json_data = dict(uuids=uuids)
+        json_data = dict(uuids=uuids) if (
+            uuids) else dict(displaynames=displaynames)
         return account.post('user_catalogs', json=json_data)

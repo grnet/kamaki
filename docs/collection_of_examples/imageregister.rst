@@ -240,6 +240,103 @@ Register the image (don't forget the -f parameter, to override the metafile).
     Metadata file uploaded as pithos:debian_base3.diskdump.meta (version 1359)
     [kamaki]:
 
+Metadata and Property modification
+----------------------------------
+
+Image metadata and custom properties can be modified even after the image is
+registered. Metadata are fixed image attributes, like name, disk format etc.
+while custom properties are set by the image owner and, usually, refer to
+attributes of the images OS.
+
+Let's rename the image:
+
+.. code-block:: console
+
+    [kamaki]: image meta set 7h1rd-1m4g3-1d --name='Changed Name'
+    [kamaki]:
+
+If we, now, get the image metadata, we will see that the name is changed:
+
+.. code-block:: console
+
+    [kamaki]: image info 7h1rd-1m4g3-1d
+    checksum:         3cb03556ec971f...e8dd6190443b560cb7
+    container-format: bare
+    created-at:       2013-06-19 08:00:22
+    deleted-at:       
+    disk-format:      diskdump
+    id:               7h1rd-1m4g3-1d
+    is-public:        False
+    location:         pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump
+    name:             Changed Name
+    owner:            s0m3-u53r-1d
+    properties:      
+            OS:     Linux
+            USER:   root
+    size:             903471104
+    status:           available
+    updated-at:       2013-06-19 08:01:00
+    [kamaki]:
+
+We can use the same idea to change the values of other metadata like disk
+format, container format or status. On the other hand, we cannot modify the
+id, owner, location, checksum and dates. E.g., to publish and unpublish:
+
+.. code-block:: console
+
+    [kamaki]: image meta set 7h1rd-1m4g3-1d --publish --name='Debian Base Gama'
+    [kamaki]: image meta set 7h1rd-1m4g3-1d --unpublish
+    [kamaki]:
+
+The first call published the image (set is-public to True) and also restored
+the name to "Debian Base Gama". The second one unpublished the image (set
+is-public to False).
+
+To delete metadata, use the image meta delete method:
+
+.. code-block:: console
+
+    [kamaki]: image meta delete 7h1rd-1m4g3-1d status
+    [kamaki]:
+
+will empty the value of "status".
+
+These operations can be used for properties with the same semantics:
+
+.. code-block:: console
+
+    [kamaki]: image meta set 7h1rd-1m4g3-1d -p user=user
+    [kamaki]: image info 7h1rd-1m4g3-1d
+    ...
+    properties:
+            OS:     Linux
+            USER:   user
+    ...
+    [kamaki]:
+
+Just to test the feature, let's create a property "greet" with value
+"hi there", and then remove it. Also, let's restore the value of USER:
+
+.. code-block:: console
+
+    [kamaki]: image meta set 7h1rd-1m4g3-1d -p greet='Hi there' -p user=root
+    [kamaki]: image info 7h1rd-1m4g3-1d
+    ...
+    properties:
+            OS:     Linux
+            USER:   root
+            GREET:  Hi there
+    ...
+    [kamaki]: image meta delete 7h1rd-1m4g3-1d -p greet
+    [kamaki]: image info 7h1rd-1m4g3-1d
+    ...
+    properties:
+            OS:     Linux
+            USER:   root
+    ...
+    [kamaki]:
+
+
 Reregistration: priorities and overrides
 ----------------------------------------
 

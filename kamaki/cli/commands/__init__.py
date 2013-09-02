@@ -32,8 +32,8 @@
 # or implied, of GRNET S.A.command
 
 from kamaki.cli.logger import get_logger
-from kamaki.cli.utils import print_json, print_items
-from kamaki.cli.argument import FlagArgument
+from kamaki.cli.utils import print_json, print_items, filter_dicts_by_dict
+from kamaki.cli.argument import FlagArgument, ValueArgument
 
 log = get_logger(__name__)
 
@@ -66,6 +66,10 @@ class _command_init(object):
             arguments.update(self.oo_arguments)
         if isinstance(self, _optional_json):
             arguments.update(self.oj_arguments)
+        if isinstance(self, _name_filter):
+            arguments.update(self.nf_arguments)
+        if isinstance(self, _id_filter):
+            arguments.update(self.if_arguments)
         try:
             arguments.update(self.wait_arguments)
         except AttributeError:
@@ -93,6 +97,19 @@ class _command_init(object):
     @DontRaiseKeyError
     def _custom_version(self, service):
         return self.config.get_cloud(self.cloud, '%s_version' % service)
+
+    def _uuids2usernames(self, uuids):
+        return self.auth_base.post_user_catalogs(uuids).json['uuid_catalog']
+
+    def _usernames2uuids(self, username):
+        return self.auth_base.post_user_catalogs(
+            displaynames=username).json['displayname_catalog']
+
+    def _uuid2username(self, uuid):
+        return self._uuids2usernames([uuid]).get(uuid, None)
+
+    def _username2uuid(self, username):
+        return self._usernames2uuids([username]).get(username, None)
 
     def _set_log_params(self):
         try:
@@ -196,3 +213,60 @@ class _optional_json(object):
             print_json(output)
         else:
             print_method(output, **print_method_kwargs)
+
+
+class _name_filter(object):
+
+    nf_arguments = dict(
+        name=ValueArgument('filter by name', '--name'),
+        name_pref=ValueArgument(
+            'filter by name prefix (case insensitive)', '--name-prefix'),
+        name_suff=ValueArgument(
+            'filter by name suffix (case insensitive)', '--name-suffix'),
+        name_like=ValueArgument(
+            'print only if name contains this (case insensitive)',
+            '--name-like')
+    )
+
+    def _non_exact_name_filter(self, items):
+        np, ns, nl = self['name_pref'], self['name_suff'], self['name_like']
+        return [item for item in items if (
+            (not np) or item['name'].lower().startswith(np.lower())) and (
+            (not ns) or item['name'].lower().endswith(ns.lower())) and (
+            (not nl) or nl.lower() in item['name'].lower())]
+
+    def _exact_name_filter(self, items):
+        return filter_dicts_by_dict(items, dict(name=self['name'])) if (
+            self['name']) else items
+
+    def _filter_by_name(self, items):
+        return self._non_exact_name_filter(self._exact_name_filter(items))
+
+
+class _id_filter(object):
+
+    if_arguments = dict(
+        id=ValueArgument('filter by id', '--id'),
+        id_pref=ValueArgument(
+            'filter by id prefix (case insensitive)', '--id-prefix'),
+        id_suff=ValueArgument(
+            'filter by id suffix (case insensitive)', '--id-suffix'),
+        id_like=ValueArgument(
+            'print only if id contains this (case insensitive)',
+            '--id-like')
+    )
+
+    def _non_exact_id_filter(self, items):
+        np, ns, nl = self['id_pref'], self['id_suff'], self['id_like']
+        return [item for item in items if (
+            (not np) or (
+                '%s' % item['id']).lower().startswith(np.lower())) and (
+            (not ns) or ('%s' % item['id']).lower().endswith(ns.lower())) and (
+            (not nl) or nl.lower() in ('%s' % item['id']).lower())]
+
+    def _exact_id_filter(self, items):
+        return filter_dicts_by_dict(items, dict(id=self['id'])) if (
+            self['id']) else items
+
+    def _filter_by_id(self, items):
+        return self._non_exact_id_filter(self._exact_id_filter(items))

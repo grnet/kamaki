@@ -33,13 +33,15 @@
 
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.utils import print_dict, remove_from_items
+from kamaki.cli.utils import (
+    print_dict, remove_from_items, filter_dicts_by_dict)
 from kamaki.cli.errors import raiseCLIError, CLISyntaxError, CLIBaseUrlError
 from kamaki.clients.cyclades import CycladesClient, ClientError
 from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
 from kamaki.cli.argument import ProgressBarArgument, DateArgument, IntArgument
 from kamaki.cli.commands import _command_init, errors, addLogSettings
-from kamaki.cli.commands import _optional_output_cmd, _optional_json
+from kamaki.cli.commands import (
+    _optional_output_cmd, _optional_json, _name_filter, _id_filter)
 
 from base64 import b64encode
 from os.path import exists
@@ -154,8 +156,10 @@ class _init_cyclades(_command_init):
 
 
 @command(server_cmds)
-class server_list(_init_cyclades, _optional_json):
+class server_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
     """List Virtual Machines accessible by user"""
+
+    PERMANENTS = ('id', 'name')
 
     __doc__ += about_authentication
 
@@ -168,17 +172,100 @@ class server_list(_init_cyclades, _optional_json):
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
             '--more'),
-        enum=FlagArgument('Enumerate results', '--enumerate')
+        enum=FlagArgument('Enumerate results', '--enumerate'),
+        flavor_id=ValueArgument('filter by flavor id', ('--flavor-id')),
+        image_id=ValueArgument('filter by image id', ('--image-id')),
+        user_id=ValueArgument('filter by user id', ('--user-id')),
+        user_name=ValueArgument('filter by user name', ('--user-name')),
+        status=ValueArgument(
+            'filter by status (ACTIVE, STOPPED, REBOOT, ERROR, etc.)',
+            ('--status')),
+        meta=KeyValueArgument('filter by metadata key=values', ('--metadata')),
+        meta_like=KeyValueArgument(
+            'print only if in key=value, the value is part of actual value',
+            ('--metadata-like')),
     )
+
+    def _add_user_name(self, servers):
+        uuids = self._uuids2usernames(list(set(
+                [srv['user_id'] for srv in servers] +
+                [srv['tenant_id'] for srv in servers])))
+        for srv in servers:
+            srv['user_id'] += ' (%s)' % uuids[srv['user_id']]
+            srv['tenant_id'] += ' (%s)' % uuids[srv['tenant_id']]
+        return servers
+
+    def _apply_common_filters(self, servers):
+        common_filters = dict()
+        if self['status']:
+            common_filters['status'] = self['status']
+        if self['user_id'] or self['user_name']:
+            uuid = self['user_id'] or self._username2uuid(self['user_name'])
+            common_filters['user_id'] = uuid
+        return filter_dicts_by_dict(servers, common_filters)
+
+    def _filter_by_image(self, servers):
+        iid = self['image_id']
+        new_servers = []
+        for srv in servers:
+            if srv['image']['id'] == iid:
+                new_servers.append(srv)
+        return new_servers
+
+    def _filter_by_flavor(self, servers):
+        fid = self['flavor_id']
+        new_servers = []
+        for srv in servers:
+            if '%s' % srv['flavor']['id'] == '%s' % fid:
+                new_servers.append(srv)
+        return new_servers
+
+    def _filter_by_metadata(self, servers):
+        new_servers = []
+        for srv in servers:
+            if not 'metadata' in srv:
+                continue
+            meta = [dict(srv['metadata'])]
+            if self['meta']:
+                meta = filter_dicts_by_dict(meta, self['meta'])
+            if meta and self['meta_like']:
+                meta = filter_dicts_by_dict(
+                    meta, self['meta_like'], exact_match=False)
+            if meta:
+                new_servers.append(srv)
+        return new_servers
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.date
     def _run(self):
-        servers = self.client.list_servers(self['detail'], self['since'])
-        if not (self['detail'] or self['json_output']):
-            remove_from_items(servers, 'links')
+        withimage = bool(self['image_id'])
+        withflavor = bool(self['flavor_id'])
+        withmeta = bool(self['meta'] or self['meta_like'])
+        withcommons = bool(
+            self['status'] or self['user_id'] or self['user_name'])
+        detail = self['detail'] or (
+            withimage or withflavor or withmeta or withcommons)
+        servers = self.client.list_servers(detail, self['since'])
 
+        servers = self._filter_by_name(servers)
+        servers = self._filter_by_id(servers)
+        servers = self._apply_common_filters(servers)
+        if withimage:
+            servers = self._filter_by_image(servers)
+        if withflavor:
+            servers = self._filter_by_flavor(servers)
+        if withmeta:
+            servers = self._filter_by_metadata(servers)
+
+        if self['detail'] and not self['json_output']:
+            servers = self._add_user_name(servers)
+        elif not (self['detail'] or self['json_output']):
+            remove_from_items(servers, 'links')
+        if detail and not self['detail']:
+            for srv in servers:
+                for key in set(srv).difference(self.PERMANENTS):
+                    srv.pop(key)
         kwargs = dict(with_enumeration=self['enum'])
         if self['more']:
             kwargs['page_size'] = self['limit'] if self['limit'] else 10
@@ -205,7 +292,11 @@ class server_info(_init_cyclades, _optional_json):
     @errors.cyclades.connection
     @errors.cyclades.server_id
     def _run(self, server_id):
-        self._print(self.client.get_server_details(server_id), print_dict)
+        vm = self.client.get_server_details(server_id)
+        uuids = self._uuids2usernames([vm['user_id'], vm['tenant_id']])
+        vm['user_id'] += ' (%s)' % uuids[vm['user_id']]
+        vm['tenant_id'] += ' (%s)' % uuids[vm['tenant_id']]
+        self._print(vm, print_dict)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -268,6 +359,9 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
     def _run(self, name, flavor_id, image_id):
         r = self.client.create_server(
             name, int(flavor_id), image_id, self['personality'])
+        usernames = self._uuids2usernames([r['user_id'], r['tenant_id']])
+        r['user_id'] += ' (%s)' % usernames[r['user_id']]
+        r['tenant_id'] += ' (%s)' % usernames[r['tenant_id']]
         self._print(r, print_dict)
         if self['wait']:
             self._wait(r['id'], r['status'])
@@ -616,8 +710,10 @@ class server_wait(_init_cyclades, _server_wait):
 
 
 @command(flavor_cmds)
-class flavor_list(_init_cyclades, _optional_json):
+class flavor_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
     """List available hardware flavors"""
+
+    PERMANENTS = ('id', 'name')
 
     arguments = dict(
         detail=FlagArgument('show detailed output', ('-l', '--details')),
@@ -625,15 +721,43 @@ class flavor_list(_init_cyclades, _optional_json):
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
             '--more'),
-        enum=FlagArgument('Enumerate results', '--enumerate')
+        enum=FlagArgument('Enumerate results', '--enumerate'),
+        ram=ValueArgument('filter by ram', ('--ram')),
+        vcpus=ValueArgument('filter by number of VCPUs', ('--vcpus')),
+        disk=ValueArgument('filter by disk size in GB', ('--disk')),
+        disk_template=ValueArgument(
+            'filter by disk_templace', ('--disk-template'))
     )
+
+    def _apply_common_filters(self, flavors):
+        common_filters = dict()
+        if self['ram']:
+            common_filters['ram'] = self['ram']
+        if self['vcpus']:
+            common_filters['vcpus'] = self['vcpus']
+        if self['disk']:
+            common_filters['disk'] = self['disk']
+        if self['disk_template']:
+            common_filters['SNF:disk_template'] = self['disk_template']
+        return filter_dicts_by_dict(flavors, common_filters)
 
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self):
-        flavors = self.client.list_flavors(self['detail'])
+        withcommons = self['ram'] or self['vcpus'] or (
+            self['disk'] or self['disk_template'])
+        detail = self['detail'] or withcommons
+        flavors = self.client.list_flavors(detail)
+        flavors = self._filter_by_name(flavors)
+        flavors = self._filter_by_id(flavors)
+        if withcommons:
+            flavors = self._apply_common_filters(flavors)
         if not (self['detail'] or self['json_output']):
             remove_from_items(flavors, 'links')
+        if detail and not self['detail']:
+            for flv in flavors:
+                for key in set(flv).difference(self.PERMANENTS):
+                    flv.pop(key)
         pg_size = 10 if self['more'] and not self['limit'] else self['limit']
         self._print(
             flavors,
@@ -664,6 +788,20 @@ class flavor_info(_init_cyclades, _optional_json):
         self._run(flavor_id=flavor_id)
 
 
+def _add_name(self, net):
+        user_id, tenant_id, uuids = net['user_id'], net['tenant_id'], []
+        if user_id:
+            uuids.append(user_id)
+        if tenant_id:
+            uuids.append(tenant_id)
+        if uuids:
+            usernames = self._uuids2usernames(uuids)
+            if user_id:
+                net['user_id'] += ' (%s)' % usernames[user_id]
+            if tenant_id:
+                net['tenant_id'] += ' (%s)' % usernames[tenant_id]
+
+
 @command(network_cmds)
 class network_info(_init_cyclades, _optional_json):
     """Detailed information on a network
@@ -675,6 +813,7 @@ class network_info(_init_cyclades, _optional_json):
     @errors.cyclades.network_id
     def _run(self, network_id):
         network = self.client.get_network_details(int(network_id))
+        _add_name(self, network)
         self._print(network, print_dict, exclude=('id'))
 
     def main(self, network_id):
@@ -683,8 +822,10 @@ class network_info(_init_cyclades, _optional_json):
 
 
 @command(network_cmds)
-class network_list(_init_cyclades, _optional_json):
+class network_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
     """List networks"""
+
+    PERMANENTS = ('id', 'name')
 
     arguments = dict(
         detail=FlagArgument('show detailed output', ('-l', '--details')),
@@ -692,15 +833,77 @@ class network_list(_init_cyclades, _optional_json):
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
             '--more'),
-        enum=FlagArgument('Enumerate results', '--enumerate')
+        enum=FlagArgument('Enumerate results', '--enumerate'),
+        status=ValueArgument('filter by status', ('--status')),
+        public=FlagArgument('only public networks', ('--public')),
+        private=FlagArgument('only private networks', ('--private')),
+        dhcp=FlagArgument('show networks with dhcp', ('--with-dhcp')),
+        no_dhcp=FlagArgument('show networks without dhcp', ('--without-dhcp')),
+        user_id=ValueArgument('filter by user id', ('--user-id')),
+        user_name=ValueArgument('filter by user name', ('--user-name')),
+        gateway=ValueArgument('filter by gateway (IPv4)', ('--gateway')),
+        gateway6=ValueArgument('filter by gateway (IPv6)', ('--gateway6')),
+        cidr=ValueArgument('filter by cidr (IPv4)', ('--cidr')),
+        cidr6=ValueArgument('filter by cidr (IPv6)', ('--cidr6')),
+        type=ValueArgument('filter by type', ('--type')),
     )
+
+    def _apply_common_filters(self, networks):
+        common_filter = dict()
+        if self['public']:
+            if self['private']:
+                return []
+            common_filter['public'] = self['public']
+        elif self['private']:
+            common_filter['public'] = False
+        if self['dhcp']:
+            if self['no_dhcp']:
+                return []
+            common_filter['dhcp'] = True
+        elif self['no_dhcp']:
+            common_filter['dhcp'] = False
+        if self['user_id'] or self['user_name']:
+            uuid = self['user_id'] or self._username2uuid(self['user_name'])
+            common_filter['user_id'] = uuid
+        for term in ('status', 'gateway', 'gateway6', 'cidr', 'cidr6', 'type'):
+            if self[term]:
+                common_filter[term] = self[term]
+        return filter_dicts_by_dict(networks, common_filter)
+
+    def _add_name(self, networks, key='user_id'):
+        uuids = self._uuids2usernames(
+            list(set([net[key] for net in networks])))
+        for net in networks:
+            v = net.get(key, None)
+            if v:
+                net[key] += ' (%s)' % uuids[net[key]]
+        return networks
 
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self):
-        networks = self.client.list_networks(self['detail'])
+        withcommons = False
+        for term in (
+                'status', 'public', 'private', 'user_id', 'user_name', 'type',
+                'gateway', 'gateway6', 'cidr', 'cidr6', 'dhcp', 'no_dhcp'):
+            if self[term]:
+                withcommons = True
+                break
+        detail = self['detail'] or withcommons
+        networks = self.client.list_networks(detail)
+        networks = self._filter_by_name(networks)
+        networks = self._filter_by_id(networks)
+        if withcommons:
+            networks = self._apply_common_filters(networks)
         if not (self['detail'] or self['json_output']):
             remove_from_items(networks, 'links')
+        if detail and not self['detail']:
+            for net in networks:
+                for key in set(net).difference(self.PERMANENTS):
+                    net.pop(key)
+        if self['detail'] and not self['json_output']:
+            self._add_name(networks)
+            self._add_name(networks, 'tenant_id')
         kwargs = dict(with_enumeration=self['enum'])
         if self['more']:
             kwargs['page_size'] = self['limit'] or 10
@@ -739,8 +942,8 @@ class network_create(_init_cyclades, _optional_json, _network_wait):
             gateway=self['gateway'],
             dhcp=self['dhcp'],
             type=self['type'])
+        _add_name(self, r)
         self._print(r, print_dict)
-
         if self['wait']:
             self._wait(r['id'], 'PENDING')
 

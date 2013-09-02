@@ -32,7 +32,7 @@
 # or implied, of GRNET S.A.
 
 from unittest import TestCase
-#from tempfile import NamedTemporaryFile
+from tempfile import NamedTemporaryFile
 from mock import patch, call
 from itertools import product
 
@@ -248,8 +248,8 @@ class UtilsMethods(TestCase):
             print_items(*args)
             if not (isinstance(items, dict) or isinstance(
                     items, list) or isinstance(items, tuple)):
-                self.assertEqual(PR.mock_calls[-1], call(
-                    '%s' % items if items is not None else ''))
+                if items:
+                    self.assertEqual(PR.mock_calls[-1], call('%s' % items))
             else:
                 for i, item in enumerate(items):
                     if with_enumeration:
@@ -285,6 +285,219 @@ class UtilsMethods(TestCase):
                         PH.mock_calls[ph_counter],
                         call(i + 1, page_size, len(items)))
                     ph_counter += 1
+
+    def test_format_size(self):
+        from kamaki.cli.utils import format_size
+        from kamaki.cli import CLIError
+        for v in ('wrong', {1: '1', 2: '2'}, ('tuples', 'not OK'), [1, 2]):
+            self.assertRaises(CLIError, format_size, v)
+        for step, B, K, M, G, T in (
+                (1000, 'B', 'KB', 'MB', 'GB', 'TB'),
+                (1024, 'B', 'KiB', 'MiB', 'GiB', 'TiB')):
+            Ki, Mi, Gi = step, step * step, step * step * step
+            for before, after in (
+                    (0, '0' + B), (512, '512' + B), (
+                        Ki - 1, '%s%s' % (step - 1, B)),
+                    (Ki, '1' + K), (42 * Ki, '42' + K), (
+                        Mi - 1, '%s.99%s' % (step - 1, K)),
+                    (Mi, '1' + M), (42 * Mi, '42' + M), (
+                        Ki * Mi - 1, '%s.99%s' % (step - 1, M)),
+                    (Gi, '1' + G), (42 * Gi, '42' + G), (
+                        Mi * Mi - 1, '%s.99%s' % (step - 1, G)),
+                    (Mi * Mi, '1' + T), (42 * Mi * Mi, '42' + T), (
+                        Mi * Gi - 1, '%s.99%s' % (step - 1, T)), (
+                        42 * Mi * Gi, '%s%s' % (42 * Ki, T))):
+                self.assertEqual(format_size(before, step == 1000), after)
+
+    def test_to_bytes(self):
+        from kamaki.cli.utils import to_bytes
+        for v in ('wrong', 'KABUM', 'kbps', 'kibps'):
+            self.assertRaises(ValueError, to_bytes, v, 'B')
+            self.assertRaises(ValueError, to_bytes, 42, v)
+        for v in ([1, 2, 3], ('kb', 'mb'), {'kb': 1, 'byte': 2}):
+            self.assertRaises(TypeError, to_bytes, v, 'B')
+            self.assertRaises(AttributeError, to_bytes, 42, v)
+        kl, ki = 1000, 1024
+        for size, (unit, factor) in product(
+                (0, 42, 3.14, 1023, 10000),
+                (
+                    ('B', 1), ('b', 1),
+                    ('KB', kl), ('KiB', ki),
+                    ('mb', kl * kl), ('mIb', ki * ki),
+                    ('gB', kl * kl * kl), ('GIB', ki * ki * ki),
+                    ('TB', kl * kl * kl * kl), ('tiB', ki * ki * ki * ki))):
+            self.assertEqual(to_bytes(size, unit), int(size * factor))
+
+    def test_dict2file(self):
+        from kamaki.cli.utils import dict2file, INDENT_TAB
+        for d, depth in product((
+                    {'k': 42},
+                    {'k1': 'v1', 'k2': [1, 2, 3], 'k3': {'k': 'v'}},
+                    {'k1': {
+                        'k1.1': 'v1.1',
+                        'k1.2': [1, 2, 3],
+                        'k1.3': {'k': 'v'}}}),
+                (-42, 0, 42)):
+            exp = ''
+            exp_d = []
+            exp_l = []
+            exp, exp_d, exp_l = '', [], []
+            with NamedTemporaryFile() as f:
+                for k, v in d.items():
+                    sfx = '\n'
+                    if isinstance(v, dict):
+                        exp_d.append(call(v, f, depth + 1))
+                    elif isinstance(v, tuple) or isinstance(v, list):
+                        exp_l.append(call(v, f, depth + 1))
+                    else:
+                        sfx = '%s\n' % v
+                    exp += '%s%s: %s' % (
+                        ' ' * (depth * INDENT_TAB), k, sfx)
+                with patch('kamaki.cli.utils.dict2file') as D2F:
+                    with patch('kamaki.cli.utils.list2file') as L2F:
+                        dict2file(d, f, depth)
+                        f.seek(0)
+                        self.assertEqual(f.read(), exp)
+                        self.assertEqual(L2F.mock_calls, exp_l)
+                        self.assertEqual(D2F.mock_calls, exp_d)
+
+    def test_list2file(self):
+        from kamaki.cli.utils import list2file, INDENT_TAB
+        for l, depth in product(
+                (
+                    (1, 2, 3),
+                    [1, 2, 3],
+                    ('v', [1, 2, 3], (1, 2, 3), {'1': 1, 2: '2', 3: 3}),
+                    ['v', {'k1': 'v1', 'k2': [1, 2, 3], 'k3': {1: '1'}}]),
+                (-42, 0, 42)):
+            with NamedTemporaryFile() as f:
+                exp, exp_d, exp_l = '', [], []
+                for v in l:
+                    if isinstance(v, dict):
+                        exp_d.append(call(v, f, depth + 1))
+                    elif isinstance(v, list) or isinstance(v, tuple):
+                        exp_l.append(call(v, f, depth + 1))
+                    else:
+                        exp += '%s%s\n' % (' ' * INDENT_TAB * depth, v)
+                with patch('kamaki.cli.utils.dict2file') as D2F:
+                    with patch('kamaki.cli.utils.list2file') as L2F:
+                        list2file(l, f, depth)
+                        f.seek(0)
+                        self.assertEqual(f.read(), exp)
+                        self.assertEqual(L2F.mock_calls, exp_l)
+                        self.assertEqual(D2F.mock_calls, exp_d)
+
+    def test__parse_with_regex(self):
+        from re import compile as r_compile
+        from kamaki.cli.utils import _parse_with_regex
+        for args in product(
+                (
+                    'this is a line',
+                    'this_is_also_a_line',
+                    'This "text" is quoted',
+                    'This "quoted" "text" is more "complicated"',
+                    'Is this \'quoted\' text "double \'quoted\' or not?"',
+                    '"What \'about\' the" oposite?',
+                    ' Try with a " single double quote',
+                    'Go "down \'deep " deeper \'bottom \' up" go\' up" !'),
+                (
+                    '\'.*?\'|".*?"|^[\S]*$',
+                    r'"([A-Za-z0-9_\./\\-]*)"',
+                    r'\"(.+?)\"',
+                    '\\^a\\.\\*\\$')):
+            r_parser = r_compile(args[1])
+            self.assertEqual(
+                _parse_with_regex(*args),
+                (r_parser.split(args[0]), r_parser.findall(args[0])))
+
+    def test_split_input(self):
+        from kamaki.cli.utils import split_input
+        for line, expected in (
+                ('set key="v1"', ['set', 'key=v1']),
+                ('unparsable', ['unparsable']),
+                ('"parsable"', ['parsable']),
+                ('"parse" out', ['parse', 'out']),
+                ('"one', ['"one']),
+                ('two" or" more"', ['two or', 'more"']),
+                ('Go "down \'deep " deeper \'bottom \' up" go\' up" !', [
+                    'Go', "down 'deep ", 'deeper', 'bottom ',
+                    'up go\' up', '!']),
+                ('Is "this" a \'parsed\' string?', [
+                    'Is', 'this', 'a', 'parsed', 'string?'])):
+            self.assertEqual(split_input(line), expected)
+
+    @patch('kamaki.cli.utils._readline', return_value='read line')
+    @patch('kamaki.cli.utils._flush')
+    @patch('kamaki.cli.utils._write')
+    def test_ask_user(self, WR, FL, RL):
+        from kamaki.cli.utils import ask_user
+        msg = 'some question'
+        self.assertFalse(ask_user(msg))
+        WR.assert_called_once_with('%s [y/N]: ' % msg)
+        FL.assert_called_once_with()
+        RL.assert_called_once_with()
+
+        self.assertTrue(ask_user(msg, ('r', )))
+        self.assertEqual(WR.mock_calls[-1], call('%s [r/N]: ' % msg))
+        self.assertEqual(FL.mock_calls, 2 * [call()])
+        self.assertEqual(RL.mock_calls, 2 * [call()])
+
+        self.assertTrue(ask_user(msg, ('Z', 'r', 'k')))
+        self.assertEqual(WR.mock_calls[-1], call('%s [Z, r, k/N]: ' % msg))
+        self.assertEqual(FL.mock_calls, 3 * [call()])
+        self.assertEqual(RL.mock_calls, 3 * [call()])
+
+    @patch('kamaki.cli.utils._flush')
+    @patch('kamaki.cli.utils._write')
+    def test_spiner(self, WR, FL):
+        from kamaki.cli.utils import spiner
+        spins = ('/', '-', '\\', '|')
+        prev = 1
+        for i, SP in enumerate(spiner(6)):
+            if not i:
+                self.assertEqual(WR.mock_calls[-2], call(' '))
+            elif i > 5:
+                break
+            self.assertEqual(SP, None)
+            self.assertEqual(WR.mock_calls[-1], call('\b%s' % spins[i % 4]))
+            self.assertEqual(FL.mock_calls, prev * [call()])
+            prev += 1
+
+    def test_remove_from_items(self):
+        from kamaki.cli.utils import remove_from_items
+        for v in ('wrong', [1, 2, 3], [{}, 2, {}]):
+            self.assertRaises(AssertionError, remove_from_items, v, 'none')
+        d = dict(k1=1, k2=dict(k2=2, k3=3), k3=3, k4=4)
+        for k in (d.keys() + ['kN']):
+            tmp1, tmp2 = dict(d), dict(d)
+            remove_from_items([tmp1, ], k)
+            tmp1.pop(k, None)
+            self.assert_dicts_are_equal(tmp1, tmp2)
+        for k in (d.keys() + ['kN']):
+            tmp1, tmp2 = dict(d), dict(d)
+            remove_from_items([tmp1, tmp2], k)
+            self.assert_dicts_are_equal(tmp1, tmp2)
+
+    def test_filter_dicts_by_dict(self):
+        from kamaki.cli.utils import filter_dicts_by_dict
+
+        dlist = [
+            dict(k1='v1', k2='v2', k3='v3'),
+            dict(k1='v1'),
+            dict(k2='v2', k3='v3'),
+            dict(k1='V1', k3='V3'),
+            dict()]
+        for l, f, em, cs, exp in (
+                (dlist, dlist[2], True, False, dlist[0:1] + dlist[2:3]),
+                (dlist, dlist[1], True, False, dlist[0:2] + dlist[3:4]),
+                (dlist, dlist[1], True, True, dlist[0:2]),
+                (dlist, {'k3': 'v'}, True, False, []),
+                (dlist, {'k3': 'v'}, False, False, dlist[0:1] + dlist[2:4]),
+                (dlist, {'k3': 'v'}, False, True, dlist[0:1] + dlist[2:3]),
+                (dlist, {'k3': 'v'}, True, True, []),
+                (dlist, dlist[4], True, False, dlist),
+                ):
+            self.assertEqual(exp, filter_dicts_by_dict(l, f, em, cs))
 
 
 if __name__ == '__main__':

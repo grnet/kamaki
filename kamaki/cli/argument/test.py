@@ -228,14 +228,16 @@ class IntArgument(TestCase):
     def test_value(self):
         ia = argument.IntArgument(parsed_name='--ia')
         self.assertEqual(ia.value, None)
-        for v in (1, 0, -1, 923455555555555555555555555555555):
+        for v in (1, 0, -1):
             ia.value = v
             self.assertEqual(ia.value, v)
-        for v in ('1', '-1', 2.8):
+        for v in ('1', '-1'):
             ia.value = v
             self.assertEqual(ia.value, int(v))
         for v, err in (
                 ('invalid', errors.CLIError),
+                (2.8, errors.CLIError),
+                (923455555555555555555555555555555, errors.CLIError),
                 (None, TypeError), (False, TypeError), ([1, 2, 3], TypeError)):
             try:
                 ia.value = v
@@ -291,6 +293,16 @@ class VersionArgument(TestCase):
         self.assertEqual(va.value, 'some value')
 
 
+class RepeatableArgument(TestCase):
+
+    @patch('%s.Argument.__init__' % arg_path)
+    def test___init__(self, init):
+        help, pname, default = 'help', 'pname', 'default'
+        kva = argument.RepeatableArgument(help, pname, default)
+        self.assertTrue(isinstance(kva, argument.RepeatableArgument))
+        self.assertEqual(init.mock_calls[-1], call(-1, help, pname, default))
+
+
 class KeyValueArgument(TestCase):
 
     @patch('%s.Argument.__init__' % arg_path)
@@ -302,7 +314,7 @@ class KeyValueArgument(TestCase):
 
     def test_value(self):
         kva = argument.KeyValueArgument(parsed_name='--keyval')
-        self.assertEqual(kva.value, {})
+        self.assertEqual(kva.value, [])
         for kvpairs in (
                 'strval', 'key=val', 2.8, 42, None,
                 ('key', 'val'), ('key val'), ['=val', 'key=val'],
@@ -311,6 +323,8 @@ class KeyValueArgument(TestCase):
                 kva.value = kvpairs
             except Exception as e:
                 self.assertTrue(isinstance(e, errors.CLIError))
+        old = dict()
+        kva = argument.KeyValueArgument(parsed_name='--keyval')
         for kvpairs, exp in (
                 (('key=val', ), {'key': 'val'}),
                 (['key1=val1', 'key2=val2'], {'key1': 'val1', 'key2': 'val2'}),
@@ -320,7 +334,8 @@ class KeyValueArgument(TestCase):
                 (('k=v1', 'k=v2', 'k=v3'), {'k': 'v3'})
             ):
             kva.value = kvpairs
-            assert_dicts_are_equal(self, kva.value, exp)
+            old.update(exp)
+            assert_dicts_are_equal(self, kva.value, old)
 
 
 class ProgressBarArgument(TestCase):
@@ -494,6 +509,7 @@ if __name__ == '__main__':
     runTestCase(IntArgument, 'IntArgument', argv[1:])
     runTestCase(DateArgument, 'DateArgument', argv[1:])
     runTestCase(VersionArgument, 'VersionArgument', argv[1:])
+    runTestCase(RepeatableArgument, 'RepeatableArgument', argv[1:])
     runTestCase(KeyValueArgument, 'KeyValueArgument', argv[1:])
     runTestCase(ProgressBarArgument, 'ProgressBarArgument', argv[1:])
     runTestCase(ArgumentParseManager, 'ArgumentParseManager', argv[1:])

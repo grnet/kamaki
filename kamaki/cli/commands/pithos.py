@@ -46,7 +46,8 @@ from kamaki.cli.argument import KeyValueArgument, DateArgument
 from kamaki.cli.argument import ProgressBarArgument
 from kamaki.cli.commands import _command_init, errors
 from kamaki.cli.commands import addLogSettings, DontRaiseKeyError
-from kamaki.cli.commands import _optional_output_cmd, _optional_json
+from kamaki.cli.commands import (
+    _optional_output_cmd, _optional_json, _name_filter)
 from kamaki.clients.pithos import PithosClient, ClientError
 from kamaki.clients.astakos import AstakosClient
 
@@ -326,7 +327,7 @@ class _file_container_command(_file_account_command):
 
 
 @command(pithos_cmds)
-class file_list(_file_container_command, _optional_json):
+class file_list(_file_container_command, _optional_json, _name_filter):
     """List containers, object trees or objects in a directory
     Use with:
     1 no parameters : containers in current account
@@ -339,7 +340,6 @@ class file_list(_file_container_command, _optional_json):
         detail=FlagArgument('detailed output', ('-l', '--list')),
         limit=IntArgument('limit number of listed items', ('-n', '--number')),
         marker=ValueArgument('output greater that marker', '--marker'),
-        prefix=ValueArgument('output starting with prefix', '--prefix'),
         delimiter=ValueArgument('show output up to delimiter', '--delimiter'),
         path=ValueArgument(
             'show output starting with prefix up to /', '--path'),
@@ -439,9 +439,10 @@ class file_list(_file_container_command, _optional_json):
                 if_unmodified_since=self['if_unmodified_since'],
                 until=self['until'],
                 show_only_shared=self['shared'])
-            self._print(r.json, self.print_containers)
+            files = self._filter_by_name(r.json)
+            self._print(files, self.print_containers)
         else:
-            prefix = self.path or self['prefix']
+            prefix = (self.path and not self['name']) or self['name_pref']
             r = self.client.container_get(
                 limit=False if self['more'] else self['limit'],
                 marker=self['marker'],
@@ -453,7 +454,8 @@ class file_list(_file_container_command, _optional_json):
                 until=self['until'],
                 meta=self['meta'],
                 show_only_shared=self['shared'])
-            self._print(r.json, self.print_objects)
+            files = self._filter_by_name(r.json)
+            self._print(files, self.print_objects)
 
     def main(self, container____path__=None):
         super(self.__class__, self)._run(container____path__)
@@ -1507,7 +1509,7 @@ class file_delete(_file_container_command, _optional_output_cmd):
                     until=self['until'], delimiter=self['delimiter']))
             else:
                 print('Aborted')
-        else:
+        elif self.container:
             if self['recursive']:
                 ask_msg = 'Delete container contents'
             else:
@@ -1517,6 +1519,8 @@ class file_delete(_file_container_command, _optional_output_cmd):
                     until=self['until'], delimiter=self['delimiter']))
             else:
                 print('Aborted')
+        else:
+            raiseCLIError('Nothing to delete, please provide container[:path]')
 
     def main(self, container____path__=None):
         super(self.__class__, self)._run(container____path__)
@@ -2052,19 +2056,15 @@ class file_sharers(_file_account_command, _optional_json):
     @errors.pithos.connection
     def _run(self):
         accounts = self.client.get_sharing_accounts(marker=self['marker'])
-        uuids = [acc['name'] for acc in accounts]
-        try:
-            astakos_responce = self.auth_base.post_user_catalogs(uuids)
-            usernames = astakos_responce.json
-            r = usernames['uuid_catalog']
-        except Exception as e:
-            print 'WARNING: failed to call user_catalogs, %s' % e
-            r = dict(sharer_uuid=uuids)
-            usernames = accounts
-        if self['json_output'] or self['detail']:
-            self._print(usernames)
-        else:
-            self._print(r, print_dict)
+        if not self['json_output']:
+            usernames = self._uuids2usernames(
+                [acc['name'] for acc in accounts])
+            for item in accounts:
+                uuid = item['name']
+                item['id'], item['name'] = uuid, usernames[uuid]
+                if not self['detail']:
+                    item.pop('last_modified')
+        self._print(accounts)
 
     def main(self):
         super(self.__class__, self)._run()
