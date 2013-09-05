@@ -65,7 +65,8 @@ howto_image_file = [
     ' check available containers: /file list',
     ' create a new container: /file create <container>',
     ' check container contents: /file list <container>',
-    ' upload files: /file upload <image file> <container>']
+    ' upload files: /file upload <image file> <container>',
+    ' register an image: /image register <image name> <container>:<path>']
 
 about_image_id = ['To see a list of available image ids: /image list']
 
@@ -541,10 +542,11 @@ class image_register(_init_image, _optional_json):
 
     @errors.generic.all
     @errors.plankton.connection
-    def _run(self, name, uuid, container, img_path):
+    @errors.pithos.container
+    def _run(self, name, uuid, dst_cont, img_path):
         if self['local_image_path']:
             with open(self['local_image_path']) as f:
-                pithos = self._get_pithos_client(container)
+                pithos = self._get_pithos_client(dst_cont)
                 (pbar, upload_cb) = self._safe_progress_bar('Uploading')
                 if pbar:
                     hash_bar = pbar.clone()
@@ -555,12 +557,12 @@ class image_register(_init_image, _optional_json):
                     container_info_cache=self.container_info_cache)
                 pbar.finish()
 
-        location = 'pithos://%s/%s/%s' % (uuid, container, img_path)
+        location = 'pithos://%s/%s/%s' % (uuid, dst_cont, img_path)
         (params, properties, new_loc) = self._load_params_from_file(location)
         if location != new_loc:
-            uuid, container, img_path = self._validate_location(new_loc)
+            uuid, dst_cont, img_path = self._validate_location(new_loc)
         self._load_params_from_args(params, properties)
-        pclient = self._get_pithos_client(container)
+        pclient = self._get_pithos_client(dst_cont)
 
         #check if metafile exists
         meta_path = '%s.meta' % img_path
@@ -569,7 +571,7 @@ class image_register(_init_image, _optional_json):
                 pclient.get_object_info(meta_path)
                 raiseCLIError(
                     'Metadata file %s:%s already exists, abort' % (
-                        container, meta_path),
+                        dst_cont, meta_path),
                     details=['Registration ABORTED', 'Try -f to overwrite'])
             except ClientError as ce:
                 if ce.status != 404:
@@ -579,11 +581,12 @@ class image_register(_init_image, _optional_json):
         try:
             r = self.client.register(name, location, params, properties)
         except ClientError as ce:
-            if ce.status in (400, ):
+            if ce.status in (400, 404):
                 raiseCLIError(
-                    ce, 'Nonexistent image file location %s' % location,
+                    ce, 'Nonexistent image file location\n\t%s' % location,
                     details=[
-                        'Make sure the image file exists'] + howto_image_file)
+                        'Does the image file %s exist at container %s ?' % (
+                            img_path, dst_cont)] + howto_image_file)
             raise
         r['owner'] += '( %s)' % self._uuid2username(r['owner'])
         self._print(r, print_dict)
@@ -595,15 +598,15 @@ class image_register(_init_image, _optional_json):
                     meta_path, dumps(r, indent=2),
                     container_info_cache=self.container_info_cache)
             except TypeError:
-                print('Failed to dump metafile %s:%s' % (container, meta_path))
+                print('Failed to dump metafile %s:%s' % (dst_cont, meta_path))
                 return
             if self['json_output']:
                 print_json(dict(
-                    metafile_location='%s:%s' % (container, meta_path),
+                    metafile_location='%s:%s' % (dst_cont, meta_path),
                     headers=meta_headers))
             else:
                 print('Metadata file uploaded as %s:%s (version %s)' % (
-                    container, meta_path, meta_headers['x-object-version']))
+                    dst_cont, meta_path, meta_headers['x-object-version']))
 
     def main(self, name, container___image_path):
         super(self.__class__, self)._run()
