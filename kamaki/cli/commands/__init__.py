@@ -134,7 +134,7 @@ class _command_init(object):
     def _update_max_threads(self):
         if getattr(self, 'client', None):
             max_threads = int(self['config'].get_global('max_threads'))
-            assert max_threads > 0
+            assert max_threads > 0, 'invalid max_threads config option'
             self.client.MAX_THREADS = max_threads
 
     def _safe_progress_bar(self, msg, arg='progress_bar'):
