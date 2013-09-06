@@ -5,10 +5,12 @@ Bug Fixes:
 Changes:
 
 - Logs do not contain kamaki.clients pids by default [#4242]
+- Replace page_hold method with pydoc.pager [#4279]
 
 Features:
 
 - New config option log_pid (default: off) can allow pid-logging [#4242]
 - Expand kamaki.cli unitests for the following packages ( [#4058] ):
   errors
+- Modify print methods in cli utils to use arbitary stream objects [#4288]
 
