@@ -35,6 +35,7 @@ from unittest import TestCase
 from tempfile import NamedTemporaryFile
 from mock import patch, call
 from itertools import product
+from io import StringIO
 
 
 class UtilsMethods(TestCase):
@@ -64,17 +65,16 @@ class UtilsMethods(TestCase):
                 self.assertRaises(AssertionError, guess_mime_type, *args)
 
     @patch('kamaki.cli.utils.dumps', return_value='(dumps output)')
-    @patch('kamaki.cli.utils._print')
-    def test_print_json(self, PR, JD):
+    def test_print_json(self, JD):
         from kamaki.cli.utils import print_json, INDENT_TAB
-        print_json('some data')
+        out = StringIO()
+        print_json('some data', out)
         JD.assert_called_once_with('some data', indent=INDENT_TAB)
-        PR.assert_called_once_with('(dumps output)')
+        self.assertEqual(out.getvalue(), u'(dumps output)\n')
 
-    @patch('kamaki.cli.utils._print')
-    def test_print_dict(self, PR):
+    def test_print_dict(self):
         from kamaki.cli.utils import print_dict, INDENT_TAB
-        call_counter = 0
+        out = StringIO()
         self.assertRaises(AssertionError, print_dict, 'non-dict think')
         self.assertRaises(AssertionError, print_dict, {}, indent=-10)
         for args in product(
@@ -104,14 +104,14 @@ class UtilsMethods(TestCase):
             with patch('kamaki.cli.utils.print_dict') as PD:
                 with patch('kamaki.cli.utils.print_list') as PL:
                     pd_calls, pl_calls = 0, 0
-                    print_dict(*args)
-                    exp_calls = []
+                    print_dict(*args, out=out)
+                    exp_calls = u''
                     for i, (k, v) in enumerate(d.items()):
                         if k in exclude:
                             continue
-                        str_k = ' ' * indent
-                        str_k += '%s.' % (i + 1) if with_enumeration else ''
-                        str_k += '%s:' % k
+                        str_k = u' ' * indent
+                        str_k += u'%s.' % (i + 1) if with_enumeration else u''
+                        str_k += u'%s:' % k
                         if isinstance(v, dict):
                             self.assertEqual(
                                 PD.mock_calls[pd_calls],
@@ -120,9 +120,10 @@ class UtilsMethods(TestCase):
                                     exclude,
                                     indent + INDENT_TAB,
                                     recursive_enumeration,
-                                    recursive_enumeration))
+                                    recursive_enumeration,
+                                    out))
                             pd_calls += 1
-                            exp_calls.append(call(str_k))
+                            exp_calls += str_k + '\n'
                         elif isinstance(v, list) or isinstance(v, tuple):
                             self.assertEqual(
                                 PL.mock_calls[pl_calls],
@@ -131,19 +132,18 @@ class UtilsMethods(TestCase):
                                     exclude,
                                     indent + INDENT_TAB,
                                     recursive_enumeration,
-                                    recursive_enumeration))
+                                    recursive_enumeration,
+                                    out))
                             pl_calls += 1
-                            exp_calls.append(call(str_k))
+                            exp_calls += str_k + '\n'
                         else:
-                            exp_calls.append(call('%s %s' % (str_k, v)))
-                    real_calls = PR.mock_calls[call_counter:]
-                    call_counter = len(PR.mock_calls)
-                    self.assertEqual(sorted(real_calls), sorted(exp_calls))
+                            exp_calls += u'%s %s\n' % (str_k, v)
+                    self.assertEqual(exp_calls, out.getvalue())
+                    out = StringIO()
 
-    @patch('kamaki.cli.utils._print')
-    def test_print_list(self, PR):
+    def test_print_list(self):
         from kamaki.cli.utils import print_list, INDENT_TAB
-        call_counter = 0
+        out = StringIO()
         self.assertRaises(AssertionError, print_list, 'non-list non-tuple')
         self.assertRaises(AssertionError, print_list, {}, indent=-10)
         for args in product(
@@ -159,16 +159,16 @@ class UtilsMethods(TestCase):
             with patch('kamaki.cli.utils.print_dict') as PD:
                 with patch('kamaki.cli.utils.print_list') as PL:
                     pd_calls, pl_calls = 0, 0
-                    print_list(*args)
-                    exp_calls = []
+                    print_list(*args, out=out)
+                    exp_calls = ''
                     for i, v in enumerate(l):
-                        str_v = ' ' * indent
-                        str_v += '%s.' % (i + 1) if with_enumeration else ''
+                        str_v = u' ' * indent
+                        str_v += u'%s.' % (i + 1) if with_enumeration else u''
                         if isinstance(v, dict):
                             if with_enumeration:
-                                exp_calls.append(call(str_v))
+                                exp_calls += str_v + '\n'
                             elif i and i < len(l):
-                                exp_calls.append(call())
+                                exp_calls += u'\n'
                             self.assertEqual(
                                 PD.mock_calls[pd_calls],
                                 call(
@@ -177,13 +177,14 @@ class UtilsMethods(TestCase):
                                     indent + (
                                         INDENT_TAB if with_enumeration else 0),
                                     recursive_enumeration,
-                                    recursive_enumeration))
+                                    recursive_enumeration,
+                                    out))
                             pd_calls += 1
                         elif isinstance(v, list) or isinstance(v, tuple):
                             if with_enumeration:
-                                exp_calls.append(call(str_v))
+                                exp_calls += str_v + '\n'
                             elif i and i < len(l):
-                                exp_calls.append(call())
+                                exp_calls += u'\n'
                             self.assertEqual(
                                 PL.mock_calls[pl_calls],
                                 call(
@@ -191,46 +192,20 @@ class UtilsMethods(TestCase):
                                     exclude,
                                     indent + INDENT_TAB,
                                     recursive_enumeration,
-                                    recursive_enumeration))
+                                    recursive_enumeration,
+                                    out))
                             pl_calls += 1
                         elif ('%s' % v) in exclude:
                             continue
                         else:
-                            exp_calls.append(call('%s%s' % (str_v, v)))
-                    real_calls = PR.mock_calls[call_counter:]
-                    call_counter = len(PR.mock_calls)
-                    self.assertEqual(sorted(real_calls), sorted(exp_calls))
+                            exp_calls += u'%s%s\n' % (str_v, v)
+                    self.assertEqual(out.getvalue(), exp_calls)
+                    out = StringIO()
 
-    @patch('__builtin__.raw_input')
-    def test_page_hold(self, RI):
-        from kamaki.cli.utils import page_hold
-        ri_counter = 0
-        for args, expected in (
-                ((0, 0, 0), False),
-                ((1, 3, 10), True),
-                ((3, 3, 10), True),
-                ((5, 3, 10), True),
-                ((6, 3, 10), True),
-                ((10, 3, 10), False),
-                ((11, 3, 10), False)):
-            self.assertEqual(page_hold(*args), expected)
-            index, limit, maxlen = args
-            if index and index < maxlen and index % limit == 0:
-                self.assertEqual(ri_counter + 1, len(RI.mock_calls))
-                self.assertEqual(RI.mock_calls[-1], call(
-                    '(%s listed - %s more - "enter" to continue)' % (
-                        index, maxlen - index)))
-            else:
-                self.assertEqual(ri_counter, len(RI.mock_calls))
-            ri_counter = len(RI.mock_calls)
-
-    @patch('kamaki.cli.utils._print')
-    @patch('kamaki.cli.utils._write')
     @patch('kamaki.cli.utils.print_dict')
     @patch('kamaki.cli.utils.print_list')
-    @patch('kamaki.cli.utils.page_hold')
     @patch('kamaki.cli.utils.bold', return_value='bold')
-    def test_print_items(self, bold, PH, PL, PD, WR, PR):
+    def test_print_items(self, bold, PL, PD):
         from kamaki.cli.utils import print_items, INDENT_TAB
         for args in product(
                 (
@@ -239,52 +214,42 @@ class UtilsMethods(TestCase):
                     ({'k': 1, 'id': 2}, [5, 6, 7], (8, 9), '10')),
                 (('id', 'name'), ('something', 2), ('lala', )),
                 (False, True),
-                (False, True),
-                (0, 1, 2, 10)):
-            items, title, with_enumeration, with_redundancy, page_size = args
-            wr_counter, pr_counter = len(WR.mock_calls), len(PR.mock_calls)
+                (False, True)):
+            items, title, with_enumeration, with_redundancy = args
             pl_counter, pd_counter = len(PL.mock_calls), len(PD.mock_calls)
-            bold_counter, ph_counter = len(bold.mock_calls), len(PH.mock_calls)
-            print_items(*args)
+            bold_counter, out_counter = len(bold.mock_calls), 0
+            out = StringIO()
+            print_items(*args, out=out)
+            out.seek(0)
             if not (isinstance(items, dict) or isinstance(
                     items, list) or isinstance(items, tuple)):
                 if items:
-                    self.assertEqual(PR.mock_calls[-1], call('%s' % items))
+                    self.assertEqual(out.getvalue(), '%s\n' % items)
             else:
                 for i, item in enumerate(items):
                     if with_enumeration:
-                        self.assertEqual(
-                            WR.mock_calls[wr_counter],
-                            call('%s. ' % (i + 1)))
-                        wr_counter += 1
+                        exp_str = '%s. ' % (i + 1)
+                        self.assertEqual(out.read(len(exp_str)), exp_str)
                     if isinstance(item, dict):
                         title = sorted(set(title).intersection(item))
                         pick = item.get if with_redundancy else item.pop
                         header = ' '.join('%s' % pick(key) for key in title)
                         self.assertEqual(
                             bold.mock_calls[bold_counter], call(header))
-                        self.assertEqual(
-                            PR.mock_calls[pr_counter], call('bold'))
+                        self.assertEqual(out.read(5), 'bold\n')
                         self.assertEqual(
                             PD.mock_calls[pd_counter],
-                            call(item, indent=INDENT_TAB))
-                        pr_counter += 1
+                            call(item, indent=INDENT_TAB, out=out))
                         pd_counter += 1
                         bold_counter += 1
                     elif isinstance(item, list) or isinstance(item, tuple):
                         self.assertEqual(
                             PL.mock_calls[pl_counter],
-                            call(item, indent=INDENT_TAB))
+                            call(item, indent=INDENT_TAB, out=out))
                         pl_counter += 1
                     else:
-                        self.assertEqual(
-                            PR.mock_calls[pr_counter], call(' %s' % item))
-                        pr_counter += 1
-                    page_size = page_size if page_size > 0 else len(items)
-                    self.assertEqual(
-                        PH.mock_calls[ph_counter],
-                        call(i + 1, page_size, len(items)))
-                    ph_counter += 1
+                        exp_str = u' %s\n' % item
+                        self.assertEqual(out.read(len(exp_str)), exp_str)
 
     def test_format_size(self):
         from kamaki.cli.utils import format_size
@@ -426,42 +391,23 @@ class UtilsMethods(TestCase):
                     'Is', 'this', 'a', 'parsed', 'string?'])):
             self.assertEqual(split_input(line), expected)
 
-    @patch('kamaki.cli.utils._readline', return_value='read line')
-    @patch('kamaki.cli.utils._flush')
-    @patch('kamaki.cli.utils._write')
-    def test_ask_user(self, WR, FL, RL):
+    def test_ask_user(self):
         from kamaki.cli.utils import ask_user
-        msg = 'some question'
-        self.assertFalse(ask_user(msg))
-        WR.assert_called_once_with('%s [y/N]: ' % msg)
-        FL.assert_called_once_with()
-        RL.assert_called_once_with()
+        msg = u'some question'
+        out = StringIO()
+        user_in = StringIO(u'n')
+        self.assertFalse(ask_user(msg, out=out, user_in=user_in))
+        self.assertEqual(out.getvalue(), u'%s [y/N]: ' % msg)
 
-        self.assertTrue(ask_user(msg, ('r', )))
-        self.assertEqual(WR.mock_calls[-1], call('%s [r/N]: ' % msg))
-        self.assertEqual(FL.mock_calls, 2 * [call()])
-        self.assertEqual(RL.mock_calls, 2 * [call()])
+        user_in.seek(0)
+        out.seek(0)
+        self.assertTrue(ask_user(msg, ('n', ), out=out, user_in=user_in))
+        self.assertEqual(out.getvalue(), u'%s [n/<not n>]: ' % msg)
 
-        self.assertTrue(ask_user(msg, ('Z', 'r', 'k')))
-        self.assertEqual(WR.mock_calls[-1], call('%s [Z, r, k/N]: ' % msg))
-        self.assertEqual(FL.mock_calls, 3 * [call()])
-        self.assertEqual(RL.mock_calls, 3 * [call()])
-
-    @patch('kamaki.cli.utils._flush')
-    @patch('kamaki.cli.utils._write')
-    def test_spiner(self, WR, FL):
-        from kamaki.cli.utils import spiner
-        spins = ('/', '-', '\\', '|')
-        prev = 1
-        for i, SP in enumerate(spiner(6)):
-            if not i:
-                self.assertEqual(WR.mock_calls[-2], call(' '))
-            elif i > 5:
-                break
-            self.assertEqual(SP, None)
-            self.assertEqual(WR.mock_calls[-1], call('\b%s' % spins[i % 4]))
-            self.assertEqual(FL.mock_calls, prev * [call()])
-            prev += 1
+        user_in = StringIO(unicode('N'))
+        out.seek(0)
+        self.assertTrue(ask_user(msg, ('r', 'N'), out=out, user_in=user_in))
+        self.assertEqual(out.getvalue(), u'%s [r, N/<not r, N>]: ' % msg)
 
     def test_remove_from_items(self):
         from kamaki.cli.utils import remove_from_items
