@@ -362,9 +362,9 @@ class file_list(_file_container_command, _optional_json, _name_filter):
         enum=FlagArgument('Enumerate results', '--enumerate')
     )
 
-    def print_objects(self, object_list):
+    def print_objects(self, object_list, out=stdout):
         if self['json_output']:
-            print_json(object_list)
+            print_json(object_list, out=out)
             return
         out = StringIO() if self['more'] else stdout
         for index, obj in enumerate(object_list):
@@ -396,9 +396,9 @@ class file_list(_file_container_command, _optional_json, _name_filter):
         if self['more']:
             pager(out.getvalue())
 
-    def print_containers(self, container_list):
+    def print_containers(self, container_list, out=stdout):
         if self['json_output']:
-            print_json(container_list)
+            print_json(container_list, out=out)
             return
         out = StringIO() if self['more'] else stdout
         for index, container in enumerate(container_list):
@@ -1613,10 +1613,10 @@ class file_permissions(_pithos_init):
     """
 
 
-def print_permissions(permissions_dict):
+def print_permissions(permissions_dict, out=stdout):
     expected_keys = ('read', 'write')
     if set(permissions_dict).issubset(expected_keys):
-        print_dict(permissions_dict)
+        print_dict(permissions_dict, out=out)
     else:
         invalid_keys = set(permissions_dict.keys()).difference(expected_keys)
         raiseCLIError(
@@ -2069,10 +2069,12 @@ class file_sharers(_file_account_command, _optional_json):
         self._run()
 
 
-def version_print(versions):
-    print_items([dict(id=vitem[0], created=strftime(
-        '%d-%m-%Y %H:%M:%S',
-        localtime(float(vitem[1])))) for vitem in versions])
+def version_print(versions, out=stdout):
+    print_items(
+        [dict(id=vitem[0], created=strftime(
+            '%d-%m-%Y %H:%M:%S',
+            localtime(float(vitem[1])))) for vitem in versions],
+        out=out)
 
 
 @command(pithos_cmds)
