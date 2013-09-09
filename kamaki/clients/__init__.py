@@ -149,9 +149,10 @@ class RequestManager(Logged):
         sendlog.info('%s %s://%s%s%s' % (
             self.method, self.scheme, self.netloc, self.path, plog))
         for key, val in self.headers.items():
-            if (not self.LOG_TOKEN) and key.lower() == 'x-auth-token':
-                continue
-            sendlog.info('  %s: %s%s' % (key, val, plog))
+            #if (not self.LOG_TOKEN) and key.lower() == 'x-auth-token':
+            #    continue
+            show = (key.lower() != 'x-auth-token') or self.LOG_TOKEN
+            sendlog.info('  %s: %s%s' % (key, val if show else '', plog))
         if self.data:
             sendlog.info('data size:%s%s' % (len(self.data), plog))
             if self.LOG_DATA:
