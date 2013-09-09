@@ -225,7 +225,7 @@ Batch-create servers
 
     user = AstakosClient(AUTHENTICATION_URL, TOKEN)
 
-    cyclades_endpoints = user.get_endpoints('compute')
+    cyclades_endpoints = user.get_service_endpoints('compute')
     CYCLADES_URL = cyclades_endpoints['publicURL']
     cyclades = CycladesClient(CYCLADES_URL, TOKEN)
 
@@ -255,7 +255,7 @@ Batch-create 4 servers of the same kind
 
     user = AstakosClient(AUTHENTICATION_URL, TOKEN)
 
-    cyclades_endpoints = user.get_endpoints('compute')
+    cyclades_endpoints = user.get_service_endpoints('compute')
     CYCLADES_URL = cyclades_endpoints['publicURL']
     cyclades = CycladesClient(CYCLADES_URL, TOKEN)
 
@@ -282,10 +282,10 @@ Register a banch of pre-uploaded images
     astakos = AstakosClient(AUTHENTICATION_URL, TOKEN)
     USER_UUID = astakos.user_term('uuid')
 
-    PITHOS_URL = astakos.get_endpoints('object-store')['publicURL']
+    PITHOS_URL = astakos.get_service_endpoints('object-store')['publicURL']
     pithos = PithosClient(PITHOS_URL, TOKEN, USER_UUID, IMAGE_CONTAINER)
 
-    IMAGE_URL = astakos.get_endpoints('image')['publicURL']
+    IMAGE_URL = astakos.get_service_endpoints('image')['publicURL']
     plankton = ImageClient(IMAGE_URL, TOKEN)
 
     for img in pithos.list_objects():

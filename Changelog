@@ -16,6 +16,9 @@ Changes:
 - Show user names in /file sharers [#4203]
 - Show user name in image/server/network list [#4228]
 - Remove kamaki compute image properties add [#4231]
+- Image register file location format is changed:
+  pithos://<uuid>/<container>/<image path> --> <container>:<image path>
+  but Backwards compatibility is preserved for this version
 
 Features:
 
