@@ -45,8 +45,9 @@ class Command(TestCase):
                 (None, '', 'cmd'),
                 (None, '', 'Some help'),
                 (None, '', {}, dict(cmd0a=None, cmd0b=None)),
-                (None, command_tree.Command('cmd_cmd0'))):
-            path, help, subcommands, cmd_class = args
+                (None, command_tree.Command('cmd_cmd0')),
+                (None, 'long description')):
+            path, help, subcommands, cmd_class, long_help = args
             try:
                 cmd = command_tree.Command(*args)
             except Exception as e:
@@ -57,6 +58,7 @@ class Command(TestCase):
             self.assertEqual(cmd.help, help or '')
             self.assertEqual(cmd.subcommands, subcommands or {})
             self.assertEqual(cmd.cmd_class, cmd_class or None)
+            self.assertEqual(cmd.long_help, long_help or '')
 
     def test_name(self):
         for path in ('cmd', 'cmd_cmd0', 'cmd_cmd0_cmd1', '', None):

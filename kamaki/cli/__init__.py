@@ -157,7 +157,8 @@ def command(cmd_tree, prefix='', descedants_depth=1):
                 'No commend in %s (acts as cmd description)' % cls.__name__)
         _construct_command_syntax(cls)
 
-        cmd_tree.add_command(cls_name, cls.description, cls)
+        cmd_tree.add_command(
+            cls_name, cls.description, cls, cls.long_description)
         return cls
     return wrap
 

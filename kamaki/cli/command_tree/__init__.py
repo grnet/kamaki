@@ -40,12 +40,15 @@ class Command(object):
     subcommands = {}
     help = ' '
 
-    def __init__(self, path, help=' ', subcommands={}, cmd_class=None):
+    def __init__(
+            self, path,
+            help=' ', subcommands={}, cmd_class=None, long_help=''):
         assert path, 'Cannot initialize a command without a command path'
         self.path = path
         self.help = help or ''
         self.subcommands = dict(subcommands) if subcommands else {}
         self.cmd_class = cmd_class or None
+        self.long_help = '%s' % (long_help or '')
 
     @property
     def name(self):
@@ -109,9 +112,10 @@ class Command(object):
 
 class CommandTree(object):
 
-    def __init__(self, name, description=''):
+    def __init__(self, name, description='', long_description=''):
         self.name = name
         self.description = description
+        self.long_description = '%s' % (long_description or '')
         self.groups = dict()
         self._all_commands = dict()
 
@@ -119,7 +123,9 @@ class CommandTree(object):
         for group in groups_to_exclude:
             self.groups.pop(group, None)
 
-    def add_command(self, command_path, description=None, cmd_class=None):
+    def add_command(
+            self, command_path,
+            description=None, cmd_class=None, long_description=''):
         terms = command_path.split('_')
         try:
             cmd = self.groups[terms[0]]
@@ -139,6 +145,7 @@ class CommandTree(object):
                 cmd = new_cmd
         cmd.cmd_class = cmd_class or None
         cmd.help = description or None
+        cmd.long_help = long_description or cmd.long_help
 
     def find_best_match(self, terms):
         """Find a command that best matches a given list of terms
