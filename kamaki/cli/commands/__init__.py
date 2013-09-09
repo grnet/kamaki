@@ -32,7 +32,8 @@
 # or implied, of GRNET S.A.command
 
 from kamaki.cli.logger import get_logger
-from kamaki.cli.utils import print_json, print_items, filter_dicts_by_dict
+from kamaki.cli.utils import (
+    print_json, print_items, filter_dicts_by_dict, stdout)
 from kamaki.cli.argument import FlagArgument, ValueArgument
 
 log = get_logger(__name__)
@@ -219,11 +220,14 @@ class _optional_json(object):
         json_output=FlagArgument('show headers in json', ('-j', '--json'))
     )
 
-    def _print(self, output, print_method=print_items, **print_method_kwargs):
+    def _print(
+            self, output,
+            print_method=print_items, out=stdout,
+            **print_method_kwargs):
         if self['json_output']:
-            print_json(output)
+            print_json(output, out=out)
         else:
-            print_method(output, **print_method_kwargs)
+            print_method(output, out=out, **print_method_kwargs)
 
 
 class _name_filter(object):

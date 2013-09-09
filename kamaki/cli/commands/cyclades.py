@@ -34,7 +34,7 @@
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.utils import (
-    print_dict, remove_from_items, filter_dicts_by_dict)
+    print_dict, remove_from_items, filter_dicts_by_dict, pager)
 from kamaki.cli.errors import raiseCLIError, CLISyntaxError, CLIBaseUrlError
 from kamaki.clients.cyclades import CycladesClient, ClientError
 from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
@@ -45,6 +45,7 @@ from kamaki.cli.commands import (
 
 from base64 import b64encode
 from os.path import exists
+from io import StringIO
 
 
 server_cmds = CommandTree('server', 'Cyclades/Compute API server commands')
@@ -268,10 +269,13 @@ class server_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
                     srv.pop(key)
         kwargs = dict(with_enumeration=self['enum'])
         if self['more']:
-            kwargs['page_size'] = self['limit'] if self['limit'] else 10
-        elif self['limit']:
+            kwargs['out'] = StringIO()
+            kwargs['title'] = ()
+        if self['limit']:
             servers = servers[:self['limit']]
         self._print(servers, **kwargs)
+        if self['more']:
+            pager(kwargs['out'].getvalue())
 
     def main(self):
         super(self.__class__, self)._run()
@@ -758,12 +762,13 @@ class flavor_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
             for flv in flavors:
                 for key in set(flv).difference(self.PERMANENTS):
                     flv.pop(key)
-        pg_size = 10 if self['more'] and not self['limit'] else self['limit']
+        kwargs = dict(out=StringIO(), title=()) if self['more'] else {}
         self._print(
             flavors,
-            with_redundancy=self['detail'],
-            page_size=pg_size,
-            with_enumeration=self['enum'])
+            with_redundancy=self['detail'], with_enumeration=self['enum'],
+            **kwargs)
+        if self['more']:
+            pager(kwargs['out'].getvalue())
 
     def main(self):
         super(self.__class__, self)._run()
@@ -906,10 +911,13 @@ class network_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
             self._add_name(networks, 'tenant_id')
         kwargs = dict(with_enumeration=self['enum'])
         if self['more']:
-            kwargs['page_size'] = self['limit'] or 10
-        elif self['limit']:
+            kwargs['out'] = StringIO()
+            kwargs['title'] = ()
+        if self['limit']:
             networks = networks[:self['limit']]
         self._print(networks, **kwargs)
+        if self['more']:
+            pager(kwargs['out'].getvalue())
 
     def main(self):
         super(self.__class__, self)._run()

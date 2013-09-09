@@ -34,10 +34,12 @@
 from json import load, dumps
 from os import path
 from logging import getLogger
+from io import StringIO
 
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.utils import print_dict, print_json, filter_dicts_by_dict
+from kamaki.cli.utils import (
+    print_dict, print_json, filter_dicts_by_dict, pager)
 from kamaki.clients.image import ImageClient
 from kamaki.clients.pithos import PithosClient
 from kamaki.clients.astakos import AstakosClient
@@ -267,11 +269,14 @@ class image_list(_init_image, _optional_json, _name_filter, _id_filter):
                 for key in set(img).difference(self.PERMANENTS):
                     img.pop(key)
         kwargs = dict(with_enumeration=self['enum'])
-        if self['more']:
-            kwargs['page_size'] = self['limit'] or 10
-        elif self['limit']:
+        if self['limit']:
             images = images[:self['limit']]
+        if self['more']:
+            kwargs['out'] = StringIO()
+            kwargs['title'] = ()
         self._print(images, **kwargs)
+        if self['more']:
+            pager(kwargs['out'].getvalue())
 
     def main(self):
         super(self.__class__, self)._run()
@@ -827,11 +832,14 @@ class image_compute_list(
                 for key in set(img).difference(self.PERMANENTS):
                     img.pop(key)
         kwargs = dict(with_enumeration=self['enum'])
-        if self['more']:
-            kwargs['page_size'] = self['limit'] or 10
-        elif self['limit']:
+        if self['limit']:
             images = images[:self['limit']]
+        if self['more']:
+            kwargs['out'] = StringIO()
+            kwargs['title'] = ()
         self._print(images, **kwargs)
+        if self['more']:
+            pager(kwargs['out'].getvalue())
 
     def main(self):
         super(self.__class__, self)._run()
