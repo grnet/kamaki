@@ -629,7 +629,7 @@ class image_register(_init_image, _optional_json):
                         'Does the image file %s exist at container %s ?' % (
                             img_path, dst_cont)] + howto_image_file)
             raise
-        r['owner'] += '( %s)' % self._uuid2username(r['owner'])
+        r['owner'] += ' (%s)' % self._uuid2username(r['owner'])
         self._print(r, print_dict)
 
         #upload the metadata file
