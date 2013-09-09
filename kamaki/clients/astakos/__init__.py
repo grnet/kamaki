@@ -32,10 +32,8 @@
 # or implied, of GRNET S.A.
 
 from logging import getLogger
-from json import dumps
 
 from kamaki.clients import Client, ClientError
-from kamaki.clients.utils import path4url
 
 
 class AstakosClient(Client):
