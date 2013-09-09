@@ -34,7 +34,7 @@
 from kamaki.cli import command
 from kamaki.clients.astakos import AstakosClient
 from kamaki.cli.commands import (
-    _command_init, errors, _optional_json, addLogSettings)
+    _command_init, errors, _optional_json, addLogSettings, stdout)
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import CLIBaseUrlError, CLIError
 from kamaki.cli.utils import print_dict, ask_user
@@ -88,8 +88,8 @@ class user_authenticate(_user_init, _optional_json):
     """
 
     @staticmethod
-    def _print_access(r):
-        print_dict(r['access'])
+    def _print_access(r, out=stdout):
+        print_dict(r['access'], out=out)
 
     @errors.generic.all
     @errors.user.authenticate
