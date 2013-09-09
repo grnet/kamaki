@@ -60,8 +60,8 @@ class _user_init(_command_init):
         if getattr(self, 'cloud', False):
             base_url = self._custom_url('astakos')
             if base_url:
-                token = self._custom_token('astakos')\
-                    or self.config.get_cloud(self.cloud, 'token')
+                token = self._custom_token(
+                    'astakos') or self.config.get_cloud(self.cloud, 'token')
                 token = token.split()[0] if ' ' in token else token
                 self.client = AstakosClient(base_url=base_url, token=token)
                 return

@@ -34,12 +34,13 @@
 from sys import stdout
 from time import localtime, strftime
 from os import path, makedirs, walk
+from io import StringIO
 
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import raiseCLIError, CLISyntaxError, CLIBaseUrlError
 from kamaki.cli.utils import (
-    format_size, to_bytes, print_dict, print_items, page_hold, bold, ask_user,
+    format_size, to_bytes, print_dict, print_items, pager, bold, ask_user,
     get_path_size, print_json, guess_mime_type)
 from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
 from kamaki.cli.argument import KeyValueArgument, DateArgument
@@ -354,9 +355,7 @@ class file_list(_file_container_command, _optional_json, _name_filter):
         format=ValueArgument(
             'format to parse until data (default: d/m/Y H:M:S )', '--format'),
         shared=FlagArgument('show only shared', '--shared'),
-        more=FlagArgument(
-            'output results in pages (-n to set items per page, default 10)',
-            '--more'),
+        more=FlagArgument('read long results', '--more'),
         exact_match=FlagArgument(
             'Show only objects that match exactly with path',
             '--exact-match'),
@@ -367,7 +366,7 @@ class file_list(_file_container_command, _optional_json, _name_filter):
         if self['json_output']:
             print_json(object_list)
             return
-        limit = int(self['limit']) if self['limit'] > 0 else len(object_list)
+        out = StringIO() if self['more'] else stdout
         for index, obj in enumerate(object_list):
             if self['exact_match'] and self.path and not (
                     obj['name'] == self.path or 'content_type' in obj):
@@ -384,47 +383,46 @@ class file_list(_file_container_command, _optional_json, _name_filter):
                 isDir = False
                 size = format_size(obj['bytes'])
                 pretty_obj['bytes'] = '%s (%s)' % (obj['bytes'], size)
-            oname = bold(obj['name'])
+            oname = obj['name'] if self['more'] else bold(obj['name'])
             prfx = ('%s%s. ' % (empty_space, index)) if self['enum'] else ''
             if self['detail']:
-                print('%s%s' % (prfx, oname))
-                print_dict(pretty_obj, exclude=('name'))
-                print
+                out.writelines(u'%s%s\n' % (prfx, oname))
+                print_dict(pretty_obj, exclude=('name'), out=out)
+                out.writelines(u'\n')
             else:
-                oname = '%s%9s %s' % (prfx, size, oname)
-                oname += '/' if isDir else ''
-                print(oname)
-            if self['more']:
-                page_hold(index, limit, len(object_list))
+                oname = u'%s%9s %s' % (prfx, size, oname)
+                oname += u'/' if isDir else u''
+                out.writelines(oname + u'\n')
+        if self['more']:
+            pager(out.getvalue())
 
     def print_containers(self, container_list):
         if self['json_output']:
             print_json(container_list)
             return
-        limit = int(self['limit']) if self['limit'] > 0\
-            else len(container_list)
+        out = StringIO() if self['more'] else stdout
         for index, container in enumerate(container_list):
             if 'bytes' in container:
                 size = format_size(container['bytes'])
             prfx = ('%s. ' % (index + 1)) if self['enum'] else ''
-            cname = '%s%s' % (prfx, bold(container['name']))
+            _cname = container['name'] if (
+                self['more']) else bold(container['name'])
+            cname = u'%s%s' % (prfx, _cname)
             if self['detail']:
-                print(cname)
+                out.writelines(cname + u'\n')
                 pretty_c = container.copy()
                 if 'bytes' in container:
                     pretty_c['bytes'] = '%s (%s)' % (container['bytes'], size)
-                print_dict(pretty_c, exclude=('name'))
-                print
+                print_dict(pretty_c, exclude=('name'), out=out)
+                out.writelines(u'\n')
             else:
                 if 'count' in container and 'bytes' in container:
-                    print('%s (%s, %s objects)' % (
-                        cname,
-                        size,
-                        container['count']))
+                    out.writelines(u'%s (%s, %s objects)\n' % (
+                        cname, size, container['count']))
                 else:
-                    print(cname)
-            if self['more']:
-                page_hold(index + 1, limit, len(container_list))
+                    out.writelines(cname + '\n')
+        if self['more']:
+            pager(out.getvalue())
 
     @errors.generic.all
     @errors.pithos.connection
@@ -1239,8 +1237,8 @@ class file_download(_file_container_command):
     *   download <container>:<path> <local dir> -R
     will download all files on <container> prefixed as <path>,
     to <local dir>/<full path> (or <local dir>\<full path> in windows)
-    *   download <container>:<path> <local dir> --exact-match
-    will download only one file, exactly matching <path>
+    *   download <container>:<path> <local dir>
+    will download only one file<path>
     ATTENTION: to download cont:dir1/dir2/file there must exist objects
     cont:dir1 and cont:dir1/dir2 of type application/directory
     To create directory objects, use /file mkdir

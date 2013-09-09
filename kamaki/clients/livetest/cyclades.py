@@ -166,7 +166,8 @@ class Cyclades(livetest.Generic):
     def _wait_for_status(self, servid, status):
         (wait_bar, wait_cb) = self._safe_progress_bar(
             'Server %s in %s' % (servid, status))
-        self.client.wait_server(servid, status, wait_cb=wait_cb, delay=5)
+        self.client.wait_server(
+            servid, status, wait_cb=wait_cb, delay=2, max_wait=198)
         self._safe_progress_bar_finish(wait_bar)
 
     def test_parallel_creation(self):

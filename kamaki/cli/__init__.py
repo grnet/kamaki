@@ -157,7 +157,8 @@ def command(cmd_tree, prefix='', descedants_depth=1):
                 'No commend in %s (acts as cmd description)' % cls.__name__)
         _construct_command_syntax(cls)
 
-        cmd_tree.add_command(cls_name, cls.description, cls)
+        cmd_tree.add_command(
+            cls_name, cls.description, cls, cls.long_description)
         return cls
     return wrap
 
@@ -307,6 +308,11 @@ def _init_session(arguments, is_non_API=False):
                 else:
                     auth_base = AuthCachedClient(
                         auth_args['url'], auth_args['token'])
+                    from kamaki.cli.commands import _command_init
+                    fake_cmd = _command_init(arguments)
+                    fake_cmd.client = auth_base
+                    fake_cmd._set_log_params()
+                    fake_cmd._update_max_threads()
                     auth_base.authenticate(token)
             except ClientError as ce:
                 if ce.status in (401, ):

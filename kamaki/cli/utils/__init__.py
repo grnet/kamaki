@@ -31,11 +31,11 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from sys import stdout
+from sys import stdout, stdin
 from re import compile as regex_compile
-from time import sleep
 from os import walk, path
 from json import dumps
+from pydoc import pager
 
 from kamaki.cli.errors import raiseCLIError
 
@@ -55,26 +55,6 @@ except ImportError:
         return val
     red = yellow = magenta = bold = dummy
     suggest['ansicolors']['active'] = True
-
-
-def _print(w):
-    """Print wrapper is used to help unittests check what is printed"""
-    print w
-
-
-def _write(w):
-    """stdout.write wrapper is used to help unittests check what is printed"""
-    stdout.write(w)
-
-
-def _flush():
-    """stdout.flush wrapper is used to help unittests check what is called"""
-    stdout.flush()
-
-
-def _readline():
-    """raw_input wrapper is used to help unittests"""
-    return raw_input()
 
 
 def suggest_missing(miss=None, exclude=[]):
@@ -131,22 +111,20 @@ def pretty_keys(d, delim='_', recursive=False):
     return new_d
 
 
-def print_json(data):
+def print_json(data, out=stdout):
     """Print a list or dict as json in console
 
     :param data: json-dumpable data
+
+    :param out: Input/Output stream to dump values into
     """
-    _print(dumps(data, indent=INDENT_TAB))
-
-
-def pretty_dict(d, *args, **kwargs):
-    print_dict(pretty_keys(d, *args, **kwargs))
+    out.writelines(unicode(dumps(data, indent=INDENT_TAB) + '\n'))
 
 
 def print_dict(
         d,
         exclude=(), indent=0,
-        with_enumeration=False, recursive_enumeration=False):
+        with_enumeration=False, recursive_enumeration=False, out=stdout):
     """Pretty-print a dictionary object
     <indent>key: <non iterable item>
     <indent>key:
@@ -163,6 +141,8 @@ def print_dict(
     :param recursive_enumeration: (bool) recursively enumerate iterables (does
         not enumerate 1st level keys)
 
+    :param out: Input/Output stream to dump values into
+
     :raises CLIError: if preconditions fail
     """
     assert isinstance(d, dict), 'print_dict input must be a dict'
@@ -172,27 +152,27 @@ def print_dict(
         k = ('%s' % k).strip()
         if k in exclude:
             continue
-        print_str = ' ' * indent
-        print_str += '%s.' % (i + 1) if with_enumeration else ''
-        print_str += '%s:' % k
+        print_str = u' ' * indent
+        print_str += u'%s.' % (i + 1) if with_enumeration else u''
+        print_str += u'%s:' % k
         if isinstance(v, dict):
-            _print(print_str)
+            out.writelines(print_str + '\n')
             print_dict(
                 v, exclude, indent + INDENT_TAB,
-                recursive_enumeration, recursive_enumeration)
+                recursive_enumeration, recursive_enumeration, out)
         elif isinstance(v, list) or isinstance(v, tuple):
-            _print(print_str)
+            out.writelines(print_str + '\n')
             print_list(
                 v, exclude, indent + INDENT_TAB,
-                recursive_enumeration, recursive_enumeration)
+                recursive_enumeration, recursive_enumeration, out)
         else:
-            _print('%s %s' % (print_str, v))
+            out.writelines(u'%s %s\n' % (print_str, v))
 
 
 def print_list(
         l,
         exclude=(), indent=0,
-        with_enumeration=False, recursive_enumeration=False):
+        with_enumeration=False, recursive_enumeration=False, out=stdout):
     """Pretty-print a list of items
     <indent>key: <non iterable item>
     <indent>key:
@@ -209,6 +189,8 @@ def print_list(
     :param recursive_enumeration: (bool) recursively enumerate iterables (does
         not enumerate 1st level keys)
 
+    :param out: Input/Output stream to dump values into
+
     :raises CLIError: if preconditions fail
     """
     assert isinstance(l, list) or isinstance(l, tuple), (
@@ -216,52 +198,35 @@ def print_list(
     assert indent >= 0, 'print_list indent must be >= 0'
 
     for i, item in enumerate(l):
-        print_str = ' ' * indent
-        print_str += '%s.' % (i + 1) if with_enumeration else ''
+        print_str = u' ' * indent
+        print_str += u'%s.' % (i + 1) if with_enumeration else u''
         if isinstance(item, dict):
             if with_enumeration:
-                _print(print_str)
+                out.writelines(print_str + '\n')
             elif i and i < len(l):
-                _print('')
+                out.writelines(u'\n')
             print_dict(
                 item, exclude,
                 indent + (INDENT_TAB if with_enumeration else 0),
-                recursive_enumeration, recursive_enumeration)
+                recursive_enumeration, recursive_enumeration, out)
         elif isinstance(item, list) or isinstance(item, tuple):
             if with_enumeration:
-                _print(print_str)
+                out.writelines(print_str + '\n')
             elif i and i < len(l):
-                _print()
+                out.writelines(u'\n')
             print_list(
                 item, exclude, indent + INDENT_TAB,
-                recursive_enumeration, recursive_enumeration)
+                recursive_enumeration, recursive_enumeration, out)
         else:
             item = ('%s' % item).strip()
             if item in exclude:
                 continue
-            _print('%s%s' % (print_str, item))
-
-
-def page_hold(index, limit, maxlen):
-    """Check if there are results to show, and hold the page when needed
-    :param index: (int) > 0, index of current element
-    :param limit: (int) 0 < limit <= max, page hold if limit mod index == 0
-    :param maxlen: (int) Don't hold if index reaches maxlen
-
-    :returns: True if there are more to show, False if all results are shown
-    """
-    if index >= maxlen:
-        return False
-    if index and index % limit == 0:
-        raw_input('(%s listed - %s more - "enter" to continue)' % (
-            index, maxlen - index))
-    return True
+            out.writelines(u'%s%s\n' % (print_str, item))
 
 
 def print_items(
         items, title=('id', 'name'),
-        with_enumeration=False, with_redundancy=False,
-        page_size=0):
+        with_enumeration=False, with_redundancy=False, out=stdout):
     """print dict or list items in a list, using some values as title
     Objects of next level don't inherit enumeration (default: off) or titles
 
@@ -273,38 +238,29 @@ def print_items(
 
     :param with_redundancy: (boolean) values in title also appear on body
 
-    :param page_size: (int) show results in pages of page_size items, enter to
-        continue
+    :param out: Input/Output stream to dump values into
     """
     if not items:
         return
     if not (isinstance(items, dict) or isinstance(items, list) or isinstance(
                 items, tuple)):
-        _print('%s' % items)
+        out.writelines(u'%s\n' % items)
         return
 
-    page_size = int(page_size or 0)
-    try:
-        page_size = page_size if page_size > 0 else len(items)
-    except:
-        page_size = len(items)
-    num_of_pages = len(items) // page_size
-    num_of_pages += 1 if len(items) % page_size else 0
     for i, item in enumerate(items):
         if with_enumeration:
-            _write('%s. ' % (i + 1))
+            out.write(u'%s. ' % (i + 1))
         if isinstance(item, dict):
             item = dict(item)
             title = sorted(set(title).intersection(item))
             pick = item.get if with_redundancy else item.pop
-            header = ' '.join('%s' % pick(key) for key in title)
-            _print(bold(header))
-            print_dict(item, indent=INDENT_TAB)
+            header = u' '.join(u'%s' % pick(key) for key in title)
+            out.writelines(unicode(bold(header) + '\n'))
+            print_dict(item, indent=INDENT_TAB, out=out)
         elif isinstance(item, list) or isinstance(item, tuple):
-            print_list(item, indent=INDENT_TAB)
+            print_list(item, indent=INDENT_TAB, out=out)
         else:
-            _print(' %s' % item)
-        page_hold(i + 1, page_size, len(items))
+            out.writelines(u' %s\n' % item)
 
 
 def format_size(size, decimal_factors=False):
@@ -418,31 +374,19 @@ def split_input(line):
     return terms
 
 
-def ask_user(msg, true_resp=('y', )):
+def ask_user(msg, true_resp=('y', ), out=stdout, user_in=stdin):
     """Print msg and read user response
 
     :param true_resp: (tuple of chars)
 
     :returns: (bool) True if reponse in true responses, False otherwise
     """
-    _write('%s [%s/N]: ' % (msg, ', '.join(true_resp)))
-    _flush()
-    user_response = _readline()
-    return user_response[0].lower() in true_resp
-
-
-def spiner(size=None):
-    spins = ('/', '-', '\\', '|')
-    _write(' ')
-    size = size or -1
-    i = 0
-    while size - i:
-        _write('\b%s' % spins[i % len(spins)])
-        _flush()
-        i += 1
-        sleep(0.1)
-        yield
-    yield
+    yep = ', '.join(true_resp)
+    nope = '<not %s>' % yep if 'n' in true_resp or 'N' in true_resp else 'N'
+    out.write(u'%s [%s/%s]: ' % (msg, yep, nope))
+    out.flush()
+    user_response = user_in.readline()
+    return user_response[0].lower() in [s.lower() for s in true_resp]
 
 
 def get_path_size(testpath):

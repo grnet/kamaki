@@ -92,6 +92,8 @@ def run(auth_base, cloud, parser, _help):
 
     if _help or not cmd.is_command:
         parser.parser.print_help()
+        if getattr(cmd, 'long_help', False):
+            print 'Details:\n', cmd.long_help
         print_subcommands_help(cmd)
         exit(0)
 

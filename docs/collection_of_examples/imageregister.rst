@@ -6,16 +6,17 @@ then is registered to the image service (Plankton). The image location at the
 storage server is unique through out a deployment and also necessary for the
 image to exist.
 
-The image location format::
+The image location format at user level::
 
-    pithos://<user id>/<container>/<object path>
+    <container>:<object path>
 
     e.g.:
 
-    pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump
+    pithos:debian_base3.diskdump
 
 The crussial element in an image location is the container (e.g. `pithos`) and
 the image object path (e.g. `debian_base3.diskdump`).
+
 
 Register an image
 -----------------
@@ -57,6 +58,22 @@ Register the image object with the name 'Debian Base Alpha'
 .. note:: The `image register` command automatically creates a meta file and
     uploads it to the same location as the image. The meta file can be
     downloaded and reused for more image registrations.
+
+Another way to perform the two operations above is to call **/image register**
+with the **\- -upload-image-file** argument. This single operation will upload
+the image file and then register it as an image, and is equivalent to manually
+calling **/file upload** and **/image register**.
+
+In other words, the example that follows is equivalent to calling the two
+operations above.
+
+.. code-block:: console
+
+        [kamaki]: image register 'Debian Base Alpha'
+            pithos:debian_base3.diskdump
+            --upload-image-file='debian_base3.diskdump'
+        [kamaki]:
+
 
 Read the metafile
 

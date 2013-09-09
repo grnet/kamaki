@@ -83,9 +83,8 @@ class _astakos_init(_command_init):
             astakos_endpoints = self.auth_base.get_service_endpoints(
                 self._custom_type('astakos') or 'identity',
                 self._custom_version('astakos') or '')
-            base_url = astakos_endpoints['SNF:uiURL']
-            base_url = base_url[:-3]
-            #base_url = ''.join(base_url.split('/ui'))
+            base_url = astakos_endpoints['publicURL']
+            base_url, sep, suffix = base_url.rpartition('identity')
         else:
             base_url = self._custom_url('astakos')
         if not base_url:
