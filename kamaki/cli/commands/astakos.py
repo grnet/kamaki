@@ -34,10 +34,10 @@
 from kamaki.cli import command
 from kamaki.clients.astakos import AstakosClient
 from kamaki.cli.commands import (
-    _command_init, errors, _optional_json, addLogSettings, stdout)
+    _command_init, errors, _optional_json, addLogSettings)
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import CLIBaseUrlError, CLIError
-from kamaki.cli.utils import print_dict, ask_user
+from kamaki.cli.utils import print_dict, ask_user, stdout
 
 user_cmds = CommandTree('user', 'Astakos API commands')
 _commands = [user_cmds]
