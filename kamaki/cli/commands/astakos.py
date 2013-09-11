@@ -87,10 +87,6 @@ class user_authenticate(_user_init, _optional_json):
     (In case of another named cloud, use its name instead of default)
     """
 
-    @staticmethod
-    def _print_access(r, out=stdout):
-        print_dict(r['access'], out=out)
-
     @errors.generic.all
     @errors.user.authenticate
     def _run(self, custom_token=None):
@@ -105,7 +101,11 @@ class user_authenticate(_user_init, _optional_json):
             #recover old token
             self.client.token = token_bu
             raise
-        self._print(r, self._print_access)
+
+        def _print_access(r, out):
+            print_dict(r['access'], out=out)
+
+        self._print(r, _print_access)
 
     def main(self, custom_token=None):
         super(self.__class__, self)._run()
@@ -155,16 +155,18 @@ class user_set(_user_init, _optional_json):
             if user.get('id', None) in (uuid,):
                 ntoken = user['auth_token']
                 if ntoken == self.client.token:
-                    print('%s (%s) is already the session user' % (
+                    self.error('%s (%s) is already the session user' % (
                         self.client.user_term('name'),
                         self.client.user_term('id')))
                     return
                 self.client.token = user['auth_token']
-                print('Session user set to %s (%s)' % (
+                self.error('Session user set to %s (%s)' % (
                         self.client.user_term('name'),
                         self.client.user_term('id')))
-                if ask_user('Permanently make %s the main user?' % (
-                        self.client.user_term('name'))):
+                if ask_user(
+                        'Permanently make %s the main user?' % (
+                            self.client.user_term('name')),
+                        out=self._out, user_in=self._in):
                     self._write_main_token(self.client.token)
                 return
         raise CLIError(

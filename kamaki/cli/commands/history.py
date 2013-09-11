@@ -41,7 +41,7 @@ from kamaki.cli import command
 from kamaki.cli.commands import _command_init, errors
 from kamaki.cli import exec_cmd, print_error_message
 from kamaki.cli.errors import CLIError, raiseCLIError
-from kamaki.cli.utils import split_input
+from kamaki.cli.utils import split_input, print_list
 from kamaki.clients import ClientError
 
 
@@ -111,7 +111,7 @@ class history_show(_init_history):
         ret = self.history.get(match_terms=self['match'], limit=self['limit'])
 
         if not cmd_ids:
-            print(''.join(ret))
+            print_list(ret, out=self._out)
             return
 
         num_list = []
@@ -122,7 +122,7 @@ class history_show(_init_history):
             try:
                 cur_id = int(cmd_id)
                 if cur_id:
-                    print(ret[cur_id - (1 if cur_id > 0 else 0)][:-1])
+                    self.writeln(ret[cur_id - (1 if cur_id > 0 else 0)][:-1])
             except IndexError as e2:
                 raiseCLIError(e2, 'Command id out of 1-%s range' % len(ret))
 
@@ -184,10 +184,9 @@ class history_run(_init_history):
             prs.parse(args)
             exec_cmd(instance, prs.unparsed, prs.parser.print_help)
         except (CLIError, ClientError) as err:
-            print_error_message(err)
+            print_error_message(err, self._err)
         except Exception as e:
-            print('Execution of [ %s ] failed' % line)
-            print('\t%s' % e)
+            self.error('Execution of [ %s ] failed\n\t%s' % (line, e))
 
     @errors.generic.all
     @errors.history._get_cmd_ids
@@ -203,7 +202,7 @@ class history_run(_init_history):
         for cmd_id in cmd_list:
             r = self.history.retrieve(cmd_id)
             try:
-                print('< %s >' % r[:-1])
+                self.writeln('< %s >' % r[:-1])
             except (TypeError, KeyError):
                 continue
             if self._cmd_tree:

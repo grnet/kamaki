@@ -50,12 +50,13 @@ about_options = '\nAbout options:\
     \n.   [group]\
     \n.   option=value\
     \n.   (more options can be set per group)\
+    \n.\
     \n. special case: named clouds.\
+    \n. example: cloud.demo.url\
     \n. E.g. for a cloud "demo":\
     \n.   [cloud "demo"]\
     \n.   url = <http://single/authentication/url/for/demo/site>\
-    \n.   token = <auth_token_from_demo_site>\
-    \n. which are referenced as cloud.demo.url , cloud.demo.token'
+    \n.   token = <auth_token_from_demo_site>'
 
 
 @command(config_cmds)
@@ -76,9 +77,9 @@ class config_list(_command_init):
                 if section in ('cloud',):
                     prefix = '%s.%s' % (section, key)
                     for k, v in val.items():
-                        print('%s.%s = %s' % (prefix, k, v))
+                        self.writeln('%s.%s = %s' % (prefix, k, v))
                 else:
-                    print('%s.%s = %s' % (section, key, val))
+                    self.writeln('%s.%s = %s' % (section, key, val))
 
     def main(self):
         self._run()
@@ -98,7 +99,7 @@ class config_get(_command_init):
             for k in self.config.keys(key):
                 match = True
                 if option != 'cloud':
-                    stdout.write('%s.%s =' % (option, k))
+                    self.write('%s.%s =' % (option, k))
                 self._run('%s.%s' % (option, k))
             if match:
                 return
@@ -110,9 +111,9 @@ class config_get(_command_init):
         value = get(section, key)
         if isinstance(value, dict):
             for k, v in value.items():
-                print('%s.%s.%s = %s' % (section, key, k, v))
+                self.writeln('%s.%s.%s = %s' % (section, key, k, v))
         elif value:
-            print(value)
+            self.writeln(value)
 
     def main(self, option):
         self._run(option)

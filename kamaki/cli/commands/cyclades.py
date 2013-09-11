@@ -59,71 +59,50 @@ about_authentication = '\nUser Authentication:\
     \n* to set authentication token: /config set cloud.<cloud>.token <token>'
 
 howto_personality = [
-    'Defines a file to be injected to VMs personality.',
-    'Personality value syntax: PATH,[SERVER_PATH,[OWNER,[GROUP,[MODE]]]]',
-    '  PATH: of local file to be injected',
+    'Defines a file to be injected to VMs file system.',
+    'syntax:  PATH,[SERVER_PATH,[OWNER,[GROUP,[MODE]]]]',
+    '  PATH: local file to be injected (relative or absolute)',
     '  SERVER_PATH: destination location inside server Image',
-    '  OWNER: user id of destination file owner',
-    '  GROUP: group id or name to own destination file',
+    '  OWNER: VMs user id of the remote destination file',
+    '  GROUP: VMs group id or name of the destination file',
     '  MODEL: permition in octal (e.g. 0777 or o+rwx)']
 
 
-class _server_wait(object):
+class _service_wait(object):
 
     wait_arguments = dict(
         progress_bar=ProgressBarArgument(
-            'do not show progress bar',
-            ('-N', '--no-progress-bar'),
-            False
-        )
+            'do not show progress bar', ('-N', '--no-progress-bar'), False)
     )
+
+    def _wait(self, service, service_id, status_method, currect_status):
+        (progress_bar, wait_cb) = self._safe_progress_bar(
+            '%s %s still in %s mode' % (service, service_id, currect_status))
+
+        try:
+            new_mode = status_method(
+                service_id, currect_status, wait_cb=wait_cb)
+        finally:
+            self._safe_progress_bar_finish(progress_bar)
+        if new_mode:
+            self.error('%s %s is now in %s mode' % (
+                service, service_id, new_mode))
+        else:
+            raiseCLIError(None, 'Time out')
+
+
+class _server_wait(_service_wait):
 
     def _wait(self, server_id, currect_status):
-        (progress_bar, wait_cb) = self._safe_progress_bar(
-            'Server %s still in %s mode' % (server_id, currect_status))
-
-        try:
-            new_mode = self.client.wait_server(
-                server_id,
-                currect_status,
-                wait_cb=wait_cb)
-        except Exception:
-            raise
-        finally:
-            self._safe_progress_bar_finish(progress_bar)
-        if new_mode:
-            print('Server %s is now in %s mode' % (server_id, new_mode))
-        else:
-            raiseCLIError(None, 'Time out')
+        super(_server_wait, self)._wait(
+            'Server', server_id, self.client.wait_server, currect_status)
 
 
-class _network_wait(object):
-
-    wait_arguments = dict(
-        progress_bar=ProgressBarArgument(
-            'do not show progress bar',
-            ('-N', '--no-progress-bar'),
-            False
-        )
-    )
+class _network_wait(_service_wait):
 
     def _wait(self, net_id, currect_status):
-        (progress_bar, wait_cb) = self._safe_progress_bar(
-            'Network %s still in %s mode' % (net_id, currect_status))
-
-        try:
-            new_mode = self.client.wait_network(
-                net_id,
-                currect_status,
-                wait_cb=wait_cb)
-        except Exception:
-            raise
-        finally:
-            self._safe_progress_bar_finish(progress_bar)
-        if new_mode:
-            print('Network %s is now in %s mode' % (net_id, new_mode))
-        else:
-            raiseCLIError(None, 'Time out')
+        super(_network_wait, self)._wait(
+            'Network', net_id, self.client.wait_network, currect_status)
 
 
 class _init_cyclades(_command_init):
@@ -131,14 +110,12 @@ class _init_cyclades(_command_init):
     @addLogSettings
     def _run(self, service='compute'):
         if getattr(self, 'cloud', None):
-            base_url = self._custom_url(service)\
-                or self._custom_url('cyclades')
+            base_url = self._custom_url(service) or self._custom_url(
+                'cyclades')
             if base_url:
-                token = self._custom_token(service)\
-                    or self._custom_token('cyclades')\
-                    or self.config.get_cloud('token')
-                self.client = CycladesClient(
-                    base_url=base_url, token=token)
+                token = self._custom_token(service) or self._custom_token(
+                    'cyclades') or self.config.get_cloud('token')
+                self.client = CycladesClient(base_url=base_url, token=token)
                 return
         else:
             self.cloud = 'default'
@@ -207,19 +184,12 @@ class server_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
 
     def _filter_by_image(self, servers):
         iid = self['image_id']
-        new_servers = []
-        for srv in servers:
-            if srv['image']['id'] == iid:
-                new_servers.append(srv)
-        return new_servers
+        return [srv for srv in servers if srv['image']['id'] == iid]
 
     def _filter_by_flavor(self, servers):
         fid = self['flavor_id']
-        new_servers = []
-        for srv in servers:
-            if '%s' % srv['flavor']['id'] == '%s' % fid:
-                new_servers.append(srv)
-        return new_servers
+        return [srv for srv in servers if (
+            '%s' % srv['image']['id'] == '%s' % fid)]
 
     def _filter_by_metadata(self, servers):
         new_servers = []
@@ -327,8 +297,7 @@ class PersonalityArgument(KeyValueArgument):
                 raiseCLIError(
                     None,
                     '--personality: File %s does not exist' % path,
-                    importance=1,
-                    details=howto_personality)
+                    importance=1, details=howto_personality)
             self._value.append(dict(path=path))
             with open(path) as f:
                 self._value[i]['contents'] = b64encode(f.read())
@@ -581,7 +550,7 @@ class server_firewall_get(_init_cyclades):
     @errors.cyclades.connection
     @errors.cyclades.server_id
     def _run(self, server_id):
-        print(self.client.get_firewall_profile(server_id))
+        self.writeln(self.client.get_firewall_profile(server_id))
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -601,8 +570,7 @@ class server_addr(_init_cyclades, _optional_json):
     @errors.cyclades.server_id
     def _run(self, server_id):
         reply = self.client.list_server_nics(int(server_id))
-        self._print(
-            reply, with_enumeration=self['enum'] and len(reply) > 1)
+        self._print(reply, with_enumeration=self['enum'] and (reply) > 1)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -881,7 +849,7 @@ class network_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
         for net in networks:
             v = net.get(key, None)
             if v:
-                net[key] += ' (%s)' % uuids[net[key]]
+                net[key] += ' (%s)' % uuids[v]
         return networks
 
     @errors.generic.all
@@ -1044,8 +1012,7 @@ class network_disconnect(_init_cyclades):
         if not num_of_disconnected:
             raise ClientError(
                 'Network Interface %s not found on server %s' % (
-                    nic_id,
-                    server_id),
+                    nic_id, server_id),
                 status=404)
         print('Disconnected %s connections' % num_of_disconnected)
 
@@ -1123,9 +1090,7 @@ class server_ip_info(_init_cyclades, _optional_json):
 class server_ip_create(_init_cyclades, _optional_json):
     """Create a new floating IP"""
 
-    arguments = dict(
-        pool=ValueArgument('Source IP pool', ('--pool'), None)
-    )
+    arguments = dict(pool=ValueArgument('Source IP pool', ('--pool'), None))
 
     @errors.generic.all
     @errors.cyclades.connection

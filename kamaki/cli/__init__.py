@@ -32,7 +32,7 @@
 # or implied, of GRNET S.A.command
 
 import logging
-from sys import argv, exit, stdout
+from sys import argv, exit, stdout, stderr
 from os.path import basename, exists
 from inspect import getargspec
 
@@ -420,7 +420,7 @@ def update_parser_help(parser, cmd):
         cmd.help + ('\n' if description else '')) if cmd.help else description
 
 
-def print_error_message(cli_err):
+def print_error_message(cli_err, out=stderr):
     errmsg = '%s' % cli_err
     if cli_err.importance == 1:
         errmsg = magenta(errmsg)
@@ -428,9 +428,10 @@ def print_error_message(cli_err):
         errmsg = yellow(errmsg)
     elif cli_err.importance > 2:
         errmsg = red(errmsg)
-    stdout.write(errmsg)
+    out.write(errmsg)
     for errmsg in cli_err.details:
-        print('|  %s' % errmsg)
+        out.write('|  %s\n' % errmsg)
+        out.flush()
 
 
 def exec_cmd(instance, cmd_args, help_method):
