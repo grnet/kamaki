@@ -31,7 +31,6 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-from sys import stdout
 from time import localtime, strftime
 from os import path, makedirs, walk
 from io import StringIO
@@ -41,7 +40,7 @@ from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import raiseCLIError, CLISyntaxError, CLIBaseUrlError
 from kamaki.cli.utils import (
     format_size, to_bytes, print_dict, print_items, pager, bold, ask_user,
-    get_path_size, print_json, guess_mime_type)
+    get_path_size, guess_mime_type)
 from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
 from kamaki.cli.argument import KeyValueArgument, DateArgument
 from kamaki.cli.argument import ProgressBarArgument
@@ -57,26 +56,6 @@ _commands = [pithos_cmds]
 
 
 # Argument functionality
-
-class DelimiterArgument(ValueArgument):
-    """
-    :value type: string
-    :value returns: given string or /
-    """
-
-    def __init__(self, caller_obj, help='', parsed_name=None, default=None):
-        super(DelimiterArgument, self).__init__(help, parsed_name, default)
-        self.caller_obj = caller_obj
-
-    @property
-    def value(self):
-        if self.caller_obj['recursive']:
-            return '/'
-        return getattr(self, '_value', self.default)
-
-    @value.setter
-    def value(self, newvalue):
-        self._value = newvalue
 
 
 class SharingArgument(ValueArgument):
@@ -362,11 +341,7 @@ class file_list(_file_container_command, _optional_json, _name_filter):
         enum=FlagArgument('Enumerate results', '--enumerate')
     )
 
-    def print_objects(self, object_list, out=stdout):
-        if self['json_output']:
-            print_json(object_list, out=out)
-            return
-        out = StringIO() if self['more'] else stdout
+    def print_objects(self, object_list):
         for index, obj in enumerate(object_list):
             if self['exact_match'] and self.path and not (
                     obj['name'] == self.path or 'content_type' in obj):
@@ -384,23 +359,18 @@ class file_list(_file_container_command, _optional_json, _name_filter):
                 size = format_size(obj['bytes'])
                 pretty_obj['bytes'] = '%s (%s)' % (obj['bytes'], size)
             oname = obj['name'] if self['more'] else bold(obj['name'])
-            prfx = ('%s%s. ' % (empty_space, index)) if self['enum'] else ''
+            prfx = (
+                '%s%s. ' % (empty_space, index)) if self['enum'] else ''
             if self['detail']:
-                out.writelines(u'%s%s\n' % (prfx, oname))
-                print_dict(pretty_obj, exclude=('name'), out=out)
-                out.writelines(u'\n')
+                self._out.writelines(u'%s%s\n' % (prfx, oname))
+                print_dict(pretty_obj, exclude=('name'), out=self._out)
+                self._out.writelines(u'\n')
             else:
                 oname = u'%s%9s %s' % (prfx, size, oname)
                 oname += u'/' if isDir else u''
-                out.writelines(oname + u'\n')
-        if self['more']:
-            pager(out.getvalue())
+                self._out.writelines(oname + u'\n')
 
-    def print_containers(self, container_list, out=stdout):
-        if self['json_output']:
-            print_json(container_list, out=out)
-            return
-        out = StringIO() if self['more'] else stdout
+    def print_containers(self, container_list):
         for index, container in enumerate(container_list):
             if 'bytes' in container:
                 size = format_size(container['bytes'])
@@ -409,26 +379,25 @@ class file_list(_file_container_command, _optional_json, _name_filter):
                 self['more']) else bold(container['name'])
             cname = u'%s%s' % (prfx, _cname)
             if self['detail']:
-                out.writelines(cname + u'\n')
+                self._out.writelines(cname + u'\n')
                 pretty_c = container.copy()
                 if 'bytes' in container:
                     pretty_c['bytes'] = '%s (%s)' % (container['bytes'], size)
-                print_dict(pretty_c, exclude=('name'), out=out)
-                out.writelines(u'\n')
+                print_dict(pretty_c, exclude=('name'), out=self._out)
+                self._out.writelines(u'\n')
             else:
                 if 'count' in container and 'bytes' in container:
-                    out.writelines(u'%s (%s, %s objects)\n' % (
+                    self._out.writelines(u'%s (%s, %s objects)\n' % (
                         cname, size, container['count']))
                 else:
-                    out.writelines(cname + '\n')
-        if self['more']:
-            pager(out.getvalue())
+                    self._out.writelines(cname + '\n')
 
     @errors.generic.all
     @errors.pithos.connection
     @errors.pithos.object_path
     @errors.pithos.container
     def _run(self):
+        files, prnt = None, None
         if self.container is None:
             r = self.client.account_get(
                 limit=False if self['more'] else self['limit'],
@@ -437,8 +406,7 @@ class file_list(_file_container_command, _optional_json, _name_filter):
                 if_unmodified_since=self['if_unmodified_since'],
                 until=self['until'],
                 show_only_shared=self['shared'])
-            files = self._filter_by_name(r.json)
-            self._print(files, self.print_containers)
+            files, prnt = self._filter_by_name(r.json), self.print_containers
         else:
             prefix = (self.path and not self['name']) or self['name_pref']
             r = self.client.container_get(
@@ -452,8 +420,18 @@ class file_list(_file_container_command, _optional_json, _name_filter):
                 until=self['until'],
                 meta=self['meta'],
                 show_only_shared=self['shared'])
-            files = self._filter_by_name(r.json)
-            self._print(files, self.print_objects)
+            files, prnt = self._filter_by_name(r.json), self.print_objects
+        if self['more']:
+            outbu, self._out = self._out, StringIO()
+        try:
+            if self['json_output']:
+                self._print(files)
+            else:
+                prnt(files)
+        finally:
+            if self['more']:
+                pager(self._out.getvalue())
+                self._out = outbu
 
     def main(self, container____path__=None):
         super(self.__class__, self)._run(container____path__)
@@ -1216,7 +1194,7 @@ class file_cat(_file_container_command):
     def _run(self):
         self.client.download_object(
             self.path,
-            stdout,
+            self._out,
             range_str=self['range'],
             version=self['object_version'],
             if_match=self['if_match'],
@@ -1399,16 +1377,16 @@ class file_download(_file_container_command):
             from threading import activeCount, enumerate as activethreads
             timeout = 0.5
             while activeCount() > 1:
-                stdout.write('\nCancel %s threads: ' % (activeCount() - 1))
-                stdout.flush()
+                self._out.write('\nCancel %s threads: ' % (activeCount() - 1))
+                self._out.flush()
                 for thread in activethreads():
                     try:
                         thread.join(timeout)
-                        stdout.write('.' if thread.isAlive() else '*')
+                        self._out.write('.' if thread.isAlive() else '*')
                     except RuntimeError:
                         continue
                     finally:
-                        stdout.flush()
+                        self._out.flush()
                         timeout += 0.1
             print('\nDownload canceled by user')
             if local_path is not None:
@@ -1484,15 +1462,10 @@ class file_delete(_file_container_command, _optional_output_cmd):
         yes=FlagArgument('Do not prompt for permission', '--yes'),
         recursive=FlagArgument(
             'empty dir or container and delete (if dir)',
-            ('-R', '--recursive'))
+            ('-R', '--recursive')),
+        delimiter=ValueArgument(
+            'delete objects prefixed with <object><delimiter>', '--delimiter')
     )
-
-    def __init__(self, arguments={}, auth_base=None, cloud=None):
-        super(self.__class__, self).__init__(arguments,  auth_base, cloud)
-        self['delimiter'] = DelimiterArgument(
-            self,
-            parsed_name='--delimiter',
-            help='delete objects prefixed with <object><delimiter>')
 
     @errors.generic.all
     @errors.pithos.connection
@@ -1504,7 +1477,8 @@ class file_delete(_file_container_command, _optional_output_cmd):
                     'Delete %s:%s ?' % (self.container, self.path)):
                 self._optional_output(self.client.del_object(
                     self.path,
-                    until=self['until'], delimiter=self['delimiter']))
+                    until=self['until'],
+                    delimiter='/' if self['recursive'] else self['delimiter']))
             else:
                 print('Aborted')
         elif self.container:
@@ -1514,7 +1488,8 @@ class file_delete(_file_container_command, _optional_output_cmd):
                 ask_msg = 'Delete container'
             if self['yes'] or ask_user('%s %s ?' % (ask_msg, self.container)):
                 self._optional_output(self.client.del_container(
-                    until=self['until'], delimiter=self['delimiter']))
+                    until=self['until'],
+                    delimiter='/' if self['recursive'] else self['delimiter']))
             else:
                 print('Aborted')
         else:
@@ -1613,7 +1588,7 @@ class file_permissions(_pithos_init):
     """
 
 
-def print_permissions(permissions_dict, out=stdout):
+def print_permissions(permissions_dict, out):
     expected_keys = ('read', 'write')
     if set(permissions_dict).issubset(expected_keys):
         print_dict(permissions_dict, out=out)
@@ -2069,7 +2044,7 @@ class file_sharers(_file_account_command, _optional_json):
         self._run()
 
 
-def version_print(versions, out=stdout):
+def version_print(versions, out):
     print_items(
         [dict(id=vitem[0], created=strftime(
             '%d-%m-%Y %H:%M:%S',

@@ -32,9 +32,9 @@
 # or implied, of GRNET S.A.command
 
 from kamaki.cli.logger import get_logger
-from kamaki.cli.utils import (
-    print_json, print_items, filter_dicts_by_dict, stdout)
+from kamaki.cli.utils import print_json, print_items, filter_dicts_by_dict
 from kamaki.cli.argument import FlagArgument, ValueArgument
+from sys import stdin, stdout
 
 log = get_logger(__name__)
 
@@ -60,7 +60,10 @@ def addLogSettings(foo):
 
 class _command_init(object):
 
-    def __init__(self, arguments={}, auth_base=None, cloud=None):
+    def __init__(
+            self,
+            arguments={}, auth_base=None, cloud=None, _in=None, _out=None):
+        self._in, self._out = _in or stdin, _out or stdout
         if hasattr(self, 'arguments'):
             arguments.update(self.arguments)
         if isinstance(self, _optional_output_cmd):
@@ -209,9 +212,9 @@ class _optional_output_cmd(object):
 
     def _optional_output(self, r):
         if self['json_output']:
-            print_json(r)
+            print_json(r, out=self._out)
         elif self['with_output']:
-            print_items([r] if isinstance(r, dict) else r)
+            print_items([r] if isinstance(r, dict) else r, out=self._out)
 
 
 class _optional_json(object):
@@ -220,14 +223,11 @@ class _optional_json(object):
         json_output=FlagArgument('show headers in json', ('-j', '--json'))
     )
 
-    def _print(
-            self, output,
-            print_method=print_items, out=stdout,
-            **print_method_kwargs):
+    def _print(self, output, print_method=print_items, **print_method_kwargs):
         if self['json_output']:
-            print_json(output, out=out)
+            print_json(output, out=self._out)
         else:
-            print_method(output, out=out, **print_method_kwargs)
+            print_method(output, out=self._out, **print_method_kwargs)
 
 
 class _name_filter(object):
