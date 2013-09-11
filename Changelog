@@ -6,6 +6,8 @@ Changes:
 
 - Logs do not contain kamaki.clients pids by default [#4242]
 - Replace page_hold method with pydoc.pager [#4279]
+- Remove commands.pithos.DelimiterArgument, replace with ValueArgument
+    wherever it is used
 
 Features:
 
