@@ -34,7 +34,7 @@
 from kamaki.cli.logger import get_logger
 from kamaki.cli.utils import print_json, print_items, filter_dicts_by_dict
 from kamaki.cli.argument import FlagArgument, ValueArgument
-from sys import stdin, stdout
+from sys import stdin, stdout, stderr
 
 log = get_logger(__name__)
 
@@ -62,8 +62,10 @@ class _command_init(object):
 
     def __init__(
             self,
-            arguments={}, auth_base=None, cloud=None, _in=None, _out=None):
-        self._in, self._out = _in or stdin, _out or stdout
+            arguments={}, auth_base=None, cloud=None,
+            _in=None, _out=None, _err=None):
+        self._in, self._out, self._err = (
+            _in or stdin, _out or stdout, _err or stderr)
         if hasattr(self, 'arguments'):
             arguments.update(self.arguments)
         if isinstance(self, _optional_output_cmd):
@@ -85,6 +87,17 @@ class _command_init(object):
             pass
         self.auth_base = auth_base or getattr(self, 'auth_base', None)
         self.cloud = cloud or getattr(self, 'cloud', None)
+
+    def write(self, s):
+        self._out.write(u'%s' % s)
+        self._out.flush()
+
+    def writeln(self, s=''):
+        self.write(u'%s\n' % s)
+
+    def error(self, s=''):
+        self._err.write(u'%s\n' % s)
+        self._err.flush()
 
     @DontRaiseKeyError
     def _custom_url(self, service):
@@ -145,6 +158,7 @@ class _command_init(object):
         """Try to get a progress bar, but do not raise errors"""
         try:
             progress_bar = self.arguments[arg]
+            progress_bar.file = self._err
             gen = progress_bar.get_generator(msg)
         except Exception:
             return (None, None)
