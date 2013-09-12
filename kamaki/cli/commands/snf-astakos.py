@@ -421,8 +421,8 @@ class astakos_commission_resolve(_astakos_init, _optional_json):
     @errors.generic.all
     @astakoserror
     def _run(self):
-        print 'accepted ', self['accept']
-        print 'rejected ', self['reject']
+        self.writeln('accepted ', self['accept'])
+        self.writeln('rejected ', self['reject'])
         self._print(
             self.client.resolve_commissions(
                 self.token, self['accept'], self['reject']),
@@ -506,7 +506,7 @@ _project_specs = """
 def apply_notification(foo):
     def wrap(self, *args, **kwargs):
         r = foo(self, *args, **kwargs)
-        print 'Application is submitted successfully'
+        self.writeln('Application is submitted successfully')
         return r
     return wrap
 
@@ -811,7 +811,7 @@ class project_membership_join(_astakos_init):
     @errors.generic.all
     @astakoserror
     def _run(self, project_id):
-        print self.client.join_project(self.token, project_id)
+        self.writeln(self.client.join_project(self.token, project_id))
 
     def main(self, project_id):
         super(project_membership_join, self)._run()
@@ -825,7 +825,7 @@ class project_membership_enroll(_astakos_init):
     @errors.generic.all
     @astakoserror
     def _run(self, project_id, email):
-        print self.client.enroll_member(self.token, project_id, email)
+        self.writeln(self.client.enroll_member(self.token, project_id, email))
 
     def main(self, project_id, email):
         super(project_membership_join, self)._run()
