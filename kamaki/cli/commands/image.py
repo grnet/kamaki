@@ -35,11 +35,11 @@ from json import load, dumps
 from os import path
 from logging import getLogger
 from io import StringIO
+from pydoc import pager
 
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.utils import (
-    print_dict, print_json, filter_dicts_by_dict, pager)
+from kamaki.cli.utils import filter_dicts_by_dict
 from kamaki.clients.image import ImageClient
 from kamaki.clients.pithos import PithosClient
 from kamaki.clients.astakos import AstakosClient
@@ -303,7 +303,7 @@ class image_info(_init_image, _optional_json):
         meta = self.client.get_meta(image_id)
         if not self['json_output']:
             meta['owner'] += ' (%s)' % self._uuid2username(meta['owner'])
-        self._print(meta, print_dict)
+        self._print(meta, self.print_dict)
 
     def main(self, image_id):
         super(self.__class__, self)._run()
@@ -627,7 +627,7 @@ class image_register(_init_image, _optional_json):
                             img_path, dst_cont)] + howto_image_file)
             raise
         r['owner'] += ' (%s)' % self._uuid2username(r['owner'])
-        self._print(r, print_dict)
+        self._print(r, self.print_dict)
 
         #upload the metadata file
         if pclient:
@@ -640,7 +640,7 @@ class image_register(_init_image, _optional_json):
                     'Failed to dump metafile %s:%s' % (dst_cont, meta_path))
                 return
             if self['json_output']:
-                print_json(dict(
+                self.print_json(dict(
                     metafile_location='%s:%s' % (dst_cont, meta_path),
                     headers=meta_headers))
             else:
@@ -855,7 +855,7 @@ class image_compute_info(_init_cyclades, _optional_json):
         usernames = self._uuids2usernames(uuids)
         image['user_id'] += ' (%s)' % usernames[image['user_id']]
         image['tenant_id'] += ' (%s)' % usernames[image['tenant_id']]
-        self._print(image, print_dict)
+        self._print(image, self.print_dict)
 
     def main(self, image_id):
         super(self.__class__, self)._run()
@@ -890,7 +890,7 @@ class image_compute_properties_list(_init_cyclades, _optional_json):
     @errors.cyclades.connection
     @errors.plankton.id
     def _run(self, image_id):
-        self._print(self.client.get_image_metadata(image_id), print_dict)
+        self._print(self.client.get_image_metadata(image_id), self.print_dict)
 
     def main(self, image_id):
         super(self.__class__, self)._run()
@@ -906,7 +906,8 @@ class image_compute_properties_get(_init_cyclades, _optional_json):
     @errors.plankton.id
     @errors.plankton.metadata
     def _run(self, image_id, key):
-        self._print(self.client.get_image_metadata(image_id, key), print_dict)
+        self._print(
+            self.client.get_image_metadata(image_id, key), self.print_dict)
 
     def main(self, image_id, key):
         super(self.__class__, self)._run()
@@ -929,7 +930,8 @@ class image_compute_properties_set(_init_cyclades, _optional_json):
             key, sep, val = keyval.partition('=')
             meta[key] = val
         self._print(
-            self.client.update_image_metadata(image_id, **meta), print_dict)
+            self.client.update_image_metadata(image_id, **meta),
+            self.print_dict)
 
     def main(self, image_id, *key_equals_value):
         super(self.__class__, self)._run()

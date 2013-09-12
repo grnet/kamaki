@@ -31,10 +31,14 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+from base64 import b64encode
+from os.path import exists
+from io import StringIO
+from pydoc import pager
+
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.utils import (
-    print_dict, remove_from_items, filter_dicts_by_dict, pager)
+from kamaki.cli.utils import remove_from_items, filter_dicts_by_dict
 from kamaki.cli.errors import raiseCLIError, CLISyntaxError, CLIBaseUrlError
 from kamaki.clients.cyclades import CycladesClient, ClientError
 from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
@@ -42,10 +46,6 @@ from kamaki.cli.argument import ProgressBarArgument, DateArgument, IntArgument
 from kamaki.cli.commands import _command_init, errors, addLogSettings
 from kamaki.cli.commands import (
     _optional_output_cmd, _optional_json, _name_filter, _id_filter)
-
-from base64 import b64encode
-from os.path import exists
-from io import StringIO
 
 
 server_cmds = CommandTree('server', 'Cyclades/Compute API server commands')
@@ -270,7 +270,7 @@ class server_info(_init_cyclades, _optional_json):
         uuids = self._uuids2usernames([vm['user_id'], vm['tenant_id']])
         vm['user_id'] += ' (%s)' % uuids[vm['user_id']]
         vm['tenant_id'] += ' (%s)' % uuids[vm['tenant_id']]
-        self._print(vm, print_dict)
+        self._print(vm, self.print_dict)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -335,7 +335,7 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
         usernames = self._uuids2usernames([r['user_id'], r['tenant_id']])
         r['user_id'] += ' (%s)' % usernames[r['user_id']]
         r['tenant_id'] += ' (%s)' % usernames[r['tenant_id']]
-        self._print(r, print_dict)
+        self._print(r, self.print_dict)
         if self['wait']:
             self._wait(r['id'], r['status'])
 
@@ -488,7 +488,7 @@ class server_console(_init_cyclades, _optional_json):
     @errors.cyclades.server_id
     def _run(self, server_id):
         self._print(
-            self.client.get_server_console(int(server_id)), print_dict)
+            self.client.get_server_console(int(server_id)), self.print_dict)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -592,7 +592,8 @@ class server_metadata_list(_init_cyclades, _optional_json):
     @errors.cyclades.metadata
     def _run(self, server_id, key=''):
         self._print(
-            self.client.get_server_metadata(int(server_id), key), print_dict)
+            self.client.get_server_metadata(int(server_id), key),
+            self.print_dict)
 
     def main(self, server_id, key=''):
         super(self.__class__, self)._run()
@@ -627,7 +628,7 @@ class server_metadata_set(_init_cyclades, _optional_json):
                         'key1=value1 key2=value2'])
         self._print(
             self.client.update_server_metadata(int(server_id), **metadata),
-            print_dict)
+            self.print_dict)
 
     def main(self, server_id, *key_equals_val):
         super(self.__class__, self)._run()
@@ -659,7 +660,8 @@ class server_stats(_init_cyclades, _optional_json):
     @errors.cyclades.connection
     @errors.cyclades.server_id
     def _run(self, server_id):
-        self._print(self.client.get_server_stats(int(server_id)), print_dict)
+        self._print(
+            self.client.get_server_stats(int(server_id)), self.print_dict)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -754,7 +756,7 @@ class flavor_info(_init_cyclades, _optional_json):
     @errors.cyclades.flavor_id
     def _run(self, flavor_id):
         self._print(
-            self.client.get_flavor_details(int(flavor_id)), print_dict)
+            self.client.get_flavor_details(int(flavor_id)), self.print_dict)
 
     def main(self, flavor_id):
         super(self.__class__, self)._run()
@@ -787,7 +789,7 @@ class network_info(_init_cyclades, _optional_json):
     def _run(self, network_id):
         network = self.client.get_network_details(int(network_id))
         _add_name(self, network)
-        self._print(network, print_dict, exclude=('id'))
+        self._print(network, self.print_dict, exclude=('id'))
 
     def main(self, network_id):
         super(self.__class__, self)._run()
@@ -919,7 +921,7 @@ class network_create(_init_cyclades, _optional_json, _network_wait):
             dhcp=self['dhcp'],
             type=self['type'])
         _add_name(self, r)
-        self._print(r, print_dict)
+        self._print(r, self.print_dict)
         if self['wait']:
             self._wait(r['id'], 'PENDING')
 
@@ -1079,7 +1081,7 @@ class server_ip_info(_init_cyclades, _optional_json):
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self, ip):
-        self._print(self.client.get_floating_ip(ip), print_dict)
+        self._print(self.client.get_floating_ip(ip), self.print_dict)
 
     def main(self, ip):
         super(self.__class__, self)._run()

@@ -42,7 +42,7 @@ from kamaki.cli.errors import CLIBaseUrlError
 from kamaki.cli.commands import (
     _command_init, errors, _optional_json, addLogSettings)
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.utils import print_dict, format_size
+from kamaki.cli.utils import format_size
 from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
 from kamaki.cli.argument import CommaSeparatedListArgument
 from kamaki.cli.logger import get_logger
@@ -115,7 +115,8 @@ class astakos_user_info(_astakos_init, _optional_json):
     @astakoserror
     def _run(self):
         self._print(
-            self.client.get_user_info(self.token, self['usage']), print_dict)
+            self.client.get_user_info(self.token, self['usage']),
+            self.print_dict)
 
     def main(self):
         super(self.__class__, self)._run()
@@ -139,7 +140,7 @@ class astakos_user_name(_astakos_init, _optional_json):
             self._print(self.client.get_username(self.token, uuids[0]))
         else:
             self._print(
-                self.client.get_usernames(self.token, uuids), print_dict)
+                self.client.get_usernames(self.token, uuids), self.print_dict)
 
     def main(self, uuid, *more_uuids):
         super(self.__class__, self)._run()
@@ -158,7 +159,7 @@ class astakos_user_uuid(_astakos_init, _optional_json):
             self._print(self.client.get_uuid(self.token, usernames[0]))
         else:
             self._print(
-                self.client.get_uuids(self.token, usernames), print_dict)
+                self.client.get_uuids(self.token, usernames), self.print_dict)
 
     def main(self, usernames, *more_usernames):
         super(self.__class__, self)._run()
@@ -169,8 +170,7 @@ class astakos_user_uuid(_astakos_init, _optional_json):
 class astakos_quotas(_astakos_init, _optional_json):
     """Get user (or service) quotas"""
 
-    @staticmethod
-    def _print_with_format(d):
+    def _print_with_format(self, d, out):
         """ Print d with size formating when needed
         :param d: (dict) {system: {<service>: {usage: ..., limit: ..., }, ...}}
         """
@@ -180,7 +180,7 @@ class astakos_quotas(_astakos_init, _optional_json):
             for term in ('usage', 'limit'):
                 if term in service:
                     newd[k][term] = format_size(service[term])
-        print_dict(newd)
+        self.print_dict(newd, out=out)
 
     @errors.generic.all
     @astakoserror
@@ -224,7 +224,8 @@ class astakos_services_username(_astakos_init, _optional_json):
             self._print(self.client.service_get_username(stoken, uuids[0]))
         else:
             self._print(
-                self.client.service_get_usernames(stoken, uuids), print_dict)
+                self.client.service_get_usernames(stoken, uuids),
+                self.print_dict)
 
     def main(self, service_token, uuid, *more_uuids):
         super(self.__class__, self)._run()
@@ -244,7 +245,7 @@ class astakos_services_uuid(_astakos_init, _optional_json):
         else:
             self._print(
                 self.client.service_get_uuids(self.token, usernames),
-                print_dict)
+                self.print_dict)
 
     def main(self, service_token, usernames, *more_usernames):
         super(self.__class__, self)._run()
@@ -276,7 +277,7 @@ class astakos_resources(_astakos_init, _optional_json):
     @errors.generic.all
     @astakoserror
     def _run(self):
-        self._print(self.client.get_resources(), print_dict)
+        self._print(self.client.get_resources(), self.print_dict)
 
     def main(self):
         super(self.__class__, self)._run()
@@ -308,7 +309,7 @@ class astakos_endpoints(_astakos_init, _optional_json):
     def _run(self):
         self._print(
             self.client.get_endpoints(self.token, self['uuid']),
-            print_dict)
+            self.print_dict)
 
     def main(self):
         super(self.__class__, self)._run()
@@ -344,7 +345,7 @@ class astakos_commission_info(_astakos_init, _optional_json):
         commission_id = int(commission_id)
         self._print(
             self.client.get_commission_info(self.token, commission_id),
-            print_dict)
+            self.print_dict)
 
     def main(self, commission_id):
         super(self.__class__, self)._run()
@@ -368,7 +369,7 @@ class astakos_commission_action(_astakos_init, _optional_json):
             ' or '.join(self.actions))
         self._print(
             self.client.commission_acction(self.token, commission_id, action),
-            print_dict)
+            self.print_dict)
 
     def main(self, commission_id, action):
         super(self.__class__, self)._run()
@@ -426,7 +427,7 @@ class astakos_commission_resolve(_astakos_init, _optional_json):
         self._print(
             self.client.resolve_commissions(
                 self.token, self['accept'], self['reject']),
-            print_dict)
+            self.print_dict)
 
     def main(self):
         super(self.__class__, self)._run()
@@ -540,7 +541,7 @@ class project_info(_astakos_init, _optional_json):
     @astakoserror
     def _run(self, project_id):
         self._print(
-            self.client.get_project(self.token, project_id), print_dict)
+            self.client.get_project(self.token, project_id), self.print_dict)
 
     def main(self, project_id):
         super(self.__class__, self)._run()
@@ -568,7 +569,8 @@ class project_create(_astakos_init, _optional_json):
         input_stream = open(abspath(self['specs_path'])) if (
             self['specs_path']) else stdin
         specs = load(input_stream)
-        self._print(self.client.create_project(self.token, specs), print_dict)
+        self._print(
+            self.client.create_project(self.token, specs), self.print_dict)
 
     def main(self):
         super(self.__class__, self)._run()
@@ -598,7 +600,7 @@ class project_modify(_astakos_init, _optional_json):
         specs = load(input_stream)
         self._print(
             self.client.modify_project(self.token, project_id, specs),
-            print_dict)
+            self.print_dict)
 
     def main(self, project_id):
         super(self.__class__, self)._run()
@@ -675,7 +677,7 @@ class project_application_info(_astakos_init, _optional_json):
     @astakoserror
     def _run(self, app_id):
         self._print(
-            self.client.get_application(self.token, app_id), print_dict)
+            self.client.get_application(self.token, app_id), self.print_dict)
 
     def main(self, application_id):
         super(self.__class__, self)._run()
@@ -751,8 +753,8 @@ class project_membership_info(_astakos_init, _optional_json):
     @errors.generic.all
     @astakoserror
     def _run(self, memb_id):
-        self._print(self.client.get_membership(self.token, memb_id),
-                    print_dict)
+        self._print(
+            self.client.get_membership(self.token, memb_id), self.print_dict)
 
     def main(self, membership_id):
         super(self.__class__, self)._run()

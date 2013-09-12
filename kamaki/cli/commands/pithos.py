@@ -34,13 +34,13 @@
 from time import localtime, strftime
 from os import path, makedirs, walk
 from io import StringIO
+from pydoc import pager
 
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import raiseCLIError, CLISyntaxError, CLIBaseUrlError
 from kamaki.cli.utils import (
-    format_size, to_bytes, print_dict, print_items, pager, bold, ask_user,
-    get_path_size, guess_mime_type)
+    format_size, to_bytes, bold, get_path_size, guess_mime_type)
 from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
 from kamaki.cli.argument import KeyValueArgument, DateArgument
 from kamaki.cli.argument import ProgressBarArgument
@@ -363,7 +363,7 @@ class file_list(_file_container_command, _optional_json, _name_filter):
                 '%s%s. ' % (empty_space, index)) if self['enum'] else ''
             if self['detail']:
                 self.writeln('%s%s' % (prfx, oname))
-                print_dict(pretty_obj, exclude=('name'), out=self._out)
+                self.print_dict(pretty_obj, exclude=('name'))
                 self.writeln()
             else:
                 oname = '%s%9s %s' % (prfx, size, oname)
@@ -383,7 +383,7 @@ class file_list(_file_container_command, _optional_json, _name_filter):
                 pretty_c = container.copy()
                 if 'bytes' in container:
                     pretty_c['bytes'] = '%s (%s)' % (container['bytes'], size)
-                print_dict(pretty_c, exclude=('name'), out=self._out)
+                self.print_dict(pretty_c, exclude=('name'))
                 self.writeln()
             else:
                 if 'count' in container and 'bytes' in container:
@@ -1408,7 +1408,7 @@ class file_hashmap(_file_container_command, _optional_json):
             if_match=self['if_match'],
             if_none_match=self['if_none_match'],
             if_modified_since=self['if_modified_since'],
-            if_unmodified_since=self['if_unmodified_since']), print_dict)
+            if_unmodified_since=self['if_unmodified_since']), self.print_dict)
 
     def main(self, container___path):
         super(self.__class__, self)._run(
@@ -1451,9 +1451,8 @@ class file_delete(_file_container_command, _optional_output_cmd):
     @errors.pithos.object_path
     def _run(self):
         if self.path:
-            if self['yes'] or ask_user(
-                    'Delete %s:%s ?' % (self.container, self.path),
-                    out=self._out, user_in=self._in):
+            if self['yes'] or self.ask_user(
+                    'Delete %s:%s ?' % (self.container, self.path)):
                 self._optional_output(self.client.del_object(
                     self.path,
                     until=self['until'],
@@ -1465,9 +1464,8 @@ class file_delete(_file_container_command, _optional_output_cmd):
                 ask_msg = 'Delete container contents'
             else:
                 ask_msg = 'Delete container'
-            if self['yes'] or ask_user(
-                    '%s %s ?' % (ask_msg, self.container),
-                    out=self._out, user_in=self._in):
+            if self['yes'] or self.ask_user(
+                    '%s %s ?' % (ask_msg, self.container)):
                 self._optional_output(self.client.del_container(
                     until=self['until'],
                     delimiter='/' if self['recursive'] else self['delimiter']))
@@ -1501,9 +1499,8 @@ class file_purge(_file_container_command, _optional_output_cmd):
     @errors.pithos.connection
     @errors.pithos.container
     def _run(self):
-        if self['yes'] or ask_user(
-                'Purge container %s?' % self.container,
-                out=self._out, user_in=self._in):
+        if self['yes'] or self.ask_user(
+                'Purge container %s?' % self.container):
             try:
                 r = self.client.purge_container()
             except ClientError as ce:
@@ -1571,21 +1568,21 @@ class file_permissions(_pithos_init):
     """
 
 
-def print_permissions(permissions_dict, out):
-    expected_keys = ('read', 'write')
-    if set(permissions_dict).issubset(expected_keys):
-        print_dict(permissions_dict, out=out)
-    else:
-        invalid_keys = set(permissions_dict.keys()).difference(expected_keys)
-        raiseCLIError(
-            'Illegal permission keys: %s' % ', '.join(invalid_keys),
-            importance=1, details=[
-                'Valid permission types: %s' % ' '.join(expected_keys)])
-
-
 @command(pithos_cmds)
 class file_permissions_get(_file_container_command, _optional_json):
     """Get read and write permissions of an object"""
+
+    def print_permissions(self, permissions_dict, out):
+        expected_keys = ('read', 'write')
+        if set(permissions_dict).issubset(expected_keys):
+            self.print_dict(permissions_dict, out)
+        else:
+            invalid_keys = set(permissions_dict.keys()).difference(
+                expected_keys)
+            raiseCLIError(
+                'Illegal permission keys: %s' % ', '.join(invalid_keys),
+                importance=1, details=[
+                    'Valid permission types: %s' % ' '.join(expected_keys)])
 
     @errors.generic.all
     @errors.pithos.connection
@@ -1593,7 +1590,7 @@ class file_permissions_get(_file_container_command, _optional_json):
     @errors.pithos.object_path
     def _run(self):
         self._print(
-            self.client.get_object_sharing(self.path), print_permissions)
+            self.client.get_object_sharing(self.path), self.print_permissions)
 
     def main(self, container___path):
         super(self.__class__, self)._run(
@@ -1686,7 +1683,7 @@ class file_info(_file_container_command, _optional_json):
         else:
             r = self.client.get_object_info(
                 self.path, version=self['object_version'])
-        self._print(r, print_dict)
+        self._print(r, self.print_dict)
 
     def main(self, container____path__=None):
         super(self.__class__, self)._run(container____path__)
@@ -1742,7 +1739,7 @@ class file_metadata_get(_file_container_command, _optional_json):
                     self.path,
                     version=self['object_version'])
         if r:
-            self._print(r, print_dict)
+            self._print(r, self.print_dict)
 
     def main(self, container____path__=None):
         super(self.__class__, self)._run(container____path__)
@@ -1813,7 +1810,7 @@ class file_quota(_file_account_command, _optional_json):
             if not self['in_bytes']:
                 for k in output:
                     output[k] = format_size(output[k])
-            print_dict(output, '-', out=self._out)
+            self.print_dict(output, '-')
 
         self._print(
             self.client.get_account_quota(), pretty_print, out=self._out)
@@ -1844,7 +1841,7 @@ class file_containerlimit_get(_file_container_command, _optional_json):
             if not self['in_bytes']:
                 for k, v in output.items():
                     output[k] = 'unlimited' if '0' == v else format_size(v)
-            print_dict(output, '-')
+            self.print_dict(output, '-')
 
         self._print(
             self.client.get_container_limit(self.container), pretty_print)
@@ -1918,7 +1915,8 @@ class file_versioning_get(_file_account_command, _optional_json):
     @errors.pithos.container
     def _run(self):
         self._print(
-            self.client.get_container_versioning(self.container), print_dict)
+            self.client.get_container_versioning(self.container),
+            self.print_dict)
 
     def main(self, container):
         super(self.__class__, self)._run()
@@ -1961,7 +1959,8 @@ class file_group_list(_file_account_command, _optional_json):
     @errors.generic.all
     @errors.pithos.connection
     def _run(self):
-        self._print(self.client.get_account_group(), print_dict, delim='-')
+        self._print(
+            self.client.get_account_group(), self.print_dict, delim='-')
 
     def main(self):
         super(self.__class__, self)._run()
@@ -2027,14 +2026,6 @@ class file_sharers(_file_account_command, _optional_json):
         self._run()
 
 
-def version_print(versions, out):
-    print_items(
-        [dict(id=vitem[0], created=strftime(
-            '%d-%m-%Y %H:%M:%S',
-            localtime(float(vitem[1])))) for vitem in versions],
-        out=out)
-
-
 @command(pithos_cmds)
 class file_versions(_file_container_command, _optional_json):
     """Get the list of object versions
@@ -2045,13 +2036,20 @@ class file_versions(_file_container_command, _optional_json):
     /file info -h
     """
 
+    def version_print(self, versions, out):
+        self.print_items(
+            [dict(id=vitem[0], created=strftime(
+                '%d-%m-%Y %H:%M:%S',
+                localtime(float(vitem[1])))) for vitem in versions],
+            out=out)
+
     @errors.generic.all
     @errors.pithos.connection
     @errors.pithos.container
     @errors.pithos.object_path
     def _run(self):
         self._print(
-            self.client.get_object_versionlist(self.path), version_print)
+            self.client.get_object_versionlist(self.path), self.version_print)
 
     def main(self, container___path):
         super(file_versions, self)._run(

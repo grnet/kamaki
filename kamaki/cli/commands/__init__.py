@@ -103,24 +103,24 @@ class _command_init(object):
 
     def print_list(self, *args, **kwargs):
         kwargs.setdefault('out', self._out)
-        return print_list(*args, out=self._out, **kwargs)
+        return print_list(*args, **kwargs)
 
     def print_dict(self, *args, **kwargs):
         kwargs.setdefault('out', self._out)
-        return print_dict(*args, out=self._out, **kwargs)
+        return print_dict(*args, **kwargs)
 
     def print_json(self, *args, **kwargs):
         kwargs.setdefault('out', self._out)
-        return print_json(*args, out=self._out, **kwargs)
+        return print_json(*args, **kwargs)
 
     def print_items(self, *args, **kwargs):
         kwargs.setdefault('out', self._out)
-        return print_items(*args, out=self._out, **kwargs)
+        return print_items(*args, **kwargs)
 
     def ask_user(self, *args, **kwargs):
         kwargs.setdefault('user_in', self._in)
         kwargs.setdefault('out', self._out)
-        return print_items(*args, out=self._out, **kwargs)
+        return ask_user(*args, **kwargs)
 
     @DontRaiseKeyError
     def _custom_url(self, service):

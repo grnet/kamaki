@@ -41,7 +41,7 @@ from kamaki.cli import command
 from kamaki.cli.commands import _command_init, errors
 from kamaki.cli import exec_cmd, print_error_message
 from kamaki.cli.errors import CLIError, raiseCLIError
-from kamaki.cli.utils import split_input, print_list
+from kamaki.cli.utils import split_input
 from kamaki.clients import ClientError
 
 
@@ -111,7 +111,7 @@ class history_show(_init_history):
         ret = self.history.get(match_terms=self['match'], limit=self['limit'])
 
         if not cmd_ids:
-            print_list(ret, out=self._out)
+            self.print_list(ret)
             return
 
         num_list = []

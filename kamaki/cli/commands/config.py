@@ -31,8 +31,6 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from sys import stdout
-
 from kamaki.cli import command
 from kamaki.cli.argument import FlagArgument
 from kamaki.cli.commands import _command_init, errors
