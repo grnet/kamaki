@@ -8,6 +8,7 @@ Changes:
 - Replace page_hold method with pydoc.pager [#4279]
 - Remove commands.pithos.DelimiterArgument, replace with ValueArgument
     wherever it is used
+- Replace print methods with member print methods in _commands.* [#4292]
 
 Features:
 
@@ -15,4 +16,5 @@ Features:
 - Expand kamaki.cli unitests for the following packages ( [#4058] ):
   errors
 - Modify print methods in cli utils to use arbitary stream objects [#4288]
+- Implement wrapers for cli.utils print methods, in _commands [#4292]
 
