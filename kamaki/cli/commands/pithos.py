@@ -1534,7 +1534,7 @@ class file_publish(_file_container_command):
     @errors.pithos.container
     @errors.pithos.object_path
     def _run(self):
-        self.println(self.client.publish_object(self.path))
+        self.writeln(self.client.publish_object(self.path))
 
     def main(self, container___path):
         super(self.__class__, self)._run(
