@@ -221,7 +221,8 @@ def print_list(
             item = ('%s' % item).strip()
             if item in exclude:
                 continue
-            out.writelines(u'%s%s\n' % (print_str, item))
+            out.write(u'%s%s\n' % (print_str, item))
+            out.flush()
 
 
 def print_items(

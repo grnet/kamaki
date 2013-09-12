@@ -33,6 +33,8 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+import codecs
+
 
 class History(object):
     def __init__(self, filepath):
@@ -49,8 +51,8 @@ class History(object):
 
     def get(self, match_terms=None, limit=0):
         limit = int(limit) or 0
-        with open(self.filepath, 'r') as f:
-            result = ['%s.  \t%s' % (
+        with codecs.open(self.filepath, mode='r', encoding='utf-8') as f:
+            result = [u'%s.  \t%s' % (
                 i + 1, line) for i, line in enumerate(f.readlines())
                 if self._match(line, match_terms)]
             return result[- limit:]

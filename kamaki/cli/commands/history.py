@@ -168,25 +168,21 @@ class history_run(_init_history):
     def _run_from_line(self, line):
         terms = split_input(line)
         cmd, args = self._cmd_tree.find_best_match(terms)
-        if not cmd.is_command:
-            return
-        try:
-            instance = cmd.cmd_class(
-                self.arguments,
-                auth_base=getattr(self, 'auth_base', None))
-            instance.config = self.config
-            prs = ArgumentParseManager(
-                cmd.path.split(),
-                dict(instance.arguments))
-            prs.syntax = '%s %s' % (
-                cmd.path.replace('_', ' '),
-                cmd.cmd_class.syntax)
-            prs.parse(args)
-            exec_cmd(instance, prs.unparsed, prs.parser.print_help)
-        except (CLIError, ClientError) as err:
-            print_error_message(err, self._err)
-        except Exception as e:
-            self.error('Execution of [ %s ] failed\n\t%s' % (line, e))
+        if cmd.is_command:
+            try:
+                instance = cmd.cmd_class(
+                    self.arguments, auth_base=getattr(self, 'auth_base', None))
+                instance.config = self.config
+                prs = ArgumentParseManager(
+                    cmd.path.split(), dict(instance.arguments))
+                prs.syntax = '%s %s' % (
+                    cmd.path.replace('_', ' '), cmd.cmd_class.syntax)
+                prs.parse(args)
+                exec_cmd(instance, prs.unparsed, prs.parser.print_help)
+            except (CLIError, ClientError) as err:
+                print_error_message(err, self._err)
+            except Exception as e:
+                self.error('Execution of [ %s ] failed\n\t%s' % (line, e))
 
     @errors.generic.all
     @errors.history._get_cmd_ids
