@@ -33,8 +33,10 @@
 
 from kamaki.cli.logger import get_logger
 from kamaki.cli.utils import (
-    print_json, print_items, filter_dicts_by_dict, stdout)
+    print_list, print_dict, print_json, print_items, ask_user,
+    filter_dicts_by_dict)
 from kamaki.cli.argument import FlagArgument, ValueArgument
+from sys import stdin, stdout, stderr
 
 log = get_logger(__name__)
 
@@ -60,7 +62,12 @@ def addLogSettings(foo):
 
 class _command_init(object):
 
-    def __init__(self, arguments={}, auth_base=None, cloud=None):
+    def __init__(
+            self,
+            arguments={}, auth_base=None, cloud=None,
+            _in=None, _out=None, _err=None):
+        self._in, self._out, self._err = (
+            _in or stdin, _out or stdout, _err or stderr)
         if hasattr(self, 'arguments'):
             arguments.update(self.arguments)
         if isinstance(self, _optional_output_cmd):
@@ -82,6 +89,38 @@ class _command_init(object):
             pass
         self.auth_base = auth_base or getattr(self, 'auth_base', None)
         self.cloud = cloud or getattr(self, 'cloud', None)
+
+    def write(self, s):
+        self._out.write(u'%s' % s)
+        self._out.flush()
+
+    def writeln(self, s=''):
+        self.write(u'%s\n' % s)
+
+    def error(self, s=''):
+        self._err.write(u'%s\n' % s)
+        self._err.flush()
+
+    def print_list(self, *args, **kwargs):
+        kwargs.setdefault('out', self._out)
+        return print_list(*args, **kwargs)
+
+    def print_dict(self, *args, **kwargs):
+        kwargs.setdefault('out', self._out)
+        return print_dict(*args, **kwargs)
+
+    def print_json(self, *args, **kwargs):
+        kwargs.setdefault('out', self._out)
+        return print_json(*args, **kwargs)
+
+    def print_items(self, *args, **kwargs):
+        kwargs.setdefault('out', self._out)
+        return print_items(*args, **kwargs)
+
+    def ask_user(self, *args, **kwargs):
+        kwargs.setdefault('user_in', self._in)
+        kwargs.setdefault('out', self._out)
+        return ask_user(*args, **kwargs)
 
     @DontRaiseKeyError
     def _custom_url(self, service):
@@ -142,6 +181,7 @@ class _command_init(object):
         """Try to get a progress bar, but do not raise errors"""
         try:
             progress_bar = self.arguments[arg]
+            progress_bar.file = self._err
             gen = progress_bar.get_generator(msg)
         except Exception:
             return (None, None)
@@ -209,9 +249,9 @@ class _optional_output_cmd(object):
 
     def _optional_output(self, r):
         if self['json_output']:
-            print_json(r)
+            print_json(r, out=self._out)
         elif self['with_output']:
-            print_items([r] if isinstance(r, dict) else r)
+            print_items([r] if isinstance(r, dict) else r, out=self._out)
 
 
 class _optional_json(object):
@@ -220,14 +260,11 @@ class _optional_json(object):
         json_output=FlagArgument('show headers in json', ('-j', '--json'))
     )
 
-    def _print(
-            self, output,
-            print_method=print_items, out=stdout,
-            **print_method_kwargs):
+    def _print(self, output, print_method=print_items, **print_method_kwargs):
         if self['json_output']:
-            print_json(output, out=out)
+            print_json(output, out=self._out)
         else:
-            print_method(output, out=out, **print_method_kwargs)
+            print_method(output, out=self._out, **print_method_kwargs)
 
 
 class _name_filter(object):

@@ -35,7 +35,6 @@ from sys import stdout, stdin
 from re import compile as regex_compile
 from os import walk, path
 from json import dumps
-from pydoc import pager
 
 from kamaki.cli.errors import raiseCLIError
 
@@ -221,7 +220,8 @@ def print_list(
             item = ('%s' % item).strip()
             if item in exclude:
                 continue
-            out.writelines(u'%s%s\n' % (print_str, item))
+            out.write(u'%s%s\n' % (print_str, item))
+            out.flush()
 
 
 def print_items(
