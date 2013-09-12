@@ -35,7 +35,6 @@ from sys import stdout, stdin
 from re import compile as regex_compile
 from os import walk, path
 from json import dumps
-from pydoc import pager
 
 from kamaki.cli.errors import raiseCLIError
 

@@ -32,7 +32,9 @@
 # or implied, of GRNET S.A.command
 
 from kamaki.cli.logger import get_logger
-from kamaki.cli.utils import print_json, print_items, filter_dicts_by_dict
+from kamaki.cli.utils import (
+    print_list, print_dict, print_json, print_items, ask_user,
+    filter_dicts_by_dict)
 from kamaki.cli.argument import FlagArgument, ValueArgument
 from sys import stdin, stdout, stderr
 
@@ -98,6 +100,27 @@ class _command_init(object):
     def error(self, s=''):
         self._err.write(u'%s\n' % s)
         self._err.flush()
+
+    def print_list(self, *args, **kwargs):
+        kwargs.setdefault('out', self._out)
+        return print_list(*args, out=self._out, **kwargs)
+
+    def print_dict(self, *args, **kwargs):
+        kwargs.setdefault('out', self._out)
+        return print_dict(*args, out=self._out, **kwargs)
+
+    def print_json(self, *args, **kwargs):
+        kwargs.setdefault('out', self._out)
+        return print_json(*args, out=self._out, **kwargs)
+
+    def print_items(self, *args, **kwargs):
+        kwargs.setdefault('out', self._out)
+        return print_items(*args, out=self._out, **kwargs)
+
+    def ask_user(self, *args, **kwargs):
+        kwargs.setdefault('user_in', self._in)
+        kwargs.setdefault('out', self._out)
+        return print_items(*args, out=self._out, **kwargs)
 
     @DontRaiseKeyError
     def _custom_url(self, service):
