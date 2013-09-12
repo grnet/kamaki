@@ -34,10 +34,12 @@
 from json import load, dumps
 from os import path
 from logging import getLogger
+from io import StringIO
+from pydoc import pager
 
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.utils import print_dict, print_json, filter_dicts_by_dict
+from kamaki.cli.utils import filter_dicts_by_dict
 from kamaki.clients.image import ImageClient
 from kamaki.clients.pithos import PithosClient
 from kamaki.clients.astakos import AstakosClient
@@ -81,9 +83,8 @@ class _init_image(_command_init):
         if getattr(self, 'cloud', None):
             img_url = self._custom_url('image') or self._custom_url('plankton')
             if img_url:
-                token = self._custom_token('image')\
-                    or self._custom_token('plankton')\
-                    or self.config.get_cloud(self.cloud, 'token')
+                token = self._custom_token('image') or self._custom_token(
+                    'plankton') or self.config.get_cloud(self.cloud, 'token')
                 self.client = ImageClient(base_url=img_url, token=token)
                 return
         if getattr(self, 'auth_base', False):
@@ -267,11 +268,14 @@ class image_list(_init_image, _optional_json, _name_filter, _id_filter):
                 for key in set(img).difference(self.PERMANENTS):
                     img.pop(key)
         kwargs = dict(with_enumeration=self['enum'])
-        if self['more']:
-            kwargs['page_size'] = self['limit'] or 10
-        elif self['limit']:
+        if self['limit']:
             images = images[:self['limit']]
+        if self['more']:
+            kwargs['out'] = StringIO()
+            kwargs['title'] = ()
         self._print(images, **kwargs)
+        if self['more']:
+            pager(kwargs['out'].getvalue())
 
     def main(self):
         super(self.__class__, self)._run()
@@ -299,7 +303,7 @@ class image_info(_init_image, _optional_json):
         meta = self.client.get_meta(image_id)
         if not self['json_output']:
             meta['owner'] += ' (%s)' % self._uuid2username(meta['owner'])
-        self._print(meta, print_dict)
+        self._print(meta, self.print_dict)
 
     def main(self, image_id):
         super(self.__class__, self)._run()
@@ -373,9 +377,8 @@ class image_meta_delete(_init_image, _optional_output_cmd):
     )
 
     def _check_empty(self):
-        for term in (
-                'disk_format', 'container_format', 'status', 'properties'):
-            if self[term]:
+        for t in ('disk_format', 'container_format', 'status', 'properties'):
+            if self[t]:
                 return
         raiseCLIError(
             'Nothing to update, please use arguments (-h for a list)')
@@ -420,8 +423,7 @@ class image_register(_init_image, _optional_json):
     arguments = dict(
         checksum=ValueArgument('Set image checksum', '--checksum'),
         container_format=ValueArgument(
-            'Set container format',
-            '--container-format'),
+            'Set container format', '--container-format'),
         disk_format=ValueArgument('Set disk format', '--disk-format'),
         owner_name=ValueArgument('Set user uuid by user name', '--owner-name'),
         properties=KeyValueArgument(
@@ -456,8 +458,8 @@ class image_register(_init_image, _optional_json):
         if getattr(self, 'auth_base', False):
             return self.auth_base.term('id', atoken)
         else:
-            astakos_url = self.config.get('user', 'url')\
-                or self.config.get('astakos', 'url')
+            astakos_url = self.config.get('user', 'url') or self.config.get(
+                'astakos', 'url')
             if not astakos_url:
                 raise CLIBaseUrlError(service='astakos')
             user = AstakosClient(astakos_url, atoken)
@@ -489,7 +491,7 @@ class image_register(_init_image, _optional_json):
             try:
                 for k, v in _load_image_meta(pfile).items():
                     key = k.lower().replace('-', '_')
-                    if k == 'properties':
+                    if key == 'properties':
                         for pk, pv in v.items():
                             properties[pk.upper().replace('-', '_')] = pv
                     elif key == 'name':
@@ -624,8 +626,8 @@ class image_register(_init_image, _optional_json):
                         'Does the image file %s exist at container %s ?' % (
                             img_path, dst_cont)] + howto_image_file)
             raise
-        r['owner'] += '( %s)' % self._uuid2username(r['owner'])
-        self._print(r, print_dict)
+        r['owner'] += ' (%s)' % self._uuid2username(r['owner'])
+        self._print(r, self.print_dict)
 
         #upload the metadata file
         if pclient:
@@ -634,14 +636,15 @@ class image_register(_init_image, _optional_json):
                     meta_path, dumps(r, indent=2),
                     container_info_cache=self.container_info_cache)
             except TypeError:
-                print('Failed to dump metafile %s:%s' % (dst_cont, meta_path))
+                self.error(
+                    'Failed to dump metafile %s:%s' % (dst_cont, meta_path))
                 return
             if self['json_output']:
-                print_json(dict(
+                self.print_json(dict(
                     metafile_location='%s:%s' % (dst_cont, meta_path),
                     headers=meta_headers))
             else:
-                print('Metadata file uploaded as %s:%s (version %s)' % (
+                self.error('Metadata file uploaded as %s:%s (version %s)' % (
                     dst_cont, meta_path, meta_headers['x-object-version']))
 
     def main(self, name, container___image_path):
@@ -770,9 +773,7 @@ class image_compute_list(
     arguments = dict(
         detail=FlagArgument('show detailed output', ('-l', '--details')),
         limit=IntArgument('limit number listed images', ('-n', '--number')),
-        more=FlagArgument(
-            'output results in pages (-n to set items per page, default 10)',
-            '--more'),
+        more=FlagArgument('handle long lists of results', '--more'),
         enum=FlagArgument('Enumerate results', '--enumerate'),
         user_id=ValueArgument('filter by user_id', '--user-id'),
         user_name=ValueArgument('filter by username', '--user-name'),
@@ -827,11 +828,14 @@ class image_compute_list(
                 for key in set(img).difference(self.PERMANENTS):
                     img.pop(key)
         kwargs = dict(with_enumeration=self['enum'])
-        if self['more']:
-            kwargs['page_size'] = self['limit'] or 10
-        elif self['limit']:
+        if self['limit']:
             images = images[:self['limit']]
+        if self['more']:
+            kwargs['out'] = StringIO()
+            kwargs['title'] = ()
         self._print(images, **kwargs)
+        if self['more']:
+            pager(kwargs['out'].getvalue())
 
     def main(self):
         super(self.__class__, self)._run()
@@ -851,7 +855,7 @@ class image_compute_info(_init_cyclades, _optional_json):
         usernames = self._uuids2usernames(uuids)
         image['user_id'] += ' (%s)' % usernames[image['user_id']]
         image['tenant_id'] += ' (%s)' % usernames[image['tenant_id']]
-        self._print(image, print_dict)
+        self._print(image, self.print_dict)
 
     def main(self, image_id):
         super(self.__class__, self)._run()
@@ -886,7 +890,7 @@ class image_compute_properties_list(_init_cyclades, _optional_json):
     @errors.cyclades.connection
     @errors.plankton.id
     def _run(self, image_id):
-        self._print(self.client.get_image_metadata(image_id), print_dict)
+        self._print(self.client.get_image_metadata(image_id), self.print_dict)
 
     def main(self, image_id):
         super(self.__class__, self)._run()
@@ -902,28 +906,12 @@ class image_compute_properties_get(_init_cyclades, _optional_json):
     @errors.plankton.id
     @errors.plankton.metadata
     def _run(self, image_id, key):
-        self._print(self.client.get_image_metadata(image_id, key), print_dict)
+        self._print(
+            self.client.get_image_metadata(image_id, key), self.print_dict)
 
     def main(self, image_id, key):
         super(self.__class__, self)._run()
         self._run(image_id=image_id, key=key)
-
-
-#@command(image_cmds)
-#class image_compute_properties_add(_init_cyclades, _optional_json):
-#    """Add a property to an image"""
-#
-#    @errors.generic.all
-#    @errors.cyclades.connection
-#    @errors.plankton.id
-#    @errors.plankton.metadata
-#    def _run(self, image_id, key, val):
-#        self._print(
-#            self.client.create_image_metadata(image_id, key, val), print_dict)
-#
-#    def main(self, image_id, key, val):
-#        super(self.__class__, self)._run()
-#        self._run(image_id=image_id, key=key, val=val)
 
 
 @command(image_cmds)
@@ -942,7 +930,8 @@ class image_compute_properties_set(_init_cyclades, _optional_json):
             key, sep, val = keyval.partition('=')
             meta[key] = val
         self._print(
-            self.client.update_image_metadata(image_id, **meta), print_dict)
+            self.client.update_image_metadata(image_id, **meta),
+            self.print_dict)
 
     def main(self, image_id, *key_equals_value):
         super(self.__class__, self)._run()

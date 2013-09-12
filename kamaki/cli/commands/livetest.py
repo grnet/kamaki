@@ -77,7 +77,7 @@ class livetest_args(_livetest_init):
 
     @errors.generic.all
     def _run(self, *args):
-        print(args)
+        self.writeln(args)
 
     def main(self, *args):
         self._run(args)
@@ -163,56 +163,56 @@ class livetest_prints(_livetest_init):
     @errors.generic.all
     def _run(self):
         from kamaki.cli.utils import print_dict, print_list, print_items
-        print('Test simple dict:\n- - -')
+        self.writeln('Test simple dict:\n- - -')
         print_dict(self.d1)
-        print('- - -\n')
-        print('\nTest simple list:\n- - -')
+        self.writeln('- - -\n')
+        self.writeln('\nTest simple list:\n- - -')
         print_list(self.l1)
-        print('- - -\n')
-        print('\nTest 2-level dict:\n- - -')
+        self.writeln('- - -\n')
+        self.writeln('\nTest 2-level dict:\n- - -')
         print_dict(self.d2)
-        print('- - -\n')
-        print('\nTest non-trivial list:\n- - -')
+        self.writeln('- - -\n')
+        self.writeln('\nTest non-trivial list:\n- - -')
         print_list(self.l2)
-        print('- - -')
-        print('\nTest extreme dict:\n- - -')
+        self.writeln('- - -')
+        self.writeln('\nTest extreme dict:\n- - -')
         print_dict(self.d3)
-        print('- - -\n')
-        print('Test simple enumerated dict:\n- - -')
+        self.writeln('- - -\n')
+        self.writeln('Test simple enumerated dict:\n- - -')
         print_dict(self.d1, with_enumeration=True)
-        print('- - -\n')
-        print('\nTest simple enumerated list:\n- - -')
+        self.writeln('- - -\n')
+        self.writeln('\nTest simple enumerated list:\n- - -')
         print_list(self.l1, with_enumeration=True)
-        print('- - -\n')
-        print('Test non-trivial deep-enumerated dict:\n- - -')
+        self.writeln('- - -\n')
+        self.writeln('Test non-trivial deep-enumerated dict:\n- - -')
         print_dict(self.d2, with_enumeration=True, recursive_enumeration=True)
-        print('- - -\n')
-        print('\nTest non-trivial enumerated list:\n- - -')
+        self.writeln('- - -\n')
+        self.writeln('\nTest non-trivial enumerated list:\n- - -')
         print_list(self.l2, with_enumeration=True)
-        print('- - -\n')
-        print('\nTest print_items with id:\n- - -')
+        self.writeln('- - -\n')
+        self.writeln('\nTest print_items with id:\n- - -')
         print_items([
             {'id': '42', 'title': 'lalakis 1', 'content': self.d1},
             {'id': '142', 'title': 'lalakis 2', 'content': self.d2}])
-        print('- - -')
-        print('\nTest print_items with id and enumeration:\n- - -')
+        self.writeln('- - -')
+        self.writeln('\nTest print_items with id and enumeration:\n- - -')
         print_items(
             [
                 {'id': '42', 'title': 'lalakis 1', 'content': self.d1},
                 {'id': '142', 'title': 'lalakis 2', 'content': self.d2}],
             with_enumeration=True)
-        print('- - -')
-        print('\nTest print_items with id, title and redundancy:\n- - -')
+        self.writeln('- - -')
+        self.writeln('\nTest print_items with id, title, redundancy:\n- - -')
         print_items(
             [
                 {'id': '42', 'title': 'lalakis 1', 'content': self.d1},
                 {'id': '142', 'title': 'lalakis 2', 'content': self.d2}],
             title=('id', 'title'),
             with_redundancy=True)
-        print('- - -')
-        print('\nTest print_items with lists- - -')
+        self.writeln('- - -')
+        self.writeln('\nTest print_items with lists- - -')
         print_items([['i00', 'i01', 'i02'], [self.l2, 'i11', self.d1], 3])
-        print('- - -')
+        self.writeln('- - -')
 
     def main(self):
         self._run()

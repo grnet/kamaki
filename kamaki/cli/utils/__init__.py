@@ -35,7 +35,6 @@ from sys import stdout, stdin
 from re import compile as regex_compile
 from os import walk, path
 from json import dumps
-from pydoc import pager
 
 from kamaki.cli.errors import raiseCLIError
 
@@ -221,7 +220,8 @@ def print_list(
             item = ('%s' % item).strip()
             if item in exclude:
                 continue
-            out.writelines(u'%s%s\n' % (print_str, item))
+            out.write(u'%s%s\n' % (print_str, item))
+            out.flush()
 
 
 def print_items(
@@ -255,7 +255,7 @@ def print_items(
             title = sorted(set(title).intersection(item))
             pick = item.get if with_redundancy else item.pop
             header = u' '.join(u'%s' % pick(key) for key in title)
-            out.writelines(unicode(bold(header) + '\n'))
+            out.writelines((unicode(bold(header) if header else '') + '\n'))
             print_dict(item, indent=INDENT_TAB, out=out)
         elif isinstance(item, list) or isinstance(item, tuple):
             print_list(item, indent=INDENT_TAB, out=out)

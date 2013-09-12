@@ -122,7 +122,7 @@ class RequestManager(Logged):
             url += _encode(path[1:] if path.startswith('/') else path)
         delim = '?'
         for key, val in params.items():
-            val = _encode(u'%s' % val)
+            val = '' if val in (None, False) else _encode(u'%s' % val)
             url += '%s%s%s' % (delim, key, ('=%s' % val) if val else '')
             delim = '&'
         parsed = urlparse(url)
@@ -149,9 +149,8 @@ class RequestManager(Logged):
         sendlog.info('%s %s://%s%s%s' % (
             self.method, self.scheme, self.netloc, self.path, plog))
         for key, val in self.headers.items():
-            if (not self.LOG_TOKEN) and key.lower() == 'x-auth-token':
-                continue
-            sendlog.info('  %s: %s%s' % (key, val, plog))
+            show = (key.lower() != 'x-auth-token') or self.LOG_TOKEN
+            sendlog.info('  %s: %s%s' % (key, val if show else '...', plog))
         if self.data:
             sendlog.info('data size:%s%s' % (len(self.data), plog))
             if self.LOG_DATA:
@@ -229,12 +228,11 @@ class ResponseManager(Logged):
                             self.status_code, self.status, plog))
                     self._headers = dict()
                     for k, v in r.getheaders():
-                        if (not self.LOG_TOKEN) and (
-                                k.lower() == 'x-auth-token'):
-                            continue
+                        show = (k.lower() != 'x-auth-token') or self.LOG_TOKEN
                         v = unquote(v)
                         self._headers[k] = v
-                        recvlog.info('  %s: %s%s' % (k, v, plog))
+                        recvlog.info('  %s: %s%s' % (
+                            k, v if show else '...', plog))
                     self._content = r.read()
                     recvlog.info('data size: %s%s' % (
                         len(self._content) if self._content else 0, plog))
