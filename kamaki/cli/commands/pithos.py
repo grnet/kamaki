@@ -1811,14 +1811,13 @@ class file_quota(_file_account_command, _optional_json):
     @errors.pithos.connection
     def _run(self):
 
-        def pretty_print(output):
+        def pretty_print(output, **kwargs):
             if not self['in_bytes']:
                 for k in output:
                     output[k] = format_size(output[k])
-            self.print_dict(output, '-')
+            self.print_dict(output, '-', **kwargs)
 
-        self._print(
-            self.client.get_account_quota(), pretty_print, out=self._out)
+        self._print(self.client.get_account_quota(), pretty_print)
 
     def main(self, custom_uuid=None):
         super(self.__class__, self)._run(custom_account=custom_uuid)
