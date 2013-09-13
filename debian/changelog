@@ -1,3 +1,9 @@
+kamaki (0.10.1-1) squeeze; urgency=low
+
+  * squeeze
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Fri, 13 Sep 2013 17:35:37 +0300
+
 kamaki (0.10-1) squeeze; urgency=low
 
   * New version
