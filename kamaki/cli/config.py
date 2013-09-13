@@ -1,4 +1,4 @@
-# Copyright 2011-2012 GRNET S.A. All rights reserved.
+# Copyright 2011-2013 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -75,6 +75,7 @@ DEFAULTS = {
         'log_file': os.path.expanduser('~/.kamaki.log'),
         'log_token': 'off',
         'log_data': 'off',
+        'log_pid': 'off',
         'max_threads': 7,
         'history_file': HISTORY_PATH,
         'user_cli': 'astakos',
@@ -88,6 +89,7 @@ DEFAULTS = {
         #  Optional command specs:
         #  'livetest_cli': 'livetest',
         #  'astakos_cli': 'snf-astakos'
+        #  'floating_cli': 'cyclades'
     },
     CLOUD_PREFIX:
     {
@@ -105,6 +107,13 @@ DEFAULTS = {
         #}
     }
 }
+
+
+try:
+    import astakosclient
+    DEFAULTS['global'].update(dict(astakos_cli='snf-astakos'))
+except ImportError:
+    pass
 
 
 class Config(RawConfigParser):
@@ -237,19 +246,19 @@ class Config(RawConfigParser):
         """
         checker = Config(self.path, with_defaults=False)
         sections = checker.sections()
-        log.warning('Config file heuristic 1: old global section ?')
+        log.debug('Config file heuristic 1: old global section ?')
         if 'global' in sections:
             if checker.get('global', 'url') or checker.get('global', 'token'):
-                log.warning('..... config file has an old global section')
+                log.debug('..... config file has an old global section')
                 return 0.8
-        log.warning('........ nope')
-        log.warning('Config file heuristic 2: Any cloud sections ?')
+        log.debug('........ nope')
+        log.debug('Config file heuristic 2: Any cloud sections ?')
         if CLOUD_PREFIX in sections:
             for r in self.keys(CLOUD_PREFIX):
-                log.warning('... found cloud "%s"' % r)
+                log.debug('... found cloud "%s"' % r)
                 return 0.9
-        log.warning('........ nope')
-        log.warning('All heuristics failed, cannot decide')
+        log.debug('........ nope')
+        log.debug('All heuristics failed, cannot decide')
         return 0.9
 
     def get_cloud(self, cloud, option):
@@ -344,7 +353,7 @@ class Config(RawConfigParser):
         except NoSectionError:
             pass
 
-    def remote_from_cloud(self, cloud, option):
+    def remove_from_cloud(self, cloud, option):
         d = self.get(CLOUD_PREFIX, cloud)
         if isinstance(d, dict):
             d.pop(option)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright 2011 GRNET S.A. All rights reserved.
+# Copyright 2011-2013 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -61,6 +61,9 @@ setup(
     packages=[
         'kamaki',
         'kamaki.cli',
+        'kamaki.cli.command_tree',
+        'kamaki.cli.argument',
+        'kamaki.cli.utils',
         'kamaki.cli.commands',
         'kamaki.clients',
         'kamaki.clients.utils',

@@ -6,13 +6,16 @@ then is registered to the image service (Plankton). The image location at the
 storage server is unique through out a deployment and also necessary for the
 image to exist.
 
-The image location format::
+The image location format at user level::
 
-    pithos://<user id>/<container>/<object path>
+    <container>:<object path>
 
     e.g.:
 
-    pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump
+    pithos:debian_base3.diskdump
+
+The crussial element in an image location is the container (e.g. `pithos`) and
+the image object path (e.g. `debian_base3.diskdump`).
 
 
 Register an image
@@ -34,7 +37,7 @@ Register the image object with the name 'Debian Base Alpha'
 
 .. code-block:: console
 
-    [kamaki]: image register 'Debian Base Alpha' pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump
+    [kamaki]: image register 'Debian Base Alpha' pithos:debian_base3.diskdump
     checksum:         3cb03556ec971f...e8dd6190443b560cb7
     container-format: bare
     created-at:       2013-06-19 08:00:22
@@ -52,9 +55,25 @@ Register the image object with the name 'Debian Base Alpha'
     Metadata file uploaded as pithos:debian_base3.diskdump.meta (version 1352)
     [kamaki]:
 
-.. note:: The `image register` command automatically create a meta file and
+.. note:: The `image register` command automatically creates a meta file and
     uploads it to the same location as the image. The meta file can be
     downloaded and reused for more image registrations.
+
+Another way to perform the two operations above is to call **/image register**
+with the **\- -upload-image-file** argument. This single operation will upload
+the image file and then register it as an image, and is equivalent to manually
+calling **/file upload** and **/image register**.
+
+In other words, the example that follows is equivalent to calling the two
+operations above.
+
+.. code-block:: console
+
+        [kamaki]: image register 'Debian Base Alpha'
+            pithos:debian_base3.diskdump
+            --upload-image-file='debian_base3.diskdump'
+        [kamaki]:
+
 
 Read the metafile
 
@@ -157,7 +176,7 @@ Attempt to register with properties
 
 .. code-block:: console
 
-    [kamaki]: image register 'Debian Base Gama' pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump -p OS=Linux -p user=someuser
+    [kamaki]: image register 'Debian Base Gama' pithos:debian_base3.diskdump -p OS=Linux -p user=someuser
     Metadata file pithos:debian_base3.diskdump.meta already exists
     [kamaki]:
 
@@ -165,7 +184,7 @@ It's true that the metafile is already there, but we can override it (**-f**)
 
 .. code-block:: console
 
-    [kamaki]: image register -f 'Debian Base Gama' pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump -p OS=Linux -p user=someuser
+    [kamaki]: image register -f 'Debian Base Gama' pithos:debian_base3.diskdump -p OS=Linux -p user=someuser
     [kamaki]:
 
 Register with a meta file
@@ -218,7 +237,7 @@ Register the image (don't forget the -f parameter, to override the metafile).
 
 .. code-block:: console
 
-    [kamaki]: image register -f 'Debian Base Delta' pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump --metafile=debian_base3.diskdump.meta
+    [kamaki]: image register -f 'Debian Base Delta' pithos:debian_base3.diskdump --metafile=debian_base3.diskdump.meta
     checksum:         3cb03556ec971f...e8dd6190443b560cb7
     container-format: bare
     created-at:       2013-06-19 08:00:22
@@ -237,6 +256,103 @@ Register the image (don't forget the -f parameter, to override the metafile).
     updated-at:       2013-06-19 08:01:00
     Metadata file uploaded as pithos:debian_base3.diskdump.meta (version 1359)
     [kamaki]:
+
+Metadata and Property modification
+----------------------------------
+
+Image metadata and custom properties can be modified even after the image is
+registered. Metadata are fixed image attributes, like name, disk format etc.
+while custom properties are set by the image owner and, usually, refer to
+attributes of the images OS.
+
+Let's rename the image:
+
+.. code-block:: console
+
+    [kamaki]: image meta set 7h1rd-1m4g3-1d --name='Changed Name'
+    [kamaki]:
+
+If we, now, get the image metadata, we will see that the name is changed:
+
+.. code-block:: console
+
+    [kamaki]: image info 7h1rd-1m4g3-1d
+    checksum:         3cb03556ec971f...e8dd6190443b560cb7
+    container-format: bare
+    created-at:       2013-06-19 08:00:22
+    deleted-at:       
+    disk-format:      diskdump
+    id:               7h1rd-1m4g3-1d
+    is-public:        False
+    location:         pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump
+    name:             Changed Name
+    owner:            s0m3-u53r-1d
+    properties:      
+            OS:     Linux
+            USER:   root
+    size:             903471104
+    status:           available
+    updated-at:       2013-06-19 08:01:00
+    [kamaki]:
+
+We can use the same idea to change the values of other metadata like disk
+format, container format or status. On the other hand, we cannot modify the
+id, owner, location, checksum and dates. E.g., to publish and unpublish:
+
+.. code-block:: console
+
+    [kamaki]: image meta set 7h1rd-1m4g3-1d --publish --name='Debian Base Gama'
+    [kamaki]: image meta set 7h1rd-1m4g3-1d --unpublish
+    [kamaki]:
+
+The first call published the image (set is-public to True) and also restored
+the name to "Debian Base Gama". The second one unpublished the image (set
+is-public to False).
+
+To delete metadata, use the image meta delete method:
+
+.. code-block:: console
+
+    [kamaki]: image meta delete 7h1rd-1m4g3-1d status
+    [kamaki]:
+
+will empty the value of "status".
+
+These operations can be used for properties with the same semantics:
+
+.. code-block:: console
+
+    [kamaki]: image meta set 7h1rd-1m4g3-1d -p user=user
+    [kamaki]: image info 7h1rd-1m4g3-1d
+    ...
+    properties:
+            OS:     Linux
+            USER:   user
+    ...
+    [kamaki]:
+
+Just to test the feature, let's create a property "greet" with value
+"hi there", and then remove it. Also, let's restore the value of USER:
+
+.. code-block:: console
+
+    [kamaki]: image meta set 7h1rd-1m4g3-1d -p greet='Hi there' -p user=root
+    [kamaki]: image info 7h1rd-1m4g3-1d
+    ...
+    properties:
+            OS:     Linux
+            USER:   root
+            GREET:  Hi there
+    ...
+    [kamaki]: image meta delete 7h1rd-1m4g3-1d -p greet
+    [kamaki]: image info 7h1rd-1m4g3-1d
+    ...
+    properties:
+            OS:     Linux
+            USER:   root
+    ...
+    [kamaki]:
+
 
 Reregistration: priorities and overrides
 ----------------------------------------
@@ -272,7 +388,7 @@ Let's compine the metafile with a command line attribute `user: admin`
 
 .. code-block:: console
 
-    [kamaki]: image register -f 'Debian Base Delta' pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump --metafile=debian_base3.diskdump.meta
+    [kamaki]: image register -f 'Debian Base Delta' pithos:debian_base3.diskdump --metafile=debian_base3.diskdump.meta
     checksum:         3cb03556ec971f...e8dd6190443b560cb7
     container-format: bare
     created-at:       2013-06-19 08:00:22
@@ -326,7 +442,7 @@ Register the image without uploading a metafile
 
 .. code-block:: console
 
-    [kamaki]: image register 'Debian Base Delta' pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump --metafile=debian_base3.diskdump.meta --no-metafile-upload
+    [kamaki]: image register 'Debian Base Delta' pithos:debian_base3.diskdump --metafile=debian_base3.diskdump.meta --no-metafile-upload
     checksum:         3cb03556ec971f...e8dd6190443b560cb7
     container-format: bare
     created-at:       2013-06-19 08:00:22
@@ -436,7 +552,7 @@ images:
     container=... # e.g. pithos
 
     for path in images/*.diskdump; do
-        location=pithos://$userid/$container/${path}
+        location=$container:${path}
         kamaki image register $path $location
     done
 
@@ -449,7 +565,7 @@ VMs) by adding the **--public** flag argument when calling `image register`.
 .. code-block:: console
 
     $ for path in images/*.diskdump; do
-        location=pithos://s0m3-u53r-1d/pithos/${path}
+        location=pithos:${path}
         echo "- - - Register ${path} - - -"
         kamaki image register $path $location --public
     done

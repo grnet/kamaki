@@ -34,6 +34,7 @@
 from mock import patch, call
 from unittest import TestCase
 from itertools import product
+from json import dumps
 
 from kamaki.clients import ClientError, cyclades
 
@@ -102,28 +103,6 @@ class CycladesRestClient(TestCase):
     def tearDown(self):
         FR.json = vm_recv
 
-    @patch('%s.set_param' % rest_pkg)
-    @patch('%s.get' % rest_pkg, return_value=FR())
-    def test_servers_get(self, get, SP):
-        for args in product(
-                ('', 'vm_id'),
-                ('', 'cmd'),
-                (200, 204),
-                (None, '50m3-d473'),
-                ({}, {'k': 'v'})):
-            (srv_id, command, success, changes_since, kwargs) = args
-            self.client.servers_get(*args[:4], **kwargs)
-            srv_str = '/%s' % srv_id if srv_id else ''
-            cmd_str = '/%s' % command if command else ''
-            self.assertEqual(get.mock_calls[-1], call(
-                '/servers%s%s' % (srv_str, cmd_str),
-                success=success,
-                **kwargs))
-            if changes_since:
-                self.assertEqual(
-                    SP.mock_calls[-1],
-                    call('changes-since', changes_since, changes_since))
-
     @patch('%s.get' % rest_pkg, return_value=FR())
     def test_networks_get(self, get):
         for args in product(
@@ -159,7 +138,6 @@ class CycladesRestClient(TestCase):
     @patch('%s.set_header' % rest_pkg)
     @patch('%s.post' % rest_pkg, return_value=FR())
     def test_networks_post(self, post, SH):
-        from json import dumps
         for args in product(
                 ('', 'net_id'),
                 ('', 'cmd'),
@@ -183,7 +161,6 @@ class CycladesRestClient(TestCase):
     @patch('%s.set_header' % rest_pkg)
     @patch('%s.put' % rest_pkg, return_value=FR())
     def test_networks_put(self, put, SH):
-        from json import dumps
         for args in product(
                 ('', 'net_id'),
                 ('', 'cmd'),
@@ -203,6 +180,63 @@ class CycladesRestClient(TestCase):
                 '/networks%s%s' % (vm_str, cmd_str),
                 data=json_data, success=success,
                 **kwargs))
+
+    @patch('%s.get' % rest_pkg, return_value=FR())
+    def test_floating_ip_pools_get(self, get):
+        for args in product(
+                (200, 204),
+                ({}, {'k': 'v'})):
+            success, kwargs = args
+            r = self.client.floating_ip_pools_get(success, **kwargs)
+            self.assertTrue(isinstance(r, FR))
+            self.assertEqual(get.mock_calls[-1], call(
+                '/os-floating-ip-pools', success=success, **kwargs))
+
+    @patch('%s.get' % rest_pkg, return_value=FR())
+    def test_floating_ips_get(self, get):
+        for args in product(
+                ('fip', ''),
+                (200, 204),
+                ({}, {'k': 'v'})):
+            fip, success, kwargs = args
+            r = self.client.floating_ips_get(fip, success, **kwargs)
+            self.assertTrue(isinstance(r, FR))
+            expected = '' if not fip else '/%s' % fip
+            self.assertEqual(get.mock_calls[-1], call(
+                '/os-floating-ips%s' % expected, success=success, **kwargs))
+
+    @patch('%s.set_header' % rest_pkg)
+    @patch('%s.post' % rest_pkg, return_value=FR())
+    def test_floating_ips_post(self, post, SH):
+        for args in product(
+                (None, [dict(json="data"), dict(data="json")]),
+                ('fip', ''),
+                (202, 204),
+                ({}, {'k': 'v'})):
+            json_data, fip, success, kwargs = args
+            self.client.floating_ips_post(*args[:3], **kwargs)
+            if json_data:
+                json_data = dumps(json_data)
+                self.assertEqual(SH.mock_calls[-2:], [
+                    call('Content-Type', 'application/json'),
+                    call('Content-Length', len(json_data))])
+            expected = '' if not fip else '/%s' % fip
+            self.assertEqual(post.mock_calls[-1], call(
+                '/os-floating-ips%s' % expected,
+                data=json_data, success=success,
+                **kwargs))
+
+    @patch('%s.delete' % rest_pkg, return_value=FR())
+    def test_floating_ips_delete(self, delete):
+        for args in product(
+                ('fip1', 'fip2'),
+                (200, 204),
+                ({}, {'k': 'v'})):
+            fip, success, kwargs = args
+            r = self.client.floating_ips_delete(fip, success, **kwargs)
+            self.assertTrue(isinstance(r, FR))
+            self.assertEqual(delete.mock_calls[-1], call(
+                '/os-floating-ips/%s' % fip, success=success, **kwargs))
 
 
 class CycladesClient(TestCase):
@@ -225,44 +259,28 @@ class CycladesClient(TestCase):
         FR.status_code = 200
         FR.json = vm_recv
 
-    @patch('%s.servers_get' % cyclades_pkg, return_value=FR())
-    def test_list_servers(self, SG):
-        FR.json = vm_list
-        for detail, since in ((0, 0), (True, 0), (0, 'd473'), (True, 'd473')):
-            r = self.client.list_servers(detail=detail, changes_since=since)
-            self.assertEqual(SG.mock_calls[-1], call(
-                command='detail' if detail else '',
-                changes_since=since))
-            expected = vm_list['servers']
-            for i, vm in enumerate(r):
-                self.assert_dicts_are_equal(vm, expected[i])
-            self.assertEqual(i + 1, len(expected))
-
-    @patch('%s.servers_post' % cyclades_pkg, return_value=FR())
+    @patch('%s.servers_action_post' % cyclades_pkg, return_value=FR())
     def test_shutdown_server(self, SP):
         vm_id = vm_recv['server']['id']
         self.client.shutdown_server(vm_id)
         SP.assert_called_once_with(
-            vm_id, 'action',
-            json_data=dict(shutdown=dict()), success=202)
+            vm_id, json_data=dict(shutdown=dict()), success=202)
 
-    @patch('%s.servers_post' % cyclades_pkg, return_value=FR())
+    @patch('%s.servers_action_post' % cyclades_pkg, return_value=FR())
     def test_start_server(self, SP):
         vm_id = vm_recv['server']['id']
         self.client.start_server(vm_id)
         SP.assert_called_once_with(
-            vm_id, 'action',
-            json_data=dict(start=dict()), success=202)
+            vm_id, json_data=dict(start=dict()), success=202)
 
-    @patch('%s.servers_post' % cyclades_pkg, return_value=FR())
+    @patch('%s.servers_action_post' % cyclades_pkg, return_value=FR())
     def test_get_server_console(self, SP):
         cnsl = dict(console=dict(info1='i1', info2='i2', info3='i3'))
         FR.json = cnsl
         vm_id = vm_recv['server']['id']
         r = self.client.get_server_console(vm_id)
         SP.assert_called_once_with(
-            vm_id, 'action',
-            json_data=dict(console=dict(type='vnc')), success=200)
+            vm_id, json_data=dict(console=dict(type='vnc')), success=200)
         self.assert_dicts_are_equal(r, cnsl['console'])
 
     def test_get_firewall_profile(self):
@@ -282,23 +300,13 @@ class CycladesClient(TestCase):
                 self.client.get_firewall_profile,
                 vm_id)
 
-    @patch('%s.servers_post' % cyclades_pkg, return_value=FR())
+    @patch('%s.servers_action_post' % cyclades_pkg, return_value=FR())
     def test_set_firewall_profile(self, SP):
         vm_id = vm_recv['server']['id']
         v = firewalls['attachments'][0]['firewallProfile']
         self.client.set_firewall_profile(vm_id, v)
-        SP.assert_called_once_with(
-            vm_id, 'action',
-            json_data=dict(firewallProfile=dict(profile=v)), success=202)
-
-    @patch('%s.servers_get' % cyclades_pkg, return_value=FR())
-    def test_get_server_stats(self, SG):
-        vm_id = vm_recv['server']['id']
-        stats = dict(stat1='v1', stat2='v2', stat3='v3', stat4='v4')
-        FR.json = dict(stats=stats)
-        r = self.client.get_server_stats(vm_id)
-        SG.assert_called_once_with(vm_id, 'stats')
-        self.assert_dicts_are_equal(stats, r)
+        SP.assert_called_once_with(vm_id, json_data=dict(
+            firewallProfile=dict(profile=v)), success=202)
 
     @patch('%s.networks_post' % cyclades_pkg, return_value=FR())
     def test_create_network(self, NP):
@@ -351,13 +359,13 @@ class CycladesClient(TestCase):
                 json_data=dict(remove=dict(attachment=nic_id)))
             self.assertEqual(r, 1)
 
-    @patch('%s.servers_get' % cyclades_pkg, return_value=FR())
+    @patch('%s.servers_ips_get' % cyclades_pkg, return_value=FR())
     def test_list_server_nics(self, SG):
         vm_id = vm_recv['server']['id']
         nics = dict(attachments=[dict(id='nic1'), dict(id='nic2')])
         FR.json = nics
         r = self.client.list_server_nics(vm_id)
-        SG.assert_called_once_with(vm_id, 'ips')
+        SG.assert_called_once_with(vm_id)
         expected = nics['attachments']
         for i in range(len(r)):
             self.assert_dicts_are_equal(r[i], expected[i])
@@ -432,6 +440,91 @@ class CycladesClient(TestCase):
                 self.assertEqual(err.status, 421)
                 self.assertEqual(err.details, [
                     'Network may be still connected to at least one server'])
+
+    @patch('%s.floating_ip_pools_get' % cyclades_pkg, return_value=FR())
+    def test_get_floating_ip_pools(self, get):
+        r = self.client.get_floating_ip_pools()
+        self.assert_dicts_are_equal(r, FR.json)
+        self.assertEqual(get.mock_calls[-1], call())
+
+    @patch('%s.floating_ips_get' % cyclades_pkg, return_value=FR())
+    def test_get_floating_ips(self, get):
+        r = self.client.get_floating_ips()
+        self.assert_dicts_are_equal(r, FR.json)
+        self.assertEqual(get.mock_calls[-1], call())
+
+    @patch('%s.floating_ips_post' % cyclades_pkg, return_value=FR())
+    def test_alloc_floating_ip(self, post):
+        FR.json = dict(floating_ip=dict(
+            fixed_ip='fip',
+            id=1,
+            instance_id='lala',
+            ip='102.0.0.1',
+            pool='pisine'))
+        for args in product(
+                (None, 'pisine'),
+                (None, 'Iwannanip')):
+            r = self.client.alloc_floating_ip(*args)
+            pool, address = args
+            self.assert_dicts_are_equal(r, FR.json['floating_ip'])
+            json_data = dict()
+            if pool:
+                json_data['pool'] = pool
+            if address:
+                json_data['address'] = address
+            self.assertEqual(post.mock_calls[-1], call(json_data))
+
+    @patch('%s.floating_ips_get' % cyclades_pkg, return_value=FR())
+    def test_get_floating_ip(self, get):
+        FR.json = dict(floating_ip=dict(
+            fixed_ip='fip',
+            id=1,
+            instance_id='lala',
+            ip='102.0.0.1',
+            pool='pisine'))
+        self.assertRaises(AssertionError, self.client.get_floating_ip, None)
+        fip = 'fip'
+        r = self.client.get_floating_ip(fip)
+        self.assert_dicts_are_equal(r, FR.json['floating_ip'])
+        self.assertEqual(get.mock_calls[-1], call(fip))
+
+    @patch('%s.floating_ips_delete' % cyclades_pkg, return_value=FR())
+    def test_delete_floating_ip(self, delete):
+        self.assertRaises(AssertionError, self.client.delete_floating_ip, None)
+        fip = 'fip'
+        r = self.client.delete_floating_ip(fip)
+        self.assert_dicts_are_equal(r, FR.headers)
+        self.assertEqual(delete.mock_calls[-1], call(fip))
+
+    @patch('%s.servers_action_post' % cyclades_pkg, return_value=FR())
+    def test_attach_floating_ip(self, spost):
+        vmid, addr = 42, 'anIpAddress'
+        for err, args in {
+                ValueError: ['not a server id', addr],
+                TypeError: [None, addr],
+                AssertionError: [vmid, None],
+                AssertionError: [vmid, '']}.items():
+            self.assertRaises(
+                err, self.client.attach_floating_ip, *args)
+        r = self.client.attach_floating_ip(vmid, addr)
+        self.assert_dicts_are_equal(r, FR.headers)
+        expected = dict(addFloatingIp=dict(address=addr))
+        self.assertEqual(spost.mock_calls[-1], call(vmid, json_data=expected))
+
+    @patch('%s.servers_action_post' % cyclades_pkg, return_value=FR())
+    def test_detach_floating_ip(self, spost):
+        vmid, addr = 42, 'anIpAddress'
+        for err, args in {
+                ValueError: ['not a server id', addr],
+                TypeError: [None, addr],
+                AssertionError: [vmid, None],
+                AssertionError: [vmid, '']}.items():
+            self.assertRaises(
+                err, self.client.detach_floating_ip, *args)
+        r = self.client.detach_floating_ip(vmid, addr)
+        self.assert_dicts_are_equal(r, FR.headers)
+        expected = dict(removeFloatingIp=dict(address=addr))
+        self.assertEqual(spost.mock_calls[-1], call(vmid, json_data=expected))
 
 
 if __name__ == '__main__':

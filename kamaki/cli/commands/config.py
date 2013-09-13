@@ -1,4 +1,4 @@
-# Copyright 2011-2012 GRNET S.A. All rights reserved.
+# Copyright 2011-2013 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -129,7 +129,12 @@ class config_set(_command_init):
         section, sep, key = option.rpartition('.')
         prefix = 'cloud.'
         if section.startswith(prefix):
-            self.config.set_cloud(section[len(prefix):], key, value)
+            cloudname = section[len(prefix):]
+            if cloudname:
+                self.config.set_cloud(cloudname, key, value)
+            else:
+                raise CLISyntaxError(
+                    'Empty cloud alias (%s)' % option, importance=2)
         elif section in ('cloud',):
             raise CLISyntaxError(
                 'Invalid syntax for cloud definition', importance=2, details=[

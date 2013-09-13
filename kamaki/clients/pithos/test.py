@@ -242,7 +242,7 @@ class PithosRestClient(TestCase):
             pm = pm[:-2]
             self.client.account_post(*(pm + args), **kwargs)
             upd = pm[0]
-            self.assertEqual(SP.mock_calls[-1], call('update', iff=upd))
+            self.assertEqual(SP.mock_calls[-1], call('update', '', iff=upd))
             expected = []
             if pm[1]:
                 expected += [
@@ -369,7 +369,7 @@ class PithosRestClient(TestCase):
             self.client.container_post(*(pm + args), **kwargs)
             upd, frmt = pm[:2]
             self.assertEqual(SP.mock_calls[-2:], [
-                call('update', iff=upd),
+                call('update', '', iff=upd),
                 call('format', frmt, iff=frmt)])
             qta, vrs, metas, ctype, clen, trenc = pm[2:]
             prfx = 'X-Container-Meta-'
@@ -637,7 +637,9 @@ class PithosRestClient(TestCase):
                     if pval:
                         perm_str += ';' if perm_str else ''
                         perm_str += '%s=%s' % (ptype, ','.join(pval))
-                exp += [call('X-Object-Sharing', perm_str)]
+                exp += [call('X-Object-Sharing', perm_str, iff=perms)]
+            else:
+                exp += [call('X-Object-Sharing', '', iff={})]
             exp += [call('X-Object-Public', public, public is not None)]
             for k, v in metas.items():
                 exp += [call('X-Object-Meta-%s' % k, v)]
@@ -674,7 +676,7 @@ class PithosRestClient(TestCase):
             format, update = pm[:2]
             self.assertEqual(SP.mock_calls[-2:], [
                 call('format', format, iff=format),
-                call('update', iff=update)])
+                call('update', '', iff=update)])
             (
                 im, inm, clen, ctype, crng, trenc, cenc,
                 condis, srcobj, srcacc, srcvrs, obytes, mnfs) = terms
@@ -699,7 +701,9 @@ class PithosRestClient(TestCase):
                     if pval:
                         perm_str += ';' if perm_str else ''
                         perm_str += '%s=%s' % (ptype, ','.join(pval))
-                exp += [call('X-Object-Sharing', perm_str)]
+                exp += [call('X-Object-Sharing', perm_str, iff=perms)]
+            else:
+                exp += [call('X-Object-Sharing', '', iff={})]
             exp += [call('X-Object-Public', public, public is not None)]
             for k, v in metas.items():
                 exp += [call('X-Object-Meta-%s' % k, v)]
@@ -735,6 +739,26 @@ class PithosRestClient(TestCase):
                 *args,
                 success=kwargs.pop('success', 204),
                 **kwargs))
+
+
+class PithosMethods(TestCase):
+
+    def test__range_up(self):
+        from kamaki.clients.pithos import _range_up
+        for args, expected in (
+                ((0, 100, 1000, '10'), '0-10'),
+                ((0, 100, 1000, '-10'), ''),
+                ((900, 1000, 1000, '-10'), '990-1000'),
+                ((150, 250, 1000, '10'), ''),
+                ((10, 200, 1000, '130-170'), '130-170'),
+                ((150, 200, 1000, '130-170'), '150-170'),
+                ((100, 150, 1000, '130-170'), '130-150'),
+                ((200, 250, 1000, '130-170'), ''),
+                ((100, 250, 1000, '30-170,200-270'), '100-170,200-250'),
+                ((40, 950, 1000, '-170,200-270,50',), '830-950,200-270,40-50'),
+                ((740, 900, 1000, '-170,200-270,50',), '830-900'),
+                ((42, 333, 800, '100,50-200,-600',), '42-100,50-200,200-333')):
+            self.assertEqual(_range_up(*args), expected)
 
 
 class PithosClient(TestCase):
@@ -1028,7 +1052,8 @@ class PithosClient(TestCase):
         tmpFile.seek(0)
         ctype = 'video/mpeg'
         sharing = dict(read=['u1', 'g1', 'u2'], write=['u1'])
-        r = self.client.upload_object(obj, tmpFile,
+        r = self.client.upload_object(
+            obj, tmpFile,
             content_type=ctype, sharing=sharing)
         self.assert_dicts_are_equal(r, exp_headers)
         self.assertEqual(OP.mock_calls[-1][2]['content_type'], ctype)
@@ -1378,7 +1403,6 @@ class PithosClient(TestCase):
                 self.assertEqual(r, {})
         exp_args = dict(
             hashmap=True,
-            data_range=None,
             version=None,
             if_etag_match=None,
             if_etag_not_match=None,
@@ -1389,11 +1413,9 @@ class PithosClient(TestCase):
             if_match='if match',
             if_none_match='if non match',
             if_modified_since='some date here',
-            if_unmodified_since='some date here',
-            data_range='10-20')
+            if_unmodified_since='some date here')
         with patch.object(
-                pithos.PithosClient, 'object_get',
-                return_value=FR()) as get:
+                pithos.PithosClient, 'object_get', return_value=FR()) as get:
             r = self.client.get_object_hashmap(obj)
             self.assertEqual(r, object_hashmap)
             self.assertEqual(get.mock_calls[-1], call(obj, **exp_args))
@@ -1810,5 +1832,8 @@ if __name__ == '__main__':
     if not argv[1:] or argv[1] == 'PithosRestClient':
         not_found = False
         runTestCase(PithosRestClient, 'PithosRest Client', argv[2:])
+    if not argv[1:] or argv[1] == 'PithosMethods':
+        not_found = False
+        runTestCase(PithosRestClient, 'Pithos Methods', argv[2:])
     if not_found:
         print('TestCase %s not found' % argv[1])

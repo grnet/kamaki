@@ -92,10 +92,12 @@ def run(auth_base, cloud, parser, _help):
 
     if _help or not cmd.is_command:
         parser.parser.print_help()
+        if getattr(cmd, 'long_help', False):
+            print 'Details:\n', cmd.long_help
         print_subcommands_help(cmd)
         exit(0)
 
-    cls = cmd.get_class()
+    cls = cmd.cmd_class
     executable = cls(parser.arguments, auth_base, cloud)
     parser.update_arguments(executable.arguments)
     #parsed, unparsed = parse_known_args(parser, executable.arguments)

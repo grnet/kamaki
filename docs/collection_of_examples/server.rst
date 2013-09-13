@@ -106,7 +106,7 @@ Destroy the VM (wait is still optional)
     Server 141 is not in DELETED mode
     [kamaki]:
 
-Insect ssh keys to a debian server
+Inject ssh keys to a debian server
 ----------------------------------
 
 Assume that the servers build from the image `Debian Base Alpha` accept ssh
@@ -139,7 +139,8 @@ Create a vm while injecting current users public key to root account
 
 .. code-block:: console
 
-    [kamaki]: 'NoPassword Server' 1 f1r57-1m4g3-1d -p /home/someuser/.ssh/id_rsa.pub,/root/.ssh/authorized_keys
+    [kamaki]: server
+    [server]: create 'NoPassword Server' 1 f1r57-1m4g3-1d -p /home/someuser/.ssh/id_rsa.pub,/root/.ssh/authorized_keys
     accessIPv4:      
     accessIPv6:      
     addresses:      
@@ -158,7 +159,7 @@ Create a vm while injecting current users public key to root account
     metadata:       
                     os:    debian
                     users: root
-    name:            My First Server
+    name:           No Password Server
     progress:        0
     security_groups:
                     name: default
@@ -167,16 +168,16 @@ Create a vm while injecting current users public key to root account
     tenant_id:       s0m3-u53r-1d
     updated:         2013-06-19T12:34:48.512867+00:00
     user_id:         s0m3-u53r-1d
-    [kamaki]:
+    [server]:
 
 When the VM is ready, get the VMs external IP from the web UI. Let's assume the
 IP is 123.456.78.90 .
 
 .. code-block:: console
 
-    [kamaki]: /exit
+    [server]: /exit
     $ ssh 123.456.78.90
-    Linux remote-vm-4241 2.6.32-5-amd64 #1 SMP Fri May 10 08:43:19 XXXX x86_64
+    Linux remote-vm-4241 2.6.32-5-amd64 #1 SMP XXXX x86_64
 
     The programs included with the Debian GNU/Linux system are free software;
     the exact distribution terms for each program are described in the
@@ -186,7 +187,7 @@ IP is 123.456.78.90 .
     permitted by applicable law.
     root@remote-vm-4241:~# ls -l .ssh/
     total 4
-    -rw-r--r-- 1 root root 399 Jun 19 15:46 authorized_keys
+    -rw-r--r-- 1 root root 399 Jun 19 12:34 authorized_keys
     root@remote-vm-4241:~#
 
 You can now log to your remote VM as root, without a password. Well done!

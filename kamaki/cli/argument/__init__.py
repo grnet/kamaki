@@ -1,4 +1,4 @@
-# Copyright 2012 GRNET S.A. All rights reserved.
+# Copyright 2012-2013 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -41,83 +41,36 @@ from time import mktime
 from logging import getLogger
 from argparse import ArgumentParser, ArgumentError
 from argparse import RawDescriptionHelpFormatter
-
-try:
-    from progress.bar import ShadyBar as KamakiProgressBar
-except ImportError:
-    try:
-        from progress.bar import Bar as KamakiProgressBar
-    except ImportError:
-        pass
-    # progress not installed - pls, pip install progress
-    pass
+from progress.bar import ShadyBar as KamakiProgressBar
 
 log = getLogger(__name__)
 
 
 class Argument(object):
     """An argument that can be parsed from command line or otherwise.
-    This is the general Argument class. It is suggested to extent this
+    This is the top-level Argument class. It is suggested to extent this
     class into more specific argument types.
     """
 
     def __init__(self, arity, help=None, parsed_name=None, default=None):
         self.arity = int(arity)
+        self.help = '%s' % help or ''
 
-        if help:
-            self.help = help
-        if parsed_name:
-            self.parsed_name = parsed_name
-        self.default = default
+        assert parsed_name, 'No parsed name for argument %s' % self
+        self.parsed_name = list(parsed_name) if isinstance(
+            parsed_name, list) or isinstance(parsed_name, tuple) else (
+                '%s' % parsed_name).split()
+        for name in self.parsed_name:
+            assert name.count(' ') == 0, '%s: Invalid parse name "%s"' % (
+                self, name)
+            msg = '%s: Invalid parse name "%s" should start with a "-"' % (
+                    self, name)
+            assert name.startswith('-'), msg
 
-    @property
-    def parsed_name(self):
-        """the string which will be recognised by the parser as an instance
-            of this argument
-        """
-        return getattr(self, '_parsed_name', None)
-
-    @parsed_name.setter
-    def parsed_name(self, newname):
-        self._parsed_name = getattr(self, '_parsed_name', [])
-        if isinstance(newname, list) or isinstance(newname, tuple):
-            self._parsed_name += list(newname)
-        else:
-            self._parsed_name.append('%s' % newname)
-
-    @property
-    def help(self):
-        """a user friendly help message"""
-        return getattr(self, '_help', None)
-
-    @help.setter
-    def help(self, newhelp):
-        self._help = '%s' % newhelp
-
-    @property
-    def arity(self):
-        """negative for repeating, 0 for flag, 1 or more for values"""
-        return getattr(self, '_arity', None)
-
-    @arity.setter
-    def arity(self, newarity):
-        newarity = int(newarity)
-        self._arity = newarity
-
-    @property
-    def default(self):
-        """the value of this argument when not set"""
-        if not hasattr(self, '_default'):
-            self._default = False if self.arity == 0 else None
-        return self._default
-
-    @default.setter
-    def default(self, newdefault):
-        self._default = newdefault
+        self.default = default if (default or self.arity) else False
 
     @property
     def value(self):
-        """the value of the argument"""
         return getattr(self, '_value', self.default)
 
     @value.setter
@@ -126,39 +79,31 @@ class Argument(object):
 
     def update_parser(self, parser, name):
         """Update argument parser with self info"""
-        action = 'append' if self.arity < 0\
-            else 'store_true' if self.arity == 0\
-            else 'store'
+        action = 'append' if self.arity < 0 else (
+            'store' if self.arity else 'store_true')
         parser.add_argument(
             *self.parsed_name,
-            dest=name,
-            action=action,
-            default=self.default,
-            help=self.help)
-
-    def main(self):
-        """Overide this method to give functionality to your args"""
-        raise NotImplementedError
+            dest=name, action=action, default=self.default, help=self.help)
 
 
 class ConfigArgument(Argument):
     """Manage a kamaki configuration (file)"""
 
-    _config_file = None
+    def __init__(self, help, parsed_name=('-c', '--config')):
+        super(ConfigArgument, self).__init__(1, help, parsed_name, None)
+        self.file_path = None
 
     @property
     def value(self):
-        """A Config object"""
-        super(self.__class__, self).value
-        return super(self.__class__, self).value
+        return super(ConfigArgument, self).value
 
     @value.setter
     def value(self, config_file):
         if config_file:
             self._value = Config(config_file)
-            self._config_file = config_file
-        elif self._config_file:
-            self._value = Config(self._config_file)
+            self.file_path = config_file
+        elif self.file_path:
+            self._value = Config(self.file_path)
         else:
             self._value = Config()
 
@@ -166,13 +111,15 @@ class ConfigArgument(Argument):
         """Get a configuration setting from the Config object"""
         return self.value.get(group, term)
 
-    def get_groups(self):
+    @property
+    def groups(self):
         suffix = '_cli'
         slen = len(suffix)
         return [term[:-slen] for term in self.value.keys('global') if (
             term.endswith(suffix))]
 
-    def get_cli_specs(self):
+    @property
+    def cli_specs(self):
         suffix = '_cli'
         slen = len(suffix)
         return [(k[:-slen], v) for k, v in self.value.items('global') if (
@@ -184,11 +131,11 @@ class ConfigArgument(Argument):
     def get_cloud(self, cloud, option):
         return self.value.get_cloud(cloud, option)
 
-_config_arg = ConfigArgument(
-    1, 'Path to configuration file', ('-c', '--config'))
+
+_config_arg = ConfigArgument('Path to config file')
 
 
-class CmdLineConfigArgument(Argument):
+class RuntimeConfigArgument(Argument):
     """Set a run-time setting option (not persistent)"""
 
     def __init__(self, config_arg, help='', parsed_name=None, default=None):
@@ -197,8 +144,7 @@ class CmdLineConfigArgument(Argument):
 
     @property
     def value(self):
-        """A key=val option"""
-        return super(self.__class__, self).value
+        return super(RuntimeConfigArgument, self).value
 
     @value.setter
     def value(self, options):
@@ -243,6 +189,21 @@ class ValueArgument(Argument):
         super(ValueArgument, self).__init__(1, help, parsed_name, default)
 
 
+class CommaSeparatedListArgument(ValueArgument):
+    """
+    :value type: string
+    :value returns: list of the comma separated values
+    """
+
+    @property
+    def value(self):
+        return self._value or list()
+
+    @value.setter
+    def value(self, newvalue):
+        self._value = newvalue.split(',') if newvalue else list()
+
+
 class IntArgument(ValueArgument):
 
     @property
@@ -253,10 +214,13 @@ class IntArgument(ValueArgument):
     @value.setter
     def value(self, newvalue):
         if newvalue == self.default:
-            self._value = self.default
+            self._value = newvalue
             return
         try:
-            self._value = int(newvalue)
+            if int(newvalue) == float(newvalue):
+                self._value = int(newvalue)
+            else:
+                raise ValueError('Raise int argument error')
         except ValueError:
             raiseCLIError(CLISyntaxError(
                 'IntArgument Error',
@@ -264,18 +228,10 @@ class IntArgument(ValueArgument):
 
 
 class DateArgument(ValueArgument):
-    """
-    :value type: a string formated in an acceptable date format
 
-    :value returns: same date in first of DATE_FORMATS
-    """
+    DATE_FORMAT = '%a %b %d %H:%M:%S %Y'
 
-    DATE_FORMATS = [
-        "%a %b %d %H:%M:%S %Y",
-        "%A, %d-%b-%y %H:%M:%S GMT",
-        "%a, %d %b %Y %H:%M:%S GMT"]
-
-    INPUT_FORMATS = DATE_FORMATS + ["%d-%m-%Y", "%H:%M:%S %d-%m-%Y"]
+    INPUT_FORMATS = [DATE_FORMAT, '%d-%m-%Y', '%H:%M:%S %d-%m-%Y']
 
     @property
     def timestamp(self):
@@ -285,7 +241,7 @@ class DateArgument(ValueArgument):
     @property
     def formated(self):
         v = getattr(self, '_value', self.default)
-        return v.strftime(self.DATE_FORMATS[0]) if v else None
+        return v.strftime(self.DATE_FORMAT) if v else None
 
     @property
     def value(self):
@@ -293,8 +249,7 @@ class DateArgument(ValueArgument):
 
     @value.setter
     def value(self, newvalue):
-        if newvalue:
-            self._value = self.format_date(newvalue)
+        self._value = self.format_date(newvalue) if newvalue else self.default
 
     def format_date(self, datestr):
         for format in self.INPUT_FORMATS:
@@ -302,12 +257,10 @@ class DateArgument(ValueArgument):
                 t = dtm.strptime(datestr, format)
             except ValueError:
                 continue
-            return t  # .strftime(self.DATE_FORMATS[0])
-        raiseCLIError(
-            None,
-            'Date Argument Error',
-            details='%s not a valid date. correct formats:\n\t%s' % (
-                datestr, self.INPUT_FORMATS))
+            return t  # .strftime(self.DATE_FORMAT)
+        raiseCLIError(None, 'Date Argument Error', details=[
+            '%s not a valid date' % datestr,
+            'Correct formats:\n\t%s' % self.INPUT_FORMATS])
 
 
 class VersionArgument(FlagArgument):
@@ -321,17 +274,21 @@ class VersionArgument(FlagArgument):
     @value.setter
     def value(self, newvalue):
         self._value = newvalue
-        self.main()
-
-    def main(self):
-        """Print current version"""
-        if self.value:
+        if newvalue:
             import kamaki
             print('kamaki %s' % kamaki.__version__)
 
 
+class RepeatableArgument(Argument):
+    """A value argument that can be repeated"""
+
+    def __init__(self, help='', parsed_name=None, default=[]):
+        super(RepeatableArgument, self).__init__(
+            -1, help, parsed_name, default)
+
+
 class KeyValueArgument(Argument):
-    """A Value Argument that can be repeated
+    """A Key=Value Argument that can be repeated
 
     :syntax: --<arg> key1=value1 --<arg> key2=value2 ...
     """
@@ -342,21 +299,23 @@ class KeyValueArgument(Argument):
     @property
     def value(self):
         """
-        :input: key=value
-        :output: {'key1':'value1', 'key2':'value2', ...}
+        :returns: (dict) {key1: val1, key2: val2, ...}
         """
         return super(KeyValueArgument, self).value
 
     @value.setter
     def value(self, keyvalue_pairs):
-        self._value = {}
-        for pair in keyvalue_pairs:
-            key, sep, val = pair.partition('=')
-            if not sep:
-                raiseCLIError(
-                    CLISyntaxError('Argument syntax error '),
-                    details='%s is missing a "=" (usage: key1=val1 )\n' % pair)
-            self._value[key.strip()] = val.strip()
+        """
+        :param keyvalue_pairs: (str) ['key1=val1', 'key2=val2', ...]
+        """
+        self._value = getattr(self, '_value', self.value) or {}
+        try:
+            for pair in keyvalue_pairs:
+                key, sep, val = pair.partition('=')
+                assert sep, ' %s misses a "=" (usage: key1=val1 )\n' % (pair)
+                self._value[key] = val
+        except Exception as e:
+            raiseCLIError(e, 'KeyValueArgument Syntax Error')
 
 
 class ProgressBarArgument(FlagArgument):
@@ -365,17 +324,11 @@ class ProgressBarArgument(FlagArgument):
     def __init__(self, help='', parsed_name='', default=True):
         self.suffix = '%(percent)d%%'
         super(ProgressBarArgument, self).__init__(help, parsed_name, default)
-        try:
-            KamakiProgressBar
-        except NameError:
-            log.warning('WARNING: no progress bar functionality')
 
     def clone(self):
         """Get a modifiable copy of this bar"""
         newarg = ProgressBarArgument(
-            self.help,
-            self.parsed_name,
-            self.default)
+            self.help, self.parsed_name, self.default)
         newarg._value = self._value
         return newarg
 
@@ -417,7 +370,7 @@ _arguments = dict(
     silent=FlagArgument('Do not output anything', ('-s', '--silent')),
     verbose=FlagArgument('More info at response', ('-v', '--verbose')),
     version=VersionArgument('Print current version', ('-V', '--version')),
-    options=CmdLineConfigArgument(
+    options=RuntimeConfigArgument(
         _config_arg, 'Override a config value', ('-o', '--options'))
 )
 
@@ -428,12 +381,6 @@ _arguments = dict(
 class ArgumentParseManager(object):
     """Manage (initialize and update) an ArgumentParser object"""
 
-    parser = None
-    _arguments = {}
-    _parser_modified = False
-    _parsed = None
-    _unparsed = None
-
     def __init__(self, exe, arguments=None):
         """
         :param exe: (str) the basic command (e.g. 'kamaki')
@@ -442,14 +389,14 @@ class ArgumentParseManager(object):
             the parsers arguments specification
         """
         self.parser = ArgumentParser(
-            add_help=False,
-            formatter_class=RawDescriptionHelpFormatter)
+            add_help=False, formatter_class=RawDescriptionHelpFormatter)
         self.syntax = '%s <cmd_group> [<cmd_subbroup> ...] <cmd>' % exe
         if arguments:
             self.arguments = arguments
         else:
             global _arguments
             self.arguments = _arguments
+        self._parser_modified, self._parsed, self._unparsed = False, None, None
         self.parse()
 
     @property
@@ -463,13 +410,12 @@ class ArgumentParseManager(object):
 
     @property
     def arguments(self):
-        """(dict) arguments the parser should be aware of"""
+        """:returns: (dict) arguments the parser should be aware of"""
         return self._arguments
 
     @arguments.setter
     def arguments(self, new_arguments):
-        if new_arguments:
-            assert isinstance(new_arguments, dict)
+        assert isinstance(new_arguments, dict), 'Arguments must be in a dict'
         self._arguments = new_arguments
         self.update_parser()
 
@@ -492,8 +438,7 @@ class ArgumentParseManager(object):
 
         :param arguments: if not given, update self.arguments instead
         """
-        if not arguments:
-            arguments = self._arguments
+        arguments = arguments or self._arguments
 
         for name, arg in arguments.items():
             try:
@@ -513,14 +458,11 @@ class ArgumentParseManager(object):
             self.update_parser()
 
     def parse(self, new_args=None):
-        """Do parse user input"""
+        """Parse user input"""
         try:
-            if new_args:
-                self._parsed, unparsed = self.parser.parse_known_args(new_args)
-            else:
-                self._parsed, unparsed = self.parser.parse_known_args()
+            pkargs = (new_args,) if new_args else ()
+            self._parsed, unparsed = self.parser.parse_known_args(*pkargs)
         except SystemExit:
-            # deal with the fact that argparse error system is STUPID
             raiseCLIError(CLISyntaxError('Argument Syntax Error'))
         for name, arg in self.arguments.items():
             arg.value = getattr(self._parsed, name, arg.default)

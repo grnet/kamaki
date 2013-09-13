@@ -1,4 +1,4 @@
-# Copyright 2011-2012 GRNET S.A. All rights reserved.
+# Copyright 2011-2013 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -367,7 +367,7 @@ class plankton(object):
     about_image_id = [
         'How to pick a suitable image:',
         '* get a list of image ids: /image list',
-        '* details of image: /flavor info <image id>']
+        '* details of image: /image meta <image id>']
 
     @classmethod
     def connection(this, foo):
