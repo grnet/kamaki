@@ -88,8 +88,8 @@ class user_authenticate(_user_init, _optional_json):
     """
 
     @staticmethod
-    def _print_access(r, out=stdout):
-        print_dict(r['access'], out=out)
+    def _print_access(r):
+        print_dict(r['access'])
 
     @errors.generic.all
     @errors.user.authenticate
