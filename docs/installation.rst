@@ -221,15 +221,15 @@ The full process is detailed in the following:
 Requirements
 ^^^^^^^^^^^^
 
-* Python 2.7 or better (`Official versions <http://www.python.org/getit>`_)
+* Python 2.7 (`Official versions <http://www.python.org/getit>`_)
 
 * Setuptools (`Official versions and workarounds <http://pypi.python.org/pypi/setuptools>`_)
 
 Users who have already set up and wokring python and setuptools (e.g. for
 another project) may skip python and / or setup tools installation.
 
-Install python
-^^^^^^^^^^^^^^
+Install python 2.7
+^^^^^^^^^^^^^^^^^^
 
 Download and run the Windows installer from
 `here <http://www.python.org/getit>`_

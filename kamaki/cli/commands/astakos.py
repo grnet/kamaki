@@ -37,7 +37,7 @@ from kamaki.cli.commands import (
     _command_init, errors, _optional_json, addLogSettings)
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import CLIBaseUrlError, CLIError
-from kamaki.cli.utils import print_dict, ask_user
+from kamaki.cli.utils import print_dict, ask_user, stdout
 
 user_cmds = CommandTree('user', 'Astakos API commands')
 _commands = [user_cmds]
@@ -60,8 +60,8 @@ class _user_init(_command_init):
         if getattr(self, 'cloud', False):
             base_url = self._custom_url('astakos')
             if base_url:
-                token = self._custom_token('astakos')\
-                    or self.config.get_cloud(self.cloud, 'token')
+                token = self._custom_token(
+                    'astakos') or self.config.get_cloud(self.cloud, 'token')
                 token = token.split()[0] if ' ' in token else token
                 self.client = AstakosClient(base_url=base_url, token=token)
                 return
@@ -88,8 +88,8 @@ class user_authenticate(_user_init, _optional_json):
     """
 
     @staticmethod
-    def _print_access(r):
-        print_dict(r['access'])
+    def _print_access(r, out=stdout):
+        print_dict(r['access'], out=out)
 
     @errors.generic.all
     @errors.user.authenticate

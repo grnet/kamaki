@@ -65,7 +65,8 @@ howto_image_file = [
     ' check available containers: /file list',
     ' create a new container: /file create <container>',
     ' check container contents: /file list <container>',
-    ' upload files: /file upload <image file> <container>']
+    ' upload files: /file upload <image file> <container>',
+    ' register an image: /image register <image name> <container>:<path>']
 
 about_image_id = ['To see a list of available image ids: /image list']
 
@@ -401,29 +402,40 @@ class image_meta_delete(_init_image, _optional_output_cmd):
 
 @command(image_cmds)
 class image_register(_init_image, _optional_json):
-    """(Re)Register an image"""
+    """(Re)Register an image file to an Image service
+    The image file must be stored at a pithos repository
+    Some metadata can be set by user (e.g. disk-format) while others are set
+    only automatically (e.g. image id). There are also some custom user
+    metadata, called properties.
+    A register command creates a remote meta file at
+       <container>:<image path>.meta
+    Users may download and edit this file and use it to re-register one or more
+    images.
+    In case of a meta file, runtime arguments for metadata or properties
+    override meta file settings.
+    """
 
     container_info_cache = {}
 
     arguments = dict(
-        checksum=ValueArgument('set image checksum', '--checksum'),
+        checksum=ValueArgument('Set image checksum', '--checksum'),
         container_format=ValueArgument(
-            'set container format',
+            'Set container format',
             '--container-format'),
-        disk_format=ValueArgument('set disk format', '--disk-format'),
-        #owner=ValueArgument('set image owner (admin only)', '--owner'),
+        disk_format=ValueArgument('Set disk format', '--disk-format'),
+        owner_name=ValueArgument('Set user uuid by user name', '--owner-name'),
         properties=KeyValueArgument(
-            'add property in key=value form (can be repeated)',
+            'Add property (user-specified metadata) in key=value form'
+            '(can be repeated)',
             ('-p', '--property')),
-        is_public=FlagArgument('mark image as public', '--public'),
-        size=IntArgument('set image size', '--size'),
+        is_public=FlagArgument('Mark image as public', '--public'),
+        size=IntArgument('Set image size in bytes', '--size'),
         metafile=ValueArgument(
             'Load metadata from a json-formated file <img-file>.meta :'
             '{"key1": "val1", "key2": "val2", ..., "properties: {...}"}',
             ('--metafile')),
         metafile_force=FlagArgument(
-            'Store remote metadata object, even if it already exists',
-            ('-f', '--force')),
+            'Overide remote metadata file', ('-f', '--force')),
         no_metafile_upload=FlagArgument(
             'Do not store metadata in remote meta file',
             ('--no-metafile-upload')),
@@ -510,7 +522,7 @@ class image_register(_init_image, _optional_json):
                 'No image file location provided',
                 importance=2, details=[
                     'An image location is needed. Image location format:',
-                    '  pithos://<user-id>/<container>/<path>',
+                    '  <container>:<path>',
                     ' where an image file at the above location must exist.'
                     ] + howto_image_file)
         try:
@@ -520,11 +532,36 @@ class image_register(_init_image, _optional_json):
                 ae, 'Invalid image location format',
                 importance=1, details=[
                     'Valid image location format:',
-                    '  pithos://<user-id>/<container>/<img-file-path>'
+                    '  <container>:<img-file-path>'
                     ] + howto_image_file)
 
+    @staticmethod
+    def _old_location_format(location):
+        prefix = 'pithos://'
+        try:
+            if location.startswith(prefix):
+                uuid, sep, rest = location[len(prefix):].partition('/')
+                container, sep, path = rest.partition('/')
+                return (uuid, container, path)
+        except Exception as e:
+            raiseCLIError(e, 'Invalid location format', details=[
+                'Correct location format:', '  <container>:<image path>'])
+        return ()
+
     def _mine_location(self, container_path):
-        uuid = self['uuid'] or self._get_user_id()
+        old_response = self._old_location_format(container_path)
+        if old_response:
+            return old_response
+        uuid = self['uuid'] or (self._username2uuid(self['owner_name']) if (
+                    self['owner_name']) else self._get_user_id())
+        if not uuid:
+            if self['owner_name']:
+                raiseCLIError('No user with username %s' % self['owner_name'])
+            raiseCLIError('Failed to get user uuid', details=[
+                'For details on current user:',
+                '  /user whoami',
+                'To authenticate a new user through a user token:',
+                '  /user authenticate <token>'])
         if self['container']:
             return uuid, self['container'], container_path
         container, sep, path = container_path.partition(':')
@@ -541,10 +578,11 @@ class image_register(_init_image, _optional_json):
 
     @errors.generic.all
     @errors.plankton.connection
-    def _run(self, name, uuid, container, img_path):
+    @errors.pithos.container
+    def _run(self, name, uuid, dst_cont, img_path):
         if self['local_image_path']:
             with open(self['local_image_path']) as f:
-                pithos = self._get_pithos_client(container)
+                pithos = self._get_pithos_client(dst_cont)
                 (pbar, upload_cb) = self._safe_progress_bar('Uploading')
                 if pbar:
                     hash_bar = pbar.clone()
@@ -555,12 +593,12 @@ class image_register(_init_image, _optional_json):
                     container_info_cache=self.container_info_cache)
                 pbar.finish()
 
-        location = 'pithos://%s/%s/%s' % (uuid, container, img_path)
+        location = 'pithos://%s/%s/%s' % (uuid, dst_cont, img_path)
         (params, properties, new_loc) = self._load_params_from_file(location)
         if location != new_loc:
-            uuid, container, img_path = self._validate_location(new_loc)
+            uuid, dst_cont, img_path = self._validate_location(new_loc)
         self._load_params_from_args(params, properties)
-        pclient = self._get_pithos_client(container)
+        pclient = self._get_pithos_client(dst_cont)
 
         #check if metafile exists
         meta_path = '%s.meta' % img_path
@@ -569,7 +607,7 @@ class image_register(_init_image, _optional_json):
                 pclient.get_object_info(meta_path)
                 raiseCLIError(
                     'Metadata file %s:%s already exists, abort' % (
-                        container, meta_path),
+                        dst_cont, meta_path),
                     details=['Registration ABORTED', 'Try -f to overwrite'])
             except ClientError as ce:
                 if ce.status != 404:
@@ -579,13 +617,14 @@ class image_register(_init_image, _optional_json):
         try:
             r = self.client.register(name, location, params, properties)
         except ClientError as ce:
-            if ce.status in (400, ):
+            if ce.status in (400, 404):
                 raiseCLIError(
-                    ce, 'Nonexistent image file location %s' % location,
+                    ce, 'Nonexistent image file location\n\t%s' % location,
                     details=[
-                        'Make sure the image file exists'] + howto_image_file)
+                        'Does the image file %s exist at container %s ?' % (
+                            img_path, dst_cont)] + howto_image_file)
             raise
-        r['owner'] += '( %s)' % self._uuid2username(r['owner'])
+        r['owner'] += ' (%s)' % self._uuid2username(r['owner'])
         self._print(r, print_dict)
 
         #upload the metadata file
@@ -595,15 +634,15 @@ class image_register(_init_image, _optional_json):
                     meta_path, dumps(r, indent=2),
                     container_info_cache=self.container_info_cache)
             except TypeError:
-                print('Failed to dump metafile %s:%s' % (container, meta_path))
+                print('Failed to dump metafile %s:%s' % (dst_cont, meta_path))
                 return
             if self['json_output']:
                 print_json(dict(
-                    metafile_location='%s:%s' % (container, meta_path),
+                    metafile_location='%s:%s' % (dst_cont, meta_path),
                     headers=meta_headers))
             else:
                 print('Metadata file uploaded as %s:%s (version %s)' % (
-                    container, meta_path, meta_headers['x-object-version']))
+                    dst_cont, meta_path, meta_headers['x-object-version']))
 
     def main(self, name, container___image_path):
         super(self.__class__, self)._run()

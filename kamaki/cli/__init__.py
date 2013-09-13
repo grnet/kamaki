@@ -157,7 +157,8 @@ def command(cmd_tree, prefix='', descedants_depth=1):
                 'No commend in %s (acts as cmd description)' % cls.__name__)
         _construct_command_syntax(cls)
 
-        cmd_tree.add_command(cls_name, cls.description, cls)
+        cmd_tree.add_command(
+            cls_name, cls.description, cls, cls.long_description)
         return cls
     return wrap
 
@@ -240,6 +241,9 @@ def _init_session(arguments, is_non_API=False):
     _verbose = arguments['verbose'].value
     _cnf = arguments['config']
 
+    _silent = arguments['silent'].value
+    _setup_logging(_silent, _debug, _verbose, _include)
+
     if _help or is_non_API:
         return None, None
 
@@ -250,8 +254,6 @@ def _init_session(arguments, is_non_API=False):
     if not (stdout.isatty() and _colors == 'on'):
         from kamaki.cli.utils import remove_colors
         remove_colors()
-    _silent = arguments['silent'].value
-    _setup_logging(_silent, _debug, _verbose, _include)
 
     cloud = arguments['cloud'].value or _cnf.value.get(
         'global', 'default_cloud')
@@ -307,6 +309,11 @@ def _init_session(arguments, is_non_API=False):
                 else:
                     auth_base = AuthCachedClient(
                         auth_args['url'], auth_args['token'])
+                    from kamaki.cli.commands import _command_init
+                    fake_cmd = _command_init(arguments)
+                    fake_cmd.client = auth_base
+                    fake_cmd._set_log_params()
+                    fake_cmd._update_max_threads()
                     auth_base.authenticate(token)
             except ClientError as ce:
                 if ce.status in (401, ):
@@ -321,24 +328,25 @@ def _init_session(arguments, is_non_API=False):
 
 
 def _load_spec_module(spec, arguments, module):
+    global kloger
     if not spec:
         return None
     pkg = None
     for location in cmd_spec_locations:
         location += spec if location == '' else '.%s' % spec
         try:
+            kloger.debug('Import %s from %s' % ([module], location))
             pkg = __import__(location, fromlist=[module])
+            kloger.debug('\t...OK')
             return pkg
         except ImportError as ie:
+            kloger.debug('\t...Failed')
             continue
     if not pkg:
         msg = 'Loading command group %s failed: %s' % (spec, ie)
-        try:
-            kloger.debug(msg)
-        except AttributeError:
-            print msg
-            print 'HINT: use a text editor to remove all global.*_cli'
-            print '      settings from the configuration file'
+        msg += '\nHINT: use a text editor to remove all global.*_cli'
+        msg += '\n\tsettings from the configuration file'
+        kloger.debug(msg)
     return pkg
 
 

@@ -100,6 +100,7 @@ class Logged(object):
 
     LOG_TOKEN = False
     LOG_DATA = False
+    LOG_PID = False
 
 
 class RequestManager(Logged):
@@ -121,7 +122,7 @@ class RequestManager(Logged):
             url += _encode(path[1:] if path.startswith('/') else path)
         delim = '?'
         for key, val in params.items():
-            val = _encode(val)
+            val = '' if val in (None, False) else _encode(u'%s' % val)
             url += '%s%s%s' % (delim, key, ('=%s' % val) if val else '')
             delim = '&'
         parsed = urlparse(url)
@@ -143,18 +144,19 @@ class RequestManager(Logged):
         self.scheme, self.netloc = self._connection_info(url, path, params)
 
     def dump_log(self):
-        sendlog.info('%s %s://%s%s\t[%s]' % (
-            self.method, self.scheme, self.netloc, self.path, self))
+        plog = '\t[%s]' if self.LOG_PID else ''
+        sendlog.info('- -  -   -     -        -             -')
+        sendlog.info('%s %s://%s%s%s' % (
+            self.method, self.scheme, self.netloc, self.path, plog))
         for key, val in self.headers.items():
-            if (not self.LOG_TOKEN) and key.lower() == 'x-auth-token':
-                continue
-            sendlog.info('  %s: %s\t[%s]' % (key, val, self))
+            show = (key.lower() != 'x-auth-token') or self.LOG_TOKEN
+            sendlog.info('  %s: %s%s' % (key, val if show else '...', plog))
         if self.data:
-            sendlog.info('data size:%s\t[%s]' % (len(self.data), self))
+            sendlog.info('data size:%s%s' % (len(self.data), plog))
             if self.LOG_DATA:
                 sendlog.info(self.data)
         else:
-            sendlog.info('data size:0\t[%s]' % self)
+            sendlog.info('data size:0%s' % plog)
         sendlog.info('')
 
     def perform(self, conn):
@@ -177,7 +179,8 @@ class RequestManager(Logged):
                 wait = 0.03 * random()
                 sleep(wait)
                 keep_trying -= wait
-        logmsg = 'Kamaki Timeout %s %s\t[%s]' % (self.method, self.path, self)
+        plog = '\t[%s]' if self.LOG_PID else ''
+        logmsg = 'Kamaki Timeout %s %s%s' % (self.method, self.path, plog)
         recvlog.debug(logmsg)
         raise ClientError('HTTPResponse takes too long - kamaki timeout')
 
@@ -210,29 +213,32 @@ class ResponseManager(Logged):
                         **pool_kw) as connection:
                     self.request.LOG_TOKEN = self.LOG_TOKEN
                     self.request.LOG_DATA = self.LOG_DATA
+                    self.request.LOG_PID = self.LOG_PID
                     r = self.request.perform(connection)
-                    recvlog.info('\n%s <-- %s <-- [req: %s]\n' % (
-                        self, r, self.request))
+                    plog = ''
+                    if self.LOG_PID:
+                        recvlog.info('\n%s <-- %s <-- [req: %s]\n' % (
+                            self, r, self.request))
+                        plog = '\t[%s]' % self
                     self._request_performed = True
                     self._status_code, self._status = r.status, unquote(
                         r.reason)
                     recvlog.info(
-                        '%d %s\t[p: %s]' % (
-                            self.status_code, self.status, self))
+                        '%d %s%s' % (
+                            self.status_code, self.status, plog))
                     self._headers = dict()
                     for k, v in r.getheaders():
-                        if (not self.LOG_TOKEN) and (
-                                k.lower() == 'x-auth-token'):
-                            continue
+                        show = (k.lower() != 'x-auth-token') or self.LOG_TOKEN
                         v = unquote(v)
                         self._headers[k] = v
-                        recvlog.info('  %s: %s\t[p: %s]' % (k, v, self))
+                        recvlog.info('  %s: %s%s' % (
+                            k, v if show else '...', plog))
                     self._content = r.read()
-                    recvlog.info('data size: %s\t[p: %s]' % (
-                        len(self._content) if self._content else 0,
-                        self))
+                    recvlog.info('data size: %s%s' % (
+                        len(self._content) if self._content else 0, plog))
                     if self.LOG_DATA and self._content:
-                        recvlog.info('%s\t[p: %s]' % (self._content, self))
+                        recvlog.info('%s%s' % (self._content, plog))
+                    sendlog.info('-             -        -     -   -  - -')
                 break
             except Exception as err:
                 if isinstance(err, HTTPException):
@@ -246,8 +252,7 @@ class ResponseManager(Logged):
                         '\n'.join(['%s' % type(err)] + format_stack()))
                     raise ClientError(
                         'Failed while http-connecting to %s (%s)' % (
-                            self.request.url,
-                            err))
+                            self.request.url, err))
 
     @property
     def status_code(self):
@@ -317,12 +322,10 @@ class SilentEvent(Thread):
             self._exception = e
 
 
-class Client(object):
+class Client(Logged):
 
     MAX_THREADS = 7
     DATE_FORMATS = ['%a %b %d %H:%M:%S %Y', ]
-    LOG_TOKEN = False
-    LOG_DATA = False
     CONNECTION_RETRY_LIMIT = 0
 
     def __init__(self, base_url, token):
@@ -405,14 +408,16 @@ class Client(object):
             if data:
                 headers.setdefault('Content-Length', '%s' % len(data))
 
-            sendlog.debug('\n\nCMT %s@%s\t[%s]', method, self.base_url, self)
+            plog = '\t[%s]' if self.LOG_PID else ''
+            sendlog.debug('\n\nCMT %s@%s%s', method, self.base_url, plog)
             req = RequestManager(
                 method, self.base_url, path,
                 data=data, headers=headers, params=params)
             #  req.log()
             r = ResponseManager(
                 req, connection_retry_limit=self.CONNECTION_RETRY_LIMIT)
-            r.LOG_TOKEN, r.LOG_DATA = self.LOG_TOKEN, self.LOG_DATA
+            r.LOG_TOKEN, r.LOG_DATA, r.LOG_PID = (
+                self.LOG_TOKEN, self.LOG_DATA, self.LOG_PID)
         finally:
             self.headers = dict()
             self.params = dict()

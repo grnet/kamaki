@@ -2073,8 +2073,8 @@ class file_sharers(_file_account_command, _optional_json):
 
 def version_print(versions):
     print_items([dict(id=vitem[0], created=strftime(
-        '%d-%m-%Y %H:%M:%S',
-        localtime(float(vitem[1])))) for vitem in versions])
+            '%d-%m-%Y %H:%M:%S',
+            localtime(float(vitem[1])))) for vitem in versions])
 
 
 @command(pithos_cmds)
