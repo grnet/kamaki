@@ -41,6 +41,38 @@ from kamaki.clients import ClientError
 class CycladesClient(CycladesRestClient):
     """Synnefo Cyclades Compute API client"""
 
+    def create_server(
+            self, name, flavor_id, image_id,
+            metadata=None, personality=None):
+        """Submit request to create a new server
+
+        :param name: (str)
+
+        :param flavor_id: integer id denoting a preset hardware configuration
+
+        :param image_id: (str) id denoting the OS image to run on the VM
+
+        :param metadata: (dict) vm metadata updated by os/users image metadata
+
+        :param personality: a list of (file path, file contents) tuples,
+            describing files to be injected into VM upon creation.
+
+        :returns: a dict with the new VMs details
+
+        :raises ClientError: wraps request errors
+        """
+        image = self.get_image_details(image_id)
+        metadata = metadata or dict()
+        for key in ('os', 'users'):
+            try:
+                metadata[key] = image['metadata'][key]
+            except KeyError:
+                pass
+
+        return super(CycladesClient, self).create_server(
+            name, flavor_id, image_id,
+            metadata=metadata, personality=personality)
+
     def start_server(self, server_id):
         """Submit a startup request
 
@@ -49,7 +81,7 @@ class CycladesClient(CycladesRestClient):
         :returns: (dict) response headers
         """
         req = {'start': {}}
-        r = self.servers_post(server_id, 'action', json_data=req, success=202)
+        r = self.servers_action_post(server_id, json_data=req, success=202)
         return r.headers
 
     def shutdown_server(self, server_id):
@@ -60,7 +92,7 @@ class CycladesClient(CycladesRestClient):
         :returns: (dict) response headers
         """
         req = {'shutdown': {}}
-        r = self.servers_post(server_id, 'action', json_data=req, success=202)
+        r = self.servers_action_post(server_id, json_data=req, success=202)
         return r.headers
 
     def get_server_console(self, server_id):
@@ -70,7 +102,7 @@ class CycladesClient(CycladesRestClient):
         :returns: (dict) info to set a VNC connection to VM
         """
         req = {'console': {'type': 'vnc'}}
-        r = self.servers_post(server_id, 'action', json_data=req, success=200)
+        r = self.servers_action_post(server_id, json_data=req, success=200)
         return r.json['console']
 
     def get_firewall_profile(self, server_id):
@@ -99,20 +131,8 @@ class CycladesClient(CycladesRestClient):
         :returns: (dict) response headers
         """
         req = {'firewallProfile': {'profile': profile}}
-        r = self.servers_post(server_id, 'action', json_data=req, success=202)
+        r = self.servers_action_post(server_id, json_data=req, success=202)
         return r.headers
-
-    def list_servers(self, detail=False, changes_since=None):
-        """
-        :param detail: (bool) append full server details to each item if true
-
-        :param changes_since: (date)
-
-        :returns: list of server ids and names
-        """
-        detail = 'detail' if detail else ''
-        r = self.servers_get(command=detail, changes_since=changes_since)
-        return r.json['servers']
 
     def list_server_nics(self, server_id):
         """
@@ -120,9 +140,8 @@ class CycladesClient(CycladesRestClient):
 
         :returns: (dict) network interface connections
         """
-        r = self.servers_get(server_id, 'ips')
+        r = self.servers_ips_get(server_id)
         return r.json['attachments']
-        #return r.json['addresses']
 
     def get_server_stats(self, server_id):
         """
@@ -130,7 +149,7 @@ class CycladesClient(CycladesRestClient):
 
         :returns: (dict) auto-generated graphs of statistics (urls)
         """
-        r = self.servers_get(server_id, 'stats')
+        r = self.servers_stats_get(server_id)
         return r.json['stats']
 
     def list_networks(self, detail=False):
@@ -257,13 +276,61 @@ class CycladesClient(CycladesRestClient):
             req = dict(remove=dict(attachment=nic))
             self.networks_post(netid, 'action', json_data=req)
 
+    def _wait(
+            self, item_id, current_status, get_status,
+            delay=1, max_wait=100, wait_cb=None):
+        """Wait for item while its status is current_status
+
+        :param server_id: integer (str or int)
+
+        :param current_status: (str)
+
+        :param get_status: (method(self, item_id)) if called, returns
+            (status, progress %) If no way to tell progress, return None
+
+        :param delay: time interval between retries
+
+        :param wait_cb: if set a progress bar is used to show progress
+
+        :returns: (str) the new mode if successful, (bool) False if timed out
+        """
+        status, progress = get_status(self, item_id)
+        if status != current_status:
+            return status
+        old_wait = total_wait = 0
+
+        if wait_cb:
+            wait_gen = wait_cb(1 + max_wait // delay)
+            wait_gen.next()
+
+        while status == current_status and total_wait <= max_wait:
+            if wait_cb:
+                try:
+                    for i in range(total_wait - old_wait):
+                        wait_gen.next()
+                except Exception:
+                    break
+            else:
+                stdout.write('.')
+                stdout.flush()
+            old_wait = total_wait
+            total_wait = progress or (total_wait + 1)
+            sleep(delay)
+            status, progress = get_status(self, item_id)
+
+        if total_wait < max_wait:
+            if wait_cb:
+                try:
+                    for i in range(max_wait):
+                        wait_gen.next()
+                except:
+                    pass
+        return status if status != current_status else False
+
     def wait_server(
-            self,
-            server_id,
+            self, server_id,
             current_status='BUILD',
-            delay=0.5,
-            max_wait=128,
-            wait_cb=None):
+            delay=1, max_wait=100, wait_cb=None):
         """Wait for server while its status is current_status
 
         :param server_id: integer (str or int)
@@ -276,44 +343,134 @@ class CycladesClient(CycladesRestClient):
 
         :returns: (str) the new mode if succesfull, (bool) False if timed out
         """
-        r = self.get_server_details(server_id)
-        if r['status'] != current_status:
-            return r['status']
-        old_wait = total_wait = 0
 
-        if current_status == 'BUILD':
-            max_wait = 100
-            wait_gen = wait_cb(max_wait) if wait_cb else None
-        elif wait_cb:
-            wait_gen = wait_cb(1 + max_wait // delay)
-            wait_gen.next()
-
-        while r['status'] == current_status and total_wait <= max_wait:
-            if current_status == 'BUILD':
-                total_wait = int(r['progress'])
-                if wait_cb:
-                    for i in range(int(old_wait), int(total_wait)):
-                        wait_gen.next()
-                    old_wait = total_wait
-                else:
-                    stdout.write('.')
-                    stdout.flush()
-            else:
-                if wait_cb:
-                    wait_gen.next()
-                else:
-                    stdout.write('.')
-                    stdout.flush()
-                total_wait += delay
-            sleep(delay)
+        def get_status(self, server_id):
             r = self.get_server_details(server_id)
+            return r['status'], (r.get('progress', None) if (
+                            current_status in ('BUILD', )) else None)
 
-        if r['status'] != current_status:
-            if wait_cb:
-                try:
-                    while True:
-                        wait_gen.next()
-                except:
-                    pass
-            return r['status']
-        return False
+        return self._wait(
+            server_id, current_status, get_status, delay, max_wait, wait_cb)
+
+    def wait_network(
+            self, net_id,
+            current_status='LALA', delay=1, max_wait=100, wait_cb=None):
+        """Wait for network while its status is current_status
+
+        :param net_id: integer (str or int)
+
+        :param current_status: (str) PENDING | ACTIVE | DELETED
+
+        :param delay: time interval between retries
+
+        :param wait_cb: if set a progressbar is used to show progress
+
+        :returns: (str) the new mode if succesfull, (bool) False if timed out
+        """
+
+        def get_status(self, net_id):
+            r = self.get_network_details(net_id)
+            return r['status'], None
+
+        return self._wait(
+            net_id, current_status, get_status, delay, max_wait, wait_cb)
+
+    def get_floating_ip_pools(self):
+        """
+        :returns: (dict) {floating_ip_pools:[{name: ...}, ...]}
+        """
+        r = self.floating_ip_pools_get()
+        return r.json
+
+    def get_floating_ips(self):
+        """
+        :returns: (dict) {floating_ips:[
+            {fixed_ip: ..., id: ..., instance_id: ..., ip: ..., pool: ...},
+            ... ]}
+        """
+        r = self.floating_ips_get()
+        return r.json
+
+    def alloc_floating_ip(self, pool=None, address=None):
+        """
+        :param pool: (str) pool of ips to allocate from
+
+        :param address: (str) ip address to request
+
+        :returns: (dict) {
+            fixed_ip: ..., id: ..., instance_id: ..., ip: ..., pool: ...}
+        """
+        json_data = dict()
+        if pool:
+            json_data['pool'] = pool
+        if address:
+            json_data['address'] = address
+        r = self.floating_ips_post(json_data)
+        return r.json['floating_ip']
+
+    def get_floating_ip(self, fip_id):
+        """
+        :param fip_id: (str) floating ip id
+
+        :returns: (dict)
+            {fixed_ip: ..., id: ..., instance_id: ..., ip: ..., pool: ...},
+
+        :raises AssertionError: if fip_id is emtpy
+        """
+        assert fip_id, 'floating ip id is needed for get_floating_ip'
+        r = self.floating_ips_get(fip_id)
+        return r.json['floating_ip']
+
+    def delete_floating_ip(self, fip_id=None):
+        """
+        :param fip_id: (str) floating ip id (if None, all ips are deleted)
+
+        :returns: (dict) request headers
+
+        :raises AssertionError: if fip_id is emtpy
+        """
+        assert fip_id, 'floating ip id is needed for delete_floating_ip'
+        r = self.floating_ips_delete(fip_id)
+        return r.headers
+
+    def attach_floating_ip(self, server_id, address):
+        """Associate the address ip to server with server_id
+
+        :param server_id: (int)
+
+        :param address: (str) the ip address to assign to server (vm)
+
+        :returns: (dict) request headers
+
+        :raises ValueError: if server_id cannot be converted to int
+
+        :raises ValueError: if server_id is not of a int-convertable type
+
+        :raises AssertionError: if address is emtpy
+        """
+        server_id = int(server_id)
+        assert address, 'address is needed for attach_floating_ip'
+        req = dict(addFloatingIp=dict(address=address))
+        r = self.servers_action_post(server_id, json_data=req)
+        return r.headers
+
+    def detach_floating_ip(self, server_id, address):
+        """Disassociate an address ip from the server with server_id
+
+        :param server_id: (int)
+
+        :param address: (str) the ip address to assign to server (vm)
+
+        :returns: (dict) request headers
+
+        :raises ValueError: if server_id cannot be converted to int
+
+        :raises ValueError: if server_id is not of a int-convertable type
+
+        :raises AssertionError: if address is emtpy
+        """
+        server_id = int(server_id)
+        assert address, 'address is needed for detach_floating_ip'
+        req = dict(removeFloatingIp=dict(address=address))
+        r = self.servers_action_post(server_id, json_data=req)
+        return r.headers

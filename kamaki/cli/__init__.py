@@ -39,8 +39,10 @@ from inspect import getargspec
 from kamaki.cli.argument import ArgumentParseManager
 from kamaki.cli.history import History
 from kamaki.cli.utils import print_dict, red, magenta, yellow
-from kamaki.cli.errors import CLIError
+from kamaki.cli.errors import CLIError, CLICmdSpecError
 from kamaki.cli import logger
+from kamaki.clients.astakos import AstakosClient as AuthCachedClient
+from kamaki.clients import ClientError
 
 _help = False
 _debug = False
@@ -146,12 +148,17 @@ def command(cmd_tree, prefix='', descedants_depth=1):
                 kloger.warning('%s failed max_len test' % cls_name)
             return None
 
-        (
-            cls.description, sep, cls.long_description
-        ) = cls.__doc__.partition('\n')
+        try:
+            (
+                cls.description, sep, cls.long_description
+            ) = cls.__doc__.partition('\n')
+        except AttributeError:
+            raise CLICmdSpecError(
+                'No commend in %s (acts as cmd description)' % cls.__name__)
         _construct_command_syntax(cls)
 
-        cmd_tree.add_command(cls_name, cls.description, cls)
+        cmd_tree.add_command(
+            cls_name, cls.description, cls, cls.long_description)
         return cls
     return wrap
 
@@ -234,6 +241,9 @@ def _init_session(arguments, is_non_API=False):
     _verbose = arguments['verbose'].value
     _cnf = arguments['config']
 
+    _silent = arguments['silent'].value
+    _setup_logging(_silent, _debug, _verbose, _include)
+
     if _help or is_non_API:
         return None, None
 
@@ -244,8 +254,6 @@ def _init_session(arguments, is_non_API=False):
     if not (stdout.isatty() and _colors == 'on'):
         from kamaki.cli.utils import remove_colors
         remove_colors()
-    _silent = arguments['silent'].value
-    _setup_logging(_silent, _debug, _verbose, _include)
 
     cloud = arguments['cloud'].value or _cnf.value.get(
         'global', 'default_cloud')
@@ -281,7 +289,7 @@ def _init_session(arguments, is_non_API=False):
     for term in ('url', 'token'):
         try:
             auth_args[term] = _cnf.get_cloud(cloud, term)
-        except KeyError:
+        except KeyError or IndexError:
             auth_args[term] = ''
         if not auth_args[term]:
             raise CLIError(
@@ -292,27 +300,53 @@ def _init_session(arguments, is_non_API=False):
                     '  kamaki config set cloud.%s.%s <%s>' % (
                         cloud, term, term.upper())])
 
-    from kamaki.clients.astakos import AstakosClient as AuthCachedClient
     try:
-        return AuthCachedClient(auth_args['url'], auth_args['token']), cloud
+        auth_base = None
+        for token in reversed(auth_args['token'].split()):
+            try:
+                if auth_base:
+                    auth_base.authenticate(token)
+                else:
+                    auth_base = AuthCachedClient(
+                        auth_args['url'], auth_args['token'])
+                    from kamaki.cli.commands import _command_init
+                    fake_cmd = _command_init(arguments)
+                    fake_cmd.client = auth_base
+                    fake_cmd._set_log_params()
+                    fake_cmd._update_max_threads()
+                    auth_base.authenticate(token)
+            except ClientError as ce:
+                if ce.status in (401, ):
+                    kloger.warning(
+                        'WARNING: Failed to authorize token %s' % token)
+                else:
+                    raise
+        return auth_base, cloud
     except AssertionError as ae:
         kloger.warning('WARNING: Failed to load authenticator [%s]' % ae)
         return None, cloud
 
 
 def _load_spec_module(spec, arguments, module):
+    global kloger
     if not spec:
         return None
     pkg = None
     for location in cmd_spec_locations:
         location += spec if location == '' else '.%s' % spec
         try:
+            kloger.debug('Import %s from %s' % ([module], location))
             pkg = __import__(location, fromlist=[module])
+            kloger.debug('\t...OK')
             return pkg
         except ImportError as ie:
+            kloger.debug('\t...Failed')
             continue
     if not pkg:
-        kloger.debug('Loading cmd grp %s failed: %s' % (spec, ie))
+        msg = 'Loading command group %s failed: %s' % (spec, ie)
+        msg += '\nHINT: use a text editor to remove all global.*_cli'
+        msg += '\n\tsettings from the configuration file'
+        kloger.debug(msg)
     return pkg
 
 
@@ -320,17 +354,19 @@ def _groups_help(arguments):
     global _debug
     global kloger
     descriptions = {}
-    for cmd_group, spec in arguments['config'].get_cli_specs():
+    acceptable_groups = arguments['config'].groups
+    for cmd_group, spec in arguments['config'].cli_specs:
         pkg = _load_spec_module(spec, arguments, '_commands')
         if pkg:
             cmds = getattr(pkg, '_commands')
             try:
-                for cmd in cmds:
-                    descriptions[cmd.name] = cmd.description
+                for cmd_tree in cmds:
+                    if cmd_tree.name in acceptable_groups:
+                        descriptions[cmd_tree.name] = cmd_tree.description
             except TypeError:
                 if _debug:
                     kloger.warning(
-                        'No cmd description for module %s' % cmd_group)
+                        'No cmd description (help) for module %s' % cmd_group)
         elif _debug:
             kloger.warning('Loading of %s cmd spec failed' % cmd_group)
     print('\nOptions:\n - - - -')
@@ -339,7 +375,7 @@ def _groups_help(arguments):
 
 def _load_all_commands(cmd_tree, arguments):
     _cnf = arguments['config']
-    for cmd_group, spec in _cnf.get_cli_specs():
+    for cmd_group, spec in _cnf.cli_specs:
         try:
             spec_module = _load_spec_module(spec, arguments, '_commands')
             spec_commands = getattr(spec_module, '_commands')
@@ -359,9 +395,9 @@ def _load_all_commands(cmd_tree, arguments):
 
 def print_subcommands_help(cmd):
     printout = {}
-    for subcmd in cmd.get_subcommands():
+    for subcmd in cmd.subcommands.values():
         spec, sep, print_path = subcmd.path.partition('_')
-        printout[print_path.replace('_', ' ')] = subcmd.description
+        printout[print_path.replace('_', ' ')] = subcmd.help
     if printout:
         print('\nOptions:\n - - - -')
         print_dict(printout)
@@ -374,18 +410,14 @@ def update_parser_help(parser, cmd):
 
     description = ''
     if cmd.is_command:
-        cls = cmd.get_class()
+        cls = cmd.cmd_class
         parser.syntax += ' ' + cls.syntax
         parser.update_arguments(cls().arguments)
-        description = getattr(cls, 'long_description', '')
-        description = description.strip()
+        description = getattr(cls, 'long_description', '').strip()
     else:
         parser.syntax += ' <...>'
-    if cmd.has_description:
-        parser.parser.description = cmd.help + (
-            ('\n%s' % description) if description else '')
-    else:
-        parser.parser.description = description
+    parser.parser.description = (
+        cmd.help + ('\n' if description else '')) if cmd.help else description
 
 
 def print_error_message(cli_err):
@@ -418,7 +450,7 @@ def exec_cmd(instance, cmd_args, help_method):
 
 
 def get_command_group(unparsed, arguments):
-    groups = arguments['config'].get_groups()
+    groups = arguments['config'].groups
     for term in unparsed:
         if term.startswith('-'):
             continue
@@ -453,7 +485,12 @@ def run_one_cmd(exe_string, parser, auth_base, cloud):
 
 def run_shell(exe_string, parser, auth_base, cloud):
     from command_shell import _init_shell
-    shell = _init_shell(exe_string, parser)
+    try:
+        username, userid = (
+            auth_base.user_term('name'), auth_base.user_term('id'))
+    except Exception:
+        username, userid = '', ''
+    shell = _init_shell(exe_string, parser, username, userid)
     _load_all_commands(shell.cmd_tree, parser.arguments)
     shell.run(auth_base, cloud, parser)
 
