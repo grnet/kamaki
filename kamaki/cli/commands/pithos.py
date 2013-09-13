@@ -1,4 +1,4 @@
-# Copyright 2011-2012 GRNET S.A. All rights reserved.
+# Copyright 2011-2013 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -39,14 +39,15 @@ from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import raiseCLIError, CLISyntaxError, CLIBaseUrlError
 from kamaki.cli.utils import (
-    format_size, to_bytes, print_dict, print_items, pretty_keys, pretty_dict,
-    page_hold, bold, ask_user, get_path_size, print_json)
+    format_size, to_bytes, print_dict, print_items, page_hold, bold, ask_user,
+    get_path_size, print_json, guess_mime_type)
 from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
 from kamaki.cli.argument import KeyValueArgument, DateArgument
 from kamaki.cli.argument import ProgressBarArgument
 from kamaki.cli.commands import _command_init, errors
 from kamaki.cli.commands import addLogSettings, DontRaiseKeyError
-from kamaki.cli.commands import _optional_output_cmd, _optional_json
+from kamaki.cli.commands import (
+    _optional_output_cmd, _optional_json, _name_filter)
 from kamaki.clients.pithos import PithosClient, ClientError
 from kamaki.clients.astakos import AstakosClient
 
@@ -131,13 +132,23 @@ class RangeArgument(ValueArgument):
         return getattr(self, '_value', self.default)
 
     @value.setter
-    def value(self, newvalue):
-        if newvalue is None:
+    def value(self, newvalues):
+        if not newvalues:
             self._value = self.default
             return
-        (start, end) = newvalue.split('-')
-        (start, end) = (int(start), int(end))
-        self._value = '%s-%s' % (start, end)
+        self._value = ''
+        for newvalue in newvalues.split(','):
+            self._value = ('%s,' % self._value) if self._value else ''
+            start, sep, end = newvalue.partition('-')
+            if sep:
+                if start:
+                    start, end = (int(start), int(end))
+                    assert start <= end, 'Invalid range value %s' % newvalue
+                    self._value += '%s-%s' % (int(start), int(end))
+                else:
+                    self._value += '-%s' % int(end)
+            else:
+                self._value += '%s' % int(start)
 
 
 # Command specs
@@ -316,7 +327,7 @@ class _file_container_command(_file_account_command):
 
 
 @command(pithos_cmds)
-class file_list(_file_container_command, _optional_json):
+class file_list(_file_container_command, _optional_json, _name_filter):
     """List containers, object trees or objects in a directory
     Use with:
     1 no parameters : containers in current account
@@ -329,7 +340,6 @@ class file_list(_file_container_command, _optional_json):
         detail=FlagArgument('detailed output', ('-l', '--list')),
         limit=IntArgument('limit number of listed items', ('-n', '--number')),
         marker=ValueArgument('output greater that marker', '--marker'),
-        prefix=ValueArgument('output starting with prefix', '--prefix'),
         delimiter=ValueArgument('show output up to delimiter', '--delimiter'),
         path=ValueArgument(
             'show output starting with prefix up to /', '--path'),
@@ -353,9 +363,9 @@ class file_list(_file_container_command, _optional_json):
         enum=FlagArgument('Enumerate results', '--enumerate')
     )
 
-    def print_objects(self, object_list):
+    def print_objects(self, object_list, out=stdout):
         if self['json_output']:
-            print_json(object_list)
+            print_json(object_list, out=out)
             return
         limit = int(self['limit']) if self['limit'] > 0 else len(object_list)
         for index, obj in enumerate(object_list):
@@ -365,6 +375,8 @@ class file_list(_file_container_command, _optional_json):
             pretty_obj = obj.copy()
             index += 1
             empty_space = ' ' * (len(str(len(object_list))) - len(str(index)))
+            if 'subdir' in obj:
+                continue
             if obj['content_type'] == 'application/directory':
                 isDir = True
                 size = 'D'
@@ -376,7 +388,7 @@ class file_list(_file_container_command, _optional_json):
             prfx = ('%s%s. ' % (empty_space, index)) if self['enum'] else ''
             if self['detail']:
                 print('%s%s' % (prfx, oname))
-                print_dict(pretty_keys(pretty_obj), exclude=('name'))
+                print_dict(pretty_obj, exclude=('name'))
                 print
             else:
                 oname = '%s%9s %s' % (prfx, size, oname)
@@ -385,9 +397,9 @@ class file_list(_file_container_command, _optional_json):
             if self['more']:
                 page_hold(index, limit, len(object_list))
 
-    def print_containers(self, container_list):
+    def print_containers(self, container_list, out=stdout):
         if self['json_output']:
-            print_json(container_list)
+            print_json(container_list, out=out)
             return
         limit = int(self['limit']) if self['limit'] > 0\
             else len(container_list)
@@ -401,7 +413,7 @@ class file_list(_file_container_command, _optional_json):
                 pretty_c = container.copy()
                 if 'bytes' in container:
                     pretty_c['bytes'] = '%s (%s)' % (container['bytes'], size)
-                print_dict(pretty_keys(pretty_c), exclude=('name'))
+                print_dict(pretty_c, exclude=('name'))
                 print
             else:
                 if 'count' in container and 'bytes' in container:
@@ -427,9 +439,10 @@ class file_list(_file_container_command, _optional_json):
                 if_unmodified_since=self['if_unmodified_since'],
                 until=self['until'],
                 show_only_shared=self['shared'])
-            self._print(r.json, self.print_containers)
+            files = self._filter_by_name(r.json)
+            self._print(files, self.print_containers)
         else:
-            prefix = self.path or self['prefix']
+            prefix = (self.path and not self['name']) or self['name_pref']
             r = self.client.container_get(
                 limit=False if self['more'] else self['limit'],
                 marker=self['marker'],
@@ -441,7 +454,8 @@ class file_list(_file_container_command, _optional_json):
                 until=self['until'],
                 meta=self['meta'],
                 show_only_shared=self['shared'])
-            self._print(r.json, self.print_objects)
+            files = self._filter_by_name(r.json)
+            self._print(files, self.print_objects)
 
     def main(self, container____path__=None):
         super(self.__class__, self)._run(container____path__)
@@ -450,14 +464,13 @@ class file_list(_file_container_command, _optional_json):
 
 @command(pithos_cmds)
 class file_mkdir(_file_container_command, _optional_output_cmd):
-    """Create a directory"""
-
-    __doc__ += '\n. '.join([
-        'Kamaki hanldes directories the same way as OOS Storage and Pithos+:',
-        'A   directory  is   an  object  with  type  "application/directory"',
-        'An object with path  dir/name can exist even if  dir does not exist',
-        'or even if dir  is  a non  directory  object.  Users can modify dir',
-        'without affecting the dir/name object in any way.'])
+    """Create a directory
+    Kamaki hanldes directories the same way as OOS Storage and Pithos+:
+    A directory  is   an  object  with  type  "application/directory"
+    An object with path  dir/name can exist even if  dir does not exist
+    or even if dir  is  a non  directory  object.  Users can modify dir '
+    without affecting the dir/name object in any way.
+    """
 
     @errors.generic.all
     @errors.pithos.connection
@@ -533,7 +546,7 @@ class file_create(_file_container_command, _optional_output_cmd):
 class _source_destination_command(_file_container_command):
 
     arguments = dict(
-        destination_account=ValueArgument('', ('a', '--dst-account')),
+        destination_account=ValueArgument('', ('-a', '--dst-account')),
         recursive=FlagArgument('', ('-R', '--recursive')),
         prefix=FlagArgument('', '--with-prefix', default=''),
         suffix=ValueArgument('', '--with-suffix', default=''),
@@ -982,11 +995,12 @@ class file_manifest(_file_container_command, _optional_output_cmd):
     @errors.pithos.container
     @errors.pithos.object_path
     def _run(self):
+        ctype, cenc = guess_mime_type(self.path)
         self._optional_output(self.client.create_object_by_manifestation(
             self.path,
-            content_encoding=self['content_encoding'],
+            content_encoding=self['content_encoding'] or cenc,
             content_disposition=self['content_disposition'],
-            content_type=self['content_type'],
+            content_type=self['content_type'] or ctype,
             sharing=self['sharing'],
             public=self['public']))
 
@@ -1098,7 +1112,8 @@ class file_upload(_file_container_command, _optional_output_cmd):
                         print('%s is not a regular file' % fpath)
         else:
             if not path.isfile(lpath):
-                raiseCLIError('%s is not a regular file' % lpath)
+                raiseCLIError(('%s is not a regular file' % lpath) if (
+                    path.exists(lpath)) else '%s does not exist' % lpath)
             try:
                 robj = self.client.get_object_info(rpath)
                 if remote_path and self._is_dir(robj):
@@ -1134,6 +1149,10 @@ class file_upload(_file_container_command, _optional_output_cmd):
         container_info_cache = dict()
         for f, rpath in self._path_pairs(local_path, remote_path):
             print('%s --> %s:%s' % (f.name, self.client.container, rpath))
+            if not (self['content_type'] and self['content_encoding']):
+                ctype, cenc = guess_mime_type(f.name)
+                params['content_type'] = self['content_type'] or ctype
+                params['content_encoding'] = self['content_encoding'] or cenc
             if self['unchunked']:
                 r = self.client.upload_object_unchunked(
                     rpath, f,
@@ -1490,7 +1509,7 @@ class file_delete(_file_container_command, _optional_output_cmd):
                     until=self['until'], delimiter=self['delimiter']))
             else:
                 print('Aborted')
-        else:
+        elif self.container:
             if self['recursive']:
                 ask_msg = 'Delete container contents'
             else:
@@ -1500,6 +1519,8 @@ class file_delete(_file_container_command, _optional_output_cmd):
                     until=self['until'], delimiter=self['delimiter']))
             else:
                 print('Aborted')
+        else:
+            raiseCLIError('Nothing to delete, please provide container[:path]')
 
     def main(self, container____path__=None):
         super(self.__class__, self)._run(container____path__)
@@ -1594,10 +1615,10 @@ class file_permissions(_pithos_init):
     """
 
 
-def print_permissions(permissions_dict):
+def print_permissions(permissions_dict, out=stdout):
     expected_keys = ('read', 'write')
     if set(permissions_dict).issubset(expected_keys):
-        print_dict(permissions_dict)
+        print_dict(permissions_dict, out=out)
     else:
         invalid_keys = set(permissions_dict.keys()).difference(expected_keys)
         raiseCLIError(
@@ -1744,11 +1765,7 @@ class file_metadata_get(_file_container_command, _optional_json):
         until = self['until']
         r = None
         if self.container is None:
-            if self['detail']:
-                r = self.client.get_account_info(until=until)
-            else:
-                r = self.client.get_account_meta(until=until)
-                r = pretty_keys(r, '-')
+            r = self.client.get_account_info(until=until)
         elif self.path is None:
             if self['detail']:
                 r = self.client.get_container_info(until=until)
@@ -1757,9 +1774,9 @@ class file_metadata_get(_file_container_command, _optional_json):
                 ometa = self.client.get_container_object_meta(until=until)
                 r = {}
                 if cmeta:
-                    r['container-meta'] = pretty_keys(cmeta, '-')
+                    r['container-meta'] = cmeta
                 if ometa:
-                    r['object-meta'] = pretty_keys(ometa, '-')
+                    r['object-meta'] = ometa
         else:
             if self['detail']:
                 r = self.client.get_object_info(
@@ -1769,7 +1786,6 @@ class file_metadata_get(_file_container_command, _optional_json):
                 r = self.client.get_object_meta(
                     self.path,
                     version=self['object_version'])
-                r = pretty_keys(pretty_keys(r, '-'))
         if r:
             self._print(r, print_dict)
 
@@ -1842,7 +1858,7 @@ class file_quota(_file_account_command, _optional_json):
             if not self['in_bytes']:
                 for k in output:
                     output[k] = format_size(output[k])
-            pretty_dict(output, '-')
+            print_dict(output, '-')
 
         self._print(self.client.get_account_quota(), pretty_print)
 
@@ -1872,7 +1888,7 @@ class file_containerlimit_get(_file_container_command, _optional_json):
             if not self['in_bytes']:
                 for k, v in output.items():
                     output[k] = 'unlimited' if '0' == v else format_size(v)
-            pretty_dict(output, '-')
+            print_dict(output, '-')
 
         self._print(
             self.client.get_container_limit(self.container), pretty_print)
@@ -1989,7 +2005,7 @@ class file_group_list(_file_account_command, _optional_json):
     @errors.generic.all
     @errors.pithos.connection
     def _run(self):
-        self._print(self.client.get_account_group(), pretty_dict, delim='-')
+        self._print(self.client.get_account_group(), print_dict, delim='-')
 
     def main(self):
         super(self.__class__, self)._run()
@@ -2040,20 +2056,27 @@ class file_sharers(_file_account_command, _optional_json):
     @errors.pithos.connection
     def _run(self):
         accounts = self.client.get_sharing_accounts(marker=self['marker'])
-        if self['json_output'] or self['detail']:
-            self._print(accounts)
-        else:
-            self._print([acc['name'] for acc in accounts])
+        if not self['json_output']:
+            usernames = self._uuids2usernames(
+                [acc['name'] for acc in accounts])
+            for item in accounts:
+                uuid = item['name']
+                item['id'], item['name'] = uuid, usernames[uuid]
+                if not self['detail']:
+                    item.pop('last_modified')
+        self._print(accounts)
 
     def main(self):
         super(self.__class__, self)._run()
         self._run()
 
 
-def version_print(versions):
-    print_items([dict(id=vitem[0], created=strftime(
-        '%d-%m-%Y %H:%M:%S',
-        localtime(float(vitem[1])))) for vitem in versions])
+def version_print(versions, out=stdout):
+    print_items(
+        [dict(id=vitem[0], created=strftime(
+            '%d-%m-%Y %H:%M:%S',
+            localtime(float(vitem[1])))) for vitem in versions],
+        out=out)
 
 
 @command(pithos_cmds)

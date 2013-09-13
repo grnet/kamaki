@@ -157,7 +157,7 @@ class PithosRestClient(StorageClient):
 
         self._assert_account()
 
-        self.set_param('update', iff=update)
+        self.set_param('update', '', iff=update)
 
         if groups:
             for group, usernames in groups.items():
@@ -354,7 +354,7 @@ class PithosRestClient(StorageClient):
         """
         self._assert_container()
 
-        self.set_param('update', iff=update)
+        self.set_param('update', '', iff=update)
         self.set_param('format', format, iff=format)
 
         self.set_header('X-Container-Policy-Quota', quota)
@@ -769,15 +769,10 @@ class PithosRestClient(StorageClient):
         self.set_header('Content-Type', content_type)
         self.set_header('Content-Encoding', content_encoding)
         self.set_header('Content-Disposition', content_disposition)
-        if permissions:
-            perms = ''
-            for perm_type, perm_list in permissions.items():
-                if not perms:
-                    perms = ''  # Remove permissions
-                if perm_list:
-                    perms += ';' if perms else ''
-                    perms += '%s=%s' % (perm_type, ','.join(perm_list))
-            self.set_header('X-Object-Sharing', perms)
+        perms = ';'.join(
+            ['%s=%s' % (k, ','.join(v)) for k, v in permissions.items() if (
+                v)]) if (permissions) else ''
+        self.set_header('X-Object-Sharing', perms, iff=permissions)
         self.set_header('X-Object-Public', public, public is not None)
         if metadata:
             for key, val in metadata.items():
@@ -864,14 +859,12 @@ class PithosRestClient(StorageClient):
         self._assert_container()
 
         self.set_param('format', format, iff=format)
-        self.set_param('update', iff=update)
+        self.set_param('update', '', iff=update)
 
         self.set_header('If-Match', if_etag_match)
         self.set_header('If-None-Match', if_etag_not_match)
         self.set_header(
-            'Content-Length',
-            content_length,
-            iff=not transfer_encoding)
+            'Content-Length', content_length, iff=not transfer_encoding)
         self.set_header('Content-Type', content_type)
         self.set_header('Content-Range', content_range)
         self.set_header('Transfer-Encoding', transfer_encoding)
@@ -882,15 +875,10 @@ class PithosRestClient(StorageClient):
         self.set_header('X-Source-Version', source_version)
         self.set_header('X-Object-Bytes', object_bytes)
         self.set_header('X-Object-Manifest', manifest)
-        if permissions:
-            perms = ''
-            for perm_type, perm_list in permissions.items():
-                if not perms:
-                    perms = ''  # Remove permissions
-                if perm_list:
-                    perms += ';' if perms else ''
-                    perms += '%s=%s' % (perm_type, ','.join(perm_list))
-            self.set_header('X-Object-Sharing', perms)
+        perms = ';'.join(
+            ['%s=%s' % (k, ','.join(v)) for k, v in permissions.items() if (
+                v)]) if (permissions) else ''
+        self.set_header('X-Object-Sharing', perms, iff=permissions)
         self.set_header('X-Object-Public', public, public is not None)
         for key, val in metadata.items():
             self.set_header('X-Object-Meta-' + key, val)

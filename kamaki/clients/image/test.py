@@ -224,8 +224,7 @@ class ImageClient(TestCase):
                     props['%s%s' % (proprfx, args[i])] = k
             async_headers.update(props)
         r = self.client.register(
-            img0_name, img0_location,
-            params=params, properties=props)
+            img0_name, img0_location, params=params, properties=props)
         expectedict = dict(example_image_headers)
         expectedict.pop('extraheaders')
         from kamaki.clients.image import _format_image_headers
@@ -236,6 +235,13 @@ class ImageClient(TestCase):
         self.assertEqual(SH.mock_calls[-2:], [
             call('X-Image-Meta-Name', img0_name),
             call('X-Image-Meta-Location', img0_location)])
+        img1_location = ('some_uuid', 'some_container', 'some/path')
+        r = self.client.register(
+            img0_name, img1_location, params=params, properties=props)
+        img1_location = 'pithos://%s' % '/'.join(img1_location)
+        self.assertEqual(SH.mock_calls[-2:], [
+            call('X-Image-Meta-Name', img0_name),
+            call('X-Image-Meta-Location', img1_location)])
 
     @patch('%s.delete' % image_pkg)
     def test_unregister(self, delete):
@@ -283,6 +289,44 @@ class ImageClient(TestCase):
         get.assert_called_once_with('/shared-images/%s' % imgid, success=200)
         for i in range(len(r)):
             self.assert_dicts_are_equal(r[i], example_images[i])
+
+    @patch('%s.put' % image_pkg, return_value=FR())
+    @patch('%s.set_header' % image_pkg)
+    def test_update_image(self, set_header, put):
+        FR.headers = 'some headers'
+        hcnt = 0
+        for args in product(
+                ('some id', 'other id'),
+                ('image name', None), ('disk fmt', None), ('cnt format', None),
+                ('status', None), (True, False, None), ('owner id', None),
+                (dict(k1='v1', k2='v2'), {})):
+            r = self.client.update_image(*args[:-1], **args[-1])
+            (image_id, name, disk_format, container_format,
+            status, public, owner_id, properties) = args
+            self.assertEqual(r, FR.headers)
+            header_calls = [call('Content-Length', 0), ]
+            prf = 'X-Image-Meta-'
+            if name:
+                header_calls.append(call('%sName' % prf, name))
+            if disk_format:
+                header_calls.append(call('%sDisk-Format' % prf, disk_format))
+            if container_format:
+                header_calls.append(
+                    call('%sContainer-Format' % prf, container_format))
+            if status:
+                header_calls.append(call('%sStatus' % prf, status))
+            if public is not None:
+                header_calls.append(call('%sIs-Public' % prf, public))
+            if owner_id:
+                header_calls.append(call('%sOwner' % prf, owner_id))
+            for k, v in properties.items():
+                header_calls.append(call('%sProperty-%s' % (prf, k), v))
+            self.assertEqual(
+                sorted(set_header.mock_calls[hcnt:]), sorted(header_calls))
+            hcnt = len(set_header.mock_calls)
+            self.assertEqual(
+                put.mock_calls[-1], call('/images/%s' % image_id, success=200))
+
 
 if __name__ == '__main__':
     from sys import argv

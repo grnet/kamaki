@@ -11,6 +11,10 @@ Feature:
 CHANGELOG for version 0.9
 
 Bug Fixes:
+- Avoid loading optional cmd groups specified in same pkg with mantatory
+    comand groups, except if user requests otherwise ( #4114 )
+- Ignore subdir output in container_get with prefix+delimiter [#4134]
+- Fix the split-input bug in repeatable k=v args [#4232]
 
 - Stop shell from destroying the config instance
 - Shell can manage all valid command line arguments [#3716]
@@ -68,38 +72,50 @@ Changes:
 - Adjust authenticate to new url schema of synnefo>=0.14 [#3832, #3874]
   as a side effect, some renamings in astakos.AstakosClient:
    info --> user_info, user --> list_users
-- Modify command spec inits to use multiple clouds and explicit URLs [#3934]
+- Simplify listings (kamaki.cli.utils: print methods)
+- Enrich client API docs with examples and astakos endpoint information [#4135]
+- Show user names in /file sharers [#4203]
+- Show user name in image/server/network list [#4228]
+- Remove kamaki compute image properties add [#4231]
+- Image register file location format is changed:
+  pithos://<uuid>/<container>/<image path> --> <container>:<image path>
+  but Backwards compatibility is preserved for this version
 
 Features:
 
-- A logger module container a set of basic loging method for kamaki [#3668]
-   set/get_log_filename, add_file/strean_logger, get_logger
-- Implement logger.activate/deactivate for loggers [#3715]
-- Allow global args (e.g. -d for debug, -v for verbosity) to shell. They
-    should be used when invoking the shell. After that they are automatically
-    applied to all commands running in that kamaki shell. [#3716]
-- Implement a plankton-side image unregister [#3728]
-- Implement purging a non-empty container [#3662]
-- Add a -l option to upload, for listing uploaded objects details [#3730]
-- Add option to cache container info for upload_object [#3707]
-- Add enumeration to all listing commands, make it optional [#3739]
-- Add a download_to_string method in pithos client [#3608]
-- Add an upload_from_string method in pithos client [#3608]
-- Add pithos client method create_container [#3756]
-- Store image properties on remote location after image registration [#3769]
-- Add runtime args to image register for forcing or unsettitng property
-    storage [#3769]
-- Expand runtime args of image register for managing metadata and metada file
-    dumps and loads [#3797]
-- Add server-firewall-get command to get a VMs firewall profile
-- Implement an optional astakosclient cli exposed as "astakos", with the
-  following methods:
+- Add unittests in the folowing kamaki.cli packages: [#4058]
+    command_tree, argument, history, logger, utils
+- Implement an optional astakosclient cli exposed as "astakos", with the following methods:
     authenticate, uuid, username, quotas, service uuid/username/quotas
 - Add some astakos/keystone kamaki-lib api calls [#3874], used to access
   astakos-calls cache:
   get_services, get_service_details, get_service_endpoints
-- Implement --cloud arg to switch between clouds [#3913]
-- Automatically discover service endpoints by following the auth_url config
-  variable If auth_url not set, use <service>.url explicit endpoint instead
-- Apply new config file format (v3), auto-convert old files [#3934]
+- Implement floating ip methods for compute and cyclades clients [#3862]
+ ComputeRestClient: floating_ip_pools_get, floating_ips_get/post/delete
+ CycladesRestClient: floating_ip_pools_get, floating_ips_get/post/delete
+ ComputeClient: get_floating_ip_pools, get_floating_ips,
+    alloc/get_delete_floating_ip
+ CycladesClient: get_floating_ip_pools, get_floating_ips,
+    alloc/get_delete_floating_ip, dis/assoc_floating_ip_to_server
+- Add Examples to documentation
+- Implement floating IP commands
+    server ip list/create/delete/info/pools/attach/detach
+- Implement --wait for server_create/delete/start/reboot/shutdown [#3867]
+- Implement network_wait [#3862]
+- Implement user_list/set/whoami to switch between session users [#3632, #3660]
+- Expose more astakosclient methods in a 1to1 fashion [#4115]:
+    resources, feedback, endpoints,
+    commission_pending/info/action/accept/reject/resolve/issuejson/issue
+- Implement resize_server and expose it as server resize [#4153]
+- Expose the project API of astakosclient to kamaki CLI [#4155]
+- Full support for compute v2 basic API [#4139]
+- Use container:path format in register [#3778]
+- Guess mimetype when uploading and use it in upload [#4196]
+- Add upload local image abilities to register [#4206]
+    New register args: --update-image-file=/local/path, --no-progress-bar
+- Implement an astakos.post_user_catalogs call for getting usernames from a
+    list of user uuids [#4203]
+- Use multiformed ranges in file/pithos [#4059]
+- Implement more filters in image/network/flavor/server/file list [#4220]
+- Implement /image meta list/set/delete [#4231]  metadata and properties
 

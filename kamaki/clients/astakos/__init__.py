@@ -1,4 +1,4 @@
-# Copyright 2012 GRNET S.A. All rights reserved.
+# Copyright 2012-2013 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -31,8 +31,9 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from kamaki.clients import Client, ClientError
 from logging import getLogger
+
+from kamaki.clients import Client, ClientError
 
 
 class AstakosClient(Client):
@@ -41,6 +42,7 @@ class AstakosClient(Client):
     def __init__(self, base_url, token=None):
         super(AstakosClient, self).__init__(base_url, token)
         self._cache = {}
+        self._uuids = {}
         self.log = getLogger('__name__')
 
     def authenticate(self, token=None):
@@ -54,8 +56,14 @@ class AstakosClient(Client):
         """
         self.token = token or self.token
         body = dict(auth=dict(token=dict(id=self.token)))
-        self._cache[self.token] = self.post('/tokens', json=body).json
-        return self._cache[self.token]
+        r = self.post('/tokens', json=body).json
+        uuid = r['access']['user']['id']
+        self._uuids[self.token] = uuid
+        self._cache[uuid] = r
+        return self._cache[uuid]
+
+    def get_token(self, uuid):
+        return self._cache[uuid]['access']['token']['id']
 
     def get_services(self, token=None):
         """
@@ -64,7 +72,7 @@ class AstakosClient(Client):
         token_bu = self.token or token
         token = token or self.token
         try:
-            r = self._cache[token]
+            r = self._cache[self._uuids[token]]
         except KeyError:
             r = self.authenticate(token)
         finally:
@@ -117,10 +125,12 @@ class AstakosClient(Client):
 
     def list_users(self):
         """list cached users information"""
+        if not self._cache:
+            self.authenticate()
         r = []
         for k, v in self._cache.items():
             r.append(dict(v['access']['user']))
-            r[-1].update(dict(auth_token=k))
+            r[-1].update(dict(auth_token=self.get_token(k)))
         return r
 
     def user_info(self, token=None):
@@ -128,7 +138,7 @@ class AstakosClient(Client):
         token_bu = self.token or token
         token = token or self.token
         try:
-            r = self._cache[token]
+            r = self._cache[self._uuids[token]]
         except KeyError:
             r = self.authenticate(token)
         finally:
@@ -142,3 +152,18 @@ class AstakosClient(Client):
     def user_term(self, key, token=None):
         """Get (cached) term, from user credentials"""
         return self.user_info(token).get(key, None)
+
+    def post_user_catalogs(self, uuids=None, displaynames=None):
+        """POST base_url/user_catalogs
+
+        :param uuids: (list or tuple) user uuids
+
+        :param displaynames: (list or tuple) usernames (mut. excl. to uuids)
+
+        :returns: (dict) {uuid1: name1, uuid2: name2, ...} or oposite
+        """
+        account_url = self.get_service_endpoints('account')['publicURL']
+        account = AstakosClient(account_url, self.token)
+        json_data = dict(uuids=uuids) if (
+            uuids) else dict(displaynames=displaynames)
+        return account.post('user_catalogs', json=json_data)

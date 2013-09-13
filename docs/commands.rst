@@ -69,7 +69,10 @@ image (Plankton commands + Compute Image subcommands)
 .. code-block:: text
 
     list      :  List images accessible by user
-    meta      :  Get image metadata
+    info      :  Get image metadata
+    meta      :  Manage image metadata
+        set     :   Add / update metadata and properties for an image
+        delete  :   Remove/empty image metadata and/or custom properties
     register  :  (Re)Register an image
     unregister:  Unregister an image (does not delete the image file)
     shared    :  List shared images
@@ -78,7 +81,6 @@ image (Plankton commands + Compute Image subcommands)
         delete    :  Delete image
         info      :  Get image details
         properties:  Manage properties related to OS installation in an image
-            add   :  Add a property to an image
             delete:  Delete a property from an image
             get   :  Get an image property
             list  :  List all image properties
@@ -148,18 +150,26 @@ server (Compute/Cyclades)
     firewall:  Manage server's firewall profile
         set :  Set the server's firewall profile
         get :  Get the server's firewall profile
+    ip      :  Manage floating IPs for the servers
+        attach:  Attach a floating ip to a server with server_id
+        info  :  A floating IPs' details
+        detach:  Detach floating ip from server
+        list  :  List all floating ips
+        create:  Create a new floating IP
+        delete:  Delete a floating ip
+        pools :  List all floating pools of floating ips
     info    :  Get server details
     list    :  List servers
     metadata:  Manage Server Metadata
         list  :  List server metadata
         set   :  Add / update server metadata
         delete:  Delete a piece of server metadata
-    meta    :  Get a server's metadata
     reboot  :  Reboot a server
     rename  :  Update a server's name
     shutdown:  Shutdown a server
     start   :  Start a server
     stats   :  Get server statistics
+    resize  :  Set a different flavor for an existing server
     wait    :  Wait for server to finish
 
 Showcase: Create a server
