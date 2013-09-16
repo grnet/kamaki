@@ -35,14 +35,14 @@ from kamaki.clients.cyclades.rest_api import CycladesRestClient
 from kamaki.clients.network import NetworkClient
 from kamaki.clients.utils import path4url
 from kamaki.clients import ClientError, Waiter
-
+import json
 
 class CycladesClient(CycladesRestClient, Waiter):
     """Synnefo Cyclades Compute API client"""
 
     def create_server(
             self, name, flavor_id, image_id,
-            metadata=None, personality=None, networks=None):
+            metadata=None, personality=None, networks=None, project=None):
         """Submit request to create a new server
 
         :param name: (str)
@@ -64,6 +64,8 @@ class CycladesClient(CycladesRestClient, Waiter):
             ATTENTION: Empty list is different to None. None means ' do not
             mention it', empty list means 'automatically get an ip'
 
+        :param project: the project where to assign the server
+
         :returns: a dict with the new virtual server details
 
         :raises ClientError: wraps request errors
@@ -78,7 +80,8 @@ class CycladesClient(CycladesRestClient, Waiter):
 
         return super(CycladesClient, self).create_server(
             name, flavor_id, image_id,
-            metadata=metadata, personality=personality, networks=networks)
+            metadata=metadata, personality=personality, networks=networks,
+            project=project)
 
     def set_firewall_profile(self, server_id, profile, port_id):
         """Set the firewall profile for the public interface of a server
@@ -122,6 +125,11 @@ class CycladesClient(CycladesRestClient, Waiter):
         req = {'console': {'type': 'vnc'}}
         r = self.servers_action_post(server_id, json_data=req, success=200)
         return r.json['console']
+
+    def reassign_server(self, server_id, project):
+        req = {'reassign': {'project': project}}
+        r = self.servers_action_post(server_id, json_data=req, success=200)
+        return r.headers
 
     def get_server_stats(self, server_id):
         """
@@ -180,14 +188,34 @@ class CycladesNetworkClient(NetworkClient):
         r = self.get(path, success=200)
         return r.json['networks']
 
-    def create_network(self, type, name=None, shared=None):
+    def create_network(self, type, name=None, shared=None, project=None):
         req = dict(network=dict(type=type, admin_state_up=True))
         if name:
             req['network']['name'] = name
         if shared not in (None, ):
             req['network']['shared'] = bool(shared)
+        if project is not None:
+            req['network']['project'] = project
         r = self.networks_post(json_data=req, success=201)
         return r.json['network']
+
+    def networks_action_post(
+            self, network_id='', json_data=None, success=202, **kwargs):
+        """POST base_url/networks/<network_id>/action
+
+        :returns: request response
+        """
+        if json_data:
+            json_data = json.dumps(json_data)
+            self.set_header('Content-Type', 'application/json')
+            self.set_header('Content-Length', len(json_data))
+        path = path4url('networks', network_id, 'action')
+        return self.post(path, data=json_data, success=success, **kwargs)
+
+    def reassign_network(self, network_id, project):
+        req = {'reassign': {'project': project}}
+        r = self.networks_action_post(network_id, json_data=req, success=200)
+        return r.headers
 
     def list_ports(self, detail=None):
         path = path4url('ports', 'detail' if detail else '')
@@ -216,18 +244,27 @@ class CycladesNetworkClient(NetworkClient):
         return r.json['port']
 
     def create_floatingip(
-            self, floating_network_id=None, floating_ip_address=''):
+            self,
+            floating_network_id=None, floating_ip_address='', project_id=None):
         """
         :param floating_network_id: if not provided, it is assigned
             automatically by the service
-        :param floating_ip_address: only if the IP is availabel in network
-            pool
+        :param floating_ip_address: only if the IP is availabel in network pool
+        :param project_id: specific project to get resource quotas from
         """
         floatingip = {}
         if floating_network_id:
             floatingip['floating_network_id'] = floating_network_id
         if floating_ip_address:
             floatingip['floating_ip_address'] = floating_ip_address
+        if project_id:
+            floatingip['project'] = project_id
         r = self.floatingips_post(
             json_data=dict(floatingip=floatingip), success=200)
         return r.json['floatingip']
+
+    def reassign_floating_ip(self, floating_network_id, project_id):
+        """Change the project where this ip is charged"""
+        path = path4url('floatingips', floating_network_id, 'action')
+        json_data = dict(reassign=dict(project=project_id))
+        self.post(path, json=json_data, success=202)

@@ -189,6 +189,7 @@ class network_create(_init_network, _optional_json):
         name=ValueArgument('Network name', '--name'),
         shared=FlagArgument(
             'Make network shared (special privileges required)', '--shared'),
+        project=ValueArgument('Assign the network to project', '--project'),
         network_type=NetworkTypeArgument(
             'Valid network types: %s' % (', '.join(NetworkTypeArgument.types)),
             '--type')
@@ -199,12 +200,30 @@ class network_create(_init_network, _optional_json):
     @errors.cyclades.network_type
     def _run(self, network_type):
         net = self.client.create_network(
-            network_type, name=self['name'], shared=self['shared'])
+            network_type, name=self['name'],
+            shared=self['shared'],
+            project=self['project'])
         self._print(net, self.print_dict)
 
     def main(self):
         super(self.__class__, self)._run()
         self._run(network_type=self['network_type'])
+
+
+@command(network_cmds)
+class network_reassign(_init_network, _optional_json):
+    """Assign a network to a different project
+    """
+
+    @errors.generic.all
+    @errors.cyclades.connection
+    @errors.cyclades.network_id
+    def _run(self, network_id, project):
+        self.client.reassign_network(network_id, project)
+
+    def main(self, network_id, project):
+        super(self.__class__, self)._run()
+        self._run(network_id=network_id, project=project)
 
 
 @command(network_cmds)
@@ -607,7 +626,8 @@ class ip_create(_init_network, _optional_json):
     arguments = dict(
         network_id=ValueArgument(
             'The network to preserve the IP on', '--network-id'),
-        ip_address=ValueArgument('Allocate an IP address', '--address')
+        ip_address=ValueArgument('Allocate an IP address', '--address'),
+        project_id=ValueArgument('Assign the IP to project', '--project-id'),
     )
 
     @errors.generic.all
@@ -615,12 +635,28 @@ class ip_create(_init_network, _optional_json):
     def _run(self):
         self._print(
             self.client.create_floatingip(
-                self['network_id'], floating_ip_address=self['ip_address']),
+                self['network_id'],
+                floating_ip_address=self['ip_address'],
+                project_id=self['project_id']),
             self.print_dict)
 
     def main(self):
         super(self.__class__, self)._run()
         self._run()
+
+
+@command(ip_cmds)
+class ip_reassign(_init_network, _optional_output_cmd):
+    """Assign a floating IP to a different project
+    """
+    @errors.generic.all
+    @errors.cyclades.connection
+    def _run(self, ip, project):
+        self._optional_output(self.client.reassign_floating_ip(ip, project))
+
+    def main(self, IP, project):
+        super(self.__class__, self)._run()
+        self._run(ip=IP, project=project)
 
 
 @command(ip_cmds)

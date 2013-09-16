@@ -114,6 +114,7 @@ class ComputeClient(ComputeRestClient):
             metadata=None,
             personality=None,
             networks=None,
+            project=None,
             response_headers=dict(location=None)):
         """Submit request to create a new server
 
@@ -150,6 +151,9 @@ class ComputeClient(ComputeRestClient):
 
         if networks is not None:
             req['server']['networks'] = networks
+
+        if project:
+            req['server']['project'] = project
 
         r = self.servers_post(
             json_data=req,
