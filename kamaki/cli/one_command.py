@@ -31,10 +31,10 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-from kamaki.cli import get_command_group, set_command_params
-from kamaki.cli import print_subcommands_help, exec_cmd, update_parser_help
-from kamaki.cli import _groups_help, _load_spec_module
-from kamaki.cli import kloger
+from kamaki.cli import (
+    get_command_group, set_command_params, print_subcommands_help, exec_cmd,
+    update_parser_help, _groups_help, _load_spec_module,
+    init_cached_authenticator, kloger)
 from kamaki.cli.errors import CLIUnknownCommand
 
 
@@ -55,7 +55,7 @@ def _get_best_match_from_cmd_tree(cmd_tree, unparsed):
     return None
 
 
-def run(auth_base, cloud, parser, _help):
+def run(cloud, parser, _help):
     group = get_command_group(list(parser.unparsed), parser.arguments)
     if not group:
         parser.parser.print_help()
@@ -68,7 +68,8 @@ def run(auth_base, cloud, parser, _help):
     global _best_match
     _best_match = []
 
-    group_spec = parser.arguments['config'].get('global', '%s_cli' % group)
+    _cnf = parser.arguments['config']
+    group_spec = _cnf.get('global', '%s_cli' % group)
     spec_module = _load_spec_module(group_spec, parser.arguments, '_commands')
     if spec_module is None:
         raise CLIUnknownCommand(
@@ -98,9 +99,11 @@ def run(auth_base, cloud, parser, _help):
         exit(0)
 
     cls = cmd.cmd_class
+    auth_base = init_cached_authenticator(
+        _cnf.get_cloud(cloud, 'url'), _cnf.get_cloud(cloud, 'token').split(),
+        _cnf, kloger)
     executable = cls(parser.arguments, auth_base, cloud)
     parser.update_arguments(executable.arguments)
-    #parsed, unparsed = parse_known_args(parser, executable.arguments)
     for term in _best_match:
             parser.unparsed.remove(term)
     exec_cmd(executable, parser.unparsed, parser.parser.print_help)
