@@ -229,7 +229,7 @@ def _check_config_version(cnf):
 
 def _init_session(arguments, is_non_API=False):
     """
-    :returns: (AuthCachedClient, str) authenticator and cloud name
+    :returns: cloud name
     """
     global _help
     _help = arguments['help'].value
@@ -245,7 +245,7 @@ def _init_session(arguments, is_non_API=False):
     _setup_logging(_silent, _debug, _verbose, _include)
 
     if _help or is_non_API:
-        return None, None
+        return None
 
     _check_config_version(_cnf.value)
 
@@ -299,32 +299,34 @@ def _init_session(arguments, is_non_API=False):
                     'Set a %s for cloud %s:' % (term.upper(), cloud),
                     '  kamaki config set cloud.%s.%s <%s>' % (
                         cloud, term, term.upper())])
+    return cloud
 
+
+def init_cached_authenticator(url, tokens, config_module, logger):
     try:
         auth_base = None
-        for token in reversed(auth_args['token'].split()):
+        for token in reversed(tokens):
             try:
                 if auth_base:
                     auth_base.authenticate(token)
                 else:
-                    auth_base = AuthCachedClient(
-                        auth_args['url'], auth_args['token'])
+                    auth_base = AuthCachedClient(url, tokens)
                     from kamaki.cli.commands import _command_init
-                    fake_cmd = _command_init(arguments)
+                    fake_cmd = _command_init(dict(config=config_module))
                     fake_cmd.client = auth_base
                     fake_cmd._set_log_params()
                     fake_cmd._update_max_threads()
                     auth_base.authenticate(token)
             except ClientError as ce:
                 if ce.status in (401, ):
-                    kloger.warning(
-                        'WARNING: Failed to authorize token %s' % token)
+                    logger.warning(
+                        'WARNING: Failed to authenticate token %s' % token)
                 else:
                     raise
-        return auth_base, cloud
+        return auth_base
     except AssertionError as ae:
-        kloger.warning('WARNING: Failed to load authenticator [%s]' % ae)
-        return None, cloud
+        logger.warning('WARNING: Failed to load authenticator [%s]' % ae)
+        return None
 
 
 def _load_spec_module(spec, arguments, module):
@@ -475,17 +477,21 @@ def set_command_params(parameters):
 
 #  CLI Choice:
 
-def run_one_cmd(exe_string, parser, auth_base, cloud):
+def run_one_cmd(exe_string, parser, cloud):
     global _history
-    _history = History(
-        parser.arguments['config'].get_global('history_file'))
+    _history = History(parser.arguments['config'].get_global('history_file'))
     _history.add(' '.join([exe_string] + argv[1:]))
     from kamaki.cli import one_command
-    one_command.run(auth_base, cloud, parser, _help)
+    one_command.run(cloud, parser, _help)
 
 
-def run_shell(exe_string, parser, auth_base, cloud):
+def run_shell(exe_string, parser, cloud):
     from command_shell import _init_shell
+    global kloger
+    _cnf = parser.arguments['config']
+    auth_base = init_cached_authenticator(
+        _cnf.get_cloud(cloud, 'url'), _cnf.get_cloud(cloud, 'token').split(),
+        _cnf, kloger)
     try:
         username, userid = (
             auth_base.user_term('name'), auth_base.user_term('id'))
@@ -514,27 +520,27 @@ def main():
         if parser.arguments['version'].value:
             exit(0)
 
-        log_file = parser.arguments['config'].get_global('log_file')
+        _cnf = parser.arguments['config']
+        log_file = _cnf.get_global('log_file')
         if log_file:
             logger.set_log_filename(log_file)
         global filelog
         filelog = logger.add_file_logger(__name__.split('.')[0])
         filelog.info('* Initial Call *\n%s\n- - -' % ' '.join(argv))
 
-        auth_base, cloud = _init_session(parser.arguments, is_non_API(parser))
-
+        cloud = _init_session(parser.arguments, is_non_API(parser))
         from kamaki.cli.utils import suggest_missing
         global _colors
         exclude = ['ansicolors'] if not _colors == 'on' else []
         suggest_missing(exclude=exclude)
 
         if parser.unparsed:
-            run_one_cmd(exe, parser, auth_base, cloud)
+            run_one_cmd(exe, parser, cloud)
         elif _help:
             parser.parser.print_help()
             _groups_help(parser.arguments)
         else:
-            run_shell(exe, parser, auth_base, cloud)
+            run_shell(exe, parser, cloud)
     except CLIError as err:
         print_error_message(err)
         if _debug:
