@@ -48,7 +48,7 @@ except ImportError:
 
 
 class InvalidCloudNameError(Error):
-    """A valid cloud name is accepted by this regex: ([~@#$:-\w]+)"""
+    """A valid cloud name must pass through this regex: ([~@#$:-\w]+)"""
 
 
 log = getLogger(__name__)
@@ -91,8 +91,7 @@ DEFAULTS = {
         #  'astakos_cli': 'snf-astakos'
         #  'floating_cli': 'cyclades'
     },
-    CLOUD_PREFIX:
-    {
+    CLOUD_PREFIX: {
         #'default': {
         #    'url': '',
         #    'token': ''
