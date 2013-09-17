@@ -1,6 +1,7 @@
 CHANGELOG for version 0.11
 
 Bug Fixes:
+- Make authentication lazy (#4300)
 
 Changes:
 
