@@ -35,6 +35,8 @@ from mock import patch, call
 from unittest import TestCase
 from itertools import product
 import os
+from tempfile import NamedTemporaryFile
+from io import StringIO
 
 
 def _2steps_gen(limit=2):
@@ -92,8 +94,7 @@ class Config(TestCase):
                     self.assertEqual(c_items.mock_calls[-2:], gen_call)
                     c_set_cloud_num += 4
                     self.assertEqual(c_set_cloud.mock_calls[-4:], [
-                        call(r, 'k1', 'v1'), call(r, 'k2', 'v2'),
-                        call(r, 'k1', 'v1'), call(r, 'k2', 'v2')])
+                        call(r, 'k1', 'v1'), call(r, 'k2', 'v2')] * 2)
                     c_remove_section_num += 2
                     self.assertEqual(
                         c_remove_section.mock_calls[-2:], gen_call)
@@ -101,6 +102,116 @@ class Config(TestCase):
                 self.assertEqual(len(c_set_cloud.mock_calls), c_set_cloud_num)
                 self.assertEqual(
                     len(c_remove_section.mock_calls), c_remove_section_num)
+
+    def test__cloud_name(self):
+        from kamaki.cli.config import (
+            Config, CLOUD_PREFIX, InvalidCloudNameError)
+        cn = Config._cloud_name
+        self.assertEqual(cn('non%s name' % CLOUD_PREFIX), None)
+        for invalid in ('"!@#$%^&())_"', '"a b c"', u'"\xce\xcd"', 'naked'):
+            self.assertRaises(
+                InvalidCloudNameError, cn, '%s %s' % (CLOUD_PREFIX, invalid))
+        for valid in ('word', '~okeanos', 'd0t.ted', 'ha$h#ed'):
+            self.assertEqual(cn('%s "%s"' % (CLOUD_PREFIX, valid)), valid)
+
+    def test_rescue_old_file(self):
+        from kamaki.cli.config import Config
+        content0 = [
+            '#kamaki config file version 0.9\n',
+            '[global]\n',
+            'max_threads = 5\n',
+            'default_cloud = ~mycloud\n',
+            'file_cli = pithos\n',
+            'history_file = /home/user/.kamaki.history\n',
+            'colors = off\n',
+            'config_cli = config\n',
+            'history_cli = history\n',
+            'log_token = off\n',
+            'server_cli = cyclades\n',
+            'user_cli = astakos\n',
+            'log_data = off\n',
+            'flavor_cli = cyclades\n',
+            'image_cli = image\n',
+            'log_file = /home/user/.kamaki.log\n',
+            'network_cli = cyclades\n',
+            'log_pid = off\n',
+            '\n',
+            '[cloud "demo"]\n',
+            'url = https://demo.example.com\n',
+            'token = t0k3n-0f-d3m0-3x4mp13\n',
+            '\n',
+            '[cloud "~mycloud"]\n',
+            'url = https://example.com\n',
+            'pithos_container = images\n']
+
+        def make_file(lines):
+            f = NamedTemporaryFile()
+            f.writelines(lines)
+            f.flush()
+            return f
+
+        with make_file(content0) as f:
+            _cnf = Config(path=f.name)
+            self.assertEqual([], _cnf.rescue_old_file())
+        del _cnf
+
+        content1, sample = list(content0), 'xyz_cli = XYZ_specs'
+        content1.insert(2, '%s\n' % sample)
+
+        with make_file(content1) as f:
+            _cnf = Config(path=f.name)
+            self.assertEqual(['global.%s' % sample], _cnf.rescue_old_file())
+        del _cnf
+
+        content2, sample = list(content0), 'http://www.example2.org'
+        content2.insert(2, 'url = %s\n' % sample)
+        err = StringIO()
+
+        with make_file(content2) as f:
+            _cnf = Config(path=f.name)
+            self.assertEqual([], _cnf.rescue_old_file(err=err))
+            self.assertEqual(
+                '... rescue global.url => cloud.default.url\n', err.getvalue())
+            self.assertEqual(sample, _cnf.get_cloud('default', 'url'))
+        del _cnf
+
+        content3 = list(content0)
+        content3.insert(
+            2, 'url = http://example1.com\nurl = http://example2.com\n')
+
+        with make_file(content3) as f:
+            _cnf = Config(path=f.name)
+            self.assertEqual([], _cnf.rescue_old_file(err=err))
+            self.assertEqual(
+                2 * '... rescue global.url => cloud.default.url\n',
+                err.getvalue())
+            self.assertEqual(
+                'http://example2.com', _cnf.get_cloud('default', 'url'))
+        del _cnf
+
+        content4 = list(content0)
+        content4.insert(2, 'url = http://example1.com\n')
+        content4.append('\n[cloud "default"]\nurl=http://example2.com\n')
+
+        with make_file(content4) as f:
+            _cnf = Config(path=f.name)
+            from kamaki.cli.errors import CLISyntaxError
+            self.assertRaises(CLISyntaxError, _cnf.rescue_old_file)
+        del _cnf
+
+        content5 = list(content0)
+        extras = [
+            ('pithos_cli', 'pithos'), ('store_cli', 'pithos'),
+            ('storage_cli', 'pithos'), ('compute_cli', 'cyclades'),
+            ('cyclades_cli', 'cyclades')]
+        for sample in extras:
+            content5.insert(2, '%s = %s\n' % sample)
+
+        with make_file(content5) as f:
+            _cnf = Config(path=f.name)
+            self.assertEqual(
+                sorted(['global.%s = %s' % sample for sample in extras]),
+                 sorted(_cnf.rescue_old_file()))
 
 
 if __name__ == '__main__':
