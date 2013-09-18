@@ -327,6 +327,47 @@ class Config(TestCase):
             _cnf.set_global('opt', 'val')
             c_set.assert_called_once_with('global', 'opt', 'val')
 
+    def test__load_defaults(self):
+        from kamaki.cli.config import Config, DEFAULTS
+        _cnf = Config(path=self.f.name)
+
+        with patch('kamaki.cli.config.Config.set') as c_set:
+            _cnf._load_defaults()
+            for i, (section, options) in enumerate(DEFAULTS.items()):
+                for j, (option, val) in enumerate(options.items()):
+                    self.assertEqual(
+                        c_set.mock_calls[(i + 1) * j],
+                        call(section, option, val))
+
+    def test__get_dict(self):
+        from kamaki.cli.config import Config, CLOUD_PREFIX, DEFAULTS
+
+        def make_file(lines):
+            f = NamedTemporaryFile()
+            f.writelines(lines)
+            f.flush()
+            return f
+
+        with make_file([]) as f:
+            _cnf = Config(path=f.name)
+            for term in ('global', CLOUD_PREFIX):
+                self.assertEqual(DEFAULTS[term], _cnf._get_dict(term))
+            for term in ('nosection', ''):
+                self.assertEqual({}, _cnf._get_dict(term))
+
+        with make_file(self.config_file_content) as f:
+            _cnf = Config(path=f.name)
+            for term in ('global', CLOUD_PREFIX):
+                self.assertNotEqual(DEFAULTS[term], _cnf._get_dict(term))
+
+    def test_reload(self):
+        from kamaki.cli.config import Config
+        _cnf = Config(path=self.f.name)
+
+        with patch('kamaki.cli.config.Config.__init__') as i:
+            _cnf.reload()
+            i.assert_called_once_with(self.f.name)
+
 
 if __name__ == '__main__':
     from sys import argv
