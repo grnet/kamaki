@@ -54,6 +54,43 @@ _2value_gen = _2steps_gen()
 class Config(TestCase):
     """Test Config methods"""
 
+    config_file_content = [
+        '#kamaki config file version 0.9\n',
+        '[global]\n',
+        'max_threads = 5\n',
+        'default_cloud = ~mycloud\n',
+        'file_cli = pithos\n',
+        'history_file = /home/user/.kamaki.history\n',
+        'colors = off\n',
+        'config_cli = config\n',
+        'history_cli = history\n',
+        'log_token = off\n',
+        'server_cli = cyclades\n',
+        'user_cli = astakos\n',
+        'log_data = off\n',
+        'flavor_cli = cyclades\n',
+        'image_cli = image\n',
+        'log_file = /home/user/.kamaki.log\n',
+        'network_cli = cyclades\n',
+        'log_pid = off\n',
+        '\n',
+        '[cloud "demo"]\n',
+        'url = https://demo.example.com\n',
+        'token = t0k3n-0f-d3m0-3x4mp13\n',
+        '\n',
+        '[cloud "~mycloud"]\n',
+        'url = https://example.com\n',
+        'pithos_container = images\n']
+
+    def setUp(self):
+        self.f = NamedTemporaryFile()
+
+    def readDown(self):
+        try:
+            self.f.close()
+        except Exception:
+            pass
+
     @patch('kamaki.cli.config.Config.remove_section')
     @patch('kamaki.cli.config.Config.items', return_value=(
         ('k1', 'v1'), ('k2', 'v2')))
@@ -116,33 +153,8 @@ class Config(TestCase):
 
     def test_rescue_old_file(self):
         from kamaki.cli.config import Config
-        content0 = [
-            '#kamaki config file version 0.9\n',
-            '[global]\n',
-            'max_threads = 5\n',
-            'default_cloud = ~mycloud\n',
-            'file_cli = pithos\n',
-            'history_file = /home/user/.kamaki.history\n',
-            'colors = off\n',
-            'config_cli = config\n',
-            'history_cli = history\n',
-            'log_token = off\n',
-            'server_cli = cyclades\n',
-            'user_cli = astakos\n',
-            'log_data = off\n',
-            'flavor_cli = cyclades\n',
-            'image_cli = image\n',
-            'log_file = /home/user/.kamaki.log\n',
-            'network_cli = cyclades\n',
-            'log_pid = off\n',
-            '\n',
-            '[cloud "demo"]\n',
-            'url = https://demo.example.com\n',
-            'token = t0k3n-0f-d3m0-3x4mp13\n',
-            '\n',
-            '[cloud "~mycloud"]\n',
-            'url = https://example.com\n',
-            'pithos_container = images\n']
+
+        content0 = list(self.config_file_content)
 
         def make_file(lines):
             f = NamedTemporaryFile()
@@ -212,6 +224,108 @@ class Config(TestCase):
             self.assertEqual(
                 sorted(['global.%s = %s' % sample for sample in extras]),
                  sorted(_cnf.rescue_old_file()))
+
+    def test_guess_version(self):
+        from kamaki.cli.config import Config
+        from kamaki.cli.logger import add_file_logger
+
+        def make_log_file():
+            f = NamedTemporaryFile()
+            add_file_logger('kamaki.cli.config', filename=f.name)
+            return f
+
+        def make_file(lines):
+            f = NamedTemporaryFile()
+            f.writelines(lines)
+            f.flush()
+            return f
+
+        with make_file([]) as f:
+            with make_log_file() as logf:
+                _cnf = Config(path=f.name)
+                self.assertEqual(0.9, _cnf.guess_version())
+                exp = 'All heuristics failed, cannot decide\n'
+                logf.file.seek(- len(exp), 2)
+                self.assertEqual(exp, logf.read())
+
+        content0 = list(self.config_file_content)
+
+        with make_file(content0) as f:
+            with make_log_file() as logf:
+                _cnf = Config(path=f.name)
+                self.assertEqual(0.9, _cnf.guess_version())
+                exp = '... found cloud "demo"\n'
+                logf.seek(- len(exp), 2)
+                self.assertEqual(exp, logf.read())
+
+        for term in ('url', 'token'):
+            content1 = list(content0)
+            content1.insert(2, '%s = some_value' % term)
+
+            with make_file(content1) as f:
+                with make_log_file() as logf:
+                    _cnf = Config(path=f.name)
+                    self.assertEqual(0.8, _cnf.guess_version())
+                    exp = '..... config file has an old global section\n'
+                    logf.seek(- len(exp), 2)
+                    self.assertEqual(exp, logf.read())
+
+    def test_get_cloud(self):
+        from kamaki.cli.config import Config, CLOUD_PREFIX
+
+        _cnf = Config(path=self.f.name)
+        d = dict(opt1='v1', opt2='v2')
+        with patch('kamaki.cli.config.Config.get', return_value=d) as get:
+            self.assertEqual('v1', _cnf.get_cloud('mycloud', 'opt1'))
+            self.assertEqual(
+                get.mock_calls[-1], call(CLOUD_PREFIX, 'mycloud'))
+            self.assertRaises(KeyError, _cnf.get_cloud, 'mycloud', 'opt3')
+        with patch('kamaki.cli.config.Config.get', return_value=0) as get:
+            self.assertRaises(KeyError, _cnf.get_cloud, 'mycloud', 'opt1')
+
+    def test_get_global(self):
+        from kamaki.cli.config import Config
+
+        _cnf = Config(path=self.f.name)
+        with patch('kamaki.cli.config.Config.get', return_value='val') as get:
+            self.assertEqual('val', _cnf.get_global('opt'))
+            get.assert_called_once_with('global', 'opt')
+
+    @patch('kamaki.cli.config.Config.set')
+    def test_set_cloud(self, c_set):
+        from kamaki.cli.config import Config, CLOUD_PREFIX
+        _cnf = Config(path=self.f.name)
+
+        d = dict(k='v')
+        with patch('kamaki.cli.config.Config.get', return_value=d) as get:
+            _cnf.set_cloud('mycloud', 'opt', 'val')
+            get.assert_called_once_with(CLOUD_PREFIX, 'mycloud')
+            d['opt'] = 'val'
+            self.assertEqual(
+                c_set.mock_calls[-1], call(CLOUD_PREFIX, 'mycloud', d))
+
+        with patch('kamaki.cli.config.Config.get', return_value=None) as get:
+            _cnf.set_cloud('mycloud', 'opt', 'val')
+            get.assert_called_once_with(CLOUD_PREFIX, 'mycloud')
+            d = dict(opt='val')
+            self.assertEqual(
+                c_set.mock_calls[-1], call(CLOUD_PREFIX, 'mycloud', d))
+
+        with patch(
+                'kamaki.cli.config.Config.get', side_effect=KeyError()) as get:
+            _cnf.set_cloud('mycloud', 'opt', 'val')
+            get.assert_called_once_with(CLOUD_PREFIX, 'mycloud')
+            d = dict(opt='val')
+            self.assertEqual(
+                c_set.mock_calls[-1], call(CLOUD_PREFIX, 'mycloud', d))
+
+    def test_set_global(self):
+        from kamaki.cli.config import Config
+        _cnf = Config(path=self.f.name)
+
+        with patch('kamaki.cli.config.Config.set') as c_set:
+            _cnf.set_global('opt', 'val')
+            c_set.assert_called_once_with('global', 'opt', 'val')
 
 
 if __name__ == '__main__':

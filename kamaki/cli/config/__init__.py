@@ -257,7 +257,7 @@ class Config(RawConfigParser):
 
     def guess_version(self):
         """
-        :returns: (float) version of the config file or 0.0 if unrecognized
+        :returns: (float) version of the config file or 0.9 if unrecognized
         """
         checker = Config(self.path, with_defaults=False)
         sections = checker.sections()
