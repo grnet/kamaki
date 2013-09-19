@@ -38,6 +38,8 @@ import os
 from tempfile import NamedTemporaryFile
 from io import StringIO
 
+from kamaki.cli.config import HEADER
+
 
 def _2steps_gen(limit=2):
     counter, ret = 0, None
@@ -54,42 +56,55 @@ _2value_gen = _2steps_gen()
 class Config(TestCase):
     """Test Config methods"""
 
-    config_file_content = [
-        '#kamaki config file version 0.9\n',
-        '[global]\n',
-        'max_threads = 5\n',
-        'default_cloud = ~mycloud\n',
-        'file_cli = pithos\n',
-        'history_file = /home/user/.kamaki.history\n',
-        'colors = off\n',
-        'config_cli = config\n',
-        'history_cli = history\n',
-        'log_token = off\n',
-        'server_cli = cyclades\n',
-        'user_cli = astakos\n',
-        'log_data = off\n',
-        'flavor_cli = cyclades\n',
-        'image_cli = image\n',
-        'log_file = /home/user/.kamaki.log\n',
-        'network_cli = cyclades\n',
-        'log_pid = off\n',
-        '\n',
-        '[cloud "demo"]\n',
-        'url = https://demo.example.com\n',
-        'token = t0k3n-0f-d3m0-3x4mp13\n',
-        '\n',
-        '[cloud "~mycloud"]\n',
-        'url = https://example.com\n',
-        'pithos_container = images\n']
-
     def setUp(self):
         self.f = NamedTemporaryFile()
 
-    def readDown(self):
+        from kamaki.cli.config import DEFAULTS
+
+        self.DEFAULTS = dict()
+        for k, v in DEFAULTS.items():
+            self.DEFAULTS[k] = dict(v) if isinstance(v, dict) else v
+
+        self.config_file_content = [
+            HEADER,
+            '[global]\n',
+            'max_threads = 5\n',
+            'default_cloud = ~mycloud\n',
+            'file_cli = pithos\n',
+            'history_file = /home/user/.kamaki.history\n',
+            'colors = off\n',
+            'config_cli = config\n',
+            'history_cli = history\n',
+            'log_token = off\n',
+            'server_cli = cyclades\n',
+            'user_cli = astakos\n',
+            'log_data = off\n',
+            'flavor_cli = cyclades\n',
+            'image_cli = image\n',
+            'log_file = /home/user/.kamaki.log\n',
+            'network_cli = cyclades\n',
+            'log_pid = off\n',
+            '\n',
+            '[cloud "demo"]\n',
+            'url = https://demo.example.com\n',
+            'token = t0k3n-0f-d3m0-3x4mp13\n',
+            '\n',
+            '[cloud "~mycloud"]\n',
+            'url = https://example.com\n',
+            'pithos_container = images\n']
+
+    def tearDown(self):
         try:
             self.f.close()
         except Exception:
             pass
+        finally:
+            from kamaki.cli.config import DEFAULTS
+            keys = DEFAULTS.keys()
+            for k in keys:
+                DEFAULTS.pop(k)
+            for k, v in self.DEFAULTS.items():
+                DEFAULTS[k] = v
 
     @patch('kamaki.cli.config.Config.remove_section')
     @patch('kamaki.cli.config.Config.items', return_value=(
@@ -171,8 +186,10 @@ class Config(TestCase):
         content1.insert(2, '%s\n' % sample)
 
         with make_file(content1) as f:
+            f.seek(0)
             _cnf = Config(path=f.name)
-            self.assertEqual(['global.%s' % sample], _cnf.rescue_old_file())
+            self.assertEqual(
+                sorted(['global.%s' % sample]), sorted(_cnf.rescue_old_file()))
         del _cnf
 
         content2, sample = list(content0), 'http://www.example2.org'
@@ -367,6 +384,146 @@ class Config(TestCase):
         with patch('kamaki.cli.config.Config.__init__') as i:
             _cnf.reload()
             i.assert_called_once_with(self.f.name)
+
+    @patch('kamaki.cli.config.Config.get_cloud', return_value='get cloud')
+    def test_get(self, get_cloud):
+        from kamaki.cli.config import Config
+        _cnf = Config(path=self.f.name)
+        self.assertEqual('pithos', _cnf.get('global', 'file_cli'))
+        self.assertEqual(get_cloud.mock_calls, [])
+        for opt, sec in (('cloud', 'non-existing'), ('non-opt', 'exists')):
+            self.assertEqual(None, _cnf.get(opt, sec))
+            self.assertEqual(get_cloud.mock_calls, [])
+        self.assertEqual('get cloud', _cnf.get('cloud.demo', 'url'))
+        self.assertEqual(get_cloud.mock_calls[-1], call('demo', 'url'))
+
+    def test_set(self):
+        from kamaki.cli.config import Config, CLOUD_PREFIX
+        _cnf = Config(path=self.f.name)
+
+        with patch(
+                'kamaki.cli.config.Config._cloud_name',
+                return_value='cn') as _cloud_name:
+            with patch(
+                    'kamaki.cli.config.Config.set_cloud',
+                    return_value='sc') as set_cloud:
+                self.assertEqual(
+                    'sc', _cnf.set('%s.sec' % CLOUD_PREFIX, 'opt', 'val'))
+                self.assertEqual(
+                    _cloud_name.mock_calls[-1],
+                    call('%s "sec"' % CLOUD_PREFIX))
+                self.assertEqual(
+                    set_cloud.mock_calls[-1], call('cn', 'opt', 'val'))
+
+                self.assertTrue(len(_cnf.items('global')) > 0)
+                self.assertEqual(None, _cnf.set('global', 'opt', 'val'))
+                self.assertTrue(('opt', 'val') in _cnf.items('global'))
+
+                self.assertTrue(len(_cnf.items('new')) == 0)
+                self.assertEqual(None, _cnf.set('new', 'opt', 'val'))
+                self.assertTrue(('opt', 'val') in _cnf.items('new'))
+
+    def test_remove_option(self):
+        from kamaki.cli.config import Config
+        _cnf = Config(path=self.f.name)
+
+        self.assertEqual(len(_cnf.items('no-section')), 0)
+        _cnf.remove_option('no-section', 'opt', False)
+        self.assertEqual(len(_cnf.items('no-section')), 0)
+        _cnf.remove_option('no-section', 'opt', True)
+        self.assertEqual(len(_cnf.items('no-section')), 0)
+
+        opt_num = len(_cnf.items('global'))
+        self.assertTrue(opt_num > 0)
+        _cnf.remove_option('global', 'file_cli', False)
+        self.assertEqual(len(_cnf.items('global')), opt_num)
+        _cnf.remove_option('global', 'file_cli', True)
+        self.assertEqual(len(_cnf.items('global')), opt_num - 1)
+
+        _cnf.set('global', 'server_cli', 'alt-server')
+        self.assertTrue(('server_cli', 'alt-server') in _cnf.items('global'))
+        self.assertFalse(('server_cli', 'cyclades') in _cnf.items('global'))
+        _cnf.remove_option('global', 'server_cli', False)
+        self.assertFalse(('server_cli', 'alt-server') in _cnf.items('global'))
+        self.assertTrue(('server_cli', 'cyclades') in _cnf.items('global'))
+        _cnf.remove_option('global', 'server_cli', True)
+        self.assertFalse(('server_cli', 'alt-server') in _cnf.items('global'))
+        self.assertFalse(('server_cli', 'cyclades') in _cnf.items('global'))
+
+    def test_remove_from_cloud(self):
+        from kamaki.cli.config import Config, CLOUD_PREFIX
+        _cnf = Config(path=self.f.name)
+
+        d = dict(k1='v1', k2='v2')
+        with patch('kamaki.cli.config.Config.get', return_value=d) as get:
+            _cnf.remove_from_cloud('cld', 'k1')
+            self.assertEqual(d, dict(k2='v2'))
+            self.assertRaises(KeyError, _cnf.remove_from_cloud, 'cld', 'opt')
+            self.assertEqual(get.mock_calls, 2 * [call(CLOUD_PREFIX, 'cld')])
+
+    @patch(
+        'kamaki.cli.config.Config._get_dict',
+        return_value={'k1': 'v1', 'k2': 'v2'})
+    def test_keys(self, _get_dict):
+        from kamaki.cli.config import Config
+        _cnf = Config(path=self.f.name)
+
+        self.assertEqual(
+            sorted(['k1', 'k2']), sorted(_cnf.keys('opt', 'boolean')))
+        _get_dict.assert_called_once_with('opt', 'boolean')
+
+    @patch(
+        'kamaki.cli.config.Config._get_dict',
+        return_value={'k1': 'v1', 'k2': 'v2'})
+    def test_items(self, _get_dict):
+        from kamaki.cli.config import Config
+        _cnf = Config(path=self.f.name)
+
+        self.assertEqual(
+            sorted([('k1', 'v1'), ('k2', 'v2')]),
+            sorted(_cnf.items('opt', 'boolean')))
+        _get_dict.assert_called_once_with('opt', 'boolean')
+
+    def test_override(self):
+        from kamaki.cli.config import Config
+        _cnf = Config(path=self.f.name)
+
+        _cnf.override('sec', 'opt', 'val')
+        self.assertEqual(_cnf._overrides['sec']['opt'], 'val')
+
+    def test_write(self):
+        from kamaki.cli.config import Config, DEFAULTS
+        _cnf = Config(path=self.f.name)
+
+        exp = '%s[global]\n' % HEADER
+        exp += ''.join([
+            '%s = %s\n' % (k, v) for k, v in DEFAULTS['global'].items()])
+        exp += '\n'
+
+        _cnf.write()
+        self.f.seek(0)
+        self.assertEqual(self.f.read(), exp)
+
+        del _cnf
+        with NamedTemporaryFile() as f:
+            f.write('\n'.join(self.config_file_content))
+            f.flush()
+            _cnf = Config(path=f.name)
+            f.seek(0)
+            self.assertEqual(f.read(), '\n'.join(self.config_file_content))
+            _cnf.write()
+            f.seek(0)
+            file_contents = f.read()
+            for line in self.config_file_content:
+                self.assertTrue(line in file_contents)
+            _cnf.set('sec', 'opt', 'val')
+            _cnf.set('global', 'opt', 'val')
+            _cnf.set('global', 'file_cli', 'val')
+            _cnf.write()
+            f.seek(0)
+            file_contents = f.read()
+            for line in ('file_cli = val\n', '[sec]\n', 'opt = val\n'):
+                self.assertTrue(line in file_contents)
 
 
 if __name__ == '__main__':

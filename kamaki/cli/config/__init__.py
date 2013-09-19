@@ -358,14 +358,14 @@ class Config(RawConfigParser):
             return self.set_cloud(cloud, option, value)
         if section not in RawConfigParser.sections(self):
             self.add_section(section)
-        RawConfigParser.set(self, section, option, value)
+        return RawConfigParser.set(self, section, option, value)
 
     def remove_option(self, section, option, also_remove_default=False):
         try:
             if also_remove_default:
                 DEFAULTS[section].pop(option)
             RawConfigParser.remove_option(self, section, option)
-        except NoSectionError:
+        except (NoSectionError, KeyError):
             pass
 
     def remove_from_cloud(self, cloud, option):
