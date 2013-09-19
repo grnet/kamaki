@@ -10,6 +10,7 @@ Changes:
 - Remove commands.pithos.DelimiterArgument, replace with ValueArgument
     wherever it is used
 - Replace print methods with member print methods in _commands.* [#4292]
+- kamaki.cli.config is now a directory package [#4058]
 
 Features:
 
@@ -18,4 +19,5 @@ Features:
   errors
 - Modify print methods in cli utils to use arbitary stream objects [#4288]
 - Implement wrapers for cli.utils print methods, in _commands [#4292]
+- Implement unittests for kamaki.cli.config [#4058]
 
