@@ -84,7 +84,7 @@ class Cyclades(livetest.Generic):
 
     def _create_server(self, servername, flavorid, imageid, personality=None):
         server = self.client.create_server(
-            servername, flavorid, imageid, personality)
+            servername, flavorid, imageid, personality=personality)
         print('CREATE VM %s (%s)' % (server['id'], server['name']))
         self.servers[servername] = server
         return server
