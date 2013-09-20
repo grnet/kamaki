@@ -234,14 +234,15 @@ class UtilsMethods(TestCase):
                         title = sorted(set(title).intersection(item))
                         pick = item.get if with_redundancy else item.pop
                         header = ' '.join('%s' % pick(key) for key in title)
-                        self.assertEqual(
-                            bold.mock_calls[bold_counter], call(header))
-                        self.assertEqual(out.read(5), 'bold\n')
+                        if header:
+                            self.assertEqual(
+                                bold.mock_calls[bold_counter], call(header))
+                            self.assertEqual(out.read(5), 'bold\n')
+                            bold_counter += 1
                         self.assertEqual(
                             PD.mock_calls[pd_counter],
                             call(item, indent=INDENT_TAB, out=out))
                         pd_counter += 1
-                        bold_counter += 1
                     elif isinstance(item, list) or isinstance(item, tuple):
                         self.assertEqual(
                             PL.mock_calls[pl_counter],

@@ -1534,7 +1534,7 @@ class file_publish(_file_container_command):
     @errors.pithos.container
     @errors.pithos.object_path
     def _run(self):
-        self.println(self.client.publish_object(self.path))
+        self.writeln(self.client.publish_object(self.path))
 
     def main(self, container___path):
         super(self.__class__, self)._run(
@@ -1607,6 +1607,11 @@ class file_permissions_set(_file_container_command, _optional_output_cmd):
     -   write=<username>[,usegroup[,...]]
     E.g. to give read permissions for file F to users A and B and write for C:
     .       /file permissions set F read=A,B write=C
+    To share with everybody, use '*' instead of a user id or group.
+    E.g. to make file F available to all pithos users:
+        /file permissions set F read=*
+    E.g. to make file F available for editing to all pithos users:
+        /file permissions set F write=*
     """
 
     @errors.generic.all
@@ -1806,14 +1811,13 @@ class file_quota(_file_account_command, _optional_json):
     @errors.pithos.connection
     def _run(self):
 
-        def pretty_print(output):
+        def pretty_print(output, **kwargs):
             if not self['in_bytes']:
                 for k in output:
                     output[k] = format_size(output[k])
-            self.print_dict(output, '-')
+            self.print_dict(output, '-', **kwargs)
 
-        self._print(
-            self.client.get_account_quota(), pretty_print, out=self._out)
+        self._print(self.client.get_account_quota(), pretty_print)
 
     def main(self, custom_uuid=None):
         super(self.__class__, self)._run(custom_account=custom_uuid)

@@ -264,7 +264,8 @@ class _optional_json(object):
         if self['json_output']:
             print_json(output, out=self._out)
         else:
-            print_method(output, out=self._out, **print_method_kwargs)
+            print_method_kwargs.setdefault('out', self._out)
+            print_method(output, **print_method_kwargs)
 
 
 class _name_filter(object):

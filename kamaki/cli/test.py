@@ -38,6 +38,7 @@ from mock import patch, call
 from itertools import product
 
 from kamaki.cli.command_tree.test import Command, CommandTree
+from kamaki.cli.config.test import Config
 from kamaki.cli.argument.test import (
     Argument, ConfigArgument, RuntimeConfigArgument, FlagArgument,
     ValueArgument, IntArgument, DateArgument, VersionArgument,

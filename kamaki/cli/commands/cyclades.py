@@ -331,7 +331,7 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
     @errors.cyclades.flavor_id
     def _run(self, name, flavor_id, image_id):
         r = self.client.create_server(
-            name, int(flavor_id), image_id, self['personality'])
+            name, int(flavor_id), image_id, personality=self['personality'])
         usernames = self._uuids2usernames([r['user_id'], r['tenant_id']])
         r['user_id'] += ' (%s)' % usernames[r['user_id']]
         r['tenant_id'] += ' (%s)' % usernames[r['tenant_id']]

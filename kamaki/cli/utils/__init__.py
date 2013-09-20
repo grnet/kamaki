@@ -117,7 +117,8 @@ def print_json(data, out=stdout):
 
     :param out: Input/Output stream to dump values into
     """
-    out.writelines(unicode(dumps(data, indent=INDENT_TAB) + '\n'))
+    out.write(unicode(dumps(data, indent=INDENT_TAB) + '\n'))
+    out.flush()
 
 
 def print_dict(
@@ -155,17 +156,18 @@ def print_dict(
         print_str += u'%s.' % (i + 1) if with_enumeration else u''
         print_str += u'%s:' % k
         if isinstance(v, dict):
-            out.writelines(print_str + '\n')
+            out.write(print_str + '\n')
             print_dict(
                 v, exclude, indent + INDENT_TAB,
                 recursive_enumeration, recursive_enumeration, out)
         elif isinstance(v, list) or isinstance(v, tuple):
-            out.writelines(print_str + '\n')
+            out.write(print_str + '\n')
             print_list(
                 v, exclude, indent + INDENT_TAB,
                 recursive_enumeration, recursive_enumeration, out)
         else:
-            out.writelines(u'%s %s\n' % (print_str, v))
+            out.write(u'%s %s\n' % (print_str, v))
+        out.flush()
 
 
 def print_list(
@@ -201,18 +203,18 @@ def print_list(
         print_str += u'%s.' % (i + 1) if with_enumeration else u''
         if isinstance(item, dict):
             if with_enumeration:
-                out.writelines(print_str + '\n')
+                out.write(print_str + '\n')
             elif i and i < len(l):
-                out.writelines(u'\n')
+                out.write(u'\n')
             print_dict(
                 item, exclude,
                 indent + (INDENT_TAB if with_enumeration else 0),
                 recursive_enumeration, recursive_enumeration, out)
         elif isinstance(item, list) or isinstance(item, tuple):
             if with_enumeration:
-                out.writelines(print_str + '\n')
+                out.write(print_str + '\n')
             elif i and i < len(l):
-                out.writelines(u'\n')
+                out.write(u'\n')
             print_list(
                 item, exclude, indent + INDENT_TAB,
                 recursive_enumeration, recursive_enumeration, out)
@@ -221,7 +223,8 @@ def print_list(
             if item in exclude:
                 continue
             out.write(u'%s%s\n' % (print_str, item))
-            out.flush()
+        out.flush()
+    out.flush()
 
 
 def print_items(
@@ -244,7 +247,8 @@ def print_items(
         return
     if not (isinstance(items, dict) or isinstance(items, list) or isinstance(
                 items, tuple)):
-        out.writelines(u'%s\n' % items)
+        out.write(u'%s\n' % items)
+        out.flush()
         return
 
     for i, item in enumerate(items):
@@ -255,12 +259,14 @@ def print_items(
             title = sorted(set(title).intersection(item))
             pick = item.get if with_redundancy else item.pop
             header = u' '.join(u'%s' % pick(key) for key in title)
-            out.writelines((unicode(bold(header) if header else '') + '\n'))
+            out.write((unicode(bold(header) if header else '') + '\n'))
             print_dict(item, indent=INDENT_TAB, out=out)
         elif isinstance(item, list) or isinstance(item, tuple):
             print_list(item, indent=INDENT_TAB, out=out)
         else:
-            out.writelines(u' %s\n' % item)
+            out.write(u' %s\n' % item)
+        out.flush()
+    out.flush()
 
 
 def format_size(size, decimal_factors=False):
