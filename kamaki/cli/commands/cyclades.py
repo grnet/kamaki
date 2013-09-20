@@ -395,7 +395,9 @@ class server_reboot(_init_cyclades, _optional_output_cmd, _server_wait):
     """Reboot a server (VM)"""
 
     arguments = dict(
-        hard=FlagArgument('perform a hard reboot', ('-f', '--force')),
+        hard=FlagArgument(
+            'perform a hard reboot (deprecated)', ('-f', '--force')),
+        type=ValueArgument('SOFT or HARD - default: SOFT', ('--type')),
         wait=FlagArgument('Wait server to be destroyed', ('-w', '--wait'))
     )
 
@@ -403,7 +405,23 @@ class server_reboot(_init_cyclades, _optional_output_cmd, _server_wait):
     @errors.cyclades.connection
     @errors.cyclades.server_id
     def _run(self, server_id):
-        r = self.client.reboot_server(int(server_id), self['hard'])
+        hard_reboot = self['hard']
+        if hard_reboot:
+            self.error(
+                'WARNING: -f/--force will be deprecated in version 0.12\n'
+                '\tIn the future, please use --type=hard instead')
+        if self['type']:
+            if self['type'].lower() in ('soft', ):
+                hard_reboot = False
+            elif self['type'].lower() in ('hard', ):
+                hard_reboot = True
+            else:
+                raise CLISyntaxError(
+                    'Invalid reboot type %s' % self['type'],
+                    importance=2, details=[
+                        '--type values are either SOFT (default) or HARD'])
+
+        r = self.client.reboot_server(int(server_id), hard_reboot)
         self._optional_output(r)
 
         if self['wait']:
