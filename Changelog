@@ -20,4 +20,7 @@ Features:
 - Modify print methods in cli utils to use arbitary stream objects [#4288]
 - Implement wrapers for cli.utils print methods, in _commands [#4292]
 - Implement unittests for kamaki.cli.config [#4058]
+- Implement --type=SOFT/HARD argument for server reboot [#4338]
+    The old argument -f/--force <==> --type=HARD is kept for bw compatibility
+    A warning message guides users to stop using it
 
