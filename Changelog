@@ -1,3 +1,8 @@
+CHANGELOG for hotfix 0.10.2
+
+Bug Fixes:
+- Fix command error when creating server with personality [#4339]
+
 CHANGELOG for hotfix 0.10.1
 
 Bug Fixes:
