@@ -1,7 +1,7 @@
 Logging
 =======
 
-Kamaki uses the standard python logger package to log some of its
+Kamaki uses the standard Python logger package to log some of its
 functionality.
 
 All kamaki loggers are named or prefixed after the package they log, e.g.
@@ -29,7 +29,7 @@ Logger in external code
 
 When a logger is known to be in kamaki code, the script developer may use this
 logger to log some needed information. This can be happen either by directly
-using the python `logger` package, or the corresponding kamaki wraper
+using the Python `logger` package, or the corresponding kamaki wraper
 `kamaki.cli.logger` which allows the definition, activation and deactivation
 of stream (usually console) or file loggers.
 
@@ -95,11 +95,11 @@ Logger in kamaki code
 When implementing kamaki code, either as part of the main kamaki project or as
 an extension, it is often useful to use loggers. The suggested strategy is to
 use `kamaki.cli.logger` to create one logger per package, named after the
-package itself. Developers may also directly use the python logger module, but
+package itself. Developers may also directly use the Python logger module, but
 they should respect the naming conventions.
 
 In this example, we want to log the arguments of the `register` method found in
-`kamaki/clients/image/__init__.py`. We will use the python logger module.
+`kamaki/clients/image/__init__.py`. We will use the Python logger module.
 
 First, we should add a logger initializer at the top of the file.
 

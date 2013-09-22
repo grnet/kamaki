@@ -13,11 +13,11 @@ Existing kamaki users should consult the
 
 Kamaki has to be configured for a specific Synnefo deployment, with an
 authentication url and user token pair. Users should also pick an alias to name
-the cloud configuration. This can be any single word, e.g. "default", "mycloud"
+the cloud configuration. This can be any single word, e.g., "default", "mycloud"
 or whatever suits kamaki users.
 
 .. code-block:: console
-    
+
     $ kamaki config set cloud.<cloud alias>.url <cloud-authentication-URL>
     $ kamaki config set cloud.<cloud alias>.token myt0k3n==
 
@@ -28,15 +28,16 @@ Otherwise, a default cloud should be specified:
 
     $ kamaki config set default_cloud <cloud alias>
 
-Since Synnefo version 0.14, a synnefo cloud UI offers a single authentication
-URL, which should be set as the cloud URL for kamaki. All service-specific URLs
-are retrieved and handled automatically by kamaki, through this URL. Users of
-synnefo clouds >=0.14 are advised against using any service-specific URLs.
+Since version 0.14, Synnefo supports a single authentication URL for retrieving
+all API endpoints. This URL is retrieved from the Synnefo Web UI and should be
+set as the cloud URL for kamaki. All service-specific URLs are retrieved and
+handled automatically by kamaki, through this URL. Users of Synnefo clouds
+>=0.14 are advised against using any service-specific URLs.
 
 Migrating from kamaki 0.8.X to 0.9
 ----------------------------------
 
-This section refers to running installations of kamaki version <= 0.8.X To
+This section refers to running installations of kamaki version <= 0.8.X. To
 check the current kamaki version:
 
 .. code-block:: console
@@ -65,7 +66,7 @@ the kamaki config file conversion mechanism.
     ... rescue history.file => global.history_file
     ... DONE
     The following information will NOT be preserved:
-        global.account = 
+        global.account =
         global.data_log = on
         user.account = exampleuser@example.com
         user.url = https://accounts.okeanos.grnet.gr
@@ -163,7 +164,7 @@ bellow:
 
 .. code-block:: console
 
-    $ kamaki config getcloud 
+    $ kamaki config getcloud
      cloud.default.url = https://example.com/astakos.identity/v2.0/
      cloud.default.url = myd3f4u1770k3n==
      cloud.devel.url = https://devel.example.com/astakos/identity/v2.0/
@@ -190,25 +191,25 @@ One way to test this, is the `user athenticate` command:
 
     $ kamaki --cloud=devel user authenticate
      ...
-     user          : 
+     user          :
         id         :  725d5de4-1bab-45ac-9e98-38a60a8c543c
         name       :  Devel User
     $
     $ kamaki --cloud=testing user authenticate
      ...
-     user          : 
+     user          :
         id         :  4ed5d527-bab1-ca54-89e9-c345c8a06a83
         name       :  Testing User
     $
     $ kamaki --cloud=default user authenticate
      ...
-     user          : 
+     user          :
         id         :  4d3f4u17-u53r-4u7h-451n-4u7h3n7ic473
         name       :  Default User
     $
     $ kamaki user authenticate
      ...
-     user          : 
+     user          :
         id         :  4d3f4u17-u53r-4u7h-451n-4u7h3n7ic473
         name       :  Default User
     $
@@ -227,7 +228,7 @@ For installing any or all of the following, consult the
     * Can be switched on/off in kamaki configuration file: `colors = on/off`
     * Has not been tested on non unix / linux based platforms
 
-* mock 
+* mock
     * For kamaki contributors only
     * Allow unit tests to run on kamaki.clients package
     * Needs mock version 1.X or better
@@ -245,13 +246,13 @@ Configuration options
 There are two kinds of configuration options:
 
 * kamaki-related (global)
-    interface settings and constants of the kamaki internal mechanism, e.g.
+    interface settings and constants of the kamaki internal mechanism, e.g.,
     colors in the output, maximum threads per connection, custom logging or
     history files, etc.
 
 * cloud-related
     information needed to connect and use one or more clouds. There are some
-    mandatory options (URL, token) and some advanced / optional (e.g.
+    mandatory options (URL, token) and some advanced / optional (e.g.,
     service-specific URL overrides or versions)
 
 Kamaki comes with preset default values to all kamaki-releated configuration
@@ -319,7 +320,7 @@ prefix. The cloud handling cases are similar but with slightly different
 semantics:
 
 * kamaki config get cloud[.<cloud alias>[.option]]
-    * cloud 
+    * cloud
         list all clouds and their settings
     * cloud.<cloud alias>
         list settings of the cloud aliased as <cloud alias>. If no
@@ -354,7 +355,7 @@ The configuration file is a simple text file that can be created by the user.
 .. note:: users of kamaki < 0.9 can use kamaki 0.9.X to automatically convert
     their old configuration files to the new config file version (>= 3.0). To
     do this, follow `these instructions <#migrating-from-kamaki-0-8-x-to-0-9>`_
-    
+
 A simple way to create the configuration file is to set a configuration option
 using the kamaki config command. For example:
 
@@ -384,7 +385,7 @@ The [cloud "default"] section is special and is used to configure the default
 cloud cloud. Kamaki will not be able to run without setting the url and token
 values to that section.
 
-More clouds can be created  on the side of the default cloud, e.g using the
+More clouds can be created  on the side of the default cloud, e.g., using the
 examples at the `multiple clouds guide <#multiple-clouds>`_ ::
 
     [cloud "devel"]
@@ -511,11 +512,11 @@ After setup, kamaki can run all tests::
 
     $ kamaki livetest all
 
-a specific test (e.g. astakos)::
+a specific test (e.g., astakos)::
 
     $ kamaki livetest astakos
 
-or a specific method from a service (e.g. astakos authenticate)::
+or a specific method from a service (e.g., astakos authenticate)::
 
     $ kamaki livetest astakos authenticate
 

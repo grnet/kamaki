@@ -4,7 +4,7 @@ Installation
 This guide describes the standard installation process for kamaki, with the
 aspiration of covering as much cases as possible. Although kamaki was initially
 targeted to Linux/Unix-like users, it is quite straightforward to install and
-have it up and running in all platforms running python 2.6 or 2.7.
+have it up and running in all platforms running Python 2.6 or 2.7.
 
 
 * Kamaki repository: `http://code.grnet.gr/git/kamaki <http://code.grnet.gr/git/kamaki>`_
@@ -50,7 +50,8 @@ The following steps describe a command-line approach, but any graphic package ma
 Ubuntu
 ^^^^^^
 
-The following steps describe a command-line approach, but any graphic package manager can be used instead.
+The following steps describe a command-line approach, but any graphic package
+manager can be used instead.
 
 * Let ppa take care of the repository configuration:
 
@@ -135,7 +136,7 @@ Optional:
 Setup a virtual enviroment (optional)
 """""""""""""""""""""""""""""""""""""
 
-With virtualenv users can setup kamaki and synnefo services in a sandbox
+With virtualenv users can setup kamaki and Synnefo services in a sandbox
 environment.
 
 .. code-block:: console
@@ -225,10 +226,10 @@ Requirements
 
 * Setuptools (`Official versions and workarounds <http://pypi.python.org/pypi/setuptools>`_)
 
-Users who have already set up and wokring python and setuptools (e.g. for
-another project) may skip python and / or setup tools installation.
+Users who have already set up and wokring python and setuptools (e.g., for
+another project) may skip Python and / or setuptools installation.
 
-Install python
+Install Python
 ^^^^^^^^^^^^^^
 
 Download and run the Windows installer from
@@ -237,10 +238,10 @@ Download and run the Windows installer from
 Users should pick the installer that fits their windows version and machine
 architecture.
 
-Add python to windows path
+Add Python to windows path
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The following will allow users to run python and python scripts from command
+The following will allow users to run Python and Python scripts from command
 line.
 
 * Select **System** from the Control Panel, select the **Advanced** tab, the

@@ -1,13 +1,13 @@
 Usage
 =====
 
-Kamaki offers command line interfaces that implement specific command
+Kamaki offers command-line interfaces that implement specific command
 specifications. A detailed list of the command specifications can be found in
 `Commands <commands.html>`_ section. This guide covers the generic usage of
 both interfaces.
 
 What's more, kamaki offers a clients API that allows the development of
-external applications for synnefo. The clients API is listed in the
+external applications for Synnefo. The clients API is listed in the
 `Clients lib <developers/code.html#the-clients-api>`_ section.
 
 Quick Setup
@@ -33,15 +33,15 @@ for the cloud kamaki should communicate with by default:
 
 Shell vs one-command
 --------------------
-Kamaki users can access synnefo services through either the interactive shell
+Kamaki users can access Synnefo services through either the interactive shell
 or the one-command behaviors. In practice, both systems rely on the same
 command set implementations and API clients, with identical responses and error
 messages. Still, there are some differences.
 
 In favor of interactive shell behavior:
 
-* tab completion for commands (if supported by host command line shell)
-* session history with ↑ or ↓ keys (if supported by host command line shell)
+* tab completion for commands (if supported by the user's shell)
+* session history with ↑ or ↓ keys (if supported by the user's shell)
 * shorter commands with command context switching
 * re-run old commands with /history
 

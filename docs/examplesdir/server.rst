@@ -16,7 +16,7 @@ List available flavors
         SNF:disk_template: drbd
         disk:              1
         id:                1
-        links:            
+        links:
                 href: https://example.com/cyclades/compute/v2.0/flavors/1
                 rel:  bookmark
                 . . . . . . .
@@ -29,7 +29,7 @@ List available flavors
         SNF:disk_template: plain
         disk:              1
         id:                2
-        links:            
+        links:
                 href: https://example.com/cyclades/compute/v2.0/flavors/2
                 rel:  bookmark
                 . . . . . . .
@@ -55,22 +55,22 @@ f1r57-1m4g3-1d) image to create a new VM called 'My First Server'
 .. code-block:: console
 
     [kamaki]: server create 'My First Server' 1 f1r57-1m4g3-1d
-    accessIPv4:      
-    accessIPv6:      
-    addresses:      
+    accessIPv4:
+    accessIPv6:
+    addresses:
     adminPass:       Y0uW0nt5eeMeAg4in
-    attachments:    
-    config_drive:    
+    attachments:
+    config_drive:
     created:         2013-06-19T12:34:47.362078+00:00
-    diagnostics:    
-    flavor:         
+    diagnostics:
+    flavor:
             id:    1
-    hostId:          
+    hostId:
     id:              141
-    image:          
+    image:
             id:    f1r57-1m4g3-1d
     key_name:        None
-    metadata:       
+    metadata:
                    os:    debian
                    users: root
     name:            My First Server
@@ -119,7 +119,7 @@ Assume that the public key file of the current user is located at
 `/root/.ssh/authorized_keys` while creating the virtual server.
 
 Luckily, Synnefo fully supports the OpenStack suggestion for file injections on
-VMs and kamaki allows it by using the **-p** argument (p stands for 
+VMs and kamaki allows it by using the **-p** argument (p stands for
 `PERSONALITY` and is the term used in the
 `respective OpenStack <http://docs.openstack.org/api/openstack-compute/2/content/CreateServers.html>`_ description).
 
@@ -141,22 +141,22 @@ Create a vm while injecting current users public key to root account
 
     [kamaki]: server
     [server]: create 'NoPassword Server' 1 f1r57-1m4g3-1d -p /home/someuser/.ssh/id_rsa.pub,/root/.ssh/authorized_keys
-    accessIPv4:      
-    accessIPv6:      
-    addresses:      
+    accessIPv4:
+    accessIPv6:
+    addresses:
     adminPass:       Th1s1s4U5elessTh1ngN0w
-    attachments:    
-    config_drive:    
+    attachments:
+    config_drive:
     created:         2013-06-19T12:34:47.362078+00:00
-    diagnostics:    
-    flavor:         
+    diagnostics:
+    flavor:
             id:    1
-    hostId:          
+    hostId:
     id:              142
-    image:          
+    image:
             id:     f1r57-1m4g3-1d
     key_name:        None
-    metadata:       
+    metadata:
                     os:    debian
                     users: root
     name:           No Password Server
