@@ -59,12 +59,12 @@ about_authentication = '\nUser Authentication:\
     \n* to set authentication token: /config set cloud.<cloud>.token <token>'
 
 howto_personality = [
-    'Defines a file to be injected to VMs file system.',
+    'Defines a file to be injected to virtual servers file system.',
     'syntax:  PATH,[SERVER_PATH,[OWNER,[GROUP,[MODE]]]]',
     '  PATH: local file to be injected (relative or absolute)',
     '  SERVER_PATH: destination location inside server Image',
-    '  OWNER: VMs user id of the remote destination file',
-    '  GROUP: VMs group id or name of the destination file',
+    '  OWNER: virtual servers user id of the remote destination file',
+    '  GROUP: virtual servers group id or name of the destination file',
     '  MODEL: permition in octal (e.g. 0777 or o+rwx)']
 
 
@@ -146,7 +146,8 @@ class server_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
         since=DateArgument(
             'show only items since date (\' d/m/Y H:M:S \')',
             '--since'),
-        limit=IntArgument('limit number of listed VMs', ('-n', '--number')),
+        limit=IntArgument(
+            'limit number of listed virtual servers', ('-n', '--number')),
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
             '--more'),
@@ -346,8 +347,9 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
 
 @command(server_cmds)
 class server_rename(_init_cyclades, _optional_output_cmd):
-    """Set/update a server (VM) name
-    VM names are not unique, therefore multiple servers may share the same name
+    """Set/update a virtual server name
+    virtual server names are not unique, therefore multiple servers may share
+    the same name
     """
 
     @errors.generic.all
@@ -364,7 +366,7 @@ class server_rename(_init_cyclades, _optional_output_cmd):
 
 @command(server_cmds)
 class server_delete(_init_cyclades, _optional_output_cmd, _server_wait):
-    """Delete a server (VM)"""
+    """Delete a virtual server"""
 
     arguments = dict(
         wait=FlagArgument('Wait server to be destroyed', ('-w', '--wait'))
@@ -392,7 +394,7 @@ class server_delete(_init_cyclades, _optional_output_cmd, _server_wait):
 
 @command(server_cmds)
 class server_reboot(_init_cyclades, _optional_output_cmd, _server_wait):
-    """Reboot a server (VM)"""
+    """Reboot a virtual server"""
 
     arguments = dict(
         hard=FlagArgument(
@@ -434,7 +436,7 @@ class server_reboot(_init_cyclades, _optional_output_cmd, _server_wait):
 
 @command(server_cmds)
 class server_start(_init_cyclades, _optional_output_cmd, _server_wait):
-    """Start an existing server (VM)"""
+    """Start an existing virtual server"""
 
     arguments = dict(
         wait=FlagArgument('Wait server to be destroyed', ('-w', '--wait'))
@@ -464,7 +466,7 @@ class server_start(_init_cyclades, _optional_output_cmd, _server_wait):
 
 @command(server_cmds)
 class server_shutdown(_init_cyclades, _optional_output_cmd, _server_wait):
-    """Shutdown an active server (VM)"""
+    """Shutdown an active virtual server"""
 
     arguments = dict(
         wait=FlagArgument('Wait server to be destroyed', ('-w', '--wait'))
@@ -494,10 +496,10 @@ class server_shutdown(_init_cyclades, _optional_output_cmd, _server_wait):
 
 @command(server_cmds)
 class server_console(_init_cyclades, _optional_json):
-    """Get a VNC console to access an existing server (VM)
+    """Get a VNC console to access an existing virtual server
     Console connection information provided (at least):
     - host: (url or address) a VNC host
-    - port: (int) the gateway to enter VM on host
+    - port: (int) the gateway to enter virtual server on host
     - password: for VNC authorization
     """
 
@@ -535,12 +537,12 @@ class server_resize(_init_cyclades, _optional_output_cmd):
 
 @command(server_cmds)
 class server_firewall(_init_cyclades):
-    """Manage server (VM) firewall profiles for public networks"""
+    """Manage virtual server firewall profiles for public networks"""
 
 
 @command(server_cmds)
 class server_firewall_set(_init_cyclades, _optional_output_cmd):
-    """Set the server (VM) firewall profile on VMs public network
+    """Set the firewall profile on virtual server public network
     Values for profile:
     - DISABLED: Shutdown firewall
     - ENABLED: Firewall in normal mode
@@ -562,7 +564,7 @@ class server_firewall_set(_init_cyclades, _optional_output_cmd):
 
 @command(server_cmds)
 class server_firewall_get(_init_cyclades):
-    """Get the server (VM) firewall profile for its public network"""
+    """Get the firewall profile for a virtual servers' public network"""
 
     @errors.generic.all
     @errors.cyclades.connection
@@ -577,7 +579,7 @@ class server_firewall_get(_init_cyclades):
 
 @command(server_cmds)
 class server_addr(_init_cyclades, _optional_json):
-    """List the addresses of all network interfaces on a server (VM)"""
+    """List the addresses of all network interfaces on a virtual server"""
 
     arguments = dict(
         enum=FlagArgument('Enumerate results', '--enumerate')
@@ -620,7 +622,7 @@ class server_metadata_list(_init_cyclades, _optional_json):
 
 @command(server_cmds)
 class server_metadata_set(_init_cyclades, _optional_json):
-    """Set / update server(VM) metadata
+    """Set / update virtual server metadata
     Metadata should be given in key/value pairs in key=value format
     For example: /server metadata set <server id> key1=value1 key2=value2
     Old, unreferenced metadata will remain intact
@@ -655,7 +657,7 @@ class server_metadata_set(_init_cyclades, _optional_json):
 
 @command(server_cmds)
 class server_metadata_delete(_init_cyclades, _optional_output_cmd):
-    """Delete server (VM) metadata"""
+    """Delete virtual server metadata"""
 
     @errors.generic.all
     @errors.cyclades.connection
@@ -672,7 +674,7 @@ class server_metadata_delete(_init_cyclades, _optional_output_cmd):
 
 @command(server_cmds)
 class server_stats(_init_cyclades, _optional_json):
-    """Get server (VM) statistics"""
+    """Get virtual server statistics"""
 
     @errors.generic.all
     @errors.cyclades.connection

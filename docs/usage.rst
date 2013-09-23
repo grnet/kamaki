@@ -6,8 +6,8 @@ specifications. A detailed list of the command specifications can be found in
 `Commands <commands.html>`_ section. This guide covers the generic usage of
 both interfaces.
 
-What's more, kamaki offers a clients API that allows the development of
-external applications for Synnefo. The clients API is listed in the
+What's more, kamaki offers a clients library for the development of external
+client applications for Synnefo. The clients library API is detailed in the
 `Clients lib <developers/code.html#the-clients-api>`_ section.
 
 Quick Setup
@@ -34,18 +34,18 @@ for the cloud kamaki should communicate with by default:
 Shell vs one-command
 --------------------
 Kamaki users can access Synnefo services through either the interactive shell
-or the one-command behaviors. In practice, both systems rely on the same
+or the one-command interface. In practice, both systems rely on the same
 command set implementations and API clients, with identical responses and error
 messages. Still, there are some differences.
 
-In favor of interactive shell behavior:
+In favor of interactive shell:
 
 * tab completion for commands (if supported by the user's shell)
 * session history with ↑ or ↓ keys (if supported by the user's shell)
 * shorter commands with command context switching
 * re-run old commands with /history
 
-In favor of one-command behavior:
+In favor of one-command:
 
 * can be used along with advanced shell features (pipelines, redirection, etc.)
 * can be used in shell scripts
@@ -64,7 +64,8 @@ To use kamaki as a shell, run:
 
     $ kamaki
 
-* with any kind of '-' prefixed arguments, except '-h', '--help'.
+* with any kind of '-' prefixed arguments, except '-h', '--help', '-V',
+    '- - version'.
 
 .. code-block:: console
     :emphasize-lines: 1
@@ -92,7 +93,7 @@ To use kamaki as an one-command tool, run:
 .. code-block:: console
     :emphasize-lines: 1
 
-    Example 2.3.2: List VMs managed by user
+    Example 2.3.2: List servers managed by user
 
     $ kamaki server list
 
@@ -170,20 +171,20 @@ and of a command in that group (list) are shown.
 
     Options:
      - - - -
-    addr    :  List the addresses of all network interfaces on a server (VM)
-    console :  Get a VNC console to access an existing server (VM)
+    addr    :  List the addresses of all network interfaces on a server (server)
+    console :  Get a VNC console to access an existing server (server)
     create  :  Create a server (aka Virtual Machine)
-    delete  :  Delete a server (VM)
-    firewall:  Manage server (VM) firewall profiles for public networks
+    delete  :  Delete a server (server)
+    firewall:  Manage server (server) firewall profiles for public networks
     ip      :  Manage floating IPs for the servers
     info    :  Detailed information on a Virtual Machine
     list    :  List Virtual Machines accessible by user
     metadata:  Manage Server metadata (key:value pairs of server attributes)
-    reboot  :  Reboot a server (VM)
-    rename  :  Set/update a server (VM) name
-    shutdown:  Shutdown an active server (VM)
-    start   :  Start an existing server (VM)
-    stats   :  Get server (VM) statistics
+    reboot  :  Reboot a server (server)
+    rename  :  Set/update a server (server) name
+    shutdown:  Shutdown an active server (server)
+    start   :  Start an existing server (server)
+    stats   :  Get server (server) statistics
     resize  :  Set a different flavor for an existing server
     wait    :  Wait for server to finish [BUILD, STOPPED, REBOOT, ACTIVE]
 
@@ -221,7 +222,7 @@ and of a command in that group (list) are shown.
     --more                output results in pages (-n to set items per page,
                           default 10)
     -n LIMIT, --number LIMIT
-                          limit number of listed VMs
+                          limit number of listed servers
     -j, --json            show headers in json
 
 .. _using-history-ref:
@@ -406,7 +407,7 @@ A user might **browse** through different contexts during one session.
     [file]: exit
     [kamaki]: server
     [server]: list
-    ... (VMs listing) ...
+    ... (servers listing) ...
     [server]: exit
     [kamaki]:
 
@@ -424,7 +425,7 @@ from the **top context**. As a result, examples 4.1.3 and 4.1.4 are equivalent.
     [kamaki]: file list
     ... (storage container listing) ...
     [kamaki]: server list
-    ... (VMs listing) ...
+    ... (servers listing) ...
     [kamaki]:
 
 Using Help
@@ -559,15 +560,15 @@ top-level commands. Kamaki offers access to top-level commands by using the
     [context]: /anothercontext cmd1 cmd2 ... cmdN
 
 An example (4.3.1) that showcases how top-level access improves user experience
-is the creation of a VM. A VM is created with the command server-create. This
+is the creation of a server. A server is created with the command server-create. This
 command is called with three parameters:
 
-* the name of the new VM
+* the name of the new server
 * the flavor id
 * the image id
 
 It is often the case that a user who works in the context command, needs to
-create a new VM, but hasn't selected a flavor or an image id, or cannot recall
+create a new server, but hasn't selected a flavor or an image id, or cannot recall
 the id of that flavor or image. Therefore, it is necessary to list all
 available flavors (flavor-list) or images (image-compute-list). Both commands
 belong to different contexts.
@@ -575,7 +576,7 @@ belong to different contexts.
 .. code-block:: console
     :emphasize-lines: 1
 
-    Example 4.3.1: Create a VM from server context
+    Example 4.3.1: Create a server from server context
 
     [server]: create -h
     create <name> <flavor id> <image id> ...

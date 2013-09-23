@@ -90,31 +90,13 @@ Install mock (for developers only)
 
     $ sudo apt-get install python-mock=1.0.1
 
-.. hint:: To activate functional tests in kamaki. enable the preconfigured
+.. hint:: To activate functional tests in kamaki enable the preconfigured
     *livetest* command group:
 
     .. code-block:: console
 
         $ kamaki config set livetest_cli livetest
 
-
-Install astakosclient (optional)
-""""""""""""""""""""""""""""""""
-
-A seperate project called
-`astakosclient <https://pypi.python.org/pypi/astakosclient>`_ can be used for
-advanced user and service management.
-
-.. code-block:: console
-
-    $ apt-get install python-astakosclient
-
-.. hint:: To activate astakosclient commands in kamaki, enable the
-    preconfigured *astakos* command group:
-
-    .. code-block:: console
-
-        $ kamaki config set astakos_cli astakos
 
 .. _installing-from-pypi-ref:
 
@@ -136,7 +118,7 @@ Optional:
 Setup a virtual enviroment (optional)
 """""""""""""""""""""""""""""""""""""
 
-With virtualenv users can setup kamaki and Synnefo services in a sandbox
+Use virtualenv to setup kamaki and Synnefo services in a sandbox
 environment.
 
 .. code-block:: console
@@ -187,28 +169,11 @@ mock.
 
         $ kamaki config set livetest_cli livetest
 
-Install astakosclient
-"""""""""""""""""""""
-
-A seperate project called
-`astakosclient <https://pypi.python.org/pypi/astakosclient>`_ can be used for
-advanced user and service management.
-
-.. code-block:: console
-
-    $ pip install astakosclient
-
-.. hint:: To activate astakosclient commands in kamaki, enable the
-    preconfigured *astakos* command group:
-
-    .. code-block:: console
-
-        $ kamaki config set astakos_cli astakos
 
 Mac OS X
 --------
 
-Kamaki can be installed on Mac OS X systems from source, by following the steps
+Kamaki can be installed on Mac OS X systems, by following the steps
 at :ref:`installing-from-pypi-ref`.
 
 Windows
@@ -226,7 +191,7 @@ Requirements
 
 * Setuptools (`Official versions and workarounds <http://pypi.python.org/pypi/setuptools>`_)
 
-Users who have already set up and wokring python and setuptools (e.g., for
+Users who have already set up python and setuptools (e.g., for
 another project) may skip Python and / or setuptools installation.
 
 Install Python
@@ -264,10 +229,10 @@ According to the corresponding
 `python org page <http://pypi.python.org/pypi/setuptools>`_, the setuptools
 installer doesn't currently work on 64bit machines.
 
-* Users with 32-bit operating systems should download and run the graphic
+* Users with 32-bit platforms should download and run the graphic
     installer
 
-* Users with 64-bit machines should download the
+* Users with 64-bit platforms should download the
     `ez_setup.py <http://peak.telecommunity.com/dist/ez_setup.py>`_ script and
     install it from a command shell. In the following example, the script was
     downloaded at C:\\Downloads::

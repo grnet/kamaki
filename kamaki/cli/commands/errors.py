@@ -239,7 +239,7 @@ class cyclades(object):
                 elif network_id or ce.status == 421:
                     msg = 'Network with id %s is in use' % network_id,
                     raiseCLIError(ce, msg, details=[
-                        'Disconnect all nics/VMs of this network first',
+                        'Disconnect all nics/servers of this network first',
                         '* to get nics: /network info %s' % network_id,
                         '.  (under "attachments" section)',
                         '* to disconnect: /network disconnect <nic id>'])
@@ -274,7 +274,7 @@ class cyclades(object):
                 server_id = int(server_id)
                 return foo(self, *args, **kwargs)
             except ValueError as ve:
-                msg = 'Invalid server(VM) id %s' % server_id,
+                msg = 'Invalid virtual server id %s' % server_id,
                 details = ['id must be a positive integer'],
                 raiseCLIError(ve, msg, details=details, importance=1)
             except ClientError as ce:
@@ -284,10 +284,10 @@ class cyclades(object):
                 ) or (
                     ce.status == 400 and 'not found' in err_msg
                 ):
-                    msg = 'server(VM) with id %s not found' % server_id,
+                    msg = 'virtual server with id %s not found' % server_id,
                     raiseCLIError(ce, msg, details=[
-                        '* to get existing VM ids: /server list',
-                        '* to get VM details: /server info <VM id>'])
+                        '* to get ids of all servers: /server list',
+                        '* to get server details: /server info <server id>'])
                 raise
         return _raise
 
@@ -321,14 +321,14 @@ class cyclades(object):
                     'network interface' in ('%s' % ce).lower()
                 ):
                     server_id = kwargs.get('server_id', '<no server>')
-                    err_msg = 'No nic %s on server(VM) with id %s' % (
+                    err_msg = 'No nic %s on virtual server with id %s' % (
                         nic_id,
                         server_id)
                     raiseCLIError(ce, err_msg, details=[
-                        '* check server(VM) with id %s: /server info %s' % (
+                        '* check v. server with id %s: /server info %s' % (
                             server_id,
                             server_id),
-                        '* list nics for server(VM) with id %s:' % server_id,
+                        '* list nics for v. server with id %s:' % server_id,
                         '      /server addr %s' % server_id])
                 raise
         return _raise
@@ -357,7 +357,8 @@ class cyclades(object):
                 if key and ce.status == 404 and (
                     'metadata' in ('%s' % ce).lower()
                 ):
-                        raiseCLIError(ce, 'No VM metadata with key %s' % key)
+                        raiseCLIError(
+                            ce, 'No v. server metadata with key %s' % key)
                 raise
         return _raise
 
