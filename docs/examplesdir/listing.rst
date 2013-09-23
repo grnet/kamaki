@@ -129,14 +129,14 @@ List pithos containers with details
     bytes:    0 (0B)
     count:    3
     modified: 2013-06-17T12:35:11.613124+00:00
-    policy:  
+    policy:
     .       quota:      0
     .       versioning: auto
     trash
     bytes:    0 (0B)
     count:    0
     modified: 2013-06-06T14:24:23.675891+00:00
-    policy:  
+    policy:
     .       quota:      0
     .       versioning: auto
     [file]:
@@ -175,7 +175,7 @@ List only 3, then list three by three
     cont4 (0B, 0 objects)
     pithos (36B, 4 objects)
     trash (0B, 0 objects)
-    [file]: 
+    [file]:
 
 List contents of container `pithos`
 
@@ -315,31 +315,31 @@ Get json output returned by the compute API server (only first two VMs)
     [server]: list -j -n 2
     [
         {
-            "name": "example server 1", 
+            "name": "example server 1",
             "links": [
               {
                 "href": "https://example.com/compute/v2.0/servers/4201",
                 "rel": "self"
-              }, 
+              },
               {
                 "href": "https://example.com/compute/v2.0/servers/4201",
                 "rel": "bookmark"
               }
-            ], 
+            ],
             "id": 4201
           },
           {
-            "name": "example server 2", 
+            "name": "example server 2",
             "links": [
               {
                 "href": "https://example.com/compute/v2.0/servers/4202",
                 "rel": "self"
-              }, 
+              },
               {
                 "href": "https://example.com/compute/v2.0/servers/4202",
                 "rel": "bookmark"
               }
-            ], 
+            ],
             "id": 4202
           }
     ]
@@ -351,9 +351,9 @@ Server details (first two only)
 
     [server]: list -l -n 2
     4201 my example server 1
-        accessIPv4:      
-        accessIPv6:      
-        addresses:      
+        accessIPv4:
+        accessIPv6:
+        addresses:
                     42:
                            OS-EXT-IPS:type: fixed
                            addr:            192.168.12.4
@@ -362,23 +362,23 @@ Server details (first two only)
                            OS-EXT-IPS:type: fixed
                            addr:            2001:648:2ffc:1222:a800:2ff:fee3:49f1
                            version:         6
-        attachments:    
+        attachments:
                        firewallProfile: DISABLED
                        id:              nic-37231-0
                        ipv4:            192.168.12.4
                        ipv6:            2001:648:2ffc:1222:a800:2ff:fee3:49f1
                        mac_address:     aa:00:02:e3:49:f8
                        network_id:      4161
-        config_drive:    
+        config_drive:
         created:         2013-05-11T18:03:41.471605+00:00
-        diagnostics:    
+        diagnostics:
                        created:     2013-05-11T18:04:23.298132+00:00
                        details:     None
                        level:       DEBUG
                        message:     Image customization finished successfully.
                        source:      image-info
                        source_date: 2013-05-11T18:04:23.286869+00:00
-        flavor:         
+        flavor:
                     id:    1
                     links:
                             href: https://example.com/compute/v2.0/flavors/1
@@ -386,8 +386,8 @@ Server details (first two only)
                          . . . . . . .
                             href: https://example.com/compute/v2.0/flavors/1
                             rel:  self
-        hostId:          
-        image:          
+        hostId:
+        image:
                     id:    f1r57-1m4g3-1d
                     links:
                             href: https://example.com/compute/v2.0/images/f1r57-1m4g3-1d
@@ -399,13 +399,13 @@ Server details (first two only)
                             href: https:/example.com/image/v1.0/images/f1r57-1m4g3-1d
                             rel:  alternate
         key_name:        None
-        links:          
+        links:
                        href: https://example.com/compute/v2.0/servers/4201
                        rel:  bookmark
                     . . . . . . .
                        href: https://example.com/compute/v2.0/servers/4201
                        rel:  self
-        metadata:       
+        metadata:
                     os:    ubuntu
                     users: user
         progress:        100
@@ -417,9 +417,9 @@ Server details (first two only)
         updated:         2013-06-17T07:57:50.054550+00:00
         user_id:         s0m3-u53r-1d
     4202 my example server 2
-        accessIPv4:      
-        accessIPv6:      
-        addresses:      
+        accessIPv4:
+        accessIPv6:
+        addresses:
                     42:
                            OS-EXT-IPS:type: fixed
                            addr:            192.168.12.4
@@ -428,23 +428,23 @@ Server details (first two only)
                            OS-EXT-IPS:type: fixed
                            addr:            2002:648:2ffc:1222:a800:2ff:fee3:49f1
                            version:         6
-        attachments:    
+        attachments:
                        firewallProfile: DISABLED
                        id:              nic-37231-0
                        ipv4:            192.168.12.4
                        ipv6:            2002:648:2ffc:1222:a800:2ff:fee3:49f1
                        mac_address:     aa:00:02:e3:49:f8
                        network_id:      42
-        config_drive:    
+        config_drive:
         created:         2013-05-11T18:03:41.471605+00:00
-        diagnostics:    
+        diagnostics:
                        created:     2013-05-11T18:04:23.298132+00:00
                        details:     None
                        level:       DEBUG
                        message:     Image customization finished successfully.
                        source:      image-info
                        source_date: 2013-05-11T18:04:23.286869+00:00
-        flavor:         
+        flavor:
                     id:    2
                     links:
                             href: https://example.com/compute/v2.0/flavors/2
@@ -452,8 +452,8 @@ Server details (first two only)
                          . . . . . . .
                             href: https://example.com/compute/v2.0/flavors/2
                             rel:  self
-        hostId:          
-        image:          
+        hostId:
+        image:
                     id:    53c0nd-1m4g3-1d
                     links:
                             href: https://example.com/compute/v2.0/images/53c0nd-1m4g3-1d
@@ -465,13 +465,13 @@ Server details (first two only)
                             href: https:/example.com/image/v1.0/images/53c0nd-1m4g3-1d
                             rel:  alternate
         key_name:        None
-        links:          
+        links:
                        href: https://example.com/compute/v2.0/servers/4202
                        rel:  bookmark
                     . . . . . . .
                        href: https://example.com/compute/v2.0/servers/4202
                        rel:  self
-        metadata:       
+        metadata:
                     os:    ubuntu
                     users: user
         progress:        100
@@ -512,12 +512,12 @@ Detailed listing
         checksum:         9344d77620cde1dd77da...7b70badda34b26d782
         container_format: bare
         created_at:       2013-06-03 16:44:16
-        deleted_at:       
+        deleted_at:
         disk_format:      diskdump
         is_public:        True
         location:         pithos://s0m3-5up3r-u53r-1d/pithos/debian_base1.diskdump
         owner:            s0m3-5up3r-u53r-1d
-        properties:      
+        properties:
                     description:    Debian 6.0.6 (Squeeze) Base System
                     gui:            No GUI
                     kernel:         2.6.32
@@ -533,12 +533,12 @@ Detailed listing
         checksum:         9344d77620cde1dd77da...7b70badda34b26d782
         container_format: bare
         created_at:       2013-06-03 16:44:16
-        deleted_at:       
+        deleted_at:
         disk_format:      diskdump
         is_public:        True
         location:         pithos://s0m3-5up3r-u53r-1d/pithos/debian_base2.diskdump
         owner:            s0m3-5up3r-u53r-1d
-        properties:      
+        properties:
                     description:    Debian 6.0.6 (Squeeze) Base System
                     gui:            No GUI
                     kernel:         2.6.32
@@ -553,7 +553,7 @@ Detailed listing
     [image]: compute list
     f1r57-1m4g3-1d Debian Base Alpha
         created:   2013-06-03T16:21:53+00:00
-        links:    
+        links:
              href: https://example.com/cyclades/compute/v2.0/images/f1r57-1m4g3-1d
              rel:  bookmark
           . . . . . . .
@@ -562,7 +562,7 @@ Detailed listing
           . . . . . . .
              href: https://example.com/cyclades/image/v1.0/images/f1r57-1m4g3-1d
              rel:  alternate
-        metadata: 
+        metadata:
           description:    Debian 6.0.6 (Squeeze) Base System
           gui:            No GUI
           kernel:         2.6.32
@@ -578,7 +578,7 @@ Detailed listing
         user_id:   s0m3-5up3r-u53r-1d
     53c0nd-1m4g3-1d Beta Debian Base
         created:   2013-06-03T16:21:53+00:00
-        links:    
+        links:
              href: https://example.com/cyclades/compute/v2.0/images/53c0nd-1m4g3-1d
              rel:  bookmark
           . . . . . . .
@@ -587,7 +587,7 @@ Detailed listing
           . . . . . . .
              href: https://example.com/cyclades/image/v1.0/images/53c0nd-1m4g3-1d
              rel:  alternate
-        metadata: 
+        metadata:
           description:    Debian 6.0.6 (Squeeze) Base System
           gui:            No GUI
           kernel:         2.6.32

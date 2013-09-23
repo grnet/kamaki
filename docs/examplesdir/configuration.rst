@@ -126,10 +126,10 @@ Check that the file is created, everything is set up correctly and working
     . cloud.mytest.token = myt35t70k3n==
     $ kamaki -c nonexisting.cnf user autenticate
     . ...
-    . user:          
+    . user:
     .     id:          s0me-3x4mp13-u53r-1d
     .     name:        Some User
-    .     roles:      
+    .     roles:
     .          id:   1
     .          name: default
     .     roles_links:

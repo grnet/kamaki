@@ -8,12 +8,12 @@ called kamaki.clients and servers as a lib.
 A showcase of an application built on kamaki.clients is kamaki.cli, the command
 line interface of kamaki.
 
-Since synnefo services are build as OpenStack extensions, an inheritance
+Since Synnefo services are build as OpenStack extensions, an inheritance
 approach has been chosen for implementing clients for both. In specific,
 the *compute*, *storage* and *image* modules are clients of the OS compute, OS
 object-store, respectively. On the contrary, all the other modules are Synnefo
 extensions (*cyclades* extents *compute*, *pithos* and *pithos_rest_api*
-extent *storage*) or novel synnefo services (e.g. *astakos* for IM, *image*
+extent *storage*) or novel Synnefo services (e.g., *astakos* for IM, *image*
 for *plankton*).
 
 Setup a client instance
@@ -66,7 +66,7 @@ kamaki clients. Kamaki simplifies this process with the astakos client library.
 Let's review the process with examples.
 
 First, an astakos client must be initialized (Example 1.2). An
-AUTHENTICATION_URL and a TOKEN can be acquired from the synnefo deployment UI.
+AUTHENTICATION_URL and a TOKEN can be acquired from the Synnefo deployment UI.
 
 .. code-block:: python
     :emphasize-lines: 1

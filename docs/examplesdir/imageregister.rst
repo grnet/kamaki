@@ -41,14 +41,14 @@ Register the image object with the name 'Debian Base Alpha'
     checksum:         3cb03556ec971f...e8dd6190443b560cb7
     container-format: bare
     created-at:       2013-06-19 08:00:22
-    deleted-at:       
+    deleted-at:
     disk-format:      diskdump
     id:               7h1rd-1m4g3-1d
     is-public:        False
     location:         pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump
     name:             Debian Base Alpha
     owner:            s0m3-u53r-1d
-    properties:      
+    properties:
     size:             903471104
     status:           available
     updated-at:       2013-06-19 08:01:00
@@ -81,19 +81,19 @@ Read the metafile
 
     [kamaki]: file cat pithos:debian_base3.diskdump
     {
-      "status": "available", 
-      "name": "Debian Base Gama", 
-      "checksum": "3cb03556ec971f...e8dd6190443b560cb7", 
-      "id": "7h1rd-1m4g3-1d2", 
-      "updated-at": "2013-06-19 08:01:00", 
-      "created-at": "2013-06-19 08:00:22", 
-      "properties": {}, 
-      "location": "pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump", 
-      "is-public": "False", 
-      "owner": "s0m3-u53r-1d", 
-      "disk-format": "diskdump", 
-      "size": "903471104", 
-      "deleted-at": "", 
+      "status": "available",
+      "name": "Debian Base Gama",
+      "checksum": "3cb03556ec971f...e8dd6190443b560cb7",
+      "id": "7h1rd-1m4g3-1d2",
+      "updated-at": "2013-06-19 08:01:00",
+      "created-at": "2013-06-19 08:00:22",
+      "properties": {},
+      "location": "pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump",
+      "is-public": "False",
+      "owner": "s0m3-u53r-1d",
+      "disk-format": "diskdump",
+      "size": "903471104",
+      "deleted-at": "",
       "container-format": "bare"
     }
     [kamaki]:
@@ -138,7 +138,7 @@ An image can be unregistered by its image id, but only if the current user is
 also the image owner. In this example, there is only one image owned by current
 user.
 
-Unregister image owned by current user 
+Unregister image owned by current user
 
 .. code-block:: console
 
@@ -209,22 +209,22 @@ The resulting file will look like this:
 .. code-block:: javascript
 
     {
-      "status": "available", 
-      "name": "Debian Base Gama", 
-      "checksum": "3cb03556ec971f...e8dd6190443b560cb7", 
-      "id": "7h1rd-1m4g3-1d2", 
-      "updated-at": "2013-06-19 08:01:00", 
-      "created-at": "2013-06-19 08:00:22", 
+      "status": "available",
+      "name": "Debian Base Gama",
+      "checksum": "3cb03556ec971f...e8dd6190443b560cb7",
+      "id": "7h1rd-1m4g3-1d2",
+      "updated-at": "2013-06-19 08:01:00",
+      "created-at": "2013-06-19 08:00:22",
       "properties": {
         "OS": "Linux",
         "USER": "root"
-      }, 
-      "location": "pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump", 
-      "is-public": "False", 
-      "owner": "s0m3-u53r-1d", 
-      "disk-format": "diskdump", 
-      "size": "903471104", 
-      "deleted-at": "", 
+      },
+      "location": "pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump",
+      "is-public": "False",
+      "owner": "s0m3-u53r-1d",
+      "disk-format": "diskdump",
+      "size": "903471104",
+      "deleted-at": "",
       "container-format": "bare"
     }
 
@@ -241,14 +241,14 @@ Register the image (don't forget the -f parameter, to override the metafile).
     checksum:         3cb03556ec971f...e8dd6190443b560cb7
     container-format: bare
     created-at:       2013-06-19 08:00:22
-    deleted-at:       
+    deleted-at:
     disk-format:      diskdump
     id:               7h1rd-1m4g3-1d
     is-public:        False
     location:         pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump
     name:             Debian Base Delta
     owner:            s0m3-u53r-1d
-    properties:      
+    properties:
             OS:     Linux
             USER:   root
     size:             903471104
@@ -280,14 +280,14 @@ If we, now, get the image metadata, we will see that the name is changed:
     checksum:         3cb03556ec971f...e8dd6190443b560cb7
     container-format: bare
     created-at:       2013-06-19 08:00:22
-    deleted-at:       
+    deleted-at:
     disk-format:      diskdump
     id:               7h1rd-1m4g3-1d
     is-public:        False
     location:         pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump
     name:             Changed Name
     owner:            s0m3-u53r-1d
-    properties:      
+    properties:
             OS:     Linux
             USER:   root
     size:             903471104
@@ -392,14 +392,14 @@ Let's compine the metafile with a command line attribute `user: admin`
     checksum:         3cb03556ec971f...e8dd6190443b560cb7
     container-format: bare
     created-at:       2013-06-19 08:00:22
-    deleted-at:       
+    deleted-at:
     disk-format:      diskdump
     id:               7h1rd-1m4g3-1d
     is-public:        False
     location:         pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump
     name:             Debian Base Delta
     owner:            s0m3-u53r-1d
-    properties:      
+    properties:
             OS:     Linux
             USER:   root
     size:             903471104
@@ -446,14 +446,14 @@ Register the image without uploading a metafile
     checksum:         3cb03556ec971f...e8dd6190443b560cb7
     container-format: bare
     created-at:       2013-06-19 08:00:22
-    deleted-at:       
+    deleted-at:
     disk-format:      diskdump
     id:               7h1rd-1m4g3-1d
     is-public:        False
     location:         pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump
     name:             Debian Base Delta
     owner:            s0m3-u53r-1d
-    properties:      
+    properties:
             OS:     Linux
             USER:   root
     size:             903471104
@@ -480,19 +480,19 @@ Consult the first version of the metafile
 
     [kamaki]: file cat --object-version=1352 pithos:debian_base3.diskdump.meta
     {
-      "status": "available", 
-      "name": "Debian Base Gama", 
-      "checksum": "3cb03556ec971f...e8dd6190443b560cb7", 
-      "id": "7h1rd-1m4g3-1d2", 
-      "updated-at": "2013-06-19 08:01:00", 
-      "created-at": "2013-06-19 08:00:22", 
-      "properties": {}, 
-      "location": "pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump", 
-      "is-public": "False", 
-      "owner": "s0m3-u53r-1d", 
-      "disk-format": "diskdump", 
-      "size": "903471104", 
-      "deleted-at": "", 
+      "status": "available",
+      "name": "Debian Base Gama",
+      "checksum": "3cb03556ec971f...e8dd6190443b560cb7",
+      "id": "7h1rd-1m4g3-1d2",
+      "updated-at": "2013-06-19 08:01:00",
+      "created-at": "2013-06-19 08:00:22",
+      "properties": {},
+      "location": "pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump",
+      "is-public": "False",
+      "owner": "s0m3-u53r-1d",
+      "disk-format": "diskdump",
+      "size": "903471104",
+      "deleted-at": "",
       "container-format": "bare"
     }
     [kamaki]:
@@ -573,7 +573,7 @@ VMs) by adding the **--public** flag argument when calling `image register`.
     checksum:         3cb03556ec971f...e8dd6190443b560cb7
     container-format: bare
     created-at:       2013-06-19 08:00:22
-    deleted-at:       
+    deleted-at:
     disk-format:      diskdump
     id:               d3b14n-1m4g3-1d
     is-public:        False
@@ -589,7 +589,7 @@ VMs) by adding the **--public** flag argument when calling `image register`.
     checksum:         4cb03556ec971f...e8dd6190443b560cb6
     container-format: bare
     created-at:       2013-06-19 08:00:22
-    deleted-at:       
+    deleted-at:
     disk-format:      diskdump
     id:               w1nd0w5-1m4g3-1d
     is-public:        False
