@@ -384,9 +384,7 @@ class CycladesClient(CycladesRestClient):
 
     def get_floating_ips(self):
         """
-        :returns: (dict) {floating_ips:[
-            {fixed_ip: ..., id: ..., instance_id: ..., ip: ..., pool: ...},
-            ... ]}
+        :returns: (dict) {floating_ips: [fixed_ip: , id: , ip: , pool: ]}
         """
         r = self.floating_ips_get()
         return r.json

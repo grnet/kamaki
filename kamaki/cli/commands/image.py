@@ -411,7 +411,7 @@ class image_register(_init_image, _optional_json):
     only automatically (e.g. image id). There are also some custom user
     metadata, called properties.
     A register command creates a remote meta file at
-       <container>:<image path>.meta
+    .  <container>:<image path>.meta
     Users may download and edit this file and use it to re-register one or more
     images.
     In case of a meta file, runtime arguments for metadata or properties

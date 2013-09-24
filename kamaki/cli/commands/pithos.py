@@ -1609,9 +1609,9 @@ class file_permissions_set(_file_container_command, _optional_output_cmd):
     .       /file permissions set F read=A,B write=C
     To share with everybody, use '*' instead of a user id or group.
     E.g. to make file F available to all pithos users:
-        /file permissions set F read=*
+    .   /file permissions set F read=*
     E.g. to make file F available for editing to all pithos users:
-        /file permissions set F write=*
+    .   /file permissions set F write=*
     """
 
     @errors.generic.all
