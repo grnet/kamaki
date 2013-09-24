@@ -135,11 +135,11 @@ class _init_cyclades(_command_init):
 
 @command(server_cmds)
 class server_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
-    """List Virtual Machines accessible by user"""
+    """List virtual servers accessible by user
+    Use filtering arguments (e.g. --name-like) to manage long server lists
+    """
 
     PERMANENTS = ('id', 'name')
-
-    __doc__ += about_authentication
 
     arguments = dict(
         detail=FlagArgument('show detailed output', ('-l', '--details')),

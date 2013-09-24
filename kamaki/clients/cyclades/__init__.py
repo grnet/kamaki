@@ -354,7 +354,7 @@ class CycladesClient(CycladesRestClient):
 
     def wait_network(
             self, net_id,
-            current_status='LALA', delay=1, max_wait=100, wait_cb=None):
+            current_status='PENDING', delay=1, max_wait=100, wait_cb=None):
         """Wait for network while its status is current_status
 
         :param net_id: integer (str or int)

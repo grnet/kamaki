@@ -450,7 +450,7 @@ Showcase: Upload and download a file
 .. warning:: The container:object/path syntax does not function if the
     container and / or the object path contain one or more : characters. To use
     containers and objects with : use the --container and --dst-container
-    arguments, e.g. to copy test.py object from grnet:dev container to
-    grnet:deploy ::
+    arguments, e.g. to copy test.py object from example:dev container to
+    example:deploy ::
 
-        $ kamaki file copy --container=grnet:dev test.py --dst-container=grnet:deploy
+        $ kamaki file copy --container=example:dev test.py --dst-container=example:deploy

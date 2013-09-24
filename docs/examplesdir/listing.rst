@@ -9,20 +9,21 @@ The examples of this section run in a kamaki interactive shell.
 .. code-block:: console
 
     $ kamaki
-    kamaki v0.9 - Interactive Shell
-    .
+    kamaki v0.10 - Interactive Shell
+
     /exit       terminate kamaki
     exit or ^D  exit context
     ? or help   available commands
     ?command    help on command
     !<command>  execute OS shell command
-    .
+
+    Session user is Tyler Durden <uuid: th3y-4r3-7h3-54m3-p3r50n>
     [kamaki]:
 
 Simple listing
 --------------
 
-List configuration options, whether in the file or in memory
+List configuration options, whether in the file or from defaults list
 
 .. code-block:: console
 
@@ -78,7 +79,7 @@ List networks
 
     [kamaki]: network list
     1 public_network
-    42 my_private)network
+    42 my_private_network
     [kamaki]:
 
 List flavors
@@ -96,15 +97,15 @@ List images from Image API and from Compute APIs
 
     [kamaki]: image list
     f1r57-1m4g3-1d Debian Base Alpha
-    .container_format: bare
-    .disk_format:      diskdump
-    .size:             474066944
-    .status:           available
+     container_format: bare
+     disk_format:      diskdump
+     size:             474066944
+     status:           available
     53c0nd-1m4g3-1d Beta Debian Base
-    .container_format: bare
-    .disk_format:      diskdump
-    .size:             474066944
-    .status:           available
+     container_format: bare
+     disk_format:      diskdump
+     size:             474066944
+     status:           available
     [kamaki]: image compute list
     f1r57-1m4g3-1d Debian Base Alpha
     53c0nd-1m4g3-1d Beta Debian Base
@@ -130,15 +131,15 @@ List pithos containers with details
     count:    3
     modified: 2013-06-17T12:35:11.613124+00:00
     policy:
-    .       quota:      0
-    .       versioning: auto
+            quota:      0
+            versioning: auto
     trash
     bytes:    0 (0B)
     count:    0
     modified: 2013-06-06T14:24:23.675891+00:00
     policy:
-    .       quota:      0
-    .       versioning: auto
+            quota:      0
+            versioning: auto
     [file]:
 
 Create some more pithos container to experiment with
@@ -191,7 +192,7 @@ List contents of container `pithos`
     type:      plan-text/unicode
     uuid:      0493f1d9-9410-4f4b-a81f-fe42f9cefa70
     version:   1085
-    .
+     
     video
     by:        s0m3-u53r-1d
     bytes:     0
@@ -201,7 +202,7 @@ List contents of container `pithos`
     type:      application/directory
     uuid:      80e719f5-9d68-4333-9846-9943972ef1fd
     version:   1086
-    .
+     
     video/tk1.mpg
     by:        s0m3-u53r-1d
     bytes:     11000000 (11ΜΒB)
@@ -211,7 +212,7 @@ List contents of container `pithos`
     type:      video/mpeg
     uuid:      b0b46b39-c59a-4adc-a386-6a169cb9f8a5
     version:   1079
-    .
+     
     video/tk2.mpg
     by:        s0m3-u53r-1d
     bytes:     12000000 (12MB)
@@ -221,7 +222,7 @@ List contents of container `pithos`
     type:      video/mpeg
     uuid:      12a81309-db3c-4e30-ae9a-4ac2b8289def
     version:   1081
-    .
+     
     video/tk3.mpg
     by:        s0m3-u53r-1d
     bytes:     13000000 (13MB)
@@ -247,7 +248,7 @@ List only objects starting with "video" and exit "file" context
     type:      video/mpeg
     uuid:      b0b46b39-c59a-4adc-a386-6a169cb9f8a5
     version:   1079
-    .
+     
     video/tk2.mpg
     by:        s0m3-u53r-1d
     bytes:     12000000 (12MB)
@@ -257,7 +258,7 @@ List only objects starting with "video" and exit "file" context
     type:      video/mpeg
     uuid:      12a81309-db3c-4e30-ae9a-4ac2b8289def
     version:   1081
-    .
+     
     video/tk3.mpg
     by:        s0m3-u53r-1d
     bytes:     13000000 (13MB)
@@ -358,7 +359,7 @@ Server details (first two only)
                            OS-EXT-IPS:type: fixed
                            addr:            192.168.12.4
                            version:         4
-                        . . . . . . .
+                        
                            OS-EXT-IPS:type: fixed
                            addr:            2001:648:2ffc:1222:a800:2ff:fee3:49f1
                            version:         6
@@ -383,7 +384,7 @@ Server details (first two only)
                     links:
                             href: https://example.com/compute/v2.0/flavors/1
                             rel:  bookmark
-                         . . . . . . .
+                        
                             href: https://example.com/compute/v2.0/flavors/1
                             rel:  self
         hostId:
@@ -392,17 +393,17 @@ Server details (first two only)
                     links:
                             href: https://example.com/compute/v2.0/images/f1r57-1m4g3-1d
                             rel:  bookmark
-                         . . . . . . .
+
                             href: https://example.com/compute/v2.0/images/f1r57-1m4g3-1d
                             rel:  self
-                         . . . . . . .
+
                             href: https:/example.com/image/v1.0/images/f1r57-1m4g3-1d
                             rel:  alternate
         key_name:        None
         links:
                        href: https://example.com/compute/v2.0/servers/4201
                        rel:  bookmark
-                    . . . . . . .
+
                        href: https://example.com/compute/v2.0/servers/4201
                        rel:  self
         metadata:
@@ -424,7 +425,7 @@ Server details (first two only)
                            OS-EXT-IPS:type: fixed
                            addr:            192.168.12.4
                            version:         4
-                        . . . . . . .
+
                            OS-EXT-IPS:type: fixed
                            addr:            2002:648:2ffc:1222:a800:2ff:fee3:49f1
                            version:         6
@@ -449,7 +450,7 @@ Server details (first two only)
                     links:
                             href: https://example.com/compute/v2.0/flavors/2
                             rel:  bookmark
-                         . . . . . . .
+
                             href: https://example.com/compute/v2.0/flavors/2
                             rel:  self
         hostId:
@@ -458,17 +459,17 @@ Server details (first two only)
                     links:
                             href: https://example.com/compute/v2.0/images/53c0nd-1m4g3-1d
                             rel:  bookmark
-                         . . . . . . .
+                        
                             href: https://example.com/compute/v2.0/images/53c0nd-1m4g3-1d
                             rel:  self
-                         . . . . . . .
+                        
                             href: https:/example.com/image/v1.0/images/53c0nd-1m4g3-1d
                             rel:  alternate
         key_name:        None
         links:
                        href: https://example.com/compute/v2.0/servers/4202
                        rel:  bookmark
-                    . . . . . . .
+                   
                        href: https://example.com/compute/v2.0/servers/4202
                        rel:  self
         metadata:
@@ -556,10 +557,10 @@ Detailed listing
         links:
              href: https://example.com/cyclades/compute/v2.0/images/f1r57-1m4g3-1d
              rel:  bookmark
-          . . . . . . .
+         
              href: https://example.com/cyclades/compute/v2.0/images/f1r57-1m4g3-1d
              rel:  self
-          . . . . . . .
+         
              href: https://example.com/cyclades/image/v1.0/images/f1r57-1m4g3-1d
              rel:  alternate
         metadata:
@@ -581,10 +582,10 @@ Detailed listing
         links:
              href: https://example.com/cyclades/compute/v2.0/images/53c0nd-1m4g3-1d
              rel:  bookmark
-          . . . . . . .
+         
              href: https://example.com/cyclades/compute/v2.0/images/53c0nd-1m4g3-1d
              rel:  self
-          . . . . . . .
+         
              href: https://example.com/cyclades/image/v1.0/images/53c0nd-1m4g3-1d
              rel:  alternate
         metadata:

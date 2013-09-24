@@ -365,8 +365,8 @@ _arguments = dict(
     cloud=ValueArgument('Chose a cloud to connect to', ('--cloud')),
     help=Argument(0, 'Show help message', ('-h', '--help')),
     debug=FlagArgument('Include debug output', ('-d', '--debug')),
-    include=FlagArgument(
-        'Include raw connection data in the output', ('-i', '--include')),
+    #include=FlagArgument(
+    #    'Include raw connection data in the output', ('-i', '--include')),
     silent=FlagArgument('Do not output anything', ('-s', '--silent')),
     verbose=FlagArgument('More info at response', ('-v', '--verbose')),
     version=VersionArgument('Print current version', ('-V', '--version')),
