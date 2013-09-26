@@ -12,7 +12,7 @@ Kamaki project documentation
 development API for managing clouds.
 
 As a development library, it implements the OpenStack APIs,
-along with custom extensions as used by Synnefo
+along with the custom extensions introduced by Synnefo
 (`Synnefo IaaS <http://www.synnefo.org/>`_).
 
 ./kamaki is open source and released under a 2-clause BSD License.

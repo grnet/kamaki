@@ -143,16 +143,16 @@ server (Compute/Cyclades)
 
 .. code-block:: text
 
-    addr    :  List a server's nic address
+    addr    :  List a server nic address
     console :  Get a VNC console
     create  :  Create a server
     delete  :  Delete a server
-    firewall:  Manage server's firewall profile
-        set :  Set the server's firewall profile
-        get :  Get the server's firewall profile
+    firewall:  Manage server firewall profile
+        set :  Set the server firewall profile
+        get :  Get the server firewall profile
     ip      :  Manage floating IPs for the servers
         attach:  Attach a floating ip to a server with server_id
-        info  :  A floating IPs' details
+        info  :  A floating IP details
         detach:  Detach floating ip from server
         list  :  List all floating ips
         create:  Create a new floating IP
@@ -165,7 +165,7 @@ server (Compute/Cyclades)
         set   :  Add / update server metadata
         delete:  Delete a piece of server metadata
     reboot  :  Reboot a server
-    rename  :  Update a server's name
+    rename  :  Update a server name
     shutdown:  Shutdown a server
     start   :  Start a server
     stats   :  Get server statistics
@@ -445,12 +445,12 @@ Showcase: Upload and download a file
     -rw-rw-r-- 1 ******** ******** 20M Nov 26 15:42 rndm_remote.file
     [file]: !diff rndm_local.file rndm_remote.file
 
-.. Note:: In kamaki shell, ! is used to execute OS shell commands (e.g. bash)
+.. Note:: In kamaki shell, ! is used to execute OS shell commands (e.g., bash)
 
 .. warning:: The container:object/path syntax does not function if the
     container and / or the object path contain one or more : characters. To use
     containers and objects with : use the --container and --dst-container
-    arguments, e.g. to copy test.py object from grnet:dev container to
-    grnet:deploy ::
+    arguments, e.g., to copy test.py object from example:dev container to
+    example:deploy ::
 
-        $ kamaki file copy --container=grnet:dev test.py --dst-container=grnet:deploy
+        $ kamaki file copy --container=example:dev test.py --dst-container=example:deploy

@@ -50,14 +50,14 @@ class CycladesClient(CycladesRestClient):
 
         :param flavor_id: integer id denoting a preset hardware configuration
 
-        :param image_id: (str) id denoting the OS image to run on the VM
+        :param image_id: (str) id denoting the OS image to run on virt. server
 
         :param metadata: (dict) vm metadata updated by os/users image metadata
 
         :param personality: a list of (file path, file contents) tuples,
-            describing files to be injected into VM upon creation.
+            describing files to be injected into virtual server upon creation
 
-        :returns: a dict with the new VMs details
+        :returns: a dict with the new virtual server details
 
         :raises ClientError: wraps request errors
         """
@@ -99,7 +99,7 @@ class CycladesClient(CycladesRestClient):
         """
         :param server_id: integer (str or int)
 
-        :returns: (dict) info to set a VNC connection to VM
+        :returns: (dict) info to set a VNC connection to virtual server
         """
         req = {'console': {'type': 'vnc'}}
         r = self.servers_action_post(server_id, json_data=req, success=200)
@@ -354,7 +354,7 @@ class CycladesClient(CycladesRestClient):
 
     def wait_network(
             self, net_id,
-            current_status='LALA', delay=1, max_wait=100, wait_cb=None):
+            current_status='PENDING', delay=1, max_wait=100, wait_cb=None):
         """Wait for network while its status is current_status
 
         :param net_id: integer (str or int)
@@ -384,9 +384,7 @@ class CycladesClient(CycladesRestClient):
 
     def get_floating_ips(self):
         """
-        :returns: (dict) {floating_ips:[
-            {fixed_ip: ..., id: ..., instance_id: ..., ip: ..., pool: ...},
-            ... ]}
+        :returns: (dict) {floating_ips: [fixed_ip: , id: , ip: , pool: ]}
         """
         r = self.floating_ips_get()
         return r.json

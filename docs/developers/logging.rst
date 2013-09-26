@@ -1,28 +1,27 @@
 Logging
 =======
 
-Kamaki uses the standard Python logger package to log some of its
-functionality.
+Kamaki uses the standard Python logger package to log some of its functionality.
 
-All kamaki loggers are named or prefixed after the package they log, e.g.
-a logger at `kamaki/cli/argument.__init__.py` should be called
+All kamaki loggers are named or prefixed after the package they log, e.g.,
+a logger at `kamaki/cli/argument/__init__.py` should be called
 `kamaki.cli.argument` whereas a logger at `kamaki/clients/conf.py` should be
-named `kamaki.clients/conf`. In `kamaki/clients/__init__.py` there are two
+named `kamaki.clients.conf`. In `kamaki/clients/__init__.py` there are two
 loggers that use the package name as prefix, and they detailed bellow.
 
 Monitor requests and responses
 ------------------------------
 
 The `kamaki.clients` logger contains two subloggers that monitor the HTTP
-communication of with the servers::
+API calls::
 
 	kamaki.clients.send   for kamaki requests to the server
 	kamaki.clients.recv   for server responses to kamaki
 
 These are the only loggers used for purposes other than mere debugging. Both
 loggers are defined in the CLI code and are used to (a) log HTTP communication
-to the log file as well as to (b) show users the HTTP requests and responses if
-kamaki cli is called with options like "verbose" or "debug".
+to the log file as well as to (b) show users the HTTP requests and responses in
+"verbose" or "debug" modes.
 
 Logger in external code
 -----------------------
@@ -68,12 +67,14 @@ that will contain logs of the form::
 	<   content-type: application/json; charset=UTF-8
 	< data size: 2425
 
-.. note:: user token and http body content are not logged by default
+.. note:: user token and http body content are not logged by default. This can
+	be switched on and off by modifing the *kamaki.client.Client.LOG_TOKEN* and
+	*kamaki.client.Client.LOG_DATA* flags
 
 As a second example, let's suppose that we need to see only the http requests
-of the `pithos.list_objects()` method. We decide to print these to the console.
-To achieve that goal, we should get a stream logger and deactivate it when we
-do not need it anymore.
+of the `pithos.list_objects()` method and print these to stdout. To achieve
+that goal, we should get a stream logger and deactivate it when we do not need
+it anymore.
 
 
 .. code-block:: python

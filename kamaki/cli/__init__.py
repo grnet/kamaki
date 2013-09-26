@@ -46,7 +46,6 @@ from kamaki.clients import ClientError
 
 _help = False
 _debug = False
-_include = False
 _verbose = False
 _colors = False
 kloger = None
@@ -111,7 +110,7 @@ def _update_best_match(name_terms, prefix=[]):
 
 def command(cmd_tree, prefix='', descedants_depth=1):
     """Load a class as a command
-        e.g. spec_cmd0_cmd1 will be command spec cmd0
+        e.g., spec_cmd0_cmd1 will be command spec cmd0
 
         :param cmd_tree: is initialized in cmd_spec file and is the structure
             where commands are loaded. Var name should be _commands
@@ -174,7 +173,7 @@ cmd_spec_locations = [
 #  Generic init auxiliary functions
 
 
-def _setup_logging(silent=False, debug=False, verbose=False, include=False):
+def _setup_logging(silent=False, debug=False, verbose=False):
     """handle logging for clients package"""
 
     if silent:
@@ -191,9 +190,6 @@ def _setup_logging(silent=False, debug=False, verbose=False, include=False):
         logger.add_stream_logger('kamaki.clients.send', logging.INFO, sfmt)
         logger.add_stream_logger('kamaki.clients.recv', logging.INFO, rfmt)
         logger.add_stream_logger(__name__, logging.INFO)
-    if include:
-        logger.add_stream_logger('kamaki.clients.send', logging.INFO, sfmt)
-        logger.add_stream_logger('kamaki.clients.recv', logging.INFO, rfmt)
     logger.add_stream_logger(__name__, logging.WARNING)
     global kloger
     kloger = logger.get_logger(__name__)
@@ -235,14 +231,12 @@ def _init_session(arguments, is_non_API=False):
     _help = arguments['help'].value
     global _debug
     _debug = arguments['debug'].value
-    global _include
-    _include = arguments['include'].value
     global _verbose
     _verbose = arguments['verbose'].value
     _cnf = arguments['config']
 
     _silent = arguments['silent'].value
-    _setup_logging(_silent, _debug, _verbose, _include)
+    _setup_logging(_silent, _debug, _verbose)
 
     if _help or is_non_API:
         return None

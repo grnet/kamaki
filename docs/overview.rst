@@ -5,7 +5,7 @@ History
 -------
 
 Kamaki was created in 2011 by the `Synnefo <http://www.synnefo.org>`_
-development team of the *Greek Research and Technology Network (GRNET)*,
+development team at the *Greek Research and Technology Network (GRNET)*,
 initially as an internal project and later as a multipurpose tool for all
 users.
 
@@ -24,7 +24,7 @@ of Synnefo.
 Kamaki has been designed to act as a command line client as well as a python
 library for client developers. It is widely used in various Synnefo and okeanos
 components. Third parties are also encouraged to use the kamaki library for
-developing their own python-based cloud-client applications.
+developing their own python-based cloud applications.
 
 As Synnefo became a full, scalable and stable cloud solution, kamaki also
 evolved to an intuitive, multipurpose tool, available to a wider user base.
@@ -42,7 +42,7 @@ command-line tool for managing a local or remote Synnefo deployment.
 
 * internally by the Synnefo development team to test the Synnefo software,
 
-* by the deployment team which operates GRNET's ~okeanos service
+* by the deployment team which operates GRNET ~okeanos service
 
 * as the main Pithos+ client in Linux and other Unix-like environments
 

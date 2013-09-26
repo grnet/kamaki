@@ -3,8 +3,8 @@ Networks
 
 Users can create private networks between Virtual Machines.
 
-In the following we assume that there are two active VMs (ids 141 and 142)
-connected to one public network with id 1 (default set up).
+In the following we assume that there are two active virtual servers (ids 141
+and 142) connected to one public network with id 1 (default set up).
 
 .. code-block:: console
 
@@ -24,8 +24,8 @@ connected to one public network with id 1 (default set up).
         network_id:      1
     $
 
-.. note:: In Synnefo, each VM connects to a network through a NIC. The id of a
-    nic is nic-<server id>-<increment> by convention.
+.. note:: In Synnefo, each virtual server connects to a network through a nic.
+    The id of a nic is *nic-<server id>-<increment>* by convention.
 
 Let's load kamaki for networks and have a look at the current network state. We
 expect to find at least one public network (id: 1)
@@ -71,15 +71,16 @@ The new network will be named 'My Private Net'
     user_id:     s0m3-u53r-1d
     [network]:
 
-Let's create two more networks, one for VM 141 and one for Vm 142
+Let's create two more networks, one for virtual server 141 and one for virtual
+server 142
 
 .. code-block:: console
 
-    [network]: create 'For VM 141'
+    [network]: create 'For virtual server 141'
     ...
     id:         4
     ...
-    [network]: create 'For VM 142'
+    [network]: create 'For virtual server 142'
     ...
     id:         5
     ...
@@ -88,7 +89,8 @@ Let's create two more networks, one for VM 141 and one for Vm 142
 Connect and disconnect
 ----------------------
 
-To make a points, the networks should be connected to their respecting VMs
+To make a point, the networks should be connected to their respecting virtual
+servers
 
 .. code-block:: console
 
@@ -97,7 +99,7 @@ To make a points, the networks should be connected to their respecting VMs
     [network]:
 
 Now, let's check the current network state. We expect to see the servers
-connected to netowkrd with ids 4 and 5, but not 3.
+connected to networks with ids 4 and 5, but not 3.
 
 .. code-block:: console
 
@@ -133,7 +135,7 @@ connected to netowkrd with ids 4 and 5, but not 3.
      type:        MAC_FILTERED
      updated:     2013-06-19T13:54:57.672744+00:00
      user_id:     s0m3-u53r-1d
-    4 For VM 141
+    4 For virtual server 141
      attachments:
                 nic-141-1
      cidr:        192.168.2.0/24
@@ -148,7 +150,7 @@ connected to netowkrd with ids 4 and 5, but not 3.
      type:        MAC_FILTERED
      updated:     2013-06-19T13:54:57.672744+00:00
      user_id:     s0m3-u53r-1d
-    5 For VM 142
+    5 For virtual server 142
      attachments:
                 nic-141-2
      cidr:        192.168.3.0/24
@@ -165,7 +167,7 @@ connected to netowkrd with ids 4 and 5, but not 3.
      user_id:     s0m3-u53r-1d
     [network]:
 
-It is time to make meaningful connections: connect two servers to a private
+It is time to make a meaningful connection: connect two servers to a private
 network
 
 .. code-block:: console
@@ -174,7 +176,7 @@ network
     [network]: connect 142 3
     [network]:
 
-Now the servers can communicate with eachother through their shared private
+Now the servers can communicate with each other through their shared private
 network. Let's see the network details to confirm that
 
 .. code-block:: console
@@ -213,7 +215,7 @@ Attempt to destroy the public network
 
 .. warning:: Public networks cannot be destroyed in Synnefo
 
-Attempt to destroy the useless `For VM 141` network
+Attempt to destroy the useless `For virtual server 141` network
 
 .. code-block:: console
 
@@ -221,8 +223,8 @@ Attempt to destroy the useless `For VM 141` network
     (403) Network with id 4 is in use
     [network]:
 
-The attached VMs should be disconnected first (recall that the nic-141-1
-connects network with id 4 to VM with id 141)
+The attached virtual servers should be disconnected first (recall that the
+nic-141-1 connects network with id 4 to virtual server with id 141)
 
 .. code-block:: console
 
@@ -237,17 +239,17 @@ respective nics (nic-141-2, nic-142-2) first
 
     [network]: disconnect nic-142-2
     [network]: disconnect nic-141-2
-    (404) No nic nic-141-2 on server(VM) with id 141
-    |  * check server(VM) with id 142: /server info 141
-    |  * list nics for server(VM) with id 141:
+    (404) No nic nic-141-2 on server(virtual server) with id 141
+    |  * check server(virtual server) with id 142: /server info 141
+    |  * list nics for server(virtual server) with id 141:
     |        /server addr 141
     |  Network Interface nic-141-2 not found on server 141
     [network]:
 
 Strangely, kamaki did not find any nic-141-2 nics. Why?
 
-Answer: A listing of the 141 nics shows that the network connection to network
-with id 3 is now renamed as nic-141-1
+Answer: Get the addresses of server 141 to find out that the nic which connects
+the server to network 3 is automatically renamed (nic-141-2 --> nic-141-1)
 
 .. code-block:: console
 
@@ -266,8 +268,8 @@ with id 3 is now renamed as nic-141-1
      network_id:      1
      [network]:
 
-.. warning:: Synnefo network server renames the nics of a VM whenever another
-    nic is of the same server is deleted
+.. warning:: Synnefo network server may rename the nics of a virtual server if
+    another nic on the same server is deleted
 
 Let's remove the correct nic, then, and check if any other nics are related to
 the network with id 3.

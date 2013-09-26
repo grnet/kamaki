@@ -169,11 +169,10 @@ class Shell(Cmd):
     @staticmethod
     def _create_help_method(cmd_name, args, descr, syntax):
         tmp_args = dict(args)
-        tmp_args.pop('options', None)
+        #tmp_args.pop('options', None)
         tmp_args.pop('cloud', None)
         tmp_args.pop('debug', None)
         tmp_args.pop('verbose', None)
-        tmp_args.pop('include', None)
         tmp_args.pop('silent', None)
         tmp_args.pop('config', None)
         help_parser = ArgumentParseManager(cmd_name, tmp_args)
