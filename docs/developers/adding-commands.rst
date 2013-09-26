@@ -329,8 +329,9 @@ or equivalently:
 
 .. note:: running a command specification from a different path is supported.
     To achieve this, add a *<group>_cli = </path/to/module>* line in the
-    configure file under the *global* section.
-::
+    configure file under the *global* section
+
+An example::
 
     [global]
     mygrp_cli = /another/path/grps.py
