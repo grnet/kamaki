@@ -27,7 +27,7 @@ The following steps describe a command-line approach, but any graphic package ma
 
 .. warning:: Debian Squeeze users may replace "wheezy" with "squeeze"
 
-* Make sure the GPG public key for the Synnefo development team is added:
+* Make sure the GPG public key for the Synnefo repository is added:
 
     .. code-block:: console
 
@@ -86,7 +86,7 @@ Install mock (for developers only)
 
     $ sudo apt-get install python-mock
 
-.. warning:: kamaki.clients unit-tests need python-mock 1.X or better. e.g.::
+.. warning:: kamaki.clients unit-tests need python-mock 1.X or better. e.g.,::
 
     $ sudo apt-get install python-mock=1.0.1
 
@@ -118,8 +118,7 @@ Optional:
 Setup a virtual enviroment (optional)
 """""""""""""""""""""""""""""""""""""
 
-Use virtualenv to setup kamaki and Synnefo services in a sandbox
-environment.
+Use virtualenv to setup kamaki and Synnefo services in a sandbox environment.
 
 .. code-block:: console
 

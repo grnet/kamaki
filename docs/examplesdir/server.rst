@@ -127,12 +127,12 @@ The syntax of the -p argument is something called "the personlity string"::
 
     -p <local file path>[,<remote path>[,<remote owner>[,<remote group>[,<mode>]]]]
 
-    e.g.
+    e.g.,
 
     -p /home/someuser/.ssh/id_rsa.pub,/root/.ssh/authorized_keys,root,root,0777
 
 .. note:: In case of omitting an optional part of the personality string, the
-    default behavior depends on the remote server, e.g. for a debian image we
+    default behavior depends on the remote server, e.g., for a debian image we
     expect the file to have root ownership, if the ownership is not specified.
 
 Create a virtual server while injecting current user public key to root account
@@ -194,5 +194,5 @@ You can now log to your remote virtual server as root, without a password. Well 
 
 .. note:: There is no reason to limit injections to ssh keys. Users with an
     adequate understanding of the remote OS are encouraged to prepare and
-    inject all kinds of useful files, e.g. **lists of package sources**,
+    inject all kinds of useful files, e.g., **lists of package sources**,
     **default user profiles**, **device mount configurations**, etc.

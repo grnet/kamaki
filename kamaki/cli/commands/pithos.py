@@ -1884,7 +1884,7 @@ class file_containerlimit_set(_file_account_command, _optional_output_cmd):
                 msg = 'Failed to convert %s to bytes' % user_input,
                 raiseCLIError(qe, msg, details=[
                     'Syntax: containerlimit set <limit>[format] [container]',
-                    'e.g.: containerlimit set 2.3GB mycontainer',
+                    'e.g.,: containerlimit set 2.3GB mycontainer',
                     'Valid formats:',
                     '(*1024): B, KiB, MiB, GiB, TiB',
                     '(*1000): B, KB, MB, GB, TB'])
@@ -2036,7 +2036,7 @@ class file_versions(_file_container_command, _optional_json):
     Deleted objects may still have versions that can be used to restore it and
     get information about its previous state.
     The version number can be used in a number of other commands, like info,
-    copy, move, meta. See these commands for more information, e.g.
+    copy, move, meta. See these commands for more information, e.g.,
     /file info -h
     """
 

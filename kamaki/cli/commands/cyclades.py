@@ -65,7 +65,7 @@ howto_personality = [
     '  SERVER_PATH: destination location inside server Image',
     '  OWNER: virtual servers user id of the remote destination file',
     '  GROUP: virtual servers group id or name of the destination file',
-    '  MODEL: permition in octal (e.g. 0777 or o+rwx)']
+    '  MODEL: permition in octal (e.g., 0777 or o+rwx)']
 
 
 class _service_wait(object):
@@ -136,7 +136,7 @@ class _init_cyclades(_command_init):
 @command(server_cmds)
 class server_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
     """List virtual servers accessible by user
-    Use filtering arguments (e.g. --name-like) to manage long server lists
+    Use filtering arguments (e.g., --name-like) to manage long server lists
     """
 
     PERMANENTS = ('id', 'name')
@@ -259,7 +259,7 @@ class server_info(_init_cyclades, _optional_json):
     Contains:
     - name, id, status, create/update dates
     - network interfaces
-    - metadata (e.g. os, superuser) and diagnostics
+    - metadata (e.g., os, superuser) and diagnostics
     - hardware flavor and os image ids
     """
 

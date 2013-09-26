@@ -10,7 +10,7 @@ The image location format at user level::
 
     <container>:<object path>
 
-    e.g.:
+    e.g.,:
 
     pithos:debian_base3.diskdump
 
@@ -301,7 +301,7 @@ A look at the image metadata reveals that the name is changed:
 
 We can use the same idea to change the values of other metadata like disk
 format, container format or status. On the other hand, we cannot modify the
-id, owner, location, checksum and dates. E.g., to publish and unpublish:
+id, owner, location, checksum and dates. e.g., to publish and unpublish:
 
 .. code-block:: console
 
@@ -552,8 +552,8 @@ images:
 
     #!/bin/bash
 
-    userid=... # e.g. s0m3-u53r-1d
-    container=... # e.g. pithos
+    userid=... # e.g., s0m3-u53r-1d
+    container=... # e.g., pithos
 
     for path in images/*.diskdump; do
         location=$container:${path}

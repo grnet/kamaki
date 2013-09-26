@@ -2,29 +2,31 @@ Adding Commands
 ===============
 
 Kamaki commands are implemented as python classes, decorated with a special
-decorator called *command*. This decorator is a method of kamaki.cli that adds
-a new command in a CommandTree structure (kamaki.cli.commant_tree). The later
-is used by interfaces to manage kamaki commands.
+decorator called *command*. This decorator is a method of *kamaki.cli* that
+adds a new command in a *CommandTree* structure. A *CommandTree* (package
+*kamaki.cli.commant_tree*) is a data structure used by kamaki to manage command
+namespaces.
 
-In the following, a set of kamaki commands will be implemented::
+For demonstration purposes, the following set of kamaki commands will be
+implemented in this document::
 
     mygrp1 list all                         //show a list
     mygrp1 list details [--match=<>]        //show list of details
     mygrp2 list all [regular expression] [-l]       //list all subjects
     mygrp2 info <id> [name]      //get information for subject with id
 
-There are two command sets to implement, namely mygrp1 and mygrp2. The first
-will contain two commands, namely list-all and list-details. The second one
-will also contain two commands, list-all and info. To avoid ambiguities,
-command names should rather be prefixed with the group they belong to, e.g.
-mygrp1-list-all and mygrp2-list-all.
+There are two command groups to implement i.e., *mygrp1* and *mygrp2*,
+containing two commands each (*list_all*, *list_details* and *list_all*, *info*
+respectively). To avoid ambiguities, command names are prefixed with the
+command group they belong to, e.g., *mygrp1_list_all* and *mygrp2_list_all*.
+The underscore is used to separate command namespaces.
 
-The first command has the simplest possible syntax: no parameters, no runtime
-arguments. The second accepts an optional runtime argument with a value. The
-third features an optional argument and an optional runtime flag argument. The
-last is an example of a command with an obligatory and an optional argument.
+The first command (*mygrp1_list_all*) has the simplest possible syntax: no
+parameters, no runtime arguments. The second accepts an optional runtime argument with a value. The third features an optional parameter and an optional
+runtime flag argument. The last is an example of a command with an obligatory
+and an optional parameter.
 
-Samples of the expected behavior in one-command mode are following:
+Examples of the expected behavior in one-command mode:
 
 .. code-block:: console
 
@@ -35,34 +37,32 @@ Samples of the expected behavior in one-command mode are following:
          - - - -
         list
     $ kamaki mygrp1 list
-        Syntax Error
 
         Options
          - - - -
         all        show a list
         details     show a list of details
     $ kamaki mygrp1 list all
-        ... (mygrp1 client method is called) ...
+        ... (a mygrp1_list_all instance runs) ...
     $ kamaki mygrp2 list all 'Z[.]' -l
-        ... (mygrp2 client method is called) ...
+        ... (a mygrp2_list_all instance runs) ...
     $
-
-The above example will be used throughout the present guide.
 
 The CommandTree structure
 -------------------------
 
-CommandTree manages a command by its path. Each command is stored in multiple
-nodes on the tree, so that the last term is a leaf and the route from root to
-that leaf represents the command path. For example the commands *file upload*,
-*file list* and *file info* are stored together as shown bellow::
+CommandTree manages a command by its namespace. Each command is stored in
+a tree path, where each node is a name. A leaf is the end term of a namespace and contains a pointer to the command class to be executed.
+
+Here is an example from the actual kamaki command structure, where the commands
+*file upload*, *file list* and *file info* are represented as shown bellow::
 
     - file
     ''''''''|- info
             |- list
             |- upload
 
-The example used in the present, should result to the creation of two trees::
+Now, let's load the showcase example on CommandTrees::
 
     - mygrp1
     ''''''''|- list
@@ -74,12 +74,12 @@ The example used in the present, should result to the creation of two trees::
             '''''''|- all
             |- info
 
-Each command group should be stored on a different CommandTree. For that
-reason, command specification modules should contain a list of CommandTree
-objects, named *_commands*
+Each command group should be stored on a different CommandTree.
 
-A command group information (name, description) is provided at CommandTree
-structure initialization:
+For that reason, command specification modules should contain a list of CommandTree objects, named *_commands*. This mechanism allows any interface
+application to load the list of commands from the *_commands* array.
+
+The first name of the command path and a description (name, description) are needed to initializeg a CommandTree:
 
 .. code-block:: python
 
@@ -88,15 +88,19 @@ structure initialization:
 
     _commands = [_mygrp1_commands, _mygrp2_commands]
 
+
 The command decorator
 ---------------------
 
-The *command* decorator mines all the information necessary to build a command
-specification which is then inserted in a CommanTree instance::
+All commands are specified by subclasses of *kamaki.cli.commands._command_init*
+These classes are called "command specifications".
+
+The *command* decorator mines all the information needed to build a namespace
+from a command specification::
 
     class code  --->  command()  -->  updated CommandTree structure
 
-Kamaki interfaces make use of this CommandTree structure. Optimizations are
+Kamaki interfaces make use of the CommandTree structure. Optimizations are
 possible by using special parameters on the command decorator method.
 
 .. code-block:: python
@@ -108,14 +112,16 @@ possible by using special parameters on the command decorator method.
 
         :param prefix: of the commands allowed to be inserted ('' for all)
 
-        :param descedants_depth: is the depth of the tree descedants of the
+        :param descedants_depth: is the depth of the tree descendants of the
             prefix command.
     """
 
 Creating a new command specification set
 ----------------------------------------
 
-A command specification developer should create a new module (python file) with as many classes as the command specifications to be offered. Each class should be decorated with *command*.
+A command specification developer should create a new module (python file) with
+one command specification class per command. Each class should be decorated
+with *command*.
 
 .. code-block:: python
 
@@ -129,10 +135,10 @@ A command specification developer should create a new module (python file) with 
     ...
 
 A list of CommandTree structures must exist in the module scope, with the name
-_commands, as shown above. Different CommandTree objects correspond to
-different command groups.
+*_commands*. Different CommandTree objects correspond to different command
+groups.
 
-Get command description
+Set command description
 -----------------------
 
 The description of each command is the first line of the class commend. The
@@ -143,25 +149,50 @@ subject with id*" description.
 
     ...
     @command(_mygrp2_commands)
-    class mygrp2_info()
-        """get information for subject with id"""
+    class mygrp2_info():
+        """get information for subject with id
+        Anything from this point and bellow constitutes the long description
+        Please, mind the indentation, pep8 is not forgiving.
+        """
         ...
+
+Description placeholders
+------------------------
+
+There is possible to create an empty command, that can act as a description
+placeholder. For example, the *mygrp1_list* namespace does not correspond to an
+executable command, but it can have a helpful description. In that case, create
+a command specification class with a command and no code:
+
+.. code-block:: python
+
+    @command(_mygrp1_commands)
+    class mygrp1_list():
+        """List mygrp1 objects.
+        There are two versions: short and detailed
+        """
+
+.. warning:: A command specification class with no description is invalid and
+    will cause an error.
 
 Declare run-time argument
 -------------------------
 
-The argument mechanism allows the definition of run-time arguments. Some basic
-argument types are defined at the
-`argument module <code.html#module-kamaki.cli.argument>`_, but it is not
-uncommon to extent these classes in order to achieve specialized type checking
-and syntax control (e.g. at
-`pithos cli module <code.html#module-kamaki.cli.commands.pithos>`_).
+A special argument mechanism allows the definition of run-time arguments. This
+mechanism is based on argparse and is designed to simplify argument definitions
+when specifying commands.
 
-To declare a run-time argument on a specific command, the object class should
-initialize a dict called *arguments* , where Argument objects are stored. Each
-argument object is a possible run-time argument. Syntax checking happens at
-client level, while the type checking is implemented in the Argument code
-(thus, many different Argument types might be needed).`
+Some basic argument types are defined at the
+`argument module <code.html#module-kamaki.cli.argument>`_, but it is not
+a bad idea to extent these classes in order to achieve specialized type
+checking and syntax control. Still, in most cases, the argument types of the
+argument package are enough for most cases.
+
+To declare a run-time argument on a specific command, the specification class
+should contain a dict called *arguments* , where Argument objects are stored.
+Each argument object is a run-time argument. Syntax checking happens at client
+level, while the type checking is implemented in the Argument code (e.g.,
+IntArgument checks if the value is an int).
 
 .. code-block:: python
 
@@ -190,15 +221,15 @@ or more usually and elegantly:
 
         arguments = dict(
             match=ValueArgument(
-            'Filter output to match string', ('-m', --match'))
+                'Filter output to match string', ('-m', --match'))
         )
 
 Accessing run-time arguments
 ----------------------------
 
-To access run-time arguments, users can use the _command_init interface, which
-implements __item__ accessors to handle run-time argument values. In specific,
-an instance of _command_init can use brackets to set or read <argument>.value .
+To access run-time arguments, users can use the *_command_init* interface,
+which implements *__item__* accessors to handle run-time argument values. In
+other words, one may get the value of an argument with *self[<argument>]*.
 
 .. code-block:: python
 
@@ -222,9 +253,8 @@ an instance of _command_init can use brackets to set or read <argument>.value .
 The main method and command parameters
 --------------------------------------
 
-The command behavior for each command / class is coded in *main*. The
-parameters of *main* method defines the command parameters part of the syntax.
-In specific::
+The command behavior for each command class is coded in *main*. The
+parameters of *main* method affect the syntax of the command. In specific::
 
     main(self, param)                   - obligatory parameter <param>
     main(self, param=None)              - optional parameter [param]
@@ -236,8 +266,8 @@ In specific::
     main(self, *args)                   - arbitary number of params [...]
     main(self, param1____param2, *args) - <param1:param2> [...]
 
-The information that can be mined by *command* for each individual command is
-presented in the following:
+Let's have a look at the command specification class again, and highlight the
+parts that affect the command syntax:
 
 .. code-block:: python
     :linenos:
@@ -245,23 +275,32 @@ presented in the following:
     from kamaki.cli.argument import FlagArgument
     ...
 
-    _commands = [_mygrp1_commands, _mygrp2=commands]
+    _commands = [_mygrp1_commands, _mygrp2_commands]
     ...
 
     @command(_mygrp2_commands)
     class mygrp2_list_all():
-        """List all subjects"""
+        """List all subjects
+        Refers to the subject accessible by current user
+        """
 
         arguments = dict(FlagArgument('detailed list', '-l'))
 
         def main(self, reg_exp=None):
             ...
 
-This will load the following information on the CommandTree:
+The above lines contain the following information:
 
-* Syntax (from lines 8,12,19): mygrp list all [reg exp] [-l]
-* Description (form line 9): List all subjects
-* Arguments help (from line 13,14): -l: detailed list
+* Namespace and name (line 8): mygrp2 list all
+* Short (line 9) and long (line 10) description
+* Parameters (line 15): [reg exp]
+* Runtime arguments (line 13): [-l]
+* Runtime arguments help (line 13): detailed list
+
+.. tip:: It is suggested to code the main functionality in a member method
+    called *_run*. This allows the separation between syntax and logic. For
+    example, an external library may need to call a command without caring
+    about its command line behavior.
 
 Letting kamaki know
 -------------------
@@ -270,11 +309,11 @@ Kamaki will load a command specification *only* if it is set as a configurable
 option. To demonstrate this, let the command specifications coded above be
 stored in a file named *grps.py*.
 
-The developer should move file *grps.py* to kamaki/cli/commands, the default
-place for command specifications, although running a command specification from
-a different path is also a kamaki feature.
+The developer should move the file *grps.py* to *kamaki/cli/commands*, the
+default place for command specifications
 
-The user has to use a configuration file where the following is added:
+These lines should be contained in the kamaki configuration file for a new
+command specification module to work:
 ::
 
     [global]
@@ -288,9 +327,10 @@ or equivalently:
     $ kamaki config set mygrp1_cli grps
     $ kamaki config set mygrp2_cli grps
 
-Command specification modules don't need to live in kamaki/cli/commands,
-although this is suggested for uniformity. If a command module exist in another
-path::
+.. note:: running a command specification from a different path is supported.
+    To achieve this, add a *<group>_cli = </path/to/module>* line in the
+    configure file under the *global* section.
+::
 
     [global]
     mygrp_cli = /another/path/grps.py
@@ -320,11 +360,21 @@ Summary: create a command set
 
 
     @command(_mygrp1_commands)
+    class mygrp1_list(_command_init):
+        """List mygrp1 objects.
+        There are two versions: short and detailed
+        """
+
+
+    @command(_mygrp1_commands)
     class mygrp1_list_all(_command_init):
         """show a list"""
 
-        def main(self):
+        def _run():
             ...
+
+        def main(self):
+            self._run()
 
 
     @command(_mygrp1_commands)
@@ -336,10 +386,15 @@ Summary: create a command set
                 'Filter output to match string', ('-m', --match'))
         )
 
-        def main(self):
-            ...
+        def _run(self):
             match_value = self['match']
             ...
+
+        def main(self):
+        self._run()
+
+
+    #The following will also create a mygrp2_list command with no description
 
 
     @command(_mygrp2_commands)
@@ -350,21 +405,23 @@ Summary: create a command set
             list=FlagArgument('detailed listing', '-l')
         )
 
+        def _run(self, regexp):
+            ...
+            if self['list']:
+                ...
+            else:
+                ...
+
         def main(self, regular_expression=None):
-            ...
-            detail_flag = self['list']
-            ...
-            if detail_flag:
-                ...
-            ...
-            if regular_expression:
-                ...
-            ...
+            self._run(regular_expression)
 
 
     @command(_mygrp2_commands)
     class mygrp2_info(_command_init):
         """get information for subject with id"""
 
-        def main(self, id, name=''):
+        def _run(self, grp_id, grp_name):
             ...
+
+        def main(self, id, name=''):
+            self._run(id, name) 

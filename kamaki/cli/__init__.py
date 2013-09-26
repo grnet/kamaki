@@ -110,7 +110,7 @@ def _update_best_match(name_terms, prefix=[]):
 
 def command(cmd_tree, prefix='', descedants_depth=1):
     """Load a class as a command
-        e.g. spec_cmd0_cmd1 will be command spec cmd0
+        e.g., spec_cmd0_cmd1 will be command spec cmd0
 
         :param cmd_tree: is initialized in cmd_spec file and is the structure
             where commands are loaded. Var name should be _commands

@@ -11,9 +11,9 @@ Quick Setup
 .. warning:: Users of kamaki 0.8.X or older should consult the
     `migration guide <#migrating-from-kamaki-0-8-x-to-0-9-or-better>`_ first.
 
-Kamaki has to be configured for a specific Synnefo deployment, with an
-authentication url and user token pair. Users should also pick an alias to name
-the cloud configuration. This can be any single word, e.g., "default",
+To set up Kamaki for a specific Synnefo deployment, users need an
+**authentication URL** and a **user token**. Users should also pick an alias to
+name the cloud configuration. This can be any single word, e.g., "default",
 "mycloud"or whatever suits the user.
 
 .. code-block:: console
@@ -21,7 +21,7 @@ the cloud configuration. This can be any single word, e.g., "default",
     $ kamaki config set cloud.<cloud alias>.url <cloud-authentication-URL>
     $ kamaki config set cloud.<cloud alias>.token myt0k3n==
 
-If only one cloud is configured, kamaki automatically picks it as the default.
+If only one cloud is configured, it is automatically considered the default.
 Otherwise, a default cloud should be specified:
 
 .. code-block:: console
@@ -80,7 +80,7 @@ the conversion mechanism for the configuration file.
 At this point, we should examine the kamaki output. Most options are renamed to
 match the latest configuration file version specifications.
 
-Let's take a look at the discarded options:
+Lets take a look at the discarded options:
 
 * `global.account` and `user.account` are not used anymore.
     The same is true for the synonyms `store.account` and `pithos.account`.
@@ -118,7 +118,7 @@ Multiple clouds
 ---------------
 
 The following refers to users of multiple Synnefo and/or Open Stack
-deployments. In the following, a Synnefo or Open Stack cloud deployment will
+deployments. In the following, a Synnefo (or Open Stack) cloud deployment will
 be called **a cloud**.
 
 Multiple clouds can be configured and manager in a single  kamaki setup, since

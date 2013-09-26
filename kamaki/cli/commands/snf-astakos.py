@@ -99,7 +99,7 @@ class _astakos_init(_command_init):
 @command(snfastakos_cmds)
 class astakos_user_info(_astakos_init, _optional_json):
     """Authenticate a user
-    Get user information (e.g. unique account name) from token
+    Get user information (e.g., unique account name) from token
     Token should be set in settings:
     *  check if a token is set    /config get cloud.default.token
     *  permanently set a token    /config set cloud.default.token <token>
@@ -412,10 +412,10 @@ class astakos_commission_resolve(_astakos_init, _optional_json):
 
     arguments = dict(
         accept=CommaSeparatedListArgument(
-            'commission ids to accept (e.g. --accept=11,12,13,...',
+            'commission ids to accept (e.g., --accept=11,12,13,...',
             '--accept'),
         reject=CommaSeparatedListArgument(
-            'commission ids to reject (e.g. --reject=11,12,13,...',
+            'commission ids to reject (e.g., --reject=11,12,13,...',
             '--reject'),
     )
 

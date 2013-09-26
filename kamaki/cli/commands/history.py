@@ -91,8 +91,8 @@ class history_show(_init_history):
     .   2.  <order-id-1>-<order-id-2> : pick all commands ordered in the range
     .       [<order-id-1> - <order-id-2>]
     .   - the above can be mixed and repeated freely, separated by spaces
-    .       e.g. pick 2 4-7 -3
-    .   - Use negative integers to count from the end of the list, e.g.:
+    .       e.g., pick 2 4-7 -3
+    .   - Use negative integers to count from the end of the list, e.g.,:
     .       -2 means : the command before the last one
     .       -2-5 means : last 2 commands + the first 5
     .       -5--2 means : the last 5 commands except the last 2
@@ -151,7 +151,7 @@ class history_run(_init_history):
     .   1.  <order-id> : pick the <order-id>th command
     .   2.  <order-id-1>-<order-id-2> : pick all commands ordered in the range
     .       [<order-id-1> - <order-id-2>]
-    .   - Use negative integers to count from the end of the list, e.g.:
+    .   - Use negative integers to count from the end of the list, e.g.,:
     .       -2 means : the command before the last one
     .       -2-5 means : last 2 commands + the first 5
     .       -5--2 mean

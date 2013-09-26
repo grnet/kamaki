@@ -78,7 +78,7 @@ class _user_init(_command_init):
 @command(user_cmds)
 class user_authenticate(_user_init, _optional_json):
     """Authenticate a user
-    Get user information (e.g. unique account name) from token
+    Get user information (e.g., unique account name) from token
     Token should be set in settings:
     *  check if a token is set    /config whoami cloud.default.token
     *  permanently set a token    /config set cloud.default.token <token>

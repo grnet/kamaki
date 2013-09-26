@@ -40,8 +40,8 @@ messages. Still, there are some differences.
 
 In favor of interactive shell:
 
-* tab completion for commands (if supported by the user's shell)
-* session history with ↑ or ↓ keys (if supported by the user's shell)
+* tab completion for commands (if supported by the user shell)
+* session history with ↑ or ↓ keys (if supported by the user shell)
 * shorter commands with command context switching
 * re-run old commands with /history
 
@@ -248,7 +248,7 @@ command group (server) and of a command in that group (list).
                             filter by flavor id
 
     Details:
-    Use filtering arguments (e.g. --name-like) to manage long server lists
+    Use filtering arguments (e.g., --name-like) to manage long server lists
 
 .. _using-history-ref:
 
