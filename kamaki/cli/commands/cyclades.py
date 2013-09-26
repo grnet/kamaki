@@ -77,18 +77,22 @@ class _service_wait(object):
 
     def _wait(self, service, service_id, status_method, currect_status):
         (progress_bar, wait_cb) = self._safe_progress_bar(
-            '%s %s still in %s mode' % (service, service_id, currect_status))
+            '%s %s: periodically check if status is %s' % (
+                service, service_id, currect_status))
 
         try:
             new_mode = status_method(
                 service_id, currect_status, wait_cb=wait_cb)
+            if new_mode:
+                self.error('\n%s %s: status is %s' % (
+                    service, service_id, new_mode))
+            else:
+                self.error('\nTime out: %s %s still in %s' % (
+                    service, service_id, currect_status))
+        except KeyboardInterrupt:
+            self.error('\n- canceled')
         finally:
             self._safe_progress_bar_finish(progress_bar)
-        if new_mode:
-            self.error('%s %s is now in %s mode' % (
-                service, service_id, new_mode))
-        else:
-            raiseCLIError(None, 'Time out')
 
 
 class _server_wait(_service_wait):
