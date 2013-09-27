@@ -295,13 +295,19 @@ class CycladesClient(CycladesRestClient):
         :returns: (str) the new mode if successful, (bool) False if timed out
         """
         status, progress = get_status(self, item_id)
-        if status != current_status:
-            return status
-        old_wait = total_wait = 0
 
         if wait_cb:
-            wait_gen = wait_cb(1 + max_wait // delay)
+            wait_gen = wait_cb(max_wait // delay)
             wait_gen.next()
+
+        if status != current_status:
+            if wait_cb:
+                try:
+                    wait_gen.next()
+                except Exception:
+                    pass
+            return status
+        old_wait = total_wait = 0
 
         while status == current_status and total_wait <= max_wait:
             if wait_cb:
@@ -310,11 +316,8 @@ class CycladesClient(CycladesRestClient):
                         wait_gen.next()
                 except Exception:
                     break
-            else:
-                stdout.write('.')
-                stdout.flush()
             old_wait = total_wait
-            total_wait = progress or (total_wait + 1)
+            total_wait = progress or total_wait + 1
             sleep(delay)
             status, progress = get_status(self, item_id)
 

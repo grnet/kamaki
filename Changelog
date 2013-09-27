@@ -11,6 +11,10 @@ Changes:
     wherever it is used
 - Replace print methods with member print methods in _commands.* [#4292]
 - kamaki.cli.config is now a directory package [#4058]
+- Modify progress bar handler in cli.commands to allow count down and timeout
+    [#4352]
+- Make wait progress bars in cyclades CLI to count down to timeout instead of
+    progressing forward [#4352]
 
 Features:
 
@@ -23,4 +27,5 @@ Features:
 - Implement --type=SOFT/HARD argument for server reboot [#4338]
     The old argument -f/--force <==> --type=HARD is kept for bw compatibility
     A warning message guides users to stop using it
+- Catch Keyboard Interupts in cli wait methods and exit gracefully [#4351]
 

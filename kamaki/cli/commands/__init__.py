@@ -177,12 +177,14 @@ class _command_init(object):
             assert max_threads > 0, 'invalid max_threads config option'
             self.client.MAX_THREADS = max_threads
 
-    def _safe_progress_bar(self, msg, arg='progress_bar'):
+    def _safe_progress_bar(
+            self, msg, arg='progress_bar', countdown=False, timeout=100):
         """Try to get a progress bar, but do not raise errors"""
         try:
             progress_bar = self.arguments[arg]
             progress_bar.file = self._err
-            gen = progress_bar.get_generator(msg)
+            gen = progress_bar.get_generator(
+                msg, countdown=countdown, timeout=timeout)
         except Exception:
             return (None, None)
         return (progress_bar, gen)

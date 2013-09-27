@@ -75,34 +75,44 @@ class _service_wait(object):
             'do not show progress bar', ('-N', '--no-progress-bar'), False)
     )
 
-    def _wait(self, service, service_id, status_method, currect_status):
+    def _wait(
+            self, service, service_id, status_method, current_status,
+            countdown=True, timeout=60):
         (progress_bar, wait_cb) = self._safe_progress_bar(
-            '%s %s still in %s mode' % (service, service_id, currect_status))
+            '%s %s: status is still %s' % (
+                service, service_id, current_status),
+            countdown=countdown, timeout=timeout)
 
         try:
             new_mode = status_method(
-                service_id, currect_status, wait_cb=wait_cb)
+                service_id, current_status, max_wait=timeout, wait_cb=wait_cb)
+            if new_mode:
+                self.error('%s %s: status is now %s' % (
+                    service, service_id, new_mode))
+            else:
+                self.error('%s %s: status is still %s' % (
+                    service, service_id, current_status))
+        except KeyboardInterrupt:
+            self.error('\n- canceled')
         finally:
             self._safe_progress_bar_finish(progress_bar)
-        if new_mode:
-            self.error('%s %s is now in %s mode' % (
-                service, service_id, new_mode))
-        else:
-            raiseCLIError(None, 'Time out')
 
 
 class _server_wait(_service_wait):
 
-    def _wait(self, server_id, currect_status):
+    def _wait(self, server_id, current_status, timeout=60):
         super(_server_wait, self)._wait(
-            'Server', server_id, self.client.wait_server, currect_status)
+            'Server', server_id, self.client.wait_server, current_status,
+            countdown=(current_status not in ('BUILD', )),
+            timeout=timeout if current_status not in ('BUILD', ) else 100)
 
 
 class _network_wait(_service_wait):
 
-    def _wait(self, net_id, currect_status):
+    def _wait(self, net_id, current_status, timeout=60):
         super(_network_wait, self)._wait(
-            'Network', net_id, self.client.wait_network, currect_status)
+            'Network', net_id, self.client.wait_network, current_status,
+            timeout=timeout)
 
 
 class _init_cyclades(_command_init):
@@ -692,15 +702,27 @@ class server_stats(_init_cyclades, _optional_json):
 class server_wait(_init_cyclades, _server_wait):
     """Wait for server to finish [BUILD, STOPPED, REBOOT, ACTIVE]"""
 
+    arguments = dict(
+        timeout=IntArgument(
+            'Wait limit in seconds (default: 60)', '--timeout', default=60)
+    )
+
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.server_id
-    def _run(self, server_id, currect_status):
-        self._wait(server_id, currect_status)
+    def _run(self, server_id, current_status):
+        r = self.client.get_server_details(server_id)
+        if r['status'].lower() == current_status.lower():
+            self._wait(server_id, current_status, timeout=self['timeout'])
+        else:
+            self.error(
+                'Server %s: Cannot wait for status %s, '
+                'status is already %s' % (
+                    server_id, current_status, r['status']))
 
-    def main(self, server_id, currect_status='BUILD'):
+    def main(self, server_id, current_status='BUILD'):
         super(self.__class__, self)._run()
-        self._run(server_id=server_id, currect_status=currect_status)
+        self._run(server_id=server_id, current_status=current_status)
 
 
 @command(flavor_cmds)
@@ -942,7 +964,7 @@ class network_create(_init_cyclades, _optional_json, _network_wait):
             type=self['type'])
         _add_name(self, r)
         self._print(r, self.print_dict)
-        if self['wait']:
+        if self['wait'] and r['status'] in ('PENDING', ):
             self._wait(r['id'], 'PENDING')
 
     def main(self, name):
@@ -1048,15 +1070,27 @@ class network_disconnect(_init_cyclades):
 class network_wait(_init_cyclades, _network_wait):
     """Wait for server to finish [PENDING, ACTIVE, DELETED]"""
 
+    arguments = dict(
+        timeout=IntArgument(
+            'Wait limit in seconds (default: 60)', '--timeout', default=60)
+    )
+
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.network_id
-    def _run(self, network_id, currect_status):
-        self._wait(network_id, currect_status)
+    def _run(self, network_id, current_status):
+        net = self.client.get_network_details(network_id)
+        if net['status'].lower() == current_status.lower():
+            self._wait(network_id, current_status, timeout=self['timeout'])
+        else:
+            self.error(
+                'Network %s: Cannot wait for status %s, '
+                'status is already %s' % (
+                    network_id, current_status, net['status']))
 
-    def main(self, network_id, currect_status='PENDING'):
+    def main(self, network_id, current_status='PENDING'):
         super(self.__class__, self)._run()
-        self._run(network_id=network_id, currect_status=currect_status)
+        self._run(network_id=network_id, current_status=current_status)
 
 
 @command(server_cmds)

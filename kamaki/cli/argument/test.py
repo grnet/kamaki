@@ -369,13 +369,28 @@ class ProgressBarArgument(TestCase):
         pba.value = None
         msg, msg_len = 'message', 40
         with patch('%s.KamakiProgressBar.start' % arg_path) as start:
-            pba.get_generator(msg, msg_len)
-            self.assertTrue(isinstance(pba.bar, argument.KamakiProgressBar))
-            self.assertNotEqual(pba.bar.message, msg)
-            self.assertEqual(
-                pba.bar.message, '%s%s' % (msg, ' ' * (msg_len - len(msg))))
-            self.assertEqual(pba.bar.suffix, '%(percent)d%% - %(eta)ds')
-            start.assert_called_once()
+            try:
+                pba.get_generator(msg, msg_len)
+                self.assertTrue(
+                    isinstance(pba.bar, argument.KamakiProgressBar))
+                self.assertNotEqual(pba.bar.message, msg)
+                self.assertEqual(pba.bar.message, '%s%s' % (
+                    msg, ' ' * (msg_len - len(msg))))
+                self.assertEqual(pba.bar.suffix, '%(percent)d%% - %(eta)ds')
+                start.assert_called_once()
+
+                pba.get_generator(msg, msg_len, countdown=True)
+                self.assertTrue(
+                    isinstance(pba.bar, argument.KamakiProgressBar))
+                self.assertNotEqual(pba.bar.message, msg)
+                self.assertEqual(pba.bar.message, '%s%s' % (
+                    msg, ' ' * (msg_len - len(msg))))
+                self.assertEqual(pba.bar.suffix, '%(remaining)ds to timeout')
+            finally:
+                try:
+                    pba.finish()
+                except Exception:
+                    pass
 
     def test_finish(self):
         pba = argument.ProgressBarArgument(parsed_name='--progress')
