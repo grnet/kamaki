@@ -101,6 +101,7 @@ class Logged(object):
     LOG_TOKEN = False
     LOG_DATA = False
     LOG_PID = False
+    _token = None
 
 
 class RequestManager(Logged):
@@ -149,12 +150,14 @@ class RequestManager(Logged):
         sendlog.info('%s %s://%s%s%s' % (
             self.method, self.scheme, self.netloc, self.path, plog))
         for key, val in self.headers.items():
-            show = (key.lower() != 'x-auth-token') or self.LOG_TOKEN
-            sendlog.info('  %s: %s%s' % (key, val if show else '...', plog))
+            if key.lower() in ('x-auth-token', ) and not self.LOG_TOKEN:
+                self._token, val = val, '...'
+            sendlog.info('  %s: %s%s' % (key, val, plog))
         if self.data:
             sendlog.info('data size:%s%s' % (len(self.data), plog))
             if self.LOG_DATA:
-                sendlog.info(self.data)
+                sendlog.info(self.data.replace(self._token, '...') if (
+                    self._token) else self.data)
         else:
             sendlog.info('data size:0%s' % plog)
         sendlog.info('')
@@ -228,16 +231,20 @@ class ResponseManager(Logged):
                             self.status_code, self.status, plog))
                     self._headers = dict()
                     for k, v in r.getheaders():
-                        show = (k.lower() != 'x-auth-token') or self.LOG_TOKEN
+                        if k.lower in ('x-auth-token', ) and (
+                                not self.LOG_TOKEN):
+                            self._token, v = v, '...'
                         v = unquote(v)
                         self._headers[k] = v
-                        recvlog.info('  %s: %s%s' % (
-                            k, v if show else '...', plog))
+                        recvlog.info('  %s: %s%s' % (k, v, plog))
                     self._content = r.read()
                     recvlog.info('data size: %s%s' % (
                         len(self._content) if self._content else 0, plog))
                     if self.LOG_DATA and self._content:
-                        recvlog.info('%s%s' % (self._content, plog))
+                        data = '%s%s' % (self._content, plog)
+                        if self._token:
+                            data = data.replace(self._token, '...')
+                        sendlog.info(data)
                     sendlog.info('-             -        -     -   -  - -')
                 break
             except Exception as err:
@@ -418,6 +425,7 @@ class Client(Logged):
                 req, connection_retry_limit=self.CONNECTION_RETRY_LIMIT)
             r.LOG_TOKEN, r.LOG_DATA, r.LOG_PID = (
                 self.LOG_TOKEN, self.LOG_DATA, self.LOG_PID)
+            r._token = headers['X-Auth-Token']
         finally:
             self.headers = dict()
             self.params = dict()
