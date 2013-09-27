@@ -379,14 +379,13 @@ class ProgressBarArgument(TestCase):
                 self.assertEqual(pba.bar.suffix, '%(percent)d%% - %(eta)ds')
                 start.assert_called_once()
 
-                pba.get_generator(msg, msg_len, timeout=True)
+                pba.get_generator(msg, msg_len, countdown=True)
                 self.assertTrue(
                     isinstance(pba.bar, argument.KamakiProgressBar))
                 self.assertNotEqual(pba.bar.message, msg)
                 self.assertEqual(pba.bar.message, '%s%s' % (
                     msg, ' ' * (msg_len - len(msg))))
-                self.assertEqual(pba.bar.bar_prefix, ' (Timeout:')
-                self.assertEqual(pba.bar.suffix, '%(eta)ds)')
+                self.assertEqual(pba.bar.suffix, '%(remaining)ds to timeout')
             finally:
                 try:
                     pba.finish()
