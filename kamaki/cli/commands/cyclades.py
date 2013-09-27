@@ -75,20 +75,23 @@ class _service_wait(object):
             'do not show progress bar', ('-N', '--no-progress-bar'), False)
     )
 
-    def _wait(self, service, service_id, status_method, currect_status):
+    def _wait(
+            self, service, service_id, status_method, current_status,
+            timeout=True):
         (progress_bar, wait_cb) = self._safe_progress_bar(
-            '%s %s: periodically check if status is %s' % (
-                service, service_id, currect_status))
+            '%s %s: status is still %s' % (
+                service, service_id, current_status),
+            timeout=timeout)
 
         try:
             new_mode = status_method(
-                service_id, currect_status, wait_cb=wait_cb)
+                service_id, current_status, wait_cb=wait_cb)
             if new_mode:
-                self.error('\n%s %s: status is %s' % (
+                self.error('%s %s: status is now %s' % (
                     service, service_id, new_mode))
             else:
-                self.error('\nTime out: %s %s still in %s' % (
-                    service, service_id, currect_status))
+                self.error('%s %s: (timeout) status is still %s' % (
+                    service, service_id, current_status))
         except KeyboardInterrupt:
             self.error('\n- canceled')
         finally:
@@ -97,16 +100,17 @@ class _service_wait(object):
 
 class _server_wait(_service_wait):
 
-    def _wait(self, server_id, currect_status):
+    def _wait(self, server_id, current_status):
         super(_server_wait, self)._wait(
-            'Server', server_id, self.client.wait_server, currect_status)
+            'Server', server_id, self.client.wait_server, current_status,
+            timeout=(current_status not in ('BUILD', )))
 
 
 class _network_wait(_service_wait):
 
-    def _wait(self, net_id, currect_status):
+    def _wait(self, net_id, current_status):
         super(_network_wait, self)._wait(
-            'Network', net_id, self.client.wait_network, currect_status)
+            'Network', net_id, self.client.wait_network, current_status)
 
 
 class _init_cyclades(_command_init):
@@ -699,12 +703,19 @@ class server_wait(_init_cyclades, _server_wait):
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.server_id
-    def _run(self, server_id, currect_status):
-        self._wait(server_id, currect_status)
+    def _run(self, server_id, current_status):
+        r = self.client.get_server_details(server_id)
+        if r['status'].lower() == current_status.lower():
+            self._wait(server_id, current_status)
+        else:
+            self.error(
+                'Server %s: Cannot wait for status %s, '
+                'status is already %s' % (
+                    server_id, current_status, r['status']))
 
-    def main(self, server_id, currect_status='BUILD'):
+    def main(self, server_id, current_status='BUILD'):
         super(self.__class__, self)._run()
-        self._run(server_id=server_id, currect_status=currect_status)
+        self._run(server_id=server_id, current_status=current_status)
 
 
 @command(flavor_cmds)
@@ -946,7 +957,7 @@ class network_create(_init_cyclades, _optional_json, _network_wait):
             type=self['type'])
         _add_name(self, r)
         self._print(r, self.print_dict)
-        if self['wait']:
+        if self['wait'] and r['status'] in ('PENDING', ):
             self._wait(r['id'], 'PENDING')
 
     def main(self, name):
@@ -1055,12 +1066,19 @@ class network_wait(_init_cyclades, _network_wait):
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.network_id
-    def _run(self, network_id, currect_status):
-        self._wait(network_id, currect_status)
+    def _run(self, network_id, current_status):
+        net = self.client.get_network_details(network_id)
+        if net['status'].lower() == current_status.lower():
+            self._wait(network_id, current_status)
+        else:
+            self.error(
+                'Network %s: Cannot wait for status %s, '
+                'status is already %s' % (
+                    network_id, current_status, net['status']))
 
-    def main(self, network_id, currect_status='PENDING'):
+    def main(self, network_id, current_status='PENDING'):
         super(self.__class__, self)._run()
-        self._run(network_id=network_id, currect_status=currect_status)
+        self._run(network_id=network_id, current_status=current_status)
 
 
 @command(server_cmds)

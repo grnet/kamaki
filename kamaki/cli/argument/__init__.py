@@ -332,7 +332,7 @@ class ProgressBarArgument(FlagArgument):
         newarg._value = self._value
         return newarg
 
-    def get_generator(self, message, message_len=25):
+    def get_generator(self, message, message_len=25, timeout=False):
         """Get a generator to handle progress of the bar (gen.next())"""
         if self.value:
             return None
@@ -341,8 +341,18 @@ class ProgressBarArgument(FlagArgument):
         except NameError:
             self.value = None
             return self.value
+        if timeout:
+            bar_phases = list(self.bar.phases)
+            bar_phases[0], bar_phases[-1] = bar_phases[-1], ''
+            self.bar.phases = bar_phases
+            self.bar.empty_fill = bar_phases[0]
+            self.bar.bar_prefix = ' (Timeout:'
+            self.bar.bar_suffix = ' '
+            self.bar.suffix = '%(eta)ds)'
+            self.bar.eta = 120
+        else:
+            self.bar.suffix = '%(percent)d%% - %(eta)ds'
         self.bar.message = message.ljust(message_len)
-        self.bar.suffix = '%(percent)d%% - %(eta)ds'
         self.bar.start()
 
         def progress_gen(n):
