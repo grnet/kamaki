@@ -97,6 +97,11 @@ class CLISyntaxError(CLIError):
         super(CLISyntaxError, self).__init__(message, details, importance)
 
 
+class CLIInvalidArgument(CLISyntaxError):
+    def __init__(self, message='Invalid Argument', details=[], importance=1):
+        super(CLIInvalidArgument, self).__init__(message, details, importance)
+
+
 class CLIUnknownCommand(CLIError):
     def __init__(self, message='Unknown Command', details=[], importance=1):
         super(CLIUnknownCommand, self).__init__(message, details, importance)

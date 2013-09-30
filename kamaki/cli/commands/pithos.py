@@ -38,7 +38,8 @@ from pydoc import pager
 
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.errors import raiseCLIError, CLISyntaxError, CLIBaseUrlError
+from kamaki.cli.errors import (
+    raiseCLIError, CLISyntaxError, CLIBaseUrlError, CLIInvalidArgument)
 from kamaki.cli.utils import (
     format_size, to_bytes, bold, get_path_size, guess_mime_type)
 from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
@@ -338,7 +339,10 @@ class file_list(_file_container_command, _optional_json, _name_filter):
         exact_match=FlagArgument(
             'Show only objects that match exactly with path',
             '--exact-match'),
-        enum=FlagArgument('Enumerate results', '--enumerate')
+        enum=FlagArgument('Enumerate results', '--enumerate'),
+        recursive=FlagArgument(
+            'Recursively list containers and their contents',
+            ('-R', '--recursive'))
     )
 
     def print_objects(self, object_list):
@@ -392,13 +396,37 @@ class file_list(_file_container_command, _optional_json, _name_filter):
                 else:
                     self.writeln(cname)
 
+    def _argument_context_check(self):
+        container_level_only = ('recursive', )
+        object_level_only = ('delimiter', 'path', 'exact_match')
+        details, mistake = [], ''
+        if self.container:
+            for term in container_level_only:
+                if self[term]:
+                    details = [
+                        'This is a container-level argument',
+                        'Use it without a <container> parameter']
+                    mistake = self.arguments[term]
+        else:
+            for term in object_level_only:
+                if self[term]:
+                    details = [
+                        'This is an opbject-level argument',
+                        'Use it with a <container> parameter']
+                    mistake = self.arguments[term]
+        if mistake and details:
+            raise CLIInvalidArgument(
+                'Invalid use of %s argument' % '/'.join(mistake.parsed_name),
+                details=details + ['Try --help for more details'])
+
     @errors.generic.all
     @errors.pithos.connection
     @errors.pithos.object_path
     @errors.pithos.container
     def _run(self):
         files, prnt = None, None
-        if self.container is None:
+        self._argument_context_check()
+        if not self.container:
             r = self.client.account_get(
                 limit=False if self['more'] else self['limit'],
                 marker=self['marker'],
