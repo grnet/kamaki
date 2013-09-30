@@ -28,4 +28,6 @@ Features:
     The old argument -f/--force <==> --type=HARD is kept for bw compatibility
     A warning message guides users to stop using it
 - Catch Keyboard Interupts in cli wait methods and exit gracefully [#4351]
+- Add -R/--recursive in file listing, to list containers with their contents
+    [#4301]
 

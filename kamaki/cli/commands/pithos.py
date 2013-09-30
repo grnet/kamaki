@@ -38,7 +38,8 @@ from pydoc import pager
 
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.errors import raiseCLIError, CLISyntaxError, CLIBaseUrlError
+from kamaki.cli.errors import (
+    raiseCLIError, CLISyntaxError, CLIBaseUrlError, CLIInvalidArgument)
 from kamaki.cli.utils import (
     format_size, to_bytes, bold, get_path_size, guess_mime_type)
 from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
@@ -338,7 +339,10 @@ class file_list(_file_container_command, _optional_json, _name_filter):
         exact_match=FlagArgument(
             'Show only objects that match exactly with path',
             '--exact-match'),
-        enum=FlagArgument('Enumerate results', '--enumerate')
+        enum=FlagArgument('Enumerate results', '--enumerate'),
+        recursive=FlagArgument(
+            'Recursively list containers and their contents',
+            ('-R', '--recursive'))
     )
 
     def print_objects(self, object_list):
@@ -391,6 +395,52 @@ class file_list(_file_container_command, _optional_json, _name_filter):
                         cname, size, container['count']))
                 else:
                     self.writeln(cname)
+            objects = container.get('objects', [])
+            if objects:
+                self.print_objects(objects)
+                self.writeln('')
+
+    def _argument_context_check(self):
+        container_level_only = ('recursive', )
+        object_level_only = ('delimiter', 'path', 'exact_match')
+        details, mistake = [], ''
+        if self.container:
+            for term in container_level_only:
+                if self[term]:
+                    details = [
+                        'This is a container-level argument',
+                        'Use it without a <container> parameter']
+                    mistake = self.arguments[term]
+        else:
+            for term in object_level_only:
+                if not self['recursive'] and self[term]:
+                    details = [
+                        'This is an opbject-level argument',
+                        'Use it with a <container> parameter',
+                        'or with the -R/--recursive argument']
+                    mistake = self.arguments[term]
+        if mistake and details:
+            raise CLIInvalidArgument(
+                'Invalid use of %s argument' % '/'.join(mistake.parsed_name),
+                details=details + ['Try --help for more details'])
+
+    def _create_object_forest(self, container_list):
+        try:
+            for container in container_list:
+                self.client.container = container['name']
+                objects = self.client.container_get(
+                    limit=False if self['more'] else self['limit'],
+                    marker=self['marker'],
+                    delimiter=self['delimiter'],
+                    path=self['path'],
+                    if_modified_since=self['if_modified_since'],
+                    if_unmodified_since=self['if_unmodified_since'],
+                    until=self['until'],
+                    meta=self['meta'],
+                    show_only_shared=self['shared'])
+                container['objects'] = objects.json
+        finally:
+            self.client.container = None
 
     @errors.generic.all
     @errors.pithos.connection
@@ -398,7 +448,8 @@ class file_list(_file_container_command, _optional_json, _name_filter):
     @errors.pithos.container
     def _run(self):
         files, prnt = None, None
-        if self.container is None:
+        self._argument_context_check()
+        if not self.container:
             r = self.client.account_get(
                 limit=False if self['more'] else self['limit'],
                 marker=self['marker'],
@@ -407,6 +458,8 @@ class file_list(_file_container_command, _optional_json, _name_filter):
                 until=self['until'],
                 show_only_shared=self['shared'])
             files, prnt = self._filter_by_name(r.json), self.print_containers
+            if self['recursive']:
+                self._create_object_forest(files)
         else:
             prefix = (self.path and not self['name']) or self['name_pref']
             r = self.client.container_get(

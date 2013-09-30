@@ -391,6 +391,16 @@ class CLISyntaxError(TestCase):
         self.assertEqual(clise.importance, 1)
 
 
+class CLIInvalidArgument(TestCase):
+
+    def test___init__(self):
+        from kamaki.cli.errors import CLIInvalidArgument
+        cliia = CLIInvalidArgument()
+        self.assertEqual('%s' % cliia, 'Invalid Argument\n')
+        self.assertEqual(cliia.details, [])
+        self.assertEqual(cliia.importance, 1)
+
+
 class CLIUnknownCommand(TestCase):
 
     def test___init__(self):
