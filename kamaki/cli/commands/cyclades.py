@@ -39,7 +39,8 @@ from pydoc import pager
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.utils import remove_from_items, filter_dicts_by_dict
-from kamaki.cli.errors import raiseCLIError, CLISyntaxError, CLIBaseUrlError
+from kamaki.cli.errors import (
+    raiseCLIError, CLISyntaxError, CLIBaseUrlError, CLIInvalidArgument)
 from kamaki.clients.cyclades import CycladesClient, ClientError
 from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
 from kamaki.cli.argument import ProgressBarArgument, DateArgument, IntArgument
@@ -113,6 +114,15 @@ class _network_wait(_service_wait):
     def _wait(self, net_id, current_status, timeout=60):
         super(_network_wait, self)._wait(
             'Network', net_id, self.client.wait_network, current_status,
+            timeout=timeout)
+
+
+class _firewall_wait(_service_wait):
+
+    def _wait(self, server_id, current_status, timeout=60):
+        super(_firewall_wait, self)._wait(
+            'Firewall of server',
+            server_id, self.client.wait_firewall, current_status,
             timeout=timeout)
 
 
@@ -552,7 +562,8 @@ class server_firewall(_init_cyclades):
 
 
 @command(server_cmds)
-class server_firewall_set(_init_cyclades, _optional_output_cmd):
+class server_firewall_set(
+        _init_cyclades, _optional_output_cmd, _firewall_wait):
     """Set the firewall profile on virtual server public network
     Values for profile:
     - DISABLED: Shutdown firewall
@@ -560,13 +571,30 @@ class server_firewall_set(_init_cyclades, _optional_output_cmd):
     - PROTECTED: Firewall in secure mode
     """
 
+    arguments = dict(
+        wait=FlagArgument('Wait server firewall to build', ('-w', '--wait')),
+        timeout=IntArgument(
+            'Set wait timeout in seconds (default: 60)', '--timeout',
+            default=60)
+    )
+
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.server_id
     @errors.cyclades.firewall
     def _run(self, server_id, profile):
-        self._optional_output(self.client.set_firewall_profile(
-            server_id=int(server_id), profile=('%s' % profile).upper()))
+        if self['timeout'] and not self['wait']:
+            raise CLIInvalidArgument('Invalid use of --timeout', details=[
+                'Timeout is used only along with -w/--wait'])
+        old_profile = self.client.get_firewall_profile(server_id)
+        if old_profile.lower() == profile.lower():
+            self.error('Firewall of server %s: allready in status %s' % (
+                server_id, old_profile))
+        else:
+            self._optional_output(self.client.set_firewall_profile(
+                server_id=int(server_id), profile=('%s' % profile).upper()))
+            if self['wait']:
+                self._wait(server_id, old_profile, timeout=self['timeout'])
 
     def main(self, server_id, profile):
         super(self.__class__, self)._run()

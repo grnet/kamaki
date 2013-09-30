@@ -342,6 +342,8 @@ class CycladesClient(CycladesRestClient):
 
         :param delay: time interval between retries
 
+        :max_wait: (int) timeout in secconds
+
         :param wait_cb: if set a progressbar is used to show progress
 
         :returns: (str) the new mode if succesfull, (bool) False if timed out
@@ -366,6 +368,8 @@ class CycladesClient(CycladesRestClient):
 
         :param delay: time interval between retries
 
+        :max_wait: (int) timeout in secconds
+
         :param wait_cb: if set a progressbar is used to show progress
 
         :returns: (str) the new mode if succesfull, (bool) False if timed out
@@ -377,6 +381,30 @@ class CycladesClient(CycladesRestClient):
 
         return self._wait(
             net_id, current_status, get_status, delay, max_wait, wait_cb)
+
+    def wait_firewall(
+            self, server_id,
+            current_status='DISABLED', delay=1, max_wait=100, wait_cb=None):
+        """Wait while the public network firewall status is current_status
+
+        :param server_id: integer (str or int)
+
+        :param current_status: (str) DISABLED | ENABLED | PROTECTED
+
+        :param delay: time interval between retries
+
+        :max_wait: (int) timeout in secconds
+
+        :param wait_cb: if set a progressbar is used to show progress
+
+        :returns: (str) the new mode if succesfull, (bool) False if timed out
+        """
+
+        def get_status(self, server_id):
+            return self.get_firewall_profile(server_id), None
+
+        return self._wait(
+            server_id, current_status, get_status, delay, max_wait, wait_cb)
 
     def get_floating_ip_pools(self):
         """
