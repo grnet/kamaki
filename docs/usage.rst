@@ -179,7 +179,6 @@ command group (server) and of a command in that group (list).
     console: Get a VNC console to access an existing virtual server
     addr: List the addresses of all network interfaces on a virtual server
     firewall: Manage virtual server firewall profiles for public networks
-    ip: Manage floating IPs for the servers
     create: Create a server (aka Virtual Machine)
     list: List Virtual Machines accessible by user
     reboot: Reboot a virtual server

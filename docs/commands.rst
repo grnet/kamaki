@@ -246,6 +246,41 @@ Showcase: Create a server
 
 .. Note:: In kamaki shell, / is used to access top-level command groups while working in command group contexts
 
+
+ip (Compute/Cyclades)
+---------------------
+
+.. code-block:: text
+
+    info:    Details for an IP
+    list:    List reserved floating IPs
+    attach:  Attach a floating IP to a server
+    pools:   List pools of floating IPs
+    release: Release a floating IP
+    detach:  Detach a floating IP from a server
+    reserve: Reserve a floating IP
+
+Showcase: Reserve and attach IP to server
+-----------------------------------------
+
+.. code-block:: text
+
+    * Enter IP context *
+    [kamaki]: ip
+
+    * Reserve an IP and see servers *
+    [kamaki]: reserve
+    123.456.78.9
+    [kamaki]: /server list
+    42   My Windows Server
+    43   My Linux Server
+
+    * Attach IP to server
+    [kamaki]: attach 43 123.456.78.9
+
+.. Note:: In kamaki shell, / is used to access top-level command groups while
+    working in command group contexts
+
 network (Compute/Cyclades)
 --------------------------
 
