@@ -15,6 +15,7 @@ Changes:
     [#4352]
 - Make wait progress bars in cyclades CLI to count down to timeout instead of
     progressing forward [#4352]
+- Rename IP commands to new namespace and better names [#4422]
 
 Features:
 

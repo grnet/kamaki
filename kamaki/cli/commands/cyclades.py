@@ -51,7 +51,8 @@ from kamaki.cli.commands import (
 server_cmds = CommandTree('server', 'Cyclades/Compute API server commands')
 flavor_cmds = CommandTree('flavor', 'Cyclades/Compute API flavor commands')
 network_cmds = CommandTree('network', 'Cyclades/Compute API network commands')
-_commands = [server_cmds, flavor_cmds, network_cmds]
+ip_cmds = CommandTree('ip', 'Cyclades/Compute API floating ip commands')
+_commands = [server_cmds, flavor_cmds, network_cmds, ip_cmds]
 
 
 about_authentication = '\nUser Authentication:\
@@ -1093,14 +1094,9 @@ class network_wait(_init_cyclades, _network_wait):
         self._run(network_id=network_id, current_status=current_status)
 
 
-@command(server_cmds)
-class server_ip(_init_cyclades):
-    """Manage floating IPs for the servers"""
-
-
-@command(server_cmds)
-class server_ip_pools(_init_cyclades, _optional_json):
-    """List all floating pools of floating ips"""
+@command(ip_cmds)
+class ip_pools(_init_cyclades, _optional_json):
+    """List pools of floating IPs"""
 
     @errors.generic.all
     @errors.cyclades.connection
@@ -1113,9 +1109,9 @@ class server_ip_pools(_init_cyclades, _optional_json):
         self._run()
 
 
-@command(server_cmds)
-class server_ip_list(_init_cyclades, _optional_json):
-    """List all floating ips"""
+@command(ip_cmds)
+class ip_list(_init_cyclades, _optional_json):
+    """List reserved floating IPs"""
 
     @errors.generic.all
     @errors.cyclades.connection
@@ -1128,23 +1124,26 @@ class server_ip_list(_init_cyclades, _optional_json):
         self._run()
 
 
-@command(server_cmds)
-class server_ip_info(_init_cyclades, _optional_json):
-    """A floating IPs' details"""
+@command(ip_cmds)
+class ip_info(_init_cyclades, _optional_json):
+    """Details for an IP"""
 
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self, ip):
         self._print(self.client.get_floating_ip(ip), self.print_dict)
 
-    def main(self, ip):
+    def main(self, IP):
         super(self.__class__, self)._run()
-        self._run(ip=ip)
+        self._run(ip=IP)
 
 
-@command(server_cmds)
-class server_ip_create(_init_cyclades, _optional_json):
-    """Create a new floating IP"""
+@command(ip_cmds)
+class ip_reserve(_init_cyclades, _optional_json):
+    """Reserve a floating IP
+    An IP is reserved from an IP pool. The default IP pool is chosen
+    automatically, but there is the option if specifying an explicit IP pool.
+    """
 
     arguments = dict(pool=ValueArgument('Source IP pool', ('--pool'), None))
 
@@ -1153,28 +1152,30 @@ class server_ip_create(_init_cyclades, _optional_json):
     def _run(self, ip=None):
         self._print([self.client.alloc_floating_ip(self['pool'], ip)])
 
-    def main(self, requested_address=None):
+    def main(self, requested_IP=None):
         super(self.__class__, self)._run()
-        self._run(ip=requested_address)
+        self._run(ip=requested_IP)
 
 
-@command(server_cmds)
-class server_ip_delete(_init_cyclades, _optional_output_cmd):
-    """Delete a floating ip"""
+@command(ip_cmds)
+class ip_release(_init_cyclades, _optional_output_cmd):
+    """Release a floating IP
+    The release IP is "returned" to the IP pool it came from.
+    """
 
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self, ip):
         self._optional_output(self.client.delete_floating_ip(ip))
 
-    def main(self, ip):
+    def main(self, IP):
         super(self.__class__, self)._run()
-        self._run(ip=ip)
+        self._run(ip=IP)
 
 
-@command(server_cmds)
-class server_ip_attach(_init_cyclades, _optional_output_cmd):
-    """Attach a floating ip to a server with server_id
+@command(ip_cmds)
+class ip_attach(_init_cyclades, _optional_output_cmd):
+    """Attach a floating IP to a server
     """
 
     @errors.generic.all
@@ -1183,14 +1184,14 @@ class server_ip_attach(_init_cyclades, _optional_output_cmd):
     def _run(self, server_id, ip):
         self._optional_output(self.client.attach_floating_ip(server_id, ip))
 
-    def main(self, server_id, ip):
+    def main(self, server_id, IP):
         super(self.__class__, self)._run()
-        self._run(server_id=server_id, ip=ip)
+        self._run(server_id=server_id, ip=IP)
 
 
-@command(server_cmds)
-class server_ip_detach(_init_cyclades, _optional_output_cmd):
-    """Detach floating IP from server
+@command(ip_cmds)
+class ip_detach(_init_cyclades, _optional_output_cmd):
+    """Detach a floating IP from a server
     """
 
     @errors.generic.all
@@ -1199,6 +1200,6 @@ class server_ip_detach(_init_cyclades, _optional_output_cmd):
     def _run(self, server_id, ip):
         self._optional_output(self.client.detach_floating_ip(server_id, ip))
 
-    def main(self, server_id, ip):
+    def main(self, server_id, IP):
         super(self.__class__, self)._run()
-        self._run(server_id=server_id, ip=ip)
+        self._run(server_id=server_id, ip=IP)

@@ -84,6 +84,7 @@ DEFAULTS = {
         'server_cli': 'cyclades',
         'flavor_cli': 'cyclades',
         'network_cli': 'cyclades',
+        'ip_cli': 'cyclades',
         'image_cli': 'image',
         'config_cli': 'config',
         'history_cli': 'history'
