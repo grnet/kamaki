@@ -395,6 +395,10 @@ class file_list(_file_container_command, _optional_json, _name_filter):
                         cname, size, container['count']))
                 else:
                     self.writeln(cname)
+            objects = container.get('objects', [])
+            if objects:
+                self.print_objects(objects)
+                self.writeln('')
 
     def _argument_context_check(self):
         container_level_only = ('recursive', )
@@ -409,15 +413,34 @@ class file_list(_file_container_command, _optional_json, _name_filter):
                     mistake = self.arguments[term]
         else:
             for term in object_level_only:
-                if self[term]:
+                if not self['recursive'] and self[term]:
                     details = [
                         'This is an opbject-level argument',
-                        'Use it with a <container> parameter']
+                        'Use it with a <container> parameter',
+                        'or with the -R/--recursive argument']
                     mistake = self.arguments[term]
         if mistake and details:
             raise CLIInvalidArgument(
                 'Invalid use of %s argument' % '/'.join(mistake.parsed_name),
                 details=details + ['Try --help for more details'])
+
+    def _create_object_forest(self, container_list):
+        try:
+            for container in container_list:
+                self.client.container = container['name']
+                objects = self.client.container_get(
+                    limit=False if self['more'] else self['limit'],
+                    marker=self['marker'],
+                    delimiter=self['delimiter'],
+                    path=self['path'],
+                    if_modified_since=self['if_modified_since'],
+                    if_unmodified_since=self['if_unmodified_since'],
+                    until=self['until'],
+                    meta=self['meta'],
+                    show_only_shared=self['shared'])
+                container['objects'] = objects.json
+        finally:
+            self.client.container = None
 
     @errors.generic.all
     @errors.pithos.connection
@@ -435,6 +458,8 @@ class file_list(_file_container_command, _optional_json, _name_filter):
                 until=self['until'],
                 show_only_shared=self['shared'])
             files, prnt = self._filter_by_name(r.json), self.print_containers
+            if self['recursive']:
+                self._create_object_forest(files)
         else:
             prefix = (self.path and not self['name']) or self['name_pref']
             r = self.client.container_get(
