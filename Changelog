@@ -31,4 +31,5 @@ Features:
 - Catch Keyboard Interupts in cli wait methods and exit gracefully [#4351]
 - Add -R/--recursive in file listing, to list containers with their contents
     [#4301]
+- Add -w/--wait to server firewall set [#4298]
 
