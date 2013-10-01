@@ -1,3 +1,9 @@
+kamaki (0.10.2-1~precise) precise; urgency=low
+
+  * New upsream version
+
+ -- Nikos Skalkotos <skalkoto@grnet.gr>  Tue, 01 Oct 2013 12:29:43 +0300
+
 kamaki (0.9.1-1~precise) precise; urgency=low
 
   * release build
