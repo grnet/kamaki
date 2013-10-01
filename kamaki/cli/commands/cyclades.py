@@ -63,11 +63,12 @@ about_authentication = '\nUser Authentication:\
 howto_personality = [
     'Defines a file to be injected to virtual servers file system.',
     'syntax:  PATH,[SERVER_PATH,[OWNER,[GROUP,[MODE]]]]',
-    '  PATH: local file to be injected (relative or absolute)',
-    '  SERVER_PATH: destination location inside server Image',
-    '  OWNER: virtual servers user id of the remote destination file',
-    '  GROUP: virtual servers group id or name of the destination file',
-    '  MODEL: permition in octal (e.g., 0777 or o+rwx)']
+    '  [local-path=]PATH: local file to be injected (relative or absolute)',
+    '  [server-path=]SERVER_PATH: destination location inside server Image',
+    '  [owner=]OWNER: virtual servers user id for the remote file',
+    '  [group=]GROUP: virtual servers group id or name for the remote file',
+    '  [mode=]MODE: permission in octal (e.g., 0777 or o+rwx)',
+    'e.g., -p /tmp/my.file,owner=root,mode=0777']
 
 
 class _service_wait(object):
@@ -302,6 +303,14 @@ class server_info(_init_cyclades, _optional_json):
 
 
 class PersonalityArgument(KeyValueArgument):
+
+    terms = (
+        ('local-path', 'contents'),
+        ('server-path', 'path'),
+        ('owner', 'owner'),
+        ('group', 'group'),
+        ('mode', 'mode'))
+
     @property
     def value(self):
         return self._value if hasattr(self, '_value') else []
@@ -310,28 +319,48 @@ class PersonalityArgument(KeyValueArgument):
     def value(self, newvalue):
         if newvalue == self.default:
             return self.value
-        self._value = []
+        self._value, input_dict = [], {}
         for i, terms in enumerate(newvalue):
             termlist = terms.split(',')
-            if len(termlist) > 5:
-                msg = 'Wrong number of terms (should be 1 to 5)'
+            if len(termlist) > len(self.terms):
+                msg = 'Wrong number of terms (1<=terms<=%s)' % len(self.terms)
                 raiseCLIError(CLISyntaxError(msg), details=howto_personality)
-            path = termlist[0]
+
+            for k, v in self.terms:
+                prefix = '%s=' % k
+                for item in termlist:
+                    if item.lower().startswith(prefix):
+                        input_dict[k] = item[len(k) + 1:]
+                        break
+                    item = None
+                if item:
+                    termlist.remove(item)
+
+            try:
+                path = input_dict['local-path']
+            except KeyError:
+                path = termlist.pop(0)
+                if not path:
+                    raise CLIInvalidArgument(
+                        '--personality: No local path specified',
+                        details=howto_personality)
+
             if not exists(path):
-                raiseCLIError(
-                    None,
+                raise CLIInvalidArgument(
                     '--personality: File %s does not exist' % path,
-                    importance=1, details=howto_personality)
+                    details=howto_personality)
+
             self._value.append(dict(path=path))
             with open(path) as f:
                 self._value[i]['contents'] = b64encode(f.read())
-            try:
-                self._value[i]['path'] = termlist[1]
-                self._value[i]['owner'] = termlist[2]
-                self._value[i]['group'] = termlist[3]
-                self._value[i]['mode'] = termlist[4]
-            except IndexError:
-                pass
+            for k, v in self.terms[1:]:
+                try:
+                    self._value[i][v] = input_dict[k]
+                except KeyError:
+                    try:
+                        self._value[i][v] = termlist.pop(0)
+                    except IndexError:
+                        continue
 
 
 @command(server_cmds)
@@ -354,6 +383,7 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
     @errors.plankton.id
     @errors.cyclades.flavor_id
     def _run(self, name, flavor_id, image_id):
+        print 'hey, wha?'
         r = self.client.create_server(
             name, int(flavor_id), image_id, personality=self['personality'])
         usernames = self._uuids2usernames([r['user_id'], r['tenant_id']])
