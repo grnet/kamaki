@@ -477,7 +477,7 @@ class file_list(_file_container_command, _optional_json, _name_filter):
         if self['more']:
             outbu, self._out = self._out, StringIO()
         try:
-            if self['json_output']:
+            if self['json_output'] or self['output_format']:
                 self._print(files)
             else:
                 prnt(files)
@@ -1169,7 +1169,8 @@ class file_upload(_file_container_command, _optional_output_cmd):
                     rpath, f,
                     etag=self['etag'], withHashFile=self['use_hashes'],
                     **params)
-                if self['with_output'] or self['json_output']:
+                if self['with_output'] or (
+                        self['json_output'] or self['output_format']):
                     r['name'] = '%s: %s' % (self.client.container, rpath)
                     uploaded.append(r)
             else:
@@ -1188,7 +1189,8 @@ class file_upload(_file_container_command, _optional_output_cmd):
                         upload_cb=upload_cb,
                         container_info_cache=container_info_cache,
                         **params)
-                    if self['with_output'] or self['json_output']:
+                    if self['with_output'] or (
+                            self['json_output'] or self['output_format']):
                         r['name'] = '%s: %s' % (self.client.container, rpath)
                         uploaded.append(r)
                 except Exception:
@@ -2068,7 +2070,7 @@ class file_sharers(_file_account_command, _optional_json):
     @errors.pithos.connection
     def _run(self):
         accounts = self.client.get_sharing_accounts(marker=self['marker'])
-        if not self['json_output']:
+        if not (self['json_output'] or self['output_format']):
             usernames = self._uuids2usernames(
                 [acc['name'] for acc in accounts])
             for item in accounts:

@@ -251,9 +251,11 @@ class server_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
         if withmeta:
             servers = self._filter_by_metadata(servers)
 
-        if self['detail'] and not self['json_output']:
+        if self['detail'] and not (
+                self['json_output'] or self['output_format']):
             servers = self._add_user_name(servers)
-        elif not (self['detail'] or self['json_output']):
+        elif not (self['detail'] or (
+                self['json_output'] or self['output_format'])):
             remove_from_items(servers, 'links')
         if detail and not self['detail']:
             for srv in servers:
@@ -797,7 +799,8 @@ class flavor_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
         flavors = self._filter_by_id(flavors)
         if withcommons:
             flavors = self._apply_common_filters(flavors)
-        if not (self['detail'] or self['json_output']):
+        if not (self['detail'] or (
+                self['json_output'] or self['output_format'])):
             remove_from_items(flavors, 'links')
         if detail and not self['detail']:
             for flv in flavors:
@@ -941,13 +944,15 @@ class network_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
         networks = self._filter_by_id(networks)
         if withcommons:
             networks = self._apply_common_filters(networks)
-        if not (self['detail'] or self['json_output']):
+        if not (self['detail'] or (
+                self['json_output'] or self['output_format'])):
             remove_from_items(networks, 'links')
         if detail and not self['detail']:
             for net in networks:
                 for key in set(net).difference(self.PERMANENTS):
                     net.pop(key)
-        if self['detail'] and not self['json_output']:
+        if self['detail'] and not (
+                self['json_output'] or self['output_format']):
             self._add_name(networks)
             self._add_name(networks, 'tenant_id')
         kwargs = dict(with_enumeration=self['enum'])
@@ -1130,7 +1135,8 @@ class ip_pools(_init_cyclades, _optional_json):
     @errors.cyclades.connection
     def _run(self):
         r = self.client.get_floating_ip_pools()
-        self._print(r if self['json_output'] else r['floating_ip_pools'])
+        self._print(r if self['json_output'] or self['output_format'] else r[
+            'floating_ip_pools'])
 
     def main(self):
         super(self.__class__, self)._run()
@@ -1145,7 +1151,8 @@ class ip_list(_init_cyclades, _optional_json):
     @errors.cyclades.connection
     def _run(self):
         r = self.client.get_floating_ips()
-        self._print(r if self['json_output'] else r['floating_ips'])
+        self._print(r if self['json_output'] or self['output_format'] else r[
+            'floating_ips'])
 
     def main(self):
         super(self.__class__, self)._run()
