@@ -34,3 +34,4 @@ Features:
 - Add -w/--wait to server firewall set [#4298]
 - Add --output-format where applicable, keep -j/--json too, for bw
     compatibility [#4342]
+- Allow metakeys in personality argument [#4312]
