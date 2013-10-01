@@ -45,7 +45,8 @@ from kamaki.clients.cyclades.test import CycladesClient
 from kamaki.clients.cyclades.test import CycladesRestClient
 from kamaki.clients.image.test import ImageClient
 from kamaki.clients.storage.test import StorageClient
-from kamaki.clients.pithos.test import PithosClient, PithosRestClient
+from kamaki.clients.pithos.test import (
+    PithosClient, PithosRestClient, PithosMethods)
 
 
 class ClientError(TestCase):
@@ -300,10 +301,7 @@ class Client(TestCase):
         self.assertEqual(self.client.base_url, self.base_url)
         self.assertEqual(self.client.token, self.token)
         self.assert_dicts_are_equal(self.client.headers, {})
-        DATE_FORMATS = [
-            '%a %b %d %H:%M:%S %Y',
-            '%A, %d-%b-%y %H:%M:%S GMT',
-            '%a, %d %b %Y %H:%M:%S GMT']
+        DATE_FORMATS = ['%a %b %d %H:%M:%S %Y']
         self.assertEqual(self.client.DATE_FORMATS, DATE_FORMATS)
 
     def test__init_thread_limit(self):

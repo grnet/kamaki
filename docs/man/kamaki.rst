@@ -119,6 +119,14 @@ server commands
 * firewall  Set the server (VM) firewall profile for public networks
     * set   Set the firewall profile
     * get   Get the firewall profile
+* ip        Manage floating IPs for the servers
+    * attach    Attach a floating ip to a server with server_id
+    * info      A floating IPs' details
+    * detach    Detach floating ip from server
+    * list      List all floating ips
+    * create    Create a new floating IP
+    * delete    Delete a floating ip
+    * pools     List all floating pools of floating ips
 * info      Detailed information on a Virtual Machine
 * list      List Virtual Machines accessible by user
 * metadata  Manage a server metadata
@@ -130,6 +138,7 @@ server commands
 * shutdown  Shutdown an active server (VM)
 * start     Start an existing server (VM)
 * stats     Get server (VM) statistics
+* resize    Set a different flavor for an existing server
 * wait      Wait for server to finish [BUILD, STOPPED, REBOOT, ACTIVE]
 
 
@@ -144,7 +153,10 @@ image commands
 **************
 
 * list           List images accessible by user
-* meta           Get image metadata
+* info           Get image metadata
+* meta           Manage image metadata
+    * set       Add / update metadata and properties for an image
+    * delete    Remove/empty image metadata and/or custom properties
 * register       (Re)Register an image
 * unregister     Unregister an image (does not delete the image file)
 * shared         List shared images
@@ -153,7 +165,6 @@ image commands
     * delete     Delete image
     * info       Get image details
     * properties Manage properties related to OS installation in an image
-        * add    Add a property to an image
         * delete Delete a property from an image
         * get    Get an image property
         * list   List all image properties

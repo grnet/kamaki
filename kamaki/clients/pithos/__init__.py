@@ -52,17 +52,49 @@ def _pithos_hash(block, blockhash):
     return h.hexdigest()
 
 
-def _range_up(start, end, a_range):
-    if a_range:
-        (rstart, rend) = a_range.split('-')
-        (rstart, rend) = (int(rstart), int(rend))
-        if rstart > end or rend < start:
-            return (0, 0)
-        if rstart > start:
-            start = rstart
-        if rend < end:
-            end = rend
-    return (start, end)
+def _range_up(start, end, max_value, a_range):
+    """
+    :param start: (int) the window bottom
+
+    :param end: (int) the window top
+
+    :param max_value: (int) maximum accepted value
+
+    :param a_range: (str) a range string in the form X[,X'[,X''[...]]]
+        where X: x|x-y|-x where x < y and x, y natural numbers
+
+    :returns: (str) a range string cut-off for the start-end range
+        an empty response means this window is out of range
+    """
+    assert start >= 0, '_range_up was called with start < 0'
+    assert end >= start, '_range_up was called with end < start'
+    assert end <= max_value, '_range_up was called with max_value < end'
+    if not a_range:
+        return '%s-%s' % (start, end)
+    selected = []
+    for some_range in a_range.split(','):
+        v0, sep, v1 = some_range.partition('-')
+        if v0:
+            v0 = int(v0)
+            if sep:
+                v1 = int(v1)
+                if v1 < start or v0 > end or v1 < v0:
+                    continue
+                v0 = v0 if v0 > start else start
+                v1 = v1 if v1 < end else end
+                selected.append('%s-%s' % (v0, v1))
+            elif v0 < start:
+                continue
+            else:
+                v1 = v0 if v0 <= end else end
+                selected.append('%s-%s' % (start, v1))
+        else:
+            v1 = int(v1)
+            if max_value - v1 > end:
+                continue
+            v0 = (max_value - v1) if max_value - v1 > start else start
+            selected.append('%s-%s' % (v0, end))
+    return ','.join(selected)
 
 
 class PithosClient(PithosRestClient):
@@ -442,9 +474,13 @@ class PithosClient(PithosRestClient):
                 else:
                     break
             if missing:
+                try:
+                    details = ['%s' % thread.exception for thread in missing]
+                except Exception:
+                    details = ['Also, failed to read thread exceptions']
                 raise ClientError(
                     '%s blocks failed to upload' % len(missing),
-                    details=['%s' % thread.exception for thread in missing])
+                    details=details)
         except KeyboardInterrupt:
             sendlog.info('- - - wait for threads to finish')
             for thread in activethreads():
@@ -456,6 +492,7 @@ class PithosClient(PithosRestClient):
             format='json',
             hashmap=True,
             content_type=content_type,
+            content_encoding=content_encoding,
             if_etag_match=if_etag_match,
             if_etag_not_match='*' if if_not_exist else None,
             etag=etag,
@@ -591,6 +628,7 @@ class PithosClient(PithosRestClient):
             format='json',
             hashmap=True,
             content_type=content_type,
+            content_encoding=content_encoding,
             if_etag_match=if_etag_match,
             if_etag_not_match='*' if if_not_exist else None,
             etag=etag,
@@ -620,15 +658,18 @@ class PithosClient(PithosRestClient):
         return (blocksize, blockhash, total_size, hashmap['hashes'], map_dict)
 
     def _dump_blocks_sync(
-            self, obj, remote_hashes, blocksize, total_size, dst, range,
+            self, obj, remote_hashes, blocksize, total_size, dst, crange,
             **args):
         for blockid, blockhash in enumerate(remote_hashes):
             if blockhash:
                 start = blocksize * blockid
                 is_last = start + blocksize > total_size
                 end = (total_size - 1) if is_last else (start + blocksize - 1)
-                (start, end) = _range_up(start, end, range)
-                args['data_range'] = 'bytes=%s-%s' % (start, end)
+                data_range = _range_up(start, end, total_size, crange)
+                if not data_range:
+                    self._cb_next()
+                    continue
+                args['data_range'] = 'bytes=%s' % data_range
                 r = self.object_get(obj, success=(200, 206), **args)
                 self._cb_next()
                 dst.write(r.content)
@@ -674,9 +715,6 @@ class PithosClient(PithosRestClient):
         flying = dict()
         blockid_dict = dict()
         offset = 0
-        if filerange is not None:
-            rstart = int(filerange.split('-')[0])
-            offset = rstart if blocksize > rstart else rstart % blocksize
 
         self._init_thread_limit()
         for block_hash, blockids in remote_hashes.items():
@@ -693,12 +731,11 @@ class PithosClient(PithosRestClient):
                     **restargs)
                 end = total_size - 1 if (
                     key + blocksize > total_size) else key + blocksize - 1
-                start, end = _range_up(key, end, filerange)
-                if start == end:
+                data_range = _range_up(key, end, total_size, filerange)
+                if not data_range:
                     self._cb_next()
                     continue
-                restargs['async_headers'] = {
-                    'Range': 'bytes=%s-%s' % (start, end)}
+                restargs['async_headers'] = {'Range': 'bytes=%s' % data_range}
                 flying[key] = self._get_block_async(obj, **restargs)
                 blockid_dict[key] = unsaved
 
@@ -841,9 +878,10 @@ class PithosClient(PithosRestClient):
                 start = blocksize * blockid
                 is_last = start + blocksize > total_size
                 end = (total_size - 1) if is_last else (start + blocksize - 1)
-                (start, end) = _range_up(start, end, range_str)
-                if start < end:
+                data_range_str = _range_up(start, end, end, range_str)
+                if data_range_str:
                     self._watch_thread_limit(flying.values())
+                    restargs['data_range'] = 'bytes=%s' % data_range_str
                     flying[blockid] = self._get_block_async(obj, **restargs)
                 for runid, thread in flying.items():
                     if (blockid + 1) == num_of_blocks:
@@ -883,8 +921,7 @@ class PithosClient(PithosRestClient):
             if_match=None,
             if_none_match=None,
             if_modified_since=None,
-            if_unmodified_since=None,
-            data_range=None):
+            if_unmodified_since=None):
         """
         :param obj: (str) remote object path
 
@@ -896,9 +933,6 @@ class PithosClient(PithosRestClient):
 
         :param if_unmodified_since: (str) formated date
 
-        :param data_range: (str) from-to where from and to are integers
-            denoting file positions in bytes
-
         :returns: (list)
         """
         try:
@@ -909,8 +943,7 @@ class PithosClient(PithosRestClient):
                 if_etag_match=if_match,
                 if_etag_not_match=if_none_match,
                 if_modified_since=if_modified_since,
-                if_unmodified_since=if_unmodified_since,
-                data_range=data_range)
+                if_unmodified_since=if_unmodified_since)
         except ClientError as err:
             if err.status == 304 or err.status == 412:
                 return {}

@@ -175,6 +175,7 @@ and of a command in that group (list) are shown.
     create  :  Create a server (aka Virtual Machine)
     delete  :  Delete a server (VM)
     firewall:  Manage server (VM) firewall profiles for public networks
+    ip      :  Manage floating IPs for the servers
     info    :  Detailed information on a Virtual Machine
     list    :  List Virtual Machines accessible by user
     metadata:  Manage Server metadata (key:value pairs of server attributes)
@@ -183,6 +184,7 @@ and of a command in that group (list) are shown.
     shutdown:  Shutdown an active server (VM)
     start   :  Start an existing server (VM)
     stats   :  Get server (VM) statistics
+    resize  :  Set a different flavor for an existing server
     wait    :  Wait for server to finish [BUILD, STOPPED, REBOOT, ACTIVE]
 
 .. code-block:: console

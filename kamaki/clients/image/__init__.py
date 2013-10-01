@@ -1,4 +1,4 @@
-# Copyright 2011 GRNET S.A. All rights reserved.
+# Copyright 2011-2013 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -76,7 +76,7 @@ class ImageClient(Client):
             for key, value in filters.items():
                 if value:
                     async_params[key] = value
-        if order.startswith('-'):
+        if order and order.startswith('-'):
             async_params['sort_dir'] = 'desc'
             order = order[1:]
         else:
@@ -103,7 +103,9 @@ class ImageClient(Client):
 
         :param name: (str)
 
-        :param location: (str) pithos://<account>/<container>/<path>
+        :param location: (str or iterable) if iterable, then
+            (user_uuid, container, image_path) else if string
+            pithos://<user_uuid>/<container>/<image object>
 
         :param params: (dict) image metadata (X-Image-Meta) can be id, store,
             disc_format, container_format, size, checksum, is_public, owner
@@ -114,6 +116,9 @@ class ImageClient(Client):
         """
         path = path4url('images') + '/'
         self.set_header('X-Image-Meta-Name', name)
+        location = location if (
+            isinstance(location, str) or isinstance(location, unicode)) else (
+                'pithos://%s' % '/'.join(location))
         self.set_header('X-Image-Meta-Location', location)
 
         async_headers = {}
@@ -192,4 +197,27 @@ class ImageClient(Client):
         path = path4url('images', image_id, 'members')
         req = {'memberships': [{'member_id': member} for member in members]}
         r = self.put(path, json=req, success=204)
+        return r.headers
+
+    def update_image(
+            self, image_id,
+            name=None, disk_format=None, container_format=None,
+            status=None, public=None, owner_id=None, **properties):
+        path = path4url('images', image_id)
+        if name is not None:
+            self.set_header('X-Image-Meta-Name', name)
+        if disk_format is not None:
+            self.set_header('X-Image-Meta-Disk-Format', disk_format)
+        if container_format is not None:
+            self.set_header('X-Image-Meta-Container-Format', container_format)
+        if status is not None:
+            self.set_header('X-Image-Meta-Status', status)
+        if public is not None:
+            self.set_header('X-Image-Meta-Is-Public', bool(public))
+        if owner_id is not None:
+            self.set_header('X-Image-Meta-Owner', owner_id)
+        for k, v in properties.items():
+            self.set_header('X-Image-Meta-Property-%s' % k, v)
+        self.set_header('Content-Length', 0)
+        r = self.put(path, success=200)
         return r.headers

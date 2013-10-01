@@ -77,18 +77,14 @@ class Cyclades(livetest.Generic):
     def test_000(self):
         "Prepare a full Cyclades test scenario"
         self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
+            self.servname1, self.flavorid, self.img)
         self.server2 = self._create_server(
-            self.servname2,
-            self.flavorid,
-            self.img)
+            self.servname2, self.flavorid, self.img)
         super(self.__class__, self).test_000()
 
     def _create_server(self, servername, flavorid, imageid, personality=None):
         server = self.client.create_server(
-            servername, flavorid, imageid, personality)
+            servername, flavorid, imageid, personality=personality)
         print('CREATE VM %s (%s)' % (server['id'], server['name']))
         self.servers[servername] = server
         return server
@@ -164,13 +160,13 @@ class Cyclades(livetest.Generic):
 
     def _has_status(self, servid, status):
         r = self.client.get_server_details(servid)
-        #print 'MY STATUS IS ', r['status']
+        #print 'MY ', servid, ' STATUS IS ', r['status']
         return r['status'] == status
 
     def _wait_for_status(self, servid, status):
         (wait_bar, wait_cb) = self._safe_progress_bar(
             'Server %s in %s' % (servid, status))
-        self.client.wait_server(servid, status, wait_cb=wait_cb)
+        self.client.wait_server(servid, status, wait_cb=wait_cb, delay=5)
         self._safe_progress_bar_finish(wait_bar)
 
     def test_parallel_creation(self):
@@ -178,61 +174,18 @@ class Cyclades(livetest.Generic):
         Do not use this in regular livetest
         """
         from kamaki.clients import SilentEvent
-        c1 = SilentEvent(
-            self._create_server,
-            self.servname1,
-            self.flavorid,
-            self.img)
-        c2 = SilentEvent(
-            self._create_server,
-            self.servname2,
-            self.flavorid,
-            self.img)
-        c3 = SilentEvent(
-            self._create_server,
-            self.servname1,
-            self.flavorid,
-            self.img)
-        c4 = SilentEvent(
-            self._create_server,
-            self.servname2,
-            self.flavorid,
-            self.img)
-        c5 = SilentEvent(
-            self._create_server,
-            self.servname1,
-            self.flavorid,
-            self.img)
-        c6 = SilentEvent(
-            self._create_server,
-            self.servname2,
-            self.flavorid,
-            self.img)
-        c7 = SilentEvent(
-            self._create_server,
-            self.servname1,
-            self.flavorid,
-            self.img)
-        c8 = SilentEvent(
-            self._create_server,
-            self.servname2,
-            self.flavorid,
-            self.img)
-        c1.start()
-        c2.start()
-        c3.start()
-        c4.start()
-        c5.start()
-        c6.start()
-        c7.start()
-        c8.start()
+        c = []
+        for i in range(8):
+            sname = '%s_%s' % (self.servname1, i)
+            c.append(SilentEvent(
+                self._create_server, sname, self.flavorid, self.img))
+        for i in range(8):
+            c[i].start()
 
     def test_create_server(self):
         """Test create_server"""
         self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
+            self.servname1, self.flavorid, self.img)
         self._wait_for_status(self.server1['id'], 'BUILD')
         self._test_0010_create_server()
 
@@ -245,13 +198,9 @@ class Cyclades(livetest.Generic):
     def test_list_servers(self):
         """Test list servers"""
         self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
+            self.servname1, self.flavorid, self.img)
         self.server2 = self._create_server(
-            self.servname2,
-            self.flavorid,
-            self.img)
+            self.servname2, self.flavorid, self.img)
         self._test_0020_list_servers()
 
     def _test_0020_list_servers(self):
@@ -260,17 +209,12 @@ class Cyclades(livetest.Generic):
 
         """detailed and simple are same size"""
         self.assertEqual(len(dservers), len(servers))
-        for i in range(len(servers)):
-            for field in (
-                    'created',
-                    'flavor',
-                    'hostId',
-                    'image',
-                    'progress',
-                    'status',
-                    'updated'):
-                self.assertFalse(field in servers[i])
-                self.assertTrue(field in dservers[i])
+        fields = set([
+            'created', 'flavor', 'hostId', 'image', 'progress', 'status',
+            'updated'])
+        for i, srv in enumerate(servers):
+            self.assertTrue(fields.isdisjoint(srv))
+            self.assertTrue(fields.issubset(dservers[i]))
 
         """detailed and simple contain same names"""
         names = sorted(map(lambda x: x["name"], servers))
@@ -286,9 +230,7 @@ class Cyclades(livetest.Generic):
     def test_get_server_details(self):
         """Test get_server_details"""
         self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
+            self.servname1, self.flavorid, self.img)
         self._wait_for_status(self.server1['id'], 'BUILD')
         self._test_0040_get_server_details()
 
@@ -302,17 +244,14 @@ class Cyclades(livetest.Generic):
     def test_update_server_name(self):
         """Test update_server_name"""
         self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
+            self.servname1, self.flavorid, self.img)
         self._test_0050_update_server_name()
 
     def _test_0050_update_server_name(self):
         new_name = self.servname1 + '_new_name'
         self.client.update_server_name(self.server1['id'], new_name)
         r = self.client.get_server_details(
-            self.server1['id'],
-            success=(200, 400))
+            self.server1['id'], success=(200, 400))
         self.assertEqual(r['name'], new_name)
         changed = self.servers.pop(self.servname1)
         changed['name'] = new_name
@@ -321,14 +260,10 @@ class Cyclades(livetest.Generic):
     def test_reboot_server(self):
         """Test reboot server"""
         self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
+            self.servname1, self.flavorid, self.img)
         self._wait_for_status(self.server1['id'], 'BUILD')
         self.server2 = self._create_server(
-            self.servname2,
-            self.flavorid + 1,
-            self.img)
+            self.servname2, self.flavorid + 2, self.img)
         self._wait_for_status(self.server2['id'], 'BUILD')
         self._test_0060_reboot_server()
         self._wait_for_status(self.server1['id'], 'REBOOT')
@@ -340,6 +275,20 @@ class Cyclades(livetest.Generic):
         self.client.reboot_server(self.server2['id'], hard=True)
         self.assertTrue(self._has_status(self.server2['id'], 'REBOOT'))
 
+    def test_resize_server(self):
+        """Modify the flavor of a server"""
+        self.server1 = self._create_server(
+            self.servname1, self.flavorid, self.img)
+        self._test_0065_resize_server()
+        self.delete_server(self.server1['id'])
+        self.server1 = self._create_server(
+            self.servname1, self.flavorid, self.img)
+
+    def _test_0065_resize_server(self):
+        self.client.resize_server(self.servname1, self.flavorid + 2)
+        srv = self.client.get_flavor_details(self.server1['id'])
+        self.assertEqual(srv['flavor']['id'], self.flavorid + 2)
+
     def _test_0070_wait_test_servers_to_reboot(self):
         """Pseudo-test to wait for VMs to load"""
         print('')
@@ -349,16 +298,12 @@ class Cyclades(livetest.Generic):
     def test_create_server_metadata(self):
         """Test create_server_metadata"""
         self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
+            self.servname1, self.flavorid, self.img)
         self._test_0080_create_server_metadata()
 
     def _test_0080_create_server_metadata(self):
         r1 = self.client.create_server_metadata(
-            self.server1['id'],
-            'mymeta',
-            'mymeta val')
+            self.server1['id'], 'mymeta', 'mymeta val')
         self.assertTrue('mymeta' in r1)
         r2 = self.client.get_server_metadata(self.server1['id'], 'mymeta')
         self.assert_dicts_are_equal(r1, r2)
@@ -366,9 +311,7 @@ class Cyclades(livetest.Generic):
     def test_get_server_metadata(self):
         """Test get server_metadata"""
         self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
+            self.servname1, self.flavorid, self.img)
         self._test_0090_get_server_metadata()
 
     def _test_0090_get_server_metadata(self):
@@ -380,9 +323,7 @@ class Cyclades(livetest.Generic):
     def test_update_server_metadata(self):
         """Test update_server_metadata"""
         self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
+            self.servname1, self.flavorid, self.img)
         self._test_0100_update_server_metadata()
 
     def _test_0100_update_server_metadata(self):
@@ -432,14 +373,14 @@ class Cyclades(livetest.Generic):
     #    """Test list_images"""
     #    self._test_0140_list_images()
 
-    #def _test_0140_list_images(self):
-    #    r = self.client.list_images()
-    #    self.assertTrue(len(r) > 1)
-    #    r = self.client.list_images(detail=True)
-    #    for detailed_img in r:
-    #        if detailed_img['id'] == self.img:
-    #            break
-    #    self.assert_dicts_are_equal(detailed_img, self.img_details)
+    def _test_0140_list_images(self):
+        r = self.client.list_images()
+        self.assertTrue(len(r) > 1)
+        r = self.client.list_images(detail=True)
+        for detailed_img in r:
+            if detailed_img['id'] == self.img:
+                break
+        self.assert_dicts_are_equal(detailed_img, self.img_details)
 
     def test_get_image_details(self):
         """Test image_details"""
@@ -464,9 +405,7 @@ class Cyclades(livetest.Generic):
     def test_shutdown_server(self):
         """Test shutdown_server"""
         self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
+            self.servname1, self.flavorid, self.img)
         self._wait_for_status(self.server1['id'], 'BUILD')
         self._test_0170_shutdown_server()
 
@@ -479,9 +418,7 @@ class Cyclades(livetest.Generic):
     def test_start_server(self):
         """Test start_server"""
         self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
+            self.servname1, self.flavorid, self.img)
         self._wait_for_status(self.server1['id'], 'BUILD')
         self.client.shutdown_server(self.server1['id'])
         self._wait_for_status(self.server1['id'], 'ACTIVE')
@@ -496,9 +433,7 @@ class Cyclades(livetest.Generic):
     def test_get_server_console(self):
         """Test get_server_console"""
         self.server2 = self._create_server(
-            self.servname2,
-            self.flavorid,
-            self.img)
+            self.servname2, self.flavorid, self.img)
         self._wait_for_status(self.server2['id'], 'BUILD')
         self._test_0190_get_server_console()
 
@@ -512,9 +447,7 @@ class Cyclades(livetest.Generic):
     def test_get_firewall_profile(self):
         """Test get_firewall_profile"""
         self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
+            self.servname1, self.flavorid, self.img)
         self._test_0200_get_firewall_profile()
 
     def _test_0200_get_firewall_profile(self):
@@ -525,9 +458,7 @@ class Cyclades(livetest.Generic):
     def test_set_firewall_profile(self):
         """Test set_firewall_profile"""
         self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
+            self.servname1, self.flavorid, self.img)
         self._test_0210_set_firewall_profile()
 
     def _test_0210_set_firewall_profile(self):
@@ -563,9 +494,7 @@ class Cyclades(livetest.Generic):
 
     def test_get_server_stats(self):
         self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
+            self.servname1, self.flavorid, self.img)
         self._test_0220_get_server_stats()
 
     def _test_0220_get_server_stats(self):
@@ -615,9 +544,7 @@ class Cyclades(livetest.Generic):
     def test_connect_server(self):
         """Test connect_server"""
         self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
+            self.servname1, self.flavorid, self.img)
         self.network1 = self._create_network(self.netname1)
         self._wait_for_status(self.server1['id'], 'BUILD')
         self._wait_for_network(self.network1['id'], 'ACTIVE')
@@ -625,9 +552,8 @@ class Cyclades(livetest.Generic):
 
     def _test_0250_connect_server(self):
         self.client.connect_server(self.server1['id'], self.network1['id'])
-        self.assertTrue(self._wait_for_nic(
-            self.network1['id'],
-            self.server1['id']))
+        self.assertTrue(
+            self._wait_for_nic(self.network1['id'], self.server1['id']))
 
     def test_disconnect_server(self):
         """Test disconnect_server"""
@@ -637,9 +563,7 @@ class Cyclades(livetest.Generic):
     def _test_0250_disconnect_server(self):
         self.client.disconnect_server(self.server1['id'], self.network1['id'])
         self.assertTrue(self._wait_for_nic(
-            self.network1['id'],
-            self.server1['id'],
-            in_creation=False))
+            self.network1['id'], self.server1['id'], in_creation=False))
 
     def _test_0260_wait_for_second_network(self):
         self.network2 = self._create_network(self.netname2)
@@ -648,9 +572,7 @@ class Cyclades(livetest.Generic):
     def test_list_server_nics(self):
         """Test list_server_nics"""
         self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
+            self.servname1, self.flavorid, self.img)
         self.network2 = self._create_network(self.netname2)
         self._wait_for_status(self.server1['id'], 'BUILD')
         self._wait_for_network(self.network2['id'], 'ACTIVE')
@@ -660,9 +582,8 @@ class Cyclades(livetest.Generic):
         r = self.client.list_server_nics(self.server1['id'])
         len0 = len(r)
         self.client.connect_server(self.server1['id'], self.network2['id'])
-        self.assertTrue(self._wait_for_nic(
-            self.network2['id'],
-            self.server1['id']))
+        self.assertTrue(
+            self._wait_for_nic(self.network2['id'], self.server1['id']))
         r = self.client.list_server_nics(self.server1['id'])
         self.assertTrue(len(r) > len0)
 
@@ -694,9 +615,7 @@ class Cyclades(livetest.Generic):
     def test_list_network_nics(self):
         """Test list_server_nics"""
         self.server1 = self._create_server(
-            self.servname1,
-            self.flavorid,
-            self.img)
+            self.servname1, self.flavorid, self.img)
         self.network1 = self._create_network(self.netname1)
         self.network2 = self._create_network(self.netname2)
         self._wait_for_status(self.server1['id'], 'BUILD')
@@ -709,8 +628,7 @@ class Cyclades(livetest.Generic):
         self._test_0293_list_network_nics()
 
     def _test_0293_list_network_nics(self):
-        netid1 = self.network1['id']
-        netid2 = self.network2['id']
+        netid1, netid2 = self.network1['id'], self.network2['id']
         r = self.client.list_network_nics(netid1)
         expected = ['nic-%s-1' % self.server1['id']]
         self.assertEqual(r, expected)
