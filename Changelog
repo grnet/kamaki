@@ -32,4 +32,5 @@ Features:
 - Add -R/--recursive in file listing, to list containers with their contents
     [#4301]
 - Add -w/--wait to server firewall set [#4298]
-
+- Add --output-format where applicable, keep -j/--json too, for bw
+    compatibility [#4342]
