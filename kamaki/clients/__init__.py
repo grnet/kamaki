@@ -160,7 +160,6 @@ class RequestManager(Logged):
                     self._token) else self.data)
         else:
             sendlog.info('data size:0%s' % plog)
-        sendlog.info('')
 
     def perform(self, conn):
         """
@@ -168,12 +167,13 @@ class RequestManager(Logged):
 
         :returns: (HTTPResponse)
         """
+        self.dump_log()
         conn.request(
             method=str(self.method.upper()),
             url=str(self.path),
             headers=self.headers,
             body=self.data)
-        self.dump_log()
+        sendlog.info('')
         keep_trying = TIMEOUT
         while keep_trying > 0:
             try:
