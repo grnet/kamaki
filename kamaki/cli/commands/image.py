@@ -261,7 +261,8 @@ class image_list(_init_image, _optional_json, _name_filter, _id_filter):
         images = self._filter_by_id(images)
         images = self._non_exact_name_filter(images)
 
-        if self['detail'] and not self['json_output']:
+        if self['detail'] and not (
+                self['json_output'] or self['output_format']):
             images = self._add_owner_name(images)
         elif detail and not self['detail']:
             for img in images:
@@ -301,7 +302,7 @@ class image_info(_init_image, _optional_json):
     @errors.plankton.id
     def _run(self, image_id):
         meta = self.client.get_meta(image_id)
-        if not self['json_output']:
+        if not (self['json_output'] or self['output_format']):
             meta['owner'] += ' (%s)' % self._uuid2username(meta['owner'])
         self._print(meta, self.print_dict)
 
@@ -639,7 +640,7 @@ class image_register(_init_image, _optional_json):
                 self.error(
                     'Failed to dump metafile %s:%s' % (dst_cont, meta_path))
                 return
-            if self['json_output']:
+            if self['json_output'] or self['output_format']:
                 self.print_json(dict(
                     metafile_location='%s:%s' % (dst_cont, meta_path),
                     headers=meta_headers))
@@ -699,7 +700,7 @@ class image_members_list(_init_image, _optional_json):
     @errors.plankton.id
     def _run(self, image_id):
         members = self.client.list_members(image_id)
-        if not self['json_output']:
+        if not (self['json_output'] or self['output_format']):
             uuids = [member['member_id'] for member in members]
             usernames = self._uuids2usernames(uuids)
             for member in members:
@@ -821,7 +822,8 @@ class image_compute_list(
             images = self._filter_by_user(images)
         if withmeta:
             images = self._filter_by_metadata(images)
-        if self['detail'] and not self['json_output']:
+        if self['detail'] and not (
+                self['json_output'] or self['output_format']):
             images = self._add_name(self._add_name(images, 'tenant_id'))
         elif detail and not self['detail']:
             for img in images:

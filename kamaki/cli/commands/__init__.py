@@ -36,6 +36,7 @@ from kamaki.cli.utils import (
     print_list, print_dict, print_json, print_items, ask_user,
     filter_dicts_by_dict)
 from kamaki.cli.argument import FlagArgument, ValueArgument
+from kamaki.cli.errors import CLIInvalidArgument
 from sys import stdin, stdout, stderr
 
 log = get_logger(__name__)
@@ -242,11 +243,38 @@ class _command_init(object):
 #  feature classes - inherit them to get special features for your commands
 
 
+class OutputFormatArgument(ValueArgument):
+    """Accepted output formats: json (default)"""
+
+    formats = ('json', )
+
+    def ___init__(self, *args, **kwargs):
+        super(OutputFormatArgument, self).___init__(*args, **kwargs)
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, newvalue):
+        if not newvalue:
+            self._value = self.default
+        elif newvalue.lower() in self.formats:
+            self._value = newvalue.lower
+        else:
+            raise CLIInvalidArgument(
+                'Invalid value %s for argument %s' % (
+                    newvalue, '/'.join(self.parsed_name)),
+                details=['Valid output formats: %s' % ', '.join(self.formats)])
+
+
 class _optional_output_cmd(object):
 
     oo_arguments = dict(
         with_output=FlagArgument('show response headers', ('--with-output')),
-        json_output=FlagArgument('show headers in json', ('-j', '--json'))
+        json_output=FlagArgument(
+            'show headers in json (DEPRECATED from v0.12,'
+            ' please use --output-format=json instead)', ('-j', '--json'))
     )
 
     def _optional_output(self, r):
@@ -259,11 +287,17 @@ class _optional_output_cmd(object):
 class _optional_json(object):
 
     oj_arguments = dict(
-        json_output=FlagArgument('show headers in json', ('-j', '--json'))
+        output_format=OutputFormatArgument(
+            'Show output in chosen output format (%s)' % ', '.join(
+                OutputFormatArgument.formats),
+            '--output-format'),
+        json_output=FlagArgument(
+            'show output in json (DEPRECATED from v0.12,'
+            ' please use --output-format instead)', ('-j', '--json'))
     )
 
     def _print(self, output, print_method=print_items, **print_method_kwargs):
-        if self['json_output']:
+        if self['json_output'] or self['output_format']:
             print_json(output, out=self._out)
         else:
             print_method_kwargs.setdefault('out', self._out)
