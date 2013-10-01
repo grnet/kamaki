@@ -233,10 +233,10 @@ class cyclades(object):
             try:
                 return foo(self, *args, **kwargs)
             except ClientError as ce:
-                if network_id and ce.status == 400:
+                if network_id and ce.status in (400, ):
                     msg = 'Network with id %s does not exist' % network_id,
                     raiseCLIError(ce, msg, details=this.about_network_id)
-                elif network_id or ce.status == 421:
+                elif network_id or ce.status in (421, ):
                     msg = 'Network with id %s is in use' % network_id,
                     raiseCLIError(ce, msg, details=[
                         'Disconnect all nics/servers of this network first',

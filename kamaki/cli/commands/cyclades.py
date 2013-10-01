@@ -1032,8 +1032,8 @@ class network_delete(_init_cyclades, _optional_output_cmd, _network_wait):
 
     @errors.generic.all
     @errors.cyclades.connection
-    @errors.cyclades.network_id
     @errors.cyclades.network_in_use
+    @errors.cyclades.network_id
     def _run(self, network_id):
         status = 'DELETED'
         if self['wait']:
