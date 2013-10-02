@@ -1169,8 +1169,7 @@ class file_upload(_file_container_command, _optional_output_cmd):
                     rpath, f,
                     etag=self['etag'], withHashFile=self['use_hashes'],
                     **params)
-                if self['with_output'] or (
-                        self['json_output'] or self['output_format']):
+                if self['with_output'] or self['json_output']:
                     r['name'] = '%s: %s' % (self.client.container, rpath)
                     uploaded.append(r)
             else:
@@ -1189,8 +1188,7 @@ class file_upload(_file_container_command, _optional_output_cmd):
                         upload_cb=upload_cb,
                         container_info_cache=container_info_cache,
                         **params)
-                    if self['with_output'] or (
-                            self['json_output'] or self['output_format']):
+                    if self['with_output'] or self['json_output']:
                         r['name'] = '%s: %s' % (self.client.container, rpath)
                         uploaded.append(r)
                 except Exception:
