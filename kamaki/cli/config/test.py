@@ -300,14 +300,6 @@ class Config(TestCase):
         with patch('kamaki.cli.config.Config.get', return_value=0) as get:
             self.assertRaises(KeyError, _cnf.get_cloud, 'mycloud', 'opt1')
 
-    def test_get_global(self):
-        from kamaki.cli.config import Config
-
-        _cnf = Config(path=self.f.name)
-        with patch('kamaki.cli.config.Config.get', return_value='val') as get:
-            self.assertEqual('val', _cnf.get_global('opt'))
-            get.assert_called_once_with('global', 'opt')
-
     @patch('kamaki.cli.config.Config.set')
     def test_set_cloud(self, c_set):
         from kamaki.cli.config import Config, CLOUD_PREFIX
@@ -335,14 +327,6 @@ class Config(TestCase):
             d = dict(opt='val')
             self.assertEqual(
                 c_set.mock_calls[-1], call(CLOUD_PREFIX, 'mycloud', d))
-
-    def test_set_global(self):
-        from kamaki.cli.config import Config
-        _cnf = Config(path=self.f.name)
-
-        with patch('kamaki.cli.config.Config.set') as c_set:
-            _cnf.set_global('opt', 'val')
-            c_set.assert_called_once_with('global', 'opt', 'val')
 
     def test__load_defaults(self):
         from kamaki.cli.config import Config, DEFAULTS

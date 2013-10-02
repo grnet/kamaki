@@ -244,7 +244,7 @@ def _init_session(arguments, is_non_API=False):
     _check_config_version(_cnf.value)
 
     global _colors
-    _colors = _cnf.value.get_global('colors')
+    _colors = _cnf.value.get('global', 'colors')
     if not (stdout.isatty() and _colors == 'on'):
         from kamaki.cli.utils import remove_colors
         remove_colors()
@@ -473,7 +473,7 @@ def set_command_params(parameters):
 
 def run_one_cmd(exe_string, parser, cloud):
     global _history
-    _history = History(parser.arguments['config'].get_global('history_file'))
+    _history = History(parser.arguments['config'].get('global', 'history_file'))
     _history.add(' '.join([exe_string] + argv[1:]))
     from kamaki.cli import one_command
     one_command.run(cloud, parser, _help)
@@ -515,7 +515,7 @@ def main():
             exit(0)
 
         _cnf = parser.arguments['config']
-        log_file = _cnf.get_global('log_file')
+        log_file = _cnf.get('global', 'log_file')
         if log_file:
             logger.set_log_filename(log_file)
         global filelog

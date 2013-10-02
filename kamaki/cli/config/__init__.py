@@ -292,9 +292,6 @@ class Config(RawConfigParser):
             raise KeyError('Cloud "%s" does not exist' % cloud)
         return r[option]
 
-    def get_global(self, option):
-        return self.get('global', option)
-
     def set_cloud(self, cloud, option, value):
         try:
             d = self.get(CLOUD_PREFIX, cloud) or dict()
@@ -302,9 +299,6 @@ class Config(RawConfigParser):
             d = dict()
         d[option] = value
         self.set(CLOUD_PREFIX, cloud, d)
-
-    def set_global(self, option, value):
-        self.set('global', option, value)
 
     def _load_defaults(self):
         for section, options in DEFAULTS.items():

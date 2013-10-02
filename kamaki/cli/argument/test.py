@@ -152,9 +152,9 @@ class ConfigArgument(TestCase):
                 ('config_cli', 'config'),
                 ('image_cli', 'image'),
                 ('history_cli', 'history')):
-            with patch('%s.get_global' % cnf_path, return_value=v) as gg:
+            with patch('%s.get' % cnf_path, return_value=v) as gg:
                 self.assertEqual(c.get_global(k), v)
-                self.assertEqual(gg.mock_calls[-1], call(k))
+                self.assertEqual(gg.mock_calls[-1], call('global', k))
 
     def test_get_cloud(self):
         c = argument._config_arg
