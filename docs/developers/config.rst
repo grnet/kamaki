@@ -3,11 +3,16 @@ The Configuration module
 
 Kamaki CLI offers a configuration module named *config*. It features:
 
-* The global dict *DEFAULTS* with all the configuration settings needed to run
-    a kamaki CLI and their default values
+* The global dict *DEFAULTS* with all the configuration settings and default
+    values for running a kamaki CLI
 
 * The class *Config* is a ConfigParser extension adjusted to offer
     kamaki-specific functionalities (e.g., cloud management)
+
+Instances of *kamaki.cli.config.Config* always store data at a local file,
+the path of which, is usually given by user as a constructor parameter. If the
+path of the configuration file is not specified explicitly, the value at
+*kamaki.cli.config.CONFIG_PATH* is used instead.
 
 Types of configuration options
 ------------------------------
@@ -96,6 +101,7 @@ managing cloud configurations.
     my_config = Config('/some/local/file.cnf')
     config_without_default_values = Config(with_defaults=False)
 
+.. note:: If no file path is given, the Config instance is initialized
 .. note:: The *with_defaults* flag can be used to omit all default settings
     from a kamaki Config instance e.g., in case of an external application that
     does not need any of the kamaki globals.
@@ -105,7 +111,7 @@ Here are the general purpose accessors offered by Config:
 * get(section, option): get the *value* of an *option* in the specified
     *section* e.g.,
 
-    .. code-block:: python
+    .. code-block:: python__
 
         # Example: get the default cloud (global.default_cloud option)
 
@@ -220,8 +226,6 @@ Set a new cloud, name it "new_cloud" and set it as default
 
 List all clouds with their URLs, let the user pick one
 """"""""""""""""""""""""""""""""""""""""""""""""""""""
-.. note:: In this example, the default kamaki config file path will be used.
-    This is stored at *kamaki.cli.config.CONFIG_PATH*
 
 .. code-block:: python
 
