@@ -126,7 +126,7 @@ class ConfigArgument(Argument):
             k.endswith(suffix))]
 
     def get_global(self, option):
-        return self.value.get_global(option)
+        return self.value.get('global', option)
 
     def get_cloud(self, cloud, option):
         return self.value.get_cloud(cloud, option)

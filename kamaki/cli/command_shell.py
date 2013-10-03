@@ -305,7 +305,7 @@ class Shell(Cmd):
         self.cloud = cloud
         self._parser = parser
         self._history = History(
-            parser.arguments['config'].get_global('history_file'))
+            parser.arguments['config'].get('global', 'history_file'))
         if path:
             cmd = self.cmd_tree.get_command(path)
             intro = cmd.path.replace('_', ' ')

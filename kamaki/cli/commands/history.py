@@ -75,7 +75,7 @@ class _init_history(_command_init):
     @errors.generic.all
     @errors.history.init
     def _run(self):
-        self.history = History(self.config.get_global('history_file'))
+        self.history = History(self.config.get('global', 'history_file'))
 
     def main(self):
         self._run()

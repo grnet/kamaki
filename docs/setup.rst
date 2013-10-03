@@ -411,8 +411,12 @@ The [*global*] group is treated by kamaki as a generic group for kamaki
 settings, namely command cli specifications, the thread limit, console colors,
 history and log files, log detail options and pithos-specific options.
 
+* global.default_cloud <cloud name>
+    pick a cloud configuration as default. It must refer to an existing cloud.
+
 * global.colors <on|off>
-    enable / disable colors in command line based uis. Requires ansicolors, otherwise it is ignored
+    enable / disable colors in command line based uis. Requires ansicolors,
+    otherwise it is ignored
 
 * global.log_file <logfile full path>
     set a custom location for kamaki logging. Default value is ~/.kamaki.log
@@ -441,11 +445,16 @@ history and log files, log detail options and pithos-specific options.
     kamaki UIs. Don't touch this unless you know what you are doing.
 
 * global.network_cli <UI command specifications for virtual networks>
-    a special package that is used to load cyclades virtual network commands to
-    kamaki UIs. Don't touch this unless you know what you are doing.
+    a special package that is used to load cyclades virtual network commands.
+    Don't touch this unless you know what you are doing.
+
+* global.ip_cli <UI command specifications for floating IPs>
+    a special package that is used to load cyclades floating IP commands. Don't
+    touch this unless you know what you are doing.
 
 * global.image_cli <UI command specs for Plankton or Compute image service>
-    a special package that is used to load image-related commands to kamaki UIs. Don't touch this unless you know what you are doing.
+    a special package that is used to load image-related commands to kamaki UIs.
+    Don't touch this unless you know what you are doing.
 
 * global.user_cli <UI command specs for Astakos authentication service>
     a special package that is used to load astakos-related commands to kamaki
