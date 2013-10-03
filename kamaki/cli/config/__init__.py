@@ -96,6 +96,7 @@ DEFAULTS = {
         #'default': {
         #    'url': '',
         #    'token': ''
+        #    'pithos_container': 'THIS IS DANGEROUS'
         #    'pithos_type': 'object-store',
         #    'pithos_version': 'v1',
         #    'cyclades_type': 'compute',

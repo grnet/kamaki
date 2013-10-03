@@ -473,7 +473,8 @@ def set_command_params(parameters):
 
 def run_one_cmd(exe_string, parser, cloud):
     global _history
-    _history = History(parser.arguments['config'].get('global', 'history_file'))
+    _history = History(parser.arguments['config'].get(
+        'global', 'history_file'))
     _history.add(' '.join([exe_string] + argv[1:]))
     from kamaki.cli import one_command
     one_command.run(cloud, parser, _help)
