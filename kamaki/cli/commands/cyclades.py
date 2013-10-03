@@ -383,7 +383,6 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
     @errors.plankton.id
     @errors.cyclades.flavor_id
     def _run(self, name, flavor_id, image_id):
-        print 'hey, wha?'
         r = self.client.create_server(
             name, int(flavor_id), image_id, personality=self['personality'])
         usernames = self._uuids2usernames([r['user_id'], r['tenant_id']])
@@ -784,6 +783,52 @@ class server_wait(_init_cyclades, _server_wait):
     def main(self, server_id, current_status='BUILD'):
         super(self.__class__, self)._run()
         self._run(server_id=server_id, current_status=current_status)
+
+
+@command(server_cmds)
+class server_cluster_create(_init_cyclades):
+    """Create a cluster of virtual servers
+    All new servers will be named as <prefix><increment> e.g.,
+    mycluster1, mycluster2, etc.
+    All servers in the cluster will run the same image on the same hardware
+    flavor.
+    """
+
+    @errors.generic.all
+    @errors.cyclades.connection
+    @errors.plankton.id
+    @errors.cyclades.flavor_id
+    @errors.cyclades.cluster_size
+    def _run(self, prefix, image_id, flavor_id, size):
+        servers = [dict(
+            name='%s%s' % (prefix, i),
+            flavor_id=flavor_id,
+            image_id=image_id) for i in range(int(size))]
+        self.client.create_cluster(servers)
+
+    def main(self, prefix, image_id, flavor_id, size):
+        super(self.__class__, self)._run()
+        self._run(prefix, image_id=image_id, flavor_id=flavor_id, size=size)
+
+
+@command(server_cmds)
+class server_cluster_delete(_init_cyclades):
+    """Remove all servers that belong to a virtual cluster
+    A virtual cluster consists of the virtual servers with the same name prefix
+    ATTENTION: make sure you want to delete all servers of that prefix
+    To get a list of your servers:  /server list
+    """
+
+    @errors.generic.all
+    @errors.cyclades.connection
+    def _run(self, prefix):
+        servers = [s['id'] for s in self.client.list_servers() if (
+            s['name'].startswith(prefix))]
+        self.client.delete_cluster(servers)
+
+    def main(self, prefix):
+        super(self.__class__, self)._run()
+        self._run(prefix)
 
 
 @command(flavor_cmds)

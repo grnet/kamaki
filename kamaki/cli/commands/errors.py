@@ -191,6 +191,25 @@ class cyclades(object):
         return _raise
 
     @classmethod
+    def cluster_size(this, foo):
+        def _raise(self, *args, **kwargs):
+            size = kwargs.get('size', None)
+            try:
+                size = int(size)
+                assert size > 0, 'Cluster size must be a positive integer'
+                return foo(self, *args, **kwargs)
+            except ValueError as ve:
+                msg = 'Invalid cluster size value %s' % size
+                raiseCLIError(ve, msg, importance=1, details=[
+                    'Cluster size must be a positive integer'])
+            except AssertionError as ae:
+                raiseCLIError(
+                    ae, 'Invalid cluster size %s' % size, importance=1)
+            except ClientError:
+                raise
+        return _raise
+
+    @classmethod
     def network_id(this, foo):
         def _raise(self, *args, **kwargs):
             network_id = kwargs.get('network_id', None)

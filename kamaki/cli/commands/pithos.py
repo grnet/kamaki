@@ -231,9 +231,7 @@ class _file_container_command(_file_account_command):
             'Set container to work with (temporary)', ('-C', '--container'))
 
     def extract_container_and_path(
-            self,
-            container_with_path,
-            path_is_optional=True):
+            self, container_with_path, path_is_optional=True):
         """Contains all heuristics for deciding what should be used as
         container or path. Options are:
         * user string of the form container:path
