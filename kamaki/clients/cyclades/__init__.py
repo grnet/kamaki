@@ -72,49 +72,6 @@ class CycladesClient(CycladesRestClient):
             name, flavor_id, image_id,
             metadata=metadata, personality=personality)
 
-    def _async_run(self, method, kwarg_list):
-        """Fire threads of operations
-
-        :param method: the method to run in each thread
-
-        :param kwarg_list: (list of dicts) the arguments to pass in each method
-            call
-        """
-        flying = []
-        self._init_thread_limit()
-        for kwargs in kwarg_list:
-            self._watch_thread_limit(flying)
-            flying.append(SilentEvent(method=method, **kwargs))
-            flying[-1].start()
-            unfinished = []
-            for thread in flying:
-                if thread.isAlive():
-                    unfinished.append(thread)
-                elif thread.exception:
-                    raise thread.exception
-            flying = unfinished
-        sendlog.info('- - - wait for threads to finish')
-        for thread in flying:
-            if thread.isAlive():
-                thread.join()
-            elif thread.exception:
-                raise thread.exception
-
-    def create_cluster(self, servers):
-        """Create multiple servers asynchronously
-        :param servers: (list of dicts) [
-        {name, flavor_id, image_id, metadata, personality}, ...]
-        """
-        #  Perform async server creations
-        return self._async_run(self.create_server, servers)
-
-    def delete_cluster(self, server_ids):
-        """
-        :param server_ids: (list) ids of servers to delete
-        """
-        self._async_run(
-            self.delete_server, [dict(server_id=sid) for sid in server_ids])
-
     def start_server(self, server_id):
         """Submit a startup request
 

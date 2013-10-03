@@ -369,6 +369,45 @@ class Client(Logged):
             return []
         return threadlist
 
+    def async_run(self, method, kwarg_list):
+        """Fire threads of operations
+
+        :param method: the method to run in each thread
+
+        :param kwarg_list: (list of dicts) the arguments to pass in each method
+            call
+
+        :returns: (list) the results of each method call w.r. to the order of
+            kwarg_list
+        """
+        flying, results = {}, {}
+        self._init_thread_limit()
+        for index, kwargs in enumerate(kwarg_list):
+            self._watch_thread_limit(flying.values())
+            flying[index] = SilentEvent(method=method, **kwargs)
+            flying[index].start()
+            unfinished = {}
+            for key, thread in flying.items():
+                if thread.isAlive():
+                    unfinished[key] = thread
+                elif thread.exception:
+                    print 'HERE IS AN EXCEPTION MK?'
+                    raise thread.exception
+                else:
+                    results[key] = thread.value
+                print 'NO EXCEPTION', thread.value
+            flying = unfinished
+        sendlog.info('- - - wait for threads to finish')
+        for key, thread in flying.items():
+            if thread.isAlive():
+                thread.join()
+            elif thread.exception:
+                print 'HERE IS AN EXCEPTION MK-2?'
+                raise thread.exception
+            results[key] = thread.value
+            print 'NO EXCEPTION-2', thread.value
+        return results.values()
+
     def _raise_for_status(self, r):
         log.debug('raise err from [%s] of type[%s]' % (r, type(r)))
         status_msg = getattr(r, 'status', None) or ''

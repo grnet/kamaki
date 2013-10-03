@@ -218,7 +218,7 @@ class cyclades(object):
                 return foo(self, *args, **kwargs)
             except ValueError as ve:
                 msg = 'Invalid network id %s ' % network_id
-                details = ['network id must be a positive integer']
+                details = 'network id must be a positive integer'
                 raiseCLIError(ve, msg, details=details, importance=1)
             except ClientError as ce:
                 if network_id and ce.status == 404 and (
@@ -274,7 +274,7 @@ class cyclades(object):
                 return foo(self, *args, **kwargs)
             except ValueError as ve:
                 msg = 'Invalid flavor id %s ' % flavor_id,
-                details = 'Flavor id must be a positive integer',
+                details = 'Flavor id must be a positive integer'
                 raiseCLIError(ve, msg, details=details, importance=1)
             except ClientError as ce:
                 if flavor_id and ce.status == 404 and (
@@ -294,7 +294,7 @@ class cyclades(object):
                 return foo(self, *args, **kwargs)
             except ValueError as ve:
                 msg = 'Invalid virtual server id %s' % server_id,
-                details = ['id must be a positive integer'],
+                details = 'Server id must be a positive integer'
                 raiseCLIError(ve, msg, details=details, importance=1)
             except ClientError as ce:
                 err_msg = ('%s' % ce).lower()

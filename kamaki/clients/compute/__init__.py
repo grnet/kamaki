@@ -33,7 +33,6 @@
 
 from kamaki.clients import ClientError
 from kamaki.clients.compute.rest_api import ComputeRestClient
-from kamaki.clients.utils import path4url
 
 
 class ComputeClient(ComputeRestClient):
