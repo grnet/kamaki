@@ -375,23 +375,62 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
     arguments = dict(
         personality=PersonalityArgument(
             (80 * ' ').join(howto_personality), ('-p', '--personality')),
-        wait=FlagArgument('Wait server to build', ('-w', '--wait'))
+        wait=FlagArgument('Wait server to build', ('-w', '--wait')),
+        cluster_size=IntArgument(
+            'Create a cluster of servers of this size. In this case, the name'
+            'parameter is the prefix of each server in the cluster (e.g.,'
+            'srv1, srv2, etc.',
+            '--cluster-size')
     )
+
+    @errors.cyclades.cluster_size
+    def _create_cluster(self, prefix, flavor_id, image_id, size):
+        servers = [dict(
+            name='%s%s' % (prefix, i),
+            flavor_id=flavor_id,
+            image_id=image_id,
+            personality=self['personality']) for i in range(1, 1 + size)]
+        if size == 1:
+            return [self.client.create_server(**servers[0])]
+        try:
+            r = self.client.async_run(self.client.create_server, servers)
+            return r
+        except Exception as e:
+            if size == 1:
+                raise e
+            try:
+                requested_names = [s['name'] for s in servers]
+                spawned_servers = [dict(
+                    name=s['name'],
+                    id=s['id']) for s in self.client.list_servers() if (
+                        s['name'] in requested_names)]
+                self.error('Failed to build %s servers' % size)
+                self.error('Found %s matching servers:' % len(spawned_servers))
+                self._print(spawned_servers, out=self._err)
+                self.error('Check if any of these servers should be removed\n')
+            except Exception as ne:
+                self.error('Error (%s) while notifying about errors' % ne)
+            finally:
+                raise e
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.plankton.id
     @errors.cyclades.flavor_id
     def _run(self, name, flavor_id, image_id):
-        print 'hey, wha?'
-        r = self.client.create_server(
-            name, int(flavor_id), image_id, personality=self['personality'])
-        usernames = self._uuids2usernames([r['user_id'], r['tenant_id']])
-        r['user_id'] += ' (%s)' % usernames[r['user_id']]
-        r['tenant_id'] += ' (%s)' % usernames[r['tenant_id']]
-        self._print(r, self.print_dict)
-        if self['wait']:
-            self._wait(r['id'], r['status'])
+        for r in self._create_cluster(
+                name, flavor_id, image_id, size=self['cluster_size'] or 1):
+            if not r:
+                self.error('Create %s: server response was %s' % (name, r))
+                continue
+            usernames = self._uuids2usernames(
+                [r['user_id'], r['tenant_id']])
+            r['user_id'] += ' (%s)' % usernames[r['user_id']]
+            r['tenant_id'] += ' (%s)' % usernames[r['tenant_id']]
+            self._print(r, self.print_dict)
+            if self['wait']:
+                self._wait(r['id'], r['status'])
+            self.writeln(' ')
 
     def main(self, name, flavor_id, image_id):
         super(self.__class__, self)._run()
@@ -422,27 +461,41 @@ class server_delete(_init_cyclades, _optional_output_cmd, _server_wait):
     """Delete a virtual server"""
 
     arguments = dict(
-        wait=FlagArgument('Wait server to be destroyed', ('-w', '--wait'))
+        wait=FlagArgument('Wait server to be destroyed', ('-w', '--wait')),
+        cluster=FlagArgument(
+            '(DANGEROUS) Delete all virtual servers prefixed with the cluster '
+            'prefix. In that case, the prefix replaces the server id',
+            '--cluster')
     )
+
+    def _server_ids(self, server_var):
+        if self['cluster']:
+            return [s['id'] for s in self.client.list_servers() if (
+                s['name'].startswith(server_var))]
+
+        @errors.cyclades.server_id
+        def _check_server_id(self, server_id):
+            return server_id
+
+        return [_check_server_id(self, server_id=server_var), ]
 
     @errors.generic.all
     @errors.cyclades.connection
-    @errors.cyclades.server_id
-    def _run(self, server_id):
-            status = 'DELETED'
+    def _run(self, server_var):
+        for server_id in self._server_ids(server_var):
             if self['wait']:
                 details = self.client.get_server_details(server_id)
                 status = details['status']
 
-            r = self.client.delete_server(int(server_id))
+            r = self.client.delete_server(server_id)
             self._optional_output(r)
 
             if self['wait']:
                 self._wait(server_id, status)
 
-    def main(self, server_id):
+    def main(self, server_id_or_cluster_prefix):
         super(self.__class__, self)._run()
-        self._run(server_id=server_id)
+        self._run(server_id_or_cluster_prefix)
 
 
 @command(server_cmds)

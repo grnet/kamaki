@@ -31,11 +31,10 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from sys import stdout
 from time import sleep
 
 from kamaki.clients.cyclades.rest_api import CycladesRestClient
-from kamaki.clients import ClientError
+from kamaki.clients import ClientError, SilentEvent, sendlog
 
 
 class CycladesClient(CycladesRestClient):

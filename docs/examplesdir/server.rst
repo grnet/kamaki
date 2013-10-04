@@ -196,3 +196,216 @@ You can now log to your remote virtual server as root, without a password. Well 
     adequate understanding of the remote OS are encouraged to prepare and
     inject all kinds of useful files, e.g., **lists of package sources**,
     **default user profiles**, **device mount configurations**, etc.
+
+Clusters of virtual servers
+---------------------------
+
+A cluster of virtual servers can be created and deleted using special
+arguments.
+
+A convention is necessary: all servers belonging to the same cluster will have
+names with a common prefix e.g., *cluster1*, *cluster2*, etc. This prefix
+acts as the cluster name or the cluster key. Still, users must be careful not to
+confuse cluster servers with other servers that coincidentally have the same
+prefix (e.g., *cluster_of_stars*).
+
+First, let's create a cluster of 4 servers. Each server will run the image with
+id *f1r57-1m4g3-1d* on the hardware specified by the flavor with id *1*. The
+prefix of the cluster will be "my cluster "
+
+.. code-block:: console
+
+    $ kamaki
+    [kamaki]: server
+    [server]: create "my cluster " 1 f1r57-1m4g3-1d --cluster-size=4 --wait
+    ... <omitted for clarity>
+    adminPass:       S0mePassw0rd0n3
+    created:         2013-06-19T12:34:49.362078+00:00
+    flavor:
+            id:    1
+    id:              322
+    image:
+            id:    f1r57-1m4g3-1d
+    name:            my cluster 1
+    [progress bar waiting server to build]
+    Server 321: status is now ACTIVE
+
+    ... <omitted for clarity>
+    adminPass:       S0mePassw0rdTwo
+    created:         2013-06-19T12:34:47.362078+00:00
+    flavor:
+            id:    1
+    id:              321
+    image:
+            id:    f1r57-1m4g3-1d
+    name:            my cluster 2
+    [progress bar waiting server to build]
+    Server 322: status is now ACTIVE
+
+    ... <omitted for clarity>
+    adminPass:       S0mePassw0rdThree
+    created:         2013-06-19T12:34:55.362078+00:00
+    flavor:
+            id:    1
+    id:              323
+    image:
+            id:    f1r57-1m4g3-1d
+    name:            my cluster 3
+    [progress bar waiting server to build]
+    Server 323: status is now ACTIVE
+
+    ... <omitted for clarity>
+    adminPass:       S0mePassw0rdFour
+    created:         2013-06-19T12:34:59.362078+00:00
+    flavor:
+            id:    1
+    id:              324
+    image:
+            id:    f1r57-1m4g3-1d
+    name:            my cluster 4
+    [progress bar waiting server to build]
+    Server 324: status is now ACTIVE
+
+.. note:: The creation dates are similar but not ordered. This is because the
+    servers are created asynchronously. To deactivate asynchronous operations
+    in kamaki, set max_theads to 1
+
+    .. code-block:: console
+
+        # Deactivate multithreading
+
+        [server]: /config set max_theads 1
+
+.. note:: the *- - wait* argument is optional, but if not used, the *create*
+    call will terminate as long as the servers are spawned, even if they are
+    not built yet.
+
+.. warning:: The server details (password, etc.) are printed in
+    **standard output** while the progress bar and notification messages are
+    printed in **standard error**
+
+Now, let's see our clusters:
+
+.. code-block:: console
+
+    [server]: list --name-prefix "my cluster "
+    321 my cluster 2
+    322 my cluster 1
+    323 my cluster 3
+    324 my cluster 4
+
+For demonstration purposes, let's suppose that the maximum resource limit is
+reached if we create 2 more servers. We will attempt to expand "my cluster" by
+4 servers, expecting kamaki to raise a quota-related error.
+
+.. code-block:: console
+
+    $ kamaki
+    [kamaki]: server
+    [server]: create "my cluster " 1 f1r57-1m4g3-1d --cluster-size=4 --wait
+    Failed to build 4 servers
+    Found 2 matching servers:
+    325 my cluster 1
+    326 my cluster 2
+    Check if any of these servers should be removed
+
+    (413) REQUEST ENTITY TOO LARGE overLimit (Resource Limit Exceeded for your
+    account.)
+    |  Limit for resource 'Virtual Machine' exceeded for your account.
+    Available: 0, Requested: 1
+
+The cluster expansion has failed, but 2 of the attempted 4 servers are being
+created right now. It's up to the users judgment to destroy them or keep them.
+
+First, we need to list all servers:
+
+.. code-block:: console
+
+    [server] list --name-prefix="my cluster "
+    321 my cluster 2
+    322 my cluster 1
+    323 my cluster 3
+    324 my cluster 4
+    325 my cluster 1
+    326 my cluster 2
+
+.. warning:: Kamaki will always create clusters by attaching an increment at
+    the right of the prefix. The increments always start from 1.
+
+Now, our cluster seems messed up. Let's destroy it and rebuilt it.
+
+.. code-block:: console
+
+    [server]: delete "my cluster " --cluster --wait
+    [progress bar waiting server to be deleted]
+    Server 321: status is now DELETED
+
+    [progress bar waiting server to be deleted]
+    Server 322: status is now DELETED
+
+    [progress bar waiting server to be deleted]
+    Server 323: status is now DELETED
+
+    [progress bar waiting server to be deleted]
+    Server 324: status is now DELETED
+
+    [progress bar waiting server to be deleted]
+    Server 325: status is now DELETED
+
+    [progress bar waiting server to be deleted]
+    Server 326: status is now DELETED
+
+.. note:: *delete* performs a single deletion if feeded with a server id, but
+    it performs a mass deletion, based on the name, if called with --cluster
+
+While creating the first cluster, we had to note down all passwords 
+
+The passwords for each server are printed on the console while creating them.
+It would be far more convenient, though, if we could massively inject an ssh
+key into all of them. Let's do that!
+
+.. code-block:: console
+
+    [server]: create "my new cluster " 1 f1r57-1m4g3-1d --cluster-size=4 --wait --personality /home/someuser/.ssh/id_rsa.pub,/root/.ssh/authorized_keys,root,root,0777
+
+    ... <output omitted for clarity>
+
+Now, let's check if the cluster has been created.
+
+.. code-block:: console
+
+    [server]: list --name-prefix="my new cluster "
+    321 my new cluster 1
+    322 my new cluster 2
+    323 my new cluster 3
+    324 my new cluster 4
+
+We now have a cluster of 4 virtual servers and we can ssh in all of them
+without a password.
+
+Here is a bash script for creating clusters:
+
+.. code-block:: bash
+
+    #!/bin/bash
+
+    CL_PREFIX="cluster"
+    CL_SIZE=4
+
+    PUB_KEYS="${HOME}/.ssh/id_rsa.pub"
+    OUT="cl_servers.txt"
+
+    CLOUD=`kamaki config get default_cloud`
+    FLAVOR_ID=1
+    IMAGE_ID="f1r57-1m4g3-1d"
+
+    echo "Clean up cluster \"${CL_PREFIX}\""
+    kamaki --cloud=${CLOUD} server delete ${CL_PREFIX} --cluster --wait
+    echo "Cluster \"${CL_PREFIX}\"" > ${OUT}
+
+    echo "Create cluster \"${CL_PREFIX}\" of size ${CL_SIZE}"
+    kamaki --cloud=${CLOUD} server create ${CL_PREFIX} ${FLAVOR_ID} ${IMAGE_ID}
+        --cluster-size=${CL_SIZE} --wait
+        --personality ${PUB_KEYS},/root/.ssh/authorized_keys,root,root >>${OUT}
+
+    echo "A list of created servers can be found at ${OUT}"
