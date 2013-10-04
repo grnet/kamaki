@@ -389,11 +389,12 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
             name='%s%s' % (prefix, i),
             flavor_id=flavor_id,
             image_id=image_id,
-            personality=self['personality']) for i in range(size)]
+            personality=self['personality']) for i in range(1, 1 + size)]
         if size == 1:
             return [self.client.create_server(**servers[0])]
         try:
-            return self.client.async_run(self.client.create_server, servers)
+            r = self.client.async_run(self.client.create_server, servers)
+            return r
         except Exception as e:
             if size == 1:
                 raise e
@@ -404,8 +405,7 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
                     id=s['id']) for s in self.client.list_servers() if (
                         s['name'] in requested_names)]
                 self.error('Failed to build %s servers' % size)
-                self.error('Found %s servers with a "%s" prefix:' % (
-                    len(spawned_servers), prefix))
+                self.error('Found %s matching servers:' % len(spawned_servers))
                 self._print(spawned_servers, out=self._err)
                 self.error('Check if any of these servers should be removed\n')
             except Exception as ne:
@@ -430,7 +430,7 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
             self._print(r, self.print_dict)
             if self['wait']:
                 self._wait(r['id'], r['status'])
-            self.writeln('')
+            self.writeln(' ')
 
     def main(self, name, flavor_id, image_id):
         super(self.__class__, self)._run()

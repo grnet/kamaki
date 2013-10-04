@@ -111,7 +111,7 @@ Here are the general purpose accessors offered by Config:
 * get(section, option): get the *value* of an *option* in the specified
     *section* e.g.,
 
-    .. code-block:: python__
+    .. code-block:: python
 
         # Example: get the default cloud (global.default_cloud option)
 

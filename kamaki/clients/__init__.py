@@ -401,6 +401,7 @@ class Client(Logged):
                 thread.join()
             if thread.exception:
                 raise thread.exception
+            results[key] = thread.value
         return results.values()
 
     def _raise_for_status(self, r):
