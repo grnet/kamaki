@@ -391,21 +391,16 @@ class Client(Logged):
                 if thread.isAlive():
                     unfinished[key] = thread
                 elif thread.exception:
-                    print 'HERE IS AN EXCEPTION MK?'
                     raise thread.exception
                 else:
                     results[key] = thread.value
-                print 'NO EXCEPTION', thread.value
             flying = unfinished
         sendlog.info('- - - wait for threads to finish')
         for key, thread in flying.items():
             if thread.isAlive():
                 thread.join()
-            elif thread.exception:
-                print 'HERE IS AN EXCEPTION MK-2?'
+            if thread.exception:
                 raise thread.exception
-            results[key] = thread.value
-            print 'NO EXCEPTION-2', thread.value
         return results.values()
 
     def _raise_for_status(self, r):

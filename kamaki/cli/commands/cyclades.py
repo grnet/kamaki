@@ -392,7 +392,26 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
             personality=self['personality']) for i in range(size)]
         if size == 1:
             return [self.client.create_server(**servers[0])]
-        return self.client.async_run(self.client.create_server, servers)
+        try:
+            return self.client.async_run(self.client.create_server, servers)
+        except Exception as e:
+            if size == 1:
+                raise e
+            try:
+                requested_names = [s['name'] for s in servers]
+                spawned_servers = [dict(
+                    name=s['name'],
+                    id=s['id']) for s in self.client.list_servers() if (
+                        s['name'] in requested_names)]
+                self.error('Failed to build %s servers' % size)
+                self.error('Found %s servers with a "%s" prefix:' % (
+                    len(spawned_servers), prefix))
+                self._print(spawned_servers, out=self._err)
+                self.error('Check if any of these servers should be removed\n')
+            except Exception as ne:
+                self.error('Error (%s) while notifying about errors' % ne)
+            finally:
+                raise e
 
     @errors.generic.all
     @errors.cyclades.connection
@@ -401,15 +420,17 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
     def _run(self, name, flavor_id, image_id):
         for r in self._create_cluster(
                 name, flavor_id, image_id, size=self['cluster_size'] or 1):
-            print 'HEY I GOT A', r
-            print 'MKEY?????????????????'
-            usernames = self._uuids2usernames([r['user_id'], r['tenant_id']])
+            if not r:
+                self.error('Create %s: server response was %s' % (name, r))
+                continue
+            usernames = self._uuids2usernames(
+                [r['user_id'], r['tenant_id']])
             r['user_id'] += ' (%s)' % usernames[r['user_id']]
             r['tenant_id'] += ' (%s)' % usernames[r['tenant_id']]
             self._print(r, self.print_dict)
             if self['wait']:
                 self._wait(r['id'], r['status'])
-            self.error('')
+            self.writeln('')
 
     def main(self, name, flavor_id, image_id):
         super(self.__class__, self)._run()
