@@ -336,7 +336,7 @@ Now, our cluster seems messed up. Let's destroy it and rebuilt it.
 
 .. code-block:: console
 
-    [server]: delete "my cluster " --cluster --wait
+    [server]: delete --cluster "my cluster " --wait
     [progress bar waiting server to be deleted]
     Server 321: status is now DELETED
 
@@ -400,7 +400,7 @@ Here is a bash script for creating clusters:
     IMAGE_ID="f1r57-1m4g3-1d"
 
     echo "Clean up cluster \"${CL_PREFIX}\""
-    kamaki --cloud=${CLOUD} server delete ${CL_PREFIX} --cluster --wait
+    kamaki --cloud=${CLOUD} server delete --cluster ${CL_PREFIX} --wait
     echo "Cluster \"${CL_PREFIX}\"" > ${OUT}
 
     echo "Create cluster \"${CL_PREFIX}\" of size ${CL_SIZE}"
