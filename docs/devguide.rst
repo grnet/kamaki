@@ -10,4 +10,5 @@ Developers Guide
     developers/logging
     developers/adding-commands
     developers/extending-clients-api
+    developers/showcase
     developers/code

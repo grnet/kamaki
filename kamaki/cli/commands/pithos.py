@@ -552,11 +552,16 @@ class file_create(_file_container_command, _optional_output_cmd):
     @errors.pithos.connection
     @errors.pithos.container
     def _run(self, container):
-        self._optional_output(self.client.create_container(
-            container=container,
-            sizelimit=self['limit'],
-            versioning=self['versioning'],
-            metadata=self['meta']))
+        try:
+            self._optional_output(self.client.create_container(
+                container=container,
+                sizelimit=self['limit'],
+                versioning=self['versioning'],
+                metadata=self['meta'],
+                success=(201, )))
+        except ClientError as ce:
+            if ce.status in (202, ):
+                raiseCLIError(ce, 'Container %s alread exists' % container)
 
     def main(self, container=None):
         super(self.__class__, self)._run(container)
