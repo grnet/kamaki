@@ -108,7 +108,7 @@ class PithosClient(PithosRestClient):
     def create_container(
             self,
             container=None, sizelimit=None, versioning=None, metadata=None,
-            **kwargs):
+            project=None, **kwargs):
         """
         :param container: (str) if not given, self.container is used instead
 
@@ -126,7 +126,7 @@ class PithosClient(PithosRestClient):
             self.container = container or cnt_back_up
             r = self.container_put(
                 quota=sizelimit, versioning=versioning, metadata=metadata,
-                **kwargs)
+                project=project, **kwargs)
             return r.headers
         finally:
             self.container = cnt_back_up
@@ -1551,3 +1551,7 @@ class PithosClient(PithosRestClient):
         self._assert_container()
         r = self.object_get(obj, format='json', version='list')
         return r.json['versions']
+
+    def reassign_container(self, project):
+        r = self.container_post(project=project)
+        return r.headers
