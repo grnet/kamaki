@@ -737,10 +737,9 @@ class imagecompute_info(_init_cyclades, _optional_json):
     @errors.plankton.id
     def _run(self, image_id):
         image = self.client.get_image_details(image_id)
-        uuids = [image['user_id'], image['tenant_id']]
+        uuids = [image['user_id']]
         usernames = self._uuids2usernames(uuids)
         image['user_id'] += ' (%s)' % usernames[image['user_id']]
-        image['tenant_id'] += ' (%s)' % usernames[image['tenant_id']]
         self._print(image, self.print_dict)
 
     def main(self, image_id):

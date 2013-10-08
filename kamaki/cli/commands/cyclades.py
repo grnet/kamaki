@@ -204,11 +204,9 @@ class server_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
 
     def _add_user_name(self, servers):
         uuids = self._uuids2usernames(list(set(
-                [srv['user_id'] for srv in servers] +
-                [srv['tenant_id'] for srv in servers])))
+                    [srv['user_id'] for srv in servers])))
         for srv in servers:
             srv['user_id'] += ' (%s)' % uuids[srv['user_id']]
-            srv['tenant_id'] += ' (%s)' % uuids[srv['tenant_id']]
         return servers
 
     def _apply_common_filters(self, servers):
@@ -955,11 +953,7 @@ def _add_name(self, net):
         user_id, tenant_id, uuids = net['user_id'], net['tenant_id'], []
         if user_id:
             uuids.append(user_id)
-        if tenant_id:
-            uuids.append(tenant_id)
-        if uuids:
+        if uuids or tenant_id:
             usernames = self._uuids2usernames(uuids)
             if user_id:
                 net['user_id'] += ' (%s)' % usernames[user_id]
-            if tenant_id:
-                net['tenant_id'] += ' (%s)' % usernames[tenant_id]
