@@ -313,7 +313,7 @@ class PersonalityArgument(KeyValueArgument):
 
     @property
     def value(self):
-        return self._value if hasattr(self, '_value') else []
+        return getattr(self, '_value', [])
 
     @value.setter
     def value(self, newvalue):
@@ -386,7 +386,7 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
     @errors.cyclades.cluster_size
     def _create_cluster(self, prefix, flavor_id, image_id, size):
         servers = [dict(
-            name='%s%s' % (prefix, i),
+            name='%s%s' % (prefix, i if size > 1 else ''),
             flavor_id=flavor_id,
             image_id=image_id,
             personality=self['personality']) for i in range(1, 1 + size)]

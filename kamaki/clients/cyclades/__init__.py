@@ -34,7 +34,7 @@
 from time import sleep
 
 from kamaki.clients.cyclades.rest_api import CycladesRestClient
-from kamaki.clients import ClientError, SilentEvent, sendlog
+from kamaki.clients import ClientError
 
 
 class CycladesClient(CycladesRestClient):
