@@ -32,7 +32,7 @@
 # or implied, of GRNET S.A.
 
 from base64 import b64encode
-from os.path import exists
+from os.path import exists, expanduser
 from io import StringIO
 from pydoc import pager
 
@@ -67,7 +67,7 @@ howto_personality = [
     '  [server-path=]SERVER_PATH: destination location inside server Image',
     '  [owner=]OWNER: virtual servers user id for the remote file',
     '  [group=]GROUP: virtual servers group id or name for the remote file',
-    '  [mode=]MODE: permission in octal (e.g., 0777 or o+rwx)',
+    '  [mode=]MODE: permission in octal (e.g., 0777)',
     'e.g., -p /tmp/my.file,owner=root,mode=0777']
 
 
@@ -351,7 +351,7 @@ class PersonalityArgument(KeyValueArgument):
                     details=howto_personality)
 
             self._value.append(dict(path=path))
-            with open(path) as f:
+            with open(expanduser(path)) as f:
                 self._value[i]['contents'] = b64encode(f.read())
             for k, v in self.terms[1:]:
                 try:
@@ -361,6 +361,13 @@ class PersonalityArgument(KeyValueArgument):
                         self._value[i][v] = termlist.pop(0)
                     except IndexError:
                         continue
+                if k in ('mode', ) and self._value[i][v]:
+                    try:
+                        self._value[i][v] = int(self._value[i][v], 8)
+                    except ValueError as ve:
+                        raise CLIInvalidArgument(
+                            'Personality mode must be in octal', details=[
+                                '%s' % ve])
 
 
 @command(server_cmds)
