@@ -1,3 +1,9 @@
+kamaki (0.11-1) squeeze; urgency=low
+
+  * debian squeeze release
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Wed, 09 Oct 2013 13:43:08 +0300
+
 kamaki (0.10.2-1) squeeze; urgency=low
 
   * New hotfix version
