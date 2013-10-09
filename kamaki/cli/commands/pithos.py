@@ -31,16 +31,17 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-from sys import stdout
 from time import localtime, strftime
 from os import path, makedirs, walk
+from io import StringIO
+from pydoc import pager
 
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.errors import raiseCLIError, CLISyntaxError, CLIBaseUrlError
+from kamaki.cli.errors import (
+    raiseCLIError, CLISyntaxError, CLIBaseUrlError, CLIInvalidArgument)
 from kamaki.cli.utils import (
-    format_size, to_bytes, print_dict, print_items, page_hold, bold, ask_user,
-    get_path_size, print_json, guess_mime_type)
+    format_size, to_bytes, bold, get_path_size, guess_mime_type)
 from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
 from kamaki.cli.argument import KeyValueArgument, DateArgument
 from kamaki.cli.argument import ProgressBarArgument
@@ -56,26 +57,6 @@ _commands = [pithos_cmds]
 
 
 # Argument functionality
-
-class DelimiterArgument(ValueArgument):
-    """
-    :value type: string
-    :value returns: given string or /
-    """
-
-    def __init__(self, caller_obj, help='', parsed_name=None, default=None):
-        super(DelimiterArgument, self).__init__(help, parsed_name, default)
-        self.caller_obj = caller_obj
-
-    @property
-    def value(self):
-        if self.caller_obj['recursive']:
-            return '/'
-        return getattr(self, '_value', self.default)
-
-    @value.setter
-    def value(self, newvalue):
-        self._value = newvalue
 
 
 class SharingArgument(ValueArgument):
@@ -250,9 +231,7 @@ class _file_container_command(_file_account_command):
             'Set container to work with (temporary)', ('-C', '--container'))
 
     def extract_container_and_path(
-            self,
-            container_with_path,
-            path_is_optional=True):
+            self, container_with_path, path_is_optional=True):
         """Contains all heuristics for deciding what should be used as
         container or path. Options are:
         * user string of the form container:path
@@ -354,20 +333,17 @@ class file_list(_file_container_command, _optional_json, _name_filter):
         format=ValueArgument(
             'format to parse until data (default: d/m/Y H:M:S )', '--format'),
         shared=FlagArgument('show only shared', '--shared'),
-        more=FlagArgument(
-            'output results in pages (-n to set items per page, default 10)',
-            '--more'),
+        more=FlagArgument('read long results', '--more'),
         exact_match=FlagArgument(
             'Show only objects that match exactly with path',
             '--exact-match'),
-        enum=FlagArgument('Enumerate results', '--enumerate')
+        enum=FlagArgument('Enumerate results', '--enumerate'),
+        recursive=FlagArgument(
+            'Recursively list containers and their contents',
+            ('-R', '--recursive'))
     )
 
     def print_objects(self, object_list):
-        if self['json_output']:
-            print_json(object_list)
-            return
-        limit = int(self['limit']) if self['limit'] > 0 else len(object_list)
         for index, obj in enumerate(object_list):
             if self['exact_match'] and self.path and not (
                     obj['name'] == self.path or 'content_type' in obj):
@@ -384,54 +360,94 @@ class file_list(_file_container_command, _optional_json, _name_filter):
                 isDir = False
                 size = format_size(obj['bytes'])
                 pretty_obj['bytes'] = '%s (%s)' % (obj['bytes'], size)
-            oname = bold(obj['name'])
-            prfx = ('%s%s. ' % (empty_space, index)) if self['enum'] else ''
+            oname = obj['name'] if self['more'] else bold(obj['name'])
+            prfx = (
+                '%s%s. ' % (empty_space, index)) if self['enum'] else ''
             if self['detail']:
-                print('%s%s' % (prfx, oname))
-                print_dict(pretty_obj, exclude=('name'))
-                print
+                self.writeln('%s%s' % (prfx, oname))
+                self.print_dict(pretty_obj, exclude=('name'))
+                self.writeln()
             else:
                 oname = '%s%9s %s' % (prfx, size, oname)
-                oname += '/' if isDir else ''
-                print(oname)
-            if self['more']:
-                page_hold(index, limit, len(object_list))
+                oname += '/' if isDir else u''
+                self.writeln(oname)
 
     def print_containers(self, container_list):
-        if self['json_output']:
-            print_json(container_list)
-            return
-        limit = int(self['limit']) if self['limit'] > 0\
-            else len(container_list)
         for index, container in enumerate(container_list):
             if 'bytes' in container:
                 size = format_size(container['bytes'])
             prfx = ('%s. ' % (index + 1)) if self['enum'] else ''
-            cname = '%s%s' % (prfx, bold(container['name']))
+            _cname = container['name'] if (
+                self['more']) else bold(container['name'])
+            cname = u'%s%s' % (prfx, _cname)
             if self['detail']:
-                print(cname)
+                self.writeln(cname)
                 pretty_c = container.copy()
                 if 'bytes' in container:
                     pretty_c['bytes'] = '%s (%s)' % (container['bytes'], size)
-                print_dict(pretty_c, exclude=('name'))
-                print
+                self.print_dict(pretty_c, exclude=('name'))
+                self.writeln()
             else:
                 if 'count' in container and 'bytes' in container:
-                    print('%s (%s, %s objects)' % (
-                        cname,
-                        size,
-                        container['count']))
+                    self.writeln('%s (%s, %s objects)' % (
+                        cname, size, container['count']))
                 else:
-                    print(cname)
-            if self['more']:
-                page_hold(index + 1, limit, len(container_list))
+                    self.writeln(cname)
+            objects = container.get('objects', [])
+            if objects:
+                self.print_objects(objects)
+                self.writeln('')
+
+    def _argument_context_check(self):
+        container_level_only = ('recursive', )
+        object_level_only = ('delimiter', 'path', 'exact_match')
+        details, mistake = [], ''
+        if self.container:
+            for term in container_level_only:
+                if self[term]:
+                    details = [
+                        'This is a container-level argument',
+                        'Use it without a <container> parameter']
+                    mistake = self.arguments[term]
+        else:
+            for term in object_level_only:
+                if not self['recursive'] and self[term]:
+                    details = [
+                        'This is an opbject-level argument',
+                        'Use it with a <container> parameter',
+                        'or with the -R/--recursive argument']
+                    mistake = self.arguments[term]
+        if mistake and details:
+            raise CLIInvalidArgument(
+                'Invalid use of %s argument' % '/'.join(mistake.parsed_name),
+                details=details + ['Try --help for more details'])
+
+    def _create_object_forest(self, container_list):
+        try:
+            for container in container_list:
+                self.client.container = container['name']
+                objects = self.client.container_get(
+                    limit=False if self['more'] else self['limit'],
+                    marker=self['marker'],
+                    delimiter=self['delimiter'],
+                    path=self['path'],
+                    if_modified_since=self['if_modified_since'],
+                    if_unmodified_since=self['if_unmodified_since'],
+                    until=self['until'],
+                    meta=self['meta'],
+                    show_only_shared=self['shared'])
+                container['objects'] = objects.json
+        finally:
+            self.client.container = None
 
     @errors.generic.all
     @errors.pithos.connection
     @errors.pithos.object_path
     @errors.pithos.container
     def _run(self):
-        if self.container is None:
+        files, prnt = None, None
+        self._argument_context_check()
+        if not self.container:
             r = self.client.account_get(
                 limit=False if self['more'] else self['limit'],
                 marker=self['marker'],
@@ -439,8 +455,9 @@ class file_list(_file_container_command, _optional_json, _name_filter):
                 if_unmodified_since=self['if_unmodified_since'],
                 until=self['until'],
                 show_only_shared=self['shared'])
-            files = self._filter_by_name(r.json)
-            self._print(files, self.print_containers)
+            files, prnt = self._filter_by_name(r.json), self.print_containers
+            if self['recursive']:
+                self._create_object_forest(files)
         else:
             prefix = (self.path and not self['name']) or self['name_pref']
             r = self.client.container_get(
@@ -454,8 +471,18 @@ class file_list(_file_container_command, _optional_json, _name_filter):
                 until=self['until'],
                 meta=self['meta'],
                 show_only_shared=self['shared'])
-            files = self._filter_by_name(r.json)
-            self._print(files, self.print_objects)
+            files, prnt = self._filter_by_name(r.json), self.print_objects
+        if self['more']:
+            outbu, self._out = self._out, StringIO()
+        try:
+            if self['json_output'] or self['output_format']:
+                self._print(files)
+            else:
+                prnt(files)
+        finally:
+            if self['more']:
+                pager(self._out.getvalue())
+                self._out = outbu
 
     def main(self, container____path__=None):
         super(self.__class__, self)._run(container____path__)
@@ -480,8 +507,7 @@ class file_mkdir(_file_container_command, _optional_output_cmd):
 
     def main(self, container___directory):
         super(self.__class__, self)._run(
-            container___directory,
-            path_is_optional=False)
+            container___directory, path_is_optional=False)
         self._run()
 
 
@@ -506,9 +532,7 @@ class file_touch(_file_container_command, _optional_output_cmd):
             self.client.create_object(self.path, self['content_type']))
 
     def main(self, container___path):
-        super(file_touch, self)._run(
-            container___path,
-            path_is_optional=False)
+        super(file_touch, self)._run(container___path, path_is_optional=False)
         self._run()
 
 
@@ -528,11 +552,16 @@ class file_create(_file_container_command, _optional_output_cmd):
     @errors.pithos.connection
     @errors.pithos.container
     def _run(self, container):
-        self._optional_output(self.client.create_container(
-            container=container,
-            sizelimit=self['limit'],
-            versioning=self['versioning'],
-            metadata=self['meta']))
+        try:
+            self._optional_output(self.client.create_container(
+                container=container,
+                sizelimit=self['limit'],
+                versioning=self['versioning'],
+                metadata=self['meta'],
+                success=(201, )))
+        except ClientError as ce:
+            if ce.status in (202, ):
+                raiseCLIError(ce, 'Container %s alread exists' % container)
 
     def main(self, container=None):
         super(self.__class__, self)._run(container)
@@ -563,8 +592,7 @@ class _source_destination_command(_file_container_command):
 
     def _run(self, source_container___path, path_is_optional=False):
         super(_source_destination_command, self)._run(
-            source_container___path,
-            path_is_optional)
+            source_container___path, path_is_optional)
         self.dst_client = PithosClient(
             base_url=self.client.base_url,
             token=self.client.token,
@@ -763,8 +791,7 @@ class file_copy(_source_destination_command, _optional_output_cmd):
             self, source_container___path,
             destination_container___path=None):
         super(file_copy, self)._run(
-            source_container___path,
-            path_is_optional=False)
+            source_container___path, path_is_optional=False)
         (dst_cont, dst_path) = self._dest_container_path(
             destination_container___path)
         self.dst_client.container = dst_cont or self.container
@@ -837,8 +864,7 @@ class file_move(_source_destination_command, _optional_output_cmd):
                 content_type=self['content_type'])
         if no_source_object:
             raiseCLIError('No object %s in container %s' % (
-                self.path,
-                self.container))
+                self.path, self.container))
         self._optional_output(r)
 
     def main(
@@ -865,8 +891,7 @@ class file_append(_file_container_command, _optional_output_cmd):
 
     arguments = dict(
         progress_bar=ProgressBarArgument(
-            'do not show progress bar',
-            ('-N', '--no-progress-bar'),
+            'do not show progress bar', ('-N', '--no-progress-bar'),
             default=False)
     )
 
@@ -877,12 +902,9 @@ class file_append(_file_container_command, _optional_output_cmd):
     def _run(self, local_path):
         (progress_bar, upload_cb) = self._safe_progress_bar('Appending')
         try:
-            f = open(local_path, 'rb')
-            self._optional_output(
-                self.client.append_object(self.path, f, upload_cb))
-        except Exception:
-            self._safe_progress_bar_finish(progress_bar)
-            raise
+            with open(local_path, 'rb') as f:
+                self._optional_output(
+                    self.client.append_object(self.path, f, upload_cb))
         finally:
             self._safe_progress_bar_finish(progress_bar)
 
@@ -921,17 +943,9 @@ class file_overwrite(_file_container_command, _optional_output_cmd):
 
     arguments = dict(
         progress_bar=ProgressBarArgument(
-            'do not show progress bar',
-            ('-N', '--no-progress-bar'),
+            'do not show progress bar', ('-N', '--no-progress-bar'),
             default=False)
     )
-
-    def _open_file(self, local_path, start):
-        f = open(path.abspath(local_path), 'rb')
-        f.seek(0, 2)
-        f_size = f.tell()
-        f.seek(start, 0)
-        return (f, f_size)
 
     @errors.generic.all
     @errors.pithos.connection
@@ -939,17 +953,17 @@ class file_overwrite(_file_container_command, _optional_output_cmd):
     @errors.pithos.object_path
     @errors.pithos.object_size
     def _run(self, local_path, start, end):
-        (start, end) = (int(start), int(end))
-        (f, f_size) = self._open_file(local_path, start)
+        start, end = int(start), int(end)
         (progress_bar, upload_cb) = self._safe_progress_bar(
             'Overwrite %s bytes' % (end - start))
         try:
-            self._optional_output(self.client.overwrite_object(
-                obj=self.path,
-                start=start,
-                end=end,
-                source_file=f,
-                upload_cb=upload_cb))
+            with open(path.abspath(local_path), 'rb') as f:
+                self._optional_output(self.client.overwrite_object(
+                    obj=self.path,
+                    start=start,
+                    end=end,
+                    source_file=f,
+                    upload_cb=upload_cb))
         finally:
             self._safe_progress_bar_finish(progress_bar)
 
@@ -1089,7 +1103,7 @@ class file_upload(_file_container_command, _optional_output_cmd):
                             'Object %s exists but it is not a dir' % rpath,
                             importance=1, details=['Use -f to overwrite'])
                 except ClientError as ce:
-                    if ce.status != 404:
+                    if ce.status not in (404, ):
                         raise
             self._check_container_limit(lpath)
             prev = ''
@@ -1100,7 +1114,8 @@ class file_upload(_file_container_command, _optional_output_cmd):
                         rel_path = rpath + top.split(lpath)[1]
                     except IndexError:
                         rel_path = rpath
-                    print('mkdir %s:%s' % (self.client.container, rel_path))
+                    self.error('mkdir %s:%s' % (
+                        self.client.container, rel_path))
                     self.client.create_directory(rel_path)
                 for f in files:
                     fpath = path.join(top, f)
@@ -1109,7 +1124,7 @@ class file_upload(_file_container_command, _optional_output_cmd):
                         pathfix = f.replace(path.sep, '/')
                         yield open(fpath, 'rb'), '%s/%s' % (rel_path, pathfix)
                     else:
-                        print('%s is not a regular file' % fpath)
+                        self.error('%s is not a regular file' % fpath)
         else:
             if not path.isfile(lpath):
                 raiseCLIError(('%s is not a regular file' % lpath) if (
@@ -1125,7 +1140,7 @@ class file_upload(_file_container_command, _optional_output_cmd):
                         importance=1,
                         details=['use -f to overwrite or resume'])
             except ClientError as ce:
-                if ce.status != 404:
+                if ce.status not in (404, ):
                     raise
             self._check_container_limit(lpath)
             yield open(lpath, 'rb'), rpath
@@ -1136,9 +1151,8 @@ class file_upload(_file_container_command, _optional_output_cmd):
     @errors.pithos.object_path
     @errors.pithos.local_path
     def _run(self, local_path, remote_path):
-        poolsize = self['poolsize']
-        if poolsize > 0:
-            self.client.MAX_THREADS = int(poolsize)
+        if self['poolsize'] > 0:
+            self.client.MAX_THREADS = int(self['poolsize'])
         params = dict(
             content_encoding=self['content_encoding'],
             content_type=self['content_type'],
@@ -1148,7 +1162,7 @@ class file_upload(_file_container_command, _optional_output_cmd):
         uploaded = []
         container_info_cache = dict()
         for f, rpath in self._path_pairs(local_path, remote_path):
-            print('%s --> %s:%s' % (f.name, self.client.container, rpath))
+            self.error('%s --> %s:%s' % (f.name, self.client.container, rpath))
             if not (self['content_type'] and self['content_encoding']):
                 ctype, cenc = guess_mime_type(f.name)
                 params['content_type'] = self['content_type'] or ctype
@@ -1186,7 +1200,7 @@ class file_upload(_file_container_command, _optional_output_cmd):
                 finally:
                     self._safe_progress_bar_finish(progress_bar)
         self._optional_output(uploaded)
-        print('Upload completed')
+        self.error('Upload completed')
 
     def main(self, local_path, container____path__=None):
         super(self.__class__, self)._run(container____path__)
@@ -1217,8 +1231,7 @@ class file_cat(_file_container_command):
     @errors.pithos.object_path
     def _run(self):
         self.client.download_object(
-            self.path,
-            stdout,
+            self.path, self._out,
             range_str=self['range'],
             version=self['object_version'],
             if_match=self['if_match'],
@@ -1239,8 +1252,8 @@ class file_download(_file_container_command):
     *   download <container>:<path> <local dir> -R
     will download all files on <container> prefixed as <path>,
     to <local dir>/<full path> (or <local dir>\<full path> in windows)
-    *   download <container>:<path> <local dir> --exact-match
-    will download only one file, exactly matching <path>
+    *   download <container>:<path> <local dir>
+    will download only one file<path>
     ATTENTION: to download cont:dir1/dir2/file there must exist objects
     cont:dir1 and cont:dir1/dir2 of type application/directory
     To create directory objects, use /file mkdir
@@ -1260,12 +1273,10 @@ class file_download(_file_container_command):
             'get the specific version', ('-O', '--object-version')),
         poolsize=IntArgument('set pool size', '--with-pool-size'),
         progress_bar=ProgressBarArgument(
-            'do not show progress bar',
-            ('-N', '--no-progress-bar'),
+            'do not show progress bar', ('-N', '--no-progress-bar'),
             default=False),
         recursive=FlagArgument(
-            'Download a remote path and all its contents',
-            ('-R', '--recursive'))
+            'Download a remote path and its contents', ('-R', '--recursive'))
     )
 
     def _outputs(self, local_path):
@@ -1335,7 +1346,7 @@ class file_download(_file_container_command):
                     makedirs(lpath)
                 elif path.exists(lpath):
                     if not self['resume']:
-                        print('File %s exists, aborting...' % lpath)
+                        self.error('File %s exists, aborting...' % lpath)
                         continue
                     with open(lpath, 'rwb+') as f:
                         yield (f, rpath)
@@ -1401,20 +1412,20 @@ class file_download(_file_container_command):
             from threading import activeCount, enumerate as activethreads
             timeout = 0.5
             while activeCount() > 1:
-                stdout.write('\nCancel %s threads: ' % (activeCount() - 1))
-                stdout.flush()
+                self._out.write('\nCancel %s threads: ' % (activeCount() - 1))
+                self._out.flush()
                 for thread in activethreads():
                     try:
                         thread.join(timeout)
-                        stdout.write('.' if thread.isAlive() else '*')
+                        self._out.write('.' if thread.isAlive() else '*')
                     except RuntimeError:
                         continue
                     finally:
-                        stdout.flush()
+                        self._out.flush()
                         timeout += 0.1
-            print('\nDownload canceled by user')
+            self.error('\nDownload canceled by user')
             if local_path is not None:
-                print('to resume, re-run with --resume')
+                self.error('to resume, re-run with --resume')
         except Exception:
             self._safe_progress_bar_finish(progress_bar)
             raise
@@ -1453,12 +1464,11 @@ class file_hashmap(_file_container_command, _optional_json):
             if_match=self['if_match'],
             if_none_match=self['if_none_match'],
             if_modified_since=self['if_modified_since'],
-            if_unmodified_since=self['if_unmodified_since']), print_dict)
+            if_unmodified_since=self['if_unmodified_since']), self.print_dict)
 
     def main(self, container___path):
         super(self.__class__, self)._run(
-            container___path,
-            path_is_optional=False)
+            container___path, path_is_optional=False)
         self._run()
 
 
@@ -1486,15 +1496,10 @@ class file_delete(_file_container_command, _optional_output_cmd):
         yes=FlagArgument('Do not prompt for permission', '--yes'),
         recursive=FlagArgument(
             'empty dir or container and delete (if dir)',
-            ('-R', '--recursive'))
+            ('-R', '--recursive')),
+        delimiter=ValueArgument(
+            'delete objects prefixed with <object><delimiter>', '--delimiter')
     )
-
-    def __init__(self, arguments={}, auth_base=None, cloud=None):
-        super(self.__class__, self).__init__(arguments,  auth_base, cloud)
-        self['delimiter'] = DelimiterArgument(
-            self,
-            parsed_name='--delimiter',
-            help='delete objects prefixed with <object><delimiter>')
 
     @errors.generic.all
     @errors.pithos.connection
@@ -1502,23 +1507,26 @@ class file_delete(_file_container_command, _optional_output_cmd):
     @errors.pithos.object_path
     def _run(self):
         if self.path:
-            if self['yes'] or ask_user(
+            if self['yes'] or self.ask_user(
                     'Delete %s:%s ?' % (self.container, self.path)):
                 self._optional_output(self.client.del_object(
                     self.path,
-                    until=self['until'], delimiter=self['delimiter']))
+                    until=self['until'],
+                    delimiter='/' if self['recursive'] else self['delimiter']))
             else:
-                print('Aborted')
+                self.error('Aborted')
         elif self.container:
             if self['recursive']:
                 ask_msg = 'Delete container contents'
             else:
                 ask_msg = 'Delete container'
-            if self['yes'] or ask_user('%s %s ?' % (ask_msg, self.container)):
+            if self['yes'] or self.ask_user(
+                    '%s %s ?' % (ask_msg, self.container)):
                 self._optional_output(self.client.del_container(
-                    until=self['until'], delimiter=self['delimiter']))
+                    until=self['until'],
+                    delimiter='/' if self['recursive'] else self['delimiter']))
             else:
-                print('Aborted')
+                self.error('Aborted')
         else:
             raiseCLIError('Nothing to delete, please provide container[:path]')
 
@@ -1547,7 +1555,8 @@ class file_purge(_file_container_command, _optional_output_cmd):
     @errors.pithos.connection
     @errors.pithos.container
     def _run(self):
-        if self['yes'] or ask_user('Purge container %s?' % self.container):
+        if self['yes'] or self.ask_user(
+                'Purge container %s?' % self.container):
             try:
                 r = self.client.purge_container()
             except ClientError as ce:
@@ -1561,7 +1570,7 @@ class file_purge(_file_container_command, _optional_output_cmd):
                     raise
             self._optional_output(r)
         else:
-            print('Aborted')
+            self.error('Aborted')
 
     def main(self, container=None):
         super(self.__class__, self)._run(container)
@@ -1581,7 +1590,7 @@ class file_publish(_file_container_command):
     @errors.pithos.container
     @errors.pithos.object_path
     def _run(self):
-        print self.client.publish_object(self.path)
+        self.writeln(self.client.publish_object(self.path))
 
     def main(self, container___path):
         super(self.__class__, self)._run(
@@ -1615,21 +1624,21 @@ class file_permissions(_pithos_init):
     """
 
 
-def print_permissions(permissions_dict):
-    expected_keys = ('read', 'write')
-    if set(permissions_dict).issubset(expected_keys):
-        print_dict(permissions_dict)
-    else:
-        invalid_keys = set(permissions_dict.keys()).difference(expected_keys)
-        raiseCLIError(
-            'Illegal permission keys: %s' % ', '.join(invalid_keys),
-            importance=1, details=[
-                'Valid permission types: %s' % ' '.join(expected_keys)])
-
-
 @command(pithos_cmds)
 class file_permissions_get(_file_container_command, _optional_json):
     """Get read and write permissions of an object"""
+
+    def print_permissions(self, permissions_dict, out):
+        expected_keys = ('read', 'write')
+        if set(permissions_dict).issubset(expected_keys):
+            self.print_dict(permissions_dict, out)
+        else:
+            invalid_keys = set(permissions_dict.keys()).difference(
+                expected_keys)
+            raiseCLIError(
+                'Illegal permission keys: %s' % ', '.join(invalid_keys),
+                importance=1, details=[
+                    'Valid permission types: %s' % ' '.join(expected_keys)])
 
     @errors.generic.all
     @errors.pithos.connection
@@ -1637,7 +1646,7 @@ class file_permissions_get(_file_container_command, _optional_json):
     @errors.pithos.object_path
     def _run(self):
         self._print(
-            self.client.get_object_sharing(self.path), print_permissions)
+            self.client.get_object_sharing(self.path), self.print_permissions)
 
     def main(self, container___path):
         super(self.__class__, self)._run(
@@ -1654,12 +1663,16 @@ class file_permissions_set(_file_container_command, _optional_output_cmd):
     -   write=<username>[,usegroup[,...]]
     E.g. to give read permissions for file F to users A and B and write for C:
     .       /file permissions set F read=A,B write=C
+    To share with everybody, use '*' instead of a user id or group.
+    E.g. to make file F available to all pithos users:
+    .   /file permissions set F read=*
+    E.g. to make file F available for editing to all pithos users:
+    .   /file permissions set F write=*
     """
 
     @errors.generic.all
     def format_permission_dict(self, permissions):
-        read = False
-        write = False
+        read, write = False, False
         for perms in permissions:
             splstr = perms.split('=')
             if 'read' == splstr[0]:
@@ -1731,7 +1744,7 @@ class file_info(_file_container_command, _optional_json):
         else:
             r = self.client.get_object_info(
                 self.path, version=self['object_version'])
-        self._print(r, print_dict)
+        self._print(r, self.print_dict)
 
     def main(self, container____path__=None):
         super(self.__class__, self)._run(container____path__)
@@ -1787,7 +1800,7 @@ class file_metadata_get(_file_container_command, _optional_json):
                     self.path,
                     version=self['object_version'])
         if r:
-            self._print(r, print_dict)
+            self._print(r, self.print_dict)
 
     def main(self, container____path__=None):
         super(self.__class__, self)._run(container____path__)
@@ -1854,11 +1867,11 @@ class file_quota(_file_account_command, _optional_json):
     @errors.pithos.connection
     def _run(self):
 
-        def pretty_print(output):
+        def pretty_print(output, **kwargs):
             if not self['in_bytes']:
                 for k in output:
                     output[k] = format_size(output[k])
-            print_dict(output, '-')
+            self.print_dict(output, '-', **kwargs)
 
         self._print(self.client.get_account_quota(), pretty_print)
 
@@ -1888,7 +1901,7 @@ class file_containerlimit_get(_file_container_command, _optional_json):
             if not self['in_bytes']:
                 for k, v in output.items():
                     output[k] = 'unlimited' if '0' == v else format_size(v)
-            print_dict(output, '-')
+            self.print_dict(output, '-')
 
         self._print(
             self.client.get_container_limit(self.container), pretty_print)
@@ -1927,7 +1940,7 @@ class file_containerlimit_set(_file_account_command, _optional_output_cmd):
                 msg = 'Failed to convert %s to bytes' % user_input,
                 raiseCLIError(qe, msg, details=[
                     'Syntax: containerlimit set <limit>[format] [container]',
-                    'e.g.: containerlimit set 2.3GB mycontainer',
+                    'e.g.,: containerlimit set 2.3GB mycontainer',
                     'Valid formats:',
                     '(*1024): B, KiB, MiB, GiB, TiB',
                     '(*1000): B, KB, MB, GB, TB'])
@@ -1962,7 +1975,8 @@ class file_versioning_get(_file_account_command, _optional_json):
     @errors.pithos.container
     def _run(self):
         self._print(
-            self.client.get_container_versioning(self.container), print_dict)
+            self.client.get_container_versioning(self.container),
+            self.print_dict)
 
     def main(self, container):
         super(self.__class__, self)._run()
@@ -2005,7 +2019,8 @@ class file_group_list(_file_account_command, _optional_json):
     @errors.generic.all
     @errors.pithos.connection
     def _run(self):
-        self._print(self.client.get_account_group(), print_dict, delim='-')
+        self._print(
+            self.client.get_account_group(), self.print_dict, delim='-')
 
     def main(self):
         super(self.__class__, self)._run()
@@ -2056,7 +2071,7 @@ class file_sharers(_file_account_command, _optional_json):
     @errors.pithos.connection
     def _run(self):
         accounts = self.client.get_sharing_accounts(marker=self['marker'])
-        if not self['json_output']:
+        if not (self['json_output'] or self['output_format']):
             usernames = self._uuids2usernames(
                 [acc['name'] for acc in accounts])
             for item in accounts:
@@ -2071,21 +2086,22 @@ class file_sharers(_file_account_command, _optional_json):
         self._run()
 
 
-def version_print(versions):
-    print_items([dict(id=vitem[0], created=strftime(
-            '%d-%m-%Y %H:%M:%S',
-            localtime(float(vitem[1])))) for vitem in versions])
-
-
 @command(pithos_cmds)
 class file_versions(_file_container_command, _optional_json):
     """Get the list of object versions
     Deleted objects may still have versions that can be used to restore it and
     get information about its previous state.
     The version number can be used in a number of other commands, like info,
-    copy, move, meta. See these commands for more information, e.g.
+    copy, move, meta. See these commands for more information, e.g.,
     /file info -h
     """
+
+    def version_print(self, versions, out):
+        self.print_items(
+            [dict(id=vitem[0], created=strftime(
+                '%d-%m-%Y %H:%M:%S',
+                localtime(float(vitem[1])))) for vitem in versions],
+            out=out)
 
     @errors.generic.all
     @errors.pithos.connection
@@ -2093,10 +2109,9 @@ class file_versions(_file_container_command, _optional_json):
     @errors.pithos.object_path
     def _run(self):
         self._print(
-            self.client.get_object_versionlist(self.path), version_print)
+            self.client.get_object_versionlist(self.path), self.version_print)
 
     def main(self, container___path):
         super(file_versions, self)._run(
-            container___path,
-            path_is_optional=False)
+            container___path, path_is_optional=False)
         self._run()

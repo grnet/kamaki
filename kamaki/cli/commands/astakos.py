@@ -37,7 +37,6 @@ from kamaki.cli.commands import (
     _command_init, errors, _optional_json, addLogSettings)
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import CLIBaseUrlError, CLIError
-from kamaki.cli.utils import print_dict, ask_user, stdout
 
 user_cmds = CommandTree('user', 'Astakos API commands')
 _commands = [user_cmds]
@@ -79,7 +78,7 @@ class _user_init(_command_init):
 @command(user_cmds)
 class user_authenticate(_user_init, _optional_json):
     """Authenticate a user
-    Get user information (e.g. unique account name) from token
+    Get user information (e.g., unique account name) from token
     Token should be set in settings:
     *  check if a token is set    /config whoami cloud.default.token
     *  permanently set a token    /config set cloud.default.token <token>
@@ -87,25 +86,25 @@ class user_authenticate(_user_init, _optional_json):
     (In case of another named cloud, use its name instead of default)
     """
 
-    @staticmethod
-    def _print_access(r):
-        print_dict(r['access'])
-
     @errors.generic.all
     @errors.user.authenticate
     def _run(self, custom_token=None):
         token_bu = self.client.token
         try:
             r = self.client.authenticate(custom_token)
-            if (token_bu != self.client.token and
-                    ask_user('Permanently save token as cloud.%s.token ?' % (
+            if (token_bu != self.client.token and self.ask_user(
+                    'Permanently save token as cloud.%s.token ?' % (
                         self.cloud))):
                 self._write_main_token(self.client.token)
         except Exception:
             #recover old token
             self.client.token = token_bu
             raise
-        self._print(r, self._print_access)
+
+        def _print_access(r, out):
+            self.print_dict(r['access'], out=out)
+
+        self._print(r, _print_access)
 
     def main(self, custom_token=None):
         super(self.__class__, self)._run()
@@ -131,7 +130,7 @@ class user_whoami(_user_init, _optional_json):
 
     @errors.generic.all
     def _run(self):
-        self._print(self.client.user_info(), print_dict)
+        self._print(self.client.user_info(), self.print_dict)
 
     def main(self):
         super(self.__class__, self)._run()
@@ -155,16 +154,17 @@ class user_set(_user_init, _optional_json):
             if user.get('id', None) in (uuid,):
                 ntoken = user['auth_token']
                 if ntoken == self.client.token:
-                    print('%s (%s) is already the session user' % (
+                    self.error('%s (%s) is already the session user' % (
                         self.client.user_term('name'),
                         self.client.user_term('id')))
                     return
                 self.client.token = user['auth_token']
-                print('Session user set to %s (%s)' % (
+                self.error('Session user set to %s (%s)' % (
                         self.client.user_term('name'),
                         self.client.user_term('id')))
-                if ask_user('Permanently make %s the main user?' % (
-                        self.client.user_term('name'))):
+                if self.ask_user(
+                        'Permanently make %s the main user?' % (
+                            self.client.user_term('name'))):
                     self._write_main_token(self.client.token)
                 return
         raise CLIError(

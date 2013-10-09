@@ -10,12 +10,18 @@ The image location format at user level::
 
     <container>:<object path>
 
-    e.g.:
+    e.g.,:
 
     pithos:debian_base3.diskdump
 
-The crussial element in an image location is the container (e.g. `pithos`) and
-the image object path (e.g. `debian_base3.diskdump`).
+.. note:: The image API requires the image location in the form
+
+    *pithos://<user uuid>/<container>/<object path>*
+
+    The translation between
+    the two formats is handled internally by kamaki. The latest format is still
+    acceptable by kamaki due to backward compatibility but it is going to be deprecated from kamaki 0.12 and on.
+
 
 
 Register an image
@@ -41,14 +47,14 @@ Register the image object with the name 'Debian Base Alpha'
     checksum:         3cb03556ec971f...e8dd6190443b560cb7
     container-format: bare
     created-at:       2013-06-19 08:00:22
-    deleted-at:       
+    deleted-at:
     disk-format:      diskdump
     id:               7h1rd-1m4g3-1d
     is-public:        False
     location:         pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump
     name:             Debian Base Alpha
     owner:            s0m3-u53r-1d
-    properties:      
+    properties:
     size:             903471104
     status:           available
     updated-at:       2013-06-19 08:01:00
@@ -64,8 +70,12 @@ with the **\- -upload-image-file** argument. This single operation will upload
 the image file and then register it as an image, and is equivalent to manually
 calling **/file upload** and **/image register**.
 
+<<<<<<< HEAD:docs/collection_of_examples/imageregister.rst
 In other words, the example that follows is equivalent to calling the two
 operations above.
+=======
+In other words, the preceding and following command sequences are equivalent.
+>>>>>>> release-0.11:docs/examplesdir/imageregister.rst
 
 .. code-block:: console
 
@@ -81,19 +91,19 @@ Read the metafile
 
     [kamaki]: file cat pithos:debian_base3.diskdump
     {
-      "status": "available", 
-      "name": "Debian Base Gama", 
-      "checksum": "3cb03556ec971f...e8dd6190443b560cb7", 
-      "id": "7h1rd-1m4g3-1d2", 
-      "updated-at": "2013-06-19 08:01:00", 
-      "created-at": "2013-06-19 08:00:22", 
-      "properties": {}, 
-      "location": "pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump", 
-      "is-public": "False", 
-      "owner": "s0m3-u53r-1d", 
-      "disk-format": "diskdump", 
-      "size": "903471104", 
-      "deleted-at": "", 
+      "status": "available",
+      "name": "Debian Base Gama",
+      "checksum": "3cb03556ec971f...e8dd6190443b560cb7",
+      "id": "7h1rd-1m4g3-1d2",
+      "updated-at": "2013-06-19 08:01:00",
+      "created-at": "2013-06-19 08:00:22",
+      "properties": {},
+      "location": "pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump",
+      "is-public": "False",
+      "owner": "s0m3-u53r-1d",
+      "disk-format": "diskdump",
+      "size": "903471104",
+      "deleted-at": "",
       "container-format": "bare"
     }
     [kamaki]:
@@ -138,7 +148,7 @@ An image can be unregistered by its image id, but only if the current user is
 also the image owner. In this example, there is only one image owned by current
 user.
 
-Unregister image owned by current user 
+Unregister image owned by current user
 
 .. code-block:: console
 
@@ -168,11 +178,10 @@ The image will be registered again, but with some custom properties::
     OS: Linux
     user: someuser
 
-These properties can be added freely by the user, and they have no significance
-for the image server, but they could be used to help using the image more
-efficiently.
+These properties can be added freely by the user, and they are not required by
+the image server, but they can be used by many applications.
 
-Attempt to register with properties
+Attempt to register an image with custom properties
 
 .. code-block:: console
 
@@ -180,7 +189,8 @@ Attempt to register with properties
     Metadata file pithos:debian_base3.diskdump.meta already exists
     [kamaki]:
 
-It's true that the metafile is already there, but we can override it (**-f**)
+It's true that a metafile with this name is already there, but we can override
+it (**-f**)
 
 .. code-block:: console
 
@@ -199,7 +209,7 @@ Download the meta file of the image (it was uploaded recently)
     Done
     [kamaki]:
 
-The metadata file can be edited. Let's edit the file, by adding properties::
+The metadata file can be edited. Let's edit the file to add these properties::
 
     OS: Linux
     user: root
@@ -209,22 +219,22 @@ The resulting file will look like this:
 .. code-block:: javascript
 
     {
-      "status": "available", 
-      "name": "Debian Base Gama", 
-      "checksum": "3cb03556ec971f...e8dd6190443b560cb7", 
-      "id": "7h1rd-1m4g3-1d2", 
-      "updated-at": "2013-06-19 08:01:00", 
-      "created-at": "2013-06-19 08:00:22", 
+      "status": "available",
+      "name": "Debian Base Gama",
+      "checksum": "3cb03556ec971f...e8dd6190443b560cb7",
+      "id": "7h1rd-1m4g3-1d2",
+      "updated-at": "2013-06-19 08:01:00",
+      "created-at": "2013-06-19 08:00:22",
       "properties": {
         "OS": "Linux",
         "USER": "root"
-      }, 
-      "location": "pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump", 
-      "is-public": "False", 
-      "owner": "s0m3-u53r-1d", 
-      "disk-format": "diskdump", 
-      "size": "903471104", 
-      "deleted-at": "", 
+      },
+      "location": "pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump",
+      "is-public": "False",
+      "owner": "s0m3-u53r-1d",
+      "disk-format": "diskdump",
+      "size": "903471104",
+      "deleted-at": "",
       "container-format": "bare"
     }
 
@@ -241,14 +251,14 @@ Register the image (don't forget the -f parameter, to override the metafile).
     checksum:         3cb03556ec971f...e8dd6190443b560cb7
     container-format: bare
     created-at:       2013-06-19 08:00:22
-    deleted-at:       
+    deleted-at:
     disk-format:      diskdump
     id:               7h1rd-1m4g3-1d
     is-public:        False
     location:         pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump
     name:             Debian Base Delta
     owner:            s0m3-u53r-1d
-    properties:      
+    properties:
             OS:     Linux
             USER:   root
     size:             903471104
@@ -272,7 +282,7 @@ Let's rename the image:
     [kamaki]: image meta set 7h1rd-1m4g3-1d --name='Changed Name'
     [kamaki]:
 
-If we, now, get the image metadata, we will see that the name is changed:
+A look at the image metadata reveals that the name is changed:
 
 .. code-block:: console
 
@@ -280,14 +290,14 @@ If we, now, get the image metadata, we will see that the name is changed:
     checksum:         3cb03556ec971f...e8dd6190443b560cb7
     container-format: bare
     created-at:       2013-06-19 08:00:22
-    deleted-at:       
+    deleted-at:
     disk-format:      diskdump
     id:               7h1rd-1m4g3-1d
     is-public:        False
     location:         pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump
     name:             Changed Name
     owner:            s0m3-u53r-1d
-    properties:      
+    properties:
             OS:     Linux
             USER:   root
     size:             903471104
@@ -297,7 +307,7 @@ If we, now, get the image metadata, we will see that the name is changed:
 
 We can use the same idea to change the values of other metadata like disk
 format, container format or status. On the other hand, we cannot modify the
-id, owner, location, checksum and dates. E.g., to publish and unpublish:
+id, owner, location, checksum and dates. e.g., to publish and unpublish:
 
 .. code-block:: console
 
@@ -305,18 +315,18 @@ id, owner, location, checksum and dates. E.g., to publish and unpublish:
     [kamaki]: image meta set 7h1rd-1m4g3-1d --unpublish
     [kamaki]:
 
-The first call published the image (set is-public to True) and also restored
-the name to "Debian Base Gama". The second one unpublished the image (set
+The first call publishes the image (set is-public to True) and also restores
+the name to "Debian Base Gama". The second one unpublishes the image (set
 is-public to False).
 
-To delete metadata, use the image meta delete method:
+To delete metadata, use the image meta delete method. For example, the
+following will set the value of *status* to an empty string:
 
 .. code-block:: console
 
     [kamaki]: image meta delete 7h1rd-1m4g3-1d status
     [kamaki]:
 
-will empty the value of "status".
 
 These operations can be used for properties with the same semantics:
 
@@ -370,12 +380,12 @@ Although the image was unregistered and reregistered, the image id, that is
 produced automatically at the server side, was the same. This is due to the
 fact that image ids are 1 to 1 related to image objects uploaded to Pithos+
 
-**An explicit name overrides the metafile**
+**An explicit image name overrides the metafile**
 
 Each image needs a name and this is given as the first argument of the
 `register` command. This name overrides the name in the metafile.
 
-**Reregistration is not update, but an override**
+**Reregistration is not an update, but an override**
 
 The property `user: root` won over `user: someuser`, because it was set last.
 Actually, all properties were replaced by the new ones, when the image was
@@ -392,14 +402,14 @@ Let's compine the metafile with a command line attribute `user: admin`
     checksum:         3cb03556ec971f...e8dd6190443b560cb7
     container-format: bare
     created-at:       2013-06-19 08:00:22
-    deleted-at:       
+    deleted-at:
     disk-format:      diskdump
     id:               7h1rd-1m4g3-1d
     is-public:        False
     location:         pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump
     name:             Debian Base Delta
     owner:            s0m3-u53r-1d
-    properties:      
+    properties:
             OS:     Linux
             USER:   root
     size:             903471104
@@ -446,14 +456,14 @@ Register the image without uploading a metafile
     checksum:         3cb03556ec971f...e8dd6190443b560cb7
     container-format: bare
     created-at:       2013-06-19 08:00:22
-    deleted-at:       
+    deleted-at:
     disk-format:      diskdump
     id:               7h1rd-1m4g3-1d
     is-public:        False
     location:         pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump
     name:             Debian Base Delta
     owner:            s0m3-u53r-1d
-    properties:      
+    properties:
             OS:     Linux
             USER:   root
     size:             903471104
@@ -480,19 +490,19 @@ Consult the first version of the metafile
 
     [kamaki]: file cat --object-version=1352 pithos:debian_base3.diskdump.meta
     {
-      "status": "available", 
-      "name": "Debian Base Gama", 
-      "checksum": "3cb03556ec971f...e8dd6190443b560cb7", 
-      "id": "7h1rd-1m4g3-1d2", 
-      "updated-at": "2013-06-19 08:01:00", 
-      "created-at": "2013-06-19 08:00:22", 
-      "properties": {}, 
-      "location": "pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump", 
-      "is-public": "False", 
-      "owner": "s0m3-u53r-1d", 
-      "disk-format": "diskdump", 
-      "size": "903471104", 
-      "deleted-at": "", 
+      "status": "available",
+      "name": "Debian Base Gama",
+      "checksum": "3cb03556ec971f...e8dd6190443b560cb7",
+      "id": "7h1rd-1m4g3-1d2",
+      "updated-at": "2013-06-19 08:01:00",
+      "created-at": "2013-06-19 08:00:22",
+      "properties": {},
+      "location": "pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump",
+      "is-public": "False",
+      "owner": "s0m3-u53r-1d",
+      "disk-format": "diskdump",
+      "size": "903471104",
+      "deleted-at": "",
       "container-format": "bare"
     }
     [kamaki]:
@@ -548,8 +558,8 @@ images:
 
     #!/bin/bash
 
-    userid=... # e.g. s0m3-u53r-1d
-    container=... # e.g. pithos
+    userid=... # e.g., s0m3-u53r-1d
+    container=... # e.g., pithos
 
     for path in images/*.diskdump; do
         location=$container:${path}
@@ -560,7 +570,7 @@ Let's use the script (enriched with a separator message) to batch-register the
 images (all images will be named after their relative paths).
 
 Also, let the registered images be public (accessible to all users for creating
-VMs) by adding the **--public** flag argument when calling `image register`.
+VMs) by adding the **- - public** flag argument when calling `image register`.
 
 .. code-block:: console
 
@@ -573,7 +583,7 @@ VMs) by adding the **--public** flag argument when calling `image register`.
     checksum:         3cb03556ec971f...e8dd6190443b560cb7
     container-format: bare
     created-at:       2013-06-19 08:00:22
-    deleted-at:       
+    deleted-at:
     disk-format:      diskdump
     id:               d3b14n-1m4g3-1d
     is-public:        False
@@ -589,7 +599,7 @@ VMs) by adding the **--public** flag argument when calling `image register`.
     checksum:         4cb03556ec971f...e8dd6190443b560cb6
     container-format: bare
     created-at:       2013-06-19 08:00:22
-    deleted-at:       
+    deleted-at:
     disk-format:      diskdump
     id:               w1nd0w5-1m4g3-1d
     is-public:        False
