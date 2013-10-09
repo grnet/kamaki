@@ -169,6 +169,7 @@ and we want to register it to the Plankton *image* service.
         raise
 
     #  3.2 Register the image
+    properties = dict(osfamily='linux', root_partition='1')
     try:
         image = plankton.image_register(IMAGE_NAME, IMAGE_LOCATION)
     except ClientError:
@@ -580,12 +581,12 @@ logging more. We also added some command line interaction candy.
             raise
 
 
-    def register_image(plankton, name, user_id, container, path):
+    def register_image(plankton, name, user_id, container, path, properties):
 
         image_location = (user_id, container, path)
         print(' Register the image')
         try:
-             return plankton.register(name, image_location)
+             return plankton.register(name, image_location, properties)
         except ClientError:
             log.debug('Failed to register image %s' % name)
             raise
@@ -691,7 +692,9 @@ logging more. We also added some command line interaction candy.
         plankton = init_plankton(endpoints['plankton'], token)
 
         image = register_image(
-            plankton, 'my image', user_id, opts.container, opts.imagefile)
+            plankton, 'my image', user_id, opts.container, opts.imagefile,
+            properties=dict(
+                osfamily=opts.osfamily, root_partition=opts.rootpartition))
 
         print('4.  Create  virtual  cluster')
         cluster = Cluster(
@@ -778,6 +781,16 @@ logging more. We also added some command line interaction candy.
                           help='Where to store information on created servers '
                                'including superuser passwords',
                           default='')
+        parser.add_option('--image-osfamily',
+                          action='store', type='string', dest='osfamily',
+                          metavar='OS FAMILY',
+                          help='linux, windows, etc.',
+                          default='linux')
+        parser.add_option('--image-root-partition',
+                          action='store', type='string', dest='rootpartition',
+                          metavar='IMAGE ROOT PARTITION',
+                          help='The partition where the root home is ',
+                          default='1')
 
         opts, args = parser.parse_args(argv[1:])
 

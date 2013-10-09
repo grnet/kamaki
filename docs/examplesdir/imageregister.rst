@@ -3,8 +3,8 @@ Image registration
 
 In Synnefo, an image is loaded as a file to the storage service (Pithos+), and
 then is registered to the image service (Plankton). The image location at the
-storage server is unique through out a deployment and also necessary for the
-image to exist.
+storage server is unique in each a deployment and also a key for identifying
+the image.
 
 The image location format at user level::
 
@@ -18,9 +18,9 @@ The image location format at user level::
 
     *pithos://<user uuid>/<container>/<object path>*
 
-    The translation between
-    the two formats is handled internally by kamaki. The latest format is still
-    acceptable by kamaki due to backward compatibility but it is going to be deprecated from kamaki 0.12 and on.
+    The translation between the two formats is handled internally by kamaki.
+    The latest format is still acceptable by kamaki due to backward
+    compatibility but it is going to be deprecated from kamaki 0.12 and on.
 
 
 Register an image
@@ -39,6 +39,7 @@ Upload the image to container `pithos`
     [kamaki]:
 
 Register the image object with the name 'Debian Base Alpha'
+
 
 .. code-block:: console
 
@@ -60,14 +61,19 @@ Register the image object with the name 'Debian Base Alpha'
     Metadata file uploaded as pithos:debian_base3.diskdump.meta (version 1352)
     [kamaki]:
 
+.. warning:: The image created by the above command will not be able to create
+    a working virtual server, although the registration will be successful. In
+    the synnefo universe, an image has to be registered along with some
+    `properties <http://www.synnefo.org/docs/snf-image/latest/usage.html#image-properties>`_.
+
 .. note:: The `image register` command automatically creates a meta file and
     uploads it to the same location as the image. The meta file can be
     downloaded and reused for more image registrations.
 
-Another way to perform the two operations above is to call **/image register**
+Here is another way to perform the two operations above: **/image register**
 with the **\- -upload-image-file** argument. This single operation will upload
-the image file and then register it as an image, and is equivalent to manually
-calling **/file upload** and **/image register**.
+the image file and then register it as an image, and is equivalent to
+sequentially calling **/file upload** and **/image register**.
 
 In other words, the preceding and following command sequences are equivalent.
 
@@ -83,7 +89,7 @@ Read the metafile
 
 .. code-block:: console
 
-    [kamaki]: file cat pithos:debian_base3.diskdump
+    [kamaki]: file cat pithos:debian_base3.diskdump.meta
     {
       "status": "available",
       "name": "Debian Base Gama",
@@ -167,19 +173,23 @@ Attempt to unregister an image of another user
 Register with properties
 ------------------------
 
+.. warning:: A succesfully registered image will not be functional, if the
+    image properties are not defined correctly. Read the
+    `documentation <http://www.synnefo.org/docs/snf-image/latest/usage.html#image-properties>`_
+    for more information.
+
 The image will be registered again, but with some custom properties::
 
-    OS: Linux
-    user: someuser
+    OSFAMILY: linux
+    USER: someuser
 
 These properties can be added freely by the user, and they are not required by
 the image server, but they can be used by many applications.
-
 Attempt to register an image with custom properties
 
 .. code-block:: console
 
-    [kamaki]: image register 'Debian Base Gama' pithos:debian_base3.diskdump -p OS=Linux -p user=someuser
+    [kamaki]: image register 'Debian Base Gama' pithos:debian_base3.diskdump -p OS=linux -p user=someuser
     Metadata file pithos:debian_base3.diskdump.meta already exists
     [kamaki]:
 
@@ -188,7 +198,7 @@ it (**-f**)
 
 .. code-block:: console
 
-    [kamaki]: image register -f 'Debian Base Gama' pithos:debian_base3.diskdump -p OS=Linux -p user=someuser
+    [kamaki]: image register -f 'Debian Base Gama' pithos:debian_base3.diskdump -p OS=linux -p user=someuser
     [kamaki]:
 
 Register with a meta file
@@ -205,8 +215,8 @@ Download the meta file of the image (it was uploaded recently)
 
 The metadata file can be edited. Let's edit the file to add these properties::
 
-    OS: Linux
-    user: root
+    OS: linux
+    USER: root
 
 The resulting file will look like this:
 
@@ -220,7 +230,7 @@ The resulting file will look like this:
       "updated-at": "2013-06-19 08:01:00",
       "created-at": "2013-06-19 08:00:22",
       "properties": {
-        "OS": "Linux",
+        "OS": "linux",
         "USER": "root"
       },
       "location": "pithos://s0m3-u53r-1d/pithos/debian_base3.diskdump",
@@ -235,7 +245,7 @@ The resulting file will look like this:
 .. warning:: make sure the file is in a valid json format, otherwise image
     register will fail
 
-In the following registration, a different name will be used for the image.
+In the following registration, the image name will change to a new one.
 
 Register the image (don't forget the -f parameter, to override the metafile).
 
@@ -253,7 +263,7 @@ Register the image (don't forget the -f parameter, to override the metafile).
     name:             Debian Base Delta
     owner:            s0m3-u53r-1d
     properties:
-            OS:     Linux
+            OS:     linux
             USER:   root
     size:             903471104
     status:           available
@@ -292,7 +302,7 @@ A look at the image metadata reveals that the name is changed:
     name:             Changed Name
     owner:            s0m3-u53r-1d
     properties:
-            OS:     Linux
+            OS:     linux
             USER:   root
     size:             903471104
     status:           available
@@ -330,7 +340,7 @@ These operations can be used for properties with the same semantics:
     [kamaki]: image info 7h1rd-1m4g3-1d
     ...
     properties:
-            OS:     Linux
+            OS:     linux
             USER:   user
     ...
     [kamaki]:
@@ -344,7 +354,7 @@ Just to test the feature, let's create a property "greet" with value
     [kamaki]: image info 7h1rd-1m4g3-1d
     ...
     properties:
-            OS:     Linux
+            OS:     linux
             USER:   root
             GREET:  Hi there
     ...
@@ -352,7 +362,7 @@ Just to test the feature, let's create a property "greet" with value
     [kamaki]: image info 7h1rd-1m4g3-1d
     ...
     properties:
-            OS:     Linux
+            OS:     linux
             USER:   root
     ...
     [kamaki]:
@@ -404,7 +414,7 @@ Let's compine the metafile with a command line attribute `user: admin`
     name:             Debian Base Delta
     owner:            s0m3-u53r-1d
     properties:
-            OS:     Linux
+            OS:     linux
             USER:   root
     size:             903471104
     status:           available
@@ -458,7 +468,7 @@ Register the image without uploading a metafile
     name:             Debian Base Delta
     owner:            s0m3-u53r-1d
     properties:
-            OS:     Linux
+            OS:     linux
             USER:   root
     size:             903471104
     status:           available
