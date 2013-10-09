@@ -126,7 +126,7 @@ class ConfigArgument(Argument):
             k.endswith(suffix))]
 
     def get_global(self, option):
-        return self.value.get_global(option)
+        return self.value.get('global', option)
 
     def get_cloud(self, cloud, option):
         return self.value.get_cloud(cloud, option)
@@ -332,7 +332,8 @@ class ProgressBarArgument(FlagArgument):
         newarg._value = self._value
         return newarg
 
-    def get_generator(self, message, message_len=25):
+    def get_generator(
+            self, message, message_len=25, countdown=False, timeout=100):
         """Get a generator to handle progress of the bar (gen.next())"""
         if self.value:
             return None
@@ -341,8 +342,19 @@ class ProgressBarArgument(FlagArgument):
         except NameError:
             self.value = None
             return self.value
+        if countdown:
+            bar_phases = list(self.bar.phases)
+            self.bar.empty_fill, bar_phases[0] = bar_phases[-1], ''
+            bar_phases.reverse()
+            self.bar.phases = bar_phases
+            self.bar.bar_prefix = ' '
+            self.bar.bar_suffix = ' '
+            self.bar.max = timeout or 100
+            self.bar.suffix = '%(remaining)ds to timeout'
+        else:
+            self.bar.suffix = '%(percent)d%% - %(eta)ds'
+        self.bar.eta = timeout or 100
         self.bar.message = message.ljust(message_len)
-        self.bar.suffix = '%(percent)d%% - %(eta)ds'
         self.bar.start()
 
         def progress_gen(n):
@@ -365,8 +377,8 @@ _arguments = dict(
     cloud=ValueArgument('Chose a cloud to connect to', ('--cloud')),
     help=Argument(0, 'Show help message', ('-h', '--help')),
     debug=FlagArgument('Include debug output', ('-d', '--debug')),
-    include=FlagArgument(
-        'Include raw connection data in the output', ('-i', '--include')),
+    #include=FlagArgument(
+    #    'Include raw connection data in the output', ('-i', '--include')),
     silent=FlagArgument('Do not output anything', ('-s', '--silent')),
     verbose=FlagArgument('More info at response', ('-v', '--verbose')),
     version=VersionArgument('Print current version', ('-V', '--version')),

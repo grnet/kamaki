@@ -166,7 +166,8 @@ class Cyclades(livetest.Generic):
     def _wait_for_status(self, servid, status):
         (wait_bar, wait_cb) = self._safe_progress_bar(
             'Server %s in %s' % (servid, status))
-        self.client.wait_server(servid, status, wait_cb=wait_cb, delay=5)
+        self.client.wait_server(
+            servid, status, wait_cb=wait_cb, delay=2, max_wait=198)
         self._safe_progress_bar_finish(wait_bar)
 
     def test_parallel_creation(self):
@@ -397,8 +398,8 @@ class Cyclades(livetest.Generic):
     def _test_0160_get_image_metadata(self):
         r = self.client.get_image_metadata(self.img)
         self.assert_dicts_are_equal(
-            self.img_details['metadata'], r)
-        for key, val in self.img_details['metadata'].items():
+            self.img_details['properties'], r)
+        for key, val in self.img_details['properties'].items():
             r = self.client.get_image_metadata(self.img, key)
             self.assertEqual(r[key], val)
 

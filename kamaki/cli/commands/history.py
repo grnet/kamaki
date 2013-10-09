@@ -75,7 +75,7 @@ class _init_history(_command_init):
     @errors.generic.all
     @errors.history.init
     def _run(self):
-        self.history = History(self.config.get_global('history_file'))
+        self.history = History(self.config.get('global', 'history_file'))
 
     def main(self):
         self._run()
@@ -91,8 +91,8 @@ class history_show(_init_history):
     .   2.  <order-id-1>-<order-id-2> : pick all commands ordered in the range
     .       [<order-id-1> - <order-id-2>]
     .   - the above can be mixed and repeated freely, separated by spaces
-    .       e.g. pick 2 4-7 -3
-    .   - Use negative integers to count from the end of the list, e.g.:
+    .       e.g., pick 2 4-7 -3
+    .   - Use negative integers to count from the end of the list, e.g.,:
     .       -2 means : the command before the last one
     .       -2-5 means : last 2 commands + the first 5
     .       -5--2 means : the last 5 commands except the last 2
@@ -111,7 +111,7 @@ class history_show(_init_history):
         ret = self.history.get(match_terms=self['match'], limit=self['limit'])
 
         if not cmd_ids:
-            print(''.join(ret))
+            self.print_list(ret)
             return
 
         num_list = []
@@ -122,7 +122,7 @@ class history_show(_init_history):
             try:
                 cur_id = int(cmd_id)
                 if cur_id:
-                    print(ret[cur_id - (1 if cur_id > 0 else 0)][:-1])
+                    self.writeln(ret[cur_id - (1 if cur_id > 0 else 0)][:-1])
             except IndexError as e2:
                 raiseCLIError(e2, 'Command id out of 1-%s range' % len(ret))
 
@@ -151,7 +151,7 @@ class history_run(_init_history):
     .   1.  <order-id> : pick the <order-id>th command
     .   2.  <order-id-1>-<order-id-2> : pick all commands ordered in the range
     .       [<order-id-1> - <order-id-2>]
-    .   - Use negative integers to count from the end of the list, e.g.:
+    .   - Use negative integers to count from the end of the list, e.g.,:
     .       -2 means : the command before the last one
     .       -2-5 means : last 2 commands + the first 5
     .       -5--2 mean
@@ -168,26 +168,21 @@ class history_run(_init_history):
     def _run_from_line(self, line):
         terms = split_input(line)
         cmd, args = self._cmd_tree.find_best_match(terms)
-        if not cmd.is_command:
-            return
-        try:
-            instance = cmd.cmd_class(
-                self.arguments,
-                auth_base=getattr(self, 'auth_base', None))
-            instance.config = self.config
-            prs = ArgumentParseManager(
-                cmd.path.split(),
-                dict(instance.arguments))
-            prs.syntax = '%s %s' % (
-                cmd.path.replace('_', ' '),
-                cmd.cmd_class.syntax)
-            prs.parse(args)
-            exec_cmd(instance, prs.unparsed, prs.parser.print_help)
-        except (CLIError, ClientError) as err:
-            print_error_message(err)
-        except Exception as e:
-            print('Execution of [ %s ] failed' % line)
-            print('\t%s' % e)
+        if cmd.is_command:
+            try:
+                instance = cmd.cmd_class(
+                    self.arguments, auth_base=getattr(self, 'auth_base', None))
+                instance.config = self.config
+                prs = ArgumentParseManager(
+                    cmd.path.split(), dict(instance.arguments))
+                prs.syntax = '%s %s' % (
+                    cmd.path.replace('_', ' '), cmd.cmd_class.syntax)
+                prs.parse(args)
+                exec_cmd(instance, prs.unparsed, prs.parser.print_help)
+            except (CLIError, ClientError) as err:
+                print_error_message(err, self._err)
+            except Exception as e:
+                self.error('Execution of [ %s ] failed\n\t%s' % (line, e))
 
     @errors.generic.all
     @errors.history._get_cmd_ids
@@ -203,7 +198,7 @@ class history_run(_init_history):
         for cmd_id in cmd_list:
             r = self.history.retrieve(cmd_id)
             try:
-                print('< %s >' % r[:-1])
+                self.writeln('< %s >' % r[:-1])
             except (TypeError, KeyError):
                 continue
             if self._cmd_tree:

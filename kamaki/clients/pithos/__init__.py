@@ -105,7 +105,8 @@ class PithosClient(PithosRestClient):
 
     def create_container(
             self,
-            container=None, sizelimit=None, versioning=None, metadata=None):
+            container=None, sizelimit=None, versioning=None, metadata=None,
+            **kwargs):
         """
         :param container: (str) if not given, self.container is used instead
 
@@ -122,7 +123,8 @@ class PithosClient(PithosRestClient):
         try:
             self.container = container or cnt_back_up
             r = self.container_put(
-                quota=sizelimit, versioning=versioning, metadata=metadata)
+                quota=sizelimit, versioning=versioning, metadata=metadata,
+                **kwargs)
             return r.headers
         finally:
             self.container = cnt_back_up

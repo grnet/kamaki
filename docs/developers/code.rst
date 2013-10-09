@@ -124,7 +124,7 @@ The clients API
 Modules list
 ^^^^^^^^^^^^
 
-compute ReST API
+compute REST API
 ^^^^^^^^^^^^^^^^
 
 .. automodule:: kamaki.clients.compute.rest_api
@@ -142,7 +142,7 @@ compute
     :undoc-members:
 
 
-cyclades ReST API
+cyclades REST API
 ^^^^^^^^^^^^^^^^^
 
 .. automodule:: kamaki.clients.cyclades.rest_api

@@ -63,6 +63,7 @@ setup(
         'kamaki.cli',
         'kamaki.cli.command_tree',
         'kamaki.cli.argument',
+        'kamaki.cli.config',
         'kamaki.cli.utils',
         'kamaki.cli.commands',
         'kamaki.clients',
