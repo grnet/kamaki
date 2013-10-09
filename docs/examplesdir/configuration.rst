@@ -1,11 +1,13 @@
 Configuration
 =============
 
-Since kamaki 0.9, the format of the configuration file has changed. In this
-scenario, we have an old configuration file at ${HOME}/.kamakirc that we need
-to convert. We also create a new one from scratch. In both cases, we have to
-set up one or more clouds in a single configuration and we also examine a case
-of multiple configurations.
+The following refers to the configuration version 0.9 or better. There is also
+information on how to convert from older configuration files.
+
+In this scenario, we start with an old configuration file at
+*${HOME}/.kamakirc* that we need to convert. We also create a new one from scratch. In both cases, the second step is the same: set up one or more clouds
+in a single configuration. Then we examine a case of multiple configuration
+files.
 
 Convert old configuration file
 ------------------------------
@@ -45,7 +47,7 @@ Now, let kamaki do the conversion
     .     image.url = https://cyclades.example.com/plankton
     .     store.account = OldForgotenAccountName
     . Kamaki is ready to convert the config file
-    . Create (overwrite) file .kamakirc.okeanos ? [y/N]
+    . Create (overwrite) file .kamakirc ? [y/N]
     .
     <y is pressed>
     .
@@ -126,10 +128,10 @@ Check that the file is created, everything is set up correctly and working
     . cloud.mytest.token = myt35t70k3n==
     $ kamaki -c nonexisting.cnf user autenticate
     . ...
-    . user:          
+    . user:
     .     id:          s0me-3x4mp13-u53r-1d
     .     name:        Some User
-    .     roles:      
+    .     roles:
     .          id:   1
     .          name: default
     .     roles_links:
@@ -138,7 +140,7 @@ Check that the file is created, everything is set up correctly and working
 Failed or incomplete cloud configurations
 -----------------------------------------
 
-Now let kamaki use the default configuration ( ${HOME}/.kamakirc ). Let the old
+Now let kamaki use the default configuration (*${HOME}/.kamakirc*). Let the old
 token be `my0ld70k3n==` and let it be invalid.
 
 Check for clouds and attempt to authenticate
@@ -172,7 +174,7 @@ Set the URL from the previous example and attempt authentication
     . |  UNAUTHORIZED unauthorized (Invalid token)
     $
 
-After some searching at the deployments UI, you found out that the URL/token
+After some searching at the deployments UI, you find out that the URL/token
 pair you need is::
 
     URL: https://accounts.deploymentexample.com/identity/v2.0
@@ -208,7 +210,7 @@ We now have two configurations::
         URL: https://accounts.example.com/identity/v2.0/
         TOKEN: myt35t70k3n==
 
-As we can see, the default configuration handles only one cloud, aliased as
+Obviously the default configuration handles only one cloud, aliased as
 "default". We will add the second cloud as well.
 
 .. code-block:: console
@@ -228,7 +230,7 @@ Check all clouds
     . cloud.mytest.token = myt35t70k3n==
     $
 
-Check if kamaki knows one of the clouds to be the default
+Check if kamaki is confused (is there a default cloud setup?)
 
 .. code-block:: console
 
@@ -298,10 +300,10 @@ the default cloud.
 Multiple configurations
 -----------------------
 
-In the following example, a user wants to experiment with upload and download
-for different number of threads. The plan is to contuct a set of tests with 3
-threads at most and another one with 5. All experiments will be run against the
-same Synnefo cloud (the "mytest" cloud from the previous example).
+In the following example, we experiment with the higher number of threads when
+uploading and downloading. The plan is to contact a set of tests with 3 threads
+at most and another one with 5. All experiments will be run against the same
+Synnefo cloud (the "mytest" cloud from the previous example).
 
 Let's create the 3-threaded configuration first
 

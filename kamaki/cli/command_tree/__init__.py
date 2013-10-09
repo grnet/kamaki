@@ -150,7 +150,7 @@ class CommandTree(object):
     def find_best_match(self, terms):
         """Find a command that best matches a given list of terms
 
-        :param terms: (list of str) match against paths in cmd_tree, e.g.
+        :param terms: (list of str) match against paths in cmd_tree, e.g.,
             ['aa', 'bb', 'cc'] matches aa_bb_cc
 
         :returns: (Command, list) the matching command, the remaining terms or

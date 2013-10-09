@@ -1,5 +1,5 @@
-This document describes changes and steps to upgrade from kamaki 0.9.X to
-kamaki 0.10
+This document describes changes and steps to upgrade from kamaki 0.10 to
+kamaki 0.11
 
 Config file
 -----------

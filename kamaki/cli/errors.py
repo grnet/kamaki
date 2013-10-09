@@ -40,17 +40,17 @@ class CLIError(Exception):
 
     def __init__(self, message, details=[], importance=0):
         """
-        @message is the main message of the Error
-        @defaults is a list of previous errors
-        @importance of the output for the user
-            Suggested values: 0, 1, 2, 3
+        :param message: is the main message of the Error
+        :param defaults: is a list of previous errors
+        :param importance: of the output for the user (0, 1, 2, 3)
         """
-        message += '' if message and message[-1] == '\n' else '\n'
+        message += '' if message and message.endswith('\n') else '\n'
         super(CLIError, self).__init__(message)
-        self.details = list(details) if isinstance(details, list)\
-            else [] if details is None else ['%s' % details]
+        self.details = (list(details) if (
+            isinstance(details, list) or isinstance(details, tuple)) else [
+                '%s' % details]) if details else []
         try:
-            self.importance = int(importance)
+            self.importance = int(importance or 0)
         except ValueError:
             self.importance = 0
 
@@ -73,16 +73,16 @@ class CLIUnimplemented(CLIError):
 
 class CLIBaseUrlError(CLIError):
     def __init__(self, message='', details=[], importance=2, service=None):
+        service = '%s' % (service or '')
         message = message or 'No URL for %s' % service.lower()
         details = details or [
-            'Two options to resolve this:',
+            'Two ways to resolve this:',
             '(Use the correct cloud name, instead of "default")',
-            'A. (recommended) Let kamaki discover the endpoint URLs for all',
-
+            'A. (recommended) Let kamaki discover endpoint URLs for all',
             'services by setting a single Authentication URL and token:',
             '  /config set cloud.default.url <AUTH_URL>',
             '  /config set cloud.default.token <t0k3n>',
-            'B. (advanced users) Explicitly set a valid %s endpoint URL' % (
+            'B. (advanced users) Explicitly set an %s endpoint URL' % (
                 service.upper()),
             'Note: URL option has a higher priority, so delete it to',
             'make that work',
@@ -97,6 +97,11 @@ class CLISyntaxError(CLIError):
         super(CLISyntaxError, self).__init__(message, details, importance)
 
 
+class CLIInvalidArgument(CLISyntaxError):
+    def __init__(self, message='Invalid Argument', details=[], importance=1):
+        super(CLIInvalidArgument, self).__init__(message, details, importance)
+
+
 class CLIUnknownCommand(CLIError):
     def __init__(self, message='Unknown Command', details=[], importance=1):
         super(CLIUnknownCommand, self).__init__(message, details, importance)
@@ -106,13 +111,6 @@ class CLICmdSpecError(CLIError):
     def __init__(
             self, message='Command Specification Error',
             details=[], importance=0):
-        super(CLICmdSpecError, self).__init__(message, details, importance)
-
-
-class CLICmdIncompleteError(CLICmdSpecError):
-    def __init__(
-            self, message='Incomplete Command Error',
-            details=[], importance=1):
         super(CLICmdSpecError, self).__init__(message, details, importance)
 
 
@@ -134,38 +132,33 @@ def raiseCLIError(err, message='', importance=0, details=[]):
 
     stack = ['%s' % type(err)] if err else ['<kamaki.cli.errors.CLIError>']
     stack += format_stack()
-    try:
-        stack = [e for e in stack if e != stack[1]]
-    except KeyError:
-        log.debug('\n   < '.join(stack))
 
-    details = ['%s' % details] if not isinstance(details, list)\
-        else list(details)
+    details = list(details) if (
+        isinstance(details, list) or isinstance(details, tuple)) else [
+            '%s' % details]
     details += getattr(err, 'details', [])
 
-    if err:
-        origerr = '%s' % err
-        origerr = origerr if origerr else '%s' % type(err)
-    else:
-        origerr = stack[0]
-
-    message = '%s' % (message if message else origerr)
+    origerr = (('%s' % err) or '%s' % type(err)) if err else stack[0]
+    message = '%s' % message or origerr
 
     try:
         status = err.status or err.errno
     except AttributeError:
-        status = None
+        try:
+            status = err.errno
+        except AttributeError:
+            status = None
 
     if origerr not in details + [message]:
         details.append(origerr)
 
-    message += '' if message and message[-1] == '\n' else '\n'
+    message += '' if message and message.endswith('\n') else '\n'
     if status:
-        message = '(%s) %s' % (err.status, message)
+        message = '(%s) %s' % (status, message)
         try:
-            status = int(err.status)
+            status = int(status)
         except ValueError:
-            raise CLIError(message, details, importance)
-        importance = importance if importance else status // 100
+            raise CLIError(message, details, importance or 0)
+        importance = importance or status // 100
     importance = getattr(err, 'importance', importance)
     raise CLIError(message, details, importance)

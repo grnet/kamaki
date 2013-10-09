@@ -101,6 +101,7 @@ class Logged(object):
     LOG_TOKEN = False
     LOG_DATA = False
     LOG_PID = False
+    _token = None
 
 
 class RequestManager(Logged):
@@ -149,15 +150,16 @@ class RequestManager(Logged):
         sendlog.info('%s %s://%s%s%s' % (
             self.method, self.scheme, self.netloc, self.path, plog))
         for key, val in self.headers.items():
-            show = (key.lower() != 'x-auth-token') or self.LOG_TOKEN
-            sendlog.info('  %s: %s%s' % (key, val if show else '...', plog))
+            if key.lower() in ('x-auth-token', ) and not self.LOG_TOKEN:
+                self._token, val = val, '...'
+            sendlog.info('  %s: %s%s' % (key, val, plog))
         if self.data:
             sendlog.info('data size:%s%s' % (len(self.data), plog))
             if self.LOG_DATA:
-                sendlog.info(self.data)
+                sendlog.info(self.data.replace(self._token, '...') if (
+                    self._token) else self.data)
         else:
             sendlog.info('data size:0%s' % plog)
-        sendlog.info('')
 
     def perform(self, conn):
         """
@@ -165,12 +167,13 @@ class RequestManager(Logged):
 
         :returns: (HTTPResponse)
         """
+        self.dump_log()
         conn.request(
             method=str(self.method.upper()),
             url=str(self.path),
             headers=self.headers,
             body=self.data)
-        self.dump_log()
+        sendlog.info('')
         keep_trying = TIMEOUT
         while keep_trying > 0:
             try:
@@ -228,16 +231,20 @@ class ResponseManager(Logged):
                             self.status_code, self.status, plog))
                     self._headers = dict()
                     for k, v in r.getheaders():
-                        show = (k.lower() != 'x-auth-token') or self.LOG_TOKEN
+                        if k.lower in ('x-auth-token', ) and (
+                                not self.LOG_TOKEN):
+                            self._token, v = v, '...'
                         v = unquote(v)
                         self._headers[k] = v
-                        recvlog.info('  %s: %s%s' % (
-                            k, v if show else '...', plog))
+                        recvlog.info('  %s: %s%s' % (k, v, plog))
                     self._content = r.read()
                     recvlog.info('data size: %s%s' % (
                         len(self._content) if self._content else 0, plog))
                     if self.LOG_DATA and self._content:
-                        recvlog.info('%s%s' % (self._content, plog))
+                        data = '%s%s' % (self._content, plog)
+                        if self._token:
+                            data = data.replace(self._token, '...')
+                        sendlog.info(data)
                     sendlog.info('-             -        -     -   -  - -')
                 break
             except Exception as err:
@@ -362,6 +369,41 @@ class Client(Logged):
             return []
         return threadlist
 
+    def async_run(self, method, kwarg_list):
+        """Fire threads of operations
+
+        :param method: the method to run in each thread
+
+        :param kwarg_list: (list of dicts) the arguments to pass in each method
+            call
+
+        :returns: (list) the results of each method call w.r. to the order of
+            kwarg_list
+        """
+        flying, results = {}, {}
+        self._init_thread_limit()
+        for index, kwargs in enumerate(kwarg_list):
+            self._watch_thread_limit(flying.values())
+            flying[index] = SilentEvent(method=method, **kwargs)
+            flying[index].start()
+            unfinished = {}
+            for key, thread in flying.items():
+                if thread.isAlive():
+                    unfinished[key] = thread
+                elif thread.exception:
+                    raise thread.exception
+                else:
+                    results[key] = thread.value
+            flying = unfinished
+        sendlog.info('- - - wait for threads to finish')
+        for key, thread in flying.items():
+            if thread.isAlive():
+                thread.join()
+            if thread.exception:
+                raise thread.exception
+            results[key] = thread.value
+        return results.values()
+
     def _raise_for_status(self, r):
         log.debug('raise err from [%s] of type[%s]' % (r, type(r)))
         status_msg = getattr(r, 'status', None) or ''
@@ -418,6 +460,7 @@ class Client(Logged):
                 req, connection_retry_limit=self.CONNECTION_RETRY_LIMIT)
             r.LOG_TOKEN, r.LOG_DATA, r.LOG_PID = (
                 self.LOG_TOKEN, self.LOG_DATA, self.LOG_PID)
+            r._token = headers['X-Auth-Token']
         finally:
             self.headers = dict()
             self.params = dict()

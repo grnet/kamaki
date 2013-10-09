@@ -1,21 +1,7 @@
-CHANGELOG for hotfix 0.10.2
+CHANGELOG for version 0.11
 
 Bug Fixes:
-- Fix command error when creating server with personality [#4339]
-
-CHANGELOG for hotfix 0.10.1
-
-Bug Fixes:
-- Fix error causing typo in kamaki.commands.astakos
-
-CHANGELOG for version 0.10
-
-Bug Fixes:
-- Avoid loading optional cmd groups specified in same pkg with mantatory
-    comand groups, except if user requests otherwise ( #4114 )
-- Ignore subdir output in container_get with prefix+delimiter [#4134]
-- Fix the split-input bug in repeatable k=v args [#4232]
-
+- Make authentication lazy (#4300)
 - Stop shell from destroying the config instance
 - Shell can manage all valid command line arguments [#3716]
 - Restore 2nd level command syntax in shell [#3736]
@@ -26,96 +12,33 @@ Bug Fixes:
 
 Changes:
 
-- Change context: kamaki-image-addproperty --> kamaki-image-compute-property
-- http logger names: clients.recv/send --> kamaki.clients.recv/send
-- Move logger creation and control (except of the actuall logging) to cli
-- These PithosClient methods return the metadata of created object [#3656]:
-    upload_object, upload_object_unchunked, create_object_by_manifestation
-- Cache container info per upload session [#3735]
-- Disallow moving deleted objects by version [#3737]
-    This operation was implemented by accident, due to the symetry between
-    move and copy
-- Rename file/server-meta commands to file/server-metadata
-- Rename image-[add|del]member commands to members-[add|delete]
-- Remove update option from image-register
-- In image-compute split properties to properties-list and properties-get
-- Add optional output to methods[#3756, #3732]:
-    - file:
-    mkdir, touch, create, move, copy, move, append, truncate, overwrite,
-    manifest, upload, delete, purge, unpublish, permissions set/delete, info,
-    metadata set/delete, containerlimit set, versioning set, group set/delete,
-    upload, overwrite
-    - image:
-    unregister, members add/delete/set
-    -image compute:
-    delete, properties delete
-    - server: rename, delete, reboot, start, shutdown, firewall-set
-    - network: rename, delete, connect
-- Add optional json for methods with output [#3732]
-    - file:
-    list, hashmap, permissions-get, info, metadata-get, quota,
-    containerlimit-get, group-list, sharers, versions
-    - server: list, info, create, console, addr, metadata-list/set, stats
-    - image: list, meta, register, shared, list
-    - image compute: list, info, properties-list/get/add/set
-    - flavor: list, info
-    - network: info, list, create
-    - astakos: authenticate
-- Transliterate methods to list-get-set-delete command groups:
-    - file: permissions, versioning, group and metadata
-    - image: members, member
-    - image compute: properties
-    - server: firewall, metadata
-- Add a _format_image_headers method and use it in image_register and get_meta
-    for uniform image meta output [#3797]
-- Rename meta-->metadata and remove values @lib [#3633]
-- Adjust authenticate to new url schema of synnefo>=0.14 [#3832, #3874]
-  as a side effect, some renamings in astakos.AstakosClient:
-   info --> user_info, user --> list_users
-- Simplify listings (kamaki.cli.utils: print methods)
-- Enrich client API docs with examples and astakos endpoint information [#4135]
-- Show user names in /file sharers [#4203]
-- Show user name in image/server/network list [#4228]
-- Remove kamaki compute image properties add [#4231]
-- Image register file location format is changed:
-  pithos://<uuid>/<container>/<image path> --> <container>:<image path>
-  but Backwards compatibility is preserved for this version
+- Logs do not contain kamaki.clients pids by default [#4242]
+- Replace page_hold method with pydoc.pager [#4279]
+- Remove commands.pithos.DelimiterArgument, replace with ValueArgument
+    wherever it is used
+- Replace print methods with member print methods in _commands.* [#4292]
+- kamaki.cli.config is now a directory package [#4058]
+- Modify progress bar handler in cli.commands to allow count down and timeout
+    [#4352]
+- Make wait progress bars in cyclades CLI to count down to timeout instead of
+    progressing forward [#4352]
+- Rename IP commands to new namespace and better names [#4422]
 
 Features:
 
-- Add unittests in the folowing kamaki.cli packages: [#4058]
-    command_tree, argument, history, logger, utils
-- Implement an optional astakosclient cli exposed as "astakos", with the following methods:
-    authenticate, uuid, username, quotas, service uuid/username/quotas
-- Add some astakos/keystone kamaki-lib api calls [#3874], used to access
-  astakos-calls cache:
-  get_services, get_service_details, get_service_endpoints
-- Implement floating ip methods for compute and cyclades clients [#3862]
- ComputeRestClient: floating_ip_pools_get, floating_ips_get/post/delete
- CycladesRestClient: floating_ip_pools_get, floating_ips_get/post/delete
- ComputeClient: get_floating_ip_pools, get_floating_ips,
-    alloc/get_delete_floating_ip
- CycladesClient: get_floating_ip_pools, get_floating_ips,
-    alloc/get_delete_floating_ip, dis/assoc_floating_ip_to_server
-- Add Examples to documentation
-- Implement floating IP commands
-    server ip list/create/delete/info/pools/attach/detach
-- Implement --wait for server_create/delete/start/reboot/shutdown [#3867]
-- Implement network_wait [#3862]
-- Implement user_list/set/whoami to switch between session users [#3632, #3660]
-- Expose more astakosclient methods in a 1to1 fashion [#4115]:
-    resources, feedback, endpoints,
-    commission_pending/info/action/accept/reject/resolve/issuejson/issue
-- Implement resize_server and expose it as server resize [#4153]
-- Expose the project API of astakosclient to kamaki CLI [#4155]
-- Full support for compute v2 basic API [#4139]
-- Use container:path format in register [#3778]
-- Guess mimetype when uploading and use it in upload [#4196]
-- Add upload local image abilities to register [#4206]
-    New register args: --update-image-file=/local/path, --no-progress-bar
-- Implement an astakos.post_user_catalogs call for getting usernames from a
-    list of user uuids [#4203]
-- Use multiformed ranges in file/pithos [#4059]
-- Implement more filters in image/network/flavor/server/file list [#4220]
-- Implement /image meta list/set/delete [#4231]  metadata and properties
-
+- New config option log_pid (default: off) can allow pid-logging [#4242]
+- Expand kamaki.cli unitests for the following packages ( [#4058] ):
+  errors
+- Modify print methods in cli utils to use arbitary stream objects [#4288]
+- Implement wrapers for cli.utils print methods, in _commands [#4292]
+- Implement unittests for kamaki.cli.config [#4058]
+- Implement --type=SOFT/HARD argument for server reboot [#4338]
+    The old argument -f/--force <==> --type=HARD is kept for bw compatibility
+    A warning message guides users to stop using it
+- Catch Keyboard Interupts in cli wait methods and exit gracefully [#4351]
+- Add -R/--recursive in file listing, to list containers with their contents
+    [#4301]
+- Add -w/--wait to server firewall set [#4298]
+- Add --output-format where applicable, keep -j/--json too, for bw
+    compatibility [#4342]
+- Allow metakeys in personality argument [#4312]

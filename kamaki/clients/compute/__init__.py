@@ -33,7 +33,6 @@
 
 from kamaki.clients import ClientError
 from kamaki.clients.compute.rest_api import ComputeRestClient
-from kamaki.clients.utils import path4url
 
 
 class ComputeClient(ComputeRestClient):
@@ -121,14 +120,14 @@ class ComputeClient(ComputeRestClient):
 
         :param flavor_id: integer id denoting a preset hardware configuration
 
-        :param image_id: (str) id denoting the OS image to run on the VM
+        :param image_id: (str) id of the image of the virtual server
 
         :param metadata: (dict) vm metadata
 
         :param personality: a list of (file path, file contents) tuples,
-            describing files to be injected into VM upon creation.
+            describing files to be injected into virtual server upon creation
 
-        :returns: a dict with the new VMs details
+        :returns: a dict with the new virtual server details
 
         :raises ClientError: wraps request errors
         """
@@ -152,7 +151,7 @@ class ComputeClient(ComputeRestClient):
 
     def update_server_name(self, server_id, new_name):
         """Update the name of the server as reported by the API (does not
-            modify the hostname used inside the VM)
+            modify the hostname used inside the virtual server)
 
         :param server_id: integer (str or int)
 
