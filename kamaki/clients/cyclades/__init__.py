@@ -31,7 +31,6 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from sys import stdout
 from time import sleep
 
 from kamaki.clients.cyclades.rest_api import CycladesRestClient
@@ -50,14 +49,14 @@ class CycladesClient(CycladesRestClient):
 
         :param flavor_id: integer id denoting a preset hardware configuration
 
-        :param image_id: (str) id denoting the OS image to run on the VM
+        :param image_id: (str) id denoting the OS image to run on virt. server
 
         :param metadata: (dict) vm metadata updated by os/users image metadata
 
         :param personality: a list of (file path, file contents) tuples,
-            describing files to be injected into VM upon creation.
+            describing files to be injected into virtual server upon creation
 
-        :returns: a dict with the new VMs details
+        :returns: a dict with the new virtual server details
 
         :raises ClientError: wraps request errors
         """
@@ -99,7 +98,7 @@ class CycladesClient(CycladesRestClient):
         """
         :param server_id: integer (str or int)
 
-        :returns: (dict) info to set a VNC connection to VM
+        :returns: (dict) info to set a VNC connection to virtual server
         """
         req = {'console': {'type': 'vnc'}}
         r = self.servers_action_post(server_id, json_data=req, success=200)
@@ -295,13 +294,19 @@ class CycladesClient(CycladesRestClient):
         :returns: (str) the new mode if successful, (bool) False if timed out
         """
         status, progress = get_status(self, item_id)
-        if status != current_status:
-            return status
-        old_wait = total_wait = 0
 
         if wait_cb:
-            wait_gen = wait_cb(1 + max_wait // delay)
+            wait_gen = wait_cb(max_wait // delay)
             wait_gen.next()
+
+        if status != current_status:
+            if wait_cb:
+                try:
+                    wait_gen.next()
+                except Exception:
+                    pass
+            return status
+        old_wait = total_wait = 0
 
         while status == current_status and total_wait <= max_wait:
             if wait_cb:
@@ -310,11 +315,8 @@ class CycladesClient(CycladesRestClient):
                         wait_gen.next()
                 except Exception:
                     break
-            else:
-                stdout.write('.')
-                stdout.flush()
             old_wait = total_wait
-            total_wait = progress or (total_wait + 1)
+            total_wait = progress or total_wait + 1
             sleep(delay)
             status, progress = get_status(self, item_id)
 
@@ -339,6 +341,8 @@ class CycladesClient(CycladesRestClient):
 
         :param delay: time interval between retries
 
+        :max_wait: (int) timeout in secconds
+
         :param wait_cb: if set a progressbar is used to show progress
 
         :returns: (str) the new mode if succesfull, (bool) False if timed out
@@ -354,7 +358,7 @@ class CycladesClient(CycladesRestClient):
 
     def wait_network(
             self, net_id,
-            current_status='LALA', delay=1, max_wait=100, wait_cb=None):
+            current_status='PENDING', delay=1, max_wait=100, wait_cb=None):
         """Wait for network while its status is current_status
 
         :param net_id: integer (str or int)
@@ -362,6 +366,8 @@ class CycladesClient(CycladesRestClient):
         :param current_status: (str) PENDING | ACTIVE | DELETED
 
         :param delay: time interval between retries
+
+        :max_wait: (int) timeout in secconds
 
         :param wait_cb: if set a progressbar is used to show progress
 
@@ -375,6 +381,30 @@ class CycladesClient(CycladesRestClient):
         return self._wait(
             net_id, current_status, get_status, delay, max_wait, wait_cb)
 
+    def wait_firewall(
+            self, server_id,
+            current_status='DISABLED', delay=1, max_wait=100, wait_cb=None):
+        """Wait while the public network firewall status is current_status
+
+        :param server_id: integer (str or int)
+
+        :param current_status: (str) DISABLED | ENABLED | PROTECTED
+
+        :param delay: time interval between retries
+
+        :max_wait: (int) timeout in secconds
+
+        :param wait_cb: if set a progressbar is used to show progress
+
+        :returns: (str) the new mode if succesfull, (bool) False if timed out
+        """
+
+        def get_status(self, server_id):
+            return self.get_firewall_profile(server_id), None
+
+        return self._wait(
+            server_id, current_status, get_status, delay, max_wait, wait_cb)
+
     def get_floating_ip_pools(self):
         """
         :returns: (dict) {floating_ip_pools:[{name: ...}, ...]}
@@ -384,9 +414,7 @@ class CycladesClient(CycladesRestClient):
 
     def get_floating_ips(self):
         """
-        :returns: (dict) {floating_ips:[
-            {fixed_ip: ..., id: ..., instance_id: ..., ip: ..., pool: ...},
-            ... ]}
+        :returns: (dict) {floating_ips: [fixed_ip: , id: , ip: , pool: ]}
         """
         r = self.floating_ips_get()
         return r.json

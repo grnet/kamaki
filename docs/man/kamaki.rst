@@ -52,6 +52,10 @@ network
 
     Manage compute API networks.
 
+ip
+
+     Manage compute API floating IP commands
+
 image 
 
     Manage images on Plankton (and Compute).
@@ -119,14 +123,6 @@ server commands
 * firewall  Set the server (VM) firewall profile for public networks
     * set   Set the firewall profile
     * get   Get the firewall profile
-* ip        Manage floating IPs for the servers
-    * attach    Attach a floating ip to a server with server_id
-    * info      A floating IPs' details
-    * detach    Detach floating ip from server
-    * list      List all floating ips
-    * create    Create a new floating IP
-    * delete    Delete a floating ip
-    * pools     List all floating pools of floating ips
 * info      Detailed information on a Virtual Machine
 * list      List Virtual Machines accessible by user
 * metadata  Manage a server metadata
@@ -187,6 +183,17 @@ network commands
 * list          List networks
 * rename        Set the name of a network
 
+
+ip commands
+***********
+
+* info      Details for an IP
+* list      List reserved floating IPs
+* attach    Attach a floating IP to a server
+* pools     List pools of floating IPs
+* release   Release a floating IP
+* detach    Detach a floating IP from a server
+* reserve   Reserve a floating IP
 
 file commands
 **************

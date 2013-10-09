@@ -33,6 +33,7 @@
 
 import os
 from logging import getLogger
+from sys import stdout, stderr
 
 from collections import defaultdict
 from ConfigParser import RawConfigParser, NoOptionError, NoSectionError, Error
@@ -48,7 +49,7 @@ except ImportError:
 
 
 class InvalidCloudNameError(Error):
-    """A valid cloud name is accepted by this regex: ([~@#$:-\w]+)"""
+    """A valid cloud name must pass through this regex: ([~@#$:.-\w]+)"""
 
 
 log = getLogger(__name__)
@@ -83,19 +84,19 @@ DEFAULTS = {
         'server_cli': 'cyclades',
         'flavor_cli': 'cyclades',
         'network_cli': 'cyclades',
+        'ip_cli': 'cyclades',
         'image_cli': 'image',
         'config_cli': 'config',
         'history_cli': 'history'
         #  Optional command specs:
         #  'livetest_cli': 'livetest',
         #  'astakos_cli': 'snf-astakos'
-        #  'floating_cli': 'cyclades'
     },
-    CLOUD_PREFIX:
-    {
+    CLOUD_PREFIX: {
         #'default': {
         #    'url': '',
         #    'token': ''
+        #    'pithos_container': 'THIS IS DANGEROUS'
         #    'pithos_type': 'object-store',
         #    'pithos_version': 'v1',
         #    'cyclades_type': 'compute',
@@ -117,6 +118,7 @@ except ImportError:
 
 
 class Config(RawConfigParser):
+
     def __init__(self, path=None, with_defaults=True):
         RawConfigParser.__init__(self, dict_type=OrderedDict)
         self.path = path or os.environ.get(CONFIG_ENV, CONFIG_PATH)
@@ -136,14 +138,14 @@ class Config(RawConfigParser):
     def _cloud_name(full_section_name):
         if not full_section_name.startswith(CLOUD_PREFIX + ' '):
             return None
-        matcher = match(CLOUD_PREFIX + ' "([~@#$:\-\w]+)"', full_section_name)
+        matcher = match(CLOUD_PREFIX + ' "([~@#$.:\-\w]+)"', full_section_name)
         if matcher:
             return matcher.groups()[0]
         else:
             icn = full_section_name[len(CLOUD_PREFIX) + 1:]
             raise InvalidCloudNameError('Invalid Cloud Name %s' % icn)
 
-    def rescue_old_file(self):
+    def rescue_old_file(self, err=stderr):
         lost_terms = []
         global_terms = DEFAULTS['global'].keys()
         translations = dict(
@@ -166,7 +168,7 @@ class Config(RawConfigParser):
 
         self.set('global', 'default_' + CLOUD_PREFIX, 'default')
         for s in self.sections():
-            if s in ('global'):
+            if s in ('global', ):
                 # global.url, global.token -->
                 # cloud.default.url, cloud.default.token
                 for term in set(self.keys(s)).difference(global_terms):
@@ -176,27 +178,34 @@ class Config(RawConfigParser):
                         self.remove_option(s, term)
                         continue
                     gval = self.get(s, term)
+                    default_cloud = self.get(
+                        'global', 'default_cloud') or 'default'
                     try:
-                        cval = self.get_cloud('default', term)
+                        cval = self.get_cloud(default_cloud, term)
                     except KeyError:
                         cval = ''
                     if gval and cval and (
                         gval.lower().strip('/') != cval.lower().strip('/')):
                             raise CLISyntaxError(
-                                'Conflicting values for default %s' % term,
+                                'Conflicting values for default %s' % (
+                                    term),
                                 importance=2, details=[
                                     ' global.%s:  %s' % (term, gval),
-                                    ' %s.default.%s:  %s' % (
-                                        CLOUD_PREFIX, term, cval),
+                                    ' %s.%s.%s:  %s' % (
+                                        CLOUD_PREFIX,
+                                        default_cloud,
+                                        term,
+                                        cval),
                                     'Please remove one of them manually:',
                                     ' /config delete global.%s' % term,
                                     ' or'
-                                    ' /config delete %s.default.%s' % (
-                                        CLOUD_PREFIX, term),
+                                    ' /config delete %s.%s.%s' % (
+                                        CLOUD_PREFIX, default_cloud, term),
                                     'and try again'])
                     elif gval:
-                        print('... rescue %s.%s => %s.default.%s' % (
-                            s, term, CLOUD_PREFIX, term))
+                        err.write(u'... rescue %s.%s => %s.%s.%s\n' % (
+                            s, term, CLOUD_PREFIX, default_cloud, term))
+                        err.flush()
                         self.set_cloud('default', term, gval)
                     self.remove_option(s, term)
             # translation for <service> or <command> settings
@@ -207,20 +216,24 @@ class Config(RawConfigParser):
                     k = 'file'
                     v = self.get(s, k)
                     if v:
-                        print('... rescue %s.%s => global.%s_%s' % (
+                        err.write(u'... rescue %s.%s => global.%s_%s\n' % (
                             s, k, s, k))
+                        err.flush()
                         self.set('global', '%s_%s' % (s, k), v)
                         self.remove_option(s, k)
 
                 trn = translations[s]
                 for k, v in self.items(s, False):
                     if v and k in ('cli',):
-                        print('... rescue %s.%s => global.%s_cli' % (
+                        err.write(u'... rescue %s.%s => global.%s_cli\n' % (
                             s, k, trn['cmd']))
+                        err.flush()
                         self.set('global', '%s_cli' % trn['cmd'], v)
                     elif k in ('container',) and trn['serv'] in ('pithos',):
-                        print('... rescue %s.%s => %s.default.pithos_%s' % (
-                                    s, k, CLOUD_PREFIX, k))
+                        err.write(
+                            u'... rescue %s.%s => %s.default.pithos_%s\n' % (
+                                s, k, CLOUD_PREFIX, k))
+                        err.flush()
                         self.set_cloud('default', 'pithos_%s' % k, v)
                     else:
                         lost_terms.append('%s.%s = %s' % (s, k, v))
@@ -228,21 +241,25 @@ class Config(RawConfigParser):
         #  self.pretty_print()
         return lost_terms
 
-    def pretty_print(self):
+    def pretty_print(self, out=stdout):
         for s in self.sections():
-            print s
+            out.write(s)
+            out.flush()
             for k, v in self.items(s):
                 if isinstance(v, dict):
-                    print '\t', k, '=> {'
+                    out.write(u'\t%s => {\n' % k)
+                    out.flush()
                     for ki, vi in v.items():
-                        print '\t\t', ki, '=>', vi
-                    print('\t}')
+                        out.write(u'\t\t%s => %s\n' % (ki, vi))
+                        out.flush()
+                    out.write(u'\t}\n')
                 else:
-                    print '\t', k, '=>', v
+                    out.write(u'\t %s => %s\n' % (k, v))
+                out.flush()
 
     def guess_version(self):
         """
-        :returns: (float) version of the config file or 0.0 if unrecognized
+        :returns: (float) version of the config file or 0.9 if unrecognized
         """
         checker = Config(self.path, with_defaults=False)
         sections = checker.sections()
@@ -276,9 +293,6 @@ class Config(RawConfigParser):
             raise KeyError('Cloud "%s" does not exist' % cloud)
         return r[option]
 
-    def get_global(self, option):
-        return self.get('global', option)
-
     def set_cloud(self, cloud, option, value):
         try:
             d = self.get(CLOUD_PREFIX, cloud) or dict()
@@ -286,9 +300,6 @@ class Config(RawConfigParser):
             d = dict()
         d[option] = value
         self.set(CLOUD_PREFIX, cloud, d)
-
-    def set_global(self, option, value):
-        self.set('global', option, value)
 
     def _load_defaults(self):
         for section, options in DEFAULTS.items():
@@ -343,14 +354,14 @@ class Config(RawConfigParser):
             return self.set_cloud(cloud, option, value)
         if section not in RawConfigParser.sections(self):
             self.add_section(section)
-        RawConfigParser.set(self, section, option, value)
+        return RawConfigParser.set(self, section, option, value)
 
     def remove_option(self, section, option, also_remove_default=False):
         try:
             if also_remove_default:
                 DEFAULTS[section].pop(option)
             RawConfigParser.remove_option(self, section, option)
-        except NoSectionError:
+        except (NoSectionError, KeyError):
             pass
 
     def remove_from_cloud(self, cloud, option):

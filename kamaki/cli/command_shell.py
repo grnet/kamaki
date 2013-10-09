@@ -169,11 +169,10 @@ class Shell(Cmd):
     @staticmethod
     def _create_help_method(cmd_name, args, descr, syntax):
         tmp_args = dict(args)
-        tmp_args.pop('options', None)
+        #tmp_args.pop('options', None)
         tmp_args.pop('cloud', None)
         tmp_args.pop('debug', None)
         tmp_args.pop('verbose', None)
-        tmp_args.pop('include', None)
         tmp_args.pop('silent', None)
         tmp_args.pop('config', None)
         help_parser = ArgumentParseManager(cmd_name, tmp_args)
@@ -306,7 +305,7 @@ class Shell(Cmd):
         self.cloud = cloud
         self._parser = parser
         self._history = History(
-            parser.arguments['config'].get_global('history_file'))
+            parser.arguments['config'].get('global', 'history_file'))
         if path:
             cmd = self.cmd_tree.get_command(path)
             intro = cmd.path.replace('_', ' ')

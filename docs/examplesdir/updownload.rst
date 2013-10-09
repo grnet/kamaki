@@ -2,7 +2,7 @@ Upload and Downloads
 ====================
 
 The operations of uploading files to pithos as objects, and downloading
-objects from pithos as a file are presented in this section.
+objects from pithos as files are presented in this section.
 
 Enter file context
 
@@ -74,9 +74,9 @@ Attempt to upload a whole directory, fail and retry with correct arguments
     [file]:
 
 .. note:: Try to reupload the files (use the -f option to override) and notice
-    how much faster is the uploading now. Pithos can determine what parts of
-    the file are already uploaded so that kamaki won't attempt to upload them
-    again.
+    how much faster is the uploading now. Pithos can determine what parts
+    (blocks) of the file are already uploaded. Kamaki will, then, upload only
+    the missing pars, if any.
 
 Download an object or a directory
 ---------------------------------
@@ -113,7 +113,7 @@ that `tk1.mpg` had been downloaded while `tk2.mpg` download is incomplete.
     tk2.mpg 4MB
     $
 
-Let's resume the download uperations (use -r)
+Let's resume the download (use -r)
 
 .. code-block:: console
 
@@ -135,9 +135,9 @@ Upload all
     Done
     [file]:
 
-.. note:: Kamaki calculated that all information is already uploaded, there was
-    nothing to be done. If there is was a new or modified file, kamaki would
-    detect and upload it.
+.. note:: In this case, all files were already uploaded, so kamaki didn't have
+    to upload anything. If a file was modified, kamaki would sync it with its
+    remote counterpart.
 
 Download all
 ------------
@@ -148,9 +148,9 @@ Download all
     Done
     [file]:
 
-.. note:: Kamaki determined that all files have already been calculated. This
-    operation examines all local files against the remote objects and
-    downloads only missing data.
+.. note:: Kamaki determined that all remote objects already exist as local files
+    too, so there is nothing to be done. If a new remote object was created or
+    an old one was modified, kamaki would have sync it with a local file.
 
 Exit Context
 ------------
