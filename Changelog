@@ -1,37 +1,9 @@
 CHANGELOG for version 0.11
 
 Bug Fixes:
-- Make authentication lazy (#4300)
 
 Changes:
 
-- Logs do not contain kamaki.clients pids by default [#4242]
-- Replace page_hold method with pydoc.pager [#4279]
-- Remove commands.pithos.DelimiterArgument, replace with ValueArgument
-    wherever it is used
-- Replace print methods with member print methods in _commands.* [#4292]
-- kamaki.cli.config is now a directory package [#4058]
-- Modify progress bar handler in cli.commands to allow count down and timeout
-    [#4352]
-- Make wait progress bars in cyclades CLI to count down to timeout instead of
-    progressing forward [#4352]
-- Rename IP commands to new namespace and better names [#4422]
-
 Features:
 
-- New config option log_pid (default: off) can allow pid-logging [#4242]
-- Expand kamaki.cli unitests for the following packages ( [#4058] ):
-  errors
-- Modify print methods in cli utils to use arbitary stream objects [#4288]
-- Implement wrapers for cli.utils print methods, in _commands [#4292]
-- Implement unittests for kamaki.cli.config [#4058]
-- Implement --type=SOFT/HARD argument for server reboot [#4338]
-    The old argument -f/--force <==> --type=HARD is kept for bw compatibility
-    A warning message guides users to stop using it
-- Catch Keyboard Interupts in cli wait methods and exit gracefully [#4351]
-- Add -R/--recursive in file listing, to list containers with their contents
-    [#4301]
-- Add -w/--wait to server firewall set [#4298]
-- Add --output-format where applicable, keep -j/--json too, for bw
-    compatibility [#4342]
-- Allow metakeys in personality argument [#4312]
+
