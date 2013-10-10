@@ -80,6 +80,7 @@ DEFAULTS = {
         'max_threads': 7,
         'history_file': HISTORY_PATH,
         'user_cli': 'astakos',
+        'astakos_cli': 'snf-astakos',
         'file_cli': 'pithos',
         'server_cli': 'cyclades',
         'flavor_cli': 'cyclades',
@@ -90,7 +91,6 @@ DEFAULTS = {
         'history_cli': 'history'
         #  Optional command specs:
         #  'livetest_cli': 'livetest',
-        #  'astakos_cli': 'snf-astakos'
     },
     CLOUD_PREFIX: {
         #'default': {
