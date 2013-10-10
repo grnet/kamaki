@@ -32,8 +32,12 @@
 # or implied, of GRNET S.A.command
 
 from kamaki.cli.logger import get_logger
-from kamaki.cli.utils import print_json, print_items, filter_dicts_by_dict
+from kamaki.cli.utils import (
+    print_list, print_dict, print_json, print_items, ask_user,
+    filter_dicts_by_dict)
 from kamaki.cli.argument import FlagArgument, ValueArgument
+from kamaki.cli.errors import CLIInvalidArgument
+from sys import stdin, stdout, stderr
 
 log = get_logger(__name__)
 
@@ -59,7 +63,12 @@ def addLogSettings(foo):
 
 class _command_init(object):
 
-    def __init__(self, arguments={}, auth_base=None, cloud=None):
+    def __init__(
+            self,
+            arguments={}, auth_base=None, cloud=None,
+            _in=None, _out=None, _err=None):
+        self._in, self._out, self._err = (
+            _in or stdin, _out or stdout, _err or stderr)
         if hasattr(self, 'arguments'):
             arguments.update(self.arguments)
         if isinstance(self, _optional_output_cmd):
@@ -81,6 +90,38 @@ class _command_init(object):
             pass
         self.auth_base = auth_base or getattr(self, 'auth_base', None)
         self.cloud = cloud or getattr(self, 'cloud', None)
+
+    def write(self, s):
+        self._out.write(u'%s' % s)
+        self._out.flush()
+
+    def writeln(self, s=''):
+        self.write(u'%s\n' % s)
+
+    def error(self, s=''):
+        self._err.write(u'%s\n' % s)
+        self._err.flush()
+
+    def print_list(self, *args, **kwargs):
+        kwargs.setdefault('out', self._out)
+        return print_list(*args, **kwargs)
+
+    def print_dict(self, *args, **kwargs):
+        kwargs.setdefault('out', self._out)
+        return print_dict(*args, **kwargs)
+
+    def print_json(self, *args, **kwargs):
+        kwargs.setdefault('out', self._out)
+        return print_json(*args, **kwargs)
+
+    def print_items(self, *args, **kwargs):
+        kwargs.setdefault('out', self._out)
+        return print_items(*args, **kwargs)
+
+    def ask_user(self, *args, **kwargs):
+        kwargs.setdefault('user_in', self._in)
+        kwargs.setdefault('out', self._out)
+        return ask_user(*args, **kwargs)
 
     @DontRaiseKeyError
     def _custom_url(self, service):
@@ -114,34 +155,37 @@ class _command_init(object):
     def _set_log_params(self):
         try:
             self.client.LOG_TOKEN = (
-                self['config'].get_global('log_token').lower() == 'on')
+                self['config'].get('global', 'log_token').lower() == 'on')
         except Exception as e:
             log.debug('Failed to read custom log_token setting:'
                 '%s\n default for log_token is off' % e)
         try:
             self.client.LOG_DATA = (
-                self['config'].get_global('log_data').lower() == 'on')
+                self['config'].get('global', 'log_data').lower() == 'on')
         except Exception as e:
             log.debug('Failed to read custom log_data setting:'
                 '%s\n default for log_data is off' % e)
         try:
             self.client.LOG_PID = (
-                self['config'].get_global('log_pid').lower() == 'on')
+                self['config'].get('global', 'log_pid').lower() == 'on')
         except Exception as e:
             log.debug('Failed to read custom log_pid setting:'
                 '%s\n default for log_pid is off' % e)
 
     def _update_max_threads(self):
         if getattr(self, 'client', None):
-            max_threads = int(self['config'].get_global('max_threads'))
+            max_threads = int(self['config'].get('global', 'max_threads'))
             assert max_threads > 0, 'invalid max_threads config option'
             self.client.MAX_THREADS = max_threads
 
-    def _safe_progress_bar(self, msg, arg='progress_bar'):
+    def _safe_progress_bar(
+            self, msg, arg='progress_bar', countdown=False, timeout=100):
         """Try to get a progress bar, but do not raise errors"""
         try:
             progress_bar = self.arguments[arg]
-            gen = progress_bar.get_generator(msg)
+            progress_bar.file = self._err
+            gen = progress_bar.get_generator(
+                msg, countdown=countdown, timeout=timeout)
         except Exception:
             return (None, None)
         return (progress_bar, gen)
@@ -199,30 +243,64 @@ class _command_init(object):
 #  feature classes - inherit them to get special features for your commands
 
 
+class OutputFormatArgument(ValueArgument):
+    """Accepted output formats: json (default)"""
+
+    formats = ('json', )
+
+    def ___init__(self, *args, **kwargs):
+        super(OutputFormatArgument, self).___init__(*args, **kwargs)
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, newvalue):
+        if not newvalue:
+            self._value = self.default
+        elif newvalue.lower() in self.formats:
+            self._value = newvalue.lower
+        else:
+            raise CLIInvalidArgument(
+                'Invalid value %s for argument %s' % (
+                    newvalue, '/'.join(self.parsed_name)),
+                details=['Valid output formats: %s' % ', '.join(self.formats)])
+
+
 class _optional_output_cmd(object):
 
     oo_arguments = dict(
         with_output=FlagArgument('show response headers', ('--with-output')),
-        json_output=FlagArgument('show headers in json', ('-j', '--json'))
+        json_output=FlagArgument(
+            'show headers in json (DEPRECATED from v0.12,'
+            ' please use --output-format=json instead)', ('-j', '--json'))
     )
 
     def _optional_output(self, r):
         if self['json_output']:
-            print_json(r)
+            print_json(r, out=self._out)
         elif self['with_output']:
-            print_items([r] if isinstance(r, dict) else r)
+            print_items([r] if isinstance(r, dict) else r, out=self._out)
 
 
 class _optional_json(object):
 
     oj_arguments = dict(
-        json_output=FlagArgument('show headers in json', ('-j', '--json'))
+        output_format=OutputFormatArgument(
+            'Show output in chosen output format (%s)' % ', '.join(
+                OutputFormatArgument.formats),
+            '--output-format'),
+        json_output=FlagArgument(
+            'show output in json (DEPRECATED from v0.12,'
+            ' please use --output-format instead)', ('-j', '--json'))
     )
 
     def _print(self, output, print_method=print_items, **print_method_kwargs):
-        if self['json_output']:
-            print_json(output)
+        if self['json_output'] or self['output_format']:
+            print_json(output, out=self._out)
         else:
+            print_method_kwargs.setdefault('out', self._out)
             print_method(output, **print_method_kwargs)
 
 

@@ -246,8 +246,6 @@ class Pithos(livetest.Generic):
         u1 = self.client.account
         #  Invalid display name
         u2 = '1nc0r3c7-d15p14y-n4m3'
-        #  valid display name
-        u3 = '6488c1b2-cb06-40a8-a02a-d474b8d29c59'
         self.assertRaises(
             ClientError,
             self.client.set_account_group,
@@ -255,13 +253,6 @@ class Pithos(livetest.Generic):
         self.client.set_account_group(grpName, [u1])
         r = self.client.get_account_group()
         self.assertEqual(r['x-account-group-' + grpName], '%s' % u1)
-        try:
-            self.client.set_account_group(grpName, [u1, u3])
-            r = self.client.get_account_group()
-            self.assertEqual(
-                r['x-account-group-' + grpName], '%s,%s' % (u1, u3))
-        except:
-            print('\tInvalid user id %s (it is ok, though)' % u3)
         self.client.del_account_group(grpName)
         r = self.client.get_account_group()
         self.assertTrue('x-account-group-' + grpName not in r)
@@ -692,9 +683,9 @@ class Pithos(livetest.Generic):
 
     def test_object_put(self):
         """Test object_PUT"""
-        self._test_object_put()
+        self._test_0150_object_put()
 
-    def _test_object_put(self):
+    def _test_0150_object_put(self):
         self.client.container = self.c2
         obj = 'another.test'
 
@@ -917,8 +908,8 @@ class Pithos(livetest.Generic):
             content_encoding='utf8',
             content_type='application/json',
             destination_account='nonExistendAddress@NeverLand.com',
-            success=(201, 403))
-        self.assertEqual(r.status_code, 403)
+            success=(201, 404))
+        self.assertEqual(r.status_code, 404)
 
         """Check destination being another container
         and also content_type and content encoding"""
@@ -1019,8 +1010,8 @@ class Pithos(livetest.Generic):
             content_encoding='utf8',
             content_type='application/json',
             destination_account='nonExistendAddress@NeverLand.com',
-            success=(201, 403))
-        self.assertEqual(r.status_code, 403)
+            success=(201, 404))
+        self.assertEqual(r.status_code, 404)
 
         """Check destination being another container and also
         content_type, content_disposition and content encoding"""
