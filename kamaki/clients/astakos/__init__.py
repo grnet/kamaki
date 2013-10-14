@@ -76,6 +76,7 @@ class AstakosClient(Client):
         self._astakos[uuid] = astakos
         self._uuids2usernames[token] = dict()
         self._usernames2uuids[token] = dict()
+        return self._cache[uuid]
 
     def get_token(self, uuid):
         return self._cache[uuid]['access']['token']['id']
