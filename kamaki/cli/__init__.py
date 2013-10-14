@@ -304,7 +304,7 @@ def init_cached_authenticator(url, tokens, config_module, logger):
                 if auth_base:
                     auth_base.authenticate(token)
                 else:
-                    auth_base = AuthCachedClient(url, tokens)
+                    auth_base = AuthCachedClient(url, token)
                     from kamaki.cli.commands import _command_init
                     fake_cmd = _command_init(dict(config=config_module))
                     fake_cmd.client = auth_base

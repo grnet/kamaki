@@ -38,62 +38,63 @@ from kamaki.clients import Client, ClientError
 
 
 class AstakosClient(Client):
-    """Synnefo Astakos API client"""
+    """Synnefo Astakos cached client wraper"""
 
     def __init__(self, base_url, token=None):
         super(AstakosClient, self).__init__(base_url, token)
-        self._cache = {}
-        self._uuids = {}
-        self.log = getLogger(__name__)
-        self.astakos = dict()
+        self._astakos = dict()
+        self._uuids = dict()
+        self._cache = dict()
+        self._uuids2usernames = dict()
+        self._usernames2uuids = dict()
 
-    def _resolve_token(foo):
-        def wrap(self, *args, **kwargs):
-            args = list(args)
-            token = kwargs.get('token', args.pop())
-            if token and token not in self.astakos:
-                self.astakos[token] = SynnefoAstakosClient(
-                    self.token, self.base_url,
-                    logger=getLogger('astakosclient'))
-            else:
-                token = self.token
-            kwargs['token'] = token
-            return foo(self, *args, **kwargs)
-        return wrap
+    def _resolve_token(self, token):
+        """
+        :returns: (str) a single token
 
-    @_resolve_token
+        :raises AssertionError: if no token exists (either param or member)
+        """
+        token = token or self.token or self.tokenlist[0]
+        assert token, 'No token provided'
+        return token[0] if (
+            isinstance(token, list) or isinstance(token, tuple)) else token
+
     def authenticate(self, token=None):
         """Get authentication information and store it in this client
         As long as the AstakosClient instance is alive, the latest
         authentication information for this token will be available
 
         :param token: (str) custom token to authenticate
-
-        :returns: (dict) authentication information
         """
-        r = self.astakos[token].get_endpoints()
-        #  body = dict(auth=dict(token=dict(id=self.token)))
-        #  r = self.post('/tokens', json=body).json
+        token = self._resolve_token(token)
+        astakos = SynnefoAstakosClient(
+            token, self.base_url, logger=getLogger('_my_.astakosclient'))
+        r = astakos.get_endpoints()
         uuid = r['access']['user']['id']
         self._uuids[token] = uuid
         self._cache[uuid] = r
-        return self._cache[uuid]
+        self._astakos[uuid] = astakos
+        self._uuids2usernames[token] = dict()
+        self._usernames2uuids[token] = dict()
 
     def get_token(self, uuid):
         return self._cache[uuid]['access']['token']['id']
 
-    @_resolve_token
+    def _validate_token(self, token):
+        if (token not in self._uuids) or (
+                self.get_token(self._uuids[token]) != token):
+            self._uuids.pop(token, None)
+            self.authenticate(token)
+
     def get_services(self, token=None):
         """
         :returns: (list) [{name:..., type:..., endpoints:[...]}, ...]
         """
-        try:
-            r = self._cache[self._uuids[token]]
-        except KeyError:
-            r = self.authenticate(token)
+        token = self._resolve_token(token)
+        self._validate_token(token)
+        r = self._cache[self._uuids[token]]
         return r['access']['serviceCatalog']
 
-    @_resolve_token
     def get_service_details(self, service_type, token=None):
         """
         :param service_type: (str) compute, object-store, image, account, etc.
@@ -112,7 +113,6 @@ class AstakosClient(Client):
         raise ClientError(
             'Service type "%s" not in service catalog' % service_type, 600)
 
-    @_resolve_token
     def get_service_endpoints(self, service_type, version=None, token=None):
         """
         :param service_type: (str) can be compute, object-store, etc.
@@ -139,7 +139,6 @@ class AstakosClient(Client):
                 601)
         return matches[0]
 
-    @_resolve_token
     def list_users(self):
         """list cached users information"""
         if not self._cache:
@@ -150,30 +149,22 @@ class AstakosClient(Client):
             r[-1].update(dict(auth_token=self.get_token(k)))
         return r
 
-    @_resolve_token
     def user_info(self, token=None):
         """Get (cached) user information"""
-        token_bu = self.token or token
-        token = token or self.token
-        try:
-            r = self._cache[self._uuids[token]]
-        except KeyError:
-            r = self.authenticate(token)
-        finally:
-            self.token = token_bu
+        token = self._resolve_token(token)
+        self._validate_token(token)
+        r = self._cache[self._uuids[token]]
         return r['access']['user']
 
-    @_resolve_token
     def term(self, key, token=None):
         """Get (cached) term, from user credentials"""
         return self.user_term(key, token)
 
-    @_resolve_token
     def user_term(self, key, token=None):
         """Get (cached) term, from user credentials"""
         return self.user_info(token).get(key, None)
 
-    def post_user_catalogs(self, uuids=None, displaynames=None):
+    def post_user_catalogs(self, uuids=None, displaynames=None, token=None):
         """POST base_url/user_catalogs
 
         :param uuids: (list or tuple) user uuids
@@ -182,10 +173,21 @@ class AstakosClient(Client):
 
         :returns: (dict) {uuid1: name1, uuid2: name2, ...} or oposite
         """
-        if uuids:
-            return self.astakos[self.token].get_usernames(uuids)
-        else:
-            return self.astakos[self.token].get_uuids(displaynames)
-        #json_data = dict(uuids=uuids) if (
-        #    uuids) else dict(displaynames=displaynames)
-        #return account.post('user_catalogs', json=json_data)
+        return self.uuids2usernames(uuids, token) if (
+            uuids) else self.usernnames2uuids(displaynames, token)
+
+    def uuids2usernames(self, uuids, token=None):
+        token = self._resolve_token(token)
+        self._validate_token(token)
+        astakos = self._astakos[self._uuids[token]]
+        if set(uuids).difference(self._uuids2usernames[token]):
+            self._uuids2usernames[token].update(astakos.get_usernames(uuids))
+        return self._uuids2usernames[token]
+
+    def usernames2uuids(self, usernames, token=None):
+        token = self._resolve_token(token)
+        self._validate_token(token)
+        astakos = self._astakos[self._uuids[token]]
+        if set(usernames).difference(self._usernames2uuids[token]):
+            self._usernames2uuids[token].update(astakos.get_uuids(usernames))
+        return self._usernames2uuids

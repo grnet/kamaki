@@ -338,7 +338,7 @@ class Client(Logged):
     def __init__(self, base_url, token):
         assert base_url, 'No base_url for client %s' % self
         self.base_url = base_url
-        self.token = token[0] if isinstance(token, list) else token
+        self.token = token
         self.headers, self.params = dict(), dict()
 
     def _init_thread_limit(self, limit=1):
