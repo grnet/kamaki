@@ -54,7 +54,7 @@ class AstakosClient(Client):
 
         :raises AssertionError: if no token exists (either param or member)
         """
-        token = token or self.token or self.tokenlist[0]
+        token = token or self.token
         assert token, 'No token provided'
         return token[0] if (
             isinstance(token, list) or isinstance(token, tuple)) else token
@@ -68,14 +68,14 @@ class AstakosClient(Client):
         """
         token = self._resolve_token(token)
         astakos = SynnefoAstakosClient(
-            token, self.base_url, logger=getLogger('_my_.astakosclient'))
+            token, self.base_url, logger=getLogger('astakosclient'))
         r = astakos.get_endpoints()
         uuid = r['access']['user']['id']
         self._uuids[token] = uuid
         self._cache[uuid] = r
         self._astakos[uuid] = astakos
-        self._uuids2usernames[token] = dict()
-        self._usernames2uuids[token] = dict()
+        self._uuids2usernames[uuid] = dict()
+        self._usernames2uuids[uuid] = dict()
         return self._cache[uuid]
 
     def get_token(self, uuid):
@@ -180,15 +180,17 @@ class AstakosClient(Client):
     def uuids2usernames(self, uuids, token=None):
         token = self._resolve_token(token)
         self._validate_token(token)
-        astakos = self._astakos[self._uuids[token]]
-        if set(uuids).difference(self._uuids2usernames[token]):
-            self._uuids2usernames[token].update(astakos.get_usernames(uuids))
-        return self._uuids2usernames[token]
+        uuid = self._uuids[token]
+        astakos = self._astakos[uuid]
+        if set(uuids).difference(self._uuids2usernames[uuid]):
+            self._uuids2usernames[uuid].update(astakos.get_usernames(uuids))
+        return self._uuids2usernames[uuid]
 
     def usernames2uuids(self, usernames, token=None):
         token = self._resolve_token(token)
         self._validate_token(token)
-        astakos = self._astakos[self._uuids[token]]
-        if set(usernames).difference(self._usernames2uuids[token]):
-            self._usernames2uuids[token].update(astakos.get_uuids(usernames))
-        return self._usernames2uuids
+        uuid = self._uuids[token]
+        astakos = self._astakos[uuid]
+        if set(usernames).difference(self._usernames2uuids[uuid]):
+            self._usernames2uuids[uuid].update(astakos.get_uuids(usernames))
+        return self._usernames2uuids[uuid]
