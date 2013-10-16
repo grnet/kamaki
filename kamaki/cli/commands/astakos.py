@@ -32,42 +32,40 @@
 # or implied, of GRNET S.A.command
 
 from kamaki.cli import command
-from kamaki.clients.astakos import AstakosClient
+from kamaki.clients.astakos import AstakosClient, SynnefoAstakosClient
 from kamaki.cli.commands import (
     _command_init, errors, _optional_json, addLogSettings)
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import CLIBaseUrlError, CLIError
+from kamaki.cli.argument import FlagArgument
+from kamaki.cli.utils import format_size
 
-user_cmds = CommandTree('user', 'Astakos API commands')
-_commands = [user_cmds]
+user_commands = CommandTree('user', 'Astakos/Identity API commands')
+admin_commands = CommandTree('admin', 'Astakos/Account API commands')
+project_commands = CommandTree('project', 'Astakos project API commands')
+_commands = [user_commands, admin_commands, project_commands]
 
 
-class _user_init(_command_init):
-
-    def _write_main_token(self, token):
-        tokens = self.config.get_cloud(self.cloud, 'token').split()
-        if token in tokens:
-            tokens.remove(token)
-        tokens.insert(0, token)
-        self.config.set_cloud(self.cloud, 'token', ' '.join(tokens))
-        self.config.write()
-
+class _init_synnefo_astakosclient(_command_init):
     @errors.generic.all
     @errors.user.load
+    @errors.user.astakosclient
     @addLogSettings
     def _run(self):
-        if getattr(self, 'cloud', False):
+        if getattr(self, 'cloud', None):
             base_url = self._custom_url('astakos')
             if base_url:
                 token = self._custom_token(
                     'astakos') or self.config.get_cloud(self.cloud, 'token')
                 token = token.split()[0] if ' ' in token else token
-                self.client = AstakosClient(base_url=base_url, token=token)
+                self.client = SynnefoAstakosClient(
+                    auth_url=base_url, token=token)
                 return
         else:
             self.cloud = 'default'
-        if getattr(self, 'auth_base', False):
-            self.client = self.auth_base
+        if getattr(self, 'auth_base', None):
+            self.client = SynnefoAstakosClient(
+                auth_url=self.auth_base.base_url, token=self.auth_base.token)
             return
         raise CLIBaseUrlError(service='astakos')
 
@@ -75,103 +73,86 @@ class _user_init(_command_init):
         self._run()
 
 
-@command(user_cmds)
-class user_authenticate(_user_init, _optional_json):
-    """Authenticate a user
-    Get user information (e.g., unique account name) from token
-    Token should be set in settings:
-    *  check if a token is set    /config whoami cloud.default.token
-    *  permanently set a token    /config set cloud.default.token <token>
-    Token can also be provided as a parameter
-    (In case of another named cloud, use its name instead of default)
-    """
+@command(user_commands)
+class user_info(_init_synnefo_astakosclient, _optional_json):
+    """Authenticate a user and get info"""
 
     @errors.generic.all
     @errors.user.authenticate
+    @errors.user.astakosclient
     def _run(self, custom_token=None):
         token_bu = self.client.token
         try:
-            r = self.client.authenticate(custom_token)
-            if (token_bu != self.client.token and self.ask_user(
-                    'Permanently save token as cloud.%s.token ?' % (
-                        self.cloud))):
-                self._write_main_token(self.client.token)
-        except Exception:
-            #recover old token
+            self.client.token = custom_token or token_bu
+            self._print(
+                self.client.get_user_info(), self.print_dict)
+        finally:
             self.client.token = token_bu
-            raise
 
-        def _print_access(r, out):
-            self.print_dict(r['access'], out=out)
-
-        self._print(r, _print_access)
-
-    def main(self, custom_token=None):
+    def main(self, token=None):
         super(self.__class__, self)._run()
-        self._run(custom_token)
+        self._run(custom_token=token)
 
 
-@command(user_cmds)
-class user_list(_user_init, _optional_json):
-    """List all authenticated users"""
+@command(user_commands)
+class user_uuid2username(_init_synnefo_astakosclient, _optional_json):
+    """Get username(s) from uuid(s)"""
 
     @errors.generic.all
-    def _run(self, custom_token=None):
-        self._print(self.client.list_users())
+    @errors.user.astakosclient
+    def _run(self, uuids):
+        r = self.client.get_usernames(uuids)
+        self._print(r, self.print_dict)
+        unresolved = set(uuids).difference(r)
+        if unresolved:
+            self.error('Unresolved uuids: %s' % ', '.join(unresolved))
 
-    def main(self):
+    def main(self, uuid, *more_uuids):
         super(self.__class__, self)._run()
-        self._run()
+        self._run(uuids=((uuid, ) + more_uuids))
 
 
-@command(user_cmds)
-class user_whoami(_user_init, _optional_json):
-    """Get current session user information"""
+@command(user_commands)
+class user_username2uuid(_init_synnefo_astakosclient, _optional_json):
+    """Get uuid(s) from username(s)"""
 
     @errors.generic.all
+    @errors.user.astakosclient
+    def _run(self, usernames):
+        r = self.client.get_uuids(usernames)
+        self._print(r, self.print_dict)
+        unresolved = set(usernames).difference(r)
+        if unresolved:
+            self.error('Unresolved usernames: %s' % ', '.join(unresolved))
+
+    def main(self, username, *more_usernames):
+        super(self.__class__, self)._run()
+        self._run(usernames=((username, ) + more_usernames))
+
+
+@command(user_commands)
+class user_quotas(_init_synnefo_astakosclient, _optional_json):
+    """Get user quotas"""
+
+    _to_format = set(['cyclades.disk', 'pithos.diskspace', 'cyclades.ram'])
+
+    arguments = dict(
+        bytes=FlagArgument('Show data size in bytes', '--bytes')
+    )
+
+    def _print_quotas(self, quotas, *args, **kwargs):
+        if not self['bytes']:
+            for category in quotas.values():
+                for service in self._to_format.intersection(category):
+                    for attr, v in category[service].items():
+                        category[service][attr] = format_size(v)
+        self.print_dict(quotas, *args, **kwargs)
+
+    @errors.generic.all
+    @errors.user.astakosclient
     def _run(self):
-        self._print(self.client.user_info(), self.print_dict)
+        self._print(self.client.get_quotas(), self._print_quotas)
 
     def main(self):
         super(self.__class__, self)._run()
         self._run()
-
-
-@command(user_cmds)
-class user_set(_user_init, _optional_json):
-    """Set session user by id
-    To enrich your options, authenticate more users:
-    /user authenticate <other user token>
-    To list authenticated users
-    /user list
-    To get the current session user
-    /user whoami
-    """
-
-    @errors.generic.all
-    def _run(self, uuid):
-        for user in self.client.list_users():
-            if user.get('id', None) in (uuid,):
-                ntoken = user['auth_token']
-                if ntoken == self.client.token:
-                    self.error('%s (%s) is already the session user' % (
-                        self.client.user_term('name'),
-                        self.client.user_term('id')))
-                    return
-                self.client.token = user['auth_token']
-                self.error('Session user set to %s (%s)' % (
-                        self.client.user_term('name'),
-                        self.client.user_term('id')))
-                if self.ask_user(
-                        'Permanently make %s the main user?' % (
-                            self.client.user_term('name'))):
-                    self._write_main_token(self.client.token)
-                return
-        raise CLIError(
-            'User with UUID %s not authenticated in current session' % uuid,
-            details=[
-                'To authenticate a user', '  /user authenticate <t0k3n>'])
-
-    def main(self, uuid):
-        super(self.__class__, self)._run()
-        self._run(uuid)
