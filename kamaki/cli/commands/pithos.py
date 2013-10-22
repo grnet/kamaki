@@ -1631,7 +1631,7 @@ class file_permissions_get(_file_container_command, _optional_json):
     def print_permissions(self, permissions_dict, out):
         expected_keys = ('read', 'write')
         if set(permissions_dict).issubset(expected_keys):
-            self.print_dict(permissions_dict, out)
+            self.print_dict(permissions_dict, out=out)
         else:
             invalid_keys = set(permissions_dict.keys()).difference(
                 expected_keys)
