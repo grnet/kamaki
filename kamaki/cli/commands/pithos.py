@@ -459,7 +459,8 @@ class file_list(_file_container_command, _optional_json, _name_filter):
             if self['recursive']:
                 self._create_object_forest(files)
         else:
-            prefix = (self.path and not self['name']) or self['name_pref']
+            prefix = (
+                self.path if not self['name'] else '') or self['name_pref']
             r = self.client.container_get(
                 limit=False if self['more'] else self['limit'],
                 marker=self['marker'],
