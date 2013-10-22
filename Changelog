@@ -1,6 +1,7 @@
 CHANGELOG for version 0.11
 
 Bug Fixes:
+-In file list, the path or prefix was converted to boolean value. Fixed.
 
 Changes:
 
