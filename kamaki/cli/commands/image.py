@@ -334,7 +334,7 @@ class image_meta_set(_init_image, _optional_output_cmd):
         for term in (
                 'name', 'disk_format', 'container_format', 'status', 'publish',
                 'unpublish', 'properties'):
-            if self['term']:
+            if self[term]:
                 if self['publish'] and self['unpublish']:
                     raiseCLIError(
                         '--publish and --unpublish are mutually exclusive')
