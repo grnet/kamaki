@@ -80,7 +80,8 @@ DEFAULTS = {
         'max_threads': 7,
         'history_file': HISTORY_PATH,
         'user_cli': 'astakos',
-        'astakos_cli': 'snf-astakos',
+        'admin_cli': 'astakos',
+        'project_cli': 'astakos',
         'file_cli': 'pithos',
         'server_cli': 'cyclades',
         'flavor_cli': 'cyclades',
@@ -108,13 +109,6 @@ DEFAULTS = {
         #}
     }
 }
-
-
-try:
-    import astakosclient
-    DEFAULTS['global'].update(dict(astakos_cli='snf-astakos'))
-except ImportError:
-    pass
 
 
 class Config(RawConfigParser):

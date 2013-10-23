@@ -31,13 +31,16 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
+from json import load
+from os.path import abspath
+
 from kamaki.cli import command
 from kamaki.clients.astakos import AstakosClient, SynnefoAstakosClient
 from kamaki.cli.commands import (
     _command_init, errors, _optional_json, addLogSettings)
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import CLIBaseUrlError, CLIError
-from kamaki.cli.argument import FlagArgument
+from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
 from kamaki.cli.utils import format_size
 
 user_commands = CommandTree('user', 'Astakos/Identity API commands')
@@ -156,3 +159,355 @@ class user_quotas(_init_synnefo_astakosclient, _optional_json):
     def main(self):
         super(self.__class__, self)._run()
         self._run()
+
+
+#  command project
+
+
+_project_specs = """
+    {
+        "name": name,
+        "owner": uuid,
+        "homepage": homepage,         # optional
+        "description": description,   # optional
+        "comments": comments,         # optional
+        "start_date": date,           # optional
+        "end_date": date,
+        "join_policy": "auto" | "moderated" | "closed",  # default: "moderated"
+        "leave_policy": "auto" | "moderated" | "closed", # default: "auto"
+        "resources": {
+            "cyclades.vm": {
+                "project_capacity": int or null,
+                 "member_capacity": int
+            }
+        }
+  }
+  """
+
+
+def apply_notification(foo):
+    def wrap(self, *args, **kwargs):
+        r = foo(self, *args, **kwargs)
+        self.writeln('Application is submitted successfully')
+        return r
+    return wrap
+
+
+@command(project_commands)
+class project_list(_init_synnefo_astakosclient, _optional_json):
+    """List all projects"""
+
+    arguments = dict(
+        name=ValueArgument('Filter by name', ('--with-name', )),
+        state=ValueArgument('Filter by state', ('--with-state', )),
+        owner=ValueArgument('Filter by owner', ('--with-owner', ))
+    )
+
+    @errors.generic.all
+    @errors.user.astakosclient
+    def _run(self):
+        self._print(self.client.get_projects(
+            self['name'], self['state'], self['owner']))
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
+
+
+@command(project_commands)
+class project_info(_init_synnefo_astakosclient, _optional_json):
+    """Get details for a project"""
+
+    @errors.generic.all
+    @errors.user.astakosclient
+    def _run(self, project_id):
+        self._print(
+            self.client.get_project(project_id), self.print_dict)
+
+    def main(self, project_id):
+        super(self.__class__, self)._run()
+        self._run(project_id)
+
+
+@command(project_commands)
+class project_create(_init_synnefo_astakosclient, _optional_json):
+    """Apply for a new project (input a json-dict)
+    Project details must be provided as a json-formated dict from the standard
+    input, or through a file
+    """
+
+    __doc__ += _project_specs
+
+    arguments = dict(
+        specs_path=ValueArgument(
+            'Specification file path (content must be in json)', '--spec-file')
+    )
+
+    @errors.generic.all
+    @errors.user.astakosclient
+    @apply_notification
+    def _run(self):
+        input_stream = open(abspath(self['specs_path'])) if (
+            self['specs_path']) else self._in
+        specs = load(input_stream)
+        self._print(
+            self.client.create_project(specs), self.print_dict)
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
+
+
+@command(project_commands)
+class project_modify(_init_synnefo_astakosclient, _optional_json):
+    """Modify a project (input a json-dict)
+    Project details must be provided as a json-formated dict from the standard
+    input, or through a file
+    """
+
+    __doc__ += _project_specs
+
+    arguments = dict(
+        specs_path=ValueArgument(
+            'Specification file path (content must be in json)', '--spec-file')
+    )
+
+    @errors.generic.all
+    @errors.user.astakosclient
+    @apply_notification
+    def _run(self, project_id):
+        input_stream = open(abspath(self['specs_path'])) if (
+            self['specs_path']) else self._in
+        specs = load(input_stream)
+        self._print(
+            self.client.modify_project(project_id, specs),
+            self.print_dict)
+
+    def main(self, project_id):
+        super(self.__class__, self)._run()
+        self._run(project_id)
+
+
+class _project_action(_init_synnefo_astakosclient):
+
+    action = ''
+
+    @errors.generic.all
+    @errors.user.astakosclient
+    def _run(self, project_id, quote_a_reason):
+        self.client.project_action(project_id, self.action, quote_a_reason)
+
+    def main(self, project_id, quote_a_reason=''):
+        super(_project_action, self)._run()
+        self._run(project_id, quote_a_reason)
+
+
+@command(project_commands)
+class project_suspend(_project_action):
+    """Suspend a project (special privileges needed)"""
+    action = 'suspend'
+
+
+@command(project_commands)
+class project_unsuspend(_project_action):
+    """Resume a suspended project (special privileges needed)"""
+    action = 'unsuspend'
+
+
+@command(project_commands)
+class project_terminate(_project_action):
+    """Terminate a project (special privileges needed)"""
+    action = 'terminate'
+
+
+@command(project_commands)
+class project_reinstate(_project_action):
+    """Reinstate a terminated project (special privileges needed)"""
+    action = 'reinstate'
+
+
+@command(project_commands)
+class project_application(_init_synnefo_astakosclient):
+    """Application management commands"""
+
+
+@command(project_commands)
+class project_application_list(_init_synnefo_astakosclient, _optional_json):
+    """List all applications (old and new)"""
+
+    arguments = dict(
+        project=IntArgument('Filter by project id', '--with-project-id')
+    )
+
+    @errors.generic.all
+    @errors.user.astakosclient
+    def _run(self):
+        self._print(self.client.get_applications(self['project']))
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
+
+
+@command(project_commands)
+class project_application_info(_init_synnefo_astakosclient, _optional_json):
+    """Get details on an application"""
+
+    @errors.generic.all
+    @errors.user.astakosclient
+    def _run(self, app_id):
+        self._print(
+            self.client.get_application(app_id), self.print_dict)
+
+    def main(self, application_id):
+        super(self.__class__, self)._run()
+        self._run(application_id)
+
+
+class _application_action(_init_synnefo_astakosclient):
+
+    action = ''
+
+    @errors.generic.all
+    @errors.user.astakosclient
+    def _run(self, app_id, quote_a_reason):
+        self.client.application_action(app_id, self.action, quote_a_reason)
+
+    def main(self, application_id, quote_a_reason=''):
+        super(_application_action, self)._run()
+        self._run(application_id, quote_a_reason)
+
+
+@command(project_commands)
+class project_application_approve(_application_action):
+    """Approve an application (special privileges needed)"""
+    action = 'approve'
+
+
+@command(project_commands)
+class project_application_deny(_application_action):
+    """Deny an application (special privileges needed)"""
+    action = 'deny'
+
+
+@command(project_commands)
+class project_application_dismiss(_application_action):
+    """Dismiss your denied application"""
+    action = 'dismiss'
+
+
+@command(project_commands)
+class project_application_cancel(_application_action):
+    """Cancel your application"""
+    action = 'cancel'
+
+
+@command(project_commands)
+class project_membership(_init_synnefo_astakosclient):
+    """Project membership management commands"""
+
+
+@command(project_commands)
+class project_membership_list(_init_synnefo_astakosclient, _optional_json):
+    """List all memberships"""
+
+    arguments = dict(
+        project=IntArgument('Filter by project id', '--with-project-id')
+    )
+
+    @errors.generic.all
+    @errors.user.astakosclient
+    def _run(self):
+        self._print(self.client.get_memberships(self['project']))
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
+
+
+@command(project_commands)
+class project_membership_info(_init_synnefo_astakosclient, _optional_json):
+    """Details on a membership"""
+
+    @errors.generic.all
+    @errors.user.astakosclient
+    def _run(self, memb_id):
+        self._print(
+            self.client.get_membership(memb_id), self.print_dict)
+
+    def main(self, membership_id):
+        super(self.__class__, self)._run()
+        self._run(membership_id)
+
+
+class _membership_action(_init_synnefo_astakosclient, _optional_json):
+
+    action = ''
+
+    @errors.generic.all
+    @errors.user.astakosclient
+    def _run(self, memb_id, quote_a_reason):
+        self._print(self.client.membership_action(
+            memb_id, self.action, quote_a_reason))
+
+    def main(self, membership_id, quote_a_reason=''):
+        super(_membership_action, self)._run()
+        self._run(membership_id, quote_a_reason)
+
+
+@command(project_commands)
+class project_membership_leave(_membership_action):
+    """Leave a project you have membership to"""
+    action = 'leave'
+
+
+@command(project_commands)
+class project_membership_cancel(_membership_action):
+    """Cancel your (probably pending) membership to a project"""
+    action = 'cancel'
+
+
+@command(project_commands)
+class project_membership_accept(_membership_action):
+    """Accept a membership for a project you manage"""
+    action = 'accept'
+
+
+@command(project_commands)
+class project_membership_reject(_membership_action):
+    """Reject a membership for a project you manage"""
+    action = 'reject'
+
+
+@command(project_commands)
+class project_membership_remove(_membership_action):
+    """Remove a membership for a project you manage"""
+    action = 'remove'
+
+
+@command(project_commands)
+class project_membership_join(_init_synnefo_astakosclient):
+    """Join a project"""
+
+    @errors.generic.all
+    @errors.user.astakosclient
+    def _run(self, project_id):
+        self.writeln(self.client.join_project(project_id))
+
+    def main(self, project_id):
+        super(project_membership_join, self)._run()
+        self._run(project_id)
+
+
+@command(project_commands)
+class project_membership_enroll(_init_synnefo_astakosclient):
+    """Enroll somebody to a project you manage"""
+
+    @errors.generic.all
+    @errors.user.astakosclient
+    def _run(self, project_id, email):
+        self.writeln(self.client.enroll_member(project_id, email))
+
+    def main(self, project_id, email):
+        super(project_membership_join, self)._run()
+        self._run(project_id, email)
