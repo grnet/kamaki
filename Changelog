@@ -1,3 +1,11 @@
+CHANGELOG for hotfix 0.11.3
+
+Fix bug with image meta set
+
+CHANGELOG for hotfix 0.11.2
+
+Fix an output bug wiuth file permissions get
+
 CHANGELOG for hotfix 0.11.1
 
 Bug fixes:
