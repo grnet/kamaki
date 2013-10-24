@@ -3,6 +3,6 @@ kamaki 0.12
 
 1. Method post_user_catalogs in kamaki.clients.astakos is going to be
 deprecated at version 0.13. It must be replaced with individual calls to
-uuids2usernames and/or usernames2uuids. bw compatibility is kept for verison
+uuids2usernames and/or usernames2uuids. bw compatibility is kept for version
 0.12
 

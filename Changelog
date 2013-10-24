@@ -10,4 +10,9 @@ Features:
 
 1. Cache user catalog calls [#4337]
 2. Implement separate methods for uuid2usernames and v.v. [#4337]
+3. Move all methods from snf-astakos.py to astakos.py, with some remainings
+    astakos_quotas/uuid/username/authenticate --> user_quotas/uuid2username/username2uuid/info
+    astakos_... --> admin_...
+    e.g.,
+    astakos_services --> admin_service, astakos_commission --> admin_commission
 
