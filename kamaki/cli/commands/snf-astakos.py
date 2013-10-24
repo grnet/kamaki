@@ -451,16 +451,15 @@ class astakos_commission_issue(_astakos_init, _optional_json):
 
     @errors.generic.all
     @astakoserror
-    def _run(
-            self, holder, source, provisions, name=''):
+    def _run(self, holder, source, provisions, name=''):
         provisions = loads(provisions)
         self._print(self.client.issue_one_commission(
             self.token, holder, source, provisions, name,
             self['force'], self['accept']))
 
-    def main(self, holder, source, provisions, name=''):
+    def main(self, user_uuid, source, provisions_file, name=''):
         super(self.__class__, self)._run()
-        self._run(holder, source, provisions, name)
+        self._run(user_uuid, source, provisions_file, name)
 
 
 @command(snfastakos_cmds)

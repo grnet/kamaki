@@ -31,7 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-from json import load
+from json import load, loads
 from os.path import abspath
 
 from kamaki.cli import command
@@ -39,14 +39,31 @@ from kamaki.clients.astakos import AstakosClient, SynnefoAstakosClient
 from kamaki.cli.commands import (
     _command_init, errors, _optional_json, addLogSettings)
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.errors import CLIBaseUrlError, CLIError
-from kamaki.cli.argument import FlagArgument, ValueArgument, IntArgument
+from kamaki.cli.errors import CLIBaseUrlError, CLIError, CLISyntaxError
+from kamaki.cli.argument import (
+    FlagArgument, ValueArgument, IntArgument, CommaSeparatedListArgument)
 from kamaki.cli.utils import format_size
 
 user_commands = CommandTree('user', 'Astakos/Identity API commands')
 admin_commands = CommandTree('admin', 'Astakos/Account API commands')
 project_commands = CommandTree('project', 'Astakos project API commands')
 _commands = [user_commands, admin_commands, project_commands]
+
+
+def with_temp_token(foo):
+    """ Set token to self.client.token, run foo, recover old token """
+    def wrap(self, *args, **kwargs):
+        try:
+            token = kwargs.pop('token')
+        except KeyError:
+            raise CLISyntaxError('A token is needed for %s' % foo)
+        token_bu = self.client.token
+        try:
+            self.client.token = token
+            return foo(self, *args, **kwargs)
+        finally:
+            self.client.token = token_bu
+    return wrap
 
 
 class _init_synnefo_astakosclient(_command_init):
@@ -59,7 +76,8 @@ class _init_synnefo_astakosclient(_command_init):
             base_url = self._custom_url('astakos')
             if base_url:
                 token = self._custom_token(
-                    'astakos') or self.config.get_cloud(self.cloud, 'token')
+                    'astakos') or self.config.get_cloud(
+                    self.cloud, 'token')
                 token = token.split()[0] if ' ' in token else token
                 self.client = SynnefoAstakosClient(
                     auth_url=base_url, token=token)
@@ -68,7 +86,8 @@ class _init_synnefo_astakosclient(_command_init):
             self.cloud = 'default'
         if getattr(self, 'auth_base', None):
             self.client = SynnefoAstakosClient(
-                auth_url=self.auth_base.base_url, token=self.auth_base.token)
+                auth_url=self.auth_base.base_url,
+                token=self.auth_base.token)
             return
         raise CLIBaseUrlError(service='astakos')
 
@@ -155,6 +174,252 @@ class user_quotas(_init_synnefo_astakosclient, _optional_json):
     @errors.user.astakosclient
     def _run(self):
         self._print(self.client.get_quotas(), self._print_quotas)
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
+
+
+#  command admin
+
+@command(admin_commands)
+class admin_service(_init_synnefo_astakosclient):
+    """Manage commissions (special privileges required)"""
+
+
+@command(admin_commands)
+class admin_service_list(_init_synnefo_astakosclient, _optional_json):
+    """List available services"""
+
+    @errors.generic.all
+    @errors.user.astakosclient
+    def _run(self):
+        self._print(self.client.get_services())
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
+
+
+@command(admin_commands)
+class admin_service_uuid2username(_init_synnefo_astakosclient, _optional_json):
+    """Get service username(s) from uuid(s)"""
+
+    @errors.generic.all
+    @errors.user.astakosclient
+    @with_temp_token
+    def _run(self, uuids):
+        if 1 == len(uuids):
+            self._print(self.client.service_get_username(uuids[0]))
+        else:
+            self._print(
+                self.client.service_get_usernames(uuids),
+                self.print_dict)
+
+    def main(self, service_token, uuid, *more_uuids):
+        super(self.__class__, self)._run()
+        self._run([uuid] + list(more_uuids), token=service_token)
+
+
+@command(admin_commands)
+class admin_service_username2uuid(_init_synnefo_astakosclient, _optional_json):
+    """Get service uuid(s) from username(s)"""
+
+    @errors.generic.all
+    @errors.user.astakosclient
+    @with_temp_token
+    def _run(self, usernames):
+        if 1 == len(usernames):
+            self._print(self.client.service_get_uuid(usernames[0]))
+        else:
+            self._print(
+                self.client.service_get_uuids(usernames),
+                self.print_dict)
+
+    def main(self, service_token, usernames, *more_usernames):
+        super(self.__class__, self)._run()
+        self._run([usernames] + list(more_usernames), token=service_token)
+
+
+@command(admin_commands)
+class admin_service_quotas(_init_synnefo_astakosclient, _optional_json):
+    """Get service quotas"""
+
+    arguments = dict(
+        uuid=ValueArgument('A user uuid to get quotas for', '--uuid')
+    )
+
+    @errors.generic.all
+    @errors.user.astakosclient
+    @with_temp_token
+    def _run(self):
+        self._print(self.client.service_get_quotas(self['uuid']))
+
+    def main(self, service_token):
+        super(self.__class__, self)._run()
+        self._run(token=service_token)
+
+
+@command(admin_commands)
+class admin_commission(_init_synnefo_astakosclient):
+    """Manage commissions (special privileges required)"""
+
+
+@command(admin_commands)
+class admin_commission_pending(_init_synnefo_astakosclient, _optional_json):
+    """List pending commissions (special privileges required)"""
+
+    @errors.generic.all
+    @errors.user.astakosclient
+    def _run(self):
+        self._print(self.client.get_pending_commissions())
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
+
+
+@command(admin_commands)
+class admin_commission_info(_init_synnefo_astakosclient, _optional_json):
+    """Get commission info (special privileges required)"""
+
+    @errors.generic.all
+    @errors.user.astakosclient
+    def _run(self, commission_id):
+        commission_id = int(commission_id)
+        self._print(
+            self.client.get_commission_info(commission_id), self.print_dict)
+
+    def main(self, commission_id):
+        super(self.__class__, self)._run()
+        self._run(commission_id)
+
+
+@command(admin_commands)
+class admin_commission_accept(_init_synnefo_astakosclient):
+    """Accept a pending commission  (special privileges required)"""
+
+    @errors.generic.all
+    @errors.user.astakosclient
+    def _run(self, commission_id):
+        commission_id = int(commission_id)
+        self.client.accept_commission(commission_id)
+
+    def main(self, commission_id):
+        super(self.__class__, self)._run()
+        self._run(commission_id)
+
+
+@command(admin_commands)
+class admin_commission_reject(_init_synnefo_astakosclient):
+    """Reject a pending commission (special privileges required)"""
+
+    @errors.generic.all
+    @errors.user.astakosclient
+    def _run(self, commission_id):
+        commission_id = int(commission_id)
+        self.client.reject_commission(commission_id)
+
+    def main(self, commission_id):
+        super(self.__class__, self)._run()
+        self._run(commission_id)
+
+
+@command(admin_commands)
+class admin_commission_resolve(_init_synnefo_astakosclient, _optional_json):
+    """Resolve multiple commissions (special privileges required)"""
+
+    arguments = dict(
+        accept=CommaSeparatedListArgument(
+            'commission ids to accept (e.g., --accept=11,12,13,...',
+            '--accept'),
+        reject=CommaSeparatedListArgument(
+            'commission ids to reject (e.g., --reject=11,12,13,...',
+            '--reject')
+    )
+
+    @errors.generic.all
+    @errors.user.astakosclient
+    def _run(self):
+        self.writeln('accepted ', self['accept'])
+        self.writeln('rejected ', self['reject'])
+        self._print(
+            self.client.resolve_commissions(self['accept'], self['reject']),
+            self.print_dict)
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
+
+
+@command(admin_commands)
+class admin_commission_issue(_init_synnefo_astakosclient, _optional_json):
+    """Issue commissions as a json string (special privileges required)
+    Parameters:
+    holder      -- user's id (string)
+    source      -- commission's source (ex system) (string)
+    provisions  -- resources with their quantity (json-dict from string to int)
+    name        -- description of the commission (string)
+    """
+
+    arguments = dict(
+        force=FlagArgument('Force commission', '--force'),
+        accept=FlagArgument('Do not wait for verification', '--accept')
+    )
+
+    @errors.generic.all
+    @errors.user.astakosclient
+    def _run(self, holder, source, provisions, name=''):
+        provisions = loads(provisions)
+        self._print(self.client.issue_one_commission(
+            holder, source, provisions, name,
+            self['force'], self['accept']))
+
+    def main(self, user_uuid, source, provisions_file, name=''):
+        super(self.__class__, self)._run()
+        self._run(user_uuid, source, provisions_file, name)
+
+
+@command(admin_commands)
+class admin_resources(_init_synnefo_astakosclient, _optional_json):
+    """List user resources"""
+
+    @errors.generic.all
+    @errors.user.astakosclient
+    def _run(self):
+        self._print(self.client.get_resources(), self.print_dict)
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
+
+
+@command(admin_commands)
+class admin_feedback(_init_synnefo_astakosclient):
+    """Send feedback to server"""
+
+    @errors.generic.all
+    @errors.user.astakosclient
+    def _run(self, msg, more_info=None):
+        self.client.send_feedback(msg, more_info or '')
+
+    def main(self, message, more_info=None):
+        super(self.__class__, self)._run()
+        self._run(message, more_info)
+
+
+@command(admin_commands)
+class admin_endpoints(_init_synnefo_astakosclient, _optional_json):
+    """Get endpoints service endpoints"""
+
+    arguments = dict(uuid=ValueArgument('User uuid', '--uuid'))
+
+    @errors.generic.all
+    @errors.user.astakosclient
+    def _run(self):
+        self._print(
+            self.client.get_endpoints(self['uuid']),
+            self.print_dict)
 
     def main(self):
         super(self.__class__, self)._run()
