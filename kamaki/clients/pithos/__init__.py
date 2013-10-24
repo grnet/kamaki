@@ -43,7 +43,7 @@ from binascii import hexlify
 from kamaki.clients import SilentEvent, sendlog
 from kamaki.clients.pithos.rest_api import PithosRestClient
 from kamaki.clients.storage import ClientError
-from kamaki.clients.utils import path4url, filter_in
+from kamaki.clients.utils import path4url, filter_in, readall
 
 
 def _pithos_hash(block, blockhash):
@@ -188,7 +188,7 @@ class PithosClient(PithosRestClient):
                 raise ClientError(msg, 1)
             f = StringIO(data)
         else:
-            data = f.read(size) if size else f.read()
+            data = readall(f, size) if size else f.read()
         r = self.object_put(
             obj,
             data=data,
@@ -315,7 +315,7 @@ class PithosClient(PithosRestClient):
             hash_gen.next()
 
         for i in range(nblocks):
-            block = fileobj.read(min(blocksize, size - offset))
+            block = readall(fileobj, min(blocksize, size - offset))
             bytes = len(block)
             hash = _pithos_hash(block, blockhash)
             hashes.append(hash)
@@ -337,7 +337,7 @@ class PithosClient(PithosRestClient):
         for hash in missing:
             offset, bytes = hmap[hash]
             fileobj.seek(offset)
-            data = fileobj.read(bytes)
+            data = readall(fileobj, bytes)
             r = self._put_block_async(data, hash)
             flying.append(r)
             unfinished = self._watch_thread_limit(flying)
@@ -684,7 +684,7 @@ class PithosClient(PithosRestClient):
 
     def _hash_from_file(self, fp, start, size, blockhash):
         fp.seek(start)
-        block = fp.read(size)
+        block = readall(fp, size)
         h = newhashlib(blockhash)
         h.update(block.strip('\x00'))
         return hexlify(h.digest())
