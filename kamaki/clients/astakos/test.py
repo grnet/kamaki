@@ -122,6 +122,12 @@ class AstakosClient(TestCase):
         self.assert_dicts_are_equal(self.client._uuids2usernames, {uuid: {}})
         self.assert_dicts_are_equal(self.client._usernames2uuids, {uuid: {}})
 
+    def test_get_client(self):
+        if not self.cached:
+            self._authenticate()
+        from astakosclient import AstakosClient as SNFAC
+        self.assertTrue(self.client.get_client(), SNFAC)
+
     def test_get_token(self):
         self._authenticate()
         uuid = self.client._uuids.values()[0]

@@ -59,6 +59,12 @@ class AstakosClient(Client):
         return token[0] if (
             isinstance(token, list) or isinstance(token, tuple)) else token
 
+    def get_client(self, token=None):
+        """Get the Synnefo AstakosClient instance used by client"""
+        token = self._resolve_token(token)
+        self._validate_token(token)
+        return self._astakos[self._uuids[token]]
+
     def authenticate(self, token=None):
         """Get authentication information and store it in this client
         As long as the AstakosClient instance is alive, the latest
