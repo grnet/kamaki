@@ -35,11 +35,11 @@ from json import load, loads
 from os.path import abspath
 
 from kamaki.cli import command
-from kamaki.clients.astakos import AstakosClient, SynnefoAstakosClient
+from kamaki.clients.astakos import SynnefoAstakosClient
 from kamaki.cli.commands import (
     _command_init, errors, _optional_json, addLogSettings)
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.errors import CLIBaseUrlError, CLIError, CLISyntaxError
+from kamaki.cli.errors import CLIBaseUrlError, CLISyntaxError
 from kamaki.cli.argument import (
     FlagArgument, ValueArgument, IntArgument, CommaSeparatedListArgument)
 from kamaki.cli.utils import format_size
@@ -85,9 +85,7 @@ class _init_synnefo_astakosclient(_command_init):
         else:
             self.cloud = 'default'
         if getattr(self, 'auth_base', None):
-            self.client = SynnefoAstakosClient(
-                auth_url=self.auth_base.base_url,
-                token=self.auth_base.token)
+            self.client = self.auth_base.get_client()
             return
         raise CLIBaseUrlError(service='astakos')
 
@@ -102,23 +100,18 @@ class user_info(_init_synnefo_astakosclient, _optional_json):
     @errors.generic.all
     @errors.user.authenticate
     @errors.user.astakosclient
-    def _run(self, custom_token=None):
-        token_bu = self.client.token
-        try:
-            self.client.token = custom_token or token_bu
-            self._print(
-                self.client.get_user_info(), self.print_dict)
-        finally:
-            self.client.token = token_bu
+    @with_temp_token
+    def _run(self):
+        self._print(self.client.get_user_info(), self.print_dict)
 
     def main(self, token=None):
         super(self.__class__, self)._run()
-        self._run(custom_token=token)
+        self._run(token=token)
 
 
 @command(user_commands)
-class user_uuid2username(_init_synnefo_astakosclient, _optional_json):
-    """Get username(s) from uuid(s)"""
+class user_uuid2name(_init_synnefo_astakosclient, _optional_json):
+    """Get user name(s) from uuid(s)"""
 
     @errors.generic.all
     @errors.user.astakosclient
@@ -135,8 +128,8 @@ class user_uuid2username(_init_synnefo_astakosclient, _optional_json):
 
 
 @command(user_commands)
-class user_username2uuid(_init_synnefo_astakosclient, _optional_json):
-    """Get uuid(s) from username(s)"""
+class user_name2uuid(_init_synnefo_astakosclient, _optional_json):
+    """Get user uuid(s) from name(s)"""
 
     @errors.generic.all
     @errors.user.astakosclient
