@@ -137,10 +137,10 @@ def raiseCLIError(err, message='', importance=0, details=[]):
         isinstance(details, list) or isinstance(details, tuple)) else [
             '%s' % details]
     err_details = getattr(err, 'details', [])
-    if not isinstance(details, list) or isinstance(details, tuple):
-        details.append('%s' % err_details)
-    else:
+    if isinstance(err_details, list) or isinstance(err_details, tuple):
         details += list(err_details)
+    else:
+        details.append('%s' % err_details)
 
     origerr = (('%s' % err) or '%s' % type(err)) if err else stack[0]
     message = '%s' % message or origerr

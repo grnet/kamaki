@@ -296,31 +296,46 @@ def _init_session(arguments, is_non_API=False):
     return cloud
 
 
-def init_cached_authenticator(url, tokens, config_module, logger):
+def init_cached_authenticator(config_argument, cloud, logger):
     try:
-        auth_base = None
-        for token in reversed(tokens):
+        _cnf = config_argument.value
+        url = _cnf.get_cloud(cloud, 'url')
+        tokens = _cnf.get_cloud(cloud, 'token').split()
+        auth_base, failed = None, []
+        for token in tokens:
             try:
                 if auth_base:
                     auth_base.authenticate(token)
                 else:
-                    auth_base = AuthCachedClient(url, token)
+                    tmp_base = AuthCachedClient(url, token)
                     from kamaki.cli.commands import _command_init
-                    fake_cmd = _command_init(dict(config=config_module))
+                    fake_cmd = _command_init(dict(config=config_argument))
                     fake_cmd.client = auth_base
                     fake_cmd._set_log_params()
                     fake_cmd._update_max_threads()
-                    auth_base.authenticate(token)
+                    tmp_base.authenticate(token)
+                    auth_base = tmp_base
             except ClientError as ce:
                 if ce.status in (401, ):
                     logger.warning(
                         'WARNING: Failed to authenticate token %s' % token)
+                    failed.append(token)
                 else:
                     raise
-        return auth_base
+        for token in failed:
+            r = raw_input(
+                'Token %s failed to authenticate. Remove it? [y/N]: ' % token)
+            if r in ('y', 'Y'):
+                tokens.remove(token)
+        if set(failed).difference(tokens):
+            _cnf.set_cloud(cloud, 'token', ' '.join(tokens))
+            _cnf.write()
+        if tokens:
+            return auth_base
+        logger.warning('WARNING: cloud.%s.token is now empty' % cloud)
     except AssertionError as ae:
         logger.warning('WARNING: Failed to load authenticator [%s]' % ae)
-        return None
+    return None
 
 
 def _load_spec_module(spec, arguments, module):
@@ -484,9 +499,7 @@ def run_shell(exe_string, parser, cloud):
     from command_shell import _init_shell
     global kloger
     _cnf = parser.arguments['config']
-    auth_base = init_cached_authenticator(
-        _cnf.get_cloud(cloud, 'url'), _cnf.get_cloud(cloud, 'token').split(),
-        _cnf, kloger)
+    auth_base = init_cached_authenticator(_cnf, cloud, kloger)
     try:
         username, userid = (
             auth_base.user_term('name'), auth_base.user_term('id'))

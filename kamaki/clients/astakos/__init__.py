@@ -33,13 +33,24 @@
 
 from logging import getLogger
 from astakosclient import AstakosClient as SynnefoAstakosClient
+from astakosclient import AstakosClientException as SynnefoAstakosClientError
 
 from kamaki.clients import Client, ClientError
+
+
+def _astakos_error(foo):
+    def wrap(self, *args, **kwargs):
+        try:
+            return foo(self, *args, **kwargs)
+        except SynnefoAstakosClientError as sace:
+            self._raise_for_status(sace)
+    return wrap
 
 
 class AstakosClient(Client):
     """Synnefo Astakos cached client wraper"""
 
+    @_astakos_error
     def __init__(self, base_url, token=None):
         super(AstakosClient, self).__init__(base_url, token)
         self._astakos = dict()
@@ -65,6 +76,7 @@ class AstakosClient(Client):
         self._validate_token(token)
         return self._astakos[self._uuids[token]]
 
+    @_astakos_error
     def authenticate(self, token=None):
         """Get authentication information and store it in this client
         As long as the AstakosClient instance is alive, the latest
@@ -75,7 +87,7 @@ class AstakosClient(Client):
         token = self._resolve_token(token)
         astakos = SynnefoAstakosClient(
             token, self.base_url, logger=getLogger('astakosclient'))
-        r = astakos.get_endpoints()
+        r = astakos.authenticate()
         uuid = r['access']['user']['id']
         self._uuids[token] = uuid
         self._cache[uuid] = r
@@ -83,6 +95,13 @@ class AstakosClient(Client):
         self._uuids2usernames[uuid] = dict()
         self._usernames2uuids[uuid] = dict()
         return self._cache[uuid]
+
+    def remove_user(self, uuid):
+        self._uuids.pop(self.get_token(uuid))
+        self._cache.pop(uuid)
+        self._astakos.pop(uuid)
+        self._uuids2usernames.pop(uuid)
+        self._usernames2uuids.pop(uuid)
 
     def get_token(self, uuid):
         return self._cache[uuid]['access']['token']['id']
@@ -181,8 +200,9 @@ class AstakosClient(Client):
         :returns: (dict) {uuid1: name1, uuid2: name2, ...} or oposite
         """
         return self.uuids2usernames(uuids, token) if (
-            uuids) else self.usernnames2uuids(displaynames, token)
+            uuids) else self.usernames2uuids(displaynames, token)
 
+    @_astakos_error
     def uuids2usernames(self, uuids, token=None):
         token = self._resolve_token(token)
         self._validate_token(token)
@@ -192,6 +212,7 @@ class AstakosClient(Client):
             self._uuids2usernames[uuid].update(astakos.get_usernames(uuids))
         return self._uuids2usernames[uuid]
 
+    @_astakos_error
     def usernames2uuids(self, usernames, token=None):
         token = self._resolve_token(token)
         self._validate_token(token)

@@ -39,7 +39,7 @@ from kamaki.clients.astakos import SynnefoAstakosClient
 from kamaki.cli.commands import (
     _command_init, errors, _optional_json, addLogSettings)
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.errors import CLIBaseUrlError, CLISyntaxError
+from kamaki.cli.errors import CLIBaseUrlError, CLISyntaxError, CLIError
 from kamaki.cli.argument import (
     FlagArgument, ValueArgument, IntArgument, CommaSeparatedListArgument)
 from kamaki.cli.utils import format_size
@@ -59,7 +59,7 @@ def with_temp_token(foo):
             raise CLISyntaxError('A token is needed for %s' % foo)
         token_bu = self.client.token
         try:
-            self.client.token = token
+            self.client.token = token or token_bu
             return foo(self, *args, **kwargs)
         finally:
             self.client.token = token_bu
@@ -94,15 +94,15 @@ class _init_synnefo_astakosclient(_command_init):
 
 
 @command(user_commands)
-class user_info(_init_synnefo_astakosclient, _optional_json):
-    """Authenticate a user and get info"""
+class user_authenticate(_init_synnefo_astakosclient, _optional_json):
+    """Authenticate a user and get all authentication information"""
 
     @errors.generic.all
     @errors.user.authenticate
     @errors.user.astakosclient
     @with_temp_token
     def _run(self):
-        self._print(self.client.get_user_info(), self.print_dict)
+        self._print(self.client.authenticate(), self.print_dict)
 
     def main(self, token=None):
         super(self.__class__, self)._run()
@@ -171,6 +171,164 @@ class user_quotas(_init_synnefo_astakosclient, _optional_json):
     def main(self):
         super(self.__class__, self)._run()
         self._run()
+
+
+#  command user session
+
+
+@command(user_commands)
+class user_session(_init_synnefo_astakosclient):
+    """User session commands (cached identity calls for kamaki sessions)"""
+
+
+@command(user_commands)
+class user_session_info(_init_synnefo_astakosclient, _optional_json):
+    """Get info for (current) session user"""
+
+    arguments = dict(
+        uuid=ValueArgument('Query user with uuid', '--uuid'),
+        name=ValueArgument('Query user with username/email', '--username')
+    )
+
+    @errors.generic.all
+    @errors.user.astakosclient
+    def _run(self):
+        if self['uuid'] and self['name']:
+            raise CLISyntaxError(
+                'Arguments uuid and username are mutually exclusive',
+                details=['Use either uuid OR username OR none, not both'])
+        uuid = self['uuid'] or (self._username2uuid(self['name']) if (
+            self['name']) else None)
+        try:
+            token = self.auth_base.get_token(uuid) if uuid else None
+        except KeyError:
+            msg = ('id %s' % self['uuid']) if (
+                self['uuid']) else 'username %s' % self['name']
+            raise CLIError(
+                'No user with %s in the cached session list' % msg, details=[
+                    'To see all cached session users',
+                    '  /user session list',
+                    'To authenticate and add a new user in the session list',
+                    '  /user session authenticate <new token>'])
+        self._print(self.auth_base.user_info(token), self.print_dict)
+
+
+@command(user_commands)
+class user_session_authenticate(_init_synnefo_astakosclient, _optional_json):
+    """Authenticate a user by token and update cache"""
+
+    @errors.generic.all
+    @errors.user.astakosclient
+    def _run(self, token=None):
+        ask = token and token not in self.auth_base._uuids
+        self._print(self.auth_base.authenticate(token), self.print_dict)
+        if ask and self.ask_user(
+                'Token is temporarily stored in memory. If it is stored in'
+                ' kamaki configuration file, it will be available in later'
+                ' sessions. Do you want to permanently store this token?'):
+            tokens = self.auth_base._uuids.keys()
+            tokens.remove(self.auth_base.token)
+            self['config'].set_cloud(
+                self.cloud, 'token', ' '.join([self.auth_base.token] + tokens))
+            self['config'].write()
+
+    def main(self, new_token=None):
+        super(self.__class__, self)._run()
+        self._run(token=new_token)
+
+
+@command(user_commands)
+class user_session_list(_init_synnefo_astakosclient, _optional_json):
+    """List cached users"""
+
+    arguments = dict(
+        detail=FlagArgument('Detailed listing', ('-l', '--detail'))
+    )
+
+    @errors.generic.all
+    @errors.user.astakosclient
+    def _run(self):
+        self._print([u if self['detail'] else (dict(
+            id=u['id'], name=u['name'])) for u in self.auth_base.list_users()])
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
+
+
+@command(user_commands)
+class user_session_select(_init_synnefo_astakosclient):
+    """Pick a user from the cached list to be the current session user"""
+
+    @errors.generic.all
+    @errors.user.astakosclient
+    def _run(self, uuid):
+        try:
+            first_token = self.auth_base.get_token(uuid)
+        except KeyError:
+            raise CLIError(
+                'No user with uuid %s in the cached session list' % uuid,
+                details=[
+                    'To see all cached session users',
+                    '  /user session list',
+                    'To authenticate and add a new user in the session list',
+                    '  /user session authenticate <new token>'])
+        if self.auth_base.token != first_token:
+            self.auth_base.token = first_token
+            msg = 'User with id %s is now the current session user.\n' % uuid
+            msg += 'Do you want future sessions to also start with this user?'
+            if self.ask_user(msg):
+                tokens = self.auth_base._uuids.keys()
+                tokens.remove(self.auth_base.token)
+                tokens.insert(0, self.auth_base.token)
+                self['config'].set_cloud(
+                    self.cloud, 'token',  ' '.join(tokens))
+                self['config'].write()
+                self.error('User is selected for next sessions')
+            else:
+                self.error('User is not permanently selected')
+        else:
+            self.error('User was already the selected session user')
+
+    def main(self, user_uuid):
+        super(self.__class__, self)._run()
+        self._run(uuid=user_uuid)
+
+
+@command(user_commands)
+class user_session_remove(_init_synnefo_astakosclient):
+    """Delete a user (token) from the cached list of session users"""
+
+    @errors.generic.all
+    @errors.user.astakosclient
+    def _run(self, uuid):
+        if uuid == self.auth_base.user_term('id'):
+            raise CLIError('Cannot remove current session user', details=[
+                'To see all cached session users',
+                '  /user session list',
+                'To see current session user',
+                '  /user session info',
+                'To select a different session user',
+                '  /user session select <user uuid>'])
+        try:
+            self.auth_base.remove_user(uuid)
+        except KeyError:
+            raise CLIError('No user with uuid %s in session list' % uuid,
+                details=[
+                    'To see all cached session users',
+                    '  /user session list',
+                    'To authenticate and add a new user in the session list',
+                    '  /user session authenticate <new token>'])
+        if self.ask_user(
+                'User is removed from current session, but will be restored in'
+                ' the next session. Remove the user from future sessions?'):
+            self['config'].set_cloud(
+                self.cloud, 'token', ' '.join(self.auth_base._uuids.keys()))
+            self['config'].write()
+
+    def main(self, user_uuid):
+        super(self.__class__, self)._run()
+        self._run(uuid=user_uuid)
 
 
 #  command admin
@@ -405,14 +563,10 @@ class admin_feedback(_init_synnefo_astakosclient):
 class admin_endpoints(_init_synnefo_astakosclient, _optional_json):
     """Get endpoints service endpoints"""
 
-    arguments = dict(uuid=ValueArgument('User uuid', '--uuid'))
-
     @errors.generic.all
     @errors.user.astakosclient
     def _run(self):
-        self._print(
-            self.client.get_endpoints(self['uuid']),
-            self.print_dict)
+        self._print(self.client.get_endpoints(), self.print_dict)
 
     def main(self):
         super(self.__class__, self)._run()
