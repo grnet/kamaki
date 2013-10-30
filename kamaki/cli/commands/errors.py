@@ -32,6 +32,7 @@
 # or implied, of GRNET S.A.command
 
 from traceback import print_stack, print_exc
+from astakosclient import AstakosClientException
 
 from kamaki.clients import ClientError
 from kamaki.cli.errors import CLIError, raiseCLIError, CLISyntaxError
@@ -101,6 +102,16 @@ class user(object):
         '*  (temporary):  re-run with <token> parameter'] + CLOUDNAME
 
     @classmethod
+    def astakosclient(this, foo):
+        def _raise(self, *args, **kwargs):
+            try:
+                r = foo(self, *args, **kwargs)
+            except AstakosClientException as ace:
+                raiseCLIError(ace, 'Error in synnefo-AstakosClient')
+            return r
+        return _raise
+
+    @classmethod
     def load(this, foo):
         def _raise(self, *args, **kwargs):
             r = foo(self, *args, **kwargs)
@@ -112,7 +123,7 @@ class user(object):
                 kloger.warning(
                     'No permanent token (try:'
                     ' kamaki config set cloud.default.token <tkn>)')
-            if not getattr(client, 'base_url', False):
+            if not getattr(client, 'astakos_base_url', False):
                 msg = 'Missing synnefo authentication URL'
                 raise CLIError(msg, importance=3, details=[
                     'Check if authentication URL is correct',
@@ -128,12 +139,11 @@ class user(object):
         def _raise(self, *args, **kwargs):
             try:
                 return foo(self, *args, **kwargs)
-            except ClientError as ce:
+            except (ClientError, AstakosClientException) as ce:
                 if ce.status == 401:
                     token = kwargs.get('custom_token', 0) or self.client.token
-                    msg = (
-                        'Authorization failed for token %s' % token
-                    ) if token else 'No token provided',
+                    msg = ('Authorization failed for token %s' % token) if (
+                        token) else 'No token provided',
                     details = [] if token else this._token_details
                     raiseCLIError(ce, msg, details=details)
                 raise ce

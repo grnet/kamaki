@@ -140,11 +140,10 @@ class _command_init(object):
         return self.config.get_cloud(self.cloud, '%s_version' % service)
 
     def _uuids2usernames(self, uuids):
-        return self.auth_base.post_user_catalogs(uuids).json['uuid_catalog']
+        return self.auth_base.post_user_catalogs(uuids)
 
     def _usernames2uuids(self, username):
-        return self.auth_base.post_user_catalogs(
-            displaynames=username).json['displayname_catalog']
+        return self.auth_base.post_user_catalogs(displaynames=username)
 
     def _uuid2username(self, uuid):
         return self._uuids2usernames([uuid]).get(uuid, None)

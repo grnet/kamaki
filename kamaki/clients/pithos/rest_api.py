@@ -108,7 +108,6 @@ class PithosRestClient(StorageClient):
 
         :returns: ConnectionResponse
         """
-
         self._assert_account()
 
         self.set_param('limit', limit, iff=limit)

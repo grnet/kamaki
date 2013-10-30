@@ -99,9 +99,8 @@ def run(cloud, parser, _help):
         exit(0)
 
     cls = cmd.cmd_class
-    auth_base = init_cached_authenticator(
-        _cnf.get_cloud(cloud, 'url'), _cnf.get_cloud(cloud, 'token').split(),
-        _cnf, kloger) if cloud else None
+    auth_base = init_cached_authenticator(_cnf, cloud, kloger) if (
+        cloud) else None
     executable = cls(parser.arguments, auth_base, cloud)
     parser.update_arguments(executable.arguments)
     for term in _best_match:
