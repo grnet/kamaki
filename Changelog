@@ -5,12 +5,13 @@ Bug Fixes:
 Changes:
 1. Make astakosclient a mantatory requirement for kamaki [#4312]
 2. Make post_user_catalogs obsolete, but keep for one more version [#4337]
+3. Rename user commands for cached account requests as /user session [#4340]
 
 Features:
 
 1. Cache user catalog calls [#4337]
 2. Implement separate methods for uuid2usernames and v.v. [#4337]
-3. Move all methods from snf-astakos.py to astakos.py, with some remainings
+3. Move all methods from snf-astakos.py to astakos.py, with some renaimings
     astakos_quotas/uuid/username/authenticate --> user_quotas/uuid2username/username2uuid/info
     astakos_... --> admin_...
     e.g.,

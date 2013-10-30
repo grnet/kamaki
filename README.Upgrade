@@ -11,3 +11,9 @@ uuids2usernames and/or usernames2uuids. bw compatibility is kept for version
   $ kamaki config delete astakos_cli
   $ kamaki config delete user_cli
 
+3. /user commands have changed:
+    /user info --> /user session info
+    /user whoami --> /user session info
+    /user pick --> /user session select
+    /user add --> /user session authenticate
+
