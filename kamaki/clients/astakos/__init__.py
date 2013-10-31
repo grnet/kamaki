@@ -55,7 +55,8 @@ class SynnefoAstakosClient(SynnefoAstakosClientOrig):
         recvlog.info('data size: %s' % len(data))
         token = request.headers.get('X-Auth-Token', '')
         data = data.replace(token, '...') if token else data
-        recvlog.info('%s\n-             -        -     -   -  - -' % data)
+        recvlog.info(data)
+        recvlog.info('-             -        -     -   -  - -')
 
     def _call_astakos(self, *args, **kwargs):
         r = super(SynnefoAstakosClient, self)._call_astakos(*args, **kwargs)
