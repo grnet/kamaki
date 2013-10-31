@@ -32,10 +32,10 @@
 # or implied, of GRNET S.A.
 
 from logging import getLogger
-from astakosclient import AstakosClient as SynnefoAstakosClient
+from astakosclient import AstakosClient as SynnefoAstakosClientOrig
 from astakosclient import AstakosClientException as SynnefoAstakosClientError
 
-from kamaki.clients import Client, ClientError
+from kamaki.clients import Client, ClientError, RequestManager, recvlog
 
 
 def _astakos_error(foo):
@@ -45,6 +45,42 @@ def _astakos_error(foo):
         except SynnefoAstakosClientError as sace:
             self._raise_for_status(sace)
     return wrap
+
+
+class SynnefoAstakosClient(SynnefoAstakosClientOrig):
+    """A synnefo astakosclient.AstakosClient wrapper, that logs"""
+
+    def _dump_response(self, request, status, message, data):
+        recvlog.info('\n%d %s' % (status, message))
+        recvlog.info('data size: %s' % len(data))
+        token = request.headers.get('X-Auth-Token', '')
+        data = data.replace(token, '...') if token else data
+        recvlog.info(data)
+        recvlog.info('-             -        -     -   -  - -')
+
+    def _call_astakos(self, *args, **kwargs):
+        r = super(SynnefoAstakosClient, self)._call_astakos(*args, **kwargs)
+        try:
+            log_request = getattr(self, 'log_request', None)
+            if log_request:
+                req = RequestManager(
+                    method=log_request['method'],
+                    url='%s://%s' % (self.scheme, self.astakos_base_url),
+                    path=log_request['path'],
+                    data=log_request.get('body', None),
+                    headers=log_request.get('headers', dict()))
+                req.dump_log()
+                log_response = getattr(self, 'log_response', None)
+                if log_response:
+                    self._dump_response(
+                        req,
+                        status=log_response['status'],
+                        message=log_response['message'],
+                        data=log_response.get('data', ''))
+        except Exception:
+            pass
+        finally:
+            return r
 
 
 class AstakosClient(Client):
