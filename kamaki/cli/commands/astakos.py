@@ -67,6 +67,7 @@ def with_temp_token(foo):
 
 
 class _init_synnefo_astakosclient(_command_init):
+
     @errors.generic.all
     @errors.user.load
     @errors.user.astakosclient

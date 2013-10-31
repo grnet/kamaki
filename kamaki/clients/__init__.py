@@ -145,7 +145,7 @@ class RequestManager(Logged):
         self.scheme, self.netloc = self._connection_info(url, path, params)
 
     def dump_log(self):
-        plog = '\t[%s]' if self.LOG_PID else ''
+        plog = ('\t[%s]' % self) if self.LOG_PID else ''
         sendlog.info('- -  -   -     -        -             -')
         sendlog.info('%s %s://%s%s%s' % (
             self.method, self.scheme, self.netloc, self.path, plog))
@@ -182,7 +182,7 @@ class RequestManager(Logged):
                 wait = 0.03 * random()
                 sleep(wait)
                 keep_trying -= wait
-        plog = '\t[%s]' if self.LOG_PID else ''
+        plog = ('\t[%s]' % self) if self.LOG_PID else ''
         logmsg = 'Kamaki Timeout %s %s%s' % (self.method, self.path, plog)
         recvlog.debug(logmsg)
         raise ClientError('HTTPResponse takes too long - kamaki timeout')
@@ -244,8 +244,8 @@ class ResponseManager(Logged):
                         data = '%s%s' % (self._content, plog)
                         if self._token:
                             data = data.replace(self._token, '...')
-                        sendlog.info(data)
-                    sendlog.info('-             -        -     -   -  - -')
+                        recvlog.info(data)
+                    recvlog.info('-             -        -     -   -  - -')
                 break
             except Exception as err:
                 if isinstance(err, HTTPException):
@@ -450,7 +450,7 @@ class Client(Logged):
             if data:
                 headers.setdefault('Content-Length', '%s' % len(data))
 
-            plog = '\t[%s]' if self.LOG_PID else ''
+            plog = ('\t[%s]' % self) if self.LOG_PID else ''
             sendlog.debug('\n\nCMT %s@%s%s', method, self.base_url, plog)
             req = RequestManager(
                 method, self.base_url, path,
