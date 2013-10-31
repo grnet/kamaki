@@ -35,8 +35,7 @@ from logging import getLogger
 from astakosclient import AstakosClient as SynnefoAstakosClientOrig
 from astakosclient import AstakosClientException as SynnefoAstakosClientError
 
-from kamaki.clients import (
-    Client, ClientError, Logged, RequestManager, recvlog)
+from kamaki.clients import Client, ClientError, RequestManager, recvlog
 
 
 def _astakos_error(foo):
@@ -48,24 +47,15 @@ def _astakos_error(foo):
     return wrap
 
 
-class SynnefoAstakosClient(SynnefoAstakosClientOrig, Logged):
+class SynnefoAstakosClient(SynnefoAstakosClientOrig):
     """A synnefo astakosclient.AstakosClient wrapper, that logs"""
 
     def _dump_response(self, request, status, message, data):
-        plog = ''
-        if self.LOG_PID:
-            recvlog.info('\n%s <-- [req: %s]\n' % (self, request))
-            plog = '\t[%s]' % self
-        recvlog.info('%d %s%s' % (status, message, plog))
-        recvlog.info('data size: %s%s' % (len(data), plog))
-        if self.LOG_DATA and data:
-            data = '%s%s' % (data, plog)
-            if not self.LOG_TOKEN:
-                token = request.headers.get('X-Auth-Token', '')
-                if token:
-                    data = data.replace(token, '...')
-                recvlog.info(data)
-        recvlog.info('-             -        -     -   -  - -')
+        recvlog.info('\n%d %s' % (status, message))
+        recvlog.info('data size: %s' % len(data))
+        token = request.headers.get('X-Auth-Token', '')
+        data = data.replace(token, '...') if token else data
+        recvlog.info('%s\n-             -        -     -   -  - -' % data)
 
     def _call_astakos(self, *args, **kwargs):
         r = super(SynnefoAstakosClient, self)._call_astakos(*args, **kwargs)
@@ -86,8 +76,8 @@ class SynnefoAstakosClient(SynnefoAstakosClientOrig, Logged):
                         status=log_response['status'],
                         message=log_response['message'],
                         data=log_response.get('data', ''))
-        except Exception as e:
-            print 'GOT EXCEPTION', e
+        except Exception:
+            pass
         finally:
             return r
 
