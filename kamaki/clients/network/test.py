@@ -48,7 +48,7 @@ class NetworkRestClient(TestCase):
         self.client = network.NetworkRestClient(self.url, self.token)
 
     def tearDown(self):
-        pass
+        del self.client
 
     def _assert(self, method_call, path, set_param=None, params=(), **kwargs):
         """Assert the REST method call is called as expected"""
@@ -260,13 +260,61 @@ class NetworkRestClient(TestCase):
                 data=dumps(json_data), **kwargs)
 
 
+class FakeObject(object):
+
+    json = None
+
+
+class NetworkClient(TestCase):
+
+    """Set up a ComputesRest thorough test"""
+    def setUp(self):
+        self.url = 'http://network.example.com'
+        self.token = 'n2tw0rk70k3n'
+        self.client = network.NetworkClient(self.url, self.token)
+
+    def tearDown(self):
+        del self.client
+
+    @patch(
+        'kamaki.clients.network.NetworkClient.networks_get',
+        return_value=FakeObject())
+    def test_list_networks(self, networks_get):
+        FakeObject.json = dict(networks='ret val')
+        self.assertEqual(self.client.list_networks(), 'ret val')
+        networks_get.assert_called_once_with(success=200)
+
+    @patch(
+        'kamaki.clients.network.NetworkClient.networks_post',
+        return_value=FakeObject())
+    def test_create_network(self, networks_post):
+        FakeObject.json = dict(network='ret val')
+        req = dict()
+        for kwargs in (dict(shared=None), dict(shared=True)):
+            for body_params in product(
+                    (('name', None, ''), ('name', 'some name', 'some name')),
+                    (
+                        ('admin_state_up', None, False),
+                        ('admin_state_up', True, True))):
+                fullargs = dict(kwargs)
+                for k, v, exp in body_params:
+                    fullargs[k] = v
+                    req[k] = exp
+                self.assertEqual(
+                    self.client.create_network(**fullargs), 'ret val')
+                expargs = dict(kwargs)
+                expargs = dict(json_data=dict(network=req), success=201)
+                expargs.update(kwargs)
+                self.assertEqual(networks_post.mock_calls[-1], call(**expargs))
+
+
 if __name__ == '__main__':
     from sys import argv
     from kamaki.clients.test import runTestCase
     not_found = True
-    #if not argv[1:] or argv[1] == 'NetworkClient':
-    #    not_found = False
-    #    runTestCase(NetworkClient, 'Network Client', argv[2:])
+    if not argv[1:] or argv[1] == 'NetworkClient':
+        not_found = False
+        runTestCase(NetworkClient, 'Network Client', argv[2:])
     if not argv[1:] or argv[1] == 'NetworkRest':
         not_found = False
         runTestCase(NetworkRestClient, 'NetworkRest Client', argv[2:])

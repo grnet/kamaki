@@ -37,3 +37,13 @@ from kamaki.clients.network.rest_api import NetworkRestClient
 
 class NetworkClient(NetworkRestClient):
     """OpenStack Network API 2.0 client"""
+
+    def list_networks(self):
+        r = self.networks_get(success=200)
+        return r.json['networks']
+
+    def create_network(self, name=None, admin_state_up=None, shared=None):
+        req = dict(network=dict(
+            name=name or '', admin_state_up=bool(admin_state_up)))
+        r = self.networks_post(json_data=req, shared=shared, success=201)
+        return r.json['network']
