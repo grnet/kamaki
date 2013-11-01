@@ -31,7 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from kamaki.clients import Client, ClientError
+from kamaki.clients import Client
 from kamaki.clients.utils import path4url
 from json import dumps
 
@@ -39,13 +39,13 @@ from json import dumps
 class NetworkRestClient(Client):
 
     def networks_get(self, network_id=None, **kwargs):
-        path = path4url('networks', network_id) if (
-            network_id) else path4url('networks')
-        return self.get(path, **kwargs)
+        if network_id:
+            return self.get(path4url('networks', network_id), **kwargs)
+        return self.get(path4url('networks'), **kwargs)
 
     def networks_post(self, json_data=None, shared=None, **kwargs):
         path = path4url('networks')
-        self.set_param(shared, bool(shared), iff=shared)
+        self.set_param('shared', bool(shared), iff=shared)
         return self.post(
             path, data=dumps(json_data) if json_data else None, **kwargs)
 
@@ -56,7 +56,7 @@ class NetworkRestClient(Client):
 
         self.set_param(
             'admin_state_up', bool(admin_state_up), iff=admin_state_up)
-        self.set_param(shared, bool(shared), iff=shared)
+        self.set_param('shared', bool(shared), iff=shared)
 
         return self.put(
             path, data=dumps(json_data) if json_data else None, **kwargs)
@@ -64,14 +64,10 @@ class NetworkRestClient(Client):
     def networks_delete(self, network_id, **kwargs):
         return self.delete(path4url('networks', network_id), **kwargs)
 
-    def subnets_get(self, json_data=None, subnet_id=None, **kwargs):
+    def subnets_get(self, subnet_id=None, **kwargs):
         if subnet_id:
             return self.get(path4url('subnets', subnet_id), **kwargs)
-        elif json_data:
-            return self.get(
-                path4url('subnets'), data=dumps(json_data), **kwargs)
-        else:
-            raise ClientError('No subnet_id or json_data in GET subnets')
+        return self.get(path4url('subnets'), **kwargs)
 
     def subnets_post(self, **kwargs):
         return self.post(path4url('subnets'), **kwargs)
@@ -83,8 +79,9 @@ class NetworkRestClient(Client):
         return self.delete(path4url('subnets', subnet_id), **kwargs)
 
     def ports_get(self, port_id=None, **kwargs):
-        path = path4url('ports', port_id) if port_id else path4url('ports')
-        return self.get(path, **kwargs)
+        if port_id:
+            return self.get(path4url('ports', port_id), **kwargs)
+        return self.get(path4url('ports'), **kwargs)
 
     def ports_post(
             self,
@@ -96,7 +93,7 @@ class NetworkRestClient(Client):
         self.set_param('fixed_ips', fixed_ips, iff=fixed_ips)
         self.set_param('security_groups', security_groups, iff=security_groups)
         data = dumps(json_data) if json_data else None
-        self.post(path4url('ports'), data=data, **kwargs)
+        return self.post(path4url('ports'), data=data, **kwargs)
 
     def ports_put(
             self, port_id,
@@ -108,7 +105,7 @@ class NetworkRestClient(Client):
         self.set_param('fixed_ips', fixed_ips, iff=fixed_ips)
         self.set_param('security_groups', security_groups, iff=security_groups)
         data = dumps(json_data) if json_data else None
-        self.put(path4url('ports', port_id), data=data, **kwargs)
+        return self.put(path4url('ports', port_id), data=data, **kwargs)
 
     def ports_delete(self, port_id, **kwargs):
         return self.delete(path4url('ports', port_id), **kwargs)
