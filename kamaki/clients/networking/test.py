@@ -263,6 +263,7 @@ class NetworkingRestClient(TestCase):
 class FakeObject(object):
 
     json = None
+    headers = None
 
 
 class NetworkingClient(TestCase):
@@ -288,24 +289,93 @@ class NetworkingClient(TestCase):
         'kamaki.clients.networking.NetworkingClient.networks_post',
         return_value=FakeObject())
     def test_create_network(self, networks_post):
-        FakeObject.json = dict(network='ret val')
-        req = dict()
         for kwargs in (dict(shared=None), dict(shared=True)):
-            for body_params in product(
-                    (('name', None, ''), ('name', 'some name', 'some name')),
-                    (
-                        ('admin_state_up', None, False),
-                        ('admin_state_up', True, True))):
+            FakeObject.json = dict(network='ret val')
+            req = dict()
+            for k, v, exp in (
+                    ('admin_state_up', None, False),
+                    ('admin_state_up', True, True)):
                 fullargs = dict(kwargs)
-                for k, v, exp in body_params:
-                    fullargs[k] = v
-                    req[k] = exp
+                fullargs[k], name = v, 'net name'
                 self.assertEqual(
-                    self.client.create_network(**fullargs), 'ret val')
+                    self.client.create_network(name, **fullargs), 'ret val')
+                req[k] = exp
+                req['name'] = name
                 expargs = dict(kwargs)
                 expargs = dict(json_data=dict(network=req), success=201)
                 expargs.update(kwargs)
                 self.assertEqual(networks_post.mock_calls[-1], call(**expargs))
+
+    @patch(
+        'kamaki.clients.networking.NetworkingClient.networks_post',
+        return_value=FakeObject())
+    def test_create_networks(self, networks_post):
+        for networks, shared in product(
+                (
+                    None, dict(name='name'), 'nets', [1, 2, 3], [{'k': 'v'}, ],
+                    [dict(name='n1', invalid='mistake'), ],
+                    [dict(name='valid', admin_state_up=True), {'err': 'nop'}]),
+                (None, True)
+            ):
+            self.assertRaises(
+                ValueError, self.client.create_networks, networks, shared)
+
+        FakeObject.json = dict(networks='ret val')
+        for networks, kwargs in product(
+                (
+                    [
+                        dict(name='net1'),
+                        dict(name='net 2', admin_state_up=False)],
+                    [
+                        dict(name='net1', admin_state_up=True),
+                        dict(name='net 2', admin_state_up=False),
+                        dict(name='net-3')],
+                    (dict(name='n.e.t'), dict(name='net 2'))),
+                (dict(shared=None), dict(shared=True))):
+            self.assertEqual(
+                self.client.create_networks(networks, **kwargs), 'ret val')
+
+            networks = list(networks)
+            expargs = dict(json_data=dict(networks=networks), success=201)
+            expargs.update(kwargs)
+            self.assertEqual(networks_post.mock_calls[-1], call(**expargs))
+
+    @patch(
+        'kamaki.clients.networking.NetworkingClient.networks_get',
+        return_value=FakeObject())
+    def test_get_network_details(self, networks_get):
+        netid, FakeObject.json = 'netid', dict(network='ret val')
+        self.assertEqual(self.client.get_network_details(netid), 'ret val')
+        networks_get.assert_called_once_with(netid, success=200)
+
+    @patch(
+        'kamaki.clients.networking.NetworkingClient.networks_put',
+        return_value=FakeObject())
+    def test_update_network(self, networks_put):
+        netid, FakeObject.json = 'netid', dict(network='ret val')
+        for name, admin_state_up, shared in product(
+                ('net name', None), (True, None), (True, None)):
+            kwargs = dict(
+                name=name, admin_state_up=admin_state_up, shared=shared)
+            self.assertEqual(
+                self.client.update_network(netid, **kwargs), 'ret val')
+            req = dict()
+            if name not in (None, ):
+                req['name'] = name
+            if admin_state_up not in (None, ):
+                req['admin_state_up'] = admin_state_up
+            kwargs = dict(
+                json_data=dict(network=req), shared=shared, success=200)
+            self.assertEqual(
+                networks_put.mock_calls[-1], call(netid, **kwargs))
+
+    @patch(
+        'kamaki.clients.networking.NetworkingClient.networks_delete',
+        return_value=FakeObject())
+    def test_delete_network(self, networks_delete):
+        netid, FakeObject.headers = 'netid', 'ret headers'
+        self.assertEqual(self.client.delete_network(netid), 'ret headers')
+        networks_delete.assert_called_once_with(netid, success=204)
 
 
 if __name__ == '__main__':
