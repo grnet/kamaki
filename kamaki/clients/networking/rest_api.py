@@ -43,23 +43,12 @@ class NetworkingRestClient(Client):
             return self.get(path4url('networks', network_id), **kwargs)
         return self.get(path4url('networks'), **kwargs)
 
-    def networks_post(self, json_data=None, shared=None, **kwargs):
-        path = path4url('networks')
-        self.set_param('shared', bool(shared), iff=shared)
-        return self.post(
-            path, data=dumps(json_data) if json_data else None, **kwargs)
+    def networks_post(self, json_data, **kwargs):
+        return self.post(path4url('networks'), data=dumps(json_data), **kwargs)
 
-    def networks_put(
-            self, network_id,
-            json_data=None, admin_state_up=None, shared=None, **kwargs):
-        path = path4url('networks', network_id)
-
-        self.set_param(
-            'admin_state_up', bool(admin_state_up), iff=admin_state_up)
-        self.set_param('shared', bool(shared), iff=shared)
-
+    def networks_put(self, network_id, json_data, **kwargs):
         return self.put(
-            path, data=dumps(json_data) if json_data else None, **kwargs)
+            path4url('networks', network_id), data=dumps(json_data), **kwargs)
 
     def networks_delete(self, network_id, **kwargs):
         return self.delete(path4url('networks', network_id), **kwargs)
@@ -69,8 +58,8 @@ class NetworkingRestClient(Client):
             return self.get(path4url('subnets', subnet_id), **kwargs)
         return self.get(path4url('subnets'), **kwargs)
 
-    def subnets_post(self, **kwargs):
-        return self.post(path4url('subnets'), **kwargs)
+    def subnets_post(self, json_data, **kwargs):
+        return self.post(path4url('subnets'), data=dumps(json_data), **kwargs)
 
     def subnets_put(self, subnet_id, **kwargs):
         return self.put(path4url('subnets', subnet_id), **kwargs)

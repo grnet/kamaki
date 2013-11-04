@@ -60,73 +60,35 @@ class NetworkingRestClient(TestCase):
 
     @patch('kamaki.clients.Client.get', return_value='ret val')
     def test_networks_get(self, get):
+        netid = 'netid'
         for kwargs in (dict(), dict(k1='v1'), dict(k2='v2', k3='v3')):
             self.assertEqual(self.client.networks_get(**kwargs), 'ret val')
             self._assert(get, '/networks', **kwargs)
-
-            netid = 'netid'
             self.assertEqual(
                 self.client.networks_get(network_id=netid, **kwargs),
                 'ret val')
             self._assert(get, '/networks/%s' % netid, **kwargs)
 
-    @patch('kamaki.clients.Client.set_param')
     @patch('kamaki.clients.Client.post', return_value='ret val')
-    def test_networks_post(self, post, set_param):
-        for params, kwargs in product(
-                (
-                    (('shared', False, None), ),
-                    (('shared', True, True), )),
-                (dict(), dict(k1='v1'), dict(k2='v2', k3='v3'))):
+    def test_networks_post(self, post):
+        for kwargs in (
+                dict(json_data=dict(k1='v1')),
+                dict(json_data=dict(k2='v2'), k3='v3')):
+            self.assertEqual(self.client.networks_post(**kwargs), 'ret val')
+            json_data = kwargs.pop('json_data')
+            self._assert(post, '/networks', data=dumps(json_data), **kwargs)
 
-            callargs = dict()
-            for p in params:
-                callargs[p[0]] = p[2]
-            callargs.update(kwargs)
-
-            self.assertEqual(self.client.networks_post(**callargs), 'ret val')
-            self._assert(
-                post, '/networks', set_param,
-                params=params, data=None, **kwargs)
-
-            json_data = dict(id='some id', other_param='other val')
-            callargs['json_data'] = json_data
-            self.assertEqual(self.client.networks_post(**callargs), 'ret val')
-            self._assert(
-                post, '/networks', set_param, params,
-                data=dumps(json_data), **kwargs)
-
-    @patch('kamaki.clients.Client.set_param')
     @patch('kamaki.clients.Client.put', return_value='ret val')
-    def test_networks_put(self, put, set_param):
+    def test_networks_put(self, put):
         netid = 'netid'
-        for params, kwargs in product(
-                [p for p in product(
-                    (
-                        ('admin_state_up', False, None),
-                        ('admin_state_up', True, True)),
-                    (('shared', False, None), ('shared', True, True)),
-                )],
-                (dict(), dict(k1='v1'), dict(k2='v2', k3='v3'))):
-
-            callargs = dict()
-            for p in params:
-                callargs[p[0]] = p[2]
-            callargs.update(kwargs)
-
+        for kwargs in (
+                dict(json_data=dict(k1='v1')),
+                dict(json_data=dict(k2='v2'), k3='v3')):
             self.assertEqual(
-                self.client.networks_put(netid, **callargs), 'ret val')
+                self.client.networks_put(netid, **kwargs), 'ret val')
+            json_data = kwargs.pop('json_data')
             self._assert(
-                put, '/networks/%s' % netid, set_param, params,
-                data=None, **kwargs)
-
-            json_data = dict(id='some id', other_param='other val')
-            callargs['json_data'] = json_data
-            self.assertEqual(
-                self.client.networks_put(netid, **callargs), 'ret val')
-            self._assert(
-                put, '/networks/%s' % netid, set_param, params,
-                data=dumps(json_data), **kwargs)
+                put, '/networks/%s' % netid, data=dumps(json_data), **kwargs)
 
     @patch('kamaki.clients.Client.delete', return_value='ret val')
     def test_networks_delete(self, delete):
@@ -151,8 +113,10 @@ class NetworkingRestClient(TestCase):
     @patch('kamaki.clients.Client.post', return_value='ret val')
     def test_subnets_post(self, post):
         for kwargs in (dict(), dict(k1='v1'), dict(k2='v2', k3='v3')):
-            self.assertEqual(self.client.subnets_post(**kwargs), 'ret val')
-            self._assert(post, '/subnets', **kwargs)
+            json_data = dict(subnets='some data')
+            self.assertEqual(self.client.subnets_post(
+                json_data=json_data, **kwargs), 'ret val')
+            self._assert(post, '/subnets', data=dumps(json_data), **kwargs)
 
     @patch('kamaki.clients.Client.put', return_value='ret val')
     def test_subnets_put(self, put):
@@ -275,6 +239,7 @@ class NetworkingClient(TestCase):
         self.client = networking.NetworkingClient(self.url, self.token)
 
     def tearDown(self):
+        FakeObject.json, FakeObject.headers = None, None
         del self.client
 
     @patch(
@@ -289,55 +254,45 @@ class NetworkingClient(TestCase):
         'kamaki.clients.networking.NetworkingClient.networks_post',
         return_value=FakeObject())
     def test_create_network(self, networks_post):
-        for kwargs in (dict(shared=None), dict(shared=True)):
+        for admin_state_up, shared in product((None, True), (None, True)):
             FakeObject.json = dict(network='ret val')
-            req = dict()
-            for k, v, exp in (
-                    ('admin_state_up', None, False),
-                    ('admin_state_up', True, True)):
-                fullargs = dict(kwargs)
-                fullargs[k], name = v, 'net name'
-                self.assertEqual(
-                    self.client.create_network(name, **fullargs), 'ret val')
-                req[k] = exp
-                req['name'] = name
-                expargs = dict(kwargs)
-                expargs = dict(json_data=dict(network=req), success=201)
-                expargs.update(kwargs)
-                self.assertEqual(networks_post.mock_calls[-1], call(**expargs))
+            name = 'net name'
+            self.assertEqual(
+                self.client.create_network(
+                    name, admin_state_up=admin_state_up, shared=shared),
+                'ret val')
+            req = dict(name=name, admin_state_up=bool(admin_state_up))
+            if shared:
+                req['shared'] = shared
+            expargs = dict(json_data=dict(network=req), success=201)
+            self.assertEqual(networks_post.mock_calls[-1], call(**expargs))
 
     @patch(
         'kamaki.clients.networking.NetworkingClient.networks_post',
         return_value=FakeObject())
     def test_create_networks(self, networks_post):
-        for networks, shared in product(
-                (
-                    None, dict(name='name'), 'nets', [1, 2, 3], [{'k': 'v'}, ],
-                    [dict(name='n1', invalid='mistake'), ],
-                    [dict(name='valid', admin_state_up=True), {'err': 'nop'}]),
-                (None, True)
-            ):
+        for networks in (
+                None, dict(name='name'), 'nets', [1, 2, 3], [{'k': 'v'}, ],
+                [dict(admin_state_up=True, shared=True)],
+                [dict(name='n1', invalid='mistake'), ],
+                [dict(name='valid', shared=True), {'err': 'nop'}]):
             self.assertRaises(
-                ValueError, self.client.create_networks, networks, shared)
+                ValueError, self.client.create_networks, networks)
 
         FakeObject.json = dict(networks='ret val')
-        for networks, kwargs in product(
-                (
-                    [
-                        dict(name='net1'),
-                        dict(name='net 2', admin_state_up=False)],
-                    [
-                        dict(name='net1', admin_state_up=True),
-                        dict(name='net 2', admin_state_up=False),
-                        dict(name='net-3')],
-                    (dict(name='n.e.t'), dict(name='net 2'))),
-                (dict(shared=None), dict(shared=True))):
-            self.assertEqual(
-                self.client.create_networks(networks, **kwargs), 'ret val')
+        for networks in (
+                [
+                    dict(name='net1'),
+                    dict(name='net 2', admin_state_up=False, shared=True)],
+                [
+                    dict(name='net1', admin_state_up=True),
+                    dict(name='net 2', shared=False),
+                    dict(name='net-3')],
+                (dict(name='n.e.t'), dict(name='net 2'))):
+            self.assertEqual(self.client.create_networks(networks), 'ret val')
 
             networks = list(networks)
             expargs = dict(json_data=dict(networks=networks), success=201)
-            expargs.update(kwargs)
             self.assertEqual(networks_post.mock_calls[-1], call(**expargs))
 
     @patch(
@@ -359,13 +314,13 @@ class NetworkingClient(TestCase):
                 name=name, admin_state_up=admin_state_up, shared=shared)
             self.assertEqual(
                 self.client.update_network(netid, **kwargs), 'ret val')
-            req = dict()
-            if name not in (None, ):
-                req['name'] = name
-            if admin_state_up not in (None, ):
-                req['admin_state_up'] = admin_state_up
-            kwargs = dict(
-                json_data=dict(network=req), shared=shared, success=200)
+            if name in (None, ):
+                kwargs.pop('name')
+            if admin_state_up in (None, ):
+                kwargs.pop('admin_state_up')
+            if shared in (None, ):
+                kwargs.pop('shared')
+            kwargs = dict(json_data=dict(network=kwargs), success=200)
             self.assertEqual(
                 networks_put.mock_calls[-1], call(netid, **kwargs))
 
@@ -376,6 +331,14 @@ class NetworkingClient(TestCase):
         netid, FakeObject.headers = 'netid', 'ret headers'
         self.assertEqual(self.client.delete_network(netid), 'ret headers')
         networks_delete.assert_called_once_with(netid, success=204)
+
+    @patch(
+        'kamaki.clients.networking.NetworkingClient.subnets_get',
+        return_value=FakeObject())
+    def test_list_subnets(self, subnets_get):
+        FakeObject.json = dict(subnets='ret val')
+        self.assertEqual(self.client.list_subnets(), 'ret val')
+        subnets_get.assert_called_once_with(success=200)
 
 
 if __name__ == '__main__':
