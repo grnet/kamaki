@@ -76,6 +76,7 @@ setup(
         'kamaki.clients.astakos',
         'kamaki.clients.compute',
         'kamaki.clients.cyclades',
+        'kamaki.clients.networking'
     ],
     classifiers=[
         'Operating System :: OS Independent',

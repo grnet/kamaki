@@ -36,16 +36,16 @@ from unittest import TestCase
 from itertools import product
 from json import dumps
 
-from kamaki.clients import ClientError, network
+from kamaki.clients import networking
 
 
-class NetworkRestClient(TestCase):
+class NetworkingRestClient(TestCase):
 
     """Set up a ComputesRest thorough test"""
     def setUp(self):
-        self.url = 'http://network.example.com'
+        self.url = 'http://networking.example.com'
         self.token = 'n2tw0rk70k3n'
-        self.client = network.NetworkRestClient(self.url, self.token)
+        self.client = networking.NetworkingRestClient(self.url, self.token)
 
     def tearDown(self):
         del self.client
@@ -265,19 +265,19 @@ class FakeObject(object):
     json = None
 
 
-class NetworkClient(TestCase):
+class NetworkingClient(TestCase):
 
     """Set up a ComputesRest thorough test"""
     def setUp(self):
         self.url = 'http://network.example.com'
         self.token = 'n2tw0rk70k3n'
-        self.client = network.NetworkClient(self.url, self.token)
+        self.client = networking.NetworkingClient(self.url, self.token)
 
     def tearDown(self):
         del self.client
 
     @patch(
-        'kamaki.clients.network.NetworkClient.networks_get',
+        'kamaki.clients.networking.NetworkingClient.networks_get',
         return_value=FakeObject())
     def test_list_networks(self, networks_get):
         FakeObject.json = dict(networks='ret val')
@@ -285,7 +285,7 @@ class NetworkClient(TestCase):
         networks_get.assert_called_once_with(success=200)
 
     @patch(
-        'kamaki.clients.network.NetworkClient.networks_post',
+        'kamaki.clients.networking.NetworkingClient.networks_post',
         return_value=FakeObject())
     def test_create_network(self, networks_post):
         FakeObject.json = dict(network='ret val')
@@ -312,11 +312,11 @@ if __name__ == '__main__':
     from sys import argv
     from kamaki.clients.test import runTestCase
     not_found = True
-    if not argv[1:] or argv[1] == 'NetworkClient':
+    if not argv[1:] or argv[1] == 'NetworkingClient':
         not_found = False
-        runTestCase(NetworkClient, 'Network Client', argv[2:])
-    if not argv[1:] or argv[1] == 'NetworkRest':
+        runTestCase(NetworkingClient, 'Networking Client', argv[2:])
+    if not argv[1:] or argv[1] == 'NetworkingRest':
         not_found = False
-        runTestCase(NetworkRestClient, 'NetworkRest Client', argv[2:])
+        runTestCase(NetworkingRestClient, 'NetworkingRest Client', argv[2:])
     if not_found:
         print('TestCase %s not found' % argv[1])

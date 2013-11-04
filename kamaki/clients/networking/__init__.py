@@ -32,10 +32,10 @@
 # or implied, of GRNET S.A.
 
 from kamaki.clients import ClientError
-from kamaki.clients.network.rest_api import NetworkRestClient
+from kamaki.clients.networking.rest_api import NetworkingRestClient
 
 
-class NetworkClient(NetworkRestClient):
+class NetworkingClient(NetworkingRestClient):
     """OpenStack Network API 2.0 client"""
 
     def list_networks(self):
