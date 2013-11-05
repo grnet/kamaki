@@ -109,7 +109,7 @@ class network_list(_init_networking, _optional_json, _name_filter, _id_filter):
         nets = self.client.list_networks()
         if not self['detail']:
             for net in nets:
-                net = dict(net['id'], net['name'])
+                net = dict(id=net['id'], name=net['name'])
         self._print(nets)
 
     def main(self):
