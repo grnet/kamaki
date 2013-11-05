@@ -140,3 +140,24 @@ class network_info(_init_networking, _optional_json):
     def main(self, network_id):
         super(self.__class__, self)._run()
         self._run(network_id=network_id)
+
+
+@command(network_cmds)
+class network_create(_init_networking, _optional_json):
+    """Create a new network"""
+
+    arguments = dict(shared=FlagArgument(
+        'Network will be shared (special privileges required)', '--shared')
+    )
+
+    @errors.generic.all
+    @errors.cyclades.connection
+    def _run(self, name):
+        #  admin_state_up is not used in Cyclades
+        net = self.client.create_network(
+            name, admin_state_up=True, shared=self['shared'])
+        self._print(net, self.print_dict)
+
+    def main(self, name):
+        super(self.__class__, self)._run()
+        self._run(name=name)
