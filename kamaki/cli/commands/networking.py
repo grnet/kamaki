@@ -60,36 +60,33 @@ about_authentication = '\nUser Authentication:\
     \n* to set authentication token: /config set cloud.<cloud>.token <token>'
 
 
-#  Remove this when the endpoint issue is resolved
-from kamaki.cli.commands.cyclades import _init_cyclades as _init_networking
+class _init_networking(_command_init):
+    @errors.generic.all
+    @addLogSettings
+    def _run(self, service='network'):
+        if getattr(self, 'cloud', None):
+            base_url = self._custom_url(service) or self._custom_url(
+                'compute')
+            if base_url:
+                token = self._custom_token(service) or self._custom_token(
+                    'compute') or self.config.get_cloud('token')
+                self.client = NetworkingClient(
+                  base_url=base_url, token=token)
+                return
+        else:
+            self.cloud = 'default'
+        if getattr(self, 'auth_base', False):
+            cyclades_endpoints = self.auth_base.get_service_endpoints(
+                self._custom_type('compute') or 'compute',
+                self._custom_version('compute') or '')
+            base_url = cyclades_endpoints['publicURL']
+            token = self.auth_base.token
+            self.client = NetworkingClient(base_url=base_url, token=token)
+        else:
+            raise CLIBaseUrlError(service='network')
 
-# class _init_networking(_command_init):
-#     @errors.generic.all
-#     @addLogSettings
-#     def _run(self, service='network'):
-#         if getattr(self, 'cloud', None):
-#             base_url = self._custom_url(service) or self._custom_url(
-#                 'network')
-#             if base_url:
-#                 token = self._custom_token(service) or self._custom_token(
-#                     'network') or self.config.get_cloud('token')
-#                 self.client = NetworkingClient(
-#                   base_url=base_url, token=token)
-#                 return
-#         else:
-#             self.cloud = 'default'
-#         if getattr(self, 'auth_base', False):
-#             cyclades_endpoints = self.auth_base.get_service_endpoints(
-#                 self._custom_type('network') or 'network',
-#                 self._custom_version('network') or '')
-#             base_url = cyclades_endpoints['publicURL']
-#             token = self.auth_base.token
-#             self.client = NetworkingClient(base_url=base_url, token=token)
-#         else:
-#             raise CLIBaseUrlError(service='network')
-
-#     def main(self):
-#         self._run()
+    def main(self):
+        self._run()
 
 
 @command(network_cmds)
@@ -154,6 +151,7 @@ class network_create(_init_networking, _optional_json):
     @errors.cyclades.connection
     def _run(self, name):
         #  admin_state_up is not used in Cyclades
+        print self.client.create_network
         net = self.client.create_network(
             name, admin_state_up=True, shared=self['shared'])
         self._print(net, self.print_dict)
