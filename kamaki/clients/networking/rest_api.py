@@ -44,11 +44,11 @@ class NetworkingRestClient(Client):
         return self.get(path4url('networks'), **kwargs)
 
     def networks_post(self, json_data, **kwargs):
-        return self.post(path4url('networks'), json=dumps(json_data), **kwargs)
+        return self.post(path4url('networks'), json=json_data, **kwargs)
 
     def networks_put(self, network_id, json_data, **kwargs):
         return self.put(
-            path4url('networks', network_id), json=dumps(json_data), **kwargs)
+            path4url('networks', network_id), json=json_data, **kwargs)
 
     def networks_delete(self, network_id, **kwargs):
         return self.delete(path4url('networks', network_id), **kwargs)
@@ -59,7 +59,7 @@ class NetworkingRestClient(Client):
         return self.get(path4url('subnets'), **kwargs)
 
     def subnets_post(self, json_data, **kwargs):
-        return self.post(path4url('subnets'), json=dumps(json_data), **kwargs)
+        return self.post(path4url('subnets'), json=json_data, **kwargs)
 
     def subnets_put(self, subnet_id, **kwargs):
         return self.put(path4url('subnets', subnet_id), **kwargs)
@@ -81,8 +81,7 @@ class NetworkingRestClient(Client):
         self.set_param('mac_address', mac_address, iff=mac_address)
         self.set_param('fixed_ips', fixed_ips, iff=fixed_ips)
         self.set_param('security_groups', security_groups, iff=security_groups)
-        data = dumps(json_data) if json_data else None
-        return self.post(path4url('ports'), json=data, **kwargs)
+        return self.post(path4url('ports'), json=json_data, **kwargs)
 
     def ports_put(
             self, port_id,
@@ -93,8 +92,7 @@ class NetworkingRestClient(Client):
         self.set_param('mac_address', mac_address, iff=mac_address)
         self.set_param('fixed_ips', fixed_ips, iff=fixed_ips)
         self.set_param('security_groups', security_groups, iff=security_groups)
-        data = dumps(json_data) if json_data else None
-        return self.put(path4url('ports', port_id), json=data, **kwargs)
+        return self.put(path4url('ports', port_id), json=json_data, **kwargs)
 
     def ports_delete(self, port_id, **kwargs):
         return self.delete(path4url('ports', port_id), **kwargs)

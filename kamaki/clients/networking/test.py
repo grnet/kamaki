@@ -76,7 +76,7 @@ class NetworkingRestClient(TestCase):
                 dict(json_data=dict(k2='v2'), k3='v3')):
             self.assertEqual(self.client.networks_post(**kwargs), 'ret val')
             json_data = kwargs.pop('json_data')
-            self._assert(post, '/networks', json=dumps(json_data), **kwargs)
+            self._assert(post, '/networks', json=json_data, **kwargs)
 
     @patch('kamaki.clients.Client.put', return_value='ret val')
     def test_networks_put(self, put):
@@ -88,7 +88,7 @@ class NetworkingRestClient(TestCase):
                 self.client.networks_put(netid, **kwargs), 'ret val')
             json_data = kwargs.pop('json_data')
             self._assert(
-                put, '/networks/%s' % netid, json=dumps(json_data), **kwargs)
+                put, '/networks/%s' % netid, json=json_data, **kwargs)
 
     @patch('kamaki.clients.Client.delete', return_value='ret val')
     def test_networks_delete(self, delete):
@@ -116,7 +116,7 @@ class NetworkingRestClient(TestCase):
             json_data = dict(subnets='some data')
             self.assertEqual(self.client.subnets_post(
                 json_data=json_data, **kwargs), 'ret val')
-            self._assert(post, '/subnets', json=dumps(json_data), **kwargs)
+            self._assert(post, '/subnets', json=json_data, **kwargs)
 
     @patch('kamaki.clients.Client.put', return_value='ret val')
     def test_subnets_put(self, put):
@@ -173,15 +173,14 @@ class NetworkingRestClient(TestCase):
 
             self.assertEqual(self.client.ports_post(**callargs), 'ret val')
             self._assert(
-                post, '/ports', set_param,
-                params=params, json=None, **kwargs)
+                post, '/ports', set_param, params=params, json=None, **kwargs)
 
             json_data = dict(id='some id', other_param='other val')
             callargs['json_data'] = json_data
             self.assertEqual(self.client.ports_post(**callargs), 'ret val')
             self._assert(
                 post, '/ports', set_param, params,
-                json=dumps(json_data), **kwargs)
+                json=json_data, **kwargs)
 
     @patch('kamaki.clients.Client.set_param')
     @patch('kamaki.clients.Client.put', return_value='ret val')
@@ -221,7 +220,7 @@ class NetworkingRestClient(TestCase):
                 self.client.ports_put(port_id, **callargs), 'ret val')
             self._assert(
                 put, '/ports/%s' % port_id, set_param, params,
-                json=dumps(json_data), **kwargs)
+                json=json_data, **kwargs)
 
 
 class FakeObject(object):
