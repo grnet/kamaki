@@ -100,19 +100,43 @@ class network_list(_init_networking, _optional_json, _name_filter, _id_filter):
 
     arguments = dict(
         detail=FlagArgument('show detailed output', ('-l', '--details')),
+        more=FlagArgument(
+            'output results in pages (-n to set items per page, default 10)',
+            '--more'),
     )
 
     @errors.generic.all
     @errors.cyclades.connection
-    @errors.cyclades.date
     def _run(self):
         nets = self.client.list_networks()
         nets = self._filter_by_name(nets)
         nets = self._filter_by_id(nets)
         if not self['detail']:
             nets = [dict(id=net['id'], name=net['name']) for net in nets]
-        self._print(nets)
+        kwargs = dict()
+        if self['more']:
+            kwargs['out'] = StringIO()
+            kwargs['title'] = ()
+        self._print(nets, **kwargs)
+        if self['more']:
+            pager(kwargs['out'].getvalue())
 
     def main(self):
         super(self.__class__, self)._run()
         self._run()
+
+
+@command(network_cmds)
+class network_info(_init_networking, _optional_json):
+    """Get details about a network"""
+
+    @errors.generic.all
+    @errors.cyclades.connection
+    @errors.cyclades.network_id
+    def _run(self, network_id):
+        net = self.client.get_network_details(network_id)
+        self._print(net, self.print_dict)
+
+    def main(self, network_id):
+        super(self.__class__, self)._run()
+        self._run(network_id=network_id)
