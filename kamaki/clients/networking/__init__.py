@@ -1,35 +1,35 @@
-:param  Copyright 2013 GRNET S.A. All rights reserved.
-:param 
-:param  Redistribution and use in source and binary forms, with or
-:param  without modification, are permitted provided that the following
-:param  conditions are met:
-:param 
-:param    1. Redistributions of source code must retain the above
-:param       copyright notice, this list of conditions and the following
-:param       disclaimer.
-:param 
-:param    2. Redistributions in binary form must reproduce the above
-:param       copyright notice, this list of conditions and the following
-:param       disclaimer in the documentation and/or other materials
-:param       provided with the distribution.
-:param 
-:param  THIS SOFTWARE IS PROVIDED BY GRNET S.A. ``AS IS'' AND ANY EXPRESS
-:param  OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-:param  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-:param  PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL GRNET S.A OR
-:param  CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-:param  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-:param  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
-:param  USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
-:param  AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-:param  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
-:param  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-:param  POSSIBILITY OF SUCH DAMAGE.
-:param 
-:param  The views and conclusions contained in the software and
-:param  documentation are those of the authors and should not be
-:param  interpreted as representing official policies, either expressed
-:param  or implied, of GRNET S.A.
+# Copyright 2013 GRNET S.A. All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or
+# without modification, are permitted provided that the following
+# conditions are met:
+#
+#   1. Redistributions of source code must retain the above
+#      copyright notice, this list of conditions and the following
+#      disclaimer.
+#
+#   2. Redistributions in binary form must reproduce the above
+#      copyright notice, this list of conditions and the following
+#      disclaimer in the documentation and/or other materials
+#      provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY GRNET S.A. ``AS IS'' AND ANY EXPRESS
+# OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL GRNET S.A OR
+# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
+# USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+# AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+# ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+#
+# The views and conclusions contained in the software and
+# documentation are those of the authors and should not be
+# interpreted as representing official policies, either expressed
+# or implied, of GRNET S.A.
 
 from kamaki.clients import ClientError
 from kamaki.clients.networking.rest_api import NetworkingRestClient
@@ -113,8 +113,8 @@ class NetworkingClient(NetworkingRestClient):
 
     def create_subnet(
             self, network_id, cidr,
-            name=None, allocation_pools=None, gateway_ip=None, subnet_id=None
-            ipv6=None, endble_dhcp=None):
+            name=None, allocation_pools=None, gateway_ip=None, subnet_id=None,
+            ipv6=None, enable_dhcp=None):
         """
         :param network_id: (str)
         :param cidr: (str)
@@ -160,7 +160,7 @@ class NetworkingClient(NetworkingRestClient):
                 assert isinstance(subnet, dict), msg
                 err = set(subnet).difference((
                     'network_id', 'cidr', 'name', 'allocation_pools',
-                    'gateway_ip', 'subnet_id', 'ipv6', 'endble_dhcp'))
+                    'gateway_ip', 'subnet_id', 'ipv6', 'enable_dhcp'))
                 if err:
                     raise ValueError(
                         'Invalid key(s): %s in subnet specification %s' % (
@@ -170,8 +170,51 @@ class NetworkingClient(NetworkingRestClient):
                 msg = 'cidr is missing in subnet spec: %s' % subnet
                 assert subnet.get('cidr', None), msg
                 subnet['ip_version'] = 6 if subnet.pop('ipv6', None) else 4
+                if 'subnet_id' in subnet:
+                    subnet['id'] = subnet.pop('subnet_id')
         except AssertionError as ae:
             raise ValueError('%s' % ae)
 
-        r = self.subnets_post(json_data=dict(subnets=subnets), success=201)
+        r = self.subnets_post(
+            json_data=dict(subnets=list(subnets)), success=201)
         return r.json['subnets']
+
+    def get_subnet_details(self, subnet_id):
+        r = self.subnets_get(subnet_id, success=201)
+        return r.json
+
+    def update_subnet(
+            self, network_id, cidr,
+            name=None, allocation_pools=None, gateway_ip=None, subnet_id=None,
+            ipv6=None, enable_dhcp=None):
+        """
+        :param network_id: (str) used as filter
+        :param cidr: (str) used as filter
+
+        :param name: (str) The subnet name
+        :param allocation_pools: (list of dicts) start/end addresses of
+            allocation pools: [{'start': ..., 'end': ...}, ...]
+        :param gateway_ip: (str)
+        :param subnet_id: (str)
+        :param ipv6: (bool) ip_version == 6 if true, 4 if false, used as filter
+        :param enable_dhcp: (bool)
+        """
+        subnet = dict(network_id=network_id, cidr=cidr)
+        if name not in (None, ):
+            subnet['name'] = name
+        if allocation_pools not in (None, ):
+            subnet['allocation_pools'] = allocation_pools
+        if gateway_ip not in (None, ):
+            subnet['gateway_ip'] = gateway_ip
+        if subnet_id not in (None, ):
+            subnet['id'] = subnet_id
+        if ipv6 not in (None, ):
+            subnet['ip_version'] = 6 if ipv6 else 4
+        if enable_dhcp not in (None, ):
+            subnet['enable_dhcp'] = enable_dhcp
+        r = self.subnets_put(json_data=dict(subnet=subnet), success=201)
+        return r.json['subnet']
+
+    def delete_subnet(self, subnet_id):
+        r = self.subnets_delete(subnet_id, success=204)
+        return r.headers
