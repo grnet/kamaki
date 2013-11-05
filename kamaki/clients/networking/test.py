@@ -442,6 +442,82 @@ class NetworkingClient(TestCase):
         self.assertEqual(self.client.delete_subnet(netid), 'ret headers')
         subnets_delete.assert_called_once_with(netid, success=204)
 
+    @patch(
+        'kamaki.clients.networking.NetworkingClient.ports_get',
+        return_value=FakeObject())
+    def test_list_ports(self, ports_get):
+        FakeObject.json = dict(ports='ret val')
+        self.assertEqual(self.client.list_ports(), 'ret val')
+        ports_get.assert_called_once_with(success=200)
+
+    @patch(
+        'kamaki.clients.networking.NetworkingClient.ports_post',
+        return_value=FakeObject())
+    def test_create_port(self, ports_post):
+        for (
+                name, status, admin_state_up,
+                mac_address, fixed_ips, security_groups
+                ) in product(
+                    ('name', None), ('status', None), (True, False, None),
+                    ('maddr', None), ('some ips', None), ([1, 2, 3], None)):
+            kwargs = dict(
+                name=name, status=status, admin_state_up=admin_state_up,
+                mac_address=mac_address, fixed_ips=fixed_ips,
+                security_groups=security_groups)
+            FakeObject.json, network_id = dict(port='ret val'), 'name'
+            self.assertEqual(
+                self.client.create_port(network_id, **kwargs), 'ret val')
+            req = dict(network_id=network_id)
+            for k, v in kwargs.items():
+                if v not in (None, ):
+                    req[k] = v
+            expargs = dict(json_data=dict(port=req), success=201)
+            self.assertEqual(ports_post.mock_calls[-1], call(**expargs))
+
+    @patch(
+        'kamaki.clients.networking.NetworkingClient.ports_post',
+        return_value=FakeObject())
+    def test_create_ports(self, ports_post):
+        for ports in (
+                None, dict(network_id='name'), 'nets', [1, 2, 3], [{'k': 'v'}],
+                [dict(name=True, mac_address='mac')],
+                [dict(network_id='n1', invalid='mistake'), ],
+                [dict(network_id='valid', name='valid'), {'err': 'nop'}]):
+            self.assertRaises(
+                ValueError, self.client.create_ports, ports)
+
+        FakeObject.json = dict(ports='ret val')
+        for ports in (
+                [dict(network_id='n1'), dict(network_id='n 2', name='name')],
+                [
+                    dict(network_id='n1', name='n 6', status='status'),
+                    dict(network_id='n 2', admin_state_up=True, fixed_ips='f'),
+                    dict(network_id='n 2', mac_address='mc', name='n.a.m.e.'),
+                    dict(network_id='n-4', security_groups='s~G', name='w. 6'),
+                    dict(network_id='n_5', admin_state_up=False, name='f a')],
+                (
+                    dict(network_id='n.e.t', name='c-5'),
+                    dict(network_id='net 2', status='YEAH'))):
+            self.assertEqual(self.client.create_ports(ports), 'ret val')
+            expargs = dict(json_data=dict(ports=list(ports)), success=201)
+            self.assertEqual(ports_post.mock_calls[-1], call(**expargs))
+
+    @patch(
+        'kamaki.clients.networking.NetworkingClient.ports_get',
+        return_value=FakeObject())
+    def test_get_port_details(self, ports_get):
+        portid, FakeObject.json = 'portid', dict(ports='ret val')
+        self.assertEqual(self.client.get_port_details(portid), 'ret val')
+        ports_get.assert_called_once_with(portid, success=201)
+
+    @patch(
+        'kamaki.clients.networking.NetworkingClient.ports_delete',
+        return_value=FakeObject())
+    def test_delete_port(self, ports_delete):
+        portid, FakeObject.headers = 'portid', 'ret headers'
+        self.assertEqual(self.client.delete_port(portid), 'ret headers')
+        ports_delete.assert_called_once_with(portid, success=204)
+
 
 if __name__ == '__main__':
     from sys import argv

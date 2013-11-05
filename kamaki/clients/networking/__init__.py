@@ -218,3 +218,75 @@ class NetworkingClient(NetworkingRestClient):
     def delete_subnet(self, subnet_id):
         r = self.subnets_delete(subnet_id, success=204)
         return r.headers
+
+    def list_ports(self):
+        r = self.ports_get(success=200)
+        return r.json['ports']
+
+    def create_port(
+            self, network_id,
+            name=None, status=None, admin_state_up=None, mac_address=None,
+            fixed_ips=None, security_groups=None):
+        """
+        :param network_id: (str)
+
+        :param name: (str)
+        :param status: (str)
+        :param admin_state_up: (bool) Router administrative status (UP / DOWN)
+        :param mac_address: (str)
+        :param fixed_ips: (str)
+        :param security_groups: (list)
+        """
+        port = dict(network_id=network_id)
+        if name:
+            port['name'] = name
+        if status:
+            port['status'] = status
+        if admin_state_up not in (None, ):
+            port['admin_state_up'] = bool(admin_state_up)
+        if mac_address:
+            port['mac_address'] = mac_address
+        if fixed_ips:
+            port['fixed_ips'] = fixed_ips
+        if security_groups:
+            port['security_groups'] = security_groups
+        r = self.ports_post(json_data=dict(port=port), success=201)
+        return r.json['port']
+
+    def create_ports(self, ports):
+        """Atomic operation for batch port creation (all or nothing)
+        :param ports: (list of dicts) {key: ...} with all parameters in the
+            method create_port, where method mandatory / optional paramteres
+            respond to mandatory / optional paramters in ports items
+        :returns: (list of dicts) created portss details
+        :raises ValueError: if ports parameter is incorrectly formated
+        :raises ClientError: if the request failed or didn't return 201
+        """
+        try:
+            msg = 'The ports parameter must be list or tuple'
+            assert (
+                isinstance(ports, list) or isinstance(ports, tuple)), msg
+            for port in ports:
+                msg = 'Subnet specification %s is not a dict' % port
+                assert isinstance(port, dict), msg
+                err = set(port).difference((
+                    'network_id', 'status', 'name', 'admin_state_up',
+                    'mac_address', 'fixed_ips', 'security_groups'))
+                if err:
+                    raise ValueError(
+                        'Invalid key(s): %s in port specification %s' % (
+                            err, port))
+                msg = 'network_id is missing in port spec: %s' % port
+                assert port.get('network_id', None), msg
+        except AssertionError as ae:
+            raise ValueError('%s' % ae)
+        r = self.ports_post(json_data=dict(ports=list(ports)), success=201)
+        return r.json['ports']
+
+    def get_port_details(self, port_id):
+        r = self.ports_get(port_id, success=201)
+        return r.json['ports']
+
+    def delete_port(self, port_id):
+        r = self.ports_delete(port_id, success=204)
+        return r.headers
