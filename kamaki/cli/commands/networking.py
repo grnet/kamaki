@@ -107,9 +107,10 @@ class network_list(_init_networking, _optional_json, _name_filter, _id_filter):
     @errors.cyclades.date
     def _run(self):
         nets = self.client.list_networks()
+        nets = self._filter_by_name(nets)
+        nets = self._filter_by_id(nets)
         if not self['detail']:
-            for net in nets:
-                net = dict(id=net['id'], name=net['name'])
+            nets = [dict(id=net['id'], name=net['name']) for net in nets]
         self._print(nets)
 
     def main(self):
