@@ -36,9 +36,10 @@ from pydoc import pager
 
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.errors import CLISyntaxError, CLIBaseUrlError
+from kamaki.cli.errors import (
+    CLISyntaxError, CLIBaseUrlError, CLIInvalidArgument)
 from kamaki.clients.cyclades import CycladesNetworkClient
-from kamaki.cli.argument import FlagArgument, ValueArgument
+from kamaki.cli.argument import FlagArgument, ValueArgument, RepeatableArgument
 from kamaki.cli.commands import _command_init, errors, addLogSettings
 from kamaki.cli.commands import (
     _optional_output_cmd, _optional_json, _name_filter, _id_filter)
@@ -209,3 +210,155 @@ class network_set(_init_network, _optional_json):
     def main(self, network_id):
         super(self.__class__, self)._run()
         self._run(network_id=network_id)
+
+
+@command(subnet_cmds)
+class subnet_list(_init_network, _optional_json, _name_filter, _id_filter):
+    """List subnets
+    Use filtering arguments (e.g., --name-like) to manage long server lists
+    """
+
+    arguments = dict(
+        detail=FlagArgument('show detailed output', ('-l', '--details')),
+        more=FlagArgument(
+            'output results in pages (-n to set items per page, default 10)',
+            '--more'),
+        user_id=ValueArgument(
+            'show only subnets belonging to user with this id', '--user-id')
+    )
+
+    def _filter_by_user_id(self, nets):
+        return filter_dicts_by_dict(nets, dict(user_id=self['user_id'])) if (
+            self['user_id']) else nets
+
+    @errors.generic.all
+    @errors.cyclades.connection
+    def _run(self):
+        detail = self['detail'] or self['user_id']
+        nets = self.client.list_subnets()
+        nets = self._filter_by_user_id(nets)
+        nets = self._filter_by_name(nets)
+        nets = self._filter_by_id(nets)
+        if detail and not self['detail']:
+            nets = [dict(
+                id=n['id'], name=n['name'], links=n['links']) for n in nets]
+        kwargs = dict()
+        if self['more']:
+            kwargs['out'] = StringIO()
+            kwargs['title'] = ()
+        self._print(nets, **kwargs)
+        if self['more']:
+            pager(kwargs['out'].getvalue())
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
+
+
+@command(subnet_cmds)
+class subnet_info(_init_network, _optional_json):
+    """Get details about a subnet"""
+
+    @errors.generic.all
+    @errors.cyclades.connection
+    def _run(self, subnet_id):
+        net = self.client.get_subnet_details(subnet_id)
+        self._print(net, self.print_dict)
+
+    def main(self, subnet_id):
+        super(self.__class__, self)._run()
+        self._run(subnet_id=subnet_id)
+
+
+class AllocationPoolArgument(RepeatableArgument):
+
+    @property
+    def value(self):
+        return super(AllocationPoolArgument, self).value or []
+
+    @value.setter
+    def value(self, new_pools):
+        new_list = []
+        for pool in new_pools:
+            start, comma, end = pool.partition(',')
+            if not (start and comma and end):
+                raise CLIInvalidArgument(
+                    'Invalid allocation pool argument %s' % pool, details=[
+                    'Allocation values must be of the form:',
+                    '  <start address>,<end address>'])
+            new_list.append(dict(start=start, end=end))
+        self._value = new_list
+
+
+@command(subnet_cmds)
+class subnet_create(_init_network, _optional_json):
+    """Create a new subnet
+    """
+
+    arguments = dict(
+        name=ValueArgument('Subnet name', '--name'),
+        allocation_pools=AllocationPoolArgument(
+            'start_address,end_address of allocation pool (can be repeated)'
+            ' e.g., --alloc-pool=123.45.67.1,123.45.67.8',
+            '--alloc-pool'),
+        gateway=ValueArgument('Gateway IP', '--gateway'),
+        subnet_id=ValueArgument('The id for the subnet', '--id'),
+        ipv6=FlagArgument('If set, IP version is set to 6, else 4', '--ipv6'),
+        enable_dhcp=FlagArgument('Enable dhcp (default: off)', '--with-dhcp')
+    )
+
+    @errors.generic.all
+    @errors.cyclades.connection
+    @errors.cyclades.network_id
+    def _run(self, network_id, cidr):
+        net = self.client.create_subnet(
+            network_id, cidr,
+            self['name'], self['allocation_pools'], self['gateway'],
+            self['subnet_id'], self['ipv6'], self['enable_dhcp'])
+        self._print(net, self.print_dict)
+
+    def main(self, network_id, cidr):
+        super(self.__class__, self)._run()
+        self._run(network_id=network_id, cidr=cidr)
+
+
+# @command(subnet_cmds)
+# class subnet_delete(_init_network, _optional_output_cmd):
+#     """Delete a subnet"""
+
+#     @errors.generic.all
+#     @errors.cyclades.connection
+#     def _run(self, subnet_id):
+#         r = self.client.delete_subnet(subnet_id)
+#         self._optional_output(r)
+
+#     def main(self, subnet_id):
+#         super(self.__class__, self)._run()
+#         self._run(subnet_id=subnet_id)
+
+
+@command(subnet_cmds)
+class subnet_set(_init_network, _optional_json):
+    """Set an attribute of a subnet, leave the rest untouched (update)
+    Only "--name" is supported for now
+    """
+
+    arguments = dict(name=ValueArgument('New name of the subnet', '--name'))
+
+    @errors.generic.all
+    @errors.cyclades.connection
+    def _run(self, subnet_id):
+        if self['name'] in (None, ):
+            raise CLISyntaxError(
+                'Missing subnet attributes to update',
+                details=[
+                    'At least one if the following is expected:',
+                    '  --name=<new name>'])
+        r = self.client.get_subnet_details(subnet_id)
+        r = self.client.update_subnet(
+            subnet_id, r['network_id'], name=self['name'])
+        self._print(r, self.print_dict)
+
+    def main(self, subnet_id):
+        super(self.__class__, self)._run()
+        self._run(subnet_id=subnet_id)
