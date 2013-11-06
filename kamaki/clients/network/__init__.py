@@ -285,7 +285,7 @@ class NetworkClient(NetworkRestClient):
 
     def get_port_details(self, port_id):
         r = self.ports_get(port_id, success=201)
-        return r.json['ports']
+        return r.json['port']
 
     def delete_port(self, port_id):
         r = self.ports_delete(port_id, success=204)

@@ -372,7 +372,7 @@ class port_list(_init_network, _optional_json):
     @errors.cyclades.connection
     def _run(self):
         net = self.client.list_ports()
-        self._print(net, self.print_dict)
+        self._print(net)
 
     def main(self):
         super(self.__class__, self)._run()
