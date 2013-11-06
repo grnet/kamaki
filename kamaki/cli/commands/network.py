@@ -42,6 +42,7 @@ from kamaki.cli.argument import FlagArgument, ValueArgument
 from kamaki.cli.commands import _command_init, errors, addLogSettings
 from kamaki.cli.commands import (
     _optional_output_cmd, _optional_json, _name_filter, _id_filter)
+from kamaki.cli.utils import filter_dicts_by_dict
 
 
 network_cmds = CommandTree('network', 'Networking API network commands')
@@ -95,14 +96,25 @@ class network_list(_init_network, _optional_json, _name_filter, _id_filter):
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
             '--more'),
+        user_id=ValueArgument(
+            'show only networks belonging to user with this id', '--user-id')
     )
+
+    def _filter_by_user_id(self, nets):
+        return filter_dicts_by_dict(nets, dict(user_id=self['user_id'])) if (
+            self['user_id']) else nets
 
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self):
-        nets = self.client.list_networks(detail=self['detail'])
+        detail = self['detail'] or self['user_id']
+        nets = self.client.list_networks(detail=detail)
+        nets = self._filter_by_user_id(nets)
         nets = self._filter_by_name(nets)
         nets = self._filter_by_id(nets)
+        if detail and not self['detail']:
+            nets = [dict(
+                id=n['id'], name=n['name'], links=n['links']) for n in nets]
         kwargs = dict()
         if self['more']:
             kwargs['out'] = StringIO()
