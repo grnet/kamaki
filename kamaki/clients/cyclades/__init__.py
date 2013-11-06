@@ -34,6 +34,7 @@
 from time import sleep
 
 from kamaki.clients.cyclades.rest_api import CycladesRestClient
+from kamaki.clients.network import NetworkClient
 from kamaki.clients import ClientError
 
 
@@ -502,3 +503,19 @@ class CycladesClient(CycladesRestClient):
         req = dict(removeFloatingIp=dict(address=address))
         r = self.servers_action_post(server_id, json_data=req)
         return r.headers
+
+
+class CycladesNetworkClient(NetworkClient):
+    """Cyclades Network API extentions"""
+
+    network_types = (
+        'CUSTOM', 'MAC_FILTERED', 'IP_LESS_ROUTED', 'PHYSICAL_VLAN')
+
+    def create_network(self, type, name=None, shared=None):
+        req = dict(network=dict(type=type, admin_state_up=True))
+        if name:
+            req['network']['name'] = name
+        if shared not in (None, ):
+            req['network']['shared'] = bool(shared)
+        r = self.networks_post(json_data=req, success=201)
+        return r.json['network']

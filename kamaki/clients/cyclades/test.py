@@ -239,6 +239,37 @@ class CycladesRestClient(TestCase):
                 '/os-floating-ips/%s' % fip, success=success, **kwargs))
 
 
+class CycladesNetworkClient(TestCase):
+
+    """Set up a ComputesRest thorough test"""
+    def setUp(self):
+        self.url = 'http://network.example.com'
+        self.token = 'n2tw0rk70k3n'
+        self.client = cyclades.CycladesNetworkClient(self.url, self.token)
+
+    def tearDown(self):
+        FR.json = vm_recv
+        del self.client
+
+    @patch(
+        'kamaki.clients.network.NetworkClient.networks_post',
+        return_value=FR())
+    def test_create_network(self, networks_post):
+        for name, shared in product((None, 'net name'), (None, True)):
+            FR.json = dict(network='ret val')
+            type = 'net type'
+            self.assertEqual(
+                self.client.create_network(type, name=name, shared=shared),
+                'ret val')
+            req = dict(type=type, admin_state_up=True)
+            if name:
+                req['name'] = name
+            if shared:
+                req['shared'] = shared
+            expargs = dict(json_data=dict(network=req), success=201)
+            self.assertEqual(networks_post.mock_calls[-1], call(**expargs))
+
+
 class CycladesClient(TestCase):
 
     def assert_dicts_are_equal(self, d1, d2):
@@ -533,7 +564,10 @@ if __name__ == '__main__':
     not_found = True
     if not argv[1:] or argv[1] == 'CycladesClient':
         not_found = False
-        runTestCase(CycladesClient, 'Cyclades Client', argv[2:])
+        runTestCase(CycladesNetworkClient, 'Cyclades Client', argv[2:])
+    if not argv[1:] or argv[1] == 'CycladesNetworkClient':
+        not_found = False
+        runTestCase(CycladesNetworkClient, 'CycladesNetwork Client', argv[2:])
     if not argv[1:] or argv[1] == 'CycladesRestClient':
         not_found = False
         runTestCase(CycladesRestClient, 'CycladesRest Client', argv[2:])

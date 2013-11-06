@@ -42,7 +42,7 @@ from kamaki.clients.utils.test import Utils
 from kamaki.clients.astakos.test import AstakosClient
 from kamaki.clients.compute.test import ComputeClient, ComputeRestClient
 from kamaki.clients.network.test import (NetworkClient, NetworkRestClient)
-from kamaki.clients.cyclades.test import CycladesClient
+from kamaki.clients.cyclades.test import CycladesClient, CycladesNetworkClient
 from kamaki.clients.cyclades.test import CycladesRestClient
 from kamaki.clients.image.test import ImageClient
 from kamaki.clients.storage.test import StorageClient
