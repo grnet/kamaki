@@ -221,7 +221,7 @@ class NetworkClient(NetworkRestClient):
 
     def list_ports(self):
         r = self.ports_get(success=200)
-        return r.json['ports']
+        return r.json['port']
 
     def create_port(
             self, network_id,
