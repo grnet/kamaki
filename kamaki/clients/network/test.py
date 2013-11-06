@@ -36,16 +36,16 @@ from unittest import TestCase
 from itertools import product
 from json import dumps
 
-from kamaki.clients import networking
+from kamaki.clients import network
 
 
-class NetworkingRestClient(TestCase):
+class NetworkRestClient(TestCase):
 
     """Set up a ComputesRest thorough test"""
     def setUp(self):
-        self.url = 'http://networking.example.com'
+        self.url = 'http://network.example.com'
         self.token = 'n2tw0rk70k3n'
-        self.client = networking.NetworkingRestClient(self.url, self.token)
+        self.client = network.NetworkRestClient(self.url, self.token)
 
     def tearDown(self):
         del self.client
@@ -229,20 +229,20 @@ class FakeObject(object):
     headers = None
 
 
-class NetworkingClient(TestCase):
+class NetworkClient(TestCase):
 
     """Set up a ComputesRest thorough test"""
     def setUp(self):
         self.url = 'http://network.example.com'
         self.token = 'n2tw0rk70k3n'
-        self.client = networking.NetworkingClient(self.url, self.token)
+        self.client = network.NetworkClient(self.url, self.token)
 
     def tearDown(self):
         FakeObject.json, FakeObject.headers = None, None
         del self.client
 
     @patch(
-        'kamaki.clients.networking.NetworkingClient.networks_get',
+        'kamaki.clients.network.NetworkClient.networks_get',
         return_value=FakeObject())
     def test_list_networks(self, networks_get):
         FakeObject.json = dict(networks='ret val')
@@ -250,7 +250,7 @@ class NetworkingClient(TestCase):
         networks_get.assert_called_once_with(success=200)
 
     @patch(
-        'kamaki.clients.networking.NetworkingClient.networks_post',
+        'kamaki.clients.network.NetworkClient.networks_post',
         return_value=FakeObject())
     def test_create_network(self, networks_post):
         for admin_state_up, shared in product((None, True), (None, True)):
@@ -267,7 +267,7 @@ class NetworkingClient(TestCase):
             self.assertEqual(networks_post.mock_calls[-1], call(**expargs))
 
     @patch(
-        'kamaki.clients.networking.NetworkingClient.networks_post',
+        'kamaki.clients.network.NetworkClient.networks_post',
         return_value=FakeObject())
     def test_create_networks(self, networks_post):
         for networks in (
@@ -295,7 +295,7 @@ class NetworkingClient(TestCase):
             self.assertEqual(networks_post.mock_calls[-1], call(**expargs))
 
     @patch(
-        'kamaki.clients.networking.NetworkingClient.networks_get',
+        'kamaki.clients.network.NetworkClient.networks_get',
         return_value=FakeObject())
     def test_get_network_details(self, networks_get):
         netid, FakeObject.json = 'netid', dict(network='ret val')
@@ -303,7 +303,7 @@ class NetworkingClient(TestCase):
         networks_get.assert_called_once_with(netid, success=200)
 
     @patch(
-        'kamaki.clients.networking.NetworkingClient.networks_put',
+        'kamaki.clients.network.NetworkClient.networks_put',
         return_value=FakeObject())
     def test_update_network(self, networks_put):
         netid, FakeObject.json = 'netid', dict(network='ret val')
@@ -324,7 +324,7 @@ class NetworkingClient(TestCase):
                 networks_put.mock_calls[-1], call(netid, **kwargs))
 
     @patch(
-        'kamaki.clients.networking.NetworkingClient.networks_delete',
+        'kamaki.clients.network.NetworkClient.networks_delete',
         return_value=FakeObject())
     def test_delete_network(self, networks_delete):
         netid, FakeObject.headers = 'netid', 'ret headers'
@@ -332,7 +332,7 @@ class NetworkingClient(TestCase):
         networks_delete.assert_called_once_with(netid, success=204)
 
     @patch(
-        'kamaki.clients.networking.NetworkingClient.subnets_get',
+        'kamaki.clients.network.NetworkClient.subnets_get',
         return_value=FakeObject())
     def test_list_subnets(self, subnets_get):
         FakeObject.json = dict(subnets='ret val')
@@ -340,7 +340,7 @@ class NetworkingClient(TestCase):
         subnets_get.assert_called_once_with(success=200)
 
     @patch(
-        'kamaki.clients.networking.NetworkingClient.subnets_post',
+        'kamaki.clients.network.NetworkClient.subnets_post',
         return_value=FakeObject())
     def test_create_subnet(self, subnets_post):
         for (
@@ -365,7 +365,7 @@ class NetworkingClient(TestCase):
             self.assertEqual(subnets_post.mock_calls[-1], call(**expargs))
 
     @patch(
-        'kamaki.clients.networking.NetworkingClient.subnets_post',
+        'kamaki.clients.network.NetworkClient.subnets_post',
         return_value=FakeObject())
     def test_create_subnets(self, subnets_post):
         for subnets in (
@@ -401,7 +401,7 @@ class NetworkingClient(TestCase):
             self.assertEqual(subnets_post.mock_calls[-1], call(**expargs))
 
     @patch(
-        'kamaki.clients.networking.NetworkingClient.subnets_get',
+        'kamaki.clients.network.NetworkClient.subnets_get',
         return_value=FakeObject())
     def test_get_subnet_details(self, subnets_get):
         subid, FakeObject.json = 'subid', 'ret val'
@@ -409,7 +409,7 @@ class NetworkingClient(TestCase):
         subnets_get.assert_called_once_with(subid, success=201)
 
     @patch(
-        'kamaki.clients.networking.NetworkingClient.subnets_put',
+        'kamaki.clients.network.NetworkClient.subnets_put',
         return_value=FakeObject())
     def test_update_subnet(self, subnets_put):
         for (
@@ -434,7 +434,7 @@ class NetworkingClient(TestCase):
             self.assertEqual(subnets_put.mock_calls[-1], call(**expargs))
 
     @patch(
-        'kamaki.clients.networking.NetworkingClient.subnets_delete',
+        'kamaki.clients.network.NetworkClient.subnets_delete',
         return_value=FakeObject())
     def test_delete_subnet(self, subnets_delete):
         netid, FakeObject.headers = 'netid', 'ret headers'
@@ -442,7 +442,7 @@ class NetworkingClient(TestCase):
         subnets_delete.assert_called_once_with(netid, success=204)
 
     @patch(
-        'kamaki.clients.networking.NetworkingClient.ports_get',
+        'kamaki.clients.network.NetworkClient.ports_get',
         return_value=FakeObject())
     def test_list_ports(self, ports_get):
         FakeObject.json = dict(ports='ret val')
@@ -450,7 +450,7 @@ class NetworkingClient(TestCase):
         ports_get.assert_called_once_with(success=200)
 
     @patch(
-        'kamaki.clients.networking.NetworkingClient.ports_post',
+        'kamaki.clients.network.NetworkClient.ports_post',
         return_value=FakeObject())
     def test_create_port(self, ports_post):
         for (
@@ -474,7 +474,7 @@ class NetworkingClient(TestCase):
             self.assertEqual(ports_post.mock_calls[-1], call(**expargs))
 
     @patch(
-        'kamaki.clients.networking.NetworkingClient.ports_post',
+        'kamaki.clients.network.NetworkClient.ports_post',
         return_value=FakeObject())
     def test_create_ports(self, ports_post):
         for ports in (
@@ -502,7 +502,7 @@ class NetworkingClient(TestCase):
             self.assertEqual(ports_post.mock_calls[-1], call(**expargs))
 
     @patch(
-        'kamaki.clients.networking.NetworkingClient.ports_get',
+        'kamaki.clients.network.NetworkClient.ports_get',
         return_value=FakeObject())
     def test_get_port_details(self, ports_get):
         portid, FakeObject.json = 'portid', dict(ports='ret val')
@@ -510,7 +510,7 @@ class NetworkingClient(TestCase):
         ports_get.assert_called_once_with(portid, success=201)
 
     @patch(
-        'kamaki.clients.networking.NetworkingClient.ports_delete',
+        'kamaki.clients.network.NetworkClient.ports_delete',
         return_value=FakeObject())
     def test_delete_port(self, ports_delete):
         portid, FakeObject.headers = 'portid', 'ret headers'
@@ -522,11 +522,11 @@ if __name__ == '__main__':
     from sys import argv
     from kamaki.clients.test import runTestCase
     not_found = True
-    if not argv[1:] or argv[1] == 'NetworkingClient':
+    if not argv[1:] or argv[1] == 'NetworkClient':
         not_found = False
-        runTestCase(NetworkingClient, 'Networking Client', argv[2:])
-    if not argv[1:] or argv[1] == 'NetworkingRest':
+        runTestCase(NetworkClient, 'Network Client', argv[2:])
+    if not argv[1:] or argv[1] == 'NetworkRestClient':
         not_found = False
-        runTestCase(NetworkingRestClient, 'NetworkingRest Client', argv[2:])
+        runTestCase(NetworkRestClient, 'NetworkRest Client', argv[2:])
     if not_found:
         print('TestCase %s not found' % argv[1])

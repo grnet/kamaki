@@ -41,7 +41,7 @@ from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.utils import remove_from_items, filter_dicts_by_dict
 from kamaki.cli.errors import (
     raiseCLIError, CLISyntaxError, CLIBaseUrlError, CLIInvalidArgument)
-from kamaki.clients.networking import NetworkingClient, ClientError
+from kamaki.clients.network import NetworkClient, ClientError
 from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
 from kamaki.cli.argument import ProgressBarArgument, DateArgument, IntArgument
 from kamaki.cli.commands import _command_init, errors, addLogSettings
@@ -60,7 +60,7 @@ about_authentication = '\nUser Authentication:\
     \n* to set authentication token: /config set cloud.<cloud>.token <token>'
 
 
-class _init_networking(_command_init):
+class _init_network(_command_init):
     @errors.generic.all
     @addLogSettings
     def _run(self, service='network'):
@@ -70,7 +70,7 @@ class _init_networking(_command_init):
             if base_url:
                 token = self._custom_token(service) or self._custom_token(
                     'compute') or self.config.get_cloud('token')
-                self.client = NetworkingClient(
+                self.client = NetworkClient(
                   base_url=base_url, token=token)
                 return
         else:
@@ -81,7 +81,7 @@ class _init_networking(_command_init):
                 self._custom_version('compute') or '')
             base_url = cyclades_endpoints['publicURL']
             token = self.auth_base.token
-            self.client = NetworkingClient(base_url=base_url, token=token)
+            self.client = NetworkClient(base_url=base_url, token=token)
         else:
             raise CLIBaseUrlError(service='network')
 
@@ -90,7 +90,7 @@ class _init_networking(_command_init):
 
 
 @command(network_cmds)
-class network_list(_init_networking, _optional_json, _name_filter, _id_filter):
+class network_list(_init_network, _optional_json, _name_filter, _id_filter):
     """List networks
     Use filtering arguments (e.g., --name-like) to manage long server lists
     """
@@ -124,7 +124,7 @@ class network_list(_init_networking, _optional_json, _name_filter, _id_filter):
 
 
 @command(network_cmds)
-class network_info(_init_networking, _optional_json):
+class network_info(_init_network, _optional_json):
     """Get details about a network"""
 
     @errors.generic.all
@@ -140,7 +140,7 @@ class network_info(_init_networking, _optional_json):
 
 
 @command(network_cmds)
-class network_create(_init_networking, _optional_json):
+class network_create(_init_network, _optional_json):
     """Create a new network"""
 
     arguments = dict(shared=FlagArgument(
@@ -161,7 +161,7 @@ class network_create(_init_networking, _optional_json):
 
 
 @command(network_cmds)
-class network_delete(_init_networking, _optional_output_cmd):
+class network_delete(_init_network, _optional_output_cmd):
     """Delete a network"""
 
     @errors.generic.all
@@ -177,7 +177,7 @@ class network_delete(_init_networking, _optional_output_cmd):
 
 
 @command(network_cmds)
-class network_set(_init_networking, _optional_json):
+class network_set(_init_network, _optional_json):
     """Set an attribute of a network, leave the rest untouched (update)
     Only "--name" is supported for now
     """

@@ -41,8 +41,7 @@ from random import randint
 from kamaki.clients.utils.test import Utils
 from kamaki.clients.astakos.test import AstakosClient
 from kamaki.clients.compute.test import ComputeClient, ComputeRestClient
-from kamaki.clients.networking.test import (
-    NetworkingClient, NetworkingRestClient)
+from kamaki.clients.network.test import (NetworkClient, NetworkRestClient)
 from kamaki.clients.cyclades.test import CycladesClient
 from kamaki.clients.cyclades.test import CycladesRestClient
 from kamaki.clients.image.test import ImageClient
