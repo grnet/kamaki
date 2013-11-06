@@ -31,19 +31,15 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from base64 import b64encode
-from os.path import exists, expanduser
 from io import StringIO
 from pydoc import pager
 
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.utils import remove_from_items, filter_dicts_by_dict
 from kamaki.cli.errors import (
-    raiseCLIError, CLISyntaxError, CLIBaseUrlError, CLIInvalidArgument)
-from kamaki.clients.network import NetworkClient, ClientError
-from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
-from kamaki.cli.argument import ProgressBarArgument, DateArgument, IntArgument
+    CLISyntaxError, CLIBaseUrlError, CLIInvalidArgument)
+from kamaki.clients.cyclades import CycladesNetworkClient
+from kamaki.cli.argument import FlagArgument, ValueArgument
 from kamaki.cli.commands import _command_init, errors, addLogSettings
 from kamaki.cli.commands import (
     _optional_output_cmd, _optional_json, _name_filter, _id_filter)
@@ -70,7 +66,7 @@ class _init_network(_command_init):
             if base_url:
                 token = self._custom_token(service) or self._custom_token(
                     'compute') or self.config.get_cloud('token')
-                self.client = NetworkClient(
+                self.client = CycladesNetworkClient(
                   base_url=base_url, token=token)
                 return
         else:
@@ -81,7 +77,7 @@ class _init_network(_command_init):
                 self._custom_version('compute') or '')
             base_url = cyclades_endpoints['publicURL']
             token = self.auth_base.token
-            self.client = NetworkClient(base_url=base_url, token=token)
+            self.client = CycladesNetworkClient(base_url=base_url, token=token)
         else:
             raise CLIBaseUrlError(service='network')
 
@@ -141,23 +137,27 @@ class network_info(_init_network, _optional_json):
 
 @command(network_cmds)
 class network_create(_init_network, _optional_json):
-    """Create a new network"""
+    """Create a new network
+    Valid network types: CUSTOM, MAC_FILTERED, IP_LESS_ROUTED, PHYSICAL_VLAN
+    """
 
-    arguments = dict(shared=FlagArgument(
-        'Network will be shared (special privileges required)', '--shared')
+    arguments = dict(
+        name=ValueArgument('Network name', '--name'),
+        shared=FlagArgument(
+            'Make network shared (special privileges required)', '--shared')
     )
 
     @errors.generic.all
     @errors.cyclades.connection
-    def _run(self, name):
-        #  admin_state_up is not used in Cyclades
+    @errors.cyclades.network_type
+    def _run(self, network_type):
         net = self.client.create_network(
-            name, shared=self['shared'])
+            network_type, name=self['name'], shared=self['shared'])
         self._print(net, self.print_dict)
 
-    def main(self, name):
+    def main(self, network_type):
         super(self.__class__, self)._run()
-        self._run(name=name)
+        self._run(network_type=network_type)
 
 
 @command(network_cmds)
@@ -190,7 +190,7 @@ class network_set(_init_network, _optional_json):
     def _run(self, network_id):
         if self['name'] in (None, ):
             raise CLISyntaxError(
-                'Missing network atrributes to update',
+                'Missing network attributes to update',
                 details=[
                     'At least one if the following is expected:',
                     '  --name=<new name>'])
