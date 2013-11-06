@@ -365,18 +365,18 @@ class subnet_set(_init_network, _optional_json):
 
 
 @command(port_cmds)
-class port_info(_init_network, _optional_json):
-    """Get details about a port"""
+class port_list(_init_network, _optional_json):
+    """List all ports"""
 
     @errors.generic.all
     @errors.cyclades.connection
-    def _run(self, port_id):
-        net = self.client.get_port_details(port_id)
+    def _run(self):
+        net = self.client.list_ports()
         self._print(net, self.print_dict)
 
-    def main(self, port_id):
+    def main(self):
         super(self.__class__, self)._run()
-        self._run(port_id=port_id)
+        self._run()
 
 
 @command(port_cmds)
