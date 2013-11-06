@@ -152,7 +152,7 @@ class network_create(_init_networking, _optional_json):
     def _run(self, name):
         #  admin_state_up is not used in Cyclades
         net = self.client.create_network(
-            name, admin_state_up=True, shared=self['shared'])
+            name, shared=self['shared'])
         self._print(net, self.print_dict)
 
     def main(self, name):
@@ -166,9 +166,36 @@ class network_delete(_init_networking, _optional_output_cmd):
 
     @errors.generic.all
     @errors.cyclades.connection
+    @errors.cyclades.network_id
     def _run(self, network_id):
         r = self.client.delete_network(network_id)
         self._optional_output(r)
+
+    def main(self, network_id):
+        super(self.__class__, self)._run()
+        self._run(network_id=network_id)
+
+
+@command(network_cmds)
+class network_set(_init_networking, _optional_json):
+    """Set an attribute of a network, leave the rest untouched (update)
+    Only "--name" is supported for now
+    """
+
+    arguments = dict(name=ValueArgument('New name of the network', '--name'))
+
+    @errors.generic.all
+    @errors.cyclades.connection
+    @errors.cyclades.network_id
+    def _run(self, network_id):
+        if self['name'] in (None, ):
+            raise CLISyntaxError(
+                'Missing network atrributes to update',
+                details=[
+                    'At least one if the following is expected:',
+                    '  --name=<new name>'])
+        r = self.client.update_network(network_id, name=self['name'])
+        self._print(r, self.print_dict)
 
     def main(self, network_id):
         super(self.__class__, self)._run()
