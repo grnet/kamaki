@@ -340,8 +340,7 @@ class _id_filter(object):
         id_suff=ValueArgument(
             'filter by id suffix (case insensitive)', '--id-suffix'),
         id_like=ValueArgument(
-            'print only if id contains this (case insensitive)',
-            '--id-like')
+            'print only if id contains this (case insensitive)', '--id-like')
     )
 
     def _non_exact_id_filter(self, items):

@@ -151,7 +151,6 @@ class network_create(_init_networking, _optional_json):
     @errors.cyclades.connection
     def _run(self, name):
         #  admin_state_up is not used in Cyclades
-        print self.client.create_network
         net = self.client.create_network(
             name, admin_state_up=True, shared=self['shared'])
         self._print(net, self.print_dict)
@@ -159,3 +158,18 @@ class network_create(_init_networking, _optional_json):
     def main(self, name):
         super(self.__class__, self)._run()
         self._run(name=name)
+
+
+@command(network_cmds)
+class network_delete(_init_networking, _optional_output_cmd):
+    """Delete a network"""
+
+    @errors.generic.all
+    @errors.cyclades.connection
+    def _run(self, network_id):
+        r = self.client.delete_network(network_id)
+        self._optional_output(r)
+
+    def main(self, network_id):
+        super(self.__class__, self)._run()
+        self._run(network_id=network_id)
