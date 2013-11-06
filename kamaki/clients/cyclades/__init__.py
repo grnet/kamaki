@@ -35,6 +35,7 @@ from time import sleep
 
 from kamaki.clients.cyclades.rest_api import CycladesRestClient
 from kamaki.clients.network import NetworkClient
+from kamaki.clients.utils import path4url
 from kamaki.clients import ClientError
 
 
@@ -510,6 +511,11 @@ class CycladesNetworkClient(NetworkClient):
 
     network_types = (
         'CUSTOM', 'MAC_FILTERED', 'IP_LESS_ROUTED', 'PHYSICAL_VLAN')
+
+    def list_networks(self, detail=None):
+        path = path4url('networks', 'detail' if detail else '')
+        r = self.get(path, success=200)
+        return r.json['networks']
 
     def create_network(self, type, name=None, shared=None):
         req = dict(network=dict(type=type, admin_state_up=True))

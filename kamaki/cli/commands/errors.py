@@ -246,7 +246,7 @@ class cyclades(object):
         def _raise(self, *args, **kwargs):
             network_type = kwargs.get('network_type', None)
             msg = 'Invalid network type %s.\nValid types: %s' % (
-                network_type, ' , '.join(this.net_types))
+                network_type, ' '.join(this.net_types))
             assert network_type in this.net_types, msg
             return foo(self, *args, **kwargs)
         return _raise

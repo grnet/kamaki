@@ -251,8 +251,16 @@ class CycladesNetworkClient(TestCase):
         FR.json = vm_recv
         del self.client
 
+    @patch('kamaki.clients.Client.get', return_value=FR)
+    def test_list_networks(self, get):
+        FR.json = dict(networks='ret val')
+        for detail in (True, None):
+            self.assertEqual(self.client.list_networks(detail), 'ret val')
+            path = '/networks/detail' if detail else '/networks'
+            self.assertEqual(get.mock_calls[-1], call(path, success=200))
+
     @patch(
-        'kamaki.clients.network.NetworkClient.networks_post',
+        'kamaki.clients.network.rest_api.NetworkRestClient.networks_post',
         return_value=FR())
     def test_create_network(self, networks_post):
         for name, shared in product((None, 'net name'), (None, True)):

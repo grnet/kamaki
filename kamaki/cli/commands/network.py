@@ -36,8 +36,7 @@ from pydoc import pager
 
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.errors import (
-    CLISyntaxError, CLIBaseUrlError, CLIInvalidArgument)
+from kamaki.cli.errors import CLISyntaxError, CLIBaseUrlError
 from kamaki.clients.cyclades import CycladesNetworkClient
 from kamaki.cli.argument import FlagArgument, ValueArgument
 from kamaki.cli.commands import _command_init, errors, addLogSettings
@@ -101,11 +100,9 @@ class network_list(_init_network, _optional_json, _name_filter, _id_filter):
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self):
-        nets = self.client.list_networks()
+        nets = self.client.list_networks(detail=self['detail'])
         nets = self._filter_by_name(nets)
         nets = self._filter_by_id(nets)
-        if not self['detail']:
-            nets = [dict(id=net['id'], name=net['name']) for net in nets]
         kwargs = dict()
         if self['more']:
             kwargs['out'] = StringIO()
@@ -138,7 +135,7 @@ class network_info(_init_network, _optional_json):
 @command(network_cmds)
 class network_create(_init_network, _optional_json):
     """Create a new network
-    Valid network types: CUSTOM, MAC_FILTERED, IP_LESS_ROUTED, PHYSICAL_VLAN
+    Valid network types: CUSTOM MAC_FILTERED IP_LESS_ROUTED PHYSICAL_VLAN
     """
 
     arguments = dict(
