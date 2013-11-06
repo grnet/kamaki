@@ -362,3 +362,80 @@ class subnet_set(_init_network, _optional_json):
     def main(self, subnet_id):
         super(self.__class__, self)._run()
         self._run(subnet_id=subnet_id)
+
+
+@command(port_cmds)
+class port_info(_init_network, _optional_json):
+    """Get details about a port"""
+
+    @errors.generic.all
+    @errors.cyclades.connection
+    def _run(self, port_id):
+        net = self.client.get_port_details(port_id)
+        self._print(net, self.print_dict)
+
+    def main(self, port_id):
+        super(self.__class__, self)._run()
+        self._run(port_id=port_id)
+
+
+@command(port_cmds)
+class port_info(_init_network, _optional_json):
+    """Get details about a port"""
+
+    @errors.generic.all
+    @errors.cyclades.connection
+    def _run(self, port_id):
+        net = self.client.get_port_details(port_id)
+        self._print(net, self.print_dict)
+
+    def main(self, port_id):
+        super(self.__class__, self)._run()
+        self._run(port_id=port_id)
+
+
+@command(port_cmds)
+class port_delete(_init_network, _optional_output_cmd):
+    """Delete a port"""
+
+    @errors.generic.all
+    @errors.cyclades.connection
+    def _run(self, port_id):
+        r = self.client.delete_port(port_id)
+        self._optional_output(r)
+
+    def main(self, port_id):
+        super(self.__class__, self)._run()
+        self._run(port_id=port_id)
+
+
+@command(port_cmds)
+class port_set(_init_network, _optional_json):
+    """Set an attribute of a port, leave the rest untouched (update)
+    Only "--name" is supported for now
+    """
+
+    arguments = dict(name=ValueArgument('New name of the port', '--name'))
+
+    @errors.generic.all
+    @errors.cyclades.connection
+    def _run(self, port_id):
+        if self['name'] in (None, ):
+            raise CLISyntaxError(
+                'Missing port attributes to update',
+                details=[
+                    'At least one if the following is expected:',
+                    '  --name=<new name>'])
+        r = self.client.get_port_details(port_id)
+        r = self.client.update_port(
+            port_id, r['network_id'], name=self['name'])
+        self._print(r, self.print_dict)
+
+    def main(self, port_id):
+        super(self.__class__, self)._run()
+        self._run(port_id=port_id)
+
+
+#@command(port_cmds)
+#class port_create(_init_network, _optional_json):
+#

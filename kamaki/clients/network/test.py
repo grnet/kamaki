@@ -146,81 +146,31 @@ class NetworkRestClient(TestCase):
                 'ret val')
             self._assert(get, '/ports/%s' % port_id, **kwargs)
 
-    @patch('kamaki.clients.Client.set_param')
     @patch('kamaki.clients.Client.post', return_value='ret val')
-    def test_ports_post(self, post, set_param):
-        for params, kwargs in product(
-                [p for p in product(
-                    (
-                        ('name', 'port name', 'port name'),
-                        ('name', None, None)),
-                    (
-                        ('mac_address', 'max address', 'max address'),
-                        ('mac_address', None, None)),
-                    (
-                        ('fixed_ips', 'fixed ip', 'fixed ip'),
-                        ('fixed_ips', None, None)),
-                    (
-                        ('security_groups', 'sec groups', 'sec groups'),
-                        ('security_groups', None, None))
-                )],
-                (dict(), dict(k1='v1'), dict(k2='v2', k3='v3'))):
-
-            callargs = dict()
-            for p in params:
-                callargs[p[0]] = p[2]
-            callargs.update(kwargs)
-
-            self.assertEqual(self.client.ports_post(**callargs), 'ret val')
-            self._assert(
-                post, '/ports', set_param, params=params, json=None, **kwargs)
+    def test_ports_post(self, post):
+        for kwargs in (dict(), dict(k1='v1'), dict(k2='v2', k3='v3')):
+            self.assertEqual(self.client.ports_post(**kwargs), 'ret val')
+            self._assert(post, '/ports', json=None, **kwargs)
 
             json_data = dict(id='some id', other_param='other val')
-            callargs['json_data'] = json_data
-            self.assertEqual(self.client.ports_post(**callargs), 'ret val')
-            self._assert(
-                post, '/ports', set_param, params,
-                json=json_data, **kwargs)
+            self.assertEqual(
+                self.client.ports_post(json_data=json_data, **kwargs),
+                'ret val')
+            self._assert(post, '/ports', json=json_data, **kwargs)
 
-    @patch('kamaki.clients.Client.set_param')
     @patch('kamaki.clients.Client.put', return_value='ret val')
-    def test_ports_put(self, put, set_param):
+    def test_ports_put(self, put):
         port_id = 'portid'
-        for params, kwargs in product(
-                [p for p in product(
-                    (
-                        ('name', 'port name', 'port name'),
-                        ('name', None, None)),
-                    (
-                        ('mac_address', 'max address', 'max address'),
-                        ('mac_address', None, None)),
-                    (
-                        ('fixed_ips', 'fixed ip', 'fixed ip'),
-                        ('fixed_ips', None, None)),
-                    (
-                        ('security_groups', 'sec groups', 'sec groups'),
-                        ('security_groups', None, None))
-                )],
-                (dict(), dict(k1='v1'), dict(k2='v2', k3='v3'))):
-
-            callargs = dict()
-            for p in params:
-                callargs[p[0]] = p[2]
-            callargs.update(kwargs)
-
+        for kwargs in (dict(), dict(k1='v1'), dict(k2='v2', k3='v3')):
             self.assertEqual(
-                self.client.ports_put(port_id, **callargs), 'ret val')
-            self._assert(
-                put, '/ports/%s' % port_id, set_param,
-                params=params, json=None, **kwargs)
+                self.client.ports_put(port_id, **kwargs), 'ret val')
+            self._assert(put, '/ports/%s' % port_id, json=None, **kwargs)
 
             json_data = dict(id='some id', other_param='other val')
-            callargs['json_data'] = json_data
             self.assertEqual(
-                self.client.ports_put(port_id, **callargs), 'ret val')
-            self._assert(
-                put, '/ports/%s' % port_id, set_param, params,
-                json=json_data, **kwargs)
+                self.client.ports_put(port_id, json_data=json_data, **kwargs),
+                'ret val')
+            self._assert(put, '/ports/%s' % port_id, json=json_data, **kwargs)
 
 
 class FakeObject(object):
@@ -516,6 +466,31 @@ class NetworkClient(TestCase):
         portid, FakeObject.headers = 'portid', 'ret headers'
         self.assertEqual(self.client.delete_port(portid), 'ret headers')
         ports_delete.assert_called_once_with(portid, success=204)
+
+    @patch(
+        'kamaki.clients.network.NetworkClient.ports_put',
+        return_value=FakeObject())
+    def test_update_port(self, ports_put):
+        for (
+                name, status, admin_state_up, mac_address, fixed_ips,
+                security_groups) in product(
+                    ('name', None), ('st', None), (True, None), ('mc', None),
+                    ('fps', None), ('sg', None)):
+            FakeObject.json = dict(port='rv')
+            port_id, network_id = 'pid', 'nid'
+            kwargs = dict(
+                network_id=network_id, name=name, status=status,
+                admin_state_up=admin_state_up, mac_address=mac_address,
+                fixed_ips=fixed_ips, security_groups=security_groups)
+            self.assertEqual(
+                self.client.update_port(port_id, **kwargs), 'rv')
+            req = dict()
+            for k, v in kwargs.items():
+                if v:
+                    req[k] = v
+            expargs = dict(json_data=dict(port=req), success=201)
+            self.assertEqual(
+                ports_put.mock_calls[-1], call(port_id, **expargs))
 
 
 if __name__ == '__main__':

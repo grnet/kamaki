@@ -290,3 +290,33 @@ class NetworkClient(NetworkRestClient):
     def delete_port(self, port_id):
         r = self.ports_delete(port_id, success=204)
         return r.headers
+
+    def update_port(
+            self, port_id, network_id,
+            name=None, status=None, admin_state_up=None, mac_address=None,
+            fixed_ips=None, security_groups=None):
+        """
+        :param network_id: (str)
+
+        :param name: (str)
+        :param status: (str)
+        :param admin_state_up: (bool) Router administrative status (UP / DOWN)
+        :param mac_address: (str)
+        :param fixed_ips: (str)
+        :param security_groups: (list)
+        """
+        port = dict(network_id=network_id)
+        if name:
+            port['name'] = name
+        if status:
+            port['status'] = status
+        if admin_state_up not in (None, ):
+            port['admin_state_up'] = bool(admin_state_up)
+        if mac_address:
+            port['mac_address'] = mac_address
+        if fixed_ips:
+            port['fixed_ips'] = fixed_ips
+        if security_groups:
+            port['security_groups'] = security_groups
+        r = self.ports_put(port_id, json_data=dict(port=port), success=201)
+        return r.json['port']

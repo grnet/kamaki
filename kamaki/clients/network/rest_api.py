@@ -72,26 +72,10 @@ class NetworkRestClient(Client):
             return self.get(path4url('ports', port_id), **kwargs)
         return self.get(path4url('ports'), **kwargs)
 
-    def ports_post(
-            self,
-            json_data=None,
-            name=None, mac_address=None, fixed_ips=None, security_groups=None,
-            **kwargs):
-        self.set_param('name', name, iff=name)
-        self.set_param('mac_address', mac_address, iff=mac_address)
-        self.set_param('fixed_ips', fixed_ips, iff=fixed_ips)
-        self.set_param('security_groups', security_groups, iff=security_groups)
+    def ports_post(self, json_data=None, **kwargs):
         return self.post(path4url('ports'), json=json_data, **kwargs)
 
-    def ports_put(
-            self, port_id,
-            json_data=None,
-            name=None, mac_address=None, fixed_ips=None, security_groups=None,
-            **kwargs):
-        self.set_param('name', name, iff=name)
-        self.set_param('mac_address', mac_address, iff=mac_address)
-        self.set_param('fixed_ips', fixed_ips, iff=fixed_ips)
-        self.set_param('security_groups', security_groups, iff=security_groups)
+    def ports_put(self, port_id, json_data=None, **kwargs):
         return self.put(path4url('ports', port_id), json=json_data, **kwargs)
 
     def ports_delete(self, port_id, **kwargs):
