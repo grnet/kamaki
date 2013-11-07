@@ -526,9 +526,12 @@ class CycladesNetworkClient(NetworkClient):
         r = self.networks_post(json_data=req, success=201)
         return r.json['network']
 
-    def create_port(self, network_id, device_id, security_groups=None):
+    def create_port(
+            self, network_id, device_id, security_groups=None, name=None):
         port = dict(network_id=network_id, device_id=device_id)
         if security_groups:
             port['security_groups'] = security_groups
+        if name:
+            port['name'] = name
         r = self.ports_post(json_data=dict(port=port), success=201)
         return r.json['port']

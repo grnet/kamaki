@@ -282,14 +282,17 @@ class CycladesNetworkClient(TestCase):
         return_value=FR)
     def test_create_port(self, ports_post):
         network_id, device_id, FR.json = 'netid', 'devid', dict(port='ret v')
-        for security_groups in ([1, 2, 3], None):
+        for name, sec_grp in product(('port name', None), ([1, 2, 3], None)):
             self.assertEqual(
                 self.client.create_port(
-                    network_id, device_id, security_groups=security_groups),
+                    network_id, device_id,
+                    name=name, security_groups=sec_grp),
                 'ret v')
             req = dict(network_id=network_id, device_id=device_id)
-            if security_groups:
-                req['security_groups'] = security_groups
+            if sec_grp:
+                req['security_groups'] = sec_grp
+            if name:
+                req['name'] = name
             expargs = dict(json_data=dict(port=req), success=201)
             self.assertEqual(ports_post.mock_calls[-1], call(**expargs))
 
