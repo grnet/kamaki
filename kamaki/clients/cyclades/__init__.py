@@ -525,3 +525,10 @@ class CycladesNetworkClient(NetworkClient):
             req['network']['shared'] = bool(shared)
         r = self.networks_post(json_data=req, success=201)
         return r.json['network']
+
+    def create_port(self, network_id, device_id, security_groups=None):
+        port = dict(network_id=network_id, device_id=device_id)
+        if security_groups:
+            port['security_groups'] = security_groups
+        r = self.ports_post(json_data=dict(port=port), success=201)
+        return r.json['port']

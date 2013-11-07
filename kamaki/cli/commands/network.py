@@ -436,6 +436,24 @@ class port_set(_init_network, _optional_json):
         self._run(port_id=port_id)
 
 
-#@command(port_cmds)
-#class port_create(_init_network, _optional_json):
-#
+@command(port_cmds)
+class port_create(_init_network, _optional_json):
+    """Create a new port"""
+
+    arguments = dict(
+        security_group_id=RepeatableArgument(
+            'Add a security group id (can be repeated)',
+            ('-g', '--security-group'))
+    )
+
+    @errors.generic.all
+    @errors.cyclades.connection
+    @errors.cyclades.network_id
+    def _run(self, network_id, device_id):
+        r = self.client.create_port(
+            network_id, device_id, security_groups=self['security_group_id'])
+        self._print(r, self.print_dict)
+
+    def main(self, network_id, device_id):
+        super(self.__class__, self)._run()
+        self._run(network_id=network_id, device_id=device_id)
