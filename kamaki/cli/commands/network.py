@@ -441,17 +441,32 @@ class port_create(_init_network, _optional_json):
     """Create a new port"""
 
     arguments = dict(
+        name=ValueArgument('A human readable name', '--name'),
         security_group_id=RepeatableArgument(
             'Add a security group id (can be repeated)',
-            ('-g', '--security-group'))
+            ('-g', '--security-group')),
+        subnet_id=ValueArgument(
+            'Subnet id for fixed ips (used with --ip-address)',
+            '--subnet-id'),
+        ip_address=ValueArgument(
+            'IP address for subnet id (used with --subnet-id', '--ip-address')
     )
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.network_id
     def _run(self, network_id, device_id):
+        if not (bool(self['subnet_id']) ^ bool(self['ip_address'])):
+            raise CLIInvalidArgument('Invalid use of arguments', details=[
+                '--subned-id and --ip-address should be used together'])
+        fixed_ips = dict(
+            subnet_id=self['subnet_id'], ip_address=self['ip_address']) if (
+                self['subnet_id']) else None
         r = self.client.create_port(
-            network_id, device_id, security_groups=self['security_group_id'])
+            network_id, device_id,
+            name=self['name'],
+            security_groups=self['security_group_id'],
+            fixed_ips=fixed_ips)
         self._print(r, self.print_dict)
 
     def main(self, network_id, device_id):

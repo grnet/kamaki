@@ -527,11 +527,18 @@ class CycladesNetworkClient(NetworkClient):
         return r.json['network']
 
     def create_port(
-            self, network_id, device_id, security_groups=None, name=None):
+            self, network_id, device_id,
+            security_groups=None, name=None, fixed_ips=None):
         port = dict(network_id=network_id, device_id=device_id)
         if security_groups:
             port['security_groups'] = security_groups
         if name:
             port['name'] = name
+        if fixed_ips:
+            diff = set(['subnet_id', 'ip_address']).difference(fixed_ips)
+            if diff:
+                raise ValueError(
+                    'Invalid format for "fixed_ips", %s missing' % diff)
+            port['fixed_ips'] = fixed_ips
         r = self.ports_post(json_data=dict(port=port), success=201)
         return r.json['port']
