@@ -17,4 +17,8 @@ Features:
     astakos_... --> admin_...
     e.g.,
     astakos_services --> admin_service, astakos_commission --> admin_commission
+4. Implement OpenStack Network API 2.0, with synnefo/cyclades extentions. New:
+   network info/list/create/delete/set
+   subnet info/list/create/set
+   port info/list/create/delete/set
 
