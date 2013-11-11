@@ -183,6 +183,8 @@ class cyclades(object):
         '* get a list of network ids: /network list',
         '* details of network: /network info <network id>']
 
+    net_types = ('CUSTOM', 'MAC_FILTERED', 'IP_LESS_ROUTED', 'PHYSICAL_VLAN')
+
     @classmethod
     def connection(this, foo):
         return generic._connection(foo)
@@ -237,6 +239,16 @@ class cyclades(object):
                     msg = 'No network with id %s found' % network_id,
                     raiseCLIError(ce, msg, details=this.about_network_id)
                 raise
+        return _raise
+
+    @classmethod
+    def network_type(this, foo):
+        def _raise(self, *args, **kwargs):
+            network_type = kwargs.get('network_type', None)
+            msg = 'Invalid network type %s.\nValid types: %s' % (
+                network_type, ' '.join(this.net_types))
+            assert network_type in this.net_types, msg
+            return foo(self, *args, **kwargs)
         return _raise
 
     @classmethod

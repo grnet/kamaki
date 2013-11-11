@@ -34,6 +34,8 @@
 from time import sleep
 
 from kamaki.clients.cyclades.rest_api import CycladesRestClient
+from kamaki.clients.network import NetworkClient
+from kamaki.clients.utils import path4url
 from kamaki.clients import ClientError
 
 
@@ -502,3 +504,41 @@ class CycladesClient(CycladesRestClient):
         req = dict(removeFloatingIp=dict(address=address))
         r = self.servers_action_post(server_id, json_data=req)
         return r.headers
+
+
+class CycladesNetworkClient(NetworkClient):
+    """Cyclades Network API extentions"""
+
+    network_types = (
+        'CUSTOM', 'MAC_FILTERED', 'IP_LESS_ROUTED', 'PHYSICAL_VLAN')
+
+    def list_networks(self, detail=None):
+        path = path4url('networks', 'detail' if detail else '')
+        r = self.get(path, success=200)
+        return r.json['networks']
+
+    def create_network(self, type, name=None, shared=None):
+        req = dict(network=dict(type=type, admin_state_up=True))
+        if name:
+            req['network']['name'] = name
+        if shared not in (None, ):
+            req['network']['shared'] = bool(shared)
+        r = self.networks_post(json_data=req, success=201)
+        return r.json['network']
+
+    def create_port(
+            self, network_id, device_id,
+            security_groups=None, name=None, fixed_ips=None):
+        port = dict(network_id=network_id, device_id=device_id)
+        if security_groups:
+            port['security_groups'] = security_groups
+        if name:
+            port['name'] = name
+        if fixed_ips:
+            diff = set(['subnet_id', 'ip_address']).difference(fixed_ips)
+            if diff:
+                raise ValueError(
+                    'Invalid format for "fixed_ips", %s missing' % diff)
+            port['fixed_ips'] = fixed_ips
+        r = self.ports_post(json_data=dict(port=port), success=201)
+        return r.json['port']
