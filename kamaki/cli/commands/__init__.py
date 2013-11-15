@@ -63,6 +63,13 @@ def addLogSettings(foo):
 
 class _command_init(object):
 
+    # self.arguments (dict) contains all non-positional arguments
+    # self.required (list or tuple) contains required argument keys
+    #     if it is a list, at least one of these arguments is required
+    #     if it is a tuple, all arguments are required
+    #     Lists and tuples can nest other lists and/or tuples
+    required = None
+
     def __init__(
             self,
             arguments={}, auth_base=None, cloud=None,

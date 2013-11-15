@@ -456,11 +456,11 @@ class port_create(_init_network, _optional_json):
     @errors.cyclades.connection
     @errors.cyclades.network_id
     def _run(self, network_id, device_id):
-        if not (bool(self['subnet_id']) ^ bool(self['ip_address'])):
+        if bool(self['subnet_id']) != bool(self['ip_address']):
             raise CLIInvalidArgument('Invalid use of arguments', details=[
-                '--subned-id and --ip-address should be used together'])
-        fixed_ips = dict(
-            subnet_id=self['subnet_id'], ip_address=self['ip_address']) if (
+                '--subnet-id and --ip-address should be used together'])
+        fixed_ips = [dict(
+            subnet_id=self['subnet_id'], ip_address=self['ip_address'])] if (
                 self['subnet_id']) else None
         r = self.client.create_port(
             network_id, device_id,

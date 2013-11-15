@@ -534,11 +534,12 @@ class CycladesNetworkClient(NetworkClient):
             port['security_groups'] = security_groups
         if name:
             port['name'] = name
-        if fixed_ips:
-            diff = set(['subnet_id', 'ip_address']).difference(fixed_ips)
+        for fixed_ip in fixed_ips:
+            diff = set(['subnet_id', 'ip_address']).difference(fixed_ip)
             if diff:
                 raise ValueError(
                     'Invalid format for "fixed_ips", %s missing' % diff)
+        if fixed_ips:
             port['fixed_ips'] = fixed_ips
         r = self.ports_post(json_data=dict(port=port), success=201)
         return r.json['port']

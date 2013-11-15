@@ -37,6 +37,7 @@ from kamaki.cli.utils import split_input
 
 from datetime import datetime as dtm
 from time import mktime
+from sys import stderr
 
 from logging import getLogger
 from argparse import ArgumentParser, ArgumentError
@@ -393,16 +394,30 @@ _arguments = dict(
 class ArgumentParseManager(object):
     """Manage (initialize and update) an ArgumentParser object"""
 
-    def __init__(self, exe, arguments=None):
+    def __init__(self, exe, arguments=None, required=None):
         """
         :param exe: (str) the basic command (e.g. 'kamaki')
 
         :param arguments: (dict) if given, overrides the global _argument as
             the parsers arguments specification
+        :param required: (list or tuple) an iterable of argument keys, denoting
+            which arguments are required. A tuple denoted an AND relation,
+            while a list denotes an OR relation e.g., ['a', 'b'] means that
+            either 'a' or 'b' is required, while ('a', 'b') means that both 'a'
+            and 'b' ar required.
+            Nesting is allowed e.g., ['a', ('b', 'c'), ['d', 'e']] means that
+            this command required either 'a', or both 'b' and 'c', or one of
+            'd', 'e'.
+            Repeated arguments are also allowed e.g., [('a', 'b'), ('a', 'c'),
+            ['b', 'c']] means that the command required either 'a' and 'b' or
+            'a' and 'c' or at least one of 'b', 'c' and could be written as
+            [('a', ['b', 'c']), ['b', 'c']]
         """
         self.parser = ArgumentParser(
             add_help=False, formatter_class=RawDescriptionHelpFormatter)
+        self._exe = exe
         self.syntax = '%s <cmd_group> [<cmd_subbroup> ...] <cmd>' % exe
+        self.required = required
         if arguments:
             self.arguments = arguments
         else:
@@ -410,6 +425,56 @@ class ArgumentParseManager(object):
             self.arguments = _arguments
         self._parser_modified, self._parsed, self._unparsed = False, None, None
         self.parse()
+
+    @staticmethod
+    def required2list(required):
+        if isinstance(required, list) or isinstance(required, tuple):
+            terms = []
+            for r in required:
+                terms.append(ArgumentParseManager.required2list(r))
+            return list(set(terms).union())
+        return required
+
+    @staticmethod
+    def required2str(required, arguments, tab=''):
+        if isinstance(required, list):
+            return ' %sat least one:\n%s' % (tab, ''.join(
+                [ArgumentParseManager.required2str(
+                    r, arguments, tab + '  ') for r in required]))
+        elif isinstance(required, tuple):
+            return ' %sall:\n%s' % (tab, ''.join(
+                [ArgumentParseManager.required2str(
+                    r, arguments, tab + '  ') for r in required]))
+        else:
+            lt_pn, lt_all, arg = 23, 80, arguments[required]
+            tab2 = ' ' * lt_pn
+            ret = '%s%s' % (tab, ', '.join(arg.parsed_name))
+            if arg.arity != 0:
+                ret += ' %s' % required.upper()
+            ret = ('{:<%s}' % lt_pn).format(ret)
+            prefix = ('\n%s' % tab2) if len(ret) < lt_pn else ' '
+            step, cur = (len(arg.help) / (lt_all - lt_pn)) or len(arg.help), 0
+            while arg.help[cur:]:
+                next = cur + step
+                ret += prefix
+                ret += ('{:<%s}' % (lt_all - lt_pn)).format(arg.help[cur:next])
+                cur, finish = next, '\n%s' % tab2
+            return ret + '\n'
+
+    def print_help(self, out=stderr):
+        if self.required:
+            tmp_args = dict(self.arguments)
+            for term in self.required2list(self.required):
+                tmp_args.pop(term)
+            tmp_parser = ArgumentParseManager(self._exe, tmp_args)
+            tmp_parser.syntax = self.syntax
+            tmp_parser.parser.description = '%s\n\nrequired arguments:\n%s' % (
+                self.parser.description,
+                self.required2str(self.required, self.arguments))
+            tmp_parser.update_parser()
+            tmp_parser.parser.print_help()
+        else:
+            self.parser.print_help()
 
     @property
     def syntax(self):
@@ -465,7 +530,7 @@ class ArgumentParseManager(object):
         :param new_arguments: (dict)
         """
         if new_arguments:
-            assert isinstance(new_arguments, dict)
+            assert isinstance(new_arguments, dict), 'Arguments not in dict !!!'
             self._arguments.update(new_arguments)
             self.update_parser()
 
@@ -474,6 +539,14 @@ class ArgumentParseManager(object):
         try:
             pkargs = (new_args,) if new_args else ()
             self._parsed, unparsed = self.parser.parse_known_args(*pkargs)
+            pdict = vars(self._parsed)
+            diff = set(self.required or []).difference(
+                [k for k in pdict if pdict[k] != None])
+            if diff:
+                self.print_help()
+                miss = ['/'.join(self.arguments[k].parsed_name) for k in diff]
+                raise CLISyntaxError(
+                    'Missing required arguments (%s)' % ', '.join(miss))
         except SystemExit:
             raiseCLIError(CLISyntaxError('Argument Syntax Error'))
         for name, arg in self.arguments.items():

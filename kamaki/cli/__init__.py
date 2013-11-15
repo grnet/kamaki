@@ -64,15 +64,28 @@ def _arg2syntax(arg):
                     '_', ' ')
 
 
+def _required_syntax(arguments, required):
+    if isinstance(required, tuple):
+        return ' '.join([_required_syntax(arguments, k) for k in required])
+    elif isinstance(required, list):
+        return '(%s)' % ' | '.join([
+            _required_syntax(arguments, k) for k in required])
+    return '/'.join(arguments[required].parsed_name)
+
+
 def _construct_command_syntax(cls):
         spec = getargspec(cls.main.im_func)
         args = spec.args[1:]
         n = len(args) - len(spec.defaults or ())
         required = ' '.join(['<%s>' % _arg2syntax(x) for x in args[:n]])
         optional = ' '.join(['[%s]' % _arg2syntax(x) for x in args[n:]])
-        cls.syntax = ' '.join(x for x in [required, optional] if x)
+        cls.syntax = ' '.join([required, optional])
         if spec.varargs:
             cls.syntax += ' <%s ...>' % spec.varargs
+        required = getattr(cls, 'required', None)
+        if required:
+            arguments = getattr(cls, 'arguments', dict())
+            cls.syntax += ' %s' % _required_syntax(arguments, required)
 
 
 def _num_of_matching_terms(basic_list, attack_list):
@@ -549,7 +562,8 @@ def main():
         if parser.unparsed:
             run_one_cmd(exe, parser, cloud)
         elif _help:
-            parser.parser.print_help()
+            #parser.parser.print_help()
+            parser.print_help()
             _groups_help(parser.arguments)
         else:
             run_shell(exe, parser, cloud)

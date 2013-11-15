@@ -372,14 +372,12 @@ class PersonalityArgument(KeyValueArgument):
 
 @command(server_cmds)
 class server_create(_init_cyclades, _optional_json, _server_wait):
-    """Create a server (aka Virtual Machine)
-    Parameters:
-    - name: (single quoted text)
-    - flavor id: Hardware flavor. Pick one from: /flavor list
-    - image id: OS images. Pick one from: /image list
-    """
+    """Create a server (aka Virtual Machine)"""
 
     arguments = dict(
+        server_name=ValueArgument('The name of the new server', '--name'),
+        flavor_id=IntArgument('The ID of the hardware flavor', '--flavor-id'),
+        image_id=IntArgument('The ID of the hardware image', '--image-id'),
         personality=PersonalityArgument(
             (80 * ' ').join(howto_personality), ('-p', '--personality')),
         wait=FlagArgument('Wait server to build', ('-w', '--wait')),
@@ -389,6 +387,7 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
             'srv1, srv2, etc.',
             '--cluster-size')
     )
+    required = ('server_name', 'flavor_id', 'image_id')
 
     @errors.cyclades.cluster_size
     def _create_cluster(self, prefix, flavor_id, image_id, size):
@@ -439,28 +438,38 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
                 self._wait(r['id'], r['status'])
             self.writeln(' ')
 
-    def main(self, name, flavor_id, image_id):
+    def main(self):
         super(self.__class__, self)._run()
-        self._run(name=name, flavor_id=flavor_id, image_id=image_id)
+        self._run(
+            name=self['server_name'],
+            flavor_id=self['flavor_id'],
+            image_id=self['image_id'])
 
 
 @command(server_cmds)
-class server_rename(_init_cyclades, _optional_output_cmd):
-    """Set/update a virtual server name
-    virtual server names are not unique, therefore multiple servers may share
-    the same name
-    """
+class server_modify(_init_cyclades, _optional_output_cmd):
+    """Modify attributes of a virtual server"""
+
+    arguments = dict(
+        server_name=ValueArgument('The new name', '--name'),
+        flavor_id=IntArgument('Set a different flavor', '--flavor-id'),
+    )
+    required = ['server_name', 'flavor_id']
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.server_id
-    def _run(self, server_id, new_name):
-        self._optional_output(
-            self.client.update_server_name(int(server_id), new_name))
+    def _run(self, server_id):
+        if self['server_name']:
+            self.client.update_server_name((server_id), self['server_name'])
+        if self['flavor_id']:
+            self.client.resize_server(server_id, self['flavor_id'])
+        if self['with_output']:
+            self._optional_output(self.client.get_server_details(server_id))
 
-    def main(self, server_id, new_name):
+    def main(self, server_id):
         super(self.__class__, self)._run()
-        self._run(server_id=server_id, new_name=new_name)
+        self._run(server_id=server_id)
 
 
 @command(server_cmds)
@@ -626,26 +635,6 @@ class server_console(_init_cyclades, _optional_json):
     def main(self, server_id):
         super(self.__class__, self)._run()
         self._run(server_id=server_id)
-
-
-@command(server_cmds)
-class server_resize(_init_cyclades, _optional_output_cmd):
-    """Set a different flavor for an existing server
-    To get server ids and flavor ids:
-    /server list
-    /flavor list
-    """
-
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.server_id
-    @errors.cyclades.flavor_id
-    def _run(self, server_id, flavor_id):
-        self._optional_output(self.client.resize_server(server_id, flavor_id))
-
-    def main(self, server_id, flavor_id):
-        super(self.__class__, self)._run()
-        self._run(server_id=server_id, flavor_id=flavor_id)
 
 
 @command(server_cmds)
