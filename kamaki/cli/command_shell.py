@@ -175,10 +175,8 @@ class Shell(Cmd):
         tmp_args.pop('verbose', None)
         tmp_args.pop('silent', None)
         tmp_args.pop('config', None)
-        help_parser = ArgumentParseManager(cmd_name, tmp_args, required)
-        help_parser.parser.description = descr
-        help_parser.syntax = syntax
-        #return help_parser.parser.print_help
+        help_parser = ArgumentParseManager(
+            cmd_name, tmp_args, required, syntax=syntax, description=descr)
         return help_parser.print_help
 
     def _register_command(self, cmd_path):
@@ -213,11 +211,13 @@ class Shell(Cmd):
                             self.auth_base, self.cloud)
                     cmd_parser.update_arguments(instance.arguments)
                     cmd_parser.arguments = instance.arguments
+                    subpath = subcmd.path.split('_')[
+                        (len(cmd.path.split('_')) - 1):]
                     cmd_parser.syntax = '%s %s' % (
-                        subcmd.path.replace('_', ' '), cls.syntax)
+                        ' '.join(subpath), instance.syntax)
                     help_method = self._create_help_method(
-                        cmd.name, cmd_parser.arguments, cmd_parser.required,
-                        subcmd.help, cmd_parser.syntax)
+                        cmd.name, cmd_parser.arguments,
+                        cmd_parser.required, subcmd.help, cmd_parser.syntax)
                     if '-h' in cmd_args or '--help' in cmd_args:
                         help_method()
                         if ldescr.strip():

@@ -394,7 +394,9 @@ _arguments = dict(
 class ArgumentParseManager(object):
     """Manage (initialize and update) an ArgumentParser object"""
 
-    def __init__(self, exe, arguments=None, required=None):
+    def __init__(
+            self, exe,
+            arguments=None, required=None, syntax=None, description=None):
         """
         :param exe: (str) the basic command (e.g. 'kamaki')
 
@@ -412,12 +414,17 @@ class ArgumentParseManager(object):
             ['b', 'c']] means that the command required either 'a' and 'b' or
             'a' and 'c' or at least one of 'b', 'c' and could be written as
             [('a', ['b', 'c']), ['b', 'c']]
+        :param syntax: (str) The basic syntax of the arguments. Default:
+            exe <cmd_group> [<cmd_subbroup> ...] <cmd>
+        :param description: (str) The description of the commands or ''
         """
         self.parser = ArgumentParser(
             add_help=False, formatter_class=RawDescriptionHelpFormatter)
         self._exe = exe
-        self.syntax = '%s <cmd_group> [<cmd_subbroup> ...] <cmd>' % exe
+        self.syntax = syntax or (
+            '%s <cmd_group> [<cmd_subbroup> ...] <cmd>' % exe)
         self.required = required
+        self.parser.description = description or ''
         if arguments:
             self.arguments = arguments
         else:
@@ -555,8 +562,8 @@ class ArgumentParseManager(object):
             pkargs = (new_args,) if new_args else ()
             self._parsed, unparsed = self.parser.parse_known_args(*pkargs)
             pdict = vars(self._parsed)
-            diff = set(self.required or []).difference([
-                k for k in pdict if pdict[k] != None])
+            diff = set(self.required or []).difference(
+                [k for k in pdict if pdict[k] not in (None, )])
             if diff:
                 self.print_help()
                 miss = ['/'.join(self.arguments[k].parsed_name) for k in diff]
