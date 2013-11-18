@@ -556,19 +556,32 @@ class ArgumentParseManager(object):
             self._arguments.update(new_arguments)
             self.update_parser()
 
+    def _parse_required_arguments(self, required, parsed_args):
+        if not required:
+            return True
+        if isinstance(required, tuple):
+            for item in required:
+                if not self._parse_required_arguments(item, parsed_args):
+                    return False
+            return True
+        if isinstance(required, list):
+            for item in required:
+                if self._parse_required_arguments(item, parsed_args):
+                    return True
+            return False
+        return required in parsed_args
+
     def parse(self, new_args=None):
         """Parse user input"""
         try:
             pkargs = (new_args,) if new_args else ()
             self._parsed, unparsed = self.parser.parse_known_args(*pkargs)
-            pdict = vars(self._parsed)
-            diff = set(self.required or []).difference(
-                [k for k in pdict if pdict[k] not in (None, )])
-            if diff:
+            parsed_args = [
+                k for k, v in vars(self._parsed).items() if v not in (None, )]
+            if not self._parse_required_arguments(self.required, parsed_args):
                 self.print_help()
-                miss = ['/'.join(self.arguments[k].parsed_name) for k in diff]
-                raise CLISyntaxError(
-                    'Missing required arguments (%s)' % ', '.join(miss))
+                raise CLISyntaxError('Missing required arguments')
+
         except SystemExit:
             raiseCLIError(CLISyntaxError('Argument Syntax Error'))
         for name, arg in self.arguments.items():

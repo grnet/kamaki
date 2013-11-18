@@ -399,7 +399,7 @@ class cyclades(object):
                     'metadata' in ('%s' % ce).lower()
                 ):
                         raiseCLIError(
-                            ce, 'No v. server metadata with key %s' % key)
+                            ce, 'No virtual server metadata with key %s' % key)
                 raise
         return _raise
 

@@ -42,8 +42,9 @@ from kamaki.cli.utils import remove_from_items, filter_dicts_by_dict
 from kamaki.cli.errors import (
     raiseCLIError, CLISyntaxError, CLIBaseUrlError, CLIInvalidArgument)
 from kamaki.clients.cyclades import CycladesClient, ClientError
-from kamaki.cli.argument import FlagArgument, ValueArgument, KeyValueArgument
-from kamaki.cli.argument import ProgressBarArgument, DateArgument, IntArgument
+from kamaki.cli.argument import (
+    FlagArgument, ValueArgument, KeyValueArgument, RepeatableArgument,
+    ProgressBarArgument, DateArgument, IntArgument)
 from kamaki.cli.commands import _command_init, errors, addLogSettings
 from kamaki.cli.commands import (
     _optional_output_cmd, _optional_json, _name_filter, _id_filter)
@@ -446,6 +447,26 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
             image_id=self['image_id'])
 
 
+class FirewallProfileArgument(ValueArgument):
+
+    profiles = ('DISABLED', 'ENABLED', 'PROTECTED')
+
+    @property
+    def value(self):
+        return getattr(self, '_value', None)
+
+    @value.setter
+    def value(self, new_profile):
+        if new_profile:
+            new_profile = new_profile.upper()
+            if new_profile in self.profiles:
+                self._value = new_profile
+            else:
+                raise CLIInvalidArgument(
+                    'Invalid firewall profile %s' % new_profile,
+                    details=['Valid values: %s' % ', '.join(self.profiles)])
+
+
 @command(server_cmds)
 class server_modify(_init_cyclades, _optional_output_cmd):
     """Modify attributes of a virtual server"""
@@ -453,8 +474,18 @@ class server_modify(_init_cyclades, _optional_output_cmd):
     arguments = dict(
         server_name=ValueArgument('The new name', '--name'),
         flavor_id=IntArgument('Set a different flavor', '--flavor-id'),
+        firewall_profile=FirewallProfileArgument(
+            'Valid values: %s' % (', '.join(FirewallProfileArgument.profiles)),
+            '--firewall'),
+        metadata_to_set=KeyValueArgument(
+            'Set metadata in key=value form (can be repeated)',
+            '--set-metadata'),
+        metadata_to_delete=RepeatableArgument(
+            'Delete metadata by key (can be repeated)', '--del-metadata')
     )
-    required = ['server_name', 'flavor_id']
+    required = [
+        'server_name', 'flavor_id', 'firewall_profile', 'metadata_to_set',
+        'metadata_to_del']
 
     @errors.generic.all
     @errors.cyclades.connection
@@ -464,6 +495,15 @@ class server_modify(_init_cyclades, _optional_output_cmd):
             self.client.update_server_name((server_id), self['server_name'])
         if self['flavor_id']:
             self.client.resize_server(server_id, self['flavor_id'])
+        if self['firewall_profile']:
+            self.client.set_firewall_profile(
+                server_id=server_id, profile=self['firewall_profile'])
+        if self['metadata_to_set']:
+            self.client.update_server_metadata(
+                server_id, **self['metadata_to_set'])
+        for key in self['metadata_to_delete']:
+            errors.cyclades.metadata(
+                self.client.delete_server_metadata)(server_id, key=key)
         if self['with_output']:
             self._optional_output(self.client.get_server_details(server_id))
 
@@ -638,66 +678,6 @@ class server_console(_init_cyclades, _optional_json):
 
 
 @command(server_cmds)
-class server_firewall(_init_cyclades):
-    """Manage virtual server firewall profiles for public networks"""
-
-
-@command(server_cmds)
-class server_firewall_set(
-        _init_cyclades, _optional_output_cmd, _firewall_wait):
-    """Set the firewall profile on virtual server public network
-    Values for profile:
-    - DISABLED: Shutdown firewall
-    - ENABLED: Firewall in normal mode
-    - PROTECTED: Firewall in secure mode
-    """
-
-    arguments = dict(
-        wait=FlagArgument('Wait server firewall to build', ('-w', '--wait')),
-        timeout=IntArgument(
-            'Set wait timeout in seconds (default: 60)', '--timeout',
-            default=60)
-    )
-
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.server_id
-    @errors.cyclades.firewall
-    def _run(self, server_id, profile):
-        if self['timeout'] and not self['wait']:
-            raise CLIInvalidArgument('Invalid use of --timeout', details=[
-                'Timeout is used only along with -w/--wait'])
-        old_profile = self.client.get_firewall_profile(server_id)
-        if old_profile.lower() == profile.lower():
-            self.error('Firewall of server %s: allready in status %s' % (
-                server_id, old_profile))
-        else:
-            self._optional_output(self.client.set_firewall_profile(
-                server_id=int(server_id), profile=('%s' % profile).upper()))
-            if self['wait']:
-                self._wait(server_id, old_profile, timeout=self['timeout'])
-
-    def main(self, server_id, profile):
-        super(self.__class__, self)._run()
-        self._run(server_id=server_id, profile=profile)
-
-
-@command(server_cmds)
-class server_firewall_get(_init_cyclades):
-    """Get the firewall profile for a virtual servers' public network"""
-
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.server_id
-    def _run(self, server_id):
-        self.writeln(self.client.get_firewall_profile(server_id))
-
-    def main(self, server_id):
-        super(self.__class__, self)._run()
-        self._run(server_id=server_id)
-
-
-@command(server_cmds)
 class server_addr(_init_cyclades, _optional_json):
     """List the addresses of all network interfaces on a virtual server"""
 
@@ -715,11 +695,6 @@ class server_addr(_init_cyclades, _optional_json):
     def main(self, server_id):
         super(self.__class__, self)._run()
         self._run(server_id=server_id)
-
-
-@command(server_cmds)
-class server_metadata(_init_cyclades):
-    """Manage Server metadata (key:value pairs of server attributes)"""
 
 
 @command(server_cmds)
