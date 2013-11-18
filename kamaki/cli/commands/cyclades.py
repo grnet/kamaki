@@ -479,13 +479,13 @@ class server_modify(_init_cyclades, _optional_output_cmd):
             '--firewall'),
         metadata_to_set=KeyValueArgument(
             'Set metadata in key=value form (can be repeated)',
-            '--set-metadata'),
+            '--metadata-set'),
         metadata_to_delete=RepeatableArgument(
-            'Delete metadata by key (can be repeated)', '--del-metadata')
+            'Delete metadata by key (can be repeated)', '--metadata-del')
     )
     required = [
         'server_name', 'flavor_id', 'firewall_profile', 'metadata_to_set',
-        'metadata_to_del']
+        'metadata_to_delete']
 
     @errors.generic.all
     @errors.cyclades.connection
@@ -695,76 +695,6 @@ class server_addr(_init_cyclades, _optional_json):
     def main(self, server_id):
         super(self.__class__, self)._run()
         self._run(server_id=server_id)
-
-
-@command(server_cmds)
-class server_metadata_list(_init_cyclades, _optional_json):
-    """Get server metadata"""
-
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.server_id
-    @errors.cyclades.metadata
-    def _run(self, server_id, key=''):
-        self._print(
-            self.client.get_server_metadata(int(server_id), key),
-            self.print_dict)
-
-    def main(self, server_id, key=''):
-        super(self.__class__, self)._run()
-        self._run(server_id=server_id, key=key)
-
-
-@command(server_cmds)
-class server_metadata_set(_init_cyclades, _optional_json):
-    """Set / update virtual server metadata
-    Metadata should be given in key/value pairs in key=value format
-    For example: /server metadata set <server id> key1=value1 key2=value2
-    Old, unreferenced metadata will remain intact
-    """
-
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.server_id
-    def _run(self, server_id, keyvals):
-        assert keyvals, 'Please, add some metadata ( key=value)'
-        metadata = dict()
-        for keyval in keyvals:
-            k, sep, v = keyval.partition('=')
-            if sep and k:
-                metadata[k] = v
-            else:
-                raiseCLIError(
-                    'Invalid piece of metadata %s' % keyval,
-                    importance=2, details=[
-                        'Correct metadata format: key=val',
-                        'For example:',
-                        '/server metadata set <server id>'
-                        'key1=value1 key2=value2'])
-        self._print(
-            self.client.update_server_metadata(int(server_id), **metadata),
-            self.print_dict)
-
-    def main(self, server_id, *key_equals_val):
-        super(self.__class__, self)._run()
-        self._run(server_id=server_id, keyvals=key_equals_val)
-
-
-@command(server_cmds)
-class server_metadata_delete(_init_cyclades, _optional_output_cmd):
-    """Delete virtual server metadata"""
-
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.server_id
-    @errors.cyclades.metadata
-    def _run(self, server_id, key):
-        self._optional_output(
-            self.client.delete_server_metadata(int(server_id), key))
-
-    def main(self, server_id, key):
-        super(self.__class__, self)._run()
-        self._run(server_id=server_id, key=key)
 
 
 @command(server_cmds)
