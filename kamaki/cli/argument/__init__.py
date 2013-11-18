@@ -461,13 +461,28 @@ class ArgumentParseManager(object):
                 cur, finish = next, '\n%s' % tab2
             return ret + '\n'
 
+    @staticmethod
+    def _patch_with_required_args(arguments, required):
+        if isinstance(required, tuple):
+            return ' '.join([ArgumentParseManager._patch_with_required_args(
+                arguments, k) for k in required])
+        elif isinstance(required, list):
+            return '< %s >' % ' | '.join([
+                ArgumentParseManager._patch_with_required_args(
+                    arguments, k) for k in required])
+        arg = arguments[required]
+        return '/'.join(arg.parsed_name) + (
+            ' %s [...]' % required.upper() if arg.arity < 0 else (
+                ' %s' % required.upper() if arg.arity else ''))
+
     def print_help(self, out=stderr):
         if self.required:
             tmp_args = dict(self.arguments)
             for term in self.required2list(self.required):
                 tmp_args.pop(term)
             tmp_parser = ArgumentParseManager(self._exe, tmp_args)
-            tmp_parser.syntax = self.syntax
+            tmp_parser.syntax = self.syntax + self._patch_with_required_args(
+                self.arguments, self.required)
             tmp_parser.parser.description = '%s\n\nrequired arguments:\n%s' % (
                 self.parser.description,
                 self.required2str(self.required, self.arguments))
@@ -540,8 +555,8 @@ class ArgumentParseManager(object):
             pkargs = (new_args,) if new_args else ()
             self._parsed, unparsed = self.parser.parse_known_args(*pkargs)
             pdict = vars(self._parsed)
-            diff = set(self.required or []).difference(
-                [k for k in pdict if pdict[k] != None])
+            diff = set(self.required or []).difference([
+                k for k in pdict if pdict[k] != None])
             if diff:
                 self.print_help()
                 miss = ['/'.join(self.arguments[k].parsed_name) for k in diff]

@@ -64,15 +64,6 @@ def _arg2syntax(arg):
                     '_', ' ')
 
 
-def _required_syntax(arguments, required):
-    if isinstance(required, tuple):
-        return ' '.join([_required_syntax(arguments, k) for k in required])
-    elif isinstance(required, list):
-        return '(%s)' % ' | '.join([
-            _required_syntax(arguments, k) for k in required])
-    return '/'.join(arguments[required].parsed_name)
-
-
 def _construct_command_syntax(cls):
         spec = getargspec(cls.main.im_func)
         args = spec.args[1:]
@@ -82,10 +73,6 @@ def _construct_command_syntax(cls):
         cls.syntax = ' '.join([required, optional])
         if spec.varargs:
             cls.syntax += ' <%s ...>' % spec.varargs
-        required = getattr(cls, 'required', None)
-        if required:
-            arguments = getattr(cls, 'arguments', dict())
-            cls.syntax += ' %s' % _required_syntax(arguments, required)
 
 
 def _num_of_matching_terms(basic_list, attack_list):
