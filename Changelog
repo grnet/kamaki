@@ -2,11 +2,13 @@ CHANGELOG for version 0.11
 
 Bug Fixes:
 -In file list, the path or prefix was converted to boolean value. Fixed.
+-Thread options did not work [#4616]
 
 Changes:
 1. Make astakosclient a mantatory requirement for kamaki [#4312]
 2. Make post_user_catalogs obsolete, but keep for one more version [#4337]
 3. Rename user commands for cached account requests as /user session [#4340]
+4. Remove max_theads from config, move control to threaded commands [#4617]
 
 Features:
 
