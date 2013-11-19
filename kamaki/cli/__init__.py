@@ -312,7 +312,6 @@ def init_cached_authenticator(config_argument, cloud, logger):
                     fake_cmd = _command_init(dict(config=config_argument))
                     fake_cmd.client = auth_base
                     fake_cmd._set_log_params()
-                    fake_cmd._update_max_threads()
                     tmp_base.authenticate(token)
                     auth_base = tmp_base
             except ClientError as ce:
@@ -557,6 +556,9 @@ def main():
         print_error_message(err)
         if _debug:
             raise err
+        exit(1)
+    except KeyboardInterrupt:
+        print('Canceled by user')
         exit(1)
     except Exception as er:
         print('Unknown Error: %s' % er)

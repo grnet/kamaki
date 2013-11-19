@@ -387,7 +387,9 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
             'Create a cluster of servers of this size. In this case, the name'
             'parameter is the prefix of each server in the cluster (e.g.,'
             'srv1, srv2, etc.',
-            '--cluster-size')
+            '--cluster-size'),
+        max_threads=IntArgument(
+            'Max threads in cluster mode (default 1)', '--threads')
     )
 
     @errors.cyclades.cluster_size
@@ -399,6 +401,7 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
             personality=self['personality']) for i in range(1, 1 + size)]
         if size == 1:
             return [self.client.create_server(**servers[0])]
+        self.client.MAX_THREADS = int(self['max_threads'] or 1)
         try:
             r = self.client.async_run(self.client.create_server, servers)
             return r
