@@ -91,6 +91,7 @@ DEFAULTS = {
         'port_cli': 'network',
         'ip_cli': 'cyclades',
         'image_cli': 'image',
+        'imagecompute_cli': 'image',
         'config_cli': 'config',
         'history_cli': 'history'
         #  Optional command specs:

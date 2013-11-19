@@ -244,7 +244,7 @@ class AstakosClient(Client):
         self._validate_token(token)
         uuid = self._uuids[token]
         astakos = self._astakos[uuid]
-        if set(uuids).difference(self._uuids2usernames[uuid]):
+        if set(uuids or []).difference(self._uuids2usernames[uuid]):
             self._uuids2usernames[uuid].update(astakos.get_usernames(uuids))
         return self._uuids2usernames[uuid]
 
@@ -254,6 +254,6 @@ class AstakosClient(Client):
         self._validate_token(token)
         uuid = self._uuids[token]
         astakos = self._astakos[uuid]
-        if set(usernames).difference(self._usernames2uuids[uuid]):
+        if set(usernames or []).difference(self._usernames2uuids[uuid]):
             self._usernames2uuids[uuid].update(astakos.get_uuids(usernames))
         return self._usernames2uuids[uuid]

@@ -222,9 +222,7 @@ class subnet_list(_init_network, _optional_json, _name_filter, _id_filter):
         detail=FlagArgument('show detailed output', ('-l', '--details')),
         more=FlagArgument(
             'output results in pages (-n to set items per page, default 10)',
-            '--more'),
-        user_id=ValueArgument(
-            'show only subnets belonging to user with this id', '--user-id')
+            '--more')
     )
 
     def _filter_by_user_id(self, nets):
@@ -234,12 +232,11 @@ class subnet_list(_init_network, _optional_json, _name_filter, _id_filter):
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self):
-        detail = self['detail'] or self['user_id']
         nets = self.client.list_subnets()
         nets = self._filter_by_user_id(nets)
         nets = self._filter_by_name(nets)
         nets = self._filter_by_id(nets)
-        if detail and not self['detail']:
+        if not self['detail']:
             nets = [dict(
                 id=n['id'], name=n['name'], links=n['links']) for n in nets]
         kwargs = dict()
