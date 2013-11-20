@@ -113,6 +113,7 @@ class ComputeClient(ComputeRestClient):
             availability_zone=None,
             metadata=None,
             personality=None,
+            networks=None,
             response_headers=dict(location=None)):
         """Submit request to create a new server
 
@@ -139,6 +140,9 @@ class ComputeClient(ComputeRestClient):
 
         if personality:
             req['server']['personality'] = personality
+
+        if networks:
+            req['server']['networks'] = networks
 
         r = self.servers_post(
             json_data=req,

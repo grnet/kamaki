@@ -459,10 +459,10 @@ class ArgumentParseManager(object):
             if arg.arity != 0:
                 ret += ' %s' % required.upper()
             ret = ('{:<%s}' % lt_pn).format(ret)
-            prefix = ('\n%s' % tab2) if len(ret) < lt_pn else ' '
-            step, cur = (len(arg.help) / (lt_all - lt_pn)) or len(arg.help), 0
+            prefix = ('\n%s' % tab2) if len(ret) > lt_pn else ' '
+            cur = 0
             while arg.help[cur:]:
-                next = cur + step
+                next = cur + lt_all - lt_pn
                 ret += prefix
                 ret += ('{:<%s}' % (lt_all - lt_pn)).format(arg.help[cur:next])
                 cur, finish = next, '\n%s' % tab2
@@ -581,7 +581,6 @@ class ArgumentParseManager(object):
             if not self._parse_required_arguments(self.required, parsed_args):
                 self.print_help()
                 raise CLISyntaxError('Missing required arguments')
-
         except SystemExit:
             raiseCLIError(CLISyntaxError('Argument Syntax Error'))
         for name, arg in self.arguments.items():

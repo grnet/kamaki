@@ -371,6 +371,26 @@ class PersonalityArgument(KeyValueArgument):
                                 '%s' % ve])
 
 
+class NetworkIpArgument(RepeatableArgument):
+
+    @property
+    def value(self):
+        return getattr(self, '_value', [])
+
+    @value.setter
+    def value(self, new_value):
+        for v in (new_value or []):
+            net_and_ip = v.split(',')
+            if len(net_and_ip) < 2:
+                raise CLIInvalidArgument(
+                    'Value "%s" is missing parts' % v,
+                    details=['Correct format: %s NETWORK_ID,IP' % (
+                        self.parsed_name[0])])
+            self._value = getattr(self, '_value', list())
+            self._value.append(
+                dict(network=net_and_ip[0], fixed_ip=net_and_ip[1]))
+
+
 @command(server_cmds)
 class server_create(_init_cyclades, _optional_json, _server_wait):
     """Create a server (aka Virtual Machine)"""
@@ -386,17 +406,26 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
             'Create a cluster of servers of this size. In this case, the name'
             'parameter is the prefix of each server in the cluster (e.g.,'
             'srv1, srv2, etc.',
-            '--cluster-size')
+            '--cluster-size'),
+        network_id=RepeatableArgument(
+            'Connect server to network (can be repeated)', '--network'),
+        network_id_and_ip=NetworkIpArgument(
+            'Connect server to network w. floating ip ( NETWORK_ID,IP )'
+            '(can be repeated)',
+            '--network-with-ip'),
     )
     required = ('server_name', 'flavor_id', 'image_id')
 
     @errors.cyclades.cluster_size
     def _create_cluster(self, prefix, flavor_id, image_id, size):
+        networks = [dict(network=netid) for netid in (
+            self['network_id'] or [])] + (self['network_id_and_ip'] or [])
         servers = [dict(
             name='%s%s' % (prefix, i if size > 1 else ''),
             flavor_id=flavor_id,
             image_id=image_id,
-            personality=self['personality']) for i in range(1, 1 + size)]
+            personality=self['personality'],
+            networks=networks) for i in range(1, 1 + size)]
         if size == 1:
             return [self.client.create_server(**servers[0])]
         try:
@@ -836,255 +865,6 @@ def _add_name(self, net):
 
 
 @command(network_cmds)
-class network_info(_init_cyclades, _optional_json):
-    """Detailed information on a network
-    To get a list of available networks and network ids, try /network list
-    """
-
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.network_id
-    def _run(self, network_id):
-        network = self.client.get_network_details(int(network_id))
-        _add_name(self, network)
-        self._print(network, self.print_dict, exclude=('id'))
-
-    def main(self, network_id):
-        super(self.__class__, self)._run()
-        self._run(network_id=network_id)
-
-
-@command(network_cmds)
-class network_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
-    """List networks"""
-
-    PERMANENTS = ('id', 'name')
-
-    arguments = dict(
-        detail=FlagArgument('show detailed output', ('-l', '--details')),
-        limit=IntArgument('limit # of listed networks', ('-n', '--number')),
-        more=FlagArgument(
-            'output results in pages (-n to set items per page, default 10)',
-            '--more'),
-        enum=FlagArgument('Enumerate results', '--enumerate'),
-        status=ValueArgument('filter by status', ('--status')),
-        public=FlagArgument('only public networks', ('--public')),
-        private=FlagArgument('only private networks', ('--private')),
-        dhcp=FlagArgument('show networks with dhcp', ('--with-dhcp')),
-        no_dhcp=FlagArgument('show networks without dhcp', ('--without-dhcp')),
-        user_id=ValueArgument('filter by user id', ('--user-id')),
-        user_name=ValueArgument('filter by user name', ('--user-name')),
-        gateway=ValueArgument('filter by gateway (IPv4)', ('--gateway')),
-        gateway6=ValueArgument('filter by gateway (IPv6)', ('--gateway6')),
-        cidr=ValueArgument('filter by cidr (IPv4)', ('--cidr')),
-        cidr6=ValueArgument('filter by cidr (IPv6)', ('--cidr6')),
-        type=ValueArgument('filter by type', ('--type')),
-    )
-
-    def _apply_common_filters(self, networks):
-        common_filter = dict()
-        if self['public']:
-            if self['private']:
-                return []
-            common_filter['public'] = self['public']
-        elif self['private']:
-            common_filter['public'] = False
-        if self['dhcp']:
-            if self['no_dhcp']:
-                return []
-            common_filter['dhcp'] = True
-        elif self['no_dhcp']:
-            common_filter['dhcp'] = False
-        if self['user_id'] or self['user_name']:
-            uuid = self['user_id'] or self._username2uuid(self['user_name'])
-            common_filter['user_id'] = uuid
-        for term in ('status', 'gateway', 'gateway6', 'cidr', 'cidr6', 'type'):
-            if self[term]:
-                common_filter[term] = self[term]
-        return filter_dicts_by_dict(networks, common_filter)
-
-    def _add_name(self, networks, key='user_id'):
-        uuids = self._uuids2usernames(
-            list(set([net[key] for net in networks])))
-        for net in networks:
-            v = net.get(key, None)
-            if v:
-                net[key] += ' (%s)' % uuids[v]
-        return networks
-
-    @errors.generic.all
-    @errors.cyclades.connection
-    def _run(self):
-        withcommons = False
-        for term in (
-                'status', 'public', 'private', 'user_id', 'user_name', 'type',
-                'gateway', 'gateway6', 'cidr', 'cidr6', 'dhcp', 'no_dhcp'):
-            if self[term]:
-                withcommons = True
-                break
-        detail = self['detail'] or withcommons
-        networks = self.client.list_networks(detail)
-        networks = self._filter_by_name(networks)
-        networks = self._filter_by_id(networks)
-        if withcommons:
-            networks = self._apply_common_filters(networks)
-        if not (self['detail'] or (
-                self['json_output'] or self['output_format'])):
-            remove_from_items(networks, 'links')
-        if detail and not self['detail']:
-            for net in networks:
-                for key in set(net).difference(self.PERMANENTS):
-                    net.pop(key)
-        if self['detail'] and not (
-                self['json_output'] or self['output_format']):
-            self._add_name(networks)
-            self._add_name(networks, 'tenant_id')
-        kwargs = dict(with_enumeration=self['enum'])
-        if self['more']:
-            kwargs['out'] = StringIO()
-            kwargs['title'] = ()
-        if self['limit']:
-            networks = networks[:self['limit']]
-        self._print(networks, **kwargs)
-        if self['more']:
-            pager(kwargs['out'].getvalue())
-
-    def main(self):
-        super(self.__class__, self)._run()
-        self._run()
-
-
-@command(network_cmds)
-class network_create(_init_cyclades, _optional_json, _network_wait):
-    """Create an (unconnected) network"""
-
-    arguments = dict(
-        cidr=ValueArgument('explicitly set cidr', '--with-cidr'),
-        gateway=ValueArgument('explicitly set gateway', '--with-gateway'),
-        dhcp=FlagArgument('Use dhcp (default: off)', '--with-dhcp'),
-        type=ValueArgument(
-            'Valid network types are '
-            'CUSTOM, IP_LESS_ROUTED, MAC_FILTERED (default), PHYSICAL_VLAN',
-            '--with-type',
-            default='MAC_FILTERED'),
-        wait=FlagArgument('Wait network to build', ('-w', '--wait'))
-    )
-
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.network_max
-    def _run(self, name):
-        r = self.client.create_network(
-            name,
-            cidr=self['cidr'],
-            gateway=self['gateway'],
-            dhcp=self['dhcp'],
-            type=self['type'])
-        _add_name(self, r)
-        self._print(r, self.print_dict)
-        if self['wait'] and r['status'] in ('PENDING', ):
-            self._wait(r['id'], 'PENDING')
-
-    def main(self, name):
-        super(self.__class__, self)._run()
-        self._run(name)
-
-
-@command(network_cmds)
-class network_rename(_init_cyclades, _optional_output_cmd):
-    """Set the name of a network"""
-
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.network_id
-    def _run(self, network_id, new_name):
-        self._optional_output(
-                self.client.update_network_name(int(network_id), new_name))
-
-    def main(self, network_id, new_name):
-        super(self.__class__, self)._run()
-        self._run(network_id=network_id, new_name=new_name)
-
-
-@command(network_cmds)
-class network_delete(_init_cyclades, _optional_output_cmd, _network_wait):
-    """Delete a network"""
-
-    arguments = dict(
-        wait=FlagArgument('Wait network to build', ('-w', '--wait'))
-    )
-
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.network_in_use
-    @errors.cyclades.network_id
-    def _run(self, network_id):
-        status = 'DELETED'
-        if self['wait']:
-            r = self.client.get_network_details(network_id)
-            status = r['status']
-            if status in ('DELETED', ):
-                return
-
-        r = self.client.delete_network(int(network_id))
-        self._optional_output(r)
-
-        if self['wait']:
-            self._wait(network_id, status)
-
-    def main(self, network_id):
-        super(self.__class__, self)._run()
-        self._run(network_id=network_id)
-
-
-@command(network_cmds)
-class network_connect(_init_cyclades, _optional_output_cmd):
-    """Connect a server to a network"""
-
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.server_id
-    @errors.cyclades.network_id
-    def _run(self, server_id, network_id):
-        self._optional_output(
-                self.client.connect_server(int(server_id), int(network_id)))
-
-    def main(self, server_id, network_id):
-        super(self.__class__, self)._run()
-        self._run(server_id=server_id, network_id=network_id)
-
-
-@command(network_cmds)
-class network_disconnect(_init_cyclades):
-    """Disconnect a nic that connects a server to a network
-    Nic ids are listed as "attachments" in detailed network information
-    To get detailed network information: /network info <network id>
-    """
-
-    @errors.cyclades.nic_format
-    def _server_id_from_nic(self, nic_id):
-        return nic_id.split('-')[1]
-
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.server_id
-    @errors.cyclades.nic_id
-    def _run(self, nic_id, server_id):
-        num_of_disconnected = self.client.disconnect_server(server_id, nic_id)
-        if not num_of_disconnected:
-            raise ClientError(
-                'Network Interface %s not found on server %s' % (
-                    nic_id, server_id),
-                status=404)
-        print('Disconnected %s connections' % num_of_disconnected)
-
-    def main(self, nic_id):
-        super(self.__class__, self)._run()
-        server_id = self._server_id_from_nic(nic_id=nic_id)
-        self._run(nic_id=nic_id, server_id=server_id)
-
-
-@command(network_cmds)
 class network_wait(_init_cyclades, _network_wait):
     """Wait for server to finish [PENDING, ACTIVE, DELETED]"""
 
@@ -1194,31 +974,15 @@ class ip_release(_init_cyclades, _optional_output_cmd):
 
 @command(ip_cmds)
 class ip_attach(_init_cyclades, _optional_output_cmd):
-    """Attach a floating IP to a server
-    """
+    """DEPRECATED, use /port create"""
 
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.server_id
-    def _run(self, server_id, ip):
-        self._optional_output(self.client.attach_floating_ip(server_id, ip))
-
-    def main(self, server_id, IP):
-        super(self.__class__, self)._run()
-        self._run(server_id=server_id, ip=IP)
+    def main(self):
+        raise CLISyntaxError('DEPRECATED, replaced by kamaki port create')
 
 
 @command(ip_cmds)
 class ip_detach(_init_cyclades, _optional_output_cmd):
-    """Detach a floating IP from a server
-    """
+    """DEPRECATED, use /port delete"""
 
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.server_id
-    def _run(self, server_id, ip):
-        self._optional_output(self.client.detach_floating_ip(server_id, ip))
-
-    def main(self, server_id, IP):
-        super(self.__class__, self)._run()
-        self._run(server_id=server_id, ip=IP)
+    def main(self):
+        raise CLISyntaxError('DEPRECATED, replaced by kamaki port delete')

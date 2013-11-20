@@ -63,10 +63,10 @@ class _init_network(_command_init):
     def _run(self, service='network'):
         if getattr(self, 'cloud', None):
             base_url = self._custom_url(service) or self._custom_url(
-                'compute')
+                'network')
             if base_url:
                 token = self._custom_token(service) or self._custom_token(
-                    'compute') or self.config.get_cloud('token')
+                    'network') or self.config.get_cloud('token')
                 self.client = CycladesNetworkClient(
                   base_url=base_url, token=token)
                 return
@@ -74,8 +74,8 @@ class _init_network(_command_init):
             self.cloud = 'default'
         if getattr(self, 'auth_base', False):
             cyclades_endpoints = self.auth_base.get_service_endpoints(
-                self._custom_type('compute') or 'compute',
-                self._custom_version('compute') or '')
+                self._custom_type('network') or 'network',
+                self._custom_version('network') or '')
             base_url = cyclades_endpoints['publicURL']
             token = self.auth_base.token
             self.client = CycladesNetworkClient(base_url=base_url, token=token)
@@ -108,12 +108,11 @@ class network_list(_init_network, _optional_json, _name_filter, _id_filter):
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self):
-        detail = self['detail'] or self['user_id']
-        nets = self.client.list_networks(detail=detail)
+        nets = self.client.list_networks()
         nets = self._filter_by_user_id(nets)
         nets = self._filter_by_name(nets)
         nets = self._filter_by_id(nets)
-        if detail and not self['detail']:
+        if not self['detail']:
             nets = [dict(
                 id=n['id'], name=n['name'], links=n['links']) for n in nets]
         kwargs = dict()
@@ -145,17 +144,37 @@ class network_info(_init_network, _optional_json):
         self._run(network_id=network_id)
 
 
+class NetworkTypeArgument(ValueArgument):
+
+    types = ('CUSTOM', 'MAC_FILTERED', 'IP_LESS_ROUTED', 'PHYSICAL_VLAN')
+
+    @property
+    def value(self):
+        return getattr(self, '_value', None)
+
+    @value.setter
+    def value(self, new_value):
+        if new_value and new_value.upper() in self.types:
+            self._value = new_value.upper()
+        elif new_value:
+            raise CLIInvalidArgument(
+                'Invalid network type %s' % new_value, details=[
+                    'Valid types: %s' % ', '.join(self.types), ])
+
+
 @command(network_cmds)
 class network_create(_init_network, _optional_json):
-    """Create a new network
-    Valid network types: CUSTOM MAC_FILTERED IP_LESS_ROUTED PHYSICAL_VLAN
-    """
+    """Create a new network"""
 
     arguments = dict(
         name=ValueArgument('Network name', '--name'),
         shared=FlagArgument(
-            'Make network shared (special privileges required)', '--shared')
+            'Make network shared (special privileges required)', '--shared'),
+        network_type=NetworkTypeArgument(
+            'Valid network types: %s' % (', '.join(NetworkTypeArgument.types)),
+            '--type')
     )
+    required = ('network_type', )
 
     @errors.generic.all
     @errors.cyclades.connection
@@ -165,9 +184,9 @@ class network_create(_init_network, _optional_json):
             network_type, name=self['name'], shared=self['shared'])
         self._print(net, self.print_dict)
 
-    def main(self, network_type):
+    def main(self):
         super(self.__class__, self)._run()
-        self._run(network_type=network_type)
+        self._run(network_type=self['network_type'])
 
 
 @command(network_cmds)
@@ -187,24 +206,17 @@ class network_delete(_init_network, _optional_output_cmd):
 
 
 @command(network_cmds)
-class network_set(_init_network, _optional_json):
-    """Set an attribute of a network, leave the rest untouched (update)
-    Only "--name" is supported for now
-    """
+class network_modify(_init_network, _optional_json):
+    """Modify network attributes"""
 
-    arguments = dict(name=ValueArgument('New name of the network', '--name'))
+    arguments = dict(new_name=ValueArgument('Rename the network', '--name'))
+    required = ['new_name', ]
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.network_id
     def _run(self, network_id):
-        if self['name'] in (None, ):
-            raise CLISyntaxError(
-                'Missing network attributes to update',
-                details=[
-                    'At least one if the following is expected:',
-                    '  --name=<new name>'])
-        r = self.client.update_network(network_id, name=self['name'])
+        r = self.client.update_network(network_id, name=self['new_name'])
         self._print(r, self.print_dict)
 
     def main(self, network_id):
@@ -225,15 +237,10 @@ class subnet_list(_init_network, _optional_json, _name_filter, _id_filter):
             '--more')
     )
 
-    def _filter_by_user_id(self, nets):
-        return filter_dicts_by_dict(nets, dict(user_id=self['user_id'])) if (
-            self['user_id']) else nets
-
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self):
         nets = self.client.list_subnets()
-        nets = self._filter_by_user_id(nets)
         nets = self._filter_by_name(nets)
         nets = self._filter_by_id(nets)
         if not self['detail']:
@@ -289,8 +296,7 @@ class AllocationPoolArgument(RepeatableArgument):
 
 @command(subnet_cmds)
 class subnet_create(_init_network, _optional_json):
-    """Create a new subnet
-    """
+    """Create a new subnet"""
 
     arguments = dict(
         name=ValueArgument('Subnet name', '--name'),
@@ -301,8 +307,11 @@ class subnet_create(_init_network, _optional_json):
         gateway=ValueArgument('Gateway IP', '--gateway'),
         subnet_id=ValueArgument('The id for the subnet', '--id'),
         ipv6=FlagArgument('If set, IP version is set to 6, else 4', '--ipv6'),
-        enable_dhcp=FlagArgument('Enable dhcp (default: off)', '--with-dhcp')
+        enable_dhcp=FlagArgument('Enable dhcp (default: off)', '--with-dhcp'),
+        network_id=ValueArgument('Set the network ID', '--network-id'),
+        cidr=ValueArgument('Set the CIDR', '--cidr')
     )
+    required = ('network_id', 'cidr')
 
     @errors.generic.all
     @errors.cyclades.connection
@@ -314,9 +323,9 @@ class subnet_create(_init_network, _optional_json):
             self['subnet_id'], self['ipv6'], self['enable_dhcp'])
         self._print(net, self.print_dict)
 
-    def main(self, network_id, cidr):
+    def main(self):
         super(self.__class__, self)._run()
-        self._run(network_id=network_id, cidr=cidr)
+        self._run(network_id=self['network_id'], cidr=self['cidr'])
 
 
 # @command(subnet_cmds)
@@ -335,25 +344,20 @@ class subnet_create(_init_network, _optional_json):
 
 
 @command(subnet_cmds)
-class subnet_set(_init_network, _optional_json):
-    """Set an attribute of a subnet, leave the rest untouched (update)
-    Only "--name" is supported for now
-    """
+class subnet_modify(_init_network, _optional_json):
+    """Modify the attributes of a subnet"""
 
-    arguments = dict(name=ValueArgument('New name of the subnet', '--name'))
+    arguments = dict(
+        new_name=ValueArgument('New name of the subnet', '--name')
+    )
+    required = ['new_name']
 
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self, subnet_id):
-        if self['name'] in (None, ):
-            raise CLISyntaxError(
-                'Missing subnet attributes to update',
-                details=[
-                    'At least one if the following is expected:',
-                    '  --name=<new name>'])
         r = self.client.get_subnet_details(subnet_id)
         r = self.client.update_subnet(
-            subnet_id, r['network_id'], name=self['name'])
+            subnet_id, r['network_id'], name=self['new_name'])
         self._print(r, self.print_dict)
 
     def main(self, subnet_id):
@@ -393,7 +397,7 @@ class port_info(_init_network, _optional_json):
 
 @command(port_cmds)
 class port_delete(_init_network, _optional_output_cmd):
-    """Delete a port"""
+    """Delete a port (== disconnect server from network)"""
 
     @errors.generic.all
     @errors.cyclades.connection
@@ -407,25 +411,18 @@ class port_delete(_init_network, _optional_output_cmd):
 
 
 @command(port_cmds)
-class port_set(_init_network, _optional_json):
-    """Set an attribute of a port, leave the rest untouched (update)
-    Only "--name" is supported for now
-    """
+class port_modify(_init_network, _optional_json):
+    """Modify the attributes of a port"""
 
-    arguments = dict(name=ValueArgument('New name of the port', '--name'))
+    arguments = dict(new_name=ValueArgument('New name of the port', '--name'))
+    required = ['new_name', ]
 
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self, port_id):
-        if self['name'] in (None, ):
-            raise CLISyntaxError(
-                'Missing port attributes to update',
-                details=[
-                    'At least one if the following is expected:',
-                    '  --name=<new name>'])
         r = self.client.get_port_details(port_id)
         r = self.client.update_port(
-            port_id, r['network_id'], name=self['name'])
+            port_id, r['network_id'], name=self['new_name'])
         self._print(r, self.print_dict)
 
     def main(self, port_id):
@@ -435,7 +432,7 @@ class port_set(_init_network, _optional_json):
 
 @command(port_cmds)
 class port_create(_init_network, _optional_json):
-    """Create a new port"""
+    """Create a new port (== connect server to network)"""
 
     arguments = dict(
         name=ValueArgument('A human readable name', '--name'),
@@ -446,16 +443,18 @@ class port_create(_init_network, _optional_json):
             'Subnet id for fixed ips (used with --ip-address)',
             '--subnet-id'),
         ip_address=ValueArgument(
-            'IP address for subnet id (used with --subnet-id', '--ip-address')
+            'IP address for subnet id (used with --subnet-id', '--ip-address'),
+        network_id=ValueArgument('Set the network ID', '--network-id'),
+        device_id=ValueArgument(
+            'The device is either a virtual server or a virtual router',
+            '--device-id')
     )
+    retuired = ('network_id', 'device_id')
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.network_id
     def _run(self, network_id, device_id):
-        if bool(self['subnet_id']) != bool(self['ip_address']):
-            raise CLIInvalidArgument('Invalid use of arguments', details=[
-                '--subnet-id and --ip-address should be used together'])
         fixed_ips = [dict(
             subnet_id=self['subnet_id'], ip_address=self['ip_address'])] if (
                 self['subnet_id']) else None
@@ -466,6 +465,25 @@ class port_create(_init_network, _optional_json):
             fixed_ips=fixed_ips)
         self._print(r, self.print_dict)
 
-    def main(self, network_id, device_id):
+    def main(self):
         super(self.__class__, self)._run()
-        self._run(network_id=network_id, device_id=device_id)
+        self._run(network_id=self['network_id'], device_id=self['device_id'])
+
+
+#  Warn users for some importand changes
+
+
+@command(network_cmds)
+class network_connect(_init_network, _optional_output_cmd):
+    """DEPRECATED, use /port create"""
+
+    def main(self):
+        raise CLISyntaxError('DEPRECATED, replaced by kamaki port create')
+
+
+@command(network_cmds)
+class network_disconnect(_init_network):
+    """DEPRECATED, /use port delete"""
+
+    def main(self):
+        raise CLISyntaxError('DEPRECATED, replaced by kamaki port delete')

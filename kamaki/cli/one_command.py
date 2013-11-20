@@ -93,7 +93,6 @@ def run(cloud, parser, _help):
     update_parser_help(parser, cmd)
 
     if _help or not cmd.is_command:
-        #parser.parser.print_help()
         if cmd.cmd_class:
             parser.required = getattr(cmd.cmd_class, 'required', None)
         parser.print_help()
@@ -109,6 +108,5 @@ def run(cloud, parser, _help):
     parser.required = getattr(cls, 'required', None)
     parser.update_arguments(executable.arguments)
     for term in _best_match:
-            parser.unparsed.remove(term)
-    #exec_cmd(executable, parser.unparsed, parser.parser.print_help)
+        parser.unparsed.remove(term)
     exec_cmd(executable, parser.unparsed, parser.print_help)

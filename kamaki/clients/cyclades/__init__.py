@@ -44,7 +44,7 @@ class CycladesClient(CycladesRestClient):
 
     def create_server(
             self, name, flavor_id, image_id,
-            metadata=None, personality=None):
+            metadata=None, personality=None, networks=None):
         """Submit request to create a new server
 
         :param name: (str)
@@ -57,6 +57,12 @@ class CycladesClient(CycladesRestClient):
 
         :param personality: a list of (file path, file contents) tuples,
             describing files to be injected into virtual server upon creation
+
+        :param networks: (list of dicts) Networks to connect to, list this:
+            "networks": [
+                {"network": <network_uuid>},
+                {"network": <network_uuid>, "fixed_ip": address},
+                {"port": <port_id>}, ...]
 
         :returns: a dict with the new virtual server details
 
