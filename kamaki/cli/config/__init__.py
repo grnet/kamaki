@@ -89,7 +89,7 @@ DEFAULTS = {
         'network_cli': 'network',
         'subnet_cli': 'network',
         'port_cli': 'network',
-        'ip_cli': 'cyclades',
+        'ip_cli': 'network',
         'image_cli': 'image',
         'imagecompute_cli': 'image',
         'config_cli': 'config',

@@ -49,7 +49,8 @@ from kamaki.cli.utils import filter_dicts_by_dict
 network_cmds = CommandTree('network', 'Networking API network commands')
 port_cmds = CommandTree('port', 'Networking API network commands')
 subnet_cmds = CommandTree('subnet', 'Networking API network commands')
-_commands = [network_cmds, port_cmds, subnet_cmds]
+ip_cmds = CommandTree('ip', 'Networking API floatingip commands')
+_commands = [network_cmds, port_cmds, subnet_cmds, ip_cmds]
 
 
 about_authentication = '\nUser Authentication:\
@@ -470,8 +471,73 @@ class port_create(_init_network, _optional_json):
         self._run(network_id=self['network_id'], device_id=self['device_id'])
 
 
-#  Warn users for some importand changes
+@command(ip_cmds)
+class ip_list(_init_network, _optional_json):
+    """List reserved floating IPs"""
 
+    @errors.generic.all
+    @errors.cyclades.connection
+    @errors.cyclades.network_id
+    def _run(self):
+        self._print(self.client.list_floatingips())
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
+
+
+@command(ip_cmds)
+class ip_info(_init_network, _optional_json):
+    """Get details on a floating IP"""
+
+    @errors.generic.all
+    @errors.cyclades.connection
+    def _run(self, ip_id):
+        self._print(self.client.get_floatingip_details(ip_id))
+
+    def main(self, ip_id):
+        super(self.__class__, self)._run()
+        self._run(ip_id=ip_id)
+
+
+@command(ip_cmds)
+class ip_create(_init_network, _optional_json):
+    """Reserve an IP on a network"""
+
+    arguments = dict(
+        network_id=ValueArgument(
+            'The network to preserve the IP on', '--network-id'),
+        ip_address=ValueArgument('Allocate a specific IP address', '--address')
+    )
+    required = ('network_id', )
+
+    @errors.generic.all
+    @errors.cyclades.connection
+    @errors.cyclades.network_id
+    def _run(self, network_id):
+        self._print(
+            self.client.create_floatingip(
+                network_id, floating_ip_address=self['ip_address']),
+            self.print_dict)
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run(network_id=self['network_id'])
+
+
+@command(ip_cmds)
+class ip_delete(_init_network, _optional_output_cmd):
+    """Unreserve an IP (also delete the port, if attached)"""
+
+    def _run(self, ip_id):
+        self._optional_output(self.client.floatingip_delete(ip_id))
+
+    def main(self, ip_id):
+        super(self.__class__, self)._run()
+        self._run(ip_id=ip_id)
+
+
+#  Warn users for some importand changes
 
 @command(network_cmds)
 class network_connect(_init_network, _optional_output_cmd):

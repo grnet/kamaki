@@ -41,7 +41,7 @@ from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.utils import remove_from_items, filter_dicts_by_dict
 from kamaki.cli.errors import (
     raiseCLIError, CLISyntaxError, CLIBaseUrlError, CLIInvalidArgument)
-from kamaki.clients.cyclades import CycladesClient, ClientError
+from kamaki.clients.cyclades import CycladesClient
 from kamaki.cli.argument import (
     FlagArgument, ValueArgument, KeyValueArgument, RepeatableArgument,
     ProgressBarArgument, DateArgument, IntArgument)
@@ -54,7 +54,7 @@ server_cmds = CommandTree('server', 'Cyclades/Compute API server commands')
 flavor_cmds = CommandTree('flavor', 'Cyclades/Compute API flavor commands')
 network_cmds = CommandTree('network', 'Cyclades/Compute API network commands')
 ip_cmds = CommandTree('ip', 'Cyclades/Compute API floating ip commands')
-_commands = [server_cmds, flavor_cmds, network_cmds, ip_cmds]
+_commands = [server_cmds, flavor_cmds, network_cmds]
 
 
 about_authentication = '\nUser Authentication:\
@@ -889,100 +889,3 @@ class network_wait(_init_cyclades, _network_wait):
     def main(self, network_id, current_status='PENDING'):
         super(self.__class__, self)._run()
         self._run(network_id=network_id, current_status=current_status)
-
-
-@command(ip_cmds)
-class ip_pools(_init_cyclades, _optional_json):
-    """List pools of floating IPs"""
-
-    @errors.generic.all
-    @errors.cyclades.connection
-    def _run(self):
-        r = self.client.get_floating_ip_pools()
-        self._print(r if self['json_output'] or self['output_format'] else r[
-            'floating_ip_pools'])
-
-    def main(self):
-        super(self.__class__, self)._run()
-        self._run()
-
-
-@command(ip_cmds)
-class ip_list(_init_cyclades, _optional_json):
-    """List reserved floating IPs"""
-
-    @errors.generic.all
-    @errors.cyclades.connection
-    def _run(self):
-        r = self.client.get_floating_ips()
-        self._print(r if self['json_output'] or self['output_format'] else r[
-            'floating_ips'])
-
-    def main(self):
-        super(self.__class__, self)._run()
-        self._run()
-
-
-@command(ip_cmds)
-class ip_info(_init_cyclades, _optional_json):
-    """Details for an IP"""
-
-    @errors.generic.all
-    @errors.cyclades.connection
-    def _run(self, ip):
-        self._print(self.client.get_floating_ip(ip), self.print_dict)
-
-    def main(self, IP):
-        super(self.__class__, self)._run()
-        self._run(ip=IP)
-
-
-@command(ip_cmds)
-class ip_reserve(_init_cyclades, _optional_json):
-    """Reserve a floating IP
-    An IP is reserved from an IP pool. The default IP pool is chosen
-    automatically, but there is the option if specifying an explicit IP pool.
-    """
-
-    arguments = dict(pool=ValueArgument('Source IP pool', ('--pool'), None))
-
-    @errors.generic.all
-    @errors.cyclades.connection
-    def _run(self, ip=None):
-        self._print([self.client.alloc_floating_ip(self['pool'], ip)])
-
-    def main(self, requested_IP=None):
-        super(self.__class__, self)._run()
-        self._run(ip=requested_IP)
-
-
-@command(ip_cmds)
-class ip_release(_init_cyclades, _optional_output_cmd):
-    """Release a floating IP
-    The release IP is "returned" to the IP pool it came from.
-    """
-
-    @errors.generic.all
-    @errors.cyclades.connection
-    def _run(self, ip):
-        self._optional_output(self.client.delete_floating_ip(ip))
-
-    def main(self, IP):
-        super(self.__class__, self)._run()
-        self._run(ip=IP)
-
-
-@command(ip_cmds)
-class ip_attach(_init_cyclades, _optional_output_cmd):
-    """DEPRECATED, use /port create"""
-
-    def main(self):
-        raise CLISyntaxError('DEPRECATED, replaced by kamaki port create')
-
-
-@command(ip_cmds)
-class ip_detach(_init_cyclades, _optional_output_cmd):
-    """DEPRECATED, use /port delete"""
-
-    def main(self):
-        raise CLISyntaxError('DEPRECATED, replaced by kamaki port delete')

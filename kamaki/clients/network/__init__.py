@@ -321,7 +321,7 @@ class NetworkClient(NetworkRestClient):
         r = self.ports_put(port_id, json_data=dict(port=port), success=201)
         return r.json['port']
 
-    def list_floatingip(self):
+    def list_floatingips(self):
         r = self.floatingips_get(success=200)
         return r['floatingips']
 
@@ -333,11 +333,11 @@ class NetworkClient(NetworkRestClient):
             self, floating_network_id,
             floating_ip_address='', port_id='', fixed_ip_address=''):
         floatingip = dict(floating_network_id=floating_network_id)
-        if floating_ip_address != '':
+        if floating_ip_address:
             floatingip['floating_ip_address'] = floating_ip_address
-        if port_id != '':
+        if port_id:
             floatingip['port_id'] = port_id
-        if fixed_ip_address != '':
+        if fixed_ip_address:
             floatingip['fixed_ip_address'] = fixed_ip_address
         r = self.floatingips_post(
             json_data=dict(floatingip=floatingip), success=201)
