@@ -172,6 +172,41 @@ class NetworkRestClient(TestCase):
                 'ret val')
             self._assert(put, '/ports/%s' % port_id, json=json_data, **kwargs)
 
+    @patch('kamaki.clients.Client.get', return_value='ret val')
+    def test_floatingips_get(self, get):
+        for kwargs in (dict(), dict(k1='v1'), dict(k2='v2', k3='v3')):
+            self.assertEqual(self.client.floatingips_get(**kwargs), 'ret val')
+            self._assert(get, '/floatingips', **kwargs)
+
+            floatingip_id = 'port id'
+            self.assertEqual(
+                self.client.floatingips_get(
+                    floatingip_id=floatingip_id, **kwargs),
+                'ret val')
+            self._assert(get, '/floatingips/%s' % floatingip_id, **kwargs)
+
+    @patch('kamaki.clients.Client.post', return_value='ret val')
+    def test_floatingips_post(self, post):
+        for kwargs in (dict(), dict(k1='v1'), dict(k2='v2', k3='v3')):
+            json_data = dict(id='some id', other_param='other val')
+            self.assertEqual(
+                self.client.floatingips_post(json_data=json_data, **kwargs),
+                'ret val')
+            self._assert(post, '/floatingips', json=json_data, **kwargs)
+
+    @patch('kamaki.clients.Client.put', return_value='ret val')
+    def test_floatingips_put(self, put):
+        floatingip_id = 'portid'
+        for kwargs in (dict(), dict(k1='v1'), dict(k2='v2', k3='v3')):
+            json_data = dict(id='some id', other_param='other val')
+            self.assertEqual(
+                self.client.floatingips_put(
+                    floatingip_id, json_data=json_data, **kwargs),
+                'ret val')
+            self._assert(
+                put, '/floatingips/%s' % floatingip_id,
+                json=json_data, **kwargs)
+
 
 class FakeObject(object):
 
