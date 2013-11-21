@@ -398,7 +398,7 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
     arguments = dict(
         server_name=ValueArgument('The name of the new server', '--name'),
         flavor_id=IntArgument('The ID of the hardware flavor', '--flavor-id'),
-        image_id=IntArgument('The ID of the hardware image', '--image-id'),
+        image_id=ValueArgument('The ID of the hardware image', '--image-id'),
         personality=PersonalityArgument(
             (80 * ' ').join(howto_personality), ('-p', '--personality')),
         wait=FlagArgument('Wait server to build', ('-w', '--wait')),
