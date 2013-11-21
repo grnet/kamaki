@@ -73,10 +73,10 @@ class _init_network(_command_init):
         else:
             self.cloud = 'default'
         if getattr(self, 'auth_base', False):
-            cyclades_endpoints = self.auth_base.get_service_endpoints(
+            network_endpoints = self.auth_base.get_service_endpoints(
                 self._custom_type('network') or 'network',
                 self._custom_version('network') or '')
-            base_url = cyclades_endpoints['publicURL']
+            base_url = network_endpoints['publicURL']
             token = self.auth_base.token
             self.client = CycladesNetworkClient(base_url=base_url, token=token)
         else:
