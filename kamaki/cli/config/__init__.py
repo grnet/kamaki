@@ -77,7 +77,6 @@ DEFAULTS = {
         'log_token': 'off',
         'log_data': 'off',
         'log_pid': 'off',
-        'max_threads': 7,
         'history_file': HISTORY_PATH,
         'user_cli': 'astakos',
         'admin_cli': 'astakos',

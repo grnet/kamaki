@@ -1045,7 +1045,7 @@ class file_upload(_file_container_command, _optional_output_cmd):
                 '( "read=user1,grp1,user2,... write=user1,grp2,... )']),
             parsed_name='--sharing'),
         public=FlagArgument('make object publicly accessible', '--public'),
-        poolsize=IntArgument('set pool size', '--with-pool-size'),
+        max_threads=IntArgument('set max threads (default 5)', '--threads'),
         progress_bar=ProgressBarArgument(
             'do not show progress bar',
             ('-N', '--no-progress-bar'),
@@ -1152,8 +1152,7 @@ class file_upload(_file_container_command, _optional_output_cmd):
     @errors.pithos.object_path
     @errors.pithos.local_path
     def _run(self, local_path, remote_path):
-        if self['poolsize'] > 0:
-            self.client.MAX_THREADS = int(self['poolsize'])
+        self.client.MAX_THREADS = int(self['max_threads'] or 5)
         params = dict(
             content_encoding=self['content_encoding'],
             content_type=self['content_type'],
@@ -1272,7 +1271,7 @@ class file_download(_file_container_command):
             'show output unmodified since then', '--if-unmodified-since'),
         object_version=ValueArgument(
             'get the specific version', ('-O', '--object-version')),
-        poolsize=IntArgument('set pool size', '--with-pool-size'),
+        max_threads=IntArgument('set max threads (default 5)', '--threads'),
         progress_bar=ProgressBarArgument(
             'do not show progress bar', ('-N', '--no-progress-bar'),
             default=False),
@@ -1389,9 +1388,7 @@ class file_download(_file_container_command):
     @errors.pithos.object_path
     @errors.pithos.local_path
     def _run(self, local_path):
-        poolsize = self['poolsize']
-        if poolsize:
-            self.client.MAX_THREADS = int(poolsize)
+        self.client.MAX_THREADS = int(self['max_threads'] or 5)
         progress_bar = None
         try:
             for f, rpath in self._outputs(local_path):

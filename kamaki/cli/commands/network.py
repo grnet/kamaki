@@ -63,10 +63,10 @@ class _init_network(_command_init):
     def _run(self, service='network'):
         if getattr(self, 'cloud', None):
             base_url = self._custom_url(service) or self._custom_url(
-                'compute')
+                'network')
             if base_url:
                 token = self._custom_token(service) or self._custom_token(
-                    'compute') or self.config.get_cloud('token')
+                    'network') or self.config.get_cloud('token')
                 self.client = CycladesNetworkClient(
                   base_url=base_url, token=token)
                 return
@@ -74,8 +74,8 @@ class _init_network(_command_init):
             self.cloud = 'default'
         if getattr(self, 'auth_base', False):
             cyclades_endpoints = self.auth_base.get_service_endpoints(
-                self._custom_type('compute') or 'compute',
-                self._custom_version('compute') or '')
+                self._custom_type('network') or 'network',
+                self._custom_version('network') or '')
             base_url = cyclades_endpoints['publicURL']
             token = self.auth_base.token
             self.client = CycladesNetworkClient(base_url=base_url, token=token)
@@ -456,9 +456,9 @@ class port_create(_init_network, _optional_json):
     @errors.cyclades.connection
     @errors.cyclades.network_id
     def _run(self, network_id, device_id):
-        if not (bool(self['subnet_id']) ^ bool(self['ip_address'])):
+        if bool(self['subnet_id']) ^ bool(self['ip_address']):
             raise CLIInvalidArgument('Invalid use of arguments', details=[
-                '--subned-id and --ip-address should be used together'])
+                '--subnet-id and --ip-address should be used together'])
         fixed_ips = dict(
             subnet_id=self['subnet_id'], ip_address=self['ip_address']) if (
                 self['subnet_id']) else None

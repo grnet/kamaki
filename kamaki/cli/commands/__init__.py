@@ -57,7 +57,6 @@ def addLogSettings(foo):
             return foo(self, *args, **kwargs)
         finally:
             self._set_log_params()
-            self._update_max_threads
     return wrap
 
 
@@ -170,12 +169,6 @@ class _command_init(object):
         except Exception as e:
             log.debug('Failed to read custom log_pid setting:'
                 '%s\n default for log_pid is off' % e)
-
-    def _update_max_threads(self):
-        if getattr(self, 'client', None):
-            max_threads = int(self['config'].get('global', 'max_threads'))
-            assert max_threads > 0, 'invalid max_threads config option'
-            self.client.MAX_THREADS = max_threads
 
     def _safe_progress_bar(
             self, msg, arg='progress_bar', countdown=False, timeout=100):

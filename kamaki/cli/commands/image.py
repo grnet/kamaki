@@ -676,9 +676,6 @@ class image_shared(_init_image, _optional_json):
     @errors.plankton.connection
     def _run(self, member):
         r = self.client.list_shared(member)
-        if r:
-            uuid = self._username2uuid(member)
-            r = self.client.list_shared(uuid) if uuid else []
         self._print(r, title=('image_id',))
 
     def main(self, member_id_or_username):
