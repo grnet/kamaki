@@ -34,14 +34,15 @@
 from io import StringIO
 from pydoc import pager
 
+from kamaki.clients.pithos import PithosClient, ClientError
+
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.commands import (
     _command_init, errors, addLogSettings, DontRaiseKeyError, _optional_json,
     _name_filter, _optional_output_cmd)
-from kamaki.clients.pithos import PithosClient
 from kamaki.cli.errors import (
-    CLIBaseUrlError)
+    CLIBaseUrlError, CLIError)
 from kamaki.cli.argument import (
     FlagArgument, IntArgument, ValueArgument, DateArgument)
 from kamaki.cli.utils import (format_size, bold)
@@ -110,8 +111,8 @@ class _pithos_init(_command_init):
 class _pithos_account(_pithos_init):
     """Setup account"""
 
-    def __init__(self, *args, **kwargs):
-        super(_pithos_account, self).__init__(*args, **kwargs)
+    def __init__(self, arguments={}, auth_base=None, cloud=None):
+        super(_pithos_account, self).__init__(arguments, auth_base, cloud)
         self['account'] = ValueArgument(
             'Use (a different) user uuid', ('-A', '--account'))
 
@@ -124,30 +125,38 @@ class _pithos_account(_pithos_init):
 class _pithos_container(_pithos_account):
     """Setup container"""
 
-    def __init__(self, *args, **kwargs):
-        super(_pithos_container, self).__init__(*args, **kwargs)
+    def __init__(self, arguments={}, auth_base=None, cloud=None):
+        super(_pithos_container, self).__init__(arguments, auth_base, cloud)
         self['container'] = ValueArgument(
             'Use this container (default: pithos)', ('-C', '--container'))
 
-    def _resolve_pithos_url(self, url):
+    @staticmethod
+    def _is_dir(remote_dict):
+        return 'application/directory' == remote_dict.get(
+            'content_type', remote_dict.get('content-type', ''))
+
+    @staticmethod
+    def _resolve_pithos_url(url):
         """Match urls of one of the following formats:
         pithos://ACCOUNT/CONTAINER/OBJECT_PATH
         /CONTAINER/OBJECT_PATH
-        Anything resolved, is set as self.<account|container|path>
+        return account, container, path
         """
         account, container, path, prefix = '', '', url, 'pithos://'
         if url.startswith(prefix):
-            self.account, sep, url = url[len(prefix):].partition('/')
+            account, sep, url = url[len(prefix):].partition('/')
             url = '/%s' % url
         if url.startswith('/'):
-            self.container, sep, path = url[1:].partition('/')
-        self.path = path
+            container, sep, path = url[1:].partition('/')
+        return account, container, path
 
     def _run(self, url=None):
+        acc, con, self.path = self._resolve_pithos_url(url or '')
+        self.account = acc or getattr(self, 'account', '')
         super(_pithos_container, self)._run()
-        self._resolve_pithos_url(url or '')
-        self.client.container = self['container'] or getattr(
+        self.container = con or self['container'] or getattr(
             self, 'container', None) or getattr(self.client, 'container', '')
+        self.client.container = self.container
 
 
 @command(file_cmds)
@@ -236,7 +245,7 @@ class file_list(_pithos_container, _optional_json, _name_filter):
 
 @command(file_cmds)
 class file_create(_pithos_container, _optional_output_cmd):
-    """Create an empty remove file"""
+    """Create an empty file"""
 
     arguments = dict(
         content_type=ValueArgument(
@@ -245,10 +254,218 @@ class file_create(_pithos_container, _optional_output_cmd):
             default='application/octet-stream')
     )
 
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
     def _run(self):
         self._optional_output(
             self.client.create_object(self.path, self['content_type']))
 
     def main(self, path_or_url):
         super(self.__class__, self)._run(path_or_url)
+        self._run()
+
+
+@command(file_cmds)
+class file_mkdir(_pithos_container, _optional_output_cmd):
+    """Create a directory: /file create --content-type='applcation/directory'
+    """
+
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    def _run(self):
+        self._optional_output(self.client.create_directory(self.path))
+
+    def main(self, container___directory):
+        super(self.__class__, self)._run(
+            container___directory, path_is_optional=False)
+        self._run()
+
+
+class _source_destination(_pithos_container, _optional_output_cmd):
+
+    arguments = dict(
+        destination_user_uuid=ValueArgument(
+            'default: current user uuid', '--to-account'),
+        destination_container=ValueArgument(
+            'default: pithos', '--to-container'),
+        source_prefix=FlagArgument(
+            'Transfer all files that are prefixed with SOURCE PATH If the '
+            'destination path is specified, replace SOURCE_PATH with '
+            'DESTINATION_PATH',
+            '--path-is-prefix'),
+        force=FlagArgument(
+            'Overwrite destination objects, if needed', ('-f', '--force'))
+    )
+
+    def __init__(self, arguments={}, auth_base=None, cloud=None):
+        self.arguments.update(arguments)
+        super(_source_destination, self).__init__(arguments, auth_base, cloud)
+
+    @errors.generic.all
+    @errors.pithos.account
+    def _src_dst(self, version=None):
+        """Preconditions:
+        self.account, self.container, self.path
+        self.dst_acc, self.dst_con, self.dst_path
+        They should all be configured properly
+        :returns: [(src_path, dst_path), ...], if src_path is None, create
+            destination directory
+        """
+        src_objects, dst_objects, pairs = dict(), dict(), []
+        try:
+            for obj in self.dst_client.list_objects(
+                    prefix=self.dst_path or self.path or '/'):
+                dst_objects[obj['name']] = obj
+        except ClientError as ce:
+            if ce.status in (404, ):
+                raise CLIError(
+                    'Destination container pithos://%s/%s not found' % (
+                        self.dst_client.account, self.dst_client.container))
+        if self['source_prefix']:
+            #  Copy and replace prefixes
+            for src_obj in self.client.list_objects(prefix=self.path or '/'):
+                src_objects[src_obj['name']] = src_obj
+            for src_path, src_obj in src_objects.items():
+                dst_path = '%s%s' % (
+                    self.dst_path or self.path, src_path[len(self.path):])
+                dst_obj = dst_objects.get(dst_path, None)
+                if self['force'] or not dst_obj:
+                    #  Just do it
+                    pairs.append(
+                        None if self._is_dir(src_obj) else src_path, dst_path)
+                elif not (self._is_dir(dst_obj) and self._is_dir(src_obj)):
+                    raise CLIError(
+                        'Destination object exists', importance=2, details=[
+                            'Failed while transfering:',
+                            '    pithos://%s/%s/%s' % (
+                                    self.account,
+                                    self.container,
+                                    src_path),
+                            '--> pithos://%s/%s/%s' % (
+                                    self.dst_client.account,
+                                    self.dst_client.container,
+                                    dst_path),
+                            'Use %s to transfer overwrite' % ('/'.join(
+                                    self.arguments['force'].parsed_name))])
+        else:
+            src_obj = self.client.get_object_info(self.path)
+            dst_path = self.dst_path or self.path
+            dst_obj = dst_objects.get(dst_path, None)
+            if self['force'] or not dst_obj:
+                pairs.append(
+                    None if self._is_dir(src_obj) else self.path, dst_path)
+            elif self._is_dir(src_obj):
+                raise CLIError(
+                    'Cannot transfer an application/directory object',
+                    importance=2, details=[
+                        'The object pithos://%s/%s/%s is a directory' % (
+                            self.account,
+                            self.container,
+                            src_path),
+                        'To recursively copy a directory, use',
+                        '  %s' % ('/'.join(
+                            self.arguments['source_prefix'].parsed_name)),
+                        'To create a file, use',
+                        '  /file create  (general purpose)',
+                        '  /file mkdir   (a directory object)'])
+            else:
+                raise CLIError(
+                    'Destination object exists',
+                    importance=2, details=[
+                        'Failed while transfering:',
+                        '    pithos://%s/%s/%s' % (
+                                self.account,
+                                self.container,
+                                src_path),
+                        '--> pithos://%s/%s/%s' % (
+                                self.dst_client.account,
+                                self.dst_client.container,
+                                dst_path),
+                        'Use %s to transfer overwrite' % ('/'.join(
+                                self.arguments['force'].parsed_name))])
+        return pairs
+
+    def _run(self, source_path_or_url, destination_path_or_url=''):
+        super(_source_destination, self)._run(source_path_or_url)
+        dst_acc, dst_con, dst_path = self._resolve_pithos_url(
+            destination_path_or_url)
+        self.dst_client = PithosClient(
+            base_url=self.client.base_url, token=self.client.token,
+            container=self[
+                'destination_container'] or dst_con or self.client.container,
+            account=self[
+                'destination_user_uuid'] or dst_acc or self.client.account)
+        self.dst_path = dst_path or self.path
+
+
+@command(file_cmds)
+class file_copy(_source_destination):
+    """Copy objects, even between different accounts or containers"""
+
+    arguments = dict(
+        public=ValueArgument('publish new object', '--public'),
+        content_type=ValueArgument(
+            'change object\'s content type', '--content-type'),
+        source_version=ValueArgument(
+            'copy specific version', ('-S', '--source-version'))
+    )
+
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.account
+    def _run(self):
+        for src, dst in self._src_dst(self['source_version']):
+            if src:
+                self.dst_client.copy_object(
+                    src_container=self.client.container,
+                    src_object=src,
+                    dst_container=self.dst_client.container,
+                    dst_object=dst,
+                    source_account=self.account,
+                    source_version=self['source_version'],
+                    public=self['public'],
+                    content_type=self['content_type'])
+            else:
+                self.client.create_directory(dst)
+
+    def main(self, source_path_or_url, destination_path_or_url=None):
+        super(file_copy, self)._run(
+            source_path_or_url, destination_path_or_url or '')
+        self._run()
+
+
+@command(file_cmds)
+class file_move(_source_destination):
+    """Move objects, even between different accounts or containers"""
+
+    arguments = dict(
+        public=ValueArgument('publish new object', '--public'),
+        content_type=ValueArgument(
+            'change object\'s content type', '--content-type')
+    )
+
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.account
+    def _run(self):
+        for src, dst in self._src_dst():
+            if src:
+                self.dst_client.move_object(
+                    src_container=self.client.container,
+                    src_object=src,
+                    dst_container=self.dst_client.container,
+                    dst_object=dst,
+                    source_account=self.account,
+                    public=self['public'],
+                    content_type=self['content_type'])
+            else:
+                self.client.create_directory(dst)
+
+    def main(self, source_path_or_url, destination_path_or_url=None):
+        super(file_move, self)._run(
+            source_path_or_url, destination_path_or_url or '')
         self._run()
