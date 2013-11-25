@@ -513,7 +513,7 @@ class pithos(object):
     @classmethod
     def local_path(this, foo):
         def _raise(self, *args, **kwargs):
-            local_path = kwargs.get('local_path', '<None>')
+            local_path = kwargs.get('local_path', None)
             try:
                 return foo(self, *args, **kwargs)
             except IOError as ioe:

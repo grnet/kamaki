@@ -33,6 +33,7 @@
 
 from io import StringIO
 from pydoc import pager
+from os import path, walk, makedirs
 
 from kamaki.clients.pithos import PithosClient, ClientError
 
@@ -41,11 +42,12 @@ from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.commands import (
     _command_init, errors, addLogSettings, DontRaiseKeyError, _optional_json,
     _name_filter, _optional_output_cmd)
-from kamaki.cli.errors import (
-    CLIBaseUrlError, CLIError)
+from kamaki.cli.errors import CLIBaseUrlError, CLIError, CLIInvalidArgument
 from kamaki.cli.argument import (
-    FlagArgument, IntArgument, ValueArgument, DateArgument)
-from kamaki.cli.utils import (format_size, bold)
+    FlagArgument, IntArgument, ValueArgument, DateArgument,
+    ProgressBarArgument, RepeatableArgument)
+from kamaki.cli.utils import (
+    format_size, bold, get_path_size, guess_mime_type)
 
 file_cmds = CommandTree('file', 'Pithos+/Storage object level API commands')
 container_cmds = CommandTree(
@@ -142,13 +144,13 @@ class _pithos_container(_pithos_account):
         /CONTAINER/OBJECT_PATH
         return account, container, path
         """
-        account, container, path, prefix = '', '', url, 'pithos://'
+        account, container, obj_path, prefix = '', '', url, 'pithos://'
         if url.startswith(prefix):
             account, sep, url = url[len(prefix):].partition('/')
             url = '/%s' % url
         if url.startswith('/'):
-            container, sep, path = url[1:].partition('/')
-        return account, container, path
+            container, sep, obj_path = url[1:].partition('/')
+        return account, container, obj_path
 
     def _run(self, url=None):
         acc, con, self.path = self._resolve_pithos_url(url or '')
@@ -193,10 +195,10 @@ class file_list(_pithos_container, _optional_json, _name_filter):
             empty_space = ' ' * (len(str(len(object_list))) - len(str(index)))
             if 'subdir' in obj:
                 continue
-            if obj['content_type'] == 'application/directory':
-                isDir, size = True, 'D'
+            if self._is_dir(obj):
+                size = 'D'
             else:
-                isDir, size = False, format_size(obj['bytes'])
+                size = format_size(obj['bytes'])
                 pretty_obj['bytes'] = '%s (%s)' % (obj['bytes'], size)
             oname = obj['name'] if self['more'] else bold(obj['name'])
             prfx = ('%s%s. ' % (empty_space, index)) if self['enum'] else ''
@@ -206,7 +208,7 @@ class file_list(_pithos_container, _optional_json, _name_filter):
                 self.writeln()
             else:
                 oname = '%s%9s %s' % (prfx, size, oname)
-                oname += '/' if isDir else u''
+                oname += '/' if self._is_dir(obj) else u''
                 self.writeln(oname)
 
     @errors.generic.all
@@ -508,4 +510,363 @@ class file_move(_source_destination):
     def main(self, source_path_or_url, destination_path_or_url=None):
         super(file_move, self)._run(
             source_path_or_url, destination_path_or_url or '')
+        self._run()
+
+
+@command(file_cmds)
+class file_append(_pithos_container, _optional_output_cmd):
+    """Append local file to (existing) remote object
+    The remote object should exist.
+    If the remote object is a directory, it is transformed into a file.
+    In the later case, objects under the directory remain intact.
+    """
+
+    arguments = dict(
+        progress_bar=ProgressBarArgument(
+            'do not show progress bar', ('-N', '--no-progress-bar'),
+            default=False),
+        max_threads=IntArgument('default: 1', '--threads'),
+    )
+
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self, local_path):
+        if self['max_threads'] > 0:
+            self.client.MAX_THREADS = int(self['max_threads'])
+        (progress_bar, upload_cb) = self._safe_progress_bar('Appending')
+        try:
+            with open(local_path, 'rb') as f:
+                self._optional_output(
+                    self.client.append_object(self.path, f, upload_cb))
+        finally:
+            self._safe_progress_bar_finish(progress_bar)
+
+    def main(self, local_path, remote_path_or_url):
+        super(self.__class__, self)._run(remote_path_or_url)
+        self._run(local_path)
+
+
+@command(file_cmds)
+class file_truncate(_pithos_container, _optional_output_cmd):
+    """Truncate remote file up to size"""
+
+    arguments = dict(
+        size_in_bytes=IntArgument('Length of file after truncation', '--size')
+    )
+    required = ('size_in_bytes', )
+
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    @errors.pithos.object_size
+    def _run(self, size):
+        self._optional_output(self.client.truncate_object(self.path, size))
+
+    def main(self, path_or_url):
+        super(self.__class__, self)._run(path_or_url)
+        self._run(size=self['size_in_bytes'])
+
+
+@command(file_cmds)
+class file_overwrite(_pithos_container, _optional_output_cmd):
+    """Overwrite part of a remote file"""
+
+    arguments = dict(
+        progress_bar=ProgressBarArgument(
+            'do not show progress bar', ('-N', '--no-progress-bar'),
+            default=False),
+        start_position=IntArgument('File position in bytes', '--from'),
+        end_position=IntArgument('File position in bytes', '--to')
+    )
+    required = ('start_position', 'end_position')
+
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    @errors.pithos.object_size
+    def _run(self, local_path, start, end):
+        start, end = int(start), int(end)
+        (progress_bar, upload_cb) = self._safe_progress_bar(
+            'Overwrite %s bytes' % (end - start))
+        try:
+            with open(path.abspath(local_path), 'rb') as f:
+                self._optional_output(self.client.overwrite_object(
+                    obj=self.path,
+                    start=start,
+                    end=end,
+                    source_file=f,
+                    upload_cb=upload_cb))
+        finally:
+            self._safe_progress_bar_finish(progress_bar)
+
+    def main(self, local_path, path_or_url):
+        super(self.__class__, self)._run(path_or_url)
+        self.path = self.path or path.basename(local_path)
+        self._run(
+            local_path=local_path,
+            start=self['start_position'],
+            end=self['end_position'])
+
+
+@command(file_cmds)
+class file_upload(_pithos_container, _optional_output_cmd):
+    """Upload a file"""
+
+    arguments = dict(
+        max_threads=IntArgument('default: 5', '--threads'),
+        content_encoding=ValueArgument(
+            'set MIME content type', '--content-encoding'),
+        content_disposition=ValueArgument(
+            'specify objects presentation style', '--content-disposition'),
+        content_type=ValueArgument('specify content type', '--content-type'),
+        uuid_for_read_permission=RepeatableArgument(
+            'Give read access to a user of group (can be repeated)',
+            '--read-permission'),
+        uuid_for_write_permission=RepeatableArgument(
+            'Give write access to a user of group (can be repeated)',
+            '--write-permission'),
+        public=FlagArgument('make object publicly accessible', '--public'),
+        overwrite=FlagArgument('Force (over)write', ('-f', '--force')),
+        recursive=FlagArgument(
+            'Recursively upload directory *contents* + subdirectories',
+            ('-r', '--recursive')),
+        unchunked=FlagArgument(
+            'Upload file as one block (not recommended)', '--unchunked'),
+        md5_checksum=ValueArgument(
+            'Confirm upload with a custom checksum (MD5)', '--etag'),
+        use_hashes=FlagArgument(
+            'Source file contains hashmap not data', '--source-is-hashmap'),
+    )
+
+    def _sharing(self):
+        sharing = dict()
+        readlist = self['uuid_for_read_permission']
+        if readlist:
+            sharing['read'] = self['uuid_for_read_permission']
+        writelist = self['uuid_for_write_permission']
+        if writelist:
+            sharing['write'] = self['uuid_for_write_permission']
+        return sharing or None
+
+    def _check_container_limit(self, path):
+        cl_dict = self.client.get_container_limit()
+        container_limit = int(cl_dict['x-container-policy-quota'])
+        r = self.client.container_get()
+        used_bytes = sum(int(o['bytes']) for o in r.json)
+        path_size = get_path_size(path)
+        if container_limit and path_size > (container_limit - used_bytes):
+            raise CLIError(
+                'Container %s (limit(%s) - used(%s)) < (size(%s) of %s)' % (
+                    self.client.container,
+                    format_size(container_limit),
+                    format_size(used_bytes),
+                    format_size(path_size),
+                    path),
+                details=[
+                    'Check accound limit: /file quota',
+                    'Check container limit:',
+                    '\t/file containerlimit get %s' % self.client.container,
+                    'Increase container limit:',
+                    '\t/file containerlimit set <new limit> %s' % (
+                        self.client.container)])
+
+    def _src_dst(self, local_path, remote_path, objlist=None):
+        lpath = path.abspath(local_path)
+        short_path = path.basename(path.abspath(local_path))
+        rpath = remote_path or short_path
+        if path.isdir(lpath):
+            if not self['recursive']:
+                raise CLIError('%s is a directory' % lpath, details=[
+                    'Use %s to upload directories & contents' % '/'.join(
+                        self.arguments['recursive'].parsed_name)])
+            robj = self.client.container_get(path=rpath)
+            if not self['overwrite']:
+                if robj.json:
+                    raise CLIError(
+                        'Objects/files prefixed as %s already exist' % rpath,
+                        details=['Existing objects:'] + ['\t%s:\t%s' % (
+                            o['name'],
+                            o['content_type'][12:]) for o in robj.json] + [
+                            'Use -f to add, overwrite or resume'])
+                else:
+                    try:
+                        topobj = self.client.get_object_info(rpath)
+                        if not self._is_dir(topobj):
+                            raise CLIError(
+                                'Object /%s/%s exists but not a directory' % (
+                                    self.container, rpath),
+                                details=['Use -f to overwrite'])
+                    except ClientError as ce:
+                        if ce.status not in (404, ):
+                            raise
+            self._check_container_limit(lpath)
+            prev = ''
+            for top, subdirs, files in walk(lpath):
+                if top != prev:
+                    prev = top
+                    try:
+                        rel_path = rpath + top.split(lpath)[1]
+                    except IndexError:
+                        rel_path = rpath
+                    self.error('mkdir %s:%s' % (
+                        self.client.container, rel_path))
+                    self.client.create_directory(rel_path)
+                for f in files:
+                    fpath = path.join(top, f)
+                    if path.isfile(fpath):
+                        rel_path = rel_path.replace(path.sep, '/')
+                        pathfix = f.replace(path.sep, '/')
+                        yield open(fpath, 'rb'), '%s/%s' % (rel_path, pathfix)
+                    else:
+                        self.error('%s is not a regular file' % fpath)
+        else:
+            if not path.isfile(lpath):
+                raise CLIError(('%s is not a regular file' % lpath) if (
+                    path.exists(lpath)) else '%s does not exist' % lpath)
+            try:
+                robj = self.client.get_object_info(rpath)
+                if remote_path and self._is_dir(robj):
+                    rpath += '/%s' % (short_path.replace(path.sep, '/'))
+                    self.client.get_object_info(rpath)
+                if not self['overwrite']:
+                    raise CLIError(
+                        'Object /%s/%s already exists' % (
+                            self.container, rpath),
+                        details=['use -f to overwrite / resume'])
+            except ClientError as ce:
+                if ce.status not in (404, ):
+                    raise
+            self._check_container_limit(lpath)
+            yield open(lpath, 'rb'), rpath
+
+    def _run(self, local_path, remote_path):
+        if self['max_threads'] > 0:
+            self.client.MAX_THREADS = int(self['max_threads'])
+        params = dict(
+            content_encoding=self['content_encoding'],
+            content_type=self['content_type'],
+            content_disposition=self['content_disposition'],
+            sharing=self._sharing(),
+            public=self['public'])
+        uploaded, container_info_cache = list, dict()
+        rpref = 'pithos://%s' if self['account'] else ''
+        for f, rpath in self._src_dst(local_path, remote_path):
+            self.error('%s --> %s/%s/%s' % (
+                f.name, rpref, self.client.container, rpath))
+            if not (self['content_type'] and self['content_encoding']):
+                ctype, cenc = guess_mime_type(f.name)
+                params['content_type'] = self['content_type'] or ctype
+                params['content_encoding'] = self['content_encoding'] or cenc
+            if self['unchunked']:
+                r = self.client.upload_object_unchunked(
+                    rpath, f,
+                    etag=self['md5_checksum'], withHashFile=self['use_hashes'],
+                    **params)
+                if self['with_output'] or self['json_output']:
+                    r['name'] = '/%s/%s' % (self.client.container, rpath)
+                    uploaded.append(r)
+            else:
+                try:
+                    (progress_bar, upload_cb) = self._safe_progress_bar(
+                        'Uploading %s' % f.name.split(path.sep)[-1])
+                    if progress_bar:
+                        hash_bar = progress_bar.clone()
+                        hash_cb = hash_bar.get_generator(
+                            'Calculating block hashes')
+                    else:
+                        hash_cb = None
+                    r = self.client.upload_object(
+                        rpath, f,
+                        hash_cb=hash_cb,
+                        upload_cb=upload_cb,
+                        container_info_cache=container_info_cache,
+                        **params)
+                    if self['with_output'] or self['json_output']:
+                        r['name'] = '/%s/%s' % (self.client.container, rpath)
+                        uploaded.append(r)
+                except Exception:
+                    self._safe_progress_bar_finish(progress_bar)
+                    raise
+                finally:
+                    self._safe_progress_bar_finish(progress_bar)
+        self._optional_output(uploaded)
+        self.error('Upload completed')
+
+    def main(self, local_path, remote_path_or_url):
+        super(self.__class__, self)._run(remote_path_or_url)
+        remote_path = self.path or path.basename(path.abspath(local_path))
+        self._run(local_path=local_path, remote_path=remote_path)
+
+
+class RangeArgument(ValueArgument):
+    """
+    :value type: string of the form <start>-<end> where <start> and <end> are
+        integers
+    :value returns: the input string, after type checking <start> and <end>
+    """
+
+    @property
+    def value(self):
+        return getattr(self, '_value', self.default)
+
+    @value.setter
+    def value(self, newvalues):
+        if newvalues:
+            self._value = getattr(self, '_value', self.default)
+            for newvalue in newvalues.split(','):
+                self._value = ('%s,' % self._value) if self._value else ''
+                start, sep, end = newvalue.partition('-')
+                if sep:
+                    if start:
+                        start, end = (int(start), int(end))
+                        if start > end:
+                            raise CLIInvalidArgument(
+                                'Invalid range %s' % newvalue, details=[
+                                'Valid range formats',
+                                '  START-END', '  UP_TO', '  -FROM',
+                                'where all values are integers'])
+                        self._value += '%s-%s' % (start, end)
+                    else:
+                        self._value += '-%s' % int(end)
+                else:
+                    self._value += '%s' % int(start)
+
+
+@command(file_cmds)
+class file_cat(_pithos_container):
+    """Fetch remote file contents"""
+
+    arguments = dict(
+        range=RangeArgument('show range of data', '--range'),
+        if_match=ValueArgument('show output if ETags match', '--if-match'),
+        if_none_match=ValueArgument(
+            'show output if ETags match', '--if-none-match'),
+        if_modified_since=DateArgument(
+            'show output modified since then', '--if-modified-since'),
+        if_unmodified_since=DateArgument(
+            'show output unmodified since then', '--if-unmodified-since'),
+        object_version=ValueArgument(
+            'Get contents of the chosen version', '--object-version')
+    )
+
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self):
+        self.client.download_object(
+            self.path, self._out,
+            range_str=self['range'],
+            version=self['object_version'],
+            if_match=self['if_match'],
+            if_none_match=self['if_none_match'],
+            if_modified_since=self['if_modified_since'],
+            if_unmodified_since=self['if_unmodified_since'])
+
+    def main(self, path_or_url):
+        super(self.__class__, self)._run(path_or_url)
         self._run()
