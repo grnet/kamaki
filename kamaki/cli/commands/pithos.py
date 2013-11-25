@@ -285,7 +285,7 @@ class file_mkdir(_pithos_container, _optional_output_cmd):
 
 class _source_destination(_pithos_container, _optional_output_cmd):
 
-    arguments = dict(
+    sd_arguments = dict(
         destination_user_uuid=ValueArgument(
             'default: current user uuid', '--to-account'),
         destination_container=ValueArgument(
@@ -294,14 +294,34 @@ class _source_destination(_pithos_container, _optional_output_cmd):
             'Transfer all files that are prefixed with SOURCE PATH If the '
             'destination path is specified, replace SOURCE_PATH with '
             'DESTINATION_PATH',
-            '--path-is-prefix'),
+            ('-r', '--recursive')),
         force=FlagArgument(
             'Overwrite destination objects, if needed', ('-f', '--force'))
     )
 
     def __init__(self, arguments={}, auth_base=None, cloud=None):
         self.arguments.update(arguments)
-        super(_source_destination, self).__init__(arguments, auth_base, cloud)
+        self.arguments.update(self.sd_arguments)
+        super(_source_destination, self).__init__(
+            self.arguments, auth_base, cloud)
+
+    def _report_transfer(self, src, dst, transfer_name):
+        if not dst:
+            if transfer_name in ('move', ):
+                self.error('  delete source directory %s' % src)
+            return
+        dst_prf = '' if self.account == self.dst_client.account else (
+                'pithos://%s' % self.dst_client.account)
+        if src:
+            src_prf = '' if self.account == self.dst_client.account else (
+                    'pithos://%s' % self.account)
+            self.error('  %s %s/%s/%s\n  -->  %s/%s/%s' % (
+                transfer_name,
+                src_prf, self.container, src,
+                dst_prf, self.dst_client.container, dst))
+        else:
+            self.error('  mkdir %s/%s/%s' % (
+                dst_prf, self.dst_client.container, dst))
 
     @errors.generic.all
     @errors.pithos.account
@@ -323,6 +343,7 @@ class _source_destination(_pithos_container, _optional_output_cmd):
                 raise CLIError(
                     'Destination container pithos://%s/%s not found' % (
                         self.dst_client.account, self.dst_client.container))
+            raise ce
         if self['source_prefix']:
             #  Copy and replace prefixes
             for src_obj in self.client.list_objects(prefix=self.path or '/'):
@@ -333,8 +354,10 @@ class _source_destination(_pithos_container, _optional_output_cmd):
                 dst_obj = dst_objects.get(dst_path, None)
                 if self['force'] or not dst_obj:
                     #  Just do it
-                    pairs.append(
-                        None if self._is_dir(src_obj) else src_path, dst_path)
+                    pairs.append((
+                        None if self._is_dir(src_obj) else src_path, dst_path))
+                    if self._is_dir(src_obj):
+                        pairs.append((self.path or dst_path, None))
                 elif not (self._is_dir(dst_obj) and self._is_dir(src_obj)):
                     raise CLIError(
                         'Destination object exists', importance=2, details=[
@@ -350,12 +373,25 @@ class _source_destination(_pithos_container, _optional_output_cmd):
                             'Use %s to transfer overwrite' % ('/'.join(
                                     self.arguments['force'].parsed_name))])
         else:
-            src_obj = self.client.get_object_info(self.path)
+            #  One object transfer
+            try:
+                src_obj = self.client.get_object_info(self.path)
+            except ClientError as ce:
+                if ce.status in (204, ):
+                    raise CLIError(
+                        'Missing specific path container %s' % self.container,
+                        importance=2, details=[
+                            'To transfer container contents %s' % (
+                                '/'.join(self.arguments[
+                                    'source_prefix'].parsed_name))])
+                raise
             dst_path = self.dst_path or self.path
-            dst_obj = dst_objects.get(dst_path, None)
+            dst_obj = dst_objects.get(dst_path, None) or self.path
             if self['force'] or not dst_obj:
                 pairs.append(
-                    None if self._is_dir(src_obj) else self.path, dst_path)
+                    (None if self._is_dir(src_obj) else self.path, dst_path))
+                if self._is_dir(src_obj):
+                    pairs.append((self.path or dst_path, None))
             elif self._is_dir(src_obj):
                 raise CLIError(
                     'Cannot transfer an application/directory object',
@@ -363,7 +399,7 @@ class _source_destination(_pithos_container, _optional_output_cmd):
                         'The object pithos://%s/%s/%s is a directory' % (
                             self.account,
                             self.container,
-                            src_path),
+                            self.path),
                         'To recursively copy a directory, use',
                         '  %s' % ('/'.join(
                             self.arguments['source_prefix'].parsed_name)),
@@ -378,7 +414,7 @@ class _source_destination(_pithos_container, _optional_output_cmd):
                         '    pithos://%s/%s/%s' % (
                                 self.account,
                                 self.container,
-                                src_path),
+                                self.path),
                         '--> pithos://%s/%s/%s' % (
                                 self.dst_client.account,
                                 self.dst_client.container,
@@ -418,7 +454,8 @@ class file_copy(_source_destination):
     @errors.pithos.account
     def _run(self):
         for src, dst in self._src_dst(self['source_version']):
-            if src:
+            self._report_transfer(src, dst, 'copy')
+            if src and dst:
                 self.dst_client.copy_object(
                     src_container=self.client.container,
                     src_object=src,
@@ -428,8 +465,8 @@ class file_copy(_source_destination):
                     source_version=self['source_version'],
                     public=self['public'],
                     content_type=self['content_type'])
-            else:
-                self.client.create_directory(dst)
+            elif dst:
+                self.dst_client.create_directory(dst)
 
     def main(self, source_path_or_url, destination_path_or_url=None):
         super(file_copy, self)._run(
@@ -453,7 +490,8 @@ class file_move(_source_destination):
     @errors.pithos.account
     def _run(self):
         for src, dst in self._src_dst():
-            if src:
+            self._report_transfer(src, dst, 'move')
+            if src and dst:
                 self.dst_client.move_object(
                     src_container=self.client.container,
                     src_object=src,
@@ -462,8 +500,10 @@ class file_move(_source_destination):
                     source_account=self.account,
                     public=self['public'],
                     content_type=self['content_type'])
+            elif dst:
+                self.dst_client.create_directory(dst)
             else:
-                self.client.create_directory(dst)
+                self.client.del_object(src)
 
     def main(self, source_path_or_url, destination_path_or_url=None):
         super(file_move, self)._run(
