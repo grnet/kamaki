@@ -323,11 +323,11 @@ class NetworkClient(NetworkRestClient):
 
     def list_floatingips(self):
         r = self.floatingips_get(success=200)
-        return r['floatingips']
+        return r.json['floatingips']
 
     def get_floatingip_details(self, floatingip_id):
-        r = self.floatingips_get(floatingip_id, success=201)
-        return r['floatingip']
+        r = self.floatingips_get(floatingip_id, success=200)
+        return r.json['floatingip']
 
     def create_floatingip(
             self, floating_network_id,
@@ -340,7 +340,7 @@ class NetworkClient(NetworkRestClient):
         if fixed_ip_address:
             floatingip['fixed_ip_address'] = fixed_ip_address
         r = self.floatingips_post(
-            json_data=dict(floatingip=floatingip), success=201)
+            json_data=dict(floatingip=floatingip), success=200)
         return r.json['floatingip']
 
     def update_floatingip(
@@ -355,7 +355,7 @@ class NetworkClient(NetworkRestClient):
         if fixed_ip_address != '':
             floatingip['fixed_ip_address'] = fixed_ip_address
         r = self.floatingips_put(
-            floatingip_id, json_data=dict(floatingip=floatingip), success=201)
+            floatingip_id, json_data=dict(floatingip=floatingip), success=200)
         return r['floatingip']
 
     def delete_floatingip(self, floatingip_id):

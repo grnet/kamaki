@@ -94,6 +94,9 @@ def path4url(*args):
 
 def readall(openfile, size, retries=7):
     """Read a file until size is reached"""
+    from os import fstat
+    actual_size = fstat(openfile.fileno()).st_size - openfile.tell()
+    size = actual_size if actual_size < size else size
     remains = size if size > 0 else 0
     buf = ''
     for i in range(retries):

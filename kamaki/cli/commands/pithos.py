@@ -42,7 +42,8 @@ from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.commands import (
     _command_init, errors, addLogSettings, DontRaiseKeyError, _optional_json,
     _name_filter, _optional_output_cmd)
-from kamaki.cli.errors import CLIBaseUrlError, CLIError, CLIInvalidArgument
+from kamaki.cli.errors import (
+    CLIBaseUrlError, CLIError, CLIInvalidArgument, raiseCLIError)
 from kamaki.cli.argument import (
     FlagArgument, IntArgument, ValueArgument, DateArgument,
     ProgressBarArgument, RepeatableArgument)
@@ -279,9 +280,8 @@ class file_mkdir(_pithos_container, _optional_output_cmd):
     def _run(self):
         self._optional_output(self.client.create_directory(self.path))
 
-    def main(self, container___directory):
-        super(self.__class__, self)._run(
-            container___directory, path_is_optional=False)
+    def main(self, path_or_url):
+        super(self.__class__, self)._run(path_or_url)
         self._run()
 
 
@@ -388,7 +388,7 @@ class _source_destination(_pithos_container, _optional_output_cmd):
                                     'source_prefix'].parsed_name))])
                 raise
             dst_path = self.dst_path or self.path
-            dst_obj = dst_objects.get(dst_path, None) or self.path
+            dst_obj = dst_objects.get(dst_path or self.path, None)
             if self['force'] or not dst_obj:
                 pairs.append(
                     (None if self._is_dir(src_obj) else self.path, dst_path))
@@ -870,3 +870,189 @@ class file_cat(_pithos_container):
     def main(self, path_or_url):
         super(self.__class__, self)._run(path_or_url)
         self._run()
+
+
+@command(file_cmds)
+class file_download(_pithos_container):
+    """Download a remove file or directory object to local file system"""
+
+    arguments = dict(
+        resume=FlagArgument(
+            'Resume/Overwrite (attempt resume, else overwrite)',
+            ('-f', '--resume')),
+        range=RangeArgument('Download only that range of data', '--range'),
+        matching_etag=ValueArgument('download iff ETag match', '--if-match'),
+        non_matching_etag=ValueArgument(
+            'download iff ETags DO NOT match', '--if-none-match'),
+        modified_since_date=DateArgument(
+            'download iff remote file is modified since then',
+            '--if-modified-since'),
+        unmodified_since_date=DateArgument(
+            'show output iff remote file is unmodified since then',
+            '--if-unmodified-since'),
+        object_version=ValueArgument(
+            'download a file of a specific version',
+            ('-O', '--object-version')),
+        max_threads=IntArgument('default: 5', '--threads'),
+        progress_bar=ProgressBarArgument(
+            'do not show progress bar', ('-N', '--no-progress-bar'),
+            default=False),
+        recursive=FlagArgument(
+            'Download a remote directory object and its contents',
+            ('-r', '--recursive'))
+        )
+
+    def _src_dst(self, local_path):
+        """Create a list of (src, dst) where src is a remote location and dst
+        is an open file descriptor. Directories are denoted as (None, dirpath)
+        and they are pretended to other objects in a very strict order (shorter
+        to longer path)."""
+        ret = []
+        try:
+            obj = self.client.get_object_info(
+                self.path, version=self['object_version'])
+            obj.setdefault('name', self.path.strip('/'))
+        except ClientError as ce:
+            if ce.status in (404, ):
+                raiseCLIError(ce, details=[
+                    'To download an object, the object must exist either as a'
+                    ' file or as a directory.',
+                    'For example, to download everything under prefix/ the '
+                    'directory "prefix" must exist.',
+                    'To see if an remote object is actually there:',
+                    '  /file info [/CONTAINER/]OBJECT',
+                    'To create a directory object:',
+                    '  /file mkdir [/CONTAINER/]OBJECT'])
+            if ce.status in (204, ):
+                raise CLIError(
+                    'No file or directory objects to download',
+                    details=[
+                        'To download a container (e.g., %s):' % self.container,
+                        '  [kamaki] container download %s [LOCAL_PATH]' % (
+                            self.container)])
+            raise
+        rpath = self.path.strip('/')
+        local_path = local_path[-1:] if (
+            local_path.endswith('/')) else local_path
+
+        if self._is_dir(obj):
+            if self['recursive']:
+                dirs, files = [obj, ], []
+                objects = self.client.container_get(
+                    path=self.path or '/',
+                    if_modified_since=self['modified_since_date'],
+                    if_unmodified_since=self['unmodified_since_date'])
+                for obj in objects.json:
+                    (dirs if self._is_dir(obj) else files).append(obj)
+
+                #  Put the directories on top of the list
+                for dpath in sorted(['%s%s' % (
+                        local_path, d['name'][len(rpath):]) for d in dirs]):
+                    if path.exists(dpath):
+                        if path.isdir(dpath):
+                            continue
+                        raise CLIError(
+                            'Cannot replace local file %s with a directory '
+                            'of the same name' % dpath,
+                            details=[
+                                'Either remove the file or specify a'
+                                'different target location'])
+                    ret.append((None, dpath, None))
+
+                #  Append the file objects
+                for opath in [o['name'] for o in files]:
+                    lpath = '%s%s' % (local_path, opath[len(rpath):])
+                    if self['resume']:
+                        fxists = path.exists(lpath)
+                        if fxists and path.isdir(lpath):
+                            raise CLIError(
+                                'Cannot change local dir %s info file' % (
+                                    lpath),
+                                details=[
+                                    'Either remove the file or specify a'
+                                    'different target location'])
+                        ret.append((opath, lpath, fxists))
+                    elif path.exists(lpath):
+                        raise CLIError(
+                            'Cannot overwrite %s' % lpath,
+                            details=['To overwrite/resume, use  %s' % '/'.join(
+                                self.arguments['resume'].parsed_name)])
+                    else:
+                        ret.append((opath, lpath, None))
+            else:
+                raise CLIError(
+                    'Remote object /%s/%s is a directory' % (
+                        self.container, local_path),
+                    details=['Use %s to download directories' % '/'.join(
+                        self.arguments['recursive'].parsed_name)])
+        else:
+            #  Remote object is just a file
+            if path.exists(local_path) and not self['resume']:
+                raise CLIError(
+                    'Cannot overwrite local file %s' % (lpath),
+                    details=['To overwrite/resume, use  %s' % '/'.join(
+                        self.arguments['resume'].parsed_name)])
+            ret.append((rpath, local_path, self['resume']))
+        for r, l, resume in ret:
+            if r:
+                with open(l, 'rwb+' if resume else 'wb+') as f:
+                    yield (r, f)
+            else:
+                yield (r, l)
+
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    @errors.pithos.local_path
+    def _run(self, local_path):
+        self.client.MAX_THREADS = self['max_threads'] or 5
+        progress_bar = None
+        try:
+            for rpath, output_file in self._src_dst(local_path):
+                if not rpath:
+                    self.error('Create local directory %s' % output_file)
+                    makedirs(output_file)
+                    continue
+                self.error('/%s/%s --> %s' % (
+                    self.container, rpath, output_file.name))
+                progress_bar, download_cb = self._safe_progress_bar(
+                    '  download')
+                self.client.download_object(
+                    rpath, output_file,
+                    download_cb=download_cb,
+                    range_str=self['range'],
+                    version=self['object_version'],
+                    if_match=self['matching_etag'],
+                    resume=self['resume'],
+                    if_none_match=self['non_matching_etag'],
+                    if_modified_since=self['modified_since_date'],
+                    if_unmodified_since=self['unmodified_since_date'])
+        except KeyboardInterrupt:
+            from threading import activeCount, enumerate as activethreads
+            timeout = 0.5
+            while activeCount() > 1:
+                self._out.write('\nCancel %s threads: ' % (activeCount() - 1))
+                self._out.flush()
+                for thread in activethreads():
+                    try:
+                        thread.join(timeout)
+                        self._out.write('.' if thread.isAlive() else '*')
+                    except RuntimeError:
+                        continue
+                    finally:
+                        self._out.flush()
+                        timeout += 0.1
+            self.error('\nDownload canceled by user')
+            if local_path is not None:
+                self.error('to resume, re-run with --resume')
+        except Exception:
+            self._safe_progress_bar_finish(progress_bar)
+            raise
+        finally:
+            self._safe_progress_bar_finish(progress_bar)
+
+    def main(self, remote_path_or_url, local_path=None):
+        super(self.__class__, self)._run(remote_path_or_url)
+        local_path = local_path or self.path or '.'
+        self._run(local_path=local_path)
