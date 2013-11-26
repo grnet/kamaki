@@ -163,6 +163,52 @@ class _pithos_container(_pithos_account):
 
 
 @command(file_cmds)
+class file_info(_pithos_container, _optional_json):
+    """Get information/details about a file"""
+
+    arguments = dict(
+        object_version=ValueArgument(
+            'download a file of a specific version', '--object-version'),
+        hashmap=FlagArgument(
+            'Get file hashmap instead of details', '--hashmap'),
+        matching_etag=ValueArgument(
+            'show output if ETags match', '--if-match'),
+        non_matching_etag=ValueArgument(
+            'show output if ETags DO NOT match', '--if-none-match'),
+        modified_since_date=DateArgument(
+            'show output modified since then', '--if-modified-since'),
+        unmodified_since_date=DateArgument(
+            'show output unmodified since then', '--if-unmodified-since'),
+        permissions=FlagArgument(
+            'show only read/write permissions', '--permissions')
+    )
+
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self):
+        if self['hashmap']:
+            r = self.client.get_object_hashmap(
+                self.path,
+                version=self['object_version'],
+                if_match=self['matching_etag'],
+                if_none_match=self['non_matching_etag'],
+                if_modified_since=self['modified_since_date'],
+                if_unmodified_since=self['unmodified_since_date'])
+        elif self['permissions']:
+            r = self.client.get_object_sharing(self.path)
+        else:
+            r = self.client.get_object_info(
+                self.path, version=self['object_version'])
+        self._print(r, self.print_dict)
+
+    def main(self, path_or_url):
+        super(self.__class__, self)._run(path_or_url)
+        self._run()
+
+
+@command(file_cmds)
 class file_list(_pithos_container, _optional_json, _name_filter):
     """List all objects in a container or a directory object"""
 
@@ -247,6 +293,68 @@ class file_list(_pithos_container, _optional_json, _name_filter):
 
 
 @command(file_cmds)
+class file_modify(_pithos_container):
+    """Modify the attributes of a file or directory object"""
+
+    arguments = dict(
+        publish=FlagArgument(
+            'Make an object public (returns the public URL)', '--publish'),
+        unpublish=FlagArgument(
+            'Make an object unpublic', '--unpublish'),
+        uuid_for_read_permission=RepeatableArgument(
+            'Give read access to user/group (can be repeated, accumulative). '
+            'Format for users: UUID . Format for groups: UUID:GROUP . '
+            'Use * for all users/groups', '--read-permission'),
+        uuid_for_write_permission=RepeatableArgument(
+            'Give write access to user/group (can be repeated, accumulative). '
+            'Format for users: UUID . Format for groups: UUID:GROUP . '
+            'Use * for all users/groups', '--write-permission'),
+        no_permissions=FlagArgument('Remove permissions', '--no-permissions')
+    )
+    required = [
+        'publish', 'unpublish', 'uuid_for_read_permission',
+        'uuid_for_write_permission', 'no_permissions']
+
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self):
+        if self['publish']:
+            self.writeln(self.client.publish_object(self.path))
+        if self['unpublish']:
+            self.client.unpublish_object(self.path)
+        if self['uuid_for_read_permission'] or self[
+                'uuid_for_write_permission']:
+            perms = self.client.get_object_sharing(self.path)
+            read, write = perms.get('read', ''), perms.get('write', '')
+            read = read.split(',') if read else []
+            write = write.split(',') if write else []
+            read += self['uuid_for_read_permission']
+            write += self['uuid_for_write_permission']
+            self.client.set_object_sharing(
+                self.path, read_permission=read, write_permission=write)
+            self.print_dict(self.client.get_object_sharing(self.path))
+        if self['no_permissions']:
+            self.client.del_object_sharing(self.path)
+
+    def main(self, path_or_url):
+        super(self.__class__, self)._run(path_or_url)
+        if self['publish'] and self['unpublish']:
+            raise CLIInvalidArgument(
+                'Arguments %s and %s cannot be used together' % (
+                    '/'.join(self.arguments['publish'].parsed_name),
+                    '/'.join(self.arguments['publish'].parsed_name)))
+        if self['no_permissions'] and (
+                self['uuid_for_read_permission'] or self[
+                    'uuid_for_write_permission']):
+            raise CLIInvalidArgument(
+                '%s cannot be used with other permission arguments' % '/'.join(
+                    self.arguments['no_permissions'].parsed_name))
+        self._run()
+
+
+@command(file_cmds)
 class file_create(_pithos_container, _optional_output_cmd):
     """Create an empty file"""
 
@@ -279,6 +387,42 @@ class file_mkdir(_pithos_container, _optional_output_cmd):
     @errors.pithos.container
     def _run(self):
         self._optional_output(self.client.create_directory(self.path))
+
+    def main(self, path_or_url):
+        super(self.__class__, self)._run(path_or_url)
+        self._run()
+
+
+@command(file_cmds)
+class file_delete(_pithos_container, _optional_output_cmd):
+    """Delete a file or directory object"""
+
+    arguments = dict(
+        until_date=DateArgument('remove history until then', '--until'),
+        yes=FlagArgument('Do not prompt for permission', '--yes'),
+        recursive=FlagArgument(
+            'If a directory, empty first', ('-r', '--recursive')),
+        delimiter=ValueArgument(
+            'delete objects prefixed with <object><delimiter>', '--delimiter')
+    )
+
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self):
+        if self.path:
+            if self['yes'] or self.ask_user(
+                    'Delete /%s/%s ?' % (self.container, self.path)):
+                self._optional_output(self.client.del_object(
+                    self.path,
+                    until=self['until_date'],
+                    delimiter='/' if self['recursive'] else self['delimiter']))
+            else:
+                self.error('Aborted')
+        else:
+            raiseCLIError('Nothing to delete', details=[
+                'Format for path or url: [/CONTAINER/]path'])
 
     def main(self, path_or_url):
         super(self.__class__, self)._run(path_or_url)
@@ -624,10 +768,12 @@ class file_upload(_pithos_container, _optional_output_cmd):
             'specify objects presentation style', '--content-disposition'),
         content_type=ValueArgument('specify content type', '--content-type'),
         uuid_for_read_permission=RepeatableArgument(
-            'Give read access to a user of group (can be repeated)',
+            'Give read access to a user or group (can be repeated) '
+            'Use * for all users',
             '--read-permission'),
         uuid_for_write_permission=RepeatableArgument(
-            'Give write access to a user of group (can be repeated)',
+            'Give write access to a user or group (can be repeated) '
+            'Use * for all users',
             '--write-permission'),
         public=FlagArgument('make object publicly accessible', '--public'),
         overwrite=FlagArgument('Force (over)write', ('-f', '--force')),
@@ -891,8 +1037,7 @@ class file_download(_pithos_container):
             'show output iff remote file is unmodified since then',
             '--if-unmodified-since'),
         object_version=ValueArgument(
-            'download a file of a specific version',
-            ('-O', '--object-version')),
+            'download a file of a specific version', '--object-version'),
         max_threads=IntArgument('default: 5', '--threads'),
         progress_bar=ProgressBarArgument(
             'do not show progress bar', ('-N', '--no-progress-bar'),

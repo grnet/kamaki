@@ -68,7 +68,6 @@ class _command_init(object):
     #     if it is a list, at least one of these arguments is required
     #     if it is a tuple, all arguments are required
     #     Lists and tuples can nest other lists and/or tuples
-    required = None
 
     def __init__(
             self,
@@ -76,6 +75,7 @@ class _command_init(object):
             _in=None, _out=None, _err=None):
         self._in, self._out, self._err = (
             _in or stdin, _out or stdout, _err or stderr)
+        self.required = getattr(self, 'required', None)
         if hasattr(self, 'arguments'):
             arguments.update(self.arguments)
         if isinstance(self, _optional_output_cmd):
