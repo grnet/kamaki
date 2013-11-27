@@ -1054,14 +1054,17 @@ class file_download(_pithos_container):
         to longer path)."""
         ret = []
         try:
-            obj = self.client.get_object_info(
-                self.path, version=self['object_version'])
-            obj.setdefault('name', self.path.strip('/'))
+            if self.path:
+                obj = self.client.get_object_info(
+                    self.path, version=self['object_version'])
+                obj.setdefault('name', self.path.strip('/'))
+            else:
+                obj = None
         except ClientError as ce:
             if ce.status in (404, ):
                 raiseCLIError(ce, details=[
-                    'To download an object, the object must exist either as a'
-                    ' file or as a directory.',
+                    'To download an object, it must exist either as a file or'
+                    ' as a directory.',
                     'For example, to download everything under prefix/ the '
                     'directory "prefix" must exist.',
                     'To see if an remote object is actually there:',
@@ -1077,18 +1080,24 @@ class file_download(_pithos_container):
                             self.container)])
             raise
         rpath = self.path.strip('/')
-        local_path = local_path[-1:] if (
-            local_path.endswith('/')) else local_path
+        if local_path and self.path and local_path.endswith('/'):
+            local_path = local_path[-1:]
 
-        if self._is_dir(obj):
+        if (not obj) or self._is_dir(obj):
             if self['recursive']:
+                if not (self.path or local_path.endswith('/')):
+                    #  Download the whole container
+                    local_path = '' if local_path in ('.', ) else local_path
+                    local_path = '%s/' % (local_path or self.container)
+                obj = obj or dict(
+                    name='', content_type='application/directory')
                 dirs, files = [obj, ], []
                 objects = self.client.container_get(
-                    path=self.path or '/',
+                    path=self.path,
                     if_modified_since=self['modified_since_date'],
                     if_unmodified_since=self['unmodified_since_date'])
-                for obj in objects.json:
-                    (dirs if self._is_dir(obj) else files).append(obj)
+                for o in objects.json:
+                    (dirs if self._is_dir(o) else files).append(o)
 
                 #  Put the directories on top of the list
                 for dpath in sorted(['%s%s' % (
@@ -1124,12 +1133,20 @@ class file_download(_pithos_container):
                                 self.arguments['resume'].parsed_name)])
                     else:
                         ret.append((opath, lpath, None))
-            else:
+            elif self.path:
                 raise CLIError(
                     'Remote object /%s/%s is a directory' % (
                         self.container, local_path),
                     details=['Use %s to download directories' % '/'.join(
                         self.arguments['recursive'].parsed_name)])
+            else:
+                parsed_name = '/'.join(self.arguments['recursive'].parsed_name)
+                raise CLIError(
+                    'Cannot download container %s' % self.container,
+                    details=[
+                        'Use %s to download containers' % parsed_name,
+                        '  [kamaki] file download %s /%s [LOCAL_PATH]' % (
+                            parsed_name, self.container)])
         else:
             #  Remote object is just a file
             if path.exists(local_path) and not self['resume']:
@@ -1150,6 +1167,7 @@ class file_download(_pithos_container):
     @errors.pithos.container
     @errors.pithos.object_path
     @errors.pithos.local_path
+    @errors.pithos.local_path_download
     def _run(self, local_path):
         self.client.MAX_THREADS = self['max_threads'] or 5
         progress_bar = None

@@ -511,6 +511,22 @@ class pithos(object):
         return _raise
 
     @classmethod
+    def local_path_download(this, foo):
+        def _raise(self, *args, **kwargs):
+            try:
+                return foo(self, *args, **kwargs)
+            except IOError as ioe:
+                msg = 'Failed to access a file',
+                raiseCLIError(ioe, msg, importance=2, details=[
+                    'Check if the file exists. Also check if the remote',
+                    'directories exist. All directories in a remote path',
+                    'must exist to succesfully download a container or a',
+                    'directory.',
+                    'To create a remote directory:',
+                    '  [kamaki] file mkdir REMOTE_DIRECTORY_PATH'])
+        return _raise
+
+    @classmethod
     def local_path(this, foo):
         def _raise(self, *args, **kwargs):
             local_path = kwargs.get('local_path', None)
