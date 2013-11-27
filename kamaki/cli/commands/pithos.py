@@ -47,7 +47,7 @@ from kamaki.cli.errors import (
     CLIBaseUrlError, CLIError, CLIInvalidArgument, raiseCLIError)
 from kamaki.cli.argument import (
     FlagArgument, IntArgument, ValueArgument, DateArgument, KeyValueArgument,
-    ProgressBarArgument, RepeatableArgument)
+    ProgressBarArgument, RepeatableArgument, DataSizeArgument)
 from kamaki.cli.utils import (
     format_size, bold, get_path_size, guess_mime_type)
 
@@ -120,6 +120,34 @@ class _pithos_account(_pithos_init):
         self['account'] = ValueArgument(
             'Use (a different) user uuid', ('-A', '--account'))
 
+    def print_objects(self, object_list):
+        for index, obj in enumerate(object_list):
+            pretty_obj = obj.copy()
+            index += 1
+            empty_space = ' ' * (len(str(len(object_list))) - len(str(index)))
+            if 'subdir' in obj:
+                continue
+            if self._is_dir(obj):
+                size = 'D'
+            else:
+                size = format_size(obj['bytes'])
+                pretty_obj['bytes'] = '%s (%s)' % (obj['bytes'], size)
+            oname = obj['name'] if self['more'] else bold(obj['name'])
+            prfx = ('%s%s. ' % (empty_space, index)) if self['enum'] else ''
+            if self['detail']:
+                self.writeln('%s%s' % (prfx, oname))
+                self.print_dict(pretty_obj, exclude=('name'))
+                self.writeln()
+            else:
+                oname = '%s%9s %s' % (prfx, size, oname)
+                oname += '/' if self._is_dir(obj) else u''
+                self.writeln(oname)
+
+    @staticmethod
+    def _is_dir(remote_dict):
+        return 'application/directory' == remote_dict.get(
+            'content_type', remote_dict.get('content-type', ''))
+
     def _run(self):
         super(_pithos_account, self)._run()
         self.client.account = self['account'] or getattr(
@@ -133,11 +161,6 @@ class _pithos_container(_pithos_account):
         super(_pithos_container, self).__init__(arguments, auth_base, cloud)
         self['container'] = ValueArgument(
             'Use this container (default: pithos)', ('-C', '--container'))
-
-    @staticmethod
-    def _is_dir(remote_dict):
-        return 'application/directory' == remote_dict.get(
-            'content_type', remote_dict.get('content-type', ''))
 
     @staticmethod
     def _resolve_pithos_url(url):
@@ -255,29 +278,6 @@ class file_list(_pithos_container, _optional_json, _name_filter):
             ('-R', '--recursive'))
     )
 
-    def print_objects(self, object_list):
-        for index, obj in enumerate(object_list):
-            pretty_obj = obj.copy()
-            index += 1
-            empty_space = ' ' * (len(str(len(object_list))) - len(str(index)))
-            if 'subdir' in obj:
-                continue
-            if self._is_dir(obj):
-                size = 'D'
-            else:
-                size = format_size(obj['bytes'])
-                pretty_obj['bytes'] = '%s (%s)' % (obj['bytes'], size)
-            oname = obj['name'] if self['more'] else bold(obj['name'])
-            prfx = ('%s%s. ' % (empty_space, index)) if self['enum'] else ''
-            if self['detail']:
-                self.writeln('%s%s' % (prfx, oname))
-                self.print_dict(pretty_obj, exclude=('name'))
-                self.writeln()
-            else:
-                oname = '%s%9s %s' % (prfx, size, oname)
-                oname += '/' if self._is_dir(obj) else u''
-                self.writeln(oname)
-
     @errors.generic.all
     @errors.pithos.connection
     @errors.pithos.container
@@ -286,7 +286,7 @@ class file_list(_pithos_container, _optional_json, _name_filter):
         r = self.client.container_get(
             limit=False if self['more'] else self['limit'],
             marker=self['marker'],
-            prefix=self['name_pref'] or '/',
+            prefix=self['name_pref'],
             delimiter=self['delimiter'],
             path=self.path or '',
             if_modified_since=self['if_modified_since'],
@@ -307,7 +307,7 @@ class file_list(_pithos_container, _optional_json, _name_filter):
                 pager(self._out.getvalue())
                 self._out = outbu
 
-    def main(self, path_or_url='/'):
+    def main(self, path_or_url=''):
         super(self.__class__, self)._run(path_or_url)
         self._run()
 
@@ -426,7 +426,7 @@ class file_mkdir(_pithos_container, _optional_output_cmd):
 
 
 @command(file_cmds)
-class file_delete(_pithos_container, _optional_output_cmd):
+class file_delete(_pithos_container):
     """Delete a file or directory object"""
 
     arguments = dict(
@@ -446,15 +446,18 @@ class file_delete(_pithos_container, _optional_output_cmd):
         if self.path:
             if self['yes'] or self.ask_user(
                     'Delete /%s/%s ?' % (self.container, self.path)):
-                self._optional_output(self.client.del_object(
+                self.client.del_object(
                     self.path,
                     until=self['until_date'],
-                    delimiter='/' if self['recursive'] else self['delimiter']))
+                    delimiter='/' if self['recursive'] else self['delimiter'])
             else:
                 self.error('Aborted')
         else:
-            raiseCLIError('Nothing to delete', details=[
-                'Format for path or url: [/CONTAINER/]path'])
+            if self['yes'] or self.ask_user(
+                    'Empty container /%s ?' % self.container):
+                self.client.container_delete(self.container, delimiter='/')
+            else:
+                self.error('Aborted')
 
     def main(self, path_or_url):
         super(self.__class__, self)._run(path_or_url)
@@ -526,7 +529,7 @@ class _source_destination(_pithos_container, _optional_output_cmd):
             raise ce
         if self['source_prefix']:
             #  Copy and replace prefixes
-            for src_obj in self.client.list_objects(prefix=self.path or '/'):
+            for src_obj in self.client.list_objects(prefix=self.path):
                 src_objects[src_obj['name']] = src_obj
             for src_path, src_obj in src_objects.items():
                 dst_path = '%s%s' % (
@@ -871,7 +874,7 @@ class file_upload(_pithos_container, _optional_output_cmd):
                 if robj.json:
                     raise CLIError(
                         'Objects/files prefixed as %s already exist' % rpath,
-                        details=['Existing objects:'] + ['\t%s:\t%s' % (
+                        details=['Existing objects:'] + ['\t/%s/\t%s' % (
                             o['name'],
                             o['content_type'][12:]) for o in robj.json] + [
                             'Use -f to add, overwrite or resume'])
@@ -895,7 +898,7 @@ class file_upload(_pithos_container, _optional_output_cmd):
                         rel_path = rpath + top.split(lpath)[1]
                     except IndexError:
                         rel_path = rpath
-                    self.error('mkdir %s:%s' % (
+                    self.error('mkdir /%s/%s' % (
                         self.client.container, rel_path))
                     self.client.create_directory(rel_path)
                 for f in files:
@@ -1256,3 +1259,297 @@ class file_download(_pithos_container):
         super(self.__class__, self)._run(remote_path_or_url)
         local_path = local_path or self.path or '.'
         self._run(local_path=local_path)
+
+
+@command(container_cmds)
+class container_info(_pithos_account, _optional_json):
+    """Get information about a container"""
+
+    arguments = dict(
+        until_date=DateArgument('show metadata until then', '--until'),
+        metadata=FlagArgument('Show only container metadata', '--metadata'),
+        sizelimit=FlagArgument(
+            'Show the maximum size limit for container', '--size-limit'),
+        in_bytes=FlagArgument('Show size limit in bytes', ('-b', '--bytes'))
+    )
+
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self):
+        if self['metadata']:
+            r, preflen = dict(), len('x-container-meta-')
+            for k, v in self.client.get_container_meta(
+                    until=self['until_date']).items():
+                r[k[preflen:]] = v
+        elif self['sizelimit']:
+            r = self.client.get_container_limit(
+                self.container)['x-container-policy-quota']
+            r = {'size limit': 'unlimited' if r in ('0', ) else (
+                int(r) if self['in_bytes'] else format_size(r))}
+        else:
+            r = self.client.get_container_info(self.container)
+        self._print(r, self.print_dict)
+
+    def main(self, container):
+        super(self.__class__, self)._run()
+        self.container, self.client.container = container, container
+        self._run()
+
+
+class VersioningArgument(ValueArgument):
+
+    schemes = ('auto', 'none')
+
+    @property
+    def value(self):
+        return getattr(self, '_value', None)
+
+    @value.setter
+    def value(self, new_scheme):
+        if new_scheme:
+            new_scheme = new_scheme.lower()
+            if new_scheme not in self.schemes:
+                raise CLIInvalidArgument('Invalid versioning value', details=[
+                    'Valid versioning values are %s' % ', '.join(
+                        self.schemes)])
+            self._value = new_scheme
+
+
+@command(container_cmds)
+class container_modify(_pithos_account, _optional_json):
+    """Modify the properties of a container"""
+
+    arguments = dict(
+        metadata_to_add=KeyValueArgument(
+            'Add metadata in the form KEY=VALUE (can be repeated)',
+            '--metadata-add'),
+        metadata_to_delete=RepeatableArgument(
+            'Delete metadata by KEY (can be repeated)', '--metadata-del'),
+        sizelimit=DataSizeArgument(
+            'Set max size limit (0 for unlimited, '
+            'use units B, KiB, KB, etc.)', '--size-limit'),
+        versioning=VersioningArgument(
+            'Set a versioning scheme (%s)' % ', '.join(
+                VersioningArgument.schemes), '--versioning')
+    )
+    required = ['metadata_to_add', 'metadata_to_delete', 'sizelimit']
+
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    def _run(self, container):
+        metadata = self['metadata_to_add']
+        for k in self['metadata_to_delete']:
+            metadata[k] = ''
+        if metadata:
+            self.client.set_container_meta(metadata)
+            self._print(self.client.get_container_meta(), self.print_dict)
+        if self['sizelimit'] is not None:
+            self.client.set_container_limit(self['sizelimit'])
+            r = self.client.get_container_limit()['x-container-policy-quota']
+            r = 'unlimited' if r in ('0', ) else format_size(r)
+            self.writeln('new size limit: %s' % r)
+        if self['versioning']:
+            self.client.set_container_versioning(self['versioning'])
+            self.writeln('new versioning scheme: %s' % (
+                self.client.get_container_versioning(self.container)[
+                    'x-container-policy-versioning']))
+
+    def main(self, container):
+        super(self.__class__, self)._run()
+        self.client.container, self.container = container, container
+        self._run(container=container)
+
+
+@command(container_cmds)
+class container_list(_pithos_account, _optional_json, _name_filter):
+    """List all containers, or their contents"""
+
+    arguments = dict(
+        detail=FlagArgument('Containers with details', ('-l', '--list')),
+        limit=IntArgument('limit number of listed items', ('-n', '--number')),
+        marker=ValueArgument('output greater that marker', '--marker'),
+        modified_since_date=ValueArgument(
+            'show output modified since then', '--if-modified-since'),
+        unmodified_since_date=ValueArgument(
+            'show output not modified since then', '--if-unmodified-since'),
+        until_date=DateArgument('show metadata until then', '--until'),
+        shared=FlagArgument('show only shared', '--shared'),
+        more=FlagArgument('read long results', '--more'),
+        enum=FlagArgument('Enumerate results', '--enumerate'),
+        recursive=FlagArgument(
+            'Recursively list containers and their contents',
+            ('-r', '--recursive'))
+    )
+
+    def print_containers(self, container_list):
+        for index, container in enumerate(container_list):
+            if 'bytes' in container:
+                size = format_size(container['bytes'])
+            prfx = ('%s. ' % (index + 1)) if self['enum'] else ''
+            _cname = container['name'] if (
+                self['more']) else bold(container['name'])
+            cname = u'%s%s' % (prfx, _cname)
+            if self['detail']:
+                self.writeln(cname)
+                pretty_c = container.copy()
+                if 'bytes' in container:
+                    pretty_c['bytes'] = '%s (%s)' % (container['bytes'], size)
+                self.print_dict(pretty_c, exclude=('name'))
+                self.writeln()
+            else:
+                if 'count' in container and 'bytes' in container:
+                    self.writeln('%s (%s, %s objects)' % (
+                        cname, size, container['count']))
+                else:
+                    self.writeln(cname)
+            objects = container.get('objects', [])
+            if objects:
+                self.print_objects(objects)
+                self.writeln('')
+
+    def _create_object_forest(self, container_list):
+        try:
+            for container in container_list:
+                self.client.container = container['name']
+                objects = self.client.container_get(
+                    limit=False if self['more'] else self['limit'],
+                    if_modified_since=self['modified_since_date'],
+                    if_unmodified_since=self['unmodified_since_date'],
+                    until=self['until_date'],
+                    show_only_shared=self['shared'])
+                container['objects'] = objects.json
+        finally:
+            self.client.container = None
+
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.object_path
+    @errors.pithos.container
+    def _run(self, container):
+        if container:
+            r = self.client.container_get(
+                limit=False if self['more'] else self['limit'],
+                marker=self['marker'],
+                if_modified_since=self['modified_since_date'],
+                if_unmodified_since=self['unmodified_since_date'],
+                until=self['until_date'],
+                show_only_shared=self['shared'])
+        else:
+            r = self.client.account_get(
+                limit=False if self['more'] else self['limit'],
+                marker=self['marker'],
+                if_modified_since=self['modified_since_date'],
+                if_unmodified_since=self['unmodified_since_date'],
+                until=self['until_date'],
+                show_only_shared=self['shared'])
+        files = self._filter_by_name(r.json)
+        if self['recursive'] and not container:
+            self._create_object_forest(files)
+        if self['more']:
+            outbu, self._out = self._out, StringIO()
+        try:
+            if self['json_output'] or self['output_format']:
+                self._print(files)
+            else:
+                (self.print_objects if container else self.print_containers)(
+                    files)
+        finally:
+            if self['more']:
+                pager(self._out.getvalue())
+                self._out = outbu
+
+    def main(self, container=None):
+        super(self.__class__, self)._run()
+        self.client.container, self.container = container, container
+        self._run(container)
+
+
+@command(container_cmds)
+class container_create(_pithos_account):
+    """Create a new container"""
+
+    arguments = dict(
+        versioning=ValueArgument(
+            'set container versioning (auto/none)', '--versioning'),
+        limit=IntArgument('set default container limit', '--limit'),
+        meta=KeyValueArgument(
+            'set container metadata (can be repeated)', '--meta')
+    )
+
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    def _run(self, container):
+        try:
+            self.client.create_container(
+                container=container,
+                sizelimit=self['limit'],
+                versioning=self['versioning'],
+                metadata=self['meta'],
+                success=(201, ))
+        except ClientError as ce:
+            if ce.status in (202, ):
+                raise CLIError(
+                    'Container %s alread exists' % container, details=[
+                    'Either delete %s or choose another name' % (container)])
+            raise
+
+    def main(self, new_container):
+        super(self.__class__, self)._run()
+        self._run(container=new_container)
+
+
+@command(container_cmds)
+class container_delete(_pithos_account):
+    """Delete a container"""
+
+    arguments = dict(
+        yes=FlagArgument('Do not prompt for permission', '--yes'),
+        recursive=FlagArgument(
+            'delete container even if not empty', ('-r', '--recursive'))
+    )
+
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    def _run(self, container):
+        num_of_contents = int(self.client.get_container_info(container)[
+            'x-container-object-count'])
+        delimiter, msg = None, 'Delete container %s ?' % container
+        if self['recursive']:
+            delimiter, msg = '/', 'Empty and d%s' % msg[1:]
+        elif num_of_contents:
+            raise CLIError('Container %s is not empty' % container, details=[
+                'Use %s to delete non-empty containers' % '/'.join(
+                    self.arguments['recursive'].parsed_name)])
+        if self['yes'] or self.ask_user(msg):
+            if num_of_contents:
+                self.client.del_container(delimiter=delimiter)
+            self.client.purge_container()
+
+    def main(self, container):
+        super(self.__class__, self)._run()
+        self.container, self.client.container = container, container
+        self._run(container)
+
+
+@command(container_cmds)
+class container_empty(_pithos_account):
+    """Empty a container"""
+
+    arguments = dict(yes=FlagArgument('Do not prompt for permission', '--yes'))
+
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    def _run(self, container):
+        if self['yes'] or self.ask_user('Empty container %s ?' % container):
+            self.client.del_container(delimiter='/')
+
+    def main(self, container):
+        super(self.__class__, self)._run()
+        self.container, self.client.container = container, container
+        self._run(container)

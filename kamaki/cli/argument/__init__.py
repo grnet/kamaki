@@ -33,7 +33,7 @@
 
 from kamaki.cli.config import Config
 from kamaki.cli.errors import CLISyntaxError, raiseCLIError
-from kamaki.cli.utils import split_input
+from kamaki.cli.utils import split_input, to_bytes
 
 from datetime import datetime as dtm
 from time import mktime
@@ -226,6 +226,45 @@ class IntArgument(ValueArgument):
             raiseCLIError(CLISyntaxError(
                 'IntArgument Error',
                 details=['Value %s not an int' % newvalue]))
+
+
+class DataSizeArgument(ValueArgument):
+    """Input: a string of the form <number><unit>
+    Output: the number of bytes
+    Units: B, KiB, KB, MiB, MB, GiB, GB, TiB, TB
+    """
+
+    @property
+    def value(self):
+        return getattr(self, '_value', self.default)
+
+    def _calculate_limit(self, user_input):
+        limit = 0
+        try:
+            limit = int(user_input)
+        except ValueError:
+            index = 0
+            digits = [str(num) for num in range(0, 10)] + ['.']
+            while user_input[index] in digits:
+                index += 1
+            limit = user_input[:index]
+            format = user_input[index:]
+            try:
+                return to_bytes(limit, format)
+            except Exception as qe:
+                msg = 'Failed to convert %s to bytes' % user_input,
+                raiseCLIError(qe, msg, details=[
+                    'Syntax: containerlimit set <limit>[format] [container]',
+                    'e.g.,: containerlimit set 2.3GB mycontainer',
+                    'Valid formats:',
+                    '(*1024): B, KiB, MiB, GiB, TiB',
+                    '(*1000): B, KB, MB, GB, TB'])
+        return limit
+
+    @value.setter
+    def value(self, new_value):
+        if new_value:
+            self._value = self._calculate_limit(new_value)
 
 
 class DateArgument(ValueArgument):

@@ -84,6 +84,7 @@ DEFAULTS = {
         'resource_cli': 'astakos',
         'project_cli': 'astakos',
         'file_cli': 'pithos',
+        'container_cli': 'pithos',
         'server_cli': 'cyclades',
         'flavor_cli': 'cyclades',
         'network_cli': 'network',
