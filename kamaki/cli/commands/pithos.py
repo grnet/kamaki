@@ -31,6 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
+from time import localtime, strftime
 from io import StringIO
 from pydoc import pager
 from os import path, walk, makedirs
@@ -45,7 +46,7 @@ from kamaki.cli.commands import (
 from kamaki.cli.errors import (
     CLIBaseUrlError, CLIError, CLIInvalidArgument, raiseCLIError)
 from kamaki.cli.argument import (
-    FlagArgument, IntArgument, ValueArgument, DateArgument,
+    FlagArgument, IntArgument, ValueArgument, DateArgument, KeyValueArgument,
     ProgressBarArgument, RepeatableArgument)
 from kamaki.cli.utils import (
     format_size, bold, get_path_size, guess_mime_type)
@@ -179,9 +180,18 @@ class file_info(_pithos_container, _optional_json):
             'show output modified since then', '--if-modified-since'),
         unmodified_since_date=DateArgument(
             'show output unmodified since then', '--if-unmodified-since'),
-        permissions=FlagArgument(
-            'show only read/write permissions', '--permissions')
+        sharing=FlagArgument(
+            'show object permissions and sharing information', '--sharing'),
+        metadata=FlagArgument('show only object metadata', '--metadata'),
+        versions=FlagArgument(
+            'show the list of versions for the file', '--object-versions')
     )
+
+    def version_print(self, versions):
+        return {'/%s/%s' % (self.container, self.path): [
+            dict(version_id=vitem[0], created=strftime(
+                '%d-%m-%Y %H:%M:%S',
+                localtime(float(vitem[1])))) for vitem in versions]}
 
     @errors.generic.all
     @errors.pithos.connection
@@ -196,8 +206,18 @@ class file_info(_pithos_container, _optional_json):
                 if_none_match=self['non_matching_etag'],
                 if_modified_since=self['modified_since_date'],
                 if_unmodified_since=self['unmodified_since_date'])
-        elif self['permissions']:
+        elif self['sharing']:
             r = self.client.get_object_sharing(self.path)
+            r['public url'] = self.client.get_object_info(
+                self.path, version=self['object_version']).get(
+                    'x-object-public', None)
+        elif self['metadata']:
+            r, preflen = dict(), len('x-object-meta-')
+            for k, v in self.client.get_object_meta(self.path).items():
+                r[k[preflen:]] = v
+        elif self['versions']:
+            r = self.version_print(
+                self.client.get_object_versionlist(self.path))
         else:
             r = self.client.get_object_info(
                 self.path, version=self['object_version'])
@@ -309,11 +329,17 @@ class file_modify(_pithos_container):
             'Give write access to user/group (can be repeated, accumulative). '
             'Format for users: UUID . Format for groups: UUID:GROUP . '
             'Use * for all users/groups', '--write-permission'),
-        no_permissions=FlagArgument('Remove permissions', '--no-permissions')
+        no_permissions=FlagArgument('Remove permissions', '--no-permissions'),
+        metadata_to_set=KeyValueArgument(
+            'Add metadata (KEY=VALUE) to an object (can be repeated)',
+            '--metadata-add'),
+        metadata_key_to_delete=RepeatableArgument(
+            'Delete object metadata (can be repeated)', '--metadata-del'),
     )
     required = [
-        'publish', 'unpublish', 'uuid_for_read_permission',
-        'uuid_for_write_permission', 'no_permissions']
+        'publish', 'unpublish', 'uuid_for_read_permission', 'metadata_to_set',
+        'uuid_for_write_permission', 'no_permissions',
+        'metadata_key_to_delete']
 
     @errors.generic.all
     @errors.pithos.connection
@@ -337,6 +363,12 @@ class file_modify(_pithos_container):
             self.print_dict(self.client.get_object_sharing(self.path))
         if self['no_permissions']:
             self.client.del_object_sharing(self.path)
+        metadata = self['metadata_to_set'] or dict()
+        for k in self['metadata_key_to_delete']:
+            metadata[k] = ''
+        if metadata:
+            self.client.set_object_meta(self.path, metadata)
+            self.print_dict(self.client.get_object_meta(self.path))
 
     def main(self, path_or_url):
         super(self.__class__, self)._run(path_or_url)
@@ -442,7 +474,9 @@ class _source_destination(_pithos_container, _optional_output_cmd):
             'DESTINATION_PATH',
             ('-r', '--recursive')),
         force=FlagArgument(
-            'Overwrite destination objects, if needed', ('-f', '--force'))
+            'Overwrite destination objects, if needed', ('-f', '--force')),
+        source_version=ValueArgument(
+            'The version of the source object', '--source-version')
     )
 
     def __init__(self, arguments={}, auth_base=None, cloud=None):
@@ -521,7 +555,10 @@ class _source_destination(_pithos_container, _optional_output_cmd):
         else:
             #  One object transfer
             try:
-                src_obj = self.client.get_object_info(self.path)
+                src_version_arg = self.arguments.get('source_version', None)
+                src_obj = self.client.get_object_info(
+                    self.path,
+                    version=src_version_arg.value if src_version_arg else None)
             except ClientError as ce:
                 if ce.status in (204, ):
                     raise CLIError(
@@ -591,7 +628,7 @@ class file_copy(_source_destination):
         content_type=ValueArgument(
             'change object\'s content type', '--content-type'),
         source_version=ValueArgument(
-            'copy specific version', ('-S', '--source-version'))
+            'The version of the source object', '--object-version')
     )
 
     @errors.generic.all
