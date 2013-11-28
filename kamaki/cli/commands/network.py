@@ -450,7 +450,7 @@ class port_create(_init_network, _optional_json):
             'The device is either a virtual server or a virtual router',
             '--device-id')
     )
-    retuired = ('network_id', 'device_id')
+    required = ('network_id', 'device_id')
 
     @errors.generic.all
     @errors.cyclades.connection
@@ -477,7 +477,6 @@ class ip_list(_init_network, _optional_json):
 
     @errors.generic.all
     @errors.cyclades.connection
-    @errors.cyclades.network_id
     def _run(self):
         self._print(self.client.list_floatingips())
 
