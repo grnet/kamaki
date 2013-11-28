@@ -79,20 +79,28 @@ DEFAULTS = {
         'log_pid': 'off',
         'history_file': HISTORY_PATH,
         'user_cli': 'astakos',
-        'admin_cli': 'astakos',
+        'quota_cli': 'astakos',
+        'resource_cli': 'astakos',
         'project_cli': 'astakos',
         'file_cli': 'pithos',
+        'container_cli': 'pithos',
+        'sharer_cli': 'pithos',
+        'group_cli': 'pithos',
         'server_cli': 'cyclades',
         'flavor_cli': 'cyclades',
         'network_cli': 'network',
         'subnet_cli': 'network',
         'port_cli': 'network',
-        'ip_cli': 'cyclades',
+        'ip_cli': 'network',
         'image_cli': 'image',
+        'imagecompute_cli': 'image',
         'config_cli': 'config',
         'history_cli': 'history'
         #  Optional command specs:
         #  'livetest_cli': 'livetest',
+        #  'service_cli': 'astakos'
+        #  'endpoint_cli': 'astakos'
+        #  'commission_cli': 'astakos'
     },
     CLOUD_PREFIX: {
         #'default': {

@@ -80,3 +80,18 @@ class NetworkRestClient(Client):
 
     def ports_delete(self, port_id, **kwargs):
         return self.delete(path4url('ports', port_id), **kwargs)
+
+    #  floatingips (L3) extentions
+
+    def floatingips_get(self, floatingip_id=None, **kwargs):
+        return self.get(path4url('floatingips', floatingip_id or ''), **kwargs)
+
+    def floatingips_post(self, json_data, **kwargs):
+        return self.post(path4url('floatingips'), json=json_data, **kwargs)
+
+    def floatingips_put(self, floatingip_id, json_data, **kwargs):
+        return self.put(
+            path4url('floatingips', floatingip_id), json=json_data, **kwargs)
+
+    def floatingips_delete(self, floatingip_id, **kwargs):
+        return self.delete(path4url('floatingips', floatingip_id), **kwargs)

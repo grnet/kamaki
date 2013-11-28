@@ -33,10 +33,11 @@
 
 from kamaki.cli.config import Config
 from kamaki.cli.errors import CLISyntaxError, raiseCLIError
-from kamaki.cli.utils import split_input
+from kamaki.cli.utils import split_input, to_bytes
 
 from datetime import datetime as dtm
 from time import mktime
+from sys import stderr
 
 from logging import getLogger
 from argparse import ArgumentParser, ArgumentError
@@ -227,6 +228,45 @@ class IntArgument(ValueArgument):
                 details=['Value %s not an int' % newvalue]))
 
 
+class DataSizeArgument(ValueArgument):
+    """Input: a string of the form <number><unit>
+    Output: the number of bytes
+    Units: B, KiB, KB, MiB, MB, GiB, GB, TiB, TB
+    """
+
+    @property
+    def value(self):
+        return getattr(self, '_value', self.default)
+
+    def _calculate_limit(self, user_input):
+        limit = 0
+        try:
+            limit = int(user_input)
+        except ValueError:
+            index = 0
+            digits = [str(num) for num in range(0, 10)] + ['.']
+            while user_input[index] in digits:
+                index += 1
+            limit = user_input[:index]
+            format = user_input[index:]
+            try:
+                return to_bytes(limit, format)
+            except Exception as qe:
+                msg = 'Failed to convert %s to bytes' % user_input,
+                raiseCLIError(qe, msg, details=[
+                    'Syntax: containerlimit set <limit>[format] [container]',
+                    'e.g.,: containerlimit set 2.3GB mycontainer',
+                    'Valid formats:',
+                    '(*1024): B, KiB, MiB, GiB, TiB',
+                    '(*1000): B, KB, MB, GB, TB'])
+        return limit
+
+    @value.setter
+    def value(self, new_value):
+        if new_value:
+            self._value = self._calculate_limit(new_value)
+
+
 class DateArgument(ValueArgument):
 
     DATE_FORMAT = '%a %b %d %H:%M:%S %Y'
@@ -393,16 +433,37 @@ _arguments = dict(
 class ArgumentParseManager(object):
     """Manage (initialize and update) an ArgumentParser object"""
 
-    def __init__(self, exe, arguments=None):
+    def __init__(
+            self, exe,
+            arguments=None, required=None, syntax=None, description=None):
         """
         :param exe: (str) the basic command (e.g. 'kamaki')
 
         :param arguments: (dict) if given, overrides the global _argument as
             the parsers arguments specification
+        :param required: (list or tuple) an iterable of argument keys, denoting
+            which arguments are required. A tuple denoted an AND relation,
+            while a list denotes an OR relation e.g., ['a', 'b'] means that
+            either 'a' or 'b' is required, while ('a', 'b') means that both 'a'
+            and 'b' ar required.
+            Nesting is allowed e.g., ['a', ('b', 'c'), ['d', 'e']] means that
+            this command required either 'a', or both 'b' and 'c', or one of
+            'd', 'e'.
+            Repeated arguments are also allowed e.g., [('a', 'b'), ('a', 'c'),
+            ['b', 'c']] means that the command required either 'a' and 'b' or
+            'a' and 'c' or at least one of 'b', 'c' and could be written as
+            [('a', ['b', 'c']), ['b', 'c']]
+        :param syntax: (str) The basic syntax of the arguments. Default:
+            exe <cmd_group> [<cmd_subbroup> ...] <cmd>
+        :param description: (str) The description of the commands or ''
         """
         self.parser = ArgumentParser(
             add_help=False, formatter_class=RawDescriptionHelpFormatter)
-        self.syntax = '%s <cmd_group> [<cmd_subbroup> ...] <cmd>' % exe
+        self._exe = exe
+        self.syntax = syntax or (
+            '%s <cmd_group> [<cmd_subbroup> ...] <cmd>' % exe)
+        self.required = required
+        self.parser.description = description or ''
         if arguments:
             self.arguments = arguments
         else:
@@ -410,6 +471,71 @@ class ArgumentParseManager(object):
             self.arguments = _arguments
         self._parser_modified, self._parsed, self._unparsed = False, None, None
         self.parse()
+
+    @staticmethod
+    def required2list(required):
+        if isinstance(required, list) or isinstance(required, tuple):
+            terms = []
+            for r in required:
+                terms.append(ArgumentParseManager.required2list(r))
+            return list(set(terms).union())
+        return required
+
+    @staticmethod
+    def required2str(required, arguments, tab=''):
+        if isinstance(required, list):
+            return ' %sat least one:\n%s' % (tab, ''.join(
+                [ArgumentParseManager.required2str(
+                    r, arguments, tab + '  ') for r in required]))
+        elif isinstance(required, tuple):
+            return ' %sall:\n%s' % (tab, ''.join(
+                [ArgumentParseManager.required2str(
+                    r, arguments, tab + '  ') for r in required]))
+        else:
+            lt_pn, lt_all, arg = 23, 80, arguments[required]
+            tab2 = ' ' * lt_pn
+            ret = '%s%s' % (tab, ', '.join(arg.parsed_name))
+            if arg.arity != 0:
+                ret += ' %s' % required.upper()
+            ret = ('{:<%s}' % lt_pn).format(ret)
+            prefix = ('\n%s' % tab2) if len(ret) > lt_pn else ' '
+            cur = 0
+            while arg.help[cur:]:
+                next = cur + lt_all - lt_pn
+                ret += prefix
+                ret += ('{:<%s}' % (lt_all - lt_pn)).format(arg.help[cur:next])
+                cur, finish = next, '\n%s' % tab2
+            return ret + '\n'
+
+    @staticmethod
+    def _patch_with_required_args(arguments, required):
+        if isinstance(required, tuple):
+            return ' '.join([ArgumentParseManager._patch_with_required_args(
+                arguments, k) for k in required])
+        elif isinstance(required, list):
+            return '< %s >' % ' | '.join([
+                ArgumentParseManager._patch_with_required_args(
+                    arguments, k) for k in required])
+        arg = arguments[required]
+        return '/'.join(arg.parsed_name) + (
+            ' %s [...]' % required.upper() if arg.arity < 0 else (
+                ' %s' % required.upper() if arg.arity else ''))
+
+    def print_help(self, out=stderr):
+        if self.required:
+            tmp_args = dict(self.arguments)
+            for term in self.required2list(self.required):
+                tmp_args.pop(term)
+            tmp_parser = ArgumentParseManager(self._exe, tmp_args)
+            tmp_parser.syntax = self.syntax + self._patch_with_required_args(
+                self.arguments, self.required)
+            tmp_parser.parser.description = '%s\n\nrequired arguments:\n%s' % (
+                self.parser.description,
+                self.required2str(self.required, self.arguments))
+            tmp_parser.update_parser()
+            tmp_parser.parser.print_help()
+        else:
+            self.parser.print_help()
 
     @property
     def syntax(self):
@@ -465,15 +591,35 @@ class ArgumentParseManager(object):
         :param new_arguments: (dict)
         """
         if new_arguments:
-            assert isinstance(new_arguments, dict)
+            assert isinstance(new_arguments, dict), 'Arguments not in dict !!!'
             self._arguments.update(new_arguments)
             self.update_parser()
+
+    def _parse_required_arguments(self, required, parsed_args):
+        if not required:
+            return True
+        if isinstance(required, tuple):
+            for item in required:
+                if not self._parse_required_arguments(item, parsed_args):
+                    return False
+            return True
+        if isinstance(required, list):
+            for item in required:
+                if self._parse_required_arguments(item, parsed_args):
+                    return True
+            return False
+        return required in parsed_args
 
     def parse(self, new_args=None):
         """Parse user input"""
         try:
             pkargs = (new_args,) if new_args else ()
             self._parsed, unparsed = self.parser.parse_known_args(*pkargs)
+            parsed_args = [
+                k for k, v in vars(self._parsed).items() if v not in (None, )]
+            if not self._parse_required_arguments(self.required, parsed_args):
+                self.print_help()
+                raise CLISyntaxError('Missing required arguments')
         except SystemExit:
             raiseCLIError(CLISyntaxError('Argument Syntax Error'))
         for name, arg in self.arguments.items():

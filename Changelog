@@ -9,6 +9,9 @@ Changes:
 2. Make post_user_catalogs obsolete, but keep for one more version [#4337]
 3. Rename user commands for cached account requests as /user session [#4340]
 4. Remove max_theads from config, move control to threaded commands [#4617]
+5. Modify all commands [#4583]
+    New scheme for ALL <object> <verb> [object id] [--arguments]
+    e.g., file modidy --metadata-add=revier='Mr. Reviewer' /pithos/myfile.txt
 
 Features:
 

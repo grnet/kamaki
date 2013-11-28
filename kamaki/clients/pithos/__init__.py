@@ -662,6 +662,8 @@ class PithosClient(PithosRestClient):
     def _dump_blocks_sync(
             self, obj, remote_hashes, blocksize, total_size, dst, crange,
             **args):
+        if not total_size:
+            return
         for blockid, blockhash in enumerate(remote_hashes):
             if blockhash:
                 start = blocksize * blockid

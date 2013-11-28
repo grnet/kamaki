@@ -70,7 +70,7 @@ def _construct_command_syntax(cls):
         n = len(args) - len(spec.defaults or ())
         required = ' '.join(['<%s>' % _arg2syntax(x) for x in args[:n]])
         optional = ' '.join(['[%s]' % _arg2syntax(x) for x in args[n:]])
-        cls.syntax = ' '.join(x for x in [required, optional] if x)
+        cls.syntax = ' '.join([required, optional])
         if spec.varargs:
             cls.syntax += ' <%s ...>' % spec.varargs
 
@@ -548,7 +548,8 @@ def main():
         if parser.unparsed:
             run_one_cmd(exe, parser, cloud)
         elif _help:
-            parser.parser.print_help()
+            #parser.parser.print_help()
+            parser.print_help()
             _groups_help(parser.arguments)
         else:
             run_shell(exe, parser, cloud)

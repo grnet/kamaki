@@ -44,104 +44,104 @@ class CycladesRestClient(ComputeClient):
         path = path4url('servers', server_id, 'stats')
         return self.get(path, success=success, **kwargs)
 
-    def networks_get(
-            self,
-            network_id='',
-            command='',
-            success=(200, 203),
-            **kwargs):
-        """GET base_url/networks[/network_id][/command] request
+    # def networks_get(
+    #         self,
+    #         network_id='',
+    #         command='',
+    #         success=(200, 203),
+    #         **kwargs):
+    #     """GET base_url/networks[/network_id][/command] request
 
-        :param network_id: integer (str or int)
+    #     :param network_id: integer (str or int)
 
-        :param command: (str) 'detail' or ''
+    #     :param command: (str) 'detail' or ''
 
-        :param success: success code or list or tuple of accepted success
-            codes. if server response code is not in this list, a ClientError
-            raises
+    #     :param success: success code or list or tuple of accepted success
+    #         codes. if server response code is not in this list, a ClientError
+    #         raises
 
-        :returns: request response
-        """
-        path = path4url('networks', network_id, command)
-        return self.get(path, success=success, **kwargs)
+    #     :returns: request response
+    #     """
+    #     path = path4url('networks', network_id, command)
+    #     return self.get(path, success=success, **kwargs)
 
-    def networks_delete(
-            self,
-            network_id='',
-            command='',
-            success=204,
-            **kwargs):
-        """DEL ETE base_url/networks[/network_id][/command] request
+    # def networks_delete(
+    #         self,
+    #         network_id='',
+    #         command='',
+    #         success=204,
+    #         **kwargs):
+    #     """DEL ETE base_url/networks[/network_id][/command] request
 
-        :param network_id: integer (str or int)
+    #     :param network_id: integer (str or int)
 
-        :param command: (str) 'detail' or ''
+    #     :param command: (str) 'detail' or ''
 
-        :param success: success code or list or tuple of accepted success
-            codes. if server response code is not in this list, a ClientError
-            raises
+    #     :param success: success code or list or tuple of accepted success
+    #         codes. if server response code is not in this list, a ClientError
+    #         raises
 
-        :returns: request response
-        """
-        path = path4url('networks', network_id, command)
-        return self.delete(path, success=success, **kwargs)
+    #     :returns: request response
+    #     """
+    #     path = path4url('networks', network_id, command)
+    #     return self.delete(path, success=success, **kwargs)
 
-    def networks_post(
-            self,
-            network_id='',
-            command='',
-            json_data=None,
-            success=202,
-            **kwargs):
-        """POST base_url/servers[/server_id]/[command] request
+    # def networks_post(
+    #         self,
+    #         network_id='',
+    #         command='',
+    #         json_data=None,
+    #         success=202,
+    #         **kwargs):
+    #     """POST base_url/servers[/server_id]/[command] request
 
-        :param network_id: integer (str or int)
+    #     :param network_id: integer (str or int)
 
-        :param command: (str) 'detail' or ''
+    #     :param command: (str) 'detail' or ''
 
-        :param json_data: (dict) will be send as data
+    #     :param json_data: (dict) will be send as data
 
-        :param success: success code or list or tuple of accepted success
-            codes. if server response code is not in this list, a ClientError
-            raises
+    #     :param success: success code or list or tuple of accepted success
+    #         codes. if server response code is not in this list, a ClientError
+    #         raises
 
-        :returns: request response
-        """
-        data = json_data
-        if json_data is not None:
-            data = json.dumps(json_data)
-            self.set_header('Content-Type', 'application/json')
-            self.set_header('Content-Length', len(data))
+    #     :returns: request response
+    #     """
+    #     data = json_data
+    #     if json_data is not None:
+    #         data = json.dumps(json_data)
+    #         self.set_header('Content-Type', 'application/json')
+    #         self.set_header('Content-Length', len(data))
 
-        path = path4url('networks', network_id, command)
-        return self.post(path, data=data, success=success, **kwargs)
+    #     path = path4url('networks', network_id, command)
+    #     return self.post(path, data=data, success=success, **kwargs)
 
-    def networks_put(
-            self,
-            network_id='',
-            command='',
-            json_data=None,
-            success=204,
-            **kwargs):
-        """PUT base_url/servers[/server_id]/[command] request
+    # def networks_put(
+    #         self,
+    #         network_id='',
+    #         command='',
+    #         json_data=None,
+    #         success=204,
+    #         **kwargs):
+    #     """PUT base_url/servers[/server_id]/[command] request
 
-        :param network_id: integer (str or int)
+    #     :param network_id: integer (str or int)
 
-        :param command: (str) 'detail' or ''
+    #     :param command: (str) 'detail' or ''
 
-        :param json_data: (dict) will be send as data
+    #     :param json_data: (dict) will be send as data
 
-        :param success: success code or list or tuple of accepted success
-            codes. if server response code is not in this list, a ClientError
-            raises
+    #     :param success: success code or list or tuple of accepted success
+    #         codes. if server response code is not in this list, a ClientError
+    #         raises
 
-        :returns: request response
-        """
-        data = json_data
-        if json_data is not None:
-            data = json.dumps(json_data)
-            self.set_header('Content-Type', 'application/json')
-            self.set_header('Content-Length', len(data))
+    #     :returns: request response
+    #     """
+    #     data = json_data
+    #     if json_data is not None:
+    #         data = json.dumps(json_data)
+    #         self.set_header('Content-Type', 'application/json')
+    #         self.set_header('Content-Length', len(data))
 
-        path = path4url('networks', network_id, command)
-        return self.put(path, data=data, success=success, **kwargs)
+    #     path = path4url('networks', network_id, command)
+    #     return self.put(path, data=data, success=success, **kwargs)

@@ -44,7 +44,7 @@ class CycladesClient(CycladesRestClient):
 
     def create_server(
             self, name, flavor_id, image_id,
-            metadata=None, personality=None):
+            metadata=None, personality=None, networks=None):
         """Submit request to create a new server
 
         :param name: (str)
@@ -57,6 +57,12 @@ class CycladesClient(CycladesRestClient):
 
         :param personality: a list of (file path, file contents) tuples,
             describing files to be injected into virtual server upon creation
+
+        :param networks: (list of dicts) Networks to connect to, list this:
+            "networks": [
+                {"network": <network_uuid>},
+                {"network": <network_uuid>, "fixed_ip": address},
+                {"port": <port_id>}, ...]
 
         :returns: a dict with the new virtual server details
 
@@ -407,104 +413,6 @@ class CycladesClient(CycladesRestClient):
         return self._wait(
             server_id, current_status, get_status, delay, max_wait, wait_cb)
 
-    def get_floating_ip_pools(self):
-        """
-        :returns: (dict) {floating_ip_pools:[{name: ...}, ...]}
-        """
-        r = self.floating_ip_pools_get()
-        return r.json
-
-    def get_floating_ips(self):
-        """
-        :returns: (dict) {floating_ips: [fixed_ip: , id: , ip: , pool: ]}
-        """
-        r = self.floating_ips_get()
-        return r.json
-
-    def alloc_floating_ip(self, pool=None, address=None):
-        """
-        :param pool: (str) pool of ips to allocate from
-
-        :param address: (str) ip address to request
-
-        :returns: (dict) {
-            fixed_ip: ..., id: ..., instance_id: ..., ip: ..., pool: ...}
-        """
-        json_data = dict()
-        if pool:
-            json_data['pool'] = pool
-        if address:
-            json_data['address'] = address
-        r = self.floating_ips_post(json_data)
-        return r.json['floating_ip']
-
-    def get_floating_ip(self, fip_id):
-        """
-        :param fip_id: (str) floating ip id
-
-        :returns: (dict)
-            {fixed_ip: ..., id: ..., instance_id: ..., ip: ..., pool: ...},
-
-        :raises AssertionError: if fip_id is emtpy
-        """
-        assert fip_id, 'floating ip id is needed for get_floating_ip'
-        r = self.floating_ips_get(fip_id)
-        return r.json['floating_ip']
-
-    def delete_floating_ip(self, fip_id=None):
-        """
-        :param fip_id: (str) floating ip id (if None, all ips are deleted)
-
-        :returns: (dict) request headers
-
-        :raises AssertionError: if fip_id is emtpy
-        """
-        assert fip_id, 'floating ip id is needed for delete_floating_ip'
-        r = self.floating_ips_delete(fip_id)
-        return r.headers
-
-    def attach_floating_ip(self, server_id, address):
-        """Associate the address ip to server with server_id
-
-        :param server_id: (int)
-
-        :param address: (str) the ip address to assign to server (vm)
-
-        :returns: (dict) request headers
-
-        :raises ValueError: if server_id cannot be converted to int
-
-        :raises ValueError: if server_id is not of a int-convertable type
-
-        :raises AssertionError: if address is emtpy
-        """
-        server_id = int(server_id)
-        assert address, 'address is needed for attach_floating_ip'
-        req = dict(addFloatingIp=dict(address=address))
-        r = self.servers_action_post(server_id, json_data=req)
-        return r.headers
-
-    def detach_floating_ip(self, server_id, address):
-        """Disassociate an address ip from the server with server_id
-
-        :param server_id: (int)
-
-        :param address: (str) the ip address to assign to server (vm)
-
-        :returns: (dict) request headers
-
-        :raises ValueError: if server_id cannot be converted to int
-
-        :raises ValueError: if server_id is not of a int-convertable type
-
-        :raises AssertionError: if address is emtpy
-        """
-        server_id = int(server_id)
-        assert address, 'address is needed for detach_floating_ip'
-        req = dict(removeFloatingIp=dict(address=address))
-        r = self.servers_action_post(server_id, json_data=req)
-        return r.headers
-
 
 class CycladesNetworkClient(NetworkClient):
     """Cyclades Network API extentions"""
@@ -534,11 +442,12 @@ class CycladesNetworkClient(NetworkClient):
             port['security_groups'] = security_groups
         if name:
             port['name'] = name
-        if fixed_ips:
-            diff = set(['subnet_id', 'ip_address']).difference(fixed_ips)
+        for fixed_ip in fixed_ips:
+            diff = set(['subnet_id', 'ip_address']).difference(fixed_ip)
             if diff:
                 raise ValueError(
                     'Invalid format for "fixed_ips", %s missing' % diff)
+        if fixed_ips:
             port['fixed_ips'] = fixed_ips
         r = self.ports_post(json_data=dict(port=port), success=201)
         return r.json['port']

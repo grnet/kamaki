@@ -54,11 +54,10 @@ from kamaki.cli.commands import (
     _optional_output_cmd, _optional_json, _name_filter, _id_filter)
 
 
-image_cmds = CommandTree(
-    'image',
-    'Cyclades/Plankton API image commands\n'
-    'image compute:\tCyclades/Compute API image commands')
-_commands = [image_cmds]
+image_cmds = CommandTree('image', 'Cyclades/Plankton API image commands')
+imagecompute_cmds = CommandTree(
+    'imagecompute', 'Cyclades/Compute API image commands')
+_commands = [image_cmds, imagecompute_cmds]
 
 
 howto_image_file = [
@@ -207,6 +206,8 @@ class image_list(_init_image, _optional_json, _name_filter, _id_filter):
         prop_like=KeyValueArgument(
             'fliter by property key=value where value is part of actual value',
             ('--property-like')),
+        image_ID_for_members=ValueArgument(
+            'List members of an image', '--members-of')
     )
 
     def _filter_by_owner(self, images):
@@ -233,10 +234,21 @@ class image_list(_init_image, _optional_json, _name_filter, _id_filter):
                 new_images.append(img)
         return new_images
 
+    def _members(self, image_id):
+        members = self.client.list_members(image_id)
+        if not (self['json_output'] or self['output_format']):
+            uuids = [member['member_id'] for member in members]
+            usernames = self._uuids2usernames(uuids)
+            for member in members:
+                member['member_id'] += ' (%s)' % usernames[member['member_id']]
+        self._print(members, title=('member_id',))
+
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self):
         super(self.__class__, self)._run()
+        if self['image_ID_for_members']:
+            return self._members(self['image_ID_for_members'])
         filters = {}
         for arg in set([
                 'container_format',
@@ -284,18 +296,8 @@ class image_list(_init_image, _optional_json, _name_filter, _id_filter):
 
 
 @command(image_cmds)
-class image_meta(_init_image):
-    """Manage image metadata and custom properties"""
-
-
-@command(image_cmds)
 class image_info(_init_image, _optional_json):
-    """Get image metadata
-    Image metadata include:
-    - image file information (location, size, etc.)
-    - image information (id, name, etc.)
-    - image os properties (os, fs, etc.)
-    """
+    """Get image metadata"""
 
     @errors.generic.all
     @errors.plankton.connection
@@ -312,92 +314,59 @@ class image_info(_init_image, _optional_json):
 
 
 @command(image_cmds)
-class image_meta_set(_init_image, _optional_output_cmd):
+class image_modify(_init_image, _optional_output_cmd):
     """Add / update metadata and properties for an image
     The original image preserves the values that are not affected
     """
 
     arguments = dict(
-        name=ValueArgument('Set a new name', ('--name')),
-        disk_format=ValueArgument('Set a new disk format', ('--disk-format')),
+        image_name=ValueArgument('Change name', '--name'),
+        disk_format=ValueArgument('Change disk format', '--disk-format'),
         container_format=ValueArgument(
-            'Set a new container format', ('--container-format')),
-        status=ValueArgument('Set a new status', ('--status')),
-        publish=FlagArgument('publish the image', ('--publish')),
-        unpublish=FlagArgument('unpublish the image', ('--unpublish')),
-        properties=KeyValueArgument(
+            'Change container format', '--container-format'),
+        status=ValueArgument('Change status', '--status'),
+        publish=FlagArgument('Publish the image', '--publish'),
+        unpublish=FlagArgument('Unpublish the image', '--unpublish'),
+        property_to_set=KeyValueArgument(
             'set property in key=value form (can be repeated)',
-            ('-p', '--property'))
+            ('-p', '--property-set')),
+        property_to_del=RepeatableArgument(
+            'Delete property by key (can be repeated)', '--property-del'),
+        member_ID_to_add=RepeatableArgument(
+            'Add member to image (can be repeated)', '--member-add'),
+        member_ID_to_remove=RepeatableArgument(
+            'Remove a member (can be repeated)', '--member-del'),
     )
-
-    def _check_empty(self):
-        for term in (
-                'name', 'disk_format', 'container_format', 'status', 'publish',
-                'unpublish', 'properties'):
-            if self[term]:
-                if self['publish'] and self['unpublish']:
-                    raiseCLIError(
-                        '--publish and --unpublish are mutually exclusive')
-                return
-        raiseCLIError(
-            'Nothing to update, please use arguments (-h for a list)')
+    required = [
+        'image_name', 'disk_format', 'container_format', 'status', 'publish',
+        'unpublish', 'property_to_set', 'member_ID_to_add',
+        'member_ID_to_remove']
 
     @errors.generic.all
     @errors.plankton.connection
     @errors.plankton.id
     def _run(self, image_id):
-        self._check_empty()
-        meta = self.client.get_meta(image_id)
-        for k, v in self['properties'].items():
-            meta['properties'][k.upper()] = v
-        self._optional_output(self.client.update_image(
-            image_id,
-            name=self['name'],
-            disk_format=self['disk_format'],
-            container_format=self['container_format'],
-            status=self['status'],
-            public=self['publish'] or self['unpublish'] or None,
-            **meta['properties']))
-
-    def main(self, image_id):
-        super(self.__class__, self)._run()
-        self._run(image_id=image_id)
-
-
-@command(image_cmds)
-class image_meta_delete(_init_image, _optional_output_cmd):
-    """Remove/empty image metadata and/or custom properties"""
-
-    arguments = dict(
-        disk_format=FlagArgument('Empty disk format', ('--disk-format')),
-        container_format=FlagArgument(
-            'Empty container format', ('--container-format')),
-        status=FlagArgument('Empty status', ('--status')),
-        properties=RepeatableArgument(
-            'Property keys to remove', ('-p', '--property'))
-    )
-
-    def _check_empty(self):
-        for t in ('disk_format', 'container_format', 'status', 'properties'):
-            if self[t]:
-                return
-        raiseCLIError(
-            'Nothing to update, please use arguments (-h for a list)')
-
-    @errors.generic.all
-    @errors.plankton.connection
-    @errors.plankton.id
-    def _run(self, image_id):
-        self._check_empty()
-        meta = self.client.get_meta(image_id)
-        for k in self['properties']:
-            meta['properties'].pop(k.upper(), None)
-        self._optional_output(self.client.update_image(
-            image_id,
-            disk_format='' if self['disk_format'] else None,
-            container_format='' if self['container_format'] else None,
-            status='' if self['status'] else None,
-            **meta['properties']))
+        for mid in self['member_ID_to_add']:
+            self.client.add_member(image_id, mid)
+        for mid in self['member_ID_to_remove']:
+            self.client.remove_member(image_id, mid)
+        if len([term for term in self.required if (
+                self[term] and not term.startswith('member_ID'))]) > 1:
+            meta = self.client.get_meta(image_id)
+            for k, v in self['property_to_set'].items():
+                meta['properties'][k.upper()] = v
+            for k in self['property_to_del']:
+                meta['properties'][k.upper()] = None
+            self._optional_output(self.client.update_image(
+                image_id,
+                name=self['image_name'],
+                disk_format=self['disk_format'],
+                container_format=self['container_format'],
+                status=self['status'],
+                public=self['publish'] or self['unpublish'] or None,
+                **meta['properties']))
+        if self['with_output']:
+            self._optional_output(self.get_image_details(image_id))
 
     def main(self, image_id):
         super(self.__class__, self)._run()
@@ -668,101 +637,10 @@ class image_unregister(_init_image, _optional_output_cmd):
         self._run(image_id=image_id)
 
 
-@command(image_cmds)
-class image_shared(_init_image, _optional_json):
-    """List images shared by a member"""
-
-    @errors.generic.all
-    @errors.plankton.connection
-    def _run(self, member):
-        r = self.client.list_shared(member)
-        self._print(r, title=('image_id',))
-
-    def main(self, member_id_or_username):
-        super(self.__class__, self)._run()
-        self._run(member_id_or_username)
-
-
-@command(image_cmds)
-class image_members(_init_image):
-    """Manage members. Members of an image are users who can modify it"""
-
-
-@command(image_cmds)
-class image_members_list(_init_image, _optional_json):
-    """List members of an image"""
-
-    @errors.generic.all
-    @errors.plankton.connection
-    @errors.plankton.id
-    def _run(self, image_id):
-        members = self.client.list_members(image_id)
-        if not (self['json_output'] or self['output_format']):
-            uuids = [member['member_id'] for member in members]
-            usernames = self._uuids2usernames(uuids)
-            for member in members:
-                member['member_id'] += ' (%s)' % usernames[member['member_id']]
-        self._print(members, title=('member_id',))
-
-    def main(self, image_id):
-        super(self.__class__, self)._run()
-        self._run(image_id=image_id)
-
-
-@command(image_cmds)
-class image_members_add(_init_image, _optional_output_cmd):
-    """Add a member to an image"""
-
-    @errors.generic.all
-    @errors.plankton.connection
-    @errors.plankton.id
-    def _run(self, image_id=None, member=None):
-            self._optional_output(self.client.add_member(image_id, member))
-
-    def main(self, image_id, member_id):
-        super(self.__class__, self)._run()
-        self._run(image_id=image_id, member=member_id)
-
-
-@command(image_cmds)
-class image_members_delete(_init_image, _optional_output_cmd):
-    """Remove a member from an image"""
-
-    @errors.generic.all
-    @errors.plankton.connection
-    @errors.plankton.id
-    def _run(self, image_id=None, member=None):
-            self._optional_output(self.client.remove_member(image_id, member))
-
-    def main(self, image_id, member):
-        super(self.__class__, self)._run()
-        self._run(image_id=image_id, member=member)
-
-
-@command(image_cmds)
-class image_members_set(_init_image, _optional_output_cmd):
-    """Set the members of an image"""
-
-    @errors.generic.all
-    @errors.plankton.connection
-    @errors.plankton.id
-    def _run(self, image_id, members):
-            self._optional_output(self.client.set_members(image_id, members))
-
-    def main(self, image_id, *member_ids):
-        super(self.__class__, self)._run()
-        self._run(image_id=image_id, members=member_ids)
-
 # Compute Image Commands
 
-
-@command(image_cmds)
-class image_compute(_init_cyclades):
-    """Cyclades/Compute API image commands"""
-
-
-@command(image_cmds)
-class image_compute_list(
+@command(imagecompute_cmds)
+class imagecompute_list(
         _init_cyclades, _optional_json, _name_filter, _id_filter):
     """List images"""
 
@@ -841,8 +719,8 @@ class image_compute_list(
         self._run()
 
 
-@command(image_cmds)
-class image_compute_info(_init_cyclades, _optional_json):
+@command(imagecompute_cmds)
+class imagecompute_info(_init_cyclades, _optional_json):
     """Get detailed information on an image"""
 
     @errors.generic.all
@@ -861,8 +739,8 @@ class image_compute_info(_init_cyclades, _optional_json):
         self._run(image_id=image_id)
 
 
-@command(image_cmds)
-class image_compute_delete(_init_cyclades, _optional_output_cmd):
+@command(imagecompute_cmds)
+class imagecompute_delete(_init_cyclades, _optional_output_cmd):
     """Delete an image (WARNING: image file is also removed)"""
 
     @errors.generic.all
@@ -876,78 +754,32 @@ class image_compute_delete(_init_cyclades, _optional_output_cmd):
         self._run(image_id=image_id)
 
 
-@command(image_cmds)
-class image_compute_properties(_init_cyclades):
-    """Manage properties related to OS installation in an image"""
+@command(imagecompute_cmds)
+class imagecompute_modify(_init_cyclades, _optional_output_cmd):
+    """Modify image properties (metadata)"""
 
-
-@command(image_cmds)
-class image_compute_properties_list(_init_cyclades, _optional_json):
-    """List all image properties"""
+    arguments = dict(
+        property_to_add=KeyValueArgument(
+            'Add property in key=value format (can be repeated)',
+            ('--property-add')),
+        property_to_del=RepeatableArgument(
+            'Delete property by key (can be repeated)',
+            ('--property-del'))
+    )
+    required = ['property_to_add', 'property_to_del']
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.plankton.id
     def _run(self, image_id):
-        self._print(self.client.get_image_metadata(image_id), self.print_dict)
+        if self['property_to_add']:
+            self.client.update_image_metadata(
+                image_id, **self['property_to_add'])
+        for key in self['property_to_del']:
+            self.client.delete_image_metadata(image_id, key)
+        if self['with_output']:
+            self._optional_output(self.client.get_image_details(image_id))
 
     def main(self, image_id):
         super(self.__class__, self)._run()
         self._run(image_id=image_id)
-
-
-@command(image_cmds)
-class image_compute_properties_get(_init_cyclades, _optional_json):
-    """Get an image property"""
-
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.plankton.id
-    @errors.plankton.metadata
-    def _run(self, image_id, key):
-        self._print(
-            self.client.get_image_metadata(image_id, key), self.print_dict)
-
-    def main(self, image_id, key):
-        super(self.__class__, self)._run()
-        self._run(image_id=image_id, key=key)
-
-
-@command(image_cmds)
-class image_compute_properties_set(_init_cyclades, _optional_json):
-    """Add / update a set of properties for an image
-    properties must be given in the form key=value, e.v.
-    /image compute properties set <image-id> key1=val1 key2=val2
-    """
-
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.plankton.id
-    def _run(self, image_id, keyvals):
-        meta = dict()
-        for keyval in keyvals:
-            key, sep, val = keyval.partition('=')
-            meta[key] = val
-        self._print(
-            self.client.update_image_metadata(image_id, **meta),
-            self.print_dict)
-
-    def main(self, image_id, *key_equals_value):
-        super(self.__class__, self)._run()
-        self._run(image_id=image_id, keyvals=key_equals_value)
-
-
-@command(image_cmds)
-class image_compute_properties_delete(_init_cyclades, _optional_output_cmd):
-    """Delete a property from an image"""
-
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.plankton.id
-    @errors.plankton.metadata
-    def _run(self, image_id, key):
-        self._optional_output(self.client.delete_image_metadata(image_id, key))
-
-    def main(self, image_id, key):
-        super(self.__class__, self)._run()
-        self._run(image_id=image_id, key=key)
