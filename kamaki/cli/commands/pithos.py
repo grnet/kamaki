@@ -44,7 +44,8 @@ from kamaki.cli.commands import (
     _command_init, errors, addLogSettings, DontRaiseKeyError, _optional_json,
     _name_filter, _optional_output_cmd)
 from kamaki.cli.errors import (
-    CLIBaseUrlError, CLIError, CLIInvalidArgument, raiseCLIError)
+    CLIBaseUrlError, CLIError, CLIInvalidArgument, raiseCLIError,
+    CLISyntaxError)
 from kamaki.cli.argument import (
     FlagArgument, IntArgument, ValueArgument, DateArgument, KeyValueArgument,
     ProgressBarArgument, RepeatableArgument, DataSizeArgument)
@@ -54,8 +55,9 @@ from kamaki.cli.utils import (
 file_cmds = CommandTree('file', 'Pithos+/Storage object level API commands')
 container_cmds = CommandTree(
     'container', 'Pithos+/Storage container level API commands')
-sharers_commands = CommandTree('sharers', 'Pithos+/Storage sharers')
-_commands = [file_cmds, container_cmds, sharers_commands]
+sharer_cmds = CommandTree('sharer', 'Pithos+/Storage sharers')
+group_cmds = CommandTree('group', 'Pithos+/Storage user groups')
+_commands = [file_cmds, container_cmds, sharer_cmds, group_cmds]
 
 
 class _pithos_init(_command_init):
@@ -1553,3 +1555,123 @@ class container_empty(_pithos_account):
         super(self.__class__, self)._run()
         self.container, self.client.container = container, container
         self._run(container)
+
+
+@command(sharer_cmds)
+class sharer_list(_pithos_account, _optional_json):
+    """List accounts who share file objects with current user"""
+
+    arguments = dict(
+        detail=FlagArgument('show detailed output', ('-l', '--details')),
+        marker=ValueArgument('show output greater then marker', '--marker')
+    )
+
+    @errors.generic.all
+    @errors.pithos.connection
+    def _run(self):
+        accounts = self.client.get_sharing_accounts(marker=self['marker'])
+        if not (self['json_output'] or self['output_format']):
+            usernames = self._uuids2usernames(
+                [acc['name'] for acc in accounts])
+            for item in accounts:
+                uuid = item['name']
+                item['id'], item['name'] = uuid, usernames[uuid]
+                if not self['detail']:
+                    item.pop('last_modified')
+        self._print(accounts)
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
+
+
+@command(sharer_cmds)
+class sharer_info(_pithos_account, _optional_json):
+    """Details on a Pithos+ sharer account (default: current account)"""
+
+    @errors.generic.all
+    @errors.pithos.connection
+    def _run(self):
+        self._print(self.client.get_account_info(), self.print_dict)
+
+    def main(self, account_uuid=None):
+        super(self.__class__, self)._run()
+        if account_uuid:
+            self.client.account, self.account = account_uuid, account_uuid
+        self._run()
+
+
+class _pithos_group(_pithos_account):
+    prefix = 'x-account-group-'
+    preflen = len(prefix)
+
+    def _groups(self):
+        groups = dict()
+        for k, v in self.client.get_account_group().items():
+            groups[k[self.preflen:]] = v
+        return groups
+
+
+@command(group_cmds)
+class group_list(_pithos_group, _optional_json):
+    """list all groups and group members"""
+
+    @errors.generic.all
+    @errors.pithos.connection
+    def _run(self):
+        self._print(self._groups(), self.print_dict)
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
+
+
+@command(group_cmds)
+class group_create(_pithos_group, _optional_json):
+    """Create a group of users"""
+
+    arguments = dict(
+        user_uuid=RepeatableArgument('Add a user to the group', '--uuid'),
+        username=RepeatableArgument('Add a user to the group', '--username')
+    )
+    required = ['user_uuid', 'user_name']
+
+    @errors.generic.all
+    @errors.pithos.connection
+    def _run(self, groupname, *users):
+        if groupname in self._groups() and not self.ask_user(
+                'Group %s already exists, overwrite?' % groupname):
+            self.error('Aborted')
+            return
+        self.client.set_account_group(groupname, users)
+        self._print(self._groups(), self.print_dict)
+
+    def main(self, groupname):
+        super(self.__class__, self)._run()
+        users = self['user_uuid'] + self._usernames2uuids(
+            self['username']).values()
+        if users:
+            self._run(groupname, *users)
+        else:
+            raise CLISyntaxError(
+                'No valid users specified, use %s or %s' % (
+                    '/'.join(self.arguments['user_uuid'].parsed_name),
+                    '/'.join(self.arguments['username'].parsed_name)),
+                details=[
+                    'Check if a username or uuid is valid:',
+                    ' [kamaki] user info [--uuid UUID | --username USERNAME]'])
+
+
+@command(group_cmds)
+class group_delete(_pithos_group, _optional_json):
+    """Delete a user group"""
+
+    @errors.generic.all
+    @errors.pithos.connection
+    def _run(self, groupname):
+        self.client.del_account_group(groupname)
+        self._print(self._groups(), self.print_dict)
+
+    def main(self, groupname):
+        super(self.__class__, self)._run()
+        self._run(groupname)
