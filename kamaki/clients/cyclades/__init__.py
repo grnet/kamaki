@@ -399,20 +399,6 @@ class CycladesNetworkClient(NetworkClient, Waiter):
     def wait_network(
             self, net_id,
             current_status='PENDING', delay=1, max_wait=100, wait_cb=None):
-        """Wait for network while its status is current_status
-
-        :param net_id: integer (str or int)
-
-        :param current_status: (str) PENDING | ACTIVE | DELETED
-
-        :param delay: time interval between retries
-
-        :max_wait: (int) timeout in secconds
-
-        :param wait_cb: if set a progressbar is used to show progress
-
-        :returns: (str) the new mode if succesfull, (bool) False if timed out
-        """
 
         def get_status(self, net_id):
             r = self.get_network_details(net_id)
@@ -420,3 +406,14 @@ class CycladesNetworkClient(NetworkClient, Waiter):
 
         return self._wait(
             net_id, current_status, get_status, delay, max_wait, wait_cb)
+
+    def wait_port(
+            self, port_id,
+            current_status='PENDING', delay=1, max_wait=100, wait_cb=None):
+
+        def get_status(self, net_id):
+            r = self.get_port_details(port_id)
+            return r['status'], None
+
+        return self._wait(
+            port_id, current_status, get_status, delay, max_wait, wait_cb)

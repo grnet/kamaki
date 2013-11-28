@@ -68,6 +68,22 @@ class _network_wait(_service_wait):
             timeout=timeout)
 
 
+class _port_wait(_service_wait):
+
+    def _wait(self, port_id, current_status, timeout=60):
+        super(_port_wait, self)._wait(
+            'Port', port_id, self.client.wait_port, current_status,
+            timeout=timeout)
+
+
+class _port_wait(_service_wait):
+
+    def _wait(self, net_id, current_status, timeout=60):
+        super(_network_wait, self)._wait(
+            'Network', net_id, self.client.wait_network, current_status,
+            timeout=timeout)
+
+
 class _init_network(_command_init):
     @errors.generic.all
     @addLogSettings
@@ -472,7 +488,7 @@ class port_modify(_init_network, _optional_json):
 
 
 @command(port_cmds)
-class port_create(_init_network, _optional_json):
+class port_create(_init_network, _optional_json, _port_wait):
     """Create a new port (== connect server to network)"""
 
     arguments = dict(
@@ -488,7 +504,8 @@ class port_create(_init_network, _optional_json):
         network_id=ValueArgument('Set the network ID', '--network-id'),
         device_id=ValueArgument(
             'The device is either a virtual server or a virtual router',
-            '--device-id')
+            '--device-id'),
+        wait=FlagArgument('Wait port to be established', ('-w', '--wait')),
     )
     required = ('network_id', 'device_id')
 
@@ -504,11 +521,39 @@ class port_create(_init_network, _optional_json):
             name=self['name'],
             security_groups=self['security_group_id'],
             fixed_ips=fixed_ips)
+        if self['wait']:
+            self._wait(r['id'], r['status'])
         self._print(r, self.print_dict)
 
     def main(self):
         super(self.__class__, self)._run()
         self._run(network_id=self['network_id'], device_id=self['device_id'])
+
+
+@command(port_cmds)
+class port_wait(_init_network, _port_wait):
+    """Wait for port to finish [PENDING, ACTIVE, DELETED]"""
+
+    arguments = dict(
+        timeout=IntArgument(
+            'Wait limit in seconds (default: 60)', '--timeout', default=60)
+    )
+
+    @errors.generic.all
+    @errors.cyclades.connection
+    def _run(self, port_id, current_status):
+        port = self.client.get_port_details(port_id)
+        if port['status'].lower() == current_status.lower():
+            self._wait(port_id, current_status, timeout=self['timeout'])
+        else:
+            self.error(
+                'Port %s: Cannot wait for status %s, '
+                'status is already %s' % (
+                    port_id, current_status, port['status']))
+
+    def main(self, port_id, current_status='PENDING'):
+        super(self.__class__, self)._run()
+        self._run(port_id=port_id, current_status=current_status)
 
 
 @command(ip_cmds)
