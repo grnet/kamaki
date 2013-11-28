@@ -321,26 +321,27 @@ class NetworkClient(NetworkRestClient):
         r = self.ports_put(port_id, json_data=dict(port=port), success=201)
         return r.json['port']
 
-    def list_floatingip(self):
+    def list_floatingips(self):
         r = self.floatingips_get(success=200)
-        return r['floatingips']
+        return r.json['floatingips']
 
     def get_floatingip_details(self, floatingip_id):
-        r = self.floatingips_get(floatingip_id, success=201)
-        return r['floatingip']
+        r = self.floatingips_get(floatingip_id, success=200)
+        return r.json['floatingip']
 
     def create_floatingip(
             self, floating_network_id,
             floating_ip_address='', port_id='', fixed_ip_address=''):
+        """Cyclades do not use port_id and fixed_ip_address"""
         floatingip = dict(floating_network_id=floating_network_id)
-        if floating_ip_address != '':
+        if floating_ip_address:
             floatingip['floating_ip_address'] = floating_ip_address
-        if port_id != '':
+        if port_id:
             floatingip['port_id'] = port_id
-        if fixed_ip_address != '':
+        if fixed_ip_address:
             floatingip['fixed_ip_address'] = fixed_ip_address
         r = self.floatingips_post(
-            json_data=dict(floatingip=floatingip), success=201)
+            json_data=dict(floatingip=floatingip), success=200)
         return r.json['floatingip']
 
     def update_floatingip(
@@ -355,8 +356,8 @@ class NetworkClient(NetworkRestClient):
         if fixed_ip_address != '':
             floatingip['fixed_ip_address'] = fixed_ip_address
         r = self.floatingips_put(
-            floatingip_id, json_data=dict(floatingip=floatingip), success=201)
-        return r['floatingip']
+            floatingip_id, json_data=dict(floatingip=floatingip), success=200)
+        return r.json['floatingip']
 
     def delete_floatingip(self, floatingip_id):
         r = self.floatingips_delete(floatingip_id, success=204)

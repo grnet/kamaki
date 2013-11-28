@@ -44,10 +44,27 @@ from kamaki.cli.argument import (
     FlagArgument, ValueArgument, IntArgument, CommaSeparatedListArgument)
 from kamaki.cli.utils import format_size
 
+#  Mandatory
+
 user_commands = CommandTree('user', 'Astakos/Identity API commands')
-admin_commands = CommandTree('admin', 'Astakos/Account API commands')
+quota_commands = CommandTree(
+    'quota', 'Astakos/Account API commands for quotas')
+resource_commands = CommandTree(
+    'resource', 'Astakos/Account API commands for resources')
 project_commands = CommandTree('project', 'Astakos project API commands')
-_commands = [user_commands, admin_commands, project_commands]
+
+
+#  Optional
+
+endpoint_commands = CommandTree(
+    'endpoint', 'Astakos/Account API commands for endpoints')
+service_commands = CommandTree('service', 'Astakos API commands for services')
+commission_commands = CommandTree(
+    'commission', 'Astakos API commands for commissions')
+
+_commands = [
+    user_commands, quota_commands, resource_commands, project_commands,
+    service_commands, commission_commands, endpoint_commands]
 
 
 def with_temp_token(foo):
@@ -146,8 +163,8 @@ class user_name2uuid(_init_synnefo_astakosclient, _optional_json):
         self._run(usernames=((username, ) + more_usernames))
 
 
-@command(user_commands)
-class user_quotas(_init_synnefo_astakosclient, _optional_json):
+@command(quota_commands)
+class quota_list(_init_synnefo_astakosclient, _optional_json):
     """Get user quotas"""
 
     _to_format = set(['cyclades.disk', 'pithos.diskspace', 'cyclades.ram'])
@@ -178,12 +195,7 @@ class user_quotas(_init_synnefo_astakosclient, _optional_json):
 
 
 @command(user_commands)
-class user_session(_init_synnefo_astakosclient):
-    """User session commands (cached identity calls for kamaki sessions)"""
-
-
-@command(user_commands)
-class user_session_info(_init_synnefo_astakosclient, _optional_json):
+class user_info(_init_synnefo_astakosclient, _optional_json):
     """Get info for (current) session user"""
 
     arguments = dict(
@@ -208,15 +220,15 @@ class user_session_info(_init_synnefo_astakosclient, _optional_json):
             raise CLIError(
                 'No user with %s in the cached session list' % msg, details=[
                     'To see all cached session users',
-                    '  /user session list',
+                    '  /user list',
                     'To authenticate and add a new user in the session list',
-                    '  /user session authenticate <new token>'])
+                    '  /user add <new token>'])
         self._print(self.auth_base.user_info(token), self.print_dict)
 
 
 @command(user_commands)
-class user_session_authenticate(_init_synnefo_astakosclient, _optional_json):
-    """Authenticate a user by token and update cache"""
+class user_add(_init_synnefo_astakosclient, _optional_json):
+    """Authenticate a user by token and add to kamaki session (cache)"""
 
     @errors.generic.all
     @errors.user.astakosclient
@@ -239,8 +251,8 @@ class user_session_authenticate(_init_synnefo_astakosclient, _optional_json):
 
 
 @command(user_commands)
-class user_session_list(_init_synnefo_astakosclient, _optional_json):
-    """List cached users"""
+class user_list(_init_synnefo_astakosclient, _optional_json):
+    """List (cached) session users"""
 
     arguments = dict(
         detail=FlagArgument('Detailed listing', ('-l', '--detail'))
@@ -258,8 +270,8 @@ class user_session_list(_init_synnefo_astakosclient, _optional_json):
 
 
 @command(user_commands)
-class user_session_select(_init_synnefo_astakosclient):
-    """Pick a user from the cached list to be the current session user"""
+class user_select(_init_synnefo_astakosclient):
+    """Select a user from the (cached) list as the current session user"""
 
     @errors.generic.all
     @errors.user.astakosclient
@@ -271,9 +283,9 @@ class user_session_select(_init_synnefo_astakosclient):
                 'No user with uuid %s in the cached session list' % uuid,
                 details=[
                     'To see all cached session users',
-                    '  /user session list',
+                    '  /user list',
                     'To authenticate and add a new user in the session list',
-                    '  /user session authenticate <new token>'])
+                    '  /user add <new token>'])
         if self.auth_base.token != first_token:
             self.auth_base.token = first_token
             msg = 'User with id %s is now the current session user.\n' % uuid
@@ -297,8 +309,8 @@ class user_session_select(_init_synnefo_astakosclient):
 
 
 @command(user_commands)
-class user_session_remove(_init_synnefo_astakosclient):
-    """Delete a user (token) from the cached list of session users"""
+class user_delete(_init_synnefo_astakosclient):
+    """Delete a user (token) from the (cached) list of session users"""
 
     @errors.generic.all
     @errors.user.astakosclient
@@ -306,20 +318,20 @@ class user_session_remove(_init_synnefo_astakosclient):
         if uuid == self.auth_base.user_term('id'):
             raise CLIError('Cannot remove current session user', details=[
                 'To see all cached session users',
-                '  /user session list',
+                '  /user list',
                 'To see current session user',
-                '  /user session info',
+                '  /user info',
                 'To select a different session user',
-                '  /user session select <user uuid>'])
+                '  /user select <user uuid>'])
         try:
             self.auth_base.remove_user(uuid)
         except KeyError:
             raise CLIError('No user with uuid %s in session list' % uuid,
                 details=[
                     'To see all cached session users',
-                    '  /user session list',
+                    '  /user list',
                     'To authenticate and add a new user in the session list',
-                    '  /user session authenticate <new token>'])
+                    '  /user add <new token>'])
         if self.ask_user(
                 'User is removed from current session, but will be restored in'
                 ' the next session. Remove the user from future sessions?'):
@@ -334,13 +346,8 @@ class user_session_remove(_init_synnefo_astakosclient):
 
 #  command admin
 
-@command(admin_commands)
-class admin_service(_init_synnefo_astakosclient):
-    """Manage commissions (special privileges required)"""
-
-
-@command(admin_commands)
-class admin_service_list(_init_synnefo_astakosclient, _optional_json):
+@command(service_commands)
+class service_list(_init_synnefo_astakosclient, _optional_json):
     """List available services"""
 
     @errors.generic.all
@@ -353,8 +360,8 @@ class admin_service_list(_init_synnefo_astakosclient, _optional_json):
         self._run()
 
 
-@command(admin_commands)
-class admin_service_uuid2username(_init_synnefo_astakosclient, _optional_json):
+@command(service_commands)
+class service_uuid2username(_init_synnefo_astakosclient, _optional_json):
     """Get service username(s) from uuid(s)"""
 
     @errors.generic.all
@@ -373,8 +380,8 @@ class admin_service_uuid2username(_init_synnefo_astakosclient, _optional_json):
         self._run([uuid] + list(more_uuids), token=service_token)
 
 
-@command(admin_commands)
-class admin_service_username2uuid(_init_synnefo_astakosclient, _optional_json):
+@command(service_commands)
+class service_username2uuid(_init_synnefo_astakosclient, _optional_json):
     """Get service uuid(s) from username(s)"""
 
     @errors.generic.all
@@ -393,8 +400,8 @@ class admin_service_username2uuid(_init_synnefo_astakosclient, _optional_json):
         self._run([usernames] + list(more_usernames), token=service_token)
 
 
-@command(admin_commands)
-class admin_service_quotas(_init_synnefo_astakosclient, _optional_json):
+@command(service_commands)
+class service_quotas(_init_synnefo_astakosclient, _optional_json):
     """Get service quotas"""
 
     arguments = dict(
@@ -412,13 +419,8 @@ class admin_service_quotas(_init_synnefo_astakosclient, _optional_json):
         self._run(token=service_token)
 
 
-@command(admin_commands)
-class admin_commission(_init_synnefo_astakosclient):
-    """Manage commissions (special privileges required)"""
-
-
-@command(admin_commands)
-class admin_commission_pending(_init_synnefo_astakosclient, _optional_json):
+@command(commission_commands)
+class commission_pending(_init_synnefo_astakosclient, _optional_json):
     """List pending commissions (special privileges required)"""
 
     @errors.generic.all
@@ -431,8 +433,8 @@ class admin_commission_pending(_init_synnefo_astakosclient, _optional_json):
         self._run()
 
 
-@command(admin_commands)
-class admin_commission_info(_init_synnefo_astakosclient, _optional_json):
+@command(commission_commands)
+class commission_info(_init_synnefo_astakosclient, _optional_json):
     """Get commission info (special privileges required)"""
 
     @errors.generic.all
@@ -447,8 +449,8 @@ class admin_commission_info(_init_synnefo_astakosclient, _optional_json):
         self._run(commission_id)
 
 
-@command(admin_commands)
-class admin_commission_accept(_init_synnefo_astakosclient):
+@command(commission_commands)
+class commission_accept(_init_synnefo_astakosclient):
     """Accept a pending commission  (special privileges required)"""
 
     @errors.generic.all
@@ -462,8 +464,8 @@ class admin_commission_accept(_init_synnefo_astakosclient):
         self._run(commission_id)
 
 
-@command(admin_commands)
-class admin_commission_reject(_init_synnefo_astakosclient):
+@command(commission_commands)
+class commission_reject(_init_synnefo_astakosclient):
     """Reject a pending commission (special privileges required)"""
 
     @errors.generic.all
@@ -477,8 +479,8 @@ class admin_commission_reject(_init_synnefo_astakosclient):
         self._run(commission_id)
 
 
-@command(admin_commands)
-class admin_commission_resolve(_init_synnefo_astakosclient, _optional_json):
+@command(commission_commands)
+class commission_resolve(_init_synnefo_astakosclient, _optional_json):
     """Resolve multiple commissions (special privileges required)"""
 
     arguments = dict(
@@ -504,8 +506,8 @@ class admin_commission_resolve(_init_synnefo_astakosclient, _optional_json):
         self._run()
 
 
-@command(admin_commands)
-class admin_commission_issue(_init_synnefo_astakosclient, _optional_json):
+@command(commission_commands)
+class commission_issue(_init_synnefo_astakosclient, _optional_json):
     """Issue commissions as a json string (special privileges required)
     Parameters:
     holder      -- user's id (string)
@@ -532,8 +534,8 @@ class admin_commission_issue(_init_synnefo_astakosclient, _optional_json):
         self._run(user_uuid, source, provisions_file, name)
 
 
-@command(admin_commands)
-class admin_resources(_init_synnefo_astakosclient, _optional_json):
+@command(resource_commands)
+class resource_list(_init_synnefo_astakosclient, _optional_json):
     """List user resources"""
 
     @errors.generic.all
@@ -546,22 +548,8 @@ class admin_resources(_init_synnefo_astakosclient, _optional_json):
         self._run()
 
 
-@command(admin_commands)
-class admin_feedback(_init_synnefo_astakosclient):
-    """Send feedback to server"""
-
-    @errors.generic.all
-    @errors.user.astakosclient
-    def _run(self, msg, more_info=None):
-        self.client.send_feedback(msg, more_info or '')
-
-    def main(self, message, more_info=None):
-        super(self.__class__, self)._run()
-        self._run(message, more_info)
-
-
-@command(admin_commands)
-class admin_endpoints(_init_synnefo_astakosclient, _optional_json):
+@command(endpoint_commands)
+class endpoint_list(_init_synnefo_astakosclient, _optional_json):
     """Get endpoints service endpoints"""
 
     @errors.generic.all

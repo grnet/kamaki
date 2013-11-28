@@ -58,7 +58,8 @@ def _get_best_match_from_cmd_tree(cmd_tree, unparsed):
 def run(cloud, parser, _help):
     group = get_command_group(list(parser.unparsed), parser.arguments)
     if not group:
-        parser.parser.print_help()
+        #parser.parser.print_help()
+        parser.print_help()
         _groups_help(parser.arguments)
         exit(0)
 
@@ -92,7 +93,9 @@ def run(cloud, parser, _help):
     update_parser_help(parser, cmd)
 
     if _help or not cmd.is_command:
-        parser.parser.print_help()
+        if cmd.cmd_class:
+            parser.required = getattr(cmd.cmd_class, 'required', None)
+        parser.print_help()
         if getattr(cmd, 'long_help', False):
             print 'Details:\n', cmd.long_help
         print_subcommands_help(cmd)
@@ -102,7 +105,8 @@ def run(cloud, parser, _help):
     auth_base = init_cached_authenticator(_cnf, cloud, kloger) if (
         cloud) else None
     executable = cls(parser.arguments, auth_base, cloud)
+    parser.required = getattr(cls, 'required', None)
     parser.update_arguments(executable.arguments)
     for term in _best_match:
-            parser.unparsed.remove(term)
-    exec_cmd(executable, parser.unparsed, parser.parser.print_help)
+        parser.unparsed.remove(term)
+    exec_cmd(executable, parser.unparsed, parser.print_help)
