@@ -39,11 +39,13 @@ from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import (
     CLISyntaxError, CLIBaseUrlError, CLIInvalidArgument)
 from kamaki.clients.cyclades import CycladesNetworkClient
-from kamaki.cli.argument import FlagArgument, ValueArgument, RepeatableArgument
+from kamaki.cli.argument import (
+    FlagArgument, ValueArgument, RepeatableArgument, IntArgument)
 from kamaki.cli.commands import _command_init, errors, addLogSettings
 from kamaki.cli.commands import (
     _optional_output_cmd, _optional_json, _name_filter, _id_filter)
 from kamaki.cli.utils import filter_dicts_by_dict
+from kamaki.cli.commands.cyclades import _service_wait
 
 
 network_cmds = CommandTree('network', 'Networking API network commands')
@@ -56,6 +58,14 @@ _commands = [network_cmds, port_cmds, subnet_cmds, ip_cmds]
 about_authentication = '\nUser Authentication:\
     \n* to check authentication: /user authenticate\
     \n* to set authentication token: /config set cloud.<cloud>.token <token>'
+
+
+class _network_wait(_service_wait):
+
+    def _wait(self, net_id, current_status, timeout=60):
+        super(_network_wait, self)._wait(
+            'Network', net_id, self.client.wait_network, current_status,
+            timeout=timeout)
 
 
 class _init_network(_command_init):
@@ -164,7 +174,7 @@ class NetworkTypeArgument(ValueArgument):
 
 
 @command(network_cmds)
-class network_create(_init_network, _optional_json):
+class network_create(_init_network, _optional_json, _network_wait):
     """Create a new network"""
 
     arguments = dict(
@@ -173,7 +183,8 @@ class network_create(_init_network, _optional_json):
             'Make network shared (special privileges required)', '--shared'),
         network_type=NetworkTypeArgument(
             'Valid network types: %s' % (', '.join(NetworkTypeArgument.types)),
-            '--type')
+            '--type'),
+        wait=FlagArgument('Wait network to build', ('-w', '--wait')),
     )
     required = ('network_type', )
 
@@ -183,6 +194,8 @@ class network_create(_init_network, _optional_json):
     def _run(self, network_type):
         net = self.client.create_network(
             network_type, name=self['name'], shared=self['shared'])
+        if self['wait']:
+            self._wait(net['id'], net['status'])
         self._print(net, self.print_dict)
 
     def main(self):
@@ -223,6 +236,33 @@ class network_modify(_init_network, _optional_json):
     def main(self, network_id):
         super(self.__class__, self)._run()
         self._run(network_id=network_id)
+
+
+@command(network_cmds)
+class network_wait(_init_network, _network_wait):
+    """Wait for network to finish [PENDING, ACTIVE, DELETED]"""
+
+    arguments = dict(
+        timeout=IntArgument(
+            'Wait limit in seconds (default: 60)', '--timeout', default=60)
+    )
+
+    @errors.generic.all
+    @errors.cyclades.connection
+    @errors.cyclades.network_id
+    def _run(self, network_id, current_status):
+        net = self.client.get_network_details(network_id)
+        if net['status'].lower() == current_status.lower():
+            self._wait(network_id, current_status, timeout=self['timeout'])
+        else:
+            self.error(
+                'Network %s: Cannot wait for status %s, '
+                'status is already %s' % (
+                    network_id, current_status, net['status']))
+
+    def main(self, network_id, current_status='PENDING'):
+        super(self.__class__, self)._run()
+        self._run(network_id=network_id, current_status=current_status)
 
 
 @command(subnet_cmds)
