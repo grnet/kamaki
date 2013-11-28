@@ -1658,8 +1658,8 @@ class group_create(_pithos_group, _optional_json):
                     '/'.join(self.arguments['user_uuid'].parsed_name),
                     '/'.join(self.arguments['username'].parsed_name)),
                 details=[
-                    'Check if a username or uuid is valid:',
-                    ' [kamaki] user info [--uuid UUID | --username USERNAME]'])
+                    'Check if a username or uuid is valid with',
+                    '  user uuid2username', 'OR', '  user username2uuid'])
 
 
 @command(group_cmds)
