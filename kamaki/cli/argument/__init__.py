@@ -68,7 +68,7 @@ class Argument(object):
                     self, name)
             assert name.startswith('-'), msg
 
-        self.default = default if (default or self.arity) else False
+        self.default = default or None
 
     @property
     def value(self):
@@ -176,7 +176,7 @@ class FlagArgument(Argument):
     :value: true if set, false otherwise
     """
 
-    def __init__(self, help='', parsed_name=None, default=False):
+    def __init__(self, help='', parsed_name=None, default=None):
         super(FlagArgument, self).__init__(0, help, parsed_name, default)
 
 
@@ -322,9 +322,17 @@ class VersionArgument(FlagArgument):
 class RepeatableArgument(Argument):
     """A value argument that can be repeated"""
 
-    def __init__(self, help='', parsed_name=None, default=[]):
+    def __init__(self, help='', parsed_name=None, default=None):
         super(RepeatableArgument, self).__init__(
             -1, help, parsed_name, default)
+
+    @property
+    def value(self):
+        return getattr(self, '_value', [])
+
+    @value.setter
+    def value(self, newvalue):
+        self._value = newvalue
 
 
 class KeyValueArgument(Argument):
@@ -333,7 +341,7 @@ class KeyValueArgument(Argument):
     :syntax: --<arg> key1=value1 --<arg> key2=value2 ...
     """
 
-    def __init__(self, help='', parsed_name=None, default=[]):
+    def __init__(self, help='', parsed_name=None, default=None):
         super(KeyValueArgument, self).__init__(-1, help, parsed_name, default)
 
     @property
@@ -341,21 +349,23 @@ class KeyValueArgument(Argument):
         """
         :returns: (dict) {key1: val1, key2: val2, ...}
         """
-        return super(KeyValueArgument, self).value
+        return getattr(self, '_value', {})
 
     @value.setter
     def value(self, keyvalue_pairs):
         """
         :param keyvalue_pairs: (str) ['key1=val1', 'key2=val2', ...]
         """
-        self._value = getattr(self, '_value', self.value) or {}
-        try:
-            for pair in keyvalue_pairs:
-                key, sep, val = pair.partition('=')
-                assert sep, ' %s misses a "=" (usage: key1=val1 )\n' % (pair)
-                self._value[key] = val
-        except Exception as e:
-            raiseCLIError(e, 'KeyValueArgument Syntax Error')
+        if keyvalue_pairs:
+            self._value = self.value
+            try:
+                for pair in keyvalue_pairs:
+                    key, sep, val = pair.partition('=')
+                    assert sep, ' %s misses a "=" (usage: key1=val1 )\n' % (
+                        pair)
+                    self._value[key] = val
+            except Exception as e:
+                raiseCLIError(e, 'KeyValueArgument Syntax Error')
 
 
 class ProgressBarArgument(FlagArgument):
@@ -484,11 +494,11 @@ class ArgumentParseManager(object):
     @staticmethod
     def required2str(required, arguments, tab=''):
         if isinstance(required, list):
-            return ' %sat least one:\n%s' % (tab, ''.join(
+            return ' %sat least one of the following:\n%s' % (tab, ''.join(
                 [ArgumentParseManager.required2str(
                     r, arguments, tab + '  ') for r in required]))
         elif isinstance(required, tuple):
-            return ' %sall:\n%s' % (tab, ''.join(
+            return ' %sall of the following:\n%s' % (tab, ''.join(
                 [ArgumentParseManager.required2str(
                     r, arguments, tab + '  ') for r in required]))
         else:

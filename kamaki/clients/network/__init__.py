@@ -357,7 +357,7 @@ class NetworkClient(NetworkRestClient):
             floatingip['fixed_ip_address'] = fixed_ip_address
         r = self.floatingips_put(
             floatingip_id, json_data=dict(floatingip=floatingip), success=200)
-        return r['floatingip']
+        return r.json['floatingip']
 
     def delete_floatingip(self, floatingip_id):
         r = self.floatingips_delete(floatingip_id, success=204)

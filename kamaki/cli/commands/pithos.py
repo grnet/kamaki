@@ -818,7 +818,6 @@ class file_upload(_pithos_container, _optional_output_cmd):
             'Use * for all users',
             '--write-permission'),
         public=FlagArgument('make object publicly accessible', '--public'),
-        max_threads=IntArgument('set max threads (default 5)', '--threads'),
         progress_bar=ProgressBarArgument(
             'do not show progress bar',
             ('-N', '--no-progress-bar'),
