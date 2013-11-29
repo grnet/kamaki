@@ -234,6 +234,9 @@ class CycladesNetworkClient(NetworkClient):
     def create_port(
             self, network_id,
             device_id=None, security_groups=None, name=None, fixed_ips=None):
+        """
+        :param fixed_ips: (list of dicts) [{"ip_address": IPv4}, ...]
+        """
         port = dict(network_id=network_id)
         if device_id:
             port['device_id'] = device_id
@@ -241,12 +244,12 @@ class CycladesNetworkClient(NetworkClient):
             port['security_groups'] = security_groups
         if name:
             port['name'] = name
-        for fixed_ip in fixed_ips or []:
-            diff = set(['subnet_id', 'ip_address']).difference(fixed_ip)
-            if diff:
-                raise ValueError(
-                    'Invalid format for "fixed_ips", %s missing' % diff)
         if fixed_ips:
+            for fixed_ip in fixed_ips or []:
+                if not 'ip_address' in fixed_ip:
+                    raise ValueError(
+                        'Invalid format for "fixed_ips"', details=[
+                        'fixed_ips format: [{"ip_address": IPv4}, ...]'])
             port['fixed_ips'] = fixed_ips
         r = self.ports_post(json_data=dict(port=port), success=201)
         return r.json['port']
