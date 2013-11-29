@@ -175,6 +175,8 @@ class Shell(Cmd):
         tmp_args.pop('verbose', None)
         tmp_args.pop('silent', None)
         tmp_args.pop('config', None)
+        print 'YOLO >>>\n\t', '\n\t'.join([
+            ('%s %s %s' % k, v, v.value) for k, v in args.items()])
         help_parser = ArgumentParseManager(
             cmd_name, tmp_args, required, syntax=syntax, description=descr)
         return help_parser.print_help
