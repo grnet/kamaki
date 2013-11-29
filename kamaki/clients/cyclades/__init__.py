@@ -251,7 +251,7 @@ class CycladesNetworkClient(NetworkClient):
                         'Invalid format for "fixed_ips"', details=[
                         'fixed_ips format: [{"ip_address": IPv4}, ...]'])
             port['fixed_ips'] = fixed_ips
-        r = self.ports_post(json_data=dict(port=port), success=201)
+        r = self.ports_post(json_data=dict(port=port), success=200)
         return r.json['port']
 
     def create_floatingip(self, floating_network_id, floating_ip_address=''):

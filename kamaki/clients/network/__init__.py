@@ -180,7 +180,7 @@ class NetworkClient(NetworkRestClient, Waiter):
         return r.json['subnets']
 
     def get_subnet_details(self, subnet_id):
-        r = self.subnets_get(subnet_id, success=201)
+        r = self.subnets_get(subnet_id, success=200)
         return r.json
 
     def update_subnet(
@@ -250,7 +250,7 @@ class NetworkClient(NetworkRestClient, Waiter):
             port['fixed_ips'] = fixed_ips
         if security_groups:
             port['security_groups'] = security_groups
-        r = self.ports_post(json_data=dict(port=port), success=201)
+        r = self.ports_post(json_data=dict(port=port), success=200)
         return r.json['port']
 
     def create_ports(self, ports):
@@ -280,11 +280,11 @@ class NetworkClient(NetworkRestClient, Waiter):
                 assert port.get('network_id', None), msg
         except AssertionError as ae:
             raise ValueError('%s' % ae)
-        r = self.ports_post(json_data=dict(ports=list(ports)), success=201)
+        r = self.ports_post(json_data=dict(ports=list(ports)), success=200)
         return r.json['ports']
 
     def get_port_details(self, port_id):
-        r = self.ports_get(port_id, success=201)
+        r = self.ports_get(port_id, success=200)
         return r.json['port']
 
     def delete_port(self, port_id):
@@ -318,7 +318,7 @@ class NetworkClient(NetworkRestClient, Waiter):
             port['fixed_ips'] = fixed_ips
         if security_groups:
             port['security_groups'] = security_groups
-        r = self.ports_put(port_id, json_data=dict(port=port), success=201)
+        r = self.ports_put(port_id, json_data=dict(port=port), success=200)
         return r.json['port']
 
     def list_floatingips(self):
