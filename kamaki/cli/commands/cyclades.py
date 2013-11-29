@@ -52,9 +52,7 @@ from kamaki.cli.commands import (
 
 server_cmds = CommandTree('server', 'Cyclades/Compute API server commands')
 flavor_cmds = CommandTree('flavor', 'Cyclades/Compute API flavor commands')
-network_cmds = CommandTree('network', 'Cyclades/Compute API network commands')
-ip_cmds = CommandTree('ip', 'Cyclades/Compute API floating ip commands')
-_commands = [server_cmds, flavor_cmds, network_cmds]
+_commands = [server_cmds, flavor_cmds]
 
 
 about_authentication = '\nUser Authentication:\

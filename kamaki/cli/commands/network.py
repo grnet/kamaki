@@ -577,7 +577,8 @@ class ip_info(_init_network, _optional_json):
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self, ip_id):
-        self._print(self.client.get_floatingip_details(ip_id))
+        self._print(
+            self.client.get_floatingip_details(ip_id), self.print_dict)
 
     def main(self, ip_id):
         super(self.__class__, self)._run()
@@ -614,7 +615,7 @@ class ip_delete(_init_network, _optional_output_cmd):
     """Unreserve an IP (also delete the port, if attached)"""
 
     def _run(self, ip_id):
-        self._optional_output(self.client.floatingip_delete(ip_id))
+        self._optional_output(self.client.delete_floatingip(ip_id))
 
     def main(self, ip_id):
         super(self.__class__, self)._run()
