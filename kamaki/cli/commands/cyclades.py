@@ -877,30 +877,3 @@ def _add_name(self, net):
                 net['user_id'] += ' (%s)' % usernames[user_id]
             if tenant_id:
                 net['tenant_id'] += ' (%s)' % usernames[tenant_id]
-
-
-@command(network_cmds)
-class network_wait(_init_cyclades, _network_wait):
-    """Wait for server to finish [PENDING, ACTIVE, DELETED]"""
-
-    arguments = dict(
-        timeout=IntArgument(
-            'Wait limit in seconds (default: 60)', '--timeout', default=60)
-    )
-
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.network_id
-    def _run(self, network_id, current_status):
-        net = self.client.get_network_details(network_id)
-        if net['status'].lower() == current_status.lower():
-            self._wait(network_id, current_status, timeout=self['timeout'])
-        else:
-            self.error(
-                'Network %s: Cannot wait for status %s, '
-                'status is already %s' % (
-                    network_id, current_status, net['status']))
-
-    def main(self, network_id, current_status='PENDING'):
-        super(self.__class__, self)._run()
-        self._run(network_id=network_id, current_status=current_status)
