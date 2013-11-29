@@ -407,13 +407,19 @@ class port_info(_init_network, _optional_json):
 
 
 @command(port_cmds)
-class port_delete(_init_network, _optional_output_cmd):
+class port_delete(_init_network, _optional_output_cmd, _port_wait):
     """Delete a port (== disconnect server from network)"""
+
+    arguments = dict(
+        wait=FlagArgument('Wait port to be established', ('-w', '--wait'))
+    )
 
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self, port_id):
         r = self.client.delete_port(port_id)
+        if self['wait']:
+            self._wait(r['id'], r['status'])
         self._optional_output(r)
 
     def main(self, port_id):
