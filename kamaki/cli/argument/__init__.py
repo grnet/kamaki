@@ -452,7 +452,8 @@ class ArgumentParseManager(object):
 
     def __init__(
             self, exe,
-            arguments=None, required=None, syntax=None, description=None):
+            arguments=None, required=None, syntax=None, description=None,
+            check_required=True):
         """
         :param exe: (str) the basic command (e.g. 'kamaki')
 
@@ -473,13 +474,15 @@ class ArgumentParseManager(object):
         :param syntax: (str) The basic syntax of the arguments. Default:
             exe <cmd_group> [<cmd_subbroup> ...] <cmd>
         :param description: (str) The description of the commands or ''
+        :param check_required: (bool) Set to False inorder not to check for
+            required argument values while parsing
         """
         self.parser = ArgumentParser(
             add_help=False, formatter_class=RawDescriptionHelpFormatter)
         self._exe = exe
         self.syntax = syntax or (
             '%s <cmd_group> [<cmd_subbroup> ...] <cmd>' % exe)
-        self.required = required
+        self.required, self.check_required = required, check_required
         self.parser.description = description or ''
         if arguments:
             self.arguments = arguments
@@ -613,7 +616,7 @@ class ArgumentParseManager(object):
             self.update_parser()
 
     def _parse_required_arguments(self, required, parsed_args):
-        if not required:
+        if not (self.check_required and required):
             return True
         if isinstance(required, tuple):
             for item in required:

@@ -252,7 +252,7 @@ class OutputFormatArgument(ValueArgument):
 
     @property
     def value(self):
-        return self._value
+        return getattr(self, '_value', None)
 
     @value.setter
     def value(self, newvalue):
