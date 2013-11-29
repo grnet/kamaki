@@ -263,7 +263,7 @@ class OutputFormatArgument(ValueArgument):
         else:
             raise CLIInvalidArgument(
                 'Invalid value %s for argument %s' % (
-                    newvalue, '/'.join(self.parsed_name)),
+                    newvalue, self.lvalue),
                 details=['Valid output formats: %s' % ', '.join(self.formats)])
 
 

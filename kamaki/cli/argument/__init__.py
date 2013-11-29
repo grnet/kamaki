@@ -52,6 +52,7 @@ class Argument(object):
     This is the top-level Argument class. It is suggested to extent this
     class into more specific argument types.
     """
+    lvalue_delimiter = '/'
 
     def __init__(self, arity, help=None, parsed_name=None, default=None):
         self.arity = int(arity)
@@ -85,6 +86,12 @@ class Argument(object):
         parser.add_argument(
             *self.parsed_name,
             dest=name, action=action, default=self.default, help=self.help)
+
+    @property
+    def lvalue(self):
+        """A printable form of the left value when calling an argument e.g.,
+        --left-value=right-value"""
+        return (self.lvalue_delimiter or ' ').join(self.parsed_name or [])
 
 
 class ConfigArgument(Argument):

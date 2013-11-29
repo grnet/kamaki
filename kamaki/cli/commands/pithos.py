@@ -377,14 +377,14 @@ class file_modify(_pithos_container):
         if self['publish'] and self['unpublish']:
             raise CLIInvalidArgument(
                 'Arguments %s and %s cannot be used together' % (
-                    '/'.join(self.arguments['publish'].parsed_name),
-                    '/'.join(self.arguments['publish'].parsed_name)))
+                    self.arguments['publish'].lvalue,
+                    self.arguments['publish'].lvalue))
         if self['no_permissions'] and (
                 self['uuid_for_read_permission'] or self[
                     'uuid_for_write_permission']):
             raise CLIInvalidArgument(
-                '%s cannot be used with other permission arguments' % '/'.join(
-                    self.arguments['no_permissions'].parsed_name))
+                '%s cannot be used with other permission arguments' % (
+                    self.arguments['no_permissions'].lvalue))
         self._run()
 
 
@@ -555,8 +555,8 @@ class _source_destination(_pithos_container, _optional_output_cmd):
                                     self.dst_client.account,
                                     self.dst_client.container,
                                     dst_path),
-                            'Use %s to transfer overwrite' % ('/'.join(
-                                    self.arguments['force'].parsed_name))])
+                            'Use %s to transfer overwrite' % (
+                                    self.arguments['force'].lvalue)])
         else:
             #  One object transfer
             try:
@@ -570,8 +570,7 @@ class _source_destination(_pithos_container, _optional_output_cmd):
                         'Missing specific path container %s' % self.container,
                         importance=2, details=[
                             'To transfer container contents %s' % (
-                                '/'.join(self.arguments[
-                                    'source_prefix'].parsed_name))])
+                                self.arguments['source_prefix'].lvalue)])
                 raise
             dst_path = self.dst_path or self.path
             dst_obj = dst_objects.get(dst_path or self.path, None)
@@ -589,8 +588,7 @@ class _source_destination(_pithos_container, _optional_output_cmd):
                             self.container,
                             self.path),
                         'To recursively copy a directory, use',
-                        '  %s' % ('/'.join(
-                            self.arguments['source_prefix'].parsed_name)),
+                        '  %s' % self.arguments['source_prefix'].lvalue,
                         'To create a file, use',
                         '  /file create  (general purpose)',
                         '  /file mkdir   (a directory object)'])
@@ -607,8 +605,8 @@ class _source_destination(_pithos_container, _optional_output_cmd):
                                 self.dst_client.account,
                                 self.dst_client.container,
                                 dst_path),
-                        'Use %s to transfer overwrite' % ('/'.join(
-                                self.arguments['force'].parsed_name))])
+                        'Use %s to transfer overwrite' % (
+                                self.arguments['force'].lvalue)])
         return pairs
 
     def _run(self, source_path_or_url, destination_path_or_url=''):
@@ -873,8 +871,8 @@ class file_upload(_pithos_container, _optional_output_cmd):
         if path.isdir(lpath):
             if not self['recursive']:
                 raise CLIError('%s is a directory' % lpath, details=[
-                    'Use %s to upload directories & contents' % '/'.join(
-                        self.arguments['recursive'].parsed_name)])
+                    'Use %s to upload directories & contents' % (
+                        self.arguments['recursive'].lvalue)])
             robj = self.client.container_get(path=rpath)
             if not self['overwrite']:
                 if robj.json:
@@ -1174,18 +1172,18 @@ class file_download(_pithos_container):
                     elif path.exists(lpath):
                         raise CLIError(
                             'Cannot overwrite %s' % lpath,
-                            details=['To overwrite/resume, use  %s' % '/'.join(
-                                self.arguments['resume'].parsed_name)])
+                            details=['To overwrite/resume, use  %s' % (
+                                self.arguments['resume'].lvalue)])
                     else:
                         ret.append((opath, lpath, None))
             elif self.path:
                 raise CLIError(
                     'Remote object /%s/%s is a directory' % (
                         self.container, local_path),
-                    details=['Use %s to download directories' % '/'.join(
-                        self.arguments['recursive'].parsed_name)])
+                    details=['Use %s to download directories' % (
+                        self.arguments['recursive'].lvalue)])
             else:
-                parsed_name = '/'.join(self.arguments['recursive'].parsed_name)
+                parsed_name = self.arguments['recursive'].lvalue
                 raise CLIError(
                     'Cannot download container %s' % self.container,
                     details=[
@@ -1197,8 +1195,8 @@ class file_download(_pithos_container):
             if path.exists(local_path) and not self['resume']:
                 raise CLIError(
                     'Cannot overwrite local file %s' % (lpath),
-                    details=['To overwrite/resume, use  %s' % '/'.join(
-                        self.arguments['resume'].parsed_name)])
+                    details=['To overwrite/resume, use  %s' % (
+                        self.arguments['resume'].lvalue)])
             ret.append((rpath, local_path, self['resume']))
         for r, l, resume in ret:
             if r:
@@ -1528,8 +1526,8 @@ class container_delete(_pithos_account):
             delimiter, msg = '/', 'Empty and d%s' % msg[1:]
         elif num_of_contents:
             raise CLIError('Container %s is not empty' % container, details=[
-                'Use %s to delete non-empty containers' % '/'.join(
-                    self.arguments['recursive'].parsed_name)])
+                'Use %s to delete non-empty containers' % (
+                    self.arguments['recursive'].lvalue)])
         if self['yes'] or self.ask_user(msg):
             if num_of_contents:
                 self.client.del_container(delimiter=delimiter)
@@ -1658,8 +1656,8 @@ class group_create(_pithos_group, _optional_json):
         else:
             raise CLISyntaxError(
                 'No valid users specified, use %s or %s' % (
-                    '/'.join(self.arguments['user_uuid'].parsed_name),
-                    '/'.join(self.arguments['username'].parsed_name)),
+                    self.arguments['user_uuid'].lvalue,
+                    self.arguments['username'].lvalue),
                 details=[
                     'Check if a username or uuid is valid with',
                     '  user uuid2username', 'OR', '  user username2uuid'])

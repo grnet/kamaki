@@ -492,3 +492,61 @@ class Client(Logged):
 
     def move(self, path, **kwargs):
         return self.request('move', path, **kwargs)
+
+
+class Waiter(object):
+
+    def _wait(
+            self, item_id, current_status, get_status,
+            delay=1, max_wait=100, wait_cb=None):
+        """Wait for item while its status is current_status
+
+        :param server_id: integer (str or int)
+
+        :param current_status: (str)
+
+        :param get_status: (method(self, item_id)) if called, returns
+            (status, progress %) If no way to tell progress, return None
+
+        :param delay: time interval between retries
+
+        :param wait_cb: (method(total steps)) returns a generator for
+            reporting progress or timeouts i.e., for a progress bar
+
+        :returns: (str) the new mode if successful, (bool) False if timed out
+        """
+        status, progress = get_status(self, item_id)
+
+        if wait_cb:
+            wait_gen = wait_cb(max_wait // delay)
+            wait_gen.next()
+
+        if status != current_status:
+            if wait_cb:
+                try:
+                    wait_gen.next()
+                except Exception:
+                    pass
+            return status
+        old_wait = total_wait = 0
+
+        while status == current_status and total_wait <= max_wait:
+            if wait_cb:
+                try:
+                    for i in range(total_wait - old_wait):
+                        wait_gen.next()
+                except Exception:
+                    break
+            old_wait = total_wait
+            total_wait = progress or total_wait + 1
+            sleep(delay)
+            status, progress = get_status(self, item_id)
+
+        if total_wait < max_wait:
+            if wait_cb:
+                try:
+                    for i in range(max_wait):
+                        wait_gen.next()
+                except:
+                    pass
+        return status if status != current_status else False

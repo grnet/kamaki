@@ -52,9 +52,7 @@ from kamaki.cli.commands import (
 
 server_cmds = CommandTree('server', 'Cyclades/Compute API server commands')
 flavor_cmds = CommandTree('flavor', 'Cyclades/Compute API flavor commands')
-network_cmds = CommandTree('network', 'Cyclades/Compute API network commands')
-ip_cmds = CommandTree('ip', 'Cyclades/Compute API floating ip commands')
-_commands = [server_cmds, flavor_cmds, network_cmds]
+_commands = [server_cmds, flavor_cmds]
 
 
 about_authentication = '\nUser Authentication:\
@@ -415,13 +413,19 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
             'Connect server to network w. floating ip ( NETWORK_ID,IP )'
             '(can be repeated)',
             '--network-with-ip'),
+        automatic_ip=FlagArgument(
+            'Automatically assign an IP to the server', '--automatic-ip')
     )
     required = ('server_name', 'flavor_id', 'image_id')
 
     @errors.cyclades.cluster_size
     def _create_cluster(self, prefix, flavor_id, image_id, size):
-        networks = [dict(network=netid) for netid in (
-            self['network_id'] or [])] + (self['network_id_and_ip'] or [])
+        if self['automatic_ip']:
+            networks = []
+        else:
+            networks = [dict(network=netid) for netid in (
+                (self['network_id'] or []) + (self['network_id_and_ip'] or [])
+            )] or None
         servers = [dict(
             name='%s%s' % (prefix, i if size > 1 else ''),
             flavor_id=flavor_id,
@@ -473,6 +477,14 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
 
     def main(self):
         super(self.__class__, self)._run()
+        if self['automatic_ip'] and (
+                self['network_id'] or self['network_id_and_ip']):
+            raise CLIInvalidArgument('Invalid argument combination', details=[
+                'Argument %s should not be combined with other' % (
+                    self.arguments['automatic_ip'].lvalue),
+                'network-related arguments i.e., %s or %s' % (
+                    self.arguments['network_id'].lvalue,
+                    self.arguments['network_id_and_ip'].lvalue)])
         self._run(
             name=self['server_name'],
             flavor_id=self['flavor_id'],
@@ -865,30 +877,3 @@ def _add_name(self, net):
                 net['user_id'] += ' (%s)' % usernames[user_id]
             if tenant_id:
                 net['tenant_id'] += ' (%s)' % usernames[tenant_id]
-
-
-@command(network_cmds)
-class network_wait(_init_cyclades, _network_wait):
-    """Wait for server to finish [PENDING, ACTIVE, DELETED]"""
-
-    arguments = dict(
-        timeout=IntArgument(
-            'Wait limit in seconds (default: 60)', '--timeout', default=60)
-    )
-
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.network_id
-    def _run(self, network_id, current_status):
-        net = self.client.get_network_details(network_id)
-        if net['status'].lower() == current_status.lower():
-            self._wait(network_id, current_status, timeout=self['timeout'])
-        else:
-            self.error(
-                'Network %s: Cannot wait for status %s, '
-                'status is already %s' % (
-                    network_id, current_status, net['status']))
-
-    def main(self, network_id, current_status='PENDING'):
-        super(self.__class__, self)._run()
-        self._run(network_id=network_id, current_status=current_status)
