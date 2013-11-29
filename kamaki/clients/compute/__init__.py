@@ -128,6 +128,14 @@ class ComputeClient(ComputeRestClient):
         :param personality: a list of (file path, file contents) tuples,
             describing files to be injected into virtual server upon creation
 
+        :param networks: (list of dicts) Networks to connect to, list this:
+            "networks": [
+                {"network": <network_uuid>},
+                {"network": <network_uuid>, "fixed_ip": address},
+                {"port": <port_id>}, ...]
+            ATTENTION: Empty list is different to None. None means ' do not
+            mention it', empty list means 'automatically get an ip'
+
         :returns: a dict with the new virtual server details
 
         :raises ClientError: wraps request errors
@@ -141,8 +149,8 @@ class ComputeClient(ComputeRestClient):
         if personality:
             req['server']['personality'] = personality
 
-        if networks:
-            req['server']['networks'] = networks
+        if networks is not None:
+            req['server']['networks'] = networks or []
 
         r = self.servers_post(
             json_data=req,

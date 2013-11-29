@@ -31,11 +31,11 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from kamaki.clients import ClientError
+from kamaki.clients import ClientError, Waiter
 from kamaki.clients.network.rest_api import NetworkRestClient
 
 
-class NetworkClient(NetworkRestClient):
+class NetworkClient(NetworkRestClient, Waiter):
     """OpenStack Network API 2.0 client"""
 
     def list_networks(self):
@@ -362,3 +362,50 @@ class NetworkClient(NetworkRestClient):
     def delete_floatingip(self, floatingip_id):
         r = self.floatingips_delete(floatingip_id, success=204)
         return r.headers
+
+    #  Wait methods
+
+    def wait_network(
+            self, net_id,
+            current_status='PENDING', delay=1, max_wait=100, wait_cb=None):
+
+        def get_status(self, net_id):
+            r = self.get_network_details(net_id)
+            return r['status'], None
+
+        return self._wait(
+            net_id, current_status, get_status, delay, max_wait, wait_cb)
+
+    def wait_subnet(
+            self, subnet_id,
+            current_status='PENDING', delay=1, max_wait=100, wait_cb=None):
+
+        def get_status(self, subnet_id):
+            r = self.get_subnet_details(subnet_id)
+            return r['status'], None
+
+        return self._wait(
+            subnet_id, current_status, get_status, delay, max_wait, wait_cb)
+
+    def wait_port(
+            self, port_id,
+            current_status='PENDING', delay=1, max_wait=100, wait_cb=None):
+
+        def get_status(self, net_id):
+            r = self.get_port_details(port_id)
+            return r['status'], None
+
+        return self._wait(
+            port_id, current_status, get_status, delay, max_wait, wait_cb)
+
+    def wait_floatingip(
+            self, floatingip_id,
+            current_status='PENDING', delay=1, max_wait=100, wait_cb=None):
+
+        def get_status(self, floatingip_id):
+            r = self.get_network_details(floatingip_id)
+            return r['status'], None
+
+        return self._wait(
+            floatingip_id,
+            current_status, get_status, delay, max_wait, wait_cb)

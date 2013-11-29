@@ -61,6 +61,8 @@ class CycladesClient(CycladesRestClient, Waiter):
                 {"network": <network_uuid>},
                 {"network": <network_uuid>, "fixed_ip": address},
                 {"port": <port_id>}, ...]
+            ATTENTION: Empty list is different to None. None means ' do not
+            mention it', empty list means 'automatically get an ip'
 
         :returns: a dict with the new virtual server details
 
@@ -76,7 +78,7 @@ class CycladesClient(CycladesRestClient, Waiter):
 
         return super(CycladesClient, self).create_server(
             name, flavor_id, image_id,
-            metadata=metadata, personality=personality)
+            metadata=metadata, personality=personality, networks=networks)
 
     def start_server(self, server_id):
         """Submit a startup request
@@ -157,130 +159,6 @@ class CycladesClient(CycladesRestClient, Waiter):
         r = self.servers_stats_get(server_id)
         return r.json['stats']
 
-    def list_networks(self, detail=False):
-        """
-        :param detail: (bool)
-
-        :returns: (list) id,name if not detail else full info per network
-        """
-        detail = 'detail' if detail else ''
-        r = self.networks_get(command=detail)
-        return r.json['networks']
-
-    def list_network_nics(self, network_id):
-        """
-        :param network_id: integer (str or int)
-
-        :returns: (list)
-        """
-        r = self.networks_get(network_id=network_id)
-        return r.json['network']['attachments']
-
-    def create_network(
-            self, name,
-            cidr=None, gateway=None, type=None, dhcp=False):
-        """
-        :param name: (str)
-
-        :param cidr: (str)
-
-        :param geteway: (str)
-
-        :param type: (str) if None, will use MAC_FILTERED as default
-            Valid values: CUSTOM, IP_LESS_ROUTED, MAC_FILTERED, PHYSICAL_VLAN
-
-        :param dhcp: (bool)
-
-        :returns: (dict) network detailed info
-        """
-        net = dict(name=name)
-        if cidr:
-            net['cidr'] = cidr
-        if gateway:
-            net['gateway'] = gateway
-        net['type'] = type or 'MAC_FILTERED'
-        net['dhcp'] = True if dhcp else False
-        req = dict(network=net)
-        r = self.networks_post(json_data=req, success=202)
-        return r.json['network']
-
-    def get_network_details(self, network_id):
-        """
-        :param network_id: integer (str or int)
-
-        :returns: (dict)
-        """
-        r = self.networks_get(network_id=network_id)
-        return r.json['network']
-
-    def update_network_name(self, network_id, new_name):
-        """
-        :param network_id: integer (str or int)
-
-        :param new_name: (str)
-
-        :returns: (dict) response headers
-        """
-        req = {'network': {'name': new_name}}
-        r = self.networks_put(network_id=network_id, json_data=req)
-        return r.headers
-
-    def delete_network(self, network_id):
-        """
-        :param network_id: integer (str or int)
-
-        :returns: (dict) response headers
-
-        :raises ClientError: 421 Network in use
-        """
-        try:
-            r = self.networks_delete(network_id)
-            return r.headers
-        except ClientError as err:
-            if err.status == 421:
-                err.details = [
-                    'Network may be still connected to at least one server']
-            raise
-
-    def connect_server(self, server_id, network_id):
-        """ Connect a server to a network
-
-        :param server_id: integer (str or int)
-
-        :param network_id: integer (str or int)
-
-        :returns: (dict) response headers
-        """
-        req = {'add': {'serverRef': server_id}}
-        r = self.networks_post(network_id, 'action', json_data=req)
-        return r.headers
-
-    def disconnect_server(self, server_id, nic_id):
-        """
-        :param server_id: integer (str or int)
-
-        :param nic_id: (str)
-
-        :returns: (int) the number of nics disconnected
-        """
-        vm_nets = self.list_server_nics(server_id)
-        num_of_disconnections = 0
-        for (nic_id, network_id) in [(
-                net['id'],
-                net['network_id']) for net in vm_nets if nic_id == net['id']]:
-            req = {'remove': {'attachment': '%s' % nic_id}}
-            self.networks_post(network_id, 'action', json_data=req)
-            num_of_disconnections += 1
-        return num_of_disconnections
-
-    def disconnect_network_nics(self, netid):
-        """
-        :param netid: integer (str or int)
-        """
-        for nic in self.list_network_nics(netid):
-            req = dict(remove=dict(attachment=nic))
-            self.networks_post(netid, 'action', json_data=req)
-
     def wait_server(
             self, server_id,
             current_status='BUILD',
@@ -308,31 +186,6 @@ class CycladesClient(CycladesRestClient, Waiter):
         return self._wait(
             server_id, current_status, get_status, delay, max_wait, wait_cb)
 
-    def wait_network(
-            self, net_id,
-            current_status='PENDING', delay=1, max_wait=100, wait_cb=None):
-        """Wait for network while its status is current_status
-
-        :param net_id: integer (str or int)
-
-        :param current_status: (str) PENDING | ACTIVE | DELETED
-
-        :param delay: time interval between retries
-
-        :max_wait: (int) timeout in secconds
-
-        :param wait_cb: if set a progressbar is used to show progress
-
-        :returns: (str) the new mode if succesfull, (bool) False if timed out
-        """
-
-        def get_status(self, net_id):
-            r = self.get_network_details(net_id)
-            return r['status'], None
-
-        return self._wait(
-            net_id, current_status, get_status, delay, max_wait, wait_cb)
-
     def wait_firewall(
             self, server_id,
             current_status='DISABLED', delay=1, max_wait=100, wait_cb=None):
@@ -358,7 +211,7 @@ class CycladesClient(CycladesRestClient, Waiter):
             server_id, current_status, get_status, delay, max_wait, wait_cb)
 
 
-class CycladesNetworkClient(NetworkClient, Waiter):
+class CycladesNetworkClient(NetworkClient):
     """Cyclades Network API extentions"""
 
     network_types = (
@@ -379,14 +232,16 @@ class CycladesNetworkClient(NetworkClient, Waiter):
         return r.json['network']
 
     def create_port(
-            self, network_id, device_id,
-            security_groups=None, name=None, fixed_ips=None):
-        port = dict(network_id=network_id, device_id=device_id)
+            self, network_id,
+            device_id=None, security_groups=None, name=None, fixed_ips=None):
+        port = dict(network_id=network_id)
+        if device_id:
+            port['device_id'] = device_id
         if security_groups:
             port['security_groups'] = security_groups
         if name:
             port['name'] = name
-        for fixed_ip in fixed_ips:
+        for fixed_ip in fixed_ips or []:
             diff = set(['subnet_id', 'ip_address']).difference(fixed_ip)
             if diff:
                 raise ValueError(
@@ -396,24 +251,11 @@ class CycladesNetworkClient(NetworkClient, Waiter):
         r = self.ports_post(json_data=dict(port=port), success=201)
         return r.json['port']
 
-    def wait_network(
-            self, net_id,
-            current_status='PENDING', delay=1, max_wait=100, wait_cb=None):
+    def create_floatingip(self, floating_network_id, floating_ip_address=''):
+        return super(CycladesNetworkClient, self).create_floatingip(
+            floating_network_id, floating_ip_address=floating_ip_address)
 
-        def get_status(self, net_id):
-            r = self.get_network_details(net_id)
-            return r['status'], None
-
-        return self._wait(
-            net_id, current_status, get_status, delay, max_wait, wait_cb)
-
-    def wait_port(
-            self, port_id,
-            current_status='PENDING', delay=1, max_wait=100, wait_cb=None):
-
-        def get_status(self, net_id):
-            r = self.get_port_details(port_id)
-            return r['status'], None
-
-        return self._wait(
-            port_id, current_status, get_status, delay, max_wait, wait_cb)
+    def update_floatingip(self, floating_network_id, floating_ip_address=''):
+        """To nullify something optional, use None"""
+        return super(CycladesNetworkClient, self).update_floatingip(
+            floating_network_id, floating_ip_address=floating_ip_address)
