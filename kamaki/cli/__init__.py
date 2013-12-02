@@ -512,12 +512,11 @@ def main(foo):
             filelog = logger.add_file_logger(__name__.split('.')[0])
             filelog.info('* Initial Call *\n%s\n- - -' % ' '.join(argv))
 
-            cloud = _init_session(parser.arguments, is_non_API(parser))
             from kamaki.cli.utils import suggest_missing
             global _colors
             exclude = ['ansicolors'] if not _colors == 'on' else []
             suggest_missing(exclude=exclude)
-            foo(exe, parser, cloud)
+            foo(exe, parser)
         except CLIError as err:
             print_error_message(err)
             if _debug:
@@ -535,7 +534,9 @@ def main(foo):
 
 
 @main
-def run_shell(exe, parser, cloud):
+def run_shell(exe, parser):
+    parser.arguments['help'].value = False
+    cloud = _init_session(parser.arguments)
     from command_shell import _init_shell
     global kloger
     _cnf = parser.arguments['config']
@@ -551,7 +552,8 @@ def run_shell(exe, parser, cloud):
 
 
 @main
-def run_one_cmd(exe, parser, cloud):
+def run_one_cmd(exe, parser):
+    cloud = _init_session(parser.arguments, is_non_API(parser))
     if parser.unparsed:
         global _history
         try:

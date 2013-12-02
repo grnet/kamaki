@@ -291,7 +291,7 @@ class Config(RawConfigParser):
 
         :raises KeyError: if cloud or cloud's option does not exist
         """
-        r = self.get(CLOUD_PREFIX, cloud)
+        r = self.get(CLOUD_PREFIX, cloud) if cloud else None
         if not r:
             raise KeyError('Cloud "%s" does not exist' % cloud)
         return r[option]
