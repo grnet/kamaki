@@ -109,23 +109,6 @@ class _server_wait(_service_wait):
             timeout=timeout if current_status not in ('BUILD', ) else 100)
 
 
-class _network_wait(_service_wait):
-
-    def _wait(self, net_id, current_status, timeout=60):
-        super(_network_wait, self)._wait(
-            'Network', net_id, self.client.wait_network, current_status,
-            timeout=timeout)
-
-
-class _firewall_wait(_service_wait):
-
-    def _wait(self, server_id, current_status, timeout=60):
-        super(_firewall_wait, self)._wait(
-            'Firewall of server',
-            server_id, self.client.wait_firewall, current_status,
-            timeout=timeout)
-
-
 class _init_cyclades(_command_init):
     @errors.generic.all
     @addLogSettings
@@ -278,26 +261,49 @@ class server_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
 
 @command(server_cmds)
 class server_info(_init_cyclades, _optional_json):
-    """Detailed information on a Virtual Machine
-    Contains:
-    - name, id, status, create/update dates
-    - network interfaces
-    - metadata (e.g., os, superuser) and diagnostics
-    - hardware flavor and os image ids
-    """
+    """Detailed information on a Virtual Machine"""
+
+    arguments = dict(
+        addr=FlagArgument(
+            'Show only the network interfaces of this virtual server',
+            '--nics'),
+        vnc=FlagArgument(
+            'Show VNC connection information (valid for a short period)',
+            '--vnc-credentials'),
+        stats=FlagArgument('Get URLs for server statistics', '--stats')
+    )
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.server_id
     def _run(self, server_id):
         vm = self.client.get_server_details(server_id)
-        uuids = self._uuids2usernames([vm['user_id'], vm['tenant_id']])
-        vm['user_id'] += ' (%s)' % uuids[vm['user_id']]
-        vm['tenant_id'] += ' (%s)' % uuids[vm['tenant_id']]
-        self._print(vm, self.print_dict)
+        if self['addr']:
+            self._print(vm.get('attachments', []))
+        elif self['vnc']:
+            self.error(
+                '(!) For security reasons, the following credentials are '
+                'invalidated\nafter a short time period, depending on the '
+                'server settings\n')
+            self._print(
+                self.client.get_server_console(server_id), self.print_dict)
+        elif self['stats']:
+            self._print(
+                self.client.get_server_stats(server_id), self.print_dict)
+        else:
+            uuids = self._uuids2usernames([vm['user_id'], vm['tenant_id']])
+            vm['user_id'] += ' (%s)' % uuids[vm['user_id']]
+            vm['tenant_id'] += ' (%s)' % uuids[vm['tenant_id']]
+            self._print(vm, self.print_dict)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
+        choose_one = ('addr', 'vnc', 'stats')
+        count = len([a for a in choose_one if self[a]])
+        if count > 1:
+            raise CLIInvalidArgument('Invalid argument compination', details=[
+                'Arguments %s cannot be used simultaneously' % ', '.join(
+                    [self.arguments[a].lvalue for a in choose_one])])
         self._run(server_id=server_id)
 
 
@@ -701,60 +707,33 @@ class server_shutdown(_init_cyclades, _optional_output_cmd, _server_wait):
 
 
 @command(server_cmds)
-class server_console(_init_cyclades, _optional_json):
-    """Get a VNC console to access an existing virtual server
-    Console connection information provided (at least):
-    - host: (url or address) a VNC host
-    - port: (int) the gateway to enter virtual server on host
-    - password: for VNC authorization
-    """
+class server_addr(_init_cyclades):
+    """List network interfaces for a server (DEPRECATED, use /server info)"""
 
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.server_id
-    def _run(self, server_id):
-        self._print(
-            self.client.get_server_console(int(server_id)), self.print_dict)
-
-    def main(self, server_id):
-        super(self.__class__, self)._run()
-        self._run(server_id=server_id)
+    def main(self, *args):
+        raiseCLIError('DEPRECATED', importance=3, details=[
+            'Replaced by',
+            '  [kamaki] server info <SERVER_ID> --nics'])
 
 
 @command(server_cmds)
-class server_addr(_init_cyclades, _optional_json):
-    """List the addresses of all network interfaces on a virtual server"""
+class server_console(_init_cyclades, _optional_json):
+    """Get VNC console credentials (DEPRECATED, use /server info)"""
 
-    arguments = dict(
-        enum=FlagArgument('Enumerate results', '--enumerate')
-    )
-
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.server_id
-    def _run(self, server_id):
-        reply = self.client.list_server_nics(int(server_id))
-        self._print(reply, with_enumeration=self['enum'] and (reply) > 1)
-
-    def main(self, server_id):
-        super(self.__class__, self)._run()
-        self._run(server_id=server_id)
+    def main(self, *args):
+        raiseCLIError('DEPRECATED', importance=3, details=[
+            'Replaced by',
+            '  [kamaki] server info <SERVER_ID> --vnc-credentials'])
 
 
 @command(server_cmds)
 class server_stats(_init_cyclades, _optional_json):
-    """Get virtual server statistics"""
+    """Get URLs for server statistics (DEPRECATED, use /server info)"""
 
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.server_id
-    def _run(self, server_id):
-        self._print(
-            self.client.get_server_stats(int(server_id)), self.print_dict)
-
-    def main(self, server_id):
-        super(self.__class__, self)._run()
-        self._run(server_id=server_id)
+    def main(self, *args):
+        raiseCLIError('DEPRECATED', importance=3, details=[
+            'Replaced by',
+            '  [kamaki] server info <SERVER_ID> --stats'])
 
 
 @command(server_cmds)
