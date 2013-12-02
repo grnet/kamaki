@@ -447,12 +447,9 @@ class port_modify(_init_network, _optional_json):
         self._run(port_id=port_id)
 
 
-class _port_create(_init_network):
+class _port_create(_init_network, _optional_json, _port_wait):
 
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.network_id
-    def _run(self, network_id, device_id):
+    def connect(self, network_id, device_id):
         fixed_ips = [dict(
             subnet_id=self['subnet_id'], ip_address=self['ip_address'])] if (
                 self['subnet_id']) else None
@@ -467,7 +464,7 @@ class _port_create(_init_network):
 
 
 @command(port_cmds)
-class port_create(_init_network, _optional_json, _port_wait):
+class port_create(_init_network):
     """Create a new port (== connect server to network)"""
 
     arguments = dict(
@@ -488,9 +485,16 @@ class port_create(_init_network, _optional_json, _port_wait):
     )
     required = ('network_id', 'device_id')
 
+    @errors.generic.all
+    @errors.cyclades.connection
+    @errors.cyclades.network_id
+    @errors.cyclades.server_id
+    def _run(self, network_id, server_id):
+        self.connect(network_id, server_id)
+
     def main(self):
         super(self.__class__, self)._run()
-        self._run(network_id=self['network_id'], device_id=self['device_id'])
+        self._run(network_id=self['network_id'], server_id=self['device_id'])
 
 
 @command(port_cmds)
@@ -592,7 +596,7 @@ class network_connect(_port_create):
     """Connect a network with a device (server or router)"""
 
     arguments = dict(
-        name=ValueArgument('A human readable name', '--name'),
+        name=ValueArgument('A human readable name for the port', '--name'),
         security_group_id=RepeatableArgument(
             'Add a security group id (can be repeated)',
             ('-g', '--security-group')),
@@ -601,8 +605,15 @@ class network_connect(_port_create):
             '--subnet-id'),
         ip_address=ValueArgument(
             'IP address for subnet id (used with --subnet-id', '--ip-address'),
-        wait=FlagArgument('Wait port to be established', ('-w', '--wait')),
+        wait=FlagArgument('Wait network to connect', ('-w', '--wait')),
     )
+
+    @errors.generic.all
+    @errors.cyclades.connection
+    @errors.cyclades.network_id
+    @errors.cyclades.server_id
+    def _run(self, network_id, server_id):
+        self.connect(network_id, server_id)
 
     def main(self, network_id, device_id):
         super(self.__class__, self)._run()
@@ -610,7 +621,7 @@ class network_connect(_port_create):
 
 
 @command(network_cmds)
-class network_disconnect(_init_network, _optional_json):
+class network_disconnect(_init_network, _port_wait, _optional_json):
     """Disconnnect a network from a device"""
 
     def _cyclades_client(self):
@@ -619,6 +630,10 @@ class network_disconnect(_init_network, _optional_json):
         URL = endpoints['publicURL']
         from kamaki.clients.cyclades import CycladesClient
         return CycladesClient(URL, self.client.token)
+
+    arguments = dict(
+        wait=FlagArgument('Wait network to disconnect', ('-w', '--wait'))
+    )
 
     @errors.generic.all
     @errors.cyclades.connection
@@ -633,8 +648,10 @@ class network_disconnect(_init_network, _optional_json):
                 network_id, device_id))
         for net in nets:
             self.client.port_delete(net['id'])
-            self.error('Deleted connection:')
+            self.error('Deleting this connection:')
             self.print_dict(net)
+            if self['wait']:
+                self._wait(net['id'], net['status'])
 
     def main(self, network_id, device_id):
         super(self.__class__, self)._run()
