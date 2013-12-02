@@ -708,30 +708,30 @@ class server_shutdown(_init_cyclades, _optional_output_cmd, _server_wait):
 
 @command(server_cmds)
 class server_addr(_init_cyclades):
-    """List network interfaces for a server (DEPRECATED, use /server info)"""
+    """DEPRECATED, use: [kamaki] server info <SERVER_ID> --nics"""
 
     def main(self, *args):
-        raiseCLIError('DEPRECATED', importance=3, details=[
+        raiseCLIError('DEPRECATED since v0.12', importance=3, details=[
             'Replaced by',
             '  [kamaki] server info <SERVER_ID> --nics'])
 
 
 @command(server_cmds)
 class server_console(_init_cyclades, _optional_json):
-    """Get VNC console credentials (DEPRECATED, use /server info)"""
+    """DEPRECATED, use: [kamaki] server info <SERVER_ID> --vnc-credentials"""
 
     def main(self, *args):
-        raiseCLIError('DEPRECATED', importance=3, details=[
+        raiseCLIError('DEPRECATED since v0.12', importance=3, details=[
             'Replaced by',
             '  [kamaki] server info <SERVER_ID> --vnc-credentials'])
 
 
 @command(server_cmds)
 class server_stats(_init_cyclades, _optional_json):
-    """Get URLs for server statistics (DEPRECATED, use /server info)"""
+    """DEPRECATED, use: [kamaki] server info <SERVER_ID> --stats"""
 
     def main(self, *args):
-        raiseCLIError('DEPRECATED', importance=3, details=[
+        raiseCLIError('DEPRECATED since v0.12', importance=3, details=[
             'Replaced by',
             '  [kamaki] server info <SERVER_ID> --stats'])
 

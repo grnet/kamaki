@@ -37,7 +37,7 @@ from pydoc import pager
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import (
-    CLISyntaxError, CLIBaseUrlError, CLIInvalidArgument)
+    CLIBaseUrlError, CLIInvalidArgument, raiseCLIError)
 from kamaki.clients.cyclades import CycladesNetworkClient
 from kamaki.cli.argument import (
     FlagArgument, ValueArgument, RepeatableArgument, IntArgument)
@@ -447,6 +447,25 @@ class port_modify(_init_network, _optional_json):
         self._run(port_id=port_id)
 
 
+class _port_create(_init_network):
+
+    @errors.generic.all
+    @errors.cyclades.connection
+    @errors.cyclades.network_id
+    def _run(self, network_id, device_id):
+        fixed_ips = [dict(
+            subnet_id=self['subnet_id'], ip_address=self['ip_address'])] if (
+                self['subnet_id']) else None
+        r = self.client.create_port(
+            network_id, device_id,
+            name=self['name'],
+            security_groups=self['security_group_id'],
+            fixed_ips=fixed_ips)
+        if self['wait']:
+            self._wait(r['id'], r['status'])
+        self._print(r, self.print_dict)
+
+
 @command(port_cmds)
 class port_create(_init_network, _optional_json, _port_wait):
     """Create a new port (== connect server to network)"""
@@ -468,22 +487,6 @@ class port_create(_init_network, _optional_json, _port_wait):
         wait=FlagArgument('Wait port to be established', ('-w', '--wait')),
     )
     required = ('network_id', 'device_id')
-
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.network_id
-    def _run(self, network_id, device_id):
-        fixed_ips = [dict(
-            subnet_id=self['subnet_id'], ip_address=self['ip_address'])] if (
-                self['subnet_id']) else None
-        r = self.client.create_port(
-            network_id, device_id,
-            name=self['name'],
-            security_groups=self['security_group_id'],
-            fixed_ips=fixed_ips)
-        if self['wait']:
-            self._wait(r['id'], r['status'])
-        self._print(r, self.print_dict)
 
     def main(self):
         super(self.__class__, self)._run()
@@ -585,16 +588,54 @@ class ip_delete(_init_network, _optional_output_cmd):
 #  Warn users for some importand changes
 
 @command(network_cmds)
-class network_connect(_init_network, _optional_output_cmd):
-    """DEPRECATED, use /port create"""
+class network_connect(_port_create):
+    """Connect a network with a device (server or router)"""
 
-    def main(self):
-        raise CLISyntaxError('DEPRECATED, replaced by kamaki port create')
+    arguments = dict(
+        name=ValueArgument('A human readable name', '--name'),
+        security_group_id=RepeatableArgument(
+            'Add a security group id (can be repeated)',
+            ('-g', '--security-group')),
+        subnet_id=ValueArgument(
+            'Subnet id for fixed ips (used with --ip-address)',
+            '--subnet-id'),
+        ip_address=ValueArgument(
+            'IP address for subnet id (used with --subnet-id', '--ip-address'),
+        wait=FlagArgument('Wait port to be established', ('-w', '--wait')),
+    )
+
+    def main(self, network_id, device_id):
+        super(self.__class__, self)._run()
+        self._run(network_id=network_id, device_id=device_id)
 
 
 @command(network_cmds)
-class network_disconnect(_init_network):
-    """DEPRECATED, /use port delete"""
+class network_disconnect(_init_network, _optional_json):
+    """Disconnnect a network from a device"""
 
-    def main(self):
-        raise CLISyntaxError('DEPRECATED, replaced by kamaki port delete')
+    def _cyclades_client(self):
+        auth = getattr(self, 'auth_base')
+        endpoints = auth.get_service_endpoints('compute')
+        URL = endpoints['publicURL']
+        from kamaki.clients.cyclades import CycladesClient
+        return CycladesClient(URL, self.client.token)
+
+    @errors.generic.all
+    @errors.cyclades.connection
+    @errors.cyclades.network_id
+    @errors.cyclades.server_id
+    def _run(self, network_id, device_id):
+        vm = self._cyclades_client().get_server_details(device_id)
+        nets = [net for net in vm['attachments'] if net['network_id'] not in (
+            'network_id', )]
+        if not nets:
+            raiseCLIError('Network %s is not connected to device %s' % (
+                network_id, device_id))
+        for net in nets:
+            self.client.port_delete(net['id'])
+            self.error('Deleted connection:')
+            self.print_dict(net)
+
+    def main(self, network_id, device_id):
+        super(self.__class__, self)._run()
+        self._run(network_id=network_id, device_id=device_id)
