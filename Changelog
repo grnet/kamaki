@@ -13,6 +13,8 @@ Changes:
     New scheme for ALL <object> <verb> [object id] [--arguments]
     e.g., file modidy --metadata-add=revier='Mr. Reviewer' /pithos/myfile.txt
 6. Deprecate (with note) server stats/console/addr (move to server info)
+7. A vanilla kamaki call now shows only the available commands instead of
+    loading a shell [#4612]
 
 Features:
 
@@ -27,4 +29,5 @@ Features:
    network info/list/create/delete/set
    subnet info/list/create/set
    port info/list/create/delete/set
+5. Create a kamaki-shell for kamaki shell [#4612]
 
