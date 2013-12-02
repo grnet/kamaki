@@ -485,34 +485,6 @@ def set_command_params(parameters):
 
 #  CLI Choice:
 
-def run_one_cmd(exe_string, parser, cloud):
-    global _history
-    try:
-        token = parser.arguments['config'].get_cloud(cloud, 'token').split()[0]
-    except Exception:
-        token = None
-    _history = History(
-        parser.arguments['config'].get('global', 'history_file'), token=token)
-    _history.add(' '.join([exe_string] + argv[1:]))
-    from kamaki.cli import one_command
-    one_command.run(cloud, parser, _help)
-
-
-def run_shell(exe_string, parser, cloud):
-    from command_shell import _init_shell
-    global kloger
-    _cnf = parser.arguments['config']
-    auth_base = init_cached_authenticator(_cnf, cloud, kloger)
-    try:
-        username, userid = (
-            auth_base.user_term('name'), auth_base.user_term('id'))
-    except Exception:
-        username, userid = '', ''
-    shell = _init_shell(exe_string, parser, username, userid)
-    _load_all_commands(shell.cmd_tree, parser.arguments)
-    shell.run(auth_base, cloud, parser)
-
-
 def is_non_API(parser):
     nonAPIs = ('history', 'config')
     for term in parser.unparsed:
@@ -523,46 +495,79 @@ def is_non_API(parser):
     return False
 
 
-def main():
+def main(foo):
+    def wrap():
+        try:
+            exe = basename(argv[0])
+            parser = ArgumentParseManager(exe)
+
+            if parser.arguments['version'].value:
+                exit(0)
+
+            _cnf = parser.arguments['config']
+            log_file = _cnf.get('global', 'log_file')
+            if log_file:
+                logger.set_log_filename(log_file)
+            global filelog
+            filelog = logger.add_file_logger(__name__.split('.')[0])
+            filelog.info('* Initial Call *\n%s\n- - -' % ' '.join(argv))
+
+            from kamaki.cli.utils import suggest_missing
+            global _colors
+            exclude = ['ansicolors'] if not _colors == 'on' else []
+            suggest_missing(exclude=exclude)
+            foo(exe, parser)
+        except CLIError as err:
+            print_error_message(err)
+            if _debug:
+                raise err
+            exit(1)
+        except KeyboardInterrupt:
+            print('Canceled by user')
+            exit(1)
+        except Exception as er:
+            print('Unknown Error: %s' % er)
+            if _debug:
+                raise
+            exit(1)
+    return wrap
+
+
+@main
+def run_shell(exe, parser):
+    parser.arguments['help'].value = False
+    cloud = _init_session(parser.arguments)
+    from command_shell import _init_shell
+    global kloger
+    _cnf = parser.arguments['config']
+    auth_base = init_cached_authenticator(_cnf, cloud, kloger)
     try:
-        exe = basename(argv[0])
-        parser = ArgumentParseManager(exe)
+        username, userid = (
+            auth_base.user_term('name'), auth_base.user_term('id'))
+    except Exception:
+        username, userid = '', ''
+    shell = _init_shell(exe, parser, username, userid)
+    _load_all_commands(shell.cmd_tree, parser.arguments)
+    shell.run(auth_base, cloud, parser)
 
-        if parser.arguments['version'].value:
-            exit(0)
 
-        _cnf = parser.arguments['config']
-        log_file = _cnf.get('global', 'log_file')
-        if log_file:
-            logger.set_log_filename(log_file)
-        global filelog
-        filelog = logger.add_file_logger(__name__.split('.')[0])
-        filelog.info('* Initial Call *\n%s\n- - -' % ' '.join(argv))
-
-        cloud = _init_session(parser.arguments, is_non_API(parser))
-        from kamaki.cli.utils import suggest_missing
-        global _colors
-        exclude = ['ansicolors'] if not _colors == 'on' else []
-        suggest_missing(exclude=exclude)
-
-        if parser.unparsed:
-            run_one_cmd(exe, parser, cloud)
-        elif _help:
-            #parser.parser.print_help()
-            parser.print_help()
-            _groups_help(parser.arguments)
-        else:
-            run_shell(exe, parser, cloud)
-    except CLIError as err:
-        print_error_message(err)
-        if _debug:
-            raise err
-        exit(1)
-    except KeyboardInterrupt:
-        print('Canceled by user')
-        exit(1)
-    except Exception as er:
-        print('Unknown Error: %s' % er)
-        if _debug:
-            raise
-        exit(1)
+@main
+def run_one_cmd(exe, parser):
+    cloud = _init_session(parser.arguments, is_non_API(parser))
+    if parser.unparsed:
+        global _history
+        try:
+            token = parser.arguments['config'].get_cloud(
+                cloud, 'token').split()[0]
+        except Exception:
+            token = None
+        _history = History(
+            parser.arguments['config'].get('global', 'history_file'),
+            token=token)
+        _history.add(' '.join([exe] + argv[1:]))
+        from kamaki.cli import one_command
+        one_command.run(cloud, parser, _help)
+    else:
+        parser.print_help()
+        _groups_help(parser.arguments)
+        print('kamaki-shell: An interactive command line shell')

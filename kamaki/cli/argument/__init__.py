@@ -103,7 +103,7 @@ class ConfigArgument(Argument):
 
     @property
     def value(self):
-        return super(ConfigArgument, self).value
+        return getattr(self, '_value', None)
 
     @value.setter
     def value(self, config_file):

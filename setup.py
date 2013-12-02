@@ -62,21 +62,21 @@ setup(
     packages=[
         'kamaki',
         'kamaki.cli',
-        'kamaki.cli.command_tree',
-        'kamaki.cli.argument',
-        'kamaki.cli.config',
         'kamaki.cli.utils',
+        'kamaki.cli.config',
+        'kamaki.cli.argument',
         'kamaki.cli.commands',
+        'kamaki.cli.command_tree',
         'kamaki.clients',
         'kamaki.clients.utils',
-        'kamaki.clients.livetest',
+        'kamaki.clients.astakos',
         'kamaki.clients.image',
         'kamaki.clients.storage',
         'kamaki.clients.pithos',
-        'kamaki.clients.astakos',
         'kamaki.clients.compute',
+        'kamaki.clients.network',
         'kamaki.clients.cyclades',
-        'kamaki.clients.network'
+        'kamaki.clients.livetest',
     ],
     classifiers=[
         'Operating System :: OS Independent',
@@ -93,7 +93,10 @@ setup(
         ],
     include_package_data=True,
     entry_points={
-        'console_scripts': ['kamaki = kamaki.cli:main']
+        'console_scripts': [
+            'kamaki = kamaki.cli:run_one_cmd',
+            'kamaki-shell = kamaki.cli:run_shell'
+        ]
     },
     install_requires=requires
 )
