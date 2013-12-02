@@ -60,27 +60,11 @@ about_authentication = '\nUser Authentication:\
     \n* to set authentication token: /config set cloud.<cloud>.token <token>'
 
 
-class _network_wait(_service_wait):
-
-    def _wait(self, net_id, current_status, timeout=60):
-        super(_network_wait, self)._wait(
-            'Network', net_id, self.client.wait_network, current_status,
-            timeout=timeout)
-
-
 class _port_wait(_service_wait):
 
     def _wait(self, port_id, current_status, timeout=60):
         super(_port_wait, self)._wait(
             'Port', port_id, self.client.wait_port, current_status,
-            timeout=timeout)
-
-
-class _port_wait(_service_wait):
-
-    def _wait(self, net_id, current_status, timeout=60):
-        super(_network_wait, self)._wait(
-            'Network', net_id, self.client.wait_network, current_status,
             timeout=timeout)
 
 
@@ -190,7 +174,7 @@ class NetworkTypeArgument(ValueArgument):
 
 
 @command(network_cmds)
-class network_create(_init_network, _optional_json, _network_wait):
+class network_create(_init_network, _optional_json):
     """Create a new network"""
 
     arguments = dict(
@@ -199,8 +183,7 @@ class network_create(_init_network, _optional_json, _network_wait):
             'Make network shared (special privileges required)', '--shared'),
         network_type=NetworkTypeArgument(
             'Valid network types: %s' % (', '.join(NetworkTypeArgument.types)),
-            '--type'),
-        wait=FlagArgument('Wait network to build', ('-w', '--wait')),
+            '--type')
     )
     required = ('network_type', )
 
@@ -210,8 +193,6 @@ class network_create(_init_network, _optional_json, _network_wait):
     def _run(self, network_type):
         net = self.client.create_network(
             network_type, name=self['name'], shared=self['shared'])
-        if self['wait']:
-            self._wait(net['id'], net['status'])
         self._print(net, self.print_dict)
 
     def main(self):
@@ -252,33 +233,6 @@ class network_modify(_init_network, _optional_json):
     def main(self, network_id):
         super(self.__class__, self)._run()
         self._run(network_id=network_id)
-
-
-@command(network_cmds)
-class network_wait(_init_network, _network_wait):
-    """Wait for network to finish [PENDING, ACTIVE, DELETED]"""
-
-    arguments = dict(
-        timeout=IntArgument(
-            'Wait limit in seconds (default: 60)', '--timeout', default=60)
-    )
-
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.network_id
-    def _run(self, network_id, current_status):
-        net = self.client.get_network_details(network_id)
-        if net['status'].lower() == current_status.lower():
-            self._wait(network_id, current_status, timeout=self['timeout'])
-        else:
-            self.error(
-                'Network %s: Cannot wait for status %s, '
-                'status is already %s' % (
-                    network_id, current_status, net['status']))
-
-    def main(self, network_id, current_status='PENDING'):
-        super(self.__class__, self)._run()
-        self._run(network_id=network_id, current_status=current_status)
 
 
 @command(subnet_cmds)
@@ -453,13 +407,19 @@ class port_info(_init_network, _optional_json):
 
 
 @command(port_cmds)
-class port_delete(_init_network, _optional_output_cmd):
+class port_delete(_init_network, _optional_output_cmd, _port_wait):
     """Delete a port (== disconnect server from network)"""
+
+    arguments = dict(
+        wait=FlagArgument('Wait port to be established', ('-w', '--wait'))
+    )
 
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self, port_id):
         r = self.client.delete_port(port_id)
+        if self['wait']:
+            self._wait(r['id'], r['status'])
         self._optional_output(r)
 
     def main(self, port_id):
@@ -532,7 +492,7 @@ class port_create(_init_network, _optional_json, _port_wait):
 
 @command(port_cmds)
 class port_wait(_init_network, _port_wait):
-    """Wait for port to finish [PENDING, ACTIVE, DELETED]"""
+    """Wait for port to finish [ACTIVE, DOWN, BUILD, ERROR]"""
 
     arguments = dict(
         timeout=IntArgument(
@@ -551,7 +511,7 @@ class port_wait(_init_network, _port_wait):
                 'status is already %s' % (
                     port_id, current_status, port['status']))
 
-    def main(self, port_id, current_status='PENDING'):
+    def main(self, port_id, current_status='BUILD'):
         super(self.__class__, self)._run()
         self._run(port_id=port_id, current_status=current_status)
 
