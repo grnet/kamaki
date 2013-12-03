@@ -67,7 +67,23 @@ except ImportError:
         from objpool.http import PooledHTTPConnection
         PooledHTTPConnection
     except ImportError:
-        stderr.write("`objpool` package is required to build kamaki docs.\n")
+        stderr.write('`objpool` package is required to build kamaki docs.\n')
+        exit(1)
+
+
+try:
+    from astakosclient import AstakosClient
+    AstakosClient
+except ImportError:
+    path.insert(0, '%s/%s' % (
+        SITE_PACKAGES_PATH,
+        'astakosclient-0.14.5next_10224_6c10f58-py2.7.egg'))
+    try:
+        from astakosclient import AstakosClient
+        AstakosClient
+    except ImportError:
+        stderr.write(
+            '`astakosclient` package is required to build kamaki docs.\n')
         exit(1)
 
 # try:
@@ -79,7 +95,8 @@ except ImportError:
 #         from progress.bar import ShadyBar
 #         ShadyBar
 #     except ImportError:
-#         stderr.write("`progress` package is suggested to build kamaki docs.\n")
+#         stderr.write(
+#           '`progress` package is suggested to build kamaki docs.\n')
 
 path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..'))
 
