@@ -1,9 +1,7 @@
 Setup
 =====
 
-Kamaki is easy to install from source or as a package. Some advanced or ui features
-are optional and can be installed separately. Kamaki behavior can be configured in
-the kamaki config file.
+Kamaki is easy to install from the official repository or with the pypi mechanism.
 
 Quick Setup
 -----------
@@ -14,7 +12,7 @@ Quick Setup
 To set up Kamaki for a specific Synnefo deployment, users need an
 **authentication URL** and a **user token**. Users should also pick an alias to
 name the cloud configuration. This can be any single word, e.g., "default",
-"mycloud"or whatever suits the user.
+"mycloud" or whatever suits the user.
 
 .. code-block:: console
 
@@ -28,42 +26,61 @@ Otherwise, a default cloud should be specified:
 
     $ kamaki config set default_cloud <cloud alias>
 
-Since version 0.14, Synnefo supports a single authentication URL for retrieving
-all API endpoints. This URL is retrieved from the Synnefo Web UI and should be
-set as the cloud URL for kamaki. All service-specific URLs are retrieved and
-handled automatically. Users of Synnefo clouds >=0.14 are advised against using
-any service-specific URLs.
+The endpoints (URLs) for each service are resolved automatically from a single
+URL. This mechanism works for Synnefo v0.14 deployments or later. The
+authentication URL is retrieved from the Synnefo Web UI and should be set as
+the cloud URL for kamaki. Users of Synnefo clouds >=0.14 are advised against
+using any service-specific URLs.
 
-Migrating from kamaki 0.8.X to 0.9 or better
---------------------------------------------
+Migrating configuration file to latest version
+----------------------------------------------
 
-This section refers to running installations of kamaki version <= 0.8.X. To
-check the current kamaki version:
+Each new version of kamaki might demand some changes to the configuration file.
+Kamaki features a mechanism of automatic migration of the configration file to
+the latest version, which involves heuristics for guessing and translating the
+file.
+
+Quick migration
+^^^^^^^^^^^^^^^
+
+The easiest way is to backup and remove the configuration file. The default
+configuration file location is '${HOME}/.kamakirc'.
+
+To reset kamaki, a user needs the authentication URL and TOKEN:
 
 .. code-block:: console
 
-    $ kamaki -V
+    $ kamaki config set cloud.default.url URL
+    $ kamaki config set cloud.default.token TOKEN
 
-Existing kamaki users should convert their configuration files to v9. To do
-that, kamaki 0.9 can inspect the configuration file and suggests a list of
-config file transformations, which are performed automatically after users'
-permission. This mechanism is invoked when an API-related kamaki command is
-fired. On example 2.1 we suggest using the `user authenticate` command to start
-the conversion mechanism for the configuration file.
+After that, a new configuration file will be created. In most cases, this is
+enough, since kamaki automatically sets the correct options for every
+functionality.
+
+Automatic migration
+^^^^^^^^^^^^^^^^^^^
+
+Another way is to let kamaki change the file automatically. Kamaki always
+inspects the configuration file and, if understood as an older version, it
+suggests some necessary modifications (user permission is required).
+
+On example 2.1 we suggest using the `user info` command to invoke the migration
+mechanism.
 
 .. code-block:: console
     :emphasize-lines: 1
 
     Example 2.1: Convert config file while authenticating user "exampleuser"
 
-    $ kamaki user authenticate
-    Config file format version >= 9.0 is required
+    $ kamaki user info
+    Config file format version >= 0.12 is required
     Configuration file: "/home/exampleuser/.kamakirc"
     but kamaki can fix this:
     Calculating changes while preserving information
     ... rescue global.token => cloud.default.token
     ... rescue config.cli => global.config_cli
     ... rescue history.file => global.history_file
+    ... change global.network_cli value: `cyclades` => `network`
     ... DONE
     The following information will NOT be preserved:
         global.account =
@@ -74,7 +91,7 @@ the conversion mechanism for the configuration file.
         file.url = https://pithos.okeanos.grnet.gr/v1
         image.url = https://cyclades.okeanos.grnet.gr/plankton
 
-    Kamaki is ready to convert the config file to version 9.0
+    Kamaki is ready to convert the config file to version 0.12
     Overwrite file /home/exampleuser/.kamakirc ? [Y, y]
 
 At this point, we should examine the kamaki output. Most options are renamed to
@@ -82,7 +99,7 @@ match the latest configuration file version specifications.
 
 Lets take a look at the discarded options:
 
-* `global.account` and `user.account` are not used anymore.
+* `global.account` and `user.account` are not used since version 0.9
     The same is true for the synonyms `store.account` and `pithos.account`.
     These options were used to explicitly set a user account or uuid to a
     pithos call. In the latest Synnefo version (>= 0.14), these features are
@@ -94,7 +111,7 @@ Lets take a look at the discarded options:
     correct option after the conversion is complete (Example 2.2).
 
 Users should press *y* when they are ready, which will cause the default config
-file to be modified so that it conforms with the latest version.
+file to be modified.
 
 .. code-block:: console
     :emphasize-lines: 1
@@ -178,43 +195,38 @@ or query kamaki for a specific cloud:
     $
 
 Now kamaki can use any of these clouds, with the **- - cloud** attribute. If
-the **- - cloud** option is ommited, kamaki will query the `default` cloud.
+the **- - cloud** option is omitted, kamaki will query the `default` cloud.
 
-One way to test this, is the `user athenticate` command:
-
-.. code-block:: console
-
-    $ kamaki --cloud=devel user authenticate
-     ...
-     user          :
-        id         :  725d5de4-1bab-45ac-9e98-38a60a8c543c
-        name       :  Devel User
-    $
-    $ kamaki --cloud=testing user authenticate
-     ...
-     user          :
-        id         :  4ed5d527-bab1-ca54-89e9-c345c8a06a83
-        name       :  Testing User
-    $
-    $ kamaki --cloud=default user authenticate
-     ...
-     user          :
-        id         :  4d3f4u17-u53r-4u7h-451n-4u7h3n7ic473
-        name       :  Default User
-    $
-    $ kamaki user authenticate
-     ...
-     user          :
-        id         :  4d3f4u17-u53r-4u7h-451n-4u7h3n7ic473
-        name       :  Default User
-    $
-
-In interactive cell, the cloud can be picked when invoking the shell, with
-the **- - cloud** option.
+One way to test this, is the `user info` command:
 
 .. code-block:: console
 
-    $ kamaki --cloud=devel
+    $ kamaki --cloud=devel user info
+     ...
+    id         :  725d5de4-1bab-45ac-9e98-38a60a8c543c
+    name       :  Devel User
+    $
+    $ kamaki --cloud=testing user info
+     ...
+    id         :  4ed5d527-bab1-ca54-89e9-c345c8a06a83
+    name       :  Testing User
+    $
+    $ kamaki --cloud=default user info
+     ...
+    id         :  4d3f4u17-u53r-4u7h-451n-4u7h3n7ic473
+    name       :  Default User
+    $
+    $ kamaki user info
+     ...
+    id         :  4d3f4u17-u53r-4u7h-451n-4u7h3n7ic473
+    name       :  Default User
+    $
+
+In interactive cell, the cloud option should be passed when calling the shell.
+
+.. code-block:: console
+
+    $ kamaki-shell --cloud=devel
     kamaki v0.10 - Interactive Shell
 
     /exit       terminate kamaki
@@ -262,7 +274,7 @@ There are two kinds of configuration options:
     mandatory options (URL, token) and some advanced / optional (e.g.,
     service-specific URL overrides or versions)
 
-Kamaki comes with preset default values to all kamaki-releated configuration
+Kamaki comes with preset default values to all kamaki-related configuration
 options. Cloud-related information is not included in presets and should be
 provided by the user. Kamaki-related options can also be modified.
 
@@ -307,20 +319,18 @@ Editing options
 Kamaki config command allows users to see and manage all configuration options.
 
 * kamaki config list
-    lists all configuration options of a kamaki setup
+    lists all configuration options
 
-* kamaki config get <group.option>
-    show the value of a specific configuration option. Options must be of the
-    form *group.option*. A single *option* is equivalent to *global.option*,
-    with the exception of the term *cloud* (see bellow)
+* kamaki config get <group>[.option] | <option>
+    show the value of a configuration option.A single *option* is equivalent to
+    *global.option*, except if this group exist (*global*, *cloud*)
 
 * kamaki config set <group.option> <value>
     set the group.option to value. If no group is given, it defaults to
     *global*.
 
-* kamaki config delete <group.option>
-    delete a configuration option. If no group is given, it defaults to
-    *global*
+* kamaki config delete <group>[.option] | <option>
+    delete a configuration option, group, or global option.
 
 The above commands cause option values to be permanently stored in the Kamaki configuration file.
 
@@ -370,8 +380,8 @@ Editing the configuration file
 The configuration file is a simple text file that can be created by the user.
 
 .. note:: users of kamaki < 0.9 can use the latest versions to automatically
-    convert their old configuration files to the new configuration file(s).
-    See `these instructions <#migrating-from-kamaki-0-8-x-to-0-9-or-better>`_
+    convert their old configuration files to the new configuration file(s). See
+    `these instructions <#mMigrating-configuration-file-to-latest-version>`_
     for more.
 
 A simple way to create the configuration file is to set a configuration option
@@ -379,7 +389,7 @@ using the kamaki config command. For example:
 
 .. code-block:: console
 
-    $ kamaki config set global.log_file /home/exampleuser/logs/kamaki.log
+    $ kamaki config set log_file /home/exampleuser/logs/kamaki.log
 
 In the above example, if the kamaki configuration file does not exist, it will
 be created with all the default values plus the *global.log_file* option set to
@@ -542,11 +552,11 @@ or a specific method from a service (e.g., create_server @ cyclades)::
     $ kamaki livetest cyclades create_server
 
 
-The unit testing system
-"""""""""""""""""""""""
+The unit tests
+""""""""""""""
 
-Kamaki container a set of finegrained unit tests for the kamaki.clients
-package. This set is not used when kamaki is running. Instead, it is aimed to
-developers who debug or extent kamaki. For more information, check the
+Kamaki features a set of unit tests for the kamaki.clients package. This set is
+not used when kamaki is running. Instead, it is aimed to developers who debug
+or extent kamaki. For more information, check the
 `Going Agile <developers/extending-clients-api.html#going-agile>`_ entry at the
 `developers section <developers/extending-clients-api.html>`_.

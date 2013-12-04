@@ -164,12 +164,13 @@ class Config(RawConfigParser):
             cyclades=dict(serv='compute', cmd='server'),
             server=dict(serv='compute', cmd='server'),
             flavor=dict(serv='compute', cmd='flavor'),
-            network=dict(serv='compute', cmd='network'),
+            network=dict(serv='network', cmd='network'),
             astakos=dict(serv='astakos', cmd='user'),
             user=dict(serv='astakos', cmd='user'),
         )
 
-        self.set('global', 'default_' + CLOUD_PREFIX, 'default')
+        dc = 'default_' + CLOUD_PREFIX
+        self.set('global', dc, self.get('global', dc) or 'default')
         for s in self.sections():
             if s in ('global', ):
                 # global.url, global.token -->
@@ -211,6 +212,17 @@ class Config(RawConfigParser):
                         err.flush()
                         self.set_cloud('default', term, gval)
                     self.remove_option(s, term)
+                print 'CHECK'
+                for term, wrong, right in (
+                        ('ip', 'cyclades', 'network'),
+                        ('network', 'cyclades', 'network'),):
+                    k = '%s_cli' % term
+                    v = self.get(s, k)
+                    if v in (wrong, ):
+                        err.write('... change %s.%s value: `%s` => `%s`\n' % (
+                            s, k, wrong, right))
+                        err.flush()
+                        self.set(s, k, right)
             # translation for <service> or <command> settings
             # <service> or <command group> settings --> translation --> global
             elif s in translations:
@@ -276,10 +288,16 @@ class Config(RawConfigParser):
         if CLOUD_PREFIX in sections:
             for r in self.keys(CLOUD_PREFIX):
                 log.debug('... found cloud "%s"' % r)
-                return 0.9
+            ipv = self.get('global', 'ip_cli')
+            if ipv in ('cyclades', ):
+                    return 0.11
+            netv = self.get('global', 'network_cli')
+            if netv in ('cyclades', ):
+                return 0.10
+            return 0.12
         log.debug('........ nope')
         log.debug('All heuristics failed, cannot decide')
-        return 0.9
+        return 0.12
 
     def get_cloud(self, cloud, option):
         """
