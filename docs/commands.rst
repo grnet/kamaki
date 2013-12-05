@@ -321,7 +321,7 @@ Showcase: Reserve and attach IP to server
 .. Note:: In kamaki shell, / is used to access top-level command groups while
     working in command group contexts
 
-network (Compute/Cyclades)
+network (Network/Cyclades)
 --------------------------
 
 .. code-block:: text
@@ -404,6 +404,8 @@ Showcase: Connect a network to a VM
 container (Storage/Pithos+)
 ---------------------------
 
+.. code-block:: text
+
     info      Get information about a container
     modify    Modify the properties of a container
     create    Create a new container
@@ -414,12 +416,16 @@ container (Storage/Pithos+)
 group (Storage/Pithos+)
 -----------------------
 
+.. code-block:: text
+
     create    Create a group of users
     list      List all groups and group members
     delete    Delete a user group
 
 sharer (Storage/Pithos+)
 ------------------------
+
+.. code-block:: text
 
     info      Details on a Pithos+ sharer account (default: current account)
     list      List accounts who share file objects with current user

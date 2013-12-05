@@ -552,8 +552,8 @@ or a specific method from a service (e.g., create_server @ cyclades)::
     $ kamaki livetest cyclades create_server
 
 
-The unit tests
-""""""""""""""
+Unit tests
+""""""""""
 
 Kamaki features a set of unit tests for the kamaki.clients package. This set is
 not used when kamaki is running. Instead, it is aimed to developers who debug
