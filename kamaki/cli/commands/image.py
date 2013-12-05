@@ -48,7 +48,8 @@ from kamaki.cli.argument import (
     FlagArgument, ValueArgument, RepeatableArgument, KeyValueArgument,
     IntArgument, ProgressBarArgument)
 from kamaki.cli.commands.cyclades import _init_cyclades
-from kamaki.cli.errors import raiseCLIError, CLIBaseUrlError
+from kamaki.cli.errors import (
+    raiseCLIError, CLIBaseUrlError, CLIInvalidArgument)
 from kamaki.cli.commands import _command_init, errors, addLogSettings
 from kamaki.cli.commands import (
     _optional_output_cmd, _optional_json, _name_filter, _id_filter)
@@ -373,6 +374,48 @@ class image_modify(_init_image, _optional_output_cmd):
         self._run(image_id=image_id)
 
 
+class PithosLocationArgument(ValueArgument):
+    """Resolve pithos url, return in the form pithos://uuid/container/path"""
+
+    def __init__(
+            self, help=None, parsed_name=None, default=None, user_uuid=None):
+        super(PithosLocationArgument, self).__init__(
+            help=help, parsed_name=parsed_name, default=default)
+        self.uuid, self.container, self.path = user_uuid, None, None
+
+    def setdefault(self, term, value):
+        if not getattr(self, term, None):
+            setattr(self, term, value)
+
+    @property
+    def value(self):
+        return 'pithos://%s/%s/%s' % (self.uuid, self.container, self.path)
+
+    @value.setter
+    def value(self, location):
+        if location:
+            from kamaki.cli.commands.pithos import _pithos_container as pc
+            try:
+                uuid, self.container, self.path = pc._resolve_pithos_url(
+                    location)
+                self.uuid = uuid or self.uuid
+                for term in ('container', 'path'):
+                    assert getattr(self, term, None), 'No %s' % term
+            except Exception as e:
+                raise CLIInvalidArgument(
+                    'Invalid Pithos+ location %s (%s)' % (location, e),
+                    details=[
+                        'The image location must be a valid Pithos+',
+                        'location. There are two valid formats:',
+                        '  pithos://USER_UUID/CONTAINER/PATH',
+                        'OR',
+                        '  /CONTAINER/PATH',
+                        'To see all containers:',
+                        '  [kamaki] container list',
+                        'To list the contents of a container:',
+                        '  [kamaki] container list CONTAINER'])
+
+
 @command(image_cmds)
 class image_register(_init_image, _optional_json):
     """(Re)Register an image file to an Image service
@@ -381,7 +424,7 @@ class image_register(_init_image, _optional_json):
     only automatically (e.g., image id). There are also some custom user
     metadata, called properties.
     A register command creates a remote meta file at
-    .  <container>:<image path>.meta
+    /<container>/<image path>.meta
     Users may download and edit this file and use it to re-register one or more
     images.
     In case of a meta file, runtime arguments for metadata or properties
@@ -417,25 +460,20 @@ class image_register(_init_image, _optional_json):
         uuid=ValueArgument('Custom user uuid', '--uuid'),
         local_image_path=ValueArgument(
             'Local image file path to upload and register '
-            '(still need target file in the form container:remote-path )',
+            '(still need target file in the form /ontainer/remote-path )',
             '--upload-image-file'),
         progress_bar=ProgressBarArgument(
-            'Do not use progress bar', '--no-progress-bar', default=False)
+            'Do not use progress bar', '--no-progress-bar', default=False),
+        name=ValueArgument('The name of the new image', '--name'),
+        pithos_location=PithosLocationArgument(
+            'The Pithos+ image location to put the image at. Format:       '
+            'pithos://USER_UUID/CONTAINER/IMAGE                  or   '
+            '/CONTAINER/IMAGE',
+            '--location')
     )
+    required = ('name', 'pithos_location')
 
-    def _get_user_id(self):
-        atoken = self.client.token
-        if getattr(self, 'auth_base', False):
-            return self.auth_base.term('id', atoken)
-        else:
-            astakos_url = self.config.get('user', 'url') or self.config.get(
-                'astakos', 'url')
-            if not astakos_url:
-                raise CLIBaseUrlError(service='astakos')
-            user = AstakosClient(astakos_url, atoken)
-            return user.term('id')
-
-    def _get_pithos_client(self, container):
+    def _get_pithos_client(self, locator):
         if self['no_metafile_upload']:
             return None
         ptoken = self.client.token
@@ -447,12 +485,7 @@ class image_register(_init_image, _optional_json):
             purl = self.config.get_cloud('pithos', 'url')
         if not purl:
             raise CLIBaseUrlError(service='pithos')
-        return PithosClient(purl, ptoken, self._get_user_id(), container)
-
-    def _store_remote_metafile(self, pclient, remote_path, metadata):
-        return pclient.upload_from_string(
-            remote_path, _validate_image_meta(metadata, return_str=True),
-            container_info_cache=self.container_info_cache)
+        return PithosClient(purl, ptoken, locator.uuid, locator.container)
 
     def _load_params_from_file(self, location):
         params, properties = dict(), dict()
@@ -488,98 +521,37 @@ class image_register(_init_image, _optional_json):
         for k, v in self['properties'].items():
             properties[k.upper().replace('-', '_')] = v
 
-    def _validate_location(self, location):
-        if not location:
-            raiseCLIError(
-                'No image file location provided',
-                importance=2, details=[
-                    'An image location is needed. Image location format:',
-                    '  <container>:<path>',
-                    ' where an image file at the above location must exist.'
-                    ] + howto_image_file)
-        try:
-            return _validate_image_location(location)
-        except AssertionError as ae:
-            raiseCLIError(
-                ae, 'Invalid image location format',
-                importance=1, details=[
-                    'Valid image location format:',
-                    '  <container>:<img-file-path>'
-                    ] + howto_image_file)
-
-    @staticmethod
-    def _old_location_format(location):
-        prefix = 'pithos://'
-        try:
-            if location.startswith(prefix):
-                uuid, sep, rest = location[len(prefix):].partition('/')
-                container, sep, path = rest.partition('/')
-                return (uuid, container, path)
-        except Exception as e:
-            raiseCLIError(e, 'Invalid location format', details=[
-                'Correct location format:', '  <container>:<image path>'])
-        return ()
-
-    def _mine_location(self, container_path):
-        old_response = self._old_location_format(container_path)
-        if old_response:
-            return old_response
-        uuid = self['uuid'] or (self._username2uuid(self['owner_name']) if (
-                    self['owner_name']) else self._get_user_id())
-        if not uuid:
-            if self['owner_name']:
-                raiseCLIError('No user with username %s' % self['owner_name'])
-            raiseCLIError('Failed to get user uuid', details=[
-                'For details on current user:',
-                '  /user whoami',
-                'To authenticate a new user through a user token:',
-                '  /user authenticate <token>'])
-        if self['container']:
-            return uuid, self['container'], container_path
-        container, sep, path = container_path.partition(':')
-        if not (bool(container) and bool(path)):
-            raiseCLIError(
-                'Incorrect container-path format', importance=1, details=[
-                'Use : to seperate container form path',
-                '  <container>:<image-path>',
-                'OR',
-                'Use -C to specifiy a container',
-                '  -C <container> <image-path>'] + howto_image_file)
-
-        return uuid, container, path
-
     @errors.generic.all
     @errors.plankton.connection
-    @errors.pithos.container
-    def _run(self, name, uuid, dst_cont, img_path):
+    def _run(self, name, location):
+        locator = self.arguments['pithos_location']
         if self['local_image_path']:
             with open(self['local_image_path']) as f:
-                pithos = self._get_pithos_client(dst_cont)
+                pithos = self._get_pithos_client(locator)
                 (pbar, upload_cb) = self._safe_progress_bar('Uploading')
                 if pbar:
                     hash_bar = pbar.clone()
                     hash_cb = hash_bar.get_generator('Calculating hashes')
                 pithos.upload_object(
-                    img_path, f,
+                    locator.path, f,
                     hash_cb=hash_cb, upload_cb=upload_cb,
                     container_info_cache=self.container_info_cache)
                 pbar.finish()
 
-        location = 'pithos://%s/%s/%s' % (uuid, dst_cont, img_path)
         (params, properties, new_loc) = self._load_params_from_file(location)
         if location != new_loc:
-            uuid, dst_cont, img_path = self._validate_location(new_loc)
+            locator.value = new_loc
         self._load_params_from_args(params, properties)
-        pclient = self._get_pithos_client(dst_cont)
+        pclient = self._get_pithos_client(locator)
 
         #check if metafile exists
-        meta_path = '%s.meta' % img_path
+        meta_path = '%s.meta' % locator.path
         if pclient and not self['metafile_force']:
             try:
                 pclient.get_object_info(meta_path)
                 raiseCLIError(
-                    'Metadata file %s:%s already exists, abort' % (
-                        dst_cont, meta_path),
+                    'Metadata file /%s/%s already exists, abort' % (
+                        locator.container, meta_path),
                     details=['Registration ABORTED', 'Try -f to overwrite'])
             except ClientError as ce:
                 if ce.status != 404:
@@ -594,7 +566,8 @@ class image_register(_init_image, _optional_json):
                     ce, 'Nonexistent image file location\n\t%s' % location,
                     details=[
                         'Does the image file %s exist at container %s ?' % (
-                            img_path, dst_cont)] + howto_image_file)
+                            locator.path,
+                            locator.container)] + howto_image_file)
             raise
         r['owner'] += ' (%s)' % self._uuid2username(r['owner'])
         self._print(r, self.print_dict)
@@ -607,19 +580,25 @@ class image_register(_init_image, _optional_json):
                     container_info_cache=self.container_info_cache)
             except TypeError:
                 self.error(
-                    'Failed to dump metafile %s:%s' % (dst_cont, meta_path))
+                    'Failed to dump metafile /%s/%s' % (
+                        locator.container, meta_path))
                 return
             if self['json_output'] or self['output_format']:
                 self.print_json(dict(
-                    metafile_location='%s:%s' % (dst_cont, meta_path),
+                    metafile_location='/%s/%s' % (
+                        locator.container, meta_path),
                     headers=meta_headers))
             else:
-                self.error('Metadata file uploaded as %s:%s (version %s)' % (
-                    dst_cont, meta_path, meta_headers['x-object-version']))
+                self.error('Metadata file uploaded as /%s/%s (version %s)' % (
+                    locator.container,
+                    meta_path,
+                    meta_headers['x-object-version']))
 
-    def main(self, name, container___image_path):
+    def main(self):
         super(self.__class__, self)._run()
-        self._run(name, *self._mine_location(container___image_path))
+        self.arguments['pithos_location'].setdefault(
+            'uuid', self.auth_base.user_term('id'))
+        self._run(self['name'], self['pithos_location'])
 
 
 @command(image_cmds)

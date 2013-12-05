@@ -181,10 +181,11 @@ class _pithos_container(_pithos_account):
 
     def _run(self, url=None):
         acc, con, self.path = self._resolve_pithos_url(url or '')
-        self.account = acc or getattr(self, 'account', '')
+        #  self.account = acc or getattr(self, 'account', '')
         super(_pithos_container, self)._run()
         self.container = con or self['container'] or getattr(
             self, 'container', None) or getattr(self.client, 'container', '')
+        self.client.account = acc or self.client.account
         self.client.container = self.container
 
 
@@ -618,7 +619,7 @@ class _source_destination(_pithos_container, _optional_output_cmd):
             container=self[
                 'destination_container'] or dst_con or self.client.container,
             account=self[
-                'destination_user_uuid'] or dst_acc or self.client.account)
+                'destination_user_uuid'] or dst_acc or self.account)
         self.dst_path = dst_path or self.path
 
 
@@ -647,7 +648,7 @@ class file_copy(_source_destination):
                     src_object=src,
                     dst_container=self.dst_client.container,
                     dst_object=dst,
-                    source_account=self.account,
+                    source_account=self.client.account,
                     source_version=self['source_version'],
                     public=self['public'],
                     content_type=self['content_type'])
