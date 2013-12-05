@@ -42,7 +42,6 @@ from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.utils import filter_dicts_by_dict
 from kamaki.clients.image import ImageClient
 from kamaki.clients.pithos import PithosClient
-from kamaki.clients.astakos import AstakosClient
 from kamaki.clients import ClientError
 from kamaki.cli.argument import (
     FlagArgument, ValueArgument, RepeatableArgument, KeyValueArgument,
@@ -347,25 +346,23 @@ class image_modify(_init_image, _optional_output_cmd):
     @errors.plankton.connection
     @errors.plankton.id
     def _run(self, image_id):
-        for mid in self['member_ID_to_add']:
+        for mid in (self['member_ID_to_add'] or []):
             self.client.add_member(image_id, mid)
-        for mid in self['member_ID_to_remove']:
+        for mid in (self['member_ID_to_remove'] or []):
             self.client.remove_member(image_id, mid)
-        if len([term for term in self.required if (
-                self[term] and not term.startswith('member_ID'))]) > 1:
-            meta = self.client.get_meta(image_id)
-            for k, v in self['property_to_set'].items():
-                meta['properties'][k.upper()] = v
-            for k in self['property_to_del']:
-                meta['properties'][k.upper()] = None
-            self._optional_output(self.client.update_image(
-                image_id,
-                name=self['image_name'],
-                disk_format=self['disk_format'],
-                container_format=self['container_format'],
-                status=self['status'],
-                public=self['publish'] or self['unpublish'] or None,
-                **meta['properties']))
+        meta = self.client.get_meta(image_id)
+        for k, v in self['property_to_set'].items():
+            meta['properties'][k.upper()] = v
+        for k in (self['property_to_del'] or []):
+            meta['properties'][k.upper()] = None
+        self._optional_output(self.client.update_image(
+            image_id,
+            name=self['image_name'],
+            disk_format=self['disk_format'],
+            container_format=self['container_format'],
+            status=self['status'],
+            public=self['publish'] or self['unpublish'] or None,
+            **meta['properties']))
         if self['with_output']:
             self._optional_output(self.get_image_details(image_id))
 
@@ -754,7 +751,7 @@ class imagecompute_modify(_init_cyclades, _optional_output_cmd):
         if self['property_to_add']:
             self.client.update_image_metadata(
                 image_id, **self['property_to_add'])
-        for key in self['property_to_del']:
+        for key in (self['property_to_del'] or []):
             self.client.delete_image_metadata(image_id, key)
         if self['with_output']:
             self._optional_output(self.client.get_image_details(image_id))

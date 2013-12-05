@@ -197,8 +197,9 @@ def _setup_logging(silent=False, debug=False, verbose=False):
 
 def _check_config_version(cnf):
     guess = cnf.guess_version()
-    if exists(cnf.path) and guess < 0.9:
-        print('Config file format version >= 9.0 is required')
+    if exists(cnf.path) and guess < 0.12:
+        print('Config file format version >= 0.12 is required (%s found)' % (
+            guess))
         print('Configuration file: %s' % cnf.path)
         print('Attempting to fix this:')
         print('Calculating changes while preserving information')

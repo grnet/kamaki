@@ -163,9 +163,7 @@ class user_name2uuid(_init_synnefo_astakosclient, _optional_json):
         self._run(usernames=((username, ) + more_usernames))
 
 
-@command(quota_commands)
-class quota_list(_init_synnefo_astakosclient, _optional_json):
-    """Get user quotas"""
+class _quota(_init_synnefo_astakosclient, _optional_json):
 
     _to_format = set(['cyclades.disk', 'pithos.diskspace', 'cyclades.ram'])
 
@@ -180,6 +178,29 @@ class quota_list(_init_synnefo_astakosclient, _optional_json):
                     for attr, v in category[service].items():
                         category[service][attr] = format_size(v)
         self.print_dict(quotas, *args, **kwargs)
+
+
+@command(quota_commands)
+class quota_info(_quota):
+    """Get quota for a service (cyclades, pithos, astakos)"""
+
+    @errors.generic.all
+    @errors.user.astakosclient
+    def _run(self, service):
+        r = dict()
+        for k, v in self.client.get_quotas()['system'].items():
+            if (k.startswith(service)):
+                r[k] = v
+        self._print({'%s*' % service: r}, self._print_quotas)
+
+    def main(self, service):
+        super(self.__class__, self)._run()
+        self._run(service)
+
+
+@command(quota_commands)
+class quota_list(_quota):
+    """Get user quotas"""
 
     @errors.generic.all
     @errors.user.astakosclient
@@ -565,25 +586,24 @@ class endpoint_list(_init_synnefo_astakosclient, _optional_json):
 #  command project
 
 
-_project_specs = """
-    {
-        "name": name,
-        "owner": uuid,
-        "homepage": homepage,         # optional
-        "description": description,   # optional
-        "comments": comments,         # optional
-        "start_date": date,           # optional
-        "end_date": date,
-        "join_policy": "auto" | "moderated" | "closed",  # default: "moderated"
-        "leave_policy": "auto" | "moderated" | "closed", # default: "auto"
-        "resources": {
-            "cyclades.vm": {
-                "project_capacity": int or null,
-                 "member_capacity": int
+_project_specs = """{
+    "name": name,
+    "owner": uuid,
+    "homepage": homepage,         # optional
+    "description": description,   # optional
+    "comments": comments,         # optional
+    "start_date": date,           # optional
+    "end_date": date,
+    "join_policy": "auto" | "moderated" | "closed",  # default: "moderated"
+    "leave_policy": "auto" | "moderated" | "closed", # default: "auto"
+    "resources": {
+        "cyclades.vm": {
+            "project_capacity": int or null,
+            "member_capacity": int
             }
         }
-  }
-  """
+    }
+"""
 
 
 def apply_notification(foo):
@@ -632,9 +652,9 @@ class project_info(_init_synnefo_astakosclient, _optional_json):
 
 @command(project_commands)
 class project_create(_init_synnefo_astakosclient, _optional_json):
-    """Apply for a new project (input a json-dict)
-    Project details must be provided as a json-formated dict from the standard
-    input, or through a file
+    """Apply for a new project (enter data though standard input or file path)
+    Project details must be provided as a json-formated dict from the
+    standard input, or through a file
     """
 
     __doc__ += _project_specs
