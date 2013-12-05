@@ -1338,14 +1338,15 @@ class container_modify(_pithos_account, _optional_json):
             'Set a versioning scheme (%s)' % ', '.join(
                 VersioningArgument.schemes), '--versioning')
     )
-    required = ['metadata_to_add', 'metadata_to_delete', 'sizelimit']
+    required = [
+        'metadata_to_add', 'metadata_to_delete', 'sizelimit', 'versioning']
 
     @errors.generic.all
     @errors.pithos.connection
     @errors.pithos.container
     def _run(self, container):
         metadata = self['metadata_to_add']
-        for k in self['metadata_to_delete']:
+        for k in (self['metadata_to_delete'] or []):
             metadata[k] = ''
         if metadata:
             self.client.set_container_meta(metadata)
@@ -1650,8 +1651,8 @@ class group_create(_pithos_group, _optional_json):
 
     def main(self, groupname):
         super(self.__class__, self)._run()
-        users = self['user_uuid'] + self._usernames2uuids(
-            self['username']).values()
+        users = (self['user_uuid'] or []) + self._usernames2uuids(
+            self['username'] or []).values()
         if users:
             self._run(groupname, *users)
         else:

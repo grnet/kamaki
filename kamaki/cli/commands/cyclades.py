@@ -551,7 +551,7 @@ class server_modify(_init_cyclades, _optional_output_cmd):
         if self['metadata_to_set']:
             self.client.update_server_metadata(
                 server_id, **self['metadata_to_set'])
-        for key in self['metadata_to_delete']:
+        for key in (self['metadata_to_delete'] or []):
             errors.cyclades.metadata(
                 self.client.delete_server_metadata)(server_id, key=key)
         if self['with_output']:
