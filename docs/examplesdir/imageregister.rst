@@ -8,42 +8,33 @@ the image.
 
 The image location format at user level::
 
-    <container>:<object path>
+    pithos://<user_uuid>/<container>/<object path>
 
-    e.g.,:
+    e.g., pithos://my-u53r-1d/images/debian_base3.diskdump
 
-    pithos:debian_base3.diskdump
+In **file** and **container** contexts, users may also use the shortcut:
 
-.. note:: The image API requires the image location in the form
+    /<container>/<object path>
 
-    *pithos://<user uuid>/<container>/<object path>*
-
-    The translation between the two formats is handled internally by kamaki.
-    The latest format is still acceptable by kamaki due to backward
-    compatibility but it is going to be deprecated from kamaki 0.12 and on.
-
+    e.g., /images/debian_base3.diskdump
 
 Register an image
 -----------------
 
 Let the image file `debian_base3.diskdump` be a debian image located at the
-current directory.
+current local directory.
 
 Upload the image to container `pithos`
 
 .. code-block:: console
 
-    [kamaki]: file upload debian_base3.diskdump pithos
-    Uploading /home/someuser/debian_base3.diskdump --> pithos:debian_base3.diskdump
-    Done
-    [kamaki]:
+    $ kamaki file upload debian_base3.diskdump pithos
 
 Register the image object with the name 'Debian Base Alpha'
 
-
 .. code-block:: console
 
-    [kamaki]: image register 'Debian Base Alpha' pithos:debian_base3.diskdump
+    kamaki image register 'Debian Base Alpha' pithos:debian_base3.diskdump
     checksum:         3cb03556ec971f...e8dd6190443b560cb7
     container-format: bare
     created-at:       2013-06-19 08:00:22
