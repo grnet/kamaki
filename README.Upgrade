@@ -1,19 +1,6 @@
 This document describes changes and steps to upgrade from kamaki 0.11 to
 kamaki 0.12
 
-1. Method post_user_catalogs in kamaki.clients.astakos is going to be
-deprecated at version 0.13. It must be replaced with individual calls to
-uuids2usernames and/or usernames2uuids. bw compatibility is kept for version
-0.12
-
-2. Update the kamaki configuration with these commands:
-  $ kamaki config delete project_cli
-  $ kamaki config delete astakos_cli
-  $ kamaki config delete user_cli
-
-3. /user commands have changed:
-    /user info --> /user session info
-    /user whoami --> /user session info
-    /user pick --> /user session select
-    /user add --> /user session authenticate
-
+1. Update the kamaki configuration with these commands:
+  $ kamaki config delete network_cli
+  $ kamaki config delete ip_cli
