@@ -42,13 +42,15 @@ command-line tool for managing a local or remote Synnefo deployment.
 
 * internally by the Synnefo development team to test the Synnefo software,
 
-* by the deployment team which operates GRNET ~okeanos service
+* by the deployment team which operates `GRNET ~okeanos` service
 
-* as the main Pithos+ client in Linux and other Unix-like environments
+* as the main `Pithos+` client in Linux and other Unix-like environments, as
+    well as in windows and osx by users with a preference for command line
 
-* by third-party Synnefo deployers for testing and debugging their setup
+* by third-party `Synnefo` deployers for testing and debugging their setup
 
-* as an API library for other components in the Synnefo universe.
+* as an API library for other components in the Synnefo universe ((`burnin`,
+    `image-creator`) or external applications
 
 Community & Support
 -------------------

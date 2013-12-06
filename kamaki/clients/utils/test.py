@@ -127,6 +127,39 @@ class Utils(TestCase):
                 ('/p1/%s/p2' % utf.decode('utf-8'), ('p1', utf, 'p2'))):
             self.assertEqual(utils.path4url(*args), expected)
 
+    def test_readall(self):
+
+        class fakefile(object):
+
+            responses = ['1', '2', '3', '4', '5', '6', '7']
+            failures = [False, ] * 7
+
+            def __init__(self):
+                def _read_gen(self):
+                    for i, r in enumerate(self.responses):
+                        if self.failures[i]:
+                            yield ''
+                        yield r
+                self._reader = _read_gen(self)
+
+            def read(self, size=None):
+                return self._reader.next()
+
+        fileobj = fakefile()
+        self.assertEqual(
+            ''.join(fakefile.responses), utils.readall(fileobj, 7))
+        fileobj = fakefile()
+        self.assertEqual(
+            ''.join(fakefile.responses[:4]), utils.readall(fileobj, 4))
+        fileobj = fakefile()
+        self.assertRaises(IOError, utils.readall, fileobj, 10)
+        fileobj = fakefile()
+        fileobj.failures[1] = True
+        self.assertRaises(IOError, utils.readall, fileobj, 7)
+        fileobj = fakefile()
+        fileobj.failures[1] = True
+        self.assertEqual(
+            ''.join(fakefile.responses), utils.readall(fileobj, 7, 8))
 
 if __name__ == '__main__':
     from sys import argv

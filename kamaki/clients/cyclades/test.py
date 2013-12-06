@@ -239,6 +239,83 @@ class CycladesRestClient(TestCase):
                 '/os-floating-ips/%s' % fip, success=success, **kwargs))
 
 
+class CycladesNetworkClient(TestCase):
+
+    """Set up a ComputesRest thorough test"""
+    def setUp(self):
+        self.url = 'http://network.example.com'
+        self.token = 'n2tw0rk70k3n'
+        self.client = cyclades.CycladesNetworkClient(self.url, self.token)
+
+    def tearDown(self):
+        FR.json = vm_recv
+        del self.client
+
+    @patch('kamaki.clients.Client.get', return_value=FR)
+    def test_list_networks(self, get):
+        FR.json = dict(networks='ret val')
+        for detail in (True, None):
+            self.assertEqual(self.client.list_networks(detail), 'ret val')
+            path = '/networks/detail' if detail else '/networks'
+            self.assertEqual(get.mock_calls[-1], call(path, success=200))
+
+    @patch(
+        'kamaki.clients.network.rest_api.NetworkRestClient.networks_post',
+        return_value=FR())
+    def test_create_network(self, networks_post):
+        for name, shared in product((None, 'net name'), (None, True)):
+            FR.json = dict(network='ret val')
+            type = 'net type'
+            self.assertEqual(
+                self.client.create_network(type, name=name, shared=shared),
+                'ret val')
+            req = dict(type=type, admin_state_up=True)
+            if name:
+                req['name'] = name
+            if shared:
+                req['shared'] = shared
+            expargs = dict(json_data=dict(network=req), success=201)
+            self.assertEqual(networks_post.mock_calls[-1], call(**expargs))
+
+    @patch(
+        'kamaki.clients.network.rest_api.NetworkRestClient.ports_post',
+        return_value=FR)
+    def test_create_port(self, ports_post):
+        network_id, device_id, FR.json = 'netid', 'devid', dict(port='ret v')
+        for name, sec_grp, fixed_ips in product(
+                ('port name', None),
+                ([1, 2, 3], None),
+                (
+                    dict(subnet_id='sid', ip_address='ipa'),
+                    dict(subnet_id='sid'), dict(ip_address='ipa'),
+                    None)):
+
+            if fixed_ips:
+                diff = set(['subnet_id', 'ip_address']).difference(fixed_ips)
+                if diff:
+                    self.assertRaises(
+                        ValueError, self.client.create_port,
+                        network_id, device_id,
+                        name=name,
+                        security_groups=sec_grp,
+                        fixed_ips=fixed_ips)
+                    continue
+            self.assertEqual(
+                self.client.create_port(
+                    network_id, device_id,
+                    name=name, security_groups=sec_grp, fixed_ips=fixed_ips),
+                'ret v')
+            req = dict(network_id=network_id, device_id=device_id)
+            if sec_grp:
+                req['security_groups'] = sec_grp
+            if name:
+                req['name'] = name
+            if fixed_ips:
+                req['fixed_ips'] = fixed_ips
+            expargs = dict(json_data=dict(port=req), success=201)
+            self.assertEqual(ports_post.mock_calls[-1], call(**expargs))
+
+
 class CycladesClient(TestCase):
 
     def assert_dicts_are_equal(self, d1, d2):
@@ -533,7 +610,10 @@ if __name__ == '__main__':
     not_found = True
     if not argv[1:] or argv[1] == 'CycladesClient':
         not_found = False
-        runTestCase(CycladesClient, 'Cyclades Client', argv[2:])
+        runTestCase(CycladesNetworkClient, 'Cyclades Client', argv[2:])
+    if not argv[1:] or argv[1] == 'CycladesNetworkClient':
+        not_found = False
+        runTestCase(CycladesNetworkClient, 'CycladesNetwork Client', argv[2:])
     if not argv[1:] or argv[1] == 'CycladesRestClient':
         not_found = False
         runTestCase(CycladesRestClient, 'CycladesRest Client', argv[2:])

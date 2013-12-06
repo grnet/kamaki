@@ -145,7 +145,7 @@ class RequestManager(Logged):
         self.scheme, self.netloc = self._connection_info(url, path, params)
 
     def dump_log(self):
-        plog = '\t[%s]' if self.LOG_PID else ''
+        plog = ('\t[%s]' % self) if self.LOG_PID else ''
         sendlog.info('- -  -   -     -        -             -')
         sendlog.info('%s %s://%s%s%s' % (
             self.method, self.scheme, self.netloc, self.path, plog))
@@ -182,7 +182,7 @@ class RequestManager(Logged):
                 wait = 0.03 * random()
                 sleep(wait)
                 keep_trying -= wait
-        plog = '\t[%s]' if self.LOG_PID else ''
+        plog = ('\t[%s]' % self) if self.LOG_PID else ''
         logmsg = 'Kamaki Timeout %s %s%s' % (self.method, self.path, plog)
         recvlog.debug(logmsg)
         raise ClientError('HTTPResponse takes too long - kamaki timeout')
@@ -244,8 +244,8 @@ class ResponseManager(Logged):
                         data = '%s%s' % (self._content, plog)
                         if self._token:
                             data = data.replace(self._token, '...')
-                        sendlog.info(data)
-                    sendlog.info('-             -        -     -   -  - -')
+                        recvlog.info(data)
+                    recvlog.info('-             -        -     -   -  - -')
                 break
             except Exception as err:
                 if isinstance(err, HTTPException):
@@ -331,7 +331,7 @@ class SilentEvent(Thread):
 
 class Client(Logged):
 
-    MAX_THREADS = 7
+    MAX_THREADS = 1
     DATE_FORMATS = ['%a %b %d %H:%M:%S %Y', ]
     CONNECTION_RETRY_LIMIT = 0
 
@@ -450,7 +450,7 @@ class Client(Logged):
             if data:
                 headers.setdefault('Content-Length', '%s' % len(data))
 
-            plog = '\t[%s]' if self.LOG_PID else ''
+            plog = ('\t[%s]' % self) if self.LOG_PID else ''
             sendlog.debug('\n\nCMT %s@%s%s', method, self.base_url, plog)
             req = RequestManager(
                 method, self.base_url, path,
@@ -492,3 +492,78 @@ class Client(Logged):
 
     def move(self, path, **kwargs):
         return self.request('move', path, **kwargs)
+
+
+class Waiter(object):
+
+    def _wait(
+            self, item_id, wait_status, get_status,
+            delay=1, max_wait=100, wait_cb=None, wait_for_status=False):
+        """Wait while the item is still in wait_status or to reach it
+
+        :param server_id: integer (str or int)
+
+        :param wait_status: (str)
+
+        :param get_status: (method(self, item_id)) if called, returns
+            (status, progress %) If no way to tell progress, return None
+
+        :param delay: time interval between retries
+
+        :param wait_cb: (method(total steps)) returns a generator for
+            reporting progress or timeouts i.e., for a progress bar
+
+        :param wait_for_status: (bool) wait FOR (True) or wait WHILE (False)
+
+        :returns: (str) the new mode if successful, (bool) False if timed out
+        """
+        status, progress = get_status(self, item_id)
+
+        if wait_cb:
+            wait_gen = wait_cb(max_wait // delay)
+            wait_gen.next()
+
+        if wait_for_status ^ (status != wait_status):
+            # if wait_cb:
+            #     try:
+            #         wait_gen.next()
+            #     except Exception:
+            #         pass
+            return status
+        old_wait = total_wait = 0
+
+        while (wait_for_status ^ (status == wait_status)) and (
+                total_wait <= max_wait):
+            if wait_cb:
+                try:
+                    for i in range(total_wait - old_wait):
+                        wait_gen.next()
+                except Exception:
+                    break
+            old_wait = total_wait
+            total_wait = progress or total_wait + 1
+            sleep(delay)
+            status, progress = get_status(self, item_id)
+
+        if total_wait < max_wait:
+            if wait_cb:
+                try:
+                    for i in range(max_wait):
+                        wait_gen.next()
+                except:
+                    pass
+        return status if (wait_for_status ^ (status != wait_status)) else False
+
+    def wait_for(
+            self, item_id, target_status, get_status,
+            delay=1, max_wait=100, wait_cb=None):
+        self._wait(
+            item_id, target_status, get_status, delay, max_wait, wait_cb,
+            wait_for_status=True)
+
+    def wait_while(
+            self, item_id, target_status, get_status,
+            delay=1, max_wait=100, wait_cb=None):
+        self._wait(
+            item_id, target_status, get_status, delay, max_wait, wait_cb,
+            wait_for_status=False)

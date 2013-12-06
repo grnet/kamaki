@@ -1,7 +1,7 @@
 Configuration
 =============
 
-The following refers to the configuration version 0.9 or better. There is also
+The following refers to the configuration version 0.12 or better. There is also
 information on how to convert from older configuration files.
 
 In this scenario, we start with an old configuration file at
@@ -22,8 +22,8 @@ Now, let kamaki do the conversion
 
 .. code-block:: console
 
-    $ kamaki user authenticate
-    . Config file format version >= 9.0 is required
+    $ kamaki user info
+    . Config file format version >= 0.12 is required
     . Configuration file: /home/someuser/.kamakirc
     . Attempting to fix this:
     . Calculating changes while preserving information
@@ -37,6 +37,7 @@ Now, let kamaki do the conversion
     . ... rescue server.cli => global.server_cli
     . ... rescue history.file => global.history_file
     . ... rescue history.cli => global.history_cli
+    . ... change network_cli value: cyclades => network
     . ... DONE
     . The following information will NOT be preserved:
     .     global.account = AccountName
@@ -80,7 +81,7 @@ Ask kamaki to load from a non-existing configuration file
 
 .. code-block:: console
 
-    $ kamaki -c nonexisting.cnf user authenticate
+    $ kamaki -c nonexisting.cnf user info
     . No cloud is configured
     . |  To configure a new cloud "<cloud name>", find and set the
     . |  single authentication URL and token:
@@ -106,7 +107,7 @@ Try to connect
 
 .. code-block:: console
 
-    $ kamaki -c nonexisting.cnf user authenticate
+    $ kamaki -c nonexisting.cnf user info
     . No authentication token provided for cloud "mytest"
     . |  Set a token for cloud mytest:
     . |    kamaki config set cloud.mytest.token <token>
@@ -149,7 +150,7 @@ Check for clouds and attempt to authenticate
 
     $ kamaki config get cloud
     . cloud.default.token = my0ld70k3n==
-    $ kamaki user authenticate
+    $ kamaki user info
     . No authentication URL provided for cloud "mytest"
     . |  Set a URL for cloud mytest:
     . |    kamaki config set cloud.mytest.url <URL>
@@ -160,7 +161,7 @@ Set a non-existing URL for cloud.default and attempt authentication
 .. code-block:: console
 
     $ kamaki config set cloud.default.url https://nonexisting.example.com
-    $ kamaki user authenticate
+    $ kamaki user info
     . Failed while http-connecting to https://nonexisting.example.com
     $
 
@@ -169,7 +170,7 @@ Set the URL from the previous example and attempt authentication
 .. code-block:: console
 
     $ kamaki config set cloud.default.url https://accounts.example.com/identity/v2.0/
-    $ kamaki user authenticate
+    $ kamaki user info
     . (401) Authorization failed for token gZH99orgkfYHmGksZKvHJw==
     . |  UNAUTHORIZED unauthorized (Invalid token)
     $
@@ -186,7 +187,7 @@ Set up the correct values and attempt authentication
 
     $ kamaki config set cloud.default.url https://accounts.deploymentexample.com/identity/v2.0
     $ kamaki config set cloud.default.token myd3pl0ym3nt70k3n==
-    $ kamaki user authenticate
+    $ kamaki user info
     . ...
     . user:
     .     id: my-d3pl0ym3nt-u53r-1d
@@ -242,19 +243,19 @@ Authenticate against different clouds
 
 .. code-block:: console
 
-    $ kamaki user authenticate
+    $ kamaki user info
     . ...
     . <response from deploymentexample.com>
     . ...
-    $ kamaki --cloud=mytest user authenticate
+    $ kamaki --cloud=mytest user info
     . ...
     . <response from example.com>
     . ...
-    $ kamaki --cloud=default user authenticate
+    $ kamaki --cloud=default user info
     . ...
     . <response from deploymentexample.com, same as default behavior>
     . ...
-    $ kamaki --cloud=nonexistingcloud user authenticate
+    $ kamaki --cloud=nonexistingcloud user info
     . No cloud "nonexistingcloud" is configured
     . |  To configure a new cloud "nonexistingcloud", find and set the
     . |  single authentication URL and token:
@@ -267,14 +268,14 @@ Confuse kamaki by removing the default_cloud option, set mytest as default
 .. code-block:: console
 
     $ kamaki config delete default_cloud
-    $ kamaki user authenticate
+    $ kamaki user info
     . Found 2 clouds but none of them is set as default
     . |  Please, choose one of the following cloud names:
     . |  default, mytest
     . |  To set a default cloud:
     . |    kamaki config set default_cloud <cloud name>
     $ kamaki config set default_cloud mytest
-    $ kamaki user authenticate
+    $ kamaki user info
     . ...
     . <response from example.com>
     . ...
@@ -287,7 +288,7 @@ default_cloud option are removed?
 
     $ kamaki config delete cloud.default
     $ kamaki config delete default_cloud
-    $ kamaki user authenticate
+    $ kamaki user info
     . ...
     . <response from example.com>
     . ...
@@ -296,44 +297,3 @@ default_cloud option are removed?
 `Answer`: kamaki doesn't have a default_cloud option, but there is only one
 cloud configuration (`mytest`), therefore there is no ambiguity in resolving
 the default cloud.
-
-Multiple configurations
------------------------
-
-In the following example, we experiment with the higher number of threads when
-uploading and downloading. The plan is to contact a set of tests with 3 threads
-at most and another one with 5. All experiments will be run against the same
-Synnefo cloud (the "mytest" cloud from the previous example).
-
-Let's create the 3-threaded configuration first
-
-.. code-block:: console
-
-    $ kamaki -c 3thread config set cloud.test.url https://accounts.example.com/identity/v2.0/
-    $ kamaki -c 3thread config set cloud.test.token myt35t70k3n==
-    $
-
-Let's set the max_thread option to 3 as well as a seperate file for logs.
-
-.. code-block:: console
-
-    $ kamaki -c 3thread config set max_thread 3
-    $ kamaki -c 3thread config log_file ./logs/kamaki.3threads.log
-    $
-
-Now, let's create the 5-threaded configuration by modifying a copy of 3thread
-
-.. code-block:: console
-
-    $ cp 3thread 5thread
-    $ kamaki -c 5thread config set max_thread 5
-    $ kamaki -c 5thread config log_file ./logs/kamaki.5threads.log
-    $
-
-Use kamaki to upload with 3 threads and 5 threads respectively
-
-.. code-block:: console
-
-    $ kamaki -c 3thread file upload testfiles/test1 testcontainer
-    $ kamaki -c 5thread file upload testfiles/test1 testcontainer
-    $

@@ -57,11 +57,16 @@ def addLogSettings(foo):
             return foo(self, *args, **kwargs)
         finally:
             self._set_log_params()
-            self._update_max_threads
     return wrap
 
 
 class _command_init(object):
+
+    # self.arguments (dict) contains all non-positional arguments
+    # self.required (list or tuple) contains required argument keys
+    #     if it is a list, at least one of these arguments is required
+    #     if it is a tuple, all arguments are required
+    #     Lists and tuples can nest other lists and/or tuples
 
     def __init__(
             self,
@@ -69,6 +74,7 @@ class _command_init(object):
             _in=None, _out=None, _err=None):
         self._in, self._out, self._err = (
             _in or stdin, _out or stdout, _err or stderr)
+        self.required = getattr(self, 'required', None)
         if hasattr(self, 'arguments'):
             arguments.update(self.arguments)
         if isinstance(self, _optional_output_cmd):
@@ -140,11 +146,10 @@ class _command_init(object):
         return self.config.get_cloud(self.cloud, '%s_version' % service)
 
     def _uuids2usernames(self, uuids):
-        return self.auth_base.post_user_catalogs(uuids).json['uuid_catalog']
+        return self.auth_base.post_user_catalogs(uuids)
 
     def _usernames2uuids(self, username):
-        return self.auth_base.post_user_catalogs(
-            displaynames=username).json['displayname_catalog']
+        return self.auth_base.post_user_catalogs(displaynames=username)
 
     def _uuid2username(self, uuid):
         return self._uuids2usernames([uuid]).get(uuid, None)
@@ -171,12 +176,6 @@ class _command_init(object):
         except Exception as e:
             log.debug('Failed to read custom log_pid setting:'
                 '%s\n default for log_pid is off' % e)
-
-    def _update_max_threads(self):
-        if getattr(self, 'client', None):
-            max_threads = int(self['config'].get('global', 'max_threads'))
-            assert max_threads > 0, 'invalid max_threads config option'
-            self.client.MAX_THREADS = max_threads
 
     def _safe_progress_bar(
             self, msg, arg='progress_bar', countdown=False, timeout=100):
@@ -253,7 +252,7 @@ class OutputFormatArgument(ValueArgument):
 
     @property
     def value(self):
-        return self._value
+        return getattr(self, '_value', None)
 
     @value.setter
     def value(self, newvalue):
@@ -264,7 +263,7 @@ class OutputFormatArgument(ValueArgument):
         else:
             raise CLIInvalidArgument(
                 'Invalid value %s for argument %s' % (
-                    newvalue, '/'.join(self.parsed_name)),
+                    newvalue, self.lvalue),
                 details=['Valid output formats: %s' % ', '.join(self.formats)])
 
 
@@ -341,8 +340,7 @@ class _id_filter(object):
         id_suff=ValueArgument(
             'filter by id suffix (case insensitive)', '--id-suffix'),
         id_like=ValueArgument(
-            'print only if id contains this (case insensitive)',
-            '--id-like')
+            'print only if id contains this (case insensitive)', '--id-like')
     )
 
     def _non_exact_id_filter(self, items):
