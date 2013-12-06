@@ -11,10 +11,10 @@ command line interface of kamaki.
 Since Synnefo services are build as OpenStack extensions, an inheritance
 approach has been chosen for implementing clients for both. In specific,
 the *compute*, *storage* and *image* modules are client implementations for the
-OpenStack compute and OpenStack object-store APIs, respectively. The rest of the
-modules implement the Synnefo extensions (i.e., *cyclades* and 
+OpenStack compute, OpenStack object-store and Image APIs respectively. The rest
+of the modules implement the Synnefo extensions (i.e., *cyclades* and
 *cyclades_rest_api* extents *compute*, *pithos* and *pithos_rest_api* extent
-*storage*) or novel Synnefo services (*image* for *plankton*).
+*storage*).
 
 Setup a client instance
 -----------------------
@@ -45,7 +45,7 @@ Using endpoints to get the base_url
 -----------------------------------
 
 In OpenStack, each service (e.g., `compute`, `object-store`, etc.) has a number
-of `endpoints`. These `endpoints` are actually URIs that are used by kamaki as
+of `endpoints`. These `endpoints` are URIs that are used by kamaki as
 prefixes to form the corresponding API calls. Client applications need just
 one of these these `endpoints`, namely the `publicURL`, which is also referred
 to as `base_url` in kamaki client libraries.
@@ -56,7 +56,7 @@ Here are instructions for getting the base_url for a service::
         (Example 1.2)
     2. Use them to instantiate an AstakosClient
         (Example 1.2)
-    3. Use AstakosClient instance to get the endpoints of the service of interest
+    3. Use AstakosClient instance to get endpoints for the service of interest
         (Example 1.3)
     4. The 'publicURL' endpoint is the base_url we are looking for
         (Example 1.3)
@@ -99,10 +99,11 @@ clients only need the one labeled as ``publicURL``.
 The ``get_service_endpoints`` method is called with the service name as an
 argument. Here are the service names for the kamaki clients::
 
-    storage.StorageClient, pithos.PithosClient      -->     object-store
-    compute.ComputeClient, cyclades.CycladesClient  -->     compute
-    image.ImageClient                               -->     image
-    astakos.AstakosClient                           -->     identity, account
+    storage.StorageClient, pithos.PithosClient            --> object-store
+    compute.ComputeClient, cyclades.CycladesClient        --> compute
+    network.NetworkClient, cyclades.CycladesNetworkClient --> network
+    image.ImageClient                                     --> image
+    astakos.AstakosClient                                 --> identity, account
 
 Use client methods
 ------------------

@@ -157,11 +157,11 @@ class network_info(_init_network, _optional_json):
 
 class NetworkTypeArgument(ValueArgument):
 
-    types = ('CUSTOM', 'MAC_FILTERED', 'IP_LESS_ROUTED', 'PHYSICAL_VLAN')
+    types = ('MAC_FILTERED', 'CUSTOM', 'IP_LESS_ROUTED', 'PHYSICAL_VLAN')
 
     @property
     def value(self):
-        return getattr(self, '_value', None)
+        return getattr(self, '_value', self.types[0])
 
     @value.setter
     def value(self, new_value):
@@ -175,7 +175,7 @@ class NetworkTypeArgument(ValueArgument):
 
 @command(network_cmds)
 class network_create(_init_network, _optional_json):
-    """Create a new network"""
+    """Create a new network (default type: MAC_FILTERED)"""
 
     arguments = dict(
         name=ValueArgument('Network name', '--name'),
@@ -185,7 +185,6 @@ class network_create(_init_network, _optional_json):
             'Valid network types: %s' % (', '.join(NetworkTypeArgument.types)),
             '--type')
     )
-    required = ('network_type', )
 
     @errors.generic.all
     @errors.cyclades.connection
