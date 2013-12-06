@@ -295,7 +295,7 @@ class file_list(_pithos_container, _optional_json, _name_filter):
             delimiter=self['delimiter'],
             path=self.path or '',
             show_only_shared=self['shared_by_me'],
-            public=['public'],
+            public=self['public'],
             if_modified_since=self['if_modified_since'],
             if_unmodified_since=self['if_unmodified_since'],
             until=self['until'],
