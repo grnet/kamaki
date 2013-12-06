@@ -273,7 +273,9 @@ class file_list(_pithos_container, _optional_json, _name_filter):
         until=DateArgument('show metadata until then', '--until'),
         format=ValueArgument(
             'format to parse until data (default: d/m/Y H:M:S )', '--format'),
-        shared=FlagArgument('show only shared', '--shared'),
+        shared_by_me=FlagArgument(
+            'show only files shared to other users', '--shared-by-me'),
+        public=FlagArgument('show only published objects', '--public'),
         more=FlagArgument('read long results', '--more'),
         enum=FlagArgument('Enumerate results', '--enumerate'),
         recursive=FlagArgument(
@@ -292,11 +294,12 @@ class file_list(_pithos_container, _optional_json, _name_filter):
             prefix=self['name_pref'],
             delimiter=self['delimiter'],
             path=self.path or '',
+            show_only_shared=self['shared_by_me'],
+            public=['public'],
             if_modified_since=self['if_modified_since'],
             if_unmodified_since=self['if_unmodified_since'],
             until=self['until'],
-            meta=self['meta'],
-            show_only_shared=self['shared'])
+            meta=self['meta'])
         files = self._filter_by_name(r.json)
         if self['more']:
             outbu, self._out = self._out, StringIO()
@@ -359,15 +362,15 @@ class file_modify(_pithos_container):
             read, write = perms.get('read', ''), perms.get('write', '')
             read = read.split(',') if read else []
             write = write.split(',') if write else []
-            read += self['uuid_for_read_permission']
-            write += self['uuid_for_write_permission']
+            read += (self['uuid_for_read_permission'] or [])
+            write += (self['uuid_for_write_permission'] or [])
             self.client.set_object_sharing(
                 self.path, read_permission=read, write_permission=write)
             self.print_dict(self.client.get_object_sharing(self.path))
         if self['no_permissions']:
             self.client.del_object_sharing(self.path)
         metadata = self['metadata_to_set'] or dict()
-        for k in self['metadata_key_to_delete']:
+        for k in (self['metadata_key_to_delete'] or []):
             metadata[k] = ''
         if metadata:
             self.client.set_object_meta(self.path, metadata)
@@ -1386,7 +1389,10 @@ class container_list(_pithos_account, _optional_json, _name_filter):
         enum=FlagArgument('Enumerate results', '--enumerate'),
         recursive=FlagArgument(
             'Recursively list containers and their contents',
-            ('-r', '--recursive'))
+            ('-r', '--recursive')),
+        shared_by_me=FlagArgument(
+            'show only files shared to other users', '--shared-by-me'),
+        public=FlagArgument('show only published objects', '--public'),
     )
 
     def print_containers(self, container_list):
@@ -1424,7 +1430,8 @@ class container_list(_pithos_account, _optional_json, _name_filter):
                     if_modified_since=self['modified_since_date'],
                     if_unmodified_since=self['unmodified_since_date'],
                     until=self['until_date'],
-                    show_only_shared=self['shared'])
+                    show_only_shared=self['shared_by_me'],
+                    public=self['public'])
                 container['objects'] = objects.json
         finally:
             self.client.container = None
@@ -1441,7 +1448,8 @@ class container_list(_pithos_account, _optional_json, _name_filter):
                 if_modified_since=self['modified_since_date'],
                 if_unmodified_since=self['unmodified_since_date'],
                 until=self['until_date'],
-                show_only_shared=self['shared'])
+                show_only_shared=self['shared_by_me'],
+                public=self['public'])
         else:
             r = self.client.account_get(
                 limit=False if self['more'] else self['limit'],
@@ -1449,7 +1457,8 @@ class container_list(_pithos_account, _optional_json, _name_filter):
                 if_modified_since=self['modified_since_date'],
                 if_unmodified_since=self['unmodified_since_date'],
                 until=self['until_date'],
-                show_only_shared=self['shared'])
+                show_only_shared=self['shared_by_me'],
+                public=self['public'])
         files = self._filter_by_name(r.json)
         if self['recursive'] and not container:
             self._create_object_forest(files)
@@ -1678,3 +1687,25 @@ class group_delete(_pithos_group, _optional_json):
     def main(self, groupname):
         super(self.__class__, self)._run()
         self._run(groupname)
+
+
+#  Deprecated commands
+
+@command(file_cmds)
+class file_publish(_pithos_init):
+    """DEPRECATED, replaced by [kamaki] file modify OBJECT --publish"""
+
+    def main(self, *args):
+        raise CLISyntaxError('DEPRECATED', details=[
+            'This command is replaced by:',
+            '  [kamaki] file modify OBJECT --publish'])
+
+
+@command(file_cmds)
+class file_unpublish(_pithos_init):
+    """DEPRECATED, replaced by [kamaki] file modify OBJECT --unpublish"""
+
+    def main(self, *args):
+        raise CLISyntaxError('DEPRECATED', details=[
+            'This command is replaced by:',
+            '  [kamaki] file modify OBJECT --unpublish'])
