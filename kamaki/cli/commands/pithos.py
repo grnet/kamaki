@@ -1021,7 +1021,9 @@ class RangeArgument(ValueArgument):
                                 'Invalid range %s' % newvalue, details=[
                                 'Valid range formats',
                                 '  START-END', '  UP_TO', '  -FROM',
-                                'where all values are integers'])
+                                'where all values are integers',
+                                'OR a compination (csv), e.g.,',
+                                '  %s=5,10-20,-5' % self.lvalue])
                         self._value += '%s-%s' % (start, end)
                     else:
                         self._value += '-%s' % int(end)
@@ -1034,7 +1036,7 @@ class file_cat(_pithos_container):
     """Fetch remote file contents"""
 
     arguments = dict(
-        range=RangeArgument('show range of data', '--range'),
+        range=RangeArgument('show range of data e.g., 5,10-20,-5', '--range'),
         if_match=ValueArgument('show output if ETags match', '--if-match'),
         if_none_match=ValueArgument(
             'show output if ETags match', '--if-none-match'),
@@ -1051,7 +1053,7 @@ class file_cat(_pithos_container):
     @errors.pithos.container
     @errors.pithos.object_path
     def _run(self):
-        self.client.download_object(
+        r = self.client.download_object(
             self.path, self._out,
             range_str=self['range'],
             version=self['object_version'],
@@ -1059,6 +1061,7 @@ class file_cat(_pithos_container):
             if_none_match=self['if_none_match'],
             if_modified_since=self['if_modified_since'],
             if_unmodified_since=self['if_unmodified_since'])
+        print r
 
     def main(self, path_or_url):
         super(self.__class__, self)._run(path_or_url)
@@ -1073,7 +1076,8 @@ class file_download(_pithos_container):
         resume=FlagArgument(
             'Resume/Overwrite (attempt resume, else overwrite)',
             ('-f', '--resume')),
-        range=RangeArgument('Download only that range of data', '--range'),
+        range=RangeArgument(
+            'Download only that range of data e.g., 5,10-20,-5', '--range'),
         matching_etag=ValueArgument('download iff ETag match', '--if-match'),
         non_matching_etag=ValueArgument(
             'download iff ETags DO NOT match', '--if-none-match'),
