@@ -463,7 +463,7 @@ class _port_create(_init_network, _optional_json, _port_wait):
 
 
 @command(port_cmds)
-class port_create(_init_network):
+class port_create(_port_create):
     """Create a new port (== connect server to network)"""
 
     arguments = dict(
