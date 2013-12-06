@@ -239,6 +239,8 @@ class UtilsMethods(TestCase):
                                 bold.mock_calls[bold_counter], call(header))
                             self.assertEqual(out.read(5), 'bold\n')
                             bold_counter += 1
+                        else:
+                            out.read(1)
                         self.assertEqual(
                             PD.mock_calls[pd_counter],
                             call(item, indent=INDENT_TAB, out=out))

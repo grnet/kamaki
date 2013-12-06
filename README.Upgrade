@@ -1,3 +1,6 @@
-This document describes changes and steps to upgrade from kamaki 0.10 to
-kamaki 0.11
+This document describes changes and steps to upgrade from kamaki 0.11 to
+kamaki 0.12
 
+1. Update the kamaki configuration with these commands:
+  $ kamaki config delete network_cli
+  $ kamaki config delete ip_cli

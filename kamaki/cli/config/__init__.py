@@ -77,24 +77,36 @@ DEFAULTS = {
         'log_token': 'off',
         'log_data': 'off',
         'log_pid': 'off',
-        'max_threads': 7,
         'history_file': HISTORY_PATH,
         'user_cli': 'astakos',
+        'quota_cli': 'astakos',
+        'resource_cli': 'astakos',
+        'project_cli': 'astakos',
         'file_cli': 'pithos',
+        'container_cli': 'pithos',
+        'sharer_cli': 'pithos',
+        'group_cli': 'pithos',
         'server_cli': 'cyclades',
         'flavor_cli': 'cyclades',
-        'network_cli': 'cyclades',
+        'network_cli': 'network',
+        'subnet_cli': 'network',
+        'port_cli': 'network',
+        'ip_cli': 'network',
         'image_cli': 'image',
+        'imagecompute_cli': 'image',
         'config_cli': 'config',
         'history_cli': 'history'
         #  Optional command specs:
         #  'livetest_cli': 'livetest',
-        #  'astakos_cli': 'snf-astakos'
+        #  'service_cli': 'astakos'
+        #  'endpoint_cli': 'astakos'
+        #  'commission_cli': 'astakos'
     },
     CLOUD_PREFIX: {
         #'default': {
         #    'url': '',
         #    'token': ''
+        #    'pithos_container': 'THIS IS DANGEROUS'
         #    'pithos_type': 'object-store',
         #    'pithos_version': 'v1',
         #    'cyclades_type': 'compute',
@@ -106,13 +118,6 @@ DEFAULTS = {
         #}
     }
 }
-
-
-try:
-    import astakosclient
-    DEFAULTS['global'].update(dict(astakos_cli='snf-astakos'))
-except ImportError:
-    pass
 
 
 class Config(RawConfigParser):
@@ -159,12 +164,13 @@ class Config(RawConfigParser):
             cyclades=dict(serv='compute', cmd='server'),
             server=dict(serv='compute', cmd='server'),
             flavor=dict(serv='compute', cmd='flavor'),
-            network=dict(serv='compute', cmd='network'),
+            network=dict(serv='network', cmd='network'),
             astakos=dict(serv='astakos', cmd='user'),
             user=dict(serv='astakos', cmd='user'),
         )
 
-        self.set('global', 'default_' + CLOUD_PREFIX, 'default')
+        dc = 'default_' + CLOUD_PREFIX
+        self.set('global', dc, self.get('global', dc) or 'default')
         for s in self.sections():
             if s in ('global', ):
                 # global.url, global.token -->
@@ -206,6 +212,17 @@ class Config(RawConfigParser):
                         err.flush()
                         self.set_cloud('default', term, gval)
                     self.remove_option(s, term)
+                print 'CHECK'
+                for term, wrong, right in (
+                        ('ip', 'cyclades', 'network'),
+                        ('network', 'cyclades', 'network'),):
+                    k = '%s_cli' % term
+                    v = self.get(s, k)
+                    if v in (wrong, ):
+                        err.write('... change %s.%s value: `%s` => `%s`\n' % (
+                            s, k, wrong, right))
+                        err.flush()
+                        self.set(s, k, right)
             # translation for <service> or <command> settings
             # <service> or <command group> settings --> translation --> global
             elif s in translations:
@@ -271,10 +288,16 @@ class Config(RawConfigParser):
         if CLOUD_PREFIX in sections:
             for r in self.keys(CLOUD_PREFIX):
                 log.debug('... found cloud "%s"' % r)
-                return 0.9
+            ipv = self.get('global', 'ip_cli')
+            if ipv in ('cyclades', ):
+                    return 0.11
+            netv = self.get('global', 'network_cli')
+            if netv in ('cyclades', ):
+                return 0.10
+            return 0.12
         log.debug('........ nope')
         log.debug('All heuristics failed, cannot decide')
-        return 0.9
+        return 0.12
 
     def get_cloud(self, cloud, option):
         """
@@ -286,13 +309,10 @@ class Config(RawConfigParser):
 
         :raises KeyError: if cloud or cloud's option does not exist
         """
-        r = self.get(CLOUD_PREFIX, cloud)
+        r = self.get(CLOUD_PREFIX, cloud) if cloud else None
         if not r:
             raise KeyError('Cloud "%s" does not exist' % cloud)
         return r[option]
-
-    def get_global(self, option):
-        return self.get('global', option)
 
     def set_cloud(self, cloud, option, value):
         try:
@@ -301,9 +321,6 @@ class Config(RawConfigParser):
             d = dict()
         d[option] = value
         self.set(CLOUD_PREFIX, cloud, d)
-
-    def set_global(self, option, value):
-        self.set('global', option, value)
 
     def _load_defaults(self):
         for section, options in DEFAULTS.items():

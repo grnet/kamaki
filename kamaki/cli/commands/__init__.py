@@ -36,6 +36,7 @@ from kamaki.cli.utils import (
     print_list, print_dict, print_json, print_items, ask_user,
     filter_dicts_by_dict)
 from kamaki.cli.argument import FlagArgument, ValueArgument
+from kamaki.cli.errors import CLIInvalidArgument
 from sys import stdin, stdout, stderr
 
 log = get_logger(__name__)
@@ -56,11 +57,16 @@ def addLogSettings(foo):
             return foo(self, *args, **kwargs)
         finally:
             self._set_log_params()
-            self._update_max_threads
     return wrap
 
 
 class _command_init(object):
+
+    # self.arguments (dict) contains all non-positional arguments
+    # self.required (list or tuple) contains required argument keys
+    #     if it is a list, at least one of these arguments is required
+    #     if it is a tuple, all arguments are required
+    #     Lists and tuples can nest other lists and/or tuples
 
     def __init__(
             self,
@@ -68,6 +74,7 @@ class _command_init(object):
             _in=None, _out=None, _err=None):
         self._in, self._out, self._err = (
             _in or stdin, _out or stdout, _err or stderr)
+        self.required = getattr(self, 'required', None)
         if hasattr(self, 'arguments'):
             arguments.update(self.arguments)
         if isinstance(self, _optional_output_cmd):
@@ -139,11 +146,10 @@ class _command_init(object):
         return self.config.get_cloud(self.cloud, '%s_version' % service)
 
     def _uuids2usernames(self, uuids):
-        return self.auth_base.post_user_catalogs(uuids).json['uuid_catalog']
+        return self.auth_base.post_user_catalogs(uuids)
 
     def _usernames2uuids(self, username):
-        return self.auth_base.post_user_catalogs(
-            displaynames=username).json['displayname_catalog']
+        return self.auth_base.post_user_catalogs(displaynames=username)
 
     def _uuid2username(self, uuid):
         return self._uuids2usernames([uuid]).get(uuid, None)
@@ -154,35 +160,31 @@ class _command_init(object):
     def _set_log_params(self):
         try:
             self.client.LOG_TOKEN = (
-                self['config'].get_global('log_token').lower() == 'on')
+                self['config'].get('global', 'log_token').lower() == 'on')
         except Exception as e:
             log.debug('Failed to read custom log_token setting:'
                 '%s\n default for log_token is off' % e)
         try:
             self.client.LOG_DATA = (
-                self['config'].get_global('log_data').lower() == 'on')
+                self['config'].get('global', 'log_data').lower() == 'on')
         except Exception as e:
             log.debug('Failed to read custom log_data setting:'
                 '%s\n default for log_data is off' % e)
         try:
             self.client.LOG_PID = (
-                self['config'].get_global('log_pid').lower() == 'on')
+                self['config'].get('global', 'log_pid').lower() == 'on')
         except Exception as e:
             log.debug('Failed to read custom log_pid setting:'
                 '%s\n default for log_pid is off' % e)
 
-    def _update_max_threads(self):
-        if getattr(self, 'client', None):
-            max_threads = int(self['config'].get_global('max_threads'))
-            assert max_threads > 0, 'invalid max_threads config option'
-            self.client.MAX_THREADS = max_threads
-
-    def _safe_progress_bar(self, msg, arg='progress_bar'):
+    def _safe_progress_bar(
+            self, msg, arg='progress_bar', countdown=False, timeout=100):
         """Try to get a progress bar, but do not raise errors"""
         try:
             progress_bar = self.arguments[arg]
             progress_bar.file = self._err
-            gen = progress_bar.get_generator(msg)
+            gen = progress_bar.get_generator(
+                msg, countdown=countdown, timeout=timeout)
         except Exception:
             return (None, None)
         return (progress_bar, gen)
@@ -240,11 +242,38 @@ class _command_init(object):
 #  feature classes - inherit them to get special features for your commands
 
 
+class OutputFormatArgument(ValueArgument):
+    """Accepted output formats: json (default)"""
+
+    formats = ('json', )
+
+    def ___init__(self, *args, **kwargs):
+        super(OutputFormatArgument, self).___init__(*args, **kwargs)
+
+    @property
+    def value(self):
+        return getattr(self, '_value', None)
+
+    @value.setter
+    def value(self, newvalue):
+        if not newvalue:
+            self._value = self.default
+        elif newvalue.lower() in self.formats:
+            self._value = newvalue.lower
+        else:
+            raise CLIInvalidArgument(
+                'Invalid value %s for argument %s' % (
+                    newvalue, self.lvalue),
+                details=['Valid output formats: %s' % ', '.join(self.formats)])
+
+
 class _optional_output_cmd(object):
 
     oo_arguments = dict(
         with_output=FlagArgument('show response headers', ('--with-output')),
-        json_output=FlagArgument('show headers in json', ('-j', '--json'))
+        json_output=FlagArgument(
+            'show headers in json (DEPRECATED from v0.12,'
+            ' please use --output-format=json instead)', ('-j', '--json'))
     )
 
     def _optional_output(self, r):
@@ -257,11 +286,17 @@ class _optional_output_cmd(object):
 class _optional_json(object):
 
     oj_arguments = dict(
-        json_output=FlagArgument('show headers in json', ('-j', '--json'))
+        output_format=OutputFormatArgument(
+            'Show output in chosen output format (%s)' % ', '.join(
+                OutputFormatArgument.formats),
+            '--output-format'),
+        json_output=FlagArgument(
+            'show output in json (DEPRECATED from v0.12,'
+            ' please use --output-format instead)', ('-j', '--json'))
     )
 
     def _print(self, output, print_method=print_items, **print_method_kwargs):
-        if self['json_output']:
+        if self['json_output'] or self['output_format']:
             print_json(output, out=self._out)
         else:
             print_method_kwargs.setdefault('out', self._out)
@@ -305,8 +340,7 @@ class _id_filter(object):
         id_suff=ValueArgument(
             'filter by id suffix (case insensitive)', '--id-suffix'),
         id_like=ValueArgument(
-            'print only if id contains this (case insensitive)',
-            '--id-like')
+            'print only if id contains this (case insensitive)', '--id-like')
     )
 
     def _non_exact_id_filter(self, items):

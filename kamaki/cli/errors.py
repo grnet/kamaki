@@ -97,6 +97,11 @@ class CLISyntaxError(CLIError):
         super(CLISyntaxError, self).__init__(message, details, importance)
 
 
+class CLIInvalidArgument(CLISyntaxError):
+    def __init__(self, message='Invalid Argument', details=[], importance=1):
+        super(CLIInvalidArgument, self).__init__(message, details, importance)
+
+
 class CLIUnknownCommand(CLIError):
     def __init__(self, message='Unknown Command', details=[], importance=1):
         super(CLIUnknownCommand, self).__init__(message, details, importance)
@@ -131,7 +136,11 @@ def raiseCLIError(err, message='', importance=0, details=[]):
     details = list(details) if (
         isinstance(details, list) or isinstance(details, tuple)) else [
             '%s' % details]
-    details += getattr(err, 'details', [])
+    err_details = getattr(err, 'details', [])
+    if isinstance(err_details, list) or isinstance(err_details, tuple):
+        details += list(err_details)
+    else:
+        details.append('%s' % err_details)
 
     origerr = (('%s' % err) or '%s' % type(err)) if err else stack[0]
     message = '%s' % message or origerr

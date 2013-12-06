@@ -54,17 +54,49 @@
 from sys import path, stderr
 import os
 
+
+SITE_PACKAGES_PATH = os.path.expanduser(
+    '~/src/kamaki/docsenv/lib/python2.7/site-packages')
+
 try:
     from objpool.http import PooledHTTPConnection
     PooledHTTPConnection
 except ImportError:
-    stderr.write("`objpool` package is required to build kamaki docs.\n")
+    path.insert(0, SITE_PACKAGES_PATH)
+    try:
+        from objpool.http import PooledHTTPConnection
+        PooledHTTPConnection
+    except ImportError:
+        stderr.write('`objpool` package is required to build kamaki docs.\n')
+        exit(1)
+
 
 try:
-    from progress.bar import ShadyBar
-    ShadyBar
+    from astakosclient import AstakosClient
+    AstakosClient
 except ImportError:
-    stderr.write("`progress` package is required to build kamaki docs.\n")
+    path.insert(0, '%s/%s' % (
+        SITE_PACKAGES_PATH,
+        'astakosclient-0.14.5next_10224_6c10f58-py2.7.egg'))
+    try:
+        from astakosclient import AstakosClient
+        AstakosClient
+    except ImportError:
+        stderr.write(
+            '`astakosclient` package is required to build kamaki docs.\n')
+        exit(1)
+
+# try:
+#     from progress.bar import ShadyBar
+#     ShadyBar
+# except ImportError:
+#     path.insert(0, SITE_PACKAGES_PATH)
+#     try:
+#         from progress.bar import ShadyBar
+#         ShadyBar
+#     except ImportError:
+#         stderr.write(
+#           '`progress` package is suggested to build kamaki docs.\n')
 
 path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), '..'))
 
@@ -98,7 +130,7 @@ copyright = u'2013, GRNET'
 # built documents.
 #
 # The short X.Y version.
-version = '0.10'
+version = '0.12'
 # The full version, including alpha/beta/rc tags.
 try:
     import kamaki

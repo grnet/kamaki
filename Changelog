@@ -1,23 +1,33 @@
 CHANGELOG for version 0.11
 
 Bug Fixes:
-- Make authentication lazy (#4300)
+-In file list, the path or prefix was converted to boolean value. Fixed.
+-Thread options did not work [#4616]
 
 Changes:
-
-- Logs do not contain kamaki.clients pids by default [#4242]
-- Replace page_hold method with pydoc.pager [#4279]
-- Remove commands.pithos.DelimiterArgument, replace with ValueArgument
-    wherever it is used
-- Replace print methods with member print methods in _commands.* [#4292]
-- kamaki.cli.config is now a directory package [#4058]
+1. Make astakosclient a mantatory requirement for kamaki [#4312]
+2. Make post_user_catalogs obsolete, but keep for one more version [#4337]
+3. Rename user commands for cached account requests as /user session [#4340]
+4. Remove max_theads from config, move control to threaded commands [#4617]
+5. Modify all commands [#4583]
+    New scheme for ALL <object> <verb> [object id] [--arguments]
+    e.g., file modidy --metadata-add=revier='Mr. Reviewer' /pithos/myfile.txt
+6. Deprecate (with note) server stats/console/addr (move to server info)
+7. A vanilla kamaki call now shows only the available commands instead of
+    loading a shell [#4612]
 
 Features:
 
-- New config option log_pid (default: off) can allow pid-logging [#4242]
-- Expand kamaki.cli unitests for the following packages ( [#4058] ):
-  errors
-- Modify print methods in cli utils to use arbitary stream objects [#4288]
-- Implement wrapers for cli.utils print methods, in _commands [#4292]
-- Implement unittests for kamaki.cli.config [#4058]
+1. Cache user catalog calls [#4337]
+2. Implement separate methods for uuid2usernames and v.v. [#4337]
+3. Move all methods from snf-astakos.py to astakos.py, with some renaimings
+    astakos_quotas/uuid/username/authenticate --> user_quotas/uuid2username/username2uuid/info
+    astakos_... --> admin_...
+    e.g.,
+    astakos_services --> admin_service, astakos_commission --> admin_commission
+4. Implement OpenStack Network API 2.0, with synnefo/cyclades extentions. New:
+   network info/list/create/delete/set
+   subnet info/list/create/set
+   port info/list/create/delete/set
+5. Create a kamaki-shell for kamaki shell [#4612]
 

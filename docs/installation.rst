@@ -4,7 +4,7 @@ Installation
 This guide describes the standard installation process for kamaki, with the
 aspiration of covering as much cases as possible. Although kamaki was initially
 targeted to Linux/Unix-like users, it is quite straightforward to install and
-have it up and running in all platforms running python 2.6 or 2.7.
+have it up and running in all platforms running Python 2.6 or 2.7.
 
 
 * Kamaki repository: `http://code.grnet.gr/git/kamaki <http://code.grnet.gr/git/kamaki>`_
@@ -27,7 +27,7 @@ The following steps describe a command-line approach, but any graphic package ma
 
 .. warning:: Debian Squeeze users may replace "wheezy" with "squeeze"
 
-* Make sure the GPG public key for the Synnefo development team is added:
+* Make sure the GPG public key for the Synnefo repository is added:
 
     .. code-block:: console
 
@@ -50,7 +50,8 @@ The following steps describe a command-line approach, but any graphic package ma
 Ubuntu
 ^^^^^^
 
-The following steps describe a command-line approach, but any graphic package manager can be used instead.
+The following steps describe a command-line approach, but any graphic package
+manager can be used instead.
 
 * Let ppa take care of the repository configuration:
 
@@ -85,35 +86,17 @@ Install mock (for developers only)
 
     $ sudo apt-get install python-mock
 
-.. warning:: kamaki.clients unit-tests need python-mock 1.X or better. e.g.::
+.. warning:: kamaki.clients unit-tests need python-mock 1.X or better. e.g.,::
 
     $ sudo apt-get install python-mock=1.0.1
 
-.. hint:: To activate functional tests in kamaki. enable the preconfigured
+.. hint:: To activate functional tests in kamaki enable the preconfigured
     *livetest* command group:
 
     .. code-block:: console
 
         $ kamaki config set livetest_cli livetest
 
-
-Install astakosclient (optional)
-""""""""""""""""""""""""""""""""
-
-A seperate project called
-`astakosclient <https://pypi.python.org/pypi/astakosclient>`_ can be used for
-advanced user and service management.
-
-.. code-block:: console
-
-    $ apt-get install python-astakosclient
-
-.. hint:: To activate astakosclient commands in kamaki, enable the
-    preconfigured *astakos* command group:
-
-    .. code-block:: console
-
-        $ kamaki config set astakos_cli astakos
 
 .. _installing-from-pypi-ref:
 
@@ -135,8 +118,7 @@ Optional:
 Setup a virtual enviroment (optional)
 """""""""""""""""""""""""""""""""""""
 
-With virtualenv users can setup kamaki and synnefo services in a sandbox
-environment.
+Use virtualenv to setup kamaki and Synnefo services in a sandbox environment.
 
 .. code-block:: console
 
@@ -186,28 +168,11 @@ mock.
 
         $ kamaki config set livetest_cli livetest
 
-Install astakosclient
-"""""""""""""""""""""
-
-A seperate project called
-`astakosclient <https://pypi.python.org/pypi/astakosclient>`_ can be used for
-advanced user and service management.
-
-.. code-block:: console
-
-    $ pip install astakosclient
-
-.. hint:: To activate astakosclient commands in kamaki, enable the
-    preconfigured *astakos* command group:
-
-    .. code-block:: console
-
-        $ kamaki config set astakos_cli astakos
 
 Mac OS X
 --------
 
-Kamaki can be installed on Mac OS X systems from source, by following the steps
+Kamaki can be installed on Mac OS X systems, by following the steps
 at :ref:`installing-from-pypi-ref`.
 
 Windows
@@ -225,10 +190,10 @@ Requirements
 
 * Setuptools (`Official versions and workarounds <http://pypi.python.org/pypi/setuptools>`_)
 
-Users who have already set up and wokring python and setuptools (e.g. for
-another project) may skip python and / or setup tools installation.
+Users who have already set up python and setuptools (e.g., for
+another project) may skip Python and / or setuptools installation.
 
-Install python
+Install Python
 ^^^^^^^^^^^^^^
 
 Download and run the Windows installer from
@@ -237,10 +202,10 @@ Download and run the Windows installer from
 Users should pick the installer that fits their windows version and machine
 architecture.
 
-Add python to windows path
+Add Python to windows path
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The following will allow users to run python and python scripts from command
+The following will allow users to run Python and Python scripts from command
 line.
 
 * Select **System** from the Control Panel, select the **Advanced** tab, the
@@ -263,10 +228,10 @@ According to the corresponding
 `python org page <http://pypi.python.org/pypi/setuptools>`_, the setuptools
 installer doesn't currently work on 64bit machines.
 
-* Users with 32-bit operating systems should download and run the graphic
+* Users with 32-bit platforms should download and run the graphic
     installer
 
-* Users with 64-bit machines should download the
+* Users with 64-bit platforms should download the
     `ez_setup.py <http://peak.telecommunity.com/dist/ez_setup.py>`_ script and
     install it from a command shell. In the following example, the script was
     downloaded at C:\\Downloads::

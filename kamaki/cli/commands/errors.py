@@ -32,6 +32,7 @@
 # or implied, of GRNET S.A.command
 
 from traceback import print_stack, print_exc
+from astakosclient import AstakosClientException
 
 from kamaki.clients import ClientError
 from kamaki.cli.errors import CLIError, raiseCLIError, CLISyntaxError
@@ -101,6 +102,16 @@ class user(object):
         '*  (temporary):  re-run with <token> parameter'] + CLOUDNAME
 
     @classmethod
+    def astakosclient(this, foo):
+        def _raise(self, *args, **kwargs):
+            try:
+                r = foo(self, *args, **kwargs)
+            except AstakosClientException as ace:
+                raiseCLIError(ace, 'Error in synnefo-AstakosClient')
+            return r
+        return _raise
+
+    @classmethod
     def load(this, foo):
         def _raise(self, *args, **kwargs):
             r = foo(self, *args, **kwargs)
@@ -112,7 +123,7 @@ class user(object):
                 kloger.warning(
                     'No permanent token (try:'
                     ' kamaki config set cloud.default.token <tkn>)')
-            if not getattr(client, 'base_url', False):
+            if not getattr(client, 'astakos_base_url', False):
                 msg = 'Missing synnefo authentication URL'
                 raise CLIError(msg, importance=3, details=[
                     'Check if authentication URL is correct',
@@ -128,12 +139,11 @@ class user(object):
         def _raise(self, *args, **kwargs):
             try:
                 return foo(self, *args, **kwargs)
-            except ClientError as ce:
+            except (ClientError, AstakosClientException) as ce:
                 if ce.status == 401:
                     token = kwargs.get('custom_token', 0) or self.client.token
-                    msg = (
-                        'Authorization failed for token %s' % token
-                    ) if token else 'No token provided',
+                    msg = ('Authorization failed for token %s' % token) if (
+                        token) else 'No token provided',
                     details = [] if token else this._token_details
                     raiseCLIError(ce, msg, details=details)
                 raise ce
@@ -173,6 +183,8 @@ class cyclades(object):
         '* get a list of network ids: /network list',
         '* details of network: /network info <network id>']
 
+    net_types = ('CUSTOM', 'MAC_FILTERED', 'IP_LESS_ROUTED', 'PHYSICAL_VLAN')
+
     @classmethod
     def connection(this, foo):
         return generic._connection(foo)
@@ -191,6 +203,25 @@ class cyclades(object):
         return _raise
 
     @classmethod
+    def cluster_size(this, foo):
+        def _raise(self, *args, **kwargs):
+            size = kwargs.get('size', None)
+            try:
+                size = int(size)
+                assert size > 0, 'Cluster size must be a positive integer'
+                return foo(self, *args, **kwargs)
+            except ValueError as ve:
+                msg = 'Invalid cluster size value %s' % size
+                raiseCLIError(ve, msg, importance=1, details=[
+                    'Cluster size must be a positive integer'])
+            except AssertionError as ae:
+                raiseCLIError(
+                    ae, 'Invalid cluster size %s' % size, importance=1)
+            except ClientError:
+                raise
+        return _raise
+
+    @classmethod
     def network_id(this, foo):
         def _raise(self, *args, **kwargs):
             network_id = kwargs.get('network_id', None)
@@ -199,7 +230,7 @@ class cyclades(object):
                 return foo(self, *args, **kwargs)
             except ValueError as ve:
                 msg = 'Invalid network id %s ' % network_id
-                details = ['network id must be a positive integer']
+                details = 'network id must be a positive integer'
                 raiseCLIError(ve, msg, details=details, importance=1)
             except ClientError as ce:
                 if network_id and ce.status == 404 and (
@@ -208,6 +239,16 @@ class cyclades(object):
                     msg = 'No network with id %s found' % network_id,
                     raiseCLIError(ce, msg, details=this.about_network_id)
                 raise
+        return _raise
+
+    @classmethod
+    def network_type(this, foo):
+        def _raise(self, *args, **kwargs):
+            network_type = kwargs.get('network_type', None)
+            msg = 'Invalid network type %s.\nValid types: %s' % (
+                network_type, ' '.join(this.net_types))
+            assert network_type in this.net_types, msg
+            return foo(self, *args, **kwargs)
         return _raise
 
     @classmethod
@@ -233,13 +274,13 @@ class cyclades(object):
             try:
                 return foo(self, *args, **kwargs)
             except ClientError as ce:
-                if network_id and ce.status == 400:
+                if network_id and ce.status in (400, ):
                     msg = 'Network with id %s does not exist' % network_id,
                     raiseCLIError(ce, msg, details=this.about_network_id)
-                elif network_id or ce.status == 421:
+                elif network_id or ce.status in (421, ):
                     msg = 'Network with id %s is in use' % network_id,
                     raiseCLIError(ce, msg, details=[
-                        'Disconnect all nics/VMs of this network first',
+                        'Disconnect all nics/servers of this network first',
                         '* to get nics: /network info %s' % network_id,
                         '.  (under "attachments" section)',
                         '* to disconnect: /network disconnect <nic id>'])
@@ -255,7 +296,7 @@ class cyclades(object):
                 return foo(self, *args, **kwargs)
             except ValueError as ve:
                 msg = 'Invalid flavor id %s ' % flavor_id,
-                details = 'Flavor id must be a positive integer',
+                details = 'Flavor id must be a positive integer'
                 raiseCLIError(ve, msg, details=details, importance=1)
             except ClientError as ce:
                 if flavor_id and ce.status == 404 and (
@@ -274,8 +315,8 @@ class cyclades(object):
                 server_id = int(server_id)
                 return foo(self, *args, **kwargs)
             except ValueError as ve:
-                msg = 'Invalid server(VM) id %s' % server_id,
-                details = ['id must be a positive integer'],
+                msg = 'Invalid virtual server id %s' % server_id,
+                details = 'Server id must be a positive integer'
                 raiseCLIError(ve, msg, details=details, importance=1)
             except ClientError as ce:
                 err_msg = ('%s' % ce).lower()
@@ -284,10 +325,10 @@ class cyclades(object):
                 ) or (
                     ce.status == 400 and 'not found' in err_msg
                 ):
-                    msg = 'server(VM) with id %s not found' % server_id,
+                    msg = 'virtual server with id %s not found' % server_id,
                     raiseCLIError(ce, msg, details=[
-                        '* to get existing VM ids: /server list',
-                        '* to get VM details: /server info <VM id>'])
+                        '* to get ids of all servers: /server list',
+                        '* to get server details: /server info <server id>'])
                 raise
         return _raise
 
@@ -321,14 +362,14 @@ class cyclades(object):
                     'network interface' in ('%s' % ce).lower()
                 ):
                     server_id = kwargs.get('server_id', '<no server>')
-                    err_msg = 'No nic %s on server(VM) with id %s' % (
+                    err_msg = 'No nic %s on virtual server with id %s' % (
                         nic_id,
                         server_id)
                     raiseCLIError(ce, err_msg, details=[
-                        '* check server(VM) with id %s: /server info %s' % (
+                        '* check v. server with id %s: /server info %s' % (
                             server_id,
                             server_id),
-                        '* list nics for server(VM) with id %s:' % server_id,
+                        '* list nics for v. server with id %s:' % server_id,
                         '      /server addr %s' % server_id])
                 raise
         return _raise
@@ -357,7 +398,8 @@ class cyclades(object):
                 if key and ce.status == 404 and (
                     'metadata' in ('%s' % ce).lower()
                 ):
-                        raiseCLIError(ce, 'No VM metadata with key %s' % key)
+                        raiseCLIError(
+                            ce, 'No virtual server metadata with key %s' % key)
                 raise
         return _raise
 
@@ -469,9 +511,25 @@ class pithos(object):
         return _raise
 
     @classmethod
+    def local_path_download(this, foo):
+        def _raise(self, *args, **kwargs):
+            try:
+                return foo(self, *args, **kwargs)
+            except IOError as ioe:
+                msg = 'Failed to access a file',
+                raiseCLIError(ioe, msg, importance=2, details=[
+                    'Check if the file exists. Also check if the remote',
+                    'directories exist. All directories in a remote path',
+                    'must exist to succesfully download a container or a',
+                    'directory.',
+                    'To create a remote directory:',
+                    '  [kamaki] file mkdir REMOTE_DIRECTORY_PATH'])
+        return _raise
+
+    @classmethod
     def local_path(this, foo):
         def _raise(self, *args, **kwargs):
-            local_path = kwargs.get('local_path', '<None>')
+            local_path = kwargs.get('local_path', None)
             try:
                 return foo(self, *args, **kwargs)
             except IOError as ioe:

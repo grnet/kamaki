@@ -101,6 +101,7 @@ class Logged(object):
     LOG_TOKEN = False
     LOG_DATA = False
     LOG_PID = False
+    _token = None
 
 
 class RequestManager(Logged):
@@ -144,20 +145,21 @@ class RequestManager(Logged):
         self.scheme, self.netloc = self._connection_info(url, path, params)
 
     def dump_log(self):
-        plog = '\t[%s]' if self.LOG_PID else ''
+        plog = ('\t[%s]' % self) if self.LOG_PID else ''
         sendlog.info('- -  -   -     -        -             -')
         sendlog.info('%s %s://%s%s%s' % (
             self.method, self.scheme, self.netloc, self.path, plog))
         for key, val in self.headers.items():
-            show = (key.lower() != 'x-auth-token') or self.LOG_TOKEN
-            sendlog.info('  %s: %s%s' % (key, val if show else '...', plog))
+            if key.lower() in ('x-auth-token', ) and not self.LOG_TOKEN:
+                self._token, val = val, '...'
+            sendlog.info('  %s: %s%s' % (key, val, plog))
         if self.data:
             sendlog.info('data size:%s%s' % (len(self.data), plog))
             if self.LOG_DATA:
-                sendlog.info(self.data)
+                sendlog.info(self.data.replace(self._token, '...') if (
+                    self._token) else self.data)
         else:
             sendlog.info('data size:0%s' % plog)
-        sendlog.info('')
 
     def perform(self, conn):
         """
@@ -165,12 +167,13 @@ class RequestManager(Logged):
 
         :returns: (HTTPResponse)
         """
+        self.dump_log()
         conn.request(
             method=str(self.method.upper()),
             url=str(self.path),
             headers=self.headers,
             body=self.data)
-        self.dump_log()
+        sendlog.info('')
         keep_trying = TIMEOUT
         while keep_trying > 0:
             try:
@@ -179,7 +182,7 @@ class RequestManager(Logged):
                 wait = 0.03 * random()
                 sleep(wait)
                 keep_trying -= wait
-        plog = '\t[%s]' if self.LOG_PID else ''
+        plog = ('\t[%s]' % self) if self.LOG_PID else ''
         logmsg = 'Kamaki Timeout %s %s%s' % (self.method, self.path, plog)
         recvlog.debug(logmsg)
         raise ClientError('HTTPResponse takes too long - kamaki timeout')
@@ -228,17 +231,21 @@ class ResponseManager(Logged):
                             self.status_code, self.status, plog))
                     self._headers = dict()
                     for k, v in r.getheaders():
-                        show = (k.lower() != 'x-auth-token') or self.LOG_TOKEN
+                        if k.lower in ('x-auth-token', ) and (
+                                not self.LOG_TOKEN):
+                            self._token, v = v, '...'
                         v = unquote(v)
                         self._headers[k] = v
-                        recvlog.info('  %s: %s%s' % (
-                            k, v if show else '...', plog))
+                        recvlog.info('  %s: %s%s' % (k, v, plog))
                     self._content = r.read()
                     recvlog.info('data size: %s%s' % (
                         len(self._content) if self._content else 0, plog))
                     if self.LOG_DATA and self._content:
-                        recvlog.info('%s%s' % (self._content, plog))
-                    sendlog.info('-             -        -     -   -  - -')
+                        data = '%s%s' % (self._content, plog)
+                        if self._token:
+                            data = data.replace(self._token, '...')
+                        recvlog.info(data)
+                    recvlog.info('-             -        -     -   -  - -')
                 break
             except Exception as err:
                 if isinstance(err, HTTPException):
@@ -324,7 +331,7 @@ class SilentEvent(Thread):
 
 class Client(Logged):
 
-    MAX_THREADS = 7
+    MAX_THREADS = 1
     DATE_FORMATS = ['%a %b %d %H:%M:%S %Y', ]
     CONNECTION_RETRY_LIMIT = 0
 
@@ -361,6 +368,41 @@ class Client(Logged):
             self._elapsed_new = self._elapsed_new / len(threadlist)
             return []
         return threadlist
+
+    def async_run(self, method, kwarg_list):
+        """Fire threads of operations
+
+        :param method: the method to run in each thread
+
+        :param kwarg_list: (list of dicts) the arguments to pass in each method
+            call
+
+        :returns: (list) the results of each method call w.r. to the order of
+            kwarg_list
+        """
+        flying, results = {}, {}
+        self._init_thread_limit()
+        for index, kwargs in enumerate(kwarg_list):
+            self._watch_thread_limit(flying.values())
+            flying[index] = SilentEvent(method=method, **kwargs)
+            flying[index].start()
+            unfinished = {}
+            for key, thread in flying.items():
+                if thread.isAlive():
+                    unfinished[key] = thread
+                elif thread.exception:
+                    raise thread.exception
+                else:
+                    results[key] = thread.value
+            flying = unfinished
+        sendlog.info('- - - wait for threads to finish')
+        for key, thread in flying.items():
+            if thread.isAlive():
+                thread.join()
+            if thread.exception:
+                raise thread.exception
+            results[key] = thread.value
+        return results.values()
 
     def _raise_for_status(self, r):
         log.debug('raise err from [%s] of type[%s]' % (r, type(r)))
@@ -408,7 +450,7 @@ class Client(Logged):
             if data:
                 headers.setdefault('Content-Length', '%s' % len(data))
 
-            plog = '\t[%s]' if self.LOG_PID else ''
+            plog = ('\t[%s]' % self) if self.LOG_PID else ''
             sendlog.debug('\n\nCMT %s@%s%s', method, self.base_url, plog)
             req = RequestManager(
                 method, self.base_url, path,
@@ -418,6 +460,7 @@ class Client(Logged):
                 req, connection_retry_limit=self.CONNECTION_RETRY_LIMIT)
             r.LOG_TOKEN, r.LOG_DATA, r.LOG_PID = (
                 self.LOG_TOKEN, self.LOG_DATA, self.LOG_PID)
+            r._token = headers['X-Auth-Token']
         finally:
             self.headers = dict()
             self.params = dict()
@@ -449,3 +492,78 @@ class Client(Logged):
 
     def move(self, path, **kwargs):
         return self.request('move', path, **kwargs)
+
+
+class Waiter(object):
+
+    def _wait(
+            self, item_id, wait_status, get_status,
+            delay=1, max_wait=100, wait_cb=None, wait_for_status=False):
+        """Wait while the item is still in wait_status or to reach it
+
+        :param server_id: integer (str or int)
+
+        :param wait_status: (str)
+
+        :param get_status: (method(self, item_id)) if called, returns
+            (status, progress %) If no way to tell progress, return None
+
+        :param delay: time interval between retries
+
+        :param wait_cb: (method(total steps)) returns a generator for
+            reporting progress or timeouts i.e., for a progress bar
+
+        :param wait_for_status: (bool) wait FOR (True) or wait WHILE (False)
+
+        :returns: (str) the new mode if successful, (bool) False if timed out
+        """
+        status, progress = get_status(self, item_id)
+
+        if wait_cb:
+            wait_gen = wait_cb(max_wait // delay)
+            wait_gen.next()
+
+        if wait_for_status ^ (status != wait_status):
+            # if wait_cb:
+            #     try:
+            #         wait_gen.next()
+            #     except Exception:
+            #         pass
+            return status
+        old_wait = total_wait = 0
+
+        while (wait_for_status ^ (status == wait_status)) and (
+                total_wait <= max_wait):
+            if wait_cb:
+                try:
+                    for i in range(total_wait - old_wait):
+                        wait_gen.next()
+                except Exception:
+                    break
+            old_wait = total_wait
+            total_wait = progress or total_wait + 1
+            sleep(delay)
+            status, progress = get_status(self, item_id)
+
+        if total_wait < max_wait:
+            if wait_cb:
+                try:
+                    for i in range(max_wait):
+                        wait_gen.next()
+                except:
+                    pass
+        return status if (wait_for_status ^ (status != wait_status)) else False
+
+    def wait_for(
+            self, item_id, target_status, get_status,
+            delay=1, max_wait=100, wait_cb=None):
+        self._wait(
+            item_id, target_status, get_status, delay, max_wait, wait_cb,
+            wait_for_status=True)
+
+    def wait_while(
+            self, item_id, target_status, get_status,
+            delay=1, max_wait=100, wait_cb=None):
+        self._wait(
+            item_id, target_status, get_status, delay, max_wait, wait_cb,
+            wait_for_status=False)
