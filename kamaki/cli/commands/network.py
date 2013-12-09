@@ -38,13 +38,12 @@ from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import (
     CLIBaseUrlError, CLIInvalidArgument, raiseCLIError)
-from kamaki.clients.cyclades import CycladesNetworkClient
+from kamaki.clients.cyclades import CycladesNetworkClient, ClientError
 from kamaki.cli.argument import (
     FlagArgument, ValueArgument, RepeatableArgument, IntArgument)
 from kamaki.cli.commands import _command_init, errors, addLogSettings
 from kamaki.cli.commands import (
     _optional_output_cmd, _optional_json, _name_filter, _id_filter)
-from kamaki.cli.utils import filter_dicts_by_dict
 from kamaki.cli.commands.cyclades import _service_wait
 
 
@@ -93,6 +92,10 @@ class _init_network(_command_init):
         else:
             raise CLIBaseUrlError(service='network')
 
+    def _filter_by_user_id(self, nets):
+        return [net for net in nets if net['user_id'] == self['user_id']] if (
+            self['user_id']) else nets
+
     def main(self):
         self._run()
 
@@ -112,18 +115,15 @@ class network_list(_init_network, _optional_json, _name_filter, _id_filter):
             'show only networks belonging to user with this id', '--user-id')
     )
 
-    def _filter_by_user_id(self, nets):
-        return filter_dicts_by_dict(nets, dict(user_id=self['user_id'])) if (
-            self['user_id']) else nets
-
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self):
-        nets = self.client.list_networks()
+        detail = bool(self['detail'] or self['user_id'])
+        nets = self.client.list_networks(detail=detail)
         nets = self._filter_by_user_id(nets)
         nets = self._filter_by_name(nets)
         nets = self._filter_by_id(nets)
-        if not self['detail']:
+        if detail and not self['detail']:
             nets = [dict(
                 id=n['id'], name=n['name'], links=n['links']) for n in nets]
         kwargs = dict()
@@ -376,14 +376,36 @@ class subnet_modify(_init_network, _optional_json):
 
 
 @command(port_cmds)
-class port_list(_init_network, _optional_json):
+class port_list(_init_network, _optional_json, _name_filter, _id_filter):
     """List all ports"""
+
+    arguments = dict(
+        detail=FlagArgument('show detailed output', ('-l', '--details')),
+        more=FlagArgument(
+            'output results in pages (-n to set items per page, default 10)',
+            '--more'),
+        user_id=ValueArgument(
+            'show only networks belonging to user with this id', '--user-id')
+    )
 
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self):
-        net = self.client.list_ports()
-        self._print(net)
+        detail = bool(self['detail'] or self['user_id'])
+        ports = self.client.list_ports(detail=detail)
+        ports = self._filter_by_user_id(ports)
+        ports = self._filter_by_name(ports)
+        ports = self._filter_by_id(ports)
+        if detail and not self['detail']:
+            ports = [dict(
+                id=p['id'], name=p['name'], links=p['links']) for p in ports]
+        kwargs = dict()
+        if self['more']:
+            kwargs['out'] = StringIO()
+            kwargs['title'] = ()
+        self._print(ports, **kwargs)
+        if self['more']:
+            pager(kwargs['out'].getvalue())
 
     def main(self):
         super(self.__class__, self)._run()
@@ -397,8 +419,8 @@ class port_info(_init_network, _optional_json):
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self, port_id):
-        net = self.client.get_port_details(port_id)
-        self._print(net, self.print_dict)
+        port = self.client.get_port_details(port_id)
+        self._print(port, self.print_dict)
 
     def main(self, port_id):
         super(self.__class__, self)._run()
@@ -416,9 +438,16 @@ class port_delete(_init_network, _optional_output_cmd, _port_wait):
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self, port_id):
+        if self['wait']:
+            status = self.client.get_port_details(port_id)['status']
         r = self.client.delete_port(port_id)
         if self['wait']:
-            self._wait(r['id'], r['status'])
+            try:
+                self._wait(port_id, status)
+            except ClientError as ce:
+                if ce.status not in (404, ):
+                    raise
+                self.error('Port %s is deleted' % port_id)
         self._optional_output(r)
 
     def main(self, port_id):
@@ -459,7 +488,8 @@ class _port_create(_init_network, _optional_json, _port_wait):
             fixed_ips=fixed_ips)
         if self['wait']:
             self._wait(r['id'], r['status'])
-        self._print(r, self.print_dict)
+            r = self.client.get_port_details(r['id'])
+        self._print([r])
 
 
 @command(port_cmds)
@@ -612,11 +642,13 @@ class network_connect(_port_create):
     @errors.cyclades.network_id
     @errors.cyclades.server_id
     def _run(self, network_id, server_id):
+        self.error('Creating a port to connect network %s with device %s' % (
+            network_id, server_id))
         self.connect(network_id, server_id)
 
     def main(self, network_id, device_id):
         super(self.__class__, self)._run()
-        self._run(network_id=network_id, device_id=device_id)
+        self._run(network_id=network_id, server_id=device_id)
 
 
 @command(network_cmds)
@@ -638,20 +670,28 @@ class network_disconnect(_init_network, _port_wait, _optional_json):
     @errors.cyclades.connection
     @errors.cyclades.network_id
     @errors.cyclades.server_id
-    def _run(self, network_id, device_id):
-        vm = self._cyclades_client().get_server_details(device_id)
-        nets = [net for net in vm['attachments'] if net['network_id'] not in (
-            'network_id', )]
-        if not nets:
+    def _run(self, network_id, server_id):
+        vm = self._cyclades_client().get_server_details(server_id)
+        ports = [port for port in vm['attachments'] if (
+            port['network_id'] not in ('network_id', ))]
+        if not ports:
             raiseCLIError('Network %s is not connected to device %s' % (
-                network_id, device_id))
-        for net in nets:
-            self.client.port_delete(net['id'])
-            self.error('Deleting this connection:')
-            self.print_dict(net)
+                network_id, server_id))
+        for port in ports:
             if self['wait']:
-                self._wait(net['id'], net['status'])
+                port['status'] = self.client.get_port_details(port['id'])[
+                    'status']
+            self.client.delete_port(port['id'])
+            self.error('Deleting port %s:' % port['id'])
+            self.print_dict(port)
+            if self['wait']:
+                try:
+                    self._wait(port['id'], port['status'])
+                except ClientError as ce:
+                    if ce.status not in (404, ):
+                        raise
+                    self.error('Port %s is deleted' % port['id'])
 
     def main(self, network_id, device_id):
         super(self.__class__, self)._run()
-        self._run(network_id=network_id, device_id=device_id)
+        self._run(network_id=network_id, server_id=device_id)

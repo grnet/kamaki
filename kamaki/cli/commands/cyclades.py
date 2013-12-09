@@ -392,7 +392,7 @@ class NetworkIpArgument(RepeatableArgument):
                         self.parsed_name[0])])
             self._value = getattr(self, '_value', list())
             self._value.append(
-                dict(network=net_and_ip[0], fixed_ip=net_and_ip[1]))
+                dict(uuid=net_and_ip[0], fixed_ip=net_and_ip[1]))
 
 
 @command(server_cmds)
@@ -429,9 +429,9 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
         if self['automatic_ip']:
             networks = []
         else:
-            networks = [dict(network=netid) for netid in (
-                (self['network_id'] or []) + (self['network_id_and_ip'] or [])
-            )] or None
+            networks = [dict(uuid=netid) for netid in (
+                self['network_id'] or [])] + (self['network_id_and_ip'] or [])
+            networks = networks or None
         servers = [dict(
             name='%s%s' % (prefix, i if size > 1 else ''),
             flavor_id=flavor_id,

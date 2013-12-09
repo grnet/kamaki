@@ -58,8 +58,8 @@ class CycladesClient(CycladesRestClient, Waiter):
 
         :param networks: (list of dicts) Networks to connect to, list this:
             "networks": [
-                {"network": <network_uuid>},
-                {"network": <network_uuid>, "fixed_ip": address},
+                {"uuid": <network_uuid>},
+                {"uuid": <network_uuid>, "fixed_ip": address},
                 {"port": <port_id>}, ...]
             ATTENTION: Empty list is different to None. None means ' do not
             mention it', empty list means 'automatically get an ip'
@@ -230,6 +230,11 @@ class CycladesNetworkClient(NetworkClient):
             req['network']['shared'] = bool(shared)
         r = self.networks_post(json_data=req, success=201)
         return r.json['network']
+
+    def list_ports(self, detail=None):
+        path = path4url('ports', 'detail' if detail else '')
+        r = self.get(path, success=200)
+        return r.json['ports']
 
     def create_port(
             self, network_id,
