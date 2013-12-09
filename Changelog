@@ -1,4 +1,8 @@
-CHANGELOG for version 0.11
+CHANGELOG for version 0.12rc3
+
+Correct keys in HTTP bodies on network-related requests
+
+CHANGELOG for version 0.12
 
 Bug Fixes:
 -In file list, the path or prefix was converted to boolean value. Fixed.
