@@ -33,7 +33,6 @@
 
 from kamaki.clients import Client
 from kamaki.clients.utils import path4url
-from json import dumps
 
 
 class NetworkRestClient(Client):
