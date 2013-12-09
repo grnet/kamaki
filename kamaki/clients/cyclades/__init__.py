@@ -57,7 +57,7 @@ class CycladesClient(CycladesRestClient, Waiter):
             describing files to be injected into virtual server upon creation
 
         :param networks: (list of dicts) Networks to connect to, list this:
-            "networks": [
+            [
                 {"uuid": <network_uuid>},
                 {"uuid": <network_uuid>, "fixed_ip": address},
                 {"port": <port_id>}, ...]
