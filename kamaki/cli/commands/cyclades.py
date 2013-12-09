@@ -430,8 +430,8 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
             networks = []
         else:
             networks = [dict(uuid=netid) for netid in (
-                (self['network_id'] or []) + (self['network_id_and_ip'] or [])
-            )] or None
+                self['network_id'] or [])] + (self['network_id_and_ip'] or [])
+            networks = networks or None
         servers = [dict(
             name='%s%s' % (prefix, i if size > 1 else ''),
             flavor_id=flavor_id,

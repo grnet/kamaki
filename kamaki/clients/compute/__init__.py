@@ -130,8 +130,8 @@ class ComputeClient(ComputeRestClient):
 
         :param networks: (list of dicts) Networks to connect to, list this:
             "networks": [
-            {"network": <network_uuid>},
-            {"network": <network_uuid>, "fixed_ip": address},
+            {"uuid": <network_uuid>},
+            {"uuid": <network_uuid>, "fixed_ip": address},
             {"port": <port_id>}, ...]
             ATTENTION: Empty list is different to None. None means ' do not
             mention it', empty list means 'automatically get an ip'
