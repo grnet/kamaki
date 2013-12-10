@@ -55,8 +55,9 @@ _commands = [network_cmds, port_cmds, subnet_cmds, ip_cmds]
 
 
 about_authentication = '\nUser Authentication:\
-    \n* to check authentication: /user authenticate\
-    \n* to set authentication token: /config set cloud.<cloud>.token <token>'
+    \n  to check authentication: [kamaki] ]user authenticate\
+    \n  to set authentication token: \
+    [kamaki] config set cloud.<CLOUD>.token <TOKEN>'
 
 
 class _port_wait(_service_wait):
@@ -292,6 +293,8 @@ class AllocationPoolArgument(RepeatableArgument):
 
     @value.setter
     def value(self, new_pools):
+        if not new_pools:
+            return
         new_list = []
         for pool in new_pools:
             start, comma, end = pool.partition(',')
@@ -478,9 +481,10 @@ class port_modify(_init_network, _optional_json):
 class _port_create(_init_network, _optional_json, _port_wait):
 
     def connect(self, network_id, device_id):
-        fixed_ips = [dict(
-            subnet_id=self['subnet_id'], ip_address=self['ip_address'])] if (
-                self['subnet_id']) else None
+        fixed_ips = [dict(ip_address=self['ip_address'])] if (
+            self['ip_address']) else None
+        if fixed_ips and self['subnet_id']:
+            fixed_ips[0]['subnet_id'] = self['subnet_id']
         r = self.client.create_port(
             network_id, device_id,
             name=self['name'],
@@ -505,7 +509,7 @@ class port_create(_port_create):
             'Subnet id for fixed ips (used with --ip-address)',
             '--subnet-id'),
         ip_address=ValueArgument(
-            'IP address for subnet id (used with --subnet-id', '--ip-address'),
+            'IP address for subnet id', '--ip-address'),
         network_id=ValueArgument('Set the network ID', '--network-id'),
         device_id=ValueArgument(
             'The device is either a virtual server or a virtual router',
@@ -588,7 +592,7 @@ class ip_create(_init_network, _optional_json):
     arguments = dict(
         network_id=ValueArgument(
             'The network to preserve the IP on', '--network-id'),
-        ip_address=ValueArgument('Allocate a specific IP address', '--address')
+        ip_address=ValueArgument('Allocate an IP address', '--address')
     )
     required = ('network_id', )
 
@@ -618,6 +622,84 @@ class ip_delete(_init_network, _optional_output_cmd):
         self._run(ip_id=ip_id)
 
 
+@command(ip_cmds)
+class ip_attach(_port_create):
+    """Attach an IP on a virtual server"""
+
+    arguments = dict(
+        name=ValueArgument('A human readable name for the port', '--name'),
+        security_group_id=RepeatableArgument(
+            'Add a security group id (can be repeated)',
+            ('-g', '--security-group')),
+        subnet_id=ValueArgument('Subnet id', '--subnet-id'),
+        wait=FlagArgument('Wait IP to be attached', ('-w', '--wait')),
+        server_id=ValueArgument(
+            'Server to attach to this IP', '--server-id')
+    )
+    required = ('server_id', )
+
+    @errors.generic.all
+    @errors.cyclades.connection
+    @errors.cyclades.server_id
+    def _run(self, ip_address, server_id):
+        netid = None
+        for ip in self.client.list_floatingips():
+            if ip['floating_ip_address'] == ip_address:
+                netid = ip['floating_network_id']
+                iparg = ValueArgument(parsed_name='--ip')
+                iparg.value = ip_address
+                self.arguments['ip_address'] = iparg
+                break
+        if netid:
+            self.error('Creating a port to attach IP %s to server %s' % (
+                ip_address, server_id))
+            self.connect(netid, server_id)
+        else:
+            raiseCLIError(
+                'IP address %s does not match any reserved IPs' % ip_address,
+                details=[
+                    'To reserve an IP:', '  [kamaki] ip create',
+                    'To see all reserved IPs:', '  [kamaki] ip list'])
+
+    def main(self, ip_address):
+        super(self.__class__, self)._run()
+        self._run(ip_address=ip_address, server_id=self['server_id'])
+
+
+@command(ip_cmds)
+class ip_detach(_init_network, _port_wait, _optional_json):
+    """Detach an IP from a virtual server"""
+
+    arguments = dict(
+        wait=FlagArgument('Wait network to disconnect', ('-w', '--wait')),
+    )
+
+    @errors.generic.all
+    @errors.cyclades.connection
+    def _run(self, ip_address):
+        for ip in self.client.list_floatingips():
+            if ip['floating_ip_address'] == ip_address:
+                if not ip['port_id']:
+                    raiseCLIError('IP %s is not attached' % ip_address)
+                self.error('Deleting port %s:' % ip['port_id'])
+                self.client.delete_port(ip['port_id'])
+                if self['wait']:
+                    port_status = self.client.get_port_details(ip['port_id'])[
+                        'status']
+                    try:
+                        self._wait(ip['port_id'], port_status)
+                    except ClientError as ce:
+                        if ce.status not in (404, ):
+                            raise
+                        self.error('Port %s is deleted' % ip['port_id'])
+                return
+        raiseCLIError('IP %s not found' % ip_address)
+
+    def main(self, ip_address):
+        super(self.__class__, self)._run()
+        self._run(ip_address)
+
+
 #  Warn users for some importand changes
 
 @command(network_cmds)
@@ -635,7 +717,11 @@ class network_connect(_port_create):
         ip_address=ValueArgument(
             'IP address for subnet id (used with --subnet-id', '--ip-address'),
         wait=FlagArgument('Wait network to connect', ('-w', '--wait')),
+        device_id=RepeatableArgument(
+            'Connect this device to the network (can be repeated)',
+            '--device-id')
     )
+    required = ('device_id', )
 
     @errors.generic.all
     @errors.cyclades.connection
@@ -646,9 +732,10 @@ class network_connect(_port_create):
             network_id, server_id))
         self.connect(network_id, server_id)
 
-    def main(self, network_id, device_id):
+    def main(self, network_id):
         super(self.__class__, self)._run()
-        self._run(network_id=network_id, server_id=device_id)
+        for sid in self['device_id']:
+            self._run(network_id=network_id, server_id=sid)
 
 
 @command(network_cmds)
@@ -663,8 +750,12 @@ class network_disconnect(_init_network, _port_wait, _optional_json):
         return CycladesClient(URL, self.client.token)
 
     arguments = dict(
-        wait=FlagArgument('Wait network to disconnect', ('-w', '--wait'))
+        wait=FlagArgument('Wait network to disconnect', ('-w', '--wait')),
+        device_id=RepeatableArgument(
+            'Disconnect device from the network (can be repeated)',
+            '--device-id')
     )
+    required = ('device_id', )
 
     @errors.generic.all
     @errors.cyclades.connection
@@ -673,7 +764,7 @@ class network_disconnect(_init_network, _port_wait, _optional_json):
     def _run(self, network_id, server_id):
         vm = self._cyclades_client().get_server_details(server_id)
         ports = [port for port in vm['attachments'] if (
-            port['network_id'] not in ('network_id', ))]
+            port['network_id'] in (network_id, ))]
         if not ports:
             raiseCLIError('Network %s is not connected to device %s' % (
                 network_id, server_id))
@@ -692,6 +783,7 @@ class network_disconnect(_init_network, _port_wait, _optional_json):
                         raise
                     self.error('Port %s is deleted' % port['id'])
 
-    def main(self, network_id, device_id):
+    def main(self, network_id):
         super(self.__class__, self)._run()
-        self._run(network_id=network_id, server_id=device_id)
+        for sid in self['device_id']:
+            self._run(network_id=network_id, server_id=sid)
