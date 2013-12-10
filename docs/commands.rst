@@ -8,9 +8,8 @@ Kamaki commands follow this scheme::
 In this context, objects are not services, but virtual objects like a server, a
 file or an image. The action concerns objects of the specified type. Some
 actions (e.g. "delete" or "info") need to operate on an existing object. The
-identifiers strictly identify this object and they can have the form of an id 
-(e.g., `server delete <SERVER_ID>`) or a foreign key (e.g., 
-`port create <NETWORK_ID> <DEVICE_ID>`)
+identifiers strictly identify this object and they should have the form of an id
+(e.g., `server delete <SERVER_ID>`).
 
 The examples bellow showcase some commands. The kamaki-shell (check
 `Usage section <usage.html#interactive-shell>`_ for details) is chosen as the
@@ -351,7 +350,7 @@ Showcase: Connect a network to a VM
     * Try network-connect (to get help) *
     [network]: connect 
     Syntax error
-    usage: connect <network id> <device id> [-s] [-h] [-i] [--config CONFIG]
+    usage: connect <network id> --device-id <DEVICE_ID> [-s] [-h] [-i] [--config CONFIG]
 
     Connect a server to a network
 
@@ -364,7 +363,7 @@ Showcase: Connect a network to a VM
       -v,--verbose:  More info at response
 
     * Connect VM with id 11687 to network with id 1409
-    [network]: connect 11687 1409 --wait
+    [network]: connect 11687 --device-id=1409 --wait
     Creating port between network 1409 and server 11687
     New port: 8
 

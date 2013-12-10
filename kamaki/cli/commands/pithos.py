@@ -300,6 +300,12 @@ class file_list(_pithos_container, _optional_json, _name_filter):
             if_unmodified_since=self['if_unmodified_since'],
             until=self['until'],
             meta=self['meta'])
+
+        #  REMOVE THIS if version >> 0.12
+        if not r.json:
+            self.error('  NOTE: Since v0.12, use / for containers e.g.,')
+            self.error('    [kamaki] file list /pithos')
+
         files = self._filter_by_name(r.json)
         if self['more']:
             outbu, self._out = self._out, StringIO()
