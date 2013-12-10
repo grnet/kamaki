@@ -733,7 +733,7 @@ class server_rename(_init_cyclades, _optional_json):
     def main(self, *args):
         raiseCLIError('DEPRECATED since v0.12', importance=3, details=[
             'Replaced by',
-            '  [kamaki] server info <SERVER_ID> --stats'])
+            '  [kamaki] server modify <SERVER_ID> --name=NEW_NAME'])
 
 
 @command(server_cmds)
