@@ -481,9 +481,10 @@ class port_modify(_init_network, _optional_json):
 class _port_create(_init_network, _optional_json, _port_wait):
 
     def connect(self, network_id, device_id):
-        fixed_ips = [dict(
-            subnet_id=self['subnet_id'], ip_address=self['ip_address'])] if (
-                self['subnet_id']) else None
+        fixed_ips = [dict(ip_address=self['ip_address'])] if (
+            self['subnet_id']) else None
+        if fixed_ips and self['subnet_id']:
+            fixed_ips[0]['subnet_id'] = self['subnet_id']
         r = self.client.create_port(
             network_id, device_id,
             name=self['name'],
@@ -508,7 +509,7 @@ class port_create(_port_create):
             'Subnet id for fixed ips (used with --ip-address)',
             '--subnet-id'),
         ip_address=ValueArgument(
-            'IP address for subnet id (used with --subnet-id', '--ip-address'),
+            'IP address for subnet id', '--ip-address'),
         network_id=ValueArgument('Set the network ID', '--network-id'),
         device_id=ValueArgument(
             'The device is either a virtual server or a virtual router',
