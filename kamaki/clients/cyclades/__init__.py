@@ -112,44 +112,6 @@ class CycladesClient(CycladesRestClient, Waiter):
         r = self.servers_action_post(server_id, json_data=req, success=200)
         return r.json['console']
 
-    def get_firewall_profile(self, server_id):
-        """
-        :param server_id: integer (str or int)
-
-        :returns: (str) ENABLED | DISABLED | PROTECTED
-
-        :raises ClientError: 520 No Firewall Profile
-        """
-        r = self.get_server_details(server_id)
-        try:
-            return r['attachments'][0]['firewallProfile']
-        except KeyError:
-            raise ClientError(
-                'No Firewall Profile',
-                details='Server %s is missing a firewall profile' % server_id)
-
-    def set_firewall_profile(self, server_id, profile):
-        """Set the firewall profile for the public interface of a server
-
-        :param server_id: integer (str or int)
-
-        :param profile: (str) ENABLED | DISABLED | PROTECTED
-
-        :returns: (dict) response headers
-        """
-        req = {'firewallProfile': {'profile': profile}}
-        r = self.servers_action_post(server_id, json_data=req, success=202)
-        return r.headers
-
-    def list_server_nics(self, server_id):
-        """
-        :param server_id: integer (str or int)
-
-        :returns: (dict) network interface connections
-        """
-        r = self.servers_ips_get(server_id)
-        return r.json['attachments']
-
     def get_server_stats(self, server_id):
         """
         :param server_id: integer (str or int)
@@ -182,30 +144,6 @@ class CycladesClient(CycladesRestClient, Waiter):
             r = self.get_server_details(server_id)
             return r['status'], (r.get('progress', None) if (
                             current_status in ('BUILD', )) else None)
-
-        return self._wait(
-            server_id, current_status, get_status, delay, max_wait, wait_cb)
-
-    def wait_firewall(
-            self, server_id,
-            current_status='DISABLED', delay=1, max_wait=100, wait_cb=None):
-        """Wait while the public network firewall status is current_status
-
-        :param server_id: integer (str or int)
-
-        :param current_status: (str) DISABLED | ENABLED | PROTECTED
-
-        :param delay: time interval between retries
-
-        :max_wait: (int) timeout in secconds
-
-        :param wait_cb: if set a progressbar is used to show progress
-
-        :returns: (str) the new mode if succesfull, (bool) False if timed out
-        """
-
-        def get_status(self, server_id):
-            return self.get_firewall_profile(server_id), None
 
         return self._wait(
             server_id, current_status, get_status, delay, max_wait, wait_cb)
@@ -252,9 +190,7 @@ class CycladesNetworkClient(NetworkClient):
         if fixed_ips:
             for fixed_ip in fixed_ips or []:
                 if not 'ip_address' in fixed_ip:
-                    raise ValueError(
-                        'Invalid format for "fixed_ips"', details=[
-                        'fixed_ips format: [{"ip_address": IPv4}, ...]'])
+                    raise ValueError('Invalid fixed_ip [%s]' % fixed_ip)
             port['fixed_ips'] = fixed_ips
         r = self.ports_post(json_data=dict(port=port), success=201)
         return r.json['port']

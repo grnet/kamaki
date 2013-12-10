@@ -55,8 +55,9 @@ _commands = [network_cmds, port_cmds, subnet_cmds, ip_cmds]
 
 
 about_authentication = '\nUser Authentication:\
-    \n* to check authentication: /user authenticate\
-    \n* to set authentication token: /config set cloud.<cloud>.token <token>'
+    \n  to check authentication: [kamaki] ]user authenticate\
+    \n  to set authentication token: \
+    [kamaki] config set cloud.<CLOUD>.token <TOKEN>'
 
 
 class _port_wait(_service_wait):
@@ -292,6 +293,8 @@ class AllocationPoolArgument(RepeatableArgument):
 
     @value.setter
     def value(self, new_pools):
+        if not new_pools:
+            return
         new_list = []
         for pool in new_pools:
             start, comma, end = pool.partition(',')
@@ -635,7 +638,11 @@ class network_connect(_port_create):
         ip_address=ValueArgument(
             'IP address for subnet id (used with --subnet-id', '--ip-address'),
         wait=FlagArgument('Wait network to connect', ('-w', '--wait')),
+        device_id=RepeatableArgument(
+            'Connect this device to the network (can be repeated)',
+            '--device-id')
     )
+    required = ('device_id', )
 
     @errors.generic.all
     @errors.cyclades.connection
@@ -646,9 +653,10 @@ class network_connect(_port_create):
             network_id, server_id))
         self.connect(network_id, server_id)
 
-    def main(self, network_id, device_id):
+    def main(self, network_id):
         super(self.__class__, self)._run()
-        self._run(network_id=network_id, server_id=device_id)
+        for sid in self['device_id']:
+            self._run(network_id=network_id, server_id=sid)
 
 
 @command(network_cmds)
@@ -663,8 +671,12 @@ class network_disconnect(_init_network, _port_wait, _optional_json):
         return CycladesClient(URL, self.client.token)
 
     arguments = dict(
-        wait=FlagArgument('Wait network to disconnect', ('-w', '--wait'))
+        wait=FlagArgument('Wait network to disconnect', ('-w', '--wait')),
+        device_id=RepeatableArgument(
+            'Disconnect device from the network (can be repeated)',
+            '--device-id')
     )
+    required = ('device_id', )
 
     @errors.generic.all
     @errors.cyclades.connection
@@ -673,7 +685,7 @@ class network_disconnect(_init_network, _port_wait, _optional_json):
     def _run(self, network_id, server_id):
         vm = self._cyclades_client().get_server_details(server_id)
         ports = [port for port in vm['attachments'] if (
-            port['network_id'] not in ('network_id', ))]
+            port['network_id'] in (network_id, ))]
         if not ports:
             raiseCLIError('Network %s is not connected to device %s' % (
                 network_id, server_id))
@@ -692,6 +704,7 @@ class network_disconnect(_init_network, _port_wait, _optional_json):
                         raise
                     self.error('Port %s is deleted' % port['id'])
 
-    def main(self, network_id, device_id):
+    def main(self, network_id):
         super(self.__class__, self)._run()
-        self._run(network_id=network_id, server_id=device_id)
+        for sid in self['device_id']:
+            self._run(network_id=network_id, server_id=sid)
