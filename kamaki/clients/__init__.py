@@ -123,7 +123,7 @@ class RequestManager(Logged):
             url += _encode(path[1:] if path.startswith('/') else path)
         delim = '?'
         for key, val in params.items():
-            val = '' if val in (None, False) else _encode(u'%s' % val)
+            val = '' if val in (None, False) else _encode('%s' % val)
             url += '%s%s%s' % (delim, key, ('=%s' % val) if val else '')
             delim = '&'
         parsed = urlparse(url)
@@ -421,7 +421,7 @@ class Client(Logged):
 
     def set_param(self, name, value=None, iff=True):
         if iff:
-            self.params[name] = unicode(value)
+            self.params[name] = '%s' % value  # unicode(value)
 
     def request(
             self, method, path,
