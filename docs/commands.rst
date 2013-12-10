@@ -280,6 +280,8 @@ ip (Network/Cyclades)
     create    Reserve an IP on a network
     list      List reserved floating IPs
     delete    Unreserve an IP (also delete the port, if attached)
+    attach    Attach an IP on a virtual server
+    detach    Detach an IP from a virtual server
 
 port (Network/Cyclades)
 -----------------------

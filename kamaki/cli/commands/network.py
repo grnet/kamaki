@@ -482,7 +482,7 @@ class _port_create(_init_network, _optional_json, _port_wait):
 
     def connect(self, network_id, device_id):
         fixed_ips = [dict(ip_address=self['ip_address'])] if (
-            self['subnet_id']) else None
+            self['ip_address']) else None
         if fixed_ips and self['subnet_id']:
             fixed_ips[0]['subnet_id'] = self['subnet_id']
         r = self.client.create_port(
@@ -592,7 +592,7 @@ class ip_create(_init_network, _optional_json):
     arguments = dict(
         network_id=ValueArgument(
             'The network to preserve the IP on', '--network-id'),
-        ip_address=ValueArgument('Allocate a specific IP address', '--address')
+        ip_address=ValueArgument('Allocate an IP address', '--address')
     )
     required = ('network_id', )
 
@@ -620,6 +620,84 @@ class ip_delete(_init_network, _optional_output_cmd):
     def main(self, ip_id):
         super(self.__class__, self)._run()
         self._run(ip_id=ip_id)
+
+
+@command(ip_cmds)
+class ip_attach(_port_create):
+    """Attach an IP on a virtual server"""
+
+    arguments = dict(
+        name=ValueArgument('A human readable name for the port', '--name'),
+        security_group_id=RepeatableArgument(
+            'Add a security group id (can be repeated)',
+            ('-g', '--security-group')),
+        subnet_id=ValueArgument('Subnet id', '--subnet-id'),
+        wait=FlagArgument('Wait IP to be attached', ('-w', '--wait')),
+        server_id=ValueArgument(
+            'Server to attach to this IP', '--server-id')
+    )
+    required = ('server_id', )
+
+    @errors.generic.all
+    @errors.cyclades.connection
+    @errors.cyclades.server_id
+    def _run(self, ip_address, server_id):
+        netid = None
+        for ip in self.client.list_floatingips():
+            if ip['floating_ip_address'] == ip_address:
+                netid = ip['floating_network_id']
+                iparg = ValueArgument(parsed_name='--ip')
+                iparg.value = ip_address
+                self.arguments['ip_address'] = iparg
+                break
+        if netid:
+            self.error('Creating a port to attach IP %s to server %s' % (
+                ip_address, server_id))
+            self.connect(netid, server_id)
+        else:
+            raiseCLIError(
+                'IP address %s does not match any reserved IPs' % ip_address,
+                details=[
+                    'To reserve an IP:', '  [kamaki] ip create',
+                    'To see all reserved IPs:', '  [kamaki] ip list'])
+
+    def main(self, ip_address):
+        super(self.__class__, self)._run()
+        self._run(ip_address=ip_address, server_id=self['server_id'])
+
+
+@command(ip_cmds)
+class ip_detach(_init_network, _port_wait, _optional_json):
+    """Detach an IP from a virtual server"""
+
+    arguments = dict(
+        wait=FlagArgument('Wait network to disconnect', ('-w', '--wait')),
+    )
+
+    @errors.generic.all
+    @errors.cyclades.connection
+    def _run(self, ip_address):
+        for ip in self.client.list_floatingips():
+            if ip['floating_ip_address'] == ip_address:
+                if not ip['port_id']:
+                    raiseCLIError('IP %s is not attached' % ip_address)
+                self.error('Deleting port %s:' % ip['port_id'])
+                self.client.delete_port(ip['port_id'])
+                if self['wait']:
+                    port_status = self.client.get_port_details(ip['port_id'])[
+                        'status']
+                    try:
+                        self._wait(ip['port_id'], port_status)
+                    except ClientError as ce:
+                        if ce.status not in (404, ):
+                            raise
+                        self.error('Port %s is deleted' % ip['port_id'])
+                return
+        raiseCLIError('IP %s not found' % ip_address)
+
+    def main(self, ip_address):
+        super(self.__class__, self)._run()
+        self._run(ip_address)
 
 
 #  Warn users for some importand changes
