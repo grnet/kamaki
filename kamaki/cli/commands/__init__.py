@@ -98,14 +98,14 @@ class _command_init(object):
         self.cloud = cloud or getattr(self, 'cloud', None)
 
     def write(self, s):
-        self._out.write(u'%s' % s)
+        self._out.write('%s' % s)
         self._out.flush()
 
     def writeln(self, s=''):
-        self.write(u'%s\n' % s)
+        self.write('%s\n' % s)
 
     def error(self, s=''):
-        self._err.write(u'%s\n' % s)
+        self._err.write('%s\n' % s)
         self._err.flush()
 
     def print_list(self, *args, **kwargs):
