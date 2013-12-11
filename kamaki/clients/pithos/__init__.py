@@ -66,9 +66,11 @@ def _range_up(start, end, max_value, a_range):
     :returns: (str) a range string cut-off for the start-end range
         an empty response means this window is out of range
     """
-    assert start >= 0, '_range_up was called with start < 0'
-    assert end >= start, '_range_up was called with end < start'
-    assert end <= max_value, '_range_up was called with max_value < end'
+    assert start >= 0, '_range_up called w. start(%s) < 0' % start
+    assert end >= start, '_range_up called w. end(%s) < start(%s)' % (
+        end, start)
+    assert end <= max_value, '_range_up called w. max_value(%s) < end(%s)' % (
+        max_value, end)
     if not a_range:
         return '%s-%s' % (start, end)
     selected = []
@@ -735,11 +737,15 @@ class PithosClient(PithosRestClient):
                     **restargs)
                 end = total_size - 1 if (
                     key + blocksize > total_size) else key + blocksize - 1
+                if end < key:
+                    self._cb_next()
+                    continue
                 data_range = _range_up(key, end, total_size, filerange)
                 if not data_range:
                     self._cb_next()
                     continue
-                restargs['async_headers'] = {'Range': 'bytes=%s' % data_range}
+                restargs[
+                    'async_headers'] = {'Range': 'bytes=%s' % data_range}
                 flying[key] = self._get_block_async(obj, **restargs)
                 blockid_dict[key] = unsaved
 

@@ -1,3 +1,7 @@
+CHANGELOG for version 0.12.rc6
+
+Add self.poolsize for kamaki.clients.Client
+
 CHANGELOG for version 0.12.rc5
 
 Add ip attach/detach (shortcuts for port create/delete)
