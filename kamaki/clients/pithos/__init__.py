@@ -731,21 +731,23 @@ class PithosClient(PithosRestClient):
             self._cb_next(len(blockids) - len(unsaved))
             if unsaved:
                 key = unsaved[0]
-                if key:
-                    self._watch_thread_limit(flying.values())
-                    self._thread2file(
-                        flying, blockid_dict, local_file, offset,
-                        **restargs)
-                    end = total_size - 1 if (
-                        key + blocksize > total_size) else key + blocksize - 1
-                    data_range = _range_up(key, end, total_size, filerange)
-                    if not data_range:
-                        self._cb_next()
-                        continue
-                    restargs[
-                        'async_headers'] = {'Range': 'bytes=%s' % data_range}
-                    flying[key] = self._get_block_async(obj, **restargs)
-                    blockid_dict[key] = unsaved
+                self._watch_thread_limit(flying.values())
+                self._thread2file(
+                    flying, blockid_dict, local_file, offset,
+                    **restargs)
+                end = total_size - 1 if (
+                    key + blocksize > total_size) else key + blocksize - 1
+                if end < key:
+                    self._cb_next()
+                    continue
+                data_range = _range_up(key, end, total_size, filerange)
+                if not data_range:
+                    self._cb_next()
+                    continue
+                restargs[
+                    'async_headers'] = {'Range': 'bytes=%s' % data_range}
+                flying[key] = self._get_block_async(obj, **restargs)
+                blockid_dict[key] = unsaved
 
         for thread in flying.values():
             thread.join()
