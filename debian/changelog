@@ -1,3 +1,9 @@
+kamaki (0.11.7-1~wheezy) wheezy; urgency=low
+
+  * release build
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Wed, 11 Dec 2013 15:28:11 +0200
+
 kamaki (0.11.6-2~wheezy) wheezy; urgency=low
 
   * release build
@@ -190,6 +196,7 @@ kamaki (0.3.0-1) stable; urgency=low
   * New upstream version 
 
  -- Kostas Papadimitriou <kpap@grnet.gr>  Thu, 03 May 2012 14:06:49 +0300
+
 
 
 
