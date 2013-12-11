@@ -180,7 +180,7 @@ class NetworkClient(NetworkRestClient, Waiter):
         return r.json['subnets']
 
     def get_subnet_details(self, subnet_id):
-        r = self.subnets_get(subnet_id, success=201)
+        r = self.subnets_get(subnet_id, success=200)
         return r.json
 
     def update_subnet(
