@@ -42,7 +42,7 @@ import kamaki
 
 optional = ['ansicolors', 'mock>=1.0.1']
 
-requires = ['objpool>=0.2', 'progress>=1.1', 'astakosclient>=0.14.8']
+requires = ['objpool>=0.2', 'progress>=1.1', 'astakosclient>=0.14.10']
 
 if version_info < (2, 7):
     requires.append('argparse')
