@@ -1,3 +1,4 @@
 argparse python-argparse
 objpool python-objpool
 progress python-progress
+astakosclient python-astakosclient
