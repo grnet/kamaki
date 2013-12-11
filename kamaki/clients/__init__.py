@@ -340,6 +340,7 @@ class Client(Logged):
         self.base_url = base_url
         self.token = token
         self.headers, self.params = dict(), dict()
+        self.poolsize = None
 
     def _init_thread_limit(self, limit=1):
         assert isinstance(limit, int) and limit > 0, 'Thread limit not a +int'
@@ -457,7 +458,9 @@ class Client(Logged):
                 data=data, headers=headers, params=params)
             #  req.log()
             r = ResponseManager(
-                req, connection_retry_limit=self.CONNECTION_RETRY_LIMIT)
+                req,
+                poolsize=self.poolsize,
+                connection_retry_limit=self.CONNECTION_RETRY_LIMIT)
             r.LOG_TOKEN, r.LOG_DATA, r.LOG_PID = (
                 self.LOG_TOKEN, self.LOG_DATA, self.LOG_PID)
             r._token = headers['X-Auth-Token']
