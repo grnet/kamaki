@@ -391,7 +391,7 @@ class NetworkClient(TestCase):
     def test_get_subnet_details(self, subnets_get):
         subid, FakeObject.json = 'subid', 'ret val'
         self.assertEqual(self.client.get_subnet_details(subid), 'ret val')
-        subnets_get.assert_called_once_with(subid, success=201)
+        subnets_get.assert_called_once_with(subid, success=200)
 
     @patch(
         'kamaki.clients.network.NetworkClient.subnets_put',
