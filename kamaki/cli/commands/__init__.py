@@ -42,19 +42,19 @@ from sys import stdin, stdout, stderr
 log = get_logger(__name__)
 
 
-def DontRaiseKeyError(foo):
+def DontRaiseKeyError(func):
     def wrap(*args, **kwargs):
         try:
-            return foo(*args, **kwargs)
+            return func(*args, **kwargs)
         except KeyError:
             return None
     return wrap
 
 
-def addLogSettings(foo):
+def addLogSettings(func):
     def wrap(self, *args, **kwargs):
         try:
-            return foo(self, *args, **kwargs)
+            return func(self, *args, **kwargs)
         finally:
             self._set_log_params()
     return wrap

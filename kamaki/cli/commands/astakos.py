@@ -67,17 +67,17 @@ _commands = [
     service_commands, commission_commands, endpoint_commands]
 
 
-def with_temp_token(foo):
-    """ Set token to self.client.token, run foo, recover old token """
+def with_temp_token(func):
+    """ Set token to self.client.token, run func, recover old token """
     def wrap(self, *args, **kwargs):
         try:
             token = kwargs.pop('token')
         except KeyError:
-            raise CLISyntaxError('A token is needed for %s' % foo)
+            raise CLISyntaxError('A token is needed for %s' % func)
         token_bu = self.client.token
         try:
             self.client.token = token or token_bu
-            return foo(self, *args, **kwargs)
+            return func(self, *args, **kwargs)
         finally:
             self.client.token = token_bu
     return wrap
@@ -606,9 +606,9 @@ _project_specs = """{
 """
 
 
-def apply_notification(foo):
+def apply_notification(func):
     def wrap(self, *args, **kwargs):
-        r = foo(self, *args, **kwargs)
+        r = func(self, *args, **kwargs)
         self.writeln('Application is submitted successfully')
         return r
     return wrap

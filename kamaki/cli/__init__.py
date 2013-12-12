@@ -496,7 +496,7 @@ def is_non_API(parser):
     return False
 
 
-def main(foo):
+def main(func):
     def wrap():
         try:
             exe = basename(argv[0])
@@ -517,7 +517,7 @@ def main(foo):
             global _colors
             exclude = ['ansicolors'] if not _colors == 'on' else []
             suggest_missing(exclude=exclude)
-            foo(exe, parser)
+            func(exe, parser)
         except CLIError as err:
             print_error_message(err)
             if _debug:
