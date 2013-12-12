@@ -41,7 +41,7 @@ from kamaki.cli.history import History
 from kamaki.cli.utils import print_dict, red, magenta, yellow
 from kamaki.cli.errors import CLIError, CLICmdSpecError
 from kamaki.cli import logger
-from kamaki.clients.astakos import AstakosClient as AuthCachedClient
+from kamaki.clients.astakos import CachedAstakosClient
 from kamaki.clients import ClientError
 
 _help = False
@@ -308,7 +308,7 @@ def init_cached_authenticator(config_argument, cloud, logger):
                 if auth_base:
                     auth_base.authenticate(token)
                 else:
-                    tmp_base = AuthCachedClient(url, token)
+                    tmp_base = CachedAstakosClient(url, token)
                     from kamaki.cli.commands import _command_init
                     fake_cmd = _command_init(dict(config=config_argument))
                     fake_cmd.client = auth_base
