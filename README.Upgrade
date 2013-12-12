@@ -17,3 +17,9 @@ uuids2usernames and/or usernames2uuids. bw compatibility is kept for version
     /user pick --> /user session select
     /user add --> /user session authenticate
 
+4. Developers using the astakosclient, here are some renames in
+    kamaki.clients.astakos:
+    AstakosClient --> CachedAstakosClient
+    SynefoAstakosClientOrig --> AstakosClient
+
+
