@@ -273,7 +273,7 @@ class _optional_output_cmd(object):
         with_output=FlagArgument('show response headers', ('--with-output')),
         json_output=FlagArgument(
             'show headers in json (DEPRECATED from v0.12,'
-            ' please use --output-format=json instead)', ('-j', '--json'))
+            '  please use --output-format=json instead)', ('-j', '--json'))
     )
 
     def _optional_output(self, r):

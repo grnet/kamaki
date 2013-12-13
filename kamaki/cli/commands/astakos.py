@@ -596,13 +596,11 @@ _project_specs = """{
     "end_date": date,
     "join_policy": "auto" | "moderated" | "closed",  # default: "moderated"
     "leave_policy": "auto" | "moderated" | "closed", # default: "auto"
-    "resources": {
-        "cyclades.vm": {
-            "project_capacity": int or null,
-            "member_capacity": int
-            }
-        }
-    }
+    "resources": {"cyclades.vm": {
+    "project_capacity": int or null,
+    "member_capacity": int
+    }}}
+
 """
 
 
@@ -653,10 +651,10 @@ class project_info(_init_synnefo_astakosclient, _optional_json):
 @command(project_commands)
 class project_create(_init_synnefo_astakosclient, _optional_json):
     """Apply for a new project (enter data though standard input or file path)
+
     Project details must be provided as a json-formated dict from the
     standard input, or through a file
     """
-
     __doc__ += _project_specs
 
     arguments = dict(
