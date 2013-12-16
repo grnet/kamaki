@@ -123,7 +123,7 @@ class RequestManager(Logged):
             url += _encode(path[1:] if path.startswith('/') else path)
         delim = '?'
         for key, val in params.items():
-            val = '' if val in (None, False) else _encode(u'%s' % val)
+            val = '' if val in (None, False) else _encode('%s' % val)
             url += '%s%s%s' % (delim, key, ('=%s' % val) if val else '')
             delim = '&'
         parsed = urlparse(url)
@@ -340,6 +340,7 @@ class Client(Logged):
         self.base_url = base_url
         self.token = token
         self.headers, self.params = dict(), dict()
+        self.poolsize = None
 
     def _init_thread_limit(self, limit=1):
         assert isinstance(limit, int) and limit > 0, 'Thread limit not a +int'
@@ -421,7 +422,7 @@ class Client(Logged):
 
     def set_param(self, name, value=None, iff=True):
         if iff:
-            self.params[name] = unicode(value)
+            self.params[name] = '%s' % value  # unicode(value)
 
     def request(
             self, method, path,
@@ -457,7 +458,9 @@ class Client(Logged):
                 data=data, headers=headers, params=params)
             #  req.log()
             r = ResponseManager(
-                req, connection_retry_limit=self.CONNECTION_RETRY_LIMIT)
+                req,
+                poolsize=self.poolsize,
+                connection_retry_limit=self.CONNECTION_RETRY_LIMIT)
             r.LOG_TOKEN, r.LOG_DATA, r.LOG_PID = (
                 self.LOG_TOKEN, self.LOG_DATA, self.LOG_PID)
             r._token = headers['X-Auth-Token']

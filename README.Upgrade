@@ -5,3 +5,51 @@ kamaki 0.12
   $ kamaki config delete network_cli
   $ kamaki config delete ip_cli
 
+2. Upgrade shell scripts to use the new syntax:
+    positional arguments are removed, except if refering to the objects
+    e.g., kamaki server info SERVER_ID
+    but not kamaki server create NAME IMAGE FLAVOR
+    Use mandatory non-positional arguments
+    e.g., kamaki server create --name=NAME --image-id=IMAGE_ID --flavor-id=FLAVOR_ID
+          kamaki image register --name=NAME --location=IMAGE_LOCATION
+
+Config file
+-----------
+
+Kamaki v0.9 will have a new config file with the following format:
+
+  [global]
+  default_cloud = some_cloud
+  ... more kamaki-related settings ...
+
+  [cloud "some_cloud"]
+  url = https://some/cloud/single/authentication/url
+  token = user_token==
+
+For more information on the exact format of the kamaki global variables, see
+the respective documentation page:
+http://www.synnefo.org/docs/kamaki/latest/setup.html#available-options
+
+How to convert the config file
+------------------------------
+
+To convert an old config file, backup the old one and then run:
+
+  kamaki -c <config file path> user authenticate
+
+Kamaki will automatically inspect the file and suggest a list of convertions,
+namely renamings and discards. Take a look at the list of discarded values,
+write down the ones that might be usefull.
+
+If you are sure about the changes, press 'y'.
+
+Kamaki should raise an error, demanding an authentication URL and/or token.
+
+First, you need to go to the clouds UI and find the authentication URL and
+token. Then you should think of a name for your cloud, e.g. "mycloud". Now,
+feed kamaki with this information:
+
+kamaki -c <config file path> config set cloud.mycloud.url <URL>
+kamaki -c <config file path> config set cloud.mycloud.token <token>
+
+Now the configuration file should be kamaki 0.9 ready.

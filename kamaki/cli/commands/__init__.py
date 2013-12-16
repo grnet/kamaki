@@ -273,7 +273,7 @@ class _optional_output_cmd(object):
         with_output=FlagArgument('show response headers', ('--with-output')),
         json_output=FlagArgument(
             'show headers in json (DEPRECATED from v0.12,'
-            ' please use --output-format=json instead)', ('-j', '--json'))
+            '  please use --output-format=json instead)', ('-j', '--json'))
     )
 
     def _optional_output(self, r):
@@ -319,12 +319,14 @@ class _name_filter(object):
     def _non_exact_name_filter(self, items):
         np, ns, nl = self['name_pref'], self['name_suff'], self['name_like']
         return [item for item in items if (
-            (not np) or item['name'].lower().startswith(np.lower())) and (
-            (not ns) or item['name'].lower().endswith(ns.lower())) and (
-            (not nl) or nl.lower() in item['name'].lower())]
+            (not np) or (item['name'] or '').lower().startswith(
+                np.lower())) and (
+            (not ns) or (item['name'] or '').lower().endswith(
+                ns.lower())) and (
+            (not nl) or nl.lower() in (item['name'] or '').lower())]
 
     def _exact_name_filter(self, items):
-        return filter_dicts_by_dict(items, dict(name=self['name'])) if (
+        return filter_dicts_by_dict(items, dict(name=self['name'] or '')) if (
             self['name']) else items
 
     def _filter_by_name(self, items):

@@ -391,7 +391,7 @@ class NetworkClient(TestCase):
     def test_get_subnet_details(self, subnets_get):
         subid, FakeObject.json = 'subid', 'ret val'
         self.assertEqual(self.client.get_subnet_details(subid), 'ret val')
-        subnets_get.assert_called_once_with(subid, success=201)
+        subnets_get.assert_called_once_with(subid, success=200)
 
     @patch(
         'kamaki.clients.network.NetworkClient.subnets_put',
@@ -490,9 +490,9 @@ class NetworkClient(TestCase):
         'kamaki.clients.network.NetworkClient.ports_get',
         return_value=FakeObject())
     def test_get_port_details(self, ports_get):
-        portid, FakeObject.json = 'portid', dict(ports='ret val')
+        portid, FakeObject.json = 'portid', dict(port='ret val')
         self.assertEqual(self.client.get_port_details(portid), 'ret val')
-        ports_get.assert_called_once_with(portid, success=201)
+        ports_get.assert_called_once_with(portid, success=200)
 
     @patch(
         'kamaki.clients.network.NetworkClient.ports_delete',
@@ -523,7 +523,7 @@ class NetworkClient(TestCase):
             for k, v in kwargs.items():
                 if v:
                     req[k] = v
-            expargs = dict(json_data=dict(port=req), success=201)
+            expargs = dict(json_data=dict(port=req), success=200)
             self.assertEqual(
                 ports_put.mock_calls[-1], call(port_id, **expargs))
 

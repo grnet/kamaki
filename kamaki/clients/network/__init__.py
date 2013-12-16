@@ -52,13 +52,14 @@ class NetworkClient(NetworkRestClient, Waiter):
 
     def create_networks(self, networks):
         """Atomic operation for batch network creation (all or nothing)
+
         :param networks: (list) [
             {name: ..(str).., admin_state_up: ..(bool).., shared: ..(bool)..},
             {name: ..(str).., admin_state_up: ..(bool).., shared: ..(bool)..}]
             name is mandatory, the rest is optional
             e.g., create_networks([
-                {name: 'net1', admin_state_up: True},
-                {name: 'net2'}])
+            {name: 'net1', admin_state_up: True},
+            {name: 'net2'}])
         :returns: (list of dicts) created networks details
         :raises ValueError: if networks is misformated
         :raises ClientError: if the request failed or didn't return 201
@@ -144,6 +145,7 @@ class NetworkClient(NetworkRestClient, Waiter):
 
     def create_subnets(self, subnets):
         """Atomic operation for batch subnet creation (all or nothing)
+
         :param subnets: (list of dicts) {key: ...} with all parameters in the
             method create_subnet, where method mandatory / optional paramteres
             respond to mandatory / optional paramters in subnets items
@@ -180,7 +182,7 @@ class NetworkClient(NetworkRestClient, Waiter):
         return r.json['subnets']
 
     def get_subnet_details(self, subnet_id):
-        r = self.subnets_get(subnet_id, success=201)
+        r = self.subnets_get(subnet_id, success=200)
         return r.json
 
     def update_subnet(
@@ -255,6 +257,7 @@ class NetworkClient(NetworkRestClient, Waiter):
 
     def create_ports(self, ports):
         """Atomic operation for batch port creation (all or nothing)
+
         :param ports: (list of dicts) {key: ...} with all parameters in the
             method create_port, where method mandatory / optional paramteres
             respond to mandatory / optional paramters in ports items
