@@ -740,7 +740,7 @@ class network_connect(_port_create):
 
 @command(network_cmds)
 class network_disconnect(_init_network, _port_wait, _optional_json):
-    """Disconnnect a network from a device"""
+    """Disconnect a network from a device"""
 
     def _cyclades_client(self):
         auth = getattr(self, 'auth_base')
