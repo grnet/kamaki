@@ -68,7 +68,6 @@ class Config(TestCase):
         self.config_file_content = [
             HEADER,
             '[global]\n',
-            'max_threads = 5\n',
             'default_cloud = ~mycloud\n',
             'file_cli = pithos\n',
             'history_file = /home/user/.kamaki.history\n',

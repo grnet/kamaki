@@ -33,7 +33,7 @@
 
 from cmd import Cmd
 from os import popen
-from sys import stdout
+from sys import stdout, stderr
 
 from kamaki.cli import exec_cmd, print_error_message, print_subcommands_help
 from kamaki.cli.argument import ArgumentParseManager
@@ -167,7 +167,7 @@ class Shell(Cmd):
         self.__dict__ = oldcontext
 
     @staticmethod
-    def _create_help_method(cmd_name, args, descr, syntax):
+    def _create_help_method(cmd_name, args, required, descr, syntax):
         tmp_args = dict(args)
         #tmp_args.pop('options', None)
         tmp_args.pop('cloud', None)
@@ -175,10 +175,10 @@ class Shell(Cmd):
         tmp_args.pop('verbose', None)
         tmp_args.pop('silent', None)
         tmp_args.pop('config', None)
-        help_parser = ArgumentParseManager(cmd_name, tmp_args)
-        help_parser.parser.description = descr
-        help_parser.syntax = syntax
-        return help_parser.parser.print_help
+        help_parser = ArgumentParseManager(
+            cmd_name, tmp_args, required,
+            syntax=syntax, description=descr, check_required=False)
+        return help_parser.print_help
 
     def _register_command(self, cmd_path):
         cmd = self.cmd_tree.get_command(cmd_path)
@@ -200,6 +200,7 @@ class Shell(Cmd):
             if subcmd.is_command:  # exec command
                 try:
                     cls = subcmd.cmd_class
+                    cmd_parser.required = getattr(cls, 'required', None)
                     ldescr = getattr(cls, 'long_description', '')
                     if subcmd.path == 'history_run':
                         instance = cls(
@@ -211,11 +212,13 @@ class Shell(Cmd):
                             self.auth_base, self.cloud)
                     cmd_parser.update_arguments(instance.arguments)
                     cmd_parser.arguments = instance.arguments
+                    subpath = subcmd.path.split('_')[
+                        (len(cmd.path.split('_')) - 1):]
                     cmd_parser.syntax = '%s %s' % (
-                        subcmd.path.replace('_', ' '), cls.syntax)
+                        ' '.join(subpath), instance.syntax)
                     help_method = self._create_help_method(
                         cmd.name, cmd_parser.arguments,
-                        subcmd.help, cmd_parser.syntax)
+                        cmd_parser.required, subcmd.help, cmd_parser.syntax)
                     if '-h' in cmd_args or '--help' in cmd_args:
                         help_method()
                         if ldescr.strip():

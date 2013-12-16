@@ -27,23 +27,31 @@ configuration types can also be created and managed in the same fashion as the
 Kamaki preset global options, as they appear in the configuration file::
 
     [global]
-        default_cloud=
-        colors=off
-        log_file=${HOME}/.kamaki.log
-        log_token=off
-        log_data=off
-        log_pid=off
-        max_threads=7
-        history_file=${HOME}/.kamaki.history
-        user_cli=astakos
-        file_cli=pithos
-        server_cli=cyclades
-        flavor_cli=cyclades
-        network_cli=cyclades
-        ip_cli=cyclades
-        image_cli=image
-        config_cli=config
-        history_cli=history
+    project_cli = astakos
+        default_cloud = my_cloud
+        quota_cli = astakos
+        file_cli = pithos
+        subnet_cli = network
+        history_cli = history
+        group_cli = pithos
+        server_cli = cyclades
+        container_cli = pithos
+        imagecompute_cli = image
+        user_cli = astakos
+        network_cli = network
+        resource_cli = astakos
+        config_cli = config
+        flavor_cli = cyclades
+        sharer_cli = pithos
+        image_cli = image
+        port_cli = network
+        ip_cli = network
+        history_file = /home/someuser/.kamaki.history
+        colors = off
+        log_pid = off
+        log_token = off
+        log_data = off
+        log_file = /home/someuser/.kamaki.log
 
 A cloud configuration is required to make kamaki run. The
 `setup guide <../setup.html>`_ can help when setting one or more cloud
