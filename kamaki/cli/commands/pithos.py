@@ -1656,7 +1656,7 @@ class group_create(_pithos_group, _optional_json):
         user_uuid=RepeatableArgument('Add a user to the group', '--uuid'),
         username=RepeatableArgument('Add a user to the group', '--username')
     )
-    required = ['user_uuid', 'user_name']
+    required = ['user_uuid', 'username']
 
     @errors.generic.all
     @errors.pithos.connection
