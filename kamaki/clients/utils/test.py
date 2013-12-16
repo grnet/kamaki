@@ -34,6 +34,8 @@
 #from mock import patch, call
 
 from unittest import TestCase
+from tempfile import TemporaryFile
+
 from kamaki.clients import utils
 
 
@@ -127,6 +129,16 @@ class Utils(TestCase):
                 ('/p1/%s/p2' % utf.decode('utf-8'), ('p1', utf, 'p2'))):
             self.assertEqual(utils.path4url(*args), expected)
 
+    def test_readall(self):
+        tstr = '1234567890'
+        with TemporaryFile() as f:
+            f.write(tstr)
+            f.flush()
+            f.seek(0)
+            self.assertEqual(utils.readall(f, 5), tstr[:5])
+            self.assertEqual(utils.readall(f, 10), tstr[5:])
+            self.assertEqual(utils.readall(f, 1), '')
+            self.assertRaises(IOError, utils.readall, f, 1, 0)
 
 if __name__ == '__main__':
     from sys import argv

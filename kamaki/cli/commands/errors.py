@@ -32,6 +32,7 @@
 # or implied, of GRNET S.A.command
 
 from traceback import print_stack, print_exc
+from astakosclient import AstakosClientException
 
 from kamaki.clients import ClientError
 from kamaki.cli.errors import CLIError, raiseCLIError, CLISyntaxError
@@ -101,6 +102,16 @@ class user(object):
         '*  (temporary):  re-run with <token> parameter'] + CLOUDNAME
 
     @classmethod
+    def astakosclient(this, foo):
+        def _raise(self, *args, **kwargs):
+            try:
+                r = foo(self, *args, **kwargs)
+            except AstakosClientException as ace:
+                raiseCLIError(ace, 'Error in synnefo-AstakosClient')
+            return r
+        return _raise
+
+    @classmethod
     def load(this, foo):
         def _raise(self, *args, **kwargs):
             r = foo(self, *args, **kwargs)
@@ -112,7 +123,7 @@ class user(object):
                 kloger.warning(
                     'No permanent token (try:'
                     ' kamaki config set cloud.default.token <tkn>)')
-            if not getattr(client, 'base_url', False):
+            if not getattr(client, 'astakos_base_url', False):
                 msg = 'Missing synnefo authentication URL'
                 raise CLIError(msg, importance=3, details=[
                     'Check if authentication URL is correct',
@@ -128,12 +139,11 @@ class user(object):
         def _raise(self, *args, **kwargs):
             try:
                 return foo(self, *args, **kwargs)
-            except ClientError as ce:
+            except (ClientError, AstakosClientException) as ce:
                 if ce.status == 401:
                     token = kwargs.get('custom_token', 0) or self.client.token
-                    msg = (
-                        'Authorization failed for token %s' % token
-                    ) if token else 'No token provided',
+                    msg = ('Authorization failed for token %s' % token) if (
+                        token) else 'No token provided',
                     details = [] if token else this._token_details
                     raiseCLIError(ce, msg, details=details)
                 raise ce
@@ -172,6 +182,8 @@ class cyclades(object):
         'How to pick a valid network id:',
         '* get a list of network ids: /network list',
         '* details of network: /network info <network id>']
+
+    net_types = ('CUSTOM', 'MAC_FILTERED', 'IP_LESS_ROUTED', 'PHYSICAL_VLAN')
 
     @classmethod
     def connection(this, foo):
@@ -227,6 +239,16 @@ class cyclades(object):
                     msg = 'No network with id %s found' % network_id,
                     raiseCLIError(ce, msg, details=this.about_network_id)
                 raise
+        return _raise
+
+    @classmethod
+    def network_type(this, foo):
+        def _raise(self, *args, **kwargs):
+            network_type = kwargs.get('network_type', None)
+            msg = 'Invalid network type %s.\nValid types: %s' % (
+                network_type, ' '.join(this.net_types))
+            assert network_type in this.net_types, msg
+            return foo(self, *args, **kwargs)
         return _raise
 
     @classmethod
@@ -377,7 +399,7 @@ class cyclades(object):
                     'metadata' in ('%s' % ce).lower()
                 ):
                         raiseCLIError(
-                            ce, 'No v. server metadata with key %s' % key)
+                            ce, 'No virtual server metadata with key %s' % key)
                 raise
         return _raise
 
@@ -489,9 +511,25 @@ class pithos(object):
         return _raise
 
     @classmethod
+    def local_path_download(this, foo):
+        def _raise(self, *args, **kwargs):
+            try:
+                return foo(self, *args, **kwargs)
+            except IOError as ioe:
+                msg = 'Failed to access a file',
+                raiseCLIError(ioe, msg, importance=2, details=[
+                    'Check if the file exists. Also check if the remote',
+                    'directories exist. All directories in a remote path',
+                    'must exist to succesfully download a container or a',
+                    'directory.',
+                    'To create a remote directory:',
+                    '  [kamaki] file mkdir REMOTE_DIRECTORY_PATH'])
+        return _raise
+
+    @classmethod
     def local_path(this, foo):
         def _raise(self, *args, **kwargs):
-            local_path = kwargs.get('local_path', '<None>')
+            local_path = kwargs.get('local_path', None)
             try:
                 return foo(self, *args, **kwargs)
             except IOError as ioe:
