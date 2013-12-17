@@ -46,10 +46,10 @@ CLOUDNAME = [
 class generic(object):
 
     @classmethod
-    def all(this, foo):
+    def all(this, func):
         def _raise(self, *args, **kwargs):
             try:
-                return foo(self, *args, **kwargs)
+                return func(self, *args, **kwargs)
             except Exception as e:
                 if _debug:
                     print_stack()
@@ -60,10 +60,10 @@ class generic(object):
         return _raise
 
     @classmethod
-    def _connection(this, foo):
+    def _connection(this, func):
         def _raise(self, *args, **kwargs):
             try:
-                foo(self, *args, **kwargs)
+                func(self, *args, **kwargs)
             except ClientError as ce:
                 ce_msg = ('%s' % ce).lower()
                 if ce.status == 401:
@@ -102,19 +102,19 @@ class user(object):
         '*  (temporary):  re-run with <token> parameter'] + CLOUDNAME
 
     @classmethod
-    def astakosclient(this, foo):
+    def astakosclient(this, func):
         def _raise(self, *args, **kwargs):
             try:
-                r = foo(self, *args, **kwargs)
+                r = func(self, *args, **kwargs)
             except AstakosClientException as ace:
                 raiseCLIError(ace, 'Error in synnefo-AstakosClient')
             return r
         return _raise
 
     @classmethod
-    def load(this, foo):
+    def load(this, func):
         def _raise(self, *args, **kwargs):
-            r = foo(self, *args, **kwargs)
+            r = func(self, *args, **kwargs)
             try:
                 client = getattr(self, 'client')
             except AttributeError as ae:
@@ -135,10 +135,10 @@ class user(object):
         return _raise
 
     @classmethod
-    def authenticate(this, foo):
+    def authenticate(this, func):
         def _raise(self, *args, **kwargs):
             try:
-                return foo(self, *args, **kwargs)
+                return func(self, *args, **kwargs)
             except (ClientError, AstakosClientException) as ce:
                 if ce.status == 401:
                     token = kwargs.get('custom_token', 0) or self.client.token
@@ -147,28 +147,28 @@ class user(object):
                     details = [] if token else this._token_details
                     raiseCLIError(ce, msg, details=details)
                 raise ce
-            self._raise = foo
+            self._raise = func
         return _raise
 
 
 class history(object):
     @classmethod
-    def init(this, foo):
+    def init(this, func):
         def _raise(self, *args, **kwargs):
-            r = foo(self, *args, **kwargs)
+            r = func(self, *args, **kwargs)
             if not hasattr(self, 'history'):
                 raise CLIError('Failed to load history', importance=2)
             return r
         return _raise
 
     @classmethod
-    def _get_cmd_ids(this, foo):
+    def _get_cmd_ids(this, func):
         def _raise(self, cmd_ids, *args, **kwargs):
             if not cmd_ids:
                 raise CLISyntaxError(
                     'Usage: <id1|id1-id2> [id3|id3-id4] ...',
                     details=self.__doc__.split('\n'))
-            return foo(self, cmd_ids, *args, **kwargs)
+            return func(self, cmd_ids, *args, **kwargs)
         return _raise
 
 
@@ -186,14 +186,14 @@ class cyclades(object):
     net_types = ('CUSTOM', 'MAC_FILTERED', 'IP_LESS_ROUTED', 'PHYSICAL_VLAN')
 
     @classmethod
-    def connection(this, foo):
-        return generic._connection(foo)
+    def connection(this, func):
+        return generic._connection(func)
 
     @classmethod
-    def date(this, foo):
+    def date(this, func):
         def _raise(self, *args, **kwargs):
             try:
-                return foo(self, *args, **kwargs)
+                return func(self, *args, **kwargs)
             except ClientError as ce:
                 if ce.status == 400 and 'changes-since' in ('%s' % ce):
                     raise CLIError(
@@ -203,13 +203,13 @@ class cyclades(object):
         return _raise
 
     @classmethod
-    def cluster_size(this, foo):
+    def cluster_size(this, func):
         def _raise(self, *args, **kwargs):
             size = kwargs.get('size', None)
             try:
                 size = int(size)
                 assert size > 0, 'Cluster size must be a positive integer'
-                return foo(self, *args, **kwargs)
+                return func(self, *args, **kwargs)
             except ValueError as ve:
                 msg = 'Invalid cluster size value %s' % size
                 raiseCLIError(ve, msg, importance=1, details=[
@@ -222,12 +222,12 @@ class cyclades(object):
         return _raise
 
     @classmethod
-    def network_id(this, foo):
+    def network_id(this, func):
         def _raise(self, *args, **kwargs):
             network_id = kwargs.get('network_id', None)
             try:
                 network_id = int(network_id)
-                return foo(self, *args, **kwargs)
+                return func(self, *args, **kwargs)
             except ValueError as ve:
                 msg = 'Invalid network id %s ' % network_id
                 details = 'network id must be a positive integer'
@@ -242,20 +242,20 @@ class cyclades(object):
         return _raise
 
     @classmethod
-    def network_type(this, foo):
+    def network_type(this, func):
         def _raise(self, *args, **kwargs):
             network_type = kwargs.get('network_type', None)
             msg = 'Invalid network type %s.\nValid types: %s' % (
                 network_type, ' '.join(this.net_types))
             assert network_type in this.net_types, msg
-            return foo(self, *args, **kwargs)
+            return func(self, *args, **kwargs)
         return _raise
 
     @classmethod
-    def network_max(this, foo):
+    def network_max(this, func):
         def _raise(self, *args, **kwargs):
             try:
-                return foo(self, *args, **kwargs)
+                return func(self, *args, **kwargs)
             except ClientError as ce:
                 if ce.status == 413:
                     msg = 'Cannot create another network',
@@ -268,11 +268,11 @@ class cyclades(object):
         return _raise
 
     @classmethod
-    def network_in_use(this, foo):
+    def network_in_use(this, func):
         def _raise(self, *args, **kwargs):
             network_id = kwargs.get('network_id', None)
             try:
-                return foo(self, *args, **kwargs)
+                return func(self, *args, **kwargs)
             except ClientError as ce:
                 if network_id and ce.status in (400, ):
                     msg = 'Network with id %s does not exist' % network_id,
@@ -288,12 +288,12 @@ class cyclades(object):
         return _raise
 
     @classmethod
-    def flavor_id(this, foo):
+    def flavor_id(this, func):
         def _raise(self, *args, **kwargs):
             flavor_id = kwargs.get('flavor_id', None)
             try:
                 flavor_id = int(flavor_id)
-                return foo(self, *args, **kwargs)
+                return func(self, *args, **kwargs)
             except ValueError as ve:
                 msg = 'Invalid flavor id %s ' % flavor_id,
                 details = 'Flavor id must be a positive integer'
@@ -308,12 +308,12 @@ class cyclades(object):
         return _raise
 
     @classmethod
-    def server_id(this, foo):
+    def server_id(this, func):
         def _raise(self, *args, **kwargs):
             server_id = kwargs.get('server_id', None)
             try:
                 server_id = int(server_id)
-                return foo(self, *args, **kwargs)
+                return func(self, *args, **kwargs)
             except ValueError as ve:
                 msg = 'Invalid virtual server id %s' % server_id,
                 details = 'Server id must be a positive integer'
@@ -333,11 +333,11 @@ class cyclades(object):
         return _raise
 
     @classmethod
-    def firewall(this, foo):
+    def firewall(this, func):
         def _raise(self, *args, **kwargs):
             profile = kwargs.get('profile', None)
             try:
-                return foo(self, *args, **kwargs)
+                return func(self, *args, **kwargs)
             except ClientError as ce:
                 if ce.status == 400 and profile and (
                     'firewall' in ('%s' % ce).lower()
@@ -352,10 +352,10 @@ class cyclades(object):
         return _raise
 
     @classmethod
-    def nic_id(this, foo):
+    def nic_id(this, func):
         def _raise(self, *args, **kwargs):
             try:
-                return foo(self, *args, **kwargs)
+                return func(self, *args, **kwargs)
             except ClientError as ce:
                 nic_id = kwargs.get('nic_id', None)
                 if nic_id and ce.status == 404 and (
@@ -375,10 +375,10 @@ class cyclades(object):
         return _raise
 
     @classmethod
-    def nic_format(this, foo):
+    def nic_format(this, func):
         def _raise(self, *args, **kwargs):
             try:
-                return foo(self, *args, **kwargs)
+                return func(self, *args, **kwargs)
             except IndexError as ie:
                 nic_id = kwargs.get('nic_id', None)
                 msg = 'Invalid format for network interface (nic) %s' % nic_id
@@ -389,11 +389,11 @@ class cyclades(object):
         return _raise
 
     @classmethod
-    def metadata(this, foo):
+    def metadata(this, func):
         def _raise(self, *args, **kwargs):
             key = kwargs.get('key', None)
             try:
-                foo(self, *args, **kwargs)
+                func(self, *args, **kwargs)
             except ClientError as ce:
                 if key and ce.status == 404 and (
                     'metadata' in ('%s' % ce).lower()
@@ -412,15 +412,15 @@ class plankton(object):
         '* details of image: /image meta <image id>']
 
     @classmethod
-    def connection(this, foo):
-        return generic._connection(foo)
+    def connection(this, func):
+        return generic._connection(func)
 
     @classmethod
-    def id(this, foo):
+    def id(this, func):
         def _raise(self, *args, **kwargs):
             image_id = kwargs.get('image_id', None)
             try:
-                foo(self, *args, **kwargs)
+                func(self, *args, **kwargs)
             except ClientError as ce:
                 if image_id and (
                     ce.status == 404
@@ -435,11 +435,11 @@ class plankton(object):
         return _raise
 
     @classmethod
-    def metadata(this, foo):
+    def metadata(this, func):
         def _raise(self, *args, **kwargs):
             key = kwargs.get('key', None)
             try:
-                return foo(self, *args, **kwargs)
+                return func(self, *args, **kwargs)
             except ClientError as ce:
                 ce_msg = ('%s' % ce).lower()
                 if ce.status == 404 or (
@@ -460,14 +460,14 @@ class pithos(object):
         'For a list of containers: /file list']
 
     @classmethod
-    def connection(this, foo):
-        return generic._connection(foo)
+    def connection(this, func):
+        return generic._connection(func)
 
     @classmethod
-    def account(this, foo):
+    def account(this, func):
         def _raise(self, *args, **kwargs):
             try:
-                return foo(self, *args, **kwargs)
+                return func(self, *args, **kwargs)
             except ClientError as ce:
                 if ce.status == 403:
                     raiseCLIError(
@@ -478,10 +478,10 @@ class pithos(object):
         return _raise
 
     @classmethod
-    def quota(this, foo):
+    def quota(this, func):
         def _raise(self, *args, **kwargs):
             try:
-                return foo(self, *args, **kwargs)
+                return func(self, *args, **kwargs)
             except ClientError as ce:
                 if ce.status == 413:
                     raiseCLIError(ce, 'User quota exceeded', details=[
@@ -495,11 +495,11 @@ class pithos(object):
         return _raise
 
     @classmethod
-    def container(this, foo):
+    def container(this, func):
         def _raise(self, *args, **kwargs):
             dst_cont = kwargs.get('dst_cont', None)
             try:
-                return foo(self, *args, **kwargs)
+                return func(self, *args, **kwargs)
             except ClientError as ce:
                 if ce.status == 404 and 'container' in ('%s' % ce).lower():
                         cont = ('%s or %s' % (
@@ -511,10 +511,10 @@ class pithos(object):
         return _raise
 
     @classmethod
-    def local_path_download(this, foo):
+    def local_path_download(this, func):
         def _raise(self, *args, **kwargs):
             try:
-                return foo(self, *args, **kwargs)
+                return func(self, *args, **kwargs)
             except IOError as ioe:
                 msg = 'Failed to access a file',
                 raiseCLIError(ioe, msg, importance=2, details=[
@@ -527,21 +527,21 @@ class pithos(object):
         return _raise
 
     @classmethod
-    def local_path(this, foo):
+    def local_path(this, func):
         def _raise(self, *args, **kwargs):
             local_path = kwargs.get('local_path', None)
             try:
-                return foo(self, *args, **kwargs)
+                return func(self, *args, **kwargs)
             except IOError as ioe:
                 msg = 'Failed to access file %s' % local_path,
                 raiseCLIError(ioe, msg, importance=2)
         return _raise
 
     @classmethod
-    def object_path(this, foo):
+    def object_path(this, func):
         def _raise(self, *args, **kwargs):
             try:
-                return foo(self, *args, **kwargs)
+                return func(self, *args, **kwargs)
             except ClientError as ce:
                 err_msg = ('%s' % ce).lower()
                 if (
@@ -555,7 +555,7 @@ class pithos(object):
         return _raise
 
     @classmethod
-    def object_size(this, foo):
+    def object_size(this, func):
         def _raise(self, *args, **kwargs):
             size = kwargs.get('size', None)
             start = kwargs.get('start', 0)
@@ -587,7 +587,7 @@ class pithos(object):
                         importance=1)
                 size = end - start
             try:
-                return foo(self, *args, **kwargs)
+                return func(self, *args, **kwargs)
             except ClientError as ce:
                 err_msg = ('%s' % ce).lower()
                 expected = 'object length is smaller than range length'
