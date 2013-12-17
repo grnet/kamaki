@@ -457,7 +457,7 @@ class image_register(_init_image, _optional_json):
         uuid=ValueArgument('Custom user uuid', '--uuid'),
         local_image_path=ValueArgument(
             'Local image file path to upload and register '
-            '(still need target file in the form /ontainer/remote-path )',
+            '(still need target file in the form /container/remote-path )',
             '--upload-image-file'),
         progress_bar=ProgressBarArgument(
             'Do not use progress bar', '--no-progress-bar', default=False),
