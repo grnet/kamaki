@@ -1284,9 +1284,6 @@ class file_download(_pithos_container):
             self.error('\nDownload canceled by user')
             if local_path is not None:
                 self.error('to resume, re-run with --resume')
-        except Exception:
-            self._safe_progress_bar_finish(progress_bar)
-            raise
         finally:
             self._safe_progress_bar_finish(progress_bar)
 
