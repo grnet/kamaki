@@ -1208,7 +1208,7 @@ class file_download(_pithos_container):
             #  Remote object is just a file
             if path.exists(local_path) and not self['resume']:
                 raise CLIError(
-                    'Cannot overwrite local file %s' % (lpath),
+                    'Cannot overwrite local file %s' % (local_path),
                     details=['To overwrite/resume, use  %s' % (
                         self.arguments['resume'].lvalue)])
             ret.append((rpath, local_path, self['resume']))
