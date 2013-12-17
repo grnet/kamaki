@@ -152,9 +152,9 @@ def print_dict(
         k = ('%s' % k).strip()
         if k in exclude:
             continue
-        print_str = u' ' * indent
-        print_str += u'%s.' % (i + 1) if with_enumeration else u''
-        print_str += u'%s:' % k
+        print_str = ' ' * indent
+        print_str += '%s.' % (i + 1) if with_enumeration else ''
+        print_str += '%s:' % k
         if isinstance(v, dict):
             out.write(print_str + '\n')
             print_dict(
@@ -199,13 +199,13 @@ def print_list(
     assert indent >= 0, 'print_list indent must be >= 0'
 
     for i, item in enumerate(l):
-        print_str = u' ' * indent
-        print_str += u'%s.' % (i + 1) if with_enumeration else u''
+        print_str = ' ' * indent
+        print_str += '%s.' % (i + 1) if with_enumeration else ''
         if isinstance(item, dict):
             if with_enumeration:
                 out.write(print_str + '\n')
             elif i and i < len(l):
-                out.write(u'\n')
+                out.write('\n')
             print_dict(
                 item, exclude,
                 indent + (INDENT_TAB if with_enumeration else 0),

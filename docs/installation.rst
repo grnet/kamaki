@@ -186,7 +186,7 @@ The full process is detailed in the following:
 Requirements
 ^^^^^^^^^^^^
 
-* Python 2.7 or better (`Official versions <http://www.python.org/getit>`_)
+* Python 2.7 (`Official versions <http://www.python.org/getit>`_)
 
 * Setuptools (`Official versions and workarounds <http://pypi.python.org/pypi/setuptools>`_)
 
