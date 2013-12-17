@@ -516,7 +516,7 @@ class pithos(object):
             try:
                 return func(self, *args, **kwargs)
             except IOError as ioe:
-                msg = 'Failed to access a file',
+                msg = 'Failed to access a local file',
                 raiseCLIError(ioe, msg, importance=2, details=[
                     'Check if the file exists. Also check if the remote',
                     'directories exist. All directories in a remote path',
