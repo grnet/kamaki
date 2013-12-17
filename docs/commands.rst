@@ -65,8 +65,22 @@ project (Astakos)
     modify        Modify a project
     terminate     Terminate a project (special privileges needed)
     application   Application management commands
-    membership    Project membership management commands
     reinstate     Reinstate a terminated project (special privileges needed)
+
+membership (Astakos)
+--------------------
+
+.. code-block:: text
+
+    info    Details on a membership
+    enroll  Enroll somebody to a project you manage
+    join    Join a project
+    list    List all memberships
+    accept  Accept a membership for a project you manage
+    leave   Leave a project you have membership to
+    remove  Remove a membership for a project you manage
+    reject  Reject a membership for a project you manage
+    cancel  Cancel your (probably pending) membership to a project
 
 quota (Account/Astakos)
 -----------------------
