@@ -748,7 +748,7 @@ class server_stats(_init_cyclades, _optional_json):
 
 @command(server_cmds)
 class server_wait(_init_cyclades, _server_wait):
-    """Wait for server to finish [BUILD, STOPPED, REBOOT, ACTIVE]"""
+    """Wait for server to finish (BUILD, STOPPED, REBOOT, ACTIVE)"""
 
     arguments = dict(
         timeout=IntArgument(
