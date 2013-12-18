@@ -375,24 +375,46 @@ class PersonalityArgument(KeyValueArgument):
                                 '%s' % ve])
 
 
-class NetworkIpArgument(RepeatableArgument):
+class NetworkArgument(RepeatableArgument):
+    """[id=]NETWORK_ID[,[ip=]IP]"""
 
     @property
     def value(self):
-        return getattr(self, '_value', [])
+        return getattr(self, '_value', self.default)
 
     @value.setter
     def value(self, new_value):
-        for v in (new_value or []):
-            net_and_ip = v.split(',')
-            if len(net_and_ip) < 2:
+        for v in new_value or []:
+            part1, sep, part2 = v.partition(',')
+            netid, ip = '', ''
+            if part1.startswith('id='):
+                netid = part1[len('id='):]
+            elif part1.startswith('ip='):
+                ip = part1[len('ip='):]
+            else:
+                netid = part1
+            if part2:
+                if (part2.startswith('id=') and netid) or (
+                        part2.startswith('ip=') and ip):
+                    raise CLIInvalidArgument(
+                        'Invalid network argument %s' % v, details=[
+                        'Valid format: [id=]NETWORK_ID[,[ip=]IP]'])
+                if part2.startswith('id='):
+                    netid = part2[len('id='):]
+                elif part2.startswith('ip='):
+                    ip = part2[len('ip='):]
+                elif netid:
+                    ip = part2
+                else:
+                    netid = part2
+            if not netid:
                 raise CLIInvalidArgument(
-                    'Value "%s" is missing parts' % v,
-                    details=['Correct format: %s NETWORK_ID,IP' % (
-                        self.parsed_name[0])])
-            self._value = getattr(self, '_value', list())
-            self._value.append(
-                dict(uuid=net_and_ip[0], fixed_ip=net_and_ip[1]))
+                    'Invalid network argument %s' % v, details=[
+                    'Valid format: [id=]NETWORK_ID[,[ip=]IP]'])
+            self._value = getattr(self, '_value', [])
+            self._value.append(dict(uuid=netid))
+            if ip:
+                self._value[-1]['fixed_ip'] = ip
 
 
 @command(server_cmds)
@@ -413,25 +435,26 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
             '--cluster-size'),
         max_threads=IntArgument(
             'Max threads in cluster mode (default 1)', '--threads'),
-        network_id=RepeatableArgument(
-            'Connect server to network (can be repeated)', '--network'),
-        network_id_and_ip=NetworkIpArgument(
-            'Connect server to network w. floating ip ( NETWORK_ID,IP )'
-            '(can be repeated)',
-            '--network-with-ip'),
-        automatic_ip=FlagArgument(
-            'Automatically assign an IP to the server', '--automatic-ip')
+        network_configuration=NetworkArgument(
+            'Connect server to network: [id=]NETWORK_ID[,[ip=]IP]        . '
+            'Use only NETWORK_ID for private networks.        . '
+            'Use NETWORK_ID,[ip=]IP for networks with IP.        . '
+            'Can be repeated, mutually exclussive with --no-network',
+            '--network'),
+        no_network=FlagArgument(
+            'Do not create any network NICs on the server.        . '
+            'Mutually exclusive to --network        . '
+            'If neither --network or --no-network are used, the default '
+            'network policy is applied. This policy is configured on the '
+            'cloud and kamaki is oblivious to it',
+            '--no-network')
     )
     required = ('server_name', 'flavor_id', 'image_id')
 
     @errors.cyclades.cluster_size
     def _create_cluster(self, prefix, flavor_id, image_id, size):
-        if self['automatic_ip']:
-            networks = []
-        else:
-            networks = [dict(uuid=netid) for netid in (
-                self['network_id'] or [])] + (self['network_id_and_ip'] or [])
-            networks = networks or None
+        networks = self['network_configuration'] or (
+            None if self['no_network'] else [])
         servers = [dict(
             name='%s%s' % (prefix, i if size > 1 else ''),
             flavor_id=flavor_id,
@@ -483,14 +506,12 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
 
     def main(self):
         super(self.__class__, self)._run()
-        if self['automatic_ip'] and (
-                self['network_id'] or self['network_id_and_ip']):
-            raise CLIInvalidArgument('Invalid argument combination', details=[
-                'Argument %s should not be combined with other' % (
-                    self.arguments['automatic_ip'].lvalue),
-                'network-related arguments i.e., %s or %s' % (
-                    self.arguments['network_id'].lvalue,
-                    self.arguments['network_id_and_ip'].lvalue)])
+        if self['no_network'] and self['network']:
+            raise CLIInvalidArgument(
+                'Invalid argument compination', importance=2, details=[
+                'Arguments %s and %s are mutually exclusive' % (
+                    self.arguments['no_network'].lvalue,
+                    self.arguments['network'].lvalue)])
         self._run(
             name=self['server_name'],
             flavor_id=self['flavor_id'],

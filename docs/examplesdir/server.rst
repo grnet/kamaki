@@ -47,7 +47,7 @@ List available images
     f1r57-1m4g3-1d Debian Base Alpha
     53c0nd-1m4g3-1d Beta Debian Base
 
-Let's pick the `C1R128D1drbd` (id: 1) flavor and the `Debian Base Alpha` (id:
+Pick the `C1R128D1drbd` (id: 1) flavor and the `Debian Base Alpha` (id:
 f1r57-1m4g3-1d) image to create a new virtual server called 'My First Server'
 
 .. code-block:: console
@@ -101,6 +101,47 @@ Destroy the virtual server (wait is still optional)
     <bar showing destruction progress, until 100%>
     Server 141 is now in DELETED mode
 
+Create Servers with networks
+----------------------------
+
+First, check the available IPs:
+
+.. code-block:: console
+
+    $ kamaki ip list
+    42042
+        instance_id: 424242
+        floating_network_id: 1
+        fixed_ip_address: None
+        floating_ip_address: 123.456.78.90
+        port_id: 24024
+
+So, there is an ip (123.456.78.90) on network 1. We can use it:
+
+.. code-block:: console
+
+    $ kamaki server create --network=1,123.456.78.90 --name='Extrovert Server' --flavor-id=1 --image-id=f1r57-1m4g3-1d
+    ...
+
+Another case it the connection to a private network (so, no IP):
+
+.. code-block:: console
+
+    $ kamaki network list
+    1   Public network
+    7   A custom private network
+    9   Another custom private network
+
+    $ kamaki server create --network=7 --name='Introvert Server' --flavor-id=1 --image-id=f1r57-1m4g3-1d
+
+.. note:: Multiple *- -network* args will create a corresponding number of
+    connections (nics) to the specified networks.
+
+.. note:: Ommiting *- -network* will let the cloud apply the default network
+    policy. To create a server without any connections (nics), use the
+    *- -no-network argument*
+
+
 Inject ssh keys to a debian server
 ----------------------------------
 
@@ -134,7 +175,10 @@ Create a virtual server while injecting current user public key to root account
 
 .. code-block:: console
 
-    $ kamaki server create --name='NoPassword Server' --flavor-id=1 --image-id=f1r57-1m4g3-1d -p /home/someuser/.ssh/id_rsa.pub,/root/.ssh/authorized_keys
+    $ kamaki server create --name='NoPassword Server' --flavor-id=1 --image-id=f1r57-1m4g3-1d \
+        --network=1,123.456.78.90 \
+        -p /home/someuser/.ssh/id_rsa.pub,/root/.ssh/authorized_keys
+
     accessIPv4:
     accessIPv6:
     addresses:
@@ -159,8 +203,8 @@ Create a virtual server while injecting current user public key to root account
     updated:         2013-06-19T12:34:48.512867+00:00
     user_id:         s0m3-u53r-1d
 
-When the virtual server is ready, get the virtual servers external IP from the
-web UI. Let's assume the IP is 123.456.78.90 .
+When the server is ready, we can connect through the public network 1 and the
+IP 123.456.78.90 :
 
 .. code-block:: console
 
