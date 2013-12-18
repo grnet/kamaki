@@ -5,7 +5,7 @@ Astakos
 is the synnefo implementation of a variant of OpenStack Keystone with custom
 extentions. Kamaki offer tools for managing Astakos information.
 
-.. node:: The underlying library that calls the API is part of the synnefo
+.. note:: The underlying library that calls the API is part of the synnefo
     and it is called 'astakosclient'
 
 User
