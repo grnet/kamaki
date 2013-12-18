@@ -4,6 +4,7 @@ CHANGELOG for hotfix version 0.12.1
 - Rename comand group "kamaki project membership" --> "kamaki membership"
 - Add docs for astakos-related commands:
     user, quota, resources, project, membership
+- Correct/simplify network arguments in server create (#4563)
 
 CHANGELOG for version 0.12
 
