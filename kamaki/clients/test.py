@@ -411,7 +411,8 @@ class Client(TestCase):
                 continue
             self.client.request(method, path, **kwargs)
             self.assertEqual(
-                RespInit.mock_calls[-1], call(FR, connection_retry_limit=0))
+                RespInit.mock_calls[-1],
+                call(FR, connection_retry_limit=0, poolsize=None))
 
     @patch('kamaki.clients.Client.request', return_value='lala')
     def _test_foo(self, foo, request):
