@@ -186,35 +186,32 @@ class NetworkClient(NetworkRestClient, Waiter):
         return r.json
 
     def update_subnet(
-            self, network_id, cidr,
-            name=None, allocation_pools=None, gateway_ip=None, subnet_id=None,
-            ipv6=None, enable_dhcp=None):
+            self, subnet_id,
+            name=None, allocation_pools=None, gateway_ip=None, ipv6=None,
+            enable_dhcp=None):
         """
-        :param network_id: (str) used as filter
-        :param cidr: (str) used as filter
+        :param subnet_id: (str)
 
         :param name: (str) The subnet name
         :param allocation_pools: (list of dicts) start/end addresses of
             allocation pools: [{'start': ..., 'end': ...}, ...]
         :param gateway_ip: (str)
-        :param subnet_id: (str)
         :param ipv6: (bool) ip_version == 6 if true, 4 if false, used as filter
         :param enable_dhcp: (bool)
         """
-        subnet = dict(network_id=network_id, cidr=cidr)
+        subnet = dict()
         if name not in (None, ):
             subnet['name'] = name
         if allocation_pools not in (None, ):
             subnet['allocation_pools'] = allocation_pools
         if gateway_ip not in (None, ):
             subnet['gateway_ip'] = gateway_ip
-        if subnet_id not in (None, ):
-            subnet['id'] = subnet_id
         if ipv6 not in (None, ):
             subnet['ip_version'] = 6 if ipv6 else 4
         if enable_dhcp not in (None, ):
             subnet['enable_dhcp'] = enable_dhcp
-        r = self.subnets_put(json_data=dict(subnet=subnet), success=201)
+        r = self.subnets_put(
+            subnet_id, json=dict(subnet=subnet), success=200)
         return r.json['subnet']
 
     def delete_subnet(self, subnet_id):

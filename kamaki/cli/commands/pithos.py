@@ -1206,11 +1206,29 @@ class file_download(_pithos_container):
                             parsed_name, self.container)])
         else:
             #  Remote object is just a file
-            if path.exists(local_path) and not self['resume']:
-                raise CLIError(
-                    'Cannot overwrite local file %s' % (lpath),
-                    details=['To overwrite/resume, use  %s' % (
-                        self.arguments['resume'].lvalue)])
+            if path.exists(local_path):
+                if not self['resume']:
+                    raise CLIError(
+                        'Cannot overwrite local file %s' % (local_path),
+                        details=['To overwrite/resume, use  %s' % (
+                            self.arguments['resume'].lvalue)])
+            elif '/' in local_path[1:-1]:
+                dirs = [p for p in local_path.split('/') if p]
+                pref = '/' if local_path.startswith('/') else ''
+                for d in dirs[:-1]:
+                    pref += d
+                    if not path.exists(pref):
+                        ret.append((None, d, None))
+                    elif not path.isdir(pref):
+                        raise CLIError(
+                            'Failed to use %s as a destination' % local_path,
+                            importance=3,
+                            details=[
+                                'Local file %s is not a directory' % pref,
+                                'Destination prefix must consist of '
+                                'directories or non-existing names',
+                                'Either remove the file, or choose another '
+                                'destination'])
             ret.append((rpath, local_path, self['resume']))
         for r, l, resume in ret:
             if r:
@@ -1266,9 +1284,6 @@ class file_download(_pithos_container):
             self.error('\nDownload canceled by user')
             if local_path is not None:
                 self.error('to resume, re-run with --resume')
-        except Exception:
-            self._safe_progress_bar_finish(progress_bar)
-            raise
         finally:
             self._safe_progress_bar_finish(progress_bar)
 
@@ -1656,7 +1671,7 @@ class group_create(_pithos_group, _optional_json):
         user_uuid=RepeatableArgument('Add a user to the group', '--uuid'),
         username=RepeatableArgument('Add a user to the group', '--username')
     )
-    required = ['user_uuid', 'user_name']
+    required = ['user_uuid', 'username']
 
     @errors.generic.all
     @errors.pithos.connection

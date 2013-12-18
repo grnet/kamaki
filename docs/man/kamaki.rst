@@ -38,6 +38,9 @@ user
 project
     Astakos project API commands
 
+membership
+    Astakos project membership API commands
+
 quota
     Astakos/Account API commands for quotas
 
@@ -145,6 +148,19 @@ project
 * application   Application management commands
 * membership    Project membership management commands
 * reinstate     Reinstate a terminated project (special privileges needed)
+
+membership
+**********
+
+* info      Details on a membership
+* enroll    Enroll somebody to a project you manage
+* join      Join a project
+* list      List all memberships
+* accept    Accept a membership for a project you manage
+* leave     Leave a project you have membership to
+* remove    Remove a membership for a project you manage
+* reject    Reject a membership for a project you manage
+* cancel    Cancel your (probably pending) membership to a project
 
 quota
 *****

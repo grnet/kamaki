@@ -362,11 +362,11 @@ inject them into each server, with the personality argument
             personality.append(dict(
                 contents=b64encode(f.read()),
                 path='/root/.ssh/authorized_keys',
-                owner='root', group='root', mode='0600')
+                owner='root', group='root', mode=0600)
             personality.append(dict(
                 contents=b64encode('StrictHostKeyChecking no'),
                 path='/root/.ssh/config',
-                owner='root', group='root', mode='0600'))
+                owner='root', group='root', mode=0600))
 
     create_params = [dict(
         name='%s%s' % (CLUSTER_PREFIX, i),
@@ -633,18 +633,18 @@ logging more. We also added some command line interaction candy.
                     personality.append(dict(
                         contents=b64encode(f.read()),
                         path='/root/.ssh/id_rsa',
-                        owner='root', group='root', mode='0600'))
+                        owner='root', group='root', mode=0600))
             if pub_keys_path:
                 with open(abspath(pub_keys_path)) as f:
                     personality.append(dict(
                         contents=b64encode(f.read()),
                         path='/root/.ssh/authorized_keys',
-                        owner='root', group='root', mode='0600'))
+                        owner='root', group='root', mode=0600))
             if ssh_keys_path or pub_keys_path:
                     personality.append(dict(
                         contents=b64encode('StrictHostKeyChecking no'),
                         path='/root/.ssh/config',
-                        owner='root', group='root', mode='0600'))
+                        owner='root', group='root', mode=0600))
             return personality
 
         def create(self, ssh_k_path='', pub_k_path='', server_log_path=''):

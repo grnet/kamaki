@@ -32,8 +32,8 @@
 # or implied, of GRNET S.A.
 
 from logging import getLogger
-from astakosclient import AstakosClient as SynnefoAstakosClientOrig
-from astakosclient import AstakosClientException as SynnefoAstakosClientError
+from astakosclient import AstakosClient
+from astakosclient import AstakosClientException
 
 from kamaki.clients import Client, ClientError, RequestManager, recvlog
 
@@ -42,20 +42,26 @@ def _astakos_error(foo):
     def wrap(self, *args, **kwargs):
         try:
             return foo(self, *args, **kwargs)
-        except SynnefoAstakosClientError as sace:
+        except AstakosClientException as sace:
             self._raise_for_status(sace)
     return wrap
 
 
-class SynnefoAstakosClient(SynnefoAstakosClientOrig):
-    """A synnefo astakosclient.AstakosClient wrapper, that logs"""
+class SynnefoAstakosClient(AstakosClient):
+    """An astakosclient.AstakosClient wrapper, that logs the way of kamaki"""
+
+    LOG_TOKEN = False
+    LOG_DATA = False
 
     def _dump_response(self, request, status, message, data):
         recvlog.info('\n%d %s' % (status, message))
         recvlog.info('data size: %s' % len(data))
-        token = request.headers.get('X-Auth-Token', '')
-        data = data.replace(token, '...') if token else data
-        recvlog.info(data)
+        if not self.LOG_TOKEN:
+            token = request.headers.get('X-Auth-Token', '')
+            if self.LOG_DATA:
+                data = data.replace(token, '...') if token else data
+        if self.LOG_DATA:
+            recvlog.info(data)
         recvlog.info('-             -        -     -   -  - -')
 
     def _call_astakos(self, *args, **kwargs):
@@ -69,6 +75,7 @@ class SynnefoAstakosClient(SynnefoAstakosClientOrig):
                     path=log_request['path'],
                     data=log_request.get('body', None),
                     headers=log_request.get('headers', dict()))
+                req.LOG_TOKEN, req.LOG_DATA = self.LOG_TOKEN, self.LOG_DATA
                 req.dump_log()
                 log_response = getattr(self, 'log_response', None)
                 if log_response:
@@ -83,12 +90,12 @@ class SynnefoAstakosClient(SynnefoAstakosClientOrig):
             return r
 
 
-class AstakosClient(Client):
+class CachedAstakosClient(Client):
     """Synnefo Astakos cached client wraper"""
 
     @_astakos_error
     def __init__(self, base_url, token=None):
-        super(AstakosClient, self).__init__(base_url, token)
+        super(CachedAstakosClient, self).__init__(base_url, token)
         self._astakos = dict()
         self._uuids = dict()
         self._cache = dict()
@@ -115,7 +122,7 @@ class AstakosClient(Client):
     @_astakos_error
     def authenticate(self, token=None):
         """Get authentication information and store it in this client
-        As long as the AstakosClient instance is alive, the latest
+        As long as the CachedAstakosClient instance is alive, the latest
         authentication information for this token will be available
 
         :param token: (str) custom token to authenticate
@@ -123,6 +130,8 @@ class AstakosClient(Client):
         token = self._resolve_token(token)
         astakos = SynnefoAstakosClient(
             token, self.base_url, logger=getLogger('astakosclient'))
+        astakos.LOG_TOKEN = getattr(self, 'LOG_TOKEN', False)
+        astakos.LOG_DATA = getattr(self, 'LOG_DATA', False)
         r = astakos.authenticate()
         uuid = r['access']['user']['id']
         self._uuids[token] = uuid

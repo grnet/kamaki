@@ -52,6 +52,8 @@ quota_commands = CommandTree(
 resource_commands = CommandTree(
     'resource', 'Astakos/Account API commands for resources')
 project_commands = CommandTree('project', 'Astakos project API commands')
+membership_commands = CommandTree(
+    'membership', 'Astakos project membership API commands')
 
 
 #  Optional
@@ -64,20 +66,21 @@ commission_commands = CommandTree(
 
 _commands = [
     user_commands, quota_commands, resource_commands, project_commands,
-    service_commands, commission_commands, endpoint_commands]
+    service_commands, commission_commands, endpoint_commands,
+    membership_commands]
 
 
-def with_temp_token(foo):
-    """ Set token to self.client.token, run foo, recover old token """
+def with_temp_token(func):
+    """ Set token to self.client.token, run func, recover old token """
     def wrap(self, *args, **kwargs):
         try:
             token = kwargs.pop('token')
         except KeyError:
-            raise CLISyntaxError('A token is needed for %s' % foo)
+            raise CLISyntaxError('A token is needed for %s' % func)
         token_bu = self.client.token
         try:
             self.client.token = token or token_bu
-            return foo(self, *args, **kwargs)
+            return func(self, *args, **kwargs)
         finally:
             self.client.token = token_bu
     return wrap
@@ -604,9 +607,9 @@ _project_specs = """{
 """
 
 
-def apply_notification(foo):
+def apply_notification(func):
     def wrap(self, *args, **kwargs):
-        r = foo(self, *args, **kwargs)
+        r = func(self, *args, **kwargs)
         self.writeln('Application is submitted successfully')
         return r
     return wrap
@@ -821,13 +824,13 @@ class project_application_cancel(_application_action):
     action = 'cancel'
 
 
-@command(project_commands)
-class project_membership(_init_synnefo_astakosclient):
+@command(membership_commands)
+class membership(_init_synnefo_astakosclient):
     """Project membership management commands"""
 
 
-@command(project_commands)
-class project_membership_list(_init_synnefo_astakosclient, _optional_json):
+@command(membership_commands)
+class membership_list(_init_synnefo_astakosclient, _optional_json):
     """List all memberships"""
 
     arguments = dict(
@@ -844,8 +847,8 @@ class project_membership_list(_init_synnefo_astakosclient, _optional_json):
         self._run()
 
 
-@command(project_commands)
-class project_membership_info(_init_synnefo_astakosclient, _optional_json):
+@command(membership_commands)
+class membership_info(_init_synnefo_astakosclient, _optional_json):
     """Details on a membership"""
 
     @errors.generic.all
@@ -874,38 +877,38 @@ class _membership_action(_init_synnefo_astakosclient, _optional_json):
         self._run(membership_id, quote_a_reason)
 
 
-@command(project_commands)
-class project_membership_leave(_membership_action):
+@command(membership_commands)
+class membership_leave(_membership_action):
     """Leave a project you have membership to"""
     action = 'leave'
 
 
-@command(project_commands)
-class project_membership_cancel(_membership_action):
+@command(membership_commands)
+class membership_cancel(_membership_action):
     """Cancel your (probably pending) membership to a project"""
     action = 'cancel'
 
 
-@command(project_commands)
-class project_membership_accept(_membership_action):
+@command(membership_commands)
+class membership_accept(_membership_action):
     """Accept a membership for a project you manage"""
     action = 'accept'
 
 
-@command(project_commands)
-class project_membership_reject(_membership_action):
+@command(membership_commands)
+class membership_reject(_membership_action):
     """Reject a membership for a project you manage"""
     action = 'reject'
 
 
-@command(project_commands)
-class project_membership_remove(_membership_action):
+@command(membership_commands)
+class membership_remove(_membership_action):
     """Remove a membership for a project you manage"""
     action = 'remove'
 
 
-@command(project_commands)
-class project_membership_join(_init_synnefo_astakosclient):
+@command(membership_commands)
+class membership_join(_init_synnefo_astakosclient):
     """Join a project"""
 
     @errors.generic.all
@@ -914,12 +917,12 @@ class project_membership_join(_init_synnefo_astakosclient):
         self.writeln(self.client.join_project(project_id))
 
     def main(self, project_id):
-        super(project_membership_join, self)._run()
+        super(membership_join, self)._run()
         self._run(project_id)
 
 
-@command(project_commands)
-class project_membership_enroll(_init_synnefo_astakosclient):
+@command(membership_commands)
+class membership_enroll(_init_synnefo_astakosclient):
     """Enroll somebody to a project you manage"""
 
     @errors.generic.all
@@ -928,5 +931,5 @@ class project_membership_enroll(_init_synnefo_astakosclient):
         self.writeln(self.client.enroll_member(project_id, email))
 
     def main(self, project_id, email):
-        super(project_membership_join, self)._run()
+        super(membership_join, self)._run()
         self._run(project_id, email)
