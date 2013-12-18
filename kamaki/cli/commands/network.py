@@ -368,9 +368,7 @@ class subnet_modify(_init_network, _optional_json):
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self, subnet_id):
-        r = self.client.get_subnet_details(subnet_id)
-        r = self.client.update_subnet(
-            subnet_id, r['network_id'], name=self['new_name'])
+        r = self.client.update_subnet(subnet_id, name=self['new_name'])
         self._print(r, self.print_dict)
 
     def main(self, subnet_id):

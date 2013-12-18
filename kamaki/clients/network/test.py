@@ -399,24 +399,25 @@ class NetworkClient(TestCase):
     def test_update_subnet(self, subnets_put):
         for (
                 name, allocation_pools, gateway_ip,
-                subnet_id, ipv6, enable_dhcp) in product(
+                ipv6, enable_dhcp) in product(
                     ('name', None), ('all pools', None), ('gip', None),
-                    ('sid', None), (True, False, None), (True, False, None)):
+                    (True, False, None), (True, False, None)):
             kwargs = dict(
                 name=name, allocation_pools=allocation_pools,
-                gateway_ip=gateway_ip, subnet_id=subnet_id,
-                ipv6=ipv6, enable_dhcp=enable_dhcp)
-            FakeObject.json, network_id, cidr = dict(subnet='rv'), 'name', 'cd'
+                gateway_ip=gateway_ip, ipv6=ipv6, enable_dhcp=enable_dhcp)
+            FakeObject.json, subnet_id = dict(subnet='rv'), 'sid'
             self.assertEqual(
-                self.client.update_subnet(network_id, cidr, **kwargs), 'rv')
-            req = dict(network_id=network_id, cidr=cidr)
-            if kwargs.get('ipv6', None) not in (None, ):
-                req['ip_version'] = 6 if kwargs.pop('ipv6') else 4
+                self.client.update_subnet(subnet_id, **kwargs), 'rv')
+            req = dict()
             for k, v in kwargs.items():
                 if v not in (None, ):
-                    req['id' if k == 'subnet_id' else k] = v
-            expargs = dict(json_data=dict(subnet=req), success=201)
-            self.assertEqual(subnets_put.mock_calls[-1], call(**expargs))
+                    if k in ('ipv6', ):
+                        req['ip_version'] = 6 if v else 4
+                    else:
+                        req[k] = v
+            expargs = dict(json=dict(subnet=req), success=200)
+            self.assertEqual(
+                subnets_put.mock_calls[-1], call(subnet_id, **expargs))
 
     @patch(
         'kamaki.clients.network.NetworkClient.subnets_delete',
