@@ -270,7 +270,8 @@ class server_info(_init_cyclades, _optional_json):
         vnc=FlagArgument(
             'Show VNC connection information (valid for a short period)',
             '--vnc-credentials'),
-        stats=FlagArgument('Get URLs for server statistics', '--stats')
+        stats=FlagArgument('Get URLs for server statistics', '--stats'),
+        diagnostics=FlagArgument('Diagnostic information', '--diagnostics')
     )
 
     @errors.generic.all
@@ -290,6 +291,8 @@ class server_info(_init_cyclades, _optional_json):
         elif self['stats']:
             self._print(
                 self.client.get_server_stats(server_id), self.print_dict)
+        elif self['diagnostics']:
+            self._print(self.client.get_server_diagnostics(server_id))
         else:
             uuids = self._uuids2usernames([vm['user_id'], vm['tenant_id']])
             vm['user_id'] += ' (%s)' % uuids[vm['user_id']]
