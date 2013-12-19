@@ -264,9 +264,11 @@ class server_info(_init_cyclades, _optional_json):
     """Detailed information on a Virtual Machine"""
 
     arguments = dict(
-        addr=FlagArgument(
+        nics=FlagArgument(
             'Show only the network interfaces of this virtual server',
             '--nics'),
+        network_id=ValueArgument(
+            'Show the connection details to that network', '--network-id'),
         vnc=FlagArgument(
             'Show VNC connection information (valid for a short period)',
             '--vnc-credentials'),
@@ -278,9 +280,13 @@ class server_info(_init_cyclades, _optional_json):
     @errors.cyclades.connection
     @errors.cyclades.server_id
     def _run(self, server_id):
-        vm = self.client.get_server_details(server_id)
-        if self['addr']:
+        vm = self.client.get_server_nics(server_id)
+        if self['nics']:
             self._print(vm.get('attachments', []))
+        elif self['network_id']:
+            self._print(
+                self.client.get_server_network_nics(
+                    server_id, self['network_id']), self.print_dict)
         elif self['vnc']:
             self.error(
                 '(!) For security reasons, the following credentials are '
@@ -301,7 +307,7 @@ class server_info(_init_cyclades, _optional_json):
 
     def main(self, server_id):
         super(self.__class__, self)._run()
-        choose_one = ('addr', 'vnc', 'stats')
+        choose_one = ('nics', 'vnc', 'stats')
         count = len([a for a in choose_one if self[a]])
         if count > 1:
             raise CLIInvalidArgument('Invalid argument compination', details=[
@@ -731,7 +737,7 @@ class server_shutdown(_init_cyclades, _optional_output_cmd, _server_wait):
 
 
 @command(server_cmds)
-class server_addr(_init_cyclades):
+class server_nics(_init_cyclades):
     """DEPRECATED, use: [kamaki] server info SERVER_ID --nics"""
 
     def main(self, *args):
