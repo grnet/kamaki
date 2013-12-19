@@ -32,51 +32,138 @@
 # or implied, of GRNET S.A.
 
 from logging import getLogger
+from astakosclient import AstakosClient
+from astakosclient import AstakosClientException
 
-from kamaki.clients import Client, ClientError
+from kamaki.clients import Client, ClientError, RequestManager, recvlog
 
 
-class AstakosClient(Client):
-    """Synnefo Astakos API client"""
+def _astakos_error(foo):
+    def wrap(self, *args, **kwargs):
+        try:
+            return foo(self, *args, **kwargs)
+        except AstakosClientException as sace:
+            self._raise_for_status(sace)
+    return wrap
 
+
+class SynnefoAstakosClient(AstakosClient):
+    """An astakosclient.AstakosClient wrapper, that logs the way of kamaki"""
+
+    LOG_TOKEN = False
+    LOG_DATA = False
+
+    def _dump_response(self, request, status, message, data):
+        recvlog.info('\n%d %s' % (status, message))
+        recvlog.info('data size: %s' % len(data))
+        if not self.LOG_TOKEN:
+            token = request.headers.get('X-Auth-Token', '')
+            if self.LOG_DATA:
+                data = data.replace(token, '...') if token else data
+        if self.LOG_DATA:
+            recvlog.info(data)
+        recvlog.info('-             -        -     -   -  - -')
+
+    def _call_astakos(self, *args, **kwargs):
+        r = super(SynnefoAstakosClient, self)._call_astakos(*args, **kwargs)
+        try:
+            log_request = getattr(self, 'log_request', None)
+            if log_request:
+                req = RequestManager(
+                    method=log_request['method'],
+                    url='%s://%s' % (self.scheme, self.astakos_base_url),
+                    path=log_request['path'],
+                    data=log_request.get('body', None),
+                    headers=log_request.get('headers', dict()))
+                req.LOG_TOKEN, req.LOG_DATA = self.LOG_TOKEN, self.LOG_DATA
+                req.dump_log()
+                log_response = getattr(self, 'log_response', None)
+                if log_response:
+                    self._dump_response(
+                        req,
+                        status=log_response['status'],
+                        message=log_response['message'],
+                        data=log_response.get('data', ''))
+        except Exception:
+            pass
+        finally:
+            return r
+
+
+class CachedAstakosClient(Client):
+    """Synnefo Astakos cached client wraper"""
+
+    @_astakos_error
     def __init__(self, base_url, token=None):
-        super(AstakosClient, self).__init__(base_url, token)
-        self._cache = {}
-        self._uuids = {}
-        self.log = getLogger('__name__')
+        super(CachedAstakosClient, self).__init__(base_url, token)
+        self._astakos = dict()
+        self._uuids = dict()
+        self._cache = dict()
+        self._uuids2usernames = dict()
+        self._usernames2uuids = dict()
 
+    def _resolve_token(self, token):
+        """
+        :returns: (str) a single token
+
+        :raises AssertionError: if no token exists (either param or member)
+        """
+        token = token or self.token
+        assert token, 'No token provided'
+        return token[0] if (
+            isinstance(token, list) or isinstance(token, tuple)) else token
+
+    def get_client(self, token=None):
+        """Get the Synnefo AstakosClient instance used by client"""
+        token = self._resolve_token(token)
+        self._validate_token(token)
+        return self._astakos[self._uuids[token]]
+
+    @_astakos_error
     def authenticate(self, token=None):
         """Get authentication information and store it in this client
-        As long as the AstakosClient instance is alive, the latest
+        As long as the CachedAstakosClient instance is alive, the latest
         authentication information for this token will be available
 
         :param token: (str) custom token to authenticate
-
-        :returns: (dict) authentication information
         """
-        self.token = token or self.token
-        body = dict(auth=dict(token=dict(id=self.token)))
-        r = self.post('/tokens', json=body).json
+        token = self._resolve_token(token)
+        astakos = SynnefoAstakosClient(
+            token, self.base_url, logger=getLogger('astakosclient'))
+        astakos.LOG_TOKEN = getattr(self, 'LOG_TOKEN', False)
+        astakos.LOG_DATA = getattr(self, 'LOG_DATA', False)
+        r = astakos.authenticate()
         uuid = r['access']['user']['id']
-        self._uuids[self.token] = uuid
+        self._uuids[token] = uuid
         self._cache[uuid] = r
+        self._astakos[uuid] = astakos
+        self._uuids2usernames[uuid] = dict()
+        self._usernames2uuids[uuid] = dict()
         return self._cache[uuid]
+
+    def remove_user(self, uuid):
+        self._uuids.pop(self.get_token(uuid))
+        self._cache.pop(uuid)
+        self._astakos.pop(uuid)
+        self._uuids2usernames.pop(uuid)
+        self._usernames2uuids.pop(uuid)
 
     def get_token(self, uuid):
         return self._cache[uuid]['access']['token']['id']
+
+    def _validate_token(self, token):
+        if (token not in self._uuids) or (
+                self.get_token(self._uuids[token]) != token):
+            self._uuids.pop(token, None)
+            self.authenticate(token)
 
     def get_services(self, token=None):
         """
         :returns: (list) [{name:..., type:..., endpoints:[...]}, ...]
         """
-        token_bu = self.token or token
-        token = token or self.token
-        try:
-            r = self._cache[self._uuids[token]]
-        except KeyError:
-            r = self.authenticate(token)
-        finally:
-            self.token = token_bu
+        token = self._resolve_token(token)
+        self._validate_token(token)
+        r = self._cache[self._uuids[token]]
         return r['access']['serviceCatalog']
 
     def get_service_details(self, service_type, token=None):
@@ -135,14 +222,9 @@ class AstakosClient(Client):
 
     def user_info(self, token=None):
         """Get (cached) user information"""
-        token_bu = self.token or token
-        token = token or self.token
-        try:
-            r = self._cache[self._uuids[token]]
-        except KeyError:
-            r = self.authenticate(token)
-        finally:
-            self.token = token_bu
+        token = self._resolve_token(token)
+        self._validate_token(token)
+        r = self._cache[self._uuids[token]]
         return r['access']['user']
 
     def term(self, key, token=None):
@@ -153,7 +235,7 @@ class AstakosClient(Client):
         """Get (cached) term, from user credentials"""
         return self.user_info(token).get(key, None)
 
-    def post_user_catalogs(self, uuids=None, displaynames=None):
+    def post_user_catalogs(self, uuids=None, displaynames=None, token=None):
         """POST base_url/user_catalogs
 
         :param uuids: (list or tuple) user uuids
@@ -162,8 +244,25 @@ class AstakosClient(Client):
 
         :returns: (dict) {uuid1: name1, uuid2: name2, ...} or oposite
         """
-        account_url = self.get_service_endpoints('account')['publicURL']
-        account = AstakosClient(account_url, self.token)
-        json_data = dict(uuids=uuids) if (
-            uuids) else dict(displaynames=displaynames)
-        return account.post('user_catalogs', json=json_data)
+        return self.uuids2usernames(uuids, token) if (
+            uuids) else self.usernames2uuids(displaynames, token)
+
+    @_astakos_error
+    def uuids2usernames(self, uuids, token=None):
+        token = self._resolve_token(token)
+        self._validate_token(token)
+        uuid = self._uuids[token]
+        astakos = self._astakos[uuid]
+        if set(uuids or []).difference(self._uuids2usernames[uuid]):
+            self._uuids2usernames[uuid].update(astakos.get_usernames(uuids))
+        return self._uuids2usernames[uuid]
+
+    @_astakos_error
+    def usernames2uuids(self, usernames, token=None):
+        token = self._resolve_token(token)
+        self._validate_token(token)
+        uuid = self._uuids[token]
+        astakos = self._astakos[uuid]
+        if set(usernames or []).difference(self._usernames2uuids[uuid]):
+            self._usernames2uuids[uuid].update(astakos.get_uuids(usernames))
+        return self._usernames2uuids[uuid]

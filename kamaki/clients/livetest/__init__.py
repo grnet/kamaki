@@ -37,7 +37,6 @@ from argparse import ArgumentParser
 from sys import stdout
 
 from kamaki.cli.config import Config
-from kamaki.cli.utils import spiner
 
 
 def _add_value(foo, value):
@@ -102,7 +101,7 @@ class Generic(TestCase):
             wait_cb = wait_gen
         except Exception:
             stdout.write('%s:' % msg)
-            (wait_bar, wait_cb) = (None, spiner)
+            (wait_bar, wait_cb) = None, None
         return (wait_bar, wait_cb)
 
     def _safe_progress_bar_finish(self, progress_bar):

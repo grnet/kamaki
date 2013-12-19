@@ -42,7 +42,6 @@ class Astakos(livetest.Generic):
         self.cloud = 'cloud.%s' % self['testcloud']
         self.client = AstakosClient(
             self[self.cloud, 'url'], self[self.cloud, 'token'])
-        print 'WHA?', self['astakos', 'details']
         with open(self['astakos', 'details']) as f:
             self._astakos_details = eval(f.read())
 

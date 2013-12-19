@@ -35,14 +35,13 @@
 
 from setuptools import setup
 from sys import version_info
-import collections
 
 import kamaki
 
 
 optional = ['ansicolors', 'mock>=1.0.1']
 
-requires = ['objpool>=0.2', 'progress>=1.1']
+requires = ['objpool>=0.2', 'progress>=1.1', 'astakosclient>=0.14.10']
 
 if version_info < (2, 7):
     requires.append('argparse')
@@ -62,20 +61,21 @@ setup(
     packages=[
         'kamaki',
         'kamaki.cli',
-        'kamaki.cli.command_tree',
-        'kamaki.cli.argument',
-        'kamaki.cli.config',
         'kamaki.cli.utils',
+        'kamaki.cli.config',
+        'kamaki.cli.argument',
         'kamaki.cli.commands',
+        'kamaki.cli.command_tree',
         'kamaki.clients',
         'kamaki.clients.utils',
-        'kamaki.clients.livetest',
+        'kamaki.clients.astakos',
         'kamaki.clients.image',
         'kamaki.clients.storage',
         'kamaki.clients.pithos',
-        'kamaki.clients.astakos',
         'kamaki.clients.compute',
+        'kamaki.clients.network',
         'kamaki.clients.cyclades',
+        'kamaki.clients.livetest',
     ],
     classifiers=[
         'Operating System :: OS Independent',
@@ -92,7 +92,10 @@ setup(
         ],
     include_package_data=True,
     entry_points={
-        'console_scripts': ['kamaki = kamaki.cli:main']
+        'console_scripts': [
+            'kamaki = kamaki.cli:run_one_cmd',
+            'kamaki-shell = kamaki.cli:run_shell'
+        ]
     },
     install_requires=requires
 )

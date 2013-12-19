@@ -6,22 +6,27 @@ APIs code
 Command Specifications
 ----------------------
 
-user
-^^^^
+astakos
+^^^^^^^
+Features: user, project, quota, resource, commission, endpoint, service
 
 .. automodule:: kamaki.cli.commands.astakos
     :members:
     :undoc-members:
 
-cyclades (server, flavor, network)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+cyclades
+^^^^^^^^
+
+Features server, flavor
 
 .. automodule:: kamaki.cli.commands.cyclades
     :members:
     :undoc-members:
 
-pithos (file)
-^^^^^^^^^^^^^
+pithos
+^^^^^^
+
+Features file, container, sharer, group
 
 .. automodule:: kamaki.cli.commands.pithos
     :members:
@@ -30,7 +35,19 @@ pithos (file)
 image
 ^^^^^
 
+Features (image, imagecompute)
+
 .. automodule:: kamaki.cli.commands.image
+    :members:
+    :undoc-members:
+
+
+network
+^^^^^^^
+
+Features network, port, subnet, ip
+
+.. automodule:: kamaki.cli.commands.network
     :members:
     :undoc-members:
 
@@ -44,97 +61,27 @@ config
     :members:
     :undoc-members:
 
-history
-"""""""
-
-.. automodule:: kamaki.cli.commands.history
-    :members:
-    :undoc-members:
-
-Command Line Interfaces
------------------------
-
-argument
-^^^^^^^^
-
-.. automodule:: kamaki.cli.argument
-    :members:
-    :show-inheritance:
-    :undoc-members:
-
-
-command_shell
-^^^^^^^^^^^^^
-
-.. automodule:: kamaki.cli.command_shell
-    :members:
-    :show-inheritance:
-    :undoc-members:
-
-
-command_tree
-^^^^^^^^^^^^
-
-.. automodule:: kamaki.cli.command_tree
-    :members:
-    :show-inheritance:
-    :undoc-members:
-
-
-config
-^^^^^^
-
-.. automodule:: kamaki.cli.config
-    :members:
-    :show-inheritance:
-    :undoc-members:
 
 errors
 ^^^^^^
 
-.. automodule:: kamaki.cli.errors
+.. automodule:: kamaki.cli.commands.errors
     :members:
     :show-inheritance:
     :undoc-members:
-
-
-history
-^^^^^^^
-
-.. automodule:: kamaki.cli.history
-    :members:
-    :show-inheritance:
-    :undoc-members:
-
-
-utils
-^^^^^
-
-.. automodule:: kamaki.cli.utils
-    :members:
-    :show-inheritance:
-    :undoc-members:
-
 
 .. _the-client-api-ref:
 
 The clients API
 ---------------
 
-Modules list
-^^^^^^^^^^^^
-
-compute ReST API
-^^^^^^^^^^^^^^^^
+compute
+^^^^^^^
 
 .. automodule:: kamaki.clients.compute.rest_api
     :members:
     :show-inheritance:
     :undoc-members:
-
-
-compute
-^^^^^^^
 
 .. automodule:: kamaki.clients.compute
     :members:
@@ -142,16 +89,13 @@ compute
     :undoc-members:
 
 
-cyclades ReST API
-^^^^^^^^^^^^^^^^^
+cyclades
+^^^^^^^^
 
 .. automodule:: kamaki.clients.cyclades.rest_api
     :members:
     :show-inheritance:
     :undoc-members:
-
-cyclades
-^^^^^^^^
 
 .. automodule:: kamaki.clients.cyclades
     :members:
@@ -167,16 +111,13 @@ storage
     :show-inheritance:
     :undoc-members:
 
-pithos_rest_api
-^^^^^^^^^^^^^^^
+pithos
+^^^^^^
 
 .. automodule:: kamaki.clients.pithos.rest_api
     :members:
     :show-inheritance:
     :undoc-members:
-
-pithos
-^^^^^^
 
 .. automodule:: kamaki.clients.pithos
     :members:
@@ -191,20 +132,21 @@ image
     :show-inheritance:
     :undoc-members:
 
+network
+^^^^^^^
+
+.. warning:: For synnefo, the suggested network implementation is in
+    kamaki.clients.cyclades.CycladesNetworkClient extension
+
+.. automodule:: kamaki.clients.network
+    :members:
+    :show-inheritance:
+    :undoc-members:
 
 astakos
 ^^^^^^^
 
 .. automodule:: kamaki.clients.astakos
-    :members:
-    :show-inheritance:
-    :undoc-members:
-
-
-utils
-^^^^^
-
-.. automodule:: kamaki.clients.utils
     :members:
     :show-inheritance:
     :undoc-members:

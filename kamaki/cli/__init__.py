@@ -41,12 +41,11 @@ from kamaki.cli.history import History
 from kamaki.cli.utils import print_dict, red, magenta, yellow
 from kamaki.cli.errors import CLIError, CLICmdSpecError
 from kamaki.cli import logger
-from kamaki.clients.astakos import AstakosClient as AuthCachedClient
+from kamaki.clients.astakos import CachedAstakosClient
 from kamaki.clients import ClientError
 
 _help = False
 _debug = False
-_include = False
 _verbose = False
 _colors = False
 kloger = None
@@ -71,7 +70,7 @@ def _construct_command_syntax(cls):
         n = len(args) - len(spec.defaults or ())
         required = ' '.join(['<%s>' % _arg2syntax(x) for x in args[:n]])
         optional = ' '.join(['[%s]' % _arg2syntax(x) for x in args[n:]])
-        cls.syntax = ' '.join(x for x in [required, optional] if x)
+        cls.syntax = ' '.join([required, optional])
         if spec.varargs:
             cls.syntax += ' <%s ...>' % spec.varargs
 
@@ -111,7 +110,7 @@ def _update_best_match(name_terms, prefix=[]):
 
 def command(cmd_tree, prefix='', descedants_depth=1):
     """Load a class as a command
-        e.g. spec_cmd0_cmd1 will be command spec cmd0
+        e.g., spec_cmd0_cmd1 will be command spec cmd0
 
         :param cmd_tree: is initialized in cmd_spec file and is the structure
             where commands are loaded. Var name should be _commands
@@ -174,7 +173,7 @@ cmd_spec_locations = [
 #  Generic init auxiliary functions
 
 
-def _setup_logging(silent=False, debug=False, verbose=False, include=False):
+def _setup_logging(silent=False, debug=False, verbose=False):
     """handle logging for clients package"""
 
     if silent:
@@ -191,9 +190,6 @@ def _setup_logging(silent=False, debug=False, verbose=False, include=False):
         logger.add_stream_logger('kamaki.clients.send', logging.INFO, sfmt)
         logger.add_stream_logger('kamaki.clients.recv', logging.INFO, rfmt)
         logger.add_stream_logger(__name__, logging.INFO)
-    if include:
-        logger.add_stream_logger('kamaki.clients.send', logging.INFO, sfmt)
-        logger.add_stream_logger('kamaki.clients.recv', logging.INFO, rfmt)
     logger.add_stream_logger(__name__, logging.WARNING)
     global kloger
     kloger = logger.get_logger(__name__)
@@ -201,8 +197,9 @@ def _setup_logging(silent=False, debug=False, verbose=False, include=False):
 
 def _check_config_version(cnf):
     guess = cnf.guess_version()
-    if exists(cnf.path) and guess < 0.9:
-        print('Config file format version >= 9.0 is required')
+    if exists(cnf.path) and guess < 0.12:
+        print('Config file format version >= 0.12 is required (%s found)' % (
+            guess))
         print('Configuration file: %s' % cnf.path)
         print('Attempting to fix this:')
         print('Calculating changes while preserving information')
@@ -235,14 +232,12 @@ def _init_session(arguments, is_non_API=False):
     _help = arguments['help'].value
     global _debug
     _debug = arguments['debug'].value
-    global _include
-    _include = arguments['include'].value
     global _verbose
     _verbose = arguments['verbose'].value
     _cnf = arguments['config']
 
     _silent = arguments['silent'].value
-    _setup_logging(_silent, _debug, _verbose, _include)
+    _setup_logging(_silent, _debug, _verbose)
 
     if _help or is_non_API:
         return None
@@ -250,7 +245,7 @@ def _init_session(arguments, is_non_API=False):
     _check_config_version(_cnf.value)
 
     global _colors
-    _colors = _cnf.value.get_global('colors')
+    _colors = _cnf.value.get('global', 'colors')
     if not (stdout.isatty() and _colors == 'on'):
         from kamaki.cli.utils import remove_colors
         remove_colors()
@@ -302,31 +297,45 @@ def _init_session(arguments, is_non_API=False):
     return cloud
 
 
-def init_cached_authenticator(url, tokens, config_module, logger):
+def init_cached_authenticator(config_argument, cloud, logger):
     try:
-        auth_base = None
-        for token in reversed(tokens):
+        _cnf = config_argument.value
+        url = _cnf.get_cloud(cloud, 'url')
+        tokens = _cnf.get_cloud(cloud, 'token').split()
+        auth_base, failed = None, []
+        for token in tokens:
             try:
                 if auth_base:
                     auth_base.authenticate(token)
                 else:
-                    auth_base = AuthCachedClient(url, tokens)
+                    tmp_base = CachedAstakosClient(url, token)
                     from kamaki.cli.commands import _command_init
-                    fake_cmd = _command_init(dict(config=config_module))
+                    fake_cmd = _command_init(dict(config=config_argument))
                     fake_cmd.client = auth_base
                     fake_cmd._set_log_params()
-                    fake_cmd._update_max_threads()
-                    auth_base.authenticate(token)
+                    tmp_base.authenticate(token)
+                    auth_base = tmp_base
             except ClientError as ce:
                 if ce.status in (401, ):
                     logger.warning(
                         'WARNING: Failed to authenticate token %s' % token)
+                    failed.append(token)
                 else:
                     raise
-        return auth_base
+        for token in failed:
+            r = raw_input(
+                'Token %s failed to authenticate. Remove it? [y/N]: ' % token)
+            if r in ('y', 'Y'):
+                tokens.remove(token)
+        if set(failed).difference(tokens):
+            _cnf.set_cloud(cloud, 'token', ' '.join(tokens))
+            _cnf.write()
+        if tokens:
+            return auth_base
+        logger.warning('WARNING: cloud.%s.token is now empty' % cloud)
     except AssertionError as ae:
         logger.warning('WARNING: Failed to load authenticator [%s]' % ae)
-        return None
+    return None
 
 
 def _load_spec_module(spec, arguments, module):
@@ -477,31 +486,6 @@ def set_command_params(parameters):
 
 #  CLI Choice:
 
-def run_one_cmd(exe_string, parser, cloud):
-    global _history
-    _history = History(parser.arguments['config'].get_global('history_file'))
-    _history.add(' '.join([exe_string] + argv[1:]))
-    from kamaki.cli import one_command
-    one_command.run(cloud, parser, _help)
-
-
-def run_shell(exe_string, parser, cloud):
-    from command_shell import _init_shell
-    global kloger
-    _cnf = parser.arguments['config']
-    auth_base = init_cached_authenticator(
-        _cnf.get_cloud(cloud, 'url'), _cnf.get_cloud(cloud, 'token').split(),
-        _cnf, kloger)
-    try:
-        username, userid = (
-            auth_base.user_term('name'), auth_base.user_term('id'))
-    except Exception:
-        username, userid = '', ''
-    shell = _init_shell(exe_string, parser, username, userid)
-    _load_all_commands(shell.cmd_tree, parser.arguments)
-    shell.run(auth_base, cloud, parser)
-
-
 def is_non_API(parser):
     nonAPIs = ('history', 'config')
     for term in parser.unparsed:
@@ -512,42 +496,79 @@ def is_non_API(parser):
     return False
 
 
-def main():
+def main(func):
+    def wrap():
+        try:
+            exe = basename(argv[0])
+            parser = ArgumentParseManager(exe)
+
+            if parser.arguments['version'].value:
+                exit(0)
+
+            _cnf = parser.arguments['config']
+            log_file = _cnf.get('global', 'log_file')
+            if log_file:
+                logger.set_log_filename(log_file)
+            global filelog
+            filelog = logger.add_file_logger(__name__.split('.')[0])
+            filelog.info('* Initial Call *\n%s\n- - -' % ' '.join(argv))
+
+            from kamaki.cli.utils import suggest_missing
+            global _colors
+            exclude = ['ansicolors'] if not _colors == 'on' else []
+            suggest_missing(exclude=exclude)
+            func(exe, parser)
+        except CLIError as err:
+            print_error_message(err)
+            if _debug:
+                raise err
+            exit(1)
+        except KeyboardInterrupt:
+            print('Canceled by user')
+            exit(1)
+        except Exception as er:
+            print('Unknown Error: %s' % er)
+            if _debug:
+                raise
+            exit(1)
+    return wrap
+
+
+@main
+def run_shell(exe, parser):
+    parser.arguments['help'].value = False
+    cloud = _init_session(parser.arguments)
+    from command_shell import _init_shell
+    global kloger
+    _cnf = parser.arguments['config']
+    auth_base = init_cached_authenticator(_cnf, cloud, kloger)
     try:
-        exe = basename(argv[0])
-        parser = ArgumentParseManager(exe)
+        username, userid = (
+            auth_base.user_term('name'), auth_base.user_term('id'))
+    except Exception:
+        username, userid = '', ''
+    shell = _init_shell(exe, parser, username, userid)
+    _load_all_commands(shell.cmd_tree, parser.arguments)
+    shell.run(auth_base, cloud, parser)
 
-        if parser.arguments['version'].value:
-            exit(0)
 
-        _cnf = parser.arguments['config']
-        log_file = _cnf.get_global('log_file')
-        if log_file:
-            logger.set_log_filename(log_file)
-        global filelog
-        filelog = logger.add_file_logger(__name__.split('.')[0])
-        filelog.info('* Initial Call *\n%s\n- - -' % ' '.join(argv))
-
-        cloud = _init_session(parser.arguments, is_non_API(parser))
-        from kamaki.cli.utils import suggest_missing
-        global _colors
-        exclude = ['ansicolors'] if not _colors == 'on' else []
-        suggest_missing(exclude=exclude)
-
-        if parser.unparsed:
-            run_one_cmd(exe, parser, cloud)
-        elif _help:
-            parser.parser.print_help()
-            _groups_help(parser.arguments)
-        else:
-            run_shell(exe, parser, cloud)
-    except CLIError as err:
-        print_error_message(err)
-        if _debug:
-            raise err
-        exit(1)
-    except Exception as er:
-        print('Unknown Error: %s' % er)
-        if _debug:
-            raise
-        exit(1)
+@main
+def run_one_cmd(exe, parser):
+    cloud = _init_session(parser.arguments, is_non_API(parser))
+    if parser.unparsed:
+        global _history
+        try:
+            token = parser.arguments['config'].get_cloud(
+                cloud, 'token').split()[0]
+        except Exception:
+            token = None
+        _history = History(
+            parser.arguments['config'].get('global', 'history_file'),
+            token=token)
+        _history.add(' '.join([exe] + argv[1:]))
+        from kamaki.cli import one_command
+        one_command.run(cloud, parser, _help)
+    else:
+        parser.print_help()
+        _groups_help(parser.arguments)
+        print('kamaki-shell: An interactive command line shell')

@@ -1,23 +1,26 @@
-CHANGELOG for version 0.11
+CHANGELOG for version 0.12.rc6
+
+Add self.poolsize for kamaki.clients.Client
+
+CHANGELOG for version 0.12.rc5
+
+Add ip attach/detach (shortcuts for port create/delete)
+
+CHANGELOG for version 0.12.rc4
+
+Fix syntax errors in network commands
+
+CHANGELOG for version 0.12.rc3
+
+Check clients unittests
+
+CHANGELOG for version 0.12rc3
+
+Correct keys in HTTP bodies on network-related requests
+
+CHANGELOG for version 0.12
 
 Bug Fixes:
-- Make authentication lazy (#4300)
-
-Changes:
-
-- Logs do not contain kamaki.clients pids by default [#4242]
-- Replace page_hold method with pydoc.pager [#4279]
-- Remove commands.pithos.DelimiterArgument, replace with ValueArgument
-    wherever it is used
-- Replace print methods with member print methods in _commands.* [#4292]
-- kamaki.cli.config is now a directory package [#4058]
 
 Features:
-
-- New config option log_pid (default: off) can allow pid-logging [#4242]
-- Expand kamaki.cli unitests for the following packages ( [#4058] ):
-  errors
-- Modify print methods in cli utils to use arbitary stream objects [#4288]
-- Implement wrapers for cli.utils print methods, in _commands [#4292]
-- Implement unittests for kamaki.cli.config [#4058]
 

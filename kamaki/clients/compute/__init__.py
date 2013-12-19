@@ -33,7 +33,6 @@
 
 from kamaki.clients import ClientError
 from kamaki.clients.compute.rest_api import ComputeRestClient
-from kamaki.clients.utils import path4url
 
 
 class ComputeClient(ComputeRestClient):
@@ -114,6 +113,7 @@ class ComputeClient(ComputeRestClient):
             availability_zone=None,
             metadata=None,
             personality=None,
+            networks=None,
             response_headers=dict(location=None)):
         """Submit request to create a new server
 
@@ -121,14 +121,22 @@ class ComputeClient(ComputeRestClient):
 
         :param flavor_id: integer id denoting a preset hardware configuration
 
-        :param image_id: (str) id denoting the OS image to run on the VM
+        :param image_id: (str) id of the image of the virtual server
 
         :param metadata: (dict) vm metadata
 
         :param personality: a list of (file path, file contents) tuples,
-            describing files to be injected into VM upon creation.
+            describing files to be injected into virtual server upon creation
 
-        :returns: a dict with the new VMs details
+        :param networks: (list of dicts) Networks to connect to, list this:
+            [
+            {"uuid": <network_uuid>},
+            {"uuid": <network_uuid>, "fixed_ip": address},
+            {"port": <port_id>}, ...]
+            ATTENTION: Empty list is different to None. None means ' do not
+            mention it', empty list means 'automatically get an ip'
+
+        :returns: a dict with the new virtual server details
 
         :raises ClientError: wraps request errors
         """
@@ -141,6 +149,9 @@ class ComputeClient(ComputeRestClient):
         if personality:
             req['server']['personality'] = personality
 
+        if networks is not None:
+            req['server']['networks'] = networks or []
+
         r = self.servers_post(
             json_data=req,
             security_group=security_group,
@@ -152,7 +163,7 @@ class ComputeClient(ComputeRestClient):
 
     def update_server_name(self, server_id, new_name):
         """Update the name of the server as reported by the API (does not
-            modify the hostname used inside the VM)
+            modify the hostname used inside the virtual server)
 
         :param server_id: integer (str or int)
 
@@ -247,28 +258,12 @@ class ComputeClient(ComputeRestClient):
 
     def get_server_metadata(self, server_id, key='', response_headers=dict(
             previous=None, next=None)):
-        """
-        :param server_id: integer (str or int)
-
-        :param key: (str) the metadatum key (all metadata if not given)
-
-        :returns: a key:val dict of requests metadata
-        """
         r = self.servers_metadata_get(server_id, key)
         for k, v in response_headers.items():
             response_headers[k] = r.headers.get(k, v)
         return r.json['meta' if key else 'metadata']
 
     def create_server_metadata(self, server_id, key, val):
-        """
-        :param server_id: integer (str or int)
-
-        :param key: (str)
-
-        :param val: (str)
-
-        :returns: dict of updated key:val metadata
-        """
         req = {'meta': {key: val}}
         r = self.servers_metadata_put(
             server_id, key, json_data=req, success=201)
@@ -277,13 +272,6 @@ class ComputeClient(ComputeRestClient):
     def update_server_metadata(
             self, server_id,
             response_headers=dict(previous=None, next=None), **metadata):
-        """
-        :param server_id: integer (str or int)
-
-        :param metadata: dict of key:val metadata
-
-        :returns: dict of updated key:val metadata
-        """
         req = {'metadata': metadata}
         r = self.servers_metadata_post(server_id, json_data=req, success=201)
         for k, v in response_headers.items():
@@ -291,44 +279,32 @@ class ComputeClient(ComputeRestClient):
         return r.json['metadata']
 
     def delete_server_metadata(self, server_id, key):
-        """
-        :param server_id: integer (str or int)
-
-        :param key: (str) the meta key
-
-        :returns: (dict) response headers
-        """
         r = self.servers_metadata_delete(server_id, key)
         return r.headers
 
+    def get_server_nics(self, server_id, changes_since=None):
+        r = self.servers_ips_get(server_id, changes_since=changes_since)
+        return r.json
+
+    def get_server_network_nics(
+            self, server_id, network_id, changes_since=None):
+        r = self.servers_ips_get(
+            server_id, network_id=network_id, changes_since=changes_since)
+        return r.json['network']
+
     def list_flavors(self, detail=False, response_headers=dict(
             previous=None, next=None)):
-        """
-        :param detail: (bool) detailed flavor info if set, short if not
-
-        :returns: (list) flavor info
-        """
         r = self.flavors_get(detail=bool(detail))
         for k, v in response_headers.items():
             response_headers[k] = r.headers.get(k, v)
         return r.json['flavors']
 
     def get_flavor_details(self, flavor_id):
-        """
-        :param flavor_id: integer (str or int)
-
-        :returns: dict
-        """
         r = self.flavors_get(flavor_id)
         return r.json['flavor']
 
     def list_images(self, detail=False, response_headers=dict(
             next=None, previous=None)):
-        """
-        :param detail: (bool) detailed info if set, short if not
-
-        :returns: dict id,name + full info if detail
-        """
         r = self.images_get(detail=bool(detail))
         for k, v in response_headers.items():
             response_headers[k] = r.headers.get(k, v)
@@ -336,8 +312,6 @@ class ComputeClient(ComputeRestClient):
 
     def get_image_details(self, image_id, **kwargs):
         """
-        :param image_id: integer (str or int)
-
         :returns: dict
 
         :raises ClientError: 404 if image not available
@@ -410,6 +384,8 @@ class ComputeClient(ComputeRestClient):
         """
         r = self.images_metadata_delete(image_id, key)
         return r.headers
+
+    #  Extensions
 
     def get_floating_ip_pools(self, tenant_id):
         """
