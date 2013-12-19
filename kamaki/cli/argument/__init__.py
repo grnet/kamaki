@@ -395,7 +395,8 @@ class ProgressBarArgument(FlagArgument):
         if self.value:
             return None
         try:
-            self.bar = KamakiProgressBar()
+            self.bar = KamakiProgressBar(
+                message.ljust(message_len), max=timeout or 100)
         except NameError:
             self.value = None
             return self.value
@@ -406,12 +407,9 @@ class ProgressBarArgument(FlagArgument):
             self.bar.phases = bar_phases
             self.bar.bar_prefix = ' '
             self.bar.bar_suffix = ' '
-            self.bar.max = timeout or 100
             self.bar.suffix = '%(remaining)ds to timeout'
         else:
             self.bar.suffix = '%(percent)d%% - %(eta)ds'
-        self.bar.eta = timeout or 100
-        self.bar.message = message.ljust(message_len)
         self.bar.start()
 
         def progress_gen(n):

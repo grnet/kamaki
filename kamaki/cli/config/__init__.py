@@ -82,6 +82,7 @@ DEFAULTS = {
         'quota_cli': 'astakos',
         'resource_cli': 'astakos',
         'project_cli': 'astakos',
+        'membership_cli': 'astakos',
         'file_cli': 'pithos',
         'container_cli': 'pithos',
         'sharer_cli': 'pithos',

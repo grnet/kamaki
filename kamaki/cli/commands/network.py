@@ -368,9 +368,7 @@ class subnet_modify(_init_network, _optional_json):
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self, subnet_id):
-        r = self.client.get_subnet_details(subnet_id)
-        r = self.client.update_subnet(
-            subnet_id, r['network_id'], name=self['new_name'])
+        r = self.client.update_subnet(subnet_id, name=self['new_name'])
         self._print(r, self.print_dict)
 
     def main(self, subnet_id):
@@ -478,6 +476,25 @@ class port_modify(_init_network, _optional_json):
         self._run(port_id=port_id)
 
 
+class PortStatusArgument(ValueArgument):
+
+    valid = ('BUILD', 'ACTIVE', 'DOWN', 'ERROR')
+
+    @property
+    def value(self):
+        return getattr(self, '_value', None)
+
+    @value.setter
+    def value(self, new_status):
+        if new_status:
+            new_status = new_status.upper()
+            if new_status in self.valid:
+                raise CLIInvalidArgument(
+                    'Invalid argument %s' % new_status, details=[
+                    'Status valid values: %s'] % ', '.join(self.valid))
+            self._value = new_status
+
+
 class _port_create(_init_network, _optional_json, _port_wait):
 
     def connect(self, network_id, device_id):
@@ -535,6 +552,8 @@ class port_wait(_init_network, _port_wait):
     """Wait for port to finish [ACTIVE, DOWN, BUILD, ERROR]"""
 
     arguments = dict(
+        current_status=PortStatusArgument(
+            'Wait while in this status', '--status'),
         timeout=IntArgument(
             'Wait limit in seconds (default: 60)', '--timeout', default=60)
     )
@@ -551,8 +570,10 @@ class port_wait(_init_network, _port_wait):
                 'status is already %s' % (
                     port_id, current_status, port['status']))
 
-    def main(self, port_id, current_status='BUILD'):
+    def main(self, port_id):
         super(self.__class__, self)._run()
+        current_status = self['current_status'] or self.arguments[
+            'current_status'].valid[0]
         self._run(port_id=port_id, current_status=current_status)
 
 
@@ -740,7 +761,7 @@ class network_connect(_port_create):
 
 @command(network_cmds)
 class network_disconnect(_init_network, _port_wait, _optional_json):
-    """Disconnnect a network from a device"""
+    """Disconnect a network from a device"""
 
     def _cyclades_client(self):
         auth = getattr(self, 'auth_base')

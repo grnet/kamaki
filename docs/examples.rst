@@ -12,3 +12,4 @@ Examples
     examplesdir/imageregister
     examplesdir/server
     examplesdir/network
+    examplesdir/astakos
