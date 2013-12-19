@@ -42,3 +42,8 @@ class CycladesRestClient(ComputeClient):
         """GET base_url/servers/<server_id>/stats"""
         path = path4url('servers', server_id, 'stats')
         return self.get(path, success=200, **kwargs)
+
+    def servers_diagnostics_get(self, server_id, **kwargs):
+        """GET base_url/servers/<server_id>/diagnostics"""
+        path = path4url('servers', server_id, 'diagnostics')
+        return self.get(path, success=200, **kwargs)

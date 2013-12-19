@@ -121,6 +121,15 @@ class CycladesClient(CycladesRestClient, Waiter):
         r = self.servers_stats_get(server_id)
         return r.json['stats']
 
+    def get_server_diagnostics(self, server_id):
+        """
+        :param server_id: integer (str or int)
+
+        :returns: (list)
+        """
+        r = self.servers_diagnostics_get(server_id)
+        return r.json
+
     def wait_server(
             self, server_id,
             current_status='BUILD',
