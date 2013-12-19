@@ -119,15 +119,19 @@ class network_list(_init_network, _optional_json, _name_filter, _id_filter):
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self):
-        detail = bool(self['detail'] or self['user_id'])
-        nets = self.client.list_networks(detail=detail)
+        nets = self.client.list_networks(detail=True)
         nets = self._filter_by_user_id(nets)
         nets = self._filter_by_name(nets)
         nets = self._filter_by_id(nets)
-        if detail and not self['detail']:
+        if not self['detail']:
             nets = [dict(
-                id=n['id'], name=n['name'], links=n['links']) for n in nets]
-        kwargs = dict()
+                _0_id=n['id'],
+                _1_name=n['name'],
+                _2_public='( %s )' % 'public' if (
+                    n.get('public', None)) else 'private') for n in nets]
+            kwargs = dict(title=('_0_id', '_1_name', '_2_public'))
+        else:
+            kwargs = dict()
         if self['more']:
             kwargs['out'] = StringIO()
             kwargs['title'] = ()
@@ -256,8 +260,12 @@ class subnet_list(_init_network, _optional_json, _name_filter, _id_filter):
         nets = self._filter_by_id(nets)
         if not self['detail']:
             nets = [dict(
-                id=n['id'], name=n['name'], links=n['links']) for n in nets]
-        kwargs = dict()
+                _0_id=n['id'],
+                _1_name=n['name'],
+                _2_net='( of network %s )' % n['network_id']) for n in nets]
+            kwargs = dict(title=('_0_id', '_1_name', '_2_net'))
+        else:
+            kwargs = dict()
         if self['more']:
             kwargs['out'] = StringIO()
             kwargs['title'] = ()
