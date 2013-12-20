@@ -422,8 +422,8 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
 
     arguments = dict(
         server_name=ValueArgument('The name of the new server', '--name'),
-        flavor_id=IntArgument('The ID of the hardware flavor', '--flavor-id'),
-        image_id=ValueArgument('The ID of the hardware image', '--image-id'),
+        flavor_id=IntArgument('The ID of the flavor', '--flavor-id'),
+        image_id=ValueArgument('The ID of the image', '--image-id'),
         personality=PersonalityArgument(
             (80 * ' ').join(howto_personality), ('-p', '--personality')),
         wait=FlagArgument('Wait server to build', ('-w', '--wait')),
@@ -505,12 +505,12 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
 
     def main(self):
         super(self.__class__, self)._run()
-        if self['no_network'] and self['network']:
+        if self['no_network'] and self['network_configuration']:
             raise CLIInvalidArgument(
                 'Invalid argument compination', importance=2, details=[
                 'Arguments %s and %s are mutually exclusive' % (
                     self.arguments['no_network'].lvalue,
-                    self.arguments['network'].lvalue)])
+                    self.arguments['network_configuration'].lvalue)])
         self._run(
             name=self['server_name'],
             flavor_id=self['flavor_id'],
