@@ -32,7 +32,8 @@
 # or implied, of GRNET S.A.
 
 from kamaki.cli.config import Config
-from kamaki.cli.errors import CLISyntaxError, raiseCLIError
+from kamaki.cli.errors import (
+    CLISyntaxError, raiseCLIError, CLIInvalidArgument)
 from kamaki.cli.utils import split_input, to_bytes
 
 from datetime import datetime as dtm
@@ -373,6 +374,30 @@ class KeyValueArgument(Argument):
                     self._value[key] = val
             except Exception as e:
                 raiseCLIError(e, 'KeyValueArgument Syntax Error')
+
+
+class StatusArgument(ValueArgument):
+    """Initialize with valid_states=['list', 'of', 'states']
+    First state is the default"""
+
+    def __init__(self, *args, **kwargs):
+        self.valid_states = kwargs.pop('valid_states', ['BUILD', ])
+        super(StatusArgument, self).__init__(*args, **kwargs)
+
+    @property
+    def value(self):
+        return getattr(self, '_value', None)
+
+    @value.setter
+    def value(self, new_status):
+        if new_status:
+            new_status = new_status.upper()
+            if new_status not in self.valid_states:
+                raise CLIInvalidArgument(
+                    'Invalid argument %s' % new_status, details=[
+                    'Usage: '
+                    '%s=[%s]' % (self.lvalue, '|'.join(self.valid_states))])
+            self._value = new_status
 
 
 class ProgressBarArgument(FlagArgument):
