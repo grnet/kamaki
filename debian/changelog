@@ -1,3 +1,9 @@
+kamaki (0.12.2-2~precise) precise; urgency=low
+
+  * Add missing python-progress and python-astakosclient build dependencies
+
+ -- Nikos Skalkotos <skalkoto@grnet.gr>  Fri, 20 Dec 2013 19:07:16 +0200
+
 kamaki (0.12.2-1~precise) precise; urgency=low
 
   * New upstream version
