@@ -40,7 +40,8 @@ from kamaki.cli.errors import (
     CLIBaseUrlError, CLIInvalidArgument, raiseCLIError)
 from kamaki.clients.cyclades import CycladesNetworkClient, ClientError
 from kamaki.cli.argument import (
-    FlagArgument, ValueArgument, RepeatableArgument, IntArgument)
+    FlagArgument, ValueArgument, RepeatableArgument, IntArgument,
+    StatusArgument)
 from kamaki.cli.commands import _command_init, errors, addLogSettings
 from kamaki.cli.commands import (
     _optional_output_cmd, _optional_json, _name_filter, _id_filter)
@@ -58,6 +59,8 @@ about_authentication = '\nUser Authentication:\
     \n  to check authentication: [kamaki] ]user authenticate\
     \n  to set authentication token: \
     [kamaki] config set cloud.<CLOUD>.token <TOKEN>'
+
+port_states = ('BUILD', 'ACTIVE', 'DOWN', 'ERROR')
 
 
 class _port_wait(_service_wait):
@@ -484,25 +487,6 @@ class port_modify(_init_network, _optional_json):
         self._run(port_id=port_id)
 
 
-class PortStatusArgument(ValueArgument):
-
-    valid = ('BUILD', 'ACTIVE', 'DOWN', 'ERROR')
-
-    @property
-    def value(self):
-        return getattr(self, '_value', None)
-
-    @value.setter
-    def value(self, new_status):
-        if new_status:
-            new_status = new_status.upper()
-            if new_status in self.valid:
-                raise CLIInvalidArgument(
-                    'Invalid argument %s' % new_status, details=[
-                    'Status valid values: %s'] % ', '.join(self.valid))
-            self._value = new_status
-
-
 class _port_create(_init_network, _optional_json, _port_wait):
 
     def connect(self, network_id, device_id):
@@ -557,32 +541,34 @@ class port_create(_port_create):
 
 @command(port_cmds)
 class port_wait(_init_network, _port_wait):
-    """Wait for port to finish [ACTIVE, DOWN, BUILD, ERROR]"""
+    """Wait for port to finish (default: BUILD)"""
 
     arguments = dict(
-        current_status=PortStatusArgument(
-            'Wait while in this status', '--status'),
+        port_status=StatusArgument(
+            'Wait while in this status (%s, default: %s)' % (
+                ', '.join(port_states), port_states[0]),
+            '--status',
+            valid_states=port_states),
         timeout=IntArgument(
             'Wait limit in seconds (default: 60)', '--timeout', default=60)
     )
 
     @errors.generic.all
     @errors.cyclades.connection
-    def _run(self, port_id, current_status):
+    def _run(self, port_id, port_status):
         port = self.client.get_port_details(port_id)
-        if port['status'].lower() == current_status.lower():
-            self._wait(port_id, current_status, timeout=self['timeout'])
+        if port['status'].lower() == port_status.lower():
+            self._wait(port_id, port_status, timeout=self['timeout'])
         else:
             self.error(
                 'Port %s: Cannot wait for status %s, '
                 'status is already %s' % (
-                    port_id, current_status, port['status']))
+                    port_id, port_status, port['status']))
 
     def main(self, port_id):
         super(self.__class__, self)._run()
-        current_status = self['current_status'] or self.arguments[
-            'current_status'].valid[0]
-        self._run(port_id=port_id, current_status=current_status)
+        port_status = self['port_status'] or port_states[0]
+        self._run(port_id=port_id, port_status=port_status)
 
 
 @command(ip_cmds)
