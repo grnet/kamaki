@@ -133,8 +133,7 @@ class ComputeClient(ComputeRestClient):
             {"uuid": <network_uuid>},
             {"uuid": <network_uuid>, "fixed_ip": address},
             {"port": <port_id>}, ...]
-            ATTENTION: Empty list is different to None. None means ' do not
-            mention it', empty list means 'automatically get an ip'
+            ATTENTION: Empty list is different to None.
 
         :returns: a dict with the new virtual server details
 
@@ -150,7 +149,7 @@ class ComputeClient(ComputeRestClient):
             req['server']['personality'] = personality
 
         if networks is not None:
-            req['server']['networks'] = networks or []
+            req['server']['networks'] = networks
 
         r = self.servers_post(
             json_data=req,

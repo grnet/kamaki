@@ -670,29 +670,29 @@ class ip_attach(_port_create):
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.server_id
-    def _run(self, ip_address, server_id):
+    def _run(self, ip_or_ip_id, server_id):
         netid = None
         for ip in self.client.list_floatingips():
-            if ip['floating_ip_address'] == ip_address:
+            if ip_or_ip_id in (ip['floating_ip_address'], ip['id']):
                 netid = ip['floating_network_id']
                 iparg = ValueArgument(parsed_name='--ip')
-                iparg.value = ip_address
+                iparg.value = ip['floating_ip_address']
                 self.arguments['ip_address'] = iparg
                 break
         if netid:
             self.error('Creating a port to attach IP %s to server %s' % (
-                ip_address, server_id))
+                ip_or_ip_id, server_id))
             self.connect(netid, server_id)
         else:
             raiseCLIError(
-                'IP address %s does not match any reserved IPs' % ip_address,
+                '%s does not match any reserved IPs or IP ids' % ip_or_ip_id,
                 details=[
                     'To reserve an IP:', '  [kamaki] ip create',
                     'To see all reserved IPs:', '  [kamaki] ip list'])
 
-    def main(self, ip_address):
+    def main(self, ip_or_ip_id):
         super(self.__class__, self)._run()
-        self._run(ip_address=ip_address, server_id=self['server_id'])
+        self._run(ip_or_ip_id=ip_or_ip_id, server_id=self['server_id'])
 
 
 @command(ip_cmds)
@@ -705,11 +705,11 @@ class ip_detach(_init_network, _port_wait, _optional_json):
 
     @errors.generic.all
     @errors.cyclades.connection
-    def _run(self, ip_address):
+    def _run(self, ip_or_ip_id):
         for ip in self.client.list_floatingips():
-            if ip['floating_ip_address'] == ip_address:
+            if ip_or_ip_id in (ip['floating_ip_address'], ip['id']):
                 if not ip['port_id']:
-                    raiseCLIError('IP %s is not attached' % ip_address)
+                    raiseCLIError('IP %s is not attached' % ip_or_ip_id)
                 self.error('Deleting port %s:' % ip['port_id'])
                 self.client.delete_port(ip['port_id'])
                 if self['wait']:
@@ -722,11 +722,11 @@ class ip_detach(_init_network, _port_wait, _optional_json):
                             raise
                         self.error('Port %s is deleted' % ip['port_id'])
                 return
-        raiseCLIError('IP %s not found' % ip_address)
+        raiseCLIError('IP or IP id %s not found' % ip_or_ip_id)
 
-    def main(self, ip_address):
+    def main(self, ip_or_ip_id):
         super(self.__class__, self)._run()
-        self._run(ip_address)
+        self._run(ip_or_ip_id)
 
 
 #  Warn users for some importand changes
