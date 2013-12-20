@@ -269,9 +269,6 @@ class server_info(_init_cyclades, _optional_json):
             '--nics'),
         network_id=ValueArgument(
             'Show the connection details to that network', '--network-id'),
-        vnc=FlagArgument(
-            'Show VNC connection information (valid for a short period)',
-            '--vnc-credentials'),
         stats=FlagArgument('Get URLs for server statistics', '--stats'),
         diagnostics=FlagArgument('Diagnostic information', '--diagnostics')
     )
@@ -287,13 +284,6 @@ class server_info(_init_cyclades, _optional_json):
             self._print(
                 self.client.get_server_network_nics(
                     server_id, self['network_id']), self.print_dict)
-        elif self['vnc']:
-            self.error(
-                '(!) For security reasons, the following credentials are '
-                'invalidated\nafter a short time period, depending on the '
-                'server settings\n')
-            self._print(
-                self.client.get_server_console(server_id), self.print_dict)
         elif self['stats']:
             self._print(
                 self.client.get_server_stats(server_id), self.print_dict)
@@ -748,12 +738,19 @@ class server_nics(_init_cyclades):
 
 @command(server_cmds)
 class server_console(_init_cyclades, _optional_json):
-    """DEPRECATED, use: [kamaki] server info SERVER_ID --vnc-credentials"""
+    """Create a VMC console and show connection information"""
 
-    def main(self, *args):
-        raiseCLIError('DEPRECATED since v0.12', importance=3, details=[
-            'Replaced by',
-            '  [kamaki] server info <SERVER_ID> --vnc-credentials'])
+    @errors.generic.all
+    @errors.cyclades.connection
+    @errors.cyclades.server_id
+    def _run(self, server_id):
+        self.error('The following credentials will be invalidated shortly')
+        self._print(
+            self.client.get_server_console(server_id), self.print_dict)
+
+    def main(self, server_id):
+        super(self.__class__, self)._run()
+        self._run(server_id=server_id)
 
 
 @command(server_cmds)
