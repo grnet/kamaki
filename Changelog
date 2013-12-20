@@ -1,3 +1,11 @@
+CHANGELOG for hotfix version 0.12.2
+
+- Always use "details" call in neworks/subnets list
+- Restore server console, remove --vnc option from server info
+- Fix server create --networks|--no-networks
+- Use --status in * wait commands
+- Fix typos in documentation
+
 CHANGELOG for hotfix version 0.12.1
 
 - Various minor typos

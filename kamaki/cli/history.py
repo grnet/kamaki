@@ -51,7 +51,7 @@ class History(object):
         return True
 
     def get(self, match_terms=None, limit=0):
-        limit = int(limit) or 0
+        limit = int(limit or 0)
         with codecs.open(self.filepath, mode='r', encoding='utf-8') as f:
             result = [u'%s.  \t%s' % (
                 i + 1, line) for i, line in enumerate(f.readlines())

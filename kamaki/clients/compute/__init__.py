@@ -133,8 +133,7 @@ class ComputeClient(ComputeRestClient):
             {"uuid": <network_uuid>},
             {"uuid": <network_uuid>, "fixed_ip": address},
             {"port": <port_id>}, ...]
-            ATTENTION: Empty list is different to None. None means ' do not
-            mention it', empty list means 'automatically get an ip'
+            ATTENTION: Empty list is different to None.
 
         :returns: a dict with the new virtual server details
 
@@ -150,7 +149,7 @@ class ComputeClient(ComputeRestClient):
             req['server']['personality'] = personality
 
         if networks is not None:
-            req['server']['networks'] = networks or []
+            req['server']['networks'] = networks
 
         r = self.servers_post(
             json_data=req,
@@ -282,6 +281,16 @@ class ComputeClient(ComputeRestClient):
         r = self.servers_metadata_delete(server_id, key)
         return r.headers
 
+    def get_server_nics(self, server_id, changes_since=None):
+        r = self.servers_ips_get(server_id, changes_since=changes_since)
+        return r.json
+
+    def get_server_network_nics(
+            self, server_id, network_id, changes_since=None):
+        r = self.servers_ips_get(
+            server_id, network_id=network_id, changes_since=changes_since)
+        return r.json['network']
+
     def list_flavors(self, detail=False, response_headers=dict(
             previous=None, next=None)):
         r = self.flavors_get(detail=bool(detail))
@@ -374,6 +383,8 @@ class ComputeClient(ComputeRestClient):
         """
         r = self.images_metadata_delete(image_id, key)
         return r.headers
+
+    #  Extensions
 
     def get_floating_ip_pools(self, tenant_id):
         """

@@ -40,7 +40,8 @@ from kamaki.cli.errors import (
     CLIBaseUrlError, CLIInvalidArgument, raiseCLIError)
 from kamaki.clients.cyclades import CycladesNetworkClient, ClientError
 from kamaki.cli.argument import (
-    FlagArgument, ValueArgument, RepeatableArgument, IntArgument)
+    FlagArgument, ValueArgument, RepeatableArgument, IntArgument,
+    StatusArgument)
 from kamaki.cli.commands import _command_init, errors, addLogSettings
 from kamaki.cli.commands import (
     _optional_output_cmd, _optional_json, _name_filter, _id_filter)
@@ -58,6 +59,8 @@ about_authentication = '\nUser Authentication:\
     \n  to check authentication: [kamaki] ]user authenticate\
     \n  to set authentication token: \
     [kamaki] config set cloud.<CLOUD>.token <TOKEN>'
+
+port_states = ('BUILD', 'ACTIVE', 'DOWN', 'ERROR')
 
 
 class _port_wait(_service_wait):
@@ -119,15 +122,19 @@ class network_list(_init_network, _optional_json, _name_filter, _id_filter):
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self):
-        detail = bool(self['detail'] or self['user_id'])
-        nets = self.client.list_networks(detail=detail)
+        nets = self.client.list_networks(detail=True)
         nets = self._filter_by_user_id(nets)
         nets = self._filter_by_name(nets)
         nets = self._filter_by_id(nets)
-        if detail and not self['detail']:
+        if not self['detail']:
             nets = [dict(
-                id=n['id'], name=n['name'], links=n['links']) for n in nets]
-        kwargs = dict()
+                _0_id=n['id'],
+                _1_name=n['name'],
+                _2_public='( %s )' % 'public' if (
+                    n.get('public', None)) else 'private') for n in nets]
+            kwargs = dict(title=('_0_id', '_1_name', '_2_public'))
+        else:
+            kwargs = dict()
         if self['more']:
             kwargs['out'] = StringIO()
             kwargs['title'] = ()
@@ -256,8 +263,12 @@ class subnet_list(_init_network, _optional_json, _name_filter, _id_filter):
         nets = self._filter_by_id(nets)
         if not self['detail']:
             nets = [dict(
-                id=n['id'], name=n['name'], links=n['links']) for n in nets]
-        kwargs = dict()
+                _0_id=n['id'],
+                _1_name=n['name'],
+                _2_net='( of network %s )' % n['network_id']) for n in nets]
+            kwargs = dict(title=('_0_id', '_1_name', '_2_net'))
+        else:
+            kwargs = dict()
         if self['more']:
             kwargs['out'] = StringIO()
             kwargs['title'] = ()
@@ -476,25 +487,6 @@ class port_modify(_init_network, _optional_json):
         self._run(port_id=port_id)
 
 
-class PortStatusArgument(ValueArgument):
-
-    valid = ('BUILD', 'ACTIVE', 'DOWN', 'ERROR')
-
-    @property
-    def value(self):
-        return getattr(self, '_value', None)
-
-    @value.setter
-    def value(self, new_status):
-        if new_status:
-            new_status = new_status.upper()
-            if new_status in self.valid:
-                raise CLIInvalidArgument(
-                    'Invalid argument %s' % new_status, details=[
-                    'Status valid values: %s'] % ', '.join(self.valid))
-            self._value = new_status
-
-
 class _port_create(_init_network, _optional_json, _port_wait):
 
     def connect(self, network_id, device_id):
@@ -549,32 +541,34 @@ class port_create(_port_create):
 
 @command(port_cmds)
 class port_wait(_init_network, _port_wait):
-    """Wait for port to finish [ACTIVE, DOWN, BUILD, ERROR]"""
+    """Wait for port to finish (default: BUILD)"""
 
     arguments = dict(
-        current_status=PortStatusArgument(
-            'Wait while in this status', '--status'),
+        port_status=StatusArgument(
+            'Wait while in this status (%s, default: %s)' % (
+                ', '.join(port_states), port_states[0]),
+            '--status',
+            valid_states=port_states),
         timeout=IntArgument(
             'Wait limit in seconds (default: 60)', '--timeout', default=60)
     )
 
     @errors.generic.all
     @errors.cyclades.connection
-    def _run(self, port_id, current_status):
+    def _run(self, port_id, port_status):
         port = self.client.get_port_details(port_id)
-        if port['status'].lower() == current_status.lower():
-            self._wait(port_id, current_status, timeout=self['timeout'])
+        if port['status'].lower() == port_status.lower():
+            self._wait(port_id, port_status, timeout=self['timeout'])
         else:
             self.error(
                 'Port %s: Cannot wait for status %s, '
                 'status is already %s' % (
-                    port_id, current_status, port['status']))
+                    port_id, port_status, port['status']))
 
     def main(self, port_id):
         super(self.__class__, self)._run()
-        current_status = self['current_status'] or self.arguments[
-            'current_status'].valid[0]
-        self._run(port_id=port_id, current_status=current_status)
+        port_status = self['port_status'] or port_states[0]
+        self._run(port_id=port_id, port_status=port_status)
 
 
 @command(ip_cmds)
@@ -662,29 +656,29 @@ class ip_attach(_port_create):
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.server_id
-    def _run(self, ip_address, server_id):
+    def _run(self, ip_or_ip_id, server_id):
         netid = None
         for ip in self.client.list_floatingips():
-            if ip['floating_ip_address'] == ip_address:
+            if ip_or_ip_id in (ip['floating_ip_address'], ip['id']):
                 netid = ip['floating_network_id']
                 iparg = ValueArgument(parsed_name='--ip')
-                iparg.value = ip_address
+                iparg.value = ip['floating_ip_address']
                 self.arguments['ip_address'] = iparg
                 break
         if netid:
             self.error('Creating a port to attach IP %s to server %s' % (
-                ip_address, server_id))
+                ip_or_ip_id, server_id))
             self.connect(netid, server_id)
         else:
             raiseCLIError(
-                'IP address %s does not match any reserved IPs' % ip_address,
+                '%s does not match any reserved IPs or IP ids' % ip_or_ip_id,
                 details=[
                     'To reserve an IP:', '  [kamaki] ip create',
                     'To see all reserved IPs:', '  [kamaki] ip list'])
 
-    def main(self, ip_address):
+    def main(self, ip_or_ip_id):
         super(self.__class__, self)._run()
-        self._run(ip_address=ip_address, server_id=self['server_id'])
+        self._run(ip_or_ip_id=ip_or_ip_id, server_id=self['server_id'])
 
 
 @command(ip_cmds)
@@ -697,11 +691,11 @@ class ip_detach(_init_network, _port_wait, _optional_json):
 
     @errors.generic.all
     @errors.cyclades.connection
-    def _run(self, ip_address):
+    def _run(self, ip_or_ip_id):
         for ip in self.client.list_floatingips():
-            if ip['floating_ip_address'] == ip_address:
+            if ip_or_ip_id in (ip['floating_ip_address'], ip['id']):
                 if not ip['port_id']:
-                    raiseCLIError('IP %s is not attached' % ip_address)
+                    raiseCLIError('IP %s is not attached' % ip_or_ip_id)
                 self.error('Deleting port %s:' % ip['port_id'])
                 self.client.delete_port(ip['port_id'])
                 if self['wait']:
@@ -714,11 +708,11 @@ class ip_detach(_init_network, _port_wait, _optional_json):
                             raise
                         self.error('Port %s is deleted' % ip['port_id'])
                 return
-        raiseCLIError('IP %s not found' % ip_address)
+        raiseCLIError('IP or IP id %s not found' % ip_or_ip_id)
 
-    def main(self, ip_address):
+    def main(self, ip_or_ip_id):
         super(self.__class__, self)._run()
-        self._run(ip_address)
+        self._run(ip_or_ip_id)
 
 
 #  Warn users for some importand changes

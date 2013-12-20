@@ -44,7 +44,7 @@ from kamaki.cli.errors import (
 from kamaki.clients.cyclades import CycladesClient
 from kamaki.cli.argument import (
     FlagArgument, ValueArgument, KeyValueArgument, RepeatableArgument,
-    ProgressBarArgument, DateArgument, IntArgument)
+    ProgressBarArgument, DateArgument, IntArgument, StatusArgument)
 from kamaki.cli.commands import _command_init, errors, addLogSettings
 from kamaki.cli.commands import (
     _optional_output_cmd, _optional_json, _name_filter, _id_filter)
@@ -68,6 +68,8 @@ howto_personality = [
     '  [group=]GROUP: virtual servers group id or name for the remote file',
     '  [mode=]MODE: permission in octal (e.g., 0777)',
     'e.g., -p /tmp/my.file,owner=root,mode=0777']
+
+server_states = ('BUILD', 'ACTIVE', 'STOPPED', 'REBOOT')
 
 
 class _service_wait(object):
@@ -264,33 +266,31 @@ class server_info(_init_cyclades, _optional_json):
     """Detailed information on a Virtual Machine"""
 
     arguments = dict(
-        addr=FlagArgument(
+        nics=FlagArgument(
             'Show only the network interfaces of this virtual server',
             '--nics'),
-        vnc=FlagArgument(
-            'Show VNC connection information (valid for a short period)',
-            '--vnc-credentials'),
-        stats=FlagArgument('Get URLs for server statistics', '--stats')
+        network_id=ValueArgument(
+            'Show the connection details to that network', '--network-id'),
+        stats=FlagArgument('Get URLs for server statistics', '--stats'),
+        diagnostics=FlagArgument('Diagnostic information', '--diagnostics')
     )
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.server_id
     def _run(self, server_id):
-        vm = self.client.get_server_details(server_id)
-        if self['addr']:
-            self._print(vm.get('attachments', []))
-        elif self['vnc']:
-            self.error(
-                '(!) For security reasons, the following credentials are '
-                'invalidated\nafter a short time period, depending on the '
-                'server settings\n')
+        if self['nics']:
             self._print(
-                self.client.get_server_console(server_id), self.print_dict)
+                self.client.get_server_nics(server_id), self.print_dict)
+        elif self['network_id']:
+            self._print(
+                self.client.get_server_network_nics(
+                    server_id, self['network_id']), self.print_dict)
         elif self['stats']:
             self._print(
                 self.client.get_server_stats(server_id), self.print_dict)
         else:
+            vm = self.client.get_server_details(server_id)
             uuids = self._uuids2usernames([vm['user_id'], vm['tenant_id']])
             vm['user_id'] += ' (%s)' % uuids[vm['user_id']]
             vm['tenant_id'] += ' (%s)' % uuids[vm['tenant_id']]
@@ -298,7 +298,7 @@ class server_info(_init_cyclades, _optional_json):
 
     def main(self, server_id):
         super(self.__class__, self)._run()
-        choose_one = ('addr', 'vnc', 'stats')
+        choose_one = ('nics', 'stats', 'diagnostics')
         count = len([a for a in choose_one if self[a]])
         if count > 1:
             raise CLIInvalidArgument('Invalid argument compination', details=[
@@ -423,8 +423,8 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
 
     arguments = dict(
         server_name=ValueArgument('The name of the new server', '--name'),
-        flavor_id=IntArgument('The ID of the hardware flavor', '--flavor-id'),
-        image_id=ValueArgument('The ID of the hardware image', '--image-id'),
+        flavor_id=IntArgument('The ID of the flavor', '--flavor-id'),
+        image_id=ValueArgument('The ID of the image', '--image-id'),
         personality=PersonalityArgument(
             (80 * ' ').join(howto_personality), ('-p', '--personality')),
         wait=FlagArgument('Wait server to build', ('-w', '--wait')),
@@ -445,8 +445,8 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
             'Do not create any network NICs on the server.        . '
             'Mutually exclusive to --network        . '
             'If neither --network or --no-network are used, the default '
-            'network policy is applied. This policy is configured on the '
-            'cloud and kamaki is oblivious to it',
+            'network policy is applied. These policies are set on the cloud, '
+            'so kamaki is oblivious to them',
             '--no-network')
     )
     required = ('server_name', 'flavor_id', 'image_id')
@@ -454,7 +454,7 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
     @errors.cyclades.cluster_size
     def _create_cluster(self, prefix, flavor_id, image_id, size):
         networks = self['network_configuration'] or (
-            None if self['no_network'] else [])
+            [] if self['no_network'] else None)
         servers = [dict(
             name='%s%s' % (prefix, i if size > 1 else ''),
             flavor_id=flavor_id,
@@ -506,12 +506,12 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
 
     def main(self):
         super(self.__class__, self)._run()
-        if self['no_network'] and self['network']:
+        if self['no_network'] and self['network_configuration']:
             raise CLIInvalidArgument(
                 'Invalid argument compination', importance=2, details=[
                 'Arguments %s and %s are mutually exclusive' % (
                     self.arguments['no_network'].lvalue,
-                    self.arguments['network'].lvalue)])
+                    self.arguments['network_configuration'].lvalue)])
         self._run(
             name=self['server_name'],
             flavor_id=self['flavor_id'],
@@ -728,7 +728,7 @@ class server_shutdown(_init_cyclades, _optional_output_cmd, _server_wait):
 
 
 @command(server_cmds)
-class server_addr(_init_cyclades):
+class server_nics(_init_cyclades):
     """DEPRECATED, use: [kamaki] server info SERVER_ID --nics"""
 
     def main(self, *args):
@@ -739,12 +739,19 @@ class server_addr(_init_cyclades):
 
 @command(server_cmds)
 class server_console(_init_cyclades, _optional_json):
-    """DEPRECATED, use: [kamaki] server info SERVER_ID --vnc-credentials"""
+    """Create a VMC console and show connection information"""
 
-    def main(self, *args):
-        raiseCLIError('DEPRECATED since v0.12', importance=3, details=[
-            'Replaced by',
-            '  [kamaki] server info <SERVER_ID> --vnc-credentials'])
+    @errors.generic.all
+    @errors.cyclades.connection
+    @errors.cyclades.server_id
+    def _run(self, server_id):
+        self.error('The following credentials will be invalidated shortly')
+        self._print(
+            self.client.get_server_console(server_id), self.print_dict)
+
+    def main(self, server_id):
+        super(self.__class__, self)._run()
+        self._run(server_id=server_id)
 
 
 @command(server_cmds)
@@ -769,11 +776,16 @@ class server_stats(_init_cyclades, _optional_json):
 
 @command(server_cmds)
 class server_wait(_init_cyclades, _server_wait):
-    """Wait for server to finish (BUILD, STOPPED, REBOOT, ACTIVE)"""
+    """Wait for server to change its status (default: BUILD)"""
 
     arguments = dict(
         timeout=IntArgument(
-            'Wait limit in seconds (default: 60)', '--timeout', default=60)
+            'Wait limit in seconds (default: 60)', '--timeout', default=60),
+        server_status=StatusArgument(
+            'Status to wait for (%s, default: %s)' % (
+                ', '.join(server_states), server_states[0]),
+            '--status',
+            valid_states=server_states)
     )
 
     @errors.generic.all
@@ -789,9 +801,9 @@ class server_wait(_init_cyclades, _server_wait):
                 'status is already %s' % (
                     server_id, current_status, r['status']))
 
-    def main(self, server_id, current_status='BUILD'):
+    def main(self, server_id):
         super(self.__class__, self)._run()
-        self._run(server_id=server_id, current_status=current_status)
+        self._run(server_id=server_id, current_status=self['server_status'])
 
 
 @command(flavor_cmds)
