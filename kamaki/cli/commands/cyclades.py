@@ -44,7 +44,7 @@ from kamaki.cli.errors import (
 from kamaki.clients.cyclades import CycladesClient
 from kamaki.cli.argument import (
     FlagArgument, ValueArgument, KeyValueArgument, RepeatableArgument,
-    ProgressBarArgument, DateArgument, IntArgument)
+    ProgressBarArgument, DateArgument, IntArgument, StatusArgument)
 from kamaki.cli.commands import _command_init, errors, addLogSettings
 from kamaki.cli.commands import (
     _optional_output_cmd, _optional_json, _name_filter, _id_filter)
@@ -68,6 +68,8 @@ howto_personality = [
     '  [group=]GROUP: virtual servers group id or name for the remote file',
     '  [mode=]MODE: permission in octal (e.g., 0777)',
     'e.g., -p /tmp/my.file,owner=root,mode=0777']
+
+server_states = ('BUILD', 'ACTIVE', 'STOPPED', 'REBOOT')
 
 
 class _service_wait(object):
@@ -277,9 +279,9 @@ class server_info(_init_cyclades, _optional_json):
     @errors.cyclades.connection
     @errors.cyclades.server_id
     def _run(self, server_id):
-        vm = self.client.get_server_nics(server_id)
         if self['nics']:
-            self._print(vm.get('attachments', []))
+            self._print(
+                self.client.get_server_nics(server_id), self.print_dict)
         elif self['network_id']:
             self._print(
                 self.client.get_server_network_nics(
@@ -288,6 +290,7 @@ class server_info(_init_cyclades, _optional_json):
             self._print(
                 self.client.get_server_stats(server_id), self.print_dict)
         else:
+            vm = self.client.get_server_details(server_id)
             uuids = self._uuids2usernames([vm['user_id'], vm['tenant_id']])
             vm['user_id'] += ' (%s)' % uuids[vm['user_id']]
             vm['tenant_id'] += ' (%s)' % uuids[vm['tenant_id']]
@@ -295,7 +298,7 @@ class server_info(_init_cyclades, _optional_json):
 
     def main(self, server_id):
         super(self.__class__, self)._run()
-        choose_one = ('nics', 'vnc', 'stats')
+        choose_one = ('nics', 'stats', 'diagnostics')
         count = len([a for a in choose_one if self[a]])
         if count > 1:
             raise CLIInvalidArgument('Invalid argument compination', details=[
@@ -773,11 +776,16 @@ class server_stats(_init_cyclades, _optional_json):
 
 @command(server_cmds)
 class server_wait(_init_cyclades, _server_wait):
-    """Wait for server to finish (BUILD, STOPPED, REBOOT, ACTIVE)"""
+    """Wait for server to change its status (default: BUILD)"""
 
     arguments = dict(
         timeout=IntArgument(
-            'Wait limit in seconds (default: 60)', '--timeout', default=60)
+            'Wait limit in seconds (default: 60)', '--timeout', default=60),
+        server_status=StatusArgument(
+            'Status to wait for (%s, default: %s)' % (
+                ', '.join(server_states), server_states[0]),
+            '--status',
+            valid_states=server_states)
     )
 
     @errors.generic.all
@@ -793,9 +801,9 @@ class server_wait(_init_cyclades, _server_wait):
                 'status is already %s' % (
                     server_id, current_status, r['status']))
 
-    def main(self, server_id, current_status='BUILD'):
+    def main(self, server_id):
         super(self.__class__, self)._run()
-        self._run(server_id=server_id, current_status=current_status)
+        self._run(server_id=server_id, current_status=self['server_status'])
 
 
 @command(flavor_cmds)
