@@ -1,58 +1,52 @@
-CHANGELOG for hotfix 0.11.3
+CHANGELOG for hotfix version 0.12.2
 
-Fix bug with image meta set
+- Always use "details" call in neworks/subnets list
+- Restore server console, remove --vnc option from server info
+- Fix server create --networks|--no-networks
+- Use --status in * wait commands
+- Fix typos in documentation
 
-CHANGELOG for hotfix 0.11.2
+CHANGELOG for hotfix version 0.12.1
 
-Fix an output bug wiuth file permissions get
+- Various minor typos
+- Rename comand group "kamaki project membership" --> "kamaki membership"
+- Add docs for astakos-related commands:
+    user, quota, resources, project, membership
+- Correct/simplify network arguments in server create (#4563)
 
-CHANGELOG for hotfix 0.11.1
-
-Bug fixes:
-
-- Check if personlity mode is always in octal
-
-CHANGELOG for version 0.11
+CHANGELOG for version 0.12
 
 Bug Fixes:
-- Make authentication lazy (#4300)
-- Stop shell from destroying the config instance
-- Shell can manage all valid command line arguments [#3716]
-- Restore 2nd level command syntax in shell [#3736]
-- Allow copy of deleted objects by refering to older version [#3737]
-- Add image.add_member missing content-length header
-- Do not unpublish by default in all pithos low level requests [#3780]
-- Unquote http respons headers
+- In file list, the path or prefix was converted to boolean value. Fixed.
+- Thread options did not work [#4616]
+- Various minor typos
 
 Changes:
-
-- Logs do not contain kamaki.clients pids by default [#4242]
-- Replace page_hold method with pydoc.pager [#4279]
-- Remove commands.pithos.DelimiterArgument, replace with ValueArgument
-    wherever it is used
-- Replace print methods with member print methods in _commands.* [#4292]
-- kamaki.cli.config is now a directory package [#4058]
-- Modify progress bar handler in cli.commands to allow count down and timeout
-    [#4352]
-- Make wait progress bars in cyclades CLI to count down to timeout instead of
-    progressing forward [#4352]
-- Rename IP commands to new namespace and better names [#4422]
+1. Make astakosclient a mantatory requirement for kamaki [#4312]
+2. Make post_user_catalogs obsolete, but keep for one more version [#4337]
+3. Rename user commands for cached account requests as /user session [#4340]
+4. Remove max_theads from config, move control to threaded commands [#4617]
+5. Modify all commands [#4583]
+    New scheme for ALL <object> <verb> [object id] [--arguments]
+    e.g., file modidy --metadata-add=revier='Mr. Reviewer' /pithos/myfile.txt
+6. Deprecate (with note) server stats/console/addr (move to server info)
+7. A vanilla kamaki call now shows only the available commands instead of
+    loading a shell [#4612]
+8. Add self.poolsize at kamaki.clients.Client
+9. Add ip attach/detach (shortcuts for port create/delete)
 
 Features:
 
-- New config option log_pid (default: off) can allow pid-logging [#4242]
-- Expand kamaki.cli unitests for the following packages ( [#4058] ):
-  errors
-- Modify print methods in cli utils to use arbitary stream objects [#4288]
-- Implement wrapers for cli.utils print methods, in _commands [#4292]
-- Implement unittests for kamaki.cli.config [#4058]
-- Implement --type=SOFT/HARD argument for server reboot [#4338]
-    The old argument -f/--force <==> --type=HARD is kept for bw compatibility
-    A warning message guides users to stop using it
-- Catch Keyboard Interupts in cli wait methods and exit gracefully [#4351]
-- Add -R/--recursive in file listing, to list containers with their contents
-    [#4301]
-- Add -w/--wait to server firewall set [#4298]
-- Add --output-format where applicable, keep -j/--json too, for bw
-    compatibility [#4342]
-- Allow metakeys in personality argument [#4312]
+1. Cache user catalog calls [#4337]
+2. Implement separate methods for uuid2usernames and v.v. [#4337]
+3. Move all methods from snf-astakos.py to astakos.py, with some renaimings
+    astakos_quotas/uuid/username/authenticate --> user_quotas/uuid2username/username2uuid/info
+    astakos_... --> admin_...
+    e.g.,
+    astakos_services --> admin_service, astakos_commission --> admin_commission
+4. Implement OpenStack Network API 2.0, with synnefo/cyclades extentions. New:
+   network info/list/create/delete/set
+   subnet info/list/create/set
+   port info/list/create/delete/set
+5. Create a kamaki-shell for kamaki shell [#4612]
+

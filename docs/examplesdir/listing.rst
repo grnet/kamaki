@@ -1,24 +1,8 @@
 Listing
 =======
 
-In this section we present the ways of kamaki for listing, an operation that is
-common to most command groups.
-
-The examples of this section run in a kamaki interactive shell.
-
-.. code-block:: console
-
-    $ kamaki
-    kamaki v0.10 - Interactive Shell
-
-    /exit       terminate kamaki
-    exit or ^D  exit context
-    ? or help   available commands
-    ?command    help on command
-    !<command>  execute OS shell command
-
-    Session user is Tyler Durden <uuid: th3y-4r3-7h3-54m3-p3r50n>
-    [kamaki]:
+The listing of various synnefo objects (e.g, server, file, network) is
+showcased in this section.
 
 Simple listing
 --------------
@@ -27,45 +11,70 @@ List configuration options, whether in the file or from defaults list
 
 .. code-block:: console
 
-    [kamaki]: config list
-    cloud.default.url = https://astakos.example.com/identity/v2.0/
-    cloud.default.token = my70k3n==
-    global.default_cloud = default
-    global.colors = on
+    $ kamaki config list
+    global.default_cloud = mycloud
+    global.colors = off
     global.config_cli = config
+    global.container_cli = pithos
     global.file_cli = pithos
     global.flavor_cli = cyclades
+    global.group_cli = pithos
     global.history_cli = history
-    global.history_file = /home/saxtouri/.kamaki.history
+    global.history_file = /home/someuser/.kamaki.history
     global.image_cli = image
-    global.log_file = /home/saxtouri/.kamaki.log
-    global.log_token = one
-    global.max_threads = 5
-    global.network_cli = cyclades
+    global.imagecompute_cli = image
+    global.ip_cli = network
+    global.log_data = off
+    global.log_file = /home/someuser/.kamaki.log
+    global.log_pid = off
+    global.log_token = off
+    global.network_cli = network
+    global.port_cli = network
+    global.project_cli = astakos
+    global.quota_cli = astakos
+    global.resource_cli = astakos
     global.server_cli = cyclades
+    global.sharer_cli = pithos
+    global.subnet_cli = network
     global.user_cli = astakos
-    [kamaki]:
 
-List stored containers and then objects in container "pithos"
+List stored containers and file or directory objects in container "pithos"
 
 .. code-block:: console
 
-    [kamaki]: file list
+    $ kamaki container list
     pithos (36MB, 4 objects)
     trash (0B, 0 objects)
-    [kamaki]: file list pithos
-    . 2KB  info.txt
-    . D    video/
-    . 11MB video/tk1.mpg
-    . 12MB video/tk2.mpg
-    . 13MB video/tk3.mpg
-    [kamaki]:
+    $ kamaki file list /pithos
+    2KB  info.txt
+    D    video/
+    11MB video/tk1.mpg
+    12MB video/tk2.mpg
+    13MB video/tk3.mpg
+    $ kamaki file list /pithos/video
+    11MB video/tk1.mpg
+    12MB video/tk2.mpg
+    13MB video/tk3.mpg
+
+.. note:: In file list, the default container is "pithos"
+
+    .. code-block:: console
+
+        $ kamaki file list
+        2KB  info.txt
+        D    video/
+        11MB video/tk1.mpg
+        12MB video/tk2.mpg
+        13MB video/tk3.mpg
+        $ kamaki file list video
+        11MB video/tk1.mpg
+        12MB video/tk2.mpg
 
 List virtual machines (servers)
 
 .. code-block:: console
 
-    [kamaki]: server list
+    $ kamaki server list
     4201 example server 1
     4202 example server 2
     4203 example server 3
@@ -77,25 +86,23 @@ List networks
 
 .. code-block:: console
 
-    [kamaki]: network list
+    $ kamaki network list
     1 public_network
     42 my_private_network
-    [kamaki]:
 
 List flavors
 
 .. code-block:: console
 
-    [kamaki]: flavor list
+    $ kamaki flavor list
     1 C1R1024D20drbd
     2 C1R1024D30drbd
-    [kamaki]:
 
 List images from Image API and from Compute APIs
 
 .. code-block:: console
 
-    [kamaki]: image list
+    $ kamaki image list
     f1r57-1m4g3-1d Debian Base Alpha
      container_format: bare
      disk_format:      diskdump
@@ -106,26 +113,18 @@ List images from Image API and from Compute APIs
      disk_format:      diskdump
      size:             474066944
      status:           available
-    [kamaki]: image compute list
+    $ kamaki imagecompute list
     f1r57-1m4g3-1d Debian Base Alpha
     53c0nd-1m4g3-1d Beta Debian Base
-    [kamaki]:
 
 Detailed pithos listing
 -----------------------
-
-Enter contect
-
-.. code-block:: console
-
-    [kamaki]: file
-    [file]:
 
 List pithos containers with details
 
 .. code-block:: console
 
-    [file]: list -l
+    $ kamaki container list -l
     pithos
     bytes:    0 (0B)
     count:    3
@@ -140,49 +139,28 @@ List pithos containers with details
     policy:
             quota:      0
             versioning: auto
-    [file]:
 
-Create some more pithos container to experiment with
+Create some more containers to experiment with
 
 .. code-block:: console
 
-    [file]: create cont1
-    [file]: create cont2
-    [file]: create cont3
-    [file]: create cont4
-    [file]: list
+    $ kamaki container create cont1
+    $ kamaki container create cont2
+    $ kamaki container create cont3
+    $ kamaki container create cont4
+    $ kamaki container list
     cont1 (0B, 0 objects)
     cont2 (0B, 0 objects)
     cont3 (0B, 0 objects)
     cont4 (0B, 0 objects)
     pithos (36B, 5 objects)
     trash (0B, 0 objects)
-    [file]:
-
-List only 3, then list three by three
-
-.. code-block:: console
-
-    [file]: list -n 3
-    cont1 (0B, 0 objects)
-    cont2 (0B, 0 objects)
-    cont3 (0B, 0 objects)
-    [file]: list -n 3 --more
-    cont1 (0B, 0 objects)
-    cont2 (0B, 0 objects)
-    cont3 (0B, 0 objects)
-    (3 listed - 3 more - "enter" to continue)
-    <enter is pressed>
-    cont4 (0B, 0 objects)
-    pithos (36B, 4 objects)
-    trash (0B, 0 objects)
-    [file]:
 
 List contents of container `pithos`
 
 .. code-block:: console
 
-    [file]: list -l pithos
+    $ kamaki file list -l /pithos
     info.txt
     by:        s0m3-u53r-1d
     bytes:     2000 (2ΚB)
@@ -232,13 +210,14 @@ List contents of container `pithos`
     type:      video/mpeg
     uuid:      4195e8c3-9b9a-4e97-8c20-fdfef34892fe
     version:   1083
-    [kamaki]:
+    $ kamaki
 
-List only objects starting with "video" and exit "file" context
+List only objects starting with "video" and exit "file" context. Remember that
+"pithos" is the default container, so there is no need to refer to it.
 
 .. code-block:: console
 
-    [file]: list -l pithos:video/
+    $ kamaki file list -l video/
     video/tk1.mpg
     by:        s0m3-u53r-1d
     bytes:     11000000 (11ΜΒB)
@@ -269,36 +248,21 @@ List only objects starting with "video" and exit "file" context
     uuid:      4195e8c3-9b9a-4e97-8c20-fdfef34892fe
     version:   1083
 
-
-Exit context
-
-.. code-block:: console
-
-    [file]: exit
-    [kamaki]:
-
 Detailed Server Listing
 -----------------------
-
-Enter context
-
-.. code-block:: console
-
-    [kamaki]: server
-    [server]:
 
 List only 3, then list three by three, all with enumeration
 
 .. code-block:: console
 
-    [server]: list -n 3 --enumerate
+    $ kamaki server list --enumerate
     1. 4201 example server 1
     2. 4202 example server 2
     3. 4203 example server 3
     4. 4204 example server 4
     5. 4205 example server 5
     6. 4206 example server 6
-    [server]: list -n 3 --more --enumerate
+    $ kamaki server list -n 3 --more
     1. 4201 example server 1
     2. 4202 example server 2
     3. 4203 example server 3
@@ -307,13 +271,12 @@ List only 3, then list three by three, all with enumeration
     4. 4204 example server 4
     5. 4205 example server 5
     6. 4206 example server 6
-    [server]:
 
-Get json output returned by the compute API server (only first two VMs)
+List in json output
 
 .. code-block:: console
 
-    [server]: list -j -n 2
+    $ kamaki server list -output-format=json
     [
         {
             "name": "example server 1",
@@ -343,14 +306,14 @@ Get json output returned by the compute API server (only first two VMs)
             ],
             "id": 4202
           }
+        ...
     ]
-    [server]:
 
-Server details (first two only)
+Server details
 
 .. code-block:: console
 
-    [server]: list -l -n 2
+    $ kamaki server list -l
     4201 my example server 1
         accessIPv4:
         accessIPv6:
@@ -483,32 +446,16 @@ Server details (first two only)
         tenant_id:       s0m3-u53r-1d
         updated:         2013-06-17T07:57:50.054550+00:00
         user_id:         s0m3-u53r-1d
-    [server]:
-
-Exit context
-
-.. code-block:: console
-
-    [server]: exit
-    [kamaki]:
-
-.. note:: `network` and `flavor list` behave in the same way as `server list`
+    ...
 
 Detailed image listing
 ----------------------
-
-Enter context
-
-.. code-block:: console
-
-    [kamaki]: image
-    [image]:
 
 Detailed listing
 
 .. code-block:: console
 
-    [image]: list -l
+    $ kamaki image list -l
     f1r57-1m4g3-1d Debian Base Alpha
         checksum:         9344d77620cde1dd77da...7b70badda34b26d782
         container_format: bare
@@ -551,7 +498,7 @@ Detailed listing
         size:             474066944
         status:           available
         updated_at:       2013-06-03 16:44:16
-    [image]: compute list
+    $ kamaki imagecompute list
     f1r57-1m4g3-1d Debian Base Alpha
         created:   2013-06-03T16:21:53+00:00
         links:
@@ -602,40 +549,30 @@ Detailed listing
         tenant_id: s0m3-5up3r-u53r-1d
         updated:   2013-06-03T16:21:53+00:00
         user_id:   s0m3-5up3r-u53r-1d
-    [image]:
 
 Filter listing by prefix, suffix or words in image names
 
 .. code-block:: console
 
-    [image]: list --name-prefix=Debian
+    $ kamaki image list --name-prefix=Debian
     f1r57-1m4g3-1d Debian Base Alpha
-    [image]: list --name-suffix=Base
+    $ kamaki image list --name-suffix=Base
     53c0nd-1m4g3-1d Beta Debian Base
-    [image]: list --name-like=Alpha
+    $ kamaki image list --name-like=Alpha
     f1r57-1m4g3-1d Debian Base Alpha
-    [image]: list --name-like=Beta
+    $ kamaki image list --name-like=Beta
     53c0nd-1m4g3-1d Beta Debian Base
-    [image]: list --name-like="Debian Base"
+    $ kamaki image list --name-like="Debian Base"
     f1r57-1m4g3-1d Debian Base Alpha
     53c0nd-1m4g3-1d Beta Debian Base
-    [image]:
 
 Filter by owner and container format
 
 .. code-block:: console
 
-    [image]: list --owner=s0m3-u53r-1d
+    $ kamaki image list --owner=s0m3-u53r-1d
     f1r57-1m4g3-1d Debian Base Alpha
     53c0nd-1m4g3-1d Beta Debian Base
-    [image]: list --container-format=bare
+    $ kamaki image list --container-format=bare
     f1r57-1m4g3-1d Debian Base Alpha
     53c0nd-1m4g3-1d Beta Debian Base
-    [image]:
-
-Exit context:
-
-.. code-block:: console
-
-    [image]: exit
-    [kamaki]:

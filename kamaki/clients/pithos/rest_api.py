@@ -76,6 +76,7 @@ class PithosRestClient(StorageClient):
             marker=None,
             format='json',
             show_only_shared=False,
+            public=False,
             until=None,
             if_modified_since=None,
             if_unmodified_since=None,
@@ -108,13 +109,13 @@ class PithosRestClient(StorageClient):
 
         :returns: ConnectionResponse
         """
-
         self._assert_account()
 
         self.set_param('limit', limit, iff=limit)
         self.set_param('marker', marker, iff=marker)
         self.set_param('format', format, iff=format)
         self.set_param('shared', iff=show_only_shared)
+        self.set_param('public', iff=public)
         self.set_param('until', until, iff=until)
 
         self.set_header('If-Modified-Since', if_modified_since)
@@ -221,6 +222,7 @@ class PithosRestClient(StorageClient):
             format='json',
             meta=[],
             show_only_shared=False,
+            public=False,
             until=None,
             if_modified_since=None,
             if_unmodified_since=None,
@@ -276,6 +278,7 @@ class PithosRestClient(StorageClient):
             self.set_param('path', path)
         self.set_param('format', format, iff=format)
         self.set_param('shared', iff=show_only_shared)
+        self.set_param('public', iff=public)
         if meta:
             self.set_param('meta',  ','.join(meta))
         self.set_param('until', until, iff=until)

@@ -37,8 +37,9 @@ import codecs
 
 
 class History(object):
-    def __init__(self, filepath):
+    def __init__(self, filepath, token=None):
         self.filepath = filepath
+        self.token = token
 
     @classmethod
     def _match(self, line, match_terms):
@@ -50,7 +51,7 @@ class History(object):
         return True
 
     def get(self, match_terms=None, limit=0):
-        limit = int(limit) or 0
+        limit = int(limit or 0)
         with codecs.open(self.filepath, mode='r', encoding='utf-8') as f:
             result = [u'%s.  \t%s' % (
                 i + 1, line) for i, line in enumerate(f.readlines())
@@ -58,6 +59,7 @@ class History(object):
             return result[- limit:]
 
     def add(self, line):
+        line = line.replace(self.token, '...') if self.token else line
         with open(self.filepath, 'a+') as f:
             f.write(line + '\n')
 

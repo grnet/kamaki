@@ -43,7 +43,7 @@ from binascii import hexlify
 from kamaki.clients import SilentEvent, sendlog
 from kamaki.clients.pithos.rest_api import PithosRestClient
 from kamaki.clients.storage import ClientError
-from kamaki.clients.utils import path4url, filter_in
+from kamaki.clients.utils import path4url, filter_in, readall
 
 
 def _pithos_hash(block, blockhash):
@@ -66,9 +66,11 @@ def _range_up(start, end, max_value, a_range):
     :returns: (str) a range string cut-off for the start-end range
         an empty response means this window is out of range
     """
-    assert start >= 0, '_range_up was called with start < 0'
-    assert end >= start, '_range_up was called with end < start'
-    assert end <= max_value, '_range_up was called with max_value < end'
+    assert start >= 0, '_range_up called w. start(%s) < 0' % start
+    assert end >= start, '_range_up called w. end(%s) < start(%s)' % (
+        end, start)
+    assert end <= max_value, '_range_up called w. max_value(%s) < end(%s)' % (
+        max_value, end)
     if not a_range:
         return '%s-%s' % (start, end)
     selected = []
@@ -188,7 +190,7 @@ class PithosClient(PithosRestClient):
                 raise ClientError(msg, 1)
             f = StringIO(data)
         else:
-            data = f.read(size) if size else f.read()
+            data = readall(f, size) if size else f.read()
         r = self.object_put(
             obj,
             data=data,
@@ -315,7 +317,7 @@ class PithosClient(PithosRestClient):
             hash_gen.next()
 
         for i in range(nblocks):
-            block = fileobj.read(min(blocksize, size - offset))
+            block = readall(fileobj, min(blocksize, size - offset))
             bytes = len(block)
             hash = _pithos_hash(block, blockhash)
             hashes.append(hash)
@@ -323,8 +325,8 @@ class PithosClient(PithosRestClient):
             offset += bytes
             if hash_cb:
                 hash_gen.next()
-        msg = 'Failed to calculate uploaded blocks:'
-        ' Offset and object size do not match'
+        msg = ('Failed to calculate uploaded blocks:'
+               ' Offset and object size do not match')
         assert offset == size, msg
 
     def _upload_missing_blocks(self, missing, hmap, fileobj, upload_gen=None):
@@ -337,7 +339,7 @@ class PithosClient(PithosRestClient):
         for hash in missing:
             offset, bytes = hmap[hash]
             fileobj.seek(offset)
-            data = fileobj.read(bytes)
+            data = readall(fileobj, bytes)
             r = self._put_block_async(data, hash)
             flying.append(r)
             unfinished = self._watch_thread_limit(flying)
@@ -662,6 +664,8 @@ class PithosClient(PithosRestClient):
     def _dump_blocks_sync(
             self, obj, remote_hashes, blocksize, total_size, dst, crange,
             **args):
+        if not total_size:
+            return
         for blockid, blockhash in enumerate(remote_hashes):
             if blockhash:
                 start = blocksize * blockid
@@ -684,7 +688,7 @@ class PithosClient(PithosRestClient):
 
     def _hash_from_file(self, fp, start, size, blockhash):
         fp.seek(start)
-        block = fp.read(size)
+        block = readall(fp, size)
         h = newhashlib(blockhash)
         h.update(block.strip('\x00'))
         return hexlify(h.digest())
@@ -733,11 +737,15 @@ class PithosClient(PithosRestClient):
                     **restargs)
                 end = total_size - 1 if (
                     key + blocksize > total_size) else key + blocksize - 1
+                if end < key:
+                    self._cb_next()
+                    continue
                 data_range = _range_up(key, end, total_size, filerange)
                 if not data_range:
                     self._cb_next()
                     continue
-                restargs['async_headers'] = {'Range': 'bytes=%s' % data_range}
+                restargs[
+                    'async_headers'] = {'Range': 'bytes=%s' % data_range}
                 flying[key] = self._get_block_async(obj, **restargs)
                 blockid_dict[key] = unsaved
 

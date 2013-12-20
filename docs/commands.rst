@@ -1,23 +1,39 @@
 List of commands
 ================
 
-The commands described bellow are grouped by service. The examples showcase a
-sample set of group commands. The kamaki interactive shell (check
+Kamaki commands follow this scheme::
+
+    [kamaki] <object> <action> [identifiers] [non-positional arguments]
+
+In this context, objects are not services, but virtual objects like a server, a
+file or an image. The action concerns objects of the specified type. Some
+actions (e.g. "delete" or "info") need to operate on an existing object. The
+identifiers strictly identify this object and they should have the form of an id
+(e.g., `server delete <SERVER_ID>`).
+
+The examples bellow showcase some commands. The kamaki-shell (check
 `Usage section <usage.html#interactive-shell>`_ for details) is chosen as the
 execution environment.
 
 
-user (Identity Manager)
+user (Identity/Astakos)
 -----------------------
 
 .. code-block:: text
 
-    authenticate:  Authenticate a user
+    info          Get info for (current) session user
+    uuid2name     Get user name(s) from uuid(s)
+    authenticate  Authenticate a user and get all authentication information
+    list          List (cached) session users
+    add           Authenticate user by token and add to kamaki session (cache)
+    name2uuid     Get user uuid(s) from name(s)
+    select        Select user from the (cached) list as current session user
+    delete        Delete user (token) from the (cached) list of session users
 
 Showcase: get user information
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-In the following, the token has been set in a previous step (see
+In the following, cloud URL and TOKEN were set in a previous step (see
 `setup section <setup.html>`_ or the
 `quick setup guide <usage.html#quick-setup>`_)
 
@@ -28,14 +44,58 @@ In the following, the token has been set in a previous step (see
     [kamaki]: user
 
     * Authenticate user *
-    [user]: authenticate
+    [user]: info
     ...
-    user:
-        name:  My Real Name
-        uuid:  ab1cde23-45fg-6h7i-8j9k-10l1m11no2pq
+    name:  My Real Name
+    id:  ab1cde23-45fg-6h7i-8j9k-10l1m11no2pq
 
-.. note:: actual call returns a full list of service endpoints accessible to
-    the user with a specific token
+    [user]: exit
+    [kamaki]:
+
+project (Astakos)
+-----------------
+
+.. code-block:: text
+
+    info          Get details for a project
+    unsuspend     Resume a suspended project (special privileges needed)
+    suspend       Suspend a project (special privileges needed)
+    list          List all projects
+    create        Apply for a new project
+    modify        Modify a project
+    terminate     Terminate a project (special privileges needed)
+    application   Application management commands
+    reinstate     Reinstate a terminated project (special privileges needed)
+
+membership (Astakos)
+--------------------
+
+.. code-block:: text
+
+    info    Details on a membership
+    enroll  Enroll somebody to a project you manage
+    join    Join a project
+    list    List all memberships
+    accept  Accept a membership for a project you manage
+    leave   Leave a project you have membership to
+    remove  Remove a membership for a project you manage
+    reject  Reject a membership for a project you manage
+    cancel  Cancel your (probably pending) membership to a project
+
+quota (Account/Astakos)
+-----------------------
+
+.. code-block:: text
+
+    list          Get user quotas
+    info          Get quota for a service (cyclades, pithos, astakos)
+
+resource (Astakos)
+------------------
+
+.. code-block:: text
+
+    list          List user resources
 
 flavor (Compute/Cyclades)
 -------------------------
@@ -57,39 +117,22 @@ Showcase: show details for flavor with id 43
     * Get details about flavor with id 43 *
     [flavor]: info 43
     SNF:disk_template:  drbd
-    cpu :  4
+    cpu:  4
     disk:  10
-    id  :  43
+    id:  43
     name:  C4R2048D10
-    ram :  2048
+    ram:  2048
 
-image (Plankton commands + Compute Image subcommands)
------------------------------------------------------
+image (Image/Plankton)
+----------------------
 
 .. code-block:: text
 
-    list      :  List images accessible by user
-    info      :  Get image metadata
-    meta      :  Manage image metadata
-        set     :   Add / update metadata and properties for an image
-        delete  :   Remove/empty image metadata and/or custom properties
-    register  :  (Re)Register an image
-    unregister:  Unregister an image (does not delete the image file)
-    shared    :  List shared images
-    compute   :  Compute Image API commands
-        list      :  List images
-        delete    :  Delete image
-        info      :  Get image details
-        properties:  Manage properties related to OS installation in an image
-            delete:  Delete a property from an image
-            get   :  Get an image property
-            list  :  List all image properties
-            set   :  Add / update a set of properties for an image
-    members   :  Manage members (users who can modify an image)
-        add   :  Add a member to an image
-        delete:  Remove a member from an image
-        list  :  List members of an image
-        set   :  Set the members of an image
+    info          Get image metadata
+    list          List images accessible by user
+    register      (Re)Register an image file to an Image service
+    modify        Add / update metadata and properties for an image
+    unregister    Unregister an image (does not delete the image file)
 
 Showcase: Pick an image and list the properties
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -104,73 +147,72 @@ Showcase: Pick an image and list the properties
     [image]: list
     926ab1c5-2d85-49d4-aebe-0fce712789b9 Windows Server 2008
      container_format:  bare
-     disk_format     :  diskdump
-     id              :  926ab1c5-2d85-49d4-aebe-0fce712789b9
-     size            :  11917066240
-     status          :  available
+     disk_format:  diskdump
+     id:  926ab1c5-2d85-49d4-aebe-0fce712789b9
+     size:  11917066240
+     status:  available
     78262ee7-949e-4d70-af3a-85360c3de57a Windows Server 2012
      container_format:  bare
-     disk_format     :  diskdump
-     id              :  78262ee7-949e-4d70-af3a-85360c3de57a
-     size            :  11697913856
-     status          :  available
+     disk_format:  diskdump
+     id:  78262ee7-949e-4d70-af3a-85360c3de57a
+     size:  11697913856
+     status:  available
     5ed5a29b-292c-4fe0-b32c-2e2b65628635 ubuntu
      container_format:  bare
-     disk_format     :  diskdump
-     id              :  5ed5a29b-292c-4fe0-b32c-2e2b65628635
-     size            :  2578100224
-     status          :  available
+     disk_format:  diskdump
+     id:  5ed5a29b-292c-4fe0-b32c-2e2b65628635
+     size:  2578100224
+     status:  available
     1f8454f0-8e3e-4b6c-ab8e-5236b728dffe Debian_Wheezy_Base
      container_format:  bare
-     disk_format     :  diskdump
-     id              :  1f8454f0-8e3e-4b6c-ab8e-5236b728dffe
-     size            :  795107328
-     status          :  available
+     disk_format:  diskdump
+     id:  1f8454f0-8e3e-4b6c-ab8e-5236b728dffe
+     size:  795107328
+     status:  available
 
-    * Get properties of image with id 1f8454f0-8e3e-4b6c-ab8e-5236b728dffe *
-    [image]: compute properties 1f8454f0-8e3e-4b6c-ab8e-5236b728dffe
-    description   :  Debian 6.0.6 (Squeeze) Base System
-    gui           :  No GUI
-    kernel        :  2.6.32
-    os            :  debian
-    osfamily      :  linux
-    root_partition:  1
-    sortorder     :  1
-    users         :  root
+    * Get details for image with id 1f8454f0-8e3e-4b6c-ab8e-5236b728dffe *
+    [image]: info 1f8454f0-8e3e-4b6c-ab8e-5236b728dffe
+     name: Debian_Wheezy_Base
+     container_format:  bare
+     disk_format:  diskdump
+     id:  1f8454f0-8e3e-4b6c-ab8e-5236b728dffe
+     size:  795107328
+     status:  available
+     owner:  s0m3-u53r-1d (user@example.com)
+        DESCRIPTION:  Debian Wheezy Base (Stable)
+        GUI:  No GUI
+        KERNEL:  2.6.32
+        OS:  debian
+        OSFAMILY:  linux
+        ROOT_PARTITION:  1
+        SORTORDER:  1
+        USERS:  root
+
+imagecompute (Compute/Cyclades)
+-------------------------------
+
+.. code-block:: text
+
+    info      Get detailed information on an image
+    list      List images
+    modify    Modify image properties (metadata)
+    delete    Delete an image (WARNING: image file is also removed)
 
 server (Compute/Cyclades)
 -------------------------
 
 .. code-block:: text
 
-    addr    :  List a server nic address
-    console :  Get a VNC console
-    create  :  Create a server
-    delete  :  Delete a server
-    firewall:  Manage server firewall profile
-        set :  Set the server firewall profile
-        get :  Get the server firewall profile
-    ip      :  Manage floating IPs for the servers
-        attach:  Attach a floating ip to a server with server_id
-        info  :  A floating IP details
-        detach:  Detach floating ip from server
-        list  :  List all floating ips
-        create:  Create a new floating IP
-        delete:  Delete a floating ip
-        pools :  List all floating pools of floating ips
-    info    :  Get server details
-    list    :  List servers
-    metadata:  Manage Server Metadata
-        list  :  List server metadata
-        set   :  Add / update server metadata
-        delete:  Delete a piece of server metadata
-    reboot  :  Reboot a server
-    rename  :  Update a server name
-    shutdown:  Shutdown a server
-    start   :  Start a server
-    stats   :  Get server statistics
-    resize  :  Set a different flavor for an existing server
-    wait    :  Wait for server to finish
+    info      Detailed information on a Virtual Machine
+    modify    Modify attributes of a virtual server
+    create    Create a server (aka Virtual Machine)
+    list      List virtual servers accessible by user
+    reboot    Reboot a virtual server
+    start     Start an existing virtual server
+    shutdown  Shutdown an active virtual server
+    delete    Delete a virtual server
+    console   Create a VMC console and show connection information
+    wait      Wait for server to finish [BUILD, STOPPED, REBOOT, ACTIVE]
 
 Showcase: Create a server
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -178,12 +220,10 @@ Showcase: Create a server
 .. code-block:: console
     :emphasize-lines: 1,4,21,35,44,62
 
-    * Enter server context *
     [kamaki]: server
 
-    * See server-create help *
     [server]: create -h
-    usage: create <name> <flavor id> <image id>
+    usage: create --name NAME --flavor-id FLAVOR_ID --image-id IMAGE_ID
             [--personality PERSONALITY] [-h] [--config CONFIG] [--cloud CLOUD]
 
     Create a server
@@ -223,7 +263,7 @@ Showcase: Create a server
     ram              :  1024
 
     * Create a debian server named 'My Small Debian Server'
-    [server]: create 'My Small Debian Server' 1 b2dffe52-64a4-48c3-8a4c-8214cc3165cf
+    [server]: create --name='My Small Debian Server' --flavor-id=1 --image-id=b2dffe52-64a4-48c3-8a4c-8214cc3165cf
     adminPass:  L8gu2wbZ94
     created  :  2012-11-23T16:56:04.190813+00:00
     flavorRef:  1
@@ -244,55 +284,71 @@ Showcase: Create a server
     Server 11687 still in BUILD mode |||||||||||||||||    | 80%
     Server 11687 is now in ACTIVE mode
 
-.. Note:: In kamaki shell, / is used to access top-level command groups while working in command group contexts
+.. Note:: In kamaki shell, / is used to access commands from top-level
 
-
-ip (Compute/Cyclades)
+ip (Network/Cyclades)
 ---------------------
 
 .. code-block:: text
 
-    info:    Details for an IP
-    list:    List reserved floating IPs
-    attach:  Attach a floating IP to a server
-    pools:   List pools of floating IPs
-    release: Release a floating IP
-    detach:  Detach a floating IP from a server
-    reserve: Reserve a floating IP
+    info      Get details on a floating IP
+    create    Reserve an IP on a network
+    list      List reserved floating IPs
+    delete    Unreserve an IP (also delete the port, if attached)
+    attach    Attach an IP on a virtual server
+    detach    Detach an IP from a virtual server
 
-Showcase: Reserve and attach IP to server
------------------------------------------
+port (Network/Cyclades)
+-----------------------
 
 .. code-block:: text
 
-    * Enter IP context *
-    [kamaki]: ip
+    info      Get details about a port
+    list      List all ports
+    create    Create a new port (== connect server to network)
+    modify    Modify the attributes of a port
+    delete    Delete a port (== disconnect server from network)
+    wait      Wait for port to finish [ACTIVE, DOWN, BUILD, ERROR]
 
-    * Reserve an IP and see servers *
-    [kamaki]: reserve
+Showcase: Reserve and attach IP to server
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: text
+
+    * Enter port context *
+    [kamaki]: port
+
+    * Reserve an IP and see servers and networks*
+    [port]: /ip create
     123.456.78.9
-    [kamaki]: /server list
+    [port]: /server list
     42   My Windows Server
     43   My Linux Server
+    [port]: /network list
+    101  My Network 1
+    102  My Network 2
 
     * Attach IP to server
-    [kamaki]: attach 43 123.456.78.9
+    [port]: port create --device-id=43 --network-id=101 --ip-address=123.456.78.9 --wait
+    Creating new port 7 between server 43 and network 101
+    Port 7 still in BUILD mode |||||||||||||||||    | 80%
+    Port 7 is now in ACTIVE mode
 
 .. Note:: In kamaki shell, / is used to access top-level command groups while
     working in command group contexts
 
-network (Compute/Cyclades)
+network (Network/Cyclades)
 --------------------------
 
 .. code-block:: text
 
-    connect   :  Connect a server to a network
-    create    :  Create a network
-    delete    :  Delete a network
-    disconnect:  Disconnect a nic of a server to a network
-    info      :  Get network details
-    list      :  List networks
-    rename    :  Update network name
+    info        Get details about a network
+    disconnect  Disconnect a network from a device
+    modify      Modify network attributes
+    create      Create a new network
+    list        List networks
+    connect     Connect a network with a device (server or router)
+    delete      Delete a network
 
 Showcase: Connect a network to a VM
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -311,7 +367,7 @@ Showcase: Connect a network to a VM
     * Try network-connect (to get help) *
     [network]: connect 
     Syntax error
-    usage: connect <server id> <network id> [-s] [-h] [-i] [--config CONFIG]
+    usage: connect <network id> --device-id <DEVICE_ID> [-s] [-h] [-i] [--config CONFIG]
 
     Connect a server to a network
 
@@ -324,12 +380,14 @@ Showcase: Connect a network to a VM
       -v,--verbose:  More info at response
 
     * Connect VM with id 11687 to network with id 1409
-    [network]: connect 11687 1409
+    [network]: connect 11687 --device-id=1409 --wait
+    Creating port between network 1409 and server 11687
+    New port: 8
 
     * Get details on network with id 1409
     [network]: info 1409
-      attachments: 
-                 nic-11687-1
+      attachments:
+                8
       cidr    :  192.168.1.0/24
       cidr6   :  None
       created :  2012-11-23T17:17:20.560098+00:00
@@ -344,14 +402,14 @@ Showcase: Connect a network to a VM
       updated :  2012-11-23T17:18:25.095225+00:00
 
     * Get connectivity details on VM with id 11687 *
-    [network]: /server addr 11687
-    id:  nic-11687-1
+    [network]: /server info 11687 --nics 
+    nic-11687-1
         ipv4       :  192.168.1.1
         ipv6       :  None
         mac_address:  aa:0f:c2:0b:0e:85
         network_id :  1409
         firewallProfile:  DISABLED
-    id:  nic-11687-0
+    nic-11687-0
         ipv4           :  83.212.106.111
         ipv6           :  2001:648:2ffc:1116:a80c:f2ff:fe12:a9e
         mac_address    :  aa:0c:f2:12:0a:9e
@@ -359,51 +417,54 @@ Showcase: Connect a network to a VM
 
 .. Note:: In kamaki shell, / is used to access top-level command groups while working in command group contexts
 
+container (Storage/Pithos+)
+---------------------------
+
+.. code-block:: text
+
+    info      Get information about a container
+    modify    Modify the properties of a container
+    create    Create a new container
+    list      List all containers, or their contents
+    empty     Empty a container
+    delete    Delete a container
+
+group (Storage/Pithos+)
+-----------------------
+
+.. code-block:: text
+
+    create    Create a group of users
+    list      List all groups and group members
+    delete    Delete a user group
+
+sharer (Storage/Pithos+)
+------------------------
+
+.. code-block:: text
+
+    info      Details on a Pithos+ sharer account (default: current account)
+    list      List accounts who share file objects with current user
+
 file (Storage/Pithos+)
 ----------------------
 
 .. code-block:: text
 
-    append        :  Append local file to remote
-    cat           :  Print a file to console
-    copy          :  Copy an object
-    containerlimit:  Container size limit commands
-        set       :  Set container data limit
-        get       :  Get container data limit
-    create        :  Create a container
-    delete        :  Delete a container [or an object]
-    download      :  Download a file or directory
-    group         :  Manage access groups and group members
-        delete:  Delete a user group
-        list  :  List groups and group members
-        set   :  Set a user group
-    hashmap       :  Get the hashmap of an object
-    info          :  Get information for account [, container [or object]]
-    list          :  List containers, object trees or objects in a directory
-    manifest      :  Create a remote file with uploaded parts by manifestation
-    metadata      :  Metadata are attached on objects (key:value pairs)
-        delete:  Delete metadata with given key
-        get   :  Get metadatum
-        set   :  Set a piece of metadata
-    mkdir         :  Create a directory
-    move          :  Copy an object
-    overwrite     :  Overwrite part (from start to end) of a remote file
-    permissions   :  Manage user and group accessibility for objects
-        delete:  Delete all permissions set on object
-        get   :  Get read and write permissions of an object
-        set   :  Set permissions for an object
-    publish       :  Publish an object
-    purge         :  Purge a container
-    quota         :  Get  quota for account
-    sharers       :  List the accounts that share objects with default account
-    touch         :  Create an empty object (file)
-    truncate      :  Truncate remote file up to a size
-    unpublish     :  Unpublish an object
-    upload        :  Upload a file or directory
-    versioning    :  Manage the versioning scheme of current pithos user account
-        get:  Get  versioning for account or container
-        set:  Set versioning mode (auto, none) for account or container
-    versions      :  Get the version list of an object
+    info      Get information/details about a file
+    truncate  Truncate remote file up to size
+    mkdir     Create a directory
+    create    Create an empty file
+    move      Move objects, even between different accounts or containers
+    list      List all objects in a container or a directory object
+    upload    Upload a file
+    cat       Fetch remote file contents
+    modify    Modify the attributes of a file or directory object
+    append    Append local file to (existing) remote object
+    download  Download a remove file or directory object to local file system
+    copy      Copy objects, even between different accounts or containers
+    overwrite Overwrite part of a remote file
+    delete    Delete a file or directory object
 
 Showcase: Upload and download a file
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -427,12 +488,12 @@ Showcase: Upload and download a file
 
 
     * Create two containers *
-    [file]: create mycont1
-    [file]: create mycont2
+    [file]: /container create mycont1
+    [file]: /container create mycont2
 
 
     * List accessible containers *    
-    [file]: list
+    [file]: /container list
     1. mycont1 (0B, 0 objects)
     2. mycont2 (0B, 0 objects)
     3. pithos (0B, 0 objects)
@@ -440,39 +501,35 @@ Showcase: Upload and download a file
 
 
     * Upload local file to 1st container *
-    [file]: upload rndm_local.file mycont1
+    [file]: upload /mycont1/rndm_local.file
 
 
     * Check if file has been uploaded *
-    [file]: list mycont1
+    [file]: list /mycont1
     1.    20M rndm_local.file
 
     * Create directory mydir on second container *
-    [file]: mkdir mycont2:mydir
-
+    [file]: mkdir /mycont2/mydir
 
     * Move file from 1st to 2nd container (and in the directory) *
-    [file]: move mycont1:rndm_local.file mycont2:mydir/rndm_local.file
+    [file]: move /mycont1/rndm_local.file /mycont2/mydir/rndm_local.file
 
     * Check contents of both containers *
-    [file]: list mycont1
-    [file]: list mycont2
+    [file]: list /mycont1
+    [file]: list /mycont2
     1.      D mydir/
     2.    20M mydir/rndm_local.file
 
-
     * Copy file from 2nd to 1st container, with a new name *
-    [file]: copy mycont2:mydir/rndm_local.file mycont1:rndm_remote.file
-
+    [file]: copy /mycont2/mydir/rndm_local.file /mycont1/rndm_remote.file
 
     * Check pasted file *
-    [file]: list mycont1
+    [file]: list /mycont1
     1.    20M rndm_remote.file
 
-
     * Download pasted file to local file system *
-    [file]: download mycont1:rndm_remote.file rndm_remote.file
-
+    [file]: download /mycont1/rndm_remote.file
+    Downloading: |||||||||||||||||   | 72%
 
     * Check if file is downloaded and if it is the same to original *
     [file]: !ls -lh *.file
@@ -481,11 +538,3 @@ Showcase: Upload and download a file
     [file]: !diff rndm_local.file rndm_remote.file
 
 .. Note:: In kamaki shell, ! is used to execute OS shell commands (e.g., bash)
-
-.. warning:: The container:object/path syntax does not function if the
-    container and / or the object path contain one or more : characters. To use
-    containers and objects with : use the --container and --dst-container
-    arguments, e.g., to copy test.py object from example:dev container to
-    example:deploy ::
-
-        $ kamaki file copy --container=example:dev test.py --dst-container=example:deploy
