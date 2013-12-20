@@ -444,8 +444,8 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
             'Do not create any network NICs on the server.        . '
             'Mutually exclusive to --network        . '
             'If neither --network or --no-network are used, the default '
-            'network policy is applied. This policy is configured on the '
-            'cloud and kamaki is oblivious to it',
+            'network policy is applied. These policies are set on the cloud, '
+            'so kamaki is oblivious to them',
             '--no-network')
     )
     required = ('server_name', 'flavor_id', 'image_id')
@@ -453,7 +453,7 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
     @errors.cyclades.cluster_size
     def _create_cluster(self, prefix, flavor_id, image_id, size):
         networks = self['network_configuration'] or (
-            None if self['no_network'] else [])
+            [] if self['no_network'] else None)
         servers = [dict(
             name='%s%s' % (prefix, i if size > 1 else ''),
             flavor_id=flavor_id,
