@@ -35,7 +35,7 @@ from json import load, loads
 from os.path import abspath
 
 from kamaki.cli import command
-from kamaki.clients.astakos import SynnefoAstakosClient
+from kamaki.clients.astakos import LoggedAstakosClient
 from kamaki.cli.commands import (
     _command_init, errors, _optional_json, addLogSettings)
 from kamaki.cli.command_tree import CommandTree
@@ -100,8 +100,7 @@ class _init_synnefo_astakosclient(_command_init):
                     'astakos') or self.config.get_cloud(
                     self.cloud, 'token')
                 token = token.split()[0] if ' ' in token else token
-                self.client = SynnefoAstakosClient(
-                    auth_url=base_url, token=token)
+                self.client = LoggedAstakosClient(base_url, token)
                 return
         else:
             self.cloud = 'default'
