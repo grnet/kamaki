@@ -132,8 +132,7 @@ class PithosClient(PithosRestClient):
             self.container = cnt_back_up
 
     def purge_container(self, container=None):
-        """Delete an empty container and destroy associated blocks
-        """
+        """Delete an empty container and destroy associated blocks"""
         cnt_back_up = self.container
         try:
             self.container = container or cnt_back_up

@@ -98,10 +98,9 @@ class AstakosClient(TestCase):
     def tearDown(self):
         FR.json = example
 
+    @patch('%s.LoggedAstakosClient.__init__' % astakos_pkg, return_value=None)
     @patch(
-        '%s.SynnefoAstakosClient.__init__' % astakos_pkg, return_value=None)
-    @patch(
-        '%s.SynnefoAstakosClient.get_endpoints' % astakos_pkg,
+        '%s.LoggedAstakosClient.get_endpoints' % astakos_pkg,
         return_value=example)
     def _authenticate(self, get_endpoints, sac):
         r = self.client.authenticate()
@@ -187,17 +186,17 @@ class AstakosClient(TestCase):
         self.assertEqual(r[0]['auth_token'], self.token)
 
     @patch(
-        '%s.SynnefoAstakosClient.get_usernames' % astakos_pkg,
+        '%s.LoggedAstakosClient.get_usernames' % astakos_pkg,
         return_value={42: 'username42', 43: 'username43'})
     def test_uuids2usernames(self, get_usernames):
         from astakosclient import AstakosClientException
         self.assertRaises(
             AstakosClientException, self.client.uuids2usernames, [42, 43])
         with patch(
-                '%s.SynnefoAstakosClient.__init__' % astakos_pkg,
+                '%s.LoggedAstakosClient.__init__' % astakos_pkg,
                 return_value=None) as sac:
             with patch(
-                    '%s.SynnefoAstakosClient.get_endpoints' % astakos_pkg,
+                    '%s.LoggedAstakosClient.get_endpoints' % astakos_pkg,
                     return_value=example) as get_endpoints:
                 r = self.client.uuids2usernames([42, 43])
                 self.assert_dicts_are_equal(
@@ -208,17 +207,17 @@ class AstakosClient(TestCase):
                 self.assertEqual(get_usernames.mock_calls[-1], call([42, 43]))
 
     @patch(
-        '%s.SynnefoAstakosClient.get_uuids' % astakos_pkg,
+        '%s.LoggedAstakosClient.get_uuids' % astakos_pkg,
         return_value={'username42': 42, 'username43': 43})
     def test_usernames2uuids(self, get_uuids):
         from astakosclient import AstakosClientException
         self.assertRaises(
             AstakosClientException, self.client.usernames2uuids, ['u1', 'u2'])
         with patch(
-                '%s.SynnefoAstakosClient.__init__' % astakos_pkg,
+                '%s.LoggedAstakosClient.__init__' % astakos_pkg,
                 return_value=None) as sac:
             with patch(
-                    '%s.SynnefoAstakosClient.get_endpoints' % astakos_pkg,
+                    '%s.LoggedAstakosClient.get_endpoints' % astakos_pkg,
                     return_value=example) as get_endpoints:
                 r = self.client.usernames2uuids(['u1', 'u2'])
                 self.assert_dicts_are_equal(
