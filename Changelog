@@ -1,3 +1,8 @@
+CHANGELOG for hotfix version 0.12.3
+
+- Import the whole astakosclient package
+- Minor typos in help message
+
 CHANGELOG for hotfix version 0.12.2
 
 - Always use "details" call in neworks/subnets list
