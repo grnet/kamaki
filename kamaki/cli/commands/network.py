@@ -48,10 +48,10 @@ from kamaki.cli.commands import (
 from kamaki.cli.commands.cyclades import _service_wait
 
 
-network_cmds = CommandTree('network', 'Networking API network commands')
-port_cmds = CommandTree('port', 'Networking API network commands')
-subnet_cmds = CommandTree('subnet', 'Networking API network commands')
-ip_cmds = CommandTree('ip', 'Networking API floatingip commands')
+network_cmds = CommandTree('network', 'Network API network commands')
+port_cmds = CommandTree('port', 'Network API port commands')
+subnet_cmds = CommandTree('subnet', 'Network API subnet commands')
+ip_cmds = CommandTree('ip', 'Network API floatingip commands')
 _commands = [network_cmds, port_cmds, subnet_cmds, ip_cmds]
 
 
