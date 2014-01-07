@@ -32,10 +32,11 @@
 # or implied, of GRNET S.A.
 
 from logging import getLogger
-from astakosclient import AstakosClient
-from astakosclient import AstakosClientException
+from astakosclient import *
+#  astakosclient contains: AstakosCLient, AstakosClientException
 
 from kamaki.clients import Client, ClientError, RequestManager, recvlog
+
 
 
 def _astakos_error(foo):
