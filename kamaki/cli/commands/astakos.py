@@ -37,12 +37,12 @@ from os.path import abspath
 from kamaki.cli import command
 from kamaki.clients.astakos import LoggedAstakosClient
 from kamaki.cli.commands import (
-    _command_init, errors, _optional_json, addLogSettings)
+    _command_init, errors, _optional_json, addLogSettings, _name_filter)
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import CLIBaseUrlError, CLISyntaxError, CLIError
 from kamaki.cli.argument import (
     FlagArgument, ValueArgument, IntArgument, CommaSeparatedListArgument)
-from kamaki.cli.utils import format_size
+from kamaki.cli.utils import format_size, filter_dicts_by_dict
 
 #  Mandatory
 
@@ -572,13 +572,20 @@ class resource_list(_init_synnefo_astakosclient, _optional_json):
 
 
 @command(endpoint_commands)
-class endpoint_list(_init_synnefo_astakosclient, _optional_json):
+class endpoint_list(
+        _init_synnefo_astakosclient, _optional_json, _name_filter):
     """Get endpoints service endpoints"""
+
+    arguments = dict(endpoint_type=ValueArgument('Filter by type', '--type'))
 
     @errors.generic.all
     @errors.user.astakosclient
     def _run(self):
-        self._print(self.client.get_endpoints(), self.print_dict)
+        r = self.client.get_endpoints()['access']['serviceCatalog']
+        r = self._filter_by_name(r)
+        if self['endpoint_type']:
+            r = filter_dicts_by_dict(r, dict(type=self['endpoint_type']))
+        self._print(r)
 
     def main(self):
         super(self.__class__, self)._run()
