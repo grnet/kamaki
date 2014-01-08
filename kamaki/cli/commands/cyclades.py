@@ -301,7 +301,7 @@ class server_info(_init_cyclades, _optional_json):
         choose_one = ('nics', 'stats', 'diagnostics')
         count = len([a for a in choose_one if self[a]])
         if count > 1:
-            raise CLIInvalidArgument('Invalid argument compination', details=[
+            raise CLIInvalidArgument('Invalid argument combination', details=[
                 'Arguments %s cannot be used simultaneously' % ', '.join(
                     [self.arguments[a].lvalue for a in choose_one])])
         self._run(server_id=server_id)

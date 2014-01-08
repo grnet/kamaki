@@ -32,10 +32,24 @@
 # or implied, of GRNET S.A.
 
 from logging import getLogger
-from astakosclient import AstakosClient
-from astakosclient import AstakosClientException
+from astakosclient import AstakosClient as OriginalAstakosClient
+from astakosclient import AstakosClientException, parse_endpoints
 
 from kamaki.clients import Client, ClientError, RequestManager, recvlog
+
+
+class AstakosClient(OriginalAstakosClient):
+    """Wrap Original AstakosClient to ensure compatibility in kamaki clients"""
+
+    def __init__(self, *args, **kwargs):
+        if args:
+            args = list(args)
+            url = args.pop(0)
+            token = args.pop(0) if args else kwargs.pop('token', None)
+            args = tuple([token, url] + args)
+        elif 'base_url' in kwargs:
+            kwargs['auth_url'] = kwargs.get('auth_url', kwargs['base_url'])
+        super(AstakosClient, self).__init__(*args, **kwargs)
 
 
 def _astakos_error(foo):
@@ -47,8 +61,12 @@ def _astakos_error(foo):
     return wrap
 
 
-class SynnefoAstakosClient(AstakosClient):
-    """An astakosclient.AstakosClient wrapper, that logs the way of kamaki"""
+class LoggedAstakosClient(AstakosClient):
+    """An AstakosClient wrapper with modified logging
+
+    Logs are adjusted to appear similar to the ones of kamaki clients.
+    No other changes are made to the parent class.
+    """
 
     LOG_TOKEN = False
     LOG_DATA = False
@@ -65,7 +83,7 @@ class SynnefoAstakosClient(AstakosClient):
         recvlog.info('-             -        -     -   -  - -')
 
     def _call_astakos(self, *args, **kwargs):
-        r = super(SynnefoAstakosClient, self)._call_astakos(*args, **kwargs)
+        r = super(LoggedAstakosClient, self)._call_astakos(*args, **kwargs)
         try:
             log_request = getattr(self, 'log_request', None)
             if log_request:
@@ -128,8 +146,8 @@ class CachedAstakosClient(Client):
         :param token: (str) custom token to authenticate
         """
         token = self._resolve_token(token)
-        astakos = SynnefoAstakosClient(
-            token, self.base_url, logger=getLogger('astakosclient'))
+        astakos = LoggedAstakosClient(
+            self.base_url, token, logger=getLogger('astakosclient'))
         astakos.LOG_TOKEN = getattr(self, 'LOG_TOKEN', False)
         astakos.LOG_DATA = getattr(self, 'LOG_DATA', False)
         r = astakos.authenticate()
