@@ -83,7 +83,7 @@ before it's completed.
 
 .. code-block:: console
 
-    $ kamaki file download -R /pithos/video
+    $ kamaki file download -r /pithos/video
     mkdir video
     Downloading /pithos/video/tk1.mpg --> /home/someuser/video/tk1.mpg
     Done
