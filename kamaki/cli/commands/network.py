@@ -130,8 +130,8 @@ class network_list(_init_network, _optional_json, _name_filter, _id_filter):
             nets = [dict(
                 _0_id=n['id'],
                 _1_name=n['name'],
-                _2_public='( %s )' % 'public' if (
-                    n.get('public', None)) else '( private )') for n in nets]
+                _2_public='( %s )' % ('public' if (
+                    n.get('public', None)) else 'private')) for n in nets]
             kwargs = dict(title=('_0_id', '_1_name', '_2_public'))
         else:
             kwargs = dict()
