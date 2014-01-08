@@ -1,26 +1,7 @@
-CHANGELOG for version 0.12.rc6
-
-Add self.poolsize for kamaki.clients.Client
-
-CHANGELOG for version 0.12.rc5
-
-Add ip attach/detach (shortcuts for port create/delete)
-
-CHANGELOG for version 0.12.rc4
-
-Fix syntax errors in network commands
-
-CHANGELOG for version 0.12.rc3
-
-Check clients unittests
-
-CHANGELOG for version 0.12rc3
-
-Correct keys in HTTP bodies on network-related requests
-
-CHANGELOG for version 0.12
+CHANGELOG for version 0.13
 
 Bug Fixes:
 
 Features:
+- Name and Type filters in endpoint list
 
