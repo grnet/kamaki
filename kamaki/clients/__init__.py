@@ -154,12 +154,12 @@ class RequestManager(Logged):
                 self._token, val = val, '...'
             sendlog.info('  %s: %s%s' % (key, val, plog))
         if self.data:
-            sendlog.info('data size:%s%s' % (len(self.data), plog))
+            sendlog.info('data size: %s%s' % (len(self.data), plog))
             if self.LOG_DATA:
                 sendlog.info(self.data.replace(self._token, '...') if (
                     self._token) else self.data)
         else:
-            sendlog.info('data size:0%s' % plog)
+            sendlog.info('data size: 0%s' % plog)
 
     def perform(self, conn):
         """

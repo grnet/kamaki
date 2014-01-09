@@ -646,7 +646,7 @@ class ArgumentParseManager(object):
                 if not self._parse_required_arguments(item, parsed_args):
                     return False
             return True
-        if isinstance(required, list):
+        elif isinstance(required, list):
             for item in required:
                 if self._parse_required_arguments(item, parsed_args):
                     return True
@@ -657,6 +657,7 @@ class ArgumentParseManager(object):
         """Parse user input"""
         try:
             pkargs = (new_args,) if new_args else ()
+            print self.parser
             self._parsed, unparsed = self.parser.parse_known_args(*pkargs)
             parsed_args = [
                 k for k, v in vars(self._parsed).items() if v not in (None, )]
