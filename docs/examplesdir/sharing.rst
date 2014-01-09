@@ -85,7 +85,7 @@ Share (read permission) `info.txt` with all
 
 .. code-block:: console
 
-    $ kamaki file permissions set info.txt --read-permission=*
+    $ kamaki file modify info.txt --read-permission=*
 
 Shared with me
 --------------
