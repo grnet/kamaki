@@ -1,6 +1,7 @@
 CHANGELOG for version 0.13
 
 Bug Fixes:
+- Register image w. upload but no metafile [#4864]
 
 Features:
 - Name and Type filters in endpoint list
