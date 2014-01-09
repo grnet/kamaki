@@ -446,8 +446,9 @@ class image_register(_init_image, _optional_json):
             'Load metadata from a json-formated file <img-file>.meta :'
             '{"key1": "val1", "key2": "val2", ..., "properties: {...}"}',
             ('--metafile')),
-        metafile_force=FlagArgument(
-            'Overide remote metadata file', ('-f', '--force')),
+        force_upload=FlagArgument(
+            'Overwrite remote files (image file, metadata file)',
+            ('-f', '--force')),
         no_metafile_upload=FlagArgument(
             'Do not store metadata in remote meta file',
             ('--no-metafile-upload')),
@@ -471,8 +472,6 @@ class image_register(_init_image, _optional_json):
     required = ('name', 'pithos_location')
 
     def _get_pithos_client(self, locator):
-        if self['no_metafile_upload']:
-            return None
         ptoken = self.client.token
         if getattr(self, 'auth_base', False):
             pithos_endpoints = self.auth_base.get_service_endpoints(
@@ -518,13 +517,30 @@ class image_register(_init_image, _optional_json):
         for k, v in self['properties'].items():
             properties[k.upper().replace('-', '_')] = v
 
+    def _assert_remote_file_not_exist(self, pithos, path):
+        if pithos and not self['force_upload']:
+            try:
+                pithos.get_object_info(path)
+                raiseCLIError(
+                    'Remote file /%s/%s already exists' % (
+                        pithos.container, path),
+                    importance=2,
+                    details=[
+                        'Registration ABORTED',
+                        'Use %s to force upload' % self.arguments[
+                            'force_upload'].lvalue])
+            except ClientError as ce:
+                if ce.status != 404:
+                    raise
+
     @errors.generic.all
     @errors.plankton.connection
     def _run(self, name, location):
-        locator = self.arguments['pithos_location']
+        locator, pithos = self.arguments['pithos_location'], None
         if self['local_image_path']:
             with open(self['local_image_path']) as f:
                 pithos = self._get_pithos_client(locator)
+                self._assert_remote_file_not_exist(pithos, locator.path)
                 (pbar, upload_cb) = self._safe_progress_bar('Uploading')
                 if pbar:
                     hash_bar = pbar.clone()
@@ -539,20 +555,12 @@ class image_register(_init_image, _optional_json):
         if location != new_loc:
             locator.value = new_loc
         self._load_params_from_args(params, properties)
-        pclient = self._get_pithos_client(locator)
 
-        #check if metafile exists
-        meta_path = '%s.meta' % locator.path
-        if pclient and not self['metafile_force']:
-            try:
-                pclient.get_object_info(meta_path)
-                raiseCLIError(
-                    'Metadata file /%s/%s already exists, abort' % (
-                        locator.container, meta_path),
-                    details=['Registration ABORTED', 'Try -f to overwrite'])
-            except ClientError as ce:
-                if ce.status != 404:
-                    raise
+        if not self['no_metafile_upload']:
+            #check if metafile exists
+            pithos = pithos or self._get_pithos_client(locator)
+            meta_path = '%s.meta' % locator.path
+            self._assert_remote_file_not_exist(pithos, meta_path)
 
         #register the image
         try:
@@ -570,9 +578,9 @@ class image_register(_init_image, _optional_json):
         self._print(r, self.print_dict)
 
         #upload the metadata file
-        if pclient:
+        if not self['no_metafile_upload']:
             try:
-                meta_headers = pclient.upload_from_string(
+                meta_headers = pithos.upload_from_string(
                     meta_path, dumps(r, indent=2),
                     container_info_cache=self.container_info_cache)
             except TypeError:
