@@ -503,7 +503,7 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
             r['tenant_id'] += ' (%s)' % usernames[r['tenant_id']]
             self._print(r, self.print_dict)
             if self['wait']:
-                self._wait(r['id'], r['status'])
+                self._wait(r['id'], r['status'] or 'BUILD')
             self.writeln(' ')
 
     def main(self):
