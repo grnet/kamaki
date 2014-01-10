@@ -1,5 +1,9 @@
 Changelog for hotfix version 0.12.4
 
+- Fix bug in readall (wrong behavior in non-regular files) [#4871]
+
+Changelog for hotfix version 0.12.4
+
 - Fix bug when registering image with upload but no metafile [#4864]
 - Minor typos
 
