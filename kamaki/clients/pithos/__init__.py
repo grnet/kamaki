@@ -132,8 +132,7 @@ class PithosClient(PithosRestClient):
             self.container = cnt_back_up
 
     def purge_container(self, container=None):
-        """Delete an empty container and destroy associated blocks
-        """
+        """Delete an empty container and destroy associated blocks"""
         cnt_back_up = self.container
         try:
             self.container = container or cnt_back_up
@@ -316,17 +315,19 @@ class PithosClient(PithosRestClient):
             hash_gen = hash_cb(nblocks)
             hash_gen.next()
 
-        for i in range(nblocks):
+        for i in xrange(nblocks):
             block = readall(fileobj, min(blocksize, size - offset))
             bytes = len(block)
+            if bytes <= 0:
+                break
             hash = _pithos_hash(block, blockhash)
             hashes.append(hash)
             hmap[hash] = (offset, bytes)
             offset += bytes
             if hash_cb:
                 hash_gen.next()
-        msg = ('Failed to calculate uploaded blocks:'
-               ' Offset and object size do not match')
+        msg = ('Failed to calculate uploading blocks: '
+               'read bytes(%s) != requested size (%s)' % (offset, size))
         assert offset == size, msg
 
     def _upload_missing_blocks(self, missing, hmap, fileobj, upload_gen=None):
