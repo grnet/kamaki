@@ -1,4 +1,12 @@
-Changelog for hotfix version 0.12.4
+Changelog for 0.12.7
+
+- Restore user_info, user_term for bw compatibility in AstakosClient [#4880]
+
+Changelog for 0.12.6
+
+- Restore get_service_endpoints for AstakosClient
+
+Changelog for hotfix version 0.12.5
 
 - Fix bug in readall (wrong behavior in non-regular files) [#4871]
 

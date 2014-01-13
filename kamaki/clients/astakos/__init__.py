@@ -39,7 +39,11 @@ from kamaki.clients import Client, ClientError, RequestManager, recvlog
 
 
 class AstakosClient(OriginalAstakosClient):
-    """Wrap Original AstakosClient to ensure compatibility in kamaki clients"""
+    """Wrap Original AstakosClient to ensure bw compatibility and ease of use
+
+    Note that this is an ancached class, so each call produces at least one
+    new http request
+    """
 
     def __init__(self, *args, **kwargs):
         if args:
@@ -50,6 +54,18 @@ class AstakosClient(OriginalAstakosClient):
         elif 'base_url' in kwargs:
             kwargs['auth_url'] = kwargs.get('auth_url', kwargs['base_url'])
         super(AstakosClient, self).__init__(*args, **kwargs)
+
+    def get_service_endpoints(self, service_type, version=None):
+        services = parse_endpoints(
+            self.get_endpoints(), ep_type=service_type, ep_version_id=version)
+        return services[0]['endpoints'][0] if services else []
+
+    @property
+    def user_info(self):
+        return self.authenticate()['access']['user']
+
+    def user_term(self, term):
+        return self.user_info[term]
 
 
 def _astakos_error(foo):
