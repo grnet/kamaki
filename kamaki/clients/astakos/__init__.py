@@ -56,6 +56,13 @@ class AstakosClient(OriginalAstakosClient):
             self.get_endpoints(), ep_type=service_type, ep_version_id=version)
         return services[0]['endpoints'][0] if services else []
 
+    @property
+    def user_info(self):
+        return self.authenticate()['access']['user']
+
+    def user_term(self, term):
+        return self.user_info[term]
+
 
 def _astakos_error(foo):
     def wrap(self, *args, **kwargs):
