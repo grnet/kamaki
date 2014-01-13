@@ -39,7 +39,11 @@ from kamaki.clients import Client, ClientError, RequestManager, recvlog
 
 
 class AstakosClient(OriginalAstakosClient):
-    """Wrap Original AstakosClient to ensure compatibility in kamaki clients"""
+    """Wrap Original AstakosClient to ensure bw compatibility and ease of use
+
+    Note that this is an ancached class, so each call produces at least one
+    new http request
+    """
 
     def __init__(self, *args, **kwargs):
         if args:
