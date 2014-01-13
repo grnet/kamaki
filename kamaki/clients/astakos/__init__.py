@@ -51,6 +51,11 @@ class AstakosClient(OriginalAstakosClient):
             kwargs['auth_url'] = kwargs.get('auth_url', kwargs['base_url'])
         super(AstakosClient, self).__init__(*args, **kwargs)
 
+    def get_service_endpoints(self, service_type, version=None):
+        services = parse_endpoints(
+            self.get_endpoints(), ep_type=service_type, ep_version_id=version)
+        return services[0]['endpoints'][0] if services else []
+
 
 def _astakos_error(foo):
     def wrap(self, *args, **kwargs):
