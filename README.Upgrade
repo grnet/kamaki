@@ -13,6 +13,8 @@ kamaki 0.12
     e.g., kamaki server create --name=NAME --image-id=IMAGE_ID --flavor-id=FLAVOR_ID
           kamaki image register --name=NAME --location=IMAGE_LOCATION
 
+3. kamaki.clients.astakos.AstakosClient is now imported from python astakosclient.AstakosClient
+
 Config file
 -----------
 
