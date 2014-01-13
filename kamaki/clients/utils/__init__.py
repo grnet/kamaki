@@ -91,3 +91,17 @@ def path4url(*args):
         r = r.replace('//', '/')
     return ('/%s' % r.strip('/')) if r else ''
 
+
+def readall(openfile, size, retries=7):
+    """Read a file until size is reached"""
+    remains = size if size > 0 else 0
+    buf = ''
+    for i in range(retries):
+        tmp_buf = openfile.read(remains)
+        if tmp_buf:
+            buf += tmp_buf
+            remains -= len(tmp_buf)
+            if remains > 0:
+                continue
+        return buf
+    raise IOError('Failed to read %s bytes from file' % size)

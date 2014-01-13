@@ -197,11 +197,12 @@ class PithosRestClient(TestCase):
     @patch('%s.set_header' % rest_pkg)
     @patch('%s.get' % rest_pkg, return_value=FR())
     def test_account_get(self, get, SH, SP):
-        keys = ('limit', 'marker', 'format', 'shared', 'until')
+        keys = ('limit', 'marker', 'format', 'shared', 'public', 'until')
         for params in product(
                 (None, 42),
                 (None, 'X'),
                 ('json', 'xml'),
+                (False, True),
                 (False, True),
                 (None, '50m3-d473'),
                 (None, '50m3-07h3r-d473'),
@@ -211,11 +212,10 @@ class PithosRestClient(TestCase):
             args, kwargs = params[-2], params[-1]
             params = params[:-2]
             self.client.account_get(*(params + args), **kwargs)
-            self.assertEqual(SP.mock_calls[-5:],
-                [call(keys[i], iff=X) if (
-                    i == 3) else call(
-                        keys[i], X, iff=X) for i, X in enumerate(params[:5])])
-            IMS, IUS = params[5], params[6]
+            self.assertEqual(SP.mock_calls[-6:],
+                [call(keys[i], iff=X) if (i in (3, 4)) else call(
+                    keys[i], X, iff=X) for i, X in enumerate(params[:6])])
+            IMS, IUS = params[6], params[7]
             self.assertEqual(SH.mock_calls[-2:], [
                 call('If-Modified-Since', IMS),
                 call('If-Unmodified-Since', IUS)])
@@ -297,6 +297,7 @@ class PithosRestClient(TestCase):
                 ('json', 'some-format'),
                 ([], ['k1', 'k2', 'k3']),
                 (False, True),
+                (False, True),
                 (None, 'unt1l-d473'),
                 (None, 'y37-4n47h3r'),
                 (None, '4n47h3r-d473'),
@@ -305,12 +306,15 @@ class PithosRestClient(TestCase):
             args, kwargs = pm[-2:]
             pm = pm[:-2]
             self.client.container_get(*(pm + args), **kwargs)
-            lmt, mrk, prfx, dlm, path, frmt, meta, shr, unt = pm[:-2]
+            lmt, mrk, prfx, dlm, path, frmt, meta, shr, pbl, unt = pm[:-2]
             exp = [call('limit', lmt, iff=lmt), call('marker', mrk, iff=mrk)]
             exp += [call('path', path)] if path else [
                 call('prefix', prfx, iff=prfx),
                 call('delimiter', dlm, iff=dlm)]
-            exp += [call('format', frmt, iff=frmt), call('shared', iff=shr)]
+            exp += [
+                call('format', frmt, iff=frmt),
+                call('shared', iff=shr),
+                call('public', iff=pbl)]
             if meta:
                 exp += [call('meta', ','.join(meta))]
             exp += [call('until', unt, iff=unt)]

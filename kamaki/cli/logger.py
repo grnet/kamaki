@@ -55,11 +55,11 @@ def activate(name):
     old_logger.setLevel(_blacklist.pop(name, old_logger.level))
 
 
-def if_logger_enabled(foo):
+def if_logger_enabled(func):
     def wrap(name, *args, **kwargs):
         if name in _blacklist:
             return logging.getLogger(name)
-        return foo(name, *args, **kwargs)
+        return func(name, *args, **kwargs)
     return wrap
 
 

@@ -4,13 +4,6 @@ Sharing
 In Pithos, an object can be published, shared with all or restricted to be
 accessible by only some users or groups.
 
-Enter context
-
-.. code-block:: console
-
-    [kamaki]: file
-    [file]:
-
 Publish and unpublish
 ---------------------
 
@@ -18,7 +11,7 @@ Get publishing information for objects `info.txt` and `file2upload.txt`
 
 .. code-block:: console
 
-    [file]: info pithos:info.txt
+    $ kamaki file info info.txt
     cache-control:              no-cache, no-store, must-revalidate, max-age=0
     content-language:           en-us
     content-type:               plan-text/unicode
@@ -34,7 +27,7 @@ Get publishing information for objects `info.txt` and `file2upload.txt`
     x-object-uuid:              0493f1d9-9410-4f4b-a81f-fe42f9cefa70
     x-object-version:           1085
     x-object-version-timestamp: Mon, 17 Jun 2013 13:09:44 GMT
-    [file]: info file2upload.txt
+    $ kamaki file info file2upload.txt
     cache-control:              no-cache, no-store, must-revalidate, max-age=0
     content-language:           en-us
     content-type:               plan-text/unicode
@@ -49,19 +42,22 @@ Get publishing information for objects `info.txt` and `file2upload.txt`
     x-object-uuid:              0493f1d9-9410-4f4b-a81f-fe42f9cefa70
     x-object-version:           1085
     x-object-version-timestamp: Mon, 17 Jun 2013 13:09:44 GMT
-    [file]:
 
 .. note:: The first object contains an "x-object-public" field, therefore is
-    published
+    published. Alternatively, use the "--sharing" argument
+
+    .. code-block:: console
+
+        $ kamaki file info info.txt --sharing
+        public url: https://example.com/pithos/public/14lhJnAhVU7
 
 Unpublish info.txt, publish file2upload.txt
 
 .. code-block:: console
 
-    [file]: unpublish pithos:info.txt
-    [file]: publish pithos:file2upload.txt
+    $ kamaki file modify /pithos/info.txt --unpublish
+    $ kamaki file modify /pithos/file2upload.txt --publish
     https://example.com/pithos/public/43gdL2df02ld3
-    [file]:
 
 Modify permissions
 ------------------
@@ -71,73 +67,55 @@ container and account (in that order).
 
 .. code-block:: console
 
-    [file]: permissions get pithos:info.txt
-    [file]: permissions get pithos:file2upload.txt
+    $ kamaki file info info.txt --sharing
+    public url: https://example.com/pithos/public/14lhJnAhVU7
+    $ kamaki file info file2upload.txt --sharing
     read: local_user_group, write: s0m3-u53r-1d
-    [file]:
+    public url: https://example.com/pithos/public/43gdL2df02ld3
 
 Let user with id `4n07h3r-u53r-1d` to have read access to `info.txt` and write
 access to `file2upload.txt`, and current user to have the opposite access
 
 .. code-block:: console
 
-    [file]: permissions set pithos:info.txt read=4n07h3r-u53r-1d write=s0m3-u53r-1d
-    [file]: permissions set pithos:file2upload.txt write=4n07h3r-u53r-1d read=s0m3-u53r-1d
-
-Check if everything is set correctly
-
-.. code-block:: console
-
-    [file]: permissions get pithos:info.txt
-    read: 4n07h3r-u53r-1d
-    write: s0m3-u53r-1d
-    [file]: permissions get pithos:file2upload.txt
-    read: s0m3-u53r-1d
-    write: 4n07h3r-u53r-1d
-    [file]:
+    $ kamaki file modify info.txt --read-permission=4n07h3r-u53r-1d --write-permission=s0m3-u53r-1d
+    $ kamaki file modify file2upload.txt --write-permission=4n07h3r-u53r-1d --read-permission=s0m3-u53r-1d
 
 Share (read permission) `info.txt` with all
 
 .. code-block:: console
 
-    [file]: permissions set pithos:info.txt read=*
+    $ kamaki file modify info.txt --read-permission=*
 
 Shared with me
 --------------
 
-List user id of users who share objects with current user
+List users who share objects with current user
 
 .. code-block:: console
 
-    [file]: sharers
-    5h4r1ng-u53r-1d
-    4n07h3r-5h4r1ng-u53r-1d
-    [file]:
+    $ kamaki sharer list
+    5h4r1ng-u53r-1d (somesharinguser@example.com)
+    4n07h3r-5h4r1ng-u53r-1d (anothersharinguser@example.com)
 
-List containers of `5h4r1ng-u53r-1d` and then list `image` container
+List containers of `5h4r1ng-u53r-1d` and then list `images` container
 
 .. code-block:: console
 
-    [file]: list -A 5h4r1ng-u53r-1d
-    image
+    $ kamaki container list -A 5h4r1ng-u53r-1d
+    images
     pithos
     trash
-    [file]: list -A 5h4r1ng-u53r-1d image
+    $ kamaki file list -A 5h4r1ng-u53r-1d /images
     some-image.diskdump
     some-other-image.diskdump
-    [file]:
 
 Copy the shared image `some-image.diskdump` to current pithos container
 
 .. code-block:: console
 
-    [file]: copy -A 5h4r1ng-u53r-1d image:some-image.diskdump -D pithos
-    [file]:
+    $ kamaki file copy -A 5h4r1ng-u53r-1d /images/some-image.diskdump /pithos
 
-Exit context
-------------
+    OR
 
-.. code-block:: console
-
-    [file]: exit
-    [kamaki]:
+    $ kamaki file copy pithos://5h4r1ng-u53r-1d/images/some-image.diskdump /pithos
