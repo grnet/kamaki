@@ -1,4 +1,8 @@
-Changelog for 0.12.5
+Changelog for 0.12.7
+
+- Restore user_info, user_term for bw compatibility in AstakosClient [#4880]
+
+Changelog for 0.12.6
 
 - Restore get_service_endpoints for AstakosClient
 

@@ -288,7 +288,7 @@ Register a banch of pre-uploaded images
     IMAGE_CONTAINER = 'images'
 
     astakos = AstakosClient(AUTHENTICATION_URL, TOKEN)
-    USER_UUID = astakos.user_term('uuid')
+    USER_UUID = astakos.user_info['uuid']
 
     PITHOS_URL = astakos.get_service_endpoints('object-store')['publicURL']
     pithos = PithosClient(PITHOS_URL, TOKEN, USER_UUID, IMAGE_CONTAINER)
