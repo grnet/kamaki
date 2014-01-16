@@ -340,7 +340,7 @@ class image_modify(_init_image, _optional_output_cmd):
     required = [
         'image_name', 'disk_format', 'container_format', 'status', 'publish',
         'unpublish', 'property_to_set', 'member_ID_to_add',
-        'member_ID_to_remove']
+        'member_ID_to_remove', 'property_to_del']
 
     @errors.generic.all
     @errors.plankton.connection
@@ -361,7 +361,7 @@ class image_modify(_init_image, _optional_output_cmd):
             disk_format=self['disk_format'],
             container_format=self['container_format'],
             status=self['status'],
-            public=self['publish'] or self['unpublish'] or None,
+            public=self['publish'] or (False if self['unpublish'] else None),
             **meta['properties']))
         if self['with_output']:
             self._optional_output(self.get_image_details(image_id))
