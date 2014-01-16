@@ -1,3 +1,7 @@
+Changelog for 0.12.9
+
+- Bugfix: --unpublish didn't work in kamaki image modify
+
 Changelog for 0.12.8
 
 - Fix image property-del bug (made it a required argument of image modify) [#4940]
