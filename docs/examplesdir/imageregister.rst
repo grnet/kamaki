@@ -335,7 +335,7 @@ Just to test the feature, let's create a property "greet" with value
             USER:   root
             GREET:  Hi there
     ...
-    kamaki image modify 7h1rd-1m4g3-1d -p greet=
+    kamaki image modify 7h1rd-1m4g3-1d --property-del greet
     kamaki image info 7h1rd-1m4g3-1d
     ...
     properties:
