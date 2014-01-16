@@ -1,3 +1,9 @@
+kamaki (0.12.8-1~precise) precise; urgency=low
+
+  * New upstream version
+
+ -- Nikos Skalkotos <skalkoto@grnet.gr>  Thu, 16 Jan 2014 17:15:21 +0200
+
 kamaki (0.12.7-1~precise) precise; urgency=low
 
   * New upstream version
