@@ -1,3 +1,8 @@
+Changelog for 0.12.8
+
+- Fix image property-del bug (made it a required argument of image modify) [#4940]
+- Sync kamaki documentation for image property updates [#4940]
+
 Changelog for 0.12.7
 
 - Restore user_info, user_term for bw compatibility in AstakosClient [#4880]
