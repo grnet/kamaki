@@ -340,7 +340,7 @@ class image_modify(_init_image, _optional_output_cmd):
     required = [
         'image_name', 'disk_format', 'container_format', 'status', 'publish',
         'unpublish', 'property_to_set', 'member_ID_to_add',
-        'member_ID_to_remove']
+        'member_ID_to_remove', 'property_to_del']
 
     @errors.generic.all
     @errors.plankton.connection
