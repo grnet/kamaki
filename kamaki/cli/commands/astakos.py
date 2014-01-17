@@ -937,5 +937,5 @@ class membership_enroll(_init_synnefo_astakosclient):
         self.writeln(self.client.enroll_member(project_id, email))
 
     def main(self, project_id, email):
-        super(membership_join, self)._run()
+        super(membership_enroll, self)._run()
         self._run(project_id, email)
