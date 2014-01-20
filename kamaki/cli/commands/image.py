@@ -62,12 +62,13 @@ _commands = [image_cmds, imagecompute_cmds]
 
 howto_image_file = [
     'Kamaki commands to:',
-    ' get current user id: /user authenticate',
-    ' check available containers: /file list',
-    ' create a new container: /file create <container>',
-    ' check container contents: /file list <container>',
-    ' upload files: /file upload <image file> <container>',
-    ' register an image: /image register <image name> <container>:<path>']
+    ' get current user id: kamaki user info',
+    ' check available containers: kamaki container list',
+    ' create a new container: kamaki container create CONTAINER',
+    ' check container contents: kamaki file list /CONTAINER',
+    ' upload files: kamaki file upload IMAGE_FILE /CONTAINER[/PATH]',
+    ' register an image:',
+    '   kamaki image register --name=IMAGE_NAME --location=/CONTAINER/PATH']
 
 about_image_id = ['To see a list of available image ids: /image list']
 
