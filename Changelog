@@ -2,6 +2,7 @@ CHANGELOG for version 0.13
 
 Bug Fixes:
 - Register image w. upload but no metafile [#4864]
+- Minor typos and updates in command help messages
 
 Features:
 - Name and Type filters in endpoint list
