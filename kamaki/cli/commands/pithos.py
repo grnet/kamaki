@@ -1059,7 +1059,7 @@ class file_cat(_pithos_container):
     @errors.pithos.container
     @errors.pithos.object_path
     def _run(self):
-        r = self.client.download_object(
+        self.client.download_object(
             self.path, self._out,
             range_str=self['range'],
             version=self['object_version'],
@@ -1067,7 +1067,7 @@ class file_cat(_pithos_container):
             if_none_match=self['if_none_match'],
             if_modified_since=self['if_modified_since'],
             if_unmodified_since=self['if_unmodified_since'])
-        print r
+        self._out.flush()
 
     def main(self, path_or_url):
         super(self.__class__, self)._run(path_or_url)
