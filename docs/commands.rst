@@ -380,7 +380,7 @@ Showcase: Connect a network to a VM
       -v,--verbose:  More info at response
 
     * Connect VM with id 11687 to network with id 1409
-    [network]: connect 11687 --device-id=1409 --wait
+    [network]: connect 1409 --device-id=11687 --wait
     Creating port between network 1409 and server 11687
     New port: 8
 
