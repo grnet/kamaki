@@ -564,7 +564,7 @@ class server_modify(_init_cyclades, _optional_output_cmd):
     @errors.cyclades.connection
     @errors.cyclades.server_id
     def _run(self, server_id):
-        if self['server_name']:
+        if self['server_name'] is not None:
             self.client.update_server_name((server_id), self['server_name'])
         if self['flavor_id']:
             self.client.resize_server(server_id, self['flavor_id'])
