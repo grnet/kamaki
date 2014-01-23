@@ -1381,7 +1381,9 @@ class PithosClient(PithosRestClient):
             source_object=path4url(self.container, obj))
         return r.headers
 
-    def overwrite_object(self, obj, start, end, source_file, upload_cb=None):
+    def overwrite_object(
+            self, obj, start, end, source_file,
+            content_type=None, upload_cb=None):
         """Overwrite a part of an object from local source file
 
         :param obj: (str) remote object path
@@ -1391,6 +1393,8 @@ class PithosClient(PithosRestClient):
         :param end: (int) position in bytes to stop overwriting at
 
         :param source_file: open file descriptor
+
+        :param content_type: (str) default: application/octet-stream
 
         :param upload_db: progress.bar for uploading
         """
@@ -1422,7 +1426,7 @@ class PithosClient(PithosRestClient):
             r = self.object_post(
                 obj,
                 update=True,
-                content_type='application/octet-stream',
+                content_type=content_type or 'application/octet-stream',
                 content_length=len(block),
                 content_range='bytes %s-%s/*' % (
                     start + offset,
