@@ -1372,11 +1372,12 @@ class PithosClient(PithosRestClient):
 
         :returns: (dict) response headers
         """
+        ctype = self.get_object_info(obj)['content-type']
         r = self.object_post(
             obj,
             update=True,
             content_range='bytes 0-%s/*' % upto_bytes,
-            content_type='application/octet-stream',
+            content_type=ctype,
             object_bytes=upto_bytes,
             source_object=path4url(self.container, obj))
         return r.headers
