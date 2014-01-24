@@ -319,7 +319,7 @@ Two servers and a private network
     AUTHENTICATION_URL = 'https://accounts.example.com/identity/v2.0'
     TOKEN = 'replace this with your token'
 
-    astakos = AstakosClient(AUTHENTICATION_URL, TOKEN)
+    user = AstakosClient(AUTHENTICATION_URL, TOKEN)
 
     network_endpoints = user.get_service_endpoints('network')
     NETWORK_URL = network_endpoints['publicURL']
