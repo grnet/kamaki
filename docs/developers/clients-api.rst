@@ -325,7 +325,7 @@ Two servers and a private network
     NETWORK_URL = network_endpoints['publicURL']
 
     network = CycladesNetworkClient(NETWORK_URL, TOKEN)
-    net = network.create_network('My private network')
+    net = network.create_network(type='MAC_FILTERED', name='My private network')
 
     cyclades_endpoints = user.get_service_endpoints('compute')
     CYCLADES_URL = cyclades_endpoints['publicURL']
