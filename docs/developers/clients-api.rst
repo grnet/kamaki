@@ -314,33 +314,35 @@ Two servers and a private network
     #! /user/bin/python
 
     from kamaki.clients.astakos import AstakosClient
-    from kamaki.clients.cyclades import CycladesClient
+    from kamaki.clients.cyclades import CycladesClient, CycladesNetworkClient
 
     AUTHENTICATION_URL = 'https://accounts.example.com/identity/v2.0'
     TOKEN = 'replace this with your token'
 
     astakos = AstakosClient(AUTHENTICATION_URL, TOKEN)
 
+    network_endpoints = user.get_service_endpoints('network')
+    NETWORK_URL = network_endpoints['publicURL']
+
+    network = CycladesNetworkClient(NETWORK_URL, TOKEN)
+    net = cyclades.create_network('My private network')
+
     cyclades_endpoints = user.get_service_endpoints('compute')
     CYCLADES_URL = cyclades_endpoints['publicURL']
 
     FLAVOR_ID = 'put your flavor id here'
     IMAGE_ID = 'put your image id here'
-
     cyclades = CycladesClient(CYCLADES_URL, TOKEN)
 
-    srv1 = cyclades.create_server('server 1', FLAVOR_ID, IMAGE_ID)
-    srv2 = cyclades.create_server('server 2', FLAVOR_ID, IMAGE_ID)
+    srv1 = cyclades.create_server(
+        'server 1', FLAVOR_ID, IMAGE_ID,
+        networks=[{'uuid': net['id']}])
+    srv2 = cyclades.create_server(
+        'server 2', FLAVOR_ID, IMAGE_ID,
+        networks=[{'uuid': net['id']}])
 
     srv_state1 = cyclades.wait_server(srv1['id'])
     assert srv_state1 in ('ACTIVE'), 'Server 1 built failure'
 
     srv_state2 = cyclades.wait_server(srv2['id'])
     assert srv_state2 in ('ACTIVE'), 'Server 2 built failure'
-
-    net = cyclades.create_network('My private network')
-    net_state = cyclades.wait_network(net['id'])
-    assert net_state in ('ACTIVE', ), 'Network built failure'
-
-    cyclades.connect_server(srv1['id'], net['id'])
-    cyclades.connect_server(srv2['id'], net['id'])
