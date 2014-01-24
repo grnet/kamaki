@@ -1384,8 +1384,9 @@ class PithosClient(PithosRestClient):
 
     def overwrite_object(
             self, obj, start, end, source_file,
-            content_type=None, upload_cb=None):
+            upload_cb=None):
         """Overwrite a part of an object from local source file
+        ATTENTION: content_type must always be application/octet-stream
 
         :param obj: (str) remote object path
 
@@ -1395,26 +1396,19 @@ class PithosClient(PithosRestClient):
 
         :param source_file: open file descriptor
 
-        :param content_type: (str) default: application/octet-stream
-
         :param upload_db: progress.bar for uploading
         """
 
+        self._assert_container()
         r = self.get_object_info(obj)
         rf_size = int(r['content-length'])
-        if rf_size < int(start):
-            raise ClientError(
-                'Range start exceeds file size',
-                status=416)
-        elif rf_size < int(end):
-            raise ClientError(
-                'Range end exceeds file size',
-                status=416)
-        self._assert_container()
+        start, end = int(start), int(end)
+        assert rf_size >= start, 'Range start %s exceeds file size %s' % (
+            start, rf_size)
         meta = self.get_container_info()
         blocksize = int(meta['x-container-block-size'])
         filesize = fstat(source_file.fileno()).st_size
-        datasize = int(end) - int(start) + 1
+        datasize = end - start + 1
         nblocks = 1 + (datasize - 1) // blocksize
         offset = 0
         if upload_cb:
@@ -1427,7 +1421,7 @@ class PithosClient(PithosRestClient):
             r = self.object_post(
                 obj,
                 update=True,
-                content_type=content_type or 'application/octet-stream',
+                content_type='application/octet-stream',
                 content_length=len(block),
                 content_range='bytes %s-%s/*' % (
                     start + offset,
