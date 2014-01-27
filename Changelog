@@ -4,6 +4,7 @@ Bug Fixes:
 - Register image w. upload but no metafile [#4864]
 - Minor typos and updates in command help messages
 - All URL-related params are now URL-encoded [#4986]
+- In file list, show all directories as directories [#4987]
 
 Features:
 - Name and Type filters in endpoint list
