@@ -8,4 +8,5 @@ Bug Fixes:
 
 Features:
 - Name and Type filters in endpoint list
+- In image register, meta gets same sharing as image [#4960]
 
