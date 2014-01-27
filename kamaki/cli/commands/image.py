@@ -208,7 +208,7 @@ class image_list(_init_image, _optional_json, _name_filter, _id_filter):
             'fliter by property key=value where value is part of actual value',
             ('--property-like')),
         image_ID_for_members=ValueArgument(
-            'List members of an image', '--members-of')
+            'List members of an image', '--members-of'),
     )
 
     def _filter_by_owner(self, images):
@@ -326,8 +326,8 @@ class image_modify(_init_image, _optional_output_cmd):
         container_format=ValueArgument(
             'Change container format', '--container-format'),
         status=ValueArgument('Change status', '--status'),
-        publish=FlagArgument('Publish the image', '--publish'),
-        unpublish=FlagArgument('Unpublish the image', '--unpublish'),
+        publish=FlagArgument('Publish the image', '--public'),
+        unpublish=FlagArgument('Unpublish the image', '--private'),
         property_to_set=KeyValueArgument(
             'set property in key=value form (can be repeated)',
             ('-p', '--property-set')),
@@ -583,6 +583,7 @@ class image_register(_init_image, _optional_json):
             try:
                 meta_headers = pithos.upload_from_string(
                     meta_path, dumps(r, indent=2),
+                    sharing=dict(read='*' if params.get('is_public') else ''),
                     container_info_cache=self.container_info_cache)
             except TypeError:
                 self.error(
