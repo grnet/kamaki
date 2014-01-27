@@ -147,7 +147,7 @@ class _pithos_account(_pithos_init):
 
     @staticmethod
     def _is_dir(remote_dict):
-        return 'application/directory' == remote_dict.get(
+        return 'application/directory' in remote_dict.get(
             'content_type', remote_dict.get('content-type', ''))
 
     def _run(self):
