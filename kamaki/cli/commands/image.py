@@ -583,6 +583,7 @@ class image_register(_init_image, _optional_json):
             try:
                 meta_headers = pithos.upload_from_string(
                     meta_path, dumps(r, indent=2),
+                    sharing=dict(read='*' if params.get('is_public') else ''),
                     container_info_cache=self.container_info_cache)
             except TypeError:
                 self.error(
