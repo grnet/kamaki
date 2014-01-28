@@ -214,7 +214,7 @@ class CachedAstakosClient(Client):
 
         :returns: (dict) {name:..., type:..., endpoints:[...]}
 
-        :raises ClientError: (600) if service_type not in service catalog
+        :raises AstakosClientError: if service_type not in service catalog
         """
         services = self.get_services(token)
         for service in services:
@@ -223,8 +223,8 @@ class CachedAstakosClient(Client):
                     return service
             except KeyError:
                 self.log.warning('Misformated service %s' % service)
-        raise ClientError(
-            'Service type "%s" not in service catalog' % service_type, 600)
+        raise AstakosClientError(
+            'Service type "%s" not in service catalog' % service_type)
 
     def get_service_endpoints(self, service_type, version=None, token=None):
         """
@@ -234,9 +234,8 @@ class CachedAstakosClient(Client):
 
         :returns: (dict) {SNF:uiURL, adminURL, internalURL, publicURL, ...}
 
-        :raises ClientError: (600) if service_type not in service catalog
-
-        :raises ClientError: (601) if #matching endpoints != 1
+        :raises AstakosClientError: if service_type not in service catalog, or
+            if #matching endpoints != 1
         """
         service = self.get_service_details(service_type, token)
         matches = []
@@ -245,7 +244,7 @@ class CachedAstakosClient(Client):
                     endpoint['versionId'].lower() == version.lower()):
                 matches.append(endpoint)
         if len(matches) != 1:
-            raise ClientError(
+            raise AstakosClientError(
                 '%s endpoints match type %s %s' % (
                     len(matches), service_type,
                     ('and versionId %s' % version) if version else ''),
