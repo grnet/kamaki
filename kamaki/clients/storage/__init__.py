@@ -182,6 +182,7 @@ class StorageClient(Client):
         :returns: (dict) request headers
         """
         self._assert_container()
+        assert obj, 'Remote directory path is missing'
         path = path4url(self.account, self.container, obj)
         self.set_header('Content-Type', 'application/directory')
         self.set_header('Content-length', '0')
