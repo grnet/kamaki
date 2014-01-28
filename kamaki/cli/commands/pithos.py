@@ -398,6 +398,13 @@ class file_modify(_pithos_container):
         self._run()
 
 
+def _assert_path(self, path_or_url):
+    if not self.path:
+        raiseCLIError(
+            'Directory path is missing in location %s' % path_or_url,
+            details=['Location format:    [[pithos://UUID]/CONTAINER/]PATH'])
+
+
 @command(file_cmds)
 class file_create(_pithos_container, _optional_output_cmd):
     """Create an empty file"""
@@ -418,6 +425,7 @@ class file_create(_pithos_container, _optional_output_cmd):
 
     def main(self, path_or_url):
         super(self.__class__, self)._run(path_or_url)
+        _assert_path(self, path_or_url)
         self._run()
 
 
@@ -429,12 +437,13 @@ class file_mkdir(_pithos_container, _optional_output_cmd):
     @errors.generic.all
     @errors.pithos.connection
     @errors.pithos.container
-    def _run(self):
+    def _run(self, path):
         self._optional_output(self.client.create_directory(self.path))
 
     def main(self, path_or_url):
         super(self.__class__, self)._run(path_or_url)
-        self._run()
+        _assert_path(self, path_or_url)
+        self._run(self.path)
 
 
 @command(file_cmds)
