@@ -38,9 +38,23 @@ from astakosclient import AstakosClientException, parse_endpoints
 from kamaki.clients import Client, ClientError, RequestManager, recvlog
 
 
+class AstakosClientError(AstakosClientException, ClientError):
+    """Join AstakosClientException as ClientError in one class"""
+
+
+def _astakos_error(foo):
+    def wrap(self, *args, **kwargs):
+        try:
+            return foo(self, *args, **kwargs)
+        except AstakosClientException as sace:
+            raise AstakosClientError('%s' % sace, sace.status, sace.details)
+    return wrap
+
+
 class AstakosClient(OriginalAstakosClient):
     """Wrap Original AstakosClient to ensure compatibility in kamaki clients"""
 
+    @_astakos_error
     def __init__(self, *args, **kwargs):
         if args:
             args = list(args)
@@ -64,13 +78,11 @@ class AstakosClient(OriginalAstakosClient):
         return self.user_info[term]
 
 
-def _astakos_error(foo):
-    def wrap(self, *args, **kwargs):
-        try:
-            return foo(self, *args, **kwargs)
-        except AstakosClientException as sace:
-            self._raise_for_status(sace)
-    return wrap
+#  Wrap AstakosClient public methods to raise AstakosClientError
+from inspect import getmembers
+for m in getmembers(AstakosClient):
+    if hasattr(m[1], '__call__') and not ('%s' % m[0]).startswith('_'):
+        setattr(AstakosClient, m[0], _astakos_error(m[1]))
 
 
 class LoggedAstakosClient(AstakosClient):
@@ -202,7 +214,7 @@ class CachedAstakosClient(Client):
 
         :returns: (dict) {name:..., type:..., endpoints:[...]}
 
-        :raises ClientError: (600) if service_type not in service catalog
+        :raises AstakosClientError: if service_type not in service catalog
         """
         services = self.get_services(token)
         for service in services:
@@ -211,8 +223,8 @@ class CachedAstakosClient(Client):
                     return service
             except KeyError:
                 self.log.warning('Misformated service %s' % service)
-        raise ClientError(
-            'Service type "%s" not in service catalog' % service_type, 600)
+        raise AstakosClientError(
+            'Service type "%s" not in service catalog' % service_type)
 
     def get_service_endpoints(self, service_type, version=None, token=None):
         """
@@ -222,9 +234,8 @@ class CachedAstakosClient(Client):
 
         :returns: (dict) {SNF:uiURL, adminURL, internalURL, publicURL, ...}
 
-        :raises ClientError: (600) if service_type not in service catalog
-
-        :raises ClientError: (601) if #matching endpoints != 1
+        :raises AstakosClientError: if service_type not in service catalog, or
+            if #matching endpoints != 1
         """
         service = self.get_service_details(service_type, token)
         matches = []
@@ -233,7 +244,7 @@ class CachedAstakosClient(Client):
                     endpoint['versionId'].lower() == version.lower()):
                 matches.append(endpoint)
         if len(matches) != 1:
-            raise ClientError(
+            raise AstakosClientError(
                 '%s endpoints match type %s %s' % (
                     len(matches), service_type,
                     ('and versionId %s' % version) if version else ''),
