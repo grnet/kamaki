@@ -307,7 +307,7 @@ Register a banch of pre-uploaded images
     IMAGE_CONTAINER = 'images'
 
     astakos = AstakosClient(AUTHENTICATION_URL, TOKEN)
-    USER_UUID = astakos.user_info['uuid']
+    USER_UUID = astakos.user_info['id']
 
     PITHOS_URL = astakos.get_service_endpoints('object-store')['publicURL']
     pithos = PithosClient(PITHOS_URL, TOKEN, USER_UUID, IMAGE_CONTAINER)
@@ -325,12 +325,11 @@ Register a banch of pre-uploaded images
         except ClientError:
             print 'Failed to register image %s' % IMAGE_PATH
 
-..note::
+.. note::
 
-    In plankton.register, the `location` argument can be either a triplet, as
-    shown above, or a qualified URL of the form
-    pithos://USER_UUID/IMAGE_CONTAINER/IMAGE_PATH
-    which is the format used by the image API.
+    In `plankton.register`, the `location` argument can be either `a triplet`,
+    as shown above, or `a qualified URL` of the form
+    ``pithos://USER_UUID/IMAGE_CONTAINER/IMAGE_PATH``.
 
 Two servers and a private network
 '''''''''''''''''''''''''''''''''
