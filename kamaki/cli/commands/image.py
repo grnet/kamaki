@@ -373,7 +373,11 @@ class image_modify(_init_image, _optional_output_cmd):
 
 
 class PithosLocationArgument(ValueArgument):
-    """Resolve pithos url, return in the form pithos://uuid/container/path"""
+    """Resolve pithos URI, return in the form pithos://uuid/container[/path]
+
+    UPDATE: URLs without a path are also resolvable. Therefore, caller methods
+    should check if there is a path or not
+    """
 
     def __init__(
             self, help=None, parsed_name=None, default=None, user_uuid=None):
@@ -387,7 +391,8 @@ class PithosLocationArgument(ValueArgument):
 
     @property
     def value(self):
-        return 'pithos://%s/%s/%s' % (self.uuid, self.container, self.path)
+        path = ('/%s' % self.path) if self.path else ''
+        return 'pithos://%s/%s%s' % (self.uuid, self.container, path)
 
     @value.setter
     def value(self, location):
@@ -397,17 +402,16 @@ class PithosLocationArgument(ValueArgument):
                 uuid, self.container, self.path = pc._resolve_pithos_url(
                     location)
                 self.uuid = uuid or self.uuid
-                for term in ('container', 'path'):
-                    assert getattr(self, term, None), 'No %s' % term
+                assert self.container, 'No container in pithos URI'
             except Exception as e:
                 raise CLIInvalidArgument(
                     'Invalid Pithos+ location %s (%s)' % (location, e),
                     details=[
                         'The image location must be a valid Pithos+',
                         'location. There are two valid formats:',
-                        '  pithos://USER_UUID/CONTAINER/PATH',
+                        '  pithos://USER_UUID/CONTAINER[/PATH]',
                         'OR',
-                        '  /CONTAINER/PATH',
+                        '  /CONTAINER[/PATH]',
                         'To see all containers:',
                         '  [kamaki] container list',
                         'To list the contents of a container:',
@@ -536,8 +540,8 @@ class image_register(_init_image, _optional_json):
 
     @errors.generic.all
     @errors.plankton.connection
-    def _run(self, name, location):
-        locator, pithos = self.arguments['pithos_location'], None
+    def _run(self, name, locator):
+        location, pithos = locator.value, None
         if self['local_image_path']:
             with open(self['local_image_path']) as f:
                 pithos = self._get_pithos_client(locator)
@@ -603,9 +607,28 @@ class image_register(_init_image, _optional_json):
 
     def main(self):
         super(self.__class__, self)._run()
+
+        locator, pithos = self.arguments['pithos_location'], None
+        locator.setdefault('uuid', self.auth_base.user_term('id'))
+        locator.path = locator.path or path.basename(
+            self['local_image_path'] or '')
+        if not locator.path:
+            raise CLIInvalidArgument(
+                'Missing the image file or object', details=[
+                    'Pithos+ URI %s does not point to a physical image' % (
+                        locator.value),
+                    'A physical image is necessary.',
+                    'It can be a remote Pithos+ object or a local file.',
+                    'To specify a remote image object:',
+                    '  %s [pithos://UUID]/CONTAINER/PATH' % locator.lvalue,
+                    'To specify a local file:',
+                    '  %s [pithos://UUID]/CONTAINER[/PATH] %s LOCAL_PATH' % (
+                        locator.lvalue,
+                        self.arguments['local_image_path'].lvalue)
+                ])
         self.arguments['pithos_location'].setdefault(
             'uuid', self.auth_base.user_term('id'))
-        self._run(self['name'], self['pithos_location'])
+        self._run(self['name'], locator)
 
 
 @command(image_cmds)
