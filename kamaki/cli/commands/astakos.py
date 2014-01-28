@@ -133,8 +133,8 @@ class user_authenticate(_init_synnefo_astakosclient, _optional_json):
 class user_uuid2name(_init_synnefo_astakosclient, _optional_json):
     """Get user name(s) from uuid(s)"""
 
-    @errors.generic.all
-    @errors.user.astakosclient
+    #@errors.generic.all
+    #@errors.user.astakosclient
     def _run(self, uuids):
         r = self.client.get_usernames(uuids)
         self._print(r, self.print_dict)

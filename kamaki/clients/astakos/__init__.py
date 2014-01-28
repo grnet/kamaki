@@ -38,9 +38,23 @@ from astakosclient import AstakosClientException, parse_endpoints
 from kamaki.clients import Client, ClientError, RequestManager, recvlog
 
 
+class AstakosClientError(AstakosClientException, ClientError):
+    """Join AstakosClientException as ClientError in one class"""
+
+
+def _astakos_error(foo):
+    def wrap(self, *args, **kwargs):
+        try:
+            return foo(self, *args, **kwargs)
+        except AstakosClientException as sace:
+            raise AstakosClientError('%s' % sace, sace.status, sace.details)
+    return wrap
+
+
 class AstakosClient(OriginalAstakosClient):
     """Wrap Original AstakosClient to ensure compatibility in kamaki clients"""
 
+    @_astakos_error
     def __init__(self, *args, **kwargs):
         if args:
             args = list(args)
@@ -64,13 +78,11 @@ class AstakosClient(OriginalAstakosClient):
         return self.user_info[term]
 
 
-def _astakos_error(foo):
-    def wrap(self, *args, **kwargs):
-        try:
-            return foo(self, *args, **kwargs)
-        except AstakosClientException as sace:
-            self._raise_for_status(sace)
-    return wrap
+#  Wrap AstakosClient public methods to raise AstakosClientError
+from inspect import getmembers
+for m in getmembers(AstakosClient):
+    if hasattr(m[1], '__call__') and not ('%s' % m[0]).startswith('_'):
+        setattr(AstakosClient, m[0], _astakos_error(m[1]))
 
 
 class LoggedAstakosClient(AstakosClient):
