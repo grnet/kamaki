@@ -9,4 +9,6 @@ Bug Fixes:
 Features:
 - Name and Type filters in endpoint list
 - In image register, meta gets same sharing as image [#4960]
+- Allow image register to automatically resolve remote path from local file
+    [#4991]
 
