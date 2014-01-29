@@ -257,6 +257,7 @@ class ResponseManager(Logged):
                     from traceback import format_stack
                     recvlog.debug(
                         '\n'.join(['%s' % type(err)] + format_stack()))
+                    raise
                     raise ClientError(
                         'Failed while http-connecting to %s (%s)' % (
                             self.request.url, err))
@@ -418,11 +419,11 @@ class Client(Logged):
     def set_header(self, name, value, iff=True):
         """Set a header 'name':'value'"""
         if value is not None and iff:
-            self.headers[name] = unicode(value)
+            self.headers['%s' % name] = '%s' % value
 
     def set_param(self, name, value=None, iff=True):
         if iff:
-            self.params[name] = '%s' % value  # unicode(value)
+            self.params[name] = '%s' % value
 
     def request(
             self, method, path,
