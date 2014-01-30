@@ -41,11 +41,49 @@ from time import mktime
 from sys import stderr
 
 from logging import getLogger
-from argparse import ArgumentParser, ArgumentError
-from argparse import RawDescriptionHelpFormatter
+from argparse import (
+    ArgumentParser, ArgumentError, RawDescriptionHelpFormatter)
 from progress.bar import ShadyBar as KamakiProgressBar
 
 log = getLogger(__name__)
+
+
+class NoAbbrArgumentParser(ArgumentParser):
+    """This is Argument Parser with disabled argument abbreviation"""
+
+    def _get_option_tuples(self, option_string):
+        result = []
+        chars = self.prefix_chars
+        if option_string[0] in chars and option_string[1] in chars:
+            if '=' in option_string:
+                option_prefix, explicit_arg = option_string.split('=', 1)
+            else:
+                option_prefix = option_string
+                explicit_arg = None
+            for option_string in self._option_string_actions:
+                if option_string == option_prefix:
+                    action = self._option_string_actions[option_string]
+                    tup = action, option_string, explicit_arg
+                    result.append(tup)
+        elif option_string[0] in chars and option_string[1] not in chars:
+            option_prefix = option_string
+            explicit_arg = None
+            short_option_prefix = option_string[:2]
+            short_explicit_arg = option_string[2:]
+
+            for option_string in self._option_string_actions:
+                if option_string == short_option_prefix:
+                    action = self._option_string_actions[option_string]
+                    tup = action, option_string, short_explicit_arg
+                    result.append(tup)
+                elif option_string == option_prefix:
+                    action = self._option_string_actions[option_string]
+                    tup = action, option_string, explicit_arg
+                    result.append(tup)
+        else:
+            return super(
+                NoAbbrArgumentParser, self)._get_option_tuples(option_string)
+        return result
 
 
 class Argument(object):
@@ -500,7 +538,7 @@ class ArgumentParseManager(object):
         :param check_required: (bool) Set to False inorder not to check for
             required argument values while parsing
         """
-        self.parser = ArgumentParser(
+        self.parser = NoAbbrArgumentParser(
             add_help=False, formatter_class=RawDescriptionHelpFormatter)
         self._exe = exe
         self.syntax = syntax or (
