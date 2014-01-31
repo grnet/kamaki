@@ -98,7 +98,6 @@ DEFAULTS = {
         'config_cli': 'config',
         'history_cli': 'history'
         #  Optional command specs:
-        #  'livetest_cli': 'livetest',
         #  'service_cli': 'astakos'
         #  'endpoint_cli': 'astakos'
         #  'commission_cli': 'astakos'
