@@ -93,10 +93,6 @@ history
 Hidden command groups
 ---------------------
 
-livetest
-    Live tests that check kamaki against running services. To enable:
-    kamaki config set livetest.cli livetest
-
 service
     Astakos API service commands
 
