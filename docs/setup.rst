@@ -481,76 +481,8 @@ Additional features
 Functional tests
 """"""""""""""""
 
-Kamaki contains a set of functional tests for *kamaki.clients*, called
-"livetest". The term "live" means that the tests are performed against an
-on-line functional cloud deployment. The package is accessible as
-*kamaki.clients.livetest* .
-
-The livetest commands can be activated by setting the following option in the
-configuration file::
-
-    [global]
-    livetest_cli=livetest
-
-or with this kamaki command::
-
-    $ kamaki config set livetest_cli livetest
-
-In most cases, it is enough to have the default cloud configured correctly.
-Some commands, though, require some extra settings specific to actual contents
-of the cloud or the example files used in kamaki.
-
-Here is a list of settings needed:
-
-* for all tests::
-    * livetest.testcloud = <the cloud alias this test will run against>
-
-* for astakos client::
-    * livetest.astakos_details = <A file with an authentication output>
-        To create this file, pipeline the output of an authentication command
-        with the -j option for raw json output
-
-        .. code-block:: console
-
-            $ kamaki user authenticate -j > astakos.details
-
-    * livetest.astakos_name = <The exact "real" name of the testing user>
-    * livetest.astakos_id = <The valid unique user id of the testing user>
-
-* for image client:
-    * livetest.image_details = <A file with the image metadata>
-        To create this file, pipeline the output of an image metadata command
-        with the -j option for raw json output
-
-        .. code-block:: console
-
-            $ kamaki image info <img id> -j > img.details
-
-    * livetest.image_id = <A valid image id used for testing>
-    * livetest.image_local_path = <The local path of the testing image>
-
-* for flavors (part of the compute client):
-    * livetest.flavor_details = <A file with the flavor details>
-        To create this file, pipeline the output of a flavor info command
-        with the -j option for raw json output
-
-        .. code-block:: console
-
-            $ kamaki flavor info <flavor id> -j > flavor.details
-
-
-After setup, kamaki can run all tests::
-
-    $ kamaki livetest all
-
-a specific test (e.g., pithos scenario)::
-
-    $ kamaki livetest pithos
-
-or a specific method from a service (e.g., create_server @ cyclades)::
-
-    $ kamaki livetest cyclades create_server
-
+Kamaki does not include functional tests in its native code. The synnefo tool
+snf-burnin can be used instead.
 
 Unit tests
 """"""""""
