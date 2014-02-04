@@ -49,18 +49,16 @@ This is the plan:
 
     from sys import stderr
     from kamaki.cli.config import Config, CONFIG_PATH
-    from kamaki.clients.astakos import AstakosClient, ClientError
+    from kamaki.clients import ClientError
+    from kamaki.clients.astakos import AstakosClient
 
     #  Initialize Config with default values.
     cnf = Config()
 
     #  1. Get the credentials
-    #  Get default cloud name 
-    try:
-        cloud_name = cnf.get('global', 'default_cloud')
-    except KeyError:
-        stderr.write('No default cloud set in file %s\n' % CONFIG_PATH)
-        raise
+    #  Get default cloud name
+    cloud_name = cnf.get('global', 'default_cloud')
+    assert cloud_name, 'No default_cloud in file %s\n' % CONFIG_PATH
 
     #  Get cloud authentication URL and TOKEN
     try:
@@ -86,21 +84,38 @@ This is the plan:
 
     #  3. Get the endpoints
     #  Identity, Account --> astakos
-    #  Compute --> cyclades
+    #  Compute, Network --> cyclades
     #  Object-store --> pithos
     #  Image --> plankton
     try:
         endpoints = dict(
             astakos=AUTH_URL,
             cyclades=auth.get_service_endpoints('compute')['publicURL'],
+            network=auth.get_service_endpoints('network')['publicURL'],
             pithos=auth.get_service_endpoints('object-store')['publicURL'],
             plankton=auth.get_service_endpoints('image')['publicURL']
             )
-        user_id = auth.user_info()['id']
+        user_id = auth.user_info['id']
     except ClientError:
         stderr.write(
             'Failed to get user id and endpoints from the identity server\n')
         raise
+
+    #  4. Pretty print the results
+    stderr.write('Endpoints for user with id %s\n' % user_id)
+    for k, v in endpoints.items():
+        stderr.write('\t%s:\t%s\n' % (k, v))
+
+The output of this script should look similar to this::
+
+    Endpoints for user with id my-us3r-1d-asdf-1234-fd324rt
+        pithos:     https://pithos.example.com/object-store/v1
+        plankton:   https://cyclades.example.com/image/v1.0
+        network:    https://cyclades.example.com/network/v2.0
+        cyclades:   https://cyclades.example.com/compute/v2.0
+        astakos:    https://accounts.example.com/identity/v2.0
+
+
 
 Upload the image
 ----------------
@@ -123,6 +138,7 @@ This is the plan:
     CONTAINER = 'images'
     IMAGE_FILE = 'my_image.diskdump'
 
+
     #  1. Initialize Pithos+ client and set account to current user
     try:
         pithos = PithosClient(endpoints['pithos'], AUTH_TOKEN)
@@ -133,15 +149,16 @@ This is the plan:
 
     #  2. Create the container "images" and let pithos client work with that
     try:
-        pithos.create_container('images')
+        pithos.create_container(CONTAINER)
     except ClientError:
-        stderr.write('Failed to create container "image"\n')
+        stderr.write('Failed to create container %s\n' % CONTAINER)
         raise
     pithos.container = CONTAINER
 
     #  3. Upload
     with open(abspath(IMAGE_FILE)) as f:
         try:
+            stderr.write('This may take a while ...')
             pithos.upload_object(IMAGE_FILE, f)
         except ClientError:
             stderr.write('Failed to upload file %s to container %s\n' % (
@@ -171,7 +188,7 @@ and we want to register it to the Plankton *image* service.
     #  3.2 Register the image
     properties = dict(osfamily='linux', root_partition='1')
     try:
-        image = plankton.image_register(IMAGE_NAME, IMAGE_LOCATION)
+        image = plankton.register(IMAGE_NAME, IMAGE_LOCATION)
     except ClientError:
         stderr.write('Failed to register image %s\n' % IMAGE_NAME)
         raise
@@ -442,13 +459,12 @@ logging more. We also added some command line interaction candy.
 
 .. code-block:: python
 
-    #!/usr/bin/env python
-
     from sys import argv
     from os.path import abspath
     from base64 import b64encode
     from kamaki.clients import ClientError
     from kamaki.cli.logger import get_logger, add_file_logger
+    from progress.bar import Bar
     from logging import DEBUG
 
     #  Define loggers
@@ -457,20 +473,15 @@ logging more. We also added some command line interaction candy.
     add_file_logger(__name__, DEBUG, '%s.log' % __name__)
 
     #  Create progress bar generator
-    try:
-        from progress.bar import Bar
 
-        def create_pb(msg):
-            def generator(n):
-                bar=Bar(msg)
-                for i in bar.iter(range(int(n))):
-                    yield
+
+    def create_pb(msg):
+        def generator(n):
+            bar = Bar(msg)
+            for i in bar.iter(range(int(n))):
                 yield
-            return generator
-    except ImportError:
-        log.warning('Suggestion: install python-progress')
-        def create_pb(msg):
-            return None
+            yield
+        return generator
 
 
     #  kamaki.config
@@ -519,10 +530,11 @@ logging more. We also added some command line interaction candy.
             endpoints = dict(
                 astakos=auth.get_service_endpoints('identity')['publicURL'],
                 cyclades=auth.get_service_endpoints('compute')['publicURL'],
+                network=auth.get_service_endpoints('network')['publicURL'],
                 pithos=auth.get_service_endpoints('object-store')['publicURL'],
                 plankton=auth.get_service_endpoints('image')['publicURL']
                 )
-            user_id = auth.user_info()['id']
+            user_id = auth.user_info['id']
         except ClientError:
             print('Failed to get endpoints & user_id from identity server')
             raise
@@ -586,7 +598,7 @@ logging more. We also added some command line interaction candy.
         image_location = (user_id, container, path)
         print(' Register the image')
         try:
-             return plankton.register(name, image_location, properties)
+            return plankton.register(name, image_location, properties)
         except ClientError:
             log.debug('Failed to register image %s' % name)
             raise
@@ -654,8 +666,10 @@ logging more. We also added some command line interaction candy.
             for i in range(1, self.size + 1):
                 try:
                     server_name = '%s%s' % (self.prefix, i)
+
                     servers.append(self.client.create_server(
                         server_name, self.flavor_id, self.image_id,
+                        networks=[],
                         personality=self._personality(ssh_k_path, pub_k_path)))
                 except ClientError:
                     log.debug('Failed while creating server %s' % server_name)
@@ -698,7 +712,7 @@ logging more. We also added some command line interaction candy.
 
         print('4.  Create  virtual  cluster')
         cluster = Cluster(
-            cyclades = init_cyclades(endpoints['cyclades'], token),
+            cyclades=init_cyclades(endpoints['cyclades'], token),
             prefix=opts.prefix,
             flavor_id=opts.flavorid,
             image_id=image['id'],
@@ -738,7 +752,7 @@ logging more. We also added some command line interaction candy.
         parser.add_option('--prefix',
                           action='store', type='string', dest='prefix',
                           help='The prefix to use for naming cluster nodes',
-                          default='cluster')
+                          default='node')
         parser.add_option('--clustersize',
                           action='store', type='string', dest='clustersize',
                           help='Number of virtual cluster nodes to create ',
@@ -795,4 +809,3 @@ logging more. We also added some command line interaction candy.
         opts, args = parser.parse_args(argv[1:])
 
         main(opts)
-
