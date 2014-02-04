@@ -626,6 +626,7 @@ class project_list(_init_synnefo_astakosclient, _optional_json):
     """List all projects"""
 
     arguments = dict(
+        details=FlagArgument('Show details', ('-l', '--details')),
         name=ValueArgument('Filter by name', ('--with-name', )),
         state=ValueArgument('Filter by state', ('--with-state', )),
         owner=ValueArgument('Filter by owner', ('--with-owner', ))
@@ -634,8 +635,14 @@ class project_list(_init_synnefo_astakosclient, _optional_json):
     @errors.generic.all
     @errors.user.astakosclient
     def _run(self):
-        self._print(self.client.get_projects(
-            self['name'], self['state'], self['owner']))
+        r = self.client.get_projects(
+            self['name'], self['state'], self['owner'])
+        if not (self['details'] or self['output_format']):
+            r = [dict(
+                id=i['id'],
+                name=i['name'],
+                description=i['description']) for i in r]
+        self._print(r)
 
     def main(self):
         super(self.__class__, self)._run()
@@ -720,14 +727,18 @@ class _project_action(_init_synnefo_astakosclient):
 
     action = ''
 
+    arguments = dict(
+        reason=ValueArgument('Quote a reason for this action', '--reason'),
+    )
+
     @errors.generic.all
     @errors.user.astakosclient
     def _run(self, project_id, quote_a_reason):
         self.client.project_action(project_id, self.action, quote_a_reason)
 
-    def main(self, project_id, quote_a_reason=''):
+    def main(self, project_id):
         super(_project_action, self)._run()
-        self._run(project_id, quote_a_reason)
+        self._run(project_id, self['reason'] or '')
 
 
 @command(project_commands)
@@ -754,78 +765,47 @@ class project_reinstate(_project_action):
     action = 'reinstate'
 
 
-@command(project_commands)
-class project_application(_init_synnefo_astakosclient):
-    """Application management commands"""
-
-
-@command(project_commands)
-class project_application_list(_init_synnefo_astakosclient, _optional_json):
-    """List all applications (old and new)"""
-
-    arguments = dict(
-        project=IntArgument('Filter by project id', '--with-project-id')
-    )
-
-    @errors.generic.all
-    @errors.user.astakosclient
-    def _run(self):
-        self._print(self.client.get_applications(self['project']))
-
-    def main(self):
-        super(self.__class__, self)._run()
-        self._run()
-
-
-@command(project_commands)
-class project_application_info(_init_synnefo_astakosclient, _optional_json):
-    """Get details on an application"""
-
-    @errors.generic.all
-    @errors.user.astakosclient
-    def _run(self, app_id):
-        self._print(
-            self.client.get_application(app_id), self.print_dict)
-
-    def main(self, application_id):
-        super(self.__class__, self)._run()
-        self._run(application_id)
-
-
 class _application_action(_init_synnefo_astakosclient):
 
     action = ''
 
+    arguments = dict(
+        app_id=ValueArgument('The application ID', '--app-id'),
+        reason=ValueArgument('Quote a reason for this action', '--reason'),
+    )
+    required = ('app_id', )
+
     @errors.generic.all
     @errors.user.astakosclient
-    def _run(self, app_id, quote_a_reason):
-        self.client.application_action(app_id, self.action, quote_a_reason)
+    def _run(self, project_id, app_id, quote_a_reason):
+        self.client.application_action(
+            project_id, app_id, self.action, quote_a_reason)
 
-    def main(self, application_id, quote_a_reason=''):
+    def main(self, project_id):
         super(_application_action, self)._run()
-        self._run(application_id, quote_a_reason)
+        self._run(self['app_id'], self['reason'] or '')
 
 
 @command(project_commands)
-class project_application_approve(_application_action):
+class project_approve(_application_action):
     """Approve an application (special privileges needed)"""
     action = 'approve'
 
 
 @command(project_commands)
-class project_application_deny(_application_action):
+class project_deny(_application_action):
     """Deny an application (special privileges needed)"""
     action = 'deny'
 
 
 @command(project_commands)
-class project_application_dismiss(_application_action):
+class project_dismiss(_application_action):
     """Dismiss your denied application"""
     action = 'dismiss'
 
 
 @command(project_commands)
-class project_application_cancel(_application_action):
+class project_cancel(_application_action):
     """Cancel your application"""
     action = 'cancel'
 
