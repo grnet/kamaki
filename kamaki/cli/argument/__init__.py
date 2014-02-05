@@ -313,6 +313,30 @@ class DataSizeArgument(ValueArgument):
             self._value = self._calculate_limit(new_value)
 
 
+class UserAccountArgument(ValueArgument):
+    """A user UUID or name (if uuid does not exist)"""
+
+    account_client = None
+
+    @property
+    def value(self):
+        return super(UserAccountArgument, self).value
+
+    @value.setter
+    def value(self, uuid_or_name):
+        if uuid_or_name and self.account_client:
+            r = self.account_client.uuids2usernames([uuid_or_name, ])
+            if r:
+                self._value = uuid_or_name
+            else:
+                r = self.account_client.usernames2uuids([uuid_or_name])
+                self._value = r.get(uuid_or_name) if r else None
+            if not self._value:
+                raise raiseCLIError('User name or UUID not found', details=[
+                    '%s is not a known username or UUID' % uuid_or_name,
+                    'Usage:  %s <USER_UUID | USERNAME>' % self.lvalue])
+
+
 class DateArgument(ValueArgument):
 
     DATE_FORMAT = '%a %b %d %H:%M:%S %Y'

@@ -12,4 +12,6 @@ Features:
 - In image register, meta gets same sharing as image [#4960]
 - Allow image register to auto-resolve remote path from local file [#4991]
 - Merge ClientError and AstakosClientException --> AstakosClientError [#5002]
+- Restore kamaki file publish/unpublish
+- Accept username or UUID in kamaki file --account/--to-account [#4810]
 
