@@ -788,8 +788,8 @@ class network_disconnect(_init_network, _port_wait, _optional_json):
                 port['status'] = self.client.get_port_details(port['id'])[
                     'status']
             self.client.delete_port(port['id'])
-            self.error('Deleting port %s:' % port['id'])
-            self.print_dict(port)
+            self.error('Deleting port %s (net-id: %s, device-id: %s):' % (
+                port['id'], network_id, server_id))
             if self['wait']:
                 try:
                     self._wait(port['id'], port['status'])
