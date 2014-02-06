@@ -457,7 +457,7 @@ class file_create(_pithos_container, _optional_output_cmd):
 
 @command(file_cmds)
 class file_mkdir(_pithos_container, _optional_output_cmd):
-    """Create a directory: /file create --content-type='applcation/directory'
+    """Create a directory: /file create --content-type='application/directory'
     """
 
     @errors.generic.all
