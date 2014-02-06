@@ -326,8 +326,8 @@ class image_modify(_init_image, _optional_output_cmd):
         container_format=ValueArgument(
             'Change container format', '--container-format'),
         status=ValueArgument('Change status', '--status'),
-        publish=FlagArgument('Publish the image', '--public'),
-        unpublish=FlagArgument('Unpublish the image', '--private'),
+        publish=FlagArgument('Make the image public', '--public'),
+        unpublish=FlagArgument('Make the image private', '--private'),
         property_to_set=KeyValueArgument(
             'set property in key=value form (can be repeated)',
             ('-p', '--property-set')),

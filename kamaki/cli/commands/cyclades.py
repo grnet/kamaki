@@ -730,16 +730,6 @@ class server_shutdown(_init_cyclades, _optional_output_cmd, _server_wait):
 
 
 @command(server_cmds)
-class server_nics(_init_cyclades):
-    """DEPRECATED, use: [kamaki] server info SERVER_ID --nics"""
-
-    def main(self, *args):
-        raiseCLIError('DEPRECATED since v0.12', importance=3, details=[
-            'Replaced by',
-            '  [kamaki] server info <SERVER_ID> --nics'])
-
-
-@command(server_cmds)
 class server_console(_init_cyclades, _optional_json):
     """Create a VMC console and show connection information"""
 
@@ -754,26 +744,6 @@ class server_console(_init_cyclades, _optional_json):
     def main(self, server_id):
         super(self.__class__, self)._run()
         self._run(server_id=server_id)
-
-
-@command(server_cmds)
-class server_rename(_init_cyclades, _optional_json):
-    """DEPRECATED, use: [kamaki] server modify SERVER_ID --name=NEW_NAME"""
-
-    def main(self, *args):
-        raiseCLIError('DEPRECATED since v0.12', importance=3, details=[
-            'Replaced by',
-            '  [kamaki] server modify <SERVER_ID> --name=NEW_NAME'])
-
-
-@command(server_cmds)
-class server_stats(_init_cyclades, _optional_json):
-    """DEPRECATED, use: [kamaki] server info SERVER_ID --stats"""
-
-    def main(self, *args):
-        raiseCLIError('DEPRECATED since v0.12', importance=3, details=[
-            'Replaced by',
-            '  [kamaki] server info <SERVER_ID> --stats'])
 
 
 @command(server_cmds)

@@ -41,52 +41,35 @@ The new network will be named 'My Private Net'
 .. code-block:: console
 
     $ kamaki network create --name='My Private Net'
-    attachments:
-    cidr:        192.168.1.0/24
-    cidr6:       None
-    created:     2013-06-19T13:52:02.268886+00:00
-    dhcp:        False
-    gateway:     None
-    gateway6:    None
-    id:          3
-    name:        My Private Net
-    public:      False
-    status:      ACTIVE
-    tenant_id:   s0m3-u53r-1d
-    type:        MAC_FILTERED
-    updated:     2013-06-19T13:52:02.388779+00:00
-    user_id:     s0m3-u53r-1d
-
-Let's create two more networks, one for virtual server 141 and one for virtual
-server 142
-
-.. code-block:: console
-
-    $ kamaki network create --name='For virtual server 141'
-    ...
-    id:         4
-    ...
-    $ kamaki network create --name='For virtual server 142'
-    ...
-    id:         5
-    ...
+     id: 3
+     status:      ACTIVE
+     router:external: True
+     user_id:     s0m3-u53r-1d
+     updated:     2013-06-19T13:54:57.672744+00:00
+     created:     2013-06-19T13:52:02.268886+00:00
+     links: ...
+     public:      False
+     tenant_id:   s0m3-u53r-1d
+     admin_state_up: True
+     SNF:floating_ip_pool: False
+     subnets:
+     type:        MAC_FILTERED
 
 Connect and disconnect
 ----------------------
 
-Lets connect the networks to some virtual servers:
+Lets connect the network to some virtual servers:
 
 .. code-block:: console
 
-    $ kamaki network connect 4 141
-    $ kamaki network connect 5 142
+    $ kamaki network connect 3 --device-id=141 --device-id=142
 
 .. note:: **network connect** is a shortcut for **port create**:
 
     .. code-block:: console
 
-        $ kamaki port create --network-id=4 --device-id=141
-        $ kamaki port create --network-id=5 --device-id=142
+        $ kamaki port create --network-id=3 --device-id=141
+        $ kamaki port create --network-id=3 --device-id=142
 
 Now, let's check the current network state. We expect to see the servers
 connected to networks with ids 4 and 5, but not 3.
@@ -95,78 +78,35 @@ connected to networks with ids 4 and 5, but not 3.
 
     $ kamaki network list -l
     1 public_network
-     attachments:
-                10
-                . . . . . . .
-                20
-     cidr:        10.0.0.0/24
-     cidr6:       None
-     created:     2013-05-29T17:30:03.040929+00:00
-     dhcp:        True
-     gateway:     10.0.0.254
-     gateway6:    None
-     public:      True
+     status: ACTIVE
+     router:external: True
+     user_id: None
+     updated: 2013-06-19T13:36:51.932214+00:00
+     created: 2013-05-29T17:30:03.040929+00:00
+     links: ...
+     tenant_id: None
+     admin_state_up: True
+     SNF:floating_ip_pool: False
+     public: True
+     subnets:
+        53
+     type: IP_LESS_ROUTED
+    2 My Private Net
      status:      ACTIVE
-     tenant_id:   None
-     type:        CUSTOM
-     updated:     2013-06-19T13:36:51.932214+00:00
-     user_id:     None
-    3 My Private Net
-     attachments:
-     cidr:        192.168.1.0/24
-     cidr6:       None
+     router:external: True
+     user_id:     s0m3-u53r-1d
+     updated:     2013-06-19T13:54:57.672744+00:00
      created:     2013-06-19T13:52:02.268886+00:00
-     dhcp:        False
-     gateway:     None
-     gateway6:    None
+     links: ...
      public:      False
-     status:      ACTIVE
      tenant_id:   s0m3-u53r-1d
+     admin_state_up: True
+     SNF:floating_ip_pool: False
+     subnets:
      type:        MAC_FILTERED
-     updated:     2013-06-19T13:54:57.672744+00:00
-     user_id:     s0m3-u53r-1d
-    4 For virtual server 141
-     attachments:
-                11
-     cidr:        192.168.2.0/24
-     cidr6:       None
-     created:     2013-06-19T13:53:02.268886+00:00
-     dhcp:        False
-     gateway:     None
-     gateway6:    None
-     public:      False
-     status:      ACTIVE
-     tenant_id:   s0m3-u53r-1d
-     type:        MAC_FILTERED
-     updated:     2013-06-19T13:54:57.672744+00:00
-     user_id:     s0m3-u53r-1d
-    5 For virtual server 142
-     attachments:
-                12
-     cidr:        192.168.3.0/24
-     cidr6:       None
-     created:     2013-06-19T13:54:02.268886+00:00
-     dhcp:        False
-     gateway:     None
-     gateway6:    None
-     public:      False
-     status:      ACTIVE
-     tenant_id:   s0m3-u53r-1d
-     type:        MAC_FILTERED
-     updated:     2013-06-19T13:54:57.672744+00:00
-     user_id:     s0m3-u53r-1d
-    $ kamaki network
-
-It is time to make a meaningful connection: connect two servers to a private
-network
-
-.. code-block:: console
-
-    $ kamaki network connect 141 3
-    $ kamaki network connect 142 3
 
 Now the servers can communicate with each other through their shared private
-network. Let's see the network details to confirm that
+network. A look at the network details will confirm that:
 
 .. code-block:: console
 
