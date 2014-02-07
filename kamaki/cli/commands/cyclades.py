@@ -776,7 +776,8 @@ class server_wait(_init_cyclades, _server_wait):
     def main(self, server_id):
         super(self.__class__, self)._run()
         self._run(
-            server_id=server_id, current_status=self['server_status'] or '')
+            server_id=server_id,
+            current_status=self['server_status'] or 'BUILD')
 
 
 @command(flavor_cmds)
