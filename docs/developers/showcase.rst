@@ -218,7 +218,7 @@ Here is the plan:
     FLAVOR_ID = 42
     IMAGE_ID = image['id']
     CLUSTER_SIZE = 2
-    CLUSTER_PREFIX = 'cluster'
+    CLUSTER_PREFIX = 'node'
 
     #  4.1 Initialize a cyclades client
     try:
@@ -232,10 +232,84 @@ Here is the plan:
     for i in range(1, CLUSTER_SIZE + 1):
         server_name = '%s%s' % (CLUSTER_PREFIX, i)
         try:
-            servers.append(
-                cyclades.create_server(server_name, FLAVOR_ID, IMAGE_ID))
+            servers.append(cyclades.create_server(
+                server_name, FLAVOR_ID, IMAGE_ID, networks=[]))
         except ClientError:
             stderr.write('Failed while creating server %s\n' % server_name)
+            raise
+
+.. note:: the **networks=[]** parameter instructs the service to not connect
+    the server on any networks.
+
+Networking
+----------
+
+There are public and private networks.
+
+Public networks are managed by the service administrators. Public IPs, though,
+can be handled through the API: clients can create (reserve) and destroy
+(release) IPs from/to the network pool and attach them on their virtual
+devices.
+
+Private networks can be created by clients and they are considered a user
+resource, limited by user quotas.
+
+Ports are the connections between virtual servers and networks. This is the
+case for IP attachments as well as private network connections.
+
+.. code-block:: python
+
+    #  5.1 Initialize a network client
+    from kamaki.clients.cyclades import CycladesNetworkClient
+
+    try:
+        network = CycladesNetworkClient(endpoints['network'], AUTH_TOKEN)
+    except ClientError:
+        stderr.write('Failed to initialize network client\n')
+        raise
+
+    #  5.2  Pick a public network
+    try:
+        public_networks = [
+            net for net in network.list_networks() if net.get('public')]
+    except ClientError:
+        stderr.write('Failed while listing networks\n')
+        raise
+    try:
+        public_net = public_networks[0]
+    except IndexError:
+        stderr.write('No public networks\n')
+        raise
+
+    #  5.3 Reserve IPs and attach them on the servers
+    ips = list()
+    for vm in servers:
+        try:
+            ips.append(network.create_floatingip(public_net['id']))
+            addr = ips[-1]['floating_ip_address']
+            stderr.write('  Reserved IP %s\n' % addr)
+
+            network.create_port(
+                public_net['id'], vm['id'], fixed_ips=dict(ip_address=addr))
+        except ClientError:
+            stderr.write('Failed to attach an IP on virtual server %s\n' % (
+                vm['id']))
+            raise
+
+    #  5.4 Create a private network
+    try:
+        private_net = network.create_network('MAC_FILTERED')
+    except ClientError:
+        stderr.write('Failed to create private network\n')
+        raise
+
+    #  5.5 Connect server on the private network
+    for vm in servers:
+        try:
+            network.create_port(private_net['id'], vm['id'])
+        except ClientError:
+            stderr.write('Failed to connect server %s on network %s\n' % (
+                vm['id'], private_net['id']))
             raise
 
 Some improvements
@@ -309,7 +383,24 @@ method in the kamaki cyclades client. It can use a progress bar too!
 
     # 4.3 Wait for servers to built
     for server in servers:
-        cyclades.wait_server(server['id'])
+        st = cyclades.wait_server(server['id'])
+        assert st == 'ACTIVE', 'Server built failed with status %s\n' % st
+
+Wait for ports to built
+'''''''''''''''''''''''
+
+A connect (port) may take more than a moment to be created. A wait method can
+stall the execution of the program until the port built has finished
+(successfully or with an error).
+
+.. code-block:: python
+
+    #  5.3 Reserve IPs and attach them on the servers
+    ...
+            port = network.create_port(
+                public_net['id'], vm['id'], fixed_ips=dict(ip_address=addr))
+            st = network.wait_port(port['id'])
+            assert st == 'ACTIVE', 'Connection failed with status %s\n' % st
 
 Asynchronous server creation
 ''''''''''''''''''''''''''''
@@ -326,7 +417,7 @@ asynchronous requests.
         flavor_id=FLAVOR_ID,
         image_id=IMAGE_ID) for i in range(1, CLUSTER_SIZE + 1)]
     try:
-        servers = cyclades.async_run(cyclades.create_server, create_params)
+        servers = cyclades.async_run(cyclades.create_server, create_params, networks=[])
     except ClientError:
         stderr.write('Failed while creating servers\n')
         raise
@@ -352,6 +443,28 @@ before the cluster creation:
 
     #  4.3 Create 2 servers prefixed as "cluster"
     ...
+
+Clean up unused networks and IPs
+''''''''''''''''''''''''''''''''
+
+IPs and private networks are limited resources. This script identifies unused
+IPs and private networks and destroys them. We know if an IP or private network
+is being used by checking whether a port (connection) is associated with them.
+
+.. code-block:: python
+
+    unused_ips = [
+        ip for ip in network.list_floatingips() if not ip['port_id']]
+
+    for ip in unused_ips:
+        network.delete_floatingip(ip['id'])
+
+    used_net_ids = set([port['network_id'] for port in network.list_ports()])
+    unused_nets = [net for net in network.list_ports() if not (
+        net['public'] or net['id'] in used_net_ids)]
+
+    for net in unused_nets:
+        network.delete_network(net['id'])
 
 Inject ssh keys
 '''''''''''''''
@@ -602,6 +715,31 @@ logging more. We also added some command line interaction candy.
         except ClientError:
             log.debug('Failed to register image %s' % name)
             raise
+
+
+    def init_network(endpoint, token):
+        from kamaki.clients.cyclades import CycladesNetworkClient
+
+        print(' Initialize a network client')
+        try:
+            return CycladesNetworkClient(endpoint, token)
+        except ClientError:
+            log.debug('Failed to initialize a network Client')
+            raise
+
+
+    def connect_servers(network, servers):
+        print 'Create a private network'
+        try:
+            net = network.create_network('MAC_FILTERED', 'A private network')
+        except ClientError:
+            log.debug('Failed to create a private network')
+            raise
+
+        for vm in servers:
+            port = network.create_port(net['id'], vm['id'])
+            msg = 'Connection server %s to network %s' % (vm['id'], net['id'])
+            network.wait_port(port['id'], wait_cb=create_pb(msg))
 
 
     #  Compute / Cyclades
