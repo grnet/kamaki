@@ -546,7 +546,7 @@ class server_modify(_init_cyclades, _optional_output_cmd):
 
     arguments = dict(
         server_name=ValueArgument('The new name', '--name'),
-        flavor_id=IntArgument('Set a different flavor', '--flavor-id'),
+        flavor_id=IntArgument('Resize (set another flavor)', '--flavor-id'),
         firewall_profile=FirewallProfileArgument(
             'Valid values: %s' % (', '.join(FirewallProfileArgument.profiles)),
             '--firewall'),
