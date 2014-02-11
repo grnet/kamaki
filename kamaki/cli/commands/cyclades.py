@@ -30,11 +30,13 @@
 # documentation are those of the authors and should not be
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
-
+import cStringIO
+import codecs
 from base64 import b64encode
 from os.path import exists, expanduser
 from io import StringIO
 from pydoc import pager
+from json import dumps
 
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
@@ -45,8 +47,8 @@ from kamaki.clients.cyclades import CycladesClient
 from kamaki.cli.argument import (
     FlagArgument, ValueArgument, KeyValueArgument, RepeatableArgument,
     ProgressBarArgument, DateArgument, IntArgument, StatusArgument)
-from kamaki.cli.commands import _command_init, errors, addLogSettings
 from kamaki.cli.commands import (
+    _command_init, errors, addLogSettings, dataModification,
     _optional_output_cmd, _optional_json, _name_filter, _id_filter)
 
 
@@ -134,6 +136,35 @@ class _init_cyclades(_command_init):
             self.client = CycladesClient(base_url=base_url, token=token)
         else:
             raise CLIBaseUrlError(service='cyclades')
+
+    @dataModification
+    def _restruct_server_info(self, vm):
+        if not vm:
+            return vm
+        img = vm['image']
+        try:
+            img.pop('links', None)
+            img['name'] = self.client.get_image_details(img['id'])['name']
+        except Exception:
+            pass
+        flv = vm['flavor']
+        try:
+            flv.pop('links', None)
+            flv['name'] = self.client.get_flavor_details(flv['id'])['name']
+        except Exception:
+            pass
+        vm['ports'] = vm.pop('attachments', dict())
+        for port in vm['ports']:
+            netid = port.get('network_id')
+            for k in vm['addresses'].get(netid, []):
+                k.pop('addr', None)
+                k.pop('version', None)
+                port.update(k)
+        uuids = self._uuids2usernames([vm['user_id'], vm['tenant_id']])
+        vm['user_id'] += ' (%s)' % uuids[vm['user_id']]
+        for key in ('addresses', 'tenant_id', 'links'):
+            vm.pop(key, None)
+        return vm
 
     def main(self):
         self._run()
@@ -236,19 +267,20 @@ class server_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
         if withmeta:
             servers = self._filter_by_metadata(servers)
 
-        if self['detail'] and not (
-                self['json_output'] or self['output_format']):
-            servers = self._add_user_name(servers)
-        elif not (self['detail'] or (
-                self['json_output'] or self['output_format'])):
-            remove_from_items(servers, 'links')
-        if detail and not self['detail']:
+        if detail and self['detail']:
+            servers = [self._restruct_server_info(vm) for vm in servers]
+        else:
             for srv in servers:
                 for key in set(srv).difference(self.PERMANENTS):
                     srv.pop(key)
+
         kwargs = dict(with_enumeration=self['enum'])
         if self['more']:
-            kwargs['out'] = StringIO()
+            codecinfo = codecs.lookup('utf-8')
+            kwargs['out'] = codecs.StreamReaderWriter(
+                cStringIO.StringIO(),
+                codecinfo.streamreader,
+                codecinfo.streamwriter)
             kwargs['title'] = ()
         if self['limit']:
             servers = servers[:self['limit']]
@@ -293,10 +325,7 @@ class server_info(_init_cyclades, _optional_json):
             self._print(self.client.get_server_diagnostics(server_id))
         else:
             vm = self.client.get_server_details(server_id)
-            uuids = self._uuids2usernames([vm['user_id'], vm['tenant_id']])
-            vm['user_id'] += ' (%s)' % uuids[vm['user_id']]
-            vm['tenant_id'] += ' (%s)' % uuids[vm['tenant_id']]
-            self._print(vm, self.print_dict)
+            self._print(self._restruct_server_info(vm), self.print_dict)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -497,11 +526,7 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
             if not r:
                 self.error('Create %s: server response was %s' % (name, r))
                 continue
-            usernames = self._uuids2usernames(
-                [r['user_id'], r['tenant_id']])
-            r['user_id'] += ' (%s)' % usernames[r['user_id']]
-            r['tenant_id'] += ' (%s)' % usernames[r['tenant_id']]
-            self._print(r, self.print_dict)
+            self._print(self._restruct_server_info(r), self.print_dict)
             if self['wait']:
                 self._wait(r['id'], r['status'] or 'BUILD')
             self.writeln(' ')
@@ -554,7 +579,9 @@ class server_modify(_init_cyclades, _optional_output_cmd):
             'Set metadata in key=value form (can be repeated)',
             '--metadata-set'),
         metadata_to_delete=RepeatableArgument(
-            'Delete metadata by key (can be repeated)', '--metadata-del')
+            'Delete metadata by key (can be repeated)', '--metadata-del'),
+        public_network_port_id=ValueArgument(
+            'Connection to set new firewall (* for all)', '--port-id'),
     )
     required = [
         'server_name', 'flavor_id', 'firewall_profile', 'metadata_to_set',
@@ -569,8 +596,39 @@ class server_modify(_init_cyclades, _optional_output_cmd):
         if self['flavor_id']:
             self.client.resize_server(server_id, self['flavor_id'])
         if self['firewall_profile']:
-            self.client.set_firewall_profile(
-                server_id=server_id, profile=self['firewall_profile'])
+            vm = self._restruct_server_info(
+                self.client.get_server_details(server_id))
+            ports = [p for p in vm['ports'] if 'firewallProfile' in p]
+            picked_port = self.arguments['public_network_port_id']
+            if picked_port.value and picked_port.value != '*':
+                    ports = [p for p in ports if p['id'] == picked_port.value]
+            elif len(ports) > 1:
+                raiseCLIError(
+                    'Multiple public networks are connected to server %s' % (
+                        server_id), details=[
+                            'To select one:',
+                            '  %s <port id>' % picked_port.lvalue,
+                            'To set all:',
+                            '  %s *' % picked_port.lvalue,
+                            'Ports to public networks on server %s:' % (
+                                server_id),
+                            ','.join([' %s' % p['id'] for p in ports])])
+            if not ports:
+                pp = picked_port.value
+                raiseCLIError(
+                    'No *public* networks attached on server %s%s' % (
+                        server_id, ' through port %s' % pp if pp else ''),
+                    details=[
+                        'To see all networks:',
+                        '  kamaki network list',
+                        'To connect to a network:',
+                        '  kamaki network connect <net id> --device-id %s' % (
+                            server_id)])
+            for port in ports:
+                self.client.set_firewall_profile(
+                    server_id=server_id,
+                    profile=self['firewall_profile'],
+                    port_id=port['id'])
         if self['metadata_to_set']:
             self.client.update_server_metadata(
                 server_id, **self['metadata_to_set'])
@@ -582,6 +640,12 @@ class server_modify(_init_cyclades, _optional_output_cmd):
 
     def main(self, server_id):
         super(self.__class__, self)._run()
+        pnpid = self.arguments['public_network_port_id']
+        fp = self.arguments['firewall_profile']
+        if pnpid.value and not fp.value:
+            raise CLIInvalidArgument('Invalid argument compination', details=[
+                'Argument %s should always be combined with %s' % (
+                    pnpid.lvalue, fp.lvalue)])
         self._run(server_id=server_id)
 
 
