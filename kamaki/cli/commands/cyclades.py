@@ -599,22 +599,23 @@ class server_modify(_init_cyclades, _optional_output_cmd):
             vm = self._restruct_server_info(
                 self.client.get_server_details(server_id))
             ports = [p for p in vm['ports'] if 'firewallProfile' in p]
-            picked_port = self.arguments['public_network_port_id']
-            if picked_port.value and picked_port.value != '*':
-                    ports = [p for p in ports if p['id'] == picked_port.value]
+            pick_port = self.arguments['public_network_port_id']
+            if pick_port.value:
+                ports = [p for p in ports if pick_port.value in (
+                    '*', '%s' % p['id'])]
             elif len(ports) > 1:
                 raiseCLIError(
-                    'Multiple public networks are connected to server %s' % (
+                    'Multiple public connections on server %s' % (
                         server_id), details=[
                             'To select one:',
-                            '  %s <port id>' % picked_port.lvalue,
+                            '  %s <port id>' % pick_port.lvalue,
                             'To set all:',
-                            '  %s *' % picked_port.lvalue,
+                            '  %s *' % pick_port.lvalue,
                             'Ports to public networks on server %s:' % (
                                 server_id),
                             ','.join([' %s' % p['id'] for p in ports])])
             if not ports:
-                pp = picked_port.value
+                pp = pick_port.value
                 raiseCLIError(
                     'No *public* networks attached on server %s%s' % (
                         server_id, ' through port %s' % pp if pp else ''),
@@ -625,6 +626,8 @@ class server_modify(_init_cyclades, _optional_output_cmd):
                         '  kamaki network connect <net id> --device-id %s' % (
                             server_id)])
             for port in ports:
+                self.error('Set port %s firewall to %s' % (
+                    port['id'], self['firewall_profile']))
                 self.client.set_firewall_profile(
                     server_id=server_id,
                     profile=self['firewall_profile'],
