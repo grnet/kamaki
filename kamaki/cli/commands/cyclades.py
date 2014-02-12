@@ -301,8 +301,6 @@ class server_info(_init_cyclades, _optional_json):
         nics=FlagArgument(
             'Show only the network interfaces of this virtual server',
             '--nics'),
-        network_id=ValueArgument(
-            'Show the connection details to that network', '--network-id'),
         stats=FlagArgument('Get URLs for server statistics', '--stats'),
         diagnostics=FlagArgument('Diagnostic information', '--diagnostics')
     )
@@ -314,10 +312,6 @@ class server_info(_init_cyclades, _optional_json):
         if self['nics']:
             self._print(
                 self.client.get_server_nics(server_id), self.print_dict)
-        elif self['network_id']:
-            self._print(
-                self.client.get_server_network_nics(
-                    server_id, self['network_id']), self.print_dict)
         elif self['stats']:
             self._print(
                 self.client.get_server_stats(server_id), self.print_dict)
@@ -587,6 +581,48 @@ class server_modify(_init_cyclades, _optional_output_cmd):
         'server_name', 'flavor_id', 'firewall_profile', 'metadata_to_set',
         'metadata_to_delete']
 
+    def _set_firewall_profile(self, server_id):
+        vm = self._restruct_server_info(
+            self.client.get_server_details(server_id))
+        ports = [p for p in vm['ports'] if 'firewallProfile' in p]
+        pick_port = self.arguments['public_network_port_id']
+        if pick_port.value:
+            ports = [p for p in ports if pick_port.value in (
+                '*', '%s' % p['id'])]
+        elif len(ports) > 1:
+            port_strings = ['Server %s ports to public networks:' % server_id]
+            for p in ports:
+                port_strings.append('  %s' % p['id'])
+                for k in ('network_id', 'ipv4', 'ipv6', 'firewallProfile'):
+                    v = p.get(k)
+                    if v:
+                        port_strings.append('\t%s: %s' % (k, v))
+            raiseCLIError(
+                'Multiple public connections on server %s' % (
+                    server_id), details=port_strings + [
+                        'To select one:',
+                        '  %s <port id>' % pick_port.lvalue,
+                        'To set all:',
+                        '  %s *' % pick_port.lvalue, ])
+        if not ports:
+            pp = pick_port.value
+            raiseCLIError(
+                'No *public* networks attached on server %s%s' % (
+                    server_id, ' through port %s' % pp if pp else ''),
+                details=[
+                    'To see all networks:',
+                    '  kamaki network list',
+                    'To connect to a network:',
+                    '  kamaki network connect <net id> --device-id %s' % (
+                        server_id)])
+        for port in ports:
+            self.error('Set port %s firewall to %s' % (
+                port['id'], self['firewall_profile']))
+            self.client.set_firewall_profile(
+                server_id=server_id,
+                profile=self['firewall_profile'],
+                port_id=port['id'])
+
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.server_id
@@ -596,42 +632,7 @@ class server_modify(_init_cyclades, _optional_output_cmd):
         if self['flavor_id']:
             self.client.resize_server(server_id, self['flavor_id'])
         if self['firewall_profile']:
-            vm = self._restruct_server_info(
-                self.client.get_server_details(server_id))
-            ports = [p for p in vm['ports'] if 'firewallProfile' in p]
-            pick_port = self.arguments['public_network_port_id']
-            if pick_port.value:
-                ports = [p for p in ports if pick_port.value in (
-                    '*', '%s' % p['id'])]
-            elif len(ports) > 1:
-                raiseCLIError(
-                    'Multiple public connections on server %s' % (
-                        server_id), details=[
-                            'To select one:',
-                            '  %s <port id>' % pick_port.lvalue,
-                            'To set all:',
-                            '  %s *' % pick_port.lvalue,
-                            'Ports to public networks on server %s:' % (
-                                server_id),
-                            ','.join([' %s' % p['id'] for p in ports])])
-            if not ports:
-                pp = pick_port.value
-                raiseCLIError(
-                    'No *public* networks attached on server %s%s' % (
-                        server_id, ' through port %s' % pp if pp else ''),
-                    details=[
-                        'To see all networks:',
-                        '  kamaki network list',
-                        'To connect to a network:',
-                        '  kamaki network connect <net id> --device-id %s' % (
-                            server_id)])
-            for port in ports:
-                self.error('Set port %s firewall to %s' % (
-                    port['id'], self['firewall_profile']))
-                self.client.set_firewall_profile(
-                    server_id=server_id,
-                    profile=self['firewall_profile'],
-                    port_id=port['id'])
+            self._set_firewall_profile(server_id)
         if self['metadata_to_set']:
             self.client.update_server_metadata(
                 server_id, **self['metadata_to_set'])
