@@ -321,7 +321,7 @@ class server_info(_init_cyclades, _optional_json):
         else:
             vm = self.client.get_server_details(server_id)
             # self._print(self._restruct_server_info(vm), self.print_dict)
-            # self._print(vm, self.print_dict)
+            self._print(vm, self.print_dict)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
