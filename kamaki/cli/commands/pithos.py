@@ -1546,7 +1546,8 @@ class container_create(_pithos_account):
         limit=IntArgument('set default container limit', '--limit'),
         meta=KeyValueArgument(
             'set container metadata (can be repeated)', '--meta'),
-        project=ValueArgument('assign the container to project', '--project'),
+        project_id=ValueArgument('assign the container to project',
+                                 '--project-id'),
     )
 
     @errors.generic.all
@@ -1558,7 +1559,7 @@ class container_create(_pithos_account):
                 container=container,
                 sizelimit=self['limit'],
                 versioning=self['versioning'],
-                project=self['project'],
+                project_id=self['project_id'],
                 metadata=self['meta'],
                 success=(201, ))
         except ClientError as ce:
@@ -1628,8 +1629,12 @@ class container_empty(_pithos_account):
 
 @command(container_cmds)
 class container_reassign(_pithos_account, _optional_output_cmd):
-    """Assign a container to a different project
-    """
+    """Assign a container to a different project"""
+
+    arguments = dict(
+        project_id=ValueArgument('The project to assign', '--project-id')
+    )
+    required = ('project_id', )
 
     @errors.generic.all
     @errors.pithos.connection
@@ -1639,10 +1644,10 @@ class container_reassign(_pithos_account, _optional_output_cmd):
             self.client.container = self.container
         self._optional_output(self.client.reassign_container(project))
 
-    def main(self, container, project):
+    def main(self, container):
         super(self.__class__, self)._run()
         self.container = container
-        self._run(project)
+        self._run(project=self['project_id'])
 
 
 @command(sharer_cmds)

@@ -783,7 +783,7 @@ class _application_action(_init_synnefo_astakosclient):
 
     def main(self, project_id):
         super(_application_action, self)._run()
-        self._run(self['app_id'], self['reason'] or '')
+        self._run(project_id, self['app_id'], self['reason'] or '')
 
 
 @command(project_commands)

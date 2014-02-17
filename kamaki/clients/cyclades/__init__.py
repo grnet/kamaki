@@ -37,6 +37,7 @@ from kamaki.clients.utils import path4url
 from kamaki.clients import ClientError, Waiter
 import json
 
+
 class CycladesClient(CycladesRestClient, Waiter):
     """Synnefo Cyclades Compute API client"""
 
@@ -199,22 +200,14 @@ class CycladesNetworkClient(NetworkClient):
         r = self.networks_post(json_data=req, success=201)
         return r.json['network']
 
-    def networks_action_post(
-            self, network_id='', json_data=None, success=202, **kwargs):
+    def reassign_network(self, network_id, project, **kwargs):
         """POST base_url/networks/<network_id>/action
 
         :returns: request response
         """
-        if json_data:
-            json_data = json.dumps(json_data)
-            self.set_header('Content-Type', 'application/json')
-            self.set_header('Content-Length', len(json_data))
         path = path4url('networks', network_id, 'action')
-        return self.post(path, data=json_data, success=success, **kwargs)
-
-    def reassign_network(self, network_id, project):
         req = {'reassign': {'project': project}}
-        r = self.networks_action_post(network_id, json_data=req, success=200)
+        r = self.post(path, json=req, success=200, **kwargs)
         return r.headers
 
     def list_ports(self, detail=None):
@@ -257,7 +250,7 @@ class CycladesNetworkClient(NetworkClient):
             floatingip['floating_network_id'] = floating_network_id
         if floating_ip_address:
             floatingip['floating_ip_address'] = floating_ip_address
-        if project_id:
+        if project_id is not None:
             floatingip['project'] = project_id
         r = self.floatingips_post(
             json_data=dict(floatingip=floatingip), success=200)

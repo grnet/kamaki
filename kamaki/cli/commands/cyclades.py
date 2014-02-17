@@ -473,7 +473,7 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
             'network policy is applied. These policies are set on the cloud, '
             'so kamaki is oblivious to them',
             '--no-network'),
-        project=ValueArgument('Assign the server to project', '--project'),
+        project_id=ValueArgument('Assign server to project', '--project-id'),
     )
     required = ('server_name', 'flavor_id', 'image_id')
 
@@ -519,7 +519,7 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
     def _run(self, name, flavor_id, image_id):
         for r in self._create_cluster(
                 name, flavor_id, image_id, size=self['cluster_size'] or 1,
-                project=self['project']):
+                project=self['project_id']):
             if not r:
                 self.error('Create %s: server response was %s' % (name, r))
                 continue
@@ -659,8 +659,12 @@ class server_modify(_init_cyclades, _optional_output_cmd):
 
 @command(server_cmds)
 class server_reassign(_init_cyclades, _optional_json):
-    """Assign a VM to a different project
-    """
+    """Assign a virtual server to a different project"""
+
+    arguments = dict(
+        project_id=ValueArgument('The project to assign', '--project-id')
+    )
+    required = ('project_id', )
 
     @errors.generic.all
     @errors.cyclades.connection
@@ -668,9 +672,9 @@ class server_reassign(_init_cyclades, _optional_json):
     def _run(self, server_id, project):
         self.client.reassign_server(server_id, project)
 
-    def main(self, server_id, project):
+    def main(self, server_id):
         super(self.__class__, self)._run()
-        self._run(server_id=server_id, project=project)
+        self._run(server_id=server_id, project=self['project_id'])
 
 
 @command(server_cmds)
