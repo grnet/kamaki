@@ -218,8 +218,3 @@ class CycladesNetworkClient(NetworkClient):
     def create_floatingip(self, floating_network_id, floating_ip_address=''):
         return super(CycladesNetworkClient, self).create_floatingip(
             floating_network_id, floating_ip_address=floating_ip_address)
-
-    def update_floatingip(self, floating_network_id, floating_ip_address=''):
-        """To nullify something optional, use None"""
-        return super(CycladesNetworkClient, self).update_floatingip(
-            floating_network_id, floating_ip_address=floating_ip_address)

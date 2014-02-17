@@ -268,7 +268,8 @@ class server_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
             servers = self._filter_by_metadata(servers)
 
         if detail and self['detail']:
-            servers = [self._restruct_server_info(vm) for vm in servers]
+            #  servers = [self._restruct_server_info(vm) for vm in servers]
+            pass
         else:
             for srv in servers:
                 for key in set(srv).difference(self.PERMANENTS):
@@ -319,7 +320,8 @@ class server_info(_init_cyclades, _optional_json):
             self._print(self.client.get_server_diagnostics(server_id))
         else:
             vm = self.client.get_server_details(server_id)
-            self._print(self._restruct_server_info(vm), self.print_dict)
+            # self._print(self._restruct_server_info(vm), self.print_dict)
+            # self._print(vm, self.print_dict)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -520,7 +522,8 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
             if not r:
                 self.error('Create %s: server response was %s' % (name, r))
                 continue
-            self._print(self._restruct_server_info(r), self.print_dict)
+            #  self._print(self._restruct_server_info(r), self.print_dict)
+            self._print(r, self.print_dict)
             if self['wait']:
                 self._wait(r['id'], r['status'] or 'BUILD')
             self.writeln(' ')
