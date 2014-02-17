@@ -80,6 +80,17 @@ class CycladesClient(CycladesRestClient, Waiter):
             name, flavor_id, image_id,
             metadata=metadata, personality=personality, networks=networks)
 
+    def set_firewall_profile(self, server_id, profile, port_id):
+        """Set the firewall profile for the public interface of a server
+        :param server_id: integer (str or int)
+        :param profile: (str) ENABLED | DISABLED | PROTECTED
+        :param port_id: (str) This port must connect to a public network
+        :returns: (dict) response headers
+        """
+        req = {'firewallProfile': {'profile': profile, 'nic': port_id}}
+        r = self.servers_action_post(server_id, json_data=req, success=202)
+        return r.headers
+
     def start_server(self, server_id):
         """Submit a startup request
 
@@ -206,9 +217,4 @@ class CycladesNetworkClient(NetworkClient):
 
     def create_floatingip(self, floating_network_id, floating_ip_address=''):
         return super(CycladesNetworkClient, self).create_floatingip(
-            floating_network_id, floating_ip_address=floating_ip_address)
-
-    def update_floatingip(self, floating_network_id, floating_ip_address=''):
-        """To nullify something optional, use None"""
-        return super(CycladesNetworkClient, self).update_floatingip(
             floating_network_id, floating_ip_address=floating_ip_address)

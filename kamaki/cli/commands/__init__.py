@@ -60,6 +60,18 @@ def addLogSettings(func):
     return wrap
 
 
+def dataModification(func):
+    def wrap(self, inp):
+        try:
+            inp = func(self, inp)
+        except Exception as e:
+            log.warning('WARNING: Error while running %s: %s' % (func, e))
+            log.warning('\tWARNING: Kamaki will use original data to go on')
+        finally:
+            return inp
+    return wrap
+
+
 class _command_init(object):
 
     # self.arguments (dict) contains all non-positional arguments
