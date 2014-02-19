@@ -1,3 +1,8 @@
+Changelog for 0.12.10
+
+- Bugfix: --diagnostics works
+- Bugfix: Alow unicode image names (#5110)
+
 Changelog for 0.12.9
 
 - Bugfix: --unpublish didn't work in kamaki image modify
