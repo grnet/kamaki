@@ -418,7 +418,7 @@ class Client(Logged):
     def set_header(self, name, value, iff=True):
         """Set a header 'name':'value'"""
         if value is not None and iff:
-            self.headers[name] = unicode(value)
+            self.headers[name] = '%s' % value
 
     def set_param(self, name, value=None, iff=True):
         if iff:
