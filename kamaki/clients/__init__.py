@@ -123,7 +123,7 @@ class RequestManager(Logged):
             url += _encode(path[1:] if path.startswith('/') else path)
         delim = '?'
         for key, val in params.items():
-            val = '' if val in (None, False) else _encode('%s' % val)
+            val = quote('' if val in (None, False) else _encode('%s' % val))
             url += '%s%s%s' % (delim, key, ('=%s' % val) if val else '')
             delim = '&'
         parsed = urlparse(url)
@@ -418,7 +418,7 @@ class Client(Logged):
     def set_header(self, name, value, iff=True):
         """Set a header 'name':'value'"""
         if value is not None and iff:
-            self.headers[name] = unicode(value)
+            self.headers[name] = '%s' % value
 
     def set_param(self, name, value=None, iff=True):
         if iff:

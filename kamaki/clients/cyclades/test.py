@@ -106,6 +106,14 @@ class CycladesRestClient(TestCase):
         get.assert_called_once_with(
             '/servers/%s/stats' % server_id, success=200)
 
+    @patch('kamaki.clients.Client.get', return_value='ret')
+    def test_servers_diagnostics_get(self, get):
+        server_id = 'server id'
+        self.assertEqual(
+            self.client.servers_diagnostics_get(server_id), 'ret')
+        get.assert_called_once_with(
+            '/servers/%s/diagnostics' % server_id, success=200)
+
 
 class CycladesNetworkClient(TestCase):
 
