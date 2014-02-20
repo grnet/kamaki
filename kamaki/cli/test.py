@@ -104,14 +104,14 @@ class History(TestCase):
             self.assertEqual(
                 self.file.read(), '\n'.join(some_strings[:(i + 1)]) + '\n')
 
-    def test_clean(self):
+    def test_empty(self):
         content = 'a brick\ntwo bricks\nanother brick\nA wall!\n'
         self.file.write(content)
         self.file.flush()
         self.file.seek(0)
         self.assertEqual(self.file.read(), content)
         history = self.HCLASS(self.file.name)
-        history.clean()
+        history.empty()
         self.file.seek(0)
         self.assertEqual(self.file.read(), '')
 
@@ -126,14 +126,15 @@ class History(TestCase):
         self.file.flush()
 
         history = self.HCLASS(self.file.name)
-        self.assertRaises(ValueError, history.retrieve, 'must be number')
-        self.assertRaises(TypeError, history.retrieve, [1, 2, 3])
+        retrieve = history.__getitem__
+        self.assertRaises(ValueError, retrieve, 'must be number')
+        self.assertRaises(TypeError, retrieve, [1, 2, 3])
 
         for i in (0, len(sample_history), -len(sample_history)):
-            self.assertEqual(history.retrieve(i), None)
+            self.assertEqual(history[i], None)
         for i in range(1, len(sample_history)):
-            self.assertEqual(history.retrieve(i), sample_history[i - 1])
-            self.assertEqual(history.retrieve(- i), sample_history[- i - 1])
+            self.assertEqual(history[i], sample_history[i - 1])
+            self.assertEqual(history[- i], sample_history[- i - 1])
 
 
 class LoggerMethods(TestCase):

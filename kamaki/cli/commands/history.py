@@ -137,7 +137,7 @@ class history_clean(_init_history):
 
     @errors.generic.all
     def _run(self):
-        self.history.clean()
+        self.history.empty()
 
     def main(self):
         super(self.__class__, self)._run()
@@ -196,7 +196,7 @@ class history_run(_init_history):
     def _run(self, *command_ids):
         cmd_list = self._get_cmd_ids(command_ids)
         for cmd_id in cmd_list:
-            r = self.history.retrieve(cmd_id)
+            r = self.history[cmd_id]
             try:
                 self.writeln('< %s >' % r[:-1])
             except (TypeError, KeyError):

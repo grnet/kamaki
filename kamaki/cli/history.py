@@ -37,9 +37,21 @@ import codecs
 
 
 class History(object):
-    def __init__(self, filepath, token=None):
+    def __init__(self, filepath, token=None, max_lines=0):
         self.filepath = filepath
         self.token = token
+        self.max_lines = max_lines
+
+    def __getitem__(self, cmd_id):
+        cmd_id = int(cmd_id)
+        if not cmd_id:
+            return None
+        with open(self.filepath) as f:
+            try:
+                cmd_list = f.readlines()[:-1]  # exclude current command
+                return cmd_list[cmd_id - (1 if cmd_id > 0 else 0)]
+            except IndexError:
+                return None
 
     @classmethod
     def _match(self, line, match_terms):
@@ -63,23 +75,14 @@ class History(object):
         with open(self.filepath, 'a+') as f:
             f.write(line + '\n')
 
-    def clean(self):
+    def empty(self):
         with open(self.filepath, 'w'):
             pass
 
-    def retrieve(self, cmd_id):
-        """
-        :param cmd_id: (int) the id of the command to retrieve can be positive
-            or negative, zero values are ignored
+    def clean(self):
+        """DEPRECATED in version 0.14"""
+        return self.empty()
 
-        :returns: (str) the stored command record without the id
-        """
-        cmd_id = int(cmd_id)
-        if not cmd_id:
-            return None
-        with open(self.filepath) as f:
-            try:
-                cmd_list = f.readlines()[:-1]  # exclude current command
-                return cmd_list[cmd_id - (1 if cmd_id > 0 else 0)]
-            except IndexError:
-                return None
+    def retrieve(self, cmd_id):
+        """DEPRECATED in version 0.14"""
+        return self[cmd_id]
