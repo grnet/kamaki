@@ -70,31 +70,6 @@ class History(TestCase):
                 ((['line', 'with', 'some terms'], 'some terms'), False)):
             self.assertEqual(self.HCLASS._match(*args), expected)
 
-    def test_get(self):
-        history = self.HCLASS(self.file.name)
-        self.assertEqual(history.get(), [])
-
-        sample_history = (
-            u'kamaki history show\n',
-            u'kamaki file list\n',
-            u'kamaki touch pithos:f1\n',
-            u'kamaki file info pithos:f1\n')
-        self.file.write(''.join(sample_history))
-        self.file.flush()
-
-        expected = [u'%s.\t%s' % (
-            i + 1, event) for i, event in enumerate(sample_history)]
-        self.assertEqual(history.get(), expected)
-        self.assertEqual(history.get('kamaki'), expected)
-        self.assertEqual(history.get('file kamaki'), expected[1::2])
-        self.assertEqual(history.get('pithos:f1'), expected[2:])
-        self.assertEqual(history.get('touch pithos:f1'), expected[2:3])
-
-        for limit in range(len(sample_history)):
-            self.assertEqual(history.get(limit=limit), expected[-limit:])
-            self.assertEqual(
-                history.get('kamaki', limit=limit), expected[-limit:])
-
     def test_add(self):
         history = self.HCLASS(self.file.name)
         some_strings = ('a brick', 'two bricks', 'another brick', 'A wall!')

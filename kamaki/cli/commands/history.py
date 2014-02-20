@@ -34,7 +34,7 @@
 # or implied, of GRNET S.A.
 
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.argument import IntArgument, ValueArgument
+from kamaki.cli.argument import ValueArgument
 from kamaki.cli.argument import ArgumentParseManager
 from kamaki.cli.history import History
 from kamaki.cli import command
@@ -83,52 +83,33 @@ class _init_history(_command_init):
 
 @command(history_cmds)
 class history_show(_init_history):
-    """Show intersession command history
-    ---
-    - With no parameters : pick all commands in history records
-    - With:
-    .   1.  <order-id> : pick the <order-id>th command
-    .   2.  <order-id-1>-<order-id-2> : pick all commands ordered in the range
-    .       [<order-id-1> - <order-id-2>]
-    .   - the above can be mixed and repeated freely, separated by spaces
-    .       e.g., pick 2 4-7 -3
-    .   - Use negative integers to count from the end of the list, e.g.,:
-    .       -2 means : the command before the last one
-    .       -2-5 means : last 2 commands + the first 5
-    .       -5--2 means : the last 5 commands except the last 2
+    """Show history
+        Featutes:
+        - slice notation (cmd numbers --> N or :N or N: or N1:N2)
+        - text matching (--match)
     """
 
     arguments = dict(
-        limit=IntArgument(
-            'number of lines to show',
-            ('-n', '--numner'),
-            default=0),
-        match=ValueArgument('show lines that match given terms', '--match')
+        match=ValueArgument('Show lines matching this', '--match'),
     )
 
     @errors.generic.all
-    def _run(self, *cmd_ids):
-        ret = self.history.get(match_terms=self['match'], limit=self['limit'])
+    def _run(self, cmd_slice):
+        lines = ['%s.\t%s' % (i, l) for i, l in enumerate(self.history[:])][
+            cmd_slice]
+        if not isinstance(cmd_slice, slice):
+            lines = [lines, ]
+        if self['match']:
+            lines = [l for l in lines if self._match(l, self['match'])]
+        self.print_items([l[:-1] for l in lines])
 
-        if not cmd_ids:
-            self.print_list(ret)
-            return
-
-        num_list = []
-        for num_str in cmd_ids:
-            num_list += _get_num_list(num_str)
-
-        for cmd_id in num_list:
-            try:
-                cur_id = int(cmd_id)
-                if cur_id:
-                    self.writeln(ret[cur_id - (1 if cur_id > 0 else 0)][:-1])
-            except IndexError as e2:
-                raiseCLIError(e2, 'Command id out of 1-%s range' % len(ret))
-
-    def main(self, *cmd_ids):
+    def main(self, cmd_numbers=''):
         super(self.__class__, self)._run()
-        self._run(*cmd_ids)
+        sl_args = [
+            int(x) if x else None for x in cmd_numbers.split(':')] if (
+                cmd_numbers) else [None, None]
+        slice_cmds = slice(*sl_args) if len(sl_args) > 1 else sl_args[0]
+        self._run(slice_cmds)
 
 
 @command(history_cmds)

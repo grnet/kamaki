@@ -37,10 +37,9 @@ import codecs
 
 
 class History(object):
-    def __init__(self, filepath, token=None, max_lines=0):
+    def __init__(self, filepath, token=None):
         self.filepath = filepath
         self.token = token
-        self.max_lines = max_lines
 
     def __getitem__(self, cmd_ids):
         with codecs.open(self.filepath, mode='r', encoding='utf-8') as f:
@@ -57,6 +56,7 @@ class History(object):
         return True
 
     def get(self, match_terms=None, limit=0):
+        """DEPRECATED since 0.14"""
         limit = int(limit or 0)
         r = ['%s.\t%s' % (i + 1, line) for i, line in enumerate(self[:]) if (
                 self._match(line, match_terms))]
