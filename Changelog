@@ -1,3 +1,9 @@
+Changelog for 0.12.10
+
+- Bugfix: --diagnostics works
+- Bugfix: Alow unicode image names (#5110)
+- Bugfix: Fix HTTP headers in image members add (#5115)
+
 Changelog for 0.12.9
 
 - Bugfix: --unpublish didn't work in kamaki image modify

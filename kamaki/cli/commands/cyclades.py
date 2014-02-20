@@ -289,6 +289,8 @@ class server_info(_init_cyclades, _optional_json):
         elif self['stats']:
             self._print(
                 self.client.get_server_stats(server_id), self.print_dict)
+        elif self['diagnostics']:
+            self._print(self.client.get_server_diagnostics(server_id))
         else:
             vm = self.client.get_server_details(server_id)
             uuids = self._uuids2usernames([vm['user_id'], vm['tenant_id']])
@@ -803,7 +805,8 @@ class server_wait(_init_cyclades, _server_wait):
 
     def main(self, server_id):
         super(self.__class__, self)._run()
-        self._run(server_id=server_id, current_status=self['server_status'])
+        self._run(
+            server_id=server_id, current_status=self['server_status'] or '')
 
 
 @command(flavor_cmds)
