@@ -35,40 +35,13 @@
 
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.argument import ValueArgument
-from kamaki.cli.argument import ArgumentParseManager
 from kamaki.cli.history import History
 from kamaki.cli import command
 from kamaki.cli.commands import _command_init, errors
-from kamaki.cli import exec_cmd, print_error_message
-from kamaki.cli.errors import CLIError, raiseCLIError
-from kamaki.cli.utils import split_input
-from kamaki.clients import ClientError
 
 
 history_cmds = CommandTree('history', 'Kamaki command history')
 _commands = [history_cmds]
-
-
-def _get_num_list(num_str):
-    if num_str.startswith('-'):
-        num1, sep, num2 = num_str[1:].partition('-')
-        num1 = '-%s' % num1
-    else:
-        num1, sep, num2 = num_str.partition('-')
-    (num1, num2) = (num1.strip(), num2.strip())
-    try:
-        num1 = (-int(num1[1:])) if num1.startswith('-') else int(num1)
-    except ValueError as e:
-        raiseCLIError(e, 'Invalid id %s' % num1)
-    if sep:
-        try:
-            num2 = (-int(num2[1:])) if num2.startswith('-') else int(num2)
-            num2 += 1 if num2 > 0 else 0
-        except ValueError as e:
-            raiseCLIError(e, 'Invalid id %s' % num2)
-    else:
-        num2 = (1 + num1) if num1 else 0
-    return [i for i in range(num1, num2)]
 
 
 class _init_history(_command_init):
@@ -123,69 +96,3 @@ class history_clean(_init_history):
     def main(self):
         super(self.__class__, self)._run()
         self._run()
-
-
-@command(history_cmds)
-class history_run(_init_history):
-    """Run previously executed command(s)
-    Use with:
-    .   1.  <order-id> : pick the <order-id>th command
-    .   2.  <order-id-1>-<order-id-2> : pick all commands ordered in the range
-    .       [<order-id-1> - <order-id-2>]
-    .   - Use negative integers to count from the end of the list, e.g.,:
-    .       -2 means : the command before the last one
-    .       -2-5 means : last 2 commands + the first 5
-    .       -5--2 mean
-    .   - to find order ids for commands try   /history show.
-    """
-
-    _cmd_tree = None
-
-    def __init__(self, arguments={}, auth_base=None, cmd_tree=None):
-        super(self.__class__, self).__init__(arguments, auth_base=auth_base)
-        self._cmd_tree = cmd_tree
-
-    @errors.generic.all
-    def _run_from_line(self, line):
-        terms = split_input(line)
-        cmd, args = self._cmd_tree.find_best_match(terms)
-        if cmd.is_command:
-            try:
-                instance = cmd.cmd_class(
-                    self.arguments, auth_base=getattr(self, 'auth_base', None))
-                instance.config = self.config
-                prs = ArgumentParseManager(
-                    cmd.path.split(), dict(instance.arguments))
-                prs.syntax = '%s %s' % (
-                    cmd.path.replace('_', ' '), cmd.cmd_class.syntax)
-                prs.parse(args)
-                exec_cmd(instance, prs.unparsed, prs.parser.print_help)
-            except (CLIError, ClientError) as err:
-                print_error_message(err, self._err)
-            except Exception as e:
-                self.error('Execution of [ %s ] failed\n\t%s' % (line, e))
-
-    @errors.generic.all
-    @errors.history._get_cmd_ids
-    def _get_cmd_ids(self, cmd_ids):
-        cmd_id_list = []
-        for cmd_str in cmd_ids:
-            cmd_id_list += _get_num_list(cmd_str)
-        return cmd_id_list
-
-    @errors.generic.all
-    def _run(self, *command_ids):
-        cmd_list = self._get_cmd_ids(command_ids)
-        for cmd_id in cmd_list:
-            r = self.history[cmd_id - 1 if cmd_id > 0 else cmd_id]
-            try:
-                self.writeln('< %s >' % r[:-1])
-            except (TypeError, KeyError):
-                continue
-            if self._cmd_tree:
-                r = r[len('kamaki '):-1] if r.startswith('kamaki ') else r[:-1]
-                self._run_from_line(r)
-
-    def main(self, *command_ids):
-        super(self.__class__, self)._run()
-        self._run(*command_ids)
