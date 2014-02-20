@@ -42,47 +42,42 @@ class History(object):
         self.token = token
         self.max_lines = max_lines
 
-    def __getitem__(self, cmd_id):
-        cmd_id = int(cmd_id)
-        if not cmd_id:
-            return None
-        with open(self.filepath) as f:
+    def __getitem__(self, cmd_ids):
+        with codecs.open(self.filepath, mode='r', encoding='utf-8') as f:
             try:
-                cmd_list = f.readlines()[:-1]  # exclude current command
-                return cmd_list[cmd_id - (1 if cmd_id > 0 else 0)]
+                cmd_list = f.readlines()
+                return cmd_list[cmd_ids]
             except IndexError:
                 return None
 
     @classmethod
     def _match(self, line, match_terms):
-        if match_terms is None:
-            return True
-        for term in match_terms.split():
-            if term not in line:
-                return False
+        if match_terms:
+            return all(term in line for term in match_terms.split())
         return True
 
     def get(self, match_terms=None, limit=0):
         limit = int(limit or 0)
-        with codecs.open(self.filepath, mode='r', encoding='utf-8') as f:
-            result = [u'%s.  \t%s' % (
-                i + 1, line) for i, line in enumerate(f.readlines())
-                if self._match(line, match_terms)]
-            return result[- limit:]
+        r = ['%s.\t%s' % (i + 1, line) for i, line in enumerate(self[:]) if (
+                self._match(line, match_terms))]
+        return r[- limit:]
 
     def add(self, line):
         line = line.replace(self.token, '...') if self.token else line
-        with open(self.filepath, 'a+') as f:
+        with codecs.open(self.filepath, mode='a+', encoding='utf-8') as f:
             f.write(line + '\n')
+            f.flush()
 
     def empty(self):
-        with open(self.filepath, 'w'):
-            pass
+        with open(self.filepath, 'w') as f:
+            f.flush()
 
     def clean(self):
-        """DEPRECATED in version 0.14"""
+        """DEPRECATED since version 0.14"""
         return self.empty()
 
     def retrieve(self, cmd_id):
-        """DEPRECATED in version 0.14"""
-        return self[cmd_id]
+        if not cmd_id:
+            return None
+        cmd_id = int(cmd_id)
+        return self[cmd_id - (1 if cmd_id > 0 else 0)]

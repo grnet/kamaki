@@ -75,14 +75,14 @@ class History(TestCase):
         self.assertEqual(history.get(), [])
 
         sample_history = (
-            'kamaki history show\n',
-            'kamaki file list\n',
-            'kamaki touch pithos:f1\n',
-            'kamaki file info pithos:f1\n')
+            u'kamaki history show\n',
+            u'kamaki file list\n',
+            u'kamaki touch pithos:f1\n',
+            u'kamaki file info pithos:f1\n')
         self.file.write(''.join(sample_history))
         self.file.flush()
 
-        expected = ['%s.  \t%s' % (
+        expected = [u'%s.\t%s' % (
             i + 1, event) for i, event in enumerate(sample_history)]
         self.assertEqual(history.get(), expected)
         self.assertEqual(history.get('kamaki'), expected)
@@ -119,22 +119,21 @@ class History(TestCase):
         sample_history = (
             'kamaki history show\n',
             'kamaki file list\n',
-            'kamaki touch pithos:f1\n',
-            'kamaki file info pithos:f1\n',
-            'current / last command is always excluded')
+            'kamaki file create /pithos/f1\n',
+            'kamaki file info /pithos/f1\n',
+            'last command is always excluded')
         self.file.write(''.join(sample_history))
         self.file.flush()
 
         history = self.HCLASS(self.file.name)
-        retrieve = history.__getitem__
-        self.assertRaises(ValueError, retrieve, 'must be number')
-        self.assertRaises(TypeError, retrieve, [1, 2, 3])
+        self.assertRaises(ValueError, history.retrieve, 'must be number')
+        self.assertRaises(TypeError, history.retrieve, [1, 2, 3])
 
-        for i in (0, len(sample_history), -len(sample_history)):
-            self.assertEqual(history[i], None)
+        for i in (0, len(sample_history) + 1, - len(sample_history) - 1):
+            self.assertEqual(history.retrieve(i), None)
         for i in range(1, len(sample_history)):
-            self.assertEqual(history[i], sample_history[i - 1])
-            self.assertEqual(history[- i], sample_history[- i - 1])
+            self.assertEqual(history.retrieve(i), sample_history[i - 1])
+            self.assertEqual(history.retrieve(- i), sample_history[- i])
 
 
 class LoggerMethods(TestCase):

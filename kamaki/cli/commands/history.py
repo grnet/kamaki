@@ -196,7 +196,7 @@ class history_run(_init_history):
     def _run(self, *command_ids):
         cmd_list = self._get_cmd_ids(command_ids)
         for cmd_id in cmd_list:
-            r = self.history[cmd_id]
+            r = self.history[cmd_id - 1 if cmd_id > 0 else cmd_id]
             try:
                 self.writeln('< %s >' % r[:-1])
             except (TypeError, KeyError):
