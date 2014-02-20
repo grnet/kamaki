@@ -215,6 +215,19 @@ class CycladesNetworkClient(NetworkClient):
         r = self.ports_post(json_data=dict(port=port), success=201)
         return r.json['port']
 
-    def create_floatingip(self, floating_network_id, floating_ip_address=''):
-        return super(CycladesNetworkClient, self).create_floatingip(
-            floating_network_id, floating_ip_address=floating_ip_address)
+    def create_floatingip(
+            self, floating_network_id=None, floating_ip_address=''):
+        """
+        :param floating_network_id: if not provided, it is assigned
+            automatically by the service
+        :param floating_ip_address: only if the IP is availabel in network
+            pool
+        """
+        floatingip = {}
+        if floating_network_id:
+            floatingip['floating_network_id'] = floating_network_id
+        if floating_ip_address:
+            floatingip['floating_ip_address'] = floating_ip_address
+        r = self.floatingips_post(
+            json_data=dict(floatingip=floatingip), success=200)
+        return r.json['floatingip']

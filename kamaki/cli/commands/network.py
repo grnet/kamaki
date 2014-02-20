@@ -609,20 +609,18 @@ class ip_create(_init_network, _optional_json):
             'The network to preserve the IP on', '--network-id'),
         ip_address=ValueArgument('Allocate an IP address', '--address')
     )
-    required = ('network_id', )
 
     @errors.generic.all
     @errors.cyclades.connection
-    @errors.cyclades.network_id
-    def _run(self, network_id):
+    def _run(self):
         self._print(
             self.client.create_floatingip(
-                network_id, floating_ip_address=self['ip_address']),
+                self['network_id'], floating_ip_address=self['ip_address']),
             self.print_dict)
 
     def main(self):
         super(self.__class__, self)._run()
-        self._run(network_id=self['network_id'])
+        self._run()
 
 
 @command(ip_cmds)
