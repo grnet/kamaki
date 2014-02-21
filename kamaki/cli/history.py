@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright 2012-2013 GRNET S.A. All rights reserved.
+# Copyright 2012-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -40,14 +40,36 @@ class History(object):
     def __init__(self, filepath, token=None):
         self.filepath = filepath
         self.token = token
+        self._limit = 0
+        self.counter = 0
 
     def __getitem__(self, cmd_ids):
         with codecs.open(self.filepath, mode='r', encoding='utf-8') as f:
             try:
-                cmd_list = f.readlines()
+                cmd_list = f.readlines()[1:]
                 return cmd_list[cmd_ids]
             except IndexError:
                 return None
+
+    @property
+    def limit(self):
+        return self._limit
+
+    @limit.setter
+    def limit(self, new_limit):
+        new_limit = int(new_limit)
+        if new_limit < 0:
+            raise ValueError('Invalid history limit (%s)' % new_limit)
+        old_limit, self._limit = self._limit, new_limit
+        if self._limit and self._limit < old_limit:
+            with codecs.open(self.filepath, mode='r', encoding='utf-8') as f:
+                lines = f.readlines()
+                old_len = len(lines[1:])
+                if old_len > new_limit:
+                    self.counter += old_len - new_limit
+                    f.write('%s\n' % self.counter)
+                    f.write(''.join(lines[(self.counter + 1):]))
+                    f.flush()
 
     @classmethod
     def _match(self, line, match_terms):
@@ -67,10 +89,13 @@ class History(object):
         with codecs.open(self.filepath, mode='a+', encoding='utf-8') as f:
             f.write(line + '\n')
             f.flush()
+        self.limit = self.limit
 
     def empty(self):
         with open(self.filepath, 'w') as f:
+            f.write('0\n')
             f.flush()
+        self.counter = 0
 
     def clean(self):
         """DEPRECATED since version 0.14"""

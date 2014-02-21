@@ -37,15 +37,6 @@ from tempfile import NamedTemporaryFile
 from mock import patch, call
 from itertools import product
 
-from kamaki.cli.command_tree.test import Command, CommandTree
-from kamaki.cli.config.test import Config
-from kamaki.cli.argument.test import (
-    Argument, ConfigArgument, RuntimeConfigArgument, FlagArgument,
-    ValueArgument, IntArgument, DateArgument, VersionArgument,
-    RepeatableArgument, KeyValueArgument, ProgressBarArgument,
-    ArgumentParseManager)
-from kamaki.cli.utils.test import UtilsMethods
-
 
 class History(TestCase):
 
@@ -88,7 +79,7 @@ class History(TestCase):
         history = self.HCLASS(self.file.name)
         history.empty()
         self.file.seek(0)
-        self.assertEqual(self.file.read(), '')
+        self.assertEqual(self.file.read(), '0\n')
 
     def test_retrieve(self):
         sample_history = (
@@ -107,8 +98,39 @@ class History(TestCase):
         for i in (0, len(sample_history) + 1, - len(sample_history) - 1):
             self.assertEqual(history.retrieve(i), None)
         for i in range(1, len(sample_history)):
-            self.assertEqual(history.retrieve(i), sample_history[i - 1])
+            self.assertEqual(history.retrieve(i), sample_history[i])
             self.assertEqual(history.retrieve(- i), sample_history[- i])
+
+    def test_limit(self):
+        sample_history = (
+            'kamaki history show\n',
+            'kamaki file list\n',
+            'kamaki file create /pithos/f1\n',
+            'kamaki file info /pithos/f1\n',
+            'last command is always excluded')
+        sample_len = len(sample_history)
+        self.file.write(''.join(sample_history))
+        self.file.flush()
+        history = self.HCLASS(self.file.name)
+
+        for value, exp_e in (
+                    (-2, ValueError),
+                    ('non int', ValueError),
+                    (None, TypeError)):
+            try:
+                history.limit = value
+            except Exception as e:
+                self.assertTrue(isinstance(e, exp_e))
+
+        history.limit = 10
+        self.assertEqual(history.limit, 10)
+        self.file.seek(0)
+        self.assertEqual(len(self.file.readlines()), sample_len)
+
+        history.limit = sample_len - 1
+        self.assertEqual(history.limit, sample_len - 1)
+        self.file.seek(0)
+        self.assertEqual(len(self.file.readlines()), sample_len)
 
 
 class LoggerMethods(TestCase):
