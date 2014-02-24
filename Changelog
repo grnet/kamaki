@@ -14,4 +14,6 @@ Features:
 - Merge ClientError and AstakosClientException --> AstakosClientError [#5002]
 - Restore kamaki file publish/unpublish
 - Accept username or UUID in kamaki file --account/--to-account [#4810]
+- History has now a buffer limit [#4479]
+- Slice notation in history show
 
