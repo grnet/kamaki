@@ -38,6 +38,8 @@ from kamaki.cli.utils import (
 from kamaki.cli.argument import FlagArgument, ValueArgument
 from kamaki.cli.errors import CLIInvalidArgument
 from sys import stdin, stdout, stderr
+import codecs
+
 
 log = get_logger(__name__)
 
@@ -86,6 +88,9 @@ class _command_init(object):
             _in=None, _out=None, _err=None):
         self._in, self._out, self._err = (
             _in or stdin, _out or stdout, _err or stderr)
+        self._in = codecs.getreader('utf-8')(_in or stdin)
+        self._out = codecs.getreader('utf-8')(_out or stdout)
+        self._err = codecs.getreader('utf-8')(_err or stderr)
         self.required = getattr(self, 'required', None)
         if hasattr(self, 'arguments'):
             arguments.update(self.arguments)
