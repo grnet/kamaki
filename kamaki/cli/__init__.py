@@ -133,8 +133,8 @@ def command(cmd_tree, prefix='', descedants_depth=1):
 
         name_terms = cls_name.split('_')
         if not _update_best_match(name_terms, prefix):
-            if _debug:
-                kloger.warning('%s failed to update_best_match' % cls_name)
+            # if _debug:
+            #     kloger.warning('%s failed to update_best_match' % cls_name)
             return None
 
         global _best_match
