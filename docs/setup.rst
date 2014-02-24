@@ -475,6 +475,14 @@ history and log files, log detail options and pithos-specific options.
     kamaki is executed in a context where this file is accessible for reading
     and writing. Kamaki automatically creates the file if it doesn't exist
 
+* global.history_limit <positive integer)
+    the maximum number of lines stored in history. Default is 0, which is
+    stands for "unlimted". If there is a finite limit, though, kamaki will
+    make sure that no more than `history_limit` lines are stored, by
+    deleting as few of the oldest lines possible. The line number is
+    preserved, though, so that one can refer to that line with the same
+    number for as long as it exist in the history file.
+
 Additional features
 ^^^^^^^^^^^^^^^^^^^
 
