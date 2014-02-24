@@ -78,6 +78,7 @@ DEFAULTS = {
         'log_data': 'off',
         'log_pid': 'off',
         'history_file': HISTORY_PATH,
+        'history_limit': 0,
         'user_cli': 'astakos',
         'quota_cli': 'astakos',
         'resource_cli': 'astakos',

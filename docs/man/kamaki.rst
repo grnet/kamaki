@@ -302,8 +302,6 @@ Command user history, as stored in ~/.kamaki.history
 
 * show      show intersession history
 * clean     clean up history
-* run       run/show previously executed command(s)
-
 
 livetest (hidden)
 *****************

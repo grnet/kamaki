@@ -297,7 +297,6 @@ history, use the kamaki help system:
     Options:
      - - - -
     clean:  Clean up history (permanent)
-    run  :  Run previously executed command(s)
     show :  Show intersession command history
 
 
@@ -659,60 +658,6 @@ history file (configured as `history_file` in settings, see
 `setup section <setup.html>`_ for details). Commands executed in one-command
 mode are mixed with the ones run in kamaki shell (also see
 :ref:`using-history-ref` section on this guide).
-
-Scripting
-^^^^^^^^^
-
-The history-run feature allows the sequential run of previous command
-executions in kamaki shell.
-
-The following sequence copies and downloads a file from *mycontainer1* ,
-uploads it to *mycontainer2* , then undo the proccess and repeats it with
-history-run
-
-.. code-block:: console
-    :emphasize-lines: 1,12,19,32
-
-    * Download mycontainer1:myfile and upload it to mycontainer2:myfile *
-    [kamaki]: file
-    [file]: copy /mycontainer1/somefile /mycontainer1/myfile
-    [file]: download /mycontainer1/myfile mylocalfile
-    ...
-    Download completed
-    [file]: upload mylocalfile /mycontainer2/myfile -f
-    ...
-    Upload completed
-
-    * undo the process *
-    [file]: !rm mylocalfile
-    [file]: delete /mycontainer1/myfile
-    [file]: delete /mycontainer2/myfile
-
-    * check history entries *
-    [file]: exit
-    [kamaki]: history
-    [history]: show
-    1.  file
-    2.  file copy /mycontainer1/somefile /mycontainer1/myfile
-    3.  file download /mycontainer1/myfile mylocalfile
-    4.  file upload mylocalfile /mycontainer2/myfile -f
-    5.  file delete /mycontainer1/myfile
-    6.  file delete /mycontainer2/myfile
-    7.  history
-    8.  history show
-
-    *repeat the process *
-    [history]: run 2-4
-    <file copy /mycontainer1/somefile /mycontainer1/myfile>
-    <file download /mycontainer1/myfile mylocalfile>
-    Download completed
-    <file upload mylocalfile /mycontainer2/myfile>
-    Upload completed
-
-The suggested best practice for scripting is python scripts that import the
-`kamaki.clients` library. Another option is host shell scripting (e.g., bash)
-with kamaki one-command. Still, the history-run functionality might prove handy
-in many occasions.
 
 OS Shell integration
 ^^^^^^^^^^^^^^^^^^^^
