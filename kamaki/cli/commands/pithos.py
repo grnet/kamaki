@@ -378,11 +378,6 @@ class file_modify(_pithos_container):
 
     def main(self, path_or_url):
         super(self.__class__, self)._run(path_or_url)
-        if self['publish'] and self['unpublish']:
-            raise CLIInvalidArgument(
-                'Arguments %s and %s cannot be used together' % (
-                    self.arguments['publish'].lvalue,
-                    self.arguments['publish'].lvalue))
         if self['no_permissions'] and (
                 self['uuid_for_read_permission'] or self[
                     'uuid_for_write_permission']):

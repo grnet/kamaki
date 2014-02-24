@@ -161,6 +161,12 @@ class RequestManager(Logged):
         else:
             sendlog.info('data size: 0%s' % plog)
 
+    def _encode_headers(self):
+        headers = self.headers
+        for k, v in self.headers.items():
+            headers[k] = quote(v)
+        self.headers = headers
+
     def perform(self, conn):
         """
         :param conn: (httplib connection object)
@@ -168,6 +174,7 @@ class RequestManager(Logged):
         :returns: (HTTPResponse)
         """
         self.dump_log()
+        self._encode_headers()
         conn.request(
             method=str(self.method.upper()),
             url=str(self.path),
