@@ -34,6 +34,10 @@
 # or implied, of GRNET S.A.
 
 import codecs
+from logging import getLogger
+
+
+log = getLogger(__name__)
 
 
 class History(object):
@@ -46,7 +50,8 @@ class History(object):
     def __getitem__(self, cmd_ids):
         with codecs.open(self.filepath, mode='r', encoding='utf-8') as f:
             try:
-                cmd_list = f.readlines()[1:]
+                lines = f.readlines()
+                self.counter, cmd_list = int(lines[0]), lines[1:]
                 return cmd_list[cmd_ids]
             except IndexError:
                 return None
@@ -61,14 +66,17 @@ class History(object):
         if new_limit < 0:
             raise ValueError('Invalid history limit (%s)' % new_limit)
         old_limit, self._limit = self._limit, new_limit
-        if self._limit and self._limit < old_limit:
+        if self._limit and ((not old_limit) or (self._limit <= old_limit)):
             with codecs.open(self.filepath, mode='r', encoding='utf-8') as f:
                 lines = f.readlines()
+                self.counter = int(lines[0])
                 old_len = len(lines[1:])
-                if old_len > new_limit:
-                    self.counter += old_len - new_limit
+            if old_len > new_limit:
+                self.counter += old_len - new_limit
+                with codecs.open(
+                        self.filepath, mode='w', encoding='utf-8') as f:
                     f.write('%s\n' % self.counter)
-                    f.write(''.join(lines[(self.counter + 1):]))
+                    f.write(''.join(lines[old_len - new_limit + 1:]))
                     f.flush()
 
     @classmethod
@@ -85,11 +93,15 @@ class History(object):
         return r[- limit:]
 
     def add(self, line):
+        line = '%s' % line or ''
         line = line.replace(self.token, '...') if self.token else line
-        with codecs.open(self.filepath, mode='a+', encoding='utf-8') as f:
-            f.write(line + '\n')
-            f.flush()
-        self.limit = self.limit
+        try:
+            with codecs.open(self.filepath, mode='a+', encoding='utf-8') as f:
+                f.write(line + '\n')
+                f.flush()
+            self.limit = self.limit
+        except Exception as e:
+            log.debug('Add history failed for "%s" (%s)' % (line, e))
 
     def empty(self):
         with open(self.filepath, 'w') as f:

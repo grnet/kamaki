@@ -49,6 +49,7 @@ class _init_history(_command_init):
     @errors.history.init
     def _run(self):
         self.history = History(self.config.get('global', 'history_file'))
+        self.history.limit = self.config.get('global', 'history_limit')
 
     def main(self):
         self._run()

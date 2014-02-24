@@ -557,14 +557,13 @@ def run_one_cmd(exe, parser):
     cloud = _init_session(parser.arguments, is_non_API(parser))
     if parser.unparsed:
         global _history
+        cnf = parser.arguments['config']
         try:
-            token = parser.arguments['config'].get_cloud(
-                cloud, 'token').split()[0]
+            token = cnf.get_cloud(cloud, 'token').split()[0]
         except Exception:
             token = None
-        _history = History(
-            parser.arguments['config'].get('global', 'history_file'),
-            token=token)
+        _history = History(cnf.get('global', 'history_file'), token=token)
+        _history.limit = cnf.get('global', 'history_limit')
         _history.add(' '.join([exe] + argv[1:]))
         from kamaki.cli import one_command
         one_command.run(cloud, parser, _help)
