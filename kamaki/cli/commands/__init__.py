@@ -39,9 +39,27 @@ from kamaki.cli.argument import FlagArgument, ValueArgument
 from kamaki.cli.errors import CLIInvalidArgument
 from sys import stdin, stdout, stderr
 import codecs
+import locale
 
 
 log = get_logger(__name__)
+pref_enc = locale.getpreferredencoding()
+
+
+def _encode_nicely(somestr, encoding=pref_enc, replacement='?'):
+    """Encode somestr as 'encoding', but don't raise errors (replace with ?)
+        :param encoding: (str) encode every character in this encoding
+        :param replacement: (char) replace each char raising encode-decode errs
+    """
+    newstr = ''
+    for c in somestr:
+        try:
+            newc = c.encode(encoding)
+            newstr = '%s%s' % (newstr, newc)
+        except (UnicodeDecodeError, UnicodeEncodeError) as e:
+            log.debug('Encoding(%s): %s' % (encoding, e))
+            newstr = '%s%s' % (newstr, replacement)
+    return newstr
 
 
 def DontRaiseKeyError(func):
@@ -89,8 +107,8 @@ class _command_init(object):
         self._in, self._out, self._err = (
             _in or stdin, _out or stdout, _err or stderr)
         self._in = codecs.getreader('utf-8')(_in or stdin)
-        self._out = codecs.getreader('utf-8')(_out or stdout)
-        self._err = codecs.getreader('utf-8')(_err or stderr)
+        self._out = codecs.getwriter(pref_enc)(_out or stdout)
+        self._err = codecs.getwriter(pref_enc)(_err or stderr)
         self.required = getattr(self, 'required', None)
         if hasattr(self, 'arguments'):
             arguments.update(self.arguments)
