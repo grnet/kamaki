@@ -146,7 +146,7 @@ The full process is detailed in the following:
 Requirements
 ^^^^^^^^^^^^
 
-* Python 2.7 (`Official versions <http://www.python.org/getit>`_)
+* Python 2.7 (`Official versions <http://www.python.org/download>`_)
 
 * Setuptools (`Official versions and workarounds <http://pypi.python.org/pypi/setuptools>`_)
 
@@ -157,7 +157,7 @@ Install Python
 ^^^^^^^^^^^^^^
 
 Download and run the Windows installer from
-`here <http://www.python.org/getit>`_
+`here <http://www.python.org/download>`_
 
 Users should pick the installer that fits their windows version and machine
 architecture.
@@ -192,9 +192,9 @@ installer doesn't currently work on 64bit machines.
     installer
 
 * Users with 64-bit platforms should download the
-    `ez_setup.py <http://peak.telecommunity.com/dist/ez_setup.py>`_ script and
-    install it from a command shell. In the following example, the script was
-    downloaded at C:\\Downloads::
+    `ez_setup.py <https://bitbucket.org/pypa/setuptools/raw/bootstrap/ez_setup.py>`_
+    script and install it from a command shell. In the following example, the
+    script was downloaded at C:\\Downloads::
 
         C:\> cd Downloads
         C:\Downloads\> python ez_setup.py
