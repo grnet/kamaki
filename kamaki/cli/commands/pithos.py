@@ -804,6 +804,7 @@ class file_overwrite(_pithos_container, _optional_output_cmd):
             default=False),
         start_position=IntArgument('File position in bytes', '--from'),
         end_position=IntArgument('File position in bytes', '--to'),
+        object_version=ValueArgument('File to overwrite', '--object-version'),
     )
     required = ('start_position', 'end_position')
 
@@ -823,6 +824,7 @@ class file_overwrite(_pithos_container, _optional_output_cmd):
                     start=start,
                     end=end,
                     source_file=f,
+                    source_version=self['object_version'],
                     upload_cb=upload_cb))
         finally:
             self._safe_progress_bar_finish(progress_bar)

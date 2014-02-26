@@ -1382,7 +1382,7 @@ class PithosClient(PithosRestClient):
 
     def overwrite_object(
             self, obj, start, end, source_file,
-            upload_cb=None):
+            source_version=None, upload_cb=None):
         """Overwrite a part of an object from local source file
         ATTENTION: content_type must always be application/octet-stream
 
@@ -1398,7 +1398,7 @@ class PithosClient(PithosRestClient):
         """
 
         self._assert_container()
-        r = self.get_object_info(obj)
+        r = self.get_object_info(obj, version=source_version)
         rf_size = int(r['content-length'])
         start, end = int(start), int(end)
         assert rf_size >= start, 'Range start %s exceeds file size %s' % (
@@ -1424,6 +1424,7 @@ class PithosClient(PithosRestClient):
                 content_range='bytes %s-%s/*' % (
                     start + offset,
                     start + offset + len(block) - 1),
+                source_version=source_version,
                 data=block)
             headers.append(dict(r.headers))
             offset += len(block)
