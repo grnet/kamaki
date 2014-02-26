@@ -35,11 +35,15 @@ from sys import stdout, stdin
 from re import compile as regex_compile
 from os import walk, path
 from json import dumps
+from kamaki.cli.logger import get_logger
+from locale import getpreferredencoding
 
 from kamaki.cli.errors import raiseCLIError
 
 
 INDENT_TAB = 4
+log = get_logger(__name__)
+pref_enc = getpreferredencoding()
 
 
 suggest = dict(ansicolors=dict(
@@ -54,6 +58,45 @@ except ImportError:
         return val
     red = yellow = magenta = bold = dummy
     suggest['ansicolors']['active'] = True
+
+
+def _encode_nicely(somestr, encoding, replacement='?'):
+    """Encode somestr as 'encoding', but don't raise errors (replace with ?)
+        This method is slow. Us it only for grace.
+        :param encoding: (str) encode every character in this encoding
+        :param replacement: (char) replace each char raising encode-decode errs
+    """
+    newstr, err_counter = '', 0
+    for c in somestr:
+        try:
+            newc = c.encode(encoding)
+            newstr = '%s%s' % (newstr, newc)
+        except UnicodeError:
+            newstr = '%s%s' % (newstr, replacement)
+            err_counter += 1
+    if err_counter:
+        log.debug('\t%s character%s failed to be encoded as %s' % (
+            err_counter, 's' if err_counter > 1 else '', encoding))
+    return newstr
+
+
+def DontRaiseUnicodeError(foo):
+    def wrap(self, *args, **kwargs):
+        try:
+            s = kwargs.pop('s')
+        except KeyError:
+            try:
+                s = args[0]
+            except IndexError:
+                return foo(self, *args, **kwargs)
+            args = args[1:]
+        try:
+            s = s.encode(pref_enc)
+        except UnicodeError as ue:
+            log.debug('Encoding(%s): %s' % (pref_enc, ue))
+            s = _encode_nicely(s, pref_enc, replacement='?')
+        return foo(self, s, *args, **kwargs)
+    return wrap
 
 
 def suggest_missing(miss=None, exclude=[]):

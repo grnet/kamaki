@@ -241,7 +241,7 @@ class ResponseManager(Logged):
                         if k.lower in ('x-auth-token', ) and (
                                 not self.LOG_TOKEN):
                             self._token, v = v, '...'
-                        v = unquote(v)
+                        v = unquote(v).decode('utf-8')
                         self._headers[k] = v
                         recvlog.info('  %s: %s%s' % (k, v, plog))
                     self._content = r.read()

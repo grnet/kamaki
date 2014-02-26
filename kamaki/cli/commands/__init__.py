@@ -34,32 +34,14 @@
 from kamaki.cli.logger import get_logger
 from kamaki.cli.utils import (
     print_list, print_dict, print_json, print_items, ask_user,
-    filter_dicts_by_dict)
+    filter_dicts_by_dict, DontRaiseUnicodeError, pref_enc)
 from kamaki.cli.argument import FlagArgument, ValueArgument
 from kamaki.cli.errors import CLIInvalidArgument
 from sys import stdin, stdout, stderr
 import codecs
-import locale
 
 
 log = get_logger(__name__)
-pref_enc = locale.getpreferredencoding()
-
-
-def _encode_nicely(somestr, encoding=pref_enc, replacement='?'):
-    """Encode somestr as 'encoding', but don't raise errors (replace with ?)
-        :param encoding: (str) encode every character in this encoding
-        :param replacement: (char) replace each char raising encode-decode errs
-    """
-    newstr = ''
-    for c in somestr:
-        try:
-            newc = c.encode(encoding)
-            newstr = '%s%s' % (newstr, newc)
-        except (UnicodeDecodeError, UnicodeEncodeError) as e:
-            log.debug('Encoding(%s): %s' % (encoding, e))
-            newstr = '%s%s' % (newstr, replacement)
-    return newstr
 
 
 def DontRaiseKeyError(func):
@@ -132,13 +114,16 @@ class _command_init(object):
         self.auth_base = auth_base or getattr(self, 'auth_base', None)
         self.cloud = cloud or getattr(self, 'cloud', None)
 
+    @DontRaiseUnicodeError
     def write(self, s):
         self._out.write('%s' % s)
         self._out.flush()
 
+    @DontRaiseUnicodeError
     def writeln(self, s=''):
         self.write('%s\n' % s)
 
+    @DontRaiseUnicodeError
     def error(self, s=''):
         self._err.write('%s\n' % s)
         self._err.flush()
