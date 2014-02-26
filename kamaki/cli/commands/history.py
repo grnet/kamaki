@@ -75,7 +75,7 @@ class history_show(_init_history):
         if not isinstance(cmd_slice, slice):
             lines = [lines, ]
         if self['match']:
-            lines = [l for l in lines if self._match(l, self['match'])]
+            lines = [l for l in lines if self.history._match(l, self['match'])]
         self.print_items([l[:-1] for l in lines])
 
     def main(self, cmd_numbers=''):

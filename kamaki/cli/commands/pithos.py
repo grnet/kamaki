@@ -378,11 +378,6 @@ class file_modify(_pithos_container):
 
     def main(self, path_or_url):
         super(self.__class__, self)._run(path_or_url)
-        if self['publish'] and self['unpublish']:
-            raise CLIInvalidArgument(
-                'Arguments %s and %s cannot be used together' % (
-                    self.arguments['publish'].lvalue,
-                    self.arguments['publish'].lvalue))
         if self['no_permissions'] and (
                 self['uuid_for_read_permission'] or self[
                     'uuid_for_write_permission']):
@@ -809,6 +804,7 @@ class file_overwrite(_pithos_container, _optional_output_cmd):
             default=False),
         start_position=IntArgument('File position in bytes', '--from'),
         end_position=IntArgument('File position in bytes', '--to'),
+        object_version=ValueArgument('File to overwrite', '--object-version'),
     )
     required = ('start_position', 'end_position')
 
@@ -828,6 +824,7 @@ class file_overwrite(_pithos_container, _optional_output_cmd):
                     start=start,
                     end=end,
                     source_file=f,
+                    source_version=self['object_version'],
                     upload_cb=upload_cb))
         finally:
             self._safe_progress_bar_finish(progress_bar)

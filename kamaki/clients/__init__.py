@@ -161,6 +161,12 @@ class RequestManager(Logged):
         else:
             sendlog.info('data size: 0%s' % plog)
 
+    def _encode_headers(self):
+        headers = self.headers
+        for k, v in self.headers.items():
+            headers[k] = quote(v)
+        self.headers = headers
+
     def perform(self, conn):
         """
         :param conn: (httplib connection object)
@@ -168,6 +174,7 @@ class RequestManager(Logged):
         :returns: (HTTPResponse)
         """
         self.dump_log()
+        self._encode_headers()
         conn.request(
             method=str(self.method.upper()),
             url=str(self.path),
@@ -234,7 +241,7 @@ class ResponseManager(Logged):
                         if k.lower in ('x-auth-token', ) and (
                                 not self.LOG_TOKEN):
                             self._token, v = v, '...'
-                        v = unquote(v)
+                        v = unquote(v).decode('utf-8')
                         self._headers[k] = v
                         recvlog.info('  %s: %s%s' % (k, v, plog))
                     self._content = r.read()
