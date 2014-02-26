@@ -31,7 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from sys import stdout, stdin
+from sys import stdout, stdin, stderr
 from re import compile as regex_compile
 from os import walk, path
 from json import dumps
@@ -99,6 +99,16 @@ def DontRaiseUnicodeError(foo):
     return wrap
 
 
+def encode_for_console(s, encoding=pref_enc, replacement='?'):
+    if encoding.lower() == 'utf-8':
+        return s
+    try:
+        return s.encode(encoding)
+    except UnicodeError as ue:
+        log.debug('Encoding(%s): %s' % (encoding, ue))
+        return _encode_nicely(s, encoding, replacement)
+
+
 def suggest_missing(miss=None, exclude=[]):
     global suggest
     sgs = dict(suggest)
@@ -108,13 +118,15 @@ def suggest_missing(miss=None, exclude=[]):
         except KeyError:
             pass
     kamaki_docs = 'http://www.synnefo.org/docs/kamaki/latest'
+
     for k, v in (miss, sgs[miss]) if miss else sgs.items():
-        if v['active'] and stdout.isatty():
-            print('Suggestion: for better user experience install %s' % k)
-            print('\t%s' % v['description'])
-            print('\tIt is easy, here are the instructions:')
-            print('\t%s/installation.html%s' % (kamaki_docs, v['url']))
-            print('')
+        if v['active'] and stderr.isatty():
+            stderr.write('Suggestion: you may like to install %s\n' % k)
+            stderr.write('\t%s\n' % encode_for_console(v['description']))
+            stderr.write('\tIt is easy, here are the instructions:\n')
+            stderr.write('\t%s/installation.html%s\n' % (
+                kamaki_docs, v['url']))
+            stderr.flush()
 
 
 def guess_mime_type(
@@ -127,7 +139,8 @@ def guess_mime_type(
         ctype, cenc = guess_type(filename)
         return ctype or default_content_type, cenc or default_encoding
     except ImportError:
-        print 'WARNING: Cannot import mimetypes, using defaults'
+        stderr.write('WARNING: Cannot import mimetypes, using defaults\n')
+        stderr.flush()
         return (default_content_type, default_encoding)
 
 
@@ -153,14 +166,15 @@ def pretty_keys(d, delim='_', recursive=False):
     return new_d
 
 
-def print_json(data, out=stdout):
+def print_json(data, out=stdout, encoding=pref_enc):
     """Print a list or dict as json in console
 
     :param data: json-dumpable data
 
     :param out: Input/Output stream to dump values into
     """
-    out.write(unicode(dumps(data, indent=INDENT_TAB) + '\n'))
+    s = encode_for_console(dumps(data, indent=INDENT_TAB), encoding)
+    out.write(s + '\n')
     out.flush()
 
 
@@ -199,17 +213,17 @@ def print_dict(
         print_str += '%s.' % (i + 1) if with_enumeration else ''
         print_str += '%s:' % k
         if isinstance(v, dict):
-            out.write(print_str + '\n')
+            out.write(encode_for_console(print_str) + '\n')
             print_dict(
                 v, exclude, indent + INDENT_TAB,
                 recursive_enumeration, recursive_enumeration, out)
         elif isinstance(v, list) or isinstance(v, tuple):
-            out.write(print_str + '\n')
+            out.write(encode_for_console(print_str) + '\n')
             print_list(
                 v, exclude, indent + INDENT_TAB,
                 recursive_enumeration, recursive_enumeration, out)
         else:
-            out.write('%s %s\n' % (print_str, v))
+            out.write(encode_for_console('%s %s\n' % (print_str, v)))
         out.flush()
 
 
@@ -246,7 +260,7 @@ def print_list(
         print_str += '%s.' % (i + 1) if with_enumeration else ''
         if isinstance(item, dict):
             if with_enumeration:
-                out.write(print_str + '\n')
+                out.write(encode_for_console(print_str) + '\n')
             elif i and i < len(l):
                 out.write('\n')
             print_dict(
@@ -255,7 +269,7 @@ def print_list(
                 recursive_enumeration, recursive_enumeration, out)
         elif isinstance(item, list) or isinstance(item, tuple):
             if with_enumeration:
-                out.write(print_str + '\n')
+                out.write(encode_for_console(print_str) + '\n')
             elif i and i < len(l):
                 out.write('\n')
             print_list(
@@ -265,7 +279,7 @@ def print_list(
             item = ('%s' % item).strip()
             if item in exclude:
                 continue
-            out.write('%s%s\n' % (print_str, item))
+            out.write(encode_for_console('%s%s\n' % (print_str, item)))
         out.flush()
     out.flush()
 
@@ -290,24 +304,25 @@ def print_items(
         return
     if not (isinstance(items, dict) or isinstance(items, list) or isinstance(
                 items, tuple)):
-        out.write('%s\n' % items)
+        out.write(encode_for_console('%s\n' % items))
         out.flush()
         return
 
     for i, item in enumerate(items):
         if with_enumeration:
-            out.write('%s. ' % (i + 1))
+            out.write(encode_for_console('%s. ' % (i + 1)))
         if isinstance(item, dict):
             item = dict(item)
             title = sorted(set(title).intersection(item))
             pick = item.get if with_redundancy else item.pop
             header = ' '.join('%s' % pick(key) for key in title)
-            out.write((unicode(bold(header) if header else '') + '\n'))
+            out.write(encode_for_console(
+                (unicode(bold(header) if header else '') + '\n')))
             print_dict(item, indent=INDENT_TAB, out=out)
         elif isinstance(item, list) or isinstance(item, tuple):
             print_list(item, indent=INDENT_TAB, out=out)
         else:
-            out.write(' %s\n' % item)
+            out.write(encode_for_console(' %s\n' % item))
         out.flush()
     out.flush()
 
@@ -432,7 +447,7 @@ def ask_user(msg, true_resp=('y', ), out=stdout, user_in=stdin):
     """
     yep = ', '.join(true_resp)
     nope = '<not %s>' % yep if 'n' in true_resp or 'N' in true_resp else 'N'
-    out.write('%s [%s/%s]: ' % (msg, yep, nope))
+    out.write(encode_for_console('%s [%s/%s]: ' % (msg, yep, nope)))
     out.flush()
     user_response = user_in.readline()
     return user_response[0].lower() in [s.lower() for s in true_resp]

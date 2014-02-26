@@ -426,8 +426,7 @@ class PithosClient(PithosRestClient):
             blocksize, blockhash, size, nblocks) = self._get_file_block_info(
                 f, size, container_info_cache)
         (hashes, hmap, offset) = ([], {}, 0)
-        if not content_type:
-            content_type = 'application/octet-stream'
+        content_type = content_type or 'application/octet-stream'
 
         self._calculate_blocks_for_upload(
             *block_info,
