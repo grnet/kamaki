@@ -41,6 +41,8 @@ log = getLogger(__name__)
 
 
 class History(object):
+    ignore_commands = ['config set', ]
+
     def __init__(self, filepath, token=None):
         self.filepath = filepath
         self.token = token
@@ -94,6 +96,12 @@ class History(object):
 
     def add(self, line):
         line = '%s' % line or ''
+        bline = [w.lower() for w in line.split() if not w.startswith('-')]
+        for cmd in self.ignore_commands:
+            cmds = [w.lower() for w in cmd.split()]
+            if cmds == bline[1:len(cmds) + 1]:
+                log.debug('History ignored a command of type "%s"' % cmd)
+                return
         line = line.replace(self.token, '...') if self.token else line
         try:
             with codecs.open(self.filepath, mode='a+', encoding='utf-8') as f:
