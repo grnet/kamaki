@@ -88,7 +88,7 @@ class _command_init(object):
             _in=None, _out=None, _err=None):
         self._in, self._out, self._err = (
             _in or stdin, _out or stdout, _err or stderr)
-        self._in = codecs.getreader('utf-8')(_in or stdin)
+        self._in = codecs.getreader(pref_enc)(_in or stdin)
         self._out = codecs.getwriter(pref_enc)(_out or stdout)
         self._err = codecs.getwriter(pref_enc)(_err or stderr)
         self.required = getattr(self, 'required', None)
