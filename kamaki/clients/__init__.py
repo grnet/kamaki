@@ -173,8 +173,8 @@ class RequestManager(Logged):
 
         :returns: (HTTPResponse)
         """
-        self.dump_log()
         self._encode_headers()
+        self.dump_log()
         conn.request(
             method=str(self.method.upper()),
             url=str(self.path),
