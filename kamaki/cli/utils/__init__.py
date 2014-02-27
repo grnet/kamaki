@@ -48,7 +48,7 @@ pref_enc = getpreferredencoding()
 
 suggest = dict(ansicolors=dict(
         active=False,
-        url='#install-ansicolors-progress',
+        url='#install-ansicolors',
         description='Add colors to console responses'))
 
 try:
@@ -173,8 +173,8 @@ def print_json(data, out=stdout, encoding=pref_enc):
 
     :param out: Input/Output stream to dump values into
     """
-    s = encode_for_console(dumps(data, indent=INDENT_TAB), encoding)
-    out.write(s + '\n')
+    out.write(dumps(data, indent=INDENT_TAB))
+    out.write('\n')
     out.flush()
 
 
@@ -213,17 +213,17 @@ def print_dict(
         print_str += '%s.' % (i + 1) if with_enumeration else ''
         print_str += '%s:' % k
         if isinstance(v, dict):
-            out.write(encode_for_console(print_str) + '\n')
+            out.write(print_str + '\n')
             print_dict(
                 v, exclude, indent + INDENT_TAB,
                 recursive_enumeration, recursive_enumeration, out)
         elif isinstance(v, list) or isinstance(v, tuple):
-            out.write(encode_for_console(print_str) + '\n')
+            out.write(print_str + '\n')
             print_list(
                 v, exclude, indent + INDENT_TAB,
                 recursive_enumeration, recursive_enumeration, out)
         else:
-            out.write(encode_for_console('%s %s\n' % (print_str, v)))
+            out.write('%s %s\n' % (print_str, v))
         out.flush()
 
 
@@ -260,7 +260,7 @@ def print_list(
         print_str += '%s.' % (i + 1) if with_enumeration else ''
         if isinstance(item, dict):
             if with_enumeration:
-                out.write(encode_for_console(print_str) + '\n')
+                out.write(print_str + '\n')
             elif i and i < len(l):
                 out.write('\n')
             print_dict(
@@ -269,7 +269,7 @@ def print_list(
                 recursive_enumeration, recursive_enumeration, out)
         elif isinstance(item, list) or isinstance(item, tuple):
             if with_enumeration:
-                out.write(encode_for_console(print_str) + '\n')
+                out.write(print_str + '\n')
             elif i and i < len(l):
                 out.write('\n')
             print_list(
@@ -279,7 +279,7 @@ def print_list(
             item = ('%s' % item).strip()
             if item in exclude:
                 continue
-            out.write(encode_for_console('%s%s\n' % (print_str, item)))
+            out.write('%s%s\n' % (print_str, item))
         out.flush()
     out.flush()
 
@@ -304,25 +304,24 @@ def print_items(
         return
     if not (isinstance(items, dict) or isinstance(items, list) or isinstance(
                 items, tuple)):
-        out.write(encode_for_console('%s\n' % items))
+        out.write('%s\n' % items)
         out.flush()
         return
 
     for i, item in enumerate(items):
         if with_enumeration:
-            out.write(encode_for_console('%s. ' % (i + 1)))
+            out.write('%s. ' % (i + 1))
         if isinstance(item, dict):
             item = dict(item)
             title = sorted(set(title).intersection(item))
             pick = item.get if with_redundancy else item.pop
             header = ' '.join('%s' % pick(key) for key in title)
-            out.write(encode_for_console(
-                (unicode(bold(header) if header else '') + '\n')))
+            out.write((unicode(bold(header) if header else '') + '\n'))
             print_dict(item, indent=INDENT_TAB, out=out)
         elif isinstance(item, list) or isinstance(item, tuple):
             print_list(item, indent=INDENT_TAB, out=out)
         else:
-            out.write(encode_for_console(' %s\n' % item))
+            out.write(' %s\n' % item)
         out.flush()
     out.flush()
 
@@ -447,7 +446,7 @@ def ask_user(msg, true_resp=('y', ), out=stdout, user_in=stdin):
     """
     yep = ', '.join(true_resp)
     nope = '<not %s>' % yep if 'n' in true_resp or 'N' in true_resp else 'N'
-    out.write(encode_for_console('%s [%s/%s]: ' % (msg, yep, nope)))
+    out.write('%s [%s/%s]: ' % (msg, yep, nope))
     out.flush()
     user_response = user_in.readline()
     return user_response[0].lower() in [s.lower() for s in true_resp]
