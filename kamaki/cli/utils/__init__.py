@@ -71,12 +71,13 @@ def _encode_nicely(somestr, encoding, replacement='?'):
         try:
             newc = c.decode('utf-8').encode(encoding)
             newstr = '%s%s' % (newstr, newc)
-        except UnicodeError:
+        except UnicodeError as e:
             newstr = '%s%s' % (newstr, replacement)
             err_counter += 1
     if err_counter:
-        log.warning('\t%s character%s failed to be encoded as %s' % (
+        log.warning('WARNING: \t%s character%s failed to be encoded as %s' % (
             err_counter, 's' if err_counter > 1 else '', encoding))
+        log.debug('Unicode Error %s' % e)
     return newstr
 
 
