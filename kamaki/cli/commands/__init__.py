@@ -116,7 +116,7 @@ class _command_init(object):
 
     @DontRaiseUnicodeError
     def write(self, s):
-        self._out.write('%s' % s)
+        self._out.write(s)
         self._out.flush()
 
     @DontRaiseUnicodeError
@@ -133,20 +133,20 @@ class _command_init(object):
         return print_list(*args, **kwargs)
 
     def print_dict(self, *args, **kwargs):
-        kwargs.setdefault('out', self._out)
+        kwargs.setdefault('out', self)
         return print_dict(*args, **kwargs)
 
     def print_json(self, *args, **kwargs):
-        kwargs.setdefault('out', self._out)
+        kwargs.setdefault('out', self)
         return print_json(*args, **kwargs)
 
     def print_items(self, *args, **kwargs):
-        kwargs.setdefault('out', self._out)
+        kwargs.setdefault('out', self)
         return print_items(*args, **kwargs)
 
     def ask_user(self, *args, **kwargs):
         kwargs.setdefault('user_in', self._in)
-        kwargs.setdefault('out', self._out)
+        kwargs.setdefault('out', self)
         return ask_user(*args, **kwargs)
 
     @DontRaiseKeyError
@@ -298,9 +298,9 @@ class _optional_output_cmd(object):
 
     def _optional_output(self, r):
         if self['json_output']:
-            print_json(r, out=self._out)
+            print_json(r, out=self)
         elif self['with_output']:
-            print_items([r] if isinstance(r, dict) else r, out=self._out)
+            print_items([r] if isinstance(r, dict) else r, out=self)
 
 
 class _optional_json(object):
@@ -317,9 +317,9 @@ class _optional_json(object):
 
     def _print(self, output, print_method=print_items, **print_method_kwargs):
         if self['json_output'] or self['output_format']:
-            print_json(output, out=self._out)
+            print_json(output, out=self)
         else:
-            print_method_kwargs.setdefault('out', self._out)
+            print_method_kwargs.setdefault('out', self)
             print_method(output, **print_method_kwargs)
 
 

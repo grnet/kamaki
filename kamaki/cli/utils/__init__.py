@@ -69,18 +69,21 @@ def _encode_nicely(somestr, encoding, replacement='?'):
     newstr, err_counter = '', 0
     for c in somestr:
         try:
-            newc = c.encode(encoding)
+            newc = c.decode('utf-8').encode(encoding)
             newstr = '%s%s' % (newstr, newc)
         except UnicodeError:
             newstr = '%s%s' % (newstr, replacement)
             err_counter += 1
     if err_counter:
-        log.debug('\t%s character%s failed to be encoded as %s' % (
+        log.warning('\t%s character%s failed to be encoded as %s' % (
             err_counter, 's' if err_counter > 1 else '', encoding))
     return newstr
 
 
 def DontRaiseUnicodeError(foo):
+    if pref_enc.lower() == 'utf-8':
+        return foo
+
     def wrap(self, *args, **kwargs):
         try:
             s = kwargs.pop('s')
@@ -91,10 +94,10 @@ def DontRaiseUnicodeError(foo):
                 return foo(self, *args, **kwargs)
             args = args[1:]
         try:
-            s = s.encode(pref_enc)
+            s = (u'%s' % s).decode('utf-8').encode(pref_enc)
         except UnicodeError as ue:
             log.debug('Encoding(%s): %s' % (pref_enc, ue))
-            s = _encode_nicely(s, pref_enc, replacement='?')
+            s = _encode_nicely(u'%s' % s, pref_enc, replacement='?')
         return foo(self, s, *args, **kwargs)
     return wrap
 
@@ -103,7 +106,7 @@ def encode_for_console(s, encoding=pref_enc, replacement='?'):
     if encoding.lower() == 'utf-8':
         return s
     try:
-        return s.encode(encoding)
+        return s.decode('utf-8').encode(encoding)
     except UnicodeError as ue:
         log.debug('Encoding(%s): %s' % (encoding, ue))
         return _encode_nicely(s, encoding, replacement)
@@ -175,7 +178,6 @@ def print_json(data, out=stdout, encoding=pref_enc):
     """
     out.write(dumps(data, indent=INDENT_TAB))
     out.write('\n')
-    out.flush()
 
 
 def print_dict(
@@ -224,7 +226,6 @@ def print_dict(
                 recursive_enumeration, recursive_enumeration, out)
         else:
             out.write('%s %s\n' % (print_str, v))
-        out.flush()
 
 
 def print_list(
@@ -280,8 +281,6 @@ def print_list(
             if item in exclude:
                 continue
             out.write('%s%s\n' % (print_str, item))
-        out.flush()
-    out.flush()
 
 
 def print_items(
@@ -305,7 +304,6 @@ def print_items(
     if not (isinstance(items, dict) or isinstance(items, list) or isinstance(
                 items, tuple)):
         out.write('%s\n' % items)
-        out.flush()
         return
 
     for i, item in enumerate(items):
@@ -322,8 +320,6 @@ def print_items(
             print_list(item, indent=INDENT_TAB, out=out)
         else:
             out.write(' %s\n' % item)
-        out.flush()
-    out.flush()
 
 
 def format_size(size, decimal_factors=False):
@@ -447,7 +443,6 @@ def ask_user(msg, true_resp=('y', ), out=stdout, user_in=stdin):
     yep = ', '.join(true_resp)
     nope = '<not %s>' % yep if 'n' in true_resp or 'N' in true_resp else 'N'
     out.write('%s [%s/%s]: ' % (msg, yep, nope))
-    out.flush()
     user_response = user_in.readline()
     return user_response[0].lower() in [s.lower() for s in true_resp]
 
