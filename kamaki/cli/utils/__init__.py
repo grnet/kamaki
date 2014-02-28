@@ -434,7 +434,7 @@ def split_input(line):
     return terms
 
 
-def ask_user(msg, true_resp=('y', ), out=stdout, user_in=stdin):
+def ask_user(msg, true_resp=('y', ), **kwargs):
     """Print msg and read user response
 
     :param true_resp: (tuple of chars)
@@ -443,8 +443,7 @@ def ask_user(msg, true_resp=('y', ), out=stdout, user_in=stdin):
     """
     yep = ', '.join(true_resp)
     nope = '<not %s>' % yep if 'n' in true_resp or 'N' in true_resp else 'N'
-    out.write('%s [%s/%s]: ' % (msg, yep, nope))
-    user_response = user_in.readline()
+    user_response = raw_input('%s [%s/%s]: ' % (msg, yep, nope))
     return user_response[0].lower() in [s.lower() for s in true_resp]
 
 

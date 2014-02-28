@@ -624,6 +624,7 @@ class PithosClient(PithosRestClient):
             for thread in activethreads():
                 thread.join()
             raise
+        self._cb_next()
 
         r = self.object_put(
             obj,
@@ -1359,6 +1360,7 @@ class PithosClient(PithosRestClient):
         finally:
             from time import sleep
             sleep(2 * len(activethreads()))
+            self._cb_next()
         return headers.values()
 
     def truncate_object(self, obj, upto_bytes):
@@ -1427,8 +1429,8 @@ class PithosClient(PithosRestClient):
                 data=block)
             headers.append(dict(r.headers))
             offset += len(block)
-
-            self._cb_next
+            self._cb_next()
+        self._cb_next()
         return headers
 
     def copy_object(
