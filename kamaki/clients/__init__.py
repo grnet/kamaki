@@ -127,11 +127,10 @@ class RequestManager(Logged):
             url += '%s%s%s' % (delim, key, ('=%s' % val) if val else '')
             delim = '&'
         parsed = urlparse(url)
-        self.url = _encode(u'%s' % url)
-        self.path = _encode((u'%s' % parsed.path) if parsed.path else '/')
-        if parsed.query:
-            self.path += '?%s' % parsed.query
-        return (_encode(parsed.scheme), _encode(parsed.netloc))
+        self.url = '%s' % url
+        self.path = (('%s' % parsed.path) if parsed.path else '/') + (
+            '?%s' % parsed.query if parsed.query else '')
+        return (parsed.scheme, parsed.netloc)
 
     def __init__(
             self, method, url, path,
@@ -177,7 +176,7 @@ class RequestManager(Logged):
         self.dump_log()
         conn.request(
             method=self.method.upper(),
-            url=('%s' % self.path) or '',
+            url=self.path.encode('utf-8'),
             headers=self.headers,
             body=self.data)
         sendlog.info('')
@@ -253,12 +252,8 @@ class ResponseManager(Logged):
                     r_headers = r.getheaders()
                     enc_headers = self._get_headers_to_decode(r_headers)
                     for k, v in r_headers:
-                        if k.lower in ('x-auth-token', ) and (
-                                not self.LOG_TOKEN):
-                            self._token, v = v, '...'
-                        elif k.lower() in enc_headers:
-                            v = unquote(v).decode('utf-8')
-                        self._headers[k] = v
+                        self._headers[k] = unquote(v).decode('utf-8') if (
+                            k.lower()) in enc_headers else v
                         recvlog.info('  %s: %s%s' % (k, v, plog))
                     self._content = r.read()
                     recvlog.info('data size: %s%s' % (
@@ -344,9 +339,7 @@ class SilentEvent(Thread):
     """Thread-run method(*args, **kwargs)"""
     def __init__(self, method, *args, **kwargs):
         super(self.__class__, self).__init__()
-        self.method = method
-        self.args = args
-        self.kwargs = kwargs
+        self.method, self.args, self.kwargs = method, args, kwargs
 
     @property
     def exception(self):
@@ -380,7 +373,8 @@ class Client(Logged):
         self.token = token
         self.headers, self.params = dict(), dict()
         self.poolsize = None
-        self.headers_to_decode, self.header_prefices = [], []
+        self.response_headers = []
+        self.response_header_prefices = []
 
     def _init_thread_limit(self, limit=1):
         assert isinstance(limit, int) and limit > 0, 'Thread limit not a +int'
@@ -490,7 +484,6 @@ class Client(Logged):
                 headers.setdefault('Content-Type', 'application/json')
             if data:
                 headers.setdefault('Content-Length', '%s' % len(data))
-
             plog = ('\t[%s]' % self) if self.LOG_PID else ''
             sendlog.debug('\n\nCMT %s@%s%s', method, self.base_url, plog)
             req = RequestManager(
@@ -501,8 +494,8 @@ class Client(Logged):
                 req,
                 poolsize=self.poolsize,
                 connection_retry_limit=self.CONNECTION_RETRY_LIMIT)
-            r.headers_to_decode = self.headers_to_decode
-            r.header_prefices = self.header_prefices
+            r.headers_to_decode = self.response_headers
+            r.header_prefices = self.response_header_prefices
             r.LOG_TOKEN, r.LOG_DATA, r.LOG_PID = (
                 self.LOG_TOKEN, self.LOG_DATA, self.LOG_PID)
             r._token = headers['X-Auth-Token']

@@ -466,10 +466,7 @@ class PithosClient(PithosRestClient):
                 sendlog.info('%s blocks missing' % len(missing))
                 num_of_blocks = len(missing)
                 missing = self._upload_missing_blocks(
-                    missing,
-                    hmap,
-                    f,
-                    upload_gen)
+                    missing, hmap, f, upload_gen)
                 if missing:
                     if num_of_blocks == len(missing):
                         retries -= 1

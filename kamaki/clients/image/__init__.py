@@ -57,6 +57,7 @@ class ImageClient(Client):
 
     def __init__(self, base_url, token):
         super(ImageClient, self).__init__(base_url, token)
+        self.response_header_prefices = ['X-Image-', ]
 
     def list_public(self, detail=False, filters={}, order=''):
         """
@@ -70,7 +71,7 @@ class ImageClient(Client):
         :returns: (list) id,name + full image info if detail
         """
         path = path4url('images', 'detail') if detail else (
-            path4url('images') + '/')
+            '%s/' % path4url('images'))
 
         async_params = {}
         if isinstance(filters, dict):
@@ -115,7 +116,7 @@ class ImageClient(Client):
 
         :returns: (dict) metadata of the created image
         """
-        path = path4url('images') + '/'
+        path = '%s/' % path4url('images')
         self.set_header('X-Image-Meta-Name', name)
         location = location if (
             isinstance(location, str) or isinstance(location, unicode)) else (
