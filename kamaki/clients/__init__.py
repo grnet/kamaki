@@ -117,21 +117,21 @@ class RequestManager(Logged):
 
         :returns: (scheme, netloc)
         """
-        url = _encode(str(url)) if url else 'http://127.0.0.1/'
+        url = url or 'http://127.0.0.1/'
         url += '' if url.endswith('/') else '/'
         if path:
             url += _encode(path[1:] if path.startswith('/') else path)
         delim = '?'
         for key, val in params.items():
-            val = quote('' if val in (None, False) else _encode('%s' % val))
+            val = quote('' if val in (None, False) else '%s' % _encode(val))
             url += '%s%s%s' % (delim, key, ('=%s' % val) if val else '')
             delim = '&'
         parsed = urlparse(url)
-        self.url = url
-        self.path = parsed.path or '/'
+        self.url = _encode(u'%s' % url)
+        self.path = _encode((u'%s' % parsed.path) if parsed.path else '/')
         if parsed.query:
             self.path += '?%s' % parsed.query
-        return (parsed.scheme, parsed.netloc)
+        return (_encode(parsed.scheme), _encode(parsed.netloc))
 
     def __init__(
             self, method, url, path,
@@ -176,8 +176,8 @@ class RequestManager(Logged):
         self._encode_headers()
         self.dump_log()
         conn.request(
-            method=str(self.method.upper()),
-            url=str(self.path),
+            method=self.method.upper(),
+            url=('%s' % self.path) or '',
             headers=self.headers,
             body=self.data)
         sendlog.info('')
