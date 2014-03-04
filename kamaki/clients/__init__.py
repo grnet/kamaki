@@ -162,7 +162,7 @@ class RequestManager(Logged):
             sendlog.info('data size: 0%s' % plog)
 
     def _encode_headers(self):
-        headers = self.headers
+        headers = dict(self.headers)
         for k, v in self.headers.items():
             headers[k] = quote('' if v is None else '%s' % v)
         self.headers = headers
@@ -210,6 +210,18 @@ class ResponseManager(Logged):
         self.request = request
         self._request_performed = False
         self.poolsize = poolsize
+        self._headers_to_decode, self._header_prefices = [], []
+
+    def _get_headers_to_decode(self, headers):
+        keys = set([k.lower() for k, v in headers])
+        encodable = list(keys.intersection(self.headers_to_decode))
+
+        def has_prefix(s):
+            for k in self.header_prefices:
+                if s.startswith(k):
+                    return True
+            return False
+        return encodable + filter(has_prefix, keys.difference(encodable))
 
     def _get_response(self):
         if self._request_performed:
@@ -237,11 +249,15 @@ class ResponseManager(Logged):
                         '%d %s%s' % (
                             self.status_code, self.status, plog))
                     self._headers = dict()
-                    for k, v in r.getheaders():
+
+                    r_headers = r.getheaders()
+                    enc_headers = self._get_headers_to_decode(r_headers)
+                    for k, v in r_headers:
                         if k.lower in ('x-auth-token', ) and (
                                 not self.LOG_TOKEN):
                             self._token, v = v, '...'
-                        v = unquote(v).decode('utf-8')
+                        elif k.lower() in enc_headers:
+                            v = unquote(v).decode('utf-8')
                         self._headers[k] = v
                         recvlog.info('  %s: %s%s' % (k, v, plog))
                     self._content = r.read()
@@ -265,9 +281,6 @@ class ResponseManager(Logged):
                     recvlog.debug(
                         '\n'.join(['%s' % type(err)] + format_stack()))
                     raise
-                    raise ClientError(
-                        'Failed while http-connecting to %s (%s)' % (
-                            self.request.url, err))
 
     @property
     def status_code(self):
@@ -296,6 +309,24 @@ class ResponseManager(Logged):
         """
         self._get_response()
         return '%s' % self._content
+
+    @property
+    def headers_to_decode(self):
+        return self._headers_to_decode
+
+    @headers_to_decode.setter
+    def headers_to_decode(self, header_keys):
+        self._headers_to_decode += [k.lower() for k in header_keys]
+        self._headers_to_decode = list(set(self._headers_to_decode))
+
+    @property
+    def header_prefices(self):
+        return self._header_prefices
+
+    @header_prefices.setter
+    def header_prefices(self, header_key_prefices):
+        self._header_prefices += [p.lower() for p in header_key_prefices]
+        self._header_prefices = list(set(self._header_prefices))
 
     @property
     def json(self):
@@ -349,6 +380,7 @@ class Client(Logged):
         self.token = token
         self.headers, self.params = dict(), dict()
         self.poolsize = None
+        self.headers_to_decode, self.header_prefices = [], []
 
     def _init_thread_limit(self, limit=1):
         assert isinstance(limit, int) and limit > 0, 'Thread limit not a +int'
@@ -469,6 +501,8 @@ class Client(Logged):
                 req,
                 poolsize=self.poolsize,
                 connection_retry_limit=self.CONNECTION_RETRY_LIMIT)
+            r.headers_to_decode = self.headers_to_decode
+            r.header_prefices = self.header_prefices
             r.LOG_TOKEN, r.LOG_DATA, r.LOG_PID = (
                 self.LOG_TOKEN, self.LOG_DATA, self.LOG_PID)
             r._token = headers['X-Auth-Token']
