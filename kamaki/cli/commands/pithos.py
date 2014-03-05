@@ -303,10 +303,8 @@ class file_list(_pithos_container, _optional_json, _name_filter):
             until=self['until'],
             meta=self['meta'])
 
-        #  REMOVE THIS if version >> 0.12
         if not r.json:
-            self.error('  NOTE: Since v0.12, use / for containers e.g.,')
-            self.error('    [kamaki] file list /pithos')
+            self.error('Container "%s" is empty' % self.client.container)
 
         files = self._filter_by_name(r.json)
         if self['more']:
