@@ -790,19 +790,54 @@ class project_modify(_init_synnefo_astakosclient, _optional_json):
 
     arguments = dict(
         specs_path=ValueArgument(
-            'Specification file path (content must be in json)', '--spec-file')
+            'Specification file (contents in json)', '--spec-file'),
+        project_name=ValueArgument('Name the project', '--name'),
+        owner_uuid=ValueArgument('Project owner', '--owner'),
+        homepage_url=ValueArgument('Project homepage', '--homepage'),
+        description=ValueArgument('Describe the project', '--description'),
+        start_date=DateArgument('When to start the project', '--start-date'),
+        end_date=DateArgument('When to end the project', '--end-date'),
+        join_policy=PolicyArgument(
+            'Set join policy (%s)' % ', '.join(PolicyArgument.policies),
+            '--join-policy'),
+        leave_policy=PolicyArgument(
+            'Set leave policy (%s)' % ', '.join(PolicyArgument.policies),
+            '--leave-policy'),
+        resource_capacities=ProjectResourceArgument(
+            'Set the member and project capacities for resources (repeatable) '
+            'e.g., --resource cyclades.cpu=1,5    means "members will have at '
+            'most 1 cpu but the project will have at most 5"       To see all '
+            'resources:   kamaki resource list',
+            '--resource')
     )
+    required = [
+        'specs_path', 'owner_uuid', 'homepage_url', 'description',
+        'project_name', 'start_date', 'end_date', 'join_policy',
+        'leave_policy', 'resource_capacities', ]
 
     @errors.generic.all
     @errors.user.astakosclient
     @apply_notification
     def _run(self, project_id):
-        input_stream = open(abspath(self['specs_path'])) if (
-            self['specs_path']) else self._in
-        specs = load(input_stream)
+        specs = dict()
+        if self['specs_path']:
+            with open(abspath(self['specs_path'])) as f:
+                specs = load(f)
+        for key, arg in (
+                ('name', self['project_name']),
+                ('owner', self['owner_uuid']),
+                ('homepage', self['homepage_url']),
+                ('description', self['description']),
+                ('start_date', self['start_date']),
+                ('end_date', self['end_date']),
+                ('join_policy', self['join_policy']),
+                ('leave_policy', self['leave_policy']),
+                ('resources', self['resource_capacities'])):
+            if arg:
+                specs[key] = arg
+
         self._print(
-            self.client.modify_project(project_id, specs),
-            self.print_dict)
+            self.client.modify_project(project_id, specs), self.print_dict)
 
     def main(self, project_id):
         super(self.__class__, self)._run()
