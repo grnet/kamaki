@@ -39,9 +39,11 @@ from kamaki.clients.astakos import LoggedAstakosClient
 from kamaki.cli.commands import (
     _command_init, errors, _optional_json, addLogSettings, _name_filter)
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.errors import CLIBaseUrlError, CLISyntaxError, CLIError
+from kamaki.cli.errors import (
+    CLIBaseUrlError, CLISyntaxError, CLIError, CLIInvalidArgument)
 from kamaki.cli.argument import (
-    FlagArgument, ValueArgument, IntArgument, CommaSeparatedListArgument)
+    FlagArgument, ValueArgument, IntArgument, CommaSeparatedListArgument,
+    KeyValueArgument, DateArgument)
 from kamaki.cli.utils import format_size, filter_dicts_by_dict
 
 #  Mandatory
@@ -597,20 +599,17 @@ class endpoint_list(
 
 _project_specs = """{
     "name": name,
-    "owner": uuid,
-    "homepage": homepage,         # optional
-    "description": description,   # optional
-    "comments": comments,         # optional
-    "start_date": date,           # optional
+    "owner": uuid,  # if omitted, request user assumed
+    "homepage": homepage,  # optional
+    "description": description,  # optional
+    "comments": comments,  # optional
+    "start_date": date,  # optional
     "end_date": date,
     "join_policy": "auto" | "moderated" | "closed",  # default: "moderated"
-    "leave_policy": "auto" | "moderated" | "closed", # default: "auto"
-    "resources": {"cyclades.vm": {
-    "project_capacity": int or null,
-    "member_capacity": int
-    }}}
-
-"""
+    "leave_policy": "auto" | "moderated" | "closed",  # default: "auto"
+    "resources": {
+    "cyclades.vm": {"project_capacity": int, "member_capacity": int
+    }}}"""
 
 
 def apply_notification(func):
@@ -664,32 +663,119 @@ class project_info(_init_synnefo_astakosclient, _optional_json):
         self._run(project_id)
 
 
+class PolicyArgument(ValueArgument):
+    """A Policy argument"""
+    policies = ('auto', 'moderated', 'closed')
+
+    @property
+    def value(self):
+        return getattr(self, '_value', None)
+
+    @value.setter
+    def value(self, new_policy):
+        if new_policy:
+            if new_policy.lower() in self.policies:
+                self._value = new_policy.lower()
+            else:
+                raise CLIInvalidArgument(
+                    'Invalid value for %s' % self.lvalue, details=[
+                    'Valid values: %s' % ', '.join(self.policies)])
+
+
+class ProjectResourceArgument(KeyValueArgument):
+    """"A <resource>=<member_capacity>,<project_capacity> argument  e.g.,
+    --resource cyclades.cpu=5,1"""
+    @property
+    def value(self):
+        return super(ProjectResourceArgument, self).value
+
+    @value.setter
+    def value(self, key_value_pairs):
+        if key_value_pairs:
+            super(ProjectResourceArgument, self.__class__).value.fset(
+                self, key_value_pairs)
+            d = dict(self._value)
+            for key, value in d.items():
+                try:
+                    member_capacity, project_capacity = value.split(',')
+                    member_capacity = int(member_capacity)
+                    project_capacity = int(project_capacity)
+                    assert member_capacity <= project_capacity
+                except Exception as e:
+                    raise CLIInvalidArgument(
+                        'Invalid resource value %s' % value, details=[
+                        'Usage:',
+                        '  %s %s=<member_capacity>,<project_capacity>' % (
+                            self.lvalue, key),
+                        'where both capacities are integers',
+                        'and member_capacity <= project_capacity', '',
+                        '(%s)' % e])
+                self._value[key] = dict(
+                    member_capacity=member_capacity,
+                    project_capacity=project_capacity)
+
+
 @command(project_commands)
 class project_create(_init_synnefo_astakosclient, _optional_json):
-    """Apply for a new project (enter data though standard input or file path)
-
-    Project details must be provided as a json-formated dict from the
-    standard input, or through a file
-    """
-    __doc__ += _project_specs
+    """Apply for a new project"""
 
     arguments = dict(
         specs_path=ValueArgument(
-            'Specification file path (content must be in json)', '--spec-file')
+            'Specification file (contents in json)', '--spec-file'),
+        project_name=ValueArgument('Name the project', '--name'),
+        owner_uuid=ValueArgument('Project owner', '--owner'),
+        homepage_url=ValueArgument('Project homepage', '--homepage'),
+        description=ValueArgument('Describe the project', '--description'),
+        start_date=DateArgument('When to start the project', '--start-date'),
+        end_date=DateArgument('When to end the project', '--end-date'),
+        join_policy=PolicyArgument(
+            'Set join policy (%s)' % ', '.join(PolicyArgument.policies),
+            '--join-policy'),
+        leave_policy=PolicyArgument(
+            'Set leave policy (%s)' % ', '.join(PolicyArgument.policies),
+            '--leave-policy'),
+        resource_capacities=ProjectResourceArgument(
+            'Set the member and project capacities for resources (repeatable) '
+            'e.g., --resource cyclades.cpu=1,5    means "members will have at '
+            'most 1 cpu but the project will have at most 5"       To see all '
+            'resources:   kamaki resource list',
+            '--resource')
     )
+    required = ['specs_path', 'project_name', 'end_date']
 
     @errors.generic.all
     @errors.user.astakosclient
     @apply_notification
     def _run(self):
-        input_stream = open(abspath(self['specs_path'])) if (
-            self['specs_path']) else self._in
-        specs = load(input_stream)
-        self._print(
-            self.client.create_project(specs), self.print_dict)
+        specs = dict()
+        if self['specs_path']:
+            with open(abspath(self['specs_path'])) as f:
+                specs = load(f)
+        for key, arg in (
+                ('name', self['project_name']),
+                ('owner', self['owner_uuid']),
+                ('homepage', self['homepage_url']),
+                ('description', self['description']),
+                ('start_date', self['start_date']),
+                ('end_date', self['end_date']),
+                ('join_policy', self['join_policy']),
+                ('leave_policy', self['leave_policy']),
+                ('resources', self['resource_capacities'])):
+            if arg:
+                specs[key] = arg
+
+        self._print(self.client.create_project(specs), self.print_dict)
 
     def main(self):
         super(self.__class__, self)._run()
+        self._req2 = [arg for arg in self.required if arg != 'specs_path']
+        if not (self['specs_path'] or all(self[arg] for arg in self._req2)):
+            raise CLIInvalidArgument('Insufficient arguments', details=[
+                'Both of the following arguments are needed:',
+                ', '.join([self.arguments[arg].lvalue for arg in self._req2]),
+                'OR provide a spec file (json) with %s' % self.arguments[
+                    'specs_path'].lvalue,
+                'OR combine arguments (higher priority) with a file'])
         self._run()
 
 
