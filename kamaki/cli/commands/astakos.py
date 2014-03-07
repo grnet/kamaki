@@ -1,4 +1,4 @@
-# Copyright 2011-2013 GRNET S.A. All rights reserved.
+# Copyright 2011-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -603,6 +603,8 @@ _project_specs = """{
     "homepage": homepage,  # optional
     "description": description,  # optional
     "comments": comments,  # optional
+    "max_members": max_members,  # optional
+    "private": true | false,  # optional
     "start_date": date,  # optional
     "end_date": date,
     "join_policy": "auto" | "moderated" | "closed",  # default: "moderated"
@@ -684,7 +686,8 @@ class PolicyArgument(ValueArgument):
 
 class ProjectResourceArgument(KeyValueArgument):
     """"A <resource>=<member_capacity>,<project_capacity> argument  e.g.,
-    --resource cyclades.cpu=5,1"""
+    --resource cyclades.cpu=5,1
+    """
     @property
     def value(self):
         return super(ProjectResourceArgument, self).value
@@ -726,6 +729,8 @@ class project_create(_init_synnefo_astakosclient, _optional_json):
         owner_uuid=ValueArgument('Project owner', '--owner'),
         homepage_url=ValueArgument('Project homepage', '--homepage'),
         description=ValueArgument('Describe the project', '--description'),
+        max_members=IntArgument('Maximum subscribers', '--max-members'),
+        private=FlagArgument('Set if the project is private', '--private'),
         start_date=DateArgument('When to start the project', '--start-date'),
         end_date=DateArgument('When to end the project', '--end-date'),
         join_policy=PolicyArgument(
@@ -756,6 +761,8 @@ class project_create(_init_synnefo_astakosclient, _optional_json):
                 ('owner', self['owner_uuid']),
                 ('homepage', self['homepage_url']),
                 ('description', self['description']),
+                ('max_members', self['max_members']),
+                ('private', self['private']),
                 ('start_date', self['start_date']),
                 ('end_date', self['end_date']),
                 ('join_policy', self['join_policy']),
@@ -781,10 +788,7 @@ class project_create(_init_synnefo_astakosclient, _optional_json):
 
 @command(project_commands)
 class project_modify(_init_synnefo_astakosclient, _optional_json):
-    """Modify a project (input a json-dict)
-    Project details must be provided as a json-formated dict from the standard
-    input, or through a file
-    """
+    """Modify properties of a project"""
 
     __doc__ += _project_specs
 
@@ -795,6 +799,8 @@ class project_modify(_init_synnefo_astakosclient, _optional_json):
         owner_uuid=ValueArgument('Project owner', '--owner'),
         homepage_url=ValueArgument('Project homepage', '--homepage'),
         description=ValueArgument('Describe the project', '--description'),
+        max_members=IntArgument('Maximum subscribers', '--max-members'),
+        private=FlagArgument('Set if the project is private', '--private'),
         start_date=DateArgument('When to start the project', '--start-date'),
         end_date=DateArgument('When to end the project', '--end-date'),
         join_policy=PolicyArgument(
@@ -813,7 +819,7 @@ class project_modify(_init_synnefo_astakosclient, _optional_json):
     required = [
         'specs_path', 'owner_uuid', 'homepage_url', 'description',
         'project_name', 'start_date', 'end_date', 'join_policy',
-        'leave_policy', 'resource_capacities', ]
+        'leave_policy', 'resource_capacities', 'max_members', 'private']
 
     @errors.generic.all
     @errors.user.astakosclient
@@ -828,6 +834,8 @@ class project_modify(_init_synnefo_astakosclient, _optional_json):
                 ('owner', self['owner_uuid']),
                 ('homepage', self['homepage_url']),
                 ('description', self['description']),
+                ('max_members', self['max_members']),
+                ('private', self['private']),
                 ('start_date', self['start_date']),
                 ('end_date', self['end_date']),
                 ('join_policy', self['join_policy']),
@@ -941,7 +949,7 @@ class membership_list(_init_synnefo_astakosclient, _optional_json):
     """List all memberships"""
 
     arguments = dict(
-        project=IntArgument('Filter by project id', '--with-project-id')
+        project=IntArgument('Filter by project id', '--project-id')
     )
 
     @errors.generic.all
@@ -966,12 +974,13 @@ class membership_info(_init_synnefo_astakosclient, _optional_json):
 
     def main(self, membership_id):
         super(self.__class__, self)._run()
-        self._run(membership_id)
+        self._run(memb_id=membership_id)
 
 
 class _membership_action(_init_synnefo_astakosclient, _optional_json):
 
     action = ''
+    arguments = dict(reason=ValueArgument('Reason for the action', '--reason'))
 
     @errors.generic.all
     @errors.user.astakosclient
@@ -979,9 +988,9 @@ class _membership_action(_init_synnefo_astakosclient, _optional_json):
         self._print(self.client.membership_action(
             memb_id, self.action, quote_a_reason))
 
-    def main(self, membership_id, quote_a_reason=''):
+    def main(self, membership_id):
         super(_membership_action, self)._run()
-        self._run(membership_id, quote_a_reason)
+        self._run(membership_id, self['reason'] or '')
 
 
 @command(membership_commands)
@@ -1014,8 +1023,8 @@ class membership_remove(_membership_action):
     action = 'remove'
 
 
-@command(membership_commands)
-class membership_join(_init_synnefo_astakosclient):
+@command(project_commands)
+class project_join(_init_synnefo_astakosclient):
     """Join a project"""
 
     @errors.generic.all
@@ -1024,19 +1033,22 @@ class membership_join(_init_synnefo_astakosclient):
         self.writeln(self.client.join_project(project_id))
 
     def main(self, project_id):
-        super(membership_join, self)._run()
+        super(project_join, self)._run()
         self._run(project_id)
 
 
-@command(membership_commands)
-class membership_enroll(_init_synnefo_astakosclient):
-    """Enroll somebody to a project you manage"""
+@command(project_commands)
+class project_enroll(_init_synnefo_astakosclient):
+    """Enroll a user to a project"""
+
+    arguments = dict(email=ValueArgument('User e-mail', '--email'))
+    required = ('email', )
 
     @errors.generic.all
     @errors.user.astakosclient
     def _run(self, project_id, email):
         self.writeln(self.client.enroll_member(project_id, email))
 
-    def main(self, project_id, email):
-        super(membership_enroll, self)._run()
-        self._run(project_id, email)
+    def main(self, project_id):
+        super(project_enroll, self)._run()
+        self._run(project_id, self['email'])
