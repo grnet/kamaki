@@ -177,29 +177,45 @@ class _quota(_init_synnefo_astakosclient, _optional_json):
 
     def _print_quotas(self, quotas, *args, **kwargs):
         if not self['bytes']:
-            for category in quotas.values():
-                for service in self._to_format.intersection(category):
-                    for attr, v in category[service].items():
-                        category[service][attr] = format_size(v)
+            for project_id, resources in quotas.items():
+                for r in self._to_format.intersection(resources):
+                    resources[r] = dict(
+                        [(k, format_size(v)) for k, v in resources[r].items()])
         self.print_dict(quotas, *args, **kwargs)
 
 
 @command(quota_commands)
 class quota_info(_quota):
-    """Get quota for a service (cyclades, pithos, astakos)"""
+    """Get quota information"""
+
+    arguments = dict(
+        resource=ValueArgument('Quota for this resource', '--resource'),
+        project_id=ValueArgument('Quota for this project', '--project-id'),
+        bytes=FlagArgument('Show data size in bytes', '--bytes')
+    )
+    required = ['resource', 'project_id']
 
     @errors.generic.all
     @errors.user.astakosclient
-    def _run(self, service):
-        r = dict()
-        for k, v in self.client.get_quotas()['system'].items():
-            if (k.startswith(service)):
-                r[k] = v
-        self._print({'%s*' % service: r}, self._print_quotas)
+    def _run(self):
+        quotas = self.client.get_quotas()
+        if self['project_id']:
+            quotas = {self['project_id']: quotas.get(self['project_id'])}
+        if self['resource']:
+            d = dict()
+            for project_id, resources in quotas.items():
+                r = dict()
+                for resource, value in resources.items():
+                    if (resource.startswith(self['resource'])):
+                        r[resource] = value
+                if r:
+                    d[project_id] = r
+            quotas = d
+        self._print(quotas, self._print_quotas)
 
-    def main(self, service):
+    def main(self):
         super(self.__class__, self)._run()
-        self._run(service)
+        self._run()
 
 
 @command(quota_commands)
