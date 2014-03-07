@@ -1,4 +1,4 @@
-# Copyright 2011-2013 GRNET S.A. All rights reserved.
+# Copyright 2011-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -31,20 +31,24 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from sys import stdout, stdin
+from sys import stdout, stdin, stderr
 from re import compile as regex_compile
 from os import walk, path
 from json import dumps
+from kamaki.cli.logger import get_logger
+from locale import getpreferredencoding
 
 from kamaki.cli.errors import raiseCLIError
 
 
 INDENT_TAB = 4
+log = get_logger(__name__)
+pref_enc = getpreferredencoding()
 
 
 suggest = dict(ansicolors=dict(
         active=False,
-        url='#install-ansicolors-progress',
+        url='#install-ansicolors',
         description='Add colors to console responses'))
 
 try:
@@ -56,6 +60,59 @@ except ImportError:
     suggest['ansicolors']['active'] = True
 
 
+def _encode_nicely(somestr, encoding, replacement='?'):
+    """Encode somestr as 'encoding', but don't raise errors (replace with ?)
+        This method is slow. Us it only for grace.
+        :param encoding: (str) encode every character in this encoding
+        :param replacement: (char) replace each char raising encode-decode errs
+    """
+    newstr, err_counter = '', 0
+    for c in somestr:
+        try:
+            newc = c.decode('utf-8').encode(encoding)
+            newstr = '%s%s' % (newstr, newc)
+        except UnicodeError as e:
+            newstr = '%s%s' % (newstr, replacement)
+            err_counter += 1
+    if err_counter:
+        log.warning('WARNING: \t%s character%s failed to be encoded as %s' % (
+            err_counter, 's' if err_counter > 1 else '', encoding))
+        log.debug('Unicode Error %s' % e)
+    return newstr
+
+
+def DontRaiseUnicodeError(foo):
+    if pref_enc.lower() == 'utf-8':
+        return foo
+
+    def wrap(self, *args, **kwargs):
+        try:
+            s = kwargs.pop('s')
+        except KeyError:
+            try:
+                s = args[0]
+            except IndexError:
+                return foo(self, *args, **kwargs)
+            args = args[1:]
+        try:
+            s = (u'%s' % s).decode('utf-8').encode(pref_enc)
+        except UnicodeError as ue:
+            log.debug('Encoding(%s): %s' % (pref_enc, ue))
+            s = _encode_nicely(u'%s' % s, pref_enc, replacement='?')
+        return foo(self, s, *args, **kwargs)
+    return wrap
+
+
+def encode_for_console(s, encoding=pref_enc, replacement='?'):
+    if encoding.lower() == 'utf-8':
+        return s
+    try:
+        return s.decode('utf-8').encode(encoding)
+    except UnicodeError as ue:
+        log.debug('Encoding(%s): %s' % (encoding, ue))
+        return _encode_nicely(s, encoding, replacement)
+
+
 def suggest_missing(miss=None, exclude=[]):
     global suggest
     sgs = dict(suggest)
@@ -65,13 +122,15 @@ def suggest_missing(miss=None, exclude=[]):
         except KeyError:
             pass
     kamaki_docs = 'http://www.synnefo.org/docs/kamaki/latest'
+
     for k, v in (miss, sgs[miss]) if miss else sgs.items():
-        if v['active'] and stdout.isatty():
-            print('Suggestion: for better user experience install %s' % k)
-            print('\t%s' % v['description'])
-            print('\tIt is easy, here are the instructions:')
-            print('\t%s/installation.html%s' % (kamaki_docs, v['url']))
-            print('')
+        if v['active'] and stderr.isatty():
+            stderr.write('Suggestion: you may like to install %s\n' % k)
+            stderr.write('\t%s\n' % encode_for_console(v['description']))
+            stderr.write('\tIt is easy, here are the instructions:\n')
+            stderr.write('\t%s/installation.html%s\n' % (
+                kamaki_docs, v['url']))
+            stderr.flush()
 
 
 def guess_mime_type(
@@ -84,7 +143,8 @@ def guess_mime_type(
         ctype, cenc = guess_type(filename)
         return ctype or default_content_type, cenc or default_encoding
     except ImportError:
-        print 'WARNING: Cannot import mimetypes, using defaults'
+        stderr.write('WARNING: Cannot import mimetypes, using defaults\n')
+        stderr.flush()
         return (default_content_type, default_encoding)
 
 
@@ -110,15 +170,15 @@ def pretty_keys(d, delim='_', recursive=False):
     return new_d
 
 
-def print_json(data, out=stdout):
+def print_json(data, out=stdout, encoding=pref_enc):
     """Print a list or dict as json in console
 
     :param data: json-dumpable data
 
     :param out: Input/Output stream to dump values into
     """
-    out.write(unicode(dumps(data, indent=INDENT_TAB) + '\n'))
-    out.flush()
+    out.write(dumps(data, indent=INDENT_TAB))
+    out.write('\n')
 
 
 def print_dict(
@@ -167,7 +227,6 @@ def print_dict(
                 recursive_enumeration, recursive_enumeration, out)
         else:
             out.write('%s %s\n' % (print_str, v))
-        out.flush()
 
 
 def print_list(
@@ -223,8 +282,6 @@ def print_list(
             if item in exclude:
                 continue
             out.write('%s%s\n' % (print_str, item))
-        out.flush()
-    out.flush()
 
 
 def print_items(
@@ -248,7 +305,6 @@ def print_items(
     if not (isinstance(items, dict) or isinstance(items, list) or isinstance(
                 items, tuple)):
         out.write('%s\n' % items)
-        out.flush()
         return
 
     for i, item in enumerate(items):
@@ -265,8 +321,6 @@ def print_items(
             print_list(item, indent=INDENT_TAB, out=out)
         else:
             out.write(' %s\n' % item)
-        out.flush()
-    out.flush()
 
 
 def format_size(size, decimal_factors=False):
@@ -380,7 +434,7 @@ def split_input(line):
     return terms
 
 
-def ask_user(msg, true_resp=('y', ), out=stdout, user_in=stdin):
+def ask_user(msg, true_resp=('y', ), **kwargs):
     """Print msg and read user response
 
     :param true_resp: (tuple of chars)
@@ -389,9 +443,7 @@ def ask_user(msg, true_resp=('y', ), out=stdout, user_in=stdin):
     """
     yep = ', '.join(true_resp)
     nope = '<not %s>' % yep if 'n' in true_resp or 'N' in true_resp else 'N'
-    out.write('%s [%s/%s]: ' % (msg, yep, nope))
-    out.flush()
-    user_response = user_in.readline()
+    user_response = raw_input('%s [%s/%s]: ' % (msg, yep, nope))
     return user_response[0].lower() in [s.lower() for s in true_resp]
 
 
@@ -424,7 +476,7 @@ def filter_dicts_by_dict(
     :param exact_match: (bool) if false, check if the filter value is part of
         the actual value
 
-    :param case_sensitive: (bool) revers to values only (not keys)
+    :param case_sensitive: (bool) refers to values only (not keys)
 
     :returns: (list) only the dicts that match all filters
     """

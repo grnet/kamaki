@@ -55,8 +55,8 @@ Unpublish info.txt, publish file2upload.txt
 
 .. code-block:: console
 
-    $ kamaki file modify /pithos/info.txt --unpublish
-    $ kamaki file modify /pithos/file2upload.txt --publish
+    $ kamaki file unpublish /pithos/info.txt
+    $ kamaki file publish /pithos/file2upload.txt
     https://example.com/pithos/public/43gdL2df02ld3
 
 Modify permissions
@@ -85,7 +85,7 @@ Share (read permission) `info.txt` with all
 
 .. code-block:: console
 
-    $ kamaki file permissions set info.txt --read-permission=*
+    $ kamaki file modify info.txt --read-permission=*
 
 Shared with me
 --------------

@@ -39,8 +39,7 @@ from kamaki.cli.errors import CLIError, raiseCLIError, CLISyntaxError
 from kamaki.cli import _debug, kloger
 from kamaki.cli.utils import format_size
 
-CLOUDNAME = [
-    'Note: If you use a named cloud, use its name instead of "default"']
+CLOUDNAME = ['Note: Set a cloud and use its name instead of "default"']
 
 
 class generic(object):
@@ -69,12 +68,14 @@ class generic(object):
                 if ce.status == 401:
                     raiseCLIError(ce, 'Authorization failed', details=[
                         'Make sure a valid token is provided:',
-                        '  to check if token is valid: /user authenticate',
-                        '  to set token:',
-                        '    /config set cloud.default.token <token>',
-                        '  to get current token:',
-                        '    /config get cloud.default.token'] + CLOUDNAME)
-                elif ce.status in range(-12, 200) + [302, 401, 403, 500]:
+                        '  # to check if token is valid',
+                        '  $ kamaki user authenticate',
+                        '  # to set token:',
+                        '  $ kamaki config set cloud.default.token <token>',
+                        '  # to get current token:',
+                        '  $ kamaki config get cloud.default.token',
+                    ] + CLOUDNAME)
+                elif ce.status in range(-12, 200) + [302, 401, 500]:
                     raiseCLIError(ce, importance=3, details=[
                         'Check if service is up'])
                 elif ce.status == 404 and 'kamakihttpresponse' in ce_msg:
@@ -85,10 +86,10 @@ class generic(object):
                     msg = 'Invalid service URL %s' % url
                     raiseCLIError(ce, msg, details=[
                         'Check if authentication URL is correct',
-                        '  check current URL:',
-                        '    /config get cloud.default.url',
-                        '  set new authentication URL:',
-                        '    /config set cloud.default.url'] + CLOUDNAME)
+                        '  # check current URL',
+                        '  $ kamaki config get cloud.default.url',
+                        '  # set new authentication URL',
+                        '  $ kamaki config set cloud.default.url'] + CLOUDNAME)
                 raise
         return _raise
 
@@ -98,8 +99,8 @@ class user(object):
     _token_details = [
         'To check default token: /config get cloud.default.token',
         'If set/update a token:',
-        '*  (permanent):  /config set cloud.default.token <token>',
-        '*  (temporary):  re-run with <token> parameter'] + CLOUDNAME
+        '  #  (permanent)',
+        '  $ kamaki config set cloud.default.token <token>'] + CLOUDNAME
 
     @classmethod
     def astakosclient(this, func):
@@ -127,10 +128,10 @@ class user(object):
                 msg = 'Missing synnefo authentication URL'
                 raise CLIError(msg, importance=3, details=[
                     'Check if authentication URL is correct',
-                        '  check current URL:',
-                        '    /config get cloud.default.url',
-                        '  set new auth. URL:',
-                        '    /config set cloud.default.url'] + CLOUDNAME)
+                    '  # check current URL:',
+                    '  $ kamaki config get cloud.default.url',
+                    '  # set new auth. URL:',
+                    '  $ kamaki config set cloud.default.url'] + CLOUDNAME)
             return r
         return _raise
 
@@ -175,13 +176,21 @@ class history(object):
 class cyclades(object):
     about_flavor_id = [
         'How to pick a valid flavor id:',
-        '* get a list of flavor ids: /flavor list',
-        '* details of flavor: /flavor info <flavor id>']
+        '  # get a list of flavor ids',
+        '  $ kamaki flavor list',
+        '  # details of flavor',
+        '  $ kamaki flavor info <flavor id>',
+        '',
+    ]
 
     about_network_id = [
         'How to pick a valid network id:',
-        '* get a list of network ids: /network list',
-        '* details of network: /network info <network id>']
+        '  # get a list of network ids',
+        '  $ kamaki network list',
+        '  # details of network',
+        '  $ kamaki network info <network id>',
+        '',
+    ]
 
     net_types = ('CUSTOM', 'MAC_FILTERED', 'IP_LESS_ROUTED', 'PHYSICAL_VLAN')
 
@@ -252,42 +261,6 @@ class cyclades(object):
         return _raise
 
     @classmethod
-    def network_max(this, func):
-        def _raise(self, *args, **kwargs):
-            try:
-                return func(self, *args, **kwargs)
-            except ClientError as ce:
-                if ce.status == 413:
-                    msg = 'Cannot create another network',
-                    details = [
-                        'Maximum number of networks reached',
-                        '* to get a list of networks: /network list',
-                        '* to delete a network: /network delete <net id>']
-                    raiseCLIError(ce, msg, details=details)
-                raise
-        return _raise
-
-    @classmethod
-    def network_in_use(this, func):
-        def _raise(self, *args, **kwargs):
-            network_id = kwargs.get('network_id', None)
-            try:
-                return func(self, *args, **kwargs)
-            except ClientError as ce:
-                if network_id and ce.status in (400, ):
-                    msg = 'Network with id %s does not exist' % network_id,
-                    raiseCLIError(ce, msg, details=this.about_network_id)
-                elif network_id or ce.status in (421, ):
-                    msg = 'Network with id %s is in use' % network_id,
-                    raiseCLIError(ce, msg, details=[
-                        'Disconnect all nics/servers of this network first',
-                        '* to get nics: /network info %s' % network_id,
-                        '.  (under "attachments" section)',
-                        '* to disconnect: /network disconnect <nic id>'])
-                raise
-        return _raise
-
-    @classmethod
     def flavor_id(this, func):
         def _raise(self, *args, **kwargs):
             flavor_id = kwargs.get('flavor_id', None)
@@ -327,8 +300,10 @@ class cyclades(object):
                 ):
                     msg = 'virtual server with id %s not found' % server_id,
                     raiseCLIError(ce, msg, details=[
-                        '* to get ids of all servers: /server list',
-                        '* to get server details: /server info <server id>'])
+                        '# to get ids of all servers',
+                        '$ kamaki server list',
+                        '# to get server details',
+                        '$ kamaki server info <server id>'])
                 raise
         return _raise
 
@@ -375,20 +350,6 @@ class cyclades(object):
         return _raise
 
     @classmethod
-    def nic_format(this, func):
-        def _raise(self, *args, **kwargs):
-            try:
-                return func(self, *args, **kwargs)
-            except IndexError as ie:
-                nic_id = kwargs.get('nic_id', None)
-                msg = 'Invalid format for network interface (nic) %s' % nic_id
-                raiseCLIError(ie, msg, importance=1, details=[
-                    'nid_id format: nic-<server id>-<nic id>',
-                    '* get nics of a network: /network info <net id>',
-                    '    (listed the "attachments" section)'])
-        return _raise
-
-    @classmethod
     def metadata(this, func):
         def _raise(self, *args, **kwargs):
             key = kwargs.get('key', None)
@@ -408,8 +369,12 @@ class plankton(object):
 
     about_image_id = [
         'How to pick a suitable image:',
-        '* get a list of image ids: /image list',
-        '* details of image: /image meta <image id>']
+        '  # get a list of image ids',
+        '  $ kamaki image list',
+        '  # details of an image',
+        '  $ kamaki image meta <image id>',
+        '',
+    ]
 
     @classmethod
     def connection(this, func):
@@ -452,12 +417,16 @@ class plankton(object):
 
 class pithos(object):
     container_howto = [
-        'To specify a container:',
-        '  1. --container=<container> (temporary, overrides all)',
-        '  2. Use the container:path format (temporary, overrides 3)',
-        '  3. Set pithos_container variable (permanent)',
-        '     /config set pithos_container <container>',
-        'For a list of containers: /file list']
+        'Use a / to refer to a container (default: /pithos) e.g.,',
+        '  # list the contents of container "images"',
+        '  $ kamaki file list /images',
+        '  # get information on file "my.img" in container "images"',
+        '  $ kamaki file info /images/my.img',
+        '',
+        'To get a list of containers:',
+        '  $ kamaki container list',
+        '',
+    ]
 
     @classmethod
     def connection(this, func):
@@ -505,7 +474,7 @@ class pithos(object):
                         cont = ('%s or %s' % (
                             self.container,
                             dst_cont)) if dst_cont else self.container
-                        msg = 'Is container %s in current account?' % (cont),
+                        msg = 'Container "%s" does not exist' % cont,
                         raiseCLIError(ce, msg, details=this.container_howto)
                 raise
         return _raise

@@ -475,82 +475,22 @@ history and log files, log detail options and pithos-specific options.
     kamaki is executed in a context where this file is accessible for reading
     and writing. Kamaki automatically creates the file if it doesn't exist
 
+* global.history_limit <positive integer)
+    the maximum number of lines stored in history. Default is 0, which is
+    stands for "unlimted". If there is a finite limit, though, kamaki will
+    make sure that no more than `history_limit` lines are stored, by
+    deleting as few of the oldest lines possible. The line number is
+    preserved, though, so that one can refer to that line with the same
+    number for as long as it exist in the history file.
+
 Additional features
 ^^^^^^^^^^^^^^^^^^^
 
 Functional tests
 """"""""""""""""
 
-Kamaki contains a set of functional tests for *kamaki.clients*, called
-"livetest". The term "live" means that the tests are performed against an
-on-line functional cloud deployment. The package is accessible as
-*kamaki.clients.livetest* .
-
-The livetest commands can be activated by setting the following option in the
-configuration file::
-
-    [global]
-    livetest_cli=livetest
-
-or with this kamaki command::
-
-    $ kamaki config set livetest_cli livetest
-
-In most cases, it is enough to have the default cloud configured correctly.
-Some commands, though, require some extra settings specific to actual contents
-of the cloud or the example files used in kamaki.
-
-Here is a list of settings needed:
-
-* for all tests::
-    * livetest.testcloud = <the cloud alias this test will run against>
-
-* for astakos client::
-    * livetest.astakos_details = <A file with an authentication output>
-        To create this file, pipeline the output of an authentication command
-        with the -j option for raw json output
-
-        .. code-block:: console
-
-            $ kamaki user authenticate -j > astakos.details
-
-    * livetest.astakos_name = <The exact "real" name of the testing user>
-    * livetest.astakos_id = <The valid unique user id of the testing user>
-
-* for image client:
-    * livetest.image_details = <A file with the image metadata>
-        To create this file, pipeline the output of an image metadata command
-        with the -j option for raw json output
-
-        .. code-block:: console
-
-            $ kamaki image info <img id> -j > img.details
-
-    * livetest.image_id = <A valid image id used for testing>
-    * livetest.image_local_path = <The local path of the testing image>
-
-* for flavors (part of the compute client):
-    * livetest.flavor_details = <A file with the flavor details>
-        To create this file, pipeline the output of a flavor info command
-        with the -j option for raw json output
-
-        .. code-block:: console
-
-            $ kamaki flavor info <flavor id> -j > flavor.details
-
-
-After setup, kamaki can run all tests::
-
-    $ kamaki livetest all
-
-a specific test (e.g., pithos scenario)::
-
-    $ kamaki livetest pithos
-
-or a specific method from a service (e.g., create_server @ cyclades)::
-
-    $ kamaki livetest cyclades create_server
-
+Kamaki does not include functional tests in its native code. The synnefo tool
+snf-burnin can be used instead.
 
 Unit tests
 """"""""""

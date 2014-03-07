@@ -35,14 +35,14 @@ from json import load, loads
 from os.path import abspath
 
 from kamaki.cli import command
-from kamaki.clients.astakos import SynnefoAstakosClient
+from kamaki.clients.astakos import LoggedAstakosClient
 from kamaki.cli.commands import (
-    _command_init, errors, _optional_json, addLogSettings)
+    _command_init, errors, _optional_json, addLogSettings, _name_filter)
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import CLIBaseUrlError, CLISyntaxError, CLIError
 from kamaki.cli.argument import (
     FlagArgument, ValueArgument, IntArgument, CommaSeparatedListArgument)
-from kamaki.cli.utils import format_size
+from kamaki.cli.utils import format_size, filter_dicts_by_dict
 
 #  Mandatory
 
@@ -100,8 +100,7 @@ class _init_synnefo_astakosclient(_command_init):
                     'astakos') or self.config.get_cloud(
                     self.cloud, 'token')
                 token = token.split()[0] if ' ' in token else token
-                self.client = SynnefoAstakosClient(
-                    auth_url=base_url, token=token)
+                self.client = LoggedAstakosClient(base_url, token)
                 return
         else:
             self.cloud = 'default'
@@ -134,8 +133,8 @@ class user_authenticate(_init_synnefo_astakosclient, _optional_json):
 class user_uuid2name(_init_synnefo_astakosclient, _optional_json):
     """Get user name(s) from uuid(s)"""
 
-    @errors.generic.all
-    @errors.user.astakosclient
+    #@errors.generic.all
+    #@errors.user.astakosclient
     def _run(self, uuids):
         r = self.client.get_usernames(uuids)
         self._print(r, self.print_dict)
@@ -573,13 +572,20 @@ class resource_list(_init_synnefo_astakosclient, _optional_json):
 
 
 @command(endpoint_commands)
-class endpoint_list(_init_synnefo_astakosclient, _optional_json):
+class endpoint_list(
+        _init_synnefo_astakosclient, _optional_json, _name_filter):
     """Get endpoints service endpoints"""
+
+    arguments = dict(endpoint_type=ValueArgument('Filter by type', '--type'))
 
     @errors.generic.all
     @errors.user.astakosclient
     def _run(self):
-        self._print(self.client.get_endpoints(), self.print_dict)
+        r = self.client.get_endpoints()['access']['serviceCatalog']
+        r = self._filter_by_name(r)
+        if self['endpoint_type']:
+            r = filter_dicts_by_dict(r, dict(type=self['endpoint_type']))
+        self._print(r)
 
     def main(self):
         super(self.__class__, self)._run()
@@ -931,5 +937,5 @@ class membership_enroll(_init_synnefo_astakosclient):
         self.writeln(self.client.enroll_member(project_id, email))
 
     def main(self, project_id, email):
-        super(membership_join, self)._run()
+        super(membership_enroll, self)._run()
         self._run(project_id, email)

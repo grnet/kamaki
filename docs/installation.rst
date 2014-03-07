@@ -79,24 +79,6 @@ Install ansicolors (optional but recommended)
 
     $ sudo apt-get install python-ansicolors
 
-Install mock (for developers only)
-""""""""""""""""""""""""""""""""""
-
-.. code-block:: console
-
-    $ sudo apt-get install python-mock
-
-.. warning:: kamaki.clients unit-tests need python-mock 1.X or better. e.g.,::
-
-    $ sudo apt-get install python-mock=1.0.1
-
-.. hint:: To activate functional tests in kamaki enable the preconfigured
-    *livetest* command group:
-
-    .. code-block:: console
-
-        $ kamaki config set livetest_cli livetest
-
 
 .. _installing-from-pypi-ref:
 
@@ -146,28 +128,6 @@ adds colors to kamaki responses.
 
     $ pip install ansicolors
 
-Install mock (developers only)
-""""""""""""""""""""""""""""""
-
-The **mock** package is needed for running the prepared unit-tests in the
-kamaki.clients package. This feature is useful when extending / debugging
-kamaki functionality and is aimed to kamaki developers and contributors.
-Therefore, users can enjoy the full kamaki user experience without installing
-mock.
-
-.. code-block:: console
-
-    $ pip install mock
-
-.. warning:: mock version >= 1.X
-
-.. hint:: To activate functional tests in kamaki. enable the preconfigured
-    *livetest* command group:
-
-    .. code-block:: console
-
-        $ kamaki config set livetest_cli livetest
-
 
 Mac OS X
 --------
@@ -186,7 +146,7 @@ The full process is detailed in the following:
 Requirements
 ^^^^^^^^^^^^
 
-* Python 2.7 (`Official versions <http://www.python.org/getit>`_)
+* Python 2.7 (`Official versions <http://www.python.org/download>`_)
 
 * Setuptools (`Official versions and workarounds <http://pypi.python.org/pypi/setuptools>`_)
 
@@ -197,7 +157,7 @@ Install Python
 ^^^^^^^^^^^^^^
 
 Download and run the Windows installer from
-`here <http://www.python.org/getit>`_
+`here <http://www.python.org/download>`_
 
 Users should pick the installer that fits their windows version and machine
 architecture.
@@ -232,9 +192,9 @@ installer doesn't currently work on 64bit machines.
     installer
 
 * Users with 64-bit platforms should download the
-    `ez_setup.py <http://peak.telecommunity.com/dist/ez_setup.py>`_ script and
-    install it from a command shell. In the following example, the script was
-    downloaded at C:\\Downloads::
+    `ez_setup.py <https://bitbucket.org/pypa/setuptools/raw/bootstrap/ez_setup.py>`_
+    script and install it from a command shell. In the following example, the
+    script was downloaded at C:\\Downloads::
 
         C:\> cd Downloads
         C:\Downloads\> python ez_setup.py

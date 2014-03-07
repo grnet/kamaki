@@ -1,4 +1,4 @@
-# Copyright 2011-2013 GRNET S.A. All rights reserved.
+# Copyright 2011-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -123,7 +123,7 @@ class RequestManager(Logged):
             url += _encode(path[1:] if path.startswith('/') else path)
         delim = '?'
         for key, val in params.items():
-            val = '' if val in (None, False) else _encode('%s' % val)
+            val = quote('' if val in (None, False) else _encode('%s' % val))
             url += '%s%s%s' % (delim, key, ('=%s' % val) if val else '')
             delim = '&'
         parsed = urlparse(url)
@@ -154,12 +154,18 @@ class RequestManager(Logged):
                 self._token, val = val, '...'
             sendlog.info('  %s: %s%s' % (key, val, plog))
         if self.data:
-            sendlog.info('data size:%s%s' % (len(self.data), plog))
+            sendlog.info('data size: %s%s' % (len(self.data), plog))
             if self.LOG_DATA:
                 sendlog.info(self.data.replace(self._token, '...') if (
                     self._token) else self.data)
         else:
-            sendlog.info('data size:0%s' % plog)
+            sendlog.info('data size: 0%s' % plog)
+
+    def _encode_headers(self):
+        headers = self.headers
+        for k, v in self.headers.items():
+            headers[k] = quote(v)
+        self.headers = headers
 
     def perform(self, conn):
         """
@@ -167,6 +173,7 @@ class RequestManager(Logged):
 
         :returns: (HTTPResponse)
         """
+        self._encode_headers()
         self.dump_log()
         conn.request(
             method=str(self.method.upper()),
@@ -234,7 +241,7 @@ class ResponseManager(Logged):
                         if k.lower in ('x-auth-token', ) and (
                                 not self.LOG_TOKEN):
                             self._token, v = v, '...'
-                        v = unquote(v)
+                        v = unquote(v).decode('utf-8')
                         self._headers[k] = v
                         recvlog.info('  %s: %s%s' % (k, v, plog))
                     self._content = r.read()
@@ -257,6 +264,7 @@ class ResponseManager(Logged):
                     from traceback import format_stack
                     recvlog.debug(
                         '\n'.join(['%s' % type(err)] + format_stack()))
+                    raise
                     raise ClientError(
                         'Failed while http-connecting to %s (%s)' % (
                             self.request.url, err))
@@ -418,11 +426,11 @@ class Client(Logged):
     def set_header(self, name, value, iff=True):
         """Set a header 'name':'value'"""
         if value is not None and iff:
-            self.headers[name] = unicode(value)
+            self.headers['%s' % name] = '%s' % value
 
     def set_param(self, name, value=None, iff=True):
         if iff:
-            self.params[name] = '%s' % value  # unicode(value)
+            self.params[name] = '%s' % value
 
     def request(
             self, method, path,

@@ -1,4 +1,4 @@
-# Copyright 2012-2013 GRNET S.A. All rights reserved.
+# Copyright 2012-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -32,7 +32,8 @@
 # or implied, of GRNET S.A.
 
 from kamaki.cli.config import Config
-from kamaki.cli.errors import CLISyntaxError, raiseCLIError
+from kamaki.cli.errors import (
+    CLISyntaxError, raiseCLIError, CLIInvalidArgument)
 from kamaki.cli.utils import split_input, to_bytes
 
 from datetime import datetime as dtm
@@ -40,11 +41,49 @@ from time import mktime
 from sys import stderr
 
 from logging import getLogger
-from argparse import ArgumentParser, ArgumentError
-from argparse import RawDescriptionHelpFormatter
+from argparse import (
+    ArgumentParser, ArgumentError, RawDescriptionHelpFormatter)
 from progress.bar import ShadyBar as KamakiProgressBar
 
 log = getLogger(__name__)
+
+
+class NoAbbrArgumentParser(ArgumentParser):
+    """This is Argument Parser with disabled argument abbreviation"""
+
+    def _get_option_tuples(self, option_string):
+        result = []
+        chars = self.prefix_chars
+        if option_string[0] in chars and option_string[1] in chars:
+            if '=' in option_string:
+                option_prefix, explicit_arg = option_string.split('=', 1)
+            else:
+                option_prefix = option_string
+                explicit_arg = None
+            for option_string in self._option_string_actions:
+                if option_string == option_prefix:
+                    action = self._option_string_actions[option_string]
+                    tup = action, option_string, explicit_arg
+                    result.append(tup)
+        elif option_string[0] in chars and option_string[1] not in chars:
+            option_prefix = option_string
+            explicit_arg = None
+            short_option_prefix = option_string[:2]
+            short_explicit_arg = option_string[2:]
+
+            for option_string in self._option_string_actions:
+                if option_string == short_option_prefix:
+                    action = self._option_string_actions[option_string]
+                    tup = action, option_string, short_explicit_arg
+                    result.append(tup)
+                elif option_string == option_prefix:
+                    action = self._option_string_actions[option_string]
+                    tup = action, option_string, explicit_arg
+                    result.append(tup)
+        else:
+            return super(
+                NoAbbrArgumentParser, self)._get_option_tuples(option_string)
+        return result
 
 
 class Argument(object):
@@ -274,6 +313,30 @@ class DataSizeArgument(ValueArgument):
             self._value = self._calculate_limit(new_value)
 
 
+class UserAccountArgument(ValueArgument):
+    """A user UUID or name (if uuid does not exist)"""
+
+    account_client = None
+
+    @property
+    def value(self):
+        return super(UserAccountArgument, self).value
+
+    @value.setter
+    def value(self, uuid_or_name):
+        if uuid_or_name and self.account_client:
+            r = self.account_client.uuids2usernames([uuid_or_name, ])
+            if r:
+                self._value = uuid_or_name
+            else:
+                r = self.account_client.usernames2uuids([uuid_or_name])
+                self._value = r.get(uuid_or_name) if r else None
+            if not self._value:
+                raise raiseCLIError('User name or UUID not found', details=[
+                    '%s is not a known username or UUID' % uuid_or_name,
+                    'Usage:  %s <USER_UUID | USERNAME>' % self.lvalue])
+
+
 class DateArgument(ValueArgument):
 
     DATE_FORMAT = '%a %b %d %H:%M:%S %Y'
@@ -373,6 +436,30 @@ class KeyValueArgument(Argument):
                     self._value[key] = val
             except Exception as e:
                 raiseCLIError(e, 'KeyValueArgument Syntax Error')
+
+
+class StatusArgument(ValueArgument):
+    """Initialize with valid_states=['list', 'of', 'states']
+    First state is the default"""
+
+    def __init__(self, *args, **kwargs):
+        self.valid_states = kwargs.pop('valid_states', ['BUILD', ])
+        super(StatusArgument, self).__init__(*args, **kwargs)
+
+    @property
+    def value(self):
+        return getattr(self, '_value', None)
+
+    @value.setter
+    def value(self, new_status):
+        if new_status:
+            new_status = new_status.upper()
+            if new_status not in self.valid_states:
+                raise CLIInvalidArgument(
+                    'Invalid argument %s' % new_status, details=[
+                    'Usage: '
+                    '%s=[%s]' % (self.lvalue, '|'.join(self.valid_states))])
+            self._value = new_status
 
 
 class ProgressBarArgument(FlagArgument):
@@ -475,7 +562,7 @@ class ArgumentParseManager(object):
         :param check_required: (bool) Set to False inorder not to check for
             required argument values while parsing
         """
-        self.parser = ArgumentParser(
+        self.parser = NoAbbrArgumentParser(
             add_help=False, formatter_class=RawDescriptionHelpFormatter)
         self._exe = exe
         self.syntax = syntax or (
@@ -621,7 +708,7 @@ class ArgumentParseManager(object):
                 if not self._parse_required_arguments(item, parsed_args):
                     return False
             return True
-        if isinstance(required, list):
+        elif isinstance(required, list):
             for item in required:
                 if self._parse_required_arguments(item, parsed_args):
                     return True

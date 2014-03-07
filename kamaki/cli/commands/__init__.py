@@ -1,4 +1,4 @@
-# Copyright 2011-2013 GRNET S.A. All rights reserved.
+# Copyright 2011-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -34,10 +34,12 @@
 from kamaki.cli.logger import get_logger
 from kamaki.cli.utils import (
     print_list, print_dict, print_json, print_items, ask_user,
-    filter_dicts_by_dict)
+    filter_dicts_by_dict, DontRaiseUnicodeError, pref_enc)
 from kamaki.cli.argument import FlagArgument, ValueArgument
 from kamaki.cli.errors import CLIInvalidArgument
 from sys import stdin, stdout, stderr
+import codecs
+
 
 log = get_logger(__name__)
 
@@ -60,6 +62,18 @@ def addLogSettings(func):
     return wrap
 
 
+def dataModification(func):
+    def wrap(self, inp):
+        try:
+            inp = func(self, inp)
+        except Exception as e:
+            log.warning('WARNING: Error while running %s: %s' % (func, e))
+            log.warning('\tWARNING: Kamaki will use original data to go on')
+        finally:
+            return inp
+    return wrap
+
+
 class _command_init(object):
 
     # self.arguments (dict) contains all non-positional arguments
@@ -74,6 +88,9 @@ class _command_init(object):
             _in=None, _out=None, _err=None):
         self._in, self._out, self._err = (
             _in or stdin, _out or stdout, _err or stderr)
+        self._in = codecs.getreader(pref_enc)(_in or stdin)
+        self._out = codecs.getwriter(pref_enc)(_out or stdout)
+        self._err = codecs.getwriter(pref_enc)(_err or stderr)
         self.required = getattr(self, 'required', None)
         if hasattr(self, 'arguments'):
             arguments.update(self.arguments)
@@ -97,13 +114,16 @@ class _command_init(object):
         self.auth_base = auth_base or getattr(self, 'auth_base', None)
         self.cloud = cloud or getattr(self, 'cloud', None)
 
+    @DontRaiseUnicodeError
     def write(self, s):
-        self._out.write('%s' % s)
+        self._out.write(s)
         self._out.flush()
 
+    @DontRaiseUnicodeError
     def writeln(self, s=''):
         self.write('%s\n' % s)
 
+    @DontRaiseUnicodeError
     def error(self, s=''):
         self._err.write('%s\n' % s)
         self._err.flush()
@@ -113,20 +133,20 @@ class _command_init(object):
         return print_list(*args, **kwargs)
 
     def print_dict(self, *args, **kwargs):
-        kwargs.setdefault('out', self._out)
+        kwargs.setdefault('out', self)
         return print_dict(*args, **kwargs)
 
     def print_json(self, *args, **kwargs):
-        kwargs.setdefault('out', self._out)
+        kwargs.setdefault('out', self)
         return print_json(*args, **kwargs)
 
     def print_items(self, *args, **kwargs):
-        kwargs.setdefault('out', self._out)
+        kwargs.setdefault('out', self)
         return print_items(*args, **kwargs)
 
     def ask_user(self, *args, **kwargs):
         kwargs.setdefault('user_in', self._in)
-        kwargs.setdefault('out', self._out)
+        kwargs.setdefault('out', self)
         return ask_user(*args, **kwargs)
 
     @DontRaiseKeyError
@@ -278,9 +298,9 @@ class _optional_output_cmd(object):
 
     def _optional_output(self, r):
         if self['json_output']:
-            print_json(r, out=self._out)
+            print_json(r, out=self)
         elif self['with_output']:
-            print_items([r] if isinstance(r, dict) else r, out=self._out)
+            print_items([r] if isinstance(r, dict) else r, out=self)
 
 
 class _optional_json(object):
@@ -297,9 +317,9 @@ class _optional_json(object):
 
     def _print(self, output, print_method=print_items, **print_method_kwargs):
         if self['json_output'] or self['output_format']:
-            print_json(output, out=self._out)
+            print_json(output, out=self)
         else:
-            print_method_kwargs.setdefault('out', self._out)
+            print_method_kwargs.setdefault('out', self)
             print_method(output, **print_method_kwargs)
 
 

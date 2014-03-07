@@ -69,33 +69,21 @@ External applications must instantiate a MyNewClient object.
 Concurrency control
 -------------------
 
-Kamaki clients may handle multiple requests at once, using threads. In that
-case, users might implement their own thread handling mechanism, use an
-external solution or take advantage of the mechanism featured in kamaki.clients
+Kamaki clients may handle multiple requests with threads. The easiest way is
+using the `async_run` method, fed with a list of argument dictionaries (one for
+each call of the single method).
 
 .. code-block:: python
-
-    from threading import enumerate
-    from kamaki.clients import SilentEvent
-    ...
 
     class MyNewClient(Client):
         ...
 
         def _single_threaded_method(self, **args):
             ...
-            request code
-            ...
 
         def multithread_method(self):
-            thread_list = []
-            self._init_thread_limit()
-            while some_condition or thread_list:
-                ...
-                event = SilentEvent(self._single_threaded_method, **args)
-                event.start()
-                thread_list.append(event)
-                thread_list = self._watch_thread_limit(thread_list)
+            kwarg_list = [kwarg for each run]
+            self.async_run(self._single_threaded_method, kwarg_list)
 
 Going agile
 -----------
@@ -109,19 +97,17 @@ APIs.
 Using the tests
 ^^^^^^^^^^^^^^^
 
-To run the tests, the kamaki source code has to be downloaded.
+First, the source code of kamaki must be accessible. If this is not the case,
+the source code can be obtained from here:
+
+`https://code.grnet.gr/projects/kamaki/files <https://code.grnet.gr/projects/kamaki/files>`_
+
+In each package under kamaki.clients, there is a test module (`test.py`). To
+run all tests, run the test.py file from kamaki.clients
 
 .. code-block:: console
 
-    $ git clone https://code.grnet.gr/git/kamaki
-    $ cd kamaki/kamaki/clients
-
-In each package under kamaki.clients, there is a test module (test.py) where
-the tests are implemented. To run all tests, run the test.py file from
-kamaki.clients
-
-.. code-block:: console
-
+    $ cd ${KAMAKI_SOURCE_LOCATION}/kamaki/clients
     $ python test.py
 
 To test a specific class, add the class name as an argument. e.g., for the
@@ -166,9 +152,9 @@ to test everything in kamaki.clients.pithos package:
 Mechanism
 ^^^^^^^^^
 
-Each folder / package contains a test.py file, that represents the test module
-of this package. All test modules contain a set of classes that extent the
-TestCase class. They also contain a main method to run the tests.
+Each folder / package contains a test.py file, where its test module lived. All
+test modules contain a set of classes that extent the TestCase class. They also
+contain a main method to run the tests.
 
 By convention, testing classes have the same name as the class they test.
 Methods not grouped in classes are tested by classes named after their
@@ -204,7 +190,7 @@ Adding a new method
 
 To implement a new method in an existing class, developers are encouraged to
 implement the corresponding unit test first. In order to do that, they should
-find the testing class that is mapped to the class or module they working on.
+find the testing class that is mapped to the class or module they work on.
 
 Example: Adding **list_special** to *kamaki.clients.astakos.AstakosClient*,
 requires changes to *kamaki.clients.astakos.test.AstakosClient* too, as shown
@@ -236,7 +222,7 @@ Example 1: To add a NewService class that implements *kamaki.clients.Client*:
 
     $ mkdir new_service && touch new_service/test.py
 
-* create the file to code the package implementation:
+* create the package file for the package implementation:
 
 .. code-block:: console
 
@@ -254,7 +240,8 @@ Example 1: To add a NewService class that implements *kamaki.clients.Client*:
         def test_method1(self):
             ...
 
-* Create the NewService and its actual functionality in kamaki.clients.new_service
+* Create the NewService and its actual functionality in
+    kamaki.clients.new_service
 
 .. code-block:: python
 

@@ -1,4 +1,4 @@
-# Copyright 2012-2013 GRNET S.A. All rights reserved.
+# Copyright 2012-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -133,8 +133,8 @@ def command(cmd_tree, prefix='', descedants_depth=1):
 
         name_terms = cls_name.split('_')
         if not _update_best_match(name_terms, prefix):
-            if _debug:
-                kloger.warning('%s failed to update_best_match' % cls_name)
+            # if _debug:
+            #     kloger.warning('%s failed to update_best_match' % cls_name)
             return None
 
         global _best_match
@@ -557,14 +557,13 @@ def run_one_cmd(exe, parser):
     cloud = _init_session(parser.arguments, is_non_API(parser))
     if parser.unparsed:
         global _history
+        cnf = parser.arguments['config']
         try:
-            token = parser.arguments['config'].get_cloud(
-                cloud, 'token').split()[0]
+            token = cnf.get_cloud(cloud, 'token').split()[0]
         except Exception:
             token = None
-        _history = History(
-            parser.arguments['config'].get('global', 'history_file'),
-            token=token)
+        _history = History(cnf.get('global', 'history_file'), token=token)
+        _history.limit = cnf.get('global', 'history_limit')
         _history.add(' '.join([exe] + argv[1:]))
         from kamaki.cli import one_command
         one_command.run(cloud, parser, _help)

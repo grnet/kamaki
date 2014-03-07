@@ -62,12 +62,13 @@ _commands = [image_cmds, imagecompute_cmds]
 
 howto_image_file = [
     'Kamaki commands to:',
-    ' get current user id: /user authenticate',
-    ' check available containers: /file list',
-    ' create a new container: /file create <container>',
-    ' check container contents: /file list <container>',
-    ' upload files: /file upload <image file> <container>',
-    ' register an image: /image register <image name> <container>:<path>']
+    ' get current user id: kamaki user info',
+    ' check available containers: kamaki container list',
+    ' create a new container: kamaki container create CONTAINER',
+    ' check container contents: kamaki file list /CONTAINER',
+    ' upload files: kamaki file upload IMAGE_FILE /CONTAINER[/PATH]',
+    ' register an image:',
+    '   kamaki image register --name=IMAGE_NAME --location=/CONTAINER/PATH']
 
 about_image_id = ['To see a list of available image ids: /image list']
 
@@ -207,7 +208,7 @@ class image_list(_init_image, _optional_json, _name_filter, _id_filter):
             'fliter by property key=value where value is part of actual value',
             ('--property-like')),
         image_ID_for_members=ValueArgument(
-            'List members of an image', '--members-of')
+            'List members of an image', '--members-of'),
     )
 
     def _filter_by_owner(self, images):
@@ -325,8 +326,8 @@ class image_modify(_init_image, _optional_output_cmd):
         container_format=ValueArgument(
             'Change container format', '--container-format'),
         status=ValueArgument('Change status', '--status'),
-        publish=FlagArgument('Publish the image', '--publish'),
-        unpublish=FlagArgument('Unpublish the image', '--unpublish'),
+        publish=FlagArgument('Make the image public', '--public'),
+        unpublish=FlagArgument('Make the image private', '--private'),
         property_to_set=KeyValueArgument(
             'set property in key=value form (can be repeated)',
             ('-p', '--property-set')),
@@ -340,7 +341,7 @@ class image_modify(_init_image, _optional_output_cmd):
     required = [
         'image_name', 'disk_format', 'container_format', 'status', 'publish',
         'unpublish', 'property_to_set', 'member_ID_to_add',
-        'member_ID_to_remove']
+        'member_ID_to_remove', 'property_to_del']
 
     @errors.generic.all
     @errors.plankton.connection
@@ -361,7 +362,7 @@ class image_modify(_init_image, _optional_output_cmd):
             disk_format=self['disk_format'],
             container_format=self['container_format'],
             status=self['status'],
-            public=self['publish'] or self['unpublish'] or None,
+            public=self['publish'] or (False if self['unpublish'] else None),
             **meta['properties']))
         if self['with_output']:
             self._optional_output(self.get_image_details(image_id))
@@ -372,7 +373,11 @@ class image_modify(_init_image, _optional_output_cmd):
 
 
 class PithosLocationArgument(ValueArgument):
-    """Resolve pithos url, return in the form pithos://uuid/container/path"""
+    """Resolve pithos URI, return in the form pithos://uuid/container[/path]
+
+    UPDATE: URLs without a path are also resolvable. Therefore, caller methods
+    should check if there is a path or not
+    """
 
     def __init__(
             self, help=None, parsed_name=None, default=None, user_uuid=None):
@@ -386,7 +391,8 @@ class PithosLocationArgument(ValueArgument):
 
     @property
     def value(self):
-        return 'pithos://%s/%s/%s' % (self.uuid, self.container, self.path)
+        path = ('/%s' % self.path) if self.path else ''
+        return 'pithos://%s/%s%s' % (self.uuid, self.container, path)
 
     @value.setter
     def value(self, location):
@@ -396,17 +402,16 @@ class PithosLocationArgument(ValueArgument):
                 uuid, self.container, self.path = pc._resolve_pithos_url(
                     location)
                 self.uuid = uuid or self.uuid
-                for term in ('container', 'path'):
-                    assert getattr(self, term, None), 'No %s' % term
+                assert self.container, 'No container in pithos URI'
             except Exception as e:
                 raise CLIInvalidArgument(
                     'Invalid Pithos+ location %s (%s)' % (location, e),
                     details=[
                         'The image location must be a valid Pithos+',
                         'location. There are two valid formats:',
-                        '  pithos://USER_UUID/CONTAINER/PATH',
+                        '  pithos://USER_UUID/CONTAINER[/PATH]',
                         'OR',
-                        '  /CONTAINER/PATH',
+                        '  /CONTAINER[/PATH]',
                         'To see all containers:',
                         '  [kamaki] container list',
                         'To list the contents of a container:',
@@ -446,8 +451,9 @@ class image_register(_init_image, _optional_json):
             'Load metadata from a json-formated file <img-file>.meta :'
             '{"key1": "val1", "key2": "val2", ..., "properties: {...}"}',
             ('--metafile')),
-        metafile_force=FlagArgument(
-            'Overide remote metadata file', ('-f', '--force')),
+        force_upload=FlagArgument(
+            'Overwrite remote files (image file, metadata file)',
+            ('-f', '--force')),
         no_metafile_upload=FlagArgument(
             'Do not store metadata in remote meta file',
             ('--no-metafile-upload')),
@@ -471,8 +477,6 @@ class image_register(_init_image, _optional_json):
     required = ('name', 'pithos_location')
 
     def _get_pithos_client(self, locator):
-        if self['no_metafile_upload']:
-            return None
         ptoken = self.client.token
         if getattr(self, 'auth_base', False):
             pithos_endpoints = self.auth_base.get_service_endpoints(
@@ -518,13 +522,30 @@ class image_register(_init_image, _optional_json):
         for k, v in self['properties'].items():
             properties[k.upper().replace('-', '_')] = v
 
+    def _assert_remote_file_not_exist(self, pithos, path):
+        if pithos and not self['force_upload']:
+            try:
+                pithos.get_object_info(path)
+                raiseCLIError(
+                    'Remote file /%s/%s already exists' % (
+                        pithos.container, path),
+                    importance=2,
+                    details=[
+                        'Registration ABORTED',
+                        'Use %s to force upload' % self.arguments[
+                            'force_upload'].lvalue])
+            except ClientError as ce:
+                if ce.status != 404:
+                    raise
+
     @errors.generic.all
     @errors.plankton.connection
-    def _run(self, name, location):
-        locator = self.arguments['pithos_location']
+    def _run(self, name, locator):
+        location, pithos = locator.value, None
         if self['local_image_path']:
             with open(self['local_image_path']) as f:
                 pithos = self._get_pithos_client(locator)
+                self._assert_remote_file_not_exist(pithos, locator.path)
                 (pbar, upload_cb) = self._safe_progress_bar('Uploading')
                 if pbar:
                     hash_bar = pbar.clone()
@@ -539,20 +560,12 @@ class image_register(_init_image, _optional_json):
         if location != new_loc:
             locator.value = new_loc
         self._load_params_from_args(params, properties)
-        pclient = self._get_pithos_client(locator)
 
-        #check if metafile exists
-        meta_path = '%s.meta' % locator.path
-        if pclient and not self['metafile_force']:
-            try:
-                pclient.get_object_info(meta_path)
-                raiseCLIError(
-                    'Metadata file /%s/%s already exists, abort' % (
-                        locator.container, meta_path),
-                    details=['Registration ABORTED', 'Try -f to overwrite'])
-            except ClientError as ce:
-                if ce.status != 404:
-                    raise
+        if not self['no_metafile_upload']:
+            #check if metafile exists
+            pithos = pithos or self._get_pithos_client(locator)
+            meta_path = '%s.meta' % locator.path
+            self._assert_remote_file_not_exist(pithos, meta_path)
 
         #register the image
         try:
@@ -570,10 +583,11 @@ class image_register(_init_image, _optional_json):
         self._print(r, self.print_dict)
 
         #upload the metadata file
-        if pclient:
+        if not self['no_metafile_upload']:
             try:
-                meta_headers = pclient.upload_from_string(
+                meta_headers = pithos.upload_from_string(
                     meta_path, dumps(r, indent=2),
+                    sharing=dict(read='*' if params.get('is_public') else ''),
                     container_info_cache=self.container_info_cache)
             except TypeError:
                 self.error(
@@ -593,9 +607,28 @@ class image_register(_init_image, _optional_json):
 
     def main(self):
         super(self.__class__, self)._run()
+
+        locator, pithos = self.arguments['pithos_location'], None
+        locator.setdefault('uuid', self.auth_base.user_term('id'))
+        locator.path = locator.path or path.basename(
+            self['local_image_path'] or '')
+        if not locator.path:
+            raise CLIInvalidArgument(
+                'Missing the image file or object', details=[
+                    'Pithos+ URI %s does not point to a physical image' % (
+                        locator.value),
+                    'A physical image is necessary.',
+                    'It can be a remote Pithos+ object or a local file.',
+                    'To specify a remote image object:',
+                    '  %s [pithos://UUID]/CONTAINER/PATH' % locator.lvalue,
+                    'To specify a local file:',
+                    '  %s [pithos://UUID]/CONTAINER[/PATH] %s LOCAL_PATH' % (
+                        locator.lvalue,
+                        self.arguments['local_image_path'].lvalue)
+                ])
         self.arguments['pithos_location'].setdefault(
             'uuid', self.auth_base.user_term('id'))
-        self._run(self['name'], self['pithos_location'])
+        self._run(self['name'], locator)
 
 
 @command(image_cmds)

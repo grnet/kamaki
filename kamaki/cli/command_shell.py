@@ -1,4 +1,4 @@
-# Copyright 2012-2013 GRNET S.A. All rights reserved.
+# Copyright 2012-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -307,8 +307,9 @@ class Shell(Cmd):
         self.auth_base = auth_base
         self.cloud = cloud
         self._parser = parser
-        self._history = History(
-            parser.arguments['config'].get('global', 'history_file'))
+        cnf = parser.arguments['config']
+        self._history = History(cnf.get('global', 'history_file'))
+        self._history.limit = cnf.get('global', 'history_limit')
         if path:
             cmd = self.cmd_tree.get_command(path)
             intro = cmd.path.replace('_', ' ')

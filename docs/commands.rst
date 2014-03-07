@@ -211,6 +211,7 @@ server (Compute/Cyclades)
     start     Start an existing virtual server
     shutdown  Shutdown an active virtual server
     delete    Delete a virtual server
+    console   Create a VMC console and show connection information
     wait      Wait for server to finish [BUILD, STOPPED, REBOOT, ACTIVE]
 
 Showcase: Create a server
@@ -379,7 +380,7 @@ Showcase: Connect a network to a VM
       -v,--verbose:  More info at response
 
     * Connect VM with id 11687 to network with id 1409
-    [network]: connect 11687 --device-id=1409 --wait
+    [network]: connect 1409 --device-id=11687 --wait
     Creating port between network 1409 and server 11687
     New port: 8
 

@@ -1,4 +1,4 @@
-# Copyright 2011-2013 GRNET S.A. All rights reserved.
+# Copyright 2011-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -174,7 +174,7 @@ class ImageClient(Client):
         :param member: (str) user to allow access to current user's images
         """
         path = path4url('images', image_id, 'members', member)
-        self.set_header('Content-Length', len(member))
+        self.set_header('Content-Length', 0)
         r = self.put(path, success=204)
         return r.headers
 

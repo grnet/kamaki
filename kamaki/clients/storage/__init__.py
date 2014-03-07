@@ -1,4 +1,4 @@
-#a Copyright 2011-2013 GRNET S.A. All rights reserved.
+# Copyright 2011-2013 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -182,6 +182,7 @@ class StorageClient(Client):
         :returns: (dict) request headers
         """
         self._assert_container()
+        assert obj, 'Remote directory path is missing'
         path = path4url(self.account, self.container, obj)
         self.set_header('Content-Type', 'application/directory')
         self.set_header('Content-length', '0')

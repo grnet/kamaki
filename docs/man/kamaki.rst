@@ -93,10 +93,6 @@ history
 Hidden command groups
 ---------------------
 
-livetest
-    Live tests that check kamaki against running services. To enable:
-    kamaki config set livetest.cli livetest
-
 service
     Astakos API service commands
 
@@ -225,6 +221,7 @@ server
 * start     Start an existing virtual server
 * shutdown  Shutdown an active virtual server
 * delete    Delete a virtual server
+* console   Create a VMC console and show connection information
 * wait      Wait for server to finish [BUILD, STOPPED, REBOOT, ACTIVE]
 
 flavor
@@ -305,8 +302,6 @@ Command user history, as stored in ~/.kamaki.history
 
 * show      show intersession history
 * clean     clean up history
-* run       run/show previously executed command(s)
-
 
 livetest (hidden)
 *****************

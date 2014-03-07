@@ -1,4 +1,4 @@
-# Copyright 2011-2013 GRNET S.A. All rights reserved.
+# Copyright 2011-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -78,6 +78,7 @@ DEFAULTS = {
         'log_data': 'off',
         'log_pid': 'off',
         'history_file': HISTORY_PATH,
+        'history_limit': 0,
         'user_cli': 'astakos',
         'quota_cli': 'astakos',
         'resource_cli': 'astakos',
@@ -98,7 +99,6 @@ DEFAULTS = {
         'config_cli': 'config',
         'history_cli': 'history'
         #  Optional command specs:
-        #  'livetest_cli': 'livetest',
         #  'service_cli': 'astakos'
         #  'endpoint_cli': 'astakos'
         #  'commission_cli': 'astakos'

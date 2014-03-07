@@ -1,4 +1,4 @@
-# Copyright 2011-2013 GRNET S.A. All rights reserved.
+# Copyright 2011-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -48,7 +48,8 @@ from kamaki.cli.errors import (
     CLISyntaxError)
 from kamaki.cli.argument import (
     FlagArgument, IntArgument, ValueArgument, DateArgument, KeyValueArgument,
-    ProgressBarArgument, RepeatableArgument, DataSizeArgument)
+    ProgressBarArgument, RepeatableArgument, DataSizeArgument,
+    UserAccountArgument)
 from kamaki.cli.utils import (
     format_size, bold, get_path_size, guess_mime_type)
 
@@ -119,8 +120,9 @@ class _pithos_account(_pithos_init):
 
     def __init__(self, arguments={}, auth_base=None, cloud=None):
         super(_pithos_account, self).__init__(arguments, auth_base, cloud)
-        self['account'] = ValueArgument(
-            'Use (a different) user uuid', ('-A', '--account'))
+        self['account'] = UserAccountArgument(
+            'A user UUID or name', ('-A', '--account'))
+        self.arguments['account'].account_client = auth_base
 
     def print_objects(self, object_list):
         for index, obj in enumerate(object_list):
@@ -147,7 +149,7 @@ class _pithos_account(_pithos_init):
 
     @staticmethod
     def _is_dir(remote_dict):
-        return 'application/directory' == remote_dict.get(
+        return 'application/directory' in remote_dict.get(
             'content_type', remote_dict.get('content-type', ''))
 
     def _run(self):
@@ -301,10 +303,8 @@ class file_list(_pithos_container, _optional_json, _name_filter):
             until=self['until'],
             meta=self['meta'])
 
-        #  REMOVE THIS if version >> 0.12
         if not r.json:
-            self.error('  NOTE: Since v0.12, use / for containers e.g.,')
-            self.error('    [kamaki] file list /pithos')
+            self.error('Container "%s" is empty' % self.client.container)
 
         files = self._filter_by_name(r.json)
         if self['more']:
@@ -329,10 +329,6 @@ class file_modify(_pithos_container):
     """Modify the attributes of a file or directory object"""
 
     arguments = dict(
-        publish=FlagArgument(
-            'Make an object public (returns the public URL)', '--publish'),
-        unpublish=FlagArgument(
-            'Make an object unpublic', '--unpublish'),
         uuid_for_read_permission=RepeatableArgument(
             'Give read access to user/group (can be repeated, accumulative). '
             'Format for users: UUID . Format for groups: UUID:GROUP . '
@@ -349,7 +345,7 @@ class file_modify(_pithos_container):
             'Delete object metadata (can be repeated)', '--metadata-del'),
     )
     required = [
-        'publish', 'unpublish', 'uuid_for_read_permission', 'metadata_to_set',
+        'uuid_for_read_permission', 'metadata_to_set',
         'uuid_for_write_permission', 'no_permissions',
         'metadata_key_to_delete']
 
@@ -358,10 +354,6 @@ class file_modify(_pithos_container):
     @errors.pithos.container
     @errors.pithos.object_path
     def _run(self):
-        if self['publish']:
-            self.writeln(self.client.publish_object(self.path))
-        if self['unpublish']:
-            self.client.unpublish_object(self.path)
         if self['uuid_for_read_permission'] or self[
                 'uuid_for_write_permission']:
             perms = self.client.get_object_sharing(self.path)
@@ -384,11 +376,6 @@ class file_modify(_pithos_container):
 
     def main(self, path_or_url):
         super(self.__class__, self)._run(path_or_url)
-        if self['publish'] and self['unpublish']:
-            raise CLIInvalidArgument(
-                'Arguments %s and %s cannot be used together' % (
-                    self.arguments['publish'].lvalue,
-                    self.arguments['publish'].lvalue))
         if self['no_permissions'] and (
                 self['uuid_for_read_permission'] or self[
                     'uuid_for_write_permission']):
@@ -396,6 +383,45 @@ class file_modify(_pithos_container):
                 '%s cannot be used with other permission arguments' % (
                     self.arguments['no_permissions'].lvalue))
         self._run()
+
+
+@command(file_cmds)
+class file_publish(_pithos_container):
+    """Publish an object (creates a public URL)"""
+
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self):
+        self.writeln(self.client.publish_object(self.path))
+
+    def main(self, path_or_url):
+        super(self.__class__, self)._run(path_or_url)
+        self._run()
+
+
+@command(file_cmds)
+class file_unpublish(_pithos_container):
+    """Unpublish an object"""
+
+    @errors.generic.all
+    @errors.pithos.connection
+    @errors.pithos.container
+    @errors.pithos.object_path
+    def _run(self):
+        self.client.unpublish_object(self.path)
+
+    def main(self, path_or_url):
+        super(self.__class__, self)._run(path_or_url)
+        self._run()
+
+
+def _assert_path(self, path_or_url):
+    if not self.path:
+        raiseCLIError(
+            'Directory path is missing in location %s' % path_or_url,
+            details=['Location format:    [[pithos://UUID]/CONTAINER/]PATH'])
 
 
 @command(file_cmds)
@@ -418,23 +444,25 @@ class file_create(_pithos_container, _optional_output_cmd):
 
     def main(self, path_or_url):
         super(self.__class__, self)._run(path_or_url)
+        _assert_path(self, path_or_url)
         self._run()
 
 
 @command(file_cmds)
 class file_mkdir(_pithos_container, _optional_output_cmd):
-    """Create a directory: /file create --content-type='applcation/directory'
+    """Create a directory: /file create --content-type='application/directory'
     """
 
     @errors.generic.all
     @errors.pithos.connection
     @errors.pithos.container
-    def _run(self):
+    def _run(self, path):
         self._optional_output(self.client.create_directory(self.path))
 
     def main(self, path_or_url):
         super(self.__class__, self)._run(path_or_url)
-        self._run()
+        _assert_path(self, path_or_url)
+        self._run(self.path)
 
 
 @command(file_cmds)
@@ -479,8 +507,8 @@ class file_delete(_pithos_container):
 class _source_destination(_pithos_container, _optional_output_cmd):
 
     sd_arguments = dict(
-        destination_user_uuid=ValueArgument(
-            'default: current user uuid', '--to-account'),
+        destination_user=UserAccountArgument(
+            'UUID or username, default: current user', '--to-account'),
         destination_container=ValueArgument(
             'default: pithos', '--to-container'),
         source_prefix=FlagArgument(
@@ -499,6 +527,7 @@ class _source_destination(_pithos_container, _optional_output_cmd):
         self.arguments.update(self.sd_arguments)
         super(_source_destination, self).__init__(
             self.arguments, auth_base, cloud)
+        self.arguments['destination_user'].account_client = self.auth_base
 
     def _report_transfer(self, src, dst, transfer_name):
         if not dst:
@@ -627,8 +656,7 @@ class _source_destination(_pithos_container, _optional_output_cmd):
             base_url=self.client.base_url, token=self.client.token,
             container=self[
                 'destination_container'] or dst_con or self.client.container,
-            account=self[
-                'destination_user_uuid'] or dst_acc or self.account)
+            account=self['destination_user'] or dst_acc or self.account)
         self.dst_path = dst_path or self.path
 
 
@@ -773,7 +801,8 @@ class file_overwrite(_pithos_container, _optional_output_cmd):
             'do not show progress bar', ('-N', '--no-progress-bar'),
             default=False),
         start_position=IntArgument('File position in bytes', '--from'),
-        end_position=IntArgument('File position in bytes', '--to')
+        end_position=IntArgument('File position in bytes', '--to'),
+        object_version=ValueArgument('File to overwrite', '--object-version'),
     )
     required = ('start_position', 'end_position')
 
@@ -793,6 +822,7 @@ class file_overwrite(_pithos_container, _optional_output_cmd):
                     start=start,
                     end=end,
                     source_file=f,
+                    source_version=self['object_version'],
                     upload_cb=upload_cb))
         finally:
             self._safe_progress_bar_finish(progress_bar)
@@ -1059,7 +1089,7 @@ class file_cat(_pithos_container):
     @errors.pithos.container
     @errors.pithos.object_path
     def _run(self):
-        r = self.client.download_object(
+        self.client.download_object(
             self.path, self._out,
             range_str=self['range'],
             version=self['object_version'],
@@ -1067,7 +1097,7 @@ class file_cat(_pithos_container):
             if_none_match=self['if_none_match'],
             if_modified_since=self['if_modified_since'],
             if_unmodified_since=self['if_unmodified_since'])
-        print r
+        self._out.flush()
 
     def main(self, path_or_url):
         super(self.__class__, self)._run(path_or_url)
@@ -1631,10 +1661,13 @@ class sharer_info(_pithos_account, _optional_json):
     def _run(self):
         self._print(self.client.get_account_info(), self.print_dict)
 
-    def main(self, account_uuid=None):
+    def main(self, account_uuid_or_name=None):
         super(self.__class__, self)._run()
-        if account_uuid:
-            self.client.account, self.account = account_uuid, account_uuid
+        if account_uuid_or_name:
+            arg = UserAccountArgument('Check', ' ')
+            arg.account_client = self.auth_base
+            arg.value = account_uuid_or_name
+            self.client.account, self.account = arg.value, arg.value
         self._run()
 
 
@@ -1712,25 +1745,3 @@ class group_delete(_pithos_group, _optional_json):
     def main(self, groupname):
         super(self.__class__, self)._run()
         self._run(groupname)
-
-
-#  Deprecated commands
-
-@command(file_cmds)
-class file_publish(_pithos_init):
-    """DEPRECATED, replaced by [kamaki] file modify OBJECT --publish"""
-
-    def main(self, *args):
-        raise CLISyntaxError('DEPRECATED', details=[
-            'This command is replaced by:',
-            '  [kamaki] file modify OBJECT --publish'])
-
-
-@command(file_cmds)
-class file_unpublish(_pithos_init):
-    """DEPRECATED, replaced by [kamaki] file modify OBJECT --unpublish"""
-
-    def main(self, *args):
-        raise CLISyntaxError('DEPRECATED', details=[
-            'This command is replaced by:',
-            '  [kamaki] file modify OBJECT --unpublish'])

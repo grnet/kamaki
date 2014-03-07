@@ -75,7 +75,6 @@ setup(
         'kamaki.clients.compute',
         'kamaki.clients.network',
         'kamaki.clients.cyclades',
-        'kamaki.clients.livetest',
     ],
     classifiers=[
         'Operating System :: OS Independent',
