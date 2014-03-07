@@ -4,8 +4,8 @@
 Overview
 --------
 
-./kamaki is a multipurpose, interactive command-line tool and also a client
-development API for managing clouds.
+./kamaki is a multipurpose, interactive command-line tool, and also a
+client development library for managing OpenStack clouds.
 
 As a development library, it implements the OpenStack APIs, along with the
 custom extensions introduced by [Synnefo](http://www.synnefo.org).

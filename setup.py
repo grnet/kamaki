@@ -49,10 +49,11 @@ if version_info < (2, 7):
 setup(
     name='kamaki',
     version=kamaki.__version__,
-    description='A command-line tool for managing www.synnefo.org clouds',
-    long_description=open('README.rst').read(),
-    url='http://code.grnet.gr/projects/kamaki',
-    download_url='https://code.grnet.gr/projects/kamaki/files',
+    description=('A multipurpose, interactive command-line tool, and also a'
+                 ' client development library for managing OpenStack clouds.'),
+    long_description=open('README.md').read(),
+    url='http://www.synnefo.org',
+    download_url='https://pypi.python.org/pypi/kamaki',
     license='BSD',
     author='Synnefo development team',
     author_email='synnefo-devel@googlegroups.com',

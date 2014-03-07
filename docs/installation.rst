@@ -7,9 +7,9 @@ targeted to Linux/Unix-like users, it is quite straightforward to install and
 have it up and running in all platforms running Python 2.6 or 2.7.
 
 
-* Kamaki repository: `http://code.grnet.gr/git/kamaki <http://code.grnet.gr/git/kamaki>`_
+* Kamaki repository: `http://github.com/grnet/kamaki <http://github.com/grnet/kamaki>`_
 
-* Kamaki at pypi: `http://pypi.python.org/pypi/kamaki <https://pypi.python.org/pypi/kamaki>`_
+* Kamaki at PyPI: `http://pypi.python.org/pypi/kamaki <https://pypi.python.org/pypi/kamaki>`_
 
 * Synnefo Linux packages: `http://apt.dev.grnet.gr <http://apt.dev.grnet.gr>`_
 
