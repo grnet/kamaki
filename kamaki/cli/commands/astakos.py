@@ -167,11 +167,14 @@ class user_name2uuid(_init_synnefo_astakosclient, _optional_json):
         self._run(usernames=((username, ) + more_usernames))
 
 
-class _quota(_init_synnefo_astakosclient, _optional_json):
+@command(quota_commands)
+class quota_list(_init_synnefo_astakosclient, _optional_json):
+    """Show user quotas"""
 
     _to_format = set(['cyclades.disk', 'pithos.diskspace', 'cyclades.ram'])
-
     arguments = dict(
+        resource=ValueArgument('Filter by resource', '--resource'),
+        project_id=ValueArgument('Filter by project', '--project-id'),
         bytes=FlagArgument('Show data size in bytes', '--bytes')
     )
 
@@ -183,24 +186,18 @@ class _quota(_init_synnefo_astakosclient, _optional_json):
                         [(k, format_size(v)) for k, v in resources[r].items()])
         self.print_dict(quotas, *args, **kwargs)
 
-
-@command(quota_commands)
-class quota_info(_quota):
-    """Get quota information"""
-
-    arguments = dict(
-        resource=ValueArgument('Quota for this resource', '--resource'),
-        project_id=ValueArgument('Quota for this project', '--project-id'),
-        bytes=FlagArgument('Show data size in bytes', '--bytes')
-    )
-    required = ['resource', 'project_id']
-
     @errors.generic.all
     @errors.user.astakosclient
     def _run(self):
         quotas = self.client.get_quotas()
         if self['project_id']:
-            quotas = {self['project_id']: quotas.get(self['project_id'])}
+            try:
+                resources = quotas[self['project_id']]
+            except KeyError:
+                raise CLIError('User not assigned to project with id "%s" ' % (
+                    self['project_id']), details=[
+                    'See all quotas of current user:', '  kamaki quota list'])
+            quotas = {self['project_id']: resources}
         if self['resource']:
             d = dict()
             for project_id, resources in quotas.items():
@@ -210,22 +207,10 @@ class quota_info(_quota):
                         r[resource] = value
                 if r:
                     d[project_id] = r
+            if not d:
+                raise CLIError('Resource "%s" not found' % self['resource'])
             quotas = d
         self._print(quotas, self._print_quotas)
-
-    def main(self):
-        super(self.__class__, self)._run()
-        self._run()
-
-
-@command(quota_commands)
-class quota_list(_quota):
-    """Get user quotas"""
-
-    @errors.generic.all
-    @errors.user.astakosclient
-    def _run(self):
-        self._print(self.client.get_quotas(), self._print_quotas)
 
     def main(self):
         super(self.__class__, self)._run()
