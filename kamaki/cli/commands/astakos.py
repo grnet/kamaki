@@ -613,7 +613,8 @@ class endpoint_list(
 #  command project
 
 
-_project_specs = """{
+_project_specs = """
+    {
     "name": name,
     "owner": uuid,  # if omitted, request user assumed
     "homepage": homepage,  # optional
