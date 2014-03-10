@@ -43,7 +43,7 @@ from kamaki.cli.errors import (
     CLIBaseUrlError, CLISyntaxError, CLIError, CLIInvalidArgument)
 from kamaki.cli.argument import (
     FlagArgument, ValueArgument, IntArgument, CommaSeparatedListArgument,
-    KeyValueArgument, DateArgument)
+    KeyValueArgument, DateArgument, BooleanArgument)
 from kamaki.cli.utils import format_size, filter_dicts_by_dict
 
 #  Mandatory
@@ -724,6 +724,7 @@ class ProjectResourceArgument(KeyValueArgument):
 class project_create(_init_synnefo_astakosclient, _optional_json):
     """Apply for a new project"""
 
+    __doc__ += _project_specs
     arguments = dict(
         specs_path=ValueArgument(
             'Specification file (contents in json)', '--spec-file'),
@@ -732,7 +733,8 @@ class project_create(_init_synnefo_astakosclient, _optional_json):
         homepage_url=ValueArgument('Project homepage', '--homepage'),
         description=ValueArgument('Describe the project', '--description'),
         max_members=IntArgument('Maximum subscribers', '--max-members'),
-        private=FlagArgument('Set if the project is private', '--private'),
+        private=BooleanArgument(
+            'True for private, False (default) for public', '--private'),
         start_date=DateArgument('When to start the project', '--start-date'),
         end_date=DateArgument('When to end the project', '--end-date'),
         join_policy=PolicyArgument(
@@ -793,7 +795,6 @@ class project_modify(_init_synnefo_astakosclient, _optional_json):
     """Modify properties of a project"""
 
     __doc__ += _project_specs
-
     arguments = dict(
         specs_path=ValueArgument(
             'Specification file (contents in json)', '--spec-file'),
@@ -802,7 +803,8 @@ class project_modify(_init_synnefo_astakosclient, _optional_json):
         homepage_url=ValueArgument('Project homepage', '--homepage'),
         description=ValueArgument('Describe the project', '--description'),
         max_members=IntArgument('Maximum subscribers', '--max-members'),
-        private=FlagArgument('Set if the project is private', '--private'),
+        private=FlagArgument('Make the project private', '--private'),
+        public=FlagArgument('Make the project public', '--public'),
         start_date=DateArgument('When to start the project', '--start-date'),
         end_date=DateArgument('When to end the project', '--end-date'),
         join_policy=PolicyArgument(
@@ -819,9 +821,9 @@ class project_modify(_init_synnefo_astakosclient, _optional_json):
             '--resource')
     )
     required = [
-        'specs_path', 'owner_uuid', 'homepage_url', 'description',
-        'project_name', 'start_date', 'end_date', 'join_policy',
-        'leave_policy', 'resource_capacities', 'max_members', 'private']
+        'specs_path', 'owner_uuid', 'homepage_url', 'description', 'public',
+        'private', 'project_name', 'start_date', 'end_date', 'join_policy',
+        'leave_policy', 'resource_capacities', 'max_members']
 
     @errors.generic.all
     @errors.user.astakosclient
@@ -837,7 +839,6 @@ class project_modify(_init_synnefo_astakosclient, _optional_json):
                 ('homepage', self['homepage_url']),
                 ('description', self['description']),
                 ('max_members', self['max_members']),
-                ('private', self['private']),
                 ('start_date', self['start_date']),
                 ('end_date', self['end_date']),
                 ('join_policy', self['join_policy']),
@@ -845,12 +846,21 @@ class project_modify(_init_synnefo_astakosclient, _optional_json):
                 ('resources', self['resource_capacities'])):
             if arg:
                 specs[key] = arg
+        private = self['private'] or (False if self['public'] else None)
+        if private is not None:
+            self['private'] = private
 
         self._print(
             self.client.modify_project(project_id, specs), self.print_dict)
 
     def main(self, project_id):
         super(self.__class__, self)._run()
+        if self['private'] and self['public']:
+            a = self.arguments
+            raise CLIInvalidArgument(
+                'Invalid argument combination', details=[
+                'Arguments %s and %s are mutually exclussive' % (
+                    a['private'].lvalue, a['public'].lvalue)])
         self._run(project_id)
 
 

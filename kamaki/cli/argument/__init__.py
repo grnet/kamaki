@@ -246,12 +246,12 @@ class BooleanArgument(ValueArgument):
     @value.setter
     def value(self, new_value):
         if new_value:
-            new_value = new_value.lower()
-            if new_value not in ('true', 'false'):
+            v = new_value.lower()
+            if v not in ('true', 'false'):
                 raise CLIInvalidArgument(
-                    'Invalid argument %s' % self.lvalue, details=[
+                    'Invalid value %s=%s' % (self.lvalue, new_value), details=[
                     'Usage:', '%s=<true|false>' % self.lvalue])
-            self._value = bool(new_value == 'true')
+            self._value = bool(v == 'true')
 
 
 class CommaSeparatedListArgument(ValueArgument):
