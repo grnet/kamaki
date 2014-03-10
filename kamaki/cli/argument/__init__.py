@@ -236,6 +236,24 @@ class ValueArgument(Argument):
         super(ValueArgument, self).__init__(1, help, parsed_name, default)
 
 
+class BooleanArgument(ValueArgument):
+    """Can be true, false or None (Flag argument can only be true or None)"""
+
+    @property
+    def value(self):
+        return getattr(self, '_value', None)
+
+    @value.setter
+    def value(self, new_value):
+        if new_value:
+            new_value = new_value.lower()
+            if new_value not in ('true', 'false'):
+                raise CLIInvalidArgument(
+                    'Invalid argument %s' % self.lvalue, details=[
+                    'Usage:', '%s=<true|false>' % self.lvalue])
+            self._value = bool(new_value == 'true')
+
+
 class CommaSeparatedListArgument(ValueArgument):
     """
     :value type: string
