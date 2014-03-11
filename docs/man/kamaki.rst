@@ -142,15 +142,18 @@ project
 * modify        Modify a project
 * terminate     Terminate a project (special privileges needed)
 * application   Application management commands
-* membership    Project membership management commands
 * reinstate     Reinstate a terminated project (special privileges needed)
+* join          Join a project
+* dismiss       Dismiss your denied application
+* deny          Deny an application (special privileges needed)
+* enroll        Enroll somebody to a project you manage
+* cancel        Cancel a project application
+* approve       Approve an application (special privileges needed)
 
 membership
 **********
 
 * info      Details on a membership
-* enroll    Enroll somebody to a project you manage
-* join      Join a project
 * list      List all memberships
 * accept    Accept a membership for a project you manage
 * leave     Leave a project you have membership to
@@ -162,7 +165,6 @@ quota
 *****
 
 * list          Get user quotas
-* info          Get quota for a service (cyclades, pithos, astakos)
 
 resource
 ********

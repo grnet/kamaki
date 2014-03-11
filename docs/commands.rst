@@ -66,6 +66,12 @@ project (Astakos)
     terminate     Terminate a project (special privileges needed)
     application   Application management commands
     reinstate     Reinstate a terminated project (special privileges needed)
+    join          Join a project
+    dismiss       Dismiss your denied application
+    deny          Deny an application (special privileges needed)
+    enroll        Enroll a user to a project
+    cancel        Cancel your application
+    approve       Approve an application (special privileges needed)
 
 membership (Astakos)
 --------------------
@@ -73,8 +79,6 @@ membership (Astakos)
 .. code-block:: text
 
     info    Details on a membership
-    enroll  Enroll somebody to a project you manage
-    join    Join a project
     list    List all memberships
     accept  Accept a membership for a project you manage
     leave   Leave a project you have membership to
@@ -88,7 +92,6 @@ quota (Account/Astakos)
 .. code-block:: text
 
     list          Get user quotas
-    info          Get quota for a service (cyclades, pithos, astakos)
 
 resource (Astakos)
 ------------------
