@@ -375,6 +375,11 @@ class DateArgument(ValueArgument):
     def value(self):
         return self.timestamp
 
+    @property
+    def isoformat(self):
+        v = getattr(self, '_value', self.default)
+        return v.isoformat() if v else None
+
     @value.setter
     def value(self, newvalue):
         self._value = self.format_date(newvalue) if newvalue else self.default

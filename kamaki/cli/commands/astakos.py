@@ -619,7 +619,7 @@ _project_specs = """
 def apply_notification(func):
     def wrap(self, *args, **kwargs):
         r = func(self, *args, **kwargs)
-        self.writeln('Application is submitted successfully')
+        self.error('Application is submitted successfully')
         return r
     return wrap
 
@@ -762,19 +762,18 @@ class project_create(_init_synnefo_astakosclient, _optional_json):
                 specs = load(f)
         for key, arg in (
                 ('name', self['project_name']),
+                ('end_date', self.arguments['end_date'].isoformat),
+                ('start_date', self.arguments['start_date'].isoformat),
                 ('owner', self['owner_uuid']),
                 ('homepage', self['homepage_url']),
                 ('description', self['description']),
                 ('max_members', self['max_members']),
                 ('private', self['private']),
-                ('start_date', self['start_date']),
-                ('end_date', self['end_date']),
                 ('join_policy', self['join_policy']),
                 ('leave_policy', self['leave_policy']),
                 ('resources', self['resource_capacities'])):
             if arg:
                 specs[key] = arg
-
         self._print(self.client.create_project(specs), self.print_dict)
 
     def main(self):
