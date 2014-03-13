@@ -31,7 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from sys import stdout, stdin, stderr
+from sys import stdout, stderr
 from re import compile as regex_compile
 from os import walk, path
 from json import dumps

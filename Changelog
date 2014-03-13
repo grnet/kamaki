@@ -9,6 +9,7 @@ Bug Fixes:
 
 Support:
 - Adjust project commands to project_API changes [#5025]
+- Add dateutils to dependencies
 
 Features:
 - Name and Type filters in endpoint list

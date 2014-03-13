@@ -838,8 +838,8 @@ class project_modify(_init_synnefo_astakosclient, _optional_json):
                 ('homepage', self['homepage_url']),
                 ('description', self['description']),
                 ('max_members', self['max_members']),
-                ('start_date', self['start_date']),
-                ('end_date', self['end_date']),
+                ('start_date', self.arguments['start_date'].isoformat),
+                ('end_date', self.arguments['end_date'].isoformat),
                 ('join_policy', self['join_policy']),
                 ('leave_policy', self['leave_policy']),
                 ('resources', self['resource_capacities'])):
@@ -960,7 +960,7 @@ class membership_list(_init_synnefo_astakosclient, _optional_json):
     """List all memberships"""
 
     arguments = dict(
-        project=IntArgument('Filter by project id', '--project-id')
+        project=ValueArgument('Filter by project id', '--project-id')
     )
 
     @errors.generic.all
