@@ -260,4 +260,4 @@ class CycladesNetworkClient(NetworkClient):
         """Change the project where this ip is charged"""
         path = path4url('floatingips', floating_network_id, 'action')
         json_data = dict(reassign=dict(project=project_id))
-        self.post(path, json=json_data, success=202)
+        self.post(path, json=json_data, success=200)
