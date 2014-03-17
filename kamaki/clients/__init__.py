@@ -164,7 +164,7 @@ class RequestManager(Logged):
     def _encode_headers(self):
         headers = self.headers
         for k, v in self.headers.items():
-            headers[k] = quote(v)
+            headers[k] = quote('' if v is None else '%s' % v)
         self.headers = headers
 
     def perform(self, conn):
