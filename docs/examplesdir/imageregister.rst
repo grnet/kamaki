@@ -66,12 +66,7 @@ with the **\- -upload-image-file** argument. This single operation will upload
 the image file and then register it as an image, and is equivalent to
 sequentially calling **/file upload** and **/image register**.
 
-<<<<<<< HEAD:docs/collection_of_examples/imageregister.rst
-In other words, the example that follows is equivalent to calling the two
-operations above.
-=======
 In other words, the preceding and following command sequences are equivalent.
->>>>>>> release-0.11:docs/examplesdir/imageregister.rst
 
 .. code-block:: console
 

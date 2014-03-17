@@ -7,6 +7,10 @@ Bug Fixes:
 - In file list, show all directories as directories [#4987]
 - Do not let file-* cmds to create containers [#4992]
 
+Support:
+- Adjust project commands to project_API changes [#5025]
+- Add dateutils to dependencies
+
 Features:
 - Name and Type filters in endpoint list
 - In image register, meta gets same sharing as image [#4960]
@@ -16,4 +20,7 @@ Features:
 - Accept username or UUID in kamaki file --account/--to-account [#4810]
 - History has now a buffer limit [#4479]
 - Slice notation in history show
+- Datetime support in DateArgument
+- Resources can be reassigned to projects
+- Update account API commands to reflect changes in synnefo 0.16
 

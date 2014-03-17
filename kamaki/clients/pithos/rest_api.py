@@ -292,7 +292,7 @@ class PithosRestClient(StorageClient):
 
     def container_put(
             self,
-            quota=None, versioning=None, metadata=None,
+            quota=None, versioning=None, project=None, metadata=None,
             *args, **kwargs):
         """ Full Pithos+ PUT at container level
 
@@ -311,6 +311,9 @@ class PithosRestClient(StorageClient):
 
         self.set_header('X-Container-Policy-Quota', quota)
         self.set_header('X-Container-Policy-Versioning', versioning)
+        if project:
+            self.set_header('X-Container-Policy-project', project)
+
         if metadata:
             for metaname, metaval in metadata.items():
                 self.set_header('X-Container-Meta-' + metaname, metaval)
@@ -325,6 +328,7 @@ class PithosRestClient(StorageClient):
             format='json',
             quota=None,
             versioning=None,
+            project=None,
             metadata=None,
             content_type=None,
             content_length=None,
@@ -362,6 +366,9 @@ class PithosRestClient(StorageClient):
 
         self.set_header('X-Container-Policy-Quota', quota)
         self.set_header('X-Container-Policy-Versioning', versioning)
+        if project:
+            self.set_header('X-Container-Policy-project', project)
+
         if metadata:
             for metaname, metaval in metadata.items():
                 self.set_header('X-Container-Meta-' + metaname, metaval)

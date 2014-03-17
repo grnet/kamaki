@@ -37,6 +37,8 @@ from kamaki.cli.errors import (
 from kamaki.cli.utils import split_input, to_bytes
 
 from datetime import datetime as dtm
+import dateutil.tz
+import dateutil.parser
 from time import mktime
 from sys import stderr
 
@@ -236,6 +238,24 @@ class ValueArgument(Argument):
         super(ValueArgument, self).__init__(1, help, parsed_name, default)
 
 
+class BooleanArgument(ValueArgument):
+    """Can be true, false or None (Flag argument can only be true or None)"""
+
+    @property
+    def value(self):
+        return getattr(self, '_value', None)
+
+    @value.setter
+    def value(self, new_value):
+        if new_value:
+            v = new_value.lower()
+            if v not in ('true', 'false'):
+                raise CLIInvalidArgument(
+                    'Invalid value %s=%s' % (self.lvalue, new_value), details=[
+                    'Usage:', '%s=<true|false>' % self.lvalue])
+            self._value = bool(v == 'true')
+
+
 class CommaSeparatedListArgument(ValueArgument):
     """
     :value type: string
@@ -339,9 +359,10 @@ class UserAccountArgument(ValueArgument):
 
 class DateArgument(ValueArgument):
 
-    DATE_FORMAT = '%a %b %d %H:%M:%S %Y'
-
-    INPUT_FORMATS = [DATE_FORMAT, '%d-%m-%Y', '%H:%M:%S %d-%m-%Y']
+    DATE_FORMATS = ['%a %b %d %H:%M:%S %Y', '%d-%m-%Y', '%H:%M:%S %d-%m-%Y']
+    INPUT_FORMATS = [
+        'YYYY-mm-dd', '"HH:MM:SS YYYY-mm-dd"', 'YYYY-mm-ddTHH:MM:SS+TMZ',
+        '"Day Mon dd HH:MM:SS YYYY"']
 
     @property
     def timestamp(self):
@@ -351,26 +372,40 @@ class DateArgument(ValueArgument):
     @property
     def formated(self):
         v = getattr(self, '_value', self.default)
-        return v.strftime(self.DATE_FORMAT) if v else None
+        return v.strftime(self.DATE_FORMATS[0]) if v else None
 
     @property
     def value(self):
         return self.timestamp
 
+    @property
+    def isoformat(self):
+        d = getattr(self, '_value', self.default)
+        if not d:
+            return None
+        if not d.tzinfo:
+            d = d.replace(tzinfo=dateutil.tz.tzlocal())
+        return d.isoformat()
+
     @value.setter
     def value(self, newvalue):
-        self._value = self.format_date(newvalue) if newvalue else self.default
+        if newvalue:
+            try:
+                self._value = dateutil.parser.parse(newvalue)
+            except Exception:
+                raise CLIInvalidArgument(
+                    'Invalid value "%s" for date argument %s' % (
+                        newvalue, self.lvalue),
+                    details=['Suggested formats:'] + self.INPUT_FORMATS)
 
     def format_date(self, datestr):
-        for format in self.INPUT_FORMATS:
+        for fmt in self.DATE_FORMATS:
             try:
-                t = dtm.strptime(datestr, format)
-            except ValueError:
+                return dtm.strptime(datestr, fmt)
+            except ValueError as ve:
                 continue
-            return t  # .strftime(self.DATE_FORMAT)
-        raiseCLIError(None, 'Date Argument Error', details=[
-            '%s not a valid date' % datestr,
-            'Correct formats:\n\t%s' % self.INPUT_FORMATS])
+        raise raiseCLIError(ve, 'Failed to format date', details=[
+            '%s could not be formated for HTTP headers' % datestr])
 
 
 class VersionArgument(FlagArgument):

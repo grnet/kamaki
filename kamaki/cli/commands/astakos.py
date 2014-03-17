@@ -1,4 +1,4 @@
-# Copyright 2011-2013 GRNET S.A. All rights reserved.
+# Copyright 2011-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -39,9 +39,11 @@ from kamaki.clients.astakos import LoggedAstakosClient
 from kamaki.cli.commands import (
     _command_init, errors, _optional_json, addLogSettings, _name_filter)
 from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.errors import CLIBaseUrlError, CLISyntaxError, CLIError
+from kamaki.cli.errors import (
+    CLIBaseUrlError, CLISyntaxError, CLIError, CLIInvalidArgument)
 from kamaki.cli.argument import (
-    FlagArgument, ValueArgument, IntArgument, CommaSeparatedListArgument)
+    FlagArgument, ValueArgument, IntArgument, CommaSeparatedListArgument,
+    KeyValueArgument, DateArgument, BooleanArgument)
 from kamaki.cli.utils import format_size, filter_dicts_by_dict
 
 #  Mandatory
@@ -165,49 +167,50 @@ class user_name2uuid(_init_synnefo_astakosclient, _optional_json):
         self._run(usernames=((username, ) + more_usernames))
 
 
-class _quota(_init_synnefo_astakosclient, _optional_json):
+@command(quota_commands)
+class quota_list(_init_synnefo_astakosclient, _optional_json):
+    """Show user quotas"""
 
     _to_format = set(['cyclades.disk', 'pithos.diskspace', 'cyclades.ram'])
-
     arguments = dict(
+        resource=ValueArgument('Filter by resource', '--resource'),
+        project_id=ValueArgument('Filter by project', '--project-id'),
         bytes=FlagArgument('Show data size in bytes', '--bytes')
     )
 
     def _print_quotas(self, quotas, *args, **kwargs):
         if not self['bytes']:
-            for category in quotas.values():
-                for service in self._to_format.intersection(category):
-                    for attr, v in category[service].items():
-                        category[service][attr] = format_size(v)
+            for project_id, resources in quotas.items():
+                for r in self._to_format.intersection(resources):
+                    resources[r] = dict(
+                        [(k, format_size(v)) for k, v in resources[r].items()])
         self.print_dict(quotas, *args, **kwargs)
-
-
-@command(quota_commands)
-class quota_info(_quota):
-    """Get quota for a service (cyclades, pithos, astakos)"""
-
-    @errors.generic.all
-    @errors.user.astakosclient
-    def _run(self, service):
-        r = dict()
-        for k, v in self.client.get_quotas()['system'].items():
-            if (k.startswith(service)):
-                r[k] = v
-        self._print({'%s*' % service: r}, self._print_quotas)
-
-    def main(self, service):
-        super(self.__class__, self)._run()
-        self._run(service)
-
-
-@command(quota_commands)
-class quota_list(_quota):
-    """Get user quotas"""
 
     @errors.generic.all
     @errors.user.astakosclient
     def _run(self):
-        self._print(self.client.get_quotas(), self._print_quotas)
+        quotas = self.client.get_quotas()
+        if self['project_id']:
+            try:
+                resources = quotas[self['project_id']]
+            except KeyError:
+                raise CLIError('User not assigned to project with id "%s" ' % (
+                    self['project_id']), details=[
+                    'See all quotas of current user:', '  kamaki quota list'])
+            quotas = {self['project_id']: resources}
+        if self['resource']:
+            d = dict()
+            for project_id, resources in quotas.items():
+                r = dict()
+                for resource, value in resources.items():
+                    if (resource.startswith(self['resource'])):
+                        r[resource] = value
+                if r:
+                    d[project_id] = r
+            if not d:
+                raise CLIError('Resource "%s" not found' % self['resource'])
+            quotas = d
+        self._print(quotas, self._print_quotas)
 
     def main(self):
         super(self.__class__, self)._run()
@@ -595,28 +598,28 @@ class endpoint_list(
 #  command project
 
 
-_project_specs = """{
+_project_specs = """
+    {
     "name": name,
-    "owner": uuid,
-    "homepage": homepage,         # optional
-    "description": description,   # optional
-    "comments": comments,         # optional
-    "start_date": date,           # optional
+    "owner": uuid,  # if omitted, request user assumed
+    "homepage": homepage,  # optional
+    "description": description,  # optional
+    "comments": comments,  # optional
+    "max_members": max_members,  # optional
+    "private": true | false,  # optional
+    "start_date": date,  # optional
     "end_date": date,
     "join_policy": "auto" | "moderated" | "closed",  # default: "moderated"
-    "leave_policy": "auto" | "moderated" | "closed", # default: "auto"
-    "resources": {"cyclades.vm": {
-    "project_capacity": int or null,
-    "member_capacity": int
-    }}}
-
-"""
+    "leave_policy": "auto" | "moderated" | "closed",  # default: "auto"
+    "resources": {
+    "cyclades.vm": {"project_capacity": int, "member_capacity": int
+    }}}"""
 
 
 def apply_notification(func):
     def wrap(self, *args, **kwargs):
         r = func(self, *args, **kwargs)
-        self.writeln('Application is submitted successfully')
+        self.error('Application is submitted successfully')
         return r
     return wrap
 
@@ -626,6 +629,7 @@ class project_list(_init_synnefo_astakosclient, _optional_json):
     """List all projects"""
 
     arguments = dict(
+        details=FlagArgument('Show details', ('-l', '--details')),
         name=ValueArgument('Filter by name', ('--with-name', )),
         state=ValueArgument('Filter by state', ('--with-state', )),
         owner=ValueArgument('Filter by owner', ('--with-owner', ))
@@ -634,8 +638,14 @@ class project_list(_init_synnefo_astakosclient, _optional_json):
     @errors.generic.all
     @errors.user.astakosclient
     def _run(self):
-        self._print(self.client.get_projects(
-            self['name'], self['state'], self['owner']))
+        r = self.client.get_projects(
+            self['name'], self['state'], self['owner'])
+        if not (self['details'] or self['output_format']):
+            r = [dict(
+                id=i['id'],
+                name=i['name'],
+                description=i['description']) for i in r]
+        self._print(r)
 
     def main(self):
         super(self.__class__, self)._run()
@@ -657,62 +667,199 @@ class project_info(_init_synnefo_astakosclient, _optional_json):
         self._run(project_id)
 
 
+class PolicyArgument(ValueArgument):
+    """A Policy argument"""
+    policies = ('auto', 'moderated', 'closed')
+
+    @property
+    def value(self):
+        return getattr(self, '_value', None)
+
+    @value.setter
+    def value(self, new_policy):
+        if new_policy:
+            if new_policy.lower() in self.policies:
+                self._value = new_policy.lower()
+            else:
+                raise CLIInvalidArgument(
+                    'Invalid value for %s' % self.lvalue, details=[
+                    'Valid values: %s' % ', '.join(self.policies)])
+
+
+class ProjectResourceArgument(KeyValueArgument):
+    """"A <resource>=<member_capacity>,<project_capacity> argument  e.g.,
+    --resource cyclades.cpu=5,1
+    """
+    @property
+    def value(self):
+        return super(ProjectResourceArgument, self).value
+
+    @value.setter
+    def value(self, key_value_pairs):
+        if key_value_pairs:
+            super(ProjectResourceArgument, self.__class__).value.fset(
+                self, key_value_pairs)
+            d = dict(self._value)
+            for key, value in d.items():
+                try:
+                    member_capacity, project_capacity = value.split(',')
+                    member_capacity = int(member_capacity)
+                    project_capacity = int(project_capacity)
+                    assert member_capacity <= project_capacity
+                except Exception as e:
+                    raise CLIInvalidArgument(
+                        'Invalid resource value %s' % value, details=[
+                        'Usage:',
+                        '  %s %s=<member_capacity>,<project_capacity>' % (
+                            self.lvalue, key),
+                        'where both capacities are integers',
+                        'and member_capacity <= project_capacity', '',
+                        '(%s)' % e])
+                self._value[key] = dict(
+                    member_capacity=member_capacity,
+                    project_capacity=project_capacity)
+
+
 @command(project_commands)
 class project_create(_init_synnefo_astakosclient, _optional_json):
-    """Apply for a new project (enter data though standard input or file path)
+    """Apply for a new project"""
 
-    Project details must be provided as a json-formated dict from the
-    standard input, or through a file
-    """
     __doc__ += _project_specs
-
     arguments = dict(
         specs_path=ValueArgument(
-            'Specification file path (content must be in json)', '--spec-file')
+            'Specification file (contents in json)', '--spec-file'),
+        project_name=ValueArgument('Name the project', '--name'),
+        owner_uuid=ValueArgument('Project owner', '--owner'),
+        homepage_url=ValueArgument('Project homepage', '--homepage'),
+        description=ValueArgument('Describe the project', '--description'),
+        max_members=IntArgument('Maximum subscribers', '--max-members'),
+        private=BooleanArgument(
+            'True for private, False (default) for public', '--private'),
+        start_date=DateArgument('When to start the project', '--start-date'),
+        end_date=DateArgument('When to end the project', '--end-date'),
+        join_policy=PolicyArgument(
+            'Set join policy (%s)' % ', '.join(PolicyArgument.policies),
+            '--join-policy'),
+        leave_policy=PolicyArgument(
+            'Set leave policy (%s)' % ', '.join(PolicyArgument.policies),
+            '--leave-policy'),
+        resource_capacities=ProjectResourceArgument(
+            'Set the member and project capacities for resources (repeatable) '
+            'e.g., --resource cyclades.cpu=1,5    means "members will have at '
+            'most 1 cpu but the project will have at most 5"       To see all '
+            'resources:   kamaki resource list',
+            '--resource')
     )
+    required = ['specs_path', 'project_name', 'end_date']
 
     @errors.generic.all
     @errors.user.astakosclient
     @apply_notification
     def _run(self):
-        input_stream = open(abspath(self['specs_path'])) if (
-            self['specs_path']) else self._in
-        specs = load(input_stream)
-        self._print(
-            self.client.create_project(specs), self.print_dict)
+        specs = dict()
+        if self['specs_path']:
+            with open(abspath(self['specs_path'])) as f:
+                specs = load(f)
+        for key, arg in (
+                ('name', self['project_name']),
+                ('end_date', self.arguments['end_date'].isoformat),
+                ('start_date', self.arguments['start_date'].isoformat),
+                ('owner', self['owner_uuid']),
+                ('homepage', self['homepage_url']),
+                ('description', self['description']),
+                ('max_members', self['max_members']),
+                ('private', self['private']),
+                ('join_policy', self['join_policy']),
+                ('leave_policy', self['leave_policy']),
+                ('resources', self['resource_capacities'])):
+            if arg:
+                specs[key] = arg
+        self._print(self.client.create_project(specs), self.print_dict)
 
     def main(self):
         super(self.__class__, self)._run()
+        self._req2 = [arg for arg in self.required if arg != 'specs_path']
+        if not (self['specs_path'] or all(self[arg] for arg in self._req2)):
+            raise CLIInvalidArgument('Insufficient arguments', details=[
+                'Both of the following arguments are needed:',
+                ', '.join([self.arguments[arg].lvalue for arg in self._req2]),
+                'OR provide a spec file (json) with %s' % self.arguments[
+                    'specs_path'].lvalue,
+                'OR combine arguments (higher priority) with a file'])
         self._run()
 
 
 @command(project_commands)
 class project_modify(_init_synnefo_astakosclient, _optional_json):
-    """Modify a project (input a json-dict)
-    Project details must be provided as a json-formated dict from the standard
-    input, or through a file
-    """
+    """Modify properties of a project"""
 
     __doc__ += _project_specs
-
     arguments = dict(
         specs_path=ValueArgument(
-            'Specification file path (content must be in json)', '--spec-file')
+            'Specification file (contents in json)', '--spec-file'),
+        project_name=ValueArgument('Name the project', '--name'),
+        owner_uuid=ValueArgument('Project owner', '--owner'),
+        homepage_url=ValueArgument('Project homepage', '--homepage'),
+        description=ValueArgument('Describe the project', '--description'),
+        max_members=IntArgument('Maximum subscribers', '--max-members'),
+        private=FlagArgument('Make the project private', '--private'),
+        public=FlagArgument('Make the project public', '--public'),
+        start_date=DateArgument('When to start the project', '--start-date'),
+        end_date=DateArgument('When to end the project', '--end-date'),
+        join_policy=PolicyArgument(
+            'Set join policy (%s)' % ', '.join(PolicyArgument.policies),
+            '--join-policy'),
+        leave_policy=PolicyArgument(
+            'Set leave policy (%s)' % ', '.join(PolicyArgument.policies),
+            '--leave-policy'),
+        resource_capacities=ProjectResourceArgument(
+            'Set the member and project capacities for resources (repeatable) '
+            'e.g., --resource cyclades.cpu=1,5    means "members will have at '
+            'most 1 cpu but the project will have at most 5"       To see all '
+            'resources:   kamaki resource list',
+            '--resource')
     )
+    required = [
+        'specs_path', 'owner_uuid', 'homepage_url', 'description', 'public',
+        'private', 'project_name', 'start_date', 'end_date', 'join_policy',
+        'leave_policy', 'resource_capacities', 'max_members']
 
     @errors.generic.all
     @errors.user.astakosclient
     @apply_notification
     def _run(self, project_id):
-        input_stream = open(abspath(self['specs_path'])) if (
-            self['specs_path']) else self._in
-        specs = load(input_stream)
+        specs = dict()
+        if self['specs_path']:
+            with open(abspath(self['specs_path'])) as f:
+                specs = load(f)
+        for key, arg in (
+                ('name', self['project_name']),
+                ('owner', self['owner_uuid']),
+                ('homepage', self['homepage_url']),
+                ('description', self['description']),
+                ('max_members', self['max_members']),
+                ('start_date', self.arguments['start_date'].isoformat),
+                ('end_date', self.arguments['end_date'].isoformat),
+                ('join_policy', self['join_policy']),
+                ('leave_policy', self['leave_policy']),
+                ('resources', self['resource_capacities'])):
+            if arg:
+                specs[key] = arg
+        private = self['private'] or (False if self['public'] else None)
+        if private is not None:
+            self['private'] = private
+
         self._print(
-            self.client.modify_project(project_id, specs),
-            self.print_dict)
+            self.client.modify_project(project_id, specs), self.print_dict)
 
     def main(self, project_id):
         super(self.__class__, self)._run()
+        if self['private'] and self['public']:
+            a = self.arguments
+            raise CLIInvalidArgument(
+                'Invalid argument combination', details=[
+                'Arguments %s and %s are mutually exclussive' % (
+                    a['private'].lvalue, a['public'].lvalue)])
         self._run(project_id)
 
 
@@ -720,14 +867,18 @@ class _project_action(_init_synnefo_astakosclient):
 
     action = ''
 
+    arguments = dict(
+        reason=ValueArgument('Quote a reason for this action', '--reason'),
+    )
+
     @errors.generic.all
     @errors.user.astakosclient
     def _run(self, project_id, quote_a_reason):
         self.client.project_action(project_id, self.action, quote_a_reason)
 
-    def main(self, project_id, quote_a_reason=''):
+    def main(self, project_id):
         super(_project_action, self)._run()
-        self._run(project_id, quote_a_reason)
+        self._run(project_id, self['reason'] or '')
 
 
 @command(project_commands)
@@ -754,78 +905,47 @@ class project_reinstate(_project_action):
     action = 'reinstate'
 
 
-@command(project_commands)
-class project_application(_init_synnefo_astakosclient):
-    """Application management commands"""
-
-
-@command(project_commands)
-class project_application_list(_init_synnefo_astakosclient, _optional_json):
-    """List all applications (old and new)"""
-
-    arguments = dict(
-        project=IntArgument('Filter by project id', '--with-project-id')
-    )
-
-    @errors.generic.all
-    @errors.user.astakosclient
-    def _run(self):
-        self._print(self.client.get_applications(self['project']))
-
-    def main(self):
-        super(self.__class__, self)._run()
-        self._run()
-
-
-@command(project_commands)
-class project_application_info(_init_synnefo_astakosclient, _optional_json):
-    """Get details on an application"""
-
-    @errors.generic.all
-    @errors.user.astakosclient
-    def _run(self, app_id):
-        self._print(
-            self.client.get_application(app_id), self.print_dict)
-
-    def main(self, application_id):
-        super(self.__class__, self)._run()
-        self._run(application_id)
-
-
 class _application_action(_init_synnefo_astakosclient):
 
     action = ''
 
+    arguments = dict(
+        app_id=ValueArgument('The application ID', '--app-id'),
+        reason=ValueArgument('Quote a reason for this action', '--reason'),
+    )
+    required = ('app_id', )
+
     @errors.generic.all
     @errors.user.astakosclient
-    def _run(self, app_id, quote_a_reason):
-        self.client.application_action(app_id, self.action, quote_a_reason)
+    def _run(self, project_id, app_id, quote_a_reason):
+        self.client.application_action(
+            project_id, app_id, self.action, quote_a_reason)
 
-    def main(self, application_id, quote_a_reason=''):
+    def main(self, project_id):
         super(_application_action, self)._run()
-        self._run(application_id, quote_a_reason)
+        self._run(project_id, self['app_id'], self['reason'] or '')
 
 
 @command(project_commands)
-class project_application_approve(_application_action):
+class project_approve(_application_action):
     """Approve an application (special privileges needed)"""
     action = 'approve'
 
 
 @command(project_commands)
-class project_application_deny(_application_action):
+class project_deny(_application_action):
     """Deny an application (special privileges needed)"""
     action = 'deny'
 
 
 @command(project_commands)
-class project_application_dismiss(_application_action):
+class project_dismiss(_application_action):
     """Dismiss your denied application"""
     action = 'dismiss'
 
 
 @command(project_commands)
-class project_application_cancel(_application_action):
+class project_cancel(_application_action):
     """Cancel your application"""
     action = 'cancel'
 
@@ -840,7 +960,7 @@ class membership_list(_init_synnefo_astakosclient, _optional_json):
     """List all memberships"""
 
     arguments = dict(
-        project=IntArgument('Filter by project id', '--with-project-id')
+        project=ValueArgument('Filter by project id', '--project-id')
     )
 
     @errors.generic.all
@@ -865,12 +985,13 @@ class membership_info(_init_synnefo_astakosclient, _optional_json):
 
     def main(self, membership_id):
         super(self.__class__, self)._run()
-        self._run(membership_id)
+        self._run(memb_id=membership_id)
 
 
 class _membership_action(_init_synnefo_astakosclient, _optional_json):
 
     action = ''
+    arguments = dict(reason=ValueArgument('Reason for the action', '--reason'))
 
     @errors.generic.all
     @errors.user.astakosclient
@@ -878,9 +999,9 @@ class _membership_action(_init_synnefo_astakosclient, _optional_json):
         self._print(self.client.membership_action(
             memb_id, self.action, quote_a_reason))
 
-    def main(self, membership_id, quote_a_reason=''):
+    def main(self, membership_id):
         super(_membership_action, self)._run()
-        self._run(membership_id, quote_a_reason)
+        self._run(membership_id, self['reason'] or '')
 
 
 @command(membership_commands)
@@ -913,8 +1034,8 @@ class membership_remove(_membership_action):
     action = 'remove'
 
 
-@command(membership_commands)
-class membership_join(_init_synnefo_astakosclient):
+@command(project_commands)
+class project_join(_init_synnefo_astakosclient):
     """Join a project"""
 
     @errors.generic.all
@@ -923,19 +1044,22 @@ class membership_join(_init_synnefo_astakosclient):
         self.writeln(self.client.join_project(project_id))
 
     def main(self, project_id):
-        super(membership_join, self)._run()
+        super(project_join, self)._run()
         self._run(project_id)
 
 
-@command(membership_commands)
-class membership_enroll(_init_synnefo_astakosclient):
-    """Enroll somebody to a project you manage"""
+@command(project_commands)
+class project_enroll(_init_synnefo_astakosclient):
+    """Enroll a user to a project"""
+
+    arguments = dict(email=ValueArgument('User e-mail', '--email'))
+    required = ('email', )
 
     @errors.generic.all
     @errors.user.astakosclient
     def _run(self, project_id, email):
         self.writeln(self.client.enroll_member(project_id, email))
 
-    def main(self, project_id, email):
-        super(membership_enroll, self)._run()
-        self._run(project_id, email)
+    def main(self, project_id):
+        super(project_enroll, self)._run()
+        self._run(project_id, self['email'])

@@ -204,11 +204,9 @@ class server_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
 
     def _add_user_name(self, servers):
         uuids = self._uuids2usernames(list(set(
-                [srv['user_id'] for srv in servers] +
-                [srv['tenant_id'] for srv in servers])))
+                    [srv['user_id'] for srv in servers])))
         for srv in servers:
             srv['user_id'] += ' (%s)' % uuids[srv['user_id']]
-            srv['tenant_id'] += ' (%s)' % uuids[srv['tenant_id']]
         return servers
 
     def _apply_common_filters(self, servers):
@@ -474,18 +472,20 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
             'If neither --network or --no-network are used, the default '
             'network policy is applied. These policies are set on the cloud, '
             'so kamaki is oblivious to them',
-            '--no-network')
+            '--no-network'),
+        project_id=ValueArgument('Assign server to project', '--project-id'),
     )
     required = ('server_name', 'flavor_id', 'image_id')
 
     @errors.cyclades.cluster_size
-    def _create_cluster(self, prefix, flavor_id, image_id, size):
+    def _create_cluster(self, prefix, flavor_id, image_id, size, project=None):
         networks = self['network_configuration'] or (
             [] if self['no_network'] else None)
         servers = [dict(
             name='%s%s' % (prefix, i if size > 1 else ''),
             flavor_id=flavor_id,
             image_id=image_id,
+            project=project,
             personality=self['personality'],
             networks=networks) for i in range(1, 1 + size)]
         if size == 1:
@@ -518,7 +518,8 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
     @errors.cyclades.flavor_id
     def _run(self, name, flavor_id, image_id):
         for r in self._create_cluster(
-                name, flavor_id, image_id, size=self['cluster_size'] or 1):
+                name, flavor_id, image_id, size=self['cluster_size'] or 1,
+                project=self['project_id']):
             if not r:
                 self.error('Create %s: server response was %s' % (name, r))
                 continue
@@ -654,6 +655,26 @@ class server_modify(_init_cyclades, _optional_output_cmd):
                 'Argument %s should always be combined with %s' % (
                     pnpid.lvalue, fp.lvalue)])
         self._run(server_id=server_id)
+
+
+@command(server_cmds)
+class server_reassign(_init_cyclades, _optional_json):
+    """Assign a virtual server to a different project"""
+
+    arguments = dict(
+        project_id=ValueArgument('The project to assign', '--project-id')
+    )
+    required = ('project_id', )
+
+    @errors.generic.all
+    @errors.cyclades.connection
+    @errors.cyclades.server_id
+    def _run(self, server_id, project):
+        self.client.reassign_server(server_id, project)
+
+    def main(self, server_id):
+        super(self.__class__, self)._run()
+        self._run(server_id=server_id, project=self['project_id'])
 
 
 @command(server_cmds)
@@ -936,11 +957,7 @@ def _add_name(self, net):
         user_id, tenant_id, uuids = net['user_id'], net['tenant_id'], []
         if user_id:
             uuids.append(user_id)
-        if tenant_id:
-            uuids.append(tenant_id)
-        if uuids:
+        if uuids or tenant_id:
             usernames = self._uuids2usernames(uuids)
             if user_id:
                 net['user_id'] += ' (%s)' % usernames[user_id]
-            if tenant_id:
-                net['tenant_id'] += ' (%s)' % usernames[tenant_id]
