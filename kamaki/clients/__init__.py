@@ -142,6 +142,7 @@ class RequestManager(Logged):
         self.headers = dict(headers)
         self.method, self.data = method, data
         self.scheme, self.netloc = self._connection_info(url, path, params)
+        self._headers_to_quote, self._header_prefices = [], []
 
     def dump_log(self):
         plog = ('\t[%s]' % self) if self.LOG_PID else ''
@@ -161,9 +162,14 @@ class RequestManager(Logged):
             sendlog.info('data size: 0%s' % plog)
 
     def _encode_headers(self):
-        headers = dict(self.headers)
+        headers = dict()
         for k, v in self.headers.items():
-            headers[k] = quote('' if v is None else '%s' % v)
+            key = k.lower()
+            val = '' if v is None else '%s' % (
+                v.encode('utf-8') if isinstance(v, unicode) else v)
+            quotable = any([key in self._headers_to_quote, ] +
+                [key.startswith(p) for p in self._header_prefices])
+            headers[k] = quote(val) if quotable else val
         self.headers = headers
 
     def perform(self, conn):
@@ -192,6 +198,24 @@ class RequestManager(Logged):
         logmsg = 'Kamaki Timeout %s %s%s' % (self.method, self.path, plog)
         recvlog.debug(logmsg)
         raise ClientError('HTTPResponse takes too long - kamaki timeout')
+
+    @property
+    def headers_to_quote(self):
+        return self._headers_to_quote
+
+    @headers_to_quote.setter
+    def headers_to_quote(self, header_keys):
+        self._headers_to_quote += [k.lower() for k in header_keys]
+        self._headers_to_quote = list(set(self._headers_to_quote))
+
+    @property
+    def header_prefices(self):
+        return self._header_prefices
+
+    @header_prefices.setter
+    def header_prefices(self, header_key_prefices):
+        self._header_prefices += [p.lower() for p in header_key_prefices]
+        self._header_prefices = list(set(self._header_prefices))
 
 
 class ResponseManager(Logged):
@@ -373,6 +397,8 @@ class Client(Logged):
         self.token = token
         self.headers, self.params = dict(), dict()
         self.poolsize = None
+        self.request_headers_to_quote = []
+        self.request_header_prefices_to_quote = []
         self.response_headers = []
         self.response_header_prefices = []
 
@@ -489,6 +515,8 @@ class Client(Logged):
             req = RequestManager(
                 method, self.base_url, path,
                 data=data, headers=headers, params=params)
+            req.headers_to_quote = self.request_headers_to_quote
+            req.header_prefices = self.request_header_prefices_to_quote
             #  req.log()
             r = ResponseManager(
                 req,

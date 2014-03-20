@@ -31,7 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from kamaki.clients import Client, ClientError
+from kamaki.clients import Client, ClientError, quote
 from kamaki.clients.utils import path4url
 
 
@@ -57,7 +57,12 @@ class ImageClient(Client):
 
     def __init__(self, base_url, token):
         super(ImageClient, self).__init__(base_url, token)
-        self.response_header_prefices = ['X-Image-', ]
+        self.request_headers_to_quote = ['X-Image-Meta-Name', ]
+        self.request_header_prefices_to_quote = ['X-Image-Meta-Property-', ]
+        self.response_headers = [
+            'X-Image-Meta-Name', 'X-Image-Meta-Location',
+            'X-Image-Meta-Description']
+        self.response_header_prefices = ['X-Image-Meta-Property-', ]
 
     def list_public(self, detail=False, filters={}, order=''):
         """
@@ -121,6 +126,14 @@ class ImageClient(Client):
         location = location if (
             isinstance(location, str) or isinstance(location, unicode)) else (
                 'pithos://%s' % '/'.join(location))
+        prefix = 'pithos://'
+        if location.startswith(prefix):
+            lvalues = (location[len(prefix):]).split('/')
+            location = '%s%s' % (prefix, '/'.join([
+                quote(s.encode('utf-8')) for s in lvalues]))
+        else:
+            lvalues = location.split('/')
+            location = '.'.join([quote(s.encode('utf-8')) for s in lvalues])
         self.set_header('X-Image-Meta-Location', location)
 
         async_headers = {}
