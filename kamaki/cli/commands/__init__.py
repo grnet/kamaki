@@ -36,7 +36,7 @@ from kamaki.cli.utils import (
     print_list, print_dict, print_json, print_items, ask_user,
     filter_dicts_by_dict, DontRaiseUnicodeError, pref_enc)
 from kamaki.cli.argument import FlagArgument, ValueArgument
-from kamaki.cli.errors import CLIInvalidArgument
+from kamaki.cli.errors import CLIInvalidArgument, CLIBaseUrlError
 from sys import stdin, stdout, stderr
 import codecs
 
@@ -113,6 +113,20 @@ class _command_init(object):
             pass
         self.auth_base = auth_base or getattr(self, 'auth_base', None)
         self.cloud = cloud or getattr(self, 'cloud', None)
+
+    def get_client(self, cls, service):
+        self.cloud = getattr(self, 'cloud', 'default')
+        URL, TOKEN = self._custom_url(service), self._custom_token(service)
+        if not all([URL, TOKEN]):
+            astakos = getattr(self, 'auth_base', None)
+            if astakos:
+                URL = URL or astakos.get_endpoint_url(
+                    self._custom_type(service) or cls.service_type,
+                    self._custom_version(service))
+                TOKEN = TOKEN or astakos.token
+            else:
+                raise CLIBaseUrlError(service=service)
+        return cls(URL, TOKEN)
 
     @DontRaiseUnicodeError
     def write(self, s):

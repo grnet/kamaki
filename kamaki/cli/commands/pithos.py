@@ -88,28 +88,12 @@ class _pithos_init(_command_init):
     @errors.generic.all
     @addLogSettings
     def _run(self):
-        cloud = getattr(self, 'cloud', None)
-        if cloud:
-            self.base_url = self._custom_url('pithos')
-        else:
-            self.cloud = 'default'
-        self.token = self._custom_token('pithos')
-        self.container = self._custom_container() or 'pithos'
-
-        astakos = getattr(self, 'auth_base', None)
-        if astakos:
-            self.token = self.token or astakos.token
-            if not self.base_url:
-                pithos_endpoints = astakos.get_service_endpoints(
-                    self._custom_type('pithos') or 'object-store',
-                    self._custom_version('pithos') or '')
-                self.base_url = pithos_endpoints['publicURL']
-        else:
-            raise CLIBaseUrlError(service='astakos')
-
+        self.client = self.get_client(PithosClient, 'pithos')
+        self.base_url, self.token = self.client.base_url, self.client.token
         self._set_account()
-        self.client = PithosClient(
-            self.base_url, self.token, self.account, self.container)
+        self.client.account = self.account
+        self.container = self._custom_container() or 'pithos'
+        self.client.container = self.container
 
     def main(self):
         self._run()
