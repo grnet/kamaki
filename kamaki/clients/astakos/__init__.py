@@ -68,7 +68,10 @@ class AstakosClient(OriginalAstakosClient):
     def get_service_endpoints(self, service_type, version=None):
         services = parse_endpoints(
             self.get_endpoints(), ep_type=service_type, ep_version_id=version)
-        return services[0]['endpoints'][0] if services else []
+        return services[0]['endpoints'][0] if services else {}
+
+    def get_endpoint_url(self, service_type, version=None):
+        return self.get_service_endpoints(service_type, version)['publicURL']
 
     @property
     def user_info(self):
@@ -251,6 +254,10 @@ class CachedAstakosClient(Client):
                     ('and versionId %s' % version) if version else ''),
                 601)
         return matches[0]
+
+    def get_endpoint_url(self, service_type, version=None, token=None):
+        r = self.get_service_endpoints(service_type, version, token)
+        return r['publicURL']
 
     def list_users(self):
         """list cached users information"""
