@@ -1,4 +1,4 @@
-# Copyright 2011-2013 GRNET S.A. All rights reserved.
+# Copyright 2011-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -372,7 +372,7 @@ class plankton(object):
         '  # get a list of image ids',
         '  $ kamaki image list',
         '  # details of an image',
-        '  $ kamaki image meta <image id>',
+        '  $ kamaki image info <image id>',
         '',
     ]
 
@@ -387,15 +387,10 @@ class plankton(object):
             try:
                 func(self, *args, **kwargs)
             except ClientError as ce:
-                if image_id and (
-                    ce.status == 404
-                    or (
-                        ce.status == 400
-                        and 'image not found' in ('%s' % ce).lower())
-                    or ce.status == 411
-                ):
-                        msg = 'No image with id %s found' % image_id
-                        raiseCLIError(ce, msg, details=this.about_image_id)
+                if image_id or (ce.status in (404, 400) and (
+                        'image not found' in ('%s' % ce).lower())):
+                    msg = 'No image with id %s found' % image_id
+                    raiseCLIError(ce, msg, details=this.about_image_id)
                 raise
         return _raise
 
