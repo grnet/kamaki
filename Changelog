@@ -23,4 +23,5 @@ Features:
 - Datetime support in DateArgument
 - Resources can be reassigned to projects
 - Update account API commands to reflect changes in synnefo 0.16
+- Implement a get_endpoint_url method and use it
 
