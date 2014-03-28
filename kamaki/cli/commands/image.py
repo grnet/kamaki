@@ -38,7 +38,7 @@ from io import StringIO
 from pydoc import pager
 
 from kamaki.cli import command
-from kamaki.cli.command_tree import CommandTree
+from kamaki.cli.cmdtree import CommandTree
 from kamaki.cli.utils import filter_dicts_by_dict
 from kamaki.clients.image import ImageClient
 from kamaki.clients.pithos import PithosClient

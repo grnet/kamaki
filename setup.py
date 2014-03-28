@@ -66,7 +66,7 @@ setup(
         'kamaki.cli.config',
         'kamaki.cli.argument',
         'kamaki.cli.commands',
-        'kamaki.cli.command_tree',
+        'kamaki.cli.cmdtree',
         'kamaki.clients',
         'kamaki.clients.utils',
         'kamaki.clients.astakos',

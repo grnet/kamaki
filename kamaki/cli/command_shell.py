@@ -53,7 +53,7 @@ def _init_shell(exe_string, parser, username='', userid=''):
     from kamaki import __version__ as version
     shell.greet(version, username, userid)
     shell.do_EOF = shell.do_exit
-    from kamaki.cli.command_tree import CommandTree
+    from kamaki.cli.cmdtree import CommandTree
     shell.cmd_tree = CommandTree(
         'kamaki', 'A command line tool for poking clouds')
     return shell

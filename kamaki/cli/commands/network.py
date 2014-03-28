@@ -35,7 +35,7 @@ from io import StringIO
 from pydoc import pager
 
 from kamaki.cli import command
-from kamaki.cli.command_tree import CommandTree
+from kamaki.cli.cmdtree import CommandTree
 from kamaki.cli.errors import (
     CLIBaseUrlError, CLIInvalidArgument, raiseCLIError)
 from kamaki.clients.cyclades import (

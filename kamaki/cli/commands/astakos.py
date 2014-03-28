@@ -38,7 +38,7 @@ from kamaki.cli import command
 from kamaki.clients.astakos import LoggedAstakosClient
 from kamaki.cli.commands import (
     _command_init, errors, _optional_json, addLogSettings, _name_filter)
-from kamaki.cli.command_tree import CommandTree
+from kamaki.cli.cmdtree import CommandTree
 from kamaki.cli.errors import (
     CLIBaseUrlError, CLISyntaxError, CLIError, CLIInvalidArgument)
 from kamaki.cli.argument import (

@@ -371,7 +371,7 @@ Summary: create a command set
     #  File: grps.py
 
     from kamaki.cli.commands import _command_init
-    from kamaki.cli.command_tree import CommandTree
+    from kamaki.cli.cmdtree import CommandTree
     from kamaki.cli.argument import ValueArgument, FlagArgument
     ...
 

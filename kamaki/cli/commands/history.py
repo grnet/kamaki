@@ -31,7 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from kamaki.cli.command_tree import CommandTree
+from kamaki.cli.cmdtree import CommandTree
 from kamaki.cli.argument import ValueArgument
 from kamaki.cli.history import History
 from kamaki.cli import command

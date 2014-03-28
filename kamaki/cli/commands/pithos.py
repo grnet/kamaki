@@ -39,7 +39,7 @@ from os import path, walk, makedirs
 from kamaki.clients.pithos import PithosClient, ClientError
 
 from kamaki.cli import command
-from kamaki.cli.command_tree import CommandTree
+from kamaki.cli.cmdtree import CommandTree
 from kamaki.cli.commands import (
     _command_init, errors, addLogSettings, DontRaiseKeyError, _optional_json,
     _name_filter, _optional_output_cmd)
