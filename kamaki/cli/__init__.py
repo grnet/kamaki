@@ -545,7 +545,7 @@ def main(func):
 def run_shell(exe, parser):
     parser.arguments['help'].value = False
     cloud = _init_session(parser.arguments)
-    from command_shell import _init_shell
+    from shell import _init_shell
     global kloger
     _cnf = parser.arguments['config']
     auth_base = init_cached_authenticator(_cnf, cloud, kloger)
