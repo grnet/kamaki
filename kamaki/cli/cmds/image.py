@@ -46,7 +46,7 @@ from kamaki.clients import ClientError
 from kamaki.cli.argument import (
     FlagArgument, ValueArgument, RepeatableArgument, KeyValueArgument,
     IntArgument, ProgressBarArgument)
-from kamaki.cli.cmds.cyclades import _init_cyclades
+from kamaki.cli.cmds.cyclades import _CycladesInit
 from kamaki.cli.errors import CLIError, raiseCLIError, CLIInvalidArgument
 from kamaki.cli.cmds import (
     CommandInit, errors, addLogSettings, OptionalOutput, NameFilter, IDFilter)
@@ -620,7 +620,7 @@ class image_unregister(_init_image):
 # Compute Image Commands
 
 @command(imagecompute_cmds)
-class imagecompute_list(_init_cyclades, OptionalOutput, NameFilter, IDFilter):
+class imagecompute_list(_CycladesInit, OptionalOutput, NameFilter, IDFilter):
     """List images"""
 
     PERMANENTS = ('id', 'name')
@@ -698,7 +698,7 @@ class imagecompute_list(_init_cyclades, OptionalOutput, NameFilter, IDFilter):
 
 
 @command(imagecompute_cmds)
-class imagecompute_info(_init_cyclades, OptionalOutput):
+class imagecompute_info(_CycladesInit, OptionalOutput):
     """Get detailed information on an image"""
 
     @errors.generic.all
@@ -717,7 +717,7 @@ class imagecompute_info(_init_cyclades, OptionalOutput):
 
 
 @command(imagecompute_cmds)
-class imagecompute_delete(_init_cyclades):
+class imagecompute_delete(_CycladesInit):
     """Delete an image (WARNING: image file is also removed)"""
 
     @errors.generic.all
@@ -732,7 +732,7 @@ class imagecompute_delete(_init_cyclades):
 
 
 @command(imagecompute_cmds)
-class imagecompute_modify(_init_cyclades):
+class imagecompute_modify(_CycladesInit):
     """Modify image properties (metadata)"""
 
     arguments = dict(

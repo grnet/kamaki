@@ -73,16 +73,16 @@ howto_personality = [
 server_states = ('BUILD', 'ACTIVE', 'STOPPED', 'REBOOT')
 
 
-class _server_wait(Wait):
+class _ServerWait(Wait):
 
     def _wait(self, server_id, current_status, timeout=60):
-        super(_server_wait, self)._wait(
+        super(_ServerWait, self)._wait(
             'Server', server_id, self.client.wait_server, current_status,
             countdown=(current_status not in ('BUILD', )),
             timeout=timeout if current_status not in ('BUILD', ) else 100)
 
 
-class _init_cyclades(CommandInit):
+class _CycladesInit(CommandInit):
     @errors.generic.all
     @addLogSettings
     def _run(self):
@@ -122,7 +122,7 @@ class _init_cyclades(CommandInit):
 
 
 @command(server_cmds)
-class server_list(_init_cyclades, OptionalOutput, NameFilter, IDFilter):
+class server_list(_CycladesInit, OptionalOutput, NameFilter, IDFilter):
     """List virtual servers accessible by user
     Use filtering arguments (e.g., --name-like) to manage long server lists
     """
@@ -244,7 +244,7 @@ class server_list(_init_cyclades, OptionalOutput, NameFilter, IDFilter):
 
 
 @command(server_cmds)
-class server_info(_init_cyclades, OptionalOutput):
+class server_info(_CycladesInit, OptionalOutput):
     """Detailed information on a Virtual Machine"""
 
     arguments = dict(
@@ -394,7 +394,7 @@ class NetworkArgument(RepeatableArgument):
 
 
 @command(server_cmds)
-class server_create(_init_cyclades, OptionalOutput, _server_wait):
+class server_create(_CycladesInit, OptionalOutput, _ServerWait):
     """Create a server (aka Virtual Machine)"""
 
     arguments = dict(
@@ -515,7 +515,7 @@ class FirewallProfileArgument(ValueArgument):
 
 
 @command(server_cmds)
-class server_modify(_init_cyclades):
+class server_modify(_CycladesInit):
     """Modify attributes of a virtual server"""
 
     arguments = dict(
@@ -607,7 +607,7 @@ class server_modify(_init_cyclades):
 
 
 @command(server_cmds)
-class server_reassign(_init_cyclades, OptionalOutput):
+class server_reassign(_CycladesInit, OptionalOutput):
     """Assign a virtual server to a different project"""
 
     arguments = dict(
@@ -627,7 +627,7 @@ class server_reassign(_init_cyclades, OptionalOutput):
 
 
 @command(server_cmds)
-class server_delete(_init_cyclades, _server_wait):
+class server_delete(_CycladesInit, _ServerWait):
     """Delete a virtual server"""
 
     arguments = dict(
@@ -667,7 +667,7 @@ class server_delete(_init_cyclades, _server_wait):
 
 
 @command(server_cmds)
-class server_reboot(_init_cyclades, _server_wait):
+class server_reboot(_CycladesInit, _ServerWait):
     """Reboot a virtual server"""
 
     arguments = dict(
@@ -707,7 +707,7 @@ class server_reboot(_init_cyclades, _server_wait):
 
 
 @command(server_cmds)
-class server_start(_init_cyclades, _server_wait):
+class server_start(_CycladesInit, _ServerWait):
     """Start an existing virtual server"""
 
     arguments = dict(
@@ -735,7 +735,7 @@ class server_start(_init_cyclades, _server_wait):
 
 
 @command(server_cmds)
-class server_shutdown(_init_cyclades,  _server_wait):
+class server_shutdown(_CycladesInit,  _ServerWait):
     """Shutdown an active virtual server"""
 
     arguments = dict(
@@ -763,7 +763,7 @@ class server_shutdown(_init_cyclades,  _server_wait):
 
 
 @command(server_cmds)
-class server_console(_init_cyclades, OptionalOutput):
+class server_console(_CycladesInit, OptionalOutput):
     """Create a VMC console and show connection information"""
 
     @errors.generic.all
@@ -780,7 +780,7 @@ class server_console(_init_cyclades, OptionalOutput):
 
 
 @command(server_cmds)
-class server_wait(_init_cyclades, _server_wait):
+class server_wait(_CycladesInit, _ServerWait):
     """Wait for server to change its status (default: BUILD)"""
 
     arguments = dict(
@@ -814,7 +814,7 @@ class server_wait(_init_cyclades, _server_wait):
 
 
 @command(flavor_cmds)
-class flavor_list(_init_cyclades, OptionalOutput, NameFilter, IDFilter):
+class flavor_list(_CycladesInit, OptionalOutput, NameFilter, IDFilter):
     """List available hardware flavors"""
 
     PERMANENTS = ('id', 'name')
@@ -876,7 +876,7 @@ class flavor_list(_init_cyclades, OptionalOutput, NameFilter, IDFilter):
 
 
 @command(flavor_cmds)
-class flavor_info(_init_cyclades, OptionalOutput):
+class flavor_info(_CycladesInit, OptionalOutput):
     """Detailed information on a hardware flavor
     To get a list of available flavors and flavor ids, try /flavor list
     """
