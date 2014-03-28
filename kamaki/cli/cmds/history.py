@@ -43,8 +43,8 @@ _commands = [history_cmds]
 
 
 class _init_history(CommandInit):
-    @errors.generic.all
-    @errors.history.init
+    @errors.Generic.all
+    @errors.History.init
     def _run(self):
         self.history = History(self.config.get('global', 'history_file'))
         self.history.limit = self.config.get('global', 'history_limit')
@@ -65,7 +65,7 @@ class history_show(_init_history):
         match=ValueArgument('Show lines matching this', '--match'),
     )
 
-    @errors.generic.all
+    @errors.Generic.all
     def _run(self, cmd_slice):
         c = self.history.counter
         lines = ['%s.\t%s' % (i + c, l) for i, l in enumerate(
@@ -89,7 +89,7 @@ class history_show(_init_history):
 class history_clean(_init_history):
     """Clean up history (permanent)"""
 
-    @errors.generic.all
+    @errors.Generic.all
     def _run(self):
         self.history.empty()
 

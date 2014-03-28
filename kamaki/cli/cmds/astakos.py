@@ -90,9 +90,9 @@ def with_temp_token(func):
 
 class _AstakosInit(CommandInit):
 
-    @errors.generic.all
-    @errors.user.load
-    @errors.user.astakosclient
+    @errors.Generic.all
+    @errors.Astakos.load
+    @errors.Astakos.astakosclient
     @addLogSettings
     def _run(self):
         if getattr(self, 'cloud', None):
@@ -119,9 +119,9 @@ class _AstakosInit(CommandInit):
 class user_authenticate(_AstakosInit, OptionalOutput):
     """Authenticate a user and get all authentication information"""
 
-    @errors.generic.all
-    @errors.user.authenticate
-    @errors.user.astakosclient
+    @errors.Generic.all
+    @errors.Astakos.authenticate
+    @errors.Astakos.astakosclient
     @with_temp_token
     def _run(self):
         self._print(self.client.authenticate(), self.print_dict)
@@ -135,8 +135,8 @@ class user_authenticate(_AstakosInit, OptionalOutput):
 class user_uuid2name(_AstakosInit, OptionalOutput):
     """Get user name(s) from uuid(s)"""
 
-    #@errors.generic.all
-    #@errors.user.astakosclient
+    #@errors.Generic.all
+    #@errors.Astakos.astakosclient
     def _run(self, uuids):
         r = self.client.get_usernames(uuids)
         self._print(r, self.print_dict)
@@ -153,8 +153,8 @@ class user_uuid2name(_AstakosInit, OptionalOutput):
 class user_name2uuid(_AstakosInit, OptionalOutput):
     """Get user uuid(s) from name(s)"""
 
-    @errors.generic.all
-    @errors.user.astakosclient
+    @errors.Generic.all
+    @errors.Astakos.astakosclient
     def _run(self, usernames):
         r = self.client.get_uuids(usernames)
         self._print(r, self.print_dict)
@@ -186,8 +186,8 @@ class quota_list(_AstakosInit, OptionalOutput):
                         [(k, format_size(v)) for k, v in resources[r].items()])
         self.print_dict(quotas, *args, **kwargs)
 
-    @errors.generic.all
-    @errors.user.astakosclient
+    @errors.Generic.all
+    @errors.Astakos.astakosclient
     def _run(self):
         quotas = self.client.get_quotas()
         if self['project_id']:
@@ -229,8 +229,8 @@ class user_info(_AstakosInit, OptionalOutput):
         name=ValueArgument('Query user with username/email', '--username')
     )
 
-    @errors.generic.all
-    @errors.user.astakosclient
+    @errors.Generic.all
+    @errors.Astakos.astakosclient
     def _run(self):
         if self['uuid'] and self['name']:
             raise CLISyntaxError(
@@ -256,8 +256,8 @@ class user_info(_AstakosInit, OptionalOutput):
 class user_add(_AstakosInit, OptionalOutput):
     """Authenticate a user by token and add to kamaki session (cache)"""
 
-    @errors.generic.all
-    @errors.user.astakosclient
+    @errors.Generic.all
+    @errors.Astakos.astakosclient
     def _run(self, token=None):
         ask = token and token not in self.auth_base._uuids
         self._print(self.auth_base.authenticate(token), self.print_dict)
@@ -284,8 +284,8 @@ class user_list(_AstakosInit, OptionalOutput):
         detail=FlagArgument('Detailed listing', ('-l', '--detail'))
     )
 
-    @errors.generic.all
-    @errors.user.astakosclient
+    @errors.Generic.all
+    @errors.Astakos.astakosclient
     def _run(self):
         self._print([u if self['detail'] else (dict(
             id=u['id'], name=u['name'])) for u in self.auth_base.list_users()])
@@ -299,8 +299,8 @@ class user_list(_AstakosInit, OptionalOutput):
 class user_select(_AstakosInit):
     """Select a user from the (cached) list as the current session user"""
 
-    @errors.generic.all
-    @errors.user.astakosclient
+    @errors.Generic.all
+    @errors.Astakos.astakosclient
     def _run(self, uuid):
         try:
             first_token = self.auth_base.get_token(uuid)
@@ -338,8 +338,8 @@ class user_select(_AstakosInit):
 class user_delete(_AstakosInit):
     """Delete a user (token) from the (cached) list of session users"""
 
-    @errors.generic.all
-    @errors.user.astakosclient
+    @errors.Generic.all
+    @errors.Astakos.astakosclient
     def _run(self, uuid):
         if uuid == self.auth_base.user_term('id'):
             raise CLIError('Cannot remove current session user', details=[
@@ -376,8 +376,8 @@ class user_delete(_AstakosInit):
 class service_list(_AstakosInit, OptionalOutput):
     """List available services"""
 
-    @errors.generic.all
-    @errors.user.astakosclient
+    @errors.Generic.all
+    @errors.Astakos.astakosclient
     def _run(self):
         self._print(self.client.get_services())
 
@@ -390,8 +390,8 @@ class service_list(_AstakosInit, OptionalOutput):
 class service_uuid2username(_AstakosInit, OptionalOutput):
     """Get service username(s) from uuid(s)"""
 
-    @errors.generic.all
-    @errors.user.astakosclient
+    @errors.Generic.all
+    @errors.Astakos.astakosclient
     @with_temp_token
     def _run(self, uuids):
         if 1 == len(uuids):
@@ -410,8 +410,8 @@ class service_uuid2username(_AstakosInit, OptionalOutput):
 class service_username2uuid(_AstakosInit, OptionalOutput):
     """Get service uuid(s) from username(s)"""
 
-    @errors.generic.all
-    @errors.user.astakosclient
+    @errors.Generic.all
+    @errors.Astakos.astakosclient
     @with_temp_token
     def _run(self, usernames):
         if 1 == len(usernames):
@@ -434,8 +434,8 @@ class service_quotas(_AstakosInit, OptionalOutput):
         uuid=ValueArgument('A user uuid to get quotas for', '--uuid')
     )
 
-    @errors.generic.all
-    @errors.user.astakosclient
+    @errors.Generic.all
+    @errors.Astakos.astakosclient
     @with_temp_token
     def _run(self):
         self._print(self.client.service_get_quotas(self['uuid']))
@@ -449,8 +449,8 @@ class service_quotas(_AstakosInit, OptionalOutput):
 class commission_pending(_AstakosInit, OptionalOutput):
     """List pending commissions (special privileges required)"""
 
-    @errors.generic.all
-    @errors.user.astakosclient
+    @errors.Generic.all
+    @errors.Astakos.astakosclient
     def _run(self):
         self._print(self.client.get_pending_commissions())
 
@@ -463,8 +463,8 @@ class commission_pending(_AstakosInit, OptionalOutput):
 class commission_info(_AstakosInit, OptionalOutput):
     """Get commission info (special privileges required)"""
 
-    @errors.generic.all
-    @errors.user.astakosclient
+    @errors.Generic.all
+    @errors.Astakos.astakosclient
     def _run(self, commission_id):
         commission_id = int(commission_id)
         self._print(
@@ -479,8 +479,8 @@ class commission_info(_AstakosInit, OptionalOutput):
 class commission_accept(_AstakosInit):
     """Accept a pending commission  (special privileges required)"""
 
-    @errors.generic.all
-    @errors.user.astakosclient
+    @errors.Generic.all
+    @errors.Astakos.astakosclient
     def _run(self, commission_id):
         commission_id = int(commission_id)
         self.client.accept_commission(commission_id)
@@ -494,8 +494,8 @@ class commission_accept(_AstakosInit):
 class commission_reject(_AstakosInit):
     """Reject a pending commission (special privileges required)"""
 
-    @errors.generic.all
-    @errors.user.astakosclient
+    @errors.Generic.all
+    @errors.Astakos.astakosclient
     def _run(self, commission_id):
         commission_id = int(commission_id)
         self.client.reject_commission(commission_id)
@@ -518,8 +518,8 @@ class commission_resolve(_AstakosInit, OptionalOutput):
             '--reject')
     )
 
-    @errors.generic.all
-    @errors.user.astakosclient
+    @errors.Generic.all
+    @errors.Astakos.astakosclient
     def _run(self):
         self.writeln('accepted ', self['accept'])
         self.writeln('rejected ', self['reject'])
@@ -547,8 +547,8 @@ class commission_issue(_AstakosInit, OptionalOutput):
         accept=FlagArgument('Do not wait for verification', '--accept')
     )
 
-    @errors.generic.all
-    @errors.user.astakosclient
+    @errors.Generic.all
+    @errors.Astakos.astakosclient
     def _run(self, holder, source, provisions, name=''):
         provisions = loads(provisions)
         self._print(self.client.issue_one_commission(
@@ -564,8 +564,8 @@ class commission_issue(_AstakosInit, OptionalOutput):
 class resource_list(_AstakosInit, OptionalOutput):
     """List user resources"""
 
-    @errors.generic.all
-    @errors.user.astakosclient
+    @errors.Generic.all
+    @errors.Astakos.astakosclient
     def _run(self):
         self._print(self.client.get_resources(), self.print_dict)
 
@@ -580,8 +580,8 @@ class endpoint_list(_AstakosInit, OptionalOutput, NameFilter):
 
     arguments = dict(endpoint_type=ValueArgument('Filter by type', '--type'))
 
-    @errors.generic.all
-    @errors.user.astakosclient
+    @errors.Generic.all
+    @errors.Astakos.astakosclient
     def _run(self):
         r = self.client.get_endpoints()['access']['serviceCatalog']
         r = self._filter_by_name(r)
@@ -634,8 +634,8 @@ class project_list(_AstakosInit, OptionalOutput):
         owner=ValueArgument('Filter by owner', ('--with-owner', ))
     )
 
-    @errors.generic.all
-    @errors.user.astakosclient
+    @errors.Generic.all
+    @errors.Astakos.astakosclient
     def _run(self):
         r = self.client.get_projects(
             self['name'], self['state'], self['owner'])
@@ -655,8 +655,8 @@ class project_list(_AstakosInit, OptionalOutput):
 class project_info(_AstakosInit, OptionalOutput):
     """Get details for a project"""
 
-    @errors.generic.all
-    @errors.user.astakosclient
+    @errors.Generic.all
+    @errors.Astakos.astakosclient
     def _run(self, project_id):
         self._print(
             self.client.get_project(project_id), self.print_dict)
@@ -751,8 +751,8 @@ class project_create(_AstakosInit, OptionalOutput):
     )
     required = ['specs_path', 'project_name', 'end_date']
 
-    @errors.generic.all
-    @errors.user.astakosclient
+    @errors.Generic.all
+    @errors.Astakos.astakosclient
     @apply_notification
     def _run(self):
         specs = dict()
@@ -823,8 +823,8 @@ class project_modify(_AstakosInit, OptionalOutput):
         'private', 'project_name', 'start_date', 'end_date', 'join_policy',
         'leave_policy', 'resource_capacities', 'max_members']
 
-    @errors.generic.all
-    @errors.user.astakosclient
+    @errors.Generic.all
+    @errors.Astakos.astakosclient
     @apply_notification
     def _run(self, project_id):
         specs = dict()
@@ -870,8 +870,8 @@ class _ProjectAction(_AstakosInit):
         reason=ValueArgument('Quote a reason for this action', '--reason'),
     )
 
-    @errors.generic.all
-    @errors.user.astakosclient
+    @errors.Generic.all
+    @errors.Astakos.astakosclient
     def _run(self, project_id, quote_a_reason):
         self.client.project_action(project_id, self.action, quote_a_reason)
 
@@ -914,8 +914,8 @@ class _ApplicationAction(_AstakosInit):
     )
     required = ('app_id', )
 
-    @errors.generic.all
-    @errors.user.astakosclient
+    @errors.Generic.all
+    @errors.Astakos.astakosclient
     def _run(self, project_id, app_id, quote_a_reason):
         self.client.application_action(
             project_id, app_id, self.action, quote_a_reason)
@@ -962,8 +962,8 @@ class membership_list(_AstakosInit, OptionalOutput):
         project=ValueArgument('Filter by project id', '--project-id')
     )
 
-    @errors.generic.all
-    @errors.user.astakosclient
+    @errors.Generic.all
+    @errors.Astakos.astakosclient
     def _run(self):
         self._print(self.client.get_memberships(self['project']))
 
@@ -976,8 +976,8 @@ class membership_list(_AstakosInit, OptionalOutput):
 class membership_info(_AstakosInit, OptionalOutput):
     """Details on a membership"""
 
-    @errors.generic.all
-    @errors.user.astakosclient
+    @errors.Generic.all
+    @errors.Astakos.astakosclient
     def _run(self, memb_id):
         self._print(
             self.client.get_membership(memb_id), self.print_dict)
@@ -992,8 +992,8 @@ class _MembershipAction(_AstakosInit, OptionalOutput):
     action = ''
     arguments = dict(reason=ValueArgument('Reason for the action', '--reason'))
 
-    @errors.generic.all
-    @errors.user.astakosclient
+    @errors.Generic.all
+    @errors.Astakos.astakosclient
     def _run(self, memb_id, quote_a_reason):
         self._print(self.client.membership_action(
             memb_id, self.action, quote_a_reason))
@@ -1037,8 +1037,8 @@ class membership_remove(_MembershipAction):
 class project_join(_AstakosInit):
     """Join a project"""
 
-    @errors.generic.all
-    @errors.user.astakosclient
+    @errors.Generic.all
+    @errors.Astakos.astakosclient
     def _run(self, project_id):
         self.writeln(self.client.join_project(project_id))
 
@@ -1054,8 +1054,8 @@ class project_enroll(_AstakosInit):
     arguments = dict(email=ValueArgument('User e-mail', '--email'))
     required = ('email', )
 
-    @errors.generic.all
-    @errors.user.astakosclient
+    @errors.Generic.all
+    @errors.Astakos.astakosclient
     def _run(self, project_id, email):
         self.writeln(self.client.enroll_member(project_id, email))
 

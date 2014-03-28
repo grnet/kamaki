@@ -75,7 +75,7 @@ log = getLogger(__name__)
 
 
 class _init_image(CommandInit):
-    @errors.generic.all
+    @errors.Generic.all
     @addLogSettings
     def _run(self):
         self.client = self.get_client(ImageClient, 'plankton')
@@ -225,8 +225,8 @@ class image_list(_init_image, OptionalOutput, NameFilter, IDFilter):
                 member['member_id'] += ' (%s)' % usernames[member['member_id']]
         self._print(members, title=('member_id',))
 
-    @errors.generic.all
-    @errors.cyclades.connection
+    @errors.Generic.all
+    @errors.Cyclades.connection
     def _run(self):
         super(self.__class__, self)._run()
         if self['image_ID_for_members']:
@@ -280,9 +280,9 @@ class image_list(_init_image, OptionalOutput, NameFilter, IDFilter):
 class image_info(_init_image, OptionalOutput):
     """Get image metadata"""
 
-    @errors.generic.all
-    @errors.plankton.connection
-    @errors.plankton.id
+    @errors.Generic.all
+    @errors.Image.connection
+    @errors.Image.id
     def _run(self, image_id):
         meta = self.client.get_meta(image_id)
         if not self['output_format']:
@@ -323,9 +323,9 @@ class image_modify(_init_image):
         'unpublish', 'property_to_set', 'member_ID_to_add',
         'member_ID_to_remove', 'property_to_del']
 
-    @errors.generic.all
-    @errors.plankton.connection
-    @errors.plankton.id
+    @errors.Generic.all
+    @errors.Image.connection
+    @errors.Image.id
     def _run(self, image_id):
         for mid in (self['member_ID_to_add'] or []):
             self.client.add_member(image_id, mid)
@@ -509,8 +509,8 @@ class image_register(_init_image, OptionalOutput):
                 if ce.status != 404:
                     raise
 
-    @errors.generic.all
-    @errors.plankton.connection
+    @errors.Generic.all
+    @errors.Image.connection
     def _run(self, name, locator):
         location, pithos = locator.value, None
         if self['local_image_path']:
@@ -606,9 +606,9 @@ class image_register(_init_image, OptionalOutput):
 class image_unregister(_init_image):
     """Unregister an image (does not delete the image file)"""
 
-    @errors.generic.all
-    @errors.plankton.connection
-    @errors.plankton.id
+    @errors.Generic.all
+    @errors.Image.connection
+    @errors.Image.id
     def _run(self, image_id):
         self.client.unregister(image_id)
 
@@ -663,8 +663,8 @@ class imagecompute_list(_CycladesInit, OptionalOutput, NameFilter, IDFilter):
             img[key] += ' (%s)' % uuids[img[key]]
         return images
 
-    @errors.generic.all
-    @errors.cyclades.connection
+    @errors.Generic.all
+    @errors.Cyclades.connection
     def _run(self):
         withmeta = bool(self['meta'] or self['meta_like'])
         withuser = bool(self['user_id'] or self['user_name'])
@@ -701,9 +701,9 @@ class imagecompute_list(_CycladesInit, OptionalOutput, NameFilter, IDFilter):
 class imagecompute_info(_CycladesInit, OptionalOutput):
     """Get detailed information on an image"""
 
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.plankton.id
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Image.id
     def _run(self, image_id):
         image = self.client.get_image_details(image_id)
         uuids = [image['user_id']]
@@ -720,9 +720,9 @@ class imagecompute_info(_CycladesInit, OptionalOutput):
 class imagecompute_delete(_CycladesInit):
     """Delete an image (WARNING: image file is also removed)"""
 
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.plankton.id
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Image.id
     def _run(self, image_id):
         self.client.delete_image(image_id)
 
@@ -745,9 +745,9 @@ class imagecompute_modify(_CycladesInit):
     )
     required = ['property_to_add', 'property_to_del']
 
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.plankton.id
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Image.id
     def _run(self, image_id):
         if self['property_to_add']:
             self.client.update_image_metadata(

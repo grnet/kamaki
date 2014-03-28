@@ -72,7 +72,7 @@ class _port_wait(Wait):
 
 
 class _init_network(CommandInit):
-    @errors.generic.all
+    @errors.Generic.all
     @addLogSettings
     def _run(self):
         self.client = self.get_client(CycladesNetworkClient, 'network')
@@ -100,8 +100,8 @@ class network_list(_init_network, OptionalOutput, NameFilter, IDFilter):
             'show only networks belonging to user with this id', '--user-id')
     )
 
-    @errors.generic.all
-    @errors.cyclades.connection
+    @errors.Generic.all
+    @errors.Cyclades.connection
     def _run(self):
         nets = self.client.list_networks(detail=True)
         nets = self._filter_by_user_id(nets)
@@ -132,9 +132,9 @@ class network_list(_init_network, OptionalOutput, NameFilter, IDFilter):
 class network_info(_init_network, OptionalOutput):
     """Get details about a network"""
 
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.network_id
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.network_id
     def _run(self, network_id):
         net = self.client.get_network_details(network_id)
         self._print(net, self.print_dict)
@@ -176,9 +176,9 @@ class network_create(_init_network, OptionalOutput):
             '--type')
     )
 
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.network_type
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.network_type
     def _run(self, network_type):
         net = self.client.create_network(
             network_type,
@@ -201,9 +201,9 @@ class network_reassign(_init_network, OptionalOutput):
     )
     required = ('project_id', )
 
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.network_id
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.network_id
     def _run(self, network_id, project):
         self.client.reassign_network(network_id, project)
 
@@ -216,9 +216,9 @@ class network_reassign(_init_network, OptionalOutput):
 class network_delete(_init_network):
     """Delete a network"""
 
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.network_id
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.network_id
     def _run(self, network_id):
         self.client.delete_network(network_id)
 
@@ -234,9 +234,9 @@ class network_modify(_init_network, OptionalOutput):
     arguments = dict(new_name=ValueArgument('Rename the network', '--name'))
     required = ['new_name', ]
 
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.network_id
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.network_id
     def _run(self, network_id):
         r = self.client.update_network(network_id, name=self['new_name'])
         self._print(r, self.print_dict)
@@ -259,8 +259,8 @@ class subnet_list(_init_network, OptionalOutput, NameFilter, IDFilter):
             '--more')
     )
 
-    @errors.generic.all
-    @errors.cyclades.connection
+    @errors.Generic.all
+    @errors.Cyclades.connection
     def _run(self):
         nets = self.client.list_subnets()
         nets = self._filter_by_name(nets)
@@ -289,8 +289,8 @@ class subnet_list(_init_network, OptionalOutput, NameFilter, IDFilter):
 class subnet_info(_init_network, OptionalOutput):
     """Get details about a subnet"""
 
-    @errors.generic.all
-    @errors.cyclades.connection
+    @errors.Generic.all
+    @errors.Cyclades.connection
     def _run(self, subnet_id):
         net = self.client.get_subnet_details(subnet_id)
         self._print(net, self.print_dict)
@@ -341,9 +341,9 @@ class subnet_create(_init_network, OptionalOutput):
     )
     required = ('network_id', 'cidr')
 
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.network_id
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.network_id
     def _run(self, network_id, cidr):
         net = self.client.create_subnet(
             network_id, cidr,
@@ -365,8 +365,8 @@ class subnet_modify(_init_network, OptionalOutput):
     )
     required = ['new_name']
 
-    @errors.generic.all
-    @errors.cyclades.connection
+    @errors.Generic.all
+    @errors.Cyclades.connection
     def _run(self, subnet_id):
         r = self.client.update_subnet(subnet_id, name=self['new_name'])
         self._print(r, self.print_dict)
@@ -389,8 +389,8 @@ class port_list(_init_network, OptionalOutput, NameFilter, IDFilter):
             'show only networks belonging to user with this id', '--user-id')
     )
 
-    @errors.generic.all
-    @errors.cyclades.connection
+    @errors.Generic.all
+    @errors.Cyclades.connection
     def _run(self):
         detail = bool(self['detail'] or self['user_id'])
         ports = self.client.list_ports(detail=detail)
@@ -417,8 +417,8 @@ class port_list(_init_network, OptionalOutput, NameFilter, IDFilter):
 class port_info(_init_network, OptionalOutput):
     """Get details about a port"""
 
-    @errors.generic.all
-    @errors.cyclades.connection
+    @errors.Generic.all
+    @errors.Cyclades.connection
     def _run(self, port_id):
         port = self.client.get_port_details(port_id)
         self._print(port, self.print_dict)
@@ -436,8 +436,8 @@ class port_delete(_init_network, _port_wait):
         wait=FlagArgument('Wait port to be established', ('-w', '--wait'))
     )
 
-    @errors.generic.all
-    @errors.cyclades.connection
+    @errors.Generic.all
+    @errors.Cyclades.connection
     def _run(self, port_id):
         if self['wait']:
             status = self.client.get_port_details(port_id)['status']
@@ -462,8 +462,8 @@ class port_modify(_init_network, OptionalOutput):
     arguments = dict(new_name=ValueArgument('New name of the port', '--name'))
     required = ['new_name', ]
 
-    @errors.generic.all
-    @errors.cyclades.connection
+    @errors.Generic.all
+    @errors.Cyclades.connection
     def _run(self, port_id):
         r = self.client.get_port_details(port_id)
         r = self.client.update_port(
@@ -515,10 +515,10 @@ class port_create(_port_create):
     )
     required = ('network_id', 'device_id')
 
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.network_id
-    @errors.cyclades.server_id
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.network_id
+    @errors.Cyclades.server_id
     def _run(self, network_id, server_id):
         self.connect(network_id, server_id)
 
@@ -541,8 +541,8 @@ class port_wait(_init_network, _port_wait):
             'Wait limit in seconds (default: 60)', '--timeout', default=60)
     )
 
-    @errors.generic.all
-    @errors.cyclades.connection
+    @errors.Generic.all
+    @errors.Cyclades.connection
     def _run(self, port_id, port_status):
         port = self.client.get_port_details(port_id)
         if port['status'].lower() == port_status.lower():
@@ -563,8 +563,8 @@ class port_wait(_init_network, _port_wait):
 class ip_list(_init_network, OptionalOutput):
     """List reserved floating IPs"""
 
-    @errors.generic.all
-    @errors.cyclades.connection
+    @errors.Generic.all
+    @errors.Cyclades.connection
     def _run(self):
         self._print(self.client.list_floatingips())
 
@@ -577,8 +577,8 @@ class ip_list(_init_network, OptionalOutput):
 class ip_info(_init_network, OptionalOutput):
     """Get details on a floating IP"""
 
-    @errors.generic.all
-    @errors.cyclades.connection
+    @errors.Generic.all
+    @errors.Cyclades.connection
     def _run(self, ip_id):
         self._print(
             self.client.get_floatingip_details(ip_id), self.print_dict)
@@ -599,8 +599,8 @@ class ip_create(_init_network, OptionalOutput):
         project_id=ValueArgument('Assign the IP to project', '--project-id'),
     )
 
-    @errors.generic.all
-    @errors.cyclades.connection
+    @errors.Generic.all
+    @errors.Cyclades.connection
     def _run(self):
         self._print(
             self.client.create_floatingip(
@@ -623,8 +623,8 @@ class ip_reassign(_init_network):
     )
     required = ('project_id', )
 
-    @errors.generic.all
-    @errors.cyclades.connection
+    @errors.Generic.all
+    @errors.Cyclades.connection
     def _run(self, ip, project):
         self.client.reassign_floating_ip(ip, project)
 
@@ -661,9 +661,9 @@ class ip_attach(_port_create):
     )
     required = ('server_id', )
 
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.server_id
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.server_id
     def _run(self, ip_or_ip_id, server_id):
         netid = None
         for ip in self.client.list_floatingips():
@@ -697,8 +697,8 @@ class ip_detach(_init_network, _port_wait, OptionalOutput):
         wait=FlagArgument('Wait network to disconnect', ('-w', '--wait')),
     )
 
-    @errors.generic.all
-    @errors.cyclades.connection
+    @errors.Generic.all
+    @errors.Cyclades.connection
     def _run(self, ip_or_ip_id):
         for ip in self.client.list_floatingips():
             if ip_or_ip_id in (ip['floating_ip_address'], ip['id']):
@@ -746,10 +746,10 @@ class network_connect(_port_create):
     )
     required = ('device_id', )
 
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.network_id
-    @errors.cyclades.server_id
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.network_id
+    @errors.Cyclades.server_id
     def _run(self, network_id, server_id):
         self.error('Creating a port to connect network %s with device %s' % (
             network_id, server_id))
@@ -776,10 +776,10 @@ class network_disconnect(_init_network, _port_wait, OptionalOutput):
     )
     required = ('device_id', )
 
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.network_id
-    @errors.cyclades.server_id
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.network_id
+    @errors.Cyclades.server_id
     def _run(self, network_id, server_id):
         vm = self._cyclades_client().get_server_details(server_id)
         ports = [port for port in vm['attachments'] if (

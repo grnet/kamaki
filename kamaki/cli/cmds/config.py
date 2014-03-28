@@ -67,7 +67,7 @@ class config_list(CommandInit):
     A: Default options remain if not explicitly replaced or deleted
     """
 
-    @errors.generic.all
+    @errors.Generic.all
     def _run(self):
         for section in sorted(self.config.sections()):
             items = self.config.items(section)
@@ -89,7 +89,7 @@ class config_get(CommandInit):
 
     __doc__ += about_options
 
-    @errors.generic.all
+    @errors.Generic.all
     def _run(self, option):
         section, sep, key = option.rpartition('.')
         if not sep:
@@ -123,7 +123,7 @@ class config_set(CommandInit):
 
     __doc__ += about_options
 
-    @errors.generic.all
+    @errors.Generic.all
     def _run(self, option, value):
         section, sep, key = option.rpartition('.')
         prefix = 'cloud.'
@@ -164,7 +164,7 @@ class config_delete(CommandInit):
             '--default')
     )
 
-    @errors.generic.all
+    @errors.Generic.all
     def _run(self, option):
         section, sep, key = option.rpartition('.')
         section = section or 'global'
