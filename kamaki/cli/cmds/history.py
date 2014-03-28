@@ -42,7 +42,7 @@ history_cmds = CommandTree('history', 'Kamaki command history')
 _commands = [history_cmds]
 
 
-class _init_history(CommandInit):
+class _HistoryInit(CommandInit):
     @errors.Generic.all
     @errors.History.init
     def _run(self):
@@ -54,7 +54,7 @@ class _init_history(CommandInit):
 
 
 @command(history_cmds)
-class history_show(_init_history):
+class history_show(_HistoryInit):
     """Show history
         Featutes:
         - slice notation (cmd numbers --> N or :N or N: or N1:N2)
@@ -86,7 +86,7 @@ class history_show(_init_history):
 
 
 @command(history_cmds)
-class history_clean(_init_history):
+class history_clean(_HistoryInit):
     """Clean up history (permanent)"""
 
     @errors.Generic.all
