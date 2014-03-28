@@ -88,7 +88,7 @@ def with_temp_token(func):
     return wrap
 
 
-class _init_synnefo_astakosclient(CommandInit):
+class _AstakosInit(CommandInit):
 
     @errors.generic.all
     @errors.user.load
@@ -116,7 +116,7 @@ class _init_synnefo_astakosclient(CommandInit):
 
 
 @command(user_commands)
-class user_authenticate(_init_synnefo_astakosclient, OptionalOutput):
+class user_authenticate(_AstakosInit, OptionalOutput):
     """Authenticate a user and get all authentication information"""
 
     @errors.generic.all
@@ -132,7 +132,7 @@ class user_authenticate(_init_synnefo_astakosclient, OptionalOutput):
 
 
 @command(user_commands)
-class user_uuid2name(_init_synnefo_astakosclient, OptionalOutput):
+class user_uuid2name(_AstakosInit, OptionalOutput):
     """Get user name(s) from uuid(s)"""
 
     #@errors.generic.all
@@ -150,7 +150,7 @@ class user_uuid2name(_init_synnefo_astakosclient, OptionalOutput):
 
 
 @command(user_commands)
-class user_name2uuid(_init_synnefo_astakosclient, OptionalOutput):
+class user_name2uuid(_AstakosInit, OptionalOutput):
     """Get user uuid(s) from name(s)"""
 
     @errors.generic.all
@@ -168,7 +168,7 @@ class user_name2uuid(_init_synnefo_astakosclient, OptionalOutput):
 
 
 @command(quota_commands)
-class quota_list(_init_synnefo_astakosclient, OptionalOutput):
+class quota_list(_AstakosInit, OptionalOutput):
     """Show user quotas"""
 
     _to_format = set(['cyclades.disk', 'pithos.diskspace', 'cyclades.ram'])
@@ -221,7 +221,7 @@ class quota_list(_init_synnefo_astakosclient, OptionalOutput):
 
 
 @command(user_commands)
-class user_info(_init_synnefo_astakosclient, OptionalOutput):
+class user_info(_AstakosInit, OptionalOutput):
     """Get info for (current) session user"""
 
     arguments = dict(
@@ -253,7 +253,7 @@ class user_info(_init_synnefo_astakosclient, OptionalOutput):
 
 
 @command(user_commands)
-class user_add(_init_synnefo_astakosclient, OptionalOutput):
+class user_add(_AstakosInit, OptionalOutput):
     """Authenticate a user by token and add to kamaki session (cache)"""
 
     @errors.generic.all
@@ -277,7 +277,7 @@ class user_add(_init_synnefo_astakosclient, OptionalOutput):
 
 
 @command(user_commands)
-class user_list(_init_synnefo_astakosclient, OptionalOutput):
+class user_list(_AstakosInit, OptionalOutput):
     """List (cached) session users"""
 
     arguments = dict(
@@ -296,7 +296,7 @@ class user_list(_init_synnefo_astakosclient, OptionalOutput):
 
 
 @command(user_commands)
-class user_select(_init_synnefo_astakosclient):
+class user_select(_AstakosInit):
     """Select a user from the (cached) list as the current session user"""
 
     @errors.generic.all
@@ -335,7 +335,7 @@ class user_select(_init_synnefo_astakosclient):
 
 
 @command(user_commands)
-class user_delete(_init_synnefo_astakosclient):
+class user_delete(_AstakosInit):
     """Delete a user (token) from the (cached) list of session users"""
 
     @errors.generic.all
@@ -373,7 +373,7 @@ class user_delete(_init_synnefo_astakosclient):
 #  command admin
 
 @command(service_commands)
-class service_list(_init_synnefo_astakosclient, OptionalOutput):
+class service_list(_AstakosInit, OptionalOutput):
     """List available services"""
 
     @errors.generic.all
@@ -387,7 +387,7 @@ class service_list(_init_synnefo_astakosclient, OptionalOutput):
 
 
 @command(service_commands)
-class service_uuid2username(_init_synnefo_astakosclient, OptionalOutput):
+class service_uuid2username(_AstakosInit, OptionalOutput):
     """Get service username(s) from uuid(s)"""
 
     @errors.generic.all
@@ -407,7 +407,7 @@ class service_uuid2username(_init_synnefo_astakosclient, OptionalOutput):
 
 
 @command(service_commands)
-class service_username2uuid(_init_synnefo_astakosclient, OptionalOutput):
+class service_username2uuid(_AstakosInit, OptionalOutput):
     """Get service uuid(s) from username(s)"""
 
     @errors.generic.all
@@ -427,7 +427,7 @@ class service_username2uuid(_init_synnefo_astakosclient, OptionalOutput):
 
 
 @command(service_commands)
-class service_quotas(_init_synnefo_astakosclient, OptionalOutput):
+class service_quotas(_AstakosInit, OptionalOutput):
     """Get service quotas"""
 
     arguments = dict(
@@ -446,7 +446,7 @@ class service_quotas(_init_synnefo_astakosclient, OptionalOutput):
 
 
 @command(commission_commands)
-class commission_pending(_init_synnefo_astakosclient, OptionalOutput):
+class commission_pending(_AstakosInit, OptionalOutput):
     """List pending commissions (special privileges required)"""
 
     @errors.generic.all
@@ -460,7 +460,7 @@ class commission_pending(_init_synnefo_astakosclient, OptionalOutput):
 
 
 @command(commission_commands)
-class commission_info(_init_synnefo_astakosclient, OptionalOutput):
+class commission_info(_AstakosInit, OptionalOutput):
     """Get commission info (special privileges required)"""
 
     @errors.generic.all
@@ -476,7 +476,7 @@ class commission_info(_init_synnefo_astakosclient, OptionalOutput):
 
 
 @command(commission_commands)
-class commission_accept(_init_synnefo_astakosclient):
+class commission_accept(_AstakosInit):
     """Accept a pending commission  (special privileges required)"""
 
     @errors.generic.all
@@ -491,7 +491,7 @@ class commission_accept(_init_synnefo_astakosclient):
 
 
 @command(commission_commands)
-class commission_reject(_init_synnefo_astakosclient):
+class commission_reject(_AstakosInit):
     """Reject a pending commission (special privileges required)"""
 
     @errors.generic.all
@@ -506,7 +506,7 @@ class commission_reject(_init_synnefo_astakosclient):
 
 
 @command(commission_commands)
-class commission_resolve(_init_synnefo_astakosclient, OptionalOutput):
+class commission_resolve(_AstakosInit, OptionalOutput):
     """Resolve multiple commissions (special privileges required)"""
 
     arguments = dict(
@@ -533,7 +533,7 @@ class commission_resolve(_init_synnefo_astakosclient, OptionalOutput):
 
 
 @command(commission_commands)
-class commission_issue(_init_synnefo_astakosclient, OptionalOutput):
+class commission_issue(_AstakosInit, OptionalOutput):
     """Issue commissions as a json string (special privileges required)
     Parameters:
     holder      -- user's id (string)
@@ -561,7 +561,7 @@ class commission_issue(_init_synnefo_astakosclient, OptionalOutput):
 
 
 @command(resource_commands)
-class resource_list(_init_synnefo_astakosclient, OptionalOutput):
+class resource_list(_AstakosInit, OptionalOutput):
     """List user resources"""
 
     @errors.generic.all
@@ -575,7 +575,7 @@ class resource_list(_init_synnefo_astakosclient, OptionalOutput):
 
 
 @command(endpoint_commands)
-class endpoint_list(_init_synnefo_astakosclient, OptionalOutput, NameFilter):
+class endpoint_list(_AstakosInit, OptionalOutput, NameFilter):
     """Get endpoints service endpoints"""
 
     arguments = dict(endpoint_type=ValueArgument('Filter by type', '--type'))
@@ -624,7 +624,7 @@ def apply_notification(func):
 
 
 @command(project_commands)
-class project_list(_init_synnefo_astakosclient, OptionalOutput):
+class project_list(_AstakosInit, OptionalOutput):
     """List all projects"""
 
     arguments = dict(
@@ -652,7 +652,7 @@ class project_list(_init_synnefo_astakosclient, OptionalOutput):
 
 
 @command(project_commands)
-class project_info(_init_synnefo_astakosclient, OptionalOutput):
+class project_info(_AstakosInit, OptionalOutput):
     """Get details for a project"""
 
     @errors.generic.all
@@ -720,7 +720,7 @@ class ProjectResourceArgument(KeyValueArgument):
 
 
 @command(project_commands)
-class project_create(_init_synnefo_astakosclient, OptionalOutput):
+class project_create(_AstakosInit, OptionalOutput):
     """Apply for a new project"""
 
     __doc__ += _project_specs
@@ -789,7 +789,7 @@ class project_create(_init_synnefo_astakosclient, OptionalOutput):
 
 
 @command(project_commands)
-class project_modify(_init_synnefo_astakosclient, OptionalOutput):
+class project_modify(_AstakosInit, OptionalOutput):
     """Modify properties of a project"""
 
     __doc__ += _project_specs
@@ -862,7 +862,7 @@ class project_modify(_init_synnefo_astakosclient, OptionalOutput):
         self._run(project_id)
 
 
-class _project_action(_init_synnefo_astakosclient):
+class _ProjectAction(_AstakosInit):
 
     action = ''
 
@@ -876,35 +876,35 @@ class _project_action(_init_synnefo_astakosclient):
         self.client.project_action(project_id, self.action, quote_a_reason)
 
     def main(self, project_id):
-        super(_project_action, self)._run()
+        super(_ProjectAction, self)._run()
         self._run(project_id, self['reason'] or '')
 
 
 @command(project_commands)
-class project_suspend(_project_action):
+class project_suspend(_ProjectAction):
     """Suspend a project (special privileges needed)"""
     action = 'suspend'
 
 
 @command(project_commands)
-class project_unsuspend(_project_action):
+class project_unsuspend(_ProjectAction):
     """Resume a suspended project (special privileges needed)"""
     action = 'unsuspend'
 
 
 @command(project_commands)
-class project_terminate(_project_action):
+class project_terminate(_ProjectAction):
     """Terminate a project (special privileges needed)"""
     action = 'terminate'
 
 
 @command(project_commands)
-class project_reinstate(_project_action):
+class project_reinstate(_ProjectAction):
     """Reinstate a terminated project (special privileges needed)"""
     action = 'reinstate'
 
 
-class _application_action(_init_synnefo_astakosclient):
+class _ApplicationAction(_AstakosInit):
 
     action = ''
 
@@ -921,41 +921,41 @@ class _application_action(_init_synnefo_astakosclient):
             project_id, app_id, self.action, quote_a_reason)
 
     def main(self, project_id):
-        super(_application_action, self)._run()
+        super(_ApplicationAction, self)._run()
         self._run(project_id, self['app_id'], self['reason'] or '')
 
 
 @command(project_commands)
-class project_approve(_application_action):
+class project_approve(_ApplicationAction):
     """Approve an application (special privileges needed)"""
     action = 'approve'
 
 
 @command(project_commands)
-class project_deny(_application_action):
+class project_deny(_ApplicationAction):
     """Deny an application (special privileges needed)"""
     action = 'deny'
 
 
 @command(project_commands)
-class project_dismiss(_application_action):
+class project_dismiss(_ApplicationAction):
     """Dismiss your denied application"""
     action = 'dismiss'
 
 
 @command(project_commands)
-class project_cancel(_application_action):
+class project_cancel(_ApplicationAction):
     """Cancel your application"""
     action = 'cancel'
 
 
 @command(membership_commands)
-class membership(_init_synnefo_astakosclient):
+class membership(_AstakosInit):
     """Project membership management commands"""
 
 
 @command(membership_commands)
-class membership_list(_init_synnefo_astakosclient, OptionalOutput):
+class membership_list(_AstakosInit, OptionalOutput):
     """List all memberships"""
 
     arguments = dict(
@@ -973,7 +973,7 @@ class membership_list(_init_synnefo_astakosclient, OptionalOutput):
 
 
 @command(membership_commands)
-class membership_info(_init_synnefo_astakosclient, OptionalOutput):
+class membership_info(_AstakosInit, OptionalOutput):
     """Details on a membership"""
 
     @errors.generic.all
@@ -987,7 +987,7 @@ class membership_info(_init_synnefo_astakosclient, OptionalOutput):
         self._run(memb_id=membership_id)
 
 
-class _membership_action(_init_synnefo_astakosclient, OptionalOutput):
+class _MembershipAction(_AstakosInit, OptionalOutput):
 
     action = ''
     arguments = dict(reason=ValueArgument('Reason for the action', '--reason'))
@@ -999,42 +999,42 @@ class _membership_action(_init_synnefo_astakosclient, OptionalOutput):
             memb_id, self.action, quote_a_reason))
 
     def main(self, membership_id):
-        super(_membership_action, self)._run()
+        super(_MembershipAction, self)._run()
         self._run(membership_id, self['reason'] or '')
 
 
 @command(membership_commands)
-class membership_leave(_membership_action):
+class membership_leave(_MembershipAction):
     """Leave a project you have membership to"""
     action = 'leave'
 
 
 @command(membership_commands)
-class membership_cancel(_membership_action):
+class membership_cancel(_MembershipAction):
     """Cancel your (probably pending) membership to a project"""
     action = 'cancel'
 
 
 @command(membership_commands)
-class membership_accept(_membership_action):
+class membership_accept(_MembershipAction):
     """Accept a membership for a project you manage"""
     action = 'accept'
 
 
 @command(membership_commands)
-class membership_reject(_membership_action):
+class membership_reject(_MembershipAction):
     """Reject a membership for a project you manage"""
     action = 'reject'
 
 
 @command(membership_commands)
-class membership_remove(_membership_action):
+class membership_remove(_MembershipAction):
     """Remove a membership for a project you manage"""
     action = 'remove'
 
 
 @command(project_commands)
-class project_join(_init_synnefo_astakosclient):
+class project_join(_AstakosInit):
     """Join a project"""
 
     @errors.generic.all
@@ -1048,7 +1048,7 @@ class project_join(_init_synnefo_astakosclient):
 
 
 @command(project_commands)
-class project_enroll(_init_synnefo_astakosclient):
+class project_enroll(_AstakosInit):
     """Enroll a user to a project"""
 
     arguments = dict(email=ValueArgument('User e-mail', '--email'))
