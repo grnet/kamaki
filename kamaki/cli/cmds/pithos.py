@@ -40,7 +40,7 @@ from kamaki.clients.pithos import PithosClient, ClientError
 
 from kamaki.cli import command
 from kamaki.cli.cmdtree import CommandTree
-from kamaki.cli.commands import (
+from kamaki.cli.cmds import (
     _command_init, errors, addLogSettings, DontRaiseKeyError, _optional_json,
     _name_filter, _optional_output_cmd)
 from kamaki.cli.errors import (

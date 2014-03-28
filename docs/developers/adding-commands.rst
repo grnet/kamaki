@@ -4,7 +4,7 @@ Adding Commands
 Kamaki commands are implemented as python classes, which wear a decorator
 called *command*. The decorator lives in *kamaki.cli* and its purpose is to
 update the *CommandTree* structure. The *CommandTree* class (
-*kamaki.cli.commant_tree*) manages command namespaces for kamaki.
+*kamaki.cli.cmdtree*) manages command namespaces for kamaki.
 
 For demonstration purposes, the following set of kamaki commands will be
 implemented in this document::
@@ -96,7 +96,7 @@ application to load the list of commands from the *_commands* array.
 The command decorator
 ---------------------
 
-All commands are specified by subclasses of *kamaki.cli.commands._command_init*
+All commands are specified by subclasses of *kamaki.cli.cmds._command_init*
 These classes are called "command specifications".
 
 The *command* decorator mines all the information needed to build namespaces
@@ -336,7 +336,7 @@ Letting kamaki know
 Assume that the command specifications presented so far be stored in a file
 named *grps.py*.
 
-The developer should move the file *grps.py* to *kamaki/cli/commands*, the
+The developer should move the file *grps.py* to *kamaki/cli/cmds*, the
 default place for command specifications
 
 These lines should be contained in the kamaki configuration file for a new
@@ -370,7 +370,7 @@ Summary: create a command set
 
     #  File: grps.py
 
-    from kamaki.cli.commands import _command_init
+    from kamaki.cli.cmds import _command_init
     from kamaki.cli.cmdtree import CommandTree
     from kamaki.cli.argument import ValueArgument, FlagArgument
     ...

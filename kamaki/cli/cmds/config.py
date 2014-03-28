@@ -33,7 +33,7 @@
 
 from kamaki.cli import command
 from kamaki.cli.argument import FlagArgument
-from kamaki.cli.commands import _command_init, errors
+from kamaki.cli.cmds import _command_init, errors
 from kamaki.cli.cmdtree import CommandTree
 from kamaki.cli.errors import CLIError, CLISyntaxError
 

@@ -46,7 +46,7 @@ from kamaki.clients.cyclades import CycladesClient
 from kamaki.cli.argument import (
     FlagArgument, ValueArgument, KeyValueArgument, RepeatableArgument,
     ProgressBarArgument, DateArgument, IntArgument, StatusArgument)
-from kamaki.cli.commands import (
+from kamaki.cli.cmds import (
     _command_init, errors, addLogSettings, dataModification,
     _optional_output_cmd, _optional_json, _name_filter, _id_filter)
 

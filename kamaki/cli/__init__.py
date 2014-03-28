@@ -163,6 +163,8 @@ def command(cmd_tree, prefix='', descedants_depth=1):
 
 
 cmd_spec_locations = [
+    'kamaki.cli.cmds',
+    'kamaki.cmds',
     'kamaki.cli.commands',
     'kamaki.commands',
     'kamaki.cli',
@@ -309,7 +311,7 @@ def init_cached_authenticator(config_argument, cloud, logger):
                     auth_base.authenticate(token)
                 else:
                     tmp_base = CachedAstakosClient(url, token)
-                    from kamaki.cli.commands import _command_init
+                    from kamaki.cli.cmds import _command_init
                     fake_cmd = _command_init(dict(config=config_argument))
                     fake_cmd.client = auth_base
                     fake_cmd._set_log_params()

@@ -1,4 +1,4 @@
-# Copyright 2011-2013 GRNET S.A. All rights reserved.
+# Copyright 2011-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -43,10 +43,10 @@ from kamaki.clients.cyclades import (
 from kamaki.cli.argument import (
     FlagArgument, ValueArgument, RepeatableArgument, IntArgument,
     StatusArgument)
-from kamaki.cli.commands import _command_init, errors, addLogSettings
-from kamaki.cli.commands import (
-    _optional_output_cmd, _optional_json, _name_filter, _id_filter)
-from kamaki.cli.commands.cyclades import _service_wait
+from kamaki.cli.cmds import (
+    _command_init, errors, addLogSettings, _optional_output_cmd,
+    _optional_json, _name_filter, _id_filter)
+from kamaki.cli.cmds.cyclades import _service_wait
 
 
 network_cmds = CommandTree('network', 'Network API network commands')

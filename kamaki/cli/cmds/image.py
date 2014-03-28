@@ -1,4 +1,4 @@
-# Copyright 2012-2013 GRNET S.A. All rights reserved.
+# Copyright 2012-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -46,12 +46,11 @@ from kamaki.clients import ClientError
 from kamaki.cli.argument import (
     FlagArgument, ValueArgument, RepeatableArgument, KeyValueArgument,
     IntArgument, ProgressBarArgument)
-from kamaki.cli.commands.cyclades import _init_cyclades
-from kamaki.cli.errors import (
-    CLIError, raiseCLIError, CLIBaseUrlError, CLIInvalidArgument)
-from kamaki.cli.commands import _command_init, errors, addLogSettings
-from kamaki.cli.commands import (
-    _optional_output_cmd, _optional_json, _name_filter, _id_filter)
+from kamaki.cli.cmds.cyclades import _init_cyclades
+from kamaki.cli.errors import CLIError, raiseCLIError, CLIInvalidArgument
+from kamaki.cli.cmds import (
+    _command_init, errors, addLogSettings, _optional_output_cmd,
+    _optional_json, _name_filter, _id_filter)
 
 
 image_cmds = CommandTree('image', 'Cyclades/Plankton API image commands')
@@ -380,7 +379,7 @@ class PithosLocationArgument(ValueArgument):
     @value.setter
     def value(self, location):
         if location:
-            from kamaki.cli.commands.pithos import _pithos_container as pc
+            from kamaki.cli.cmds.pithos import _pithos_container as pc
             try:
                 uuid, self.container, self.path = pc._resolve_pithos_url(
                     location)

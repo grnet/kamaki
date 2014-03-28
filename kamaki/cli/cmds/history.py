@@ -35,7 +35,7 @@ from kamaki.cli.cmdtree import CommandTree
 from kamaki.cli.argument import ValueArgument
 from kamaki.cli.history import History
 from kamaki.cli import command
-from kamaki.cli.commands import _command_init, errors
+from kamaki.cli.cmds import _command_init, errors
 
 
 history_cmds = CommandTree('history', 'Kamaki command history')

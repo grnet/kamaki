@@ -10,7 +10,7 @@ astakos
 ^^^^^^^
 Features: user, project, quota, resource, commission, endpoint, service
 
-.. automodule:: kamaki.cli.commands.astakos
+.. automodule:: kamaki.cli.cmds.astakos
     :members:
     :undoc-members:
 
@@ -19,7 +19,7 @@ cyclades
 
 Features server, flavor
 
-.. automodule:: kamaki.cli.commands.cyclades
+.. automodule:: kamaki.cli.cmds.cyclades
     :members:
     :undoc-members:
 
@@ -28,7 +28,7 @@ pithos
 
 Features file, container, sharer, group
 
-.. automodule:: kamaki.cli.commands.pithos
+.. automodule:: kamaki.cli.cmds.pithos
     :members:
     :undoc-members:
 
@@ -37,7 +37,7 @@ image
 
 Features (image, imagecompute)
 
-.. automodule:: kamaki.cli.commands.image
+.. automodule:: kamaki.cli.cmds.image
     :members:
     :undoc-members:
 
@@ -47,7 +47,7 @@ network
 
 Features network, port, subnet, ip
 
-.. automodule:: kamaki.cli.commands.network
+.. automodule:: kamaki.cli.cmds.network
     :members:
     :undoc-members:
 
@@ -57,7 +57,7 @@ Kamaki commands
 config
 """"""
 
-.. automodule:: kamaki.cli.commands.config
+.. automodule:: kamaki.cli.cmds.config
     :members:
     :undoc-members:
 
@@ -65,7 +65,7 @@ config
 errors
 ^^^^^^
 
-.. automodule:: kamaki.cli.commands.errors
+.. automodule:: kamaki.cli.cmds.errors
     :members:
     :show-inheritance:
     :undoc-members:
