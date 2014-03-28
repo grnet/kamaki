@@ -45,7 +45,7 @@ from kamaki.cli.argument import (
     StatusArgument)
 from kamaki.cli.cmds import (
     CommandInit, OptionalOutput, NameFilter, IDFilter, errors, addLogSettings)
-from kamaki.cli.cmds.cyclades import _service_wait
+from kamaki.cli.cmds import Wait
 
 
 network_cmds = CommandTree('network', 'Network API network commands')
@@ -63,7 +63,7 @@ about_authentication = '\nUser Authentication:\
 port_states = ('BUILD', 'ACTIVE', 'DOWN', 'ERROR')
 
 
-class _port_wait(_service_wait):
+class _port_wait(Wait):
 
     def _wait(self, port_id, current_status, timeout=60):
         super(_port_wait, self)._wait(

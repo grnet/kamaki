@@ -45,9 +45,9 @@ from kamaki.cli.errors import (
 from kamaki.clients.cyclades import CycladesClient
 from kamaki.cli.argument import (
     FlagArgument, ValueArgument, KeyValueArgument, RepeatableArgument,
-    ProgressBarArgument, DateArgument, IntArgument, StatusArgument)
+    DateArgument, IntArgument, StatusArgument)
 from kamaki.cli.cmds import (
-    CommandInit, dataModification, OptionalOutput, NameFilter, IDFilter,
+    CommandInit, dataModification, OptionalOutput, NameFilter, IDFilter, Wait,
     errors, addLogSettings, )
 
 
@@ -73,37 +73,7 @@ howto_personality = [
 server_states = ('BUILD', 'ACTIVE', 'STOPPED', 'REBOOT')
 
 
-class _service_wait(object):
-
-    wait_arguments = dict(
-        progress_bar=ProgressBarArgument(
-            'do not show progress bar', ('-N', '--no-progress-bar'), False)
-    )
-
-    def _wait(
-            self, service, service_id, status_method, current_status,
-            countdown=True, timeout=60):
-        (progress_bar, wait_cb) = self._safe_progress_bar(
-            '%s %s: status is still %s' % (
-                service, service_id, current_status),
-            countdown=countdown, timeout=timeout)
-
-        try:
-            new_mode = status_method(
-                service_id, current_status, max_wait=timeout, wait_cb=wait_cb)
-            if new_mode:
-                self.error('%s %s: status is now %s' % (
-                    service, service_id, new_mode))
-            else:
-                self.error('%s %s: status is still %s' % (
-                    service, service_id, current_status))
-        except KeyboardInterrupt:
-            self.error('\n- canceled')
-        finally:
-            self._safe_progress_bar_finish(progress_bar)
-
-
-class _server_wait(_service_wait):
+class _server_wait(Wait):
 
     def _wait(self, server_id, current_status, timeout=60):
         super(_server_wait, self)._wait(

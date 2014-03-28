@@ -35,7 +35,7 @@ from kamaki.cli.logger import get_logger
 from kamaki.cli.utils import (
     print_list, print_dict, print_json, print_items, ask_user, pref_enc,
     filter_dicts_by_dict)
-from kamaki.cli.argument import ValueArgument
+from kamaki.cli.argument import ValueArgument, ProgressBarArgument
 from kamaki.cli.errors import CLIInvalidArgument, CLIBaseUrlError
 from sys import stdin, stdout, stderr
 
@@ -366,3 +366,31 @@ class IDFilter(object):
 
     def _filter_by_id(self, items):
         return self._non_exact_id_filter(self._exact_id_filter(items))
+
+
+class Wait(object):
+    wait_arguments = dict(
+        progress_bar=ProgressBarArgument(
+            'do not show progress bar', ('-N', '--no-progress-bar'), False)
+    )
+
+    def _wait(
+            self, service, service_id, status_method, current_status,
+            countdown=True, timeout=60):
+        (progress_bar, wait_cb) = self._safe_progress_bar(
+            '%s %s: status is still %s' % (
+                service, service_id, current_status),
+            countdown=countdown, timeout=timeout)
+        try:
+            new_mode = status_method(
+                service_id, current_status, max_wait=timeout, wait_cb=wait_cb)
+            if new_mode:
+                self.error('%s %s: status is now %s' % (
+                    service, service_id, new_mode))
+            else:
+                self.error('%s %s: status is still %s' % (
+                    service, service_id, current_status))
+        except KeyboardInterrupt:
+            self.error('\n- canceled')
+        finally:
+            self._safe_progress_bar_finish(progress_bar)
