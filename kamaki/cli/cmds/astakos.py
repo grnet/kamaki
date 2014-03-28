@@ -37,7 +37,7 @@ from os.path import abspath
 from kamaki.cli import command
 from kamaki.clients.astakos import LoggedAstakosClient
 from kamaki.cli.cmds import (
-    _command_init, errors, _optional_json, addLogSettings, _name_filter)
+    CommandInit, errors, _optional_json, addLogSettings, _name_filter)
 from kamaki.cli.cmdtree import CommandTree
 from kamaki.cli.errors import (
     CLIBaseUrlError, CLISyntaxError, CLIError, CLIInvalidArgument)
@@ -88,7 +88,7 @@ def with_temp_token(func):
     return wrap
 
 
-class _init_synnefo_astakosclient(_command_init):
+class _init_synnefo_astakosclient(CommandInit):
 
     @errors.generic.all
     @errors.user.load

@@ -74,7 +74,7 @@ def dataModification(func):
     return wrap
 
 
-class _command_init(object):
+class CommandInit(object):
 
     # self.arguments (dict) contains all non-positional arguments
     # self.required (list or tuple) contains required argument keys

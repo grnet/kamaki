@@ -33,7 +33,7 @@
 
 from kamaki.cli import command
 from kamaki.cli.argument import FlagArgument
-from kamaki.cli.cmds import _command_init, errors
+from kamaki.cli.cmds import CommandInit, errors
 from kamaki.cli.cmdtree import CommandTree
 from kamaki.cli.errors import CLIError, CLISyntaxError
 
@@ -58,7 +58,7 @@ about_options = '\nAbout options:\
 
 
 @command(config_cmds)
-class config_list(_command_init):
+class config_list(CommandInit):
     """List all configuration options
     FAQ:
     Q: I haven't set any options!
@@ -84,7 +84,7 @@ class config_list(_command_init):
 
 
 @command(config_cmds)
-class config_get(_command_init):
+class config_get(CommandInit):
     """Show a configuration option"""
 
     __doc__ += about_options
@@ -118,7 +118,7 @@ class config_get(_command_init):
 
 
 @command(config_cmds)
-class config_set(_command_init):
+class config_set(CommandInit):
     """Set a configuration option"""
 
     __doc__ += about_options
@@ -152,7 +152,7 @@ class config_set(_command_init):
 
 
 @command(config_cmds)
-class config_delete(_command_init):
+class config_delete(CommandInit):
     """Delete a configuration option
     Default values are not removed by default. To alter this behavior in a
     session, use --default.

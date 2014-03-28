@@ -44,7 +44,7 @@ from kamaki.cli.argument import (
     FlagArgument, ValueArgument, RepeatableArgument, IntArgument,
     StatusArgument)
 from kamaki.cli.cmds import (
-    _command_init, errors, addLogSettings, _optional_output_cmd,
+    CommandInit, errors, addLogSettings, _optional_output_cmd,
     _optional_json, _name_filter, _id_filter)
 from kamaki.cli.cmds.cyclades import _service_wait
 
@@ -72,7 +72,7 @@ class _port_wait(_service_wait):
             timeout=timeout)
 
 
-class _init_network(_command_init):
+class _init_network(CommandInit):
     @errors.generic.all
     @addLogSettings
     def _run(self):

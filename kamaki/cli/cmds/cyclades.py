@@ -47,7 +47,7 @@ from kamaki.cli.argument import (
     FlagArgument, ValueArgument, KeyValueArgument, RepeatableArgument,
     ProgressBarArgument, DateArgument, IntArgument, StatusArgument)
 from kamaki.cli.cmds import (
-    _command_init, errors, addLogSettings, dataModification,
+    CommandInit, errors, addLogSettings, dataModification,
     _optional_output_cmd, _optional_json, _name_filter, _id_filter)
 
 
@@ -112,7 +112,7 @@ class _server_wait(_service_wait):
             timeout=timeout if current_status not in ('BUILD', ) else 100)
 
 
-class _init_cyclades(_command_init):
+class _init_cyclades(CommandInit):
     @errors.generic.all
     @addLogSettings
     def _run(self):

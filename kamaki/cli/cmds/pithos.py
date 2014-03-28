@@ -41,7 +41,7 @@ from kamaki.clients.pithos import PithosClient, ClientError
 from kamaki.cli import command
 from kamaki.cli.cmdtree import CommandTree
 from kamaki.cli.cmds import (
-    _command_init, errors, addLogSettings, DontRaiseKeyError, _optional_json,
+    CommandInit, errors, addLogSettings, DontRaiseKeyError, _optional_json,
     _name_filter, _optional_output_cmd)
 from kamaki.cli.errors import (
     CLIBaseUrlError, CLIError, CLIInvalidArgument, raiseCLIError,
@@ -61,7 +61,7 @@ group_cmds = CommandTree('group', 'Pithos+/Storage user groups')
 _commands = [file_cmds, container_cmds, sharer_cmds, group_cmds]
 
 
-class _pithos_init(_command_init):
+class _pithos_init(CommandInit):
     """Initilize a pithos+ client
     There is always a default account (current user uuid)
     There is always a default container (pithos)
