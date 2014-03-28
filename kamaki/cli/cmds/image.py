@@ -74,7 +74,7 @@ about_image_id = ['To see a list of available image ids: /image list']
 log = getLogger(__name__)
 
 
-class _init_image(CommandInit):
+class _ImageInit(CommandInit):
     @errors.Generic.all
     @addLogSettings
     def _run(self):
@@ -157,7 +157,7 @@ def _validate_image_location(location):
 
 
 @command(image_cmds)
-class image_list(_init_image, OptionalOutput, NameFilter, IDFilter):
+class image_list(_ImageInit, OptionalOutput, NameFilter, IDFilter):
     """List images accessible by user"""
 
     PERMANENTS = (
@@ -277,7 +277,7 @@ class image_list(_init_image, OptionalOutput, NameFilter, IDFilter):
 
 
 @command(image_cmds)
-class image_info(_init_image, OptionalOutput):
+class image_info(_ImageInit, OptionalOutput):
     """Get image metadata"""
 
     @errors.Generic.all
@@ -295,7 +295,7 @@ class image_info(_init_image, OptionalOutput):
 
 
 @command(image_cmds)
-class image_modify(_init_image):
+class image_modify(_ImageInit):
     """Add / update metadata and properties for an image
     The original image preserves the values that are not affected
     """
@@ -397,7 +397,7 @@ class PithosLocationArgument(ValueArgument):
 
 
 @command(image_cmds)
-class image_register(_init_image, OptionalOutput):
+class image_register(_ImageInit, OptionalOutput):
     """(Re)Register an image file to an Image service
     The image file must be stored at a pithos repository
     Some metadata can be set by user (e.g., disk-format) while others are set
@@ -603,7 +603,7 @@ class image_register(_init_image, OptionalOutput):
 
 
 @command(image_cmds)
-class image_unregister(_init_image):
+class image_unregister(_ImageInit):
     """Unregister an image (does not delete the image file)"""
 
     @errors.Generic.all
