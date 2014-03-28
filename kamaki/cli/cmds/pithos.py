@@ -41,8 +41,8 @@ from kamaki.clients.pithos import PithosClient, ClientError
 from kamaki.cli import command
 from kamaki.cli.cmdtree import CommandTree
 from kamaki.cli.cmds import (
-    CommandInit, errors, addLogSettings, DontRaiseKeyError, _optional_json,
-    _name_filter, _optional_output_cmd)
+    CommandInit, errors, addLogSettings, DontRaiseKeyError, OptionalOutput,
+    _name_filter)
 from kamaki.cli.errors import (
     CLIBaseUrlError, CLIError, CLIInvalidArgument, raiseCLIError,
     CLISyntaxError)
@@ -176,7 +176,7 @@ class _pithos_container(_pithos_account):
 
 
 @command(file_cmds)
-class file_info(_pithos_container, _optional_json):
+class file_info(_pithos_container, OptionalOutput):
     """Get information/details about a file"""
 
     arguments = dict(
@@ -241,7 +241,7 @@ class file_info(_pithos_container, _optional_json):
 
 
 @command(file_cmds)
-class file_list(_pithos_container, _optional_json, _name_filter):
+class file_list(_pithos_container, OptionalOutput, _name_filter):
     """List all objects in a container or a directory object"""
 
     arguments = dict(
@@ -307,7 +307,7 @@ class file_list(_pithos_container, _optional_json, _name_filter):
         if self['more']:
             outbu, self._out = self._out, StringIO()
         try:
-            if self['json_output'] or self['output_format']:
+            if self['output_format']:
                 self._print(files)
             else:
                 self.print_objects(files)
@@ -422,7 +422,7 @@ def _assert_path(self, path_or_url):
 
 
 @command(file_cmds)
-class file_create(_pithos_container, _optional_output_cmd):
+class file_create(_pithos_container):
     """Create an empty file"""
 
     arguments = dict(
@@ -436,8 +436,7 @@ class file_create(_pithos_container, _optional_output_cmd):
     @errors.pithos.connection
     @errors.pithos.container
     def _run(self):
-        self._optional_output(
-            self.client.create_object(self.path, self['content_type']))
+        self.client.create_object(self.path, self['content_type'])
 
     def main(self, path_or_url):
         super(self.__class__, self)._run(path_or_url)
@@ -446,7 +445,7 @@ class file_create(_pithos_container, _optional_output_cmd):
 
 
 @command(file_cmds)
-class file_mkdir(_pithos_container, _optional_output_cmd):
+class file_mkdir(_pithos_container):
     """Create a directory: /file create --content-type='application/directory'
     """
 
@@ -454,7 +453,7 @@ class file_mkdir(_pithos_container, _optional_output_cmd):
     @errors.pithos.connection
     @errors.pithos.container
     def _run(self, path):
-        self._optional_output(self.client.create_directory(self.path))
+        self.client.create_directory(self.path)
 
     def main(self, path_or_url):
         super(self.__class__, self)._run(path_or_url)
@@ -501,7 +500,7 @@ class file_delete(_pithos_container):
         self._run()
 
 
-class _source_destination(_pithos_container, _optional_output_cmd):
+class _source_destination(_pithos_container):
 
     sd_arguments = dict(
         destination_user=UserAccountArgument(
@@ -733,7 +732,7 @@ class file_move(_source_destination):
 
 
 @command(file_cmds)
-class file_append(_pithos_container, _optional_output_cmd):
+class file_append(_pithos_container):
     """Append local file to (existing) remote object
     The remote object should exist.
     If the remote object is a directory, it is transformed into a file.
@@ -757,8 +756,7 @@ class file_append(_pithos_container, _optional_output_cmd):
         (progress_bar, upload_cb) = self._safe_progress_bar('Appending')
         try:
             with open(local_path, 'rb') as f:
-                self._optional_output(
-                    self.client.append_object(self.path, f, upload_cb))
+                self.client.append_object(self.path, f, upload_cb)
         finally:
             self._safe_progress_bar_finish(progress_bar)
 
@@ -768,7 +766,7 @@ class file_append(_pithos_container, _optional_output_cmd):
 
 
 @command(file_cmds)
-class file_truncate(_pithos_container, _optional_output_cmd):
+class file_truncate(_pithos_container):
     """Truncate remote file up to size"""
 
     arguments = dict(
@@ -782,7 +780,7 @@ class file_truncate(_pithos_container, _optional_output_cmd):
     @errors.pithos.object_path
     @errors.pithos.object_size
     def _run(self, size):
-        self._optional_output(self.client.truncate_object(self.path, size))
+        self.client.truncate_object(self.path, size)
 
     def main(self, path_or_url):
         super(self.__class__, self)._run(path_or_url)
@@ -790,7 +788,7 @@ class file_truncate(_pithos_container, _optional_output_cmd):
 
 
 @command(file_cmds)
-class file_overwrite(_pithos_container, _optional_output_cmd):
+class file_overwrite(_pithos_container):
     """Overwrite part of a remote file"""
 
     arguments = dict(
@@ -814,13 +812,13 @@ class file_overwrite(_pithos_container, _optional_output_cmd):
             'Overwrite %s bytes' % (end - start))
         try:
             with open(path.abspath(local_path), 'rb') as f:
-                self._optional_output(self.client.overwrite_object(
+                self.client.overwrite_object(
                     obj=self.path,
                     start=start,
                     end=end,
                     source_file=f,
                     source_version=self['object_version'],
-                    upload_cb=upload_cb))
+                    upload_cb=upload_cb)
         finally:
             self._safe_progress_bar_finish(progress_bar)
 
@@ -834,7 +832,7 @@ class file_overwrite(_pithos_container, _optional_output_cmd):
 
 
 @command(file_cmds)
-class file_upload(_pithos_container, _optional_output_cmd):
+class file_upload(_pithos_container):
     """Upload a file
 
     The default destination is /pithos/NAME
@@ -981,7 +979,7 @@ class file_upload(_pithos_container, _optional_output_cmd):
             content_disposition=self['content_disposition'],
             sharing=self._sharing(),
             public=self['public'])
-        uploaded, container_info_cache = list, dict()
+        container_info_cache = dict()
         rpref = 'pithos://%s' if self['account'] else ''
         for f, rpath in self._src_dst(local_path, remote_path):
             self.error('%s --> %s/%s/%s' % (
@@ -991,13 +989,10 @@ class file_upload(_pithos_container, _optional_output_cmd):
                 params['content_type'] = self['content_type'] or ctype
                 params['content_encoding'] = self['content_encoding'] or cenc
             if self['unchunked']:
-                r = self.client.upload_object_unchunked(
+                self.client.upload_object_unchunked(
                     rpath, f,
                     etag=self['md5_checksum'], withHashFile=self['use_hashes'],
                     **params)
-                if self['with_output'] or self['json_output']:
-                    r['name'] = '/%s/%s' % (self.client.container, rpath)
-                    uploaded.append(r)
             else:
                 try:
                     (progress_bar, upload_cb) = self._safe_progress_bar(
@@ -1008,21 +1003,17 @@ class file_upload(_pithos_container, _optional_output_cmd):
                             'Calculating block hashes')
                     else:
                         hash_cb = None
-                    r = self.client.upload_object(
+                    self.client.upload_object(
                         rpath, f,
                         hash_cb=hash_cb,
                         upload_cb=upload_cb,
                         container_info_cache=container_info_cache,
                         **params)
-                    if self['with_output'] or self['json_output']:
-                        r['name'] = '/%s/%s' % (self.client.container, rpath)
-                        uploaded.append(r)
                 except Exception:
                     self._safe_progress_bar_finish(progress_bar)
                     raise
                 finally:
                     self._safe_progress_bar_finish(progress_bar)
-        self._optional_output(uploaded)
         self.error('Upload completed')
 
     def main(self, local_path, remote_path_or_url=None):
@@ -1324,7 +1315,7 @@ class file_download(_pithos_container):
 
 
 @command(container_cmds)
-class container_info(_pithos_account, _optional_json):
+class container_info(_pithos_account, OptionalOutput):
     """Get information about a container"""
 
     arguments = dict(
@@ -1380,7 +1371,7 @@ class VersioningArgument(ValueArgument):
 
 
 @command(container_cmds)
-class container_modify(_pithos_account, _optional_json):
+class container_modify(_pithos_account, OptionalOutput):
     """Modify the properties of a container"""
 
     arguments = dict(
@@ -1427,7 +1418,7 @@ class container_modify(_pithos_account, _optional_json):
 
 
 @command(container_cmds)
-class container_list(_pithos_account, _optional_json, _name_filter):
+class container_list(_pithos_account, OptionalOutput, _name_filter):
     """List all containers, or their contents"""
 
     arguments = dict(
@@ -1520,7 +1511,7 @@ class container_list(_pithos_account, _optional_json, _name_filter):
         if self['more']:
             outbu, self._out = self._out, StringIO()
         try:
-            if self['json_output'] or self['output_format']:
+            if self['output_format']:
                 self._print(files)
             else:
                 (self.print_objects if container else self.print_containers)(
@@ -1628,7 +1619,7 @@ class container_empty(_pithos_account):
 
 
 @command(container_cmds)
-class container_reassign(_pithos_account, _optional_output_cmd):
+class container_reassign(_pithos_account):
     """Assign a container to a different project"""
 
     arguments = dict(
@@ -1642,7 +1633,7 @@ class container_reassign(_pithos_account, _optional_output_cmd):
     def _run(self, project):
         if self.container:
             self.client.container = self.container
-        self._optional_output(self.client.reassign_container(project))
+        self.client.reassign_container(project)
 
     def main(self, container):
         super(self.__class__, self)._run()
@@ -1651,7 +1642,7 @@ class container_reassign(_pithos_account, _optional_output_cmd):
 
 
 @command(sharer_cmds)
-class sharer_list(_pithos_account, _optional_json):
+class sharer_list(_pithos_account, OptionalOutput):
     """List accounts who share file objects with current user"""
 
     arguments = dict(
@@ -1663,7 +1654,7 @@ class sharer_list(_pithos_account, _optional_json):
     @errors.pithos.connection
     def _run(self):
         accounts = self.client.get_sharing_accounts(marker=self['marker'])
-        if not (self['json_output'] or self['output_format']):
+        if not self['output_format']:
             usernames = self._uuids2usernames(
                 [acc['name'] for acc in accounts])
             for item in accounts:
@@ -1679,7 +1670,7 @@ class sharer_list(_pithos_account, _optional_json):
 
 
 @command(sharer_cmds)
-class sharer_info(_pithos_account, _optional_json):
+class sharer_info(_pithos_account, OptionalOutput):
     """Details on a Pithos+ sharer account (default: current account)"""
 
     @errors.generic.all
@@ -1709,7 +1700,7 @@ class _pithos_group(_pithos_account):
 
 
 @command(group_cmds)
-class group_list(_pithos_group, _optional_json):
+class group_list(_pithos_group, OptionalOutput):
     """list all groups and group members"""
 
     @errors.generic.all
@@ -1723,7 +1714,7 @@ class group_list(_pithos_group, _optional_json):
 
 
 @command(group_cmds)
-class group_create(_pithos_group, _optional_json):
+class group_create(_pithos_group, OptionalOutput):
     """Create a group of users"""
 
     arguments = dict(
@@ -1759,7 +1750,7 @@ class group_create(_pithos_group, _optional_json):
 
 
 @command(group_cmds)
-class group_delete(_pithos_group, _optional_json):
+class group_delete(_pithos_group, OptionalOutput):
     """Delete a user group"""
 
     @errors.generic.all

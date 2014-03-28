@@ -37,7 +37,7 @@ from os.path import abspath
 from kamaki.cli import command
 from kamaki.clients.astakos import LoggedAstakosClient
 from kamaki.cli.cmds import (
-    CommandInit, errors, _optional_json, addLogSettings, _name_filter)
+    CommandInit, errors, OptionalOutput, addLogSettings, _name_filter)
 from kamaki.cli.cmdtree import CommandTree
 from kamaki.cli.errors import (
     CLIBaseUrlError, CLISyntaxError, CLIError, CLIInvalidArgument)
@@ -116,7 +116,7 @@ class _init_synnefo_astakosclient(CommandInit):
 
 
 @command(user_commands)
-class user_authenticate(_init_synnefo_astakosclient, _optional_json):
+class user_authenticate(_init_synnefo_astakosclient, OptionalOutput):
     """Authenticate a user and get all authentication information"""
 
     @errors.generic.all
@@ -132,7 +132,7 @@ class user_authenticate(_init_synnefo_astakosclient, _optional_json):
 
 
 @command(user_commands)
-class user_uuid2name(_init_synnefo_astakosclient, _optional_json):
+class user_uuid2name(_init_synnefo_astakosclient, OptionalOutput):
     """Get user name(s) from uuid(s)"""
 
     #@errors.generic.all
@@ -150,7 +150,7 @@ class user_uuid2name(_init_synnefo_astakosclient, _optional_json):
 
 
 @command(user_commands)
-class user_name2uuid(_init_synnefo_astakosclient, _optional_json):
+class user_name2uuid(_init_synnefo_astakosclient, OptionalOutput):
     """Get user uuid(s) from name(s)"""
 
     @errors.generic.all
@@ -168,7 +168,7 @@ class user_name2uuid(_init_synnefo_astakosclient, _optional_json):
 
 
 @command(quota_commands)
-class quota_list(_init_synnefo_astakosclient, _optional_json):
+class quota_list(_init_synnefo_astakosclient, OptionalOutput):
     """Show user quotas"""
 
     _to_format = set(['cyclades.disk', 'pithos.diskspace', 'cyclades.ram'])
@@ -221,7 +221,7 @@ class quota_list(_init_synnefo_astakosclient, _optional_json):
 
 
 @command(user_commands)
-class user_info(_init_synnefo_astakosclient, _optional_json):
+class user_info(_init_synnefo_astakosclient, OptionalOutput):
     """Get info for (current) session user"""
 
     arguments = dict(
@@ -253,7 +253,7 @@ class user_info(_init_synnefo_astakosclient, _optional_json):
 
 
 @command(user_commands)
-class user_add(_init_synnefo_astakosclient, _optional_json):
+class user_add(_init_synnefo_astakosclient, OptionalOutput):
     """Authenticate a user by token and add to kamaki session (cache)"""
 
     @errors.generic.all
@@ -277,7 +277,7 @@ class user_add(_init_synnefo_astakosclient, _optional_json):
 
 
 @command(user_commands)
-class user_list(_init_synnefo_astakosclient, _optional_json):
+class user_list(_init_synnefo_astakosclient, OptionalOutput):
     """List (cached) session users"""
 
     arguments = dict(
@@ -373,7 +373,7 @@ class user_delete(_init_synnefo_astakosclient):
 #  command admin
 
 @command(service_commands)
-class service_list(_init_synnefo_astakosclient, _optional_json):
+class service_list(_init_synnefo_astakosclient, OptionalOutput):
     """List available services"""
 
     @errors.generic.all
@@ -387,7 +387,7 @@ class service_list(_init_synnefo_astakosclient, _optional_json):
 
 
 @command(service_commands)
-class service_uuid2username(_init_synnefo_astakosclient, _optional_json):
+class service_uuid2username(_init_synnefo_astakosclient, OptionalOutput):
     """Get service username(s) from uuid(s)"""
 
     @errors.generic.all
@@ -407,7 +407,7 @@ class service_uuid2username(_init_synnefo_astakosclient, _optional_json):
 
 
 @command(service_commands)
-class service_username2uuid(_init_synnefo_astakosclient, _optional_json):
+class service_username2uuid(_init_synnefo_astakosclient, OptionalOutput):
     """Get service uuid(s) from username(s)"""
 
     @errors.generic.all
@@ -427,7 +427,7 @@ class service_username2uuid(_init_synnefo_astakosclient, _optional_json):
 
 
 @command(service_commands)
-class service_quotas(_init_synnefo_astakosclient, _optional_json):
+class service_quotas(_init_synnefo_astakosclient, OptionalOutput):
     """Get service quotas"""
 
     arguments = dict(
@@ -446,7 +446,7 @@ class service_quotas(_init_synnefo_astakosclient, _optional_json):
 
 
 @command(commission_commands)
-class commission_pending(_init_synnefo_astakosclient, _optional_json):
+class commission_pending(_init_synnefo_astakosclient, OptionalOutput):
     """List pending commissions (special privileges required)"""
 
     @errors.generic.all
@@ -460,7 +460,7 @@ class commission_pending(_init_synnefo_astakosclient, _optional_json):
 
 
 @command(commission_commands)
-class commission_info(_init_synnefo_astakosclient, _optional_json):
+class commission_info(_init_synnefo_astakosclient, OptionalOutput):
     """Get commission info (special privileges required)"""
 
     @errors.generic.all
@@ -506,7 +506,7 @@ class commission_reject(_init_synnefo_astakosclient):
 
 
 @command(commission_commands)
-class commission_resolve(_init_synnefo_astakosclient, _optional_json):
+class commission_resolve(_init_synnefo_astakosclient, OptionalOutput):
     """Resolve multiple commissions (special privileges required)"""
 
     arguments = dict(
@@ -533,7 +533,7 @@ class commission_resolve(_init_synnefo_astakosclient, _optional_json):
 
 
 @command(commission_commands)
-class commission_issue(_init_synnefo_astakosclient, _optional_json):
+class commission_issue(_init_synnefo_astakosclient, OptionalOutput):
     """Issue commissions as a json string (special privileges required)
     Parameters:
     holder      -- user's id (string)
@@ -561,7 +561,7 @@ class commission_issue(_init_synnefo_astakosclient, _optional_json):
 
 
 @command(resource_commands)
-class resource_list(_init_synnefo_astakosclient, _optional_json):
+class resource_list(_init_synnefo_astakosclient, OptionalOutput):
     """List user resources"""
 
     @errors.generic.all
@@ -576,7 +576,7 @@ class resource_list(_init_synnefo_astakosclient, _optional_json):
 
 @command(endpoint_commands)
 class endpoint_list(
-        _init_synnefo_astakosclient, _optional_json, _name_filter):
+        _init_synnefo_astakosclient, OptionalOutput, _name_filter):
     """Get endpoints service endpoints"""
 
     arguments = dict(endpoint_type=ValueArgument('Filter by type', '--type'))
@@ -625,7 +625,7 @@ def apply_notification(func):
 
 
 @command(project_commands)
-class project_list(_init_synnefo_astakosclient, _optional_json):
+class project_list(_init_synnefo_astakosclient, OptionalOutput):
     """List all projects"""
 
     arguments = dict(
@@ -653,7 +653,7 @@ class project_list(_init_synnefo_astakosclient, _optional_json):
 
 
 @command(project_commands)
-class project_info(_init_synnefo_astakosclient, _optional_json):
+class project_info(_init_synnefo_astakosclient, OptionalOutput):
     """Get details for a project"""
 
     @errors.generic.all
@@ -721,7 +721,7 @@ class ProjectResourceArgument(KeyValueArgument):
 
 
 @command(project_commands)
-class project_create(_init_synnefo_astakosclient, _optional_json):
+class project_create(_init_synnefo_astakosclient, OptionalOutput):
     """Apply for a new project"""
 
     __doc__ += _project_specs
@@ -790,7 +790,7 @@ class project_create(_init_synnefo_astakosclient, _optional_json):
 
 
 @command(project_commands)
-class project_modify(_init_synnefo_astakosclient, _optional_json):
+class project_modify(_init_synnefo_astakosclient, OptionalOutput):
     """Modify properties of a project"""
 
     __doc__ += _project_specs
@@ -956,7 +956,7 @@ class membership(_init_synnefo_astakosclient):
 
 
 @command(membership_commands)
-class membership_list(_init_synnefo_astakosclient, _optional_json):
+class membership_list(_init_synnefo_astakosclient, OptionalOutput):
     """List all memberships"""
 
     arguments = dict(
@@ -974,7 +974,7 @@ class membership_list(_init_synnefo_astakosclient, _optional_json):
 
 
 @command(membership_commands)
-class membership_info(_init_synnefo_astakosclient, _optional_json):
+class membership_info(_init_synnefo_astakosclient, OptionalOutput):
     """Details on a membership"""
 
     @errors.generic.all
@@ -988,7 +988,7 @@ class membership_info(_init_synnefo_astakosclient, _optional_json):
         self._run(memb_id=membership_id)
 
 
-class _membership_action(_init_synnefo_astakosclient, _optional_json):
+class _membership_action(_init_synnefo_astakosclient, OptionalOutput):
 
     action = ''
     arguments = dict(reason=ValueArgument('Reason for the action', '--reason'))

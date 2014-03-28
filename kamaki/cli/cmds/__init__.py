@@ -35,10 +35,9 @@ from kamaki.cli.logger import get_logger
 from kamaki.cli.utils import (
     print_list, print_dict, print_json, print_items, ask_user, pref_enc,
     filter_dicts_by_dict)
-from kamaki.cli.argument import FlagArgument, ValueArgument
+from kamaki.cli.argument import ValueArgument
 from kamaki.cli.errors import CLIInvalidArgument, CLIBaseUrlError
 from sys import stdin, stdout, stderr
-import codecs
 
 
 log = get_logger(__name__)
@@ -91,10 +90,8 @@ class CommandInit(object):
         self.required = getattr(self, 'required', None)
         if hasattr(self, 'arguments'):
             arguments.update(self.arguments)
-        if isinstance(self, _optional_output_cmd):
+        if isinstance(self, OptionalOutput):
             arguments.update(self.oo_arguments)
-        if isinstance(self, _optional_json):
-            arguments.update(self.oj_arguments)
         if isinstance(self, _name_filter):
             arguments.update(self.nf_arguments)
         if isinstance(self, _id_filter):
@@ -273,7 +270,7 @@ class CommandInit(object):
 class OutputFormatArgument(ValueArgument):
     """Accepted output formats: json (default)"""
 
-    formats = ('json', )
+    formats = dict(json=print_json)
 
     def ___init__(self, *args, **kwargs):
         super(OutputFormatArgument, self).___init__(*args, **kwargs)
@@ -285,9 +282,9 @@ class OutputFormatArgument(ValueArgument):
     @value.setter
     def value(self, newvalue):
         if not newvalue:
-            self._value = self.default
+            return
         elif newvalue.lower() in self.formats:
-            self._value = newvalue.lower
+            self._value = newvalue.lower()
         else:
             raise CLIInvalidArgument(
                 'Invalid value %s for argument %s' % (
@@ -295,37 +292,19 @@ class OutputFormatArgument(ValueArgument):
                 details=['Valid output formats: %s' % ', '.join(self.formats)])
 
 
-class _optional_output_cmd(object):
+class OptionalOutput(object):
 
     oo_arguments = dict(
-        with_output=FlagArgument('show response headers', ('--with-output')),
-        json_output=FlagArgument(
-            'show headers in json (DEPRECATED from v0.12,'
-            '  please use --output-format=json instead)', ('-j', '--json'))
-    )
-
-    def _optional_output(self, r):
-        if self['json_output']:
-            print_json(r, out=self)
-        elif self['with_output']:
-            print_items([r] if isinstance(r, dict) else r, out=self)
-
-
-class _optional_json(object):
-
-    oj_arguments = dict(
         output_format=OutputFormatArgument(
             'Show output in chosen output format (%s)' % ', '.join(
                 OutputFormatArgument.formats),
             '--output-format'),
-        json_output=FlagArgument(
-            'show output in json (DEPRECATED from v0.12,'
-            ' please use --output-format instead)', ('-j', '--json'))
     )
 
     def _print(self, output, print_method=print_items, **print_method_kwargs):
-        if self['json_output'] or self['output_format']:
-            print_json(output, out=self)
+        if self['output_format']:
+            func = OutputFormatArgument.formats[self['output_format']]
+            func(output, out=self)
         else:
             print_method_kwargs.setdefault('out', self)
             print_method(output, **print_method_kwargs)

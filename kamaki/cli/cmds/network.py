@@ -44,8 +44,8 @@ from kamaki.cli.argument import (
     FlagArgument, ValueArgument, RepeatableArgument, IntArgument,
     StatusArgument)
 from kamaki.cli.cmds import (
-    CommandInit, errors, addLogSettings, _optional_output_cmd,
-    _optional_json, _name_filter, _id_filter)
+    CommandInit, errors, addLogSettings, OptionalOutput, _name_filter,
+    _id_filter)
 from kamaki.cli.cmds.cyclades import _service_wait
 
 
@@ -87,7 +87,7 @@ class _init_network(CommandInit):
 
 
 @command(network_cmds)
-class network_list(_init_network, _optional_json, _name_filter, _id_filter):
+class network_list(_init_network, OptionalOutput, _name_filter, _id_filter):
     """List networks
     Use filtering arguments (e.g., --name-like) to manage long server lists
     """
@@ -110,11 +110,11 @@ class network_list(_init_network, _optional_json, _name_filter, _id_filter):
         nets = self._filter_by_id(nets)
         if not self['detail']:
             nets = [dict(
-                _0_id=n['id'],
-                _1_name=n['name'],
-                _2_public='( %s )' % ('public' if (
+                id=n['id'],
+                name=n['name'],
+                public='( %s )' % ('public' if (
                     n.get('public', None)) else 'private')) for n in nets]
-            kwargs = dict(title=('_0_id', '_1_name', '_2_public'))
+            kwargs = dict(title=('id', 'name', 'public'))
         else:
             kwargs = dict()
         if self['more']:
@@ -130,7 +130,7 @@ class network_list(_init_network, _optional_json, _name_filter, _id_filter):
 
 
 @command(network_cmds)
-class network_info(_init_network, _optional_json):
+class network_info(_init_network, OptionalOutput):
     """Get details about a network"""
 
     @errors.generic.all
@@ -164,7 +164,7 @@ class NetworkTypeArgument(ValueArgument):
 
 
 @command(network_cmds)
-class network_create(_init_network, _optional_json):
+class network_create(_init_network, OptionalOutput):
     """Create a new network (default type: MAC_FILTERED)"""
 
     arguments = dict(
@@ -194,7 +194,7 @@ class network_create(_init_network, _optional_json):
 
 
 @command(network_cmds)
-class network_reassign(_init_network, _optional_json):
+class network_reassign(_init_network, OptionalOutput):
     """Assign a network to a different project"""
 
     arguments = dict(
@@ -214,15 +214,14 @@ class network_reassign(_init_network, _optional_json):
 
 
 @command(network_cmds)
-class network_delete(_init_network, _optional_output_cmd):
+class network_delete(_init_network):
     """Delete a network"""
 
     @errors.generic.all
     @errors.cyclades.connection
     @errors.cyclades.network_id
     def _run(self, network_id):
-        r = self.client.delete_network(network_id)
-        self._optional_output(r)
+        self.client.delete_network(network_id)
 
     def main(self, network_id):
         super(self.__class__, self)._run()
@@ -230,7 +229,7 @@ class network_delete(_init_network, _optional_output_cmd):
 
 
 @command(network_cmds)
-class network_modify(_init_network, _optional_json):
+class network_modify(_init_network, OptionalOutput):
     """Modify network attributes"""
 
     arguments = dict(new_name=ValueArgument('Rename the network', '--name'))
@@ -249,7 +248,7 @@ class network_modify(_init_network, _optional_json):
 
 
 @command(subnet_cmds)
-class subnet_list(_init_network, _optional_json, _name_filter, _id_filter):
+class subnet_list(_init_network, OptionalOutput, _name_filter, _id_filter):
     """List subnets
     Use filtering arguments (e.g., --name-like) to manage long server lists
     """
@@ -269,10 +268,10 @@ class subnet_list(_init_network, _optional_json, _name_filter, _id_filter):
         nets = self._filter_by_id(nets)
         if not self['detail']:
             nets = [dict(
-                _0_id=n['id'],
-                _1_name=n['name'],
-                _2_net='( of network %s )' % n['network_id']) for n in nets]
-            kwargs = dict(title=('_0_id', '_1_name', '_2_net'))
+                id=n['id'],
+                name=n['name'],
+                net='( of network %s )' % n['network_id']) for n in nets]
+            kwargs = dict(title=('id', 'name', 'net'))
         else:
             kwargs = dict()
         if self['more']:
@@ -280,7 +279,7 @@ class subnet_list(_init_network, _optional_json, _name_filter, _id_filter):
             kwargs['title'] = ()
         self._print(nets, **kwargs)
         if self['more']:
-            pager(kwargs['out'].getvalue())
+            pager('%s' % kwargs['out'].getvalue())
 
     def main(self):
         super(self.__class__, self)._run()
@@ -288,7 +287,7 @@ class subnet_list(_init_network, _optional_json, _name_filter, _id_filter):
 
 
 @command(subnet_cmds)
-class subnet_info(_init_network, _optional_json):
+class subnet_info(_init_network, OptionalOutput):
     """Get details about a subnet"""
 
     @errors.generic.all
@@ -325,7 +324,7 @@ class AllocationPoolArgument(RepeatableArgument):
 
 
 @command(subnet_cmds)
-class subnet_create(_init_network, _optional_json):
+class subnet_create(_init_network, OptionalOutput):
     """Create a new subnet"""
 
     arguments = dict(
@@ -359,7 +358,7 @@ class subnet_create(_init_network, _optional_json):
 
 
 @command(subnet_cmds)
-class subnet_modify(_init_network, _optional_json):
+class subnet_modify(_init_network, OptionalOutput):
     """Modify the attributes of a subnet"""
 
     arguments = dict(
@@ -379,7 +378,7 @@ class subnet_modify(_init_network, _optional_json):
 
 
 @command(port_cmds)
-class port_list(_init_network, _optional_json, _name_filter, _id_filter):
+class port_list(_init_network, OptionalOutput, _name_filter, _id_filter):
     """List all ports"""
 
     arguments = dict(
@@ -416,7 +415,7 @@ class port_list(_init_network, _optional_json, _name_filter, _id_filter):
 
 
 @command(port_cmds)
-class port_info(_init_network, _optional_json):
+class port_info(_init_network, OptionalOutput):
     """Get details about a port"""
 
     @errors.generic.all
@@ -431,7 +430,7 @@ class port_info(_init_network, _optional_json):
 
 
 @command(port_cmds)
-class port_delete(_init_network, _optional_output_cmd, _port_wait):
+class port_delete(_init_network, _port_wait):
     """Delete a port (== disconnect server from network)"""
 
     arguments = dict(
@@ -443,7 +442,7 @@ class port_delete(_init_network, _optional_output_cmd, _port_wait):
     def _run(self, port_id):
         if self['wait']:
             status = self.client.get_port_details(port_id)['status']
-        r = self.client.delete_port(port_id)
+        self.client.delete_port(port_id)
         if self['wait']:
             try:
                 self._wait(port_id, status)
@@ -451,7 +450,6 @@ class port_delete(_init_network, _optional_output_cmd, _port_wait):
                 if ce.status not in (404, ):
                     raise
                 self.error('Port %s is deleted' % port_id)
-        self._optional_output(r)
 
     def main(self, port_id):
         super(self.__class__, self)._run()
@@ -459,7 +457,7 @@ class port_delete(_init_network, _optional_output_cmd, _port_wait):
 
 
 @command(port_cmds)
-class port_modify(_init_network, _optional_json):
+class port_modify(_init_network, OptionalOutput):
     """Modify the attributes of a port"""
 
     arguments = dict(new_name=ValueArgument('New name of the port', '--name'))
@@ -478,7 +476,7 @@ class port_modify(_init_network, _optional_json):
         self._run(port_id=port_id)
 
 
-class _port_create(_init_network, _optional_json, _port_wait):
+class _port_create(_init_network, OptionalOutput, _port_wait):
 
     def connect(self, network_id, device_id):
         fixed_ips = [dict(ip_address=self['ip_address'])] if (
@@ -563,7 +561,7 @@ class port_wait(_init_network, _port_wait):
 
 
 @command(ip_cmds)
-class ip_list(_init_network, _optional_json):
+class ip_list(_init_network, OptionalOutput):
     """List reserved floating IPs"""
 
     @errors.generic.all
@@ -577,7 +575,7 @@ class ip_list(_init_network, _optional_json):
 
 
 @command(ip_cmds)
-class ip_info(_init_network, _optional_json):
+class ip_info(_init_network, OptionalOutput):
     """Get details on a floating IP"""
 
     @errors.generic.all
@@ -592,7 +590,7 @@ class ip_info(_init_network, _optional_json):
 
 
 @command(ip_cmds)
-class ip_create(_init_network, _optional_json):
+class ip_create(_init_network, OptionalOutput):
     """Reserve an IP on a network"""
 
     arguments = dict(
@@ -618,7 +616,7 @@ class ip_create(_init_network, _optional_json):
 
 
 @command(ip_cmds)
-class ip_reassign(_init_network, _optional_output_cmd):
+class ip_reassign(_init_network):
     """Assign a floating IP to a different project"""
 
     arguments = dict(
@@ -629,7 +627,7 @@ class ip_reassign(_init_network, _optional_output_cmd):
     @errors.generic.all
     @errors.cyclades.connection
     def _run(self, ip, project):
-        self._optional_output(self.client.reassign_floating_ip(ip, project))
+        self.client.reassign_floating_ip(ip, project)
 
     def main(self, IP):
         super(self.__class__, self)._run()
@@ -637,11 +635,11 @@ class ip_reassign(_init_network, _optional_output_cmd):
 
 
 @command(ip_cmds)
-class ip_delete(_init_network, _optional_output_cmd):
+class ip_delete(_init_network):
     """Unreserve an IP (also delete the port, if attached)"""
 
     def _run(self, ip_id):
-        self._optional_output(self.client.delete_floatingip(ip_id))
+        self.client.delete_floatingip(ip_id)
 
     def main(self, ip_id):
         super(self.__class__, self)._run()
@@ -693,7 +691,7 @@ class ip_attach(_port_create):
 
 
 @command(ip_cmds)
-class ip_detach(_init_network, _port_wait, _optional_json):
+class ip_detach(_init_network, _port_wait, OptionalOutput):
     """Detach an IP from a virtual server"""
 
     arguments = dict(
@@ -765,7 +763,7 @@ class network_connect(_port_create):
 
 
 @command(network_cmds)
-class network_disconnect(_init_network, _port_wait, _optional_json):
+class network_disconnect(_init_network, _port_wait, OptionalOutput):
     """Disconnect a network from a device"""
 
     def _cyclades_client(self):

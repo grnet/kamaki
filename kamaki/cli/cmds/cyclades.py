@@ -47,8 +47,8 @@ from kamaki.cli.argument import (
     FlagArgument, ValueArgument, KeyValueArgument, RepeatableArgument,
     ProgressBarArgument, DateArgument, IntArgument, StatusArgument)
 from kamaki.cli.cmds import (
-    CommandInit, errors, addLogSettings, dataModification,
-    _optional_output_cmd, _optional_json, _name_filter, _id_filter)
+    CommandInit, errors, addLogSettings, dataModification, OptionalOutput,
+    _name_filter, _id_filter)
 
 
 server_cmds = CommandTree('server', 'Cyclades/Compute API server commands')
@@ -152,7 +152,7 @@ class _init_cyclades(CommandInit):
 
 
 @command(server_cmds)
-class server_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
+class server_list(_init_cyclades, OptionalOutput, _name_filter, _id_filter):
     """List virtual servers accessible by user
     Use filtering arguments (e.g., --name-like) to manage long server lists
     """
@@ -274,7 +274,7 @@ class server_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
 
 
 @command(server_cmds)
-class server_info(_init_cyclades, _optional_json):
+class server_info(_init_cyclades, OptionalOutput):
     """Detailed information on a Virtual Machine"""
 
     arguments = dict(
@@ -424,7 +424,7 @@ class NetworkArgument(RepeatableArgument):
 
 
 @command(server_cmds)
-class server_create(_init_cyclades, _optional_json, _server_wait):
+class server_create(_init_cyclades, OptionalOutput, _server_wait):
     """Create a server (aka Virtual Machine)"""
 
     arguments = dict(
@@ -545,7 +545,7 @@ class FirewallProfileArgument(ValueArgument):
 
 
 @command(server_cmds)
-class server_modify(_init_cyclades, _optional_output_cmd):
+class server_modify(_init_cyclades):
     """Modify attributes of a virtual server"""
 
     arguments = dict(
@@ -624,8 +624,6 @@ class server_modify(_init_cyclades, _optional_output_cmd):
         for key in (self['metadata_to_delete'] or []):
             errors.cyclades.metadata(
                 self.client.delete_server_metadata)(server_id, key=key)
-        if self['with_output']:
-            self._optional_output(self.client.get_server_details(server_id))
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -639,7 +637,7 @@ class server_modify(_init_cyclades, _optional_output_cmd):
 
 
 @command(server_cmds)
-class server_reassign(_init_cyclades, _optional_json):
+class server_reassign(_init_cyclades, OptionalOutput):
     """Assign a virtual server to a different project"""
 
     arguments = dict(
@@ -659,7 +657,7 @@ class server_reassign(_init_cyclades, _optional_json):
 
 
 @command(server_cmds)
-class server_delete(_init_cyclades, _optional_output_cmd, _server_wait):
+class server_delete(_init_cyclades, _server_wait):
     """Delete a virtual server"""
 
     arguments = dict(
@@ -689,9 +687,7 @@ class server_delete(_init_cyclades, _optional_output_cmd, _server_wait):
                 details = self.client.get_server_details(server_id)
                 status = details['status']
 
-            r = self.client.delete_server(server_id)
-            self._optional_output(r)
-
+            self.client.delete_server(server_id)
             if self['wait']:
                 self._wait(server_id, status)
 
@@ -701,7 +697,7 @@ class server_delete(_init_cyclades, _optional_output_cmd, _server_wait):
 
 
 @command(server_cmds)
-class server_reboot(_init_cyclades, _optional_output_cmd, _server_wait):
+class server_reboot(_init_cyclades, _server_wait):
     """Reboot a virtual server"""
 
     arguments = dict(
@@ -731,9 +727,7 @@ class server_reboot(_init_cyclades, _optional_output_cmd, _server_wait):
                     importance=2, details=[
                         '--type values are either SOFT (default) or HARD'])
 
-        r = self.client.reboot_server(int(server_id), hard_reboot)
-        self._optional_output(r)
-
+        self.client.reboot_server(int(server_id), hard_reboot)
         if self['wait']:
             self._wait(server_id, 'REBOOT')
 
@@ -743,7 +737,7 @@ class server_reboot(_init_cyclades, _optional_output_cmd, _server_wait):
 
 
 @command(server_cmds)
-class server_start(_init_cyclades, _optional_output_cmd, _server_wait):
+class server_start(_init_cyclades, _server_wait):
     """Start an existing virtual server"""
 
     arguments = dict(
@@ -761,9 +755,7 @@ class server_start(_init_cyclades, _optional_output_cmd, _server_wait):
             if status in ('ACTIVE', ):
                 return
 
-        r = self.client.start_server(int(server_id))
-        self._optional_output(r)
-
+        self.client.start_server(int(server_id))
         if self['wait']:
             self._wait(server_id, status)
 
@@ -773,7 +765,7 @@ class server_start(_init_cyclades, _optional_output_cmd, _server_wait):
 
 
 @command(server_cmds)
-class server_shutdown(_init_cyclades, _optional_output_cmd, _server_wait):
+class server_shutdown(_init_cyclades,  _server_wait):
     """Shutdown an active virtual server"""
 
     arguments = dict(
@@ -791,9 +783,7 @@ class server_shutdown(_init_cyclades, _optional_output_cmd, _server_wait):
             if status in ('STOPPED', ):
                 return
 
-        r = self.client.shutdown_server(int(server_id))
-        self._optional_output(r)
-
+        self.client.shutdown_server(int(server_id))
         if self['wait']:
             self._wait(server_id, status)
 
@@ -803,7 +793,7 @@ class server_shutdown(_init_cyclades, _optional_output_cmd, _server_wait):
 
 
 @command(server_cmds)
-class server_console(_init_cyclades, _optional_json):
+class server_console(_init_cyclades, OptionalOutput):
     """Create a VMC console and show connection information"""
 
     @errors.generic.all
@@ -854,7 +844,7 @@ class server_wait(_init_cyclades, _server_wait):
 
 
 @command(flavor_cmds)
-class flavor_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
+class flavor_list(_init_cyclades, OptionalOutput, _name_filter, _id_filter):
     """List available hardware flavors"""
 
     PERMANENTS = ('id', 'name')
@@ -896,8 +886,7 @@ class flavor_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
         flavors = self._filter_by_id(flavors)
         if withcommons:
             flavors = self._apply_common_filters(flavors)
-        if not (self['detail'] or (
-                self['json_output'] or self['output_format'])):
+        if not (self['detail'] or self['output_format']):
             remove_from_items(flavors, 'links')
         if detail and not self['detail']:
             for flv in flavors:
@@ -917,7 +906,7 @@ class flavor_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
 
 
 @command(flavor_cmds)
-class flavor_info(_init_cyclades, _optional_json):
+class flavor_info(_init_cyclades, OptionalOutput):
     """Detailed information on a hardware flavor
     To get a list of available flavors and flavor ids, try /flavor list
     """
