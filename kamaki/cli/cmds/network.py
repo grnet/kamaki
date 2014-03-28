@@ -44,8 +44,7 @@ from kamaki.cli.argument import (
     FlagArgument, ValueArgument, RepeatableArgument, IntArgument,
     StatusArgument)
 from kamaki.cli.cmds import (
-    CommandInit, errors, addLogSettings, OptionalOutput, _name_filter,
-    _id_filter)
+    CommandInit, OptionalOutput, NameFilter, IDFilter, errors, addLogSettings)
 from kamaki.cli.cmds.cyclades import _service_wait
 
 
@@ -87,7 +86,7 @@ class _init_network(CommandInit):
 
 
 @command(network_cmds)
-class network_list(_init_network, OptionalOutput, _name_filter, _id_filter):
+class network_list(_init_network, OptionalOutput, NameFilter, IDFilter):
     """List networks
     Use filtering arguments (e.g., --name-like) to manage long server lists
     """
@@ -248,7 +247,7 @@ class network_modify(_init_network, OptionalOutput):
 
 
 @command(subnet_cmds)
-class subnet_list(_init_network, OptionalOutput, _name_filter, _id_filter):
+class subnet_list(_init_network, OptionalOutput, NameFilter, IDFilter):
     """List subnets
     Use filtering arguments (e.g., --name-like) to manage long server lists
     """
@@ -378,7 +377,7 @@ class subnet_modify(_init_network, OptionalOutput):
 
 
 @command(port_cmds)
-class port_list(_init_network, OptionalOutput, _name_filter, _id_filter):
+class port_list(_init_network, OptionalOutput, NameFilter, IDFilter):
     """List all ports"""
 
     arguments = dict(

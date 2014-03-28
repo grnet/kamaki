@@ -41,8 +41,8 @@ from kamaki.clients.pithos import PithosClient, ClientError
 from kamaki.cli import command
 from kamaki.cli.cmdtree import CommandTree
 from kamaki.cli.cmds import (
-    CommandInit, errors, addLogSettings, DontRaiseKeyError, OptionalOutput,
-    _name_filter)
+    CommandInit, DontRaiseKeyError, OptionalOutput, NameFilter, errors,
+    addLogSettings)
 from kamaki.cli.errors import (
     CLIBaseUrlError, CLIError, CLIInvalidArgument, raiseCLIError,
     CLISyntaxError)
@@ -241,7 +241,7 @@ class file_info(_pithos_container, OptionalOutput):
 
 
 @command(file_cmds)
-class file_list(_pithos_container, OptionalOutput, _name_filter):
+class file_list(_pithos_container, OptionalOutput, NameFilter):
     """List all objects in a container or a directory object"""
 
     arguments = dict(
@@ -1418,7 +1418,7 @@ class container_modify(_pithos_account, OptionalOutput):
 
 
 @command(container_cmds)
-class container_list(_pithos_account, OptionalOutput, _name_filter):
+class container_list(_pithos_account, OptionalOutput, NameFilter):
     """List all containers, or their contents"""
 
     arguments = dict(

@@ -92,9 +92,9 @@ class CommandInit(object):
             arguments.update(self.arguments)
         if isinstance(self, OptionalOutput):
             arguments.update(self.oo_arguments)
-        if isinstance(self, _name_filter):
+        if isinstance(self, NameFilter):
             arguments.update(self.nf_arguments)
-        if isinstance(self, _id_filter):
+        if isinstance(self, IDFilter):
             arguments.update(self.if_arguments)
         try:
             arguments.update(self.wait_arguments)
@@ -310,7 +310,7 @@ class OptionalOutput(object):
             print_method(output, **print_method_kwargs)
 
 
-class _name_filter(object):
+class NameFilter(object):
 
     nf_arguments = dict(
         name=ValueArgument('filter by name', '--name'),
@@ -340,7 +340,7 @@ class _name_filter(object):
         return self._non_exact_name_filter(self._exact_name_filter(items))
 
 
-class _id_filter(object):
+class IDFilter(object):
 
     if_arguments = dict(
         id=ValueArgument('filter by id', '--id'),

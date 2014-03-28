@@ -37,7 +37,7 @@ from os.path import abspath
 from kamaki.cli import command
 from kamaki.clients.astakos import LoggedAstakosClient
 from kamaki.cli.cmds import (
-    CommandInit, errors, OptionalOutput, addLogSettings, _name_filter)
+    CommandInit, NameFilter, OptionalOutput, errors, addLogSettings)
 from kamaki.cli.cmdtree import CommandTree
 from kamaki.cli.errors import (
     CLIBaseUrlError, CLISyntaxError, CLIError, CLIInvalidArgument)
@@ -575,8 +575,7 @@ class resource_list(_init_synnefo_astakosclient, OptionalOutput):
 
 
 @command(endpoint_commands)
-class endpoint_list(
-        _init_synnefo_astakosclient, OptionalOutput, _name_filter):
+class endpoint_list(_init_synnefo_astakosclient, OptionalOutput, NameFilter):
     """Get endpoints service endpoints"""
 
     arguments = dict(endpoint_type=ValueArgument('Filter by type', '--type'))

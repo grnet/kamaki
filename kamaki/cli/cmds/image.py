@@ -49,8 +49,7 @@ from kamaki.cli.argument import (
 from kamaki.cli.cmds.cyclades import _init_cyclades
 from kamaki.cli.errors import CLIError, raiseCLIError, CLIInvalidArgument
 from kamaki.cli.cmds import (
-    CommandInit, errors, addLogSettings, OptionalOutput, _name_filter,
-    _id_filter)
+    CommandInit, errors, addLogSettings, OptionalOutput, NameFilter, IDFilter)
 
 
 image_cmds = CommandTree('image', 'Cyclades/Plankton API image commands')
@@ -158,7 +157,7 @@ def _validate_image_location(location):
 
 
 @command(image_cmds)
-class image_list(_init_image, OptionalOutput, _name_filter, _id_filter):
+class image_list(_init_image, OptionalOutput, NameFilter, IDFilter):
     """List images accessible by user"""
 
     PERMANENTS = (
@@ -621,8 +620,7 @@ class image_unregister(_init_image):
 # Compute Image Commands
 
 @command(imagecompute_cmds)
-class imagecompute_list(
-        _init_cyclades, OptionalOutput, _name_filter, _id_filter):
+class imagecompute_list(_init_cyclades, OptionalOutput, NameFilter, IDFilter):
     """List images"""
 
     PERMANENTS = ('id', 'name')

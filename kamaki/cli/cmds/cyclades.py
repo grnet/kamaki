@@ -47,8 +47,8 @@ from kamaki.cli.argument import (
     FlagArgument, ValueArgument, KeyValueArgument, RepeatableArgument,
     ProgressBarArgument, DateArgument, IntArgument, StatusArgument)
 from kamaki.cli.cmds import (
-    CommandInit, errors, addLogSettings, dataModification, OptionalOutput,
-    _name_filter, _id_filter)
+    CommandInit, dataModification, OptionalOutput, NameFilter, IDFilter,
+    errors, addLogSettings, )
 
 
 server_cmds = CommandTree('server', 'Cyclades/Compute API server commands')
@@ -152,7 +152,7 @@ class _init_cyclades(CommandInit):
 
 
 @command(server_cmds)
-class server_list(_init_cyclades, OptionalOutput, _name_filter, _id_filter):
+class server_list(_init_cyclades, OptionalOutput, NameFilter, IDFilter):
     """List virtual servers accessible by user
     Use filtering arguments (e.g., --name-like) to manage long server lists
     """
@@ -844,7 +844,7 @@ class server_wait(_init_cyclades, _server_wait):
 
 
 @command(flavor_cmds)
-class flavor_list(_init_cyclades, OptionalOutput, _name_filter, _id_filter):
+class flavor_list(_init_cyclades, OptionalOutput, NameFilter, IDFilter):
     """List available hardware flavors"""
 
     PERMANENTS = ('id', 'name')
