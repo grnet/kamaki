@@ -572,8 +572,8 @@ def run_one_cmd(exe, parser):
         _history = History(cnf.get('global', 'history_file'), token=token)
         _history.limit = cnf.get('global', 'history_limit')
         _history.add(' '.join([exe] + argv[1:]))
-        from kamaki.cli import one_command
-        one_command.run(cloud, parser, _help)
+        from kamaki.cli import one_cmd
+        one_cmd.run(cloud, parser, _help)
     else:
         parser.print_help()
         _groups_help(parser.arguments)
