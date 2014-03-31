@@ -39,7 +39,7 @@ from kamaki.cli.cmds import CommandInit, errors
 
 
 history_cmds = CommandTree('history', 'Kamaki command history')
-_commands = [history_cmds]
+namespaces = [history_cmds]
 
 
 class _HistoryInit(CommandInit):

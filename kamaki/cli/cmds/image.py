@@ -55,7 +55,7 @@ from kamaki.cli.cmds import (
 image_cmds = CommandTree('image', 'Cyclades/Plankton API image commands')
 imagecompute_cmds = CommandTree(
     'imagecompute', 'Cyclades/Compute API image commands')
-_commands = [image_cmds, imagecompute_cmds]
+namespaces = [image_cmds, imagecompute_cmds]
 
 
 howto_image_file = [

@@ -58,7 +58,7 @@ container_cmds = CommandTree(
     'container', 'Pithos+/Storage container level API commands')
 sharer_cmds = CommandTree('sharer', 'Pithos+/Storage sharers')
 group_cmds = CommandTree('group', 'Pithos+/Storage user groups')
-_commands = [file_cmds, container_cmds, sharer_cmds, group_cmds]
+namespaces = [file_cmds, container_cmds, sharer_cmds, group_cmds]
 
 
 class _PithosInit(CommandInit):

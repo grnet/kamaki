@@ -48,28 +48,27 @@ from kamaki.cli.utils import format_size, filter_dicts_by_dict
 
 #  Mandatory
 
-user_commands = CommandTree('user', 'Astakos/Identity API commands')
-quota_commands = CommandTree(
+user_cmds = CommandTree('user', 'Astakos/Identity API commands')
+quota_cmds = CommandTree(
     'quota', 'Astakos/Account API commands for quotas')
-resource_commands = CommandTree(
+resource_cmds = CommandTree(
     'resource', 'Astakos/Account API commands for resources')
-project_commands = CommandTree('project', 'Astakos project API commands')
-membership_commands = CommandTree(
+project_cmds = CommandTree('project', 'Astakos project API commands')
+membership_cmds = CommandTree(
     'membership', 'Astakos project membership API commands')
 
 
 #  Optional
 
-endpoint_commands = CommandTree(
+endpoint_cmds = CommandTree(
     'endpoint', 'Astakos/Account API commands for endpoints')
-service_commands = CommandTree('service', 'Astakos API commands for services')
-commission_commands = CommandTree(
+service_cmds = CommandTree('service', 'Astakos API commands for services')
+commission_cmds = CommandTree(
     'commission', 'Astakos API commands for commissions')
 
-_commands = [
-    user_commands, quota_commands, resource_commands, project_commands,
-    service_commands, commission_commands, endpoint_commands,
-    membership_commands]
+namespaces = [
+    user_cmds, quota_cmds, resource_cmds, project_cmds, service_cmds,
+    commission_cmds, endpoint_cmds, membership_cmds]
 
 
 def with_temp_token(func):
@@ -115,7 +114,7 @@ class _AstakosInit(CommandInit):
         self._run()
 
 
-@command(user_commands)
+@command(user_cmds)
 class user_authenticate(_AstakosInit, OptionalOutput):
     """Authenticate a user and get all authentication information"""
 
@@ -131,7 +130,7 @@ class user_authenticate(_AstakosInit, OptionalOutput):
         self._run(token=token)
 
 
-@command(user_commands)
+@command(user_cmds)
 class user_uuid2name(_AstakosInit, OptionalOutput):
     """Get user name(s) from uuid(s)"""
 
@@ -149,7 +148,7 @@ class user_uuid2name(_AstakosInit, OptionalOutput):
         self._run(uuids=((uuid, ) + more_uuids))
 
 
-@command(user_commands)
+@command(user_cmds)
 class user_name2uuid(_AstakosInit, OptionalOutput):
     """Get user uuid(s) from name(s)"""
 
@@ -167,7 +166,7 @@ class user_name2uuid(_AstakosInit, OptionalOutput):
         self._run(usernames=((username, ) + more_usernames))
 
 
-@command(quota_commands)
+@command(quota_cmds)
 class quota_list(_AstakosInit, OptionalOutput):
     """Show user quotas"""
 
@@ -220,7 +219,7 @@ class quota_list(_AstakosInit, OptionalOutput):
 #  command user session
 
 
-@command(user_commands)
+@command(user_cmds)
 class user_info(_AstakosInit, OptionalOutput):
     """Get info for (current) session user"""
 
@@ -252,7 +251,7 @@ class user_info(_AstakosInit, OptionalOutput):
         self._print(self.auth_base.user_info(token), self.print_dict)
 
 
-@command(user_commands)
+@command(user_cmds)
 class user_add(_AstakosInit, OptionalOutput):
     """Authenticate a user by token and add to kamaki session (cache)"""
 
@@ -276,7 +275,7 @@ class user_add(_AstakosInit, OptionalOutput):
         self._run(token=new_token)
 
 
-@command(user_commands)
+@command(user_cmds)
 class user_list(_AstakosInit, OptionalOutput):
     """List (cached) session users"""
 
@@ -295,7 +294,7 @@ class user_list(_AstakosInit, OptionalOutput):
         self._run()
 
 
-@command(user_commands)
+@command(user_cmds)
 class user_select(_AstakosInit):
     """Select a user from the (cached) list as the current session user"""
 
@@ -334,7 +333,7 @@ class user_select(_AstakosInit):
         self._run(uuid=user_uuid)
 
 
-@command(user_commands)
+@command(user_cmds)
 class user_delete(_AstakosInit):
     """Delete a user (token) from the (cached) list of session users"""
 
@@ -372,7 +371,7 @@ class user_delete(_AstakosInit):
 
 #  command admin
 
-@command(service_commands)
+@command(service_cmds)
 class service_list(_AstakosInit, OptionalOutput):
     """List available services"""
 
@@ -386,7 +385,7 @@ class service_list(_AstakosInit, OptionalOutput):
         self._run()
 
 
-@command(service_commands)
+@command(service_cmds)
 class service_uuid2username(_AstakosInit, OptionalOutput):
     """Get service username(s) from uuid(s)"""
 
@@ -406,7 +405,7 @@ class service_uuid2username(_AstakosInit, OptionalOutput):
         self._run([uuid] + list(more_uuids), token=service_token)
 
 
-@command(service_commands)
+@command(service_cmds)
 class service_username2uuid(_AstakosInit, OptionalOutput):
     """Get service uuid(s) from username(s)"""
 
@@ -426,7 +425,7 @@ class service_username2uuid(_AstakosInit, OptionalOutput):
         self._run([usernames] + list(more_usernames), token=service_token)
 
 
-@command(service_commands)
+@command(service_cmds)
 class service_quotas(_AstakosInit, OptionalOutput):
     """Get service quotas"""
 
@@ -445,7 +444,7 @@ class service_quotas(_AstakosInit, OptionalOutput):
         self._run(token=service_token)
 
 
-@command(commission_commands)
+@command(commission_cmds)
 class commission_pending(_AstakosInit, OptionalOutput):
     """List pending commissions (special privileges required)"""
 
@@ -459,7 +458,7 @@ class commission_pending(_AstakosInit, OptionalOutput):
         self._run()
 
 
-@command(commission_commands)
+@command(commission_cmds)
 class commission_info(_AstakosInit, OptionalOutput):
     """Get commission info (special privileges required)"""
 
@@ -475,7 +474,7 @@ class commission_info(_AstakosInit, OptionalOutput):
         self._run(commission_id)
 
 
-@command(commission_commands)
+@command(commission_cmds)
 class commission_accept(_AstakosInit):
     """Accept a pending commission  (special privileges required)"""
 
@@ -490,7 +489,7 @@ class commission_accept(_AstakosInit):
         self._run(commission_id)
 
 
-@command(commission_commands)
+@command(commission_cmds)
 class commission_reject(_AstakosInit):
     """Reject a pending commission (special privileges required)"""
 
@@ -505,7 +504,7 @@ class commission_reject(_AstakosInit):
         self._run(commission_id)
 
 
-@command(commission_commands)
+@command(commission_cmds)
 class commission_resolve(_AstakosInit, OptionalOutput):
     """Resolve multiple commissions (special privileges required)"""
 
@@ -532,7 +531,7 @@ class commission_resolve(_AstakosInit, OptionalOutput):
         self._run()
 
 
-@command(commission_commands)
+@command(commission_cmds)
 class commission_issue(_AstakosInit, OptionalOutput):
     """Issue commissions as a json string (special privileges required)
     Parameters:
@@ -560,7 +559,7 @@ class commission_issue(_AstakosInit, OptionalOutput):
         self._run(user_uuid, source, provisions_file, name)
 
 
-@command(resource_commands)
+@command(resource_cmds)
 class resource_list(_AstakosInit, OptionalOutput):
     """List user resources"""
 
@@ -574,7 +573,7 @@ class resource_list(_AstakosInit, OptionalOutput):
         self._run()
 
 
-@command(endpoint_commands)
+@command(endpoint_cmds)
 class endpoint_list(_AstakosInit, OptionalOutput, NameFilter):
     """Get endpoints service endpoints"""
 
@@ -623,7 +622,7 @@ def apply_notification(func):
     return wrap
 
 
-@command(project_commands)
+@command(project_cmds)
 class project_list(_AstakosInit, OptionalOutput):
     """List all projects"""
 
@@ -651,7 +650,7 @@ class project_list(_AstakosInit, OptionalOutput):
         self._run()
 
 
-@command(project_commands)
+@command(project_cmds)
 class project_info(_AstakosInit, OptionalOutput):
     """Get details for a project"""
 
@@ -719,7 +718,7 @@ class ProjectResourceArgument(KeyValueArgument):
                     project_capacity=project_capacity)
 
 
-@command(project_commands)
+@command(project_cmds)
 class project_create(_AstakosInit, OptionalOutput):
     """Apply for a new project"""
 
@@ -788,7 +787,7 @@ class project_create(_AstakosInit, OptionalOutput):
         self._run()
 
 
-@command(project_commands)
+@command(project_cmds)
 class project_modify(_AstakosInit, OptionalOutput):
     """Modify properties of a project"""
 
@@ -880,25 +879,25 @@ class _ProjectAction(_AstakosInit):
         self._run(project_id, self['reason'] or '')
 
 
-@command(project_commands)
+@command(project_cmds)
 class project_suspend(_ProjectAction):
     """Suspend a project (special privileges needed)"""
     action = 'suspend'
 
 
-@command(project_commands)
+@command(project_cmds)
 class project_unsuspend(_ProjectAction):
     """Resume a suspended project (special privileges needed)"""
     action = 'unsuspend'
 
 
-@command(project_commands)
+@command(project_cmds)
 class project_terminate(_ProjectAction):
     """Terminate a project (special privileges needed)"""
     action = 'terminate'
 
 
-@command(project_commands)
+@command(project_cmds)
 class project_reinstate(_ProjectAction):
     """Reinstate a terminated project (special privileges needed)"""
     action = 'reinstate'
@@ -925,36 +924,36 @@ class _ApplicationAction(_AstakosInit):
         self._run(project_id, self['app_id'], self['reason'] or '')
 
 
-@command(project_commands)
+@command(project_cmds)
 class project_approve(_ApplicationAction):
     """Approve an application (special privileges needed)"""
     action = 'approve'
 
 
-@command(project_commands)
+@command(project_cmds)
 class project_deny(_ApplicationAction):
     """Deny an application (special privileges needed)"""
     action = 'deny'
 
 
-@command(project_commands)
+@command(project_cmds)
 class project_dismiss(_ApplicationAction):
     """Dismiss your denied application"""
     action = 'dismiss'
 
 
-@command(project_commands)
+@command(project_cmds)
 class project_cancel(_ApplicationAction):
     """Cancel your application"""
     action = 'cancel'
 
 
-@command(membership_commands)
+@command(membership_cmds)
 class membership(_AstakosInit):
     """Project membership management commands"""
 
 
-@command(membership_commands)
+@command(membership_cmds)
 class membership_list(_AstakosInit, OptionalOutput):
     """List all memberships"""
 
@@ -972,7 +971,7 @@ class membership_list(_AstakosInit, OptionalOutput):
         self._run()
 
 
-@command(membership_commands)
+@command(membership_cmds)
 class membership_info(_AstakosInit, OptionalOutput):
     """Details on a membership"""
 
@@ -1003,37 +1002,37 @@ class _MembershipAction(_AstakosInit, OptionalOutput):
         self._run(membership_id, self['reason'] or '')
 
 
-@command(membership_commands)
+@command(membership_cmds)
 class membership_leave(_MembershipAction):
     """Leave a project you have membership to"""
     action = 'leave'
 
 
-@command(membership_commands)
+@command(membership_cmds)
 class membership_cancel(_MembershipAction):
     """Cancel your (probably pending) membership to a project"""
     action = 'cancel'
 
 
-@command(membership_commands)
+@command(membership_cmds)
 class membership_accept(_MembershipAction):
     """Accept a membership for a project you manage"""
     action = 'accept'
 
 
-@command(membership_commands)
+@command(membership_cmds)
 class membership_reject(_MembershipAction):
     """Reject a membership for a project you manage"""
     action = 'reject'
 
 
-@command(membership_commands)
+@command(membership_cmds)
 class membership_remove(_MembershipAction):
     """Remove a membership for a project you manage"""
     action = 'remove'
 
 
-@command(project_commands)
+@command(project_cmds)
 class project_join(_AstakosInit):
     """Join a project"""
 
@@ -1047,7 +1046,7 @@ class project_join(_AstakosInit):
         self._run(project_id)
 
 
-@command(project_commands)
+@command(project_cmds)
 class project_enroll(_AstakosInit):
     """Enroll a user to a project"""
 

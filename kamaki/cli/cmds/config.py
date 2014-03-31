@@ -38,7 +38,7 @@ from kamaki.cli.cmdtree import CommandTree
 from kamaki.cli.errors import CLIError, CLISyntaxError
 
 config_cmds = CommandTree('config', 'Kamaki configurations')
-_commands = [config_cmds]
+namespaces = [config_cmds, ]
 
 about_options = '\nAbout options:\
     \n. syntax: [group.]option\

@@ -115,7 +115,7 @@ def command(cmd_tree, prefix='', descedants_depth=1):
         e.g., spec_cmd0_cmd1 will be command spec cmd0
 
         :param cmd_tree: is initialized in cmd_spec file and is the structure
-            where commands are loaded. Var name should be _commands
+            where commands are loaded. Var name should be "namespaces"
         :param prefix: if given, load only commands prefixed with prefix,
         :param descedants_depth: is the depth of the tree descedants of the
             prefix command. It is used ONLY if prefix and if prefix is not
@@ -366,11 +366,11 @@ def _groups_help(arguments):
     descriptions = {}
     acceptable_groups = arguments['config'].groups
     for cmd_group, spec in arguments['config'].cli_specs:
-        pkg = _load_spec_module(spec, arguments, '_commands')
+        pkg = _load_spec_module(spec, arguments, 'namespaces')
         if pkg:
-            cmds = getattr(pkg, '_commands')
+            namespaces = getattr(pkg, 'namespaces')
             try:
-                for cmd_tree in cmds:
+                for cmd_tree in namespaces:
                     if cmd_tree.name in acceptable_groups:
                         descriptions[cmd_tree.name] = cmd_tree.description
             except TypeError:
@@ -387,14 +387,14 @@ def _load_all_commands(cmd_tree, arguments):
     _cnf = arguments['config']
     for cmd_group, spec in _cnf.cli_specs:
         try:
-            spec_module = _load_spec_module(spec, arguments, '_commands')
-            spec_commands = getattr(spec_module, '_commands')
+            spec_module = _load_spec_module(spec, arguments, 'namespaces')
+            namespaces = getattr(spec_module, 'namespaces')
         except AttributeError:
             if _debug:
                 global kloger
                 kloger.warning('No valid description for %s' % cmd_group)
             continue
-        for spec_tree in spec_commands:
+        for spec_tree in namespaces:
             if spec_tree.name == cmd_group:
                 cmd_tree.add_tree(spec_tree)
                 break

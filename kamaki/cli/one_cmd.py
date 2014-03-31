@@ -71,7 +71,7 @@ def run(cloud, parser, _help):
 
     _cnf = parser.arguments['config']
     group_spec = _cnf.get('global', '%s_cli' % group)
-    spec_module = _load_spec_module(group_spec, parser.arguments, '_commands')
+    spec_module = _load_spec_module(group_spec, parser.arguments, 'namespaces')
     if spec_module is None:
         raise CLIUnknownCommand(
             'Could not find specs for %s commands' % group,
@@ -79,7 +79,7 @@ def run(cloud, parser, _help):
                 'Make sure %s is a valid command group' % group,
                 'Refer to kamaki documentation for setting custom command',
                 'groups or overide existing ones'])
-    cmd_tree = _get_cmd_tree_from_spec(group, spec_module._commands)
+    cmd_tree = _get_cmd_tree_from_spec(group, spec_module.namespaces)
 
     if _best_match:
         cmd = cmd_tree.get_command('_'.join(_best_match))
