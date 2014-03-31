@@ -173,7 +173,6 @@ class Shell(Cmd):
         tmp_args.pop('cloud', None)
         tmp_args.pop('debug', None)
         tmp_args.pop('verbose', None)
-        tmp_args.pop('silent', None)
         tmp_args.pop('config', None)
         help_parser = ArgumentParseManager(
             cmd_name, tmp_args, required,

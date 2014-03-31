@@ -36,7 +36,9 @@ from sys import argv, exit, stdout, stderr
 from os.path import basename, exists
 from inspect import getargspec
 
-from kamaki.cli.argument import ArgumentParseManager
+from kamaki.cli.argument import (
+    ArgumentParseManager, ConfigArgument, ValueArgument, FlagArgument,
+    RuntimeConfigArgument, VersionArgument, Argument)
 from kamaki.cli.history import History
 from kamaki.cli.utils import print_dict, red, magenta, yellow, pref_enc
 from kamaki.cli.errors import CLIError, CLICmdSpecError
@@ -175,12 +177,8 @@ cmd_spec_locations = [
 #  Generic init auxiliary functions
 
 
-def _setup_logging(silent=False, debug=False, verbose=False):
+def _setup_logging(debug=False, verbose=False):
     """handle logging for clients package"""
-
-    if silent:
-        logger.add_stream_logger(__name__, logging.CRITICAL)
-        return
 
     sfmt, rfmt = '> %(message)s', '< %(message)s'
     if debug:
@@ -238,8 +236,7 @@ def _init_session(arguments, is_non_API=False):
     _verbose = arguments['verbose'].value
     _cnf = arguments['config']
 
-    _silent = arguments['silent'].value
-    _setup_logging(_silent, _debug, _verbose)
+    _setup_logging(_debug, _verbose)
 
     if _help or is_non_API:
         return None
@@ -506,8 +503,22 @@ def main(func):
             for arg in reversed(internal_argv):
                 argv.insert(0, arg)
                 argv.pop()
-            parser = ArgumentParseManager(exe)
 
+            _config_arg = ConfigArgument('Path to config file')
+            parser = ArgumentParseManager(exe, arguments=dict(
+                config=_config_arg,
+                cloud=ValueArgument(
+                    'Chose a cloud to connect to', ('--cloud')),
+                help=Argument(0, 'Show help message', ('-h', '--help')),
+                debug=FlagArgument('Include debug output', ('-d', '--debug')),
+                verbose=FlagArgument(
+                    'More info at response', ('-v', '--verbose')),
+                version=VersionArgument(
+                    'Print current version', ('-V', '--version')),
+                options=RuntimeConfigArgument(
+                    _config_arg,
+                    'Override a config value', ('-o', '--options')))
+            )
             if parser.arguments['version'].value:
                 exit(0)
 
