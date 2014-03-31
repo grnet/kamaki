@@ -86,7 +86,7 @@ This is the plan:
     try:
         endpoints = dict(
             astakos=AUTH_URL,
-            cyclades=auth.get_endpoint_url(CycladesClient.service_type),
+            cyclades=auth.get_endpoint_url(CycladesComputeClient.service_type),
             network=auth.get_endpoint_url(CycladesNetworkClient.service_type),
             pithos=auth.get_endpoint_url(PithosClient.service_type),
             plankton=auth.get_endpoint_url(ImageClient.service_type)
@@ -209,7 +209,7 @@ Here is the plan:
 .. code-block:: python
 
     #  4.  Create  virtual  cluster
-    from kamaki.clients.cyclades import CycladesClient
+    from kamaki.clients.cyclades import CycladesComputeClient
 
     FLAVOR_ID = 42
     IMAGE_ID = image['id']
@@ -218,7 +218,7 @@ Here is the plan:
 
     #  4.1 Initialize a cyclades client
     try:
-        cyclades = CycladesClient(endpoints['cyclades'], AUTH_TOKEN)
+        cyclades = CycladesComputeClient(endpoints['cyclades'], AUTH_TOKEN)
     except ClientError:
         stderr.write('Failed to initialize cyclades client\n')
         raise
@@ -640,7 +640,7 @@ logging more. We also added some command line interaction candy.
                 #  Astakos implements identity and account APIs - The endpoint
                 #  URL is the same for both services
                 astakos=auth.get_endpoint_url('identity'),
-                cyclades=auth.get_endpoint_url(CycladesClient.service_type),
+                cyclades=auth.get_endpoint_url(CycladesComputeClient.service_type),
                 network=auth.get_endpoint_url(CycladesNetworkClient.service_type),
                 pithos=auth.get_endpoint_url(PithosClient.service_type),
                 plankton=auth.get_endpoint_url(ImageClient.service_type)
@@ -743,11 +743,11 @@ logging more. We also added some command line interaction candy.
     #  Compute / Cyclades
 
     def init_cyclades(endpoint, token):
-        from kamaki.clients.cyclades import CycladesClient
+        from kamaki.clients.cyclades import CycladesComputeClient
 
         print(' Initialize a cyclades client')
         try:
-            return CycladesClient(endpoint, token)
+            return CycladesComputeClient(endpoint, token)
         except ClientError:
             log.debug('Failed to initialize cyclades client')
             raise

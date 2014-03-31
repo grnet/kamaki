@@ -40,9 +40,8 @@ from pydoc import pager
 from kamaki.cli import command
 from kamaki.cli.cmdtree import CommandTree
 from kamaki.cli.utils import remove_from_items, filter_dicts_by_dict
-from kamaki.cli.errors import (
-    raiseCLIError, CLISyntaxError, CLIBaseUrlError, CLIInvalidArgument)
-from kamaki.clients.cyclades import CycladesClient
+from kamaki.cli.errors import raiseCLIError, CLISyntaxError, CLIInvalidArgument
+from kamaki.clients.cyclades import CycladesComputeClient
 from kamaki.cli.argument import (
     FlagArgument, ValueArgument, KeyValueArgument, RepeatableArgument,
     DateArgument, IntArgument, StatusArgument)
@@ -86,7 +85,7 @@ class _CycladesInit(CommandInit):
     @errors.Generic.all
     @addLogSettings
     def _run(self):
-        self.client = self.get_client(CycladesClient, 'cyclades')
+        self.client = self.get_client(CycladesComputeClient, 'cyclades')
 
     @dataModification
     def _restruct_server_info(self, vm):

@@ -1,4 +1,4 @@
-# Copyright 2011-2013 GRNET S.A. All rights reserved.
+# Copyright 2011-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -31,14 +31,13 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from kamaki.clients.cyclades.rest_api import CycladesRestClient
+from kamaki.clients.cyclades.rest_api import CycladesComputeRestClient
 from kamaki.clients.network import NetworkClient
 from kamaki.clients.utils import path4url
 from kamaki.clients import ClientError, Waiter
-import json
 
 
-class CycladesClient(CycladesRestClient, Waiter):
+class CycladesComputeClient(CycladesComputeRestClient, Waiter):
     """Synnefo Cyclades Compute API client"""
 
     def create_server(
@@ -79,7 +78,7 @@ class CycladesClient(CycladesRestClient, Waiter):
             except KeyError:
                 pass
 
-        return super(CycladesClient, self).create_server(
+        return super(CycladesComputeClient, self).create_server(
             name, flavor_id, image_id,
             metadata=metadata, personality=personality, networks=networks,
             project=project)
@@ -176,6 +175,10 @@ class CycladesClient(CycladesRestClient, Waiter):
 
         return self._wait(
             server_id, current_status, get_status, delay, max_wait, wait_cb)
+
+
+# Backwards compatibility
+CycladesClient = CycladesComputeClient
 
 
 class CycladesNetworkClient(NetworkClient):

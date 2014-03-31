@@ -36,10 +36,9 @@ from pydoc import pager
 
 from kamaki.cli import command
 from kamaki.cli.cmdtree import CommandTree
-from kamaki.cli.errors import (
-    CLIBaseUrlError, CLIInvalidArgument, raiseCLIError)
+from kamaki.cli.errors import CLIInvalidArgument, raiseCLIError
 from kamaki.clients.cyclades import (
-    CycladesNetworkClient, ClientError, CycladesClient)
+    CycladesNetworkClient, ClientError, CycladesComputeClient)
 from kamaki.cli.argument import (
     FlagArgument, ValueArgument, RepeatableArgument, IntArgument,
     StatusArgument)
@@ -766,7 +765,7 @@ class network_disconnect(_NetworkInit, _PortWait, OptionalOutput):
     """Disconnect a network from a device"""
 
     def _cyclades_client(self):
-        return self.get_client(CycladesClient, 'cyclades')
+        return self.get_client(CycladesComputeClient, 'cyclades')
 
     arguments = dict(
         wait=FlagArgument('Wait network to disconnect', ('-w', '--wait')),
