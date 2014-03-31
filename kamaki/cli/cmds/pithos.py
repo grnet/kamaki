@@ -61,7 +61,7 @@ group_cmds = CommandTree('group', 'Pithos+/Storage user groups')
 _commands = [file_cmds, container_cmds, sharer_cmds, group_cmds]
 
 
-class _pithos_init(CommandInit):
+class _PithosInit(CommandInit):
     """Initilize a pithos+ client
     There is always a default account (current user uuid)
     There is always a default container (pithos)
@@ -99,11 +99,11 @@ class _pithos_init(CommandInit):
         self._run()
 
 
-class _pithos_account(_pithos_init):
+class _PithosAccount(_PithosInit):
     """Setup account"""
 
     def __init__(self, arguments={}, auth_base=None, cloud=None):
-        super(_pithos_account, self).__init__(arguments, auth_base, cloud)
+        super(_PithosAccount, self).__init__(arguments, auth_base, cloud)
         self['account'] = UserAccountArgument(
             'A user UUID or name', ('-A', '--account'))
         self.arguments['account'].account_client = auth_base
@@ -137,16 +137,16 @@ class _pithos_account(_pithos_init):
             'content_type', remote_dict.get('content-type', ''))
 
     def _run(self):
-        super(_pithos_account, self)._run()
+        super(_PithosAccount, self)._run()
         self.client.account = self['account'] or getattr(
             self, 'account', getattr(self.client, 'account', None))
 
 
-class _pithos_container(_pithos_account):
+class _PithosContainer(_PithosAccount):
     """Setup container"""
 
     def __init__(self, arguments={}, auth_base=None, cloud=None):
-        super(_pithos_container, self).__init__(arguments, auth_base, cloud)
+        super(_PithosContainer, self).__init__(arguments, auth_base, cloud)
         self['container'] = ValueArgument(
             'Use this container (default: pithos)', ('-C', '--container'))
 
@@ -168,7 +168,7 @@ class _pithos_container(_pithos_account):
     def _run(self, url=None):
         acc, con, self.path = self._resolve_pithos_url(url or '')
         #  self.account = acc or getattr(self, 'account', '')
-        super(_pithos_container, self)._run()
+        super(_PithosContainer, self)._run()
         self.container = con or self['container'] or getattr(
             self, 'container', None) or getattr(self.client, 'container', '')
         self.client.account = acc or self.client.account
@@ -176,7 +176,7 @@ class _pithos_container(_pithos_account):
 
 
 @command(file_cmds)
-class file_info(_pithos_container, OptionalOutput):
+class file_info(_PithosContainer, OptionalOutput):
     """Get information/details about a file"""
 
     arguments = dict(
@@ -241,7 +241,7 @@ class file_info(_pithos_container, OptionalOutput):
 
 
 @command(file_cmds)
-class file_list(_pithos_container, OptionalOutput, NameFilter):
+class file_list(_PithosContainer, OptionalOutput, NameFilter):
     """List all objects in a container or a directory object"""
 
     arguments = dict(
@@ -322,7 +322,7 @@ class file_list(_pithos_container, OptionalOutput, NameFilter):
 
 
 @command(file_cmds)
-class file_modify(_pithos_container):
+class file_modify(_PithosContainer):
     """Modify the attributes of a file or directory object"""
 
     arguments = dict(
@@ -383,7 +383,7 @@ class file_modify(_pithos_container):
 
 
 @command(file_cmds)
-class file_publish(_pithos_container):
+class file_publish(_PithosContainer):
     """Publish an object (creates a public URL)"""
 
     @errors.Generic.all
@@ -399,7 +399,7 @@ class file_publish(_pithos_container):
 
 
 @command(file_cmds)
-class file_unpublish(_pithos_container):
+class file_unpublish(_PithosContainer):
     """Unpublish an object"""
 
     @errors.Generic.all
@@ -422,7 +422,7 @@ def _assert_path(self, path_or_url):
 
 
 @command(file_cmds)
-class file_create(_pithos_container):
+class file_create(_PithosContainer):
     """Create an empty file"""
 
     arguments = dict(
@@ -445,7 +445,7 @@ class file_create(_pithos_container):
 
 
 @command(file_cmds)
-class file_mkdir(_pithos_container):
+class file_mkdir(_PithosContainer):
     """Create a directory: /file create --content-type='application/directory'
     """
 
@@ -462,7 +462,7 @@ class file_mkdir(_pithos_container):
 
 
 @command(file_cmds)
-class file_delete(_pithos_container):
+class file_delete(_PithosContainer):
     """Delete a file or directory object"""
 
     arguments = dict(
@@ -500,7 +500,7 @@ class file_delete(_pithos_container):
         self._run()
 
 
-class _source_destination(_pithos_container):
+class _PithosFromTo(_PithosContainer):
 
     sd_arguments = dict(
         destination_user=UserAccountArgument(
@@ -521,7 +521,7 @@ class _source_destination(_pithos_container):
     def __init__(self, arguments={}, auth_base=None, cloud=None):
         self.arguments.update(arguments)
         self.arguments.update(self.sd_arguments)
-        super(_source_destination, self).__init__(
+        super(_PithosFromTo, self).__init__(
             self.arguments, auth_base, cloud)
         self.arguments['destination_user'].account_client = self.auth_base
 
@@ -645,7 +645,7 @@ class _source_destination(_pithos_container):
         return pairs
 
     def _run(self, source_path_or_url, destination_path_or_url=''):
-        super(_source_destination, self)._run(source_path_or_url)
+        super(_PithosFromTo, self)._run(source_path_or_url)
         dst_acc, dst_con, dst_path = self._resolve_pithos_url(
             destination_path_or_url)
         self.dst_client = PithosClient(
@@ -657,7 +657,7 @@ class _source_destination(_pithos_container):
 
 
 @command(file_cmds)
-class file_copy(_source_destination):
+class file_copy(_PithosFromTo):
     """Copy objects, even between different accounts or containers"""
 
     arguments = dict(
@@ -695,7 +695,7 @@ class file_copy(_source_destination):
 
 
 @command(file_cmds)
-class file_move(_source_destination):
+class file_move(_PithosFromTo):
     """Move objects, even between different accounts or containers"""
 
     arguments = dict(
@@ -732,7 +732,7 @@ class file_move(_source_destination):
 
 
 @command(file_cmds)
-class file_append(_pithos_container):
+class file_append(_PithosContainer):
     """Append local file to (existing) remote object
     The remote object should exist.
     If the remote object is a directory, it is transformed into a file.
@@ -766,7 +766,7 @@ class file_append(_pithos_container):
 
 
 @command(file_cmds)
-class file_truncate(_pithos_container):
+class file_truncate(_PithosContainer):
     """Truncate remote file up to size"""
 
     arguments = dict(
@@ -788,7 +788,7 @@ class file_truncate(_pithos_container):
 
 
 @command(file_cmds)
-class file_overwrite(_pithos_container):
+class file_overwrite(_PithosContainer):
     """Overwrite part of a remote file"""
 
     arguments = dict(
@@ -832,7 +832,7 @@ class file_overwrite(_pithos_container):
 
 
 @command(file_cmds)
-class file_upload(_pithos_container):
+class file_upload(_PithosContainer):
     """Upload a file
 
     The default destination is /pithos/NAME
@@ -1059,7 +1059,7 @@ class RangeArgument(ValueArgument):
 
 
 @command(file_cmds)
-class file_cat(_pithos_container):
+class file_cat(_PithosContainer):
     """Fetch remote file contents"""
 
     arguments = dict(
@@ -1096,7 +1096,7 @@ class file_cat(_pithos_container):
 
 
 @command(file_cmds)
-class file_download(_pithos_container):
+class file_download(_PithosContainer):
     """Download a remove file or directory object to local file system"""
 
     arguments = dict(
@@ -1315,7 +1315,7 @@ class file_download(_pithos_container):
 
 
 @command(container_cmds)
-class container_info(_pithos_account, OptionalOutput):
+class container_info(_PithosAccount, OptionalOutput):
     """Get information about a container"""
 
     arguments = dict(
@@ -1371,7 +1371,7 @@ class VersioningArgument(ValueArgument):
 
 
 @command(container_cmds)
-class container_modify(_pithos_account, OptionalOutput):
+class container_modify(_PithosAccount, OptionalOutput):
     """Modify the properties of a container"""
 
     arguments = dict(
@@ -1418,7 +1418,7 @@ class container_modify(_pithos_account, OptionalOutput):
 
 
 @command(container_cmds)
-class container_list(_pithos_account, OptionalOutput, NameFilter):
+class container_list(_PithosAccount, OptionalOutput, NameFilter):
     """List all containers, or their contents"""
 
     arguments = dict(
@@ -1528,7 +1528,7 @@ class container_list(_pithos_account, OptionalOutput, NameFilter):
 
 
 @command(container_cmds)
-class container_create(_pithos_account):
+class container_create(_PithosAccount):
     """Create a new container"""
 
     arguments = dict(
@@ -1566,7 +1566,7 @@ class container_create(_pithos_account):
 
 
 @command(container_cmds)
-class container_delete(_pithos_account):
+class container_delete(_PithosAccount):
     """Delete a container"""
 
     arguments = dict(
@@ -1600,7 +1600,7 @@ class container_delete(_pithos_account):
 
 
 @command(container_cmds)
-class container_empty(_pithos_account):
+class container_empty(_PithosAccount):
     """Empty a container"""
 
     arguments = dict(yes=FlagArgument('Do not prompt for permission', '--yes'))
@@ -1619,7 +1619,7 @@ class container_empty(_pithos_account):
 
 
 @command(container_cmds)
-class container_reassign(_pithos_account):
+class container_reassign(_PithosAccount):
     """Assign a container to a different project"""
 
     arguments = dict(
@@ -1642,7 +1642,7 @@ class container_reassign(_pithos_account):
 
 
 @command(sharer_cmds)
-class sharer_list(_pithos_account, OptionalOutput):
+class sharer_list(_PithosAccount, OptionalOutput):
     """List accounts who share file objects with current user"""
 
     arguments = dict(
@@ -1670,7 +1670,7 @@ class sharer_list(_pithos_account, OptionalOutput):
 
 
 @command(sharer_cmds)
-class sharer_info(_pithos_account, OptionalOutput):
+class sharer_info(_PithosAccount, OptionalOutput):
     """Details on a Pithos+ sharer account (default: current account)"""
 
     @errors.Generic.all
@@ -1688,7 +1688,7 @@ class sharer_info(_pithos_account, OptionalOutput):
         self._run()
 
 
-class _pithos_group(_pithos_account):
+class _PithosGroup(_PithosAccount):
     prefix = 'x-account-group-'
     preflen = len(prefix)
 
@@ -1700,7 +1700,7 @@ class _pithos_group(_pithos_account):
 
 
 @command(group_cmds)
-class group_list(_pithos_group, OptionalOutput):
+class group_list(_PithosGroup, OptionalOutput):
     """list all groups and group members"""
 
     @errors.Generic.all
@@ -1714,7 +1714,7 @@ class group_list(_pithos_group, OptionalOutput):
 
 
 @command(group_cmds)
-class group_create(_pithos_group, OptionalOutput):
+class group_create(_PithosGroup, OptionalOutput):
     """Create a group of users"""
 
     arguments = dict(
@@ -1750,7 +1750,7 @@ class group_create(_pithos_group, OptionalOutput):
 
 
 @command(group_cmds)
-class group_delete(_pithos_group, OptionalOutput):
+class group_delete(_PithosGroup, OptionalOutput):
     """Delete a user group"""
 
     @errors.Generic.all

@@ -375,7 +375,7 @@ class PithosLocationArgument(ValueArgument):
     @value.setter
     def value(self, location):
         if location:
-            from kamaki.cli.cmds.pithos import _pithos_container as pc
+            from kamaki.cli.cmds.pithos import _PithosContainer as pc
             try:
                 uuid, self.container, self.path = pc._resolve_pithos_url(
                     location)
