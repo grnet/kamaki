@@ -389,8 +389,11 @@ def ask_user(msg, true_resp=('y', ), **kwargs):
 
     :returns: (bool) True if reponse in true responses, False otherwise
     """
-    yep = ', '.join(true_resp)
-    nope = '<not %s>' % yep if 'n' in true_resp or 'N' in true_resp else 'N'
+    yep = u', '.join(true_resp)
+    nope = u'<not %s>' % yep if 'n' in true_resp or 'N' in true_resp else 'N'
+    msg = msg.encode(pref_enc, errors='replace')
+    yep = yep.encode(pref_enc, errors='replace')
+    nope = nope.encode(pref_enc, errors='replace')
     user_response = raw_input('%s [%s/%s]: ' % (msg, yep, nope))
     return user_response[0].lower() in [s.lower() for s in true_resp]
 

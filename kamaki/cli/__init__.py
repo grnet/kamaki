@@ -432,7 +432,7 @@ def update_parser_help(parser, cmd):
 
 
 def print_error_message(cli_err, out=stderr):
-    errmsg = '%s' % cli_err
+    errmsg = u'%s' % cli_err
     if cli_err.importance == 1:
         errmsg = magenta(errmsg)
     elif cli_err.importance == 2:
@@ -441,7 +441,7 @@ def print_error_message(cli_err, out=stderr):
         errmsg = red(errmsg)
     out.write(errmsg)
     for errmsg in cli_err.details:
-        out.write('|  %s\n' % errmsg)
+        out.write(u'|  %s\n' % errmsg)
         out.flush()
 
 

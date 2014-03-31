@@ -1,5 +1,4 @@
-# Copyright 2011-2014 GRNET S.A. All rights reserved.
-#
+# Copyright 2011-2014 GRNET S.A. All rights reserved. #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
 # conditions are met:
@@ -61,9 +60,7 @@ def _encode(v):
 class ClientError(Exception):
     def __init__(self, message, status=0, details=None):
         log.debug('ClientError: msg[%s], sts[%s], dtl[%s]' % (
-            message,
-            status,
-            details))
+            message, status, details))
         try:
             message += '' if message and message[-1] == '\n' else '\n'
             serv_stat, sep, new_msg = message.partition('{')

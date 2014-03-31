@@ -35,7 +35,7 @@ from traceback import print_stack, print_exc
 from astakosclient import AstakosClientException
 
 from kamaki.clients import ClientError
-from kamaki.cli.errors import CLIError, raiseCLIError, CLISyntaxError
+from kamaki.cli.errors import CLIError, CLISyntaxError
 from kamaki.cli import _debug, kloger
 from kamaki.cli.utils import format_size
 
@@ -53,9 +53,18 @@ class generic(object):
                 if _debug:
                     print_stack()
                     print_exc(e)
-                if isinstance(e, CLIError) or isinstance(e, ClientError):
-                    raiseCLIError(e)
-                raiseCLIError(e, details=['%s, -d for debug info' % type(e)])
+                if isinstance(e, CLIError):
+                    raise e
+                elif isinstance(e, ClientError):
+                    raise CLIError(
+                        u'(%s) %s' % (getattr(e, 'status', 'no status'), e),
+                        details=getattr(e, 'details', []),
+                        importance=1 if (
+                            e.status < 200) else 2 if (
+                            e.status < 300) else 3 if (
+                            e.status < 400) else 4)
+                raise CLIError(
+                    '%s' % e, details=['%s, -d for debug info' % type(e)])
         return _raise
 
     @classmethod
@@ -66,7 +75,7 @@ class generic(object):
             except ClientError as ce:
                 ce_msg = ('%s' % ce).lower()
                 if ce.status == 401:
-                    raiseCLIError(ce, 'Authorization failed', details=[
+                    raise CLIError('Authorization failed', details=[
                         'Make sure a valid token is provided:',
                         '  # to check if token is valid',
                         '  $ kamaki user authenticate',
@@ -74,17 +83,17 @@ class generic(object):
                         '  $ kamaki config set cloud.default.token <token>',
                         '  # to get current token:',
                         '  $ kamaki config get cloud.default.token',
+                        '%s' % ce,
                     ] + CLOUDNAME)
                 elif ce.status in range(-12, 200) + [302, 401, 500]:
-                    raiseCLIError(ce, importance=3, details=[
-                        'Check if service is up'])
+                    raise CLIError('%s' % ce, importance=3)
                 elif ce.status == 404 and 'kamakihttpresponse' in ce_msg:
                     client = getattr(self, 'client', None)
                     if not client:
                         raise
                     url = getattr(client, 'base_url', '<empty>')
-                    msg = 'Invalid service URL %s' % url
-                    raiseCLIError(ce, msg, details=[
+                    raise CLIError('Invalid service URL %s' % url, details=[
+                        '%s' % ce,
                         'Check if authentication URL is correct',
                         '  # check current URL',
                         '  $ kamaki config get cloud.default.url',
@@ -108,7 +117,8 @@ class user(object):
             try:
                 r = func(self, *args, **kwargs)
             except AstakosClientException as ace:
-                raiseCLIError(ace, 'Error in synnefo-AstakosClient')
+                raise CLIError(
+                    'Error in AstakosClient', details=['%s' % ace, ])
             return r
         return _raise
 
@@ -119,7 +129,8 @@ class user(object):
             try:
                 client = getattr(self, 'client')
             except AttributeError as ae:
-                raiseCLIError(ae, 'Client setup failure', importance=3)
+                raise CLIError('Client setup failure', importance=3, details=[
+                    '%s' % ae])
             if not getattr(client, 'token', False):
                 kloger.warning(
                     'No permanent token (try:'
@@ -146,7 +157,7 @@ class user(object):
                     msg = ('Authorization failed for token %s' % token) if (
                         token) else 'No token provided',
                     details = [] if token else this._token_details
-                    raiseCLIError(ce, msg, details=details)
+                    raise CLIError(msg, details=details + ['%s' % ce, ])
                 raise ce
             self._raise = func
         return _raise
@@ -221,11 +232,12 @@ class cyclades(object):
                 return func(self, *args, **kwargs)
             except ValueError as ve:
                 msg = 'Invalid cluster size value %s' % size
-                raiseCLIError(ve, msg, importance=1, details=[
-                    'Cluster size must be a positive integer'])
+                raise CLIError(msg, importance=1, details=[
+                    'Cluster size must be a positive integer', '%s' % ve])
             except AssertionError as ae:
-                raiseCLIError(
-                    ae, 'Invalid cluster size %s' % size, importance=1)
+                raise CLIError(
+                    'Invalid cluster size %s' % size, importance=1, details=[
+                    '%s' % ae])
             except ClientError:
                 raise
         return _raise
@@ -238,15 +250,18 @@ class cyclades(object):
                 network_id = int(network_id)
                 return func(self, *args, **kwargs)
             except ValueError as ve:
-                msg = 'Invalid network id %s ' % network_id
-                details = 'network id must be a positive integer'
-                raiseCLIError(ve, msg, details=details, importance=1)
+                raise CLIError(
+                    'Invalid network id %s ' % network_id,
+                    details=[
+                        'network id must be a positive integer', '%s' % ve],
+                    importance=1)
             except ClientError as ce:
                 if network_id and ce.status == 404 and (
                     'network' in ('%s' % ce).lower()
                 ):
-                    msg = 'No network with id %s found' % network_id,
-                    raiseCLIError(ce, msg, details=this.about_network_id)
+                    raise CLIError(
+                        'No network with id %s found' % network_id,
+                        details=this.about_network_id + ['%s' % ce])
                 raise
         return _raise
 
@@ -268,15 +283,18 @@ class cyclades(object):
                 flavor_id = int(flavor_id)
                 return func(self, *args, **kwargs)
             except ValueError as ve:
-                msg = 'Invalid flavor id %s ' % flavor_id,
-                details = 'Flavor id must be a positive integer'
-                raiseCLIError(ve, msg, details=details, importance=1)
+                raise CLIError(
+                    'Invalid flavor id %s ' % flavor_id,
+                    details=[
+                        'Flavor id must be a positive integer', '%s' % ve],
+                    importance=1)
             except ClientError as ce:
                 if flavor_id and ce.status == 404 and (
                     'flavor' in ('%s' % ce).lower()
                 ):
-                        msg = 'No flavor with id %s found' % flavor_id,
-                        raiseCLIError(ce, msg, details=this.about_flavor_id)
+                    raise CLIError(
+                        'No flavor with id %s found' % flavor_id,
+                        details=this.about_flavor_id + ['%s' % ce, ])
                 raise
         return _raise
 
@@ -288,9 +306,11 @@ class cyclades(object):
                 server_id = int(server_id)
                 return func(self, *args, **kwargs)
             except ValueError as ve:
-                msg = 'Invalid virtual server id %s' % server_id,
-                details = 'Server id must be a positive integer'
-                raiseCLIError(ve, msg, details=details, importance=1)
+                raise CLIError(
+                    'Invalid virtual server id %s' % server_id,
+                    details=[
+                        'Server id must be a positive integer', '%s' % ve],
+                    importance=1)
             except ClientError as ce:
                 err_msg = ('%s' % ce).lower()
                 if (
@@ -298,12 +318,14 @@ class cyclades(object):
                 ) or (
                     ce.status == 400 and 'not found' in err_msg
                 ):
-                    msg = 'virtual server with id %s not found' % server_id,
-                    raiseCLIError(ce, msg, details=[
+                    raise CLIError(
+                        'virtual server with id %s not found' % server_id,
+                        details=[
                         '# to get ids of all servers',
                         '$ kamaki server list',
                         '# to get server details',
-                        '$ kamaki server info <server id>'])
+                        '$ kamaki server info <server id>',
+                        '%s' % ce])
                 raise
         return _raise
 
@@ -317,12 +339,14 @@ class cyclades(object):
                 if ce.status == 400 and profile and (
                     'firewall' in ('%s' % ce).lower()
                 ):
-                    msg = '%s is an invalid firewall profile term' % profile
-                    raiseCLIError(ce, msg, details=[
+                    raise CLIError(
+                        '%s is an invalid firewall profile term' % profile,
+                        details=[
                         'Try one of the following:',
                         '* DISABLED: Shutdown firewall',
                         '* ENABLED: Firewall in normal mode',
-                        '* PROTECTED: Firewall in secure mode'])
+                        '* PROTECTED: Firewall in secure mode',
+                        '%s' % ce])
                 raise
         return _raise
 
@@ -340,12 +364,13 @@ class cyclades(object):
                     err_msg = 'No nic %s on virtual server with id %s' % (
                         nic_id,
                         server_id)
-                    raiseCLIError(ce, err_msg, details=[
+                    raise CLIError(err_msg, details=[
                         '* check v. server with id %s: /server info %s' % (
                             server_id,
                             server_id),
                         '* list nics for v. server with id %s:' % server_id,
-                        '      /server addr %s' % server_id])
+                        '      /server addr %s' % server_id,
+                        '%s' % ce])
                 raise
         return _raise
 
@@ -359,8 +384,9 @@ class cyclades(object):
                 if key and ce.status == 404 and (
                     'metadata' in ('%s' % ce).lower()
                 ):
-                        raiseCLIError(
-                            ce, 'No virtual server metadata with key %s' % key)
+                        raise CLIError(
+                            'No virtual server metadata with key %s' % key,
+                            details=['%s' % ce, ])
                 raise
         return _raise
 
@@ -389,8 +415,9 @@ class plankton(object):
             except ClientError as ce:
                 if image_id or (ce.status in (404, 400) and (
                         'image not found' in ('%s' % ce).lower())):
-                    msg = 'No image with id %s found' % image_id
-                    raiseCLIError(ce, msg, details=this.about_image_id)
+                    raise CLIError(
+                        'No image with id %s found' % image_id,
+                        details=this.about_image_id + ['%s' % ce])
                 raise
         return _raise
 
@@ -404,8 +431,9 @@ class plankton(object):
                 ce_msg = ('%s' % ce).lower()
                 if ce.status == 404 or (
                         ce.status == 400 and 'metadata' in ce_msg):
-                    msg = 'No properties with key %s in this image' % key
-                    raiseCLIError(ce, msg)
+                    raise CLIError(
+                        'No properties with key %s in this image' % key,
+                        details=['%s' % ce, ])
                 raise
         return _raise
 
@@ -434,10 +462,9 @@ class pithos(object):
                 return func(self, *args, **kwargs)
             except ClientError as ce:
                 if ce.status == 403:
-                    raiseCLIError(
-                        ce,
+                    raise CLIError(
                         'Invalid account credentials for this operation',
-                        details=['Check user account settings'])
+                        details=['Check user account settings', '%s' % ce])
                 raise
         return _raise
 
@@ -448,13 +475,14 @@ class pithos(object):
                 return func(self, *args, **kwargs)
             except ClientError as ce:
                 if ce.status == 413:
-                    raiseCLIError(ce, 'User quota exceeded', details=[
+                    raise CLIError('User quota exceeded', details=[
                         '* get quotas:',
                         '  * upper total limit:      /file quota',
                         '  * container limit:',
                         '    /file containerlimit get <container>',
                         '* set a higher container limit:',
-                        '    /file containerlimit set <limit> <container>'])
+                        '    /file containerlimit set <limit> <container>',
+                        '%s' % ce])
                 raise
         return _raise
 
@@ -469,8 +497,9 @@ class pithos(object):
                         cont = ('%s or %s' % (
                             self.container,
                             dst_cont)) if dst_cont else self.container
-                        msg = 'Container "%s" does not exist' % cont,
-                        raiseCLIError(ce, msg, details=this.container_howto)
+                        raise CLIError(
+                            'Container "%s" does not exist' % cont,
+                            details=this.container_howto + ['%s' % ce])
                 raise
         return _raise
 
@@ -480,14 +509,15 @@ class pithos(object):
             try:
                 return func(self, *args, **kwargs)
             except IOError as ioe:
-                msg = 'Failed to access a local file',
-                raiseCLIError(ioe, msg, importance=2, details=[
+                raise CLIError(
+                    'Failed to access a local file', importance=2, details=[
                     'Check if the file exists. Also check if the remote',
                     'directories exist. All directories in a remote path',
                     'must exist to succesfully download a container or a',
                     'directory.',
                     'To create a remote directory:',
-                    '  [kamaki] file mkdir REMOTE_DIRECTORY_PATH'])
+                    '  [kamaki] file mkdir REMOTE_DIRECTORY_PATH',
+                    '%s' % ioe])
         return _raise
 
     @classmethod
@@ -497,8 +527,9 @@ class pithos(object):
             try:
                 return func(self, *args, **kwargs)
             except IOError as ioe:
-                msg = 'Failed to access file %s' % local_path,
-                raiseCLIError(ioe, msg, importance=2)
+                raise CLIError(
+                    'Failed to access file %s' % local_path,
+                    details=['%s' % ioe, ], importance=2)
         return _raise
 
     @classmethod
@@ -511,10 +542,10 @@ class pithos(object):
                 if (
                     ce.status == 404 or ce.status == 500
                 ) and 'object' in err_msg and 'not' in err_msg:
-                    msg = 'No object %s in container %s' % (
-                        self.path,
-                        self.container)
-                    raiseCLIError(ce, msg, details=this.container_howto)
+                    raise CLIError(
+                        'No object %s in container %s' % (
+                            self.path, self.container),
+                        details=this.container_howto + ['%s' % ce, ])
                 raise
         return _raise
 
@@ -528,24 +559,27 @@ class pithos(object):
                 try:
                     size = int(size)
                 except ValueError as ve:
-                    msg = 'Invalid file size %s ' % size
-                    details = ['size must be a positive integer']
-                    raiseCLIError(ve, msg, details=details, importance=1)
+                    raise CLIError(
+                        'Invalid file size %s ' % size,
+                        details=['size must be a positive integer', '%s' % ve],
+                        importance=1)
             else:
                 try:
                     start = int(start)
                 except ValueError as e:
-                    msg = 'Invalid start value %s in range' % start,
-                    details = ['size must be a positive integer'],
-                    raiseCLIError(e, msg, details=details, importance=1)
+                    raise CLIError(
+                        'Invalid start value %s in range' % start,
+                        details=['size must be a positive integer', '%s' % e],
+                        importance=1)
                 try:
                     end = int(end)
                 except ValueError as e:
-                    msg = 'Invalid end value %s in range' % end
-                    details = ['size must be a positive integer']
-                    raiseCLIError(e, msg, details=details, importance=1)
+                    raise CLIError(
+                        'Invalid end value %s in range' % end,
+                        details=['size must be a positive integer', '%s' % e],
+                        importance=1)
                 if start > end:
-                    raiseCLIError(
+                    raise CLIError(
                         'Invalid range %s-%s' % (start, end),
                         details=['size must be a positive integer'],
                         importance=1)
@@ -558,8 +592,10 @@ class pithos(object):
                 if size and (
                     ce.status == 416 or (
                         ce.status == 400 and expected in err_msg)):
-                    raiseCLIError(ce, 'Remote object %s:%s <= %s %s' % (
-                        self.container, self.path, format_size(size),
-                        ('(%sB)' % size) if size >= 1024 else ''))
+                    raise CLIError(
+                        'Remote object %s:%s <= %s %s' % (
+                            self.container, self.path, format_size(size),
+                            ('(%sB)' % size) if size >= 1024 else ''),
+                        details=['%s' % ce])
                 raise
         return _raise
