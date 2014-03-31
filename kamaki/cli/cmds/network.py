@@ -63,15 +63,15 @@ about_authentication = '\nUser Authentication:\
 port_states = ('BUILD', 'ACTIVE', 'DOWN', 'ERROR')
 
 
-class _port_wait(Wait):
+class _PortWait(Wait):
 
     def _wait(self, port_id, current_status, timeout=60):
-        super(_port_wait, self)._wait(
+        super(_PortWait, self)._wait(
             'Port', port_id, self.client.wait_port, current_status,
             timeout=timeout)
 
 
-class _init_network(CommandInit):
+class _NetworkInit(CommandInit):
     @errors.Generic.all
     @addLogSettings
     def _run(self):
@@ -86,7 +86,7 @@ class _init_network(CommandInit):
 
 
 @command(network_cmds)
-class network_list(_init_network, OptionalOutput, NameFilter, IDFilter):
+class network_list(_NetworkInit, OptionalOutput, NameFilter, IDFilter):
     """List networks
     Use filtering arguments (e.g., --name-like) to manage long server lists
     """
@@ -129,7 +129,7 @@ class network_list(_init_network, OptionalOutput, NameFilter, IDFilter):
 
 
 @command(network_cmds)
-class network_info(_init_network, OptionalOutput):
+class network_info(_NetworkInit, OptionalOutput):
     """Get details about a network"""
 
     @errors.Generic.all
@@ -163,7 +163,7 @@ class NetworkTypeArgument(ValueArgument):
 
 
 @command(network_cmds)
-class network_create(_init_network, OptionalOutput):
+class network_create(_NetworkInit, OptionalOutput):
     """Create a new network (default type: MAC_FILTERED)"""
 
     arguments = dict(
@@ -193,7 +193,7 @@ class network_create(_init_network, OptionalOutput):
 
 
 @command(network_cmds)
-class network_reassign(_init_network, OptionalOutput):
+class network_reassign(_NetworkInit, OptionalOutput):
     """Assign a network to a different project"""
 
     arguments = dict(
@@ -213,7 +213,7 @@ class network_reassign(_init_network, OptionalOutput):
 
 
 @command(network_cmds)
-class network_delete(_init_network):
+class network_delete(_NetworkInit):
     """Delete a network"""
 
     @errors.Generic.all
@@ -228,7 +228,7 @@ class network_delete(_init_network):
 
 
 @command(network_cmds)
-class network_modify(_init_network, OptionalOutput):
+class network_modify(_NetworkInit, OptionalOutput):
     """Modify network attributes"""
 
     arguments = dict(new_name=ValueArgument('Rename the network', '--name'))
@@ -247,7 +247,7 @@ class network_modify(_init_network, OptionalOutput):
 
 
 @command(subnet_cmds)
-class subnet_list(_init_network, OptionalOutput, NameFilter, IDFilter):
+class subnet_list(_NetworkInit, OptionalOutput, NameFilter, IDFilter):
     """List subnets
     Use filtering arguments (e.g., --name-like) to manage long server lists
     """
@@ -286,7 +286,7 @@ class subnet_list(_init_network, OptionalOutput, NameFilter, IDFilter):
 
 
 @command(subnet_cmds)
-class subnet_info(_init_network, OptionalOutput):
+class subnet_info(_NetworkInit, OptionalOutput):
     """Get details about a subnet"""
 
     @errors.Generic.all
@@ -323,7 +323,7 @@ class AllocationPoolArgument(RepeatableArgument):
 
 
 @command(subnet_cmds)
-class subnet_create(_init_network, OptionalOutput):
+class subnet_create(_NetworkInit, OptionalOutput):
     """Create a new subnet"""
 
     arguments = dict(
@@ -357,7 +357,7 @@ class subnet_create(_init_network, OptionalOutput):
 
 
 @command(subnet_cmds)
-class subnet_modify(_init_network, OptionalOutput):
+class subnet_modify(_NetworkInit, OptionalOutput):
     """Modify the attributes of a subnet"""
 
     arguments = dict(
@@ -377,7 +377,7 @@ class subnet_modify(_init_network, OptionalOutput):
 
 
 @command(port_cmds)
-class port_list(_init_network, OptionalOutput, NameFilter, IDFilter):
+class port_list(_NetworkInit, OptionalOutput, NameFilter, IDFilter):
     """List all ports"""
 
     arguments = dict(
@@ -414,7 +414,7 @@ class port_list(_init_network, OptionalOutput, NameFilter, IDFilter):
 
 
 @command(port_cmds)
-class port_info(_init_network, OptionalOutput):
+class port_info(_NetworkInit, OptionalOutput):
     """Get details about a port"""
 
     @errors.Generic.all
@@ -429,7 +429,7 @@ class port_info(_init_network, OptionalOutput):
 
 
 @command(port_cmds)
-class port_delete(_init_network, _port_wait):
+class port_delete(_NetworkInit, _PortWait):
     """Delete a port (== disconnect server from network)"""
 
     arguments = dict(
@@ -456,7 +456,7 @@ class port_delete(_init_network, _port_wait):
 
 
 @command(port_cmds)
-class port_modify(_init_network, OptionalOutput):
+class port_modify(_NetworkInit, OptionalOutput):
     """Modify the attributes of a port"""
 
     arguments = dict(new_name=ValueArgument('New name of the port', '--name'))
@@ -475,7 +475,7 @@ class port_modify(_init_network, OptionalOutput):
         self._run(port_id=port_id)
 
 
-class _port_create(_init_network, OptionalOutput, _port_wait):
+class _port_create(_NetworkInit, OptionalOutput, _PortWait):
 
     def connect(self, network_id, device_id):
         fixed_ips = [dict(ip_address=self['ip_address'])] if (
@@ -528,7 +528,7 @@ class port_create(_port_create):
 
 
 @command(port_cmds)
-class port_wait(_init_network, _port_wait):
+class port_wait(_NetworkInit, _PortWait):
     """Wait for port to finish (default: BUILD)"""
 
     arguments = dict(
@@ -560,7 +560,7 @@ class port_wait(_init_network, _port_wait):
 
 
 @command(ip_cmds)
-class ip_list(_init_network, OptionalOutput):
+class ip_list(_NetworkInit, OptionalOutput):
     """List reserved floating IPs"""
 
     @errors.Generic.all
@@ -574,7 +574,7 @@ class ip_list(_init_network, OptionalOutput):
 
 
 @command(ip_cmds)
-class ip_info(_init_network, OptionalOutput):
+class ip_info(_NetworkInit, OptionalOutput):
     """Get details on a floating IP"""
 
     @errors.Generic.all
@@ -589,7 +589,7 @@ class ip_info(_init_network, OptionalOutput):
 
 
 @command(ip_cmds)
-class ip_create(_init_network, OptionalOutput):
+class ip_create(_NetworkInit, OptionalOutput):
     """Reserve an IP on a network"""
 
     arguments = dict(
@@ -615,7 +615,7 @@ class ip_create(_init_network, OptionalOutput):
 
 
 @command(ip_cmds)
-class ip_reassign(_init_network):
+class ip_reassign(_NetworkInit):
     """Assign a floating IP to a different project"""
 
     arguments = dict(
@@ -634,7 +634,7 @@ class ip_reassign(_init_network):
 
 
 @command(ip_cmds)
-class ip_delete(_init_network):
+class ip_delete(_NetworkInit):
     """Unreserve an IP (also delete the port, if attached)"""
 
     def _run(self, ip_id):
@@ -690,7 +690,7 @@ class ip_attach(_port_create):
 
 
 @command(ip_cmds)
-class ip_detach(_init_network, _port_wait, OptionalOutput):
+class ip_detach(_NetworkInit, _PortWait, OptionalOutput):
     """Detach an IP from a virtual server"""
 
     arguments = dict(
@@ -762,7 +762,7 @@ class network_connect(_port_create):
 
 
 @command(network_cmds)
-class network_disconnect(_init_network, _port_wait, OptionalOutput):
+class network_disconnect(_NetworkInit, _PortWait, OptionalOutput):
     """Disconnect a network from a device"""
 
     def _cyclades_client(self):
