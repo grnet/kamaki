@@ -38,7 +38,8 @@ from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
 from kamaki.cli.errors import (
     CLIBaseUrlError, CLIInvalidArgument, raiseCLIError)
-from kamaki.clients.cyclades import CycladesNetworkClient, ClientError
+from kamaki.clients.cyclades import (
+    CycladesNetworkClient, ClientError, CycladesClient)
 from kamaki.cli.argument import (
     FlagArgument, ValueArgument, RepeatableArgument, IntArgument,
     StatusArgument)
@@ -74,27 +75,8 @@ class _port_wait(_service_wait):
 class _init_network(_command_init):
     @errors.generic.all
     @addLogSettings
-    def _run(self, service='network'):
-        if getattr(self, 'cloud', None):
-            base_url = self._custom_url(service) or self._custom_url(
-                'network')
-            if base_url:
-                token = self._custom_token(service) or self._custom_token(
-                    'network') or self.config.get_cloud('token')
-                self.client = CycladesNetworkClient(
-                  base_url=base_url, token=token)
-                return
-        else:
-            self.cloud = 'default'
-        if getattr(self, 'auth_base', False):
-            network_endpoints = self.auth_base.get_service_endpoints(
-                self._custom_type('network') or 'network',
-                self._custom_version('network') or '')
-            base_url = network_endpoints['publicURL']
-            token = self.auth_base.token
-            self.client = CycladesNetworkClient(base_url=base_url, token=token)
-        else:
-            raise CLIBaseUrlError(service='network')
+    def _run(self):
+        self.client = self.get_client(CycladesNetworkClient, 'network')
 
     def _filter_by_user_id(self, nets):
         return [net for net in nets if net['user_id'] == self['user_id']] if (
@@ -374,21 +356,6 @@ class subnet_create(_init_network, _optional_json):
     def main(self):
         super(self.__class__, self)._run()
         self._run(network_id=self['network_id'], cidr=self['cidr'])
-
-
-# @command(subnet_cmds)
-# class subnet_delete(_init_network, _optional_output_cmd):
-#     """Delete a subnet"""
-
-#     @errors.generic.all
-#     @errors.cyclades.connection
-#     def _run(self, subnet_id):
-#         r = self.client.delete_subnet(subnet_id)
-#         self._optional_output(r)
-
-#     def main(self, subnet_id):
-#         super(self.__class__, self)._run()
-#         self._run(subnet_id=subnet_id)
 
 
 @command(subnet_cmds)
@@ -802,11 +769,7 @@ class network_disconnect(_init_network, _port_wait, _optional_json):
     """Disconnect a network from a device"""
 
     def _cyclades_client(self):
-        auth = getattr(self, 'auth_base')
-        endpoints = auth.get_service_endpoints('compute')
-        URL = endpoints['publicURL']
-        from kamaki.clients.cyclades import CycladesClient
-        return CycladesClient(URL, self.client.token)
+        return self.get_client(CycladesClient, 'cyclades')
 
     arguments = dict(
         wait=FlagArgument('Wait network to disconnect', ('-w', '--wait')),

@@ -37,6 +37,7 @@ import json
 
 
 class ComputeRestClient(Client):
+    service_type = 'compute'
 
     # NON-cyclades
     def limits_get(self, success=200, **kwargs):

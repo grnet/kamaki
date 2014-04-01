@@ -36,7 +36,6 @@ from base64 import b64encode
 from os.path import exists, expanduser
 from io import StringIO
 from pydoc import pager
-from json import dumps
 
 from kamaki.cli import command
 from kamaki.cli.command_tree import CommandTree
@@ -116,26 +115,8 @@ class _server_wait(_service_wait):
 class _init_cyclades(_command_init):
     @errors.generic.all
     @addLogSettings
-    def _run(self, service='compute'):
-        if getattr(self, 'cloud', None):
-            base_url = self._custom_url(service) or self._custom_url(
-                'cyclades')
-            if base_url:
-                token = self._custom_token(service) or self._custom_token(
-                    'cyclades') or self.config.get_cloud('token')
-                self.client = CycladesClient(base_url=base_url, token=token)
-                return
-        else:
-            self.cloud = 'default'
-        if getattr(self, 'auth_base', False):
-            cyclades_endpoints = self.auth_base.get_service_endpoints(
-                self._custom_type('cyclades') or 'compute',
-                self._custom_version('cyclades') or '')
-            base_url = cyclades_endpoints['publicURL']
-            token = self.auth_base.token
-            self.client = CycladesClient(base_url=base_url, token=token)
-        else:
-            raise CLIBaseUrlError(service='cyclades')
+    def _run(self):
+        self.client = self.get_client(CycladesClient, 'cyclades')
 
     @dataModification
     def _restruct_server_info(self, vm):

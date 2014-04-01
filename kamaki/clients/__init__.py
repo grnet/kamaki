@@ -338,7 +338,7 @@ class SilentEvent(Thread):
 
 
 class Client(Logged):
-
+    service_type = ''
     MAX_THREADS = 1
     DATE_FORMATS = ['%a %b %d %H:%M:%S %Y', ]
     CONNECTION_RETRY_LIMIT = 0

@@ -53,6 +53,7 @@ def _format_image_headers(headers):
 
 class ImageClient(Client):
     """Synnefo Plankton API client"""
+    service_type = 'image'
 
     def __init__(self, base_url, token):
         super(ImageClient, self).__init__(base_url, token)

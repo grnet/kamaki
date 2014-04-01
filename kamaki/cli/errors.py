@@ -72,16 +72,22 @@ class CLIUnimplemented(CLIError):
 
 
 class CLIBaseUrlError(CLIError):
-    def __init__(self, message='', details=[], importance=2, service=None):
+    def __init__(
+            self,
+            message='', details=[], importance=2, service=None):
         service = '%s' % (service or '')
         message = message or 'No URL for %s' % service.lower()
         details = details or [
-            'Two ways to resolve this:',
-            '(Use the correct cloud name, instead of "default")',
-            'A. (recommended) Let kamaki discover endpoint URLs for all',
-            'services by setting a single Authentication URL and token:',
-            '  /config set cloud.default.url <AUTH_URL>',
-            '  /config set cloud.default.token <t0k3n>']
+            'To resolve this:',
+            'Set the authentication URL and TOKEN:',
+            '  kamaki config set cloud.<CLOUD NAME>.url <AUTH_URL>',
+            '  kamaki config set cloud.<CLOUD NAME>.token <t0k3n>',
+            'OR',
+            'set a service-specific URL and/or TOKEN',
+            '  kamaki config set '
+            'cloud.<CLOUD NAME>.%s_url <URL>' % (service or '<SERVICE>'),
+            '  kamaki config set '
+            'cloud.<CLOUD NAME>.%s_token <TOKEN>' % (service or '<SERVICE>')]
         super(CLIBaseUrlError, self).__init__(message, details, importance)
 
 
