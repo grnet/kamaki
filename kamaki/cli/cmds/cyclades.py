@@ -54,11 +54,6 @@ server_cmds = CommandTree('server', 'Cyclades/Compute API server commands')
 flavor_cmds = CommandTree('flavor', 'Cyclades/Compute API flavor commands')
 namespaces = [server_cmds, flavor_cmds]
 
-
-about_authentication = '\nUser Authentication:\
-    \n* to check authentication: /user authenticate\
-    \n* to set authentication token: /config set cloud.<cloud>.token <token>'
-
 howto_personality = [
     'Defines a file to be injected to virtual servers file system.',
     'syntax:  PATH,[SERVER_PATH,[OWNER,[GROUP,[MODE]]]]',

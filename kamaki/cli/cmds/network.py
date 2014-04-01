@@ -53,12 +53,6 @@ subnet_cmds = CommandTree('subnet', 'Network API subnet commands')
 ip_cmds = CommandTree('ip', 'Network API floatingip commands')
 namespaces = [network_cmds, port_cmds, subnet_cmds, ip_cmds]
 
-
-about_authentication = '\nUser Authentication:\
-    \n  to check authentication: [kamaki] ]user authenticate\
-    \n  to set authentication token: \
-    [kamaki] config set cloud.<CLOUD>.token <TOKEN>'
-
 port_states = ('BUILD', 'ACTIVE', 'DOWN', 'ERROR')
 
 
