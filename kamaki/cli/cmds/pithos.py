@@ -50,8 +50,7 @@ from kamaki.cli.argument import (
     FlagArgument, IntArgument, ValueArgument, DateArgument, KeyValueArgument,
     ProgressBarArgument, RepeatableArgument, DataSizeArgument,
     UserAccountArgument)
-from kamaki.cli.utils import (
-    format_size, bold, get_path_size, guess_mime_type)
+from kamaki.cli.utils import format_size, get_path_size, guess_mime_type, bold
 
 file_cmds = CommandTree('file', 'Pithos+/Storage object level API commands')
 container_cmds = CommandTree(

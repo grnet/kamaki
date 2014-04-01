@@ -55,7 +55,7 @@ def _get_best_match_from_cmd_tree(cmd_tree, unparsed):
     return None
 
 
-def run(cloud, parser, _help):
+def run(cloud, parser):
     group = get_command_group(list(parser.unparsed), parser.arguments)
     if not group:
         #parser.parser.print_help()
@@ -92,6 +92,7 @@ def run(cloud, parser, _help):
 
     update_parser_help(parser, cmd)
 
+    _help = parser.arguments['help'].value
     if _help or not cmd.is_command:
         if cmd.cmd_class:
             parser.required = getattr(cmd.cmd_class, 'required', None)

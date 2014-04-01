@@ -31,13 +31,15 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-from traceback import print_stack, print_exc
+from traceback import format_exc, format_stack
+from logging import getLogger
 from astakosclient import AstakosClientException
 
 from kamaki.clients import ClientError
 from kamaki.cli.errors import CLIError, CLISyntaxError
-from kamaki.cli import _debug, kloger
 from kamaki.cli.utils import format_size
+
+log = getLogger(__name__)
 
 CLOUDNAME = ['Note: Set a cloud and use its name instead of "default"']
 
@@ -50,9 +52,8 @@ class Generic(object):
             try:
                 return func(self, *args, **kwargs)
             except Exception as e:
-                if _debug:
-                    print_stack()
-                    print_exc(e)
+                log.debug('Error stack:\n%s' % ''.join(format_stack()))
+                log.debug(format_exc(e))
                 if isinstance(e, CLIError):
                     raise e
                 elif isinstance(e, ClientError):
@@ -132,7 +133,7 @@ class Astakos(object):
                 raise CLIError('Client setup failure', importance=3, details=[
                     '%s' % ae])
             if not getattr(client, 'token', False):
-                kloger.warning(
+                log.warning(
                     'No permanent token (try:'
                     ' kamaki config set cloud.default.token <tkn>)')
             if not getattr(client, 'astakos_base_url', False):

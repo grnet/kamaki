@@ -279,16 +279,15 @@ class Config(RawConfigParser):
         """
         checker = Config(self.path, with_defaults=False)
         sections = checker.sections()
-        log.debug('Config file heuristic 1: old global section ?')
+        #  log.debug('Config file heuristic 1: old global section ?')
         if 'global' in sections:
             if checker.get('global', 'url') or checker.get('global', 'token'):
-                log.debug('..... config file has an old global section')
+                log.debug('config file has an old global section')
                 return 0.8
-        log.debug('........ nope')
-        log.debug('Config file heuristic 2: Any cloud sections ?')
+        #  log.debug('Config file heuristic 2: Any cloud sections ?')
         if CLOUD_PREFIX in sections:
             for r in self.keys(CLOUD_PREFIX):
-                log.debug('... found cloud "%s"' % r)
+                log.debug('found cloud "%s"' % r)
             ipv = self.get('global', 'ip_cli')
             if ipv in ('cyclades', ):
                     return 0.11
@@ -296,7 +295,6 @@ class Config(RawConfigParser):
             if netv in ('cyclades', ):
                 return 0.10
             return 0.12
-        log.debug('........ nope')
         log.debug('All heuristics failed, cannot decide')
         return 0.12
 

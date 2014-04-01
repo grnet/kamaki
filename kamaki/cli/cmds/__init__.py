@@ -183,6 +183,8 @@ class CommandInit(object):
         return self._usernames2uuids([username]).get(username, None)
 
     def _set_log_params(self):
+        if not self.client:
+            return
         try:
             self.client.LOG_TOKEN = (
                 self['config'].get('global', 'log_token').lower() == 'on')

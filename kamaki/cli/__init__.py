@@ -40,18 +40,16 @@ from kamaki.cli.argument import (
     ArgumentParseManager, ConfigArgument, ValueArgument, FlagArgument,
     RuntimeConfigArgument, VersionArgument, Argument)
 from kamaki.cli.history import History
-from kamaki.cli.utils import print_dict, red, magenta, yellow, pref_enc
+from kamaki.cli.utils import (
+    print_dict, magenta, red, yellow, suggest_missing, remove_colors, pref_enc)
 from kamaki.cli.errors import CLIError, CLICmdSpecError
 from kamaki.cli import logger
 from kamaki.clients.astakos import CachedAstakosClient
 from kamaki.clients import ClientError
 
-_help = False
+
 _debug = False
-_verbose = False
-_colors = False
 kloger = None
-filelog = None
 
 #  command auxiliary methods
 
@@ -135,8 +133,6 @@ def command(cmd_tree, prefix='', descedants_depth=1):
 
         name_terms = cls_name.split('_')
         if not _update_best_match(name_terms, prefix):
-            # if _debug:
-            #     kloger.warning('%s failed to update_best_match' % cls_name)
             return None
 
         global _best_match
@@ -190,7 +186,8 @@ def _setup_logging(debug=False, verbose=False):
         logger.add_stream_logger('kamaki.clients.send', logging.INFO, sfmt)
         logger.add_stream_logger('kamaki.clients.recv', logging.INFO, rfmt)
         logger.add_stream_logger(__name__, logging.INFO)
-    logger.add_stream_logger(__name__, logging.WARNING)
+    else:
+        logger.add_stream_logger(__name__, logging.WARNING)
     global kloger
     kloger = logger.get_logger(__name__)
 
@@ -228,11 +225,9 @@ def _init_session(arguments, is_non_API=False):
     """
     :returns: cloud name
     """
-    global _help
     _help = arguments['help'].value
     global _debug
     _debug = arguments['debug'].value
-    global _verbose
     _verbose = arguments['verbose'].value
     _cnf = arguments['config']
 
@@ -243,10 +238,8 @@ def _init_session(arguments, is_non_API=False):
 
     _check_config_version(_cnf.value)
 
-    global _colors
     _colors = _cnf.value.get('global', 'colors')
     if not (stdout.isatty() and _colors == 'on'):
-        from kamaki.cli.utils import remove_colors
         remove_colors()
 
     cloud = arguments['cloud'].value or _cnf.value.get(
@@ -452,8 +445,6 @@ def exec_cmd(instance, cmd_args, help_method):
             print(magenta('Syntax error'))
             if _debug:
                 raise err
-            if _verbose:
-                print(unicode(err))
             help_method()
         else:
             raise
@@ -526,13 +517,11 @@ def main(func):
             log_file = _cnf.get('global', 'log_file')
             if log_file:
                 logger.set_log_filename(log_file)
-            global filelog
             filelog = logger.add_file_logger(__name__.split('.')[0])
 
             filelog.info('%s\n- - -' % ' '.join(argv))
 
-            from kamaki.cli.utils import suggest_missing
-            global _colors
+            _colors = _cnf.value.get('global', 'colors')
             exclude = ['ansicolors'] if not _colors == 'on' else []
             suggest_missing(exclude=exclude)
             func(exe, parser)
@@ -584,7 +573,7 @@ def run_one_cmd(exe, parser):
         _history.limit = cnf.get('global', 'history_limit')
         _history.add(' '.join([exe] + argv[1:]))
         from kamaki.cli import one_cmd
-        one_cmd.run(cloud, parser, _help)
+        one_cmd.run(cloud, parser)
     else:
         parser.print_help()
         _groups_help(parser.arguments)

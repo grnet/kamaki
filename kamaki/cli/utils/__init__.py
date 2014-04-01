@@ -40,7 +40,6 @@ from locale import getpreferredencoding
 
 from kamaki.cli.errors import raiseCLIError
 
-
 INDENT_TAB = 4
 log = get_logger(__name__)
 pref_enc = getpreferredencoding()
@@ -54,10 +53,16 @@ suggest = dict(ansicolors=dict(
 try:
     from colors import magenta, red, yellow, bold
 except ImportError:
-    def dummy(val):
-        return val
-    red = yellow = magenta = bold = dummy
+    red = yellow = magenta = bold = lambda x: x
     suggest['ansicolors']['active'] = True
+
+
+def remove_colors():
+    global bold
+    global red
+    global yellow
+    global magenta
+    red = yellow = magenta = bold = lambda x: x
 
 
 def suggest_missing(miss=None, exclude=[]):
@@ -94,17 +99,6 @@ def guess_mime_type(
         stderr.write('WARNING: Cannot import mimetypes, using defaults\n')
         stderr.flush()
         return (default_content_type, default_encoding)
-
-
-def remove_colors():
-    global bold
-    global red
-    global yellow
-    global magenta
-
-    def dummy(val):
-        return val
-    red = yellow = magenta = bold = dummy
 
 
 def pretty_keys(d, delim='_', recursive=False):
