@@ -41,8 +41,7 @@ from kamaki.clients.pithos import PithosClient, ClientError
 from kamaki.cli import command
 from kamaki.cli.cmdtree import CommandTree
 from kamaki.cli.cmds import (
-    CommandInit, DontRaiseKeyError, OptionalOutput, NameFilter, errors,
-    addLogSettings)
+    CommandInit, dont_raise, OptionalOutput, NameFilter, errors, client_log)
 from kamaki.cli.errors import (
     CLIBaseUrlError, CLIError, CLIInvalidArgument, raiseCLIError,
     CLISyntaxError)
@@ -66,11 +65,11 @@ class _PithosInit(CommandInit):
     There is always a default container (pithos)
     """
 
-    @DontRaiseKeyError
+    @dont_raise(KeyError)
     def _custom_container(self):
         return self.config.get_cloud(self.cloud, 'pithos_container')
 
-    @DontRaiseKeyError
+    @dont_raise(KeyError)
     def _custom_uuid(self):
         return self.config.get_cloud(self.cloud, 'pithos_uuid')
 
@@ -85,7 +84,7 @@ class _PithosInit(CommandInit):
             raise CLIBaseUrlError(service='astakos')
 
     @errors.Generic.all
-    @addLogSettings
+    @client_log
     def _run(self):
         self.client = self.get_client(PithosClient, 'pithos')
         self.base_url, self.token = self.client.base_url, self.client.token

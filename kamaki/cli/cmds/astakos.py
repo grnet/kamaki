@@ -37,7 +37,7 @@ from os.path import abspath
 from kamaki.cli import command
 from kamaki.clients.astakos import LoggedAstakosClient
 from kamaki.cli.cmds import (
-    CommandInit, NameFilter, OptionalOutput, errors, addLogSettings)
+    CommandInit, NameFilter, OptionalOutput, errors, client_log)
 from kamaki.cli.cmdtree import CommandTree
 from kamaki.cli.errors import (
     CLIBaseUrlError, CLISyntaxError, CLIError, CLIInvalidArgument)
@@ -92,7 +92,7 @@ class _AstakosInit(CommandInit):
     @errors.Generic.all
     @errors.Astakos.load
     @errors.Astakos.astakosclient
-    @addLogSettings
+    @client_log
     def _run(self):
         if getattr(self, 'cloud', None):
             base_url = self._custom_url('astakos')

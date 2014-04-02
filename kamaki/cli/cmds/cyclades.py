@@ -46,8 +46,8 @@ from kamaki.cli.argument import (
     FlagArgument, ValueArgument, KeyValueArgument, RepeatableArgument,
     DateArgument, IntArgument, StatusArgument)
 from kamaki.cli.cmds import (
-    CommandInit, dataModification, OptionalOutput, NameFilter, IDFilter, Wait,
-    errors, addLogSettings, )
+    CommandInit, fall_back, OptionalOutput, NameFilter, IDFilter, Wait, errors,
+    client_log)
 
 
 server_cmds = CommandTree('server', 'Cyclades/Compute API server commands')
@@ -78,11 +78,11 @@ class _ServerWait(Wait):
 
 class _CycladesInit(CommandInit):
     @errors.Generic.all
-    @addLogSettings
+    @client_log
     def _run(self):
         self.client = self.get_client(CycladesComputeClient, 'cyclades')
 
-    @dataModification
+    @fall_back
     def _restruct_server_info(self, vm):
         if not vm:
             return vm

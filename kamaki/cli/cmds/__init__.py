@@ -31,28 +31,36 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
+from sys import stdin, stdout, stderr
+from traceback import format_exc
+
 from kamaki.cli.logger import get_logger
 from kamaki.cli.utils import (
     print_list, print_dict, print_json, print_items, ask_user, pref_enc,
     filter_dicts_by_dict)
 from kamaki.cli.argument import ValueArgument, ProgressBarArgument
 from kamaki.cli.errors import CLIInvalidArgument, CLIBaseUrlError
-from sys import stdin, stdout, stderr
 
 
 log = get_logger(__name__)
 
 
-def DontRaiseKeyError(func):
-    def wrap(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except KeyError:
-            return None
-    return wrap
+def dont_raise(*errors):
+    def decorator(func):
+        def wrap(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except errors as e:
+                log.debug('Suppressed error %s while calling %s(%s)' % (
+                    e, func.__name__, ','.join(['%s' % i for i in args] + [
+                        ('%s=%s' % items) for items in kwargs.items()])))
+                log.debug(format_exc(e))
+                return None
+        return wrap
+    return decorator
 
 
-def addLogSettings(func):
+def client_log(func):
     def wrap(self, *args, **kwargs):
         try:
             return func(self, *args, **kwargs)
@@ -61,7 +69,7 @@ def addLogSettings(func):
     return wrap
 
 
-def dataModification(func):
+def fall_back(func):
     def wrap(self, inp):
         try:
             inp = func(self, inp)
@@ -122,6 +130,7 @@ class CommandInit(object):
                 raise CLIBaseUrlError(service=service)
         return cls(URL, TOKEN)
 
+    @dont_raise(UnicodeError)
     def write(self, s):
         self._out.write(s.encode(pref_enc, errors='replace'))
         self._out.flush()
@@ -154,19 +163,19 @@ class CommandInit(object):
         kwargs.setdefault('out', self)
         return ask_user(*args, **kwargs)
 
-    @DontRaiseKeyError
+    @dont_raise(KeyError)
     def _custom_url(self, service):
         return self.config.get_cloud(self.cloud, '%s_url' % service)
 
-    @DontRaiseKeyError
+    @dont_raise(KeyError)
     def _custom_token(self, service):
         return self.config.get_cloud(self.cloud, '%s_token' % service)
 
-    @DontRaiseKeyError
+    @dont_raise(KeyError)
     def _custom_type(self, service):
         return self.config.get_cloud(self.cloud, '%s_type' % service)
 
-    @DontRaiseKeyError
+    @dont_raise(KeyError)
     def _custom_version(self, service):
         return self.config.get_cloud(self.cloud, '%s_version' % service)
 

@@ -43,7 +43,7 @@ from kamaki.cli.argument import (
     FlagArgument, ValueArgument, RepeatableArgument, IntArgument,
     StatusArgument)
 from kamaki.cli.cmds import (
-    CommandInit, OptionalOutput, NameFilter, IDFilter, errors, addLogSettings)
+    CommandInit, OptionalOutput, NameFilter, IDFilter, errors, client_log)
 from kamaki.cli.cmds import Wait
 
 
@@ -66,7 +66,7 @@ class _PortWait(Wait):
 
 class _NetworkInit(CommandInit):
     @errors.Generic.all
-    @addLogSettings
+    @client_log
     def _run(self):
         self.client = self.get_client(CycladesNetworkClient, 'network')
 

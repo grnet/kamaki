@@ -49,7 +49,7 @@ from kamaki.cli.argument import (
 from kamaki.cli.cmds.cyclades import _CycladesInit
 from kamaki.cli.errors import CLIError, raiseCLIError, CLIInvalidArgument
 from kamaki.cli.cmds import (
-    CommandInit, errors, addLogSettings, OptionalOutput, NameFilter, IDFilter)
+    CommandInit, errors, client_log, OptionalOutput, NameFilter, IDFilter)
 
 
 image_cmds = CommandTree('image', 'Cyclades/Plankton API image commands')
@@ -76,7 +76,7 @@ log = getLogger(__name__)
 
 class _ImageInit(CommandInit):
     @errors.Generic.all
-    @addLogSettings
+    @client_log
     def _run(self):
         self.client = self.get_client(ImageClient, 'plankton')
 
