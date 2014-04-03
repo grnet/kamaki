@@ -87,37 +87,7 @@ class _ImageInit(CommandInit):
 # Plankton Image Commands
 
 
-def _validate_image_meta(json_dict, return_str=False):
-    """
-    :param json_dict" (dict) json-formated, of the form
-        {"key1": "val1", "key2": "val2", ...}
-
-    :param return_str: (boolean) if true, return a json dump
-
-    :returns: (dict) if return_str is not True, else return str
-
-    :raises TypeError, AttributeError: Invalid json format
-
-    :raises AssertionError: Valid json but invalid image properties dict
-    """
-    json_str = dumps(json_dict, indent=2)
-    for k, v in json_dict.items():
-        if k.lower() == 'properties':
-            for pk, pv in v.items():
-                prop_ok = not (isinstance(pv, dict) or isinstance(pv, list))
-                assert prop_ok, 'Invalid property value for key %s' % pk
-                key_ok = not (' ' in k or '-' in k)
-                assert key_ok, 'Invalid property key %s' % k
-            continue
-        meta_ok = not (isinstance(v, dict) or isinstance(v, list))
-        assert meta_ok, 'Invalid value for meta key %s' % k
-        meta_ok = ' ' not in k
-        assert meta_ok, 'Invalid meta key [%s]' % k
-        json_dict[k] = '%s' % v
-    return json_str if return_str else json_dict
-
-
-def _load_image_meta(filepath):
+def load_image_meta(filepath):
     """
     :param filepath: (str) the (relative) path of the metafile
 
@@ -130,30 +100,23 @@ def _load_image_meta(filepath):
     with open(path.abspath(filepath)) as f:
         meta_dict = load(f)
         try:
-            return _validate_image_meta(meta_dict)
+            for k, v in meta_dict.items():
+                if k.lower() == 'properties':
+                    for pk, pv in v.items():
+                        prop_ok = not isinstance(pv, (dict, list))
+                        assert prop_ok, 'Invalid property value (key %s)' % pk
+                        key_ok = not (' ' in k or '-' in k)
+                        assert key_ok, 'Invalid property key %s' % k
+                    continue
+                meta_ok = not isinstance(v, dict, list)
+                assert meta_ok, 'Invalid value (meta key %s)' % k
+                meta_ok = ' ' not in k
+                assert meta_ok, 'Invalid meta key [%s]' % k
+                meta_dict[k] = '%s' % v
+            return meta_dict
         except AssertionError:
             log.debug('Failed to load properties from file %s' % filepath)
             raise
-
-
-def _validate_image_location(location):
-    """
-    :param location: (str) pithos://<user-id>/<container>/<image-path>
-
-    :returns: (<user-id>, <container>, <image-path>)
-
-    :raises AssertionError: if location is invalid
-    """
-    prefix = 'pithos://'
-    msg = 'Invalid prefix for location %s , try: %s' % (location, prefix)
-    assert location.startswith(prefix), msg
-    service, sep, rest = location.partition('://')
-    assert sep and rest, 'Location %s is missing user-id' % location
-    uuid, sep, rest = rest.partition('/')
-    assert sep and rest, 'Location %s is missing container' % location
-    container, sep, img_path = rest.partition('/')
-    assert sep and img_path, 'Location %s is missing image path' % location
-    return uuid, container, img_path
 
 
 @command(image_cmds)
@@ -223,7 +186,7 @@ class image_list(_ImageInit, OptionalOutput, NameFilter, IDFilter):
             usernames = self._uuids2usernames(uuids)
             for member in members:
                 member['member_id'] += ' (%s)' % usernames[member['member_id']]
-        self._print(members, title=('member_id',))
+        self.print_(members, title=('member_id',))
 
     @errors.Generic.all
     @errors.Cyclades.connection
@@ -267,7 +230,7 @@ class image_list(_ImageInit, OptionalOutput, NameFilter, IDFilter):
         if self['more']:
             kwargs['out'] = StringIO()
             kwargs['title'] = ()
-        self._print(images, **kwargs)
+        self.print_(images, **kwargs)
         if self['more']:
             pager(kwargs['out'].getvalue())
 
@@ -287,7 +250,7 @@ class image_info(_ImageInit, OptionalOutput):
         meta = self.client.get_meta(image_id)
         if not self['output_format']:
             meta['owner'] += ' (%s)' % self._uuid2username(meta['owner'])
-        self._print(meta, self.print_dict)
+        self.print_(meta, self.print_dict)
 
     def main(self, image_id):
         super(self.__class__, self)._run()
@@ -377,7 +340,7 @@ class PithosLocationArgument(ValueArgument):
         if location:
             from kamaki.cli.cmds.pithos import _PithosContainer as pc
             try:
-                uuid, self.container, self.path = pc._resolve_pithos_url(
+                uuid, self.container, self.path = pc.resolve_pithos_url(
                     location)
                 self.uuid = uuid or self.uuid
                 assert self.container, 'No container in pithos URI'
@@ -464,7 +427,7 @@ class image_register(_ImageInit, OptionalOutput):
         pfile = self['metafile']
         if pfile:
             try:
-                for k, v in _load_image_meta(pfile).items():
+                for k, v in load_image_meta(pfile).items():
                     key = k.lower().replace('-', '_')
                     if key == 'properties':
                         for pk, pv in v.items():
@@ -552,7 +515,7 @@ class image_register(_ImageInit, OptionalOutput):
                             locator.container)] + howto_image_file)
             raise
         r['owner'] += ' (%s)' % self._uuid2username(r['owner'])
-        self._print(r, self.print_dict)
+        self.print_(r, self.print_dict)
 
         #upload the metadata file
         if not self['no_metafile_upload']:
@@ -688,7 +651,7 @@ class imagecompute_list(_CycladesInit, OptionalOutput, NameFilter, IDFilter):
         if self['more']:
             kwargs['out'] = StringIO()
             kwargs['title'] = ()
-        self._print(images, **kwargs)
+        self.print_(images, **kwargs)
         if self['more']:
             pager(kwargs['out'].getvalue())
 
@@ -709,7 +672,7 @@ class imagecompute_info(_CycladesInit, OptionalOutput):
         uuids = [image['user_id']]
         usernames = self._uuids2usernames(uuids)
         image['user_id'] += ' (%s)' % usernames[image['user_id']]
-        self._print(image, self.print_dict)
+        self.print_(image, self.print_dict)
 
     def main(self, image_id):
         super(self.__class__, self)._run()

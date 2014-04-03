@@ -69,8 +69,8 @@ server_states = ('BUILD', 'ACTIVE', 'STOPPED', 'REBOOT')
 
 class _ServerWait(Wait):
 
-    def _wait(self, server_id, current_status, timeout=60):
-        super(_ServerWait, self)._wait(
+    def wait(self, server_id, current_status, timeout=60):
+        super(_ServerWait, self).wait(
             'Server', server_id, self.client.wait_server, current_status,
             countdown=(current_status not in ('BUILD', )),
             timeout=timeout if current_status not in ('BUILD', ) else 100)
@@ -228,7 +228,7 @@ class server_list(_CycladesInit, OptionalOutput, NameFilter, IDFilter):
             kwargs['title'] = ()
         if self['limit']:
             servers = servers[:self['limit']]
-        self._print(servers, **kwargs)
+        self.print_(servers, **kwargs)
         if self['more']:
             pager(kwargs['out'].getvalue())
 
@@ -254,17 +254,16 @@ class server_info(_CycladesInit, OptionalOutput):
     @errors.Cyclades.server_id
     def _run(self, server_id):
         if self['nics']:
-            self._print(
+            self.print_(
                 self.client.get_server_nics(server_id), self.print_dict)
         elif self['stats']:
-            self._print(
+            self.print_(
                 self.client.get_server_stats(server_id), self.print_dict)
         elif self['diagnostics']:
-            self._print(self.client.get_server_diagnostics(server_id))
+            self.print_(self.client.get_server_diagnostics(server_id))
         else:
             vm = self.client.get_server_details(server_id)
-            # self._print(self._restruct_server_info(vm), self.print_dict)
-            self._print(vm, self.print_dict)
+            self.print_(vm, self.print_dict)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -450,7 +449,7 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
                         s['name'] in requested_names)]
                 self.error('Failed to build %s servers' % size)
                 self.error('Found %s matching servers:' % len(spawned_servers))
-                self._print(spawned_servers, out=self._err)
+                self.print_(spawned_servers, out=self._err)
                 self.error('Check if any of these servers should be removed\n')
             except Exception as ne:
                 self.error('Error (%s) while notifying about errors' % ne)
@@ -468,10 +467,9 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
             if not r:
                 self.error('Create %s: server response was %s' % (name, r))
                 continue
-            #  self._print(self._restruct_server_info(r), self.print_dict)
-            self._print(r, self.print_dict)
+            self.print_(r, self.print_dict)
             if self['wait']:
-                self._wait(r['id'], r['status'] or 'BUILD')
+                self.wait(r['id'], r['status'] or 'BUILD')
             self.writeln(' ')
 
     def main(self):
@@ -653,7 +651,7 @@ class server_delete(_CycladesInit, _ServerWait):
 
             self.client.delete_server(server_id)
             if self['wait']:
-                self._wait(server_id, status)
+                self.wait(server_id, status)
 
     def main(self, server_id_or_cluster_prefix):
         super(self.__class__, self)._run()
@@ -693,7 +691,7 @@ class server_reboot(_CycladesInit, _ServerWait):
 
         self.client.reboot_server(int(server_id), hard_reboot)
         if self['wait']:
-            self._wait(server_id, 'REBOOT')
+            self.wait(server_id, 'REBOOT')
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -721,7 +719,7 @@ class server_start(_CycladesInit, _ServerWait):
 
         self.client.start_server(int(server_id))
         if self['wait']:
-            self._wait(server_id, status)
+            self.wait(server_id, status)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -749,7 +747,7 @@ class server_shutdown(_CycladesInit,  _ServerWait):
 
         self.client.shutdown_server(int(server_id))
         if self['wait']:
-            self._wait(server_id, status)
+            self.wait(server_id, status)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -765,7 +763,7 @@ class server_console(_CycladesInit, OptionalOutput):
     @errors.Cyclades.server_id
     def _run(self, server_id):
         self.error('The following credentials will be invalidated shortly')
-        self._print(
+        self.print_(
             self.client.get_server_console(server_id), self.print_dict)
 
     def main(self, server_id):
@@ -793,7 +791,7 @@ class server_wait(_CycladesInit, _ServerWait):
     def _run(self, server_id, current_status):
         r = self.client.get_server_details(server_id)
         if r['status'].lower() == current_status.lower():
-            self._wait(server_id, current_status, timeout=self['timeout'])
+            self.wait(server_id, current_status, timeout=self['timeout'])
         else:
             self.error(
                 'Server %s: Cannot wait for status %s, '
@@ -857,7 +855,7 @@ class flavor_list(_CycladesInit, OptionalOutput, NameFilter, IDFilter):
                 for key in set(flv).difference(self.PERMANENTS):
                     flv.pop(key)
         kwargs = dict(out=StringIO(), title=()) if self['more'] else {}
-        self._print(
+        self.print_(
             flavors,
             with_redundancy=self['detail'], with_enumeration=self['enum'],
             **kwargs)
@@ -879,19 +877,9 @@ class flavor_info(_CycladesInit, OptionalOutput):
     @errors.Cyclades.connection
     @errors.Cyclades.flavor_id
     def _run(self, flavor_id):
-        self._print(
+        self.print_(
             self.client.get_flavor_details(int(flavor_id)), self.print_dict)
 
     def main(self, flavor_id):
         super(self.__class__, self)._run()
         self._run(flavor_id=flavor_id)
-
-
-def _add_name(self, net):
-        user_id, tenant_id, uuids = net['user_id'], net['tenant_id'], []
-        if user_id:
-            uuids.append(user_id)
-        if uuids or tenant_id:
-            usernames = self._uuids2usernames(uuids)
-            if user_id:
-                net['user_id'] += ' (%s)' % usernames[user_id]

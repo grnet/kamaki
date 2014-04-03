@@ -58,8 +58,8 @@ port_states = ('BUILD', 'ACTIVE', 'DOWN', 'ERROR')
 
 class _PortWait(Wait):
 
-    def _wait(self, port_id, current_status, timeout=60):
-        super(_PortWait, self)._wait(
+    def wait(self, port_id, current_status, timeout=60):
+        super(_PortWait, self).wait(
             'Port', port_id, self.client.wait_port, current_status,
             timeout=timeout)
 
@@ -112,7 +112,7 @@ class network_list(_NetworkInit, OptionalOutput, NameFilter, IDFilter):
         if self['more']:
             kwargs['out'] = StringIO()
             kwargs['title'] = ()
-        self._print(nets, **kwargs)
+        self.print_(nets, **kwargs)
         if self['more']:
             pager(kwargs['out'].getvalue())
 
@@ -130,7 +130,7 @@ class network_info(_NetworkInit, OptionalOutput):
     @errors.Cyclades.network_id
     def _run(self, network_id):
         net = self.client.get_network_details(network_id)
-        self._print(net, self.print_dict)
+        self.print_(net, self.print_dict)
 
     def main(self, network_id):
         super(self.__class__, self)._run()
@@ -178,7 +178,7 @@ class network_create(_NetworkInit, OptionalOutput):
             name=self['name'],
             shared=self['shared'],
             project=self['project_id'])
-        self._print(net, self.print_dict)
+        self.print_(net, self.print_dict)
 
     def main(self):
         super(self.__class__, self)._run()
@@ -232,7 +232,7 @@ class network_modify(_NetworkInit, OptionalOutput):
     @errors.Cyclades.network_id
     def _run(self, network_id):
         r = self.client.update_network(network_id, name=self['new_name'])
-        self._print(r, self.print_dict)
+        self.print_(r, self.print_dict)
 
     def main(self, network_id):
         super(self.__class__, self)._run()
@@ -269,7 +269,7 @@ class subnet_list(_NetworkInit, OptionalOutput, NameFilter, IDFilter):
         if self['more']:
             kwargs['out'] = StringIO()
             kwargs['title'] = ()
-        self._print(nets, **kwargs)
+        self.print_(nets, **kwargs)
         if self['more']:
             pager('%s' % kwargs['out'].getvalue())
 
@@ -286,7 +286,7 @@ class subnet_info(_NetworkInit, OptionalOutput):
     @errors.Cyclades.connection
     def _run(self, subnet_id):
         net = self.client.get_subnet_details(subnet_id)
-        self._print(net, self.print_dict)
+        self.print_(net, self.print_dict)
 
     def main(self, subnet_id):
         super(self.__class__, self)._run()
@@ -342,7 +342,7 @@ class subnet_create(_NetworkInit, OptionalOutput):
             network_id, cidr,
             self['name'], self['allocation_pools'], self['gateway'],
             self['subnet_id'], self['ipv6'], self['enable_dhcp'])
-        self._print(net, self.print_dict)
+        self.print_(net, self.print_dict)
 
     def main(self):
         super(self.__class__, self)._run()
@@ -362,7 +362,7 @@ class subnet_modify(_NetworkInit, OptionalOutput):
     @errors.Cyclades.connection
     def _run(self, subnet_id):
         r = self.client.update_subnet(subnet_id, name=self['new_name'])
-        self._print(r, self.print_dict)
+        self.print_(r, self.print_dict)
 
     def main(self, subnet_id):
         super(self.__class__, self)._run()
@@ -397,7 +397,7 @@ class port_list(_NetworkInit, OptionalOutput, NameFilter, IDFilter):
         if self['more']:
             kwargs['out'] = StringIO()
             kwargs['title'] = ()
-        self._print(ports, **kwargs)
+        self.print_(ports, **kwargs)
         if self['more']:
             pager(kwargs['out'].getvalue())
 
@@ -414,7 +414,7 @@ class port_info(_NetworkInit, OptionalOutput):
     @errors.Cyclades.connection
     def _run(self, port_id):
         port = self.client.get_port_details(port_id)
-        self._print(port, self.print_dict)
+        self.print_(port, self.print_dict)
 
     def main(self, port_id):
         super(self.__class__, self)._run()
@@ -437,7 +437,7 @@ class port_delete(_NetworkInit, _PortWait):
         self.client.delete_port(port_id)
         if self['wait']:
             try:
-                self._wait(port_id, status)
+                self.wait(port_id, status)
             except ClientError as ce:
                 if ce.status not in (404, ):
                     raise
@@ -461,7 +461,7 @@ class port_modify(_NetworkInit, OptionalOutput):
         r = self.client.get_port_details(port_id)
         r = self.client.update_port(
             port_id, r['network_id'], name=self['new_name'])
-        self._print(r, self.print_dict)
+        self.print_(r, self.print_dict)
 
     def main(self, port_id):
         super(self.__class__, self)._run()
@@ -481,9 +481,9 @@ class _port_create(_NetworkInit, OptionalOutput, _PortWait):
             security_groups=self['security_group_id'],
             fixed_ips=fixed_ips)
         if self['wait']:
-            self._wait(r['id'], r['status'])
+            self.wait(r['id'], r['status'])
             r = self.client.get_port_details(r['id'])
-        self._print([r])
+        self.print_([r])
 
 
 @command(port_cmds)
@@ -539,7 +539,7 @@ class port_wait(_NetworkInit, _PortWait):
     def _run(self, port_id, port_status):
         port = self.client.get_port_details(port_id)
         if port['status'].lower() == port_status.lower():
-            self._wait(port_id, port_status, timeout=self['timeout'])
+            self.wait(port_id, port_status, timeout=self['timeout'])
         else:
             self.error(
                 'Port %s: Cannot wait for status %s, '
@@ -559,7 +559,7 @@ class ip_list(_NetworkInit, OptionalOutput):
     @errors.Generic.all
     @errors.Cyclades.connection
     def _run(self):
-        self._print(self.client.list_floatingips())
+        self.print_(self.client.list_floatingips())
 
     def main(self):
         super(self.__class__, self)._run()
@@ -573,8 +573,7 @@ class ip_info(_NetworkInit, OptionalOutput):
     @errors.Generic.all
     @errors.Cyclades.connection
     def _run(self, ip_id):
-        self._print(
-            self.client.get_floatingip_details(ip_id), self.print_dict)
+        self.print_(self.client.get_floatingip_details(ip_id), self.print_dict)
 
     def main(self, ip_id):
         super(self.__class__, self)._run()
@@ -595,7 +594,7 @@ class ip_create(_NetworkInit, OptionalOutput):
     @errors.Generic.all
     @errors.Cyclades.connection
     def _run(self):
-        self._print(
+        self.print_(
             self.client.create_floatingip(
                 self['network_id'],
                 floating_ip_address=self['ip_address'],
@@ -703,7 +702,7 @@ class ip_detach(_NetworkInit, _PortWait, OptionalOutput):
                     port_status = self.client.get_port_details(ip['port_id'])[
                         'status']
                     try:
-                        self._wait(ip['port_id'], port_status)
+                        self.wait(ip['port_id'], port_status)
                     except ClientError as ce:
                         if ce.status not in (404, ):
                             raise
@@ -789,7 +788,7 @@ class network_disconnect(_NetworkInit, _PortWait, OptionalOutput):
                 port['id'], network_id, server_id))
             if self['wait']:
                 try:
-                    self._wait(port['id'], port['status'])
+                    self.wait(port['id'], port['status'])
                 except ClientError as ce:
                     if ce.status not in (404, ):
                         raise

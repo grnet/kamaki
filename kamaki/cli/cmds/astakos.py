@@ -123,7 +123,7 @@ class user_authenticate(_AstakosInit, OptionalOutput):
     @errors.Astakos.astakosclient
     @with_temp_token
     def _run(self):
-        self._print(self.client.authenticate(), self.print_dict)
+        self.print_(self.client.authenticate(), self.print_dict)
 
     def main(self, token=None):
         super(self.__class__, self)._run()
@@ -138,7 +138,7 @@ class user_uuid2name(_AstakosInit, OptionalOutput):
     #@errors.Astakos.astakosclient
     def _run(self, uuids):
         r = self.client.get_usernames(uuids)
-        self._print(r, self.print_dict)
+        self.print_(r, self.print_dict)
         unresolved = set(uuids).difference(r)
         if unresolved:
             self.error('Unresolved uuids: %s' % ', '.join(unresolved))
@@ -156,7 +156,7 @@ class user_name2uuid(_AstakosInit, OptionalOutput):
     @errors.Astakos.astakosclient
     def _run(self, usernames):
         r = self.client.get_uuids(usernames)
-        self._print(r, self.print_dict)
+        self.print_(r, self.print_dict)
         unresolved = set(usernames).difference(r)
         if unresolved:
             self.error('Unresolved usernames: %s' % ', '.join(unresolved))
@@ -209,7 +209,7 @@ class quota_list(_AstakosInit, OptionalOutput):
             if not d:
                 raise CLIError('Resource "%s" not found' % self['resource'])
             quotas = d
-        self._print(quotas, self._print_quotas)
+        self.print_(quotas, self._print_quotas)
 
     def main(self):
         super(self.__class__, self)._run()
@@ -248,7 +248,7 @@ class user_info(_AstakosInit, OptionalOutput):
                     '  /user list',
                     'To authenticate and add a new user in the session list',
                     '  /user add <new token>'])
-        self._print(self.auth_base.user_info(token), self.print_dict)
+        self.print_(self.auth_base.user_info(token), self.print_dict)
 
 
 @command(user_cmds)
@@ -259,7 +259,7 @@ class user_add(_AstakosInit, OptionalOutput):
     @errors.Astakos.astakosclient
     def _run(self, token=None):
         ask = token and token not in self.auth_base._uuids
-        self._print(self.auth_base.authenticate(token), self.print_dict)
+        self.print_(self.auth_base.authenticate(token), self.print_dict)
         if ask and self.ask_user(
                 'Token is temporarily stored in memory. If it is stored in'
                 ' kamaki configuration file, it will be available in later'
@@ -286,7 +286,7 @@ class user_list(_AstakosInit, OptionalOutput):
     @errors.Generic.all
     @errors.Astakos.astakosclient
     def _run(self):
-        self._print([u if self['detail'] else (dict(
+        self.print_([u if self['detail'] else (dict(
             id=u['id'], name=u['name'])) for u in self.auth_base.list_users()])
 
     def main(self):
@@ -378,7 +378,7 @@ class service_list(_AstakosInit, OptionalOutput):
     @errors.Generic.all
     @errors.Astakos.astakosclient
     def _run(self):
-        self._print(self.client.get_services())
+        self.print_(self.client.get_services())
 
     def main(self):
         super(self.__class__, self)._run()
@@ -394,9 +394,9 @@ class service_uuid2username(_AstakosInit, OptionalOutput):
     @with_temp_token
     def _run(self, uuids):
         if 1 == len(uuids):
-            self._print(self.client.service_get_username(uuids[0]))
+            self.print_(self.client.service_get_username(uuids[0]))
         else:
-            self._print(
+            self.print_(
                 self.client.service_get_usernames(uuids),
                 self.print_dict)
 
@@ -414,9 +414,9 @@ class service_username2uuid(_AstakosInit, OptionalOutput):
     @with_temp_token
     def _run(self, usernames):
         if 1 == len(usernames):
-            self._print(self.client.service_get_uuid(usernames[0]))
+            self.print_(self.client.service_get_uuid(usernames[0]))
         else:
-            self._print(
+            self.print_(
                 self.client.service_get_uuids(usernames),
                 self.print_dict)
 
@@ -437,7 +437,7 @@ class service_quotas(_AstakosInit, OptionalOutput):
     @errors.Astakos.astakosclient
     @with_temp_token
     def _run(self):
-        self._print(self.client.service_get_quotas(self['uuid']))
+        self.print_(self.client.service_get_quotas(self['uuid']))
 
     def main(self, service_token):
         super(self.__class__, self)._run()
@@ -451,7 +451,7 @@ class commission_pending(_AstakosInit, OptionalOutput):
     @errors.Generic.all
     @errors.Astakos.astakosclient
     def _run(self):
-        self._print(self.client.get_pending_commissions())
+        self.print_(self.client.get_pending_commissions())
 
     def main(self):
         super(self.__class__, self)._run()
@@ -466,7 +466,7 @@ class commission_info(_AstakosInit, OptionalOutput):
     @errors.Astakos.astakosclient
     def _run(self, commission_id):
         commission_id = int(commission_id)
-        self._print(
+        self.print_(
             self.client.get_commission_info(commission_id), self.print_dict)
 
     def main(self, commission_id):
@@ -522,7 +522,7 @@ class commission_resolve(_AstakosInit, OptionalOutput):
     def _run(self):
         self.writeln('accepted ', self['accept'])
         self.writeln('rejected ', self['reject'])
-        self._print(
+        self.print_(
             self.client.resolve_commissions(self['accept'], self['reject']),
             self.print_dict)
 
@@ -550,7 +550,7 @@ class commission_issue(_AstakosInit, OptionalOutput):
     @errors.Astakos.astakosclient
     def _run(self, holder, source, provisions, name=''):
         provisions = loads(provisions)
-        self._print(self.client.issue_one_commission(
+        self.print_(self.client.issue_one_commission(
             holder, source, provisions, name,
             self['force'], self['accept']))
 
@@ -566,7 +566,7 @@ class resource_list(_AstakosInit, OptionalOutput):
     @errors.Generic.all
     @errors.Astakos.astakosclient
     def _run(self):
-        self._print(self.client.get_resources(), self.print_dict)
+        self.print_(self.client.get_resources(), self.print_dict)
 
     def main(self):
         super(self.__class__, self)._run()
@@ -586,7 +586,7 @@ class endpoint_list(_AstakosInit, OptionalOutput, NameFilter):
         r = self._filter_by_name(r)
         if self['endpoint_type']:
             r = filter_dicts_by_dict(r, dict(type=self['endpoint_type']))
-        self._print(r)
+        self.print_(r)
 
     def main(self):
         super(self.__class__, self)._run()
@@ -643,7 +643,7 @@ class project_list(_AstakosInit, OptionalOutput):
                 id=i['id'],
                 name=i['name'],
                 description=i['description']) for i in r]
-        self._print(r)
+        self.print_(r)
 
     def main(self):
         super(self.__class__, self)._run()
@@ -657,7 +657,7 @@ class project_info(_AstakosInit, OptionalOutput):
     @errors.Generic.all
     @errors.Astakos.astakosclient
     def _run(self, project_id):
-        self._print(
+        self.print_(
             self.client.get_project(project_id), self.print_dict)
 
     def main(self, project_id):
@@ -772,7 +772,7 @@ class project_create(_AstakosInit, OptionalOutput):
                 ('resources', self['resource_capacities'])):
             if arg:
                 specs[key] = arg
-        self._print(self.client.create_project(specs), self.print_dict)
+        self.print_(self.client.create_project(specs), self.print_dict)
 
     def main(self):
         super(self.__class__, self)._run()
@@ -847,7 +847,7 @@ class project_modify(_AstakosInit, OptionalOutput):
         if private is not None:
             self['private'] = private
 
-        self._print(
+        self.print_(
             self.client.modify_project(project_id, specs), self.print_dict)
 
     def main(self, project_id):
@@ -964,7 +964,7 @@ class membership_list(_AstakosInit, OptionalOutput):
     @errors.Generic.all
     @errors.Astakos.astakosclient
     def _run(self):
-        self._print(self.client.get_memberships(self['project']))
+        self.print_(self.client.get_memberships(self['project']))
 
     def main(self):
         super(self.__class__, self)._run()
@@ -978,7 +978,7 @@ class membership_info(_AstakosInit, OptionalOutput):
     @errors.Generic.all
     @errors.Astakos.astakosclient
     def _run(self, memb_id):
-        self._print(
+        self.print_(
             self.client.get_membership(memb_id), self.print_dict)
 
     def main(self, membership_id):
@@ -994,7 +994,7 @@ class _MembershipAction(_AstakosInit, OptionalOutput):
     @errors.Generic.all
     @errors.Astakos.astakosclient
     def _run(self, memb_id, quote_a_reason):
-        self._print(self.client.membership_action(
+        self.print_(self.client.membership_action(
             memb_id, self.action, quote_a_reason))
 
     def main(self, membership_id):

@@ -113,7 +113,7 @@ class _PithosAccount(_PithosInit):
             empty_space = ' ' * (len(str(len(object_list))) - len(str(index)))
             if 'subdir' in obj:
                 continue
-            if self._is_dir(obj):
+            if self.object_is_dir(obj):
                 size = 'D'
             else:
                 size = format_size(obj['bytes'])
@@ -126,11 +126,11 @@ class _PithosAccount(_PithosInit):
                 self.writeln()
             else:
                 oname = '%s%9s %s' % (prfx, size, oname)
-                oname += '/' if self._is_dir(obj) else u''
+                oname += '/' if self.object_is_dir(obj) else u''
                 self.writeln(oname)
 
     @staticmethod
-    def _is_dir(remote_dict):
+    def object_is_dir(remote_dict):
         return 'application/directory' in remote_dict.get(
             'content_type', remote_dict.get('content-type', ''))
 
@@ -149,7 +149,7 @@ class _PithosContainer(_PithosAccount):
             'Use this container (default: pithos)', ('-C', '--container'))
 
     @staticmethod
-    def _resolve_pithos_url(url):
+    def resolve_pithos_url(url):
         """Match urls of one of the following formats:
         pithos://ACCOUNT/CONTAINER/OBJECT_PATH
         /CONTAINER/OBJECT_PATH
@@ -164,8 +164,7 @@ class _PithosContainer(_PithosAccount):
         return account, container, obj_path
 
     def _run(self, url=None):
-        acc, con, self.path = self._resolve_pithos_url(url or '')
-        #  self.account = acc or getattr(self, 'account', '')
+        acc, con, self.path = self.resolve_pithos_url(url or '')
         super(_PithosContainer, self)._run()
         self.container = con or self['container'] or getattr(
             self, 'container', None) or getattr(self.client, 'container', '')
@@ -231,7 +230,7 @@ class file_info(_PithosContainer, OptionalOutput):
         else:
             r = self.client.get_object_info(
                 self.path, version=self['object_version'])
-        self._print(r, self.print_dict)
+        self.print_(r, self.print_dict)
 
     def main(self, path_or_url):
         super(self.__class__, self)._run(path_or_url)
@@ -306,7 +305,7 @@ class file_list(_PithosContainer, OptionalOutput, NameFilter):
             outbu, self._out = self._out, StringIO()
         try:
             if self['output_format']:
-                self._print(files)
+                self.print_(files)
             else:
                 self.print_objects(files)
         finally:
@@ -573,10 +572,13 @@ class _PithosFromTo(_PithosContainer):
                 if self['force'] or not dst_obj:
                     #  Just do it
                     pairs.append((
-                        None if self._is_dir(src_obj) else src_path, dst_path))
-                    if self._is_dir(src_obj):
+                        None if self.object_is_dir(src_obj) else src_path,
+                        dst_path))
+                    if self.object_is_dir(src_obj):
                         pairs.append((self.path or dst_path, None))
-                elif not (self._is_dir(dst_obj) and self._is_dir(src_obj)):
+                elif not any([
+                        self.object_is_dir(dst_obj),
+                        self.object_is_dir(src_obj)]):
                     raise CLIError(
                         'Destination object exists', importance=2, details=[
                             'Failed while transfering:',
@@ -608,11 +610,12 @@ class _PithosFromTo(_PithosContainer):
             dst_path = self.dst_path or self.path
             dst_obj = dst_objects.get(dst_path or self.path, None)
             if self['force'] or not dst_obj:
-                pairs.append(
-                    (None if self._is_dir(src_obj) else self.path, dst_path))
-                if self._is_dir(src_obj):
+                pairs.append((
+                    None if self.object_is_dir(src_obj) else self.path,
+                    dst_path))
+                if self.object_is_dir(src_obj):
                     pairs.append((self.path or dst_path, None))
-            elif self._is_dir(src_obj):
+            elif self.object_is_dir(src_obj):
                 raise CLIError(
                     'Cannot transfer an application/directory object',
                     importance=2, details=[
@@ -644,7 +647,7 @@ class _PithosFromTo(_PithosContainer):
 
     def _run(self, source_path_or_url, destination_path_or_url=''):
         super(_PithosFromTo, self)._run(source_path_or_url)
-        dst_acc, dst_con, dst_path = self._resolve_pithos_url(
+        dst_acc, dst_con, dst_path = self.resolve_pithos_url(
             destination_path_or_url)
         self.dst_client = PithosClient(
             base_url=self.client.base_url, token=self.client.token,
@@ -921,7 +924,7 @@ class file_upload(_PithosContainer):
                 else:
                     try:
                         topobj = self.client.get_object_info(rpath)
-                        if not self._is_dir(topobj):
+                        if not self.object_is_dir(topobj):
                             raise CLIError(
                                 'Object /%s/%s exists but not a directory' % (
                                     self.container, rpath),
@@ -955,7 +958,7 @@ class file_upload(_PithosContainer):
                     path.exists(lpath)) else '%s does not exist' % lpath)
             try:
                 robj = self.client.get_object_info(rpath)
-                if remote_path and self._is_dir(robj):
+                if remote_path and self.object_is_dir(robj):
                     rpath += '/%s' % (short_path.replace(path.sep, '/'))
                     self.client.get_object_info(rpath)
                 if not self['overwrite']:
@@ -1159,7 +1162,7 @@ class file_download(_PithosContainer):
         if local_path and self.path and local_path.endswith('/'):
             local_path = local_path[-1:]
 
-        if (not obj) or self._is_dir(obj):
+        if (not obj) or self.object_is_dir(obj):
             if self['recursive']:
                 if not (self.path or local_path.endswith('/')):
                     #  Download the whole container
@@ -1173,7 +1176,7 @@ class file_download(_PithosContainer):
                     if_modified_since=self['modified_since_date'],
                     if_unmodified_since=self['unmodified_since_date'])
                 for o in objects.json:
-                    (dirs if self._is_dir(o) else files).append(o)
+                    (dirs if self.object_is_dir(o) else files).append(o)
 
                 #  Put the directories on top of the list
                 for dpath in sorted(['%s%s' % (
@@ -1341,7 +1344,7 @@ class container_info(_PithosAccount, OptionalOutput):
                 int(r) if self['in_bytes'] else format_size(r))}
         else:
             r = self.client.get_container_info(self.container)
-        self._print(r, self.print_dict)
+        self.print_(r, self.print_dict)
 
     def main(self, container):
         super(self.__class__, self)._run()
@@ -1397,7 +1400,7 @@ class container_modify(_PithosAccount, OptionalOutput):
             metadata[k] = ''
         if metadata:
             self.client.set_container_meta(metadata)
-            self._print(self.client.get_container_meta(), self.print_dict)
+            self.print_(self.client.get_container_meta(), self.print_dict)
         if self['sizelimit'] is not None:
             self.client.set_container_limit(self['sizelimit'])
             r = self.client.get_container_limit()['x-container-policy-quota']
@@ -1510,7 +1513,7 @@ class container_list(_PithosAccount, OptionalOutput, NameFilter):
             outbu, self._out = self._out, StringIO()
         try:
             if self['output_format']:
-                self._print(files)
+                self.print_(files)
             else:
                 (self.print_objects if container else self.print_containers)(
                     files)
@@ -1660,7 +1663,7 @@ class sharer_list(_PithosAccount, OptionalOutput):
                 item['id'], item['name'] = uuid, usernames[uuid]
                 if not self['detail']:
                     item.pop('last_modified')
-        self._print(accounts)
+        self.print_(accounts)
 
     def main(self):
         super(self.__class__, self)._run()
@@ -1674,7 +1677,7 @@ class sharer_info(_PithosAccount, OptionalOutput):
     @errors.Generic.all
     @errors.Pithos.connection
     def _run(self):
-        self._print(self.client.get_account_info(), self.print_dict)
+        self.print_(self.client.get_account_info(), self.print_dict)
 
     def main(self, account_uuid_or_name=None):
         super(self.__class__, self)._run()
@@ -1704,7 +1707,7 @@ class group_list(_PithosGroup, OptionalOutput):
     @errors.Generic.all
     @errors.Pithos.connection
     def _run(self):
-        self._print(self._groups(), self.print_dict)
+        self.print_(self._groups(), self.print_dict)
 
     def main(self):
         super(self.__class__, self)._run()
@@ -1729,7 +1732,7 @@ class group_create(_PithosGroup, OptionalOutput):
             self.error('Aborted')
             return
         self.client.set_account_group(groupname, users)
-        self._print(self._groups(), self.print_dict)
+        self.print_(self._groups(), self.print_dict)
 
     def main(self, groupname):
         super(self.__class__, self)._run()
@@ -1755,7 +1758,7 @@ class group_delete(_PithosGroup, OptionalOutput):
     @errors.Pithos.connection
     def _run(self, groupname):
         self.client.del_account_group(groupname)
-        self._print(self._groups(), self.print_dict)
+        self.print_(self._groups(), self.print_dict)
 
     def main(self, groupname):
         super(self.__class__, self)._run()

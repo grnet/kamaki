@@ -312,7 +312,7 @@ class OptionalOutput(object):
             '--output-format'),
     )
 
-    def _print(self, output, print_method=print_items, **print_method_kwargs):
+    def print_(self, output, print_method=print_items, **print_method_kwargs):
         if self['output_format']:
             func = OutputFormatArgument.formats[self['output_format']]
             func(output, out=self)
@@ -385,7 +385,7 @@ class Wait(object):
             'do not show progress bar', ('-N', '--no-progress-bar'), False)
     )
 
-    def _wait(
+    def wait(
             self, service, service_id, status_method, current_status,
             countdown=True, timeout=60):
         (progress_bar, wait_cb) = self._safe_progress_bar(
