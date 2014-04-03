@@ -480,16 +480,6 @@ class Client(Logged):
             results[key] = thread.value
         return results.values()
 
-    def _raise_for_status(self, r):
-        log.debug('raise err from [%s] of type[%s]' % (r, type(r)))
-        status_msg = getattr(r, 'status', None) or ''
-        try:
-            message = '%s %s\n' % (status_msg, r.text)
-        except:
-            message = '%s %s\n' % (status_msg, r)
-        status = getattr(r, 'status_code', getattr(r, 'status', 0))
-        raise ClientError(message, status=status)
-
     def set_header(self, name, value, iff=True):
         """Set a header 'name':'value'"""
         if value is not None and iff:
@@ -550,7 +540,14 @@ class Client(Logged):
             # Success can either be an int or a collection
             success = (success,) if isinstance(success, int) else success
             if r.status_code not in success:
-                self._raise_for_status(r)
+                log.debug(u'Client caught error %s (%s)' % (r, type(r)))
+                status_msg = getattr(r, 'status', '')
+                try:
+                    message = u'%s %s\n' % (status_msg, r.text)
+                except:
+                    message = u'%s %s\n' % (status_msg, r)
+                status = getattr(r, 'status_code', getattr(r, 'status', 0))
+                raise ClientError(message, status=status)
         return r
 
     def delete(self, path, **kwargs):
