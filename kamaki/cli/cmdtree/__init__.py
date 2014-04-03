@@ -34,27 +34,22 @@
 
 class Command(object):
     """Store a command and the next-level (2 levels)"""
-    _name = None
-    path = None
-    cmd_class = None
-    subcommands = {}
-    help = ' '
 
     def __init__(
             self, path,
-            help=' ', subcommands={}, cmd_class=None, long_help=''):
+            help='', subcommands={}, cmd_class=None, long_help=''):
         assert path, 'Cannot initialize a command without a command path'
         self.path = path
         self.help = help or ''
         self.subcommands = dict(subcommands) if subcommands else {}
-        self.cmd_class = cmd_class or None
+        self.cmd_class = cmd_class
         self.long_help = '%s' % (long_help or '')
 
     @property
     def name(self):
-        if not self._name:
+        if not getattr(self, '_name', None):
             self._name = self.path.split('_')[-1]
-        return str(self._name)
+        return '%s' % self._name
 
     def add_subcmd(self, subcmd):
         if subcmd.path == '%s_%s' % (self.path, subcmd.name):
