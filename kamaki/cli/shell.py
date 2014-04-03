@@ -46,7 +46,7 @@ from kamaki.cli.logger import add_file_logger
 log = add_file_logger(__name__)
 
 
-def _init_shell(exe_string, parser, username='', userid=''):
+def init_shell(exe_string, parser, username='', userid=''):
     parser.arguments.pop('version', None)
     shell = Shell()
     shell.set_prompt(exe_string)

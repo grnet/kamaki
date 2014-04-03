@@ -132,14 +132,14 @@ class Config(RawConfigParser):
         self.read(self.path)
 
         for section in self.sections():
-            r = self._cloud_name(section)
+            r = self.cloud_name(section)
             if r:
                 for k, v in self.items(section):
                     self.set_cloud(r, k, v)
                 self.remove_section(section)
 
     @staticmethod
-    def _cloud_name(full_section_name):
+    def cloud_name(full_section_name):
         if not full_section_name.startswith(CLOUD_PREFIX + ' '):
             return None
         matcher = match(CLOUD_PREFIX + ' "([~@#$.:\-\w]+)"', full_section_name)
@@ -369,7 +369,7 @@ class Config(RawConfigParser):
         """
         prefix = CLOUD_PREFIX + '.'
         if section.startswith(prefix):
-            cloud = self._cloud_name(
+            cloud = self.cloud_name(
                 CLOUD_PREFIX + ' "' + section[len(prefix):] + '"')
             return self.set_cloud(cloud, option, value)
         if section not in RawConfigParser.sections(self):

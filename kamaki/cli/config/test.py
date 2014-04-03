@@ -121,8 +121,8 @@ class Config(TestCase):
         c_remove_section_num, gen_call = 0, [call('a'), call('b')]
         for path, with_defaults in product((None, '/a/path'), (True, False)):
             with patch(
-                    'kamaki.cli.config.Config._cloud_name',
-                    return_value=_2value_gen.next()) as _cloud_name:
+                    'kamaki.cli.config.Config.cloud_name',
+                    return_value=_2value_gen.next()) as cloud_name:
                 cnf = Config(path=path, with_defaults=with_defaults)
                 self.assertTrue(isinstance(cnf, RawConfigParser))
                 cpath = path or os.environ.get(CONFIG_ENV, CONFIG_PATH)
@@ -137,7 +137,7 @@ class Config(TestCase):
                 self.assertEqual(len(c_sections.mock_calls), c_sections_num)
                 self.assertEqual(c_sections.mock_calls[-1], call())
 
-                self.assertEqual(_cloud_name.mock_calls, gen_call)
+                self.assertEqual(cloud_name.mock_calls, gen_call)
 
                 r = _2value_gen.next()
                 if r:
@@ -154,10 +154,10 @@ class Config(TestCase):
                 self.assertEqual(
                     len(c_remove_section.mock_calls), c_remove_section_num)
 
-    def test__cloud_name(self):
+    def test_cloud_name(self):
         from kamaki.cli.config import (
             Config, CLOUD_PREFIX, InvalidCloudNameError)
-        cn = Config._cloud_name
+        cn = Config.cloud_name
         self.assertEqual(cn('non%s name' % CLOUD_PREFIX), None)
         for invalid in ('"!@#$%^&())_"', '"a b c"', u'"\xce\xcd"', 'naked'):
             self.assertRaises(
@@ -385,15 +385,15 @@ class Config(TestCase):
         _cnf = Config(path=self.f.name)
 
         with patch(
-                'kamaki.cli.config.Config._cloud_name',
-                return_value='cn') as _cloud_name:
+                'kamaki.cli.config.Config.cloud_name',
+                return_value='cn') as cloud_name:
             with patch(
                     'kamaki.cli.config.Config.set_cloud',
                     return_value='sc') as set_cloud:
                 self.assertEqual(
                     'sc', _cnf.set('%s.sec' % CLOUD_PREFIX, 'opt', 'val'))
                 self.assertEqual(
-                    _cloud_name.mock_calls[-1],
+                    cloud_name.mock_calls[-1],
                     call('%s "sec"' % CLOUD_PREFIX))
                 self.assertEqual(
                     set_cloud.mock_calls[-1], call('cn', 'opt', 'val'))

@@ -38,23 +38,6 @@ from kamaki.cli import (
 from kamaki.cli.errors import CLIUnknownCommand
 
 
-def _get_cmd_tree_from_spec(spec, cmd_tree_list):
-    for tree in cmd_tree_list:
-        if tree.name == spec:
-            return tree
-    raise CLIUnknownCommand('Unknown command: %s' % spec)
-
-
-def _get_best_match_from_cmd_tree(cmd_tree, unparsed):
-    matched = [term for term in unparsed if not term.startswith('-')]
-    while matched:
-        try:
-            return cmd_tree.get_command('_'.join(matched))
-        except KeyError:
-            matched = matched[:-1]
-    return None
-
-
 def run(cloud, parser):
     group = get_command_group(list(parser.unparsed), parser.arguments)
     if not group:
@@ -79,13 +62,24 @@ def run(cloud, parser):
                 'Make sure %s is a valid command group' % group,
                 'Refer to kamaki documentation for setting custom command',
                 'groups or overide existing ones'])
-    cmd_tree = _get_cmd_tree_from_spec(group, spec_module.namespaces)
+    #  Get command tree from group
+    try:
+        cmd_tree = [t for t in spec_module.namespaces if t.name == group][0]
+    except IndexError:
+        raise CLIUnknownCommand('Unknown command group: %s' % group)
 
+    cmd = None
     if _best_match:
         cmd = cmd_tree.get_command('_'.join(_best_match))
     else:
-        cmd = _get_best_match_from_cmd_tree(cmd_tree, parser.unparsed)
-        _best_match = cmd.path.split('_')
+        match = [term for term in parser.unparsed if not term.startswith('-')]
+        while match:
+            try:
+                cmd = cmd_tree.get_command('_'.join(match))
+                _best_match = cmd.path.split('_')
+                break
+            except KeyError:
+                match = match[:-1]
     if cmd is None:
         kloger.info('Unexpected error: failed to load command (-d for more)')
         exit(1)

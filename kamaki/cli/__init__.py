@@ -64,42 +64,25 @@ def _arg2syntax(arg):
                     '_', ' ')
 
 
-def _construct_command_syntax(cls):
-        spec = getargspec(cls.main.im_func)
-        args = spec.args[1:]
-        n = len(args) - len(spec.defaults or ())
-        required = ' '.join(['<%s>' % _arg2syntax(x) for x in args[:n]])
-        optional = ' '.join(['[%s]' % _arg2syntax(x) for x in args[n:]])
-        cls.syntax = ' '.join([required, optional])
-        if spec.varargs:
-            cls.syntax += ' <%s ...>' % spec.varargs
-
-
-def _num_of_matching_terms(basic_list, attack_list):
-    if not attack_list:
-        return len(basic_list)
-
-    matching_terms = 0
-    for i, term in enumerate(basic_list):
-        try:
-            if term != attack_list[i]:
-                break
-        except IndexError:
-            break
-        matching_terms += 1
-    return matching_terms
-
-
 def _update_best_match(name_terms, prefix=[]):
+    global _best_match
     if prefix:
         pref_list = prefix if isinstance(prefix, list) else prefix.split('_')
     else:
-        pref_list = []
+        _best_match, pref_list = [], []
 
-    num_of_matching_terms = _num_of_matching_terms(name_terms, pref_list)
-    global _best_match
-    if not prefix:
-        _best_match = []
+    if pref_list:
+        num_of_matching_terms = 0
+        for i, term in enumerate(name_terms):
+            try:
+                if term == pref_list[i]:
+                    num_of_matching_terms += 1
+                else:
+                    break
+            except IndexError:
+                break
+    else:
+        num_of_matching_terms = len(name_terms)
 
     if num_of_matching_terms and len(_best_match) <= num_of_matching_terms:
         if len(_best_match) < num_of_matching_terms:
@@ -152,7 +135,15 @@ def command(cmd_tree, prefix='', descedants_depth=1):
         except AttributeError:
             raise CLICmdSpecError(
                 'No commend in %s (acts as cmd description)' % cls.__name__)
-        _construct_command_syntax(cls)
+        #  Build command syntax help
+        spec = getargspec(cls.main.im_func)
+        args = spec.args[1:]
+        n = len(args) - len(spec.defaults or ())
+        required = ' '.join(['<%s>' % _arg2syntax(x) for x in args[:n]])
+        optional = ' '.join(['[%s]' % _arg2syntax(x) for x in args[n:]])
+        cls.syntax = ' '.join([required, optional])
+        if spec.varargs:
+            cls.syntax += ' <%s ...>' % spec.varargs
 
         cmd_tree.add_command(
             cls_name, cls.description, cls, cls.long_description)
@@ -545,7 +536,6 @@ def main(func):
 def run_shell(exe, parser):
     parser.arguments['help'].value = False
     cloud = _init_session(parser.arguments)
-    from shell import _init_shell
     global kloger
     _cnf = parser.arguments['config']
     auth_base = init_cached_authenticator(_cnf, cloud, kloger)
@@ -554,7 +544,8 @@ def run_shell(exe, parser):
             auth_base.user_term('name'), auth_base.user_term('id'))
     except Exception:
         username, userid = '', ''
-    shell = _init_shell(exe, parser, username, userid)
+    from kamaki.cli.shell import init_shell
+    shell = init_shell(exe, parser, username, userid)
     _load_all_commands(shell.cmd_tree, parser.arguments)
     shell.run(auth_base, cloud, parser)
 

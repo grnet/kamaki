@@ -338,11 +338,6 @@ def list2file(l, f, depth=1):
 # Split input auxiliary
 
 
-def _parse_with_regex(line, regex):
-    re_parser = regex_compile(regex)
-    return (re_parser.split(line), re_parser.findall(line))
-
-
 def _get_from_parsed(parsed_str):
     try:
         parsed_str = parsed_str.strip()
@@ -354,25 +349,24 @@ def _get_from_parsed(parsed_str):
 
 
 def split_input(line):
-    if not line:
-        return []
-    reg_expr = '\'.*?\'|".*?"|^[\S]*$'
-    (trivial_parts, interesting_parts) = _parse_with_regex(line, reg_expr)
-    assert(len(trivial_parts) == 1 + len(interesting_parts))
     terms = []
-    for i, tpart in enumerate(trivial_parts):
-        part = _get_from_parsed(tpart)
-        if part:
-            terms += part
-        try:
-            part = _get_from_parsed(interesting_parts[i])
-        except IndexError:
-            break
-        if part:
-            if tpart and not tpart[-1].endswith(' '):
-                terms[-1] += ' '.join(part)
-            else:
+    if line:
+        rprs = regex_compile('\'.*?\'|".*?"|^[\S]*$')
+        trivial_parts, interesting_parts = rprs.split(line), rprs.findall(line)
+        assert(len(trivial_parts) == 1 + len(interesting_parts))
+        for i, tpart in enumerate(trivial_parts):
+            part = _get_from_parsed(tpart)
+            if part:
                 terms += part
+            try:
+                part = _get_from_parsed(interesting_parts[i])
+            except IndexError:
+                break
+            if part:
+                if tpart and not tpart[-1].endswith(' '):
+                    terms[-1] += ' '.join(part)
+                else:
+                    terms += part
     return terms
 
 
