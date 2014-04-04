@@ -123,10 +123,6 @@ def load_image_meta(filepath):
 class image_list(_ImageInit, OptionalOutput, NameFilter, IDFilter):
     """List images accessible by user"""
 
-    PERMANENTS = (
-        'id', 'name',
-        'status', 'container_format', 'disk_format', 'size')
-
     arguments = dict(
         detail=FlagArgument('show detailed output', ('-l', '--details')),
         container_format=ValueArgument(
@@ -222,7 +218,9 @@ class image_list(_ImageInit, OptionalOutput, NameFilter, IDFilter):
             images = self._add_owner_name(images)
         elif detail and not self['detail']:
             for img in images:
-                for key in set(img).difference(self.PERMANENTS):
+                for key in set(img).difference([
+                        'id', 'name', 'status', 'container_format',
+                        'disk_format', 'size']):
                     img.pop(key)
         kwargs = dict(with_enumeration=self['enum'])
         if self['limit']:
@@ -585,9 +583,6 @@ class image_unregister(_ImageInit):
 @command(imagecompute_cmds)
 class imagecompute_list(_CycladesInit, OptionalOutput, NameFilter, IDFilter):
     """List images"""
-
-    PERMANENTS = ('id', 'name')
-
     arguments = dict(
         detail=FlagArgument('show detailed output', ('-l', '--details')),
         limit=IntArgument('limit number listed images', ('-n', '--number')),
@@ -643,7 +638,7 @@ class imagecompute_list(_CycladesInit, OptionalOutput, NameFilter, IDFilter):
             images = self._add_name(self._add_name(images, 'tenant_id'))
         elif detail and not self['detail']:
             for img in images:
-                for key in set(img).difference(self.PERMANENTS):
+                for key in set(img).difference(['id', 'name']):
                     img.pop(key)
         kwargs = dict(with_enumeration=self['enum'])
         if self['limit']:

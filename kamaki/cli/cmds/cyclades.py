@@ -121,8 +121,6 @@ class server_list(_CycladesInit, OptionalOutput, NameFilter, IDFilter):
     Use filtering arguments (e.g., --name-like) to manage long server lists
     """
 
-    PERMANENTS = ('id', 'name')
-
     arguments = dict(
         detail=FlagArgument('show detailed output', ('-l', '--details')),
         since=DateArgument(
@@ -215,7 +213,7 @@ class server_list(_CycladesInit, OptionalOutput, NameFilter, IDFilter):
             pass
         else:
             for srv in servers:
-                for key in set(srv).difference(self.PERMANENTS):
+                for key in set(srv).difference(['id', 'name']):
                     srv.pop(key)
 
         kwargs = dict(with_enumeration=self['enum'])
@@ -809,8 +807,6 @@ class server_wait(_CycladesInit, _ServerWait):
 class flavor_list(_CycladesInit, OptionalOutput, NameFilter, IDFilter):
     """List available hardware flavors"""
 
-    PERMANENTS = ('id', 'name')
-
     arguments = dict(
         detail=FlagArgument('show detailed output', ('-l', '--details')),
         limit=IntArgument('limit # of listed flavors', ('-n', '--number')),
@@ -852,7 +848,7 @@ class flavor_list(_CycladesInit, OptionalOutput, NameFilter, IDFilter):
             remove_from_items(flavors, 'links')
         if detail and not self['detail']:
             for flv in flavors:
-                for key in set(flv).difference(self.PERMANENTS):
+                for key in set(flv).difference(['id', 'name']):
                     flv.pop(key)
         kwargs = dict(out=StringIO(), title=()) if self['more'] else {}
         self.print_(
