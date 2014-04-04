@@ -285,21 +285,16 @@ class OutputFormatArgument(ValueArgument):
 
     def ___init__(self, *args, **kwargs):
         super(OutputFormatArgument, self).___init__(*args, **kwargs)
+        self.value = None
 
-    @property
-    def value(self):
-        return getattr(self, '_value', None)
-
-    @value.setter
     def value(self, newvalue):
         if not newvalue:
             return
         elif newvalue.lower() in self.formats:
-            self._value = newvalue.lower()
+            self.value = newvalue.lower()
         else:
             raise CLIInvalidArgument(
-                'Invalid value %s for argument %s' % (
-                    newvalue, self.lvalue),
+                'Invalid value %s for argument %s' % (newvalue, self.lvalue),
                 details=['Valid output formats: %s' % ', '.join(self.formats)])
 
 
