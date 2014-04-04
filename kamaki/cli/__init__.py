@@ -285,19 +285,19 @@ def init_cached_authenticator(config_argument, cloud, logger):
         _cnf = config_argument.value
         url = _cnf.get_cloud(cloud, 'url')
         tokens = _cnf.get_cloud(cloud, 'token').split()
-        auth_base, failed = None, []
+        astakos, failed = None, []
         for token in tokens:
             try:
-                if auth_base:
-                    auth_base.authenticate(token)
+                if astakos:
+                    astakos.authenticate(token)
                 else:
                     tmp_base = CachedAstakosClient(url, token)
                     from kamaki.cli.cmds import CommandInit
                     fake_cmd = CommandInit(dict(config=config_argument))
-                    fake_cmd.client = auth_base
+                    fake_cmd.client = astakos
                     fake_cmd._set_log_params()
                     tmp_base.authenticate(token)
-                    auth_base = tmp_base
+                    astakos = tmp_base
             except ClientError as ce:
                 if ce.status in (401, ):
                     logger.warning(
@@ -314,7 +314,7 @@ def init_cached_authenticator(config_argument, cloud, logger):
             _cnf.set_cloud(cloud, 'token', ' '.join(tokens))
             _cnf.write()
         if tokens:
-            return auth_base
+            return astakos
         logger.warning('WARNING: cloud.%s.token is now empty' % cloud)
     except AssertionError as ae:
         logger.warning('WARNING: Failed to load authenticator [%s]' % ae)
@@ -538,16 +538,15 @@ def run_shell(exe, parser):
     cloud = _init_session(parser.arguments)
     global kloger
     _cnf = parser.arguments['config']
-    auth_base = init_cached_authenticator(_cnf, cloud, kloger)
+    astakos = init_cached_authenticator(_cnf, cloud, kloger)
     try:
-        username, userid = (
-            auth_base.user_term('name'), auth_base.user_term('id'))
+        username, userid = (astakos.user_term('name'), astakos.user_term('id'))
     except Exception:
         username, userid = '', ''
     from kamaki.cli.shell import init_shell
     shell = init_shell(exe, parser, username, userid)
     _load_all_commands(shell.cmd_tree, parser.arguments)
-    shell.run(auth_base, cloud, parser)
+    shell.run(astakos, cloud, parser)
 
 
 @main

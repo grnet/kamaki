@@ -68,7 +68,7 @@ class Shell(Cmd):
     _context_stack = []
     _prompt_stack = []
     _parser = None
-    auth_base = None
+    astakos = None
     cloud = None
 
     undoc_header = 'interactive shell commands:'
@@ -204,12 +204,12 @@ class Shell(Cmd):
                     ldescr = getattr(cls, 'long_description', '')
                     if subcmd.path == 'history_run':
                         instance = cls(
-                            dict(cmd_parser.arguments), self.auth_base,
+                            dict(cmd_parser.arguments), self.astakos,
                             cmd_tree=self.cmd_tree)
                     else:
                         instance = cls(
                             dict(cmd_parser.arguments),
-                            self.auth_base, self.cloud)
+                            self.astakos, self.cloud)
                     cmd_parser.update_arguments(instance.arguments)
                     cmd_parser.arguments = instance.arguments
                     subpath = subcmd.path.split('_')[
@@ -303,8 +303,8 @@ class Shell(Cmd):
         hdr = tmp_partition[0].strip()
         return '%s commands:' % hdr
 
-    def run(self, auth_base, cloud, parser, path=''):
-        self.auth_base = auth_base
+    def run(self, astakos, cloud, parser, path=''):
+        self.astakos = astakos
         self.cloud = cloud
         self._parser = parser
         cnf = parser.arguments['config']

@@ -90,23 +90,22 @@ def with_temp_token(func):
 class _AstakosInit(CommandInit):
 
     @errors.Generic.all
-    @errors.Astakos.load
     @errors.Astakos.astakosclient
     @client_log
     def _run(self):
         if getattr(self, 'cloud', None):
-            base_url = self._custom_url('astakos')
-            if base_url:
+            endpoint_url = self._custom_url('astakos')
+            if endpoint_url:
                 token = self._custom_token(
                     'astakos') or self.config.get_cloud(
                     self.cloud, 'token')
                 token = token.split()[0] if ' ' in token else token
-                self.client = LoggedAstakosClient(base_url, token)
+                self.client = LoggedAstakosClient(endpoint_url, token)
                 return
         else:
             self.cloud = 'default'
-        if getattr(self, 'auth_base', None):
-            self.client = self.auth_base.get_client()
+        if getattr(self, 'astakos', None):
+            self.client = self.astakos.get_client()
             return
         raise CLIBaseUrlError(service='astakos')
 
@@ -238,7 +237,7 @@ class user_info(_AstakosInit, OptionalOutput):
         uuid = self['uuid'] or (self._username2uuid(self['name']) if (
             self['name']) else None)
         try:
-            token = self.auth_base.get_token(uuid) if uuid else None
+            token = self.astakos.get_token(uuid) if uuid else None
         except KeyError:
             msg = ('id %s' % self['uuid']) if (
                 self['uuid']) else 'username %s' % self['name']
@@ -248,7 +247,7 @@ class user_info(_AstakosInit, OptionalOutput):
                     '  /user list',
                     'To authenticate and add a new user in the session list',
                     '  /user add <new token>'])
-        self.print_(self.auth_base.user_info(token), self.print_dict)
+        self.print_(self.astakos.user_info(token), self.print_dict)
 
 
 @command(user_cmds)
@@ -258,16 +257,16 @@ class user_add(_AstakosInit, OptionalOutput):
     @errors.Generic.all
     @errors.Astakos.astakosclient
     def _run(self, token=None):
-        ask = token and token not in self.auth_base._uuids
-        self.print_(self.auth_base.authenticate(token), self.print_dict)
+        ask = token and token not in self.astakos._uuids
+        self.print_(self.astakos.authenticate(token), self.print_dict)
         if ask and self.ask_user(
                 'Token is temporarily stored in memory. If it is stored in'
                 ' kamaki configuration file, it will be available in later'
                 ' sessions. Do you want to permanently store this token?'):
-            tokens = self.auth_base._uuids.keys()
-            tokens.remove(self.auth_base.token)
+            tokens = self.astakos._uuids.keys()
+            tokens.remove(self.astakos.token)
             self['config'].set_cloud(
-                self.cloud, 'token', ' '.join([self.auth_base.token] + tokens))
+                self.cloud, 'token', ' '.join([self.astakos.token] + tokens))
             self['config'].write()
 
     def main(self, new_token=None):
@@ -287,7 +286,7 @@ class user_list(_AstakosInit, OptionalOutput):
     @errors.Astakos.astakosclient
     def _run(self):
         self.print_([u if self['detail'] else (dict(
-            id=u['id'], name=u['name'])) for u in self.auth_base.list_users()])
+            id=u['id'], name=u['name'])) for u in self.astakos.list_users()])
 
     def main(self):
         super(self.__class__, self)._run()
@@ -302,7 +301,7 @@ class user_select(_AstakosInit):
     @errors.Astakos.astakosclient
     def _run(self, uuid):
         try:
-            first_token = self.auth_base.get_token(uuid)
+            first_token = self.astakos.get_token(uuid)
         except KeyError:
             raise CLIError(
                 'No user with uuid %s in the cached session list' % uuid,
@@ -311,14 +310,14 @@ class user_select(_AstakosInit):
                     '  /user list',
                     'To authenticate and add a new user in the session list',
                     '  /user add <new token>'])
-        if self.auth_base.token != first_token:
-            self.auth_base.token = first_token
+        if self.astakos.token != first_token:
+            self.astakos.token = first_token
             msg = 'User with id %s is now the current session user.\n' % uuid
             msg += 'Do you want future sessions to also start with this user?'
             if self.ask_user(msg):
-                tokens = self.auth_base._uuids.keys()
-                tokens.remove(self.auth_base.token)
-                tokens.insert(0, self.auth_base.token)
+                tokens = self.astakos._uuids.keys()
+                tokens.remove(self.astakos.token)
+                tokens.insert(0, self.astakos.token)
                 self['config'].set_cloud(
                     self.cloud, 'token',  ' '.join(tokens))
                 self['config'].write()
@@ -340,7 +339,7 @@ class user_delete(_AstakosInit):
     @errors.Generic.all
     @errors.Astakos.astakosclient
     def _run(self, uuid):
-        if uuid == self.auth_base.user_term('id'):
+        if uuid == self.astakos.user_term('id'):
             raise CLIError('Cannot remove current session user', details=[
                 'To see all cached session users',
                 '  /user list',
@@ -349,7 +348,7 @@ class user_delete(_AstakosInit):
                 'To select a different session user',
                 '  /user select <user uuid>'])
         try:
-            self.auth_base.remove_user(uuid)
+            self.astakos.remove_user(uuid)
         except KeyError:
             raise CLIError('No user with uuid %s in session list' % uuid,
                 details=[
@@ -361,7 +360,7 @@ class user_delete(_AstakosInit):
                 'User is removed from current session, but will be restored in'
                 ' the next session. Remove the user from future sessions?'):
             self['config'].set_cloud(
-                self.cloud, 'token', ' '.join(self.auth_base._uuids.keys()))
+                self.cloud, 'token', ' '.join(self.astakos._uuids.keys()))
             self['config'].write()
 
     def main(self, user_uuid):

@@ -61,8 +61,9 @@ class AstakosClient(OriginalAstakosClient):
             url = args.pop(0)
             token = args.pop(0) if args else kwargs.pop('token', None)
             args = tuple([token, url] + args)
-        elif 'base_url' in kwargs:
-            kwargs['auth_url'] = kwargs.get('auth_url', kwargs['base_url'])
+        else:
+            kwargs['auth_url'] = kwargs.get('auth_url', kwargs.get(
+                'endpoint_url', kwargs['base_url']))
         super(AstakosClient, self).__init__(*args, **kwargs)
 
     def get_service_endpoints(self, service_type, version=None):
@@ -116,7 +117,7 @@ class LoggedAstakosClient(AstakosClient):
             if log_request:
                 req = RequestManager(
                     method=log_request['method'],
-                    url='%s://%s' % (self.scheme, self.astakos_base_url),
+                    url='%s://%s' % (self.scheme, self.astakos_endpoint_url),
                     path=log_request['path'],
                     data=log_request.get('body', None),
                     headers=log_request.get('headers', dict()))
@@ -140,8 +141,8 @@ class CachedAstakosClient(Client):
     service_type = 'identity'
 
     @_astakos_error
-    def __init__(self, base_url, token=None):
-        super(CachedAstakosClient, self).__init__(base_url, token)
+    def __init__(self, endpoint_url, token=None):
+        super(CachedAstakosClient, self).__init__(endpoint_url, token)
         self._astakos = dict()
         self._uuids = dict()
         self._cache = dict()
@@ -175,7 +176,7 @@ class CachedAstakosClient(Client):
         """
         token = self._resolve_token(token)
         astakos = LoggedAstakosClient(
-            self.base_url, token, logger=getLogger('astakosclient'))
+            self.endpoint_url, token, logger=getLogger('astakosclient'))
         astakos.LOG_TOKEN = getattr(self, 'LOG_TOKEN', False)
         astakos.LOG_DATA = getattr(self, 'LOG_DATA', False)
         r = astakos.authenticate()
@@ -285,7 +286,7 @@ class CachedAstakosClient(Client):
         return self.user_info(token).get(key, None)
 
     def post_user_catalogs(self, uuids=None, displaynames=None, token=None):
-        """POST base_url/user_catalogs
+        """POST endpoint_url/user_catalogs
 
         :param uuids: (list or tuple) user uuids
 

@@ -204,7 +204,7 @@ class CycladesNetworkClient(NetworkClient):
         return r.json['network']
 
     def reassign_network(self, network_id, project, **kwargs):
-        """POST base_url/networks/<network_id>/action
+        """POST endpoint_url/networks/<network_id>/action
 
         :returns: request response
         """

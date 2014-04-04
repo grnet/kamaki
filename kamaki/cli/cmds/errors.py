@@ -92,7 +92,7 @@ class Generic(object):
                     client = getattr(self, 'client', None)
                     if not client:
                         raise
-                    url = getattr(client, 'base_url', '<empty>')
+                    url = getattr(client, 'endpoint_url', '<empty>')
                     raise CLIError('Invalid service URL %s' % url, details=[
                         '%s' % ce,
                         'Check if authentication URL is correct',
@@ -120,30 +120,6 @@ class Astakos(object):
             except AstakosClientException as ace:
                 raise CLIError(
                     'Error in AstakosClient', details=['%s' % ace, ])
-            return r
-        return _raise
-
-    @classmethod
-    def load(this, func):
-        def _raise(self, *args, **kwargs):
-            r = func(self, *args, **kwargs)
-            try:
-                client = getattr(self, 'client')
-            except AttributeError as ae:
-                raise CLIError('Client setup failure', importance=3, details=[
-                    '%s' % ae])
-            if not getattr(client, 'token', False):
-                log.warning(
-                    'No permanent token (try:'
-                    ' kamaki config set cloud.default.token <tkn>)')
-            if not getattr(client, 'astakos_base_url', False):
-                msg = 'Missing synnefo authentication URL'
-                raise CLIError(msg, importance=3, details=[
-                    'Check if authentication URL is correct',
-                    '  # check current URL:',
-                    '  $ kamaki config get cloud.default.url',
-                    '  # set new auth. URL:',
-                    '  $ kamaki config set cloud.default.url'] + CLOUDNAME)
             return r
         return _raise
 

@@ -288,9 +288,9 @@ class Client(TestCase):
     def setUp(self):
         from kamaki.clients import Client
         from kamaki.clients import ClientError as CE
-        self.base_url = 'http://example.com'
+        self.endpoint_url = 'http://example.com'
         self.token = 's0m370k3n=='
-        self.client = Client(self.base_url, self.token)
+        self.client = Client(self.endpoint_url, self.token)
         self.CE = CE
 
     def tearDown(self):
@@ -300,7 +300,7 @@ class Client(TestCase):
         self.client.token = self.token
 
     def test___init__(self):
-        self.assertEqual(self.client.base_url, self.base_url)
+        self.assertEqual(self.client.endpoint_url, self.endpoint_url)
         self.assertEqual(self.client.token, self.token)
         self.assert_dicts_are_equal(self.client.headers, {})
         DATE_FORMATS = ['%a %b %d %H:%M:%S %Y']

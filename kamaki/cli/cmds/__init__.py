@@ -91,7 +91,7 @@ class CommandInit(object):
 
     def __init__(
             self,
-            arguments={}, auth_base=None, cloud=None,
+            arguments={}, astakos=None, cloud=None,
             _in=None, _out=None, _err=None):
         self._in, self._out, self._err = (
             _in or stdin, _out or stdout, _err or stderr)
@@ -113,14 +113,14 @@ class CommandInit(object):
             self.config = self['config']
         except KeyError:
             pass
-        self.auth_base = auth_base or getattr(self, 'auth_base', None)
+        self.astakos = astakos or getattr(self, 'astakos', None)
         self.cloud = cloud or getattr(self, 'cloud', None)
 
     def get_client(self, cls, service):
         self.cloud = getattr(self, 'cloud', 'default')
         URL, TOKEN = self._custom_url(service), self._custom_token(service)
         if not all([URL, TOKEN]):
-            astakos = getattr(self, 'auth_base', None)
+            astakos = getattr(self, 'astakos', None)
             if astakos:
                 URL = URL or astakos.get_endpoint_url(
                     self._custom_type(service) or cls.service_type,
@@ -180,10 +180,10 @@ class CommandInit(object):
         return self.config.get_cloud(self.cloud, '%s_version' % service)
 
     def _uuids2usernames(self, uuids):
-        return self.auth_base.post_user_catalogs(uuids)
+        return self.astakos.post_user_catalogs(uuids)
 
     def _usernames2uuids(self, username):
-        return self.auth_base.post_user_catalogs(displaynames=username)
+        return self.astakos.post_user_catalogs(displaynames=username)
 
     def _uuid2username(self, uuid):
         return self._uuids2usernames([uuid]).get(uuid, None)

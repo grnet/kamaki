@@ -77,7 +77,7 @@ class _PithosInit(CommandInit):
         self.account = self._custom_uuid()
         if self.account:
             return
-        astakos = getattr(self, 'auth_base', None)
+        astakos = getattr(self, 'astakos', None)
         if astakos:
             self.account = astakos.user_term('id', self.token)
         else:
@@ -87,7 +87,8 @@ class _PithosInit(CommandInit):
     @client_log
     def _run(self):
         self.client = self.get_client(PithosClient, 'pithos')
-        self.base_url, self.token = self.client.base_url, self.client.token
+        self.endpoint_url = self.client.endpoint_url
+        self.token = self.client.token
         self._set_account()
         self.client.account = self.account
         self.container = self._custom_container() or 'pithos'
@@ -100,11 +101,11 @@ class _PithosInit(CommandInit):
 class _PithosAccount(_PithosInit):
     """Setup account"""
 
-    def __init__(self, arguments={}, auth_base=None, cloud=None):
-        super(_PithosAccount, self).__init__(arguments, auth_base, cloud)
+    def __init__(self, arguments={}, astakos=None, cloud=None):
+        super(_PithosAccount, self).__init__(arguments, astakos, cloud)
         self['account'] = UserAccountArgument(
             'A user UUID or name', ('-A', '--account'))
-        self.arguments['account'].account_client = auth_base
+        self.arguments['account'].account_client = astakos
 
     def print_objects(self, object_list):
         for index, obj in enumerate(object_list):
@@ -143,8 +144,8 @@ class _PithosAccount(_PithosInit):
 class _PithosContainer(_PithosAccount):
     """Setup container"""
 
-    def __init__(self, arguments={}, auth_base=None, cloud=None):
-        super(_PithosContainer, self).__init__(arguments, auth_base, cloud)
+    def __init__(self, arguments={}, astakos=None, cloud=None):
+        super(_PithosContainer, self).__init__(arguments, astakos, cloud)
         self['container'] = ValueArgument(
             'Use this container (default: pithos)', ('-C', '--container'))
 
@@ -515,12 +516,12 @@ class _PithosFromTo(_PithosContainer):
             'The version of the source object', '--source-version')
     )
 
-    def __init__(self, arguments={}, auth_base=None, cloud=None):
+    def __init__(self, arguments={}, astakos=None, cloud=None):
         self.arguments.update(arguments)
         self.arguments.update(self.sd_arguments)
         super(_PithosFromTo, self).__init__(
-            self.arguments, auth_base, cloud)
-        self.arguments['destination_user'].account_client = self.auth_base
+            self.arguments, astakos, cloud)
+        self.arguments['destination_user'].account_client = self.astakos
 
     def _report_transfer(self, src, dst, transfer_name):
         if not dst:
@@ -650,7 +651,7 @@ class _PithosFromTo(_PithosContainer):
         dst_acc, dst_con, dst_path = self.resolve_pithos_url(
             destination_path_or_url)
         self.dst_client = PithosClient(
-            base_url=self.client.base_url, token=self.client.token,
+            endpoint_url=self.client.endpoint_url, token=self.client.token,
             container=self[
                 'destination_container'] or dst_con or self.client.container,
             account=self['destination_user'] or dst_acc or self.account)
@@ -1683,7 +1684,7 @@ class sharer_info(_PithosAccount, OptionalOutput):
         super(self.__class__, self)._run()
         if account_uuid_or_name:
             arg = UserAccountArgument('Check', ' ')
-            arg.account_client = self.auth_base
+            arg.account_client = self.astakos
             arg.value = account_uuid_or_name
             self.client.account, self.account = arg.value, arg.value
         self._run()

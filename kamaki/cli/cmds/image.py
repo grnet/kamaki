@@ -543,7 +543,7 @@ class image_register(_ImageInit, OptionalOutput):
     def main(self):
         super(self.__class__, self)._run()
         locator, pithos = self.arguments['pithos_location'], None
-        locator.setdefault('uuid', self.auth_base.user_term('id'))
+        locator.setdefault('uuid', self.astakos.user_term('id'))
         locator.path = locator.path or path.basename(
             self['local_image_path'] or '')
         if not locator.path:
@@ -561,7 +561,7 @@ class image_register(_ImageInit, OptionalOutput):
                         self.arguments['local_image_path'].lvalue)
                 ])
         self.arguments['pithos_location'].setdefault(
-            'uuid', self.auth_base.user_term('id'))
+            'uuid', self.astakos.user_term('id'))
         self._run(self['name'], locator)
 
 

@@ -97,9 +97,9 @@ def run(cloud, parser):
         exit(0)
 
     cls = cmd.cmd_class
-    auth_base = init_cached_authenticator(_cnf, cloud, kloger) if (
+    astakos = init_cached_authenticator(_cnf, cloud, kloger) if (
         cloud) else None
-    executable = cls(parser.arguments, auth_base, cloud)
+    executable = cls(parser.arguments, astakos, cloud)
     parser.required = getattr(cls, 'required', None)
     parser.update_arguments(executable.arguments)
     for term in _best_match:
