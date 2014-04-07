@@ -104,6 +104,8 @@ class PithosClient(PithosRestClient):
 
     def __init__(self, base_url, token, account=None, container=None):
         super(PithosClient, self).__init__(base_url, token, account, container)
+        #  All kamaki-set headers are quoted
+        self.request_header_prefices_to_quote = ['', ]
 
     def create_container(
             self,
@@ -466,10 +468,7 @@ class PithosClient(PithosRestClient):
                 sendlog.info('%s blocks missing' % len(missing))
                 num_of_blocks = len(missing)
                 missing = self._upload_missing_blocks(
-                    missing,
-                    hmap,
-                    f,
-                    upload_gen)
+                    missing, hmap, f, upload_gen)
                 if missing:
                     if num_of_blocks == len(missing):
                         retries -= 1

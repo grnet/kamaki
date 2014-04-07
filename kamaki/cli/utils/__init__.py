@@ -60,59 +60,6 @@ except ImportError:
     suggest['ansicolors']['active'] = True
 
 
-def _encode_nicely(somestr, encoding, replacement='?'):
-    """Encode somestr as 'encoding', but don't raise errors (replace with ?)
-        This method is slow. Us it only for grace.
-        :param encoding: (str) encode every character in this encoding
-        :param replacement: (char) replace each char raising encode-decode errs
-    """
-    newstr, err_counter = '', 0
-    for c in somestr:
-        try:
-            newc = c.decode('utf-8').encode(encoding)
-            newstr = '%s%s' % (newstr, newc)
-        except UnicodeError as e:
-            newstr = '%s%s' % (newstr, replacement)
-            err_counter += 1
-    if err_counter:
-        log.warning('WARNING: \t%s character%s failed to be encoded as %s' % (
-            err_counter, 's' if err_counter > 1 else '', encoding))
-        log.debug('Unicode Error %s' % e)
-    return newstr
-
-
-def DontRaiseUnicodeError(foo):
-    if pref_enc.lower() == 'utf-8':
-        return foo
-
-    def wrap(self, *args, **kwargs):
-        try:
-            s = kwargs.pop('s')
-        except KeyError:
-            try:
-                s = args[0]
-            except IndexError:
-                return foo(self, *args, **kwargs)
-            args = args[1:]
-        try:
-            s = (u'%s' % s).decode('utf-8').encode(pref_enc)
-        except UnicodeError as ue:
-            log.debug('Encoding(%s): %s' % (pref_enc, ue))
-            s = _encode_nicely(u'%s' % s, pref_enc, replacement='?')
-        return foo(self, s, *args, **kwargs)
-    return wrap
-
-
-def encode_for_console(s, encoding=pref_enc, replacement='?'):
-    if encoding.lower() == 'utf-8':
-        return s
-    try:
-        return s.decode('utf-8').encode(encoding)
-    except UnicodeError as ue:
-        log.debug('Encoding(%s): %s' % (encoding, ue))
-        return _encode_nicely(s, encoding, replacement)
-
-
 def suggest_missing(miss=None, exclude=[]):
     global suggest
     sgs = dict(suggest)
@@ -126,7 +73,8 @@ def suggest_missing(miss=None, exclude=[]):
     for k, v in (miss, sgs[miss]) if miss else sgs.items():
         if v['active'] and stderr.isatty():
             stderr.write('Suggestion: you may like to install %s\n' % k)
-            stderr.write('\t%s\n' % encode_for_console(v['description']))
+            stderr.write(
+                ('%s\n' % v['description']).encode(pref_enc, errors='replace'))
             stderr.write('\tIt is easy, here are the instructions:\n')
             stderr.write('\t%s/installation.html%s\n' % (
                 kamaki_docs, v['url']))
@@ -170,7 +118,7 @@ def pretty_keys(d, delim='_', recursive=False):
     return new_d
 
 
-def print_json(data, out=stdout, encoding=pref_enc):
+def print_json(data, out=stdout):
     """Print a list or dict as json in console
 
     :param data: json-dumpable data
@@ -441,8 +389,11 @@ def ask_user(msg, true_resp=('y', ), **kwargs):
 
     :returns: (bool) True if reponse in true responses, False otherwise
     """
-    yep = ', '.join(true_resp)
-    nope = '<not %s>' % yep if 'n' in true_resp or 'N' in true_resp else 'N'
+    yep = u', '.join(true_resp)
+    nope = u'<not %s>' % yep if 'n' in true_resp or 'N' in true_resp else 'N'
+    msg = msg.encode(pref_enc, errors='replace')
+    yep = yep.encode(pref_enc, errors='replace')
+    nope = nope.encode(pref_enc, errors='replace')
     user_response = raw_input('%s [%s/%s]: ' % (msg, yep, nope))
     return user_response[0].lower() in [s.lower() for s in true_resp]
 

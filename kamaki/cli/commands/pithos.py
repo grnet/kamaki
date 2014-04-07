@@ -403,7 +403,7 @@ class file_unpublish(_pithos_container):
 
 def _assert_path(self, path_or_url):
     if not self.path:
-        raiseCLIError(
+        raise CLIError(
             'Directory path is missing in location %s' % path_or_url,
             details=['Location format:    [[pithos://UUID]/CONTAINER/]PATH'])
 

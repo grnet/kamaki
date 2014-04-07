@@ -38,7 +38,7 @@ from inspect import getargspec
 
 from kamaki.cli.argument import ArgumentParseManager
 from kamaki.cli.history import History
-from kamaki.cli.utils import print_dict, red, magenta, yellow
+from kamaki.cli.utils import print_dict, red, magenta, yellow, pref_enc
 from kamaki.cli.errors import CLIError, CLICmdSpecError
 from kamaki.cli import logger
 from kamaki.clients.astakos import CachedAstakosClient
@@ -432,7 +432,7 @@ def update_parser_help(parser, cmd):
 
 
 def print_error_message(cli_err, out=stderr):
-    errmsg = '%s' % cli_err
+    errmsg = u'%s' % cli_err
     if cli_err.importance == 1:
         errmsg = magenta(errmsg)
     elif cli_err.importance == 2:
@@ -441,7 +441,7 @@ def print_error_message(cli_err, out=stderr):
         errmsg = red(errmsg)
     out.write(errmsg)
     for errmsg in cli_err.details:
-        out.write('|  %s\n' % errmsg)
+        out.write(u'|  %s\n' % errmsg)
         out.flush()
 
 
@@ -500,6 +500,10 @@ def main(func):
     def wrap():
         try:
             exe = basename(argv[0])
+            internal_argv = [arg.decode(pref_enc) for arg in argv]
+            for arg in reversed(internal_argv):
+                argv.insert(0, arg)
+                argv.pop()
             parser = ArgumentParseManager(exe)
 
             if parser.arguments['version'].value:
@@ -511,7 +515,8 @@ def main(func):
                 logger.set_log_filename(log_file)
             global filelog
             filelog = logger.add_file_logger(__name__.split('.')[0])
-            filelog.info('* Initial Call *\n%s\n- - -' % ' '.join(argv))
+
+            filelog.info('%s\n- - -' % ' '.join(argv))
 
             from kamaki.cli.utils import suggest_missing
             global _colors

@@ -33,11 +33,11 @@
 
 from cmd import Cmd
 from os import popen
-from sys import stdout, stderr
+from sys import stdout
 
 from kamaki.cli import exec_cmd, print_error_message, print_subcommands_help
 from kamaki.cli.argument import ArgumentParseManager
-from kamaki.cli.utils import print_dict, split_input
+from kamaki.cli.utils import print_dict, split_input, pref_enc
 from kamaki.cli.history import History
 from kamaki.cli.errors import CLIError
 from kamaki.clients import ClientError
@@ -190,6 +190,7 @@ class Shell(Cmd):
                 <cmd> <term> <term> <args> is always parsed to most specific
                 even if cmd_term_term is not a terminal path
             """
+            line = line.decode(pref_enc)
             subcmd, cmd_args = cmd.parse_out(split_input(line))
             self._history.add(' '.join([cmd.path.replace('_', ' '), line]))
             cmd_parser = ArgumentParseManager(

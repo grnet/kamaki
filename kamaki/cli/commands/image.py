@@ -48,7 +48,7 @@ from kamaki.cli.argument import (
     IntArgument, ProgressBarArgument)
 from kamaki.cli.commands.cyclades import _init_cyclades
 from kamaki.cli.errors import (
-    raiseCLIError, CLIBaseUrlError, CLIInvalidArgument)
+    CLIError, raiseCLIError, CLIBaseUrlError, CLIInvalidArgument)
 from kamaki.cli.commands import _command_init, errors, addLogSettings
 from kamaki.cli.commands import (
     _optional_output_cmd, _optional_json, _name_filter, _id_filter)
@@ -502,12 +502,12 @@ class image_register(_init_image, _optional_json):
         if pithos and not self['force_upload']:
             try:
                 pithos.get_object_info(path)
-                raiseCLIError(
-                    'Remote file /%s/%s already exists' % (
-                        pithos.container, path),
+                raise CLIError(
+                    'File already exists',
                     importance=2,
                     details=[
-                        'Registration ABORTED',
+                        'A remote file /%s/%s already exists' % (
+                            pithos.container, path),
                         'Use %s to force upload' % self.arguments[
                             'force_upload'].lvalue])
             except ClientError as ce:
@@ -548,9 +548,10 @@ class image_register(_init_image, _optional_json):
             r = self.client.register(name, location, params, properties)
         except ClientError as ce:
             if ce.status in (400, 404):
-                raiseCLIError(
-                    ce, 'Nonexistent image file location\n\t%s' % location,
+                raise CLIError(
+                    'Nonexistent image file location\n\t%s' % location,
                     details=[
+                        '%s' % ce,
                         'Does the image file %s exist at container %s ?' % (
                             locator.path,
                             locator.container)] + howto_image_file)
@@ -583,7 +584,6 @@ class image_register(_init_image, _optional_json):
 
     def main(self):
         super(self.__class__, self)._run()
-
         locator, pithos = self.arguments['pithos_location'], None
         locator.setdefault('uuid', self.auth_base.user_term('id'))
         locator.path = locator.path or path.basename(

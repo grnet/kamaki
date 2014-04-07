@@ -310,7 +310,7 @@ class DataSizeArgument(ValueArgument):
             limit = int(user_input)
         except ValueError:
             index = 0
-            digits = [str(num) for num in range(0, 10)] + ['.']
+            digits = ['%s' % num for num in range(0, 10)] + ['.']
             while user_input[index] in digits:
                 index += 1
             limit = user_input[:index]

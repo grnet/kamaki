@@ -60,6 +60,8 @@ class PithosRestClient(StorageClient):
 
         :returns: ConnectionResponse
         """
+        self.response_headers = ['Last-Modified', ]
+        self.response_header_prefices = ['X-Account-', ]
 
         self._assert_account()
         path = path4url(self.account)
@@ -111,6 +113,8 @@ class PithosRestClient(StorageClient):
         :returns: ConnectionResponse
         """
         self._assert_account()
+        self.response_headers = ['Last-Modified', ]
+        self.response_header_prefices = ['X-Account-', ]
 
         self.set_param('limit', limit, iff=limit)
         self.set_param('marker', marker, iff=marker)
@@ -156,7 +160,6 @@ class PithosRestClient(StorageClient):
 
         :returns: ConnectionResponse
         """
-
         self._assert_account()
 
         self.set_param('update', '', iff=update)
@@ -201,8 +204,9 @@ class PithosRestClient(StorageClient):
 
         :returns: ConnectionResponse
         """
-
         self._assert_container()
+        self.response_headers = ['Last-Modified', ]
+        self.response_header_prefices = ['X-Container-', ]
 
         self.set_param('until', until, iff=until)
 
@@ -269,6 +273,8 @@ class PithosRestClient(StorageClient):
         """
 
         self._assert_container()
+        self.response_headers = ['Last-Modified', ]
+        self.response_header_prefices = ['X-Container-', ]
 
         self.set_param('limit', limit, iff=limit)
         self.set_param('marker', marker, iff=marker)
@@ -431,8 +437,16 @@ class PithosRestClient(StorageClient):
 
         :returns: ConnectionResponse
         """
-
         self._assert_container()
+        self.response_headers = [
+            'ETag',
+            'Content-Length',
+            'Content-Type',
+            'Last-Modified',
+            'Content-Encoding',
+            'Content-Disposition',
+        ]
+        self.response_header_prefices = ['X-Object-', ]
 
         self.set_param('version', version, iff=version)
 
@@ -487,8 +501,17 @@ class PithosRestClient(StorageClient):
 
         :returns: ConnectionResponse
         """
-
         self._assert_container()
+        self.response_headers = [
+            'ETag',
+            'Content-Length',
+            'Content-Type',
+            'Last-Modified',
+            'Content-Encoding',
+            'Content-Disposition',
+            'Content-Range',
+        ]
+        self.response_header_prefices = ['X-Object-', ]
 
         self.set_param('format', format, iff=format)
         self.set_param('hashmap', hashmap, iff=hashmap)
@@ -582,8 +605,8 @@ class PithosRestClient(StorageClient):
 
         :returns: ConnectionResponse
         """
-
         self._assert_container()
+        self.response_headers = ['ETag', 'X-Object-Version']
 
         self.set_param('format', format, iff=format)
         self.set_param('hashmap', hashmap, iff=hashmap)
@@ -679,8 +702,18 @@ class PithosRestClient(StorageClient):
 
         :returns: ConnectionResponse
         """
-
         self._assert_container()
+        self.response_headers = [
+            'If-Match',
+            'If-None-Match',
+            'Destination',
+            'Destination-Account',
+            'Content-Type',
+            'Content-Encoding',
+            'Content-Disposition',
+            'X-Source-Version',
+        ]
+        self.response_header_prefices = ['X-Object-', ]
 
         self.set_param('format', format, iff=format)
         self.set_param('ignore_content_type', iff=ignore_content_type)
@@ -767,8 +800,18 @@ class PithosRestClient(StorageClient):
 
         :returns: ConnectionResponse
         """
-
         self._assert_container()
+        self.response_headers = [
+            'If-Match',
+            'If-None-Match',
+            'Destination',
+            'Destination-Account',
+            'Content-Type',
+            'Content-Encoding',
+            'Content-Disposition',
+            'X-Source-Version',
+        ]
+        self.response_header_prefices = ['X-Object-', ]
 
         self.set_param('format', format, iff=format)
         self.set_param('ignore_content_type', iff=ignore_content_type)
@@ -866,8 +909,8 @@ class PithosRestClient(StorageClient):
 
         :returns: ConnectionResponse
         """
-
         self._assert_container()
+        self.response_headers = ['ETag', 'X-Object-Version']
 
         self.set_param('format', format, iff=format)
         self.set_param('update', '', iff=update)
