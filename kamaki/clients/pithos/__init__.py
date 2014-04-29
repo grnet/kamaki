@@ -1343,7 +1343,7 @@ class PithosClient(PithosRestClient):
 
                 for key, thread in flying.items():
                     if thread.isAlive():
-                        if i < nblocks:
+                        if i < (nblocks - 1):
                             unfinished[key] = thread
                             continue
                         thread.join()
