@@ -822,7 +822,10 @@ class file_overwrite(_pithos_container, _optional_output_cmd):
 
 @command(file_cmds)
 class file_upload(_pithos_container, _optional_output_cmd):
-    """Upload a file"""
+    """Upload a file
+
+    The default destination is /pithos/NAME
+    where NAME is the base name of the source path"""
 
     arguments = dict(
         max_threads=IntArgument('default: 5', '--threads'),
@@ -1009,7 +1012,7 @@ class file_upload(_pithos_container, _optional_output_cmd):
         self._optional_output(uploaded)
         self.error('Upload completed')
 
-    def main(self, local_path, remote_path_or_url):
+    def main(self, local_path, remote_path_or_url=None):
         super(self.__class__, self)._run(remote_path_or_url)
         remote_path = self.path or path.basename(path.abspath(local_path))
         self._run(local_path=local_path, remote_path=remote_path)
