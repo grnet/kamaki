@@ -71,7 +71,11 @@ class PithosRestClient(StorageClient):
         self.set_header('If-Unmodified-Since', if_unmodified_since)
 
         success = kwargs.pop('success', 204)
-        return self.head(path, *args, success=success, **kwargs)
+        r = self.head(path, *args, success=success, **kwargs)
+        self._unquote_header_keys(
+            r.headers,
+            ('x-account-group-', 'x-account-policy-', 'x-account-meta-'))
+        return r
 
     def account_get(
             self,
@@ -177,6 +181,8 @@ class PithosRestClient(StorageClient):
                 self.set_header('X-Account-Meta-' + metaname, metaval)
         self.set_header('X-Account-Policy-Quota', quota)
         self.set_header('X-Account-Policy-Versioning', versioning)
+        self._quote_header_keys(
+            self.headers, ('x-account-group-', 'x-account-meta'))
 
         path = path4url(self.account)
         success = kwargs.pop('success', 202)
@@ -215,7 +221,10 @@ class PithosRestClient(StorageClient):
 
         path = path4url(self.account, self.container)
         success = kwargs.pop('success', 204)
-        return self.head(path, *args, success=success, **kwargs)
+        r = self.head(path, *args, success=success, **kwargs)
+        self._unquote_header_keys(
+            r.headers, ('x-container-policy-', 'x-container-meta-'))
+        return r
 
     def container_get(
             self,
@@ -324,6 +333,8 @@ class PithosRestClient(StorageClient):
         if metadata:
             for metaname, metaval in metadata.items():
                 self.set_header('X-Container-Meta-' + metaname, metaval)
+        self._quote_header_keys(
+            self.headers, ('x-container-policy-', 'x-container-meta-'))
 
         path = path4url(self.account, self.container)
         success = kwargs.pop('success', (201, 202))
@@ -382,6 +393,8 @@ class PithosRestClient(StorageClient):
         self.set_header('Content-Type', content_type)
         self.set_header('Content-Length', content_length)
         self.set_header('Transfer-Encoding', transfer_encoding)
+        self._quote_header_keys(
+            self.headers, ('x-container-policy-', 'x-container-meta-'))
 
         path = path4url(self.account, self.container)
         success = kwargs.pop('success', 202)
@@ -457,7 +470,9 @@ class PithosRestClient(StorageClient):
 
         path = path4url(self.account, self.container, obj)
         success = kwargs.pop('success', 200)
-        return self.head(path, *args, success=success, **kwargs)
+        r = self.head(path, *args, success=success, **kwargs)
+        self._unquote_header_keys(r.headers, 'x-object-meta-')
+        return r
 
     def object_get(
             self, obj,
@@ -526,7 +541,9 @@ class PithosRestClient(StorageClient):
 
         path = path4url(self.account, self.container, obj)
         success = kwargs.pop('success', 200)
-        return self.get(path, *args, success=success, **kwargs)
+        r = self.get(path, *args, success=success, **kwargs)
+        self._unquote_header_keys(r.headers, ('x-object-meta-'))
+        return r
 
     def object_put(
             self, obj,
@@ -639,6 +656,7 @@ class PithosRestClient(StorageClient):
         if metadata:
             for key, val in metadata.items():
                 self.set_header('X-Object-Meta-' + key, val)
+        self._quote_header_keys(self.headers, ('x-object-meta-', ))
 
         path = path4url(self.account, self.container, obj)
         success = kwargs.pop('success', 201)
@@ -739,6 +757,7 @@ class PithosRestClient(StorageClient):
         if metadata:
             for key, val in metadata.items():
                 self.set_header('X-Object-Meta-' + key, val)
+        self._unquote_header_keys(self.headers, 'x-object-meta-')
 
         path = path4url(self.account, self.container, obj)
         success = kwargs.pop('success', 201)
@@ -831,6 +850,7 @@ class PithosRestClient(StorageClient):
         if metadata:
             for key, val in metadata.items():
                 self.set_header('X-Object-Meta-' + key, val)
+        self._unquote_header_keys(self.headers, 'x-object-meta-')
 
         path = path4url(self.account, self.container, object)
         success = kwargs.pop('success', 201)
@@ -936,6 +956,7 @@ class PithosRestClient(StorageClient):
         self.set_header('X-Object-Public', public, public is not None)
         for key, val in metadata.items():
             self.set_header('X-Object-Meta-' + key, val)
+        self._quote_header_keys(self.headers, ('x-object-meta-', ))
 
         path = path4url(self.account, self.container, obj)
         success = kwargs.pop('success', (202, 204))

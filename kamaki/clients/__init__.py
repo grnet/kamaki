@@ -399,6 +399,24 @@ class Client(Logged):
         self.response_headers = []
         self.response_header_prefices = []
 
+    @staticmethod
+    def _unquote_header_keys(headers, prefices):
+        new_keys = dict()
+        for k in headers:
+            if k.lower().startswith(prefices):
+                new_keys[k] = unquote(k).decode('utf-8')
+        for old, new in new_keys.items():
+            headers[new] = headers.pop(old)
+
+    @staticmethod
+    def _quote_header_keys(headers, prefices):
+        new_keys = dict()
+        for k in headers:
+            if k.lower().startswith(prefices):
+                new_keys[k] = quote(k.encode('utf-8'))
+        for old, new in new_keys.items():
+            headers[new] = headers.pop(old)
+
     def _init_thread_limit(self, limit=1):
         assert isinstance(limit, int) and limit > 0, 'Thread limit not a +int'
         self._thread_limit = limit
