@@ -76,6 +76,7 @@ setup(
         'kamaki.clients.compute',
         'kamaki.clients.network',
         'kamaki.clients.cyclades',
+        'kamaki.clients.blockstorage',
     ],
     classifiers=[
         'Operating System :: OS Independent',
