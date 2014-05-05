@@ -50,6 +50,7 @@ from kamaki.clients.image.test import ImageClient
 from kamaki.clients.storage.test import StorageClient
 from kamaki.clients.pithos.test import (
     PithosClient, PithosRestClient, PithosMethods)
+from kamaki.clients.blockstorage.test import BlockStorageRestClient
 
 
 class ClientError(TestCase):
