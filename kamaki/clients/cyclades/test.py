@@ -286,6 +286,54 @@ class CycladesBlockStorageRestClient(TestCase):
                 json=project_id, success=success, **kwargs))
 
 
+bsrest_pkg = 'kamaki.clients.cyclades.CycladesBlockStorageRestClient'
+
+
+class CycladesBlockStorageClient(TestCase):
+
+    def setUp(self):
+        self.url = 'http://volumes.example.com'
+        self.token = 'v01um3s70k3n'
+        self.client = cyclades.CycladesBlockStorageClient(self.url, self.token)
+
+    @patch('%s.volumes_post' % bsrest_pkg, return_value=FR())
+    def test_create_volume(self, volumes_post):
+        keys = (
+            'display_description', 'snapshot_id', 'imageRef',
+            'volume_type', 'metadata', 'project')
+        FR.json, server_id, display_name = 'ret', 'vid', 'dn'
+        for args in product(
+                ('dd', None), ('sn', None), ('ir', None),
+                ('vt', None), ({'mk': 'mv'}, None), ('pid', None)):
+            self.assertEqual(
+                self.client.create_volume(42, server_id, display_name, *args),
+                'ret')
+            kwargs = dict(zip(keys, args))
+            self.assertEqual(
+                volumes_post.mock_calls[-1],
+                call(42, server_id, display_name, **kwargs))
+
+    @patch('%s.volumes_action_post' % bsrest_pkg, return_value=FR())
+    def test_reassign_volume(self, volumes_action_post):
+        volume_id, project_id = 'vid', 'pid'
+        self.client.reassign_volume(volume_id, project_id)
+        volumes_action_post.assert_called_once_with(
+            volume_id, {"reassign": {"project": project_id}})
+
+    @patch('%s.create_snapshot' % bsrest_pkg, return_value='ret')
+    def test_create_snapshot(self, create_snapshot):
+        keys = ('force', 'display_description')
+        volume_id, display_name = 'vid', 'dn'
+        for args in product((True, False, None), ('dd', None)):
+            self.assertEqual(
+                self.client.create_snapshot(volume_id, display_name, *args),
+                'ret')
+            kwargs = dict(zip(keys, args))
+            self.assertEqual(
+                create_snapshot.mock_calls[-1],
+                call(volume_id, display_name=display_name, **kwargs))
+
+
 if __name__ == '__main__':
     from sys import argv
     from kamaki.clients.test import runTestCase
@@ -304,6 +352,12 @@ if __name__ == '__main__':
         runTestCase(
             CycladesBlockStorageRestClient,
             'Cyclades Block Storage Rest Client',
+            argv[2:])
+    if not argv[1:] or argv[1] == 'CycladesBlockStorageClient':
+        not_found = False
+        runTestCase(
+            CycladesBlockStorageClient,
+            'Cyclades Block Storage Client',
             argv[2:])
     if not_found:
         print('TestCase %s not found' % argv[1])

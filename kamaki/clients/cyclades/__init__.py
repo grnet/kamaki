@@ -31,7 +31,8 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from kamaki.clients.cyclades.rest_api import CycladesComputeRestClient
+from kamaki.clients.cyclades.rest_api import (
+    CycladesComputeRestClient, CycladesBlockStorageRestClient)
 from kamaki.clients.network import NetworkClient
 from kamaki.clients.utils import path4url
 from kamaki.clients import ClientError, Waiter
@@ -280,3 +281,38 @@ class CycladesNetworkClient(NetworkClient):
         path = path4url('floatingips', floating_network_id, 'action')
         json_data = dict(reassign=dict(project=project_id))
         self.post(path, json=json_data, success=200)
+
+
+class CycladesBlockStorageClient(CycladesBlockStorageRestClient):
+    """Cyclades Block Storage REST API Client"""
+
+    def create_volume(
+            self, size, server_id, display_name,
+            display_description=None,
+            snapshot_id=None,
+            imageRef=None,
+            volume_type=None,
+            metadata=None,
+            project=None):
+        """:returns: (dict) new volumes' details"""
+        r = self.volumes_post(
+            size, server_id, display_name,
+            display_description=display_description,
+            snapshot_id=snapshot_id,
+            imageRef=imageRef,
+            volume_type=volume_type,
+            metadata=metadata,
+            project=project)
+        return r.json
+
+    def reassign_volume(self, volume_id, project):
+        self.volumes_action_post(volume_id, {"reassign": {"project": project}})
+
+    def create_snapshot(
+            self, volume_id, display_name,
+            force=None, display_description=None):
+        return super(CycladesBlockStorageClient, self).create_snapshot(
+            volume_id,
+            display_name=display_name,
+            force=force,
+            display_description=display_description)
