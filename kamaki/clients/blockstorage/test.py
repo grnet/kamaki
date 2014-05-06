@@ -207,6 +207,137 @@ class BlockStorageRestClient(TestCase):
                 'path_str', success=success, **kwargs))
 
 
+rest_pkg = 'kamaki.clients.blockstorage.BlockStorageRestClient'
+
+
+class FakeResponse:
+    json = 'ret'
+    headers = 'hea'
+
+
+class BlockStorageClient(TestCase):
+
+    def setUp(self):
+        self.url = 'http://volumes.example.com'
+        self.token = 'v01um3s70k3n'
+        self.client = blockstorage.BlockStorageClient(self.url, self.token)
+
+    def tearDown(self):
+        FakeResponse.json = 'ret'
+
+    @patch('%s.volumes_get' % rest_pkg, return_value=FakeResponse())
+    def test_list_volumes(self, volumes_get):
+        FakeResponse.json = dict(volumes='ret list')
+        self.assertEqual(self.client.list_volumes(), 'ret list')
+        self.assertEqual(volumes_get.mock_calls[-1], call(detail=None))
+        self.assertEqual(self.client.list_volumes(True), 'ret list')
+        self.assertEqual(volumes_get.mock_calls[-1], call(detail=True))
+
+    @patch('%s.volumes_get' % rest_pkg, return_value=FakeResponse())
+    def test_get_volume_details(self, volumes_get):
+        FakeResponse.json = dict(volume='ret')
+        self.assertEqual(self.client.get_volume_details('vid'), 'ret')
+        self.assertEqual(volumes_get.mock_calls[-1], call(volume_id='vid'))
+
+    @patch('%s.volumes_post' % rest_pkg, return_value=FakeResponse())
+    def test_create_volume(self, volumes_post):
+        keys, FakeResponse.json = (
+            'availability_zone', 'source_volid', 'display_name',
+            'display_description', 'snapshot_id', 'imageRef', 'volume_type',
+            'bootable', 'metadata'), dict(volume='ret')
+        for args in product(
+                ('az', None), ('volId', None), ('dn', None),
+                ('dd', None), ('sn', None), ('ir', None), ('vt', None),
+                (True, False, None), ({'mk': 'mv'}, None)):
+            self.assertEqual(self.client.create_volume(42, *args), 'ret')
+            kwargs = dict(zip(keys, args))
+            self.assertEqual(volumes_post.mock_calls[-1], call(42, **kwargs))
+
+    @patch(
+        'kamaki.clients.blockstorage.BlockStorageClient.get_volume_details',
+        return_value='vd')
+    @patch('%s.volumes_put' % rest_pkg, return_value=FakeResponse())
+    def test_update_volume(self, volumes_put, get_volume_details):
+        keys, FakeResponse.json = (
+            'display_name', 'display_description', 'delete_on_termination',
+            'metadata'), dict(volume='ret')
+        for args in product(
+                ('dn', None), ('dd', None), (True, False, None),
+                ({'mk': 'v'}, None)):
+            if args == (None, None, None, None):
+                self.assertEqual(self.client.update_volume('vid', *args), 'vd')
+            else:
+                self.assertEqual(
+                    self.client.update_volume('vid', *args), 'ret')
+                kwargs = dict(zip(keys, args))
+                self.assertEqual(
+                    volumes_put.mock_calls[-1], call('vid', **kwargs))
+
+    @patch('%s.volumes_delete' % rest_pkg, return_value=FakeResponse())
+    def test_delete_volume(self, volumes_delete):
+        self.assertEqual(self.client.delete_volume('vid'), 'hea')
+        volumes_delete.assert_called_once_with('vid')
+
+    @patch('%s.snapshots_get' % rest_pkg, return_value=FakeResponse())
+    def test_list_snapshots(self, snapshots_get):
+        FakeResponse.json = dict(snapshots='ret list')
+        self.assertEqual(self.client.list_snapshots(), 'ret list')
+        self.assertEqual(snapshots_get.mock_calls[-1], call(detail=None))
+        self.assertEqual(self.client.list_snapshots(True), 'ret list')
+        self.assertEqual(snapshots_get.mock_calls[-1], call(detail=True))
+
+    @patch('%s.snapshots_get' % rest_pkg, return_value=FakeResponse())
+    def test_get_snapshot_details(self, snapshots_get):
+        FakeResponse.json = dict(snapshot='ret')
+        self.assertEqual(self.client.get_snapshot_details('vid'), 'ret')
+        self.assertEqual(snapshots_get.mock_calls[-1], call(snapshot_id='vid'))
+
+    @patch('%s.snapshots_post' % rest_pkg, return_value=FakeResponse())
+    def test_create_snapshot(self, snapshots_post):
+        keys = ('force', 'display_name', 'display_description')
+        FakeResponse.json = dict(snapshot='ret')
+        for args in product((True, False, None), ('dn', None), ('dd', None)):
+            self.assertEqual(self.client.create_snapshot(42, *args), 'ret')
+            kwargs = dict(zip(keys, args))
+            self.assertEqual(snapshots_post.mock_calls[-1], call(42, **kwargs))
+
+    @patch(
+        'kamaki.clients.blockstorage.BlockStorageClient.get_snapshot_details',
+        return_value='sd')
+    @patch('%s.snapshots_put' % rest_pkg, return_value=FakeResponse())
+    def test_update_snapshot(self, snapshots_put, get_snapshot_details):
+        keys = ('display_name', 'display_description')
+        FakeResponse.json = dict(snapshot='ret')
+        for args in product(('dn', None), ('dd', None)):
+            if args == (None, None):
+                self.assertEqual(
+                    self.client.update_snapshot('sid', *args), 'sd')
+            else:
+                self.assertEqual(
+                    self.client.update_snapshot('sid', *args), 'ret')
+                kwargs = dict(zip(keys, args))
+                self.assertEqual(
+                    snapshots_put.mock_calls[-1], call('sid', **kwargs))
+
+    @patch('%s.snapshots_delete' % rest_pkg, return_value=FakeResponse())
+    def test_delete_snapshot(self, snapshots_delete):
+        self.assertEqual(self.client.delete_snapshot('sid'), 'hea')
+        snapshots_delete.assert_called_once_with('sid')
+
+    @patch('%s.types_get' % rest_pkg, return_value=FakeResponse())
+    def test_list_volume_types(self, types_get):
+        FakeResponse.json = dict(volume_types='ret list')
+        self.assertEqual(self.client.list_volume_types(), 'ret list')
+        self.assertEqual(types_get.mock_calls[-1], call())
+
+    @patch('%s.types_get' % rest_pkg, return_value=FakeResponse())
+    def test_get_volume_type_details(self, types_get):
+        FakeResponse.json = dict(volume_type='ret dict')
+        self.assertEqual(
+            self.client.get_volume_type_details('vtid'), 'ret dict')
+        self.assertEqual(types_get.mock_calls[-1], call('vtid'))
+
+
 if __name__ == '__main__':
     from sys import argv
     from kamaki.clients.test import runTestCase
@@ -215,5 +346,8 @@ if __name__ == '__main__':
         not_found = False
         runTestCase(
             BlockStorageRestClient, 'Block Storage Rest Client', argv[2:])
+    if not argv[1:] or argv[1] == 'BlockStorageClient':
+        not_found = False
+        runTestCase(BlockStorageClient, 'Block Storage Client', argv[2:])
     if not_found:
         print('TestCase %s not found' % argv[1])
