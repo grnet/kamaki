@@ -32,6 +32,7 @@
 # or implied, of GRNET S.A.
 
 from kamaki.clients.compute import ComputeClient
+from kamaki.clients.blockstorage import BlockStorageClient
 from kamaki.clients.utils import path4url
 
 
@@ -51,3 +52,39 @@ class CycladesComputeRestClient(ComputeClient):
 
 #  Backwards compatibility
 CycladesRestClient = CycladesComputeRestClient
+
+
+class CycladesBlockStorageRestClient(BlockStorageClient):
+    """Synnefo Cyclades Block Storage REST API Client"""
+
+    def volumes_post(
+            self, size, server_id, display_name,
+            display_description=None,
+            snapshot_id=None,
+            imageRef=None,
+            volume_type=None,
+            metadata=None,
+            project=None,
+            success=202,
+            **kwargs):
+        path = path4url('volumes')
+        volume = dict(
+            size=int(size), server_id=server_id, display_name=display_name)
+        if display_description is not None:
+            volume['display_description'] = display_description
+        if snapshot_id is not None:
+            volume['snapshot_id'] = snapshot_id
+        if imageRef is not None:
+            volume['imageRef'] = imageRef
+        if volume_type is not None:
+            volume['volume_type'] = volume_type
+        if metadata is not None:
+            volume['metadata'] = metadata
+        if project is not None:
+            volume['project'] = project
+        return self.post(
+            path, json=dict(volume=volume), success=success, **kwargs)
+
+    def volumes_action_post(self, volume_id, json_data, success=200, **kwargs):
+        path = path4url('volumes', volume_id, 'action')
+        return self.post(path, json=json_data, success=success, **kwargs)

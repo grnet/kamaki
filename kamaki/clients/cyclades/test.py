@@ -1,4 +1,4 @@
-# Copyright 2013 GRNET S.A. All rights reserved.
+# Copyright 2013-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -236,6 +236,56 @@ class CycladesComputeClient(TestCase):
         self.assert_dicts_are_equal(r, cnsl['console'])
 
 
+clients_pkg = 'kamaki.clients.Client'
+
+
+class CycladesBlockStorageRestClient(TestCase):
+
+    def setUp(self):
+        self.url = 'http://volumes.example.com'
+        self.token = 'v01um3s70k3n'
+        self.client = cyclades.rest_api.CycladesBlockStorageRestClient(
+            self.url, self.token)
+
+    @patch('%s.post' % clients_pkg)
+    def test_volumes_post(self, post):
+        keys = (
+            'display_description', 'snapshot_id', 'imageRef',
+            'volume_type', 'metadata', 'project')
+        for args in product(
+                ('dd', None), ('sn', None), ('ir', None),
+                ('vt', None), ({'mk': 'mv'}, None), ('pid', None),
+                ({'k1': 'v1', 'k2': 'v2'}, {'success': 1000}, {})):
+            kwargs, server_id, display_name = args[-1], 'sid', 'dn'
+            args = args[:-1]
+            for err, size in ((TypeError, None), (ValueError, 'size')):
+                self.assertRaises(
+                    err, self.client.volumes_post,
+                    size, server_id, display_name, *args, **kwargs)
+            size = 42
+            self.client.volumes_post(
+                size, server_id, display_name, *args, **kwargs)
+            volume = dict(
+                size=int(size), server_id=server_id, display_name=display_name)
+            for k, v in zip(keys, args):
+                if v:
+                    volume[k] = v
+            success, jsondata = kwargs.pop('success', 202), dict(volume=volume)
+            self.assertEqual(
+                post.mock_calls[-1],
+                call('/volumes', json=jsondata, success=success, **kwargs))
+
+    @patch('%s.post' % clients_pkg)
+    def test_volumes_action_post(self, post):
+        for kwargs in ({'k1': 'v1', 'k2': 'v2'}, {'success': 1000}, {}):
+            volume_id, project_id = 'vid', 'pid'
+            self.client.volumes_action_post(volume_id, project_id, **kwargs)
+            success = kwargs.pop('success', 200)
+            self.assertEqual(post.mock_calls[-1], call(
+                '/volumes/%s/action' % volume_id,
+                json=project_id, success=success, **kwargs))
+
+
 if __name__ == '__main__':
     from sys import argv
     from kamaki.clients.test import runTestCase
@@ -249,5 +299,11 @@ if __name__ == '__main__':
     if not argv[1:] or argv[1] == 'CycladesComputeRestClient':
         not_found = False
         runTestCase(CycladesComputeRestClient, 'CycladesRest Client', argv[2:])
+    if not argv[1:] or argv[1] == 'CycladesBlockStorageRestClient':
+        not_found = False
+        runTestCase(
+            CycladesBlockStorageRestClient,
+            'Cyclades Block Storage Rest Client',
+            argv[2:])
     if not_found:
         print('TestCase %s not found' % argv[1])
