@@ -94,6 +94,8 @@ DEFAULTS = {
         'subnet_cli': 'network',
         'port_cli': 'network',
         'ip_cli': 'network',
+        'volume_cli': 'blockstorage',
+        'snapshot_cli': 'blockstorage',
         'image_cli': 'image',
         'imagecompute_cli': 'image',
         'config_cli': 'config',
