@@ -288,7 +288,20 @@ class file_list(_pithos_container, _optional_json, _name_filter):
             meta=self['meta'])
 
         if not r.json:
-            self.error('Container "%s" is empty' % self.client.container)
+            if self.path:
+                obj_path = '/%s/%s' % (self.container, self.path)
+                try:
+                    if self._is_dir(self.client.get_object_info(self.path)):
+                        self.error('Directory %s is empty' % obj_path)
+                    else:
+                        self.error('Object %s is not a directory' % obj_path)
+                except ClientError as ce:
+                    if ce.status in (404, ):
+                        self.error('Object %s does not exist' % obj_path)
+                    else:
+                        raise
+            else:
+                self.error('Container "%s" is empty' % self.client.container)
 
         files = self._filter_by_name(r.json)
         if self['more']:
