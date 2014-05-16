@@ -1,4 +1,4 @@
-# Copyright 2012-2013 GRNET S.A. All rights reserved.
+# Copyright 2012-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -32,6 +32,7 @@
 # or implied, of GRNET S.A.
 
 from logging import getLogger
+import inspect
 from astakosclient import AstakosClient as OriginalAstakosClient
 from astakosclient import AstakosClientException, parse_endpoints
 
@@ -83,8 +84,7 @@ class AstakosClient(OriginalAstakosClient):
 
 
 #  Wrap AstakosClient public methods to raise AstakosClientError
-from inspect import getmembers
-for m in getmembers(AstakosClient):
+for m in inspect.getmembers(AstakosClient):
     if hasattr(m[1], '__call__') and not ('%s' % m[0]).startswith('_'):
         setattr(AstakosClient, m[0], _astakos_error(m[1]))
 
@@ -131,7 +131,7 @@ class LoggedAstakosClient(AstakosClient):
                         message=log_response['message'],
                         data=log_response.get('data', ''))
         except Exception:
-            pass
+            recvlog.debug('Kamaki failed to log an AstakosClient call')
         finally:
             return r
 
