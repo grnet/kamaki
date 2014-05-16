@@ -1402,6 +1402,8 @@ class PithosClient(PithosRestClient):
         start, end = int(start), int(end)
         assert rf_size >= start, 'Range start %s exceeds file size %s' % (
             start, rf_size)
+        assert rf_size >= end, 'Range end %s exceeds file size %s' % (
+            end, rf_size)
         meta = self.get_container_info()
         blocksize = int(meta['x-container-block-size'])
         filesize = fstat(source_file.fileno()).st_size
