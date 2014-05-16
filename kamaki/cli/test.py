@@ -83,6 +83,7 @@ class History(TestCase):
 
     def test_retrieve(self):
         sample_history = (
+            '0\n',
             'kamaki history show\n',
             'kamaki file list\n',
             'kamaki file create /pithos/f1\n',
@@ -103,6 +104,7 @@ class History(TestCase):
 
     def test_limit(self):
         sample_history = (
+            '0\n',
             'kamaki history show\n',
             'kamaki file list\n',
             'kamaki file create /pithos/f1\n',
@@ -361,20 +363,6 @@ class CLIBaseUrlError(TestCase):
         for service in ('', 'some service'):
             clibue = CLIBaseUrlError(service=service)
             self.assertEqual('%s' % clibue, 'No URL for %s\n' % service)
-            self.assertEqual(clibue.details, [
-                'Two ways to resolve this:',
-                '(Use the correct cloud name, instead of "default")',
-                'A. (recommended) Let kamaki discover endpoint URLs for all',
-                'services by setting a single Authentication URL and token:',
-                '  /config set cloud.default.url <AUTH_URL>',
-                '  /config set cloud.default.token <t0k3n>',
-                'B. (advanced users) Explicitly set an %s endpoint URL' % (
-                    service.upper()),
-                'Note: URL option has a higher priority, so delete it to',
-                'make that work',
-                '  /config delete cloud.default.url',
-                '  /config set cloud.%s.url <%s_URL>' % (
-                    service, service.upper())])
             self.assertEqual(clibue.importance, 2)
 
 

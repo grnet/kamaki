@@ -175,7 +175,7 @@ class CommandTree(TestCase):
         self.assertEqual(c1.path, c2.path)
         self.assertEqual(c1.name, c2.name)
         self.assertEqual(c1.cmd_class, c2.cmd_class)
-        self.assertEqual(c1.help, c2.help)
+        self.assertEqual(c1.help or '', c2.help or '')
 
     def setUp(self):
         cmd = cmdtree.Command('cmd', subcommands=dict(
@@ -368,8 +368,7 @@ class CommandTree(TestCase):
             ('cmd_cmd0c_cmd1a', []),
             ('cmd_cmd0c_cmd1b', ['cmd2', ]),
             ('cmd_cmd0c_cmd1b_cmd2', []),
-            ('othercmd', [])
-        ):
+            ('othercmd', [])):
             l1 = [cmd.path for cmd in ctree.get_subcommands(s1)]
             l2 = ['_'.join([s1, i]) for i in l2] if s1 else l2
             l1.sort(), l2.sort(), self.assertEqual(l1, l2)
