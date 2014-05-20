@@ -307,7 +307,7 @@ Two servers and a private network
 
 .. code-block:: python
 
-    #! /user/bin/python
+    #! /usr/bin/python
 
     from kamaki.clients.astakos import AstakosClient
     from kamaki.clients.cyclades import (
@@ -341,3 +341,91 @@ Two servers and a private network
 
     srv_state2 = cyclades.wait_server(srv2['id'])
     assert srv_state2 in ('ACTIVE', ), 'Server 2 built failure'
+
+Snapshot server and backup
+''''''''''''''''''''''''''
+
+.. code-block:: python
+
+    #! /usr/bin/python
+
+    from kamaki.clients.astakos import AstakosClient
+    from kamaki.clients.cyclades import (
+        CycladesClient, CycladesBlockStorageClient)
+    from kamaki.clients.image import ImageClient
+
+    AUTHENTICATION_URL = 'https://accounts.example.com/identity/v2.0'
+    TOKEN = 'replace this with your token'
+
+    astakos = AstakosClient(AUTHENTICATION_URL, TOKEN)
+
+    CYCLADES_URL = astakos.get_endpoint_url(CycladesClient.service_type)
+    compute = CycladesClient(CYCLADES_URL, TOKEN)
+
+    SERVER_ID = 'your server ID here'
+
+    srv = compute.get_server_details(SERVER_ID)
+    volume_id = srv['volumes'][0]
+
+    BS_URL = astakos.get_endpoint_url(CycladesBlockStorageClient.service_type)
+    block_storage = CycladesBlockStorageClient(BS_URL, TOKEN)
+
+    snp = block_storage.create_snapshot(volume_id, 'Srv %s BackUp' % srv['id'])
+
+    IMAGE_URL = astakos.get_endpoint_url(ImageClient.service_type)
+    plankton = ImageClient(IMAGE_URL, TOKEN)
+
+    #  Get location in the form pithos://UUID/CONTAINER/PATH
+    snp_location = plankton.get_meta(snp['id'])['location']
+
+    #  Optional: download to local storage
+    from kamaki.clients.pithos import PithosClient
+
+    PITHOS_URL = astakos.get_endpoint_url(PithosClient.service_type)
+    pref_len = len('pithos://')
+    ACCOUNT, sep, rel_path = snp_location[pref_len:].partition('/')
+    CONTAINER, sep, PATH = rel_path.partition('/')
+    pithos = PithosClient(PITHOS_URL, TOKEN, ACCOUNT, CONTAINER)
+
+    LOCAL_DESTINATION_PATH = 'local path for backup image file'
+
+    pithos.download_object(PATH, LOCAL_DESTINATION_PATH)
+
+Restore server from local snapshot image
+''''''''''''''''''''''''''''''''''''''''
+
+.. code-block:: python
+
+    #! /usr/bin/python
+
+    from kamaki.clients.astakos import AstakosClient
+    from kamaki.clients.cyclades import CycladesClient
+    from kamaki.clients.image import ImageClient
+    from kamaki.clients.pithos import PithosClient
+
+    AUTHENTICATION_URL = 'https://accounts.example.com/identity/v2.0'
+    TOKEN = 'replace this with your token'
+
+    astakos = AstakosClient(AUTHENTICATION_URL, TOKEN)
+
+    ACCOUNT, CONTAINER = astakos.user_info['id'], 'snapshots'
+    PITHOS_URL = astakos.get_endpoint_url(PithosClient.service_type)
+    pithos = PithosClient(PITHOS_URL, TOKEN, ACCOUNT, CONTAINER)
+
+    LOCAL_BACKUP_IMAGE = 'local backup image file here'
+    PATH = 'server_backup.diskdump'
+
+    with open(LOCAL_BACKUP_IMAGE) as f:
+        obj = pithos.upload_object(PATH, f)
+
+    IMAGE_URL = astakos.get_endpoint_url(ImageClient.service_type)
+    plankton = ImageClient(IMAGE_URL, TOKEN)
+
+    LOCATION = 'pithos://%s/%s/%s' % (ACCOUNT)
+    img = plankton.register('Backup Snapshot', LOCATION)
+
+    CYCLADES_URL = astakos.get_endpoint_url(CycladesClient.service_type)
+    compute = CycladesClient(CYCLADES_URL, TOKEN)
+
+    FLAVOR_ID = 'make sure to pick a flavor with enough resources'
+    restored_server = compute.create('Restored server', FLAVOR_ID, img['id'])

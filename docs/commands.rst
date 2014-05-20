@@ -420,6 +420,57 @@ Showcase: Connect a network to a VM
 
 .. Note:: In kamaki shell, / is used to access top-level command groups while working in command group contexts
 
+volume (Block Storage)
+----------------------
+
+.. code-block:: text
+
+    info        Get details about a volume
+    list        List volumes
+    create      Create a new volume
+    modify      Modify a volumes' properties
+    reassign    Reassign volume to a different project
+    type        Get volume type details
+    types       List volume types
+    delete      Delete a volume
+
+Showcase: Create a volume
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: console
+
+    $ kamaki volume create --server-id=11687 --name='Small Volume' --size=2
+    id: v0lum31d
+    name: Small Volume
+    size: 2
+    ...
+    $ kamaki volume list
+    v0lum31d   Small Volume
+
+snapshot (Block Storage)
+------------------------
+
+.. code-block:: text
+
+    info    Get details about a snapshot
+    list    List snapshots
+    create  Create a new snapshot
+    modify  Modify a snapshots' properties
+    delete  Delete a snapshot
+
+Showcase: Create a snapshot
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: console
+
+    $ kamaki snapshot create --volume-id=v0lum31d --name='Small Snapshot'
+    id: sn4p5h071d
+    name: Small Snapshot
+    ...
+    $ kamaki snapshot list
+    sn4p5h071d   Small Snapshot
+    ...
+
 container (Storage/Pithos+)
 ---------------------------
 

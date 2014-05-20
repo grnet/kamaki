@@ -83,6 +83,12 @@ ip
 port
     Networking API network Commands
 
+volume
+    Block Storage API volume commands
+
+snapshot
+    Block Storage API snapshot commands
+
 config
     Kamaki option and cloud configuration
 
@@ -165,6 +171,27 @@ quota
 *****
 
 * list          Get user quotas
+
+volume
+******
+
+* info      Get details about a volume
+* list      List volumes
+* create    Create a new volume
+* modify    Modify a volumes' properties
+* reassign  Reassign volume to a different project
+* type      Get volume type details
+* types     List volume types
+* delete    Delete a volume
+
+snapshot
+********
+
+* info      Get details about a snapshot
+* list      List snapshots
+* create    Create a new snapshot
+* modify    Modify a snapshots' properties
+* delete    Delete a snapshot
 
 resource
 ********
