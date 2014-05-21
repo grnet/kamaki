@@ -31,29 +31,36 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
+from sys import stdin, stdout, stderr
+from traceback import format_exc
+
 from kamaki.cli.logger import get_logger
 from kamaki.cli.utils import (
     print_list, print_dict, print_json, print_items, ask_user, pref_enc,
     filter_dicts_by_dict)
-from kamaki.cli.argument import FlagArgument, ValueArgument
+from kamaki.cli.argument import ValueArgument, ProgressBarArgument
 from kamaki.cli.errors import CLIInvalidArgument, CLIBaseUrlError
-from sys import stdin, stdout, stderr
-import codecs
 
 
 log = get_logger(__name__)
 
 
-def DontRaiseKeyError(func):
-    def wrap(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except KeyError:
-            return None
-    return wrap
+def dont_raise(*errors):
+    def decorator(func):
+        def wrap(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except errors as e:
+                log.debug('Suppressed error %s while calling %s(%s)' % (
+                    e, func.__name__, ','.join(['%s' % i for i in args] + [
+                        ('%s=%s' % items) for items in kwargs.items()])))
+                log.debug(format_exc(e))
+                return None
+        return wrap
+    return decorator
 
 
-def addLogSettings(func):
+def client_log(func):
     def wrap(self, *args, **kwargs):
         try:
             return func(self, *args, **kwargs)
@@ -62,7 +69,7 @@ def addLogSettings(func):
     return wrap
 
 
-def dataModification(func):
+def fall_back(func):
     def wrap(self, inp):
         try:
             inp = func(self, inp)
@@ -74,7 +81,7 @@ def dataModification(func):
     return wrap
 
 
-class _command_init(object):
+class CommandInit(object):
 
     # self.arguments (dict) contains all non-positional arguments
     # self.required (list or tuple) contains required argument keys
@@ -84,20 +91,18 @@ class _command_init(object):
 
     def __init__(
             self,
-            arguments={}, auth_base=None, cloud=None,
+            arguments={}, astakos=None, cloud=None,
             _in=None, _out=None, _err=None):
         self._in, self._out, self._err = (
             _in or stdin, _out or stdout, _err or stderr)
         self.required = getattr(self, 'required', None)
         if hasattr(self, 'arguments'):
             arguments.update(self.arguments)
-        if isinstance(self, _optional_output_cmd):
+        if isinstance(self, OptionalOutput):
             arguments.update(self.oo_arguments)
-        if isinstance(self, _optional_json):
-            arguments.update(self.oj_arguments)
-        if isinstance(self, _name_filter):
+        if isinstance(self, NameFilter):
             arguments.update(self.nf_arguments)
-        if isinstance(self, _id_filter):
+        if isinstance(self, IDFilter):
             arguments.update(self.if_arguments)
         try:
             arguments.update(self.wait_arguments)
@@ -108,14 +113,14 @@ class _command_init(object):
             self.config = self['config']
         except KeyError:
             pass
-        self.auth_base = auth_base or getattr(self, 'auth_base', None)
+        self.astakos = astakos or getattr(self, 'astakos', None)
         self.cloud = cloud or getattr(self, 'cloud', None)
 
     def get_client(self, cls, service):
         self.cloud = getattr(self, 'cloud', 'default')
         URL, TOKEN = self._custom_url(service), self._custom_token(service)
         if not all([URL, TOKEN]):
-            astakos = getattr(self, 'auth_base', None)
+            astakos = getattr(self, 'astakos', None)
             if astakos:
                 URL = URL or astakos.get_endpoint_url(
                     self._custom_type(service) or cls.service_type,
@@ -125,6 +130,7 @@ class _command_init(object):
                 raise CLIBaseUrlError(service=service)
         return cls(URL, TOKEN)
 
+    @dont_raise(UnicodeError)
     def write(self, s):
         self._out.write(s.encode(pref_enc, errors='replace'))
         self._out.flush()
@@ -157,27 +163,27 @@ class _command_init(object):
         kwargs.setdefault('out', self)
         return ask_user(*args, **kwargs)
 
-    @DontRaiseKeyError
+    @dont_raise(KeyError)
     def _custom_url(self, service):
         return self.config.get_cloud(self.cloud, '%s_url' % service)
 
-    @DontRaiseKeyError
+    @dont_raise(KeyError)
     def _custom_token(self, service):
         return self.config.get_cloud(self.cloud, '%s_token' % service)
 
-    @DontRaiseKeyError
+    @dont_raise(KeyError)
     def _custom_type(self, service):
         return self.config.get_cloud(self.cloud, '%s_type' % service)
 
-    @DontRaiseKeyError
+    @dont_raise(KeyError)
     def _custom_version(self, service):
         return self.config.get_cloud(self.cloud, '%s_version' % service)
 
     def _uuids2usernames(self, uuids):
-        return self.auth_base.post_user_catalogs(uuids)
+        return self.astakos.post_user_catalogs(uuids)
 
     def _usernames2uuids(self, username):
-        return self.auth_base.post_user_catalogs(displaynames=username)
+        return self.astakos.post_user_catalogs(displaynames=username)
 
     def _uuid2username(self, uuid):
         return self._uuids2usernames([uuid]).get(uuid, None)
@@ -186,6 +192,8 @@ class _command_init(object):
         return self._usernames2uuids([username]).get(username, None)
 
     def _set_log_params(self):
+        if not self.client:
+            return
         try:
             self.client.LOG_TOKEN = (
                 self['config'].get('global', 'log_token').lower() == 'on')
@@ -273,65 +281,42 @@ class _command_init(object):
 class OutputFormatArgument(ValueArgument):
     """Accepted output formats: json (default)"""
 
-    formats = ('json', )
+    formats = dict(json=print_json)
 
     def ___init__(self, *args, **kwargs):
         super(OutputFormatArgument, self).___init__(*args, **kwargs)
+        self.value = None
 
-    @property
-    def value(self):
-        return getattr(self, '_value', None)
-
-    @value.setter
     def value(self, newvalue):
         if not newvalue:
-            self._value = self.default
+            return
         elif newvalue.lower() in self.formats:
-            self._value = newvalue.lower
+            self.value = newvalue.lower()
         else:
             raise CLIInvalidArgument(
-                'Invalid value %s for argument %s' % (
-                    newvalue, self.lvalue),
+                'Invalid value %s for argument %s' % (newvalue, self.lvalue),
                 details=['Valid output formats: %s' % ', '.join(self.formats)])
 
 
-class _optional_output_cmd(object):
+class OptionalOutput(object):
 
     oo_arguments = dict(
-        with_output=FlagArgument('show response headers', ('--with-output')),
-        json_output=FlagArgument(
-            'show headers in json (DEPRECATED from v0.12,'
-            '  please use --output-format=json instead)', ('-j', '--json'))
-    )
-
-    def _optional_output(self, r):
-        if self['json_output']:
-            print_json(r, out=self)
-        elif self['with_output']:
-            print_items([r] if isinstance(r, dict) else r, out=self)
-
-
-class _optional_json(object):
-
-    oj_arguments = dict(
         output_format=OutputFormatArgument(
             'Show output in chosen output format (%s)' % ', '.join(
                 OutputFormatArgument.formats),
             '--output-format'),
-        json_output=FlagArgument(
-            'show output in json (DEPRECATED from v0.12,'
-            ' please use --output-format instead)', ('-j', '--json'))
     )
 
-    def _print(self, output, print_method=print_items, **print_method_kwargs):
-        if self['json_output'] or self['output_format']:
-            print_json(output, out=self)
+    def print_(self, output, print_method=print_items, **print_method_kwargs):
+        if self['output_format']:
+            func = OutputFormatArgument.formats[self['output_format']]
+            func(output, out=self)
         else:
             print_method_kwargs.setdefault('out', self)
             print_method(output, **print_method_kwargs)
 
 
-class _name_filter(object):
+class NameFilter(object):
 
     nf_arguments = dict(
         name=ValueArgument('filter by name', '--name'),
@@ -361,7 +346,7 @@ class _name_filter(object):
         return self._non_exact_name_filter(self._exact_name_filter(items))
 
 
-class _id_filter(object):
+class IDFilter(object):
 
     if_arguments = dict(
         id=ValueArgument('filter by id', '--id'),
@@ -387,3 +372,31 @@ class _id_filter(object):
 
     def _filter_by_id(self, items):
         return self._non_exact_id_filter(self._exact_id_filter(items))
+
+
+class Wait(object):
+    wait_arguments = dict(
+        progress_bar=ProgressBarArgument(
+            'do not show progress bar', ('-N', '--no-progress-bar'), False)
+    )
+
+    def wait(
+            self, service, service_id, status_method, current_status,
+            countdown=True, timeout=60):
+        (progress_bar, wait_cb) = self._safe_progress_bar(
+            '%s %s: status is still %s' % (
+                service, service_id, current_status),
+            countdown=countdown, timeout=timeout)
+        try:
+            new_mode = status_method(
+                service_id, current_status, max_wait=timeout, wait_cb=wait_cb)
+            if new_mode:
+                self.error('%s %s: status is now %s' % (
+                    service, service_id, new_mode))
+            else:
+                self.error('%s %s: status is still %s' % (
+                    service, service_id, current_status))
+        except KeyboardInterrupt:
+            self.error('\n- canceled')
+        finally:
+            self._safe_progress_bar_finish(progress_bar)

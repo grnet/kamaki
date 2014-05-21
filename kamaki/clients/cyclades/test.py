@@ -34,7 +34,6 @@
 from mock import patch, call
 from unittest import TestCase
 from itertools import product
-from json import dumps
 
 from kamaki.clients import ClientError, cyclades
 
@@ -88,16 +87,16 @@ class FR(object):
     status = None
     status_code = 200
 
-rest_pkg = 'kamaki.clients.cyclades.CycladesRestClient'
-cyclades_pkg = 'kamaki.clients.cyclades.CycladesClient'
+rest_pkg = 'kamaki.clients.cyclades.CycladesComputeRestClient'
+cyclades_pkg = 'kamaki.clients.cyclades.CycladesComputeClient'
 
 
-class CycladesRestClient(TestCase):
+class CycladesComputeRestClient(TestCase):
 
     def setUp(self):
         self.url = 'http://cyclades.example.com'
         self.token = 'cyc14d3s70k3n'
-        self.client = cyclades.CycladesRestClient(self.url, self.token)
+        self.client = cyclades.CycladesComputeRestClient(self.url, self.token)
 
     @patch('kamaki.clients.Client.get', return_value='ret')
     def test_servers_stats_get(self, get):
@@ -192,7 +191,7 @@ class CycladesNetworkClient(TestCase):
             self.assertEqual(ports_post.mock_calls[-1], call(**expargs))
 
 
-class CycladesClient(TestCase):
+class CycladesComputeClient(TestCase):
 
     def assert_dicts_are_equal(self, d1, d2):
         for k, v in d1.items():
@@ -206,7 +205,7 @@ class CycladesClient(TestCase):
     def setUp(self):
         self.url = 'http://cyclades.example.com'
         self.token = 'cyc14d3s70k3n'
-        self.client = cyclades.CycladesClient(self.url, self.token)
+        self.client = cyclades.CycladesComputeClient(self.url, self.token)
 
     def tearDown(self):
         FR.status_code = 200
@@ -241,14 +240,14 @@ if __name__ == '__main__':
     from sys import argv
     from kamaki.clients.test import runTestCase
     not_found = True
-    if not argv[1:] or argv[1] == 'CycladesClient':
+    if not argv[1:] or argv[1] == 'CycladesComputeClient':
         not_found = False
         runTestCase(CycladesNetworkClient, 'Cyclades Client', argv[2:])
     if not argv[1:] or argv[1] == 'CycladesNetworkClient':
         not_found = False
         runTestCase(CycladesNetworkClient, 'CycladesNetwork Client', argv[2:])
-    if not argv[1:] or argv[1] == 'CycladesRestClient':
+    if not argv[1:] or argv[1] == 'CycladesComputeRestClient':
         not_found = False
-        runTestCase(CycladesRestClient, 'CycladesRest Client', argv[2:])
+        runTestCase(CycladesComputeRestClient, 'CycladesRest Client', argv[2:])
     if not_found:
         print('TestCase %s not found' % argv[1])

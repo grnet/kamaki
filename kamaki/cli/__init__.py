@@ -36,20 +36,20 @@ from sys import argv, exit, stdout, stderr
 from os.path import basename, exists
 from inspect import getargspec
 
-from kamaki.cli.argument import ArgumentParseManager
+from kamaki.cli.argument import (
+    ArgumentParseManager, ConfigArgument, ValueArgument, FlagArgument,
+    RuntimeConfigArgument, VersionArgument, Argument)
 from kamaki.cli.history import History
-from kamaki.cli.utils import print_dict, red, magenta, yellow, pref_enc
+from kamaki.cli.utils import (
+    print_dict, magenta, red, yellow, suggest_missing, remove_colors, pref_enc)
 from kamaki.cli.errors import CLIError, CLICmdSpecError
 from kamaki.cli import logger
 from kamaki.clients.astakos import CachedAstakosClient
 from kamaki.clients import ClientError
 
-_help = False
+
 _debug = False
-_verbose = False
-_colors = False
 kloger = None
-filelog = None
 
 #  command auxiliary methods
 
@@ -64,42 +64,25 @@ def _arg2syntax(arg):
                     '_', ' ')
 
 
-def _construct_command_syntax(cls):
-        spec = getargspec(cls.main.im_func)
-        args = spec.args[1:]
-        n = len(args) - len(spec.defaults or ())
-        required = ' '.join(['<%s>' % _arg2syntax(x) for x in args[:n]])
-        optional = ' '.join(['[%s]' % _arg2syntax(x) for x in args[n:]])
-        cls.syntax = ' '.join([required, optional])
-        if spec.varargs:
-            cls.syntax += ' <%s ...>' % spec.varargs
-
-
-def _num_of_matching_terms(basic_list, attack_list):
-    if not attack_list:
-        return len(basic_list)
-
-    matching_terms = 0
-    for i, term in enumerate(basic_list):
-        try:
-            if term != attack_list[i]:
-                break
-        except IndexError:
-            break
-        matching_terms += 1
-    return matching_terms
-
-
 def _update_best_match(name_terms, prefix=[]):
+    global _best_match
     if prefix:
         pref_list = prefix if isinstance(prefix, list) else prefix.split('_')
     else:
-        pref_list = []
+        _best_match, pref_list = [], []
 
-    num_of_matching_terms = _num_of_matching_terms(name_terms, pref_list)
-    global _best_match
-    if not prefix:
-        _best_match = []
+    if pref_list:
+        num_of_matching_terms = 0
+        for i, term in enumerate(name_terms):
+            try:
+                if term == pref_list[i]:
+                    num_of_matching_terms += 1
+                else:
+                    break
+            except IndexError:
+                break
+    else:
+        num_of_matching_terms = len(name_terms)
 
     if num_of_matching_terms and len(_best_match) <= num_of_matching_terms:
         if len(_best_match) < num_of_matching_terms:
@@ -113,7 +96,7 @@ def command(cmd_tree, prefix='', descedants_depth=1):
         e.g., spec_cmd0_cmd1 will be command spec cmd0
 
         :param cmd_tree: is initialized in cmd_spec file and is the structure
-            where commands are loaded. Var name should be _commands
+            where commands are loaded. Var name should be "namespaces"
         :param prefix: if given, load only commands prefixed with prefix,
         :param descedants_depth: is the depth of the tree descedants of the
             prefix command. It is used ONLY if prefix and if prefix is not
@@ -133,8 +116,6 @@ def command(cmd_tree, prefix='', descedants_depth=1):
 
         name_terms = cls_name.split('_')
         if not _update_best_match(name_terms, prefix):
-            # if _debug:
-            #     kloger.warning('%s failed to update_best_match' % cls_name)
             return None
 
         global _best_match
@@ -154,7 +135,15 @@ def command(cmd_tree, prefix='', descedants_depth=1):
         except AttributeError:
             raise CLICmdSpecError(
                 'No commend in %s (acts as cmd description)' % cls.__name__)
-        _construct_command_syntax(cls)
+        #  Build command syntax help
+        spec = getargspec(cls.main.im_func)
+        args = spec.args[1:]
+        n = len(args) - len(spec.defaults or ())
+        required = ' '.join(['<%s>' % _arg2syntax(x) for x in args[:n]])
+        optional = ' '.join(['[%s]' % _arg2syntax(x) for x in args[n:]])
+        cls.syntax = ' '.join([required, optional])
+        if spec.varargs:
+            cls.syntax += ' <%s ...>' % spec.varargs
 
         cmd_tree.add_command(
             cls_name, cls.description, cls, cls.long_description)
@@ -163,6 +152,8 @@ def command(cmd_tree, prefix='', descedants_depth=1):
 
 
 cmd_spec_locations = [
+    'kamaki.cli.cmds',
+    'kamaki.cmds',
     'kamaki.cli.commands',
     'kamaki.commands',
     'kamaki.cli',
@@ -173,12 +164,8 @@ cmd_spec_locations = [
 #  Generic init auxiliary functions
 
 
-def _setup_logging(silent=False, debug=False, verbose=False):
+def _setup_logging(debug=False, verbose=False):
     """handle logging for clients package"""
-
-    if silent:
-        logger.add_stream_logger(__name__, logging.CRITICAL)
-        return
 
     sfmt, rfmt = '> %(message)s', '< %(message)s'
     if debug:
@@ -190,7 +177,8 @@ def _setup_logging(silent=False, debug=False, verbose=False):
         logger.add_stream_logger('kamaki.clients.send', logging.INFO, sfmt)
         logger.add_stream_logger('kamaki.clients.recv', logging.INFO, rfmt)
         logger.add_stream_logger(__name__, logging.INFO)
-    logger.add_stream_logger(__name__, logging.WARNING)
+    else:
+        logger.add_stream_logger(__name__, logging.WARNING)
     global kloger
     kloger = logger.get_logger(__name__)
 
@@ -228,26 +216,21 @@ def _init_session(arguments, is_non_API=False):
     """
     :returns: cloud name
     """
-    global _help
     _help = arguments['help'].value
     global _debug
     _debug = arguments['debug'].value
-    global _verbose
     _verbose = arguments['verbose'].value
     _cnf = arguments['config']
 
-    _silent = arguments['silent'].value
-    _setup_logging(_silent, _debug, _verbose)
+    _setup_logging(_debug, _verbose)
 
     if _help or is_non_API:
         return None
 
     _check_config_version(_cnf.value)
 
-    global _colors
     _colors = _cnf.value.get('global', 'colors')
     if not (stdout.isatty() and _colors == 'on'):
-        from kamaki.cli.utils import remove_colors
         remove_colors()
 
     cloud = arguments['cloud'].value or _cnf.value.get(
@@ -302,19 +285,19 @@ def init_cached_authenticator(config_argument, cloud, logger):
         _cnf = config_argument.value
         url = _cnf.get_cloud(cloud, 'url')
         tokens = _cnf.get_cloud(cloud, 'token').split()
-        auth_base, failed = None, []
+        astakos, failed = None, []
         for token in tokens:
             try:
-                if auth_base:
-                    auth_base.authenticate(token)
+                if astakos:
+                    astakos.authenticate(token)
                 else:
                     tmp_base = CachedAstakosClient(url, token)
-                    from kamaki.cli.commands import _command_init
-                    fake_cmd = _command_init(dict(config=config_argument))
-                    fake_cmd.client = auth_base
+                    from kamaki.cli.cmds import CommandInit
+                    fake_cmd = CommandInit(dict(config=config_argument))
+                    fake_cmd.client = astakos
                     fake_cmd._set_log_params()
                     tmp_base.authenticate(token)
-                    auth_base = tmp_base
+                    astakos = tmp_base
             except ClientError as ce:
                 if ce.status in (401, ):
                     logger.warning(
@@ -331,7 +314,7 @@ def init_cached_authenticator(config_argument, cloud, logger):
             _cnf.set_cloud(cloud, 'token', ' '.join(tokens))
             _cnf.write()
         if tokens:
-            return auth_base
+            return astakos
         logger.warning('WARNING: cloud.%s.token is now empty' % cloud)
     except AssertionError as ae:
         logger.warning('WARNING: Failed to load authenticator [%s]' % ae)
@@ -367,11 +350,11 @@ def _groups_help(arguments):
     descriptions = {}
     acceptable_groups = arguments['config'].groups
     for cmd_group, spec in arguments['config'].cli_specs:
-        pkg = _load_spec_module(spec, arguments, '_commands')
+        pkg = _load_spec_module(spec, arguments, 'namespaces')
         if pkg:
-            cmds = getattr(pkg, '_commands')
+            namespaces = getattr(pkg, 'namespaces')
             try:
-                for cmd_tree in cmds:
+                for cmd_tree in namespaces:
                     if cmd_tree.name in acceptable_groups:
                         descriptions[cmd_tree.name] = cmd_tree.description
             except TypeError:
@@ -388,14 +371,14 @@ def _load_all_commands(cmd_tree, arguments):
     _cnf = arguments['config']
     for cmd_group, spec in _cnf.cli_specs:
         try:
-            spec_module = _load_spec_module(spec, arguments, '_commands')
-            spec_commands = getattr(spec_module, '_commands')
+            spec_module = _load_spec_module(spec, arguments, 'namespaces')
+            namespaces = getattr(spec_module, 'namespaces')
         except AttributeError:
             if _debug:
                 global kloger
                 kloger.warning('No valid description for %s' % cmd_group)
             continue
-        for spec_tree in spec_commands:
+        for spec_tree in namespaces:
             if spec_tree.name == cmd_group:
                 cmd_tree.add_tree(spec_tree)
                 break
@@ -453,8 +436,6 @@ def exec_cmd(instance, cmd_args, help_method):
             print(magenta('Syntax error'))
             if _debug:
                 raise err
-            if _verbose:
-                print(unicode(err))
             help_method()
         else:
             raise
@@ -504,8 +485,22 @@ def main(func):
             for arg in reversed(internal_argv):
                 argv.insert(0, arg)
                 argv.pop()
-            parser = ArgumentParseManager(exe)
 
+            _config_arg = ConfigArgument('Path to config file')
+            parser = ArgumentParseManager(exe, arguments=dict(
+                config=_config_arg,
+                cloud=ValueArgument(
+                    'Chose a cloud to connect to', ('--cloud')),
+                help=Argument(0, 'Show help message', ('-h', '--help')),
+                debug=FlagArgument('Include debug output', ('-d', '--debug')),
+                verbose=FlagArgument(
+                    'More info at response', ('-v', '--verbose')),
+                version=VersionArgument(
+                    'Print current version', ('-V', '--version')),
+                options=RuntimeConfigArgument(
+                    _config_arg,
+                    'Override a config value', ('-o', '--options')))
+            )
             if parser.arguments['version'].value:
                 exit(0)
 
@@ -513,13 +508,11 @@ def main(func):
             log_file = _cnf.get('global', 'log_file')
             if log_file:
                 logger.set_log_filename(log_file)
-            global filelog
             filelog = logger.add_file_logger(__name__.split('.')[0])
 
             filelog.info('%s\n- - -' % ' '.join(argv))
 
-            from kamaki.cli.utils import suggest_missing
-            global _colors
+            _colors = _cnf.value.get('global', 'colors')
             exclude = ['ansicolors'] if not _colors == 'on' else []
             suggest_missing(exclude=exclude)
             func(exe, parser)
@@ -543,18 +536,17 @@ def main(func):
 def run_shell(exe, parser):
     parser.arguments['help'].value = False
     cloud = _init_session(parser.arguments)
-    from command_shell import _init_shell
     global kloger
     _cnf = parser.arguments['config']
-    auth_base = init_cached_authenticator(_cnf, cloud, kloger)
+    astakos = init_cached_authenticator(_cnf, cloud, kloger)
     try:
-        username, userid = (
-            auth_base.user_term('name'), auth_base.user_term('id'))
+        username, userid = (astakos.user_term('name'), astakos.user_term('id'))
     except Exception:
         username, userid = '', ''
-    shell = _init_shell(exe, parser, username, userid)
+    from kamaki.cli.shell import init_shell
+    shell = init_shell(exe, parser, username, userid)
     _load_all_commands(shell.cmd_tree, parser.arguments)
-    shell.run(auth_base, cloud, parser)
+    shell.run(astakos, cloud, parser)
 
 
 @main
@@ -570,8 +562,8 @@ def run_one_cmd(exe, parser):
         _history = History(cnf.get('global', 'history_file'), token=token)
         _history.limit = cnf.get('global', 'history_limit')
         _history.add(' '.join([exe] + argv[1:]))
-        from kamaki.cli import one_command
-        one_command.run(cloud, parser, _help)
+        from kamaki.cli import one_cmd
+        one_cmd.run(cloud, parser)
     else:
         parser.print_help()
         _groups_help(parser.arguments)

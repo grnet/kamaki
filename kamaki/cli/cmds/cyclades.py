@@ -38,27 +38,21 @@ from io import StringIO
 from pydoc import pager
 
 from kamaki.cli import command
-from kamaki.cli.command_tree import CommandTree
+from kamaki.cli.cmdtree import CommandTree
 from kamaki.cli.utils import remove_from_items, filter_dicts_by_dict
-from kamaki.cli.errors import (
-    raiseCLIError, CLISyntaxError, CLIBaseUrlError, CLIInvalidArgument)
-from kamaki.clients.cyclades import CycladesClient
+from kamaki.cli.errors import raiseCLIError, CLISyntaxError, CLIInvalidArgument
+from kamaki.clients.cyclades import CycladesComputeClient
 from kamaki.cli.argument import (
     FlagArgument, ValueArgument, KeyValueArgument, RepeatableArgument,
-    ProgressBarArgument, DateArgument, IntArgument, StatusArgument)
-from kamaki.cli.commands import (
-    _command_init, errors, addLogSettings, dataModification,
-    _optional_output_cmd, _optional_json, _name_filter, _id_filter)
+    DateArgument, IntArgument, StatusArgument)
+from kamaki.cli.cmds import (
+    CommandInit, fall_back, OptionalOutput, NameFilter, IDFilter, Wait, errors,
+    client_log)
 
 
 server_cmds = CommandTree('server', 'Cyclades/Compute API server commands')
 flavor_cmds = CommandTree('flavor', 'Cyclades/Compute API flavor commands')
-_commands = [server_cmds, flavor_cmds]
-
-
-about_authentication = '\nUser Authentication:\
-    \n* to check authentication: /user authenticate\
-    \n* to set authentication token: /config set cloud.<cloud>.token <token>'
+namespaces = [server_cmds, flavor_cmds]
 
 howto_personality = [
     'Defines a file to be injected to virtual servers file system.',
@@ -73,52 +67,22 @@ howto_personality = [
 server_states = ('BUILD', 'ACTIVE', 'STOPPED', 'REBOOT')
 
 
-class _service_wait(object):
+class _ServerWait(Wait):
 
-    wait_arguments = dict(
-        progress_bar=ProgressBarArgument(
-            'do not show progress bar', ('-N', '--no-progress-bar'), False)
-    )
-
-    def _wait(
-            self, service, service_id, status_method, current_status,
-            countdown=True, timeout=60):
-        (progress_bar, wait_cb) = self._safe_progress_bar(
-            '%s %s: status is still %s' % (
-                service, service_id, current_status),
-            countdown=countdown, timeout=timeout)
-
-        try:
-            new_mode = status_method(
-                service_id, current_status, max_wait=timeout, wait_cb=wait_cb)
-            if new_mode:
-                self.error('%s %s: status is now %s' % (
-                    service, service_id, new_mode))
-            else:
-                self.error('%s %s: status is still %s' % (
-                    service, service_id, current_status))
-        except KeyboardInterrupt:
-            self.error('\n- canceled')
-        finally:
-            self._safe_progress_bar_finish(progress_bar)
-
-
-class _server_wait(_service_wait):
-
-    def _wait(self, server_id, current_status, timeout=60):
-        super(_server_wait, self)._wait(
+    def wait(self, server_id, current_status, timeout=60):
+        super(_ServerWait, self).wait(
             'Server', server_id, self.client.wait_server, current_status,
             countdown=(current_status not in ('BUILD', )),
             timeout=timeout if current_status not in ('BUILD', ) else 100)
 
 
-class _init_cyclades(_command_init):
-    @errors.generic.all
-    @addLogSettings
+class _CycladesInit(CommandInit):
+    @errors.Generic.all
+    @client_log
     def _run(self):
-        self.client = self.get_client(CycladesClient, 'cyclades')
+        self.client = self.get_client(CycladesComputeClient, 'cyclades')
 
-    @dataModification
+    @fall_back
     def _restruct_server_info(self, vm):
         if not vm:
             return vm
@@ -152,12 +116,10 @@ class _init_cyclades(_command_init):
 
 
 @command(server_cmds)
-class server_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
+class server_list(_CycladesInit, OptionalOutput, NameFilter, IDFilter):
     """List virtual servers accessible by user
     Use filtering arguments (e.g., --name-like) to manage long server lists
     """
-
-    PERMANENTS = ('id', 'name')
 
     arguments = dict(
         detail=FlagArgument('show detailed output', ('-l', '--details')),
@@ -223,9 +185,9 @@ class server_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
                 new_servers.append(srv)
         return new_servers
 
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.date
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.date
     def _run(self):
         withimage = bool(self['image_id'])
         withflavor = bool(self['flavor_id'])
@@ -251,7 +213,7 @@ class server_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
             pass
         else:
             for srv in servers:
-                for key in set(srv).difference(self.PERMANENTS):
+                for key in set(srv).difference(['id', 'name']):
                     srv.pop(key)
 
         kwargs = dict(with_enumeration=self['enum'])
@@ -264,7 +226,7 @@ class server_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
             kwargs['title'] = ()
         if self['limit']:
             servers = servers[:self['limit']]
-        self._print(servers, **kwargs)
+        self.print_(servers, **kwargs)
         if self['more']:
             pager(kwargs['out'].getvalue())
 
@@ -274,7 +236,7 @@ class server_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
 
 
 @command(server_cmds)
-class server_info(_init_cyclades, _optional_json):
+class server_info(_CycladesInit, OptionalOutput):
     """Detailed information on a Virtual Machine"""
 
     arguments = dict(
@@ -285,22 +247,21 @@ class server_info(_init_cyclades, _optional_json):
         diagnostics=FlagArgument('Diagnostic information', '--diagnostics')
     )
 
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.server_id
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.server_id
     def _run(self, server_id):
         if self['nics']:
-            self._print(
+            self.print_(
                 self.client.get_server_nics(server_id), self.print_dict)
         elif self['stats']:
-            self._print(
+            self.print_(
                 self.client.get_server_stats(server_id), self.print_dict)
         elif self['diagnostics']:
-            self._print(self.client.get_server_diagnostics(server_id))
+            self.print_(self.client.get_server_diagnostics(server_id))
         else:
             vm = self.client.get_server_details(server_id)
-            # self._print(self._restruct_server_info(vm), self.print_dict)
-            self._print(vm, self.print_dict)
+            self.print_(vm, self.print_dict)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -424,7 +385,7 @@ class NetworkArgument(RepeatableArgument):
 
 
 @command(server_cmds)
-class server_create(_init_cyclades, _optional_json, _server_wait):
+class server_create(_CycladesInit, OptionalOutput, _ServerWait):
     """Create a server (aka Virtual Machine)"""
 
     arguments = dict(
@@ -458,7 +419,7 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
     )
     required = ('server_name', 'flavor_id', 'image_id')
 
-    @errors.cyclades.cluster_size
+    @errors.Cyclades.cluster_size
     def _create_cluster(self, prefix, flavor_id, image_id, size, project=None):
         networks = self['network_configuration'] or (
             [] if self['no_network'] else None)
@@ -486,17 +447,17 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
                         s['name'] in requested_names)]
                 self.error('Failed to build %s servers' % size)
                 self.error('Found %s matching servers:' % len(spawned_servers))
-                self._print(spawned_servers, out=self._err)
+                self.print_(spawned_servers, out=self._err)
                 self.error('Check if any of these servers should be removed\n')
             except Exception as ne:
                 self.error('Error (%s) while notifying about errors' % ne)
             finally:
                 raise e
 
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.plankton.id
-    @errors.cyclades.flavor_id
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Image.id
+    @errors.Cyclades.flavor_id
     def _run(self, name, flavor_id, image_id):
         for r in self._create_cluster(
                 name, flavor_id, image_id, size=self['cluster_size'] or 1,
@@ -504,10 +465,9 @@ class server_create(_init_cyclades, _optional_json, _server_wait):
             if not r:
                 self.error('Create %s: server response was %s' % (name, r))
                 continue
-            #  self._print(self._restruct_server_info(r), self.print_dict)
-            self._print(r, self.print_dict)
+            self.print_(r, self.print_dict)
             if self['wait']:
-                self._wait(r['id'], r['status'] or 'BUILD')
+                self.wait(r['id'], r['status'] or 'BUILD')
             self.writeln(' ')
 
     def main(self):
@@ -545,7 +505,7 @@ class FirewallProfileArgument(ValueArgument):
 
 
 @command(server_cmds)
-class server_modify(_init_cyclades, _optional_output_cmd):
+class server_modify(_CycladesInit):
     """Modify attributes of a virtual server"""
 
     arguments = dict(
@@ -608,9 +568,9 @@ class server_modify(_init_cyclades, _optional_output_cmd):
                 profile=self['firewall_profile'],
                 port_id=port['id'])
 
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.server_id
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.server_id
     def _run(self, server_id):
         if self['server_name'] is not None:
             self.client.update_server_name((server_id), self['server_name'])
@@ -622,10 +582,8 @@ class server_modify(_init_cyclades, _optional_output_cmd):
             self.client.update_server_metadata(
                 server_id, **self['metadata_to_set'])
         for key in (self['metadata_to_delete'] or []):
-            errors.cyclades.metadata(
+            errors.Cyclades.metadata(
                 self.client.delete_server_metadata)(server_id, key=key)
-        if self['with_output']:
-            self._optional_output(self.client.get_server_details(server_id))
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -639,7 +597,7 @@ class server_modify(_init_cyclades, _optional_output_cmd):
 
 
 @command(server_cmds)
-class server_reassign(_init_cyclades, _optional_json):
+class server_reassign(_CycladesInit, OptionalOutput):
     """Assign a virtual server to a different project"""
 
     arguments = dict(
@@ -647,9 +605,9 @@ class server_reassign(_init_cyclades, _optional_json):
     )
     required = ('project_id', )
 
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.server_id
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.server_id
     def _run(self, server_id, project):
         self.client.reassign_server(server_id, project)
 
@@ -659,7 +617,7 @@ class server_reassign(_init_cyclades, _optional_json):
 
 
 @command(server_cmds)
-class server_delete(_init_cyclades, _optional_output_cmd, _server_wait):
+class server_delete(_CycladesInit, _ServerWait):
     """Delete a virtual server"""
 
     arguments = dict(
@@ -675,25 +633,23 @@ class server_delete(_init_cyclades, _optional_output_cmd, _server_wait):
             return [s['id'] for s in self.client.list_servers() if (
                 s['name'].startswith(server_var))]
 
-        @errors.cyclades.server_id
+        @errors.Cyclades.server_id
         def _check_server_id(self, server_id):
             return server_id
 
         return [_check_server_id(self, server_id=server_var), ]
 
-    @errors.generic.all
-    @errors.cyclades.connection
+    @errors.Generic.all
+    @errors.Cyclades.connection
     def _run(self, server_var):
         for server_id in self._server_ids(server_var):
             if self['wait']:
                 details = self.client.get_server_details(server_id)
                 status = details['status']
 
-            r = self.client.delete_server(server_id)
-            self._optional_output(r)
-
+            self.client.delete_server(server_id)
             if self['wait']:
-                self._wait(server_id, status)
+                self.wait(server_id, status)
 
     def main(self, server_id_or_cluster_prefix):
         super(self.__class__, self)._run()
@@ -701,7 +657,7 @@ class server_delete(_init_cyclades, _optional_output_cmd, _server_wait):
 
 
 @command(server_cmds)
-class server_reboot(_init_cyclades, _optional_output_cmd, _server_wait):
+class server_reboot(_CycladesInit, _ServerWait):
     """Reboot a virtual server"""
 
     arguments = dict(
@@ -711,9 +667,9 @@ class server_reboot(_init_cyclades, _optional_output_cmd, _server_wait):
         wait=FlagArgument('Wait server to be destroyed', ('-w', '--wait'))
     )
 
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.server_id
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.server_id
     def _run(self, server_id):
         hard_reboot = self['hard']
         if hard_reboot:
@@ -731,11 +687,9 @@ class server_reboot(_init_cyclades, _optional_output_cmd, _server_wait):
                     importance=2, details=[
                         '--type values are either SOFT (default) or HARD'])
 
-        r = self.client.reboot_server(int(server_id), hard_reboot)
-        self._optional_output(r)
-
+        self.client.reboot_server(int(server_id), hard_reboot)
         if self['wait']:
-            self._wait(server_id, 'REBOOT')
+            self.wait(server_id, 'REBOOT')
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -743,16 +697,16 @@ class server_reboot(_init_cyclades, _optional_output_cmd, _server_wait):
 
 
 @command(server_cmds)
-class server_start(_init_cyclades, _optional_output_cmd, _server_wait):
+class server_start(_CycladesInit, _ServerWait):
     """Start an existing virtual server"""
 
     arguments = dict(
         wait=FlagArgument('Wait server to be destroyed', ('-w', '--wait'))
     )
 
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.server_id
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.server_id
     def _run(self, server_id):
         status = 'ACTIVE'
         if self['wait']:
@@ -761,11 +715,9 @@ class server_start(_init_cyclades, _optional_output_cmd, _server_wait):
             if status in ('ACTIVE', ):
                 return
 
-        r = self.client.start_server(int(server_id))
-        self._optional_output(r)
-
+        self.client.start_server(int(server_id))
         if self['wait']:
-            self._wait(server_id, status)
+            self.wait(server_id, status)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -773,16 +725,16 @@ class server_start(_init_cyclades, _optional_output_cmd, _server_wait):
 
 
 @command(server_cmds)
-class server_shutdown(_init_cyclades, _optional_output_cmd, _server_wait):
+class server_shutdown(_CycladesInit,  _ServerWait):
     """Shutdown an active virtual server"""
 
     arguments = dict(
         wait=FlagArgument('Wait server to be destroyed', ('-w', '--wait'))
     )
 
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.server_id
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.server_id
     def _run(self, server_id):
         status = 'STOPPED'
         if self['wait']:
@@ -791,11 +743,9 @@ class server_shutdown(_init_cyclades, _optional_output_cmd, _server_wait):
             if status in ('STOPPED', ):
                 return
 
-        r = self.client.shutdown_server(int(server_id))
-        self._optional_output(r)
-
+        self.client.shutdown_server(int(server_id))
         if self['wait']:
-            self._wait(server_id, status)
+            self.wait(server_id, status)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -803,15 +753,15 @@ class server_shutdown(_init_cyclades, _optional_output_cmd, _server_wait):
 
 
 @command(server_cmds)
-class server_console(_init_cyclades, _optional_json):
+class server_console(_CycladesInit, OptionalOutput):
     """Create a VMC console and show connection information"""
 
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.server_id
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.server_id
     def _run(self, server_id):
         self.error('The following credentials will be invalidated shortly')
-        self._print(
+        self.print_(
             self.client.get_server_console(server_id), self.print_dict)
 
     def main(self, server_id):
@@ -820,7 +770,7 @@ class server_console(_init_cyclades, _optional_json):
 
 
 @command(server_cmds)
-class server_wait(_init_cyclades, _server_wait):
+class server_wait(_CycladesInit, _ServerWait):
     """Wait for server to change its status (default: BUILD)"""
 
     arguments = dict(
@@ -833,13 +783,13 @@ class server_wait(_init_cyclades, _server_wait):
             valid_states=server_states)
     )
 
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.server_id
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.server_id
     def _run(self, server_id, current_status):
         r = self.client.get_server_details(server_id)
         if r['status'].lower() == current_status.lower():
-            self._wait(server_id, current_status, timeout=self['timeout'])
+            self.wait(server_id, current_status, timeout=self['timeout'])
         else:
             self.error(
                 'Server %s: Cannot wait for status %s, '
@@ -854,10 +804,8 @@ class server_wait(_init_cyclades, _server_wait):
 
 
 @command(flavor_cmds)
-class flavor_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
+class flavor_list(_CycladesInit, OptionalOutput, NameFilter, IDFilter):
     """List available hardware flavors"""
-
-    PERMANENTS = ('id', 'name')
 
     arguments = dict(
         detail=FlagArgument('show detailed output', ('-l', '--details')),
@@ -885,8 +833,8 @@ class flavor_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
             common_filters['SNF:disk_template'] = self['disk_template']
         return filter_dicts_by_dict(flavors, common_filters)
 
-    @errors.generic.all
-    @errors.cyclades.connection
+    @errors.Generic.all
+    @errors.Cyclades.connection
     def _run(self):
         withcommons = self['ram'] or self['vcpus'] or (
             self['disk'] or self['disk_template'])
@@ -896,15 +844,14 @@ class flavor_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
         flavors = self._filter_by_id(flavors)
         if withcommons:
             flavors = self._apply_common_filters(flavors)
-        if not (self['detail'] or (
-                self['json_output'] or self['output_format'])):
+        if not (self['detail'] or self['output_format']):
             remove_from_items(flavors, 'links')
         if detail and not self['detail']:
             for flv in flavors:
-                for key in set(flv).difference(self.PERMANENTS):
+                for key in set(flv).difference(['id', 'name']):
                     flv.pop(key)
         kwargs = dict(out=StringIO(), title=()) if self['more'] else {}
-        self._print(
+        self.print_(
             flavors,
             with_redundancy=self['detail'], with_enumeration=self['enum'],
             **kwargs)
@@ -917,28 +864,18 @@ class flavor_list(_init_cyclades, _optional_json, _name_filter, _id_filter):
 
 
 @command(flavor_cmds)
-class flavor_info(_init_cyclades, _optional_json):
+class flavor_info(_CycladesInit, OptionalOutput):
     """Detailed information on a hardware flavor
     To get a list of available flavors and flavor ids, try /flavor list
     """
 
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.cyclades.flavor_id
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.flavor_id
     def _run(self, flavor_id):
-        self._print(
+        self.print_(
             self.client.get_flavor_details(int(flavor_id)), self.print_dict)
 
     def main(self, flavor_id):
         super(self.__class__, self)._run()
         self._run(flavor_id=flavor_id)
-
-
-def _add_name(self, net):
-        user_id, tenant_id, uuids = net['user_id'], net['tenant_id'], []
-        if user_id:
-            uuids.append(user_id)
-        if uuids or tenant_id:
-            usernames = self._uuids2usernames(uuids)
-            if user_id:
-                net['user_id'] += ' (%s)' % usernames[user_id]

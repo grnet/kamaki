@@ -1,4 +1,4 @@
-# Copyright 2012-2013 GRNET S.A. All rights reserved.
+# Copyright 2012-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -35,15 +35,19 @@ from kamaki.clients.compute import ComputeClient
 from kamaki.clients.utils import path4url
 
 
-class CycladesRestClient(ComputeClient):
+class CycladesComputeRestClient(ComputeClient):
     """Synnefo Cyclades REST API Client"""
 
     def servers_stats_get(self, server_id, **kwargs):
-        """GET base_url/servers/<server_id>/stats"""
+        """GET endpoint_url/servers/<server_id>/stats"""
         path = path4url('servers', server_id, 'stats')
         return self.get(path, success=200, **kwargs)
 
     def servers_diagnostics_get(self, server_id, **kwargs):
-        """GET base_url/servers/<server_id>/diagnostics"""
+        """GET endpoint_url/servers/<server_id>/diagnostics"""
         path = path4url('servers', server_id, 'diagnostics')
         return self.get(path, success=200, **kwargs)
+
+
+#  Backwards compatibility
+CycladesRestClient = CycladesComputeRestClient

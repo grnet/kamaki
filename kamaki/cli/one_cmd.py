@@ -38,24 +38,7 @@ from kamaki.cli import (
 from kamaki.cli.errors import CLIUnknownCommand
 
 
-def _get_cmd_tree_from_spec(spec, cmd_tree_list):
-    for tree in cmd_tree_list:
-        if tree.name == spec:
-            return tree
-    raise CLIUnknownCommand('Unknown command: %s' % spec)
-
-
-def _get_best_match_from_cmd_tree(cmd_tree, unparsed):
-    matched = [term for term in unparsed if not term.startswith('-')]
-    while matched:
-        try:
-            return cmd_tree.get_command('_'.join(matched))
-        except KeyError:
-            matched = matched[:-1]
-    return None
-
-
-def run(cloud, parser, _help):
+def run(cloud, parser):
     group = get_command_group(list(parser.unparsed), parser.arguments)
     if not group:
         #parser.parser.print_help()
@@ -71,7 +54,7 @@ def run(cloud, parser, _help):
 
     _cnf = parser.arguments['config']
     group_spec = _cnf.get('global', '%s_cli' % group)
-    spec_module = _load_spec_module(group_spec, parser.arguments, '_commands')
+    spec_module = _load_spec_module(group_spec, parser.arguments, 'namespaces')
     if spec_module is None:
         raise CLIUnknownCommand(
             'Could not find specs for %s commands' % group,
@@ -79,19 +62,31 @@ def run(cloud, parser, _help):
                 'Make sure %s is a valid command group' % group,
                 'Refer to kamaki documentation for setting custom command',
                 'groups or overide existing ones'])
-    cmd_tree = _get_cmd_tree_from_spec(group, spec_module._commands)
+    #  Get command tree from group
+    try:
+        cmd_tree = [t for t in spec_module.namespaces if t.name == group][0]
+    except IndexError:
+        raise CLIUnknownCommand('Unknown command group: %s' % group)
 
+    cmd = None
     if _best_match:
         cmd = cmd_tree.get_command('_'.join(_best_match))
     else:
-        cmd = _get_best_match_from_cmd_tree(cmd_tree, parser.unparsed)
-        _best_match = cmd.path.split('_')
+        match = [term for term in parser.unparsed if not term.startswith('-')]
+        while match:
+            try:
+                cmd = cmd_tree.get_command('_'.join(match))
+                _best_match = cmd.path.split('_')
+                break
+            except KeyError:
+                match = match[:-1]
     if cmd is None:
         kloger.info('Unexpected error: failed to load command (-d for more)')
         exit(1)
 
     update_parser_help(parser, cmd)
 
+    _help = parser.arguments['help'].value
     if _help or not cmd.is_command:
         if cmd.cmd_class:
             parser.required = getattr(cmd.cmd_class, 'required', None)
@@ -102,9 +97,9 @@ def run(cloud, parser, _help):
         exit(0)
 
     cls = cmd.cmd_class
-    auth_base = init_cached_authenticator(_cnf, cloud, kloger) if (
+    astakos = init_cached_authenticator(_cnf, cloud, kloger) if (
         cloud) else None
-    executable = cls(parser.arguments, auth_base, cloud)
+    executable = cls(parser.arguments, astakos, cloud)
     parser.required = getattr(cls, 'required', None)
     parser.update_arguments(executable.arguments)
     for term in _best_match:

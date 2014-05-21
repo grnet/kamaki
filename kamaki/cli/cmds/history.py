@@ -31,20 +31,20 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from kamaki.cli.command_tree import CommandTree
+from kamaki.cli.cmdtree import CommandTree
 from kamaki.cli.argument import ValueArgument
 from kamaki.cli.history import History
 from kamaki.cli import command
-from kamaki.cli.commands import _command_init, errors
+from kamaki.cli.cmds import CommandInit, errors
 
 
 history_cmds = CommandTree('history', 'Kamaki command history')
-_commands = [history_cmds]
+namespaces = [history_cmds]
 
 
-class _init_history(_command_init):
-    @errors.generic.all
-    @errors.history.init
+class _HistoryInit(CommandInit):
+    @errors.Generic.all
+    @errors.History.init
     def _run(self):
         self.history = History(self.config.get('global', 'history_file'))
         self.history.limit = self.config.get('global', 'history_limit')
@@ -54,7 +54,7 @@ class _init_history(_command_init):
 
 
 @command(history_cmds)
-class history_show(_init_history):
+class history_show(_HistoryInit):
     """Show history
         Featutes:
         - slice notation (cmd numbers --> N or :N or N: or N1:N2)
@@ -65,7 +65,7 @@ class history_show(_init_history):
         match=ValueArgument('Show lines matching this', '--match'),
     )
 
-    @errors.generic.all
+    @errors.Generic.all
     def _run(self, cmd_slice):
         c = self.history.counter
         lines = ['%s.\t%s' % (i + c, l) for i, l in enumerate(
@@ -86,10 +86,10 @@ class history_show(_init_history):
 
 
 @command(history_cmds)
-class history_clean(_init_history):
+class history_clean(_HistoryInit):
     """Clean up history (permanent)"""
 
-    @errors.generic.all
+    @errors.Generic.all
     def _run(self):
         self.history.empty()
 

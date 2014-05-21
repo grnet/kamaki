@@ -1,4 +1,4 @@
-# Copyright 2013 GRNET S.A. All rights reserved.
+# Copyright 2013-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -42,8 +42,9 @@ from kamaki.clients.utils.test import Utils
 from kamaki.clients.astakos.test import AstakosClient
 from kamaki.clients.compute.test import ComputeClient, ComputeRestClient
 from kamaki.clients.network.test import (NetworkClient, NetworkRestClient)
-from kamaki.clients.cyclades.test import CycladesClient, CycladesNetworkClient
-from kamaki.clients.cyclades.test import CycladesRestClient
+from kamaki.clients.cyclades.test import (
+    CycladesComputeClient, CycladesNetworkClient)
+from kamaki.clients.cyclades.test import CycladesComputeRestClient
 from kamaki.clients.image.test import ImageClient
 from kamaki.clients.storage.test import StorageClient
 from kamaki.clients.pithos.test import (
@@ -287,9 +288,9 @@ class Client(TestCase):
     def setUp(self):
         from kamaki.clients import Client
         from kamaki.clients import ClientError as CE
-        self.base_url = 'http://example.com'
+        self.endpoint_url = 'http://example.com'
         self.token = 's0m370k3n=='
-        self.client = Client(self.base_url, self.token)
+        self.client = Client(self.endpoint_url, self.token)
         self.CE = CE
 
     def tearDown(self):
@@ -299,7 +300,7 @@ class Client(TestCase):
         self.client.token = self.token
 
     def test___init__(self):
-        self.assertEqual(self.client.base_url, self.base_url)
+        self.assertEqual(self.client.endpoint_url, self.endpoint_url)
         self.assertEqual(self.client.token, self.token)
         self.assert_dicts_are_equal(self.client.headers, {})
         DATE_FORMATS = ['%a %b %d %H:%M:%S %Y']

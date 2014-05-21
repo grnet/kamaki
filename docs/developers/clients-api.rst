@@ -23,7 +23,7 @@ There is a client for every API. An external applications should instantiate
 the kamaki clients that fit their needs.
 
 For example, to manage virtual servers and stored objects / files, an
-application would probably need the CycladesClient and PithosClient
+application would probably need the CycladesComputeClient and PithosClient
 respectively.
 
 .. code-block:: python
@@ -32,16 +32,16 @@ respectively.
     Example 1.1: Instantiate Cyclades and Pithos clients
 
 
-    from kamaki.clients.cyclades import CycladesClient
+    from kamaki.clients.cyclades import CycladesComputeClient
     from kamaki.clients.pithos import PithosClient
 
-    cyclades = CycladesClient(computeURL, token)
+    cyclades = CycladesComputeClient(computeURL, token)
     pithos = PithosClient(object-storeURL, token, account, container)
 
 .. note:: *cyclades* and *pithos* clients inherit ComputeClient from *compute*
     and StorageClient from *storage*, respectively. Separate ComputeClient or
-    StorageClient objects should be used only when implementing applications for
-    strict OpenStack Compute or Storage services.
+    StorageClient objects should be used only when implementing applications
+    for strict OpenStack Compute or Storage services.
 
 Using endpoints to get the authentication url
 ---------------------------------------------
@@ -59,7 +59,7 @@ stored in ``service_type`` attribute in the client class.
 The values of ``service_type`` for each client are shown bellow::
 
     storage.StorageClient, pithos.PithosClient            --> object-store
-    compute.ComputeClient, cyclades.CycladesClient        --> compute
+    compute.ComputeClient, cyclades.CycladesComputeClient        --> compute
     network.NetworkClient, cyclades.CycladesNetworkClient --> network
     image.ImageClient                                     --> image
     astakos.AstakosClient                                 --> identity
@@ -87,7 +87,7 @@ will be used to initialize a *cyclades* and a *pithos* client respectively.
 
     Example 1.3: Retrieve cyclades and pithos URLs
 
-    cyclades_URL = astakos.get_endpoint_url(CycladesClient.service_type)
+    cyclades_URL = astakos.get_endpoint_url(CycladesComputeClient.service_type)
     pithos_URL = astakos.get_endpoint_url(PithosClent.service_type)
 
 It's time to initialize both clients.
@@ -97,10 +97,10 @@ It's time to initialize both clients.
 
     Example 1.3.1 Initialize cyclades and pithos clients
 
-    from kamaki.clients.cyclades import CycladesClient
+    from kamaki.clients.cyclades import CycladesComputeClient
     from kamaki.clients.pithos import PithosClient
 
-    cyclades = CycladesClient(cyclades_URL, TOKEN)
+    cyclades = CycladesComputeClient(cyclades_URL, TOKEN)
     pithos = PithosClient(pithos_URL, TOKEN)
 
     #  Also, setup the account UUID and container for pithos client
@@ -172,7 +172,7 @@ The following example concatenates examples 1.1 to 1.4 plus error handling
     from kamaki.clients import ClientError
 
     from kamaki.clients.astakos import AstakosClient
-    from kamaki.clients.cyclades import CycladesClient
+    from kamaki.clients.cyclades import CycladesComputeClient
     from kamaki.clients.pithos import PithosClient
 
     try:
@@ -182,12 +182,12 @@ The following example concatenates examples 1.1 to 1.4 plus error handling
         raise
 
     try:
-        CYCLADES_URL = astakos.get_endpoint_url(CycladesClient.service_type)
+        CYCLADES_URL = astakos.get_endpoint_url(CycladesComputeClient.service_type)
     except ClientError:
         print('Failed to get endpoints for cyclades')
 
     try:
-        cyclades = CycladesClient(CYCLADES_URL, TOKEN)
+        cyclades = CycladesComputeClient(CYCLADES_URL, TOKEN)
     except ClientError:
         print('Failed to initialize Cyclades client')
 
@@ -231,15 +231,15 @@ Batch-create servers
     #! /usr/bin/python
 
     from kamaki.clients.astakos import AstakosClient
-    from kamaki.clients.cyclades import CycladesClient
+    from kamaki.clients.cyclades import CycladesComputeClient
 
     AUTHENTICATION_URL = 'https://accounts.example.com/identity/v2.0'
     TOKEN = 'replace this with your token'
 
     astakos = AstakosClient(AUTHENTICATION_URL, TOKEN)
 
-    CYCLADES_URL = astakos.get_endpoint_url(CycladesClient.service_type)
-    cyclades = CycladesClient(CYCLADES_URL, TOKEN)
+    CYCLADES_URL = astakos.get_endpoint_url(CycladesComputeClient.service_type)
+    cyclades = CycladesComputeClient(CYCLADES_URL, TOKEN)
 
     #  (name, flavor-id, image-id)
     servers = [
@@ -310,7 +310,8 @@ Two servers and a private network
     #! /user/bin/python
 
     from kamaki.clients.astakos import AstakosClient
-    from kamaki.clients.cyclades import CycladesClient, CycladesNetworkClient
+    from kamaki.clients.cyclades import (
+        CycladesComputeClient, CycladesNetworkClient)
 
     AUTHENTICATION_URL = 'https://accounts.example.com/identity/v2.0'
     TOKEN = 'replace this with your token'
@@ -322,8 +323,8 @@ Two servers and a private network
 
     net = network.create_network(type='MAC_FILTERED', name='My private network')
 
-    CYCLADES_URL = astakos.get_endpoint_url(CycladesClient.service_type)
-    cyclades = CycladesClient(CYCLADES_URL, TOKEN)
+    CYCLADES_URL = astakos.get_endpoint_url(CycladesComputeClient.service_type)
+    cyclades = CycladesComputeClient(CYCLADES_URL, TOKEN)
 
     FLAVOR_ID = 'put your flavor id here'
     IMAGE_ID = 'put your image id here'

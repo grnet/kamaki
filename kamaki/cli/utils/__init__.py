@@ -40,7 +40,6 @@ from locale import getpreferredencoding
 
 from kamaki.cli.errors import raiseCLIError
 
-
 INDENT_TAB = 4
 log = get_logger(__name__)
 pref_enc = getpreferredencoding()
@@ -54,10 +53,16 @@ suggest = dict(ansicolors=dict(
 try:
     from colors import magenta, red, yellow, bold
 except ImportError:
-    def dummy(val):
-        return val
-    red = yellow = magenta = bold = dummy
+    red = yellow = magenta = bold = lambda x: x
     suggest['ansicolors']['active'] = True
+
+
+def remove_colors():
+    global bold
+    global red
+    global yellow
+    global magenta
+    red = yellow = magenta = bold = lambda x: x
 
 
 def suggest_missing(miss=None, exclude=[]):
@@ -96,17 +101,6 @@ def guess_mime_type(
         return (default_content_type, default_encoding)
 
 
-def remove_colors():
-    global bold
-    global red
-    global yellow
-    global magenta
-
-    def dummy(val):
-        return val
-    red = yellow = magenta = bold = dummy
-
-
 def pretty_keys(d, delim='_', recursive=False):
     """<term>delim<term> to <term> <term> transformation"""
     new_d = dict(d)
@@ -126,7 +120,7 @@ def print_json(data, out=stdout):
     :param out: Input/Output stream to dump values into
     """
     out.write(dumps(data, indent=INDENT_TAB))
-    out.write('\n')
+    out.write(u'\n')
 
 
 def print_dict(
@@ -164,17 +158,17 @@ def print_dict(
         print_str += '%s.' % (i + 1) if with_enumeration else ''
         print_str += '%s:' % k
         if isinstance(v, dict):
-            out.write(print_str + '\n')
+            out.write(print_str + u'\n')
             print_dict(
                 v, exclude, indent + INDENT_TAB,
                 recursive_enumeration, recursive_enumeration, out)
         elif isinstance(v, list) or isinstance(v, tuple):
-            out.write(print_str + '\n')
+            out.write(print_str + u'\n')
             print_list(
                 v, exclude, indent + INDENT_TAB,
                 recursive_enumeration, recursive_enumeration, out)
         else:
-            out.write('%s %s\n' % (print_str, v))
+            out.write(u'%s %s\n' % (print_str, v))
 
 
 def print_list(
@@ -210,18 +204,18 @@ def print_list(
         print_str += '%s.' % (i + 1) if with_enumeration else ''
         if isinstance(item, dict):
             if with_enumeration:
-                out.write(print_str + '\n')
+                out.write(print_str + u'\n')
             elif i and i < len(l):
-                out.write('\n')
+                out.write(u'\n')
             print_dict(
                 item, exclude,
                 indent + (INDENT_TAB if with_enumeration else 0),
                 recursive_enumeration, recursive_enumeration, out)
         elif isinstance(item, list) or isinstance(item, tuple):
             if with_enumeration:
-                out.write(print_str + '\n')
+                out.write(print_str + u'\n')
             elif i and i < len(l):
-                out.write('\n')
+                out.write(u'\n')
             print_list(
                 item, exclude, indent + INDENT_TAB,
                 recursive_enumeration, recursive_enumeration, out)
@@ -229,7 +223,7 @@ def print_list(
             item = ('%s' % item).strip()
             if item in exclude:
                 continue
-            out.write('%s%s\n' % (print_str, item))
+            out.write(u'%s%s\n' % (print_str, item))
 
 
 def print_items(
@@ -252,12 +246,12 @@ def print_items(
         return
     if not (isinstance(items, dict) or isinstance(items, list) or isinstance(
                 items, tuple)):
-        out.write('%s\n' % items)
+        out.write(u'%s\n' % items)
         return
 
     for i, item in enumerate(items):
         if with_enumeration:
-            out.write('%s. ' % (i + 1))
+            out.write(u'%s. ' % (i + 1))
         if isinstance(item, dict):
             item = dict(item)
             title = sorted(set(title).intersection(item))
@@ -268,7 +262,7 @@ def print_items(
         elif isinstance(item, list) or isinstance(item, tuple):
             print_list(item, indent=INDENT_TAB, out=out)
         else:
-            out.write(' %s\n' % item)
+            out.write(u' %s\n' % item)
 
 
 def format_size(size, decimal_factors=False):
@@ -344,11 +338,6 @@ def list2file(l, f, depth=1):
 # Split input auxiliary
 
 
-def _parse_with_regex(line, regex):
-    re_parser = regex_compile(regex)
-    return (re_parser.split(line), re_parser.findall(line))
-
-
 def _get_from_parsed(parsed_str):
     try:
         parsed_str = parsed_str.strip()
@@ -360,25 +349,24 @@ def _get_from_parsed(parsed_str):
 
 
 def split_input(line):
-    if not line:
-        return []
-    reg_expr = '\'.*?\'|".*?"|^[\S]*$'
-    (trivial_parts, interesting_parts) = _parse_with_regex(line, reg_expr)
-    assert(len(trivial_parts) == 1 + len(interesting_parts))
     terms = []
-    for i, tpart in enumerate(trivial_parts):
-        part = _get_from_parsed(tpart)
-        if part:
-            terms += part
-        try:
-            part = _get_from_parsed(interesting_parts[i])
-        except IndexError:
-            break
-        if part:
-            if tpart and not tpart[-1].endswith(' '):
-                terms[-1] += ' '.join(part)
-            else:
+    if line:
+        rprs = regex_compile('\'.*?\'|".*?"|^[\S]*$')
+        trivial_parts, interesting_parts = rprs.split(line), rprs.findall(line)
+        assert(len(trivial_parts) == 1 + len(interesting_parts))
+        for i, tpart in enumerate(trivial_parts):
+            part = _get_from_parsed(tpart)
+            if part:
                 terms += part
+            try:
+                part = _get_from_parsed(interesting_parts[i])
+            except IndexError:
+                break
+            if part:
+                if tpart and not tpart[-1].endswith(' '):
+                    terms[-1] += ' '.join(part)
+                else:
+                    terms += part
     return terms
 
 

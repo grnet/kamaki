@@ -46,14 +46,14 @@ from kamaki.cli.logger import add_file_logger
 log = add_file_logger(__name__)
 
 
-def _init_shell(exe_string, parser, username='', userid=''):
+def init_shell(exe_string, parser, username='', userid=''):
     parser.arguments.pop('version', None)
     shell = Shell()
     shell.set_prompt(exe_string)
     from kamaki import __version__ as version
     shell.greet(version, username, userid)
     shell.do_EOF = shell.do_exit
-    from kamaki.cli.command_tree import CommandTree
+    from kamaki.cli.cmdtree import CommandTree
     shell.cmd_tree = CommandTree(
         'kamaki', 'A command line tool for poking clouds')
     return shell
@@ -68,7 +68,7 @@ class Shell(Cmd):
     _context_stack = []
     _prompt_stack = []
     _parser = None
-    auth_base = None
+    astakos = None
     cloud = None
 
     undoc_header = 'interactive shell commands:'
@@ -173,7 +173,6 @@ class Shell(Cmd):
         tmp_args.pop('cloud', None)
         tmp_args.pop('debug', None)
         tmp_args.pop('verbose', None)
-        tmp_args.pop('silent', None)
         tmp_args.pop('config', None)
         help_parser = ArgumentParseManager(
             cmd_name, tmp_args, required,
@@ -205,12 +204,12 @@ class Shell(Cmd):
                     ldescr = getattr(cls, 'long_description', '')
                     if subcmd.path == 'history_run':
                         instance = cls(
-                            dict(cmd_parser.arguments), self.auth_base,
+                            dict(cmd_parser.arguments), self.astakos,
                             cmd_tree=self.cmd_tree)
                     else:
                         instance = cls(
                             dict(cmd_parser.arguments),
-                            self.auth_base, self.cloud)
+                            self.astakos, self.cloud)
                     cmd_parser.update_arguments(instance.arguments)
                     cmd_parser.arguments = instance.arguments
                     subpath = subcmd.path.split('_')[
@@ -304,8 +303,8 @@ class Shell(Cmd):
         hdr = tmp_partition[0].strip()
         return '%s commands:' % hdr
 
-    def run(self, auth_base, cloud, parser, path=''):
-        self.auth_base = auth_base
+    def run(self, astakos, cloud, parser, path=''):
+        self.astakos = astakos
         self.cloud = cloud
         self._parser = parser
         cnf = parser.arguments['config']

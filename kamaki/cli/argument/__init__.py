@@ -181,9 +181,6 @@ class ConfigArgument(Argument):
         return self.value.get_cloud(cloud, option)
 
 
-_config_arg = ConfigArgument('Path to config file')
-
-
 class RuntimeConfigArgument(Argument):
     """Set a run-time setting option (not persistent)"""
 
@@ -549,21 +546,6 @@ class ProgressBarArgument(FlagArgument):
             mybar.finish()
 
 
-_arguments = dict(
-    config=_config_arg,
-    cloud=ValueArgument('Chose a cloud to connect to', ('--cloud')),
-    help=Argument(0, 'Show help message', ('-h', '--help')),
-    debug=FlagArgument('Include debug output', ('-d', '--debug')),
-    #include=FlagArgument(
-    #    'Include raw connection data in the output', ('-i', '--include')),
-    silent=FlagArgument('Do not output anything', ('-s', '--silent')),
-    verbose=FlagArgument('More info at response', ('-v', '--verbose')),
-    version=VersionArgument('Print current version', ('-V', '--version')),
-    options=RuntimeConfigArgument(
-        _config_arg, 'Override a config value', ('-o', '--options'))
-)
-
-
 #  Initial command line interface arguments
 
 
@@ -571,9 +553,8 @@ class ArgumentParseManager(object):
     """Manage (initialize and update) an ArgumentParser object"""
 
     def __init__(
-            self, exe,
-            arguments=None, required=None, syntax=None, description=None,
-            check_required=True):
+            self, exe, arguments,
+            required=None, syntax=None, description=None, check_required=True):
         """
         :param exe: (str) the basic command (e.g. 'kamaki')
 
@@ -604,11 +585,7 @@ class ArgumentParseManager(object):
             '%s <cmd_group> [<cmd_subbroup> ...] <cmd>' % exe)
         self.required, self.check_required = required, check_required
         self.parser.description = description or ''
-        if arguments:
-            self.arguments = arguments
-        else:
-            global _arguments
-            self.arguments = _arguments
+        self.arguments = arguments
         self._parser_modified, self._parsed, self._unparsed = False, None, None
         self.parse()
 

@@ -55,8 +55,8 @@ class ImageClient(Client):
     """Synnefo Plankton API client"""
     service_type = 'image'
 
-    def __init__(self, base_url, token):
-        super(ImageClient, self).__init__(base_url, token)
+    def __init__(self, endpoint_url, token):
+        super(ImageClient, self).__init__(endpoint_url, token)
         self.request_headers_to_quote = ['X-Image-Meta-Name', ]
         self.request_header_prefices_to_quote = ['X-Image-Meta-Property-', ]
         self.response_headers = [

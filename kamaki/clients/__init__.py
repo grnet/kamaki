@@ -388,9 +388,11 @@ class Client(Logged):
     DATE_FORMATS = ['%a %b %d %H:%M:%S %Y', ]
     CONNECTION_RETRY_LIMIT = 0
 
-    def __init__(self, base_url, token):
-        assert base_url, 'No base_url for client %s' % self
-        self.base_url = base_url
+    def __init__(self, endpoint_url, token, base_url=None):
+        #  BW compatibility - keep base_url for some time
+        endpoint_url = endpoint_url or base_url
+        assert endpoint_url, 'No endpoint_url for client %s' % self
+        self.endpoint_url, self.base_url = endpoint_url, endpoint_url
         self.token = token
         self.headers, self.params = dict(), dict()
         self.poolsize = None
@@ -480,16 +482,6 @@ class Client(Logged):
             results[key] = thread.value
         return results.values()
 
-    def _raise_for_status(self, r):
-        log.debug('raise err from [%s] of type[%s]' % (r, type(r)))
-        status_msg = getattr(r, 'status', None) or ''
-        try:
-            message = '%s %s\n' % (status_msg, r.text)
-        except:
-            message = '%s %s\n' % (status_msg, r)
-        status = getattr(r, 'status_code', getattr(r, 'status', 0))
-        raise ClientError(message, status=status)
-
     def set_header(self, name, value, iff=True):
         """Set a header 'name':'value'"""
         if value is not None and iff:
@@ -503,7 +495,7 @@ class Client(Logged):
             self, method, path,
             async_headers=dict(), async_params=dict(),
             **kwargs):
-        """Commit an HTTP request to base_url/path
+        """Commit an HTTP request to endpoint_url/path
         Requests are commited to and performed by Request/ResponseManager
         These classes perform a lazy http request. Present method, by default,
         enforces them to perform the http call. Hint: call present method with
@@ -526,9 +518,9 @@ class Client(Logged):
             if data:
                 headers.setdefault('Content-Length', '%s' % len(data))
             plog = ('\t[%s]' % self) if self.LOG_PID else ''
-            sendlog.debug('\n\nCMT %s@%s%s', method, self.base_url, plog)
+            sendlog.debug('\n\nCMT %s@%s%s', method, self.endpoint_url, plog)
             req = RequestManager(
-                method, self.base_url, path,
+                method, self.endpoint_url, path,
                 data=data, headers=headers, params=params)
             req.headers_to_quote = self.request_headers_to_quote
             req.header_prefices = self.request_header_prefices_to_quote
@@ -550,7 +542,14 @@ class Client(Logged):
             # Success can either be an int or a collection
             success = (success,) if isinstance(success, int) else success
             if r.status_code not in success:
-                self._raise_for_status(r)
+                log.debug(u'Client caught error %s (%s)' % (r, type(r)))
+                status_msg = getattr(r, 'status', '')
+                try:
+                    message = u'%s %s\n' % (status_msg, r.text)
+                except:
+                    message = u'%s %s\n' % (status_msg, r)
+                status = getattr(r, 'status_code', getattr(r, 'status', 0))
+                raise ClientError(message, status=status)
         return r
 
     def delete(self, path, **kwargs):

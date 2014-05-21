@@ -31,18 +31,20 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-from traceback import print_stack, print_exc
+from traceback import format_exc, format_stack
+from logging import getLogger
 from astakosclient import AstakosClientException
 
 from kamaki.clients import ClientError
 from kamaki.cli.errors import CLIError, CLISyntaxError
-from kamaki.cli import _debug, kloger
 from kamaki.cli.utils import format_size
+
+log = getLogger(__name__)
 
 CLOUDNAME = ['Note: Set a cloud and use its name instead of "default"']
 
 
-class generic(object):
+class Generic(object):
 
     @classmethod
     def all(this, func):
@@ -50,9 +52,8 @@ class generic(object):
             try:
                 return func(self, *args, **kwargs)
             except Exception as e:
-                if _debug:
-                    print_stack()
-                    print_exc(e)
+                log.debug('Error stack:\n%s' % ''.join(format_stack()))
+                log.debug(format_exc(e))
                 if isinstance(e, CLIError):
                     raise e
                 elif isinstance(e, ClientError):
@@ -91,7 +92,7 @@ class generic(object):
                     client = getattr(self, 'client', None)
                     if not client:
                         raise
-                    url = getattr(client, 'base_url', '<empty>')
+                    url = getattr(client, 'endpoint_url', '<empty>')
                     raise CLIError('Invalid service URL %s' % url, details=[
                         '%s' % ce,
                         'Check if authentication URL is correct',
@@ -103,7 +104,7 @@ class generic(object):
         return _raise
 
 
-class user(object):
+class Astakos(object):
 
     _token_details = [
         'To check default token: /config get cloud.default.token',
@@ -119,30 +120,6 @@ class user(object):
             except AstakosClientException as ace:
                 raise CLIError(
                     'Error in AstakosClient', details=['%s' % ace, ])
-            return r
-        return _raise
-
-    @classmethod
-    def load(this, func):
-        def _raise(self, *args, **kwargs):
-            r = func(self, *args, **kwargs)
-            try:
-                client = getattr(self, 'client')
-            except AttributeError as ae:
-                raise CLIError('Client setup failure', importance=3, details=[
-                    '%s' % ae])
-            if not getattr(client, 'token', False):
-                kloger.warning(
-                    'No permanent token (try:'
-                    ' kamaki config set cloud.default.token <tkn>)')
-            if not getattr(client, 'astakos_base_url', False):
-                msg = 'Missing synnefo authentication URL'
-                raise CLIError(msg, importance=3, details=[
-                    'Check if authentication URL is correct',
-                    '  # check current URL:',
-                    '  $ kamaki config get cloud.default.url',
-                    '  # set new auth. URL:',
-                    '  $ kamaki config set cloud.default.url'] + CLOUDNAME)
             return r
         return _raise
 
@@ -163,7 +140,7 @@ class user(object):
         return _raise
 
 
-class history(object):
+class History(object):
     @classmethod
     def init(this, func):
         def _raise(self, *args, **kwargs):
@@ -184,7 +161,7 @@ class history(object):
         return _raise
 
 
-class cyclades(object):
+class Cyclades(object):
     about_flavor_id = [
         'How to pick a valid flavor id:',
         '  # get a list of flavor ids',
@@ -207,7 +184,7 @@ class cyclades(object):
 
     @classmethod
     def connection(this, func):
-        return generic._connection(func)
+        return Generic._connection(func)
 
     @classmethod
     def date(this, func):
@@ -391,8 +368,7 @@ class cyclades(object):
         return _raise
 
 
-class plankton(object):
-
+class Image(object):
     about_image_id = [
         'How to pick a suitable image:',
         '  # get a list of image ids',
@@ -404,7 +380,7 @@ class plankton(object):
 
     @classmethod
     def connection(this, func):
-        return generic._connection(func)
+        return Generic._connection(func)
 
     @classmethod
     def id(this, func):
@@ -438,7 +414,7 @@ class plankton(object):
         return _raise
 
 
-class pithos(object):
+class Pithos(object):
     container_howto = [
         'Use a / to refer to a container (default: /pithos) e.g.,',
         '  # list the contents of container "images"',
@@ -453,7 +429,7 @@ class pithos(object):
 
     @classmethod
     def connection(this, func):
-        return generic._connection(func)
+        return Generic._connection(func)
 
     @classmethod
     def account(this, func):
