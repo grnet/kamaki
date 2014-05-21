@@ -104,8 +104,6 @@ class PithosClient(PithosRestClient):
 
     def __init__(self, base_url, token, account=None, container=None):
         super(PithosClient, self).__init__(base_url, token, account, container)
-        #  All kamaki-set headers are quoted
-        self.request_header_prefices_to_quote = ['', ]
 
     def create_container(
             self,

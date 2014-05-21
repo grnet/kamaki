@@ -167,6 +167,8 @@ class PithosRestClient(StorageClient):
         self._assert_account()
 
         self.set_param('update', '', iff=update)
+        self.request_header_prefices_to_quote = [
+            'x-account-meta-', 'x-account-group-']
 
         if groups:
             for group, usernames in groups.items():
@@ -182,7 +184,7 @@ class PithosRestClient(StorageClient):
         self.set_header('X-Account-Policy-Quota', quota)
         self.set_header('X-Account-Policy-Versioning', versioning)
         self._quote_header_keys(
-            self.headers, ('x-account-group-', 'x-account-meta'))
+            self.headers, ('x-account-group-', 'x-account-meta-'))
 
         path = path4url(self.account)
         success = kwargs.pop('success', 202)
@@ -324,6 +326,7 @@ class PithosRestClient(StorageClient):
         :returns: ConnectionResponse
         """
         self._assert_container()
+        self.request_header_prefices_to_quote = ['x-container-meta-', ]
 
         self.set_header('X-Container-Policy-Quota', quota)
         self.set_header('X-Container-Policy-Versioning', versioning)
@@ -378,6 +381,7 @@ class PithosRestClient(StorageClient):
         :returns: ConnectionResponse
         """
         self._assert_container()
+        self.request_header_prefices_to_quote = ['x-container-meta-', ]
 
         self.set_param('update', '', iff=update)
         self.set_param('format', format, iff=format)
@@ -624,6 +628,8 @@ class PithosRestClient(StorageClient):
         """
         self._assert_container()
         self.response_headers = ['ETag', 'X-Object-Version']
+        self.request_header_prefices_to_quote = [
+            'x-copy-from-', 'x-move-from-', 'x-object-meta-']
 
         self.set_param('format', format, iff=format)
         self.set_param('hashmap', hashmap, iff=hashmap)
@@ -732,6 +738,7 @@ class PithosRestClient(StorageClient):
             'X-Source-Version',
         ]
         self.response_header_prefices = ['X-Object-', ]
+        self.request_header_prefices_to_quote = ['x-object-meta-', ]
 
         self.set_param('format', format, iff=format)
         self.set_param('ignore_content_type', iff=ignore_content_type)
@@ -831,6 +838,7 @@ class PithosRestClient(StorageClient):
             'X-Source-Version',
         ]
         self.response_header_prefices = ['X-Object-', ]
+        self.request_header_prefices_to_quote = ['x-object-meta-', ]
 
         self.set_param('format', format, iff=format)
         self.set_param('ignore_content_type', iff=ignore_content_type)
@@ -931,6 +939,7 @@ class PithosRestClient(StorageClient):
         """
         self._assert_container()
         self.response_headers = ['ETag', 'X-Object-Version']
+        self.request_header_prefices_to_quote = ['x-object-meta-', ]
 
         self.set_param('format', format, iff=format)
         self.set_param('update', '', iff=update)
