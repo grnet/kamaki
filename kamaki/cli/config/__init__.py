@@ -192,8 +192,7 @@ class Config(RawConfigParser):
                     if gval and cval and (
                         gval.lower().strip('/') != cval.lower().strip('/')):
                             raise CLISyntaxError(
-                                'Conflicting values for default %s' % (
-                                    term),
+                                'Conflicting values for default %s' % (term),
                                 importance=2, details=[
                                     ' global.%s:  %s' % (term, gval),
                                     ' %s.%s.%s:  %s' % (

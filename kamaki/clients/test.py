@@ -351,24 +351,6 @@ class Client(TestCase):
                 self.client._watch_thread_limit(list())
                 self.assertEqual(exp_limit, self.client._thread_limit)
 
-    def test__raise_for_status(self):
-        r = FR()
-        for txt, sts_code, sts in (('err msg', 10, None), ('', 42, 'Err St')):
-            r.text, r.status_code, r.status = txt, sts_code, sts
-            try:
-                self.client._raise_for_status(r)
-            except self.CE as ce:
-                self.assertEqual('%s' % ce, '%s %s\n' % (sts or '', txt))
-                self.assertEqual(ce.status, sts_code)
-
-        for msg, sts_code in (('err msg', 32), ('', 42), ('an err', None)):
-            err = self.CE(msg, sts_code) if sts_code else Exception(msg)
-            try:
-                self.client._raise_for_status(err)
-            except self.CE as ce:
-                self.assertEqual('%s' % ce, '%s %s\n' % (sts_code or '', msg))
-                self.assertEqual(ce.status, sts_code or 0)
-
     @patch('kamaki.clients.Client.set_header')
     def test_set_header(self, SH):
         for name, value, condition in product(

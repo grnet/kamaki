@@ -1,4 +1,4 @@
-# Copyright 2013 GRNET S.A. All rights reserved.
+# Copyright 2013-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -39,6 +39,7 @@ from tempfile import NamedTemporaryFile
 from io import StringIO
 
 from kamaki.cli.config import HEADER
+from kamaki.cli import errors
 
 
 def _2steps_gen(limit=2):
@@ -197,10 +198,8 @@ class Config(TestCase):
 
         with make_file(content2) as f:
             _cnf = Config(path=f.name)
-            self.assertEqual([], _cnf.rescue_old_file(err=err))
-            self.assertEqual(
-                '... rescue global.url => cloud.default.url\n', err.getvalue())
-            self.assertEqual(sample, _cnf.get_cloud('default', 'url'))
+            self.assertRaises(
+                errors.CLISyntaxError, _cnf.rescue_old_file, err=err)
         del _cnf
 
         content3 = list(content0)
@@ -209,12 +208,8 @@ class Config(TestCase):
 
         with make_file(content3) as f:
             _cnf = Config(path=f.name)
-            self.assertEqual([], _cnf.rescue_old_file(err=err))
-            self.assertEqual(
-                2 * '... rescue global.url => cloud.default.url\n',
-                err.getvalue())
-            self.assertEqual(
-                'http://example2.com', _cnf.get_cloud('default', 'url'))
+            self.assertRaises(
+                errors.CLISyntaxError, _cnf.rescue_old_file, err=err)
         del _cnf
 
         content4 = list(content0)
@@ -259,7 +254,7 @@ class Config(TestCase):
         with make_file([]) as f:
             with make_log_file() as logf:
                 _cnf = Config(path=f.name)
-                self.assertEqual(0.9, _cnf.guess_version())
+                self.assertEqual(0.12, _cnf.guess_version())
                 exp = 'All heuristics failed, cannot decide\n'
                 logf.file.seek(- len(exp), 2)
                 self.assertEqual(exp, logf.read())
@@ -269,10 +264,7 @@ class Config(TestCase):
         with make_file(content0) as f:
             with make_log_file() as logf:
                 _cnf = Config(path=f.name)
-                self.assertEqual(0.9, _cnf.guess_version())
-                exp = '... found cloud "demo"\n'
-                logf.seek(- len(exp), 2)
-                self.assertEqual(exp, logf.read())
+                self.assertEqual(0.10, _cnf.guess_version())
 
         for term in ('url', 'token'):
             content1 = list(content0)
@@ -282,7 +274,7 @@ class Config(TestCase):
                 with make_log_file() as logf:
                     _cnf = Config(path=f.name)
                     self.assertEqual(0.8, _cnf.guess_version())
-                    exp = '..... config file has an old global section\n'
+                    exp = 'config file has an old global section\n'
                     logf.seek(- len(exp), 2)
                     self.assertEqual(exp, logf.read())
 
