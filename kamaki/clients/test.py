@@ -236,10 +236,10 @@ class SilentEvent(TestCase):
             t.start()
 
         for i in range(4):
-            self.assertTrue(threads[i].is_alive())
+            if threads[i].is_alive():
+                threads[i].join()
+                self.assertFalse(threads[i].is_alive())
             self.can_finish = i
-            threads[i].join()
-            self.assertFalse(threads[i].is_alive())
 
     def test_value(self):
         threads = [self.SE(self.thread_content, i) for i in range(4)]
