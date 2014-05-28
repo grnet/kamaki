@@ -285,7 +285,7 @@ def init_cached_authenticator(config_argument, cloud, logger):
         _cnf = config_argument.value
         url = _cnf.get_cloud(cloud, 'url')
         tokens = _cnf.get_cloud(cloud, 'token').split()
-        astakos, failed = None, []
+        astakos, failed, help_message = None, [], []
         for token in tokens:
             try:
                 if astakos:
@@ -301,24 +301,39 @@ def init_cached_authenticator(config_argument, cloud, logger):
             except ClientError as ce:
                 if ce.status in (401, ):
                     logger.warning(
-                        'WARNING: Failed to authenticate token %s' % token)
+                        'Cloud %s failed to authenticate token %s' % (
+                            cloud, token))
                     failed.append(token)
                 else:
                     raise
-        for token in failed:
-            r = raw_input(
-                'Token %s failed to authenticate. Remove it? [y/N]: ' % token)
-            if r in ('y', 'Y'):
-                tokens.remove(token)
-        if set(failed).difference(tokens):
-            _cnf.set_cloud(cloud, 'token', ' '.join(tokens))
-            _cnf.write()
+        if failed:
+            if set(tokens) == set(failed):
+                tlen = len(tokens)
+                logger.warning(
+                    '%s token%s in cloud.%s.token failed to authenticate' % (
+                        ('All %s' % tlen) if tlen > 1 else 'The only',
+                        's' if tlen > 1 else '', cloud))
+                help_message += [
+                    'To replace with a new and valid token:',
+                    '  kamaki config set cloud.%s.token NEW_TOKEN' % (cloud)]
+            else:
+                tlen = len(tokens)
+                for token in failed:
+                    tokens.remove(token)
+                logger.warning(
+                    '%s of %s tokens removed from cloud.%s.token list' % (
+                        len(failed), tlen, cloud))
+                _cnf.set_cloud(cloud, 'token', ' '.join(tokens))
+                _cnf.write()
         if tokens:
-            return astakos
+            return astakos, help_message
         logger.warning('WARNING: cloud.%s.token is now empty' % cloud)
+        help_message = [
+            'To set a new token:',
+            '  kamaki config set cloud.%s.token NEW_TOKEN']
     except AssertionError as ae:
         logger.warning('WARNING: Failed to load authenticator [%s]' % ae)
-    return None
+    return None, help_message
 
 
 def _load_spec_module(spec, arguments, module):
@@ -538,7 +553,7 @@ def run_shell(exe, parser):
     cloud = _init_session(parser.arguments)
     global kloger
     _cnf = parser.arguments['config']
-    astakos = init_cached_authenticator(_cnf, cloud, kloger)
+    astakos, help_message = init_cached_authenticator(_cnf, cloud, kloger)
     try:
         username, userid = (astakos.user_term('name'), astakos.user_term('id'))
     except Exception:

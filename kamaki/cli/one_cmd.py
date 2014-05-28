@@ -35,7 +35,7 @@ from kamaki.cli import (
     get_command_group, set_command_params, print_subcommands_help, exec_cmd,
     update_parser_help, _groups_help, _load_spec_module,
     init_cached_authenticator, kloger)
-from kamaki.cli.errors import CLIUnknownCommand
+from kamaki.cli.errors import CLIUnknownCommand, CLIError
 
 
 def run(cloud, parser):
@@ -97,8 +97,14 @@ def run(cloud, parser):
         exit(0)
 
     cls = cmd.cmd_class
-    astakos = init_cached_authenticator(_cnf, cloud, kloger) if (
-        cloud) else None
+    astakos, help_message = init_cached_authenticator(_cnf, cloud, kloger) if (
+        cloud) else (None, [])
+    if not astakos:
+        from kamaki.cli import is_non_API
+        if not is_non_API(parser):
+            raise CLIError(
+                'Failed to initialize an identity client',
+                importance=3, details=help_message)
     executable = cls(parser.arguments, astakos, cloud)
     parser.required = getattr(cls, 'required', None)
     parser.update_arguments(executable.arguments)
