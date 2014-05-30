@@ -35,7 +35,7 @@ from json import load, loads
 from os.path import abspath
 
 from kamaki.cli import command
-from kamaki.clients.astakos import LoggedAstakosClient
+from kamaki.clients.astakos import LoggedAstakosClient, ClientError
 from kamaki.cli.cmds import (
     CommandInit, NameFilter, OptionalOutput, errors, client_log)
 from kamaki.cli.cmdtree import CommandTree
@@ -43,7 +43,8 @@ from kamaki.cli.errors import (
     CLIBaseUrlError, CLISyntaxError, CLIError, CLIInvalidArgument)
 from kamaki.cli.argument import (
     FlagArgument, ValueArgument, IntArgument, CommaSeparatedListArgument,
-    KeyValueArgument, DateArgument, BooleanArgument)
+    KeyValueArgument, DateArgument, BooleanArgument, UserAccountArgument,
+    RepeatableArgument)
 from kamaki.cli.utils import format_size, filter_dicts_by_dict
 
 #  Mandatory
@@ -84,6 +85,7 @@ def with_temp_token(func):
             return func(self, *args, **kwargs)
         finally:
             self.client.token = token_bu
+    wrap.__name__ = func.__name__
     return wrap
 
 
@@ -113,16 +115,77 @@ class _AstakosInit(CommandInit):
         self._run()
 
 
+@command(quota_cmds)
+class quota_list(_AstakosInit, OptionalOutput):
+    """Show user quotas"""
+
+    _to_format = set(['cyclades.disk', 'pithos.diskspace', 'cyclades.ram'])
+    arguments = dict(
+        resource=ValueArgument('Filter by resource', '--resource'),
+        project_id=ValueArgument('Filter by project', '--project-id'),
+        bytes=FlagArgument('Show data size in bytes', '--bytes')
+    )
+
+    def _print_quotas(self, quotas, *args, **kwargs):
+        if not self['bytes']:
+            for project_id, resources in quotas.items():
+                for r in self._to_format.intersection(resources):
+                    resources[r] = dict(
+                        [(k, format_size(v)) for k, v in resources[r].items()])
+        self.print_dict(quotas, *args, **kwargs)
+
+    @errors.Generic.all
+    @errors.Astakos.astakosclient
+    def _run(self):
+        quotas = self.client.get_quotas()
+        if self['project_id']:
+            try:
+                resources = quotas[self['project_id']]
+            except KeyError:
+                raise CLIError(
+                    'User not assigned to project with id "%s" ' % (
+                        self['project_id']),
+                    details=[
+                        'See all quotas of current user:',
+                        '  kamaki quota list'])
+            quotas = {self['project_id']: resources}
+        if self['resource']:
+            d = dict()
+            for project_id, resources in quotas.items():
+                r = dict()
+                for resource, value in resources.items():
+                    if (resource.startswith(self['resource'])):
+                        r[resource] = value
+                if r:
+                    d[project_id] = r
+            if not d:
+                raise CLIError('Resource "%s" not found' % self['resource'])
+            quotas = d
+        self.print_(quotas, self._print_quotas)
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
+
+
+#  command user session
+
 @command(user_cmds)
 class user_authenticate(_AstakosInit, OptionalOutput):
     """Authenticate a user and get all authentication information"""
 
     @errors.Generic.all
-    @errors.Astakos.authenticate
     @errors.Astakos.astakosclient
     @with_temp_token
     def _run(self):
-        self.print_(self.client.authenticate(), self.print_dict)
+        try:
+            self.print_(self.client.authenticate(), self.print_dict)
+        except ClientError as ce:
+            if ce.status in (401, ):
+                raise CLIError(
+                    'Token %s was not authenticated' % self.client.token,
+                    details=['%s' % ce])
+            raise
 
     def main(self, token=None):
         super(self.__class__, self)._run()
@@ -133,8 +196,8 @@ class user_authenticate(_AstakosInit, OptionalOutput):
 class user_uuid2name(_AstakosInit, OptionalOutput):
     """Get user name(s) from uuid(s)"""
 
-    #@errors.Generic.all
-    #@errors.Astakos.astakosclient
+    @errors.Generic.all
+    @errors.Astakos.astakosclient
     def _run(self, uuids):
         r = self.client.get_usernames(uuids)
         self.print_(r, self.print_dict)
@@ -165,59 +228,6 @@ class user_name2uuid(_AstakosInit, OptionalOutput):
         self._run(usernames=((username, ) + more_usernames))
 
 
-@command(quota_cmds)
-class quota_list(_AstakosInit, OptionalOutput):
-    """Show user quotas"""
-
-    _to_format = set(['cyclades.disk', 'pithos.diskspace', 'cyclades.ram'])
-    arguments = dict(
-        resource=ValueArgument('Filter by resource', '--resource'),
-        project_id=ValueArgument('Filter by project', '--project-id'),
-        bytes=FlagArgument('Show data size in bytes', '--bytes')
-    )
-
-    def _print_quotas(self, quotas, *args, **kwargs):
-        if not self['bytes']:
-            for project_id, resources in quotas.items():
-                for r in self._to_format.intersection(resources):
-                    resources[r] = dict(
-                        [(k, format_size(v)) for k, v in resources[r].items()])
-        self.print_dict(quotas, *args, **kwargs)
-
-    @errors.Generic.all
-    @errors.Astakos.astakosclient
-    def _run(self):
-        quotas = self.client.get_quotas()
-        if self['project_id']:
-            try:
-                resources = quotas[self['project_id']]
-            except KeyError:
-                raise CLIError('User not assigned to project with id "%s" ' % (
-                    self['project_id']), details=[
-                    'See all quotas of current user:', '  kamaki quota list'])
-            quotas = {self['project_id']: resources}
-        if self['resource']:
-            d = dict()
-            for project_id, resources in quotas.items():
-                r = dict()
-                for resource, value in resources.items():
-                    if (resource.startswith(self['resource'])):
-                        r[resource] = value
-                if r:
-                    d[project_id] = r
-            if not d:
-                raise CLIError('Resource "%s" not found' % self['resource'])
-            quotas = d
-        self.print_(quotas, self._print_quotas)
-
-    def main(self):
-        super(self.__class__, self)._run()
-        self._run()
-
-
-#  command user session
-
-
 @command(user_cmds)
 class user_info(_AstakosInit, OptionalOutput):
     """Get info for (current) session user"""
@@ -233,45 +243,60 @@ class user_info(_AstakosInit, OptionalOutput):
         if self['uuid'] and self['name']:
             raise CLISyntaxError(
                 'Arguments uuid and username are mutually exclusive',
-                details=['Use either uuid OR username OR none, not both'])
+                details=['Use either uuid OR username OR none, but NOT both'])
         uuid = self['uuid'] or (self._username2uuid(self['name']) if (
             self['name']) else None)
         try:
+            if any([self['uuid'], self['name']]) and not uuid:
+                raise KeyError()
             token = self.astakos.get_token(uuid) if uuid else None
         except KeyError:
             msg = ('id %s' % self['uuid']) if (
                 self['uuid']) else 'username %s' % self['name']
             raise CLIError(
                 'No user with %s in the cached session list' % msg, details=[
-                    'To see all cached session users',
-                    '  /user list',
-                    'To authenticate and add a new user in the session list',
-                    '  /user add <new token>'])
+                    'To see all cached session users:',
+                    '  kamaki user list',
+                    'To authenticate and add a new user in the session list:',
+                    '  kamaki user add NEW_TOKEN'])
         self.print_(self.astakos.user_info(token), self.print_dict)
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
 
 
 @command(user_cmds)
 class user_add(_AstakosInit, OptionalOutput):
-    """Authenticate a user by token and add to kamaki session (cache)"""
+    """Authenticate a user by token and add to session user list (cache)"""
+
+    arguments = dict(token=ValueArgument('Token of user to add', '--token'),)
+    required = ('token', )
 
     @errors.Generic.all
     @errors.Astakos.astakosclient
-    def _run(self, token=None):
-        ask = token and token not in self.astakos._uuids
-        self.print_(self.astakos.authenticate(token), self.print_dict)
+    def _run(self):
+        ask = self['token'] and self['token'] not in self.astakos._uuids
+        try:
+            self.print_(
+                self.astakos.authenticate(self['token']), self.print_dict)
+        except ClientError as ce:
+            if ce.status in (401, ):
+                raise CLIError(
+                    'Token %s was not authenticated' % self['token'],
+                    details=['%s' % ce])
         if ask and self.ask_user(
-                'Token is temporarily stored in memory. If it is stored in'
-                ' kamaki configuration file, it will be available in later'
-                ' sessions. Do you want to permanently store this token?'):
+                'Token is temporarily stored in memory. Append it in '
+                'configuration file as an alternative token?'):
             tokens = self.astakos._uuids.keys()
             tokens.remove(self.astakos.token)
             self['config'].set_cloud(
                 self.cloud, 'token', ' '.join([self.astakos.token] + tokens))
             self['config'].write()
 
-    def main(self, new_token=None):
+    def main(self):
         super(self.__class__, self)._run()
-        self._run(token=new_token)
+        self._run()
 
 
 @command(user_cmds)
@@ -297,23 +322,31 @@ class user_list(_AstakosInit, OptionalOutput):
 class user_select(_AstakosInit):
     """Select a user from the (cached) list as the current session user"""
 
+    def __init__(self, arguments={}, astakos=None, cloud=None):
+        super(_AstakosInit, self).__init__(arguments, astakos, cloud)
+        self['uuid_or_username'] = UserAccountArgument(
+            'User to select', ('--user'))
+        self.arguments['uuid_or_username'].account_client = astakos
+
+    required = ('uuid_or_username', )
+
     @errors.Generic.all
     @errors.Astakos.astakosclient
-    def _run(self, uuid):
+    def _run(self):
         try:
+            uuid = self['uuid_or_username']
             first_token = self.astakos.get_token(uuid)
         except KeyError:
             raise CLIError(
                 'No user with uuid %s in the cached session list' % uuid,
                 details=[
-                    'To see all cached session users',
-                    '  /user list',
-                    'To authenticate and add a new user in the session list',
-                    '  /user add <new token>'])
+                    'To see all cached session users:', '  kamaki user list'])
+        name = self.astakos.user_info()['name'] or '<USER>'
         if self.astakos.token != first_token:
             self.astakos.token = first_token
-            msg = 'User with id %s is now the current session user.\n' % uuid
-            msg += 'Do you want future sessions to also start with this user?'
+            msg = 'User %s with id %s is now the current session user\n' % (
+                name, uuid)
+            msg += 'Make %s the default user for future sessions?' % name
             if self.ask_user(msg):
                 tokens = self.astakos._uuids.keys()
                 tokens.remove(self.astakos.token)
@@ -321,51 +354,56 @@ class user_select(_AstakosInit):
                 self['config'].set_cloud(
                     self.cloud, 'token',  ' '.join(tokens))
                 self['config'].write()
-                self.error('User is selected for next sessions')
-            else:
-                self.error('User is not permanently selected')
+                self.error('%s is now the default user' % name)
         else:
-            self.error('User was already the selected session user')
+            self.error('User %s is already the selected session user' % name)
 
-    def main(self, user_uuid):
+    def main(self):
         super(self.__class__, self)._run()
-        self._run(uuid=user_uuid)
+        self._run()
 
 
 @command(user_cmds)
 class user_delete(_AstakosInit):
-    """Delete a user (token) from the (cached) list of session users"""
+    """Delete a user (token) from the list of session users"""
+
+    def __init__(self, arguments={}, astakos=None, cloud=None):
+        super(_AstakosInit, self).__init__(arguments, astakos, cloud)
+        self['uuid_or_username'] = UserAccountArgument(
+            'User to delete', ('--user'))
+        self.arguments['uuid_or_username'].account_client = astakos
+
+    required = ('uuid_or_username', )
 
     @errors.Generic.all
     @errors.Astakos.astakosclient
-    def _run(self, uuid):
+    def _run(self):
+        uuid = self['uuid_or_username']
         if uuid == self.astakos.user_term('id'):
             raise CLIError('Cannot remove current session user', details=[
                 'To see all cached session users',
-                '  /user list',
+                '  kamaki user list',
                 'To see current session user',
-                '  /user info',
+                '  kamaki user info',
                 'To select a different session user',
-                '  /user select <user uuid>'])
+                '  kamaki user select --user=UUID_OR_USERNAME'])
         try:
             self.astakos.remove_user(uuid)
         except KeyError:
             raise CLIError('No user with uuid %s in session list' % uuid,
                 details=[
                     'To see all cached session users',
-                    '  /user list',
+                    '  kamaki user list',
                     'To authenticate and add a new user in the session list',
-                    '  /user add <new token>'])
-        if self.ask_user(
-                'User is removed from current session, but will be restored in'
-                ' the next session. Remove the user from future sessions?'):
+                    '  kamaki user add --token=NEW_TOKEN'])
+        if self.ask_user('Delete user token from config file?'):
             self['config'].set_cloud(
                 self.cloud, 'token', ' '.join(self.astakos._uuids.keys()))
             self['config'].write()
 
-    def main(self, user_uuid):
+    def main(self):
         super(self.__class__, self)._run()
-        self._run(uuid=user_uuid)
+        self._run()
 
 
 #  command admin
@@ -388,40 +426,52 @@ class service_list(_AstakosInit, OptionalOutput):
 class service_uuid2username(_AstakosInit, OptionalOutput):
     """Get service username(s) from uuid(s)"""
 
+    arguments = dict(
+        service_token=ValueArgument('Authenticate service', '--service-token'),
+        uuid=RepeatableArgument('User UUID (can be repeated)', '--uuid')
+    )
+    required = ('service_token', 'uuid')
+
     @errors.Generic.all
     @errors.Astakos.astakosclient
     @with_temp_token
-    def _run(self, uuids):
-        if 1 == len(uuids):
-            self.print_(self.client.service_get_username(uuids[0]))
+    def _run(self):
+        if 1 == len(self['uuid']):
+            self.print_(self.client.service_get_username(self['uuid'][0]))
         else:
             self.print_(
-                self.client.service_get_usernames(uuids),
+                self.client.service_get_usernames(self['uuid']),
                 self.print_dict)
 
-    def main(self, service_token, uuid, *more_uuids):
+    def main(self):
         super(self.__class__, self)._run()
-        self._run([uuid] + list(more_uuids), token=service_token)
+        self._run(token=self['service_token'])
 
 
 @command(service_cmds)
 class service_username2uuid(_AstakosInit, OptionalOutput):
     """Get service uuid(s) from username(s)"""
 
+    arguments = dict(
+        service_token=ValueArgument('Authenticate service', '--service-token'),
+        username=RepeatableArgument('Username (can be repeated)', '--username')
+    )
+    required = ('service_token', 'username')
+
     @errors.Generic.all
     @errors.Astakos.astakosclient
     @with_temp_token
-    def _run(self, usernames):
-        if 1 == len(usernames):
-            self.print_(self.client.service_get_uuid(usernames[0]))
+    def _run(self):
+        if 1 == len(self['username']):
+            self.print_(self.client.service_get_uuid(self['username'][0]))
         else:
             self.print_(
-                self.client.service_get_uuids(usernames),
+                self.client.service_get_uuids(self['username']),
                 self.print_dict)
 
-    def main(self, service_token, usernames, *more_usernames):
+    def main(self):
         super(self.__class__, self)._run()
-        self._run([usernames] + list(more_usernames), token=service_token)
+        self._run(token=self['service_token'])
 
 
 @command(service_cmds)
@@ -429,8 +479,10 @@ class service_quotas(_AstakosInit, OptionalOutput):
     """Get service quotas"""
 
     arguments = dict(
+        service_token=ValueArgument('Authenticate service', '--service-token'),
         uuid=ValueArgument('A user uuid to get quotas for', '--uuid')
     )
+    required = ('service_token')
 
     @errors.Generic.all
     @errors.Astakos.astakosclient
@@ -438,9 +490,9 @@ class service_quotas(_AstakosInit, OptionalOutput):
     def _run(self):
         self.print_(self.client.service_get_quotas(self['uuid']))
 
-    def main(self, service_token):
+    def main(self):
         super(self.__class__, self)._run()
-        self._run(token=service_token)
+        self._run(token=self['service_token'])
 
 
 @command(commission_cmds)
@@ -509,21 +561,20 @@ class commission_resolve(_AstakosInit, OptionalOutput):
 
     arguments = dict(
         accept=CommaSeparatedListArgument(
-            'commission ids to accept (e.g., --accept=11,12,13,...',
+            'commission ids to accept (e.g., --accept=11,12,13,...)',
             '--accept'),
         reject=CommaSeparatedListArgument(
-            'commission ids to reject (e.g., --reject=11,12,13,...',
+            'commission ids to reject (e.g., --reject=11,12,13,...)',
             '--reject')
     )
+    required = ['accept', 'reject']
 
     @errors.Generic.all
     @errors.Astakos.astakosclient
     def _run(self):
-        self.writeln('accepted ', self['accept'])
-        self.writeln('rejected ', self['reject'])
-        self.print_(
-            self.client.resolve_commissions(self['accept'], self['reject']),
-            self.print_dict)
+        r = self.client.resolve_commissions(
+            self['accept'] or [], self['reject'] or [])
+        self.print_(r, self.print_dict)
 
     def main(self):
         super(self.__class__, self)._run()
@@ -532,30 +583,35 @@ class commission_resolve(_AstakosInit, OptionalOutput):
 
 @command(commission_cmds)
 class commission_issue(_AstakosInit, OptionalOutput):
-    """Issue commissions as a json string (special privileges required)
-    Parameters:
-    holder      -- user's id (string)
-    source      -- commission's source (ex system) (string)
-    provisions  -- resources with their quantity (json-dict from string to int)
-    name        -- description of the commission (string)
-    """
+    """Issue commissions as a json string (special privileges required)"""
 
     arguments = dict(
+        uuid=ValueArgument('User UUID', '--uuid'),
+        source=ValueArgument('Commission source (ex system)', '--source'),
+        file_path=ValueArgument('File of provisions', '--provisions-file'),
+        description=ValueArgument('Commision description', '--description'),
         force=FlagArgument('Force commission', '--force'),
         accept=FlagArgument('Do not wait for verification', '--accept')
     )
+    required = ('uuid', 'source', 'file_path')
 
     @errors.Generic.all
     @errors.Astakos.astakosclient
-    def _run(self, holder, source, provisions, name=''):
-        provisions = loads(provisions)
+    def _run(self):
+        try:
+            with open(self['file_path']) as f:
+                provisions = loads(f.read())
+        except Exception as e:
+            raise CLIError(
+                'Failed load a json dict from file %s' % self['file_path'],
+                importance=2, details=['%s' % e])
         self.print_(self.client.issue_one_commission(
-            holder, source, provisions, name,
-            self['force'], self['accept']))
+            self['uuid'], self['source'], provisions,
+            self['description'] or '', self['force'], self['accept']))
 
-    def main(self, user_uuid, source, provisions_file, name=''):
+    def main(self):
         super(self.__class__, self)._run()
-        self._run(user_uuid, source, provisions_file, name)
+        self._run()
 
 
 @command(resource_cmds)
@@ -594,7 +650,6 @@ class endpoint_list(_AstakosInit, OptionalOutput, NameFilter):
 
 #  command project
 
-
 _project_specs = """
     {
     "name": name,
@@ -629,7 +684,7 @@ class project_list(_AstakosInit, OptionalOutput):
         details=FlagArgument('Show details', ('-l', '--details')),
         name=ValueArgument('Filter by name', ('--with-name', )),
         state=ValueArgument('Filter by state', ('--with-state', )),
-        owner=ValueArgument('Filter by owner', ('--with-owner', ))
+        owner=ValueArgument('Filter by owner', ('--with-owner', )),
     )
 
     @errors.Generic.all
@@ -655,13 +710,13 @@ class project_info(_AstakosInit, OptionalOutput):
 
     @errors.Generic.all
     @errors.Astakos.astakosclient
+    @errors.Astakos.project_id
     def _run(self, project_id):
-        self.print_(
-            self.client.get_project(project_id), self.print_dict)
+        self.print_(self.client.get_project(project_id), self.print_dict)
 
     def main(self, project_id):
         super(self.__class__, self)._run()
-        self._run(project_id)
+        self._run(project_id=project_id)
 
 
 class PolicyArgument(ValueArgument):
@@ -823,6 +878,7 @@ class project_modify(_AstakosInit, OptionalOutput):
 
     @errors.Generic.all
     @errors.Astakos.astakosclient
+    @errors.Astakos.project_id
     @apply_notification
     def _run(self, project_id):
         specs = dict()
@@ -857,25 +913,26 @@ class project_modify(_AstakosInit, OptionalOutput):
                 'Invalid argument combination', details=[
                 'Arguments %s and %s are mutually exclussive' % (
                     a['private'].lvalue, a['public'].lvalue)])
-        self._run(project_id)
+        self._run(project_id=project_id)
 
 
 class _ProjectAction(_AstakosInit):
 
     action = ''
-
     arguments = dict(
         reason=ValueArgument('Quote a reason for this action', '--reason'),
     )
 
     @errors.Generic.all
     @errors.Astakos.astakosclient
-    def _run(self, project_id, quote_a_reason):
-        self.client.project_action(project_id, self.action, quote_a_reason)
+    @errors.Astakos.project_id
+    def _run(self, project_id):
+        self.client.project_action(
+            project_id, self.action, self['reason'] or '')
 
     def main(self, project_id):
         super(_ProjectAction, self)._run()
-        self._run(project_id, self['reason'] or '')
+        self._run(project_id=project_id)
 
 
 @command(project_cmds)
@@ -905,7 +962,6 @@ class project_reinstate(_ProjectAction):
 class _ApplicationAction(_AstakosInit):
 
     action = ''
-
     arguments = dict(
         app_id=ValueArgument('The application ID', '--app-id'),
         reason=ValueArgument('Quote a reason for this action', '--reason'),
@@ -914,13 +970,14 @@ class _ApplicationAction(_AstakosInit):
 
     @errors.Generic.all
     @errors.Astakos.astakosclient
-    def _run(self, project_id, app_id, quote_a_reason):
+    @errors.Astakos.project_id
+    def _run(self, project_id):
         self.client.application_action(
-            project_id, app_id, self.action, quote_a_reason)
+            project_id, self['app_id'], self.action, self['reason'] or '')
 
     def main(self, project_id):
         super(_ApplicationAction, self)._run()
-        self._run(project_id, self['app_id'], self['reason'] or '')
+        self._run(project_id=project_id)
 
 
 @command(project_cmds)
@@ -962,12 +1019,13 @@ class membership_list(_AstakosInit, OptionalOutput):
 
     @errors.Generic.all
     @errors.Astakos.astakosclient
-    def _run(self):
-        self.print_(self.client.get_memberships(self['project_id']))
+    @errors.Astakos.project_id
+    def _run(self, project_id):
+        self.print_(self.client.get_memberships(project_id))
 
     def main(self):
         super(self.__class__, self)._run()
-        self._run()
+        self._run(project_id=self['project_id'])
 
 
 @command(membership_cmds)
@@ -976,13 +1034,13 @@ class membership_info(_AstakosInit, OptionalOutput):
 
     @errors.Generic.all
     @errors.Astakos.astakosclient
-    def _run(self, memb_id):
-        self.print_(
-            self.client.get_membership(memb_id), self.print_dict)
+    @errors.Astakos.membership_id
+    def _run(self, membership_id):
+        self.print_(self.client.get_membership(membership_id), self.print_dict)
 
     def main(self, membership_id):
         super(self.__class__, self)._run()
-        self._run(memb_id=membership_id)
+        self._run(membership_id=membership_id)
 
 
 class _MembershipAction(_AstakosInit, OptionalOutput):
@@ -992,13 +1050,14 @@ class _MembershipAction(_AstakosInit, OptionalOutput):
 
     @errors.Generic.all
     @errors.Astakos.astakosclient
-    def _run(self, memb_id, quote_a_reason):
+    @errors.Astakos.membership_id
+    def _run(self, membership_id):
         self.print_(self.client.membership_action(
-            memb_id, self.action, quote_a_reason))
+            membership_id, self.action, self['reason'] or ''))
 
     def main(self, membership_id):
         super(_MembershipAction, self)._run()
-        self._run(membership_id, self['reason'] or '')
+        self._run(membership_id=membership_id)
 
 
 @command(membership_cmds)
@@ -1037,12 +1096,13 @@ class project_join(_AstakosInit):
 
     @errors.Generic.all
     @errors.Astakos.astakosclient
+    @errors.Astakos.project_id
     def _run(self, project_id):
         self.writeln(self.client.join_project(project_id))
 
     def main(self, project_id):
         super(project_join, self)._run()
-        self._run(project_id)
+        self._run(project_id=project_id)
 
 
 @command(project_cmds)
@@ -1054,9 +1114,10 @@ class project_enroll(_AstakosInit):
 
     @errors.Generic.all
     @errors.Astakos.astakosclient
-    def _run(self, project_id, email):
-        self.writeln(self.client.enroll_member(project_id, email))
+    @errors.Astakos.project_id
+    def _run(self, project_id):
+        self.writeln(self.client.enroll_member(project_id, self['email']))
 
     def main(self, project_id):
         super(project_enroll, self)._run()
-        self._run(project_id, self['email'])
+        self._run(project_id=project_id)

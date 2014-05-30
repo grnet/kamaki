@@ -107,10 +107,16 @@ class Generic(object):
 class Astakos(object):
 
     _token_details = [
-        'To check default token: /config get cloud.default.token',
-        'If set/update a token:',
+        'To check a token:',
+        '  kamaki config get cloud.CLOUD.token',
+        'To see all configured clouds:',
+        '  kamaki config get cloud'
+        'To set/get the default cloud:',
+        '  kamaki config get default_cloud',
+        '  kamaki config set default_cloud CLOUD'
+        'If (re)set a token:',
         '  #  (permanent)',
-        '  $ kamaki config set cloud.default.token <token>'] + CLOUDNAME
+        '  $ kamaki config set cloud.CLOUD.token <token>']
 
     @classmethod
     def astakosclient(this, func):
@@ -124,20 +130,53 @@ class Astakos(object):
         return _raise
 
     @classmethod
-    def authenticate(this, func):
+    def project_id(this, func):
         def _raise(self, *args, **kwargs):
+            project_id = kwargs.get('project_id', None)
             try:
                 return func(self, *args, **kwargs)
-            except (ClientError, AstakosClientException) as ce:
-                if ce.status == 401:
-                    token = kwargs.get('custom_token', 0) or self.client.token
-                    msg = ('Authorization failed for token %s' % token) if (
-                        token) else 'No token provided',
-                    details = [] if token else this._token_details
-                    raise CLIError(msg, details=details + ['%s' % ce, ])
-                raise ce
-            self._raise = func
+            except ClientError as ce:
+                if project_id and ce.status in (400, 404):
+                    raise CLIError(
+                        'No project with ID %s' % project_id,
+                        importance=2, details=[
+                            'To see all projects', '  kamaki project list',
+                            '%s %s' % (getattr(ce, 'status', ''), ce)])
+                elif project_id and ce.status in (403, ):
+                    raise CLIError(
+                        'No access to project %s' % project_id,
+                        importance=3, details=[
+                            'To see all projects', '  kamaki project list',
+                            'To see  memberships',
+                            '  kamaki membership list',
+                            '%s %s' % (getattr(ce, 'status', ''), ce)])
+                raise
+        _raise.__name__ = func.__name__
         return _raise
+
+    @classmethod
+    def membership_id(this, func):
+        def _raise(self, *args, **kwargs):
+            membership_id = kwargs.get('membership_id', None)
+            try:
+                return func(self, *args, **kwargs)
+            except ClientError as ce:
+                if membership_id and ce.status in (400, 404):
+                    raise CLIError(
+                        'No membership with ID %s' % membership_id,
+                        importance=2, details=[
+                            'To list all memberships',
+                            '  kamaki membership list',
+                            '%s %s' % (getattr(ce, 'status', ''), ce)])
+                elif membership_id and ce.status in (403, ):
+                    raise CLIError(
+                        'No access to membership %s' % membership_id,
+                        importance=3, details=[
+                            'To see all memberships',
+                            '  kamaki membership list',
+                            '%s %s' % (getattr(ce, 'status', ''), ce)])
+        _raise.__name__ = func.__name__
+        return _rause
 
 
 class History(object):
