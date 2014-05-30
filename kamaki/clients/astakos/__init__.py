@@ -39,8 +39,11 @@ from astakosclient import AstakosClientException, parse_endpoints
 from kamaki.clients import Client, ClientError, RequestManager, recvlog
 
 
-class AstakosClientError(AstakosClientException, ClientError):
+class AstakosClientError(ClientError, AstakosClientException):
     """Join AstakosClientException as ClientError in one class"""
+
+    def __init__(self, message='Astakos Client Error', details='', status=0):
+        super(ClientError, self).__init__(message, details, status)
 
 
 def _astakos_error(foo):
@@ -48,7 +51,9 @@ def _astakos_error(foo):
         try:
             return foo(self, *args, **kwargs)
         except AstakosClientException as sace:
-            raise AstakosClientError('%s' % sace, sace.status, sace.details)
+            raise AstakosClientError(
+                getattr(sace, 'message', '%s' % sace),
+                details=sace.details, status=sace.status)
     return wrap
 
 
@@ -117,7 +122,7 @@ class LoggedAstakosClient(AstakosClient):
             if log_request:
                 req = RequestManager(
                     method=log_request['method'],
-                    url='%s://%s' % (self.scheme, self.astakos_endpoint_url),
+                    url='%s://%s' % (self.scheme, self.astakos_base_url),
                     path=log_request['path'],
                     data=log_request.get('body', None),
                     headers=log_request.get('headers', dict()))
@@ -252,8 +257,7 @@ class CachedAstakosClient(Client):
             raise AstakosClientError(
                 '%s endpoints match type %s %s' % (
                     len(matches), service_type,
-                    ('and versionId %s' % version) if version else ''),
-                601)
+                    ('and versionId %s' % version) if version else ''))
         return matches[0]
 
     def get_endpoint_url(self, service_type, version=None, token=None):
