@@ -168,7 +168,7 @@ class server_list(_CycladesInit, OptionalOutput, NameFilter, IDFilter):
     def _filter_by_flavor(self, servers):
         fid = self['flavor_id']
         return [srv for srv in servers if (
-            '%s' % srv['image']['id'] == '%s' % fid)]
+            '%s' % srv['flavor']['id'] == '%s' % fid)]
 
     def _filter_by_metadata(self, servers):
         new_servers = []
