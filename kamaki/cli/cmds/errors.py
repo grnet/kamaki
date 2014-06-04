@@ -77,13 +77,12 @@ class Generic(object):
                 ce_msg = ('%s' % ce).lower()
                 if ce.status == 401:
                     raise CLIError('Authorization failed', details=[
-                        'Make sure a valid token is provided:',
-                        '  # to check if token is valid',
-                        '  $ kamaki user authenticate',
-                        '  # to set token:',
-                        '  $ kamaki config set cloud.default.token <token>',
-                        '  # to get current token:',
-                        '  $ kamaki config get cloud.default.token',
+                        'To check if token is valid',
+                        '  kamaki user authenticate',
+                        'To set token:',
+                        '  kamaki config set cloud.default.token <token>',
+                        'To get current token:',
+                        '  kamaki config get cloud.default.token',
                         '%s' % ce,
                     ] + CLOUDNAME)
                 elif ce.status in range(-12, 200) + [302, 401, 500]:
@@ -96,10 +95,10 @@ class Generic(object):
                     raise CLIError('Invalid service URL %s' % url, details=[
                         '%s' % ce,
                         'Check if authentication URL is correct',
-                        '  # check current URL',
-                        '  $ kamaki config get cloud.default.url',
-                        '  # set new authentication URL',
-                        '  $ kamaki config set cloud.default.url'] + CLOUDNAME)
+                        'To check current URL',
+                        '  kamaki config get cloud.default.url',
+                        'To set new authentication URL',
+                        '  kamaki config set cloud.default.url'] + CLOUDNAME)
                 raise
         return _raise
 
@@ -202,22 +201,16 @@ class History(object):
 
 class Cyclades(object):
     about_flavor_id = [
-        'How to pick a valid flavor id:',
-        '  # get a list of flavor ids',
-        '  $ kamaki flavor list',
-        '  # details of flavor',
-        '  $ kamaki flavor info <flavor id>',
-        '',
-    ]
+        'To get a list of flavors', '  kamaki flavor list',
+        'More details on a flavor', '  kamaki flavor info FLAVOR_ID', ]
 
     about_network_id = [
-        'How to pick a valid network id:',
-        '  # get a list of network ids',
-        '  $ kamaki network list',
-        '  # details of network',
-        '  $ kamaki network info <network id>',
-        '',
-    ]
+        'To get a list of networks', '  kamaki network list',
+        'More details on a network', '  kamaki network info NETWORK_ID', ]
+
+    about_ips = [
+        'To list available IPs', '  kamaki ip list',
+        'To reserve a new IP', '  kamaki ip create', ]
 
     net_types = ('CUSTOM', 'MAC_FILTERED', 'IP_LESS_ROUTED', 'PHYSICAL_VLAN')
 
@@ -231,11 +224,11 @@ class Cyclades(object):
             try:
                 return func(self, *args, **kwargs)
             except ClientError as ce:
-                if ce.status == 400 and 'changes-since' in ('%s' % ce):
-                    raise CLIError(
-                        'Incorrect date format for --since',
-                        details=['Accepted date format: d/m/y'])
-                raise
+                if ce.status in (304, ):
+                    log.debug('%s %s' % (ce.status, ce))
+                    self.error('No servers have been modified since')
+                else:
+                    raise
         return _raise
 
     @classmethod
@@ -263,21 +256,21 @@ class Cyclades(object):
         def _raise(self, *args, **kwargs):
             network_id = kwargs.get('network_id', None)
             try:
-                network_id = int(network_id)
                 return func(self, *args, **kwargs)
-            except ValueError as ve:
-                raise CLIError(
-                    'Invalid network id %s ' % network_id,
-                    details=[
-                        'network id must be a positive integer', '%s' % ve],
-                    importance=1)
             except ClientError as ce:
-                if network_id and ce.status == 404 and (
-                    'network' in ('%s' % ce).lower()
-                ):
+                if network_id and ce.status in (404, 400):
+                    msg = ''
+                    if ce.status in (400, ):
+                        try:
+                            network_id = int(network_id)
+                        except ValueError:
+                            msg = 'Network ID should be a positive integer'
+                            log.debug(msg)
                     raise CLIError(
                         'No network with id %s found' % network_id,
-                        details=this.about_network_id + ['%s' % ce])
+                        importance=2,
+                        details=[msg, ] + this.about_network_id + [
+                        '%s %s' % (getattr(ce, 'status', ''), ce)])
                 raise
         return _raise
 
@@ -296,97 +289,42 @@ class Cyclades(object):
         def _raise(self, *args, **kwargs):
             flavor_id = kwargs.get('flavor_id', None)
             try:
-                flavor_id = int(flavor_id)
                 return func(self, *args, **kwargs)
-            except ValueError as ve:
-                raise CLIError(
-                    'Invalid flavor id %s ' % flavor_id,
-                    details=[
-                        'Flavor id must be a positive integer', '%s' % ve],
-                    importance=1)
             except ClientError as ce:
-                if flavor_id and ce.status == 404 and (
-                    'flavor' in ('%s' % ce).lower()
-                ):
+                if ce.status in (404, 400):
+                    details = this.about_flavor_id
+                    if ce.status in (400, ):
+                        try:
+                            flavor_id = int(flavor_id)
+                        except ValueError:
+                            details.insert(
+                                0, 'Flavor ID should be a positive integer')
                     raise CLIError(
-                        'No flavor with id %s found' % flavor_id,
-                        details=this.about_flavor_id + ['%s' % ce, ])
+                        'No flavor with ID %s' % flavor_id,
+                        importance=2, details=details + [
+                            '%s %s' % (getattr(ce, 'status', ''), ce)])
                 raise
         return _raise
 
     @classmethod
     def server_id(this, func):
         def _raise(self, *args, **kwargs):
-            server_id = kwargs.get('server_id', None)
             try:
-                server_id = int(server_id)
                 return func(self, *args, **kwargs)
-            except ValueError as ve:
-                raise CLIError(
-                    'Invalid virtual server id %s' % server_id,
-                    details=[
-                        'Server id must be a positive integer', '%s' % ve],
-                    importance=1)
             except ClientError as ce:
-                err_msg = ('%s' % ce).lower()
-                if (
-                    ce.status == 404 and 'server' in err_msg
-                ) or (
-                    ce.status == 400 and 'not found' in err_msg
-                ):
+                if ce.status in (404, 400):
+                    server_id = kwargs.get('server_id', None)
+                    details = [
+                    'to get a list of all servers', '  kamaki server list']
+                    if ce.status in (404, ):
+                        try:
+                            server_id = int(server_id)
+                        except ValueError:
+                            details.insert(0, 'Server ID must be an integer')
                     raise CLIError(
-                        'virtual server with id %s not found' % server_id,
-                        details=[
-                        '# to get ids of all servers',
-                        '$ kamaki server list',
-                        '# to get server details',
-                        '$ kamaki server info <server id>',
-                        '%s' % ce])
-                raise
-        return _raise
-
-    @classmethod
-    def firewall(this, func):
-        def _raise(self, *args, **kwargs):
-            profile = kwargs.get('profile', None)
-            try:
-                return func(self, *args, **kwargs)
-            except ClientError as ce:
-                if ce.status == 400 and profile and (
-                    'firewall' in ('%s' % ce).lower()
-                ):
-                    raise CLIError(
-                        '%s is an invalid firewall profile term' % profile,
-                        details=[
-                        'Try one of the following:',
-                        '* DISABLED: Shutdown firewall',
-                        '* ENABLED: Firewall in normal mode',
-                        '* PROTECTED: Firewall in secure mode',
-                        '%s' % ce])
-                raise
-        return _raise
-
-    @classmethod
-    def nic_id(this, func):
-        def _raise(self, *args, **kwargs):
-            try:
-                return func(self, *args, **kwargs)
-            except ClientError as ce:
-                nic_id = kwargs.get('nic_id', None)
-                if nic_id and ce.status == 404 and (
-                    'network interface' in ('%s' % ce).lower()
-                ):
-                    server_id = kwargs.get('server_id', '<no server>')
-                    err_msg = 'No nic %s on virtual server with id %s' % (
-                        nic_id,
-                        server_id)
-                    raise CLIError(err_msg, details=[
-                        '* check v. server with id %s: /server info %s' % (
-                            server_id,
-                            server_id),
-                        '* list nics for v. server with id %s:' % server_id,
-                        '      /server addr %s' % server_id,
-                        '%s' % ce])
+                        'No servers with ID %s' % server_id,
+                        importance=2, details=details + [
+                        '%s %s' % (getattr(ce, 'status', ''), ce)])
                 raise
         return _raise
 
@@ -398,24 +336,18 @@ class Cyclades(object):
                 func(self, *args, **kwargs)
             except ClientError as ce:
                 if key and ce.status == 404 and (
-                    'metadata' in ('%s' % ce).lower()
-                ):
-                        raise CLIError(
-                            'No virtual server metadata with key %s' % key,
-                            details=['%s' % ce, ])
+                        'metadata' in ('%s' % ce).lower()):
+                    raise CLIError(
+                        'No virtual server metadata with key %s' % key,
+                        details=['%s %s' % (getattr(ce, 'status', ''), ce), ])
                 raise
         return _raise
 
 
 class Image(object):
     about_image_id = [
-        'How to pick a suitable image:',
-        '  # get a list of image ids',
-        '  $ kamaki image list',
-        '  # details of an image',
-        '  $ kamaki image info <image id>',
-        '',
-    ]
+        'To list all images', '  kamaki image list',
+        'To get image details', '  kamaki image info IMAGE_ID', ]
 
     @classmethod
     def connection(this, func):
@@ -428,10 +360,10 @@ class Image(object):
             try:
                 func(self, *args, **kwargs)
             except ClientError as ce:
-                if image_id or (ce.status in (404, 400) and (
-                        'image not found' in ('%s' % ce).lower())):
+                if image_id and ce.status in (404, 400):
                     raise CLIError(
                         'No image with id %s found' % image_id,
+                        importance=2,
                         details=this.about_image_id + ['%s' % ce])
                 raise
         return _raise

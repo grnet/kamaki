@@ -41,7 +41,8 @@ from kamaki.cli import command
 from kamaki.cli.cmdtree import CommandTree
 from kamaki.cli.utils import remove_from_items, filter_dicts_by_dict
 from kamaki.cli.errors import raiseCLIError, CLISyntaxError, CLIInvalidArgument
-from kamaki.clients.cyclades import CycladesComputeClient
+from kamaki.clients.cyclades import (
+    CycladesComputeClient, ClientError, CycladesNetworkClient)
 from kamaki.cli.argument import (
     FlagArgument, ValueArgument, KeyValueArgument, RepeatableArgument,
     DateArgument, IntArgument, StatusArgument)
@@ -81,6 +82,10 @@ class _CycladesInit(CommandInit):
     @client_log
     def _run(self):
         self.client = self.get_client(CycladesComputeClient, 'cyclades')
+
+    @errors.Cyclades.flavor_id
+    def _flavor_exists(self, flavor_id):
+        self.client.get_flavor_details(flavor_id=flavor_id)
 
     @fall_back
     def _restruct_server_info(self, vm):
@@ -124,7 +129,8 @@ class server_list(_CycladesInit, OptionalOutput, NameFilter, IDFilter):
     arguments = dict(
         detail=FlagArgument('show detailed output', ('-l', '--details')),
         since=DateArgument(
-            'show only items since date (\' d/m/Y H:M:S \')',
+            'show only items modified since date (\'H:M:S YYYY-mm-dd\') '
+            'Can look back up to a limit (POLL_TIME) defined on service-side',
             '--since'),
         limit=IntArgument(
             'limit number of listed virtual servers', ('-n', '--number')),
@@ -196,7 +202,8 @@ class server_list(_CycladesInit, OptionalOutput, NameFilter, IDFilter):
             self['status'] or self['user_id'] or self['user_name'])
         detail = self['detail'] or (
             withimage or withflavor or withmeta or withcommons)
-        servers = self.client.list_servers(detail, self['since'])
+        ch_since = self.arguments['since'].isoformat if self['since'] else None
+        servers = self.client.list_servers(detail, ch_since)
 
         servers = self._filter_by_name(servers)
         servers = self._filter_by_id(servers)
@@ -209,7 +216,6 @@ class server_list(_CycladesInit, OptionalOutput, NameFilter, IDFilter):
             servers = self._filter_by_metadata(servers)
 
         if detail and self['detail']:
-            #  servers = [self._restruct_server_info(vm) for vm in servers]
             pass
         else:
             for srv in servers:
@@ -420,8 +426,7 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
     required = ('server_name', 'flavor_id', 'image_id')
 
     @errors.Cyclades.cluster_size
-    def _create_cluster(
-            self, prefix, flavor_id, image_id, size):
+    def _create_cluster(self, prefix, flavor_id, image_id, size):
         networks = self['network_configuration'] or (
             [] if self['no_network'] else None)
         servers = [dict(
@@ -455,20 +460,70 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
             finally:
                 raise e
 
+    def _get_network_client(self):
+        network = getattr(self, '_network_client', None)
+        if not network:
+            net_URL = self.astakos.get_endpoint_url(
+                CycladesNetworkClient.service_type)
+            network = CycladesNetworkClient(net_URL, self.client.token)
+            self._network_client = network
+        return network
+
+    @errors.Image.id
+    def _image_exists(self, image_id):
+        self.client.get_image_details(image_id)
+
+    @errors.Cyclades.network_id
+    def _network_exists(self, network_id):
+        network = self._get_network_client()
+        network.get_network_details(network_id)
+
+    def _ip_ready(self, ip, network_id, cerror):
+        network = self._get_network_client()
+        ips = [fip for fip in network.list_floatingips() if (
+            fip['floating_ip_address'] == ip)]
+        if not ips:
+            msg = 'IP %s not available for current user' % ip
+            raiseCLIError(cerror, details=[msg] + errors.Cyclades.about_ips)
+        ipnet, ipvm = ips[0]['floating_network_id'], ips[0]['instance_id']
+        if getattr(cerror, 'status', 0) in (409, ):
+            msg = ''
+            if ipnet != network_id:
+                msg = 'IP %s belong to network %s, not %s' % (
+                    ip, ipnet, network_id)
+            elif ipvm:
+                msg = 'IP %s is already used by device %s' % (ip, ipvm)
+            if msg:
+                raiseCLIError(cerror, details=[
+                    msg,
+                    'To get details on IP',
+                    '  kamaki ip info %s' % ip] + errors.Cyclades.about_ips)
+
     @errors.Generic.all
     @errors.Cyclades.connection
-    @errors.Image.id
-    @errors.Cyclades.flavor_id
-    def _run(self, name, flavor_id, image_id):
-        for r in self._create_cluster(
-                name, flavor_id, image_id, size=self['cluster_size'] or 1):
-            if not r:
-                self.error('Create %s: server response was %s' % (name, r))
-                continue
-            self.print_(r, self.print_dict)
-            if self['wait']:
-                self.wait(r['id'], r['status'] or 'BUILD')
-            self.writeln(' ')
+    def _run(self):
+        try:
+            for r in self._create_cluster(
+                    self['server_name'], self['flavor_id'], self['image_id'],
+                    size=self['cluster_size'] or 1):
+                if not r:
+                    self.error('Create %s: server response was %s' % (
+                        self['server_name'], r))
+                    continue
+                self.print_(r, self.print_dict)
+                if self['wait']:
+                    self.wait(r['id'], r['status'] or 'BUILD')
+                self.writeln(' ')
+        except ClientError as ce:
+            if ce.status in (404, 400):
+                self._flavor_exists(flavor_id=self['flavor_id'])
+                self._image_exists(image_id=self['image_id'])
+            if ce.status in (404, 400, 409):
+                for net in self['network_configuration']:
+                    self._network_exists(network_id=net['uuid'])
+                    if 'fixed_ip' in net:
+                        self._ip_ready(net['fixed_ip'], net['uuid'], ce)
+            raise
 
     def main(self):
         super(self.__class__, self)._run()
@@ -478,10 +533,7 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
                 'Arguments %s and %s are mutually exclusive' % (
                     self.arguments['no_network'].lvalue,
                     self.arguments['network_configuration'].lvalue)])
-        self._run(
-            name=self['server_name'],
-            flavor_id=self['flavor_id'],
-            image_id=self['image_id'])
+        self._run()
 
 
 class FirewallProfileArgument(ValueArgument):
@@ -546,19 +598,20 @@ class server_modify(_CycladesInit):
                 'Multiple public connections on server %s' % (
                     server_id), details=port_strings + [
                         'To select one:',
-                        '  %s <port id>' % pick_port.lvalue,
+                        '  %s PORT_ID' % pick_port.lvalue,
                         'To set all:',
                         '  %s *' % pick_port.lvalue, ])
         if not ports:
             pp = pick_port.value
             raiseCLIError(
-                'No *public* networks attached on server %s%s' % (
+                'No public networks attached on server %s%s' % (
                     server_id, ' through port %s' % pp if pp else ''),
                 details=[
-                    'To see all networks:',
-                    '  kamaki network list',
+                    'To see all networks:', '  kamaki network list',
+                    'To see all connections:',
+                    '  kamaki server info %s --nics' % server_id,
                     'To connect to a network:',
-                    '  kamaki network connect <net id> --device-id %s' % (
+                    '  kamaki network connect NETWORK_ID --device-id %s' % (
                         server_id)])
         for port in ports:
             self.error('Set port %s firewall to %s' % (
@@ -568,6 +621,15 @@ class server_modify(_CycladesInit):
                 profile=self['firewall_profile'],
                 port_id=port['id'])
 
+    def _server_is_stopped(self, server_id, cerror):
+        vm = self.client.get_server_details(server_id)
+        if vm['status'].lower() not in ('stopped'):
+            raiseCLIError(cerror, details=[
+                'To resize a virtual server, it must be STOPPED',
+                'Server %s status is %s' % (server_id, vm['status']),
+                'To stop the server',
+                '  kamaki server shutdown %s -w' % server_id])
+
     @errors.Generic.all
     @errors.Cyclades.connection
     @errors.Cyclades.server_id
@@ -575,7 +637,14 @@ class server_modify(_CycladesInit):
         if self['server_name'] is not None:
             self.client.update_server_name((server_id), self['server_name'])
         if self['flavor_id']:
-            self.client.resize_server(server_id, self['flavor_id'])
+            try:
+                self.client.resize_server(server_id, self['flavor_id'])
+            except ClientError as ce:
+                if ce.status in (404, ):
+                    self._flavor_exists(flavor_id=self['flavor_id'])
+                if ce.status in (400, ):
+                    self._server_is_stopped(server_id, ce)
+                raise
         if self['firewall_profile']:
             self._set_firewall_profile(server_id)
         if self['metadata_to_set']:
@@ -623,8 +692,9 @@ class server_delete(_CycladesInit, _ServerWait):
     arguments = dict(
         wait=FlagArgument('Wait server to be destroyed', ('-w', '--wait')),
         cluster=FlagArgument(
-            '(DANGEROUS) Delete all virtual servers prefixed with the cluster '
-            'prefix. In that case, the prefix replaces the server id',
+            '(DANGEROUS) Delete all VMs with names starting with the cluster '
+            'prefix. Do not use it if unsure. Syntax:'
+            ' kamaki server delete --cluster CLUSTER_PREFIX',
             '--cluster')
     )
 
@@ -633,23 +703,29 @@ class server_delete(_CycladesInit, _ServerWait):
             return [s['id'] for s in self.client.list_servers() if (
                 s['name'].startswith(server_var))]
 
-        @errors.Cyclades.server_id
-        def _check_server_id(self, server_id):
-            return server_id
+        return [server_var, ]
 
-        return [_check_server_id(self, server_id=server_var), ]
+    @errors.Cyclades.server_id
+    def _delete_server(self, server_id):
+        if self['wait']:
+            details = self.client.get_server_details(server_id)
+            status = details['status']
+
+        self.client.delete_server(server_id)
+        if self['wait']:
+            self.wait(server_id, status)
 
     @errors.Generic.all
     @errors.Cyclades.connection
     def _run(self, server_var):
+        deleted_vms = []
         for server_id in self._server_ids(server_var):
-            if self['wait']:
-                details = self.client.get_server_details(server_id)
-                status = details['status']
-
-            self.client.delete_server(server_id)
-            if self['wait']:
-                self.wait(server_id, status)
+            self._delete_server(server_id=server_id)
+            deleted_vms.append(server_id)
+        if self['cluster']:
+            dlen = len(deleted_vms)
+            self.error('%s virtual server%s deleted' % (
+                dlen, '' if dlen == 1 else 's'))
 
     def main(self, server_id_or_cluster_prefix):
         super(self.__class__, self)._run()
@@ -761,8 +837,7 @@ class server_console(_CycladesInit, OptionalOutput):
     @errors.Cyclades.server_id
     def _run(self, server_id):
         self.error('The following credentials will be invalidated shortly')
-        self.print_(
-            self.client.get_server_console(server_id), self.print_dict)
+        self.print_(self.client.get_server_console(server_id), self.print_dict)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -851,10 +926,7 @@ class flavor_list(_CycladesInit, OptionalOutput, NameFilter, IDFilter):
                 for key in set(flv).difference(['id', 'name']):
                     flv.pop(key)
         kwargs = dict(out=StringIO(), title=()) if self['more'] else {}
-        self.print_(
-            flavors,
-            with_redundancy=self['detail'], with_enumeration=self['enum'],
-            **kwargs)
+        self.print_(flavors, with_enumeration=self['enum'], **kwargs)
         if self['more']:
             pager(kwargs['out'].getvalue())
 
@@ -865,16 +937,13 @@ class flavor_list(_CycladesInit, OptionalOutput, NameFilter, IDFilter):
 
 @command(flavor_cmds)
 class flavor_info(_CycladesInit, OptionalOutput):
-    """Detailed information on a hardware flavor
-    To get a list of available flavors and flavor ids, try /flavor list
-    """
+    """Detailed information on a hardware flavor"""
 
     @errors.Generic.all
     @errors.Cyclades.connection
     @errors.Cyclades.flavor_id
     def _run(self, flavor_id):
-        self.print_(
-            self.client.get_flavor_details(int(flavor_id)), self.print_dict)
+        self.print_(self.client.get_flavor_details(flavor_id), self.print_dict)
 
     def main(self, flavor_id):
         super(self.__class__, self)._run()
