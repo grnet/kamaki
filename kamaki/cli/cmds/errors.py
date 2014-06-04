@@ -83,22 +83,23 @@ class Generic(object):
                         '  kamaki config set cloud.default.token <token>',
                         'To get current token:',
                         '  kamaki config get cloud.default.token',
-                        '%s' % ce,
-                    ] + CLOUDNAME)
+                        '%s %s' % (getattr(ce, 'status', ''), ce)] + CLOUDNAME)
                 elif ce.status in range(-12, 200) + [302, 401, 500]:
-                    raise CLIError('%s' % ce, importance=3)
+                    raise CLIError(
+                        '%s %s' % (getattr(ce, 'status', ''), ce),
+                        importance=3)
                 elif ce.status == 404 and 'kamakihttpresponse' in ce_msg:
                     client = getattr(self, 'client', None)
                     if not client:
                         raise
                     url = getattr(client, 'endpoint_url', '<empty>')
                     raise CLIError('Invalid service URL %s' % url, details=[
-                        '%s' % ce,
                         'Check if authentication URL is correct',
                         'To check current URL',
                         '  kamaki config get cloud.default.url',
                         'To set new authentication URL',
-                        '  kamaki config set cloud.default.url'] + CLOUDNAME)
+                        '  kamaki config set cloud.default.url',
+                        '%s %s' % (getattr(ce, 'status', ''), ce)] + CLOUDNAME)
                 raise
         return _raise
 
@@ -363,24 +364,26 @@ class Image(object):
                 if image_id and ce.status in (404, 400):
                     raise CLIError(
                         'No image with id %s found' % image_id,
-                        importance=2,
-                        details=this.about_image_id + ['%s' % ce])
+                        importance=2, details=this.about_image_id + [
+                            '%s %s' % (getattr(ce, 'status', ''), ce)])
                 raise
         return _raise
 
     @classmethod
-    def metadata(this, func):
+    def permissions(this, func):
         def _raise(self, *args, **kwargs):
-            key = kwargs.get('key', None)
             try:
-                return func(self, *args, **kwargs)
+                func(self, *args, **kwargs)
             except ClientError as ce:
-                ce_msg = ('%s' % ce).lower()
-                if ce.status == 404 or (
-                        ce.status == 400 and 'metadata' in ce_msg):
+                if ce.status in (403, 405):
                     raise CLIError(
-                        'No properties with key %s in this image' % key,
-                        details=['%s' % ce, ])
+                        'Insufficient permissions for this action',
+                        importance=2, details=[
+                            'To see the owner of an image',
+                            '  kamaki image info IMAGE_ID',
+                            'To see image file permissions',
+                            '  kamaki file info IMAGE_LOCATION --sharing',
+                            '%s %s' % (getattr(ce, 'status', ''), ce)])
                 raise
         return _raise
 
