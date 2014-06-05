@@ -957,13 +957,13 @@ class membership_list(_AstakosInit, OptionalOutput):
     """List all memberships"""
 
     arguments = dict(
-        project=ValueArgument('Filter by project id', '--project-id')
+        project_id=ValueArgument('Filter by project id', '--project-id')
     )
 
     @errors.Generic.all
     @errors.Astakos.astakosclient
     def _run(self):
-        self.print_(self.client.get_memberships(self['project']))
+        self.print_(self.client.get_memberships(self['project_id']))
 
     def main(self):
         super(self.__class__, self)._run()

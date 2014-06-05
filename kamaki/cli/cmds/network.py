@@ -177,7 +177,7 @@ class network_create(_NetworkInit, OptionalOutput):
             network_type,
             name=self['name'],
             shared=self['shared'],
-            project=self['project_id'])
+            project_id=self['project_id'])
         self.print_(net, self.print_dict)
 
     def main(self):
@@ -197,12 +197,12 @@ class network_reassign(_NetworkInit, OptionalOutput):
     @errors.Generic.all
     @errors.Cyclades.connection
     @errors.Cyclades.network_id
-    def _run(self, network_id, project):
-        self.client.reassign_network(network_id, project)
+    def _run(self, network_id):
+        self.client.reassign_network(network_id, self['project_id'])
 
     def main(self, network_id):
         super(self.__class__, self)._run()
-        self._run(network_id=network_id, project=self['project_id'])
+        self._run(network_id=network_id)
 
 
 @command(network_cmds)
@@ -617,12 +617,12 @@ class ip_reassign(_NetworkInit):
 
     @errors.Generic.all
     @errors.Cyclades.connection
-    def _run(self, ip, project):
-        self.client.reassign_floating_ip(ip, project)
+    def _run(self, ip):
+        self.client.reassign_floating_ip(ip, self['project_id'])
 
     def main(self, IP):
         super(self.__class__, self)._run()
-        self._run(ip=IP, project=self['project_id'])
+        self._run(ip=IP)
 
 
 @command(ip_cmds)

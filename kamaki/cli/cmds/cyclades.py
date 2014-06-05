@@ -420,14 +420,15 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
     required = ('server_name', 'flavor_id', 'image_id')
 
     @errors.Cyclades.cluster_size
-    def _create_cluster(self, prefix, flavor_id, image_id, size, project=None):
+    def _create_cluster(
+            self, prefix, flavor_id, image_id, size):
         networks = self['network_configuration'] or (
             [] if self['no_network'] else None)
         servers = [dict(
             name='%s%s' % (prefix, i if size > 1 else ''),
             flavor_id=flavor_id,
             image_id=image_id,
-            project=project,
+            project_id=self['project_id'],
             personality=self['personality'],
             networks=networks) for i in range(1, 1 + size)]
         if size == 1:
@@ -460,8 +461,7 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
     @errors.Cyclades.flavor_id
     def _run(self, name, flavor_id, image_id):
         for r in self._create_cluster(
-                name, flavor_id, image_id, size=self['cluster_size'] or 1,
-                project=self['project_id']):
+                name, flavor_id, image_id, size=self['cluster_size'] or 1):
             if not r:
                 self.error('Create %s: server response was %s' % (name, r))
                 continue
@@ -608,12 +608,12 @@ class server_reassign(_CycladesInit, OptionalOutput):
     @errors.Generic.all
     @errors.Cyclades.connection
     @errors.Cyclades.server_id
-    def _run(self, server_id, project):
-        self.client.reassign_server(server_id, project)
+    def _run(self, server_id):
+        self.client.reassign_server(server_id, self['project_id'])
 
     def main(self, server_id):
         super(self.__class__, self)._run()
-        self._run(server_id=server_id, project=self['project_id'])
+        self._run(server_id=server_id)
 
 
 @command(server_cmds)

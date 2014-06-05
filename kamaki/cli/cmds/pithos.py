@@ -1632,15 +1632,13 @@ class container_reassign(_PithosAccount):
     @errors.Generic.all
     @errors.Pithos.connection
     @errors.Pithos.container
-    def _run(self, project):
-        if self.container:
-            self.client.container = self.container
-        self.client.reassign_container(project)
+    def _run(self, container):
+        self.client.container = container
+        self.client.reassign_container(self['project_id'])
 
     def main(self, container):
         super(self.__class__, self)._run()
-        self.container = container
-        self._run(project=self['project_id'])
+        self._run(container=container)
 
 
 @command(sharer_cmds)

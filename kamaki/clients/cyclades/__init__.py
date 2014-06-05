@@ -42,7 +42,8 @@ class CycladesComputeClient(CycladesComputeRestClient, Waiter):
 
     def create_server(
             self, name, flavor_id, image_id,
-            metadata=None, personality=None, networks=None, project=None):
+            metadata=None, personality=None, networks=None, project_id=None,
+            response_headers=dict(location=None)):
         """Submit request to create a new server
 
         :param name: (str)
@@ -64,7 +65,7 @@ class CycladesComputeClient(CycladesComputeRestClient, Waiter):
             ATTENTION: Empty list is different to None. None means ' do not
             mention it', empty list means 'automatically get an ip'
 
-        :param project: the project where to assign the server
+        :param project_id: the project where to assign the server
 
         :returns: a dict with the new virtual server details
 
@@ -78,10 +79,25 @@ class CycladesComputeClient(CycladesComputeRestClient, Waiter):
             except KeyError:
                 pass
 
-        return super(CycladesComputeClient, self).create_server(
-            name, flavor_id, image_id,
-            metadata=metadata, personality=personality, networks=networks,
-            project=project)
+        req = {'server': {
+            'name': name, 'flavorRef': flavor_id, 'imageRef': image_id}}
+
+        if metadata:
+            req['server']['metadata'] = metadata
+
+        if personality:
+            req['server']['personality'] = personality
+
+        if networks is not None:
+            req['server']['networks'] = networks
+
+        if project_id is not None:
+            req['server']['project'] = project_id
+
+        r = self.servers_post(json_data=req, success=(202, ))
+        for k, v in response_headers.items():
+            response_headers[k] = r.headers.get(k, v)
+        return r.json['server']
 
     def set_firewall_profile(self, server_id, profile, port_id):
         """Set the firewall profile for the public interface of a server
@@ -192,24 +208,24 @@ class CycladesNetworkClient(NetworkClient):
         r = self.get(path, success=200)
         return r.json['networks']
 
-    def create_network(self, type, name=None, shared=None, project=None):
+    def create_network(self, type, name=None, shared=None, project_id=None):
         req = dict(network=dict(type=type, admin_state_up=True))
         if name:
             req['network']['name'] = name
         if shared not in (None, ):
             req['network']['shared'] = bool(shared)
-        if project is not None:
-            req['network']['project'] = project
+        if project_id is not None:
+            req['network']['project'] = project_id
         r = self.networks_post(json_data=req, success=201)
         return r.json['network']
 
-    def reassign_network(self, network_id, project, **kwargs):
+    def reassign_network(self, network_id, project_id, **kwargs):
         """POST endpoint_url/networks/<network_id>/action
 
         :returns: request response
         """
         path = path4url('networks', network_id, 'action')
-        req = {'reassign': {'project': project}}
+        req = {'reassign': {'project': project_id}}
         r = self.post(path, json=req, success=200, **kwargs)
         return r.headers
 

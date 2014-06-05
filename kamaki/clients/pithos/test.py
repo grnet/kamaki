@@ -1203,7 +1203,7 @@ class PithosClient(TestCase):
         r = self.client.create_container()
         self.assert_dicts_are_equal(r, container_info)
         CP.assert_called_once_with(
-            project=None, quota=None, versioning=None, metadata=None)
+            project_id=None, quota=None, versioning=None, metadata=None)
 
         bu_cont = self.client.container
         r = self.client.create_container(cont)
@@ -1211,15 +1211,14 @@ class PithosClient(TestCase):
         self.assert_dicts_are_equal(r, container_info)
         self.assertEqual(
             CP.mock_calls[-1],
-            call(project=None, quota=None, versioning=None, metadata=None))
+            call(project_id=None, quota=None, versioning=None, metadata=None))
 
         meta = dict(k1='v1', k2='v2')
         r = self.client.create_container(cont, 42, 'auto', meta, 'prid')
         self.assertEqual(self.client.container, bu_cont)
         self.assert_dicts_are_equal(r, container_info)
-        self.assertEqual(
-            CP.mock_calls[-1],
-            call(quota=42, versioning='auto', project='prid', metadata=meta))
+        self.assertEqual(CP.mock_calls[-1], call(
+            quota=42, versioning='auto', project_id='prid', metadata=meta))
 
     @patch('%s.container_delete' % pithos_pkg, return_value=FR())
     def test_purge_container(self, CD):
