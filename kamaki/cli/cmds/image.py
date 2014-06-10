@@ -108,7 +108,7 @@ def load_image_meta(filepath):
                         key_ok = not (' ' in k or '-' in k)
                         assert key_ok, 'Invalid property key %s' % k
                     continue
-                meta_ok = not isinstance(v, dict, list)
+                meta_ok = not isinstance(v, (dict, list))
                 assert meta_ok, 'Invalid value (meta key %s)' % k
                 meta_ok = ' ' not in k
                 assert meta_ok, 'Invalid meta key [%s]' % k
