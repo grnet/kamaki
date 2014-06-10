@@ -213,8 +213,6 @@ class Cyclades(object):
         'To list available IPs', '  kamaki ip list',
         'To reserve a new IP', '  kamaki ip create', ]
 
-    net_types = ('CUSTOM', 'MAC_FILTERED', 'IP_LESS_ROUTED', 'PHYSICAL_VLAN')
-
     @classmethod
     def connection(this, func):
         return Generic._connection(func)
@@ -276,13 +274,122 @@ class Cyclades(object):
         return _raise
 
     @classmethod
-    def network_type(this, func):
+    def network_in_use(this, func):
         def _raise(self, *args, **kwargs):
-            network_type = kwargs.get('network_type', None)
-            msg = 'Invalid network type %s.\nValid types: %s' % (
-                network_type, ' '.join(this.net_types))
-            assert network_type in this.net_types, msg
-            return func(self, *args, **kwargs)
+            network_id = kwargs.get('network_id', None)
+            try:
+                return func(self, *args, **kwargs)
+            except ClientError as ce:
+                if ce.status in (409, ):
+                    raise CLIError(
+                        'Network with id %s is in use' % network_id,
+                        importance=3, details=[
+                            'To list all network ports', '  kamaki port list',
+                            '%s %s' % (getattr(ce, 'status', ''), ce)])
+                raise
+        return _raise
+
+    @classmethod
+    def network_permissions(this, func):
+        def _raise(self, *args, **kwargs):
+            try:
+                return func(self, *args, **kwargs)
+            except ClientError as ce:
+                if ce.status in (403, ):
+                    network_id = kwargs.get('network_id', '')
+                    raise CLIError(
+                        'Insufficient permissions for this action',
+                        importance=2, details=[
+                            'To get information on network',
+                            '  kamaki network info %s' % network_id,
+                            '%s %s' % (getattr(ce, 'status', ''), ce)])
+                raise
+        return _raise
+
+    @classmethod
+    def subnet_id(this, func):
+        def _raise(self, *args, **kwargs):
+            subnet_id = kwargs.get('subnet_id', None)
+            try:
+                return func(self, *args, **kwargs)
+            except ClientError as ce:
+                if subnet_id and ce.status in (404, 400):
+                    details = []
+                    if ce.status in (400, ):
+                        try:
+                            subnet_id = int(subnet_id)
+                        except ValueError:
+                            details = ['Subnet ID should be positive integer']
+                            log.debug(details[-1])
+                    raise CLIError(
+                        'No subnet with id %s found' % subnet_id,
+                        importance=2, details=details + [
+                            'To list subnets', '  kamaki subnet list',
+                            '%s %s' % (getattr(ce, 'status', ''), ce)])
+                raise
+        return _raise
+
+    @classmethod
+    def subnet_permissions(this, func):
+        def _raise(self, *args, **kwargs):
+            try:
+                return func(self, *args, **kwargs)
+            except ClientError as ce:
+                if ce.status in (401, ):
+                    subnet_id = kwargs.get('subnet_id', '')
+                    raise CLIError(
+                        'Insufficient permissions for this action',
+                        importance=2, details=[
+                            'Make sure this subnet belongs to current user',
+                            'To see information on subnet',
+                            '  kamaki subnet info %s' % subnet_id,
+                            '%s %s' % (getattr(ce, 'status', ''), ce)])
+                raise
+        return _raise
+
+    @classmethod
+    def port_id(this, func):
+        def _raise(self, *args, **kwargs):
+            port_id = kwargs.get('port_id', None)
+            try:
+                return func(self, *args, **kwargs)
+            except ClientError as ce:
+                if port_id and ce.status in (404, 400):
+                    details = []
+                    if ce.status in (400, ):
+                        try:
+                            port_id = int(port_id)
+                        except ValueError:
+                            details = ['Port ID should be positive integer']
+                            log.debug(details[-1])
+                    raise CLIError(
+                        'No port with id %s found' % port_id,
+                        importance=2, details=details + [
+                            'To list ports', '  kamaki port list',
+                            '%s %s' % (getattr(ce, 'status', ''), ce)])
+                raise
+        return _raise
+
+    @classmethod
+    def ip_id(this, func):
+        def _raise(self, *args, **kwargs):
+            ip_id = kwargs.get('ip_id', None)
+            try:
+                return func(self, *args, **kwargs)
+            except ClientError as ce:
+                if ce.status in (404, 400):
+                    details = []
+                    if ce.status in (400, ):
+                        try:
+                            ip_id = int(ip_id)
+                        except ValueError:
+                            details = ['IP ID should be positive integer']
+                            log.debug(details[-1])
+                    raise CLIError(
+                        'No floating IP with ID %s found' % ip_id,
+                        importance=2, details=details + this.about_ips + [
+                            '%s %s' % (getattr(ce, 'status', ''), ce)])
+                raise
         return _raise
 
     @classmethod

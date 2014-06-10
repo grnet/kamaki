@@ -74,6 +74,35 @@ class _NetworkInit(CommandInit):
         return [net for net in nets if net['user_id'] == self['user_id']] if (
             self['user_id']) else nets
 
+    def _get_compute_client(self):
+        compute = getattr(self, '_compute_client', None)
+        if not compute:
+            compute = self.get_client(CycladesComputeClient, 'cyclades')
+            self._compute_client = compute
+        return compute
+
+    @errors.Cyclades.network_id
+    def _network_exists(self, network_id):
+        self.client.get_network_details(network_id)
+
+    @errors.Cyclades.server_id
+    def _server_exists(self, server_id):
+        compute_client = self._get_compute_client()
+        compute_client.get_server_details(server_id)
+
+    def _ip_exists(self, ip, network_id, error):
+        for ip_item in self.client.list_floatingips():
+            if ip_item['floating_ip_address'] == ip:
+                if network_id and ip_item['floating_network_id'] != network_id:
+                    raiseCLIError(error, details=[
+                        'Floating IP %s does not belong to network %s ,' % (
+                            ip, network_id),
+                        'To get information on IP %s' % ip,
+                        '  kamaki ip info %s' % ip_item['id']])
+                return
+        raiseCLIError(error, details=[
+            'Floating IP %s not found' % ip] + errors.Cyclades.about_ips)
+
     def main(self):
         self._run()
 
@@ -81,7 +110,7 @@ class _NetworkInit(CommandInit):
 @command(network_cmds)
 class network_list(_NetworkInit, OptionalOutput, NameFilter, IDFilter):
     """List networks
-    Use filtering arguments (e.g., --name-like) to manage long server lists
+    Use filtering arguments (e.g., --name-like) to manage long lists
     """
 
     arguments = dict(
@@ -171,10 +200,9 @@ class network_create(_NetworkInit, OptionalOutput):
 
     @errors.Generic.all
     @errors.Cyclades.connection
-    @errors.Cyclades.network_type
-    def _run(self, network_type):
+    def _run(self):
         net = self.client.create_network(
-            network_type,
+            self['network_type'],
             name=self['name'],
             shared=self['shared'],
             project_id=self['project_id'])
@@ -182,7 +210,7 @@ class network_create(_NetworkInit, OptionalOutput):
 
     def main(self):
         super(self.__class__, self)._run()
-        self._run(network_type=self['network_type'])
+        self._run()
 
 
 @command(network_cmds)
@@ -196,6 +224,7 @@ class network_reassign(_NetworkInit, OptionalOutput):
 
     @errors.Generic.all
     @errors.Cyclades.connection
+    @errors.Cyclades.network_permissions
     @errors.Cyclades.network_id
     def _run(self, network_id):
         self.client.reassign_network(network_id, self['project_id'])
@@ -211,6 +240,8 @@ class network_delete(_NetworkInit):
 
     @errors.Generic.all
     @errors.Cyclades.connection
+    @errors.Cyclades.network_permissions
+    @errors.Cyclades.network_in_use
     @errors.Cyclades.network_id
     def _run(self, network_id):
         self.client.delete_network(network_id)
@@ -229,6 +260,7 @@ class network_modify(_NetworkInit, OptionalOutput):
 
     @errors.Generic.all
     @errors.Cyclades.connection
+    @errors.Cyclades.network_permissions
     @errors.Cyclades.network_id
     def _run(self, network_id):
         r = self.client.update_network(network_id, name=self['new_name'])
@@ -247,9 +279,7 @@ class subnet_list(_NetworkInit, OptionalOutput, NameFilter, IDFilter):
 
     arguments = dict(
         detail=FlagArgument('show detailed output', ('-l', '--details')),
-        more=FlagArgument(
-            'output results in pages (-n to set items per page, default 10)',
-            '--more')
+        more=FlagArgument('output results in pages', '--more')
     )
 
     @errors.Generic.all
@@ -284,6 +314,7 @@ class subnet_info(_NetworkInit, OptionalOutput):
 
     @errors.Generic.all
     @errors.Cyclades.connection
+    @errors.Cyclades.subnet_id
     def _run(self, subnet_id):
         net = self.client.get_subnet_details(subnet_id)
         self.print_(net, self.print_dict)
@@ -336,17 +367,21 @@ class subnet_create(_NetworkInit, OptionalOutput):
 
     @errors.Generic.all
     @errors.Cyclades.connection
-    @errors.Cyclades.network_id
-    def _run(self, network_id, cidr):
-        net = self.client.create_subnet(
-            network_id, cidr,
-            self['name'], self['allocation_pools'], self['gateway'],
-            self['subnet_id'], self['ipv6'], self['enable_dhcp'])
+    def _run(self):
+        try:
+            net = self.client.create_subnet(
+                self['network_id'], self['cidr'],
+                self['name'], self['allocation_pools'], self['gateway'],
+                self['subnet_id'], self['ipv6'], self['enable_dhcp'])
+        except ClientError as ce:
+            if ce.status in (404, 400):
+                self._network_exists(network_id=self['network_id'])
+            raise
         self.print_(net, self.print_dict)
 
     def main(self):
         super(self.__class__, self)._run()
-        self._run(network_id=self['network_id'], cidr=self['cidr'])
+        self._run()
 
 
 @command(subnet_cmds)
@@ -360,6 +395,8 @@ class subnet_modify(_NetworkInit, OptionalOutput):
 
     @errors.Generic.all
     @errors.Cyclades.connection
+    @errors.Cyclades.subnet_permissions
+    @errors.Cyclades.subnet_id
     def _run(self, subnet_id):
         r = self.client.update_subnet(subnet_id, name=self['new_name'])
         self.print_(r, self.print_dict)
@@ -375,9 +412,7 @@ class port_list(_NetworkInit, OptionalOutput, NameFilter, IDFilter):
 
     arguments = dict(
         detail=FlagArgument('show detailed output', ('-l', '--details')),
-        more=FlagArgument(
-            'output results in pages (-n to set items per page, default 10)',
-            '--more'),
+        more=FlagArgument('output results in pages', '--more'),
         user_id=ValueArgument(
             'show only networks belonging to user with this id', '--user-id')
     )
@@ -385,14 +420,12 @@ class port_list(_NetworkInit, OptionalOutput, NameFilter, IDFilter):
     @errors.Generic.all
     @errors.Cyclades.connection
     def _run(self):
-        detail = bool(self['detail'] or self['user_id'])
-        ports = self.client.list_ports(detail=detail)
+        ports = self.client.list_ports()
         ports = self._filter_by_user_id(ports)
         ports = self._filter_by_name(ports)
         ports = self._filter_by_id(ports)
-        if detail and not self['detail']:
-            ports = [dict(
-                id=p['id'], name=p['name'], links=p['links']) for p in ports]
+        if not self['detail']:
+            ports = [dict(id=p['id'], name=p['name']) for p in ports]
         kwargs = dict()
         if self['more']:
             kwargs['out'] = StringIO()
@@ -412,6 +445,7 @@ class port_info(_NetworkInit, OptionalOutput):
 
     @errors.Generic.all
     @errors.Cyclades.connection
+    @errors.Cyclades.port_id
     def _run(self, port_id):
         port = self.client.get_port_details(port_id)
         self.print_(port, self.print_dict)
@@ -426,11 +460,12 @@ class port_delete(_NetworkInit, _PortWait):
     """Delete a port (== disconnect server from network)"""
 
     arguments = dict(
-        wait=FlagArgument('Wait port to be established', ('-w', '--wait'))
+        wait=FlagArgument('Wait port to be deleted', ('-w', '--wait'))
     )
 
     @errors.Generic.all
     @errors.Cyclades.connection
+    @errors.Cyclades.port_id
     def _run(self, port_id):
         if self['wait']:
             status = self.client.get_port_details(port_id)['status']
@@ -457,6 +492,7 @@ class port_modify(_NetworkInit, OptionalOutput):
 
     @errors.Generic.all
     @errors.Cyclades.connection
+    @errors.Cyclades.port_id
     def _run(self, port_id):
         r = self.client.get_port_details(port_id)
         r = self.client.update_port(
@@ -470,16 +506,30 @@ class port_modify(_NetworkInit, OptionalOutput):
 
 class _port_create(_NetworkInit, OptionalOutput, _PortWait):
 
+    @errors.Cyclades.subnet_id
+    def _subnet_exists(self, subnet_id):
+        self.client.get_subnet_details(subnet_id)
+
     def connect(self, network_id, device_id):
-        fixed_ips = [dict(ip_address=self['ip_address'])] if (
-            self['ip_address']) else None
-        if fixed_ips and self['subnet_id']:
-            fixed_ips[0]['subnet_id'] = self['subnet_id']
-        r = self.client.create_port(
-            network_id, device_id,
-            name=self['name'],
-            security_groups=self['security_group_id'],
-            fixed_ips=fixed_ips)
+        subnet_id, ip = self['subnet_id'], self['ip_address']
+        fixed_ips = [dict(ip_address=ip)] if (ip) else None
+        if fixed_ips and subnet_id:
+            fixed_ips[0]['subnet_id'] = subnet_id
+        try:
+            r = self.client.create_port(
+                network_id, device_id,
+                name=self['name'],
+                security_groups=self['security_group_id'],
+                fixed_ips=fixed_ips)
+        except ClientError as ce:
+            if ce.status in (400, 404):
+                self._network_exists(network_id=network_id)
+                self._server_exists(server_id=device_id)
+                if subnet_id:
+                    self._subnet_exists(subnet_id=subnet_id)
+                if self['ip_address']:
+                    self._ip_exists(ip=ip, network_id=network_id, error=ce)
+            raise
         if self['wait']:
             self.wait(r['id'], r['status'])
             r = self.client.get_port_details(r['id'])
@@ -498,8 +548,7 @@ class port_create(_port_create):
         subnet_id=ValueArgument(
             'Subnet id for fixed ips (used with --ip-address)',
             '--subnet-id'),
-        ip_address=ValueArgument(
-            'IP address for subnet id', '--ip-address'),
+        ip_address=ValueArgument('IP address for subnet id', '--ip-address'),
         network_id=ValueArgument('Set the network ID', '--network-id'),
         device_id=ValueArgument(
             'The device is either a virtual server or a virtual router',
@@ -510,14 +559,12 @@ class port_create(_port_create):
 
     @errors.Generic.all
     @errors.Cyclades.connection
-    @errors.Cyclades.network_id
-    @errors.Cyclades.server_id
-    def _run(self, network_id, server_id):
-        self.connect(network_id, server_id)
+    def _run(self):
+        self.connect(self['network_id'], self['device_id'])
 
     def main(self):
         super(self.__class__, self)._run()
-        self._run(network_id=self['network_id'], server_id=self['device_id'])
+        self._run()
 
 
 @command(port_cmds)
@@ -572,6 +619,7 @@ class ip_info(_NetworkInit, OptionalOutput):
 
     @errors.Generic.all
     @errors.Cyclades.connection
+    @errors.Cyclades.ip_id
     def _run(self, ip_id):
         self.print_(self.client.get_floatingip_details(ip_id), self.print_dict)
 
@@ -594,12 +642,20 @@ class ip_create(_NetworkInit, OptionalOutput):
     @errors.Generic.all
     @errors.Cyclades.connection
     def _run(self):
-        self.print_(
-            self.client.create_floatingip(
-                self['network_id'],
-                floating_ip_address=self['ip_address'],
-                project_id=self['project_id']),
-            self.print_dict)
+        try:
+            self.print_(
+                self.client.create_floatingip(
+                    self['network_id'],
+                    floating_ip_address=self['ip_address'],
+                    project_id=self['project_id']),
+                self.print_dict)
+        except ClientError as ce:
+            if ce.status in (400, 404):
+                network_id, ip = self['network_id'], self['ip_address']
+                self._network_exists(network_id=network_id)
+                if ip:
+                    self._ip_exists(ip, network_id, ce)
+            raise
 
     def main(self):
         super(self.__class__, self)._run()
@@ -618,7 +674,12 @@ class ip_reassign(_NetworkInit):
     @errors.Generic.all
     @errors.Cyclades.connection
     def _run(self, ip):
-        self.client.reassign_floating_ip(ip, self['project_id'])
+        try:
+            self.client.reassign_floating_ip(ip, self['project_id'])
+        except ClientError as ce:
+            if ce.status in (400, 404):
+                self._ip_exists(ip=ip, network_id=None, error=ce)
+            raise
 
     def main(self, IP):
         super(self.__class__, self)._run()
@@ -629,6 +690,9 @@ class ip_reassign(_NetworkInit):
 class ip_delete(_NetworkInit):
     """Unreserve an IP (also delete the port, if attached)"""
 
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.ip_id
     def _run(self, ip_id):
         self.client.delete_floatingip(ip_id)
 
@@ -648,15 +712,13 @@ class ip_attach(_port_create):
             ('-g', '--security-group')),
         subnet_id=ValueArgument('Subnet id', '--subnet-id'),
         wait=FlagArgument('Wait IP to be attached', ('-w', '--wait')),
-        server_id=ValueArgument(
-            'Server to attach to this IP', '--server-id')
+        server_id=ValueArgument('Server to attach to this IP', '--server-id')
     )
     required = ('server_id', )
 
     @errors.Generic.all
     @errors.Cyclades.connection
-    @errors.Cyclades.server_id
-    def _run(self, ip_or_ip_id, server_id):
+    def _run(self, ip_or_ip_id):
         netid = None
         for ip in self.client.list_floatingips():
             if ip_or_ip_id in (ip['floating_ip_address'], ip['id']):
@@ -666,19 +728,26 @@ class ip_attach(_port_create):
                 self.arguments['ip_address'] = iparg
                 break
         if netid:
+            server_id = self['server_id']
             self.error('Creating a port to attach IP %s to server %s' % (
                 ip_or_ip_id, server_id))
-            self.connect(netid, server_id)
+            try:
+                self.connect(netid, server_id)
+            except ClientError as ce:
+                self.error('Failed to connect network %s with server %s' % (
+                    netid, server_id))
+                if ce.status in (400, 404):
+                    self._server_exists(server_id=server_id)
+                    self._network_exists(network_id=netid)
+                raise
         else:
             raiseCLIError(
                 '%s does not match any reserved IPs or IP ids' % ip_or_ip_id,
-                details=[
-                    'To reserve an IP:', '  [kamaki] ip create',
-                    'To see all reserved IPs:', '  [kamaki] ip list'])
+                details=errors.Cyclades.about_ips)
 
     def main(self, ip_or_ip_id):
         super(self.__class__, self)._run()
-        self._run(ip_or_ip_id=ip_or_ip_id, server_id=self['server_id'])
+        self._run(ip_or_ip_id=ip_or_ip_id)
 
 
 @command(ip_cmds)
@@ -715,8 +784,6 @@ class ip_detach(_NetworkInit, _PortWait, OptionalOutput):
         self._run(ip_or_ip_id)
 
 
-#  Warn users for some importand changes
-
 @command(network_cmds)
 class network_connect(_port_create):
     """Connect a network with a device (server or router)"""
@@ -741,11 +808,15 @@ class network_connect(_port_create):
     @errors.Generic.all
     @errors.Cyclades.connection
     @errors.Cyclades.network_id
-    @errors.Cyclades.server_id
     def _run(self, network_id, server_id):
         self.error('Creating a port to connect network %s with device %s' % (
             network_id, server_id))
-        self.connect(network_id, server_id)
+        try:
+            self.connect(network_id, server_id)
+        except ClientError as ce:
+            if ce.status in (400, 404):
+                self._server_exists(server_id=server_id)
+            raise
 
     def main(self, network_id):
         super(self.__class__, self)._run()
@@ -757,9 +828,6 @@ class network_connect(_port_create):
 class network_disconnect(_NetworkInit, _PortWait, OptionalOutput):
     """Disconnect a network from a device"""
 
-    def _cyclades_client(self):
-        return self.get_client(CycladesComputeClient, 'cyclades')
-
     arguments = dict(
         wait=FlagArgument('Wait network to disconnect', ('-w', '--wait')),
         device_id=RepeatableArgument(
@@ -768,17 +836,22 @@ class network_disconnect(_NetworkInit, _PortWait, OptionalOutput):
     )
     required = ('device_id', )
 
+    @errors.Cyclades.server_id
+    def _get_vm(self, server_id):
+        return self._get_compute_client().get_server_details(server_id)
+
     @errors.Generic.all
     @errors.Cyclades.connection
     @errors.Cyclades.network_id
-    @errors.Cyclades.server_id
     def _run(self, network_id, server_id):
-        vm = self._cyclades_client().get_server_details(server_id)
+        vm = self._get_vm(server_id=server_id)
         ports = [port for port in vm['attachments'] if (
             port['network_id'] in (network_id, ))]
         if not ports:
-            raiseCLIError('Network %s is not connected to device %s' % (
-                network_id, server_id))
+            raiseCLIError('Device %s has no network %s attached' % (
+                server_id, network_id), importance=2, details=[
+                    'To get device networking',
+                    '  kamaki server info %s --nics' % server_id])
         for port in ports:
             if self['wait']:
                 port['status'] = self.client.get_port_details(port['id'])[
