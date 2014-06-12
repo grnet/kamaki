@@ -66,6 +66,7 @@ class Generic(object):
                             e.status < 400) else 4)
                 raise CLIError(
                     '%s' % e, details=['%s, -d for debug info' % type(e)])
+        _raise.__name__ = func.__name__
         return _raise
 
     @classmethod
@@ -101,6 +102,7 @@ class Generic(object):
                         '  kamaki config set cloud.default.url',
                         '%s %s' % (getattr(ce, 'status', ''), ce)] + CLOUDNAME)
                 raise
+        _raise.__name__ = func.__name__
         return _raise
 
 
@@ -127,6 +129,7 @@ class Astakos(object):
                 raise CLIError(
                     'Error in AstakosClient', details=['%s' % ace, ])
             return r
+        _raise.__name__ = func.__name__
         return _raise
 
     @classmethod
@@ -187,6 +190,7 @@ class History(object):
             if not hasattr(self, 'history'):
                 raise CLIError('Failed to load history', importance=2)
             return r
+        _raise.__name__ = func.__name__
         return _raise
 
     @classmethod
@@ -197,6 +201,7 @@ class History(object):
                     'Usage: <id1|id1-id2> [id3|id3-id4] ...',
                     details=self.__doc__.split('\n'))
             return func(self, cmd_ids, *args, **kwargs)
+        _raise.__name__ = func.__name__
         return _raise
 
 
@@ -228,6 +233,7 @@ class Cyclades(object):
                     self.error('No servers have been modified since')
                 else:
                     raise
+        _raise.__name__ = func.__name__
         return _raise
 
     @classmethod
@@ -248,6 +254,7 @@ class Cyclades(object):
                     '%s' % ae])
             except ClientError:
                 raise
+        _raise.__name__ = func.__name__
         return _raise
 
     @classmethod
@@ -271,6 +278,7 @@ class Cyclades(object):
                         details=[msg, ] + this.about_network_id + [
                         '%s %s' % (getattr(ce, 'status', ''), ce)])
                 raise
+        _raise.__name__ = func.__name__
         return _raise
 
     @classmethod
@@ -287,6 +295,7 @@ class Cyclades(object):
                             'To list all network ports', '  kamaki port list',
                             '%s %s' % (getattr(ce, 'status', ''), ce)])
                 raise
+        _raise.__name__ = func.__name__
         return _raise
 
     @classmethod
@@ -304,6 +313,7 @@ class Cyclades(object):
                             '  kamaki network info %s' % network_id,
                             '%s %s' % (getattr(ce, 'status', ''), ce)])
                 raise
+        _raise.__name__ = func.__name__
         return _raise
 
     @classmethod
@@ -327,6 +337,7 @@ class Cyclades(object):
                             'To list subnets', '  kamaki subnet list',
                             '%s %s' % (getattr(ce, 'status', ''), ce)])
                 raise
+        _raise.__name__ = func.__name__
         return _raise
 
     @classmethod
@@ -345,6 +356,7 @@ class Cyclades(object):
                             '  kamaki subnet info %s' % subnet_id,
                             '%s %s' % (getattr(ce, 'status', ''), ce)])
                 raise
+        _raise.__name__ = func.__name__
         return _raise
 
     @classmethod
@@ -368,6 +380,7 @@ class Cyclades(object):
                             'To list ports', '  kamaki port list',
                             '%s %s' % (getattr(ce, 'status', ''), ce)])
                 raise
+        _raise.__name__ = func.__name__
         return _raise
 
     @classmethod
@@ -390,6 +403,7 @@ class Cyclades(object):
                         importance=2, details=details + this.about_ips + [
                             '%s %s' % (getattr(ce, 'status', ''), ce)])
                 raise
+        _raise.__name__ = func.__name__
         return _raise
 
     @classmethod
@@ -412,6 +426,7 @@ class Cyclades(object):
                         importance=2, details=details + [
                             '%s %s' % (getattr(ce, 'status', ''), ce)])
                 raise
+        _raise.__name__ = func.__name__
         return _raise
 
     @classmethod
@@ -434,6 +449,7 @@ class Cyclades(object):
                         importance=2, details=details + [
                         '%s %s' % (getattr(ce, 'status', ''), ce)])
                 raise
+        _raise.__name__ = func.__name__
         return _raise
 
     @classmethod
@@ -449,6 +465,7 @@ class Cyclades(object):
                         'No virtual server metadata with key %s' % key,
                         details=['%s %s' % (getattr(ce, 'status', ''), ce), ])
                 raise
+        _raise.__name__ = func.__name__
         return _raise
 
 
@@ -474,6 +491,7 @@ class Image(object):
                         importance=2, details=this.about_image_id + [
                             '%s %s' % (getattr(ce, 'status', ''), ce)])
                 raise
+        _raise.__name__ = func.__name__
         return _raise
 
     @classmethod
@@ -492,6 +510,7 @@ class Image(object):
                             '  kamaki file info IMAGE_LOCATION --sharing',
                             '%s %s' % (getattr(ce, 'status', ''), ce)])
                 raise
+        _raise.__name__ = func.__name__
         return _raise
 
 
@@ -520,6 +539,7 @@ class Pithos(object):
                         'Insufficient credentials for this operation',
                         details=['%s %s' % (getattr(ce, 'status', ''), ce), ])
                 raise
+        _raise.__name__ = func.__name__
         return _raise
 
     @classmethod
@@ -539,6 +559,7 @@ class Pithos(object):
                         '--size-limit=NEW_LIMIT',
                         '%s' % ce])
                 raise
+        _raise.__name__ = func.__name__
         return _raise
 
     @classmethod
@@ -556,6 +577,7 @@ class Pithos(object):
                             importance=2, details=this.container_howto + [
                                 '%s %s' % (getattr(ce, 'status', ''), ce)])
                 raise
+        _raise.__name__ = func.__name__
         return _raise
 
     @classmethod
@@ -572,6 +594,7 @@ class Pithos(object):
                     'To create a remote directory',
                     '  kamaki file mkdir REMOTE_DIRECTORY_PATH',
                     '%s' % ioe])
+        _raise.__name__ = func.__name__
         return _raise
 
     @classmethod
@@ -584,6 +607,7 @@ class Pithos(object):
                 raise CLIError(
                     'Failed to access file %s' % local_path,
                     details=['%s' % ioe, ], importance=2)
+        _raise.__name__ = func.__name__
         return _raise
 
     @classmethod
@@ -603,6 +627,7 @@ class Pithos(object):
                             '  kamaki file list %s' % _cnt,
                             '%s %s' % (getattr(ce, 'status', ''), ce), ])
                 raise
+        _raise.__name__ = func.__name__
         return _raise
 
     @classmethod
@@ -650,4 +675,5 @@ class Pithos(object):
                             ('(%sB)' % size) if size >= 1024 else ''),
                         details=['%s %s' % (getattr(ce, 'status', ''), ce)])
                 raise
+        _raise.__name__ = func.__name__
         return _raise
