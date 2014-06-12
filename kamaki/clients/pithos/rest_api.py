@@ -627,9 +627,9 @@ class PithosRestClient(StorageClient):
         :returns: ConnectionResponse
         """
         self._assert_container()
-        self.response_headers = ['ETag', 'X-Object-Version']
-        self.request_header_prefices_to_quote = [
-            'x-copy-from-', 'x-move-from-', 'x-object-meta-']
+        self.response_headers = ['ETag', 'X-Object-Version', ]
+        self.request_headers_to_quote = ['x-copy-from', 'x-move-from', ]
+        self.request_header_prefices_to_quote = ['x-object-meta-', ]
 
         self.set_param('format', format, iff=format)
         self.set_param('hashmap', hashmap, iff=hashmap)

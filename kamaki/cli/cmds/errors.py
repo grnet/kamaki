@@ -497,16 +497,13 @@ class Image(object):
 
 class Pithos(object):
     container_howto = [
-        'Use a / to refer to a container (default: /pithos) e.g.,',
-        '  # list the contents of container "images"',
-        '  $ kamaki file list /images',
-        '  # get information on file "my.img" in container "images"',
-        '  $ kamaki file info /images/my.img',
-        '',
-        'To get a list of containers:',
-        '  $ kamaki container list',
-        '',
-    ]
+        'To list containers',
+        '  kamaki container list',
+        'Hint: Use a / to refer to a container (default: /pithos) e.g.,',
+        'To list contents of container "images"',
+        '  kamaki file list /images',
+        'To get information on file "my.img" in container "images"',
+        '  kamaki file info /images/my.img', ]
 
     @classmethod
     def connection(this, func):
@@ -520,8 +517,8 @@ class Pithos(object):
             except ClientError as ce:
                 if ce.status == 403:
                     raise CLIError(
-                        'Invalid account credentials for this operation',
-                        details=['Check user account settings', '%s' % ce])
+                        'Insufficient credentials for this operation',
+                        details=['%s %s' % (getattr(ce, 'status', ''), ce), ])
                 raise
         return _raise
 
@@ -533,12 +530,13 @@ class Pithos(object):
             except ClientError as ce:
                 if ce.status == 413:
                     raise CLIError('User quota exceeded', details=[
-                        '* get quotas:',
-                        '  * upper total limit:      /file quota',
-                        '  * container limit:',
-                        '    /file containerlimit get <container>',
-                        '* set a higher container limit:',
-                        '    /file containerlimit set <limit> <container>',
+                        'To get total quotas',
+                        '  kamaki quota list --resource=pithos',
+                        'To get container limit',
+                        '  kamaki container info CONTAINER --size-limit',
+                        'Set a higher container limit:',
+                        '  kamaki container modify CONTAINER '
+                        '--size-limit=NEW_LIMIT',
                         '%s' % ce])
                 raise
         return _raise
@@ -550,13 +548,13 @@ class Pithos(object):
             try:
                 return func(self, *args, **kwargs)
             except ClientError as ce:
-                if ce.status == 404 and 'container' in ('%s' % ce).lower():
-                        cont = ('%s or %s' % (
-                            self.container,
-                            dst_cont)) if dst_cont else self.container
+                if ce.status in (404, ):
+                        cont = ('%s or %s' % (self.container, dst_cont)) if (
+                            dst_cont) else self.container
                         raise CLIError(
                             'Container "%s" does not exist' % cont,
-                            details=this.container_howto + ['%s' % ce])
+                            importance=2, details=this.container_howto + [
+                                '%s %s' % (getattr(ce, 'status', ''), ce)])
                 raise
         return _raise
 
@@ -568,12 +566,11 @@ class Pithos(object):
             except IOError as ioe:
                 raise CLIError(
                     'Failed to access a local file', importance=2, details=[
-                    'Check if the file exists. Also check if the remote',
-                    'directories exist. All directories in a remote path',
-                    'must exist to succesfully download a container or a',
-                    'directory.',
-                    'To create a remote directory:',
-                    '  [kamaki] file mkdir REMOTE_DIRECTORY_PATH',
+                    'To check if the file exists', '  kamaki file info PATH',
+                    'All directories in a remote path must exist, or the '
+                    'download will fail',
+                    'To create a remote directory',
+                    '  kamaki file mkdir REMOTE_DIRECTORY_PATH',
                     '%s' % ioe])
         return _raise
 
@@ -595,14 +592,16 @@ class Pithos(object):
             try:
                 return func(self, *args, **kwargs)
             except ClientError as ce:
-                err_msg = ('%s' % ce).lower()
-                if (
-                    ce.status == 404 or ce.status == 500
-                ) and 'object' in err_msg and 'not' in err_msg:
+                if ce.status in (404, ):
+                    _cnt = self.container
+                    _cnt = '[/%s]' % _cnt if _cnt == 'pithos' else '/%s' % _cnt
                     raise CLIError(
-                        'No object %s in container %s' % (
+                        'No object "%s" in container "%s"' % (
                             self.path, self.container),
-                        details=this.container_howto + ['%s' % ce, ])
+                        importance=2, details=[
+                            'To list contents in container',
+                            '  kamaki file list %s' % _cnt,
+                            '%s %s' % (getattr(ce, 'status', ''), ce), ])
                 raise
         return _raise
 
@@ -644,15 +643,11 @@ class Pithos(object):
             try:
                 return func(self, *args, **kwargs)
             except ClientError as ce:
-                err_msg = ('%s' % ce).lower()
-                expected = 'object length is smaller than range length'
-                if size and (
-                    ce.status == 416 or (
-                        ce.status == 400 and expected in err_msg)):
+                if size and ce.status in (416, 400):
                     raise CLIError(
                         'Remote object %s:%s <= %s %s' % (
                             self.container, self.path, format_size(size),
                             ('(%sB)' % size) if size >= 1024 else ''),
-                        details=['%s' % ce])
+                        details=['%s %s' % (getattr(ce, 'status', ''), ce)])
                 raise
         return _raise

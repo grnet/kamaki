@@ -164,7 +164,7 @@ class RequestManager(Logged):
             key = k.lower()
             val = '' if v is None else '%s' % (
                 v.encode('utf-8') if isinstance(v, unicode) else v)
-            quotable = any([key in self._headers_to_quote, ] +
+            quotable = any([key in self._headers_to_quote, ]) or any(
                 [key.startswith(p) for p in self._header_prefices])
             headers[k] = quote(val) if quotable else val
         self.headers = headers

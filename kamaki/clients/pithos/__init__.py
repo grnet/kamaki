@@ -462,32 +462,26 @@ class PithosClient(PithosRestClient):
             upload_gen = None
 
         retries = 7
-        try:
-            while retries:
-                sendlog.info('%s blocks missing' % len(missing))
-                num_of_blocks = len(missing)
-                missing = self._upload_missing_blocks(
-                    missing, hmap, f, upload_gen)
-                if missing:
-                    if num_of_blocks == len(missing):
-                        retries -= 1
-                    else:
-                        num_of_blocks = len(missing)
-                else:
-                    break
+        while retries:
+            sendlog.info('%s blocks missing' % len(missing))
+            num_of_blocks = len(missing)
+            missing = self._upload_missing_blocks(
+                missing, hmap, f, upload_gen)
             if missing:
-                try:
-                    details = ['%s' % thread.exception for thread in missing]
-                except Exception:
-                    details = ['Also, failed to read thread exceptions']
-                raise ClientError(
-                    '%s blocks failed to upload' % len(missing),
-                    details=details)
-        except KeyboardInterrupt:
-            sendlog.info('- - - wait for threads to finish')
-            for thread in activethreads():
-                thread.join()
-            raise
+                if num_of_blocks == len(missing):
+                    retries -= 1
+                else:
+                    num_of_blocks = len(missing)
+            else:
+                break
+        if missing:
+            try:
+                details = ['%s' % thread.exception for thread in missing]
+            except Exception:
+                details = ['Also, failed to read thread exceptions']
+            raise ClientError(
+                '%s blocks failed to upload' % len(missing),
+                details=details)
 
         r = self.object_put(
             obj,
