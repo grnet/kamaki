@@ -523,6 +523,8 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
                     self._network_exists(network_id=net['uuid'])
                     if 'fixed_ip' in net:
                         self._ip_ready(net['fixed_ip'], net['uuid'], ce)
+            if self['project_id'] and ce.status in (400, 403, 404):
+                self._project_id_exists(project=self['project_id'])
             raise
 
     def main(self):
@@ -678,7 +680,12 @@ class server_reassign(_CycladesInit, OptionalOutput):
     @errors.Cyclades.connection
     @errors.Cyclades.server_id
     def _run(self, server_id):
-        self.client.reassign_server(server_id, self['project_id'])
+        try:
+            self.client.reassign_server(server_id, self['project_id'])
+        except ClientError as ce:
+            if ce.status in (400, 403, 404):
+                self._project_id_exists(project=self['project_id'])
+            raise
 
     def main(self, server_id):
         super(self.__class__, self)._run()

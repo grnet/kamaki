@@ -1633,10 +1633,13 @@ class container_create(_PithosAccount):
                 metadata=self['meta'],
                 success=(201, ))
         except ClientError as ce:
+            print 'WHAAAA?'
             if ce.status in (202, ):
                 raise CLIError(
                     'Container %s alread exists' % self.container, details=[
                     'Delete %s or choose another name' % self.container])
+            elif self['project_id'] and ce.status in (400, 403, 404):
+                self._project_id_exists(project_id=self['project_id'])
             raise
 
     def main(self, new_container):
@@ -1713,7 +1716,12 @@ class container_reassign(_PithosAccount):
     @errors.Pithos.connection
     @errors.Pithos.container
     def _run(self):
-        self.client.reassign_container(self['project_id'])
+        try:
+            self.client.reassign_container(self['project_id'])
+        except ClientError as ce:
+            if ce.status in (400, 403, 404):
+                self._project_id_exists(project_id=self['project_id'])
+            raise
 
     def main(self, container):
         super(self.__class__, self)._run()

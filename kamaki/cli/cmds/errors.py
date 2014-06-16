@@ -179,7 +179,7 @@ class Astakos(object):
                             '  kamaki membership list',
                             '%s %s' % (getattr(ce, 'status', ''), ce)])
         _raise.__name__ = func.__name__
-        return _rause
+        return _raise
 
 
 class History(object):

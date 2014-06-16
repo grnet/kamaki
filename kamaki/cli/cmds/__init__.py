@@ -40,17 +40,18 @@ from kamaki.cli.utils import (
     filter_dicts_by_dict)
 from kamaki.cli.argument import ValueArgument, ProgressBarArgument
 from kamaki.cli.errors import CLIInvalidArgument, CLIBaseUrlError
+from kamaki.cli.cmds import errors
 
 
 log = get_logger(__name__)
 
 
-def dont_raise(*errors):
+def dont_raise(*errs):
     def decorator(func):
         def wrap(*args, **kwargs):
             try:
                 return func(*args, **kwargs)
-            except errors as e:
+            except errs as e:
                 log.debug('Suppressed error %s while calling %s(%s)' % (
                     e, func.__name__, ','.join(['%s' % i for i in args] + [
                         ('%s=%s' % items) for items in kwargs.items()])))
@@ -129,6 +130,10 @@ class CommandInit(object):
             else:
                 raise CLIBaseUrlError(service=service)
         return cls(URL, TOKEN)
+
+    @errors.Astakos.project_id
+    def _project_id_exists(self, project_id):
+        self.astakos.get_client().get_project(project_id)
 
     @dont_raise(UnicodeError)
     def write(self, s):

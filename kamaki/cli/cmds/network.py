@@ -201,11 +201,15 @@ class network_create(_NetworkInit, OptionalOutput):
     @errors.Generic.all
     @errors.Cyclades.connection
     def _run(self):
-        net = self.client.create_network(
-            self['network_type'],
-            name=self['name'],
-            shared=self['shared'],
-            project_id=self['project_id'])
+        try:
+            net = self.client.create_network(
+                self['network_type'],
+                name=self['name'],
+                shared=self['shared'],
+                project_id=self['project_id'])
+        except ClientError as ce:
+            if self['project_id'] and ce.status in (400, 403, 404):
+                self._project_id_exists(project_id=self['project_id'])
         self.print_(net, self.print_dict)
 
     def main(self):
@@ -227,7 +231,12 @@ class network_reassign(_NetworkInit, OptionalOutput):
     @errors.Cyclades.network_permissions
     @errors.Cyclades.network_id
     def _run(self, network_id):
-        self.client.reassign_network(network_id, self['project_id'])
+        try:
+            self.client.reassign_network(network_id, self['project_id'])
+        except ClientError as ce:
+            if ce.status in (400, 403, 404):
+                self._project_id_exists(project_id=self['project_id'])
+            raise
 
     def main(self, network_id):
         super(self.__class__, self)._run()
@@ -655,6 +664,8 @@ class ip_create(_NetworkInit, OptionalOutput):
                 self._network_exists(network_id=network_id)
                 if ip:
                     self._ip_exists(ip, network_id, ce)
+            if self['project_id'] and ce.status in (400, 403, 404):
+                self._project_id_exists(project_id=self['project_id'])
             raise
 
     def main(self):
