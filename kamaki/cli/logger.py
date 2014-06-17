@@ -1,4 +1,4 @@
-# Copyright 2013 GRNET S.A. All rights reserved.
+# Copyright 2013-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -33,6 +33,7 @@
 
 from os import chmod
 from os.path import expanduser
+from sys import stderr
 import logging
 
 
@@ -69,10 +70,15 @@ def get_log_filename():
             with open(logfile, 'a+') as f:
                 f.seek(0)
             chmod(logfile, 0600)
-        except IOError:
+        except IOError as e:
+            stderr.write(
+                'WARNING: Failed to use file "%s" for logging\n' % logfile)
+            stderr.write('\t%s\n' % e)
+            stderr.flush()
             continue
         return logfile
-    print('Failed to open any logging locations, file-logging aborted')
+    stderr.write('WARNING: No valid log files, redirect logs to std err\n')
+    stderr.flush()
 
 
 def set_log_filename(filename):
@@ -94,9 +100,10 @@ def _add_logger(name, level=None, filename=None, fmt=None):
 @if_logger_enabled
 def add_file_logger(name, level=None, filename=None):
     try:
+        fmt = '%(name)s(%(levelname)s) %(asctime)s\n  %(message)s' if (
+            level == logging.DEBUG) else '%(name)s: %(message)s'
         return _add_logger(
-            name, level, filename or get_log_filename(),
-            fmt='%(name)s(%(levelname)s) %(asctime)s\n\t%(message)s')
+            name, level, filename or get_log_filename(), fmt=fmt)
     except Exception:
         return get_logger(name)
 

@@ -1,4 +1,4 @@
-# Copyright 2013 GRNET S.A. All rights reserved.
+# Copyright 2013-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -250,9 +250,12 @@ class LoggerMethods(TestCase):
             for name, level, filename in product(
                     ('my name'), ('my level', None), ('my filename', None)):
                 self.assertEqual(add_file_logger(name, level, filename), 'AL')
+                from logging import DEBUG as dbg
+                fmt = '%(name)s(%(levelname)s) %(asctime)s\n\t%(message)s' if (
+                    level == dbg) else '%(name)s: %(message)s'
                 self.assertEqual(AL.mock_calls[-1], call(
                     name, level, filename or 'my log fname',
-                    fmt='%(name)s(%(levelname)s) %(asctime)s\n\t%(message)s'))
+                    fmt=fmt))
                 if filename:
                     self.assertEqual(GLFcount, GLF.call_count)
                 else:
