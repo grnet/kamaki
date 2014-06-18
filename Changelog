@@ -25,4 +25,5 @@ Features:
 - Update account API commands to reflect changes in synnefo 0.16
 - Implement a get_endpoint_url method and use it
 - Rename kamaki.clients.Client.base_url --> endpoint_url, keep BW compatibility [#9]
+- Remove deprecated --hard argument in "kamaki server reboot"
 

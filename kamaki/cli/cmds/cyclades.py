@@ -744,8 +744,6 @@ class server_reboot(_CycladesInit, _ServerWait):
     """Reboot a virtual server"""
 
     arguments = dict(
-        hard=FlagArgument(
-            'perform a hard reboot (deprecated)', ('-f', '--force')),
         type=ValueArgument('SOFT or HARD - default: SOFT', ('--type')),
         wait=FlagArgument('Wait server to be destroyed', ('-w', '--wait'))
     )
@@ -754,11 +752,7 @@ class server_reboot(_CycladesInit, _ServerWait):
     @errors.Cyclades.connection
     @errors.Cyclades.server_id
     def _run(self, server_id):
-        hard_reboot = self['hard']
-        if hard_reboot:
-            self.error(
-                'WARNING: -f/--force will be deprecated in version 0.12\n'
-                '\tIn the future, please use --type=hard instead')
+        hard_reboot = None
         if self['type']:
             if self['type'].lower() in ('soft', ):
                 hard_reboot = False
