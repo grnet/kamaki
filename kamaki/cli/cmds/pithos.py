@@ -1241,7 +1241,7 @@ class file_download(_PithosContainer):
             raise
         rpath = self.path.strip('/')
         if local_path and self.path and local_path.endswith('/'):
-            local_path = local_path[-1:]
+            local_path = local_path.rstrip('/') or '/'
 
         if (not obj) or self.object_is_dir(obj):
             if self['recursive']:
