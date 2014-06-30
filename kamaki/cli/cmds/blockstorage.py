@@ -32,9 +32,9 @@
 # or implied, of GRNET S.A.command
 
 from kamaki.cli import command
-from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.commands import (
-    _command_init, errors, addLogSettings, _optional_json)
+from kamaki.cli.cmdtree import CommandTree
+from kamaki.cli.cmds import (
+    CommandInit, errors, client_log, OptionalOutput)
 from kamaki.clients.cyclades import CycladesBlockStorageClient
 from kamaki.cli import argument
 
@@ -45,9 +45,9 @@ namespaces = [volume_cmds, snapshot_cmds]
 _commands = namespaces
 
 
-class _BlockStorageInit(_command_init):
-    @errors.generic.all
-    @addLogSettings
+class _BlockStorageInit(CommandInit):
+    @errors.Generic.all
+    @client_log
     def _run(self):
         self.client = self.get_client(CycladesBlockStorageClient, 'volume')
 
@@ -56,7 +56,7 @@ class _BlockStorageInit(_command_init):
 
 
 @command(volume_cmds)
-class volume_list(_BlockStorageInit, _optional_json):
+class volume_list(_BlockStorageInit, OptionalOutput):
     """List volumes"""
 
     arguments = dict(
@@ -64,7 +64,7 @@ class volume_list(_BlockStorageInit, _optional_json):
             'show detailed output', ('-l', '--details')),
     )
 
-    @errors.generic.all
+    @errors.Generic.all
     def _run(self):
         self._print(self.client.list_volumes(detail=self['detail']))
 
@@ -74,10 +74,10 @@ class volume_list(_BlockStorageInit, _optional_json):
 
 
 @command(volume_cmds)
-class volume_info(_BlockStorageInit, _optional_json):
+class volume_info(_BlockStorageInit, OptionalOutput):
     """Get details about a volume"""
 
-    @errors.generic.all
+    @errors.Generic.all
     def _run(self, volume_id):
         self._print(
             self.client.get_volume_details(volume_id), self.print_dict)
@@ -88,7 +88,7 @@ class volume_info(_BlockStorageInit, _optional_json):
 
 
 @command(volume_cmds)
-class volume_create(_BlockStorageInit, _optional_json):
+class volume_create(_BlockStorageInit, OptionalOutput):
     """Create a new volume"""
 
     arguments = dict(
@@ -113,7 +113,7 @@ class volume_create(_BlockStorageInit, _optional_json):
     )
     required = ('size', 'server_id', 'name')
 
-    @errors.generic.all
+    @errors.Generic.all
     def _run(self, size, server_id, name):
         self._print(
             self.client.create_volume(
@@ -134,8 +134,8 @@ class volume_create(_BlockStorageInit, _optional_json):
 
 
 @command(volume_cmds)
-class volume_modify(_BlockStorageInit, _optional_json):
-    """Modify a volumes' properties"""
+class volume_modify(_BlockStorageInit, OptionalOutput):
+    """Modify a volume's properties"""
 
     arguments = dict(
         name=argument.ValueArgument('Rename', '--name'),
@@ -144,7 +144,7 @@ class volume_modify(_BlockStorageInit, _optional_json):
             'Delete on termination', '--delete-on-termination'))
     required = ['name', 'description', 'delete_on_termination']
 
-    @errors.generic.all
+    @errors.Generic.all
     def _run(self, volume_id):
         self._print(
             self.client.update_volume(
@@ -168,7 +168,7 @@ class volume_reassign(_BlockStorageInit):
     )
     required = ('project_id', )
 
-    @errors.generic.all
+    @errors.Generic.all
     def _run(self, volume_id, project_id):
         self.client.reassign_volume(volume_id, project_id)
 
@@ -181,7 +181,7 @@ class volume_reassign(_BlockStorageInit):
 class volume_delete(_BlockStorageInit):
     """Delete a volume"""
 
-    @errors.generic.all
+    @errors.Generic.all
     def _run(self, volume_id):
         self.client.delete_volume(volume_id)
 
@@ -191,10 +191,10 @@ class volume_delete(_BlockStorageInit):
 
 
 @command(volume_cmds)
-class volume_types(_BlockStorageInit, _optional_json):
+class volume_types(_BlockStorageInit, OptionalOutput):
     """List volume types"""
 
-    @errors.generic.all
+    @errors.Generic.all
     def _run(self):
         self._print(self.client.list_volume_types())
 
@@ -204,10 +204,10 @@ class volume_types(_BlockStorageInit, _optional_json):
 
 
 @command(volume_cmds)
-class volume_type(_BlockStorageInit, _optional_json):
+class volume_type(_BlockStorageInit, OptionalOutput):
     """Get volume type details"""
 
-    @errors.generic.all
+    @errors.Generic.all
     def _run(self, volume_type_id):
         self._print(
             self.client.get_volume_type_details(volume_type_id),
@@ -219,7 +219,7 @@ class volume_type(_BlockStorageInit, _optional_json):
 
 
 @command(snapshot_cmds)
-class snapshot_list(_BlockStorageInit, _optional_json):
+class snapshot_list(_BlockStorageInit, OptionalOutput):
     """List snapshots"""
 
     arguments = dict(
@@ -227,7 +227,7 @@ class snapshot_list(_BlockStorageInit, _optional_json):
             'show detailed output', ('-l', '--details')),
     )
 
-    @errors.generic.all
+    @errors.Generic.all
     def _run(self):
         self._print(self.client.list_snapshots(detail=self['detail']))
 
@@ -237,10 +237,10 @@ class snapshot_list(_BlockStorageInit, _optional_json):
 
 
 @command(snapshot_cmds)
-class snapshot_info(_BlockStorageInit, _optional_json):
+class snapshot_info(_BlockStorageInit, OptionalOutput):
     """Get details about a snapshot"""
 
-    @errors.generic.all
+    @errors.Generic.all
     def _run(self, snapshot_id):
         self._print(
             self.client.get_snapshot_details(snapshot_id), self.print_dict)
@@ -251,7 +251,7 @@ class snapshot_info(_BlockStorageInit, _optional_json):
 
 
 @command(snapshot_cmds)
-class snapshot_create(_BlockStorageInit, _optional_json):
+class snapshot_create(_BlockStorageInit, OptionalOutput):
     """Create a new snapshot"""
 
     arguments = dict(
@@ -263,7 +263,7 @@ class snapshot_create(_BlockStorageInit, _optional_json):
     )
     required = ('volume_id', 'name')
 
-    @errors.generic.all
+    @errors.Generic.all
     def _run(self, volume_id, name):
         self._print(
             self.client.create_snapshot(
@@ -277,8 +277,8 @@ class snapshot_create(_BlockStorageInit, _optional_json):
 
 
 @command(snapshot_cmds)
-class snapshot_modify(_BlockStorageInit, _optional_json):
-    """Modify a snapshots' properties"""
+class snapshot_modify(_BlockStorageInit, OptionalOutput):
+    """Modify a snapshot's properties"""
 
     arguments = dict(
         name=argument.ValueArgument('Rename', '--name'),
@@ -286,7 +286,7 @@ class snapshot_modify(_BlockStorageInit, _optional_json):
     )
     required = ['name', 'description']
 
-    @errors.generic.all
+    @errors.Generic.all
     def _run(self, snapshot_id):
         self._print(
             self.client.update_snapshot(
@@ -304,7 +304,7 @@ class snapshot_modify(_BlockStorageInit, _optional_json):
 class snapshot_delete(_BlockStorageInit):
     """Delete a snapshot"""
 
-    @errors.generic.all
+    @errors.Generic.all
     def _run(self, snapshot_id):
         self.client.delete_snapshot(snapshot_id)
 
