@@ -286,9 +286,9 @@ class file_list(_PithosContainer, OptionalOutput, NameFilter):
         return self.client.container_get(
             limit=False if self['more'] else self['limit'],
             marker=self['marker'],
-            prefix=self['name_pref'],
+            prefix=self.path,
             delimiter=self['delimiter'],
-            path=self.path or '',
+            path=self['name_pref'] or '',
             show_only_shared=self['shared_by_me'],
             public=self['public'],
             if_modified_since=self['if_modified_since'],
@@ -975,9 +975,9 @@ class file_upload(_PithosContainer):
                 if robj.json:
                     raise CLIError(
                         'Objects/files prefixed as %s already exist' % rpath,
-                        details=['Existing objects:'] + ['\t/%s/\t%s' % (
+                        details=['Existing objects:'] + ['\t/%s\t[%s]' % (
                             o['name'],
-                            o['content_type'][12:]) for o in robj.json] + [
+                            o['content_type']) for o in robj.json] + [
                             'Use -f to add, overwrite or resume'])
                 else:
                     try:
@@ -1098,7 +1098,10 @@ class file_upload(_PithosContainer):
 
     def main(self, local_path, remote_path_or_url=None):
         super(self.__class__, self)._run(remote_path_or_url)
-        remote_path = self.path or path.basename(path.abspath(local_path))
+        if local_path.endswith('.') or local_path.endswith(path.sep):
+            remote_path = self.path or ''
+        else:
+            remote_path = self.path or path.basename(path.abspath(local_path))
         self._run(local_path=local_path, remote_path=remote_path)
 
 
@@ -1252,9 +1255,9 @@ class file_download(_PithosContainer):
                     local_path = '%s/' % (local_path or self.container)
                 obj = obj or dict(
                     name='', content_type='application/directory')
-                dirs, files = [obj, ], []
+                dirs, files = [], []
                 objects = self.client.container_get(
-                    path=self.path,
+                    prefix=rpath,
                     if_modified_since=self['modified_since_date'],
                     if_unmodified_since=self['unmodified_since_date'])
                 for o in objects.json:
@@ -1393,7 +1396,13 @@ class file_download(_PithosContainer):
 
     def main(self, remote_path_or_url, local_path=None):
         super(self.__class__, self)._run(remote_path_or_url)
-        local_path = local_path or self.path or '.'
+        local_path, rpath = local_path or '.', self.path or self.container
+        if local_path.endswith('.'):
+            local_path = local_path[:-1] + path.basename(self.path.rstrip('/'))
+        elif local_path.endswith(path.sep):
+            local_path += path.basename(rpath.rstrip('/'))
+        elif path.exists(local_path) and path.isdir(local_path):
+            local_path += path.sep + path.basename(rpath.rstrip('/'))
         self._run(local_path=local_path)
 
 
