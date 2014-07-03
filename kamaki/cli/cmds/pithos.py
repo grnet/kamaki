@@ -1025,7 +1025,9 @@ class file_upload(_PithosContainer):
                             self.container, rpath),
                         details=['use -f to overwrite / resume'])
             except ClientError as ce:
-                if ce.status not in (404, ):
+                if ce.status in (404, ):
+                    self._container_exists()
+                else:
                     raise
             self._check_container_limit(lpath)
             yield open(lpath, 'rb'), rpath
@@ -1212,16 +1214,15 @@ class file_download(_PithosContainer):
         is an open file descriptor. Directories are denoted as (None, dirpath)
         and they are pretended to other objects in a very strict order (shorter
         to longer path)."""
-        ret = []
+        ret, obj = [], None
         try:
             if self.path:
                 obj = self.client.get_object_info(
                     self.path, version=self['object_version'])
                 obj.setdefault('name', self.path.strip('/'))
-            else:
-                obj = None
         except ClientError as ce:
             if ce.status in (404, ):
+                self._container_exists()
                 raiseCLIError(ce, details=[
                     'To download an object, it must exist either as a file or'
                     ' as a directory.',
