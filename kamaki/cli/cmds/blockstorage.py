@@ -66,7 +66,7 @@ class volume_list(_BlockStorageInit, OptionalOutput):
 
     @errors.Generic.all
     def _run(self):
-        self._print(self.client.list_volumes(detail=self['detail']))
+        self.print_(self.client.list_volumes(detail=self['detail']))
 
     def main(self):
         super(self.__class__, self)._run()
@@ -79,7 +79,7 @@ class volume_info(_BlockStorageInit, OptionalOutput):
 
     @errors.Generic.all
     def _run(self, volume_id):
-        self._print(
+        self.print_(
             self.client.get_volume_details(volume_id), self.print_dict)
 
     def main(self, volume_id):
@@ -115,7 +115,7 @@ class volume_create(_BlockStorageInit, OptionalOutput):
 
     @errors.Generic.all
     def _run(self, size, server_id, name):
-        self._print(
+        self.print_(
             self.client.create_volume(
                 size, server_id, name,
                 # source_volid=self['src_volume_id'],
@@ -146,7 +146,7 @@ class volume_modify(_BlockStorageInit, OptionalOutput):
 
     @errors.Generic.all
     def _run(self, volume_id):
-        self._print(
+        self.print_(
             self.client.update_volume(
                 volume_id,
                 display_name=self['name'],
@@ -196,7 +196,7 @@ class volume_types(_BlockStorageInit, OptionalOutput):
 
     @errors.Generic.all
     def _run(self):
-        self._print(self.client.list_volume_types())
+        self.print_(self.client.list_volume_types())
 
     def main(self):
         super(self.__class__, self)._run()
@@ -209,7 +209,7 @@ class volume_type(_BlockStorageInit, OptionalOutput):
 
     @errors.Generic.all
     def _run(self, volume_type_id):
-        self._print(
+        self.print_(
             self.client.get_volume_type_details(volume_type_id),
             self.print_dict)
 
@@ -229,7 +229,7 @@ class snapshot_list(_BlockStorageInit, OptionalOutput):
 
     @errors.Generic.all
     def _run(self):
-        self._print(self.client.list_snapshots(detail=self['detail']))
+        self.print_(self.client.list_snapshots(detail=self['detail']))
 
     def main(self):
         super(self.__class__, self)._run()
@@ -242,7 +242,7 @@ class snapshot_info(_BlockStorageInit, OptionalOutput):
 
     @errors.Generic.all
     def _run(self, snapshot_id):
-        self._print(
+        self.print_(
             self.client.get_snapshot_details(snapshot_id), self.print_dict)
 
     def main(self, snapshot_id):
@@ -265,7 +265,7 @@ class snapshot_create(_BlockStorageInit, OptionalOutput):
 
     @errors.Generic.all
     def _run(self, volume_id, name):
-        self._print(
+        self.print_(
             self.client.create_snapshot(
                 volume_id, name,
                 force=self['force'], display_description=self['description']),
@@ -288,7 +288,7 @@ class snapshot_modify(_BlockStorageInit, OptionalOutput):
 
     @errors.Generic.all
     def _run(self, snapshot_id):
-        self._print(
+        self.print_(
             self.client.update_snapshot(
                 snapshot_id,
                 display_name=self['name'],
