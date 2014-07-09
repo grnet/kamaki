@@ -524,7 +524,7 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
                 self._flavor_exists(flavor_id=self['flavor_id'])
                 self._image_exists(image_id=self['image_id'])
             if ce.status in (404, 400, 409):
-                for net in self['network_configuration']:
+                for net in self['network_configuration'] or []:
                     self._network_exists(network_id=net['uuid'])
                     if 'fixed_ip' in net:
                         self._ip_ready(net['fixed_ip'], net['uuid'], ce)
