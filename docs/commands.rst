@@ -368,7 +368,7 @@ Showcase: Connect a network to a VM
     11688 (An Ubuntu server)
 
     * Try network-connect (to get help) *
-    [network]: connect 
+    [network]: connect
     Syntax error
     usage: connect <network id> --device-id <DEVICE_ID> [-s] [-h] [-i] [--config CONFIG]
 
@@ -405,12 +405,12 @@ Showcase: Connect a network to a VM
       updated :  2012-11-23T17:18:25.095225+00:00
 
     * Get connectivity details on VM with id 11687 *
-    [network]: /server info 11687 --nics 
+    [network]: /server info 11687 --nics
     nic-11687-1
-        ipv4       :  192.168.1.1
-        ipv6       :  None
-        mac_address:  aa:0f:c2:0b:0e:85
-        network_id :  1409
+        ipv4           :  192.168.1.1
+        ipv6           :  None
+        mac_address    :  aa:0f:c2:0b:0e:85
+        network_id     :  1409
         firewallProfile:  DISABLED
     nic-11687-0
         ipv4           :  83.212.106.111
@@ -546,7 +546,7 @@ Showcase: Upload and download a file
     [file]: /container create mycont2
 
 
-    * List accessible containers *    
+    * List accessible containers *
     [file]: /container list
     1. mycont1 (0B, 0 objects)
     2. mycont2 (0B, 0 objects)

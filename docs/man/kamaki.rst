@@ -13,7 +13,7 @@ Synopsis
 Description
 -----------
 
-:program:`kamaki` is a simple, yet intuitive, command-line tool for managing 
+:program:`kamaki` is a simple, yet intuitive, command-line tool for managing
 clouds. It can be used in three forms: as an interactive shell
 (`kamaki-shell`), as a command line tool (`kamaki`) or as a clients API for
 other applications (`kamaki.clients`).
