@@ -214,7 +214,7 @@ server (Compute/Cyclades)
     start     Start an existing virtual server
     shutdown  Shutdown an active virtual server
     delete    Delete a virtual server
-    console   Create a VMC console and show connection information
+    console   Create a VNC console and show connection information
     wait      Wait for server to finish [BUILD, STOPPED, REBOOT, ACTIVE]
 
 Showcase: Create a server

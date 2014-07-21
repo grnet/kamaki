@@ -831,7 +831,7 @@ class server_shutdown(_CycladesInit,  _ServerWait):
 
 @command(server_cmds)
 class server_console(_CycladesInit, OptionalOutput):
-    """Create a VMC console and show connection information"""
+    """Create a VNC console and show connection information"""
 
     @errors.Generic.all
     @errors.Cyclades.connection
