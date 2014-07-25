@@ -834,16 +834,45 @@ class server_shutdown(_CycladesInit,  _ServerWait):
         self._run(server_id=server_id)
 
 
+class ConsoleTypeArgument(ValueArgument):
+
+    @property
+    def value(self):
+        return getattr(self, '_value', None)
+
+    @value.setter
+    def value(self, new_value):
+        if new_value:
+            v = new_value.lower()
+            if v in CycladesComputeClient.CONSOLE_TYPES:
+                self._value = v
+            else:
+                raise CLIInvalidArgument(
+                    'Invalid console type %s' % new_value, details=[
+                        'Valid console types: %s' % (
+                            ', '.join(CycladesComputeClient.CONSOLE_TYPES)), ])
+
+
 @command(server_cmds)
 class server_console(_CycladesInit, OptionalOutput):
     """Create a VNC console and show connection information"""
+
+    arguments = dict(
+        console_type=ConsoleTypeArgument(
+            'Valid values: %s Default: %s' % (
+                ', '.join(CycladesComputeClient.CONSOLE_TYPES),
+                CycladesComputeClient.CONSOLE_TYPES[0]),
+            '--type'),
+    )
 
     @errors.Generic.all
     @errors.Cyclades.connection
     @errors.Cyclades.server_id
     def _run(self, server_id):
         self.error('The following credentials will be invalidated shortly')
-        self.print_(self.client.get_server_console(server_id), self.print_dict)
+        ctype = self['console_type'] or CycladesComputeClient.CONSOLE_TYPES[0]
+        self.print_(
+            self.client.get_server_console(server_id, ctype), self.print_dict)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
