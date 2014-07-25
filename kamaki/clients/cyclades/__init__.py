@@ -41,6 +41,8 @@ from kamaki.clients import ClientError, Waiter
 class CycladesComputeClient(CycladesComputeRestClient, Waiter):
     """Synnefo Cyclades Compute API client"""
 
+    CONSOLE_TYPES = ('vnc', 'vnc-ws', 'vnc-wss')
+
     def create_server(
             self, name, flavor_id, image_id,
             metadata=None, personality=None, networks=None, project_id=None,
@@ -133,13 +135,17 @@ class CycladesComputeClient(CycladesComputeRestClient, Waiter):
         r = self.servers_action_post(server_id, json_data=req, success=202)
         return r.headers
 
-    def get_server_console(self, server_id):
+    def get_server_console(self, server_id, console_type='vnc'):
         """
         :param server_id: integer (str or int)
 
+        :param console_type: str (vnc, vnc-ws, vnc-wss, default: vnc)
+
         :returns: (dict) info to set a VNC connection to virtual server
         """
-        req = {'console': {'type': 'vnc'}}
+        ct = self.CONSOLE_TYPES
+        assert console_type in ct, '%s not in %s' % (console_type, ct)
+        req = {'console': {'type': console_type}}
         r = self.servers_action_post(server_id, json_data=req, success=200)
         return r.json['console']
 
