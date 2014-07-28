@@ -834,7 +834,12 @@ class server_shutdown(_CycladesInit,  _ServerWait):
         self._run(server_id=server_id)
 
 
+_basic_cons = CycladesComputeClient.CONSOLE_TYPES
+
+
 class ConsoleTypeArgument(ValueArgument):
+
+    TRANSLATE = {'no-vnc': 'vnc-ws', 'no-vnc-encrypted': 'vnc-wss'}
 
     @property
     def value(self):
@@ -842,15 +847,24 @@ class ConsoleTypeArgument(ValueArgument):
 
     @value.setter
     def value(self, new_value):
+        global _basic_cons
         if new_value:
             v = new_value.lower()
-            if v in CycladesComputeClient.CONSOLE_TYPES:
+            v = self.TRANSLATE.get(v, v)
+            if v in _basic_cons:
                 self._value = v
             else:
+                ctypes = set(_basic_cons).difference(self.TRANSLATE.values())
+                ctypes = list(ctypes) + [
+                    '%s (aka %s)' % (a, t) for t, a in self.TRANSLATE.items()]
                 raise CLIInvalidArgument(
                     'Invalid console type %s' % new_value, details=[
-                        'Valid console types: %s' % (
-                            ', '.join(CycladesComputeClient.CONSOLE_TYPES)), ])
+                        'Valid console types: %s' % (', '.join(ctypes)), ])
+
+
+_translated = ConsoleTypeArgument.TRANSLATE
+VALID_CONSOLE_TYPES = list(set(_basic_cons).difference(_translated.values()))
+VALID_CONSOLE_TYPES += ['%s (aka %s)' % (a, t) for t, a in _translated.items()]
 
 
 @command(server_cmds)
@@ -860,8 +874,7 @@ class server_console(_CycladesInit, OptionalOutput):
     arguments = dict(
         console_type=ConsoleTypeArgument(
             'Valid values: %s Default: %s' % (
-                ', '.join(CycladesComputeClient.CONSOLE_TYPES),
-                CycladesComputeClient.CONSOLE_TYPES[0]),
+                ', '.join(VALID_CONSOLE_TYPES), VALID_CONSOLE_TYPES[0]),
             '--type'),
     )
 
@@ -870,7 +883,7 @@ class server_console(_CycladesInit, OptionalOutput):
     @errors.Cyclades.server_id
     def _run(self, server_id):
         self.error('The following credentials will be invalidated shortly')
-        ctype = self['console_type'] or CycladesComputeClient.CONSOLE_TYPES[0]
+        ctype = self['console_type'] or VALID_CONSOLE_TYPES[0]
         self.print_(
             self.client.get_server_console(server_id, ctype), self.print_dict)
 
