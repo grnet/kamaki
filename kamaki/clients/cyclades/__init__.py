@@ -76,7 +76,7 @@ class CycladesComputeClient(CycladesComputeRestClient, Waiter):
         metadata = metadata or dict()
         for key in ('os', 'users'):
             try:
-                metadata[key] = image['metadata'][key]
+                metadata.setdefault(key, image['metadata'][key])
             except KeyError:
                 pass
 

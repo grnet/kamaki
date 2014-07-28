@@ -422,6 +422,10 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
             'so kamaki is oblivious to them',
             '--no-network'),
         project_id=ValueArgument('Assign server to project', '--project-id'),
+        metadata=KeyValueArgument(
+            'Add custom metadata in key=value form (can be repeated). '
+            'Overwrites metadata defined otherwise (i.e., image).',
+            ('-m', '--metadata'))
     )
     required = ('server_name', 'flavor_id', 'image_id')
 
@@ -435,6 +439,7 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
             image_id=image_id,
             project_id=self['project_id'],
             personality=self['personality'],
+            metadata=self['metadata'],
             networks=networks) for i in range(1, 1 + size)]
         if size == 1:
             return [self.client.create_server(**servers[0])]
