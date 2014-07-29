@@ -205,6 +205,14 @@ class ResponseManager(TestCase):
         self.assertEqual(self.RM.json, FakeResp.HEADERS)
         self.assertTrue(isinstance(perform.call_args[0][0], self.HTTPC))
 
+        #  Check if some control characters are escaped
+        sample = dict(k1='Do not \b\b\b\b\b\b\bescape this', k2='Escape \nit')
+        exp = dict(
+            k1='Do not \\b\\b\\b\\b\\b\\b\\bescape this', k2='Escape \\nit')
+        FakeResp.READ = dumps(sample)
+        self.RM._request_performed = False
+        self.assertEqual(self.RM.json, exp)
+
     @patch('kamaki.clients.RequestManager.perform', return_value=FakeResp())
     def test_all(self, perform):
         self.assertEqual(self.RM.content, FakeResp.READ)
