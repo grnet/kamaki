@@ -13,7 +13,7 @@ Synopsis
 Description
 -----------
 
-:program:`kamaki` is a simple, yet intuitive, command-line tool for managing 
+:program:`kamaki` is a simple, yet intuitive, command-line tool for managing
 clouds. It can be used in three forms: as an interactive shell
 (`kamaki-shell`), as a command line tool (`kamaki`) or as a clients API for
 other applications (`kamaki.clients`).
@@ -250,7 +250,7 @@ server
 * start     Start an existing virtual server
 * shutdown  Shutdown an active virtual server
 * delete    Delete a virtual server
-* console   Create a VMC console and show connection information
+* console   Create a VNC console and show connection information
 * wait      Wait for server to finish [BUILD, STOPPED, REBOOT, ACTIVE]
 
 flavor

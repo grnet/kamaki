@@ -496,10 +496,20 @@ def main(func):
     def wrap():
         try:
             exe = basename(argv[0])
-            internal_argv = [arg.decode(pref_enc) for arg in argv]
-            for arg in reversed(internal_argv):
-                argv.insert(0, arg)
-                argv.pop()
+            internal_argv = []
+            for i, a in enumerate(argv):
+                try:
+                    internal_argv.append(a.decode(pref_enc))
+                except UnicodeDecodeError as ude:
+                    raise CLIError(
+                        'Invalid encoding in command', importance=3, details=[
+                        'The invalid term is #%s (with "%s" being 0)' % (
+                            i, exe),
+                        'Its encoding is invalid with current locale settings '
+                        '(%s)' % pref_enc,
+                        '( %s )' % ude])
+            for i, a in enumerate(internal_argv):
+                argv[i] = a
 
             _config_arg = ConfigArgument('Path to config file')
             parser = ArgumentParseManager(exe, arguments=dict(

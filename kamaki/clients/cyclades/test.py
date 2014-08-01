@@ -229,11 +229,14 @@ class CycladesComputeClient(TestCase):
     def test_get_server_console(self, SP):
         cnsl = dict(console=dict(info1='i1', info2='i2', info3='i3'))
         FR.json = cnsl
-        vm_id = vm_recv['server']['id']
-        r = self.client.get_server_console(vm_id)
-        SP.assert_called_once_with(
-            vm_id, json_data=dict(console=dict(type='vnc')), success=200)
-        self.assert_dicts_are_equal(r, cnsl['console'])
+        vm_id, foo = vm_recv['server']['id'], self.client.get_server_console
+        self.assertRaises(AssertionError, foo, vm_id, None)
+        self.assertRaises(AssertionError, foo, vm_id, 'Invalid console type')
+        for ctype in self.client.CONSOLE_TYPES:
+            r = foo(vm_id, ctype)
+            self.assertEqual(SP.mock_calls[-1], call(
+                vm_id, json_data=dict(console=dict(type=ctype)), success=200))
+            self.assert_dicts_are_equal(r, cnsl['console'])
 
 
 clients_pkg = 'kamaki.clients.Client'

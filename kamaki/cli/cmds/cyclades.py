@@ -422,6 +422,10 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
             'so kamaki is oblivious to them',
             '--no-network'),
         project_id=ValueArgument('Assign server to project', '--project-id'),
+        metadata=KeyValueArgument(
+            'Add custom metadata in key=value form (can be repeated). '
+            'Overwrites metadata defined otherwise (i.e., image).',
+            ('-m', '--metadata'))
     )
     required = ('server_name', 'flavor_id', 'image_id')
 
@@ -435,6 +439,7 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
             image_id=image_id,
             project_id=self['project_id'],
             personality=self['personality'],
+            metadata=self['metadata'],
             networks=networks) for i in range(1, 1 + size)]
         if size == 1:
             return [self.client.create_server(**servers[0])]
@@ -519,12 +524,12 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
                 self._flavor_exists(flavor_id=self['flavor_id'])
                 self._image_exists(image_id=self['image_id'])
             if ce.status in (404, 400, 409):
-                for net in self['network_configuration']:
+                for net in self['network_configuration'] or []:
                     self._network_exists(network_id=net['uuid'])
                     if 'fixed_ip' in net:
                         self._ip_ready(net['fixed_ip'], net['uuid'], ce)
             if self['project_id'] and ce.status in (400, 403, 404):
-                self._project_id_exists(project=self['project_id'])
+                self._project_id_exists(project_id=self['project_id'])
             raise
 
     def main(self):
@@ -684,7 +689,7 @@ class server_reassign(_CycladesInit, OptionalOutput):
             self.client.reassign_server(server_id, self['project_id'])
         except ClientError as ce:
             if ce.status in (400, 403, 404):
-                self._project_id_exists(project=self['project_id'])
+                self._project_id_exists(project_id=self['project_id'])
             raise
 
     def main(self, server_id):
@@ -829,16 +834,58 @@ class server_shutdown(_CycladesInit,  _ServerWait):
         self._run(server_id=server_id)
 
 
+_basic_cons = CycladesComputeClient.CONSOLE_TYPES
+
+
+class ConsoleTypeArgument(ValueArgument):
+
+    TRANSLATE = {'no-vnc': 'vnc-ws', 'no-vnc-encrypted': 'vnc-wss'}
+
+    @property
+    def value(self):
+        return getattr(self, '_value', None)
+
+    @value.setter
+    def value(self, new_value):
+        global _basic_cons
+        if new_value:
+            v = new_value.lower()
+            v = self.TRANSLATE.get(v, v)
+            if v in _basic_cons:
+                self._value = v
+            else:
+                ctypes = set(_basic_cons).difference(self.TRANSLATE.values())
+                ctypes = list(ctypes) + [
+                    '%s (aka %s)' % (a, t) for t, a in self.TRANSLATE.items()]
+                raise CLIInvalidArgument(
+                    'Invalid console type %s' % new_value, details=[
+                        'Valid console types: %s' % (', '.join(ctypes)), ])
+
+
+_translated = ConsoleTypeArgument.TRANSLATE
+VALID_CONSOLE_TYPES = list(set(_basic_cons).difference(_translated.values()))
+VALID_CONSOLE_TYPES += ['%s (aka %s)' % (a, t) for t, a in _translated.items()]
+
+
 @command(server_cmds)
 class server_console(_CycladesInit, OptionalOutput):
-    """Create a VMC console and show connection information"""
+    """Create a VNC console and show connection information"""
+
+    arguments = dict(
+        console_type=ConsoleTypeArgument(
+            'Valid values: %s Default: %s' % (
+                ', '.join(VALID_CONSOLE_TYPES), VALID_CONSOLE_TYPES[0]),
+            '--type'),
+    )
 
     @errors.Generic.all
     @errors.Cyclades.connection
     @errors.Cyclades.server_id
     def _run(self, server_id):
         self.error('The following credentials will be invalidated shortly')
-        self.print_(self.client.get_server_console(server_id), self.print_dict)
+        ctype = self['console_type'] or VALID_CONSOLE_TYPES[0]
+        self.print_(
+            self.client.get_server_console(server_id, ctype), self.print_dict)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
