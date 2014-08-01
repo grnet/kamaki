@@ -66,6 +66,12 @@ project (Astakos)
     terminate     Terminate a project (special privileges needed)
     application   Application management commands
     reinstate     Reinstate a terminated project (special privileges needed)
+    join          Join a project
+    dismiss       Dismiss your denied application
+    deny          Deny an application (special privileges needed)
+    enroll        Enroll a user to a project
+    cancel        Cancel your application
+    approve       Approve an application (special privileges needed)
 
 membership (Astakos)
 --------------------
@@ -73,8 +79,6 @@ membership (Astakos)
 .. code-block:: text
 
     info    Details on a membership
-    enroll  Enroll somebody to a project you manage
-    join    Join a project
     list    List all memberships
     accept  Accept a membership for a project you manage
     leave   Leave a project you have membership to
@@ -88,7 +92,6 @@ quota (Account/Astakos)
 .. code-block:: text
 
     list          Get user quotas
-    info          Get quota for a service (cyclades, pithos, astakos)
 
 resource (Astakos)
 ------------------
@@ -211,7 +214,7 @@ server (Compute/Cyclades)
     start     Start an existing virtual server
     shutdown  Shutdown an active virtual server
     delete    Delete a virtual server
-    console   Create a VMC console and show connection information
+    console   Create a VNC console and show connection information
     wait      Wait for server to finish [BUILD, STOPPED, REBOOT, ACTIVE]
 
 Showcase: Create a server
@@ -365,7 +368,7 @@ Showcase: Connect a network to a VM
     11688 (An Ubuntu server)
 
     * Try network-connect (to get help) *
-    [network]: connect 
+    [network]: connect
     Syntax error
     usage: connect <network id> --device-id <DEVICE_ID> [-s] [-h] [-i] [--config CONFIG]
 
@@ -402,12 +405,12 @@ Showcase: Connect a network to a VM
       updated :  2012-11-23T17:18:25.095225+00:00
 
     * Get connectivity details on VM with id 11687 *
-    [network]: /server info 11687 --nics 
+    [network]: /server info 11687 --nics
     nic-11687-1
-        ipv4       :  192.168.1.1
-        ipv6       :  None
-        mac_address:  aa:0f:c2:0b:0e:85
-        network_id :  1409
+        ipv4           :  192.168.1.1
+        ipv6           :  None
+        mac_address    :  aa:0f:c2:0b:0e:85
+        network_id     :  1409
         firewallProfile:  DISABLED
     nic-11687-0
         ipv4           :  83.212.106.111
@@ -416,6 +419,57 @@ Showcase: Connect a network to a VM
         network_id     :  1369
 
 .. Note:: In kamaki shell, / is used to access top-level command groups while working in command group contexts
+
+volume (Block Storage)
+----------------------
+
+.. code-block:: text
+
+    info        Get details about a volume
+    list        List volumes
+    create      Create a new volume
+    modify      Modify a volumes' properties
+    reassign    Reassign volume to a different project
+    type        Get volume type details
+    types       List volume types
+    delete      Delete a volume
+
+Showcase: Create a volume
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: console
+
+    $ kamaki volume create --server-id=11687 --name='Small Volume' --size=2
+    id: v0lum31d
+    name: Small Volume
+    size: 2
+    ...
+    $ kamaki volume list
+    v0lum31d   Small Volume
+
+snapshot (Block Storage)
+------------------------
+
+.. code-block:: text
+
+    info    Get details about a snapshot
+    list    List snapshots
+    create  Create a new snapshot
+    modify  Modify a snapshots' properties
+    delete  Delete a snapshot
+
+Showcase: Create a snapshot
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: console
+
+    $ kamaki snapshot create --volume-id=v0lum31d --name='Small Snapshot'
+    id: sn4p5h071d
+    name: Small Snapshot
+    ...
+    $ kamaki snapshot list
+    sn4p5h071d   Small Snapshot
+    ...
 
 container (Storage/Pithos+)
 ---------------------------
@@ -492,7 +546,7 @@ Showcase: Upload and download a file
     [file]: /container create mycont2
 
 
-    * List accessible containers *    
+    * List accessible containers *
     [file]: /container list
     1. mycont1 (0B, 0 objects)
     2. mycont2 (0B, 0 objects)

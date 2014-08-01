@@ -1,4 +1,4 @@
-# Copyright 2013 GRNET S.A. All rights reserved.
+# Copyright 2013-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -39,6 +39,7 @@ from tempfile import NamedTemporaryFile
 from io import StringIO
 
 from kamaki.cli.config import HEADER
+from kamaki.cli import errors
 
 
 def _2steps_gen(limit=2):
@@ -121,8 +122,8 @@ class Config(TestCase):
         c_remove_section_num, gen_call = 0, [call('a'), call('b')]
         for path, with_defaults in product((None, '/a/path'), (True, False)):
             with patch(
-                    'kamaki.cli.config.Config._cloud_name',
-                    return_value=_2value_gen.next()) as _cloud_name:
+                    'kamaki.cli.config.Config.cloud_name',
+                    return_value=_2value_gen.next()) as cloud_name:
                 cnf = Config(path=path, with_defaults=with_defaults)
                 self.assertTrue(isinstance(cnf, RawConfigParser))
                 cpath = path or os.environ.get(CONFIG_ENV, CONFIG_PATH)
@@ -137,7 +138,7 @@ class Config(TestCase):
                 self.assertEqual(len(c_sections.mock_calls), c_sections_num)
                 self.assertEqual(c_sections.mock_calls[-1], call())
 
-                self.assertEqual(_cloud_name.mock_calls, gen_call)
+                self.assertEqual(cloud_name.mock_calls, gen_call)
 
                 r = _2value_gen.next()
                 if r:
@@ -154,10 +155,10 @@ class Config(TestCase):
                 self.assertEqual(
                     len(c_remove_section.mock_calls), c_remove_section_num)
 
-    def test__cloud_name(self):
+    def test_cloud_name(self):
         from kamaki.cli.config import (
             Config, CLOUD_PREFIX, InvalidCloudNameError)
-        cn = Config._cloud_name
+        cn = Config.cloud_name
         self.assertEqual(cn('non%s name' % CLOUD_PREFIX), None)
         for invalid in ('"!@#$%^&())_"', '"a b c"', u'"\xce\xcd"', 'naked'):
             self.assertRaises(
@@ -197,10 +198,8 @@ class Config(TestCase):
 
         with make_file(content2) as f:
             _cnf = Config(path=f.name)
-            self.assertEqual([], _cnf.rescue_old_file(err=err))
-            self.assertEqual(
-                '... rescue global.url => cloud.default.url\n', err.getvalue())
-            self.assertEqual(sample, _cnf.get_cloud('default', 'url'))
+            self.assertRaises(
+                errors.CLISyntaxError, _cnf.rescue_old_file, err=err)
         del _cnf
 
         content3 = list(content0)
@@ -209,12 +208,8 @@ class Config(TestCase):
 
         with make_file(content3) as f:
             _cnf = Config(path=f.name)
-            self.assertEqual([], _cnf.rescue_old_file(err=err))
-            self.assertEqual(
-                2 * '... rescue global.url => cloud.default.url\n',
-                err.getvalue())
-            self.assertEqual(
-                'http://example2.com', _cnf.get_cloud('default', 'url'))
+            self.assertRaises(
+                errors.CLISyntaxError, _cnf.rescue_old_file, err=err)
         del _cnf
 
         content4 = list(content0)
@@ -259,7 +254,7 @@ class Config(TestCase):
         with make_file([]) as f:
             with make_log_file() as logf:
                 _cnf = Config(path=f.name)
-                self.assertEqual(0.9, _cnf.guess_version())
+                self.assertEqual(0.12, _cnf.guess_version())
                 exp = 'All heuristics failed, cannot decide\n'
                 logf.file.seek(- len(exp), 2)
                 self.assertEqual(exp, logf.read())
@@ -269,10 +264,7 @@ class Config(TestCase):
         with make_file(content0) as f:
             with make_log_file() as logf:
                 _cnf = Config(path=f.name)
-                self.assertEqual(0.9, _cnf.guess_version())
-                exp = '... found cloud "demo"\n'
-                logf.seek(- len(exp), 2)
-                self.assertEqual(exp, logf.read())
+                self.assertEqual(0.10, _cnf.guess_version())
 
         for term in ('url', 'token'):
             content1 = list(content0)
@@ -282,7 +274,7 @@ class Config(TestCase):
                 with make_log_file() as logf:
                     _cnf = Config(path=f.name)
                     self.assertEqual(0.8, _cnf.guess_version())
-                    exp = '..... config file has an old global section\n'
+                    exp = 'config file has an old global section\n'
                     logf.seek(- len(exp), 2)
                     self.assertEqual(exp, logf.read())
 
@@ -385,15 +377,15 @@ class Config(TestCase):
         _cnf = Config(path=self.f.name)
 
         with patch(
-                'kamaki.cli.config.Config._cloud_name',
-                return_value='cn') as _cloud_name:
+                'kamaki.cli.config.Config.cloud_name',
+                return_value='cn') as cloud_name:
             with patch(
                     'kamaki.cli.config.Config.set_cloud',
                     return_value='sc') as set_cloud:
                 self.assertEqual(
                     'sc', _cnf.set('%s.sec' % CLOUD_PREFIX, 'opt', 'val'))
                 self.assertEqual(
-                    _cloud_name.mock_calls[-1],
+                    cloud_name.mock_calls[-1],
                     call('%s "sec"' % CLOUD_PREFIX))
                 self.assertEqual(
                     set_cloud.mock_calls[-1], call('cn', 'opt', 'val'))

@@ -1,4 +1,28 @@
-Copyright 2011-2014 GRNET S.A. All rights reserved.
+./kamaki
+========
+
+Overview
+--------
+
+./kamaki is a multipurpose, interactive command-line tool, and also a
+client development library for managing OpenStack clouds.
+
+As a development library, it implements the OpenStack APIs, along with the
+custom extensions introduced by [Synnefo](http://www.synnefo.org).
+
+./kamaki is open source and released under a 2-clause BSD License.
+
+Project Page
+------------
+
+Please see the [official Synnefo site](http://www.synnefo.org) and the
+[Synnefo documentation](http://www.synnefo.org) for more information.
+
+
+Copyright and license
+=====================
+
+Copyright (C) 2011-2014 GRNET S.A. All rights reserved.
 
 Redistribution and use in source and binary forms, with or
 without modification, are permitted provided that the following
@@ -16,7 +40,7 @@ conditions are met:
 THIS SOFTWARE IS PROVIDED BY GRNET S.A. ``AS IS'' AND ANY EXPRESS
 OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL GRNET S.A OR
+PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL GRNET S.A. OR
 CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
 SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
 LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
@@ -30,3 +54,4 @@ The views and conclusions contained in the software and
 documentation are those of the authors and should not be
 interpreted as representing official policies, either expressed
 or implied, of GRNET S.A.
+

@@ -13,7 +13,7 @@ Synopsis
 Description
 -----------
 
-:program:`kamaki` is a simple, yet intuitive, command-line tool for managing 
+:program:`kamaki` is a simple, yet intuitive, command-line tool for managing
 clouds. It can be used in three forms: as an interactive shell
 (`kamaki-shell`), as a command line tool (`kamaki`) or as a clients API for
 other applications (`kamaki.clients`).
@@ -83,6 +83,12 @@ ip
 port
     Networking API network Commands
 
+volume
+    Block Storage API volume commands
+
+snapshot
+    Block Storage API snapshot commands
+
 config
     Kamaki option and cloud configuration
 
@@ -142,15 +148,18 @@ project
 * modify        Modify a project
 * terminate     Terminate a project (special privileges needed)
 * application   Application management commands
-* membership    Project membership management commands
 * reinstate     Reinstate a terminated project (special privileges needed)
+* join          Join a project
+* dismiss       Dismiss your denied application
+* deny          Deny an application (special privileges needed)
+* enroll        Enroll somebody to a project you manage
+* cancel        Cancel a project application
+* approve       Approve an application (special privileges needed)
 
 membership
 **********
 
 * info      Details on a membership
-* enroll    Enroll somebody to a project you manage
-* join      Join a project
 * list      List all memberships
 * accept    Accept a membership for a project you manage
 * leave     Leave a project you have membership to
@@ -162,7 +171,27 @@ quota
 *****
 
 * list          Get user quotas
-* info          Get quota for a service (cyclades, pithos, astakos)
+
+volume
+******
+
+* info      Get details about a volume
+* list      List volumes
+* create    Create a new volume
+* modify    Modify a volumes' properties
+* reassign  Reassign volume to a different project
+* type      Get volume type details
+* types     List volume types
+* delete    Delete a volume
+
+snapshot
+********
+
+* info      Get details about a snapshot
+* list      List snapshots
+* create    Create a new snapshot
+* modify    Modify a snapshots' properties
+* delete    Delete a snapshot
 
 resource
 ********
@@ -221,7 +250,7 @@ server
 * start     Start an existing virtual server
 * shutdown  Shutdown an active virtual server
 * delete    Delete a virtual server
-* console   Create a VMC console and show connection information
+* console   Create a VNC console and show connection information
 * wait      Wait for server to finish [BUILD, STOPPED, REBOOT, ACTIVE]
 
 flavor

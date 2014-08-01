@@ -1,4 +1,4 @@
-# Copyright 2012-2013 GRNET S.A. All rights reserved.
+# Copyright 2012-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -36,6 +36,7 @@ from kamaki.clients.utils import path4url
 
 
 class PithosRestClient(StorageClient):
+    service_type = 'object-store'
 
     def account_head(
             self,
@@ -59,6 +60,8 @@ class PithosRestClient(StorageClient):
 
         :returns: ConnectionResponse
         """
+        self.response_headers = ['Last-Modified', ]
+        self.response_header_prefices = ['X-Account-', ]
 
         self._assert_account()
         path = path4url(self.account)
@@ -68,7 +71,11 @@ class PithosRestClient(StorageClient):
         self.set_header('If-Unmodified-Since', if_unmodified_since)
 
         success = kwargs.pop('success', 204)
-        return self.head(path, *args, success=success, **kwargs)
+        r = self.head(path, *args, success=success, **kwargs)
+        self._unquote_header_keys(
+            r.headers,
+            ('x-account-group-', 'x-account-policy-', 'x-account-meta-'))
+        return r
 
     def account_get(
             self,
@@ -110,6 +117,8 @@ class PithosRestClient(StorageClient):
         :returns: ConnectionResponse
         """
         self._assert_account()
+        self.response_headers = ['Last-Modified', ]
+        self.response_header_prefices = ['X-Account-', ]
 
         self.set_param('limit', limit, iff=limit)
         self.set_param('marker', marker, iff=marker)
@@ -155,10 +164,11 @@ class PithosRestClient(StorageClient):
 
         :returns: ConnectionResponse
         """
-
         self._assert_account()
 
         self.set_param('update', '', iff=update)
+        self.request_header_prefices_to_quote = [
+            'x-account-meta-', 'x-account-group-']
 
         if groups:
             for group, usernames in groups.items():
@@ -173,6 +183,8 @@ class PithosRestClient(StorageClient):
                 self.set_header('X-Account-Meta-' + metaname, metaval)
         self.set_header('X-Account-Policy-Quota', quota)
         self.set_header('X-Account-Policy-Versioning', versioning)
+        self._quote_header_keys(
+            self.headers, ('x-account-group-', 'x-account-meta-'))
 
         path = path4url(self.account)
         success = kwargs.pop('success', 202)
@@ -200,8 +212,9 @@ class PithosRestClient(StorageClient):
 
         :returns: ConnectionResponse
         """
-
         self._assert_container()
+        self.response_headers = ['Last-Modified', ]
+        self.response_header_prefices = ['X-Container-', ]
 
         self.set_param('until', until, iff=until)
 
@@ -210,7 +223,10 @@ class PithosRestClient(StorageClient):
 
         path = path4url(self.account, self.container)
         success = kwargs.pop('success', 204)
-        return self.head(path, *args, success=success, **kwargs)
+        r = self.head(path, *args, success=success, **kwargs)
+        self._unquote_header_keys(
+            r.headers, ('x-container-policy-', 'x-container-meta-'))
+        return r
 
     def container_get(
             self,
@@ -268,6 +284,8 @@ class PithosRestClient(StorageClient):
         """
 
         self._assert_container()
+        self.response_headers = ['Last-Modified', ]
+        self.response_header_prefices = ['X-Container-', ]
 
         self.set_param('limit', limit, iff=limit)
         self.set_param('marker', marker, iff=marker)
@@ -292,7 +310,7 @@ class PithosRestClient(StorageClient):
 
     def container_put(
             self,
-            quota=None, versioning=None, metadata=None,
+            quota=None, versioning=None, project_id=None, metadata=None,
             *args, **kwargs):
         """ Full Pithos+ PUT at container level
 
@@ -308,12 +326,18 @@ class PithosRestClient(StorageClient):
         :returns: ConnectionResponse
         """
         self._assert_container()
+        self.request_header_prefices_to_quote = ['x-container-meta-', ]
 
         self.set_header('X-Container-Policy-Quota', quota)
         self.set_header('X-Container-Policy-Versioning', versioning)
+        if project_id is not None:
+            self.set_header('X-Container-Policy-Project', project_id)
+
         if metadata:
             for metaname, metaval in metadata.items():
                 self.set_header('X-Container-Meta-' + metaname, metaval)
+        self._quote_header_keys(
+            self.headers, ('x-container-policy-', 'x-container-meta-'))
 
         path = path4url(self.account, self.container)
         success = kwargs.pop('success', (201, 202))
@@ -325,6 +349,7 @@ class PithosRestClient(StorageClient):
             format='json',
             quota=None,
             versioning=None,
+            project_id=None,
             metadata=None,
             content_type=None,
             content_length=None,
@@ -356,18 +381,24 @@ class PithosRestClient(StorageClient):
         :returns: ConnectionResponse
         """
         self._assert_container()
+        self.request_header_prefices_to_quote = ['x-container-meta-', ]
 
         self.set_param('update', '', iff=update)
         self.set_param('format', format, iff=format)
 
         self.set_header('X-Container-Policy-Quota', quota)
         self.set_header('X-Container-Policy-Versioning', versioning)
+        if project_id is not None:
+            self.set_header('X-Container-Policy-Project', project_id)
+
         if metadata:
             for metaname, metaval in metadata.items():
                 self.set_header('X-Container-Meta-' + metaname, metaval)
         self.set_header('Content-Type', content_type)
         self.set_header('Content-Length', content_length)
         self.set_header('Transfer-Encoding', transfer_encoding)
+        self._quote_header_keys(
+            self.headers, ('x-container-policy-', 'x-container-meta-'))
 
         path = path4url(self.account, self.container)
         success = kwargs.pop('success', 202)
@@ -423,8 +454,16 @@ class PithosRestClient(StorageClient):
 
         :returns: ConnectionResponse
         """
-
         self._assert_container()
+        self.response_headers = [
+            'ETag',
+            'Content-Length',
+            'Content-Type',
+            'Last-Modified',
+            'Content-Encoding',
+            'Content-Disposition',
+        ]
+        self.response_header_prefices = ['X-Object-', ]
 
         self.set_param('version', version, iff=version)
 
@@ -435,7 +474,9 @@ class PithosRestClient(StorageClient):
 
         path = path4url(self.account, self.container, obj)
         success = kwargs.pop('success', 200)
-        return self.head(path, *args, success=success, **kwargs)
+        r = self.head(path, *args, success=success, **kwargs)
+        self._unquote_header_keys(r.headers, 'x-object-meta-')
+        return r
 
     def object_get(
             self, obj,
@@ -479,8 +520,17 @@ class PithosRestClient(StorageClient):
 
         :returns: ConnectionResponse
         """
-
         self._assert_container()
+        self.response_headers = [
+            'ETag',
+            'Content-Length',
+            'Content-Type',
+            'Last-Modified',
+            'Content-Encoding',
+            'Content-Disposition',
+            'Content-Range',
+        ]
+        self.response_header_prefices = ['X-Object-', ]
 
         self.set_param('format', format, iff=format)
         self.set_param('hashmap', hashmap, iff=hashmap)
@@ -495,7 +545,9 @@ class PithosRestClient(StorageClient):
 
         path = path4url(self.account, self.container, obj)
         success = kwargs.pop('success', 200)
-        return self.get(path, *args, success=success, **kwargs)
+        r = self.get(path, *args, success=success, **kwargs)
+        self._unquote_header_keys(r.headers, ('x-object-meta-'))
+        return r
 
     def object_put(
             self, obj,
@@ -574,8 +626,10 @@ class PithosRestClient(StorageClient):
 
         :returns: ConnectionResponse
         """
-
         self._assert_container()
+        self.response_headers = ['ETag', 'X-Object-Version', ]
+        self.request_headers_to_quote = ['x-copy-from', 'x-move-from', ]
+        self.request_header_prefices_to_quote = ['x-object-meta-', ]
 
         self.set_param('format', format, iff=format)
         self.set_param('hashmap', hashmap, iff=hashmap)
@@ -608,6 +662,7 @@ class PithosRestClient(StorageClient):
         if metadata:
             for key, val in metadata.items():
                 self.set_header('X-Object-Meta-' + key, val)
+        self._quote_header_keys(self.headers, ('x-object-meta-', ))
 
         path = path4url(self.account, self.container, obj)
         success = kwargs.pop('success', 201)
@@ -671,8 +726,19 @@ class PithosRestClient(StorageClient):
 
         :returns: ConnectionResponse
         """
-
         self._assert_container()
+        self.response_headers = [
+            'If-Match',
+            'If-None-Match',
+            'Destination',
+            'Destination-Account',
+            'Content-Type',
+            'Content-Encoding',
+            'Content-Disposition',
+            'X-Source-Version',
+        ]
+        self.response_header_prefices = ['X-Object-', ]
+        self.request_header_prefices_to_quote = ['x-object-meta-', ]
 
         self.set_param('format', format, iff=format)
         self.set_param('ignore_content_type', iff=ignore_content_type)
@@ -698,6 +764,7 @@ class PithosRestClient(StorageClient):
         if metadata:
             for key, val in metadata.items():
                 self.set_header('X-Object-Meta-' + key, val)
+        self._unquote_header_keys(self.headers, 'x-object-meta-')
 
         path = path4url(self.account, self.container, obj)
         success = kwargs.pop('success', 201)
@@ -759,8 +826,19 @@ class PithosRestClient(StorageClient):
 
         :returns: ConnectionResponse
         """
-
         self._assert_container()
+        self.response_headers = [
+            'If-Match',
+            'If-None-Match',
+            'Destination',
+            'Destination-Account',
+            'Content-Type',
+            'Content-Encoding',
+            'Content-Disposition',
+            'X-Source-Version',
+        ]
+        self.response_header_prefices = ['X-Object-', ]
+        self.request_header_prefices_to_quote = ['x-object-meta-', ]
 
         self.set_param('format', format, iff=format)
         self.set_param('ignore_content_type', iff=ignore_content_type)
@@ -780,6 +858,7 @@ class PithosRestClient(StorageClient):
         if metadata:
             for key, val in metadata.items():
                 self.set_header('X-Object-Meta-' + key, val)
+        self._unquote_header_keys(self.headers, 'x-object-meta-')
 
         path = path4url(self.account, self.container, object)
         success = kwargs.pop('success', 201)
@@ -858,8 +937,9 @@ class PithosRestClient(StorageClient):
 
         :returns: ConnectionResponse
         """
-
         self._assert_container()
+        self.response_headers = ['ETag', 'X-Object-Version']
+        self.request_header_prefices_to_quote = ['x-object-meta-', ]
 
         self.set_param('format', format, iff=format)
         self.set_param('update', '', iff=update)
@@ -885,6 +965,7 @@ class PithosRestClient(StorageClient):
         self.set_header('X-Object-Public', public, public is not None)
         for key, val in metadata.items():
             self.set_header('X-Object-Meta-' + key, val)
+        self._quote_header_keys(self.headers, ('x-object-meta-', ))
 
         path = path4url(self.account, self.container, obj)
         success = kwargs.pop('success', (202, 204))

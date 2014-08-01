@@ -332,7 +332,6 @@ class NetworkClient(NetworkRestClient, Waiter):
     def create_floatingip(
             self, floating_network_id,
             floating_ip_address='', port_id='', fixed_ip_address=''):
-        """Cyclades do not use port_id and fixed_ip_address"""
         floatingip = dict(floating_network_id=floating_network_id)
         if floating_ip_address:
             floatingip['floating_ip_address'] = floating_ip_address
