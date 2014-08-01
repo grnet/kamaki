@@ -138,7 +138,7 @@ The following refers to users of multiple Synnefo and/or Open Stack
 deployments. In the following, a Synnefo (or Open Stack) cloud deployment will
 be called **a cloud**.
 
-Multiple clouds can be configured and manager in a single  kamaki setup, since
+Multiple clouds can be configured and managed in a single  kamaki setup, since
 version 0.9. Each cloud corresponds to a Synnefo (or Open Stack) cloud
 deployment, with each deployment offering a single point of authentication (an
 **authentication URL** and **token** pair). Users can retrieve this information

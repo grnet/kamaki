@@ -37,6 +37,8 @@ from kamaki.cli.errors import (
 from kamaki.cli.utils import split_input, to_bytes
 
 from datetime import datetime as dtm
+import dateutil.tz
+import dateutil.parser
 from time import mktime
 from sys import stderr
 
@@ -179,9 +181,6 @@ class ConfigArgument(Argument):
         return self.value.get_cloud(cloud, option)
 
 
-_config_arg = ConfigArgument('Path to config file')
-
-
 class RuntimeConfigArgument(Argument):
     """Set a run-time setting option (not persistent)"""
 
@@ -234,6 +233,24 @@ class ValueArgument(Argument):
 
     def __init__(self, help='', parsed_name=None, default=None):
         super(ValueArgument, self).__init__(1, help, parsed_name, default)
+
+
+class BooleanArgument(ValueArgument):
+    """Can be true, false or None (Flag argument can only be true or None)"""
+
+    @property
+    def value(self):
+        return getattr(self, '_value', None)
+
+    @value.setter
+    def value(self, new_value):
+        if new_value:
+            v = new_value.lower()
+            if v not in ('true', 'false'):
+                raise CLIInvalidArgument(
+                    'Invalid value %s=%s' % (self.lvalue, new_value), details=[
+                    'Usage:', '%s=<true|false>' % self.lvalue])
+            self._value = bool(v == 'true')
 
 
 class CommaSeparatedListArgument(ValueArgument):
@@ -290,7 +307,7 @@ class DataSizeArgument(ValueArgument):
             limit = int(user_input)
         except ValueError:
             index = 0
-            digits = [str(num) for num in range(0, 10)] + ['.']
+            digits = ['%s' % num for num in range(0, 10)] + ['.']
             while user_input[index] in digits:
                 index += 1
             limit = user_input[:index]
@@ -339,9 +356,10 @@ class UserAccountArgument(ValueArgument):
 
 class DateArgument(ValueArgument):
 
-    DATE_FORMAT = '%a %b %d %H:%M:%S %Y'
-
-    INPUT_FORMATS = [DATE_FORMAT, '%d-%m-%Y', '%H:%M:%S %d-%m-%Y']
+    DATE_FORMATS = ['%a %b %d %H:%M:%S %Y', '%d-%m-%Y', '%H:%M:%S %d-%m-%Y']
+    INPUT_FORMATS = [
+        'YYYY-mm-dd', '"HH:MM:SS YYYY-mm-dd"', 'YYYY-mm-ddTHH:MM:SS+TMZ',
+        '"Day Mon dd HH:MM:SS YYYY"']
 
     @property
     def timestamp(self):
@@ -351,26 +369,40 @@ class DateArgument(ValueArgument):
     @property
     def formated(self):
         v = getattr(self, '_value', self.default)
-        return v.strftime(self.DATE_FORMAT) if v else None
+        return v.strftime(self.DATE_FORMATS[0]) if v else None
 
     @property
     def value(self):
         return self.timestamp
 
+    @property
+    def isoformat(self):
+        d = getattr(self, '_value', self.default)
+        if not d:
+            return None
+        if not d.tzinfo:
+            d = d.replace(tzinfo=dateutil.tz.tzlocal())
+        return d.isoformat()
+
     @value.setter
     def value(self, newvalue):
-        self._value = self.format_date(newvalue) if newvalue else self.default
+        if newvalue:
+            try:
+                self._value = dateutil.parser.parse(newvalue)
+            except Exception:
+                raise CLIInvalidArgument(
+                    'Invalid value "%s" for date argument %s' % (
+                        newvalue, self.lvalue),
+                    details=['Suggested formats:'] + self.INPUT_FORMATS)
 
     def format_date(self, datestr):
-        for format in self.INPUT_FORMATS:
+        for fmt in self.DATE_FORMATS:
             try:
-                t = dtm.strptime(datestr, format)
-            except ValueError:
+                return dtm.strptime(datestr, fmt)
+            except ValueError as ve:
                 continue
-            return t  # .strftime(self.DATE_FORMAT)
-        raiseCLIError(None, 'Date Argument Error', details=[
-            '%s not a valid date' % datestr,
-            'Correct formats:\n\t%s' % self.INPUT_FORMATS])
+        raise raiseCLIError(ve, 'Failed to format date', details=[
+            '%s could not be formated for HTTP headers' % datestr])
 
 
 class VersionArgument(FlagArgument):
@@ -514,21 +546,6 @@ class ProgressBarArgument(FlagArgument):
             mybar.finish()
 
 
-_arguments = dict(
-    config=_config_arg,
-    cloud=ValueArgument('Chose a cloud to connect to', ('--cloud')),
-    help=Argument(0, 'Show help message', ('-h', '--help')),
-    debug=FlagArgument('Include debug output', ('-d', '--debug')),
-    #include=FlagArgument(
-    #    'Include raw connection data in the output', ('-i', '--include')),
-    silent=FlagArgument('Do not output anything', ('-s', '--silent')),
-    verbose=FlagArgument('More info at response', ('-v', '--verbose')),
-    version=VersionArgument('Print current version', ('-V', '--version')),
-    options=RuntimeConfigArgument(
-        _config_arg, 'Override a config value', ('-o', '--options'))
-)
-
-
 #  Initial command line interface arguments
 
 
@@ -536,9 +553,8 @@ class ArgumentParseManager(object):
     """Manage (initialize and update) an ArgumentParser object"""
 
     def __init__(
-            self, exe,
-            arguments=None, required=None, syntax=None, description=None,
-            check_required=True):
+            self, exe, arguments,
+            required=None, syntax=None, description=None, check_required=True):
         """
         :param exe: (str) the basic command (e.g. 'kamaki')
 
@@ -569,11 +585,7 @@ class ArgumentParseManager(object):
             '%s <cmd_group> [<cmd_subbroup> ...] <cmd>' % exe)
         self.required, self.check_required = required, check_required
         self.parser.description = description or ''
-        if arguments:
-            self.arguments = arguments
-        else:
-            global _arguments
-            self.arguments = _arguments
+        self.arguments = arguments
         self._parser_modified, self._parsed, self._unparsed = False, None, None
         self.parse()
 

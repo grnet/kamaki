@@ -33,12 +33,12 @@
 
 from kamaki.cli import command
 from kamaki.cli.argument import FlagArgument
-from kamaki.cli.commands import _command_init, errors
-from kamaki.cli.command_tree import CommandTree
+from kamaki.cli.cmds import CommandInit, errors
+from kamaki.cli.cmdtree import CommandTree
 from kamaki.cli.errors import CLIError, CLISyntaxError
 
 config_cmds = CommandTree('config', 'Kamaki configurations')
-_commands = [config_cmds]
+namespaces = [config_cmds, ]
 
 about_options = '\nAbout options:\
     \n. syntax: [group.]option\
@@ -58,7 +58,7 @@ about_options = '\nAbout options:\
 
 
 @command(config_cmds)
-class config_list(_command_init):
+class config_list(CommandInit):
     """List all configuration options
     FAQ:
     Q: I haven't set any options!
@@ -67,7 +67,7 @@ class config_list(_command_init):
     A: Default options remain if not explicitly replaced or deleted
     """
 
-    @errors.generic.all
+    @errors.Generic.all
     def _run(self):
         for section in sorted(self.config.sections()):
             items = self.config.items(section)
@@ -84,12 +84,12 @@ class config_list(_command_init):
 
 
 @command(config_cmds)
-class config_get(_command_init):
+class config_get(CommandInit):
     """Show a configuration option"""
 
     __doc__ += about_options
 
-    @errors.generic.all
+    @errors.Generic.all
     def _run(self, option):
         section, sep, key = option.rpartition('.')
         if not sep:
@@ -118,12 +118,12 @@ class config_get(_command_init):
 
 
 @command(config_cmds)
-class config_set(_command_init):
+class config_set(CommandInit):
     """Set a configuration option"""
 
     __doc__ += about_options
 
-    @errors.generic.all
+    @errors.Generic.all
     def _run(self, option, value):
         section, sep, key = option.rpartition('.')
         prefix = 'cloud.'
@@ -152,7 +152,7 @@ class config_set(_command_init):
 
 
 @command(config_cmds)
-class config_delete(_command_init):
+class config_delete(CommandInit):
     """Delete a configuration option
     Default values are not removed by default. To alter this behavior in a
     session, use --default.
@@ -164,7 +164,7 @@ class config_delete(_command_init):
             '--default')
     )
 
-    @errors.generic.all
+    @errors.Generic.all
     def _run(self, option):
         section, sep, key = option.rpartition('.')
         section = section or 'global'

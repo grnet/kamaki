@@ -1,4 +1,4 @@
-# Copyright 2012-2013 GRNET S.A. All rights reserved.
+# Copyright 2012-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -38,66 +38,46 @@ from io import StringIO
 from pydoc import pager
 
 from kamaki.cli import command
-from kamaki.cli.command_tree import CommandTree
-from kamaki.cli.utils import filter_dicts_by_dict
+from kamaki.cli.cmdtree import CommandTree
+from kamaki.cli.utils import filter_dicts_by_dict, format_size
 from kamaki.clients.image import ImageClient
 from kamaki.clients.pithos import PithosClient
 from kamaki.clients import ClientError
 from kamaki.cli.argument import (
     FlagArgument, ValueArgument, RepeatableArgument, KeyValueArgument,
     IntArgument, ProgressBarArgument)
-from kamaki.cli.commands.cyclades import _init_cyclades
-from kamaki.cli.errors import (
-    raiseCLIError, CLIBaseUrlError, CLIInvalidArgument)
-from kamaki.cli.commands import _command_init, errors, addLogSettings
-from kamaki.cli.commands import (
-    _optional_output_cmd, _optional_json, _name_filter, _id_filter)
+from kamaki.cli.cmds.cyclades import _CycladesInit
+from kamaki.cli.errors import CLIError, raiseCLIError, CLIInvalidArgument
+from kamaki.cli.cmds import (
+    CommandInit, errors, client_log, OptionalOutput, NameFilter, IDFilter)
 
 
 image_cmds = CommandTree('image', 'Cyclades/Plankton API image commands')
 imagecompute_cmds = CommandTree(
     'imagecompute', 'Cyclades/Compute API image commands')
-_commands = [image_cmds, imagecompute_cmds]
+namespaces = [image_cmds, imagecompute_cmds]
 
 
 howto_image_file = [
-    'Kamaki commands to:',
-    ' get current user id: kamaki user info',
-    ' check available containers: kamaki container list',
-    ' create a new container: kamaki container create CONTAINER',
-    ' check container contents: kamaki file list /CONTAINER',
-    ' upload files: kamaki file upload IMAGE_FILE /CONTAINER[/PATH]',
-    ' register an image:',
-    '   kamaki image register --name=IMAGE_NAME --location=/CONTAINER/PATH']
+    'To get current user id', '  kamaki user info',
+    'To list all containers', '  kamaki container list',
+    'To create a new container', '  kamaki container create CONTAINER',
+    'To list container contents', '  kamaki file list /CONTAINER',
+    'To upload files', '  kamaki file upload FILE /CONTAINER[/PATH]',
+    'To register an image',
+    '  kamaki image register --name=IMAGE_NAME --location=/CONTAINER/PATH']
 
-about_image_id = ['To see a list of available image ids: /image list']
+about_image_id = ['To list all images', '  kamaki image list']
 
 
 log = getLogger(__name__)
 
 
-class _init_image(_command_init):
-    @errors.generic.all
-    @addLogSettings
+class _ImageInit(CommandInit):
+    @errors.Generic.all
+    @client_log
     def _run(self):
-        if getattr(self, 'cloud', None):
-            img_url = self._custom_url('image') or self._custom_url('plankton')
-            if img_url:
-                token = self._custom_token('image') or self._custom_token(
-                    'plankton') or self.config.get_cloud(self.cloud, 'token')
-                self.client = ImageClient(base_url=img_url, token=token)
-                return
-        if getattr(self, 'auth_base', False):
-            plankton_endpoints = self.auth_base.get_service_endpoints(
-                self._custom_type('image') or self._custom_type(
-                    'plankton') or 'image',
-                self._custom_version('image') or self._custom_version(
-                    'plankton') or '')
-            base_url = plankton_endpoints['publicURL']
-            token = self.auth_base.token
-        else:
-            raise CLIBaseUrlError(service='plankton')
-        self.client = ImageClient(base_url=base_url, token=token)
+        self.client = self.get_client(ImageClient, 'plankton')
 
     def main(self):
         self._run()
@@ -105,38 +85,7 @@ class _init_image(_command_init):
 
 # Plankton Image Commands
 
-
-def _validate_image_meta(json_dict, return_str=False):
-    """
-    :param json_dict" (dict) json-formated, of the form
-        {"key1": "val1", "key2": "val2", ...}
-
-    :param return_str: (boolean) if true, return a json dump
-
-    :returns: (dict) if return_str is not True, else return str
-
-    :raises TypeError, AttributeError: Invalid json format
-
-    :raises AssertionError: Valid json but invalid image properties dict
-    """
-    json_str = dumps(json_dict, indent=2)
-    for k, v in json_dict.items():
-        if k.lower() == 'properties':
-            for pk, pv in v.items():
-                prop_ok = not (isinstance(pv, dict) or isinstance(pv, list))
-                assert prop_ok, 'Invalid property value for key %s' % pk
-                key_ok = not (' ' in k or '-' in k)
-                assert key_ok, 'Invalid property key %s' % k
-            continue
-        meta_ok = not (isinstance(v, dict) or isinstance(v, list))
-        assert meta_ok, 'Invalid value for meta key %s' % k
-        meta_ok = ' ' not in k
-        assert meta_ok, 'Invalid meta key [%s]' % k
-        json_dict[k] = '%s' % v
-    return json_str if return_str else json_dict
-
-
-def _load_image_meta(filepath):
+def load_image_meta(filepath):
     """
     :param filepath: (str) the (relative) path of the metafile
 
@@ -149,39 +98,28 @@ def _load_image_meta(filepath):
     with open(path.abspath(filepath)) as f:
         meta_dict = load(f)
         try:
-            return _validate_image_meta(meta_dict)
+            for k, v in meta_dict.items():
+                if k.lower() == 'properties':
+                    for pk, pv in v.items():
+                        prop_ok = not isinstance(pv, (dict, list))
+                        assert prop_ok, 'Invalid property value (key %s)' % pk
+                        key_ok = not (' ' in k or '-' in k)
+                        assert key_ok, 'Invalid property key %s' % k
+                    continue
+                meta_ok = not isinstance(v, (dict, list))
+                assert meta_ok, 'Invalid value (meta key %s)' % k
+                meta_ok = ' ' not in k
+                assert meta_ok, 'Invalid meta key [%s]' % k
+                meta_dict[k] = '%s' % v
+            return meta_dict
         except AssertionError:
             log.debug('Failed to load properties from file %s' % filepath)
             raise
 
 
-def _validate_image_location(location):
-    """
-    :param location: (str) pithos://<user-id>/<container>/<image-path>
-
-    :returns: (<user-id>, <container>, <image-path>)
-
-    :raises AssertionError: if location is invalid
-    """
-    prefix = 'pithos://'
-    msg = 'Invalid prefix for location %s , try: %s' % (location, prefix)
-    assert location.startswith(prefix), msg
-    service, sep, rest = location.partition('://')
-    assert sep and rest, 'Location %s is missing user-id' % location
-    uuid, sep, rest = rest.partition('/')
-    assert sep and rest, 'Location %s is missing container' % location
-    container, sep, img_path = rest.partition('/')
-    assert sep and img_path, 'Location %s is missing image path' % location
-    return uuid, container, img_path
-
-
 @command(image_cmds)
-class image_list(_init_image, _optional_json, _name_filter, _id_filter):
+class image_list(_ImageInit, OptionalOutput, NameFilter, IDFilter):
     """List images accessible by user"""
-
-    PERMANENTS = (
-        'id', 'name',
-        'status', 'container_format', 'disk_format', 'size')
 
     arguments = dict(
         detail=FlagArgument('show detailed output', ('-l', '--details')),
@@ -237,15 +175,15 @@ class image_list(_init_image, _optional_json, _name_filter, _id_filter):
 
     def _members(self, image_id):
         members = self.client.list_members(image_id)
-        if not (self['json_output'] or self['output_format']):
+        if not self['output_format']:
             uuids = [member['member_id'] for member in members]
             usernames = self._uuids2usernames(uuids)
             for member in members:
                 member['member_id'] += ' (%s)' % usernames[member['member_id']]
-        self._print(members, title=('member_id',))
+        self.print_(members, title=('member_id',))
 
-    @errors.generic.all
-    @errors.cyclades.connection
+    @errors.Generic.all
+    @errors.Cyclades.connection
     def _run(self):
         super(self.__class__, self)._run()
         if self['image_ID_for_members']:
@@ -261,9 +199,8 @@ class image_list(_init_image, _optional_json, _name_filter, _id_filter):
             filters[arg] = self[arg]
 
         order = self['order']
-        detail = self['detail'] or (
-            self['prop'] or self['prop_like']) or (
-            self['owner'] or self['owner_name'])
+        detail = any([self[x] for x in (
+            'detail', 'prop', 'prop_like', 'owner', 'owner_name')])
 
         images = self.client.list_public(detail, filters, order)
 
@@ -273,13 +210,23 @@ class image_list(_init_image, _optional_json, _name_filter, _id_filter):
             images = self._filter_by_properties(images)
         images = self._filter_by_id(images)
         images = self._non_exact_name_filter(images)
+        for img in [] if self['output_format'] else images:
+            try:
+                img['size'] = format_size(img['size'])
+            except KeyError:
+                continue
 
-        if self['detail'] and not (
-                self['json_output'] or self['output_format']):
+        if self['detail'] and not self['output_format']:
             images = self._add_owner_name(images)
         elif detail and not self['detail']:
             for img in images:
-                for key in set(img).difference(self.PERMANENTS):
+                for key in set(img).difference([
+                        'id',
+                        'name',
+                        'status',
+                        'container_format',
+                        'disk_format',
+                        'size']):
                     img.pop(key)
         kwargs = dict(with_enumeration=self['enum'])
         if self['limit']:
@@ -287,7 +234,7 @@ class image_list(_init_image, _optional_json, _name_filter, _id_filter):
         if self['more']:
             kwargs['out'] = StringIO()
             kwargs['title'] = ()
-        self._print(images, **kwargs)
+        self.print_(images, **kwargs)
         if self['more']:
             pager(kwargs['out'].getvalue())
 
@@ -297,17 +244,24 @@ class image_list(_init_image, _optional_json, _name_filter, _id_filter):
 
 
 @command(image_cmds)
-class image_info(_init_image, _optional_json):
+class image_info(_ImageInit, OptionalOutput):
     """Get image metadata"""
 
-    @errors.generic.all
-    @errors.plankton.connection
-    @errors.plankton.id
+    @errors.Generic.all
+    @errors.Image.connection
+    @errors.Image.id
     def _run(self, image_id):
         meta = self.client.get_meta(image_id)
-        if not (self['json_output'] or self['output_format']):
-            meta['owner'] += ' (%s)' % self._uuid2username(meta['owner'])
-        self._print(meta, self.print_dict)
+        if not self['output_format']:
+            try:
+                meta['owner'] += ' (%s)' % self._uuid2username(meta['owner'])
+            except KeyError as ke:
+                log.debug('%s' % ke)
+            try:
+                meta['size'] = format_size(meta['size'])
+            except KeyError as ke:
+                log.debug('%s' % ke)
+        self.print_(meta, self.print_dict)
 
     def main(self, image_id):
         super(self.__class__, self)._run()
@@ -315,9 +269,9 @@ class image_info(_init_image, _optional_json):
 
 
 @command(image_cmds)
-class image_modify(_init_image, _optional_output_cmd):
+class image_modify(_ImageInit):
     """Add / update metadata and properties for an image
-    The original image preserves the values that are not affected
+    Preserves values not explicitly modified
     """
 
     arguments = dict(
@@ -343,9 +297,10 @@ class image_modify(_init_image, _optional_output_cmd):
         'unpublish', 'property_to_set', 'member_ID_to_add',
         'member_ID_to_remove', 'property_to_del']
 
-    @errors.generic.all
-    @errors.plankton.connection
-    @errors.plankton.id
+    @errors.Generic.all
+    @errors.Image.connection
+    @errors.Image.permissions
+    @errors.Image.id
     def _run(self, image_id):
         for mid in (self['member_ID_to_add'] or []):
             self.client.add_member(image_id, mid)
@@ -356,16 +311,14 @@ class image_modify(_init_image, _optional_output_cmd):
             meta['properties'][k.upper()] = v
         for k in (self['property_to_del'] or []):
             meta['properties'][k.upper()] = None
-        self._optional_output(self.client.update_image(
+        self.client.update_image(
             image_id,
             name=self['image_name'],
             disk_format=self['disk_format'],
             container_format=self['container_format'],
             status=self['status'],
             public=self['publish'] or (False if self['unpublish'] else None),
-            **meta['properties']))
-        if self['with_output']:
-            self._optional_output(self.get_image_details(image_id))
+            **meta['properties'])
 
     def main(self, image_id):
         super(self.__class__, self)._run()
@@ -397,9 +350,9 @@ class PithosLocationArgument(ValueArgument):
     @value.setter
     def value(self, location):
         if location:
-            from kamaki.cli.commands.pithos import _pithos_container as pc
+            from kamaki.cli.cmds.pithos import _PithosContainer as pc
             try:
-                uuid, self.container, self.path = pc._resolve_pithos_url(
+                uuid, self.container, self.path = pc.resolve_pithos_url(
                     location)
                 self.uuid = uuid or self.uuid
                 assert self.container, 'No container in pithos URI'
@@ -419,22 +372,19 @@ class PithosLocationArgument(ValueArgument):
 
 
 @command(image_cmds)
-class image_register(_init_image, _optional_json):
+class image_register(_ImageInit, OptionalOutput):
     """(Re)Register an image file to an Image service
     The image file must be stored at a pithos repository
     Some metadata can be set by user (e.g., disk-format) while others are set
-    only automatically (e.g., image id). There are also some custom user
-    metadata, called properties.
+    by the system (e.g., image id).
+    Custom user metadata are termed as "properties".
     A register command creates a remote meta file at
-    /<container>/<image path>.meta
-    Users may download and edit this file and use it to re-register one or more
-    images.
+    /CONTAINER/IMAGE_PATH.meta
+    Users may download and edit this file and use it to re-register.
     In case of a meta file, runtime arguments for metadata or properties
     override meta file settings.
     """
-
     container_info_cache = {}
-
     arguments = dict(
         checksum=ValueArgument('Set image checksum', '--checksum'),
         container_format=ValueArgument(
@@ -448,7 +398,7 @@ class image_register(_init_image, _optional_json):
         is_public=FlagArgument('Mark image as public', '--public'),
         size=IntArgument('Set image size in bytes', '--size'),
         metafile=ValueArgument(
-            'Load metadata from a json-formated file <img-file>.meta :'
+            'Load metadata from a json-formated file IMAGE_FILE.meta :'
             '{"key1": "val1", "key2": "val2", ..., "properties: {...}"}',
             ('--metafile')),
         force_upload=FlagArgument(
@@ -463,37 +413,30 @@ class image_register(_init_image, _optional_json):
         uuid=ValueArgument('Custom user uuid', '--uuid'),
         local_image_path=ValueArgument(
             'Local image file path to upload and register '
-            '(still need target file in the form /container/remote-path )',
+            '(still need target file in the form /CONTAINER/REMOTE-PATH )',
             '--upload-image-file'),
         progress_bar=ProgressBarArgument(
             'Do not use progress bar', '--no-progress-bar', default=False),
         name=ValueArgument('The name of the new image', '--name'),
         pithos_location=PithosLocationArgument(
             'The Pithos+ image location to put the image at. Format:       '
-            'pithos://USER_UUID/CONTAINER/IMAGE                  or   '
-            '/CONTAINER/IMAGE',
+            'pithos://USER_UUID/CONTAINER/IMAGE_PATH             or   '
+            '/CONTAINER/IMAGE_PATH',
             '--location')
     )
     required = ('name', 'pithos_location')
 
     def _get_pithos_client(self, locator):
-        ptoken = self.client.token
-        if getattr(self, 'auth_base', False):
-            pithos_endpoints = self.auth_base.get_service_endpoints(
-                'object-store')
-            purl = pithos_endpoints['publicURL']
-        else:
-            purl = self.config.get_cloud('pithos', 'url')
-        if not purl:
-            raise CLIBaseUrlError(service='pithos')
-        return PithosClient(purl, ptoken, locator.uuid, locator.container)
+        pithos = self.get_client(PithosClient, 'pithos')
+        pithos.account, pithos.container = locator.uuid, locator.container
+        return pithos
 
     def _load_params_from_file(self, location):
         params, properties = dict(), dict()
         pfile = self['metafile']
         if pfile:
             try:
-                for k, v in _load_image_meta(pfile).items():
+                for k, v in load_image_meta(pfile).items():
                     key = k.lower().replace('-', '_')
                     if key == 'properties':
                         for pk, pv in v.items():
@@ -526,20 +469,17 @@ class image_register(_init_image, _optional_json):
         if pithos and not self['force_upload']:
             try:
                 pithos.get_object_info(path)
-                raiseCLIError(
-                    'Remote file /%s/%s already exists' % (
-                        pithos.container, path),
-                    importance=2,
-                    details=[
-                        'Registration ABORTED',
+                raise CLIError('File already exists', importance=2, details=[
+                        'A remote file /%s/%s already exists' % (
+                            pithos.container, path),
                         'Use %s to force upload' % self.arguments[
                             'force_upload'].lvalue])
             except ClientError as ce:
                 if ce.status != 404:
                     raise
 
-    @errors.generic.all
-    @errors.plankton.connection
+    @errors.Generic.all
+    @errors.Image.connection
     def _run(self, name, locator):
         location, pithos = locator.value, None
         if self['local_image_path']:
@@ -572,15 +512,16 @@ class image_register(_init_image, _optional_json):
             r = self.client.register(name, location, params, properties)
         except ClientError as ce:
             if ce.status in (400, 404):
-                raiseCLIError(
-                    ce, 'Nonexistent image file location\n\t%s' % location,
+                raise CLIError(
+                    'Nonexistent image file location\n\t%s' % location,
                     details=[
+                        '%s' % ce,
                         'Does the image file %s exist at container %s ?' % (
                             locator.path,
                             locator.container)] + howto_image_file)
             raise
         r['owner'] += ' (%s)' % self._uuid2username(r['owner'])
-        self._print(r, self.print_dict)
+        self.print_(r, self.print_dict)
 
         #upload the metadata file
         if not self['no_metafile_upload']:
@@ -594,7 +535,7 @@ class image_register(_init_image, _optional_json):
                     'Failed to dump metafile /%s/%s' % (
                         locator.container, meta_path))
                 return
-            if self['json_output'] or self['output_format']:
+            if self['output_format']:
                 self.print_json(dict(
                     metafile_location='/%s/%s' % (
                         locator.container, meta_path),
@@ -607,9 +548,8 @@ class image_register(_init_image, _optional_json):
 
     def main(self):
         super(self.__class__, self)._run()
-
         locator, pithos = self.arguments['pithos_location'], None
-        locator.setdefault('uuid', self.auth_base.user_term('id'))
+        locator.setdefault('uuid', self.astakos.user_term('id'))
         locator.path = locator.path or path.basename(
             self['local_image_path'] or '')
         if not locator.path:
@@ -624,22 +564,22 @@ class image_register(_init_image, _optional_json):
                     'To specify a local file:',
                     '  %s [pithos://UUID]/CONTAINER[/PATH] %s LOCAL_PATH' % (
                         locator.lvalue,
-                        self.arguments['local_image_path'].lvalue)
-                ])
+                        self.arguments['local_image_path'].lvalue)])
         self.arguments['pithos_location'].setdefault(
-            'uuid', self.auth_base.user_term('id'))
+            'uuid', self.astakos.user_term('id'))
         self._run(self['name'], locator)
 
 
 @command(image_cmds)
-class image_unregister(_init_image, _optional_output_cmd):
+class image_unregister(_ImageInit):
     """Unregister an image (does not delete the image file)"""
 
-    @errors.generic.all
-    @errors.plankton.connection
-    @errors.plankton.id
+    @errors.Generic.all
+    @errors.Image.connection
+    @errors.Image.permissions
+    @errors.Image.id
     def _run(self, image_id):
-        self._optional_output(self.client.unregister(image_id))
+        self.client.unregister(image_id)
 
     def main(self, image_id):
         super(self.__class__, self)._run()
@@ -649,12 +589,8 @@ class image_unregister(_init_image, _optional_output_cmd):
 # Compute Image Commands
 
 @command(imagecompute_cmds)
-class imagecompute_list(
-        _init_cyclades, _optional_json, _name_filter, _id_filter):
+class imagecompute_list(_CycladesInit, OptionalOutput, NameFilter, IDFilter):
     """List images"""
-
-    PERMANENTS = ('id', 'name')
-
     arguments = dict(
         detail=FlagArgument('show detailed output', ('-l', '--details')),
         limit=IntArgument('limit number listed images', ('-n', '--number')),
@@ -693,8 +629,8 @@ class imagecompute_list(
             img[key] += ' (%s)' % uuids[img[key]]
         return images
 
-    @errors.generic.all
-    @errors.cyclades.connection
+    @errors.Generic.all
+    @errors.Cyclades.connection
     def _run(self):
         withmeta = bool(self['meta'] or self['meta_like'])
         withuser = bool(self['user_id'] or self['user_name'])
@@ -706,12 +642,11 @@ class imagecompute_list(
             images = self._filter_by_user(images)
         if withmeta:
             images = self._filter_by_metadata(images)
-        if self['detail'] and not (
-                self['json_output'] or self['output_format']):
+        if self['detail'] and not self['output_format']:
             images = self._add_name(self._add_name(images, 'tenant_id'))
         elif detail and not self['detail']:
             for img in images:
-                for key in set(img).difference(self.PERMANENTS):
+                for key in set(img).difference(['id', 'name']):
                     img.pop(key)
         kwargs = dict(with_enumeration=self['enum'])
         if self['limit']:
@@ -719,7 +654,7 @@ class imagecompute_list(
         if self['more']:
             kwargs['out'] = StringIO()
             kwargs['title'] = ()
-        self._print(images, **kwargs)
+        self.print_(images, **kwargs)
         if self['more']:
             pager(kwargs['out'].getvalue())
 
@@ -729,19 +664,18 @@ class imagecompute_list(
 
 
 @command(imagecompute_cmds)
-class imagecompute_info(_init_cyclades, _optional_json):
+class imagecompute_info(_CycladesInit, OptionalOutput):
     """Get detailed information on an image"""
 
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.plankton.id
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Image.id
     def _run(self, image_id):
         image = self.client.get_image_details(image_id)
-        uuids = [image['user_id'], image['tenant_id']]
+        uuids = [image['user_id']]
         usernames = self._uuids2usernames(uuids)
         image['user_id'] += ' (%s)' % usernames[image['user_id']]
-        image['tenant_id'] += ' (%s)' % usernames[image['tenant_id']]
-        self._print(image, self.print_dict)
+        self.print_(image, self.print_dict)
 
     def main(self, image_id):
         super(self.__class__, self)._run()
@@ -749,14 +683,15 @@ class imagecompute_info(_init_cyclades, _optional_json):
 
 
 @command(imagecompute_cmds)
-class imagecompute_delete(_init_cyclades, _optional_output_cmd):
+class imagecompute_delete(_CycladesInit):
     """Delete an image (WARNING: image file is also removed)"""
 
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.plankton.id
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Image.permissions
+    @errors.Image.id
     def _run(self, image_id):
-        self._optional_output(self.client.delete_image(image_id))
+        self.client.delete_image(image_id)
 
     def main(self, image_id):
         super(self.__class__, self)._run()
@@ -764,7 +699,7 @@ class imagecompute_delete(_init_cyclades, _optional_output_cmd):
 
 
 @command(imagecompute_cmds)
-class imagecompute_modify(_init_cyclades, _optional_output_cmd):
+class imagecompute_modify(_CycladesInit):
     """Modify image properties (metadata)"""
 
     arguments = dict(
@@ -777,17 +712,16 @@ class imagecompute_modify(_init_cyclades, _optional_output_cmd):
     )
     required = ['property_to_add', 'property_to_del']
 
-    @errors.generic.all
-    @errors.cyclades.connection
-    @errors.plankton.id
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Image.permissions
+    @errors.Image.id
     def _run(self, image_id):
         if self['property_to_add']:
             self.client.update_image_metadata(
                 image_id, **self['property_to_add'])
         for key in (self['property_to_del'] or []):
             self.client.delete_image_metadata(image_id, key)
-        if self['with_output']:
-            self._optional_output(self.client.get_image_details(image_id))
 
     def main(self, image_id):
         super(self.__class__, self)._run()

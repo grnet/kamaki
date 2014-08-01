@@ -1,4 +1,4 @@
-# Copyright 2013 GRNET S.A. All rights reserved.
+# Copyright 2013-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -83,6 +83,7 @@ class History(TestCase):
 
     def test_retrieve(self):
         sample_history = (
+            '0\n',
             'kamaki history show\n',
             'kamaki file list\n',
             'kamaki file create /pithos/f1\n',
@@ -103,6 +104,7 @@ class History(TestCase):
 
     def test_limit(self):
         sample_history = (
+            '0\n',
             'kamaki history show\n',
             'kamaki file list\n',
             'kamaki file create /pithos/f1\n',
@@ -248,9 +250,12 @@ class LoggerMethods(TestCase):
             for name, level, filename in product(
                     ('my name'), ('my level', None), ('my filename', None)):
                 self.assertEqual(add_file_logger(name, level, filename), 'AL')
+                from logging import DEBUG as dbg
+                fmt = '%(name)s(%(levelname)s) %(asctime)s\n\t%(message)s' if (
+                    level == dbg) else '%(name)s: %(message)s'
                 self.assertEqual(AL.mock_calls[-1], call(
                     name, level, filename or 'my log fname',
-                    fmt='%(name)s(%(levelname)s) %(asctime)s\n\t%(message)s'))
+                    fmt=fmt))
                 if filename:
                     self.assertEqual(GLFcount, GLF.call_count)
                 else:
@@ -361,20 +366,6 @@ class CLIBaseUrlError(TestCase):
         for service in ('', 'some service'):
             clibue = CLIBaseUrlError(service=service)
             self.assertEqual('%s' % clibue, 'No URL for %s\n' % service)
-            self.assertEqual(clibue.details, [
-                'Two ways to resolve this:',
-                '(Use the correct cloud name, instead of "default")',
-                'A. (recommended) Let kamaki discover endpoint URLs for all',
-                'services by setting a single Authentication URL and token:',
-                '  /config set cloud.default.url <AUTH_URL>',
-                '  /config set cloud.default.token <t0k3n>',
-                'B. (advanced users) Explicitly set an %s endpoint URL' % (
-                    service.upper()),
-                'Note: URL option has a higher priority, so delete it to',
-                'make that work',
-                '  /config delete cloud.default.url',
-                '  /config set cloud.%s.url <%s_URL>' % (
-                    service, service.upper())])
             self.assertEqual(clibue.importance, 2)
 
 

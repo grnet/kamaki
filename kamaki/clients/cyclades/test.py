@@ -1,4 +1,4 @@
-# Copyright 2013 GRNET S.A. All rights reserved.
+# Copyright 2013-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -34,7 +34,6 @@
 from mock import patch, call
 from unittest import TestCase
 from itertools import product
-from json import dumps
 
 from kamaki.clients import ClientError, cyclades
 
@@ -88,16 +87,16 @@ class FR(object):
     status = None
     status_code = 200
 
-rest_pkg = 'kamaki.clients.cyclades.CycladesRestClient'
-cyclades_pkg = 'kamaki.clients.cyclades.CycladesClient'
+rest_pkg = 'kamaki.clients.cyclades.CycladesComputeRestClient'
+cyclades_pkg = 'kamaki.clients.cyclades.CycladesComputeClient'
 
 
-class CycladesRestClient(TestCase):
+class CycladesComputeRestClient(TestCase):
 
     def setUp(self):
         self.url = 'http://cyclades.example.com'
         self.token = 'cyc14d3s70k3n'
-        self.client = cyclades.CycladesRestClient(self.url, self.token)
+        self.client = cyclades.CycladesComputeRestClient(self.url, self.token)
 
     @patch('kamaki.clients.Client.get', return_value='ret')
     def test_servers_stats_get(self, get):
@@ -192,7 +191,7 @@ class CycladesNetworkClient(TestCase):
             self.assertEqual(ports_post.mock_calls[-1], call(**expargs))
 
 
-class CycladesClient(TestCase):
+class CycladesComputeClient(TestCase):
 
     def assert_dicts_are_equal(self, d1, d2):
         for k, v in d1.items():
@@ -206,7 +205,7 @@ class CycladesClient(TestCase):
     def setUp(self):
         self.url = 'http://cyclades.example.com'
         self.token = 'cyc14d3s70k3n'
-        self.client = cyclades.CycladesClient(self.url, self.token)
+        self.client = cyclades.CycladesComputeClient(self.url, self.token)
 
     def tearDown(self):
         FR.status_code = 200
@@ -230,25 +229,138 @@ class CycladesClient(TestCase):
     def test_get_server_console(self, SP):
         cnsl = dict(console=dict(info1='i1', info2='i2', info3='i3'))
         FR.json = cnsl
-        vm_id = vm_recv['server']['id']
-        r = self.client.get_server_console(vm_id)
-        SP.assert_called_once_with(
-            vm_id, json_data=dict(console=dict(type='vnc')), success=200)
-        self.assert_dicts_are_equal(r, cnsl['console'])
+        vm_id, foo = vm_recv['server']['id'], self.client.get_server_console
+        self.assertRaises(AssertionError, foo, vm_id, None)
+        self.assertRaises(AssertionError, foo, vm_id, 'Invalid console type')
+        for ctype in self.client.CONSOLE_TYPES:
+            r = foo(vm_id, ctype)
+            self.assertEqual(SP.mock_calls[-1], call(
+                vm_id, json_data=dict(console=dict(type=ctype)), success=200))
+            self.assert_dicts_are_equal(r, cnsl['console'])
+
+
+clients_pkg = 'kamaki.clients.Client'
+
+
+class CycladesBlockStorageRestClient(TestCase):
+
+    def setUp(self):
+        self.url = 'http://volumes.example.com'
+        self.token = 'v01um3s70k3n'
+        self.client = cyclades.rest_api.CycladesBlockStorageRestClient(
+            self.url, self.token)
+
+    @patch('%s.post' % clients_pkg)
+    def test_volumes_post(self, post):
+        keys = (
+            'display_description', 'snapshot_id', 'imageRef',
+            'volume_type', 'metadata', 'project')
+        for args in product(
+                ('dd', None), ('sn', None), ('ir', None),
+                ('vt', None), ({'mk': 'mv'}, None), ('pid', None),
+                ({'k1': 'v1', 'k2': 'v2'}, {'success': 1000}, {})):
+            kwargs, server_id, display_name = args[-1], 'sid', 'dn'
+            args = args[:-1]
+            for err, size in ((TypeError, None), (ValueError, 'size')):
+                self.assertRaises(
+                    err, self.client.volumes_post,
+                    size, server_id, display_name, *args, **kwargs)
+            size = 42
+            self.client.volumes_post(
+                size, server_id, display_name, *args, **kwargs)
+            volume = dict(
+                size=int(size), server_id=server_id, display_name=display_name)
+            for k, v in zip(keys, args):
+                if v:
+                    volume[k] = v
+            success, jsondata = kwargs.pop('success', 202), dict(volume=volume)
+            self.assertEqual(
+                post.mock_calls[-1],
+                call('/volumes', json=jsondata, success=success, **kwargs))
+
+    @patch('%s.post' % clients_pkg)
+    def test_volumes_action_post(self, post):
+        for kwargs in ({'k1': 'v1', 'k2': 'v2'}, {'success': 1000}, {}):
+            volume_id, project_id = 'vid', 'pid'
+            self.client.volumes_action_post(volume_id, project_id, **kwargs)
+            success = kwargs.pop('success', 200)
+            self.assertEqual(post.mock_calls[-1], call(
+                '/volumes/%s/action' % volume_id,
+                json=project_id, success=success, **kwargs))
+
+
+bsrest_pkg = 'kamaki.clients.cyclades.CycladesBlockStorageRestClient'
+
+
+class CycladesBlockStorageClient(TestCase):
+
+    def setUp(self):
+        self.url = 'http://volumes.example.com'
+        self.token = 'v01um3s70k3n'
+        self.client = cyclades.CycladesBlockStorageClient(self.url, self.token)
+
+    @patch('%s.volumes_post' % bsrest_pkg, return_value=FR())
+    def test_create_volume(self, volumes_post):
+        keys = (
+            'display_description', 'snapshot_id', 'imageRef',
+            'volume_type', 'metadata', 'project')
+        FR.json, server_id, display_name = 'ret', 'vid', 'dn'
+        for args in product(
+                ('dd', None), ('sn', None), ('ir', None),
+                ('vt', None), ({'mk': 'mv'}, None), ('pid', None)):
+            self.assertEqual(
+                self.client.create_volume(42, server_id, display_name, *args),
+                'ret')
+            kwargs = dict(zip(keys, args))
+            self.assertEqual(
+                volumes_post.mock_calls[-1],
+                call(42, server_id, display_name, **kwargs))
+
+    @patch('%s.volumes_action_post' % bsrest_pkg, return_value=FR())
+    def test_reassign_volume(self, volumes_action_post):
+        volume_id, project_id = 'vid', 'pid'
+        self.client.reassign_volume(volume_id, project_id)
+        volumes_action_post.assert_called_once_with(
+            volume_id, {"reassign": {"project": project_id}})
+
+    @patch('%s.create_snapshot' % bsrest_pkg, return_value='ret')
+    def test_create_snapshot(self, create_snapshot):
+        keys = ('force', 'display_description')
+        volume_id, display_name = 'vid', 'dn'
+        for args in product((True, False, None), ('dd', None)):
+            self.assertEqual(
+                self.client.create_snapshot(volume_id, display_name, *args),
+                'ret')
+            kwargs = dict(zip(keys, args))
+            self.assertEqual(
+                create_snapshot.mock_calls[-1],
+                call(volume_id, display_name=display_name, **kwargs))
 
 
 if __name__ == '__main__':
     from sys import argv
     from kamaki.clients.test import runTestCase
     not_found = True
-    if not argv[1:] or argv[1] == 'CycladesClient':
+    if not argv[1:] or argv[1] == 'CycladesComputeClient':
         not_found = False
         runTestCase(CycladesNetworkClient, 'Cyclades Client', argv[2:])
     if not argv[1:] or argv[1] == 'CycladesNetworkClient':
         not_found = False
         runTestCase(CycladesNetworkClient, 'CycladesNetwork Client', argv[2:])
-    if not argv[1:] or argv[1] == 'CycladesRestClient':
+    if not argv[1:] or argv[1] == 'CycladesComputeRestClient':
         not_found = False
-        runTestCase(CycladesRestClient, 'CycladesRest Client', argv[2:])
+        runTestCase(CycladesComputeRestClient, 'CycladesRest Client', argv[2:])
+    if not argv[1:] or argv[1] == 'CycladesBlockStorageRestClient':
+        not_found = False
+        runTestCase(
+            CycladesBlockStorageRestClient,
+            'Cyclades Block Storage Rest Client',
+            argv[2:])
+    if not argv[1:] or argv[1] == 'CycladesBlockStorageClient':
+        not_found = False
+        runTestCase(
+            CycladesBlockStorageClient,
+            'Cyclades Block Storage Client',
+            argv[2:])
     if not_found:
         print('TestCase %s not found' % argv[1])

@@ -31,7 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from sys import stdout, stdin, stderr
+from sys import stdout, stderr
 from re import compile as regex_compile
 from os import walk, path
 from json import dumps
@@ -39,7 +39,6 @@ from kamaki.cli.logger import get_logger
 from locale import getpreferredencoding
 
 from kamaki.cli.errors import raiseCLIError
-
 
 INDENT_TAB = 4
 log = get_logger(__name__)
@@ -54,63 +53,16 @@ suggest = dict(ansicolors=dict(
 try:
     from colors import magenta, red, yellow, bold
 except ImportError:
-    def dummy(val):
-        return val
-    red = yellow = magenta = bold = dummy
+    red = yellow = magenta = bold = lambda x: x
     suggest['ansicolors']['active'] = True
 
 
-def _encode_nicely(somestr, encoding, replacement='?'):
-    """Encode somestr as 'encoding', but don't raise errors (replace with ?)
-        This method is slow. Us it only for grace.
-        :param encoding: (str) encode every character in this encoding
-        :param replacement: (char) replace each char raising encode-decode errs
-    """
-    newstr, err_counter = '', 0
-    for c in somestr:
-        try:
-            newc = c.decode('utf-8').encode(encoding)
-            newstr = '%s%s' % (newstr, newc)
-        except UnicodeError as e:
-            newstr = '%s%s' % (newstr, replacement)
-            err_counter += 1
-    if err_counter:
-        log.warning('WARNING: \t%s character%s failed to be encoded as %s' % (
-            err_counter, 's' if err_counter > 1 else '', encoding))
-        log.debug('Unicode Error %s' % e)
-    return newstr
-
-
-def DontRaiseUnicodeError(foo):
-    if pref_enc.lower() == 'utf-8':
-        return foo
-
-    def wrap(self, *args, **kwargs):
-        try:
-            s = kwargs.pop('s')
-        except KeyError:
-            try:
-                s = args[0]
-            except IndexError:
-                return foo(self, *args, **kwargs)
-            args = args[1:]
-        try:
-            s = (u'%s' % s).decode('utf-8').encode(pref_enc)
-        except UnicodeError as ue:
-            log.debug('Encoding(%s): %s' % (pref_enc, ue))
-            s = _encode_nicely(u'%s' % s, pref_enc, replacement='?')
-        return foo(self, s, *args, **kwargs)
-    return wrap
-
-
-def encode_for_console(s, encoding=pref_enc, replacement='?'):
-    if encoding.lower() == 'utf-8':
-        return s
-    try:
-        return s.decode('utf-8').encode(encoding)
-    except UnicodeError as ue:
-        log.debug('Encoding(%s): %s' % (encoding, ue))
-        return _encode_nicely(s, encoding, replacement)
+def remove_colors():
+    global bold
+    global red
+    global yellow
+    global magenta
+    red = yellow = magenta = bold = lambda x: x
 
 
 def suggest_missing(miss=None, exclude=[]):
@@ -126,7 +78,8 @@ def suggest_missing(miss=None, exclude=[]):
     for k, v in (miss, sgs[miss]) if miss else sgs.items():
         if v['active'] and stderr.isatty():
             stderr.write('Suggestion: you may like to install %s\n' % k)
-            stderr.write('\t%s\n' % encode_for_console(v['description']))
+            stderr.write(
+                ('%s\n' % v['description']).encode(pref_enc, errors='replace'))
             stderr.write('\tIt is easy, here are the instructions:\n')
             stderr.write('\t%s/installation.html%s\n' % (
                 kamaki_docs, v['url']))
@@ -148,17 +101,6 @@ def guess_mime_type(
         return (default_content_type, default_encoding)
 
 
-def remove_colors():
-    global bold
-    global red
-    global yellow
-    global magenta
-
-    def dummy(val):
-        return val
-    red = yellow = magenta = bold = dummy
-
-
 def pretty_keys(d, delim='_', recursive=False):
     """<term>delim<term> to <term> <term> transformation"""
     new_d = dict(d)
@@ -170,7 +112,7 @@ def pretty_keys(d, delim='_', recursive=False):
     return new_d
 
 
-def print_json(data, out=stdout, encoding=pref_enc):
+def print_json(data, out=stdout):
     """Print a list or dict as json in console
 
     :param data: json-dumpable data
@@ -178,7 +120,7 @@ def print_json(data, out=stdout, encoding=pref_enc):
     :param out: Input/Output stream to dump values into
     """
     out.write(dumps(data, indent=INDENT_TAB))
-    out.write('\n')
+    out.write(u'\n')
 
 
 def print_dict(
@@ -216,17 +158,17 @@ def print_dict(
         print_str += '%s.' % (i + 1) if with_enumeration else ''
         print_str += '%s:' % k
         if isinstance(v, dict):
-            out.write(print_str + '\n')
+            out.write(print_str + u'\n')
             print_dict(
                 v, exclude, indent + INDENT_TAB,
                 recursive_enumeration, recursive_enumeration, out)
         elif isinstance(v, list) or isinstance(v, tuple):
-            out.write(print_str + '\n')
+            out.write(print_str + u'\n')
             print_list(
                 v, exclude, indent + INDENT_TAB,
                 recursive_enumeration, recursive_enumeration, out)
         else:
-            out.write('%s %s\n' % (print_str, v))
+            out.write(u'%s %s\n' % (print_str, v))
 
 
 def print_list(
@@ -262,18 +204,18 @@ def print_list(
         print_str += '%s.' % (i + 1) if with_enumeration else ''
         if isinstance(item, dict):
             if with_enumeration:
-                out.write(print_str + '\n')
+                out.write(print_str + u'\n')
             elif i and i < len(l):
-                out.write('\n')
+                out.write(u'\n')
             print_dict(
                 item, exclude,
                 indent + (INDENT_TAB if with_enumeration else 0),
                 recursive_enumeration, recursive_enumeration, out)
         elif isinstance(item, list) or isinstance(item, tuple):
             if with_enumeration:
-                out.write(print_str + '\n')
+                out.write(print_str + u'\n')
             elif i and i < len(l):
-                out.write('\n')
+                out.write(u'\n')
             print_list(
                 item, exclude, indent + INDENT_TAB,
                 recursive_enumeration, recursive_enumeration, out)
@@ -281,7 +223,7 @@ def print_list(
             item = ('%s' % item).strip()
             if item in exclude:
                 continue
-            out.write('%s%s\n' % (print_str, item))
+            out.write(u'%s%s\n' % (print_str, item))
 
 
 def print_items(
@@ -304,12 +246,12 @@ def print_items(
         return
     if not (isinstance(items, dict) or isinstance(items, list) or isinstance(
                 items, tuple)):
-        out.write('%s\n' % items)
+        out.write(u'%s\n' % items)
         return
 
     for i, item in enumerate(items):
         if with_enumeration:
-            out.write('%s. ' % (i + 1))
+            out.write(u'%s. ' % (i + 1))
         if isinstance(item, dict):
             item = dict(item)
             title = sorted(set(title).intersection(item))
@@ -320,7 +262,7 @@ def print_items(
         elif isinstance(item, list) or isinstance(item, tuple):
             print_list(item, indent=INDENT_TAB, out=out)
         else:
-            out.write(' %s\n' % item)
+            out.write(u' %s\n' % item)
 
 
 def format_size(size, decimal_factors=False):
@@ -396,11 +338,6 @@ def list2file(l, f, depth=1):
 # Split input auxiliary
 
 
-def _parse_with_regex(line, regex):
-    re_parser = regex_compile(regex)
-    return (re_parser.split(line), re_parser.findall(line))
-
-
 def _get_from_parsed(parsed_str):
     try:
         parsed_str = parsed_str.strip()
@@ -412,25 +349,24 @@ def _get_from_parsed(parsed_str):
 
 
 def split_input(line):
-    if not line:
-        return []
-    reg_expr = '\'.*?\'|".*?"|^[\S]*$'
-    (trivial_parts, interesting_parts) = _parse_with_regex(line, reg_expr)
-    assert(len(trivial_parts) == 1 + len(interesting_parts))
     terms = []
-    for i, tpart in enumerate(trivial_parts):
-        part = _get_from_parsed(tpart)
-        if part:
-            terms += part
-        try:
-            part = _get_from_parsed(interesting_parts[i])
-        except IndexError:
-            break
-        if part:
-            if tpart and not tpart[-1].endswith(' '):
-                terms[-1] += ' '.join(part)
-            else:
+    if line:
+        rprs = regex_compile('\'.*?\'|".*?"|^[\S]*$')
+        trivial_parts, interesting_parts = rprs.split(line), rprs.findall(line)
+        assert(len(trivial_parts) == 1 + len(interesting_parts))
+        for i, tpart in enumerate(trivial_parts):
+            part = _get_from_parsed(tpart)
+            if part:
                 terms += part
+            try:
+                part = _get_from_parsed(interesting_parts[i])
+            except IndexError:
+                break
+            if part:
+                if tpart and not tpart[-1].endswith(' '):
+                    terms[-1] += ' '.join(part)
+                else:
+                    terms += part
     return terms
 
 
@@ -441,8 +377,11 @@ def ask_user(msg, true_resp=('y', ), **kwargs):
 
     :returns: (bool) True if reponse in true responses, False otherwise
     """
-    yep = ', '.join(true_resp)
-    nope = '<not %s>' % yep if 'n' in true_resp or 'N' in true_resp else 'N'
+    yep = u', '.join(true_resp)
+    nope = u'<not %s>' % yep if 'n' in true_resp or 'N' in true_resp else 'N'
+    msg = msg.encode(pref_enc, errors='replace')
+    yep = yep.encode(pref_enc, errors='replace')
+    nope = nope.encode(pref_enc, errors='replace')
     user_response = raw_input('%s [%s/%s]: ' % (msg, yep, nope))
     return user_response[0].lower() in [s.lower() for s in true_resp]
 

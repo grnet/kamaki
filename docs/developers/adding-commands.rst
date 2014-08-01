@@ -4,7 +4,7 @@ Adding Commands
 Kamaki commands are implemented as python classes, which wear a decorator
 called *command*. The decorator lives in *kamaki.cli* and its purpose is to
 update the *CommandTree* structure. The *CommandTree* class (
-*kamaki.cli.commant_tree*) manages command namespaces for kamaki.
+*kamaki.cli.cmdtree*) manages command namespaces for kamaki.
 
 For demonstration purposes, the following set of kamaki commands will be
 implemented in this document::
@@ -96,7 +96,7 @@ application to load the list of commands from the *_commands* array.
 The command decorator
 ---------------------
 
-All commands are specified by subclasses of *kamaki.cli.commands._command_init*
+All commands are specified by subclasses of *kamaki.cli.cmds.CommandInit*
 These classes are called "command specifications".
 
 The *command* decorator mines all the information needed to build namespaces
@@ -229,7 +229,7 @@ or more usually and elegantly:
 Accessing run-time arguments
 ----------------------------
 
-To access run-time arguments, command classes extend the *_command_init*
+To access run-time arguments, command classes extend the *CommandInit*
 interface, which implements *__item__* accessors to handle run-time argument
 values. In other words, one may get the runtime value of an argument by calling
 *self[<argument>]*.
@@ -237,10 +237,10 @@ values. In other words, one may get the runtime value of an argument by calling
 .. code-block:: python
 
     from kamaki.cli.argument import ValueArgument
-    from kamaki.cli.commands import _command_init
+    from kamaki.cli.commands import CommandInit
     
     @command(_mygrp1_commands)
-    class mygrp1_list_details(_command_init):
+    class mygrp1_list_details(CommandInit):
         """List of details"""
 
         arguments = dict(
@@ -266,7 +266,7 @@ required at command specification level:
     ...
 
     @command(_mygrp1_commands)
-    class mygrp1_list_details(_command_init):
+    class mygrp1_list_details(CommandInit):
         """List of details"""
 
         arguments = dict(
@@ -336,7 +336,7 @@ Letting kamaki know
 Assume that the command specifications presented so far be stored in a file
 named *grps.py*.
 
-The developer should move the file *grps.py* to *kamaki/cli/commands*, the
+The developer should move the file *grps.py* to *kamaki/cli/cmds*, the
 default place for command specifications
 
 These lines should be contained in the kamaki configuration file for a new
@@ -370,8 +370,8 @@ Summary: create a command set
 
     #  File: grps.py
 
-    from kamaki.cli.commands import _command_init
-    from kamaki.cli.command_tree import CommandTree
+    from kamaki.cli.cmds import CommandInit
+    from kamaki.cli.cmdtree import CommandTree
     from kamaki.cli.argument import ValueArgument, FlagArgument
     ...
 
@@ -388,14 +388,14 @@ Summary: create a command set
 
 
     @command(_mygrp1_commands)
-    class mygrp1_list(_command_init):
+    class mygrp1_list(CommandInit):
         """List mygrp1 objects.
         There are two versions: short and detailed
         """
 
 
     @command(_mygrp1_commands)
-    class mygrp1_list_all(_command_init):
+    class mygrp1_list_all(CommandInit):
         """show a list"""
 
         def _run():
@@ -406,7 +406,7 @@ Summary: create a command set
 
 
     @command(_mygrp1_commands)
-    class mygrp1_list_details(_command_init):
+    class mygrp1_list_details(CommandInit):
         """show list of details"""
 
         arguments = dict(
@@ -426,7 +426,7 @@ Summary: create a command set
 
 
     @command(_mygrp2_commands)
-    class mygrp2_list_all(_command_init):
+    class mygrp2_list_all(CommandInit):
         """list all subjects"""
 
         arguments = dict(
@@ -445,7 +445,7 @@ Summary: create a command set
 
 
     @command(_mygrp2_commands)
-    class mygrp2_info(_command_init):
+    class mygrp2_info(CommandInit):
         """get information for subject with id"""
 
         def _run(self, grp_id, grp_name):

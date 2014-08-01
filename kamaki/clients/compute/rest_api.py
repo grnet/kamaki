@@ -37,10 +37,11 @@ import json
 
 
 class ComputeRestClient(Client):
+    service_type = 'compute'
 
     # NON-cyclades
     def limits_get(self, success=200, **kwargs):
-        """GET base_url/limits
+        """GET endpoint_url/limits
 
         :param success: success code or list or tupple of accepted success
             codes. if server response code is not in this list, a ClientError
@@ -64,7 +65,7 @@ class ComputeRestClient(Client):
             host=None,
             success=200,
             **kwargs):
-        """GET base_url/servers/['detail' | <server_id>]
+        """GET endpoint_url/servers/['detail' | <server_id>]
 
         :param server_id: (int or int str) ignored if detail
 
@@ -110,7 +111,7 @@ class ComputeRestClient(Client):
             json_data=None,
             success=202,
             **kwargs):
-        """POST base_url/servers
+        """POST endpoint_url/servers
 
         :param json_data: a json-formated dict that will be send as data
 
@@ -141,7 +142,7 @@ class ComputeRestClient(Client):
             self,
             server_id, server_name=None, json_data=None, success=204,
             **kwargs):
-        """PUT base_url/servers/<server_id>
+        """PUT endpoint_url/servers/<server_id>
 
         :param json_data: a json-formated dict that will be send as data
 
@@ -161,7 +162,7 @@ class ComputeRestClient(Client):
         return self.put(path, data=json_data, success=success, **kwargs)
 
     def servers_delete(self, server_id, success=204, **kwargs):
-        """DEL ETE base_url/servers/<server_id>
+        """DEL ETE endpoint_url/servers/<server_id>
 
         :param json_data: a json-formated dict that will be send as data
 
@@ -175,7 +176,7 @@ class ComputeRestClient(Client):
         return self.delete(path, success=success, **kwargs)
 
     def servers_metadata_get(self, server_id, key=None, success=200, **kwargs):
-        """GET base_url/servers/<server_id>/metadata[/key]
+        """GET endpoint_url/servers/<server_id>/metadata[/key]
 
         :returns: request response
         """
@@ -184,7 +185,7 @@ class ComputeRestClient(Client):
 
     def servers_metadata_post(
             self, server_id, json_data=None, success=202, **kwargs):
-        """POST base_url/servers/<server_id>/metadata
+        """POST endpoint_url/servers/<server_id>/metadata
 
         :returns: request response
         """
@@ -197,7 +198,7 @@ class ComputeRestClient(Client):
 
     def servers_metadata_put(
             self, server_id, key=None, json_data=None, success=204, **kwargs):
-        """PUT base_url/servers/<server_id>/metadata[/key]
+        """PUT endpoint_url/servers/<server_id>/metadata[/key]
 
         :returns: request response
         """
@@ -209,7 +210,7 @@ class ComputeRestClient(Client):
         return self.put(path, data=json_data, success=success, **kwargs)
 
     def servers_metadata_delete(self, server_id, key, success=204, **kwargs):
-        """DEL ETE base_url/servers/<server_id>/metadata[/key]
+        """DEL ETE endpoint_url/servers/<server_id>/metadata[/key]
 
         :returns: request response
         """
@@ -218,7 +219,7 @@ class ComputeRestClient(Client):
 
     def servers_action_post(
             self, server_id, json_data=None, success=202, **kwargs):
-        """POST base_url/servers/<server_id>/action
+        """POST endpoint_url/servers/<server_id>/action
 
         :returns: request response
         """
@@ -233,7 +234,7 @@ class ComputeRestClient(Client):
             self, server_id,
             network_id=None, changes_since=None, success=(304, 200),
             **kwargs):
-        """GET base_url/servers/<server_id>/ips[/network_id]
+        """GET endpoint_url/servers/<server_id>/ips[/network_id]
 
         :param changes_since: time/date stamp in UNIX/epoch time. Checks for
             changes since a previous request.
@@ -257,7 +258,7 @@ class ComputeRestClient(Client):
             type=None,
             success=200,
             **kwargs):
-        """GET base_url[/image_id][/command]
+        """GET endpoint_url[/image_id][/command]
 
         :param image_id: (str) ignored if detail
 
@@ -293,7 +294,7 @@ class ComputeRestClient(Client):
         return self.get(path, success=success, **kwargs)
 
     def images_delete(self, image_id='', success=204, **kwargs):
-        """DEL ETE base_url/images/<image_id>
+        """DEL ETE endpoint_url/images/<image_id>
 
         :returns: request response
         """
@@ -301,7 +302,7 @@ class ComputeRestClient(Client):
         return self.delete(path, success=success, **kwargs)
 
     def images_metadata_get(self, image_id, key=None, success=200, **kwargs):
-        """GET base_url/<image_id>/metadata[/key]
+        """GET endpoint_url/<image_id>/metadata[/key]
 
         :returns: request response
         """
@@ -310,7 +311,7 @@ class ComputeRestClient(Client):
 
     def images_metadata_post(
             self, image_id, json_data=None, success=201, **kwargs):
-        """POST base_url/images/<image_id>/metadata
+        """POST endpoint_url/images/<image_id>/metadata
 
         :returns: request response
         """
@@ -324,7 +325,7 @@ class ComputeRestClient(Client):
 
     def images_metadata_put(
             self, image_id, key=None, json_data=None, success=201, **kwargs):
-        """PUT base_url/images/<image_id>/metadata
+        """PUT endpoint_url/images/<image_id>/metadata
 
         :returns: request response
         """
@@ -337,7 +338,7 @@ class ComputeRestClient(Client):
         return self.put(path, data=json_data, success=success, **kwargs)
 
     def images_metadata_delete(self, image_id, key, success=204, **kwargs):
-        """DEL ETE base_url/images/<image_id>/metadata/key
+        """DEL ETE endpoint_url/images/<image_id>/metadata/key
 
         :returns: request response
         """
@@ -355,7 +356,7 @@ class ComputeRestClient(Client):
             limit=None,
             success=200,
             **kwargs):
-        """GET base_url[/flavor_id][/command]
+        """GET endpoint_url[/flavor_id][/command]
 
         :param flavor_id: ignored if detail
 
@@ -395,11 +396,7 @@ class ComputeRestClient(Client):
 
     def floating_ips_post(self, json_data, ip='', success=200, **kwargs):
         path = path4url('os-floating-ips', ip or '')
-        if json_data is not None:
-            json_data = json.dumps(json_data)
-            self.set_header('Content-Type', 'application/json')
-            self.set_header('Content-Length', len(json_data))
-        return self.post(path, data=json_data, success=success, **kwargs)
+        return self.post(path, json=json_data, success=success, **kwargs)
 
     def floating_ips_delete(self, ip='', success=204, **kwargs):
         path = path4url('os-floating-ips', ip or '')

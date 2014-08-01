@@ -6,6 +6,13 @@ Bug Fixes:
 - All URL-related params are now URL-encoded [#4986]
 - In file list, show all directories as directories [#4987]
 - Do not let file-* cmds to create containers [#4992]
+- Fix unicode-related bugs in error reporting
+
+Support:
+- Adjust project commands to project_API changes [#5025]
+- Add dateutils to dependencies
+- Rename packages, classes and objects to conform to pep8 standards
+- Use the term "project_id" instead of "project" everywhere in kamaki.clients
 
 Features:
 - Name and Type filters in endpoint list
@@ -16,4 +23,12 @@ Features:
 - Accept username or UUID in kamaki file --account/--to-account [#4810]
 - History has now a buffer limit [#4479]
 - Slice notation in history show
+- Datetime support in DateArgument
+- Resources can be reassigned to projects
+- Update account API commands to reflect changes in synnefo 0.16
+- Implement a get_endpoint_url method and use it
+- Rename kamaki.clients.Client.base_url --> endpoint_url, keep BW compatibility [#9]
+- Remove deprecated --hard argument in "kamaki server reboot"
+- Modify upload and download command semantics, to be more intuitive
+- Implement more console types (vnc-ws and vnc-wss)
 

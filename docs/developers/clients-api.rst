@@ -2,8 +2,8 @@ Creating applications with kamaki API
 =====================================
 
 Kamaki features a clients API for building third-party client applications that
-communicate with Synnefo and (in most cases) OpenStack cloud services. The package is
-called *kamaki.clients* and serves as a library.
+communicate with Synnefo and (in most cases) OpenStack cloud services. The
+package is called *kamaki.clients* and serves as a library.
 
 A showcase of an application built on *kamaki.clients* is *kamaki.cli*, the
 command line interface of kamaki.
@@ -23,7 +23,7 @@ There is a client for every API. An external applications should instantiate
 the kamaki clients that fit their needs.
 
 For example, to manage virtual servers and stored objects / files, an
-application would probably need the CycladesClient and PithosClient
+application would probably need the CycladesComputeClient and PithosClient
 respectively.
 
 .. code-block:: python
@@ -32,46 +32,42 @@ respectively.
     Example 1.1: Instantiate Cyclades and Pithos clients
 
 
-    from kamaki.clients.cyclades import CycladesClient
+    from kamaki.clients.cyclades import CycladesComputeClient
     from kamaki.clients.pithos import PithosClient
 
-    cyclades = CycladesClient(computeURL, token)
+    cyclades = CycladesComputeClient(computeURL, token)
     pithos = PithosClient(object-storeURL, token, account, container)
 
 .. note:: *cyclades* and *pithos* clients inherit ComputeClient from *compute*
     and StorageClient from *storage*, respectively. Separate ComputeClient or
-    StorageClient objects should be used only when implementing applications for
-    strict OpenStack Compute or Storage services.
+    StorageClient objects should be used only when implementing applications
+    for strict OpenStack Compute or Storage services.
 
 Using endpoints to get the authentication url
 ---------------------------------------------
 
-In OpenStack, each service (e.g., `compute`, `object-store`, etc.) has a number
-of `endpoints`. These `endpoints` are URIs which are used by kamaki as prefixes
-to form the corresponding API calls. Client applications need just one of these
-`endpoints`, namely the `publicURL` (also referred to as `publicURL` in the
-internals of kamaki client libraries).
+Each client is initialized with a URL called ``the endpoint URL``. To get one,
+an AstakosClient should be initialized first. The AstakosClient is an Astakos
+client class. Astakos implements the OpenStack Identity API and the Synnefo
+Account API. The astakos library features a simple call (``get_endpoint_url``)
+which returns the initialization URL for a given service type (e.g., 'compute',
+'object-store', 'network', 'image')
 
-Here are instructions for getting the publicURL for a service::
+Kamaki features a library of clients. Each client abides to a service type,
+stored in ``service_type`` attribute in the client class.
 
-    1. From the deployment UI get the AUTHENTICATION_URL and TOKEN
-        (Example 1.2)
-    2. Use them to instantiate an AstakosClient
-        (Example 1.2)
-    3. Use AstakosClient instance to get endpoints for the service of interest
-        (Example 1.3)
-    4. The 'publicURL' endpoint is the URL we are looking for
-        (Example 1.3)
+The values of ``service_type`` for each client are shown bellow::
 
-The AstakosClient is a client for the Synnefo/Astakos server. Synnefo/Astakos
-is an identity server that implements the OpenStack identity API and it
-can be used to get the URLs needed for API calls URL construction. The astakos
-kamaki client library simplifies this process.
+    storage.StorageClient, pithos.PithosClient            --> object-store
+    compute.ComputeClient, cyclades.CycladesComputeClient        --> compute
+    network.NetworkClient, cyclades.CycladesNetworkClient --> network
+    image.ImageClient                                     --> image
+    astakos.AstakosClient                                 --> identity
 
 Let's review with a few examples.
 
 First, an astakos client must be initialized (Example 1.2). An
-AUTHENTICATION_URL and a TOKEN can be acquired from the Synnefo deployment UI.
+AUTHENTICATION_URL and a TOKEN can be acquired from the service web UI.
 
 .. code-block:: python
     :emphasize-lines: 1
@@ -82,42 +78,29 @@ AUTHENTICATION_URL and a TOKEN can be acquired from the Synnefo deployment UI.
     astakos = AstakosClient(AUTHENTICATION_URL, TOKEN)
         
 
-Next, the astakos client can be used to retrieve the `publicURL` values for the
-services of interest. In this case (Example 1.3) they are *cyclades* (compute)
-and *pithos* (object-store). A number of endpoints is related to each service,
-but kamaki clients only need the ones labeled ``publicURL``.
+Next, the astakos client can be used to retrieve the URL for each service. In
+this case (Example 1.3) we need a *compute* and an *object-store* URL. They
+will be used to initialize a *cyclades* and a *pithos* client respectively.
 
 .. code-block:: python
     :emphasize-lines: 1
 
-    Example 1.3: Retrieve cyclades and pithos publicURL values
+    Example 1.3: Retrieve cyclades and pithos URLs
 
-    cyclades_endpoints = astakos.get_service_endpoints('compute')
-    cyclades_URL = cyclades_endpoints['publicURL']
+    cyclades_URL = astakos.get_endpoint_url(CycladesComputeClient.service_type)
+    pithos_URL = astakos.get_endpoint_url(PithosClent.service_type)
 
-    pithos_endpoints = astakos.get_service_endpoints('object-store')
-    pithos_URL = pithos_endpoints['publicURL']
-
-The ``get_service_endpoints`` method is called with the service name as an
-argument. Here are the service names for the kamaki clients::
-
-    storage.StorageClient, pithos.PithosClient            --> object-store
-    compute.ComputeClient, cyclades.CycladesClient        --> compute
-    network.NetworkClient, cyclades.CycladesNetworkClient --> network
-    image.ImageClient                                     --> image
-    astakos.AstakosClient                                 --> identity, account
-
-For example
+It's time to initialize both clients.
 
 .. code-block:: python
     :emphasize-lines: 1
 
     Example 1.3.1 Initialize cyclades and pithos clients
 
-    from kamaki.clients.cyclades import CycladesClient
+    from kamaki.clients.cyclades import CycladesComputeClient
     from kamaki.clients.pithos import PithosClient
 
-    cyclades = CycladesClient(cyclades_URL, TOKEN)
+    cyclades = CycladesComputeClient(cyclades_URL, TOKEN)
     pithos = PithosClient(pithos_URL, TOKEN)
 
     #  Also, setup the account UUID and container for pithos client
@@ -189,7 +172,7 @@ The following example concatenates examples 1.1 to 1.4 plus error handling
     from kamaki.clients import ClientError
 
     from kamaki.clients.astakos import AstakosClient
-    from kamaki.clients.cyclades import CycladesClient
+    from kamaki.clients.cyclades import CycladesComputeClient
     from kamaki.clients.pithos import PithosClient
 
     try:
@@ -199,19 +182,17 @@ The following example concatenates examples 1.1 to 1.4 plus error handling
         raise
 
     try:
-        cyclades_endpoints = astakos.get_service_endpoints('compute')
-        CYCLADES_URL = cyclades_endpoints['publicURL']
+        CYCLADES_URL = astakos.get_endpoint_url(CycladesComputeClient.service_type)
     except ClientError:
         print('Failed to get endpoints for cyclades')
 
     try:
-        cyclades = CycladesClient(CYCLADES_URL, TOKEN)
+        cyclades = CycladesComputeClient(CYCLADES_URL, TOKEN)
     except ClientError:
         print('Failed to initialize Cyclades client')
 
     try:
-        pithos_endpoints = astakos.get_service_endpoints('object-store')
-        PITHOS_URL = pithos_endpoints['publicURL']
+        PITHOS_URL = astakos.get_endpoint_url(PithosClient.service_type)
     except ClientError:
         print('Failed to get endpoints for pithos')
 
@@ -250,15 +231,15 @@ Batch-create servers
     #! /usr/bin/python
 
     from kamaki.clients.astakos import AstakosClient
-    from kamaki.clients.cyclades import CycladesClient
+    from kamaki.clients.cyclades import CycladesComputeClient
 
     AUTHENTICATION_URL = 'https://accounts.example.com/identity/v2.0'
     TOKEN = 'replace this with your token'
 
     astakos = AstakosClient(AUTHENTICATION_URL, TOKEN)
 
-    CYCLADES_URL = astakos.get_service_endpoints('compute')['publicURL']
-    cyclades = CycladesClient(CYCLADES_URL, TOKEN)
+    CYCLADES_URL = astakos.get_endpoint_url(CycladesComputeClient.service_type)
+    cyclades = CycladesComputeClient(CYCLADES_URL, TOKEN)
 
     #  (name, flavor-id, image-id)
     servers = [
@@ -300,11 +281,11 @@ Register a banch of pre-uploaded images
     astakos = AstakosClient(AUTHENTICATION_URL, TOKEN)
     USER_UUID = astakos.user_info['id']
 
-    PITHOS_URL = astakos.get_service_endpoints('object-store')['publicURL']
+    PITHOS_URL = astakos.get_endpoint_url(PithosClient.service_type)
     pithos = PithosClient(
         PITHOS_URL, TOKEN, account=USER_UUID, container=IMAGE_CONTAINER)
 
-    IMAGE_URL = astakos.get_service_endpoints('image')['publicURL']
+    IMAGE_URL = astakos.get_endpoint_url(ImageClient.service_type)
     plankton = ImageClient(IMAGE_URL, TOKEN)
 
     for img in pithos.list_objects():
@@ -326,23 +307,24 @@ Two servers and a private network
 
 .. code-block:: python
 
-    #! /user/bin/python
+    #! /usr/bin/python
 
     from kamaki.clients.astakos import AstakosClient
-    from kamaki.clients.cyclades import CycladesClient, CycladesNetworkClient
+    from kamaki.clients.cyclades import (
+        CycladesComputeClient, CycladesNetworkClient)
 
     AUTHENTICATION_URL = 'https://accounts.example.com/identity/v2.0'
     TOKEN = 'replace this with your token'
 
     astakos = AstakosClient(AUTHENTICATION_URL, TOKEN)
 
-    NETWORK_URL = astakos.get_service_endpoints('network')['publicURL']
+    NETWORK_URL = astakos.get_endpoint_url(CycladesNetworkClient.service_type)
     network = CycladesNetworkClient(NETWORK_URL, TOKEN)
 
     net = network.create_network(type='MAC_FILTERED', name='My private network')
 
-    CYCLADES_URL = astakos.get_service_endpoints('compute')['publicURL']
-    cyclades = CycladesClient(CYCLADES_URL, TOKEN)
+    CYCLADES_URL = astakos.get_endpoint_url(CycladesComputeClient.service_type)
+    cyclades = CycladesComputeClient(CYCLADES_URL, TOKEN)
 
     FLAVOR_ID = 'put your flavor id here'
     IMAGE_ID = 'put your image id here'
@@ -359,3 +341,91 @@ Two servers and a private network
 
     srv_state2 = cyclades.wait_server(srv2['id'])
     assert srv_state2 in ('ACTIVE', ), 'Server 2 built failure'
+
+Snapshot server and backup
+''''''''''''''''''''''''''
+
+.. code-block:: python
+
+    #! /usr/bin/python
+
+    from kamaki.clients.astakos import AstakosClient
+    from kamaki.clients.cyclades import (
+        CycladesClient, CycladesBlockStorageClient)
+    from kamaki.clients.image import ImageClient
+
+    AUTHENTICATION_URL = 'https://accounts.example.com/identity/v2.0'
+    TOKEN = 'replace this with your token'
+
+    astakos = AstakosClient(AUTHENTICATION_URL, TOKEN)
+
+    CYCLADES_URL = astakos.get_endpoint_url(CycladesClient.service_type)
+    compute = CycladesClient(CYCLADES_URL, TOKEN)
+
+    SERVER_ID = 'your server ID here'
+
+    srv = compute.get_server_details(SERVER_ID)
+    volume_id = srv['volumes'][0]
+
+    BS_URL = astakos.get_endpoint_url(CycladesBlockStorageClient.service_type)
+    block_storage = CycladesBlockStorageClient(BS_URL, TOKEN)
+
+    snp = block_storage.create_snapshot(volume_id, 'Srv %s BackUp' % srv['id'])
+
+    IMAGE_URL = astakos.get_endpoint_url(ImageClient.service_type)
+    plankton = ImageClient(IMAGE_URL, TOKEN)
+
+    #  Get location in the form pithos://UUID/CONTAINER/PATH
+    snp_location = plankton.get_meta(snp['id'])['location']
+
+    #  Optional: download to local storage
+    from kamaki.clients.pithos import PithosClient
+
+    PITHOS_URL = astakos.get_endpoint_url(PithosClient.service_type)
+    pref_len = len('pithos://')
+    ACCOUNT, sep, rel_path = snp_location[pref_len:].partition('/')
+    CONTAINER, sep, PATH = rel_path.partition('/')
+    pithos = PithosClient(PITHOS_URL, TOKEN, ACCOUNT, CONTAINER)
+
+    LOCAL_DESTINATION_PATH = 'local path for backup image file'
+
+    pithos.download_object(PATH, LOCAL_DESTINATION_PATH)
+
+Restore server from local snapshot image
+''''''''''''''''''''''''''''''''''''''''
+
+.. code-block:: python
+
+    #! /usr/bin/python
+
+    from kamaki.clients.astakos import AstakosClient
+    from kamaki.clients.cyclades import CycladesClient
+    from kamaki.clients.image import ImageClient
+    from kamaki.clients.pithos import PithosClient
+
+    AUTHENTICATION_URL = 'https://accounts.example.com/identity/v2.0'
+    TOKEN = 'replace this with your token'
+
+    astakos = AstakosClient(AUTHENTICATION_URL, TOKEN)
+
+    ACCOUNT, CONTAINER = astakos.user_info['id'], 'snapshots'
+    PITHOS_URL = astakos.get_endpoint_url(PithosClient.service_type)
+    pithos = PithosClient(PITHOS_URL, TOKEN, ACCOUNT, CONTAINER)
+
+    LOCAL_BACKUP_IMAGE = 'local backup image file here'
+    PATH = 'server_backup.diskdump'
+
+    with open(LOCAL_BACKUP_IMAGE) as f:
+        obj = pithos.upload_object(PATH, f)
+
+    IMAGE_URL = astakos.get_endpoint_url(ImageClient.service_type)
+    plankton = ImageClient(IMAGE_URL, TOKEN)
+
+    LOCATION = 'pithos://%s/%s/%s' % (ACCOUNT)
+    img = plankton.register('Backup Snapshot', LOCATION)
+
+    CYCLADES_URL = astakos.get_endpoint_url(CycladesClient.service_type)
+    compute = CycladesClient(CYCLADES_URL, TOKEN)
+
+    FLAVOR_ID = 'make sure to pick a flavor with enough resources'
+    restored_server = compute.create('Restored server', FLAVOR_ID, img['id'])

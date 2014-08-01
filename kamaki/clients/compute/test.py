@@ -1,4 +1,4 @@
-# Copyright 2013 GRNET S.A. All rights reserved.
+# Copyright 2013-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -423,25 +423,19 @@ class ComputeRestClient(TestCase):
             self.assertEqual(get.mock_calls[-1], call(
                 '/os-floating-ips%s' % expected, success=success, **kwargs))
 
-    @patch('%s.set_header' % rest_pkg)
     @patch('%s.post' % rest_pkg, return_value=FR())
-    def test_floating_ips_post(self, post, SH):
+    def test_floating_ips_post(self, post):
         for args in product(
-                (None, [dict(json="data"), dict(data="json")]),
+                (None, [dict(json='data'), dict(data='json')]),
                 ('', '192.193.194.195'),
                 (202, 204),
                 ({}, {'k': 'v'})):
             json_data, ip, success, kwargs = args
             self.client.floating_ips_post(*args[:3], **kwargs)
-            if json_data:
-                json_data = dumps(json_data)
-                self.assertEqual(SH.mock_calls[-2:], [
-                    call('Content-Type', 'application/json'),
-                    call('Content-Length', len(json_data))])
             expected = '' if not ip else '/%s' % ip
             self.assertEqual(post.mock_calls[-1], call(
                 '/os-floating-ips%s' % expected,
-                data=json_data, success=success,
+                json=json_data, success=success,
                 **kwargs))
 
     @patch('%s.delete' % rest_pkg, return_value=FR())

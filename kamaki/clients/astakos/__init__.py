@@ -1,4 +1,4 @@
-# Copyright 2012-2013 GRNET S.A. All rights reserved.
+# Copyright 2012-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -32,14 +32,18 @@
 # or implied, of GRNET S.A.
 
 from logging import getLogger
+import inspect
 from astakosclient import AstakosClient as OriginalAstakosClient
 from astakosclient import AstakosClientException, parse_endpoints
 
 from kamaki.clients import Client, ClientError, RequestManager, recvlog
 
 
-class AstakosClientError(AstakosClientException, ClientError):
+class AstakosClientError(ClientError, AstakosClientException):
     """Join AstakosClientException as ClientError in one class"""
+
+    def __init__(self, message='Astakos Client Error', details='', status=0):
+        super(ClientError, self).__init__(message, details, status)
 
 
 def _astakos_error(foo):
@@ -47,7 +51,9 @@ def _astakos_error(foo):
         try:
             return foo(self, *args, **kwargs)
         except AstakosClientException as sace:
-            raise AstakosClientError('%s' % sace, sace.status, sace.details)
+            raise AstakosClientError(
+                getattr(sace, 'message', '%s' % sace),
+                details=sace.details, status=sace.status)
     return wrap
 
 
@@ -61,14 +67,18 @@ class AstakosClient(OriginalAstakosClient):
             url = args.pop(0)
             token = args.pop(0) if args else kwargs.pop('token', None)
             args = tuple([token, url] + args)
-        elif 'base_url' in kwargs:
-            kwargs['auth_url'] = kwargs.get('auth_url', kwargs['base_url'])
+        else:
+            kwargs['auth_url'] = kwargs.get('auth_url', kwargs.get(
+                'endpoint_url', kwargs['base_url']))
         super(AstakosClient, self).__init__(*args, **kwargs)
 
     def get_service_endpoints(self, service_type, version=None):
         services = parse_endpoints(
             self.get_endpoints(), ep_type=service_type, ep_version_id=version)
-        return services[0]['endpoints'][0] if services else []
+        return services[0]['endpoints'][0] if services else {}
+
+    def get_endpoint_url(self, service_type, version=None):
+        return self.get_service_endpoints(service_type, version)['publicURL']
 
     @property
     def user_info(self):
@@ -79,8 +89,7 @@ class AstakosClient(OriginalAstakosClient):
 
 
 #  Wrap AstakosClient public methods to raise AstakosClientError
-from inspect import getmembers
-for m in getmembers(AstakosClient):
+for m in inspect.getmembers(AstakosClient):
     if hasattr(m[1], '__call__') and not ('%s' % m[0]).startswith('_'):
         setattr(AstakosClient, m[0], _astakos_error(m[1]))
 
@@ -127,17 +136,18 @@ class LoggedAstakosClient(AstakosClient):
                         message=log_response['message'],
                         data=log_response.get('data', ''))
         except Exception:
-            pass
+            recvlog.debug('Kamaki failed to log an AstakosClient call')
         finally:
             return r
 
 
 class CachedAstakosClient(Client):
     """Synnefo Astakos cached client wraper"""
+    service_type = 'identity'
 
     @_astakos_error
-    def __init__(self, base_url, token=None):
-        super(CachedAstakosClient, self).__init__(base_url, token)
+    def __init__(self, endpoint_url, token=None):
+        super(CachedAstakosClient, self).__init__(endpoint_url, token)
         self._astakos = dict()
         self._uuids = dict()
         self._cache = dict()
@@ -171,7 +181,7 @@ class CachedAstakosClient(Client):
         """
         token = self._resolve_token(token)
         astakos = LoggedAstakosClient(
-            self.base_url, token, logger=getLogger('astakosclient'))
+            self.endpoint_url, token, logger=getLogger('astakosclient'))
         astakos.LOG_TOKEN = getattr(self, 'LOG_TOKEN', False)
         astakos.LOG_DATA = getattr(self, 'LOG_DATA', False)
         r = astakos.authenticate()
@@ -247,9 +257,12 @@ class CachedAstakosClient(Client):
             raise AstakosClientError(
                 '%s endpoints match type %s %s' % (
                     len(matches), service_type,
-                    ('and versionId %s' % version) if version else ''),
-                601)
+                    ('and versionId %s' % version) if version else ''))
         return matches[0]
+
+    def get_endpoint_url(self, service_type, version=None, token=None):
+        r = self.get_service_endpoints(service_type, version, token)
+        return r['publicURL']
 
     def list_users(self):
         """list cached users information"""
@@ -277,7 +290,7 @@ class CachedAstakosClient(Client):
         return self.user_info(token).get(key, None)
 
     def post_user_catalogs(self, uuids=None, displaynames=None, token=None):
-        """POST base_url/user_catalogs
+        """POST endpoint_url/user_catalogs
 
         :param uuids: (list or tuple) user uuids
 

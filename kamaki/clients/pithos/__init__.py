@@ -102,13 +102,14 @@ def _range_up(start, end, max_value, a_range):
 class PithosClient(PithosRestClient):
     """Synnefo Pithos+ API client"""
 
-    def __init__(self, base_url, token, account=None, container=None):
-        super(PithosClient, self).__init__(base_url, token, account, container)
+    def __init__(self, endpoint_url, token, account=None, container=None):
+        super(PithosClient, self).__init__(
+            endpoint_url, token, account, container)
 
     def create_container(
             self,
             container=None, sizelimit=None, versioning=None, metadata=None,
-            **kwargs):
+            project_id=None, **kwargs):
         """
         :param container: (str) if not given, self.container is used instead
 
@@ -126,7 +127,7 @@ class PithosClient(PithosRestClient):
             self.container = container or cnt_back_up
             r = self.container_put(
                 quota=sizelimit, versioning=versioning, metadata=metadata,
-                **kwargs)
+                project_id=project_id, **kwargs)
             return r.headers
         finally:
             self.container = cnt_back_up
@@ -461,35 +462,26 @@ class PithosClient(PithosRestClient):
             upload_gen = None
 
         retries = 7
-        try:
-            while retries:
-                sendlog.info('%s blocks missing' % len(missing))
-                num_of_blocks = len(missing)
-                missing = self._upload_missing_blocks(
-                    missing,
-                    hmap,
-                    f,
-                    upload_gen)
-                if missing:
-                    if num_of_blocks == len(missing):
-                        retries -= 1
-                    else:
-                        num_of_blocks = len(missing)
-                else:
-                    break
+        while retries:
+            sendlog.info('%s blocks missing' % len(missing))
+            num_of_blocks = len(missing)
+            missing = self._upload_missing_blocks(
+                missing, hmap, f, upload_gen)
             if missing:
-                try:
-                    details = ['%s' % thread.exception for thread in missing]
-                except Exception:
-                    details = ['Also, failed to read thread exceptions']
-                raise ClientError(
-                    '%s blocks failed to upload' % len(missing),
-                    details=details)
-        except KeyboardInterrupt:
-            sendlog.info('- - - wait for threads to finish')
-            for thread in activethreads():
-                thread.join()
-            raise
+                if num_of_blocks == len(missing):
+                    retries -= 1
+                else:
+                    num_of_blocks = len(missing)
+            else:
+                break
+        if missing:
+            try:
+                details = ['%s' % thread.exception for thread in missing]
+            except Exception:
+                details = ['Also, failed to read thread exceptions']
+            raise ClientError(
+                '%s blocks failed to upload' % len(missing),
+                details=details)
 
         r = self.object_put(
             obj,
@@ -1216,7 +1208,7 @@ class PithosClient(PithosRestClient):
         self.object_post(obj, update=True, public=True)
         info = self.get_object_info(obj)
         return info['x-object-public']
-        pref, sep, rest = self.base_url.partition('//')
+        pref, sep, rest = self.endpoint_url.partition('//')
         base = rest.split('/')[0]
         return '%s%s%s/%s' % (pref, sep, base, info['x-object-public'])
 
@@ -1344,7 +1336,7 @@ class PithosClient(PithosRestClient):
 
                 for key, thread in flying.items():
                     if thread.isAlive():
-                        if i < nblocks:
+                        if i < (nblocks - 1):
                             unfinished[key] = thread
                             continue
                         thread.join()
@@ -1404,6 +1396,8 @@ class PithosClient(PithosRestClient):
         start, end = int(start), int(end)
         assert rf_size >= start, 'Range start %s exceeds file size %s' % (
             start, rf_size)
+        assert rf_size >= end, 'Range end %s exceeds file size %s' % (
+            end, rf_size)
         meta = self.get_container_info()
         blocksize = int(meta['x-container-block-size'])
         filesize = fstat(source_file.fileno()).st_size
@@ -1551,3 +1545,7 @@ class PithosClient(PithosRestClient):
         self._assert_container()
         r = self.object_get(obj, format='json', version='list')
         return r.json['versions']
+
+    def reassign_container(self, project_id):
+        r = self.container_post(project_id=project_id)
+        return r.headers

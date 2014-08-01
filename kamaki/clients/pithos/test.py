@@ -1,4 +1,4 @@
-# Copyright 2013 GRNET S.A. All rights reserved.
+# Copyright 2013-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -335,16 +335,20 @@ class PithosRestClient(TestCase):
         for pm in product(
                 (None, 42),
                 (None, 'v3r51on1ng'),
-                (dict(), dict(k1='v2'), dict(k2='v2', k3='v3')),
+                (None, 'project id'),
+                (None, dict(k1='v2'), dict(k2='v2', k3='v3')),
                 ((), ('someval',)),
                 (dict(), dict(success=400), dict(k='v', v='k'))):
             args, kwargs = pm[-2:]
             pm = pm[:-2]
             self.client.container_put(*(pm + args), **kwargs)
-            quota, versioning, metas = pm[-3:]
+            quota, versioning, project_id = pm[-4:-1]
+            metas = pm[-1] or dict()
             exp = [
                 call('X-Container-Policy-Quota', quota),
-                call('X-Container-Policy-Versioning', versioning)] + [
+                call('X-Container-Policy-Versioning', versioning)] + (
+                    [call('X-Container-Policy-Project', project_id)] if (
+                        project_id is not None) else []) + [
                 call('X-Container-Meta-%s' % k, v) for k, v in metas.items()]
             self.assertEqual(SH.mock_calls[- len(exp):], exp)
             self.assertEqual(put.mock_calls[-1], call(
@@ -362,6 +366,7 @@ class PithosRestClient(TestCase):
                 ('json', 'some-format'),
                 (None, 'quota'),
                 (None, 'v3r51on1ng'),
+                (None, 'project id'),
                 (dict(), dict(k1='v2'), dict(k2='v2', k3='v3')),
                 (None, 'content-type'),
                 (None, 42),
@@ -375,11 +380,13 @@ class PithosRestClient(TestCase):
             self.assertEqual(SP.mock_calls[-2:], [
                 call('update', '', iff=upd),
                 call('format', frmt, iff=frmt)])
-            qta, vrs, metas, ctype, clen, trenc = pm[2:]
+            qta, vrs, project_id, metas, ctype, clen, trenc = pm[2:]
             prfx = 'X-Container-Meta-'
             exp = [
                 call('X-Container-Policy-Quota', qta),
-                call('X-Container-Policy-Versioning', vrs)] + [
+                call('X-Container-Policy-Versioning', vrs)] + ([
+                    call('X-Container-Policy-Project', project_id)] if (
+                        project_id is not None) else []) + [
                 call('%s%s' % (prfx, k), v) for k, v in metas.items()] + [
                 call('Content-Type', ctype),
                 call('Content-Length', clen),
@@ -1195,7 +1202,8 @@ class PithosClient(TestCase):
 
         r = self.client.create_container()
         self.assert_dicts_are_equal(r, container_info)
-        CP.assert_called_once_with(quota=None, versioning=None, metadata=None)
+        CP.assert_called_once_with(
+            project_id=None, quota=None, versioning=None, metadata=None)
 
         bu_cont = self.client.container
         r = self.client.create_container(cont)
@@ -1203,15 +1211,14 @@ class PithosClient(TestCase):
         self.assert_dicts_are_equal(r, container_info)
         self.assertEqual(
             CP.mock_calls[-1],
-            call(quota=None, versioning=None, metadata=None))
+            call(project_id=None, quota=None, versioning=None, metadata=None))
 
         meta = dict(k1='v1', k2='v2')
-        r = self.client.create_container(cont, 42, 'auto', meta)
+        r = self.client.create_container(cont, 42, 'auto', meta, 'prid')
         self.assertEqual(self.client.container, bu_cont)
         self.assert_dicts_are_equal(r, container_info)
-        self.assertEqual(
-            CP.mock_calls[-1],
-            call(quota=42, versioning='auto', metadata=meta))
+        self.assertEqual(CP.mock_calls[-1], call(
+            quota=42, versioning='auto', project_id='prid', metadata=meta))
 
     @patch('%s.container_delete' % pithos_pkg, return_value=FR())
     def test_purge_container(self, CD):
@@ -1733,14 +1740,20 @@ class PithosClient(TestCase):
     @patch('%s.object_post' % pithos_pkg, return_value=FR())
     def test_truncate_object(self, post):
         upto_bytes = 377
-        self.client.truncate_object(obj, upto_bytes)
-        post.assert_called_once_with(
-            obj,
-            update=True,
-            object_bytes=upto_bytes,
-            content_range='bytes 0-%s/*' % upto_bytes,
-            content_type='application/octet-stream',
-            source_object='/%s/%s' % (self.client.container, obj))
+        self.assertRaises(
+            ClientError, self.client.truncate_object, obj, upto_bytes)
+        with patch(
+                '%s.get_object_info' % pithos_pkg,
+                return_value={'content-type': 'ctype'}) as get_object_info:
+            self.client.truncate_object(obj, upto_bytes)
+            post.assert_called_once_with(
+                obj,
+                update=True,
+                object_bytes=upto_bytes,
+                content_range='bytes 0-%s/*' % upto_bytes,
+                content_type='ctype',
+                source_object='/%s/%s' % (self.client.container, obj))
+            get_object_info.assert_called_once_with(obj)
 
     @patch('%s.get_container_info' % pithos_pkg, return_value=container_info)
     @patch('%s.object_post' % pithos_pkg, return_value=FR())
@@ -1760,9 +1773,8 @@ class PithosClient(TestCase):
                     (file_size + 1, file_size + 2)):
                 tmpFile.seek(0, 0)
                 self.assertRaises(
-                    ClientError,
-                    self.client.overwrite_object,
-                    obj, start, end, tmpFile)
+                    AssertionError,
+                    self.client.overwrite_object, obj, start, end, tmpFile)
             for start, end in ((0, 144), (144, 233), (233, file_size)):
                 tmpFile.seek(0, 0)
                 owr_gen = None
@@ -1784,8 +1796,10 @@ class PithosClient(TestCase):
                     if exp_size > block_size:
                         exp_size = exp_size % block_size or block_size
 
-                self.client.overwrite_object(obj, start, end, tmpFile, owr_gen)
-                self.assertEqual(GOI.mock_calls[-1], call(obj))
+                vrs = 'version'
+                self.client.overwrite_object(
+                    obj, start, end, tmpFile, vrs, owr_gen)
+                self.assertEqual(GOI.mock_calls[-1], call(obj, version=vrs))
                 self.assertEqual(GCI.mock_calls[-1], call())
                 (args, kwargs) = post.mock_calls[-1][1:3]
                 self.assertEqual(args, (obj,))
