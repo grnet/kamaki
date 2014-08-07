@@ -283,7 +283,7 @@ class file_list(_PithosContainer, OptionalOutput, NameFilter):
 
     @errors.Pithos.container
     def _container_info(self):
-        return self.client.container_get(
+        r = self.client.container_get(
             limit=False if self['more'] else self['limit'],
             marker=self['marker'],
             prefix=self.path,
@@ -295,13 +295,19 @@ class file_list(_PithosContainer, OptionalOutput, NameFilter):
             if_unmodified_since=self['if_unmodified_since'],
             until=self['until'],
             meta=self['meta'])
+        files = list(r.json or [])
+        for item in files:
+            for k in ('name', ):
+                if k in item:
+                    item[k] = item[k].decode('unicode_escape')
+        return files
 
     @errors.Generic.all
     @errors.Pithos.connection
     @errors.Pithos.object_path
     def _run(self):
         r = self._container_info()
-        if not r.json:
+        if not r:
             if self.path:
                 obj_path = '/%s/%s' % (self.container, self.path)
                 obj_info = self.client.get_object_info(self.path)
@@ -324,7 +330,7 @@ class file_list(_PithosContainer, OptionalOutput, NameFilter):
             else:
                 self.error('Container "%s" is empty' % self.client.container)
 
-        files = self._filter_by_name(r.json)
+        files = self._filter_by_name(r)
         if self['more']:
             outbu, self._out = self._out, StringIO()
         try:
@@ -1595,7 +1601,12 @@ class container_list(_PithosAccount, OptionalOutput, NameFilter):
                 until=self['until_date'],
                 show_only_shared=self['shared_by_me'],
                 public=self['public'])
-        files = self._filter_by_name(r.json)
+        items = list(r.json or [])
+        for item in items:
+            for k in ('name', ):
+                if k in item:
+                    item[k] = item[k].decode('unicode_escape')
+        files = self._filter_by_name(items)
         if self['recursive'] and not container:
             self._create_object_forest(files)
         if self['more']:

@@ -203,7 +203,15 @@ class server_list(_CycladesInit, OptionalOutput, NameFilter, IDFilter):
         detail = self['detail'] or (
             withimage or withflavor or withmeta or withcommons)
         ch_since = self.arguments['since'].isoformat if self['since'] else None
-        servers = self.client.list_servers(detail, ch_since)
+        servers = list(self.client.list_servers(detail, ch_since) or [])
+        for item in servers:
+            for k in ('name', ):
+                item[k] = item[k].decode('unicode_escape')
+            if 'metadata' in item:
+                ms = dict()
+                for k, v in item['metadata'].items():
+                    ms[k.decode('unicode_escape')] = v.decode('unicode_escape')
+                item['metadata'] = ms
 
         servers = self._filter_by_name(servers)
         servers = self._filter_by_id(servers)
@@ -267,6 +275,12 @@ class server_info(_CycladesInit, OptionalOutput):
             self.print_(self.client.get_server_diagnostics(server_id))
         else:
             vm = self.client.get_server_details(server_id)
+            vm['name'] = vm.get('name', '').decode('unicode_escape')
+            if 'metadata' in vm:
+                ms = dict()
+                for k, v in vm['metadata'].items():
+                    ms[k.decode('unicode_escape')] = v.decode('unicode_escape')
+                vm['metadata'] = ms
             self.print_(vm, self.print_dict)
 
     def main(self, server_id):
