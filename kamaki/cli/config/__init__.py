@@ -341,7 +341,7 @@ class Config(RawConfigParser):
 
     def get_cloud(self, cloud, option):
         """
-        :param cloud: (str) cloud alias
+        :param cloud: (str) cloud name
 
         :param option: (str) option in cloud section
 
