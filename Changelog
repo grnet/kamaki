@@ -18,6 +18,11 @@ Bug fixes
 * Handle SSL unicode bug with grace [grnet/kamaki#67]
 * Check server status before changing it [grnet/kamaki#57]
 
+Support
+-------
+
+* Update library documentation with examples [grnet/kamaki#49]
+
 v0.13rc5
 ========
 
