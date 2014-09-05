@@ -33,10 +33,12 @@
 
 from logging import getLogger
 import inspect
-from astakosclient import AstakosClient as OriginalAstakosClient
 from astakosclient import AstakosClientException, parse_endpoints
+import astakosclient
 
 from kamaki.clients import Client, ClientError, RequestManager, recvlog
+
+from kamaki.clients.utils import https
 
 
 class AstakosClientError(ClientError, AstakosClientException):
@@ -55,6 +57,12 @@ def _astakos_error(foo):
                 getattr(sace, 'message', '%s' % sace),
                 details=sace.details, status=sace.status)
     return wrap
+
+
+#  Patch AstakosClient to support SSLAuthentication
+astakosclient.utils.PooledHTTPConnection = https.PooledHTTPConnection
+astakosclient.utils.HTTPSConnection = https.HTTPSClientAuthConnection
+OriginalAstakosClient = astakosclient.AstakosClient
 
 
 class AstakosClient(OriginalAstakosClient):

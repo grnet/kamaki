@@ -40,7 +40,7 @@ from time import sleep
 from random import random
 from logging import getLogger
 
-from objpool.http import PooledHTTPConnection
+from kamaki.clients.utils import https
 
 
 TIMEOUT = 60.0   # seconds
@@ -250,7 +250,7 @@ class ResponseManager(Logged):
         pool_kw = dict(size=self.poolsize) if self.poolsize else dict()
         for retries in range(1, self.CONNECTION_TRY_LIMIT + 1):
             try:
-                with PooledHTTPConnection(
+                with https.PooledHTTPConnection(
                         self.request.netloc, self.request.scheme,
                         **pool_kw) as connection:
                     self.request.LOG_TOKEN = self.LOG_TOKEN
