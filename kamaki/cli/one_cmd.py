@@ -41,7 +41,6 @@ from kamaki.cli.errors import CLIUnknownCommand, CLIError
 def run(cloud, parser):
     group = get_command_group(list(parser.unparsed), parser.arguments)
     if not group:
-        #parser.parser.print_help()
         parser.print_help()
         _groups_help(parser.arguments)
         exit(0)
@@ -100,8 +99,8 @@ def run(cloud, parser):
     astakos, help_message = init_cached_authenticator(_cnf, cloud, kloger) if (
         cloud) else (None, [])
     if not astakos:
-        from kamaki.cli import is_non_API
-        if not is_non_API(parser):
+        from kamaki.cli import is_non_api
+        if not is_non_api(parser):
             raise CLIError(
                 'Failed to initialize an identity client',
                 importance=3, details=help_message)

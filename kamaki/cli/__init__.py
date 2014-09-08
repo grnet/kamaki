@@ -45,7 +45,8 @@ from kamaki.cli.utils import (
 from kamaki.cli.errors import CLIError, CLICmdSpecError
 from kamaki.cli import logger
 from kamaki.clients.astakos import CachedAstakosClient
-from kamaki.clients import ClientError
+from kamaki.clients import ClientError, KamakiSSLError
+from kamaki.clients.utils import https
 
 
 _debug = False
@@ -212,7 +213,7 @@ def _check_config_version(cnf):
                     'For automatic conversion, rerun and say Y'])
 
 
-def _init_session(arguments, is_non_API=False):
+def _init_session(arguments, is_non_api=False):
     """
     :returns: cloud name
     """
@@ -224,8 +225,20 @@ def _init_session(arguments, is_non_API=False):
 
     _setup_logging(_debug, _verbose)
 
-    if _help or is_non_API:
+    if _help or is_non_api:
         return None
+
+    #  Patch https for SSL Authentication
+    ca_file = arguments['ca_file'].value or _cnf.get('global', 'ca_certs')
+    ignore_ssl = arguments['ignore_ssl'].value or (
+        _cnf.get('global', 'ignore_ssl').lower() == 'on')
+
+    if ca_file:
+        https.patch_with_certs(ca_file)
+    else:
+        warn = red('WARNING: CA certifications path not set (insecure) ')
+        kloger.warning(warn)
+    https.patch_to_raise_ssl_errors(not ignore_ssl)
 
     _check_config_version(_cnf.value)
 
@@ -252,7 +265,7 @@ def _init_session(arguments, is_non_API=False):
                     '  kamaki config set default_cloud <cloud name>',
                     'To pick a cloud for the current session, use --cloud:',
                     '  kamaki --cloud=<cloud name> ...'])
-    if not cloud in _cnf.value.keys('cloud'):
+    if cloud not in _cnf.value.keys('cloud'):
         raise CLIError(
             'No cloud%s is configured' % ((' "%s"' % cloud) if cloud else ''),
             importance=3, details=[
@@ -482,11 +495,11 @@ def set_command_params(parameters):
 
 #  CLI Choice:
 
-def is_non_API(parser):
-    nonAPIs = ('history', 'config')
+def is_non_api(parser):
+    non_apis = ('history', 'config')
     for term in parser.unparsed:
         if not term.startswith('-'):
-            if term in nonAPIs:
+            if term in non_apis:
                 return True
             return False
     return False
@@ -503,11 +516,11 @@ def main(func):
                 except UnicodeDecodeError as ude:
                     raise CLIError(
                         'Invalid encoding in command', importance=3, details=[
-                        'The invalid term is #%s (with "%s" being 0)' % (
-                            i, exe),
-                        'Its encoding is invalid with current locale settings '
-                        '(%s)' % pref_enc,
-                        '( %s )' % ude])
+                            'The invalid term is #%s (with "%s" being 0)' % (
+                                i, exe),
+                            'Encoding is invalid with current locale settings '
+                            '(%s)' % pref_enc,
+                            '( %s )' % ude])
             for i, a in enumerate(internal_argv):
                 argv[i] = a
 
@@ -524,7 +537,12 @@ def main(func):
                     'Print current version', ('-V', '--version')),
                 options=RuntimeConfigArgument(
                     _config_arg,
-                    'Override a config value', ('-o', '--options')))
+                    'Override a config value', ('-o', '--options')),
+                ignore_ssl=FlagArgument(
+                    'Allow connections to SSL sites without certs',
+                    ('-k', '--ignore-ssl', '--insecure')),
+                ca_file=ValueArgument(
+                    'CA certificates for SSL authentication', '--ca-certs'),)
             )
             if parser.arguments['version'].value:
                 exit(0)
@@ -545,6 +563,31 @@ def main(func):
             print_error_message(err)
             if _debug:
                 raise err
+            exit(1)
+        except KamakiSSLError as err:
+            ca_arg = parser.arguments.get('ca_file')
+            ca = ca_arg.value if ca_arg and ca_arg.value else _cnf.get(
+                'global', 'ca_certs')
+            stderr.write(red('SSL Authentication failed\n'))
+            if ca:
+                stderr.write('Path used for CA certifications file: %s\n' % ca)
+                stderr.write('Please make sure the path is correct\n')
+                if not (ca_arg and ca_arg.value):
+                    stderr.write('|  To set the correct path:\n')
+                    stderr.write('|    kamaki config set ca_certs CA_FILE\n')
+            else:
+                stderr.write('|  To use a CA certifications file:\n')
+                stderr.write('|    kamaki config set ca_certs CA_FILE\n')
+                stderr.write('|    OR run with --ca-certs=FILE_LOCATION\n')
+            stderr.write('|  To ignore SSL errors and move on (%s):\n' % (
+                red('insecure')))
+            stderr.write('|    kamaki config set ignore_ssl on\n')
+            stderr.write('|    OR run with --ignore-ssl\n')
+            stderr.flush()
+            if _debug:
+                raise
+            stderr.write('|  %s: %s\n' % (type(err), err))
+            stderr.flush()
             exit(1)
         except KeyboardInterrupt:
             print('Canceled by user')
@@ -576,7 +619,7 @@ def run_shell(exe, parser):
 
 @main
 def run_one_cmd(exe, parser):
-    cloud = _init_session(parser.arguments, is_non_API(parser))
+    cloud = _init_session(parser.arguments, is_non_api(parser))
     if parser.unparsed:
         global _history
         cnf = parser.arguments['config']

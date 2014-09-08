@@ -32,11 +32,47 @@ authentication URL is retrieved from the Synnefo Web UI and should be set as
 the cloud URL for kamaki. Users of Synnefo clouds >=0.14 are advised against
 using any service-specific URLs.
 
+SSL Authentication
+------------------
+
+HTTPS connections are authenticated with SSL since version 0.13, as long as a
+file of CA Certificates is provided. The file can be set with the
+`ca_certs configuration option <#available-options>`_ or with the *- -ca-certs*
+runtime argument. Packages for various operating systems are built with a
+default value for the 'ca_certs' configuration option, which is specific for
+each platform.
+
+If the CA Certificates are not provided or fail to authenticate a particular
+cloud, ``kamaki`` will exit with an SSL error and instructions.
+
+Users have the option to ignore SSL authentication errors with the
+`ignore_ssl configuration option <#available-options>`_ or the *- -ignore-ssl*
+runtime argument and connect to the cloud insecurely.
+
+To check the SSL settings on an installation:
+
+.. code-block:: console
+
+    $ kamaki config get ca_certs
+    $ kamaki config get ignore_ssl
+
+To set a CA certificates path:
+
+.. code-block:: console
+
+    $ kamaki config set ca_certs CA_FILE
+
+To connect to clouds even when SSL authentication fails:
+
+.. code-block:: console
+
+    $ kamaki config set ignore_ssl on
+
 Migrating configuration file to latest version
 ----------------------------------------------
 
 Each new version of kamaki might demand some changes to the configuration file.
-Kamaki features a mechanism of automatic migration of the configration file to
+Kamaki features a mechanism of automatic migration of the configuration file to
 the latest version, which involves heuristics for guessing and translating the
 file.
 
@@ -423,6 +459,12 @@ history and log files, log detail options and pithos-specific options.
 
 * global.default_cloud <cloud name>
     pick a cloud configuration as default. It must refer to an existing cloud.
+
+* global.ca_certs <CA Certificates>
+    set the path of the file with the CA Certificates for SSL authentication
+
+* global.ignore_ssl <on|off>
+    ignore / don't ignore SSL errors
 
 * global.colors <on|off>
     enable / disable colors in command line based uis. Requires ansicolors,

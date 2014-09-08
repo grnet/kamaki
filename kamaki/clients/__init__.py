@@ -39,6 +39,7 @@ from httplib import ResponseNotReady, HTTPException
 from time import sleep
 from random import random
 from logging import getLogger
+import ssl
 
 from kamaki.clients.utils import https
 
@@ -91,6 +92,10 @@ class ClientError(Exception):
             super(ClientError, self).__init__(message)
             self.status = status if isinstance(status, int) else 0
             self.details = details if details else []
+
+
+class KamakiSSLError(ClientError):
+    """SSL Connection Error"""
 
 
 class Logged(object):
@@ -177,20 +182,23 @@ class RequestManager(Logged):
         """
         self._encode_headers()
         self.dump_log()
-        conn.request(
-            method=self.method.upper(),
-            url=self.path.encode('utf-8'),
-            headers=self.headers,
-            body=self.data)
-        sendlog.info('')
-        keep_trying = TIMEOUT
-        while keep_trying > 0:
-            try:
-                return conn.getresponse()
-            except ResponseNotReady:
-                wait = 0.03 * random()
-                sleep(wait)
-                keep_trying -= wait
+        try:
+            conn.request(
+                method=self.method.upper(),
+                url=self.path.encode('utf-8'),
+                headers=self.headers,
+                body=self.data)
+            sendlog.info('')
+            keep_trying = TIMEOUT
+            while keep_trying > 0:
+                try:
+                    return conn.getresponse()
+                except ResponseNotReady:
+                    wait = 0.03 * random()
+                    sleep(wait)
+                    keep_trying -= wait
+        except ssl.SSLError as ssle:
+            raise KamakiSSLError('SSL Connection error (%s)' % ssle)
         plog = ('\t[%s]' % self) if self.LOG_PID else ''
         logmsg = 'Kamaki Timeout %s %s%s' % (self.method, self.path, plog)
         recvlog.debug(logmsg)

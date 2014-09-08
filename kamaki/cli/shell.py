@@ -174,6 +174,8 @@ class Shell(Cmd):
         tmp_args.pop('debug', None)
         tmp_args.pop('verbose', None)
         tmp_args.pop('config', None)
+        tmp_args.pop('ignore_ssl', None)
+        tmp_args.pop('ca_file', None)
         help_parser = ArgumentParseManager(
             cmd_name, tmp_args, required,
             syntax=syntax, description=descr, check_required=False)

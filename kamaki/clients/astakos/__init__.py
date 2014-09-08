@@ -33,10 +33,13 @@
 
 from logging import getLogger
 import inspect
+import ssl
+
 from astakosclient import AstakosClientException, parse_endpoints
 import astakosclient
 
-from kamaki.clients import Client, ClientError, RequestManager, recvlog
+from kamaki.clients import (
+    Client, ClientError, KamakiSSLError, RequestManager, recvlog)
 
 from kamaki.clients.utils import https
 
@@ -53,6 +56,8 @@ def _astakos_error(foo):
         try:
             return foo(self, *args, **kwargs)
         except AstakosClientException as sace:
+            if isinstance(getattr(sace, 'errobject', None), ssl.SSLError):
+                raise KamakiSSLError('SSL Connection error (%s)' % sace)
             raise AstakosClientError(
                 getattr(sace, 'message', '%s' % sace),
                 details=sace.details, status=sace.status)
