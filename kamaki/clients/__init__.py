@@ -351,11 +351,7 @@ class ResponseManager(Logged):
         """
         self._get_response()
         try:
-            #  Ensure there are no line breaks in json string
-            results_in_dict = loads(self._content)
-            results_in_str = dumps(results_in_dict)
-            #  Escape control characters and parse to python object
-            return loads(results_in_str.encode('unicode_escape'))
+            return loads(self._content)
         except ValueError as err:
             raise ClientError('Response not formated in JSON - %s' % err)
 
