@@ -31,6 +31,8 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+import unicodedata
+
 
 def _matches(val1, val2, exactMath=True):
     """Case Insensitive match"""
@@ -105,3 +107,14 @@ def readall(openfile, size, retries=7):
                 continue
         return buf
     raise IOError('Failed to read %s bytes from file' % size)
+
+
+def escape_ctrl_chars(s):
+    """Escape control characters from unicode and string objects."""
+    if isinstance(s, unicode):
+        return "".join(ch.encode("unicode_escape") if (
+            unicodedata.category(ch)[0]) == "C" else ch for ch in s)
+    if isinstance(s, basestring):
+        return "".join(
+            [c if 31 < ord(c) < 127 else c.encode("string_escape") for c in s])
+    return s

@@ -43,6 +43,8 @@ import ssl
 
 from kamaki.clients.utils import https
 
+from kamaki.clients import utils
+
 
 TIMEOUT = 60.0   # seconds
 HTTP_METHODS = ['GET', 'POST', 'PUT', 'HEAD', 'DELETE', 'COPY', 'MOVE']
@@ -148,7 +150,6 @@ class RequestManager(Logged):
 
     def dump_log(self):
         plog = ('\t[%s]' % self) if self.LOG_PID else ''
-        sendlog.info('- -  -   -     -        -             -')
         sendlog.info('%s %s://%s%s%s' % (
             self.method, self.scheme, self.netloc, self.path, plog))
         for key, val in self.headers.items():
@@ -158,8 +159,8 @@ class RequestManager(Logged):
         if self.data:
             sendlog.info('data size: %s%s' % (len(self.data), plog))
             if self.LOG_DATA:
-                sendlog.info(self.data.replace(self._token, '...') if (
-                    self._token) else self.data)
+                sendlog.info(utils.escape_ctrl_chars(self.data.replace(
+                    self._token, '...') if self._token else self.data))
         else:
             sendlog.info('data size: 0%s' % plog)
 
@@ -274,8 +275,7 @@ class ResponseManager(Logged):
                     self._status_code, self._status = r.status, unquote(
                         r.reason)
                     recvlog.info(
-                        '%d %s%s' % (
-                            self.status_code, self.status, plog))
+                        '%d %s%s' % (self.status_code, self.status, plog))
                     self._headers = dict()
 
                     r_headers = r.getheaders()
@@ -291,8 +291,7 @@ class ResponseManager(Logged):
                         data = '%s%s' % (self._content, plog)
                         if self._token:
                             data = data.replace(self._token, '...')
-                        recvlog.info(data)
-                    recvlog.info('-             -        -     -   -  - -')
+                        recvlog.info(utils.escape_ctrl_chars(data))
                 break
             except Exception as err:
                 if isinstance(err, HTTPException):
@@ -382,11 +381,9 @@ class SilentEvent(Thread):
         try:
             self._value = self.method(*(self.args), **(self.kwargs))
         except Exception as e:
+            estatus = e.status if isinstance(e, ClientError) else ''
             recvlog.debug('Thread %s got exception %s\n<%s %s' % (
-                self,
-                type(e),
-                e.status if isinstance(e, ClientError) else '',
-                e))
+                self, type(e), estatus, e))
             self._exception = e
 
 
