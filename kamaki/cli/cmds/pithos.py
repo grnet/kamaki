@@ -296,10 +296,6 @@ class file_list(_PithosContainer, OptionalOutput, NameFilter):
             until=self['until'],
             meta=self['meta'])
         files = list(r.json or [])
-        for item in files:
-            for k in ('name', ):
-                if k in item:
-                    item[k] = item[k].decode('unicode_escape')
         return files
 
     @errors.Generic.all
@@ -1602,10 +1598,6 @@ class container_list(_PithosAccount, OptionalOutput, NameFilter):
                 show_only_shared=self['shared_by_me'],
                 public=self['public'])
         items = list(r.json or [])
-        for item in items:
-            for k in ('name', ):
-                if k in item:
-                    item[k] = item[k].decode('unicode_escape')
         files = self._filter_by_name(items)
         if self['recursive'] and not container:
             self._create_object_forest(files)

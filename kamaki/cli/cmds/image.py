@@ -203,8 +203,6 @@ class image_list(_ImageInit, OptionalOutput, NameFilter, IDFilter):
             'detail', 'prop', 'prop_like', 'owner', 'owner_name')])
 
         images = self.client.list_public(detail, filters, order)
-        for img in images:
-            img['name'] = img['name'].decode('unicode_escape')
 
         if self['owner'] or self['owner_name']:
             images = self._filter_by_owner(images)
