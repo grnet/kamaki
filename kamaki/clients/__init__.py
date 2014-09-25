@@ -409,6 +409,15 @@ class Client(Logged):
         self.response_headers = []
         self.response_header_prefices = []
 
+        # If no CA certificates are set, get the defaults from kamaki.defaults
+        if https.HTTPSClientAuthConnection.ca_file is None:
+            try:
+                from kamaki import defaults
+                https.HTTPSClientAuthConnection.ca_file = getattr(
+                    defaults, 'CACERTS_DEFAULT_PATH', None)
+            except ImportError as ie:
+                log.debug('ImportError while loading default certs: %s' % ie)
+
     @staticmethod
     def _unquote_header_keys(headers, prefices):
         new_keys = dict()
