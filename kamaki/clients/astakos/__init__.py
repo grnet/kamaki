@@ -44,6 +44,9 @@ from kamaki.clients import (
 from kamaki.clients.utils import https
 
 
+log = getLogger(__name__)
+
+
 class AstakosClientError(ClientError, AstakosClientException):
     """Join AstakosClientException as ClientError in one class"""
 
@@ -83,6 +86,16 @@ class AstakosClient(OriginalAstakosClient):
         else:
             kwargs['auth_url'] = kwargs.get('auth_url', kwargs.get(
                 'endpoint_url', kwargs['base_url']))
+
+        # If no CA certificates are set, get the defaults from kamaki.defaults
+        if https.HTTPSClientAuthConnection.ca_file is None:
+            try:
+                from kamaki import defaults
+                https.HTTPSClientAuthConnection.ca_file = getattr(
+                    defaults, 'CACERTS_DEFAULT_PATH', None)
+            except ImportError as ie:
+                log.debug('ImportError while loading default certs: %s' % ie)
+
         super(AstakosClient, self).__init__(*args, **kwargs)
 
     def get_service_endpoints(self, service_type, version=None):

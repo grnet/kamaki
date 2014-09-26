@@ -36,6 +36,6 @@
 # OS-specific settings when packaging kamaki for a platform.
 
 # The default path for the CA certifications file of the host system
-CACERTS_DEFAULT_PATH = ''
+CACERTS_DEFAULT_PATH = None
 
 # To overwrite any of the above, append new assignments bellow
