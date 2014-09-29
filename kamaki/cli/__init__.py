@@ -46,7 +46,7 @@ from kamaki.cli.errors import CLIError, CLICmdSpecError
 from kamaki.cli import logger
 from kamaki.clients.astakos import CachedAstakosClient
 from kamaki.clients import ClientError, KamakiSSLError
-from kamaki.clients.utils import https
+from kamaki.clients.utils import https, escape_ctrl_chars
 
 
 _debug = False
@@ -198,7 +198,8 @@ def _check_config_version(cnf):
             print 'The following information will NOT be preserved:'
             print '\t', '\n\t'.join(lost_terms)
         print('Kamaki is ready to convert the config file')
-        stdout.write('Create (overwrite) file %s ? [y/N] ' % cnf.path)
+        stdout.write('Create (overwrite) file %s ? [y/N] ' % escape_ctrl_chars(
+            cnf.path))
         from sys import stdin
         reply = stdin.readline()
         if reply in ('Y\n', 'y\n'):
@@ -443,7 +444,7 @@ def update_parser_help(parser, cmd):
 
 
 def print_error_message(cli_err, out=stderr):
-    errmsg = u'%s' % cli_err
+    errmsg = escape_ctrl_chars(('%s' % cli_err).strip('\n'))
     if cli_err.importance == 1:
         errmsg = magenta(errmsg)
     elif cli_err.importance == 2:
@@ -451,8 +452,9 @@ def print_error_message(cli_err, out=stderr):
     elif cli_err.importance > 2:
         errmsg = red(errmsg)
     out.write(errmsg)
+    out.write('\n')
     for errmsg in cli_err.details:
-        out.write(u'|  %s\n' % errmsg)
+        out.write('|  %s\n' % escape_ctrl_chars(u'%s' % errmsg))
         out.flush()
 
 
@@ -570,7 +572,8 @@ def main(func):
                 'global', 'ca_certs')
             stderr.write(red('SSL Authentication failed\n'))
             if ca:
-                stderr.write('Path used for CA certifications file: %s\n' % ca)
+                stderr.write('Path used for CA certifications file: %s\n' % (
+                    escape_ctrl_chars(ca)))
                 stderr.write('Please make sure the path is correct\n')
                 if not (ca_arg and ca_arg.value):
                     stderr.write('|  To set the correct path:\n')
@@ -586,7 +589,8 @@ def main(func):
             stderr.flush()
             if _debug:
                 raise
-            stderr.write('|  %s: %s\n' % (type(err), err))
+            stderr.write('|  %s: %s\n' % (
+                type(err), escape_ctrl_chars('%s' % err)))
             stderr.flush()
             exit(1)
         except KeyboardInterrupt:

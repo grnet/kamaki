@@ -54,6 +54,9 @@ class CLIError(Exception):
         except ValueError:
             self.importance = 0
 
+    def __str__(self):
+        return u'%s' % getattr(self, 'message', '')
+
 
 class CLIUnimplemented(CLIError):
     def __init__(

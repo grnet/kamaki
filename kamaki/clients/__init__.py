@@ -95,6 +95,9 @@ class ClientError(Exception):
             self.status = status if isinstance(status, int) else 0
             self.details = details if details else []
 
+    def __str__(self):
+        return u'%s' % getattr(self, 'message', '')
+
 
 class KamakiSSLError(ClientError):
     """SSL Connection Error"""
