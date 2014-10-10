@@ -84,8 +84,8 @@ class AstakosClient(OriginalAstakosClient):
             token = args.pop(0) if args else kwargs.pop('token', None)
             args = tuple([token, url] + args)
         else:
-            kwargs['auth_url'] = kwargs.get('auth_url', kwargs.get(
-                'endpoint_url', kwargs['base_url']))
+            kwargs.setdefault(
+                'auth_url', kwargs.get('endpoint_url', kwargs['base_url']))
 
         # If no CA certificates are set, get the defaults from kamaki.defaults
         if https.HTTPSClientAuthConnection.ca_file is None:
@@ -129,6 +129,10 @@ class LoggedAstakosClient(AstakosClient):
 
     LOG_TOKEN = False
     LOG_DATA = False
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault('logger', log)
+        super(LoggedAstakosClient, self).__init__(*args, **kwargs)
 
     def _dump_response(self, request, status, message, data):
         recvlog.info('\n%d %s' % (status, message))
@@ -206,8 +210,7 @@ class CachedAstakosClient(Client):
         :param token: (str) custom token to authenticate
         """
         token = self._resolve_token(token)
-        astakos = LoggedAstakosClient(
-            self.endpoint_url, token, logger=getLogger('astakosclient'))
+        astakos = LoggedAstakosClient(self.endpoint_url, token, logger=log)
         astakos.LOG_TOKEN = getattr(self, 'LOG_TOKEN', False)
         astakos.LOG_DATA = getattr(self, 'LOG_DATA', False)
         r = astakos.authenticate()
