@@ -210,6 +210,7 @@ class network_create(_NetworkInit, OptionalOutput):
         except ClientError as ce:
             if self['project_id'] and ce.status in (400, 403, 404):
                 self._project_id_exists(project_id=self['project_id'])
+            raise
         self.print_(net, self.print_dict)
 
     def main(self):
