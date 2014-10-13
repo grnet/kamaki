@@ -470,10 +470,10 @@ class image_register(_ImageInit, OptionalOutput):
             try:
                 pithos.get_object_info(path)
                 raise CLIError('File already exists', importance=2, details=[
-                        'A remote file /%s/%s already exists' % (
-                            pithos.container, path),
-                        'Use %s to force upload' % self.arguments[
-                            'force_upload'].lvalue])
+                    'A remote file /%s/%s already exists' % (
+                        pithos.container, path),
+                    'Use %s to force upload' % self.arguments[
+                        'force_upload'].lvalue])
             except ClientError as ce:
                 if ce.status != 404:
                     raise
@@ -502,18 +502,18 @@ class image_register(_ImageInit, OptionalOutput):
         self._load_params_from_args(params, properties)
 
         if not self['no_metafile_upload']:
-            #check if metafile exists
+            # check if metafile exists
             pithos = pithos or self._get_pithos_client(locator)
             meta_path = '%s.meta' % locator.path
             self._assert_remote_file_not_exist(pithos, meta_path)
 
-        #register the image
+        # register the image
         try:
             r = self.client.register(name, location, params, properties)
         except ClientError as ce:
             if ce.status in (400, 404):
                 raise CLIError(
-                    'Nonexistent image file location\n\t%s' % location,
+                    'Nonexistent image file location %s' % location,
                     details=[
                         '%s' % ce,
                         'Does the image file %s exist at container %s ?' % (
@@ -523,7 +523,7 @@ class image_register(_ImageInit, OptionalOutput):
         r['owner'] += ' (%s)' % self._uuid2username(r['owner'])
         self.print_(r, self.print_dict)
 
-        #upload the metadata file
+        # upload the metadata file
         if not self['no_metafile_upload']:
             try:
                 meta_headers = pithos.upload_from_string(
@@ -531,9 +531,8 @@ class image_register(_ImageInit, OptionalOutput):
                     sharing=dict(read='*' if params.get('is_public') else ''),
                     container_info_cache=self.container_info_cache)
             except TypeError:
-                self.error(
-                    'Failed to dump metafile /%s/%s' % (
-                        locator.container, meta_path))
+                self.error('Failed to dump metafile /%s/%s' % (
+                    locator.container, meta_path))
                 return
             if self['output_format']:
                 self.print_json(dict(

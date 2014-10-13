@@ -33,10 +33,18 @@
 
 from logging import getLogger
 import inspect
-from astakosclient import AstakosClient as OriginalAstakosClient
-from astakosclient import AstakosClientException, parse_endpoints
+import ssl
 
-from kamaki.clients import Client, ClientError, RequestManager, recvlog
+from astakosclient import AstakosClientException, parse_endpoints
+import astakosclient
+
+from kamaki.clients import (
+    Client, ClientError, KamakiSSLError, RequestManager, recvlog)
+
+from kamaki.clients.utils import https
+
+
+log = getLogger(__name__)
 
 
 class AstakosClientError(ClientError, AstakosClientException):
@@ -51,10 +59,18 @@ def _astakos_error(foo):
         try:
             return foo(self, *args, **kwargs)
         except AstakosClientException as sace:
+            if isinstance(getattr(sace, 'errobject', None), ssl.SSLError):
+                raise KamakiSSLError('SSL Connection error (%s)' % sace)
             raise AstakosClientError(
                 getattr(sace, 'message', '%s' % sace),
                 details=sace.details, status=sace.status)
     return wrap
+
+
+#  Patch AstakosClient to support SSLAuthentication
+astakosclient.utils.PooledHTTPConnection = https.PooledHTTPConnection
+astakosclient.utils.HTTPSConnection = https.HTTPSClientAuthConnection
+OriginalAstakosClient = astakosclient.AstakosClient
 
 
 class AstakosClient(OriginalAstakosClient):
@@ -70,6 +86,16 @@ class AstakosClient(OriginalAstakosClient):
         else:
             kwargs['auth_url'] = kwargs.get('auth_url', kwargs.get(
                 'endpoint_url', kwargs['base_url']))
+
+        # If no CA certificates are set, get the defaults from kamaki.defaults
+        if https.HTTPSClientAuthConnection.ca_file is None:
+            try:
+                from kamaki import defaults
+                https.HTTPSClientAuthConnection.ca_file = getattr(
+                    defaults, 'CACERTS_DEFAULT_PATH', None)
+            except ImportError as ie:
+                log.debug('ImportError while loading default certs: %s' % ie)
+
         super(AstakosClient, self).__init__(*args, **kwargs)
 
     def get_service_endpoints(self, service_type, version=None):

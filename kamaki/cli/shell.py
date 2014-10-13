@@ -142,13 +142,13 @@ class Shell(Cmd):
         return ''
 
     @classmethod
-    def _register_method(self, method, name):
-        self.__dict__[name] = method
+    def _register_method(cls, method, name):
+        cls.__dict__[name] = method
 
     @classmethod
-    def _unregister_method(self, name):
+    def _unregister_method(cls, name):
         try:
-            self.__dict__.pop(name)
+            cls.__dict__.pop(name)
         except KeyError:
             pass
 
@@ -159,21 +159,22 @@ class Shell(Cmd):
             self._unregister_method('help_%s' % subname)
 
     @classmethod
-    def _backup(self):
-        return dict(self.__dict__)
+    def _backup(cls):
+        return dict(cls.__dict__)
 
     @classmethod
-    def _restore(self, oldcontext):
-        self.__dict__ = oldcontext
+    def _restore(cls, oldcontext):
+        cls.__dict__ = oldcontext
 
     @staticmethod
     def _create_help_method(cmd_name, args, required, descr, syntax):
         tmp_args = dict(args)
-        #tmp_args.pop('options', None)
         tmp_args.pop('cloud', None)
         tmp_args.pop('debug', None)
         tmp_args.pop('verbose', None)
         tmp_args.pop('config', None)
+        tmp_args.pop('ignore_ssl', None)
+        tmp_args.pop('ca_file', None)
         help_parser = ArgumentParseManager(
             cmd_name, tmp_args, required,
             syntax=syntax, description=descr, check_required=False)
@@ -232,8 +233,6 @@ class Shell(Cmd):
                             cmd_parser.parsed, name, arg.default)
 
                     exec_cmd(instance, cmd_parser.unparsed, help_method)
-                        #[term for term in cmd_parser.unparsed\
-                        #    if not term.startswith('-')],
                 except (ClientError, CLIError) as err:
                     print_error_message(err)
             elif ('-h' in cmd_args or '--help' in cmd_args) or len(cmd_args):
@@ -241,17 +240,16 @@ class Shell(Cmd):
                 print('%s' % cmd.help)
                 print_subcommands_help(cmd)
             else:  # change context
-                #new_context = this
                 backup_context = self._backup()
                 old_prompt = self.prompt
                 new_context._roll_command(cmd.parent_path)
                 new_context.set_prompt(subcmd.path.replace('_', ' '))
-                newcmds = [subcmd for subcmd in subcmd.subcommands.values()]
-                for subcmd in newcmds:
-                    new_context._register_command(subcmd.path)
+                newcmds = [scmd for scmd in subcmd.subcommands.values()]
+                for scmd in newcmds:
+                    new_context._register_command(scmd.path)
                 new_context.cmdloop()
                 self.prompt = old_prompt
-                #when new context is over, roll back to the old one
+                # when new context is over, roll back to the old one
                 self._restore(backup_context)
         self._register_method(do_method, 'do_%s' % cmd.name)
 
@@ -260,7 +258,6 @@ class Shell(Cmd):
             if cmd.is_command:
                 cls = cmd.cmd_class
                 ldescr = getattr(cls, 'long_description', '')
-                #_construct_command_syntax(cls)
                 plist = self.prompt[len(self._prefix):-len(self._suffix)]
                 plist = plist.split(' ')
                 clist = cmd.path.split('_')

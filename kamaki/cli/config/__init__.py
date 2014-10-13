@@ -62,6 +62,14 @@ CLOUD_PREFIX = 'cloud'
 # Name of a shell variable to bypass the CONFIG_PATH value
 CONFIG_ENV = 'KAMAKI_CONFIG'
 
+# Get default CA Certifications file path - created while packaging
+try:
+    from kamaki import defaults
+    CACERTS_DEFAULT_PATH = getattr(defaults, 'CACERTS_DEFAULT_PATH', '')
+except ImportError as ie:
+    log.debug('ImportError while loading default certs: %s' % ie)
+    CACERTS_DEFAULT_PATH = ''
+
 version = ''
 for c in '%s' % __version__:
     if c not in '0.123456789':
@@ -99,26 +107,28 @@ DEFAULTS = {
         'image_cli': 'image',
         'imagecompute_cli': 'image',
         'config_cli': 'config',
-        'history_cli': 'history'
+        'history_cli': 'history',
+        'ignore_ssl': 'off',
+        'ca_certs': CACERTS_DEFAULT_PATH,
         #  Optional command specs:
         #  'service_cli': 'astakos'
         #  'endpoint_cli': 'astakos'
         #  'commission_cli': 'astakos'
     },
     CLOUD_PREFIX: {
-        #'default': {
-        #    'url': '',
-        #    'token': ''
-        #    'pithos_container': 'THIS IS DANGEROUS'
-        #    'pithos_type': 'object-store',
-        #    'pithos_version': 'v1',
-        #    'cyclades_type': 'compute',
-        #    'cyclades_version': 'v2.0',
-        #    'plankton_type': 'image',
-        #    'plankton_version': '',
-        #    'astakos_type': 'identity',
-        #    'astakos_version': 'v2.0'
-        #}
+        # 'default': {
+        #     'url': '',
+        #     'token': ''
+        #     'pithos_container': 'THIS IS DANGEROUS'
+        #     'pithos_type': 'object-store',
+        #     'pithos_version': 'v1',
+        #     'cyclades_type': 'compute',
+        #     'cyclades_version': 'v2.0',
+        #     'plankton_type': 'image',
+        #     'plankton_version': '',
+        #     'astakos_type': 'identity',
+        #     'astakos_version': 'v2.0'
+        # }
     }
 }
 
@@ -192,22 +202,23 @@ class Config(RawConfigParser):
                     except KeyError:
                         cval = ''
                     if gval and cval and (
-                        gval.lower().strip('/') != cval.lower().strip('/')):
-                            raise CLISyntaxError(
-                                'Conflicting values for default %s' % (term),
-                                importance=2, details=[
-                                    ' global.%s:  %s' % (term, gval),
-                                    ' %s.%s.%s:  %s' % (
-                                        CLOUD_PREFIX,
-                                        default_cloud,
-                                        term,
-                                        cval),
-                                    'Please remove one of them manually:',
-                                    ' /config delete global.%s' % term,
-                                    ' or'
-                                    ' /config delete %s.%s.%s' % (
-                                        CLOUD_PREFIX, default_cloud, term),
-                                    'and try again'])
+                            gval.lower().strip('/') != cval.lower().strip('/')
+                            ):
+                        raise CLISyntaxError(
+                            'Conflicting values for default %s' % (term),
+                            importance=2, details=[
+                                ' global.%s:  %s' % (term, gval),
+                                ' %s.%s.%s:  %s' % (
+                                    CLOUD_PREFIX,
+                                    default_cloud,
+                                    term,
+                                    cval),
+                                'Please remove one of them manually:',
+                                ' /config delete global.%s' % term,
+                                ' or'
+                                ' /config delete %s.%s.%s' % (
+                                    CLOUD_PREFIX, default_cloud, term),
+                                'and try again'])
                     elif gval:
                         err.write(u'... rescue %s.%s => %s.%s.%s\n' % (
                             s, term, CLOUD_PREFIX, default_cloud, term))
