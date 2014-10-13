@@ -341,9 +341,9 @@ class user_select(_AstakosInit):
                 'No user with uuid %s in the cached session list' % uuid,
                 details=[
                     'To see all cached session users:', '  kamaki user list'])
-        name = self.astakos.user_info()['name'] or '<USER>'
         if self.astakos.token != first_token:
             self.astakos.token = first_token
+            name = self.astakos.user_info()['name'] or '<USER>'
             self.error('User %s with id %s is now the current session user' % (
                 name, uuid))
             if self.ask_user(
@@ -356,6 +356,7 @@ class user_select(_AstakosInit):
                 self['config'].write()
                 self.error('%s is now the default user' % name)
         else:
+            name = self.astakos.user_info()['name'] or '<USER>'
             self.error('User %s is already the selected session user' % name)
 
     def main(self):

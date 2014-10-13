@@ -14,6 +14,8 @@ Bug fixes
 * Fix bug of incorrectly suppressed errors in "kamaki network create"
   [grnet/kamaki#56]
 * Set a default logger to LoggedAstakosClient [grnet/kamaki#58]
+* Show the correct name when switching kamaki users
+  [grnet/kamaki#66]
 
 v0.13rc4
 ========
