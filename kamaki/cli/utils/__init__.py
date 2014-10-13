@@ -35,10 +35,11 @@ from sys import stdout, stderr
 from re import compile as regex_compile
 from os import walk, path
 from json import dumps
-from kamaki.cli.logger import get_logger
 from locale import getpreferredencoding
 
+from kamaki.cli.logger import get_logger
 from kamaki.cli.errors import raiseCLIError
+from kamaki.clients.utils import escape_ctrl_chars
 
 INDENT_TAB = 4
 log = get_logger(__name__)
@@ -46,9 +47,9 @@ pref_enc = getpreferredencoding()
 
 
 suggest = dict(ansicolors=dict(
-        active=False,
-        url='#install-ansicolors',
-        description='Add colors to console responses'))
+    active=False,
+    url='#install-ansicolors',
+    description='Add colors to console responses'))
 
 try:
     from colors import magenta, red, yellow, bold
@@ -158,17 +159,18 @@ def print_dict(
         print_str += '%s.' % (i + 1) if with_enumeration else ''
         print_str += '%s:' % k
         if isinstance(v, dict):
-            out.write(print_str + u'\n')
+            out.write(escape_ctrl_chars(print_str) + u'\n')
             print_dict(
                 v, exclude, indent + INDENT_TAB,
                 recursive_enumeration, recursive_enumeration, out)
         elif isinstance(v, list) or isinstance(v, tuple):
-            out.write(print_str + u'\n')
+            out.write(escape_ctrl_chars(print_str) + u'\n')
             print_list(
                 v, exclude, indent + INDENT_TAB,
                 recursive_enumeration, recursive_enumeration, out)
         else:
-            out.write(u'%s %s\n' % (print_str, v))
+            out.write(escape_ctrl_chars(u'%s %s' % (print_str, v)))
+            out.write(u'\n')
 
 
 def print_list(
@@ -204,7 +206,7 @@ def print_list(
         print_str += '%s.' % (i + 1) if with_enumeration else ''
         if isinstance(item, dict):
             if with_enumeration:
-                out.write(print_str + u'\n')
+                out.write(escape_ctrl_chars(print_str) + u'\n')
             elif i and i < len(l):
                 out.write(u'\n')
             print_dict(
@@ -213,7 +215,7 @@ def print_list(
                 recursive_enumeration, recursive_enumeration, out)
         elif isinstance(item, list) or isinstance(item, tuple):
             if with_enumeration:
-                out.write(print_str + u'\n')
+                out.write(escape_ctrl_chars(print_str) + u'\n')
             elif i and i < len(l):
                 out.write(u'\n')
             print_list(
@@ -223,7 +225,8 @@ def print_list(
             item = ('%s' % item).strip()
             if item in exclude:
                 continue
-            out.write(u'%s%s\n' % (print_str, item))
+            out.write(escape_ctrl_chars(u'%s%s' % (print_str, item)))
+            out.write(u'\n')
 
 
 def print_items(
@@ -245,8 +248,9 @@ def print_items(
     if not items:
         return
     if not (isinstance(items, dict) or isinstance(items, list) or isinstance(
-                items, tuple)):
-        out.write(u'%s\n' % items)
+            items, tuple)):
+        out.write(escape_ctrl_chars(u'%s' % items))
+        out.write(u'\n')
         return
 
     for i, item in enumerate(items):
@@ -256,13 +260,14 @@ def print_items(
             item = dict(item)
             title = sorted(set(title).intersection(item))
             pick = item.get if with_redundancy else item.pop
-            header = ' '.join('%s' % pick(key) for key in title)
+            header = escape_ctrl_chars(
+                ' '.join('%s' % pick(key) for key in title))
             out.write((unicode(bold(header) if header else '') + '\n'))
             print_dict(item, indent=INDENT_TAB, out=out)
         elif isinstance(item, list) or isinstance(item, tuple):
             print_list(item, indent=INDENT_TAB, out=out)
         else:
-            out.write(u' %s\n' % item)
+            out.write(u' %s\n' % escape_ctrl_chars(item))
 
 
 def format_size(size, decimal_factors=False):
@@ -379,10 +384,11 @@ def ask_user(msg, true_resp=('y', ), **kwargs):
     """
     yep = u', '.join(true_resp)
     nope = u'<not %s>' % yep if 'n' in true_resp or 'N' in true_resp else 'N'
-    msg = msg.encode(pref_enc, errors='replace')
+    msg = escape_ctrl_chars(msg).encode(pref_enc, errors='replace')
     yep = yep.encode(pref_enc, errors='replace')
     nope = nope.encode(pref_enc, errors='replace')
-    user_response = raw_input('%s [%s/%s]: ' % (msg, yep, nope))
+    user_response = raw_input(
+        '%s [%s/%s]: ' % (msg, yep, nope))
     return user_response[0].lower() in [s.lower() for s in true_resp]
 
 
@@ -405,8 +411,7 @@ def remove_from_items(list_of_dicts, key_to_remove):
 
 
 def filter_dicts_by_dict(
-    list_of_dicts, filters,
-    exact_match=True, case_sensitive=False):
+        list_of_dicts, filters, exact_match=True, case_sensitive=False):
     """
     :param list_of_dicts: (list) each dict contains "raw" key-value pairs
 

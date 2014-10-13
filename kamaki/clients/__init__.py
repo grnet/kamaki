@@ -39,8 +39,11 @@ from httplib import ResponseNotReady, HTTPException
 from time import sleep
 from random import random
 from logging import getLogger
+import ssl
 
-from objpool.http import PooledHTTPConnection
+from kamaki.clients.utils import https
+
+from kamaki.clients import utils
 
 
 TIMEOUT = 60.0   # seconds
@@ -91,6 +94,13 @@ class ClientError(Exception):
             super(ClientError, self).__init__(message)
             self.status = status if isinstance(status, int) else 0
             self.details = details if details else []
+
+    def __str__(self):
+        return u'%s' % getattr(self, 'message', '')
+
+
+class KamakiSSLError(ClientError):
+    """SSL Connection Error"""
 
 
 class Logged(object):
@@ -143,7 +153,6 @@ class RequestManager(Logged):
 
     def dump_log(self):
         plog = ('\t[%s]' % self) if self.LOG_PID else ''
-        sendlog.info('- -  -   -     -        -             -')
         sendlog.info('%s %s://%s%s%s' % (
             self.method, self.scheme, self.netloc, self.path, plog))
         for key, val in self.headers.items():
@@ -153,8 +162,8 @@ class RequestManager(Logged):
         if self.data:
             sendlog.info('data size: %s%s' % (len(self.data), plog))
             if self.LOG_DATA:
-                sendlog.info(self.data.replace(self._token, '...') if (
-                    self._token) else self.data)
+                sendlog.info(utils.escape_ctrl_chars(self.data.replace(
+                    self._token, '...') if self._token else self.data))
         else:
             sendlog.info('data size: 0%s' % plog)
 
@@ -177,20 +186,23 @@ class RequestManager(Logged):
         """
         self._encode_headers()
         self.dump_log()
-        conn.request(
-            method=self.method.upper(),
-            url=self.path.encode('utf-8'),
-            headers=self.headers,
-            body=self.data)
-        sendlog.info('')
-        keep_trying = TIMEOUT
-        while keep_trying > 0:
-            try:
-                return conn.getresponse()
-            except ResponseNotReady:
-                wait = 0.03 * random()
-                sleep(wait)
-                keep_trying -= wait
+        try:
+            conn.request(
+                method=self.method.upper(),
+                url=self.path.encode('utf-8'),
+                headers=self.headers,
+                body=self.data)
+            sendlog.info('')
+            keep_trying = TIMEOUT
+            while keep_trying > 0:
+                try:
+                    return conn.getresponse()
+                except ResponseNotReady:
+                    wait = 0.03 * random()
+                    sleep(wait)
+                    keep_trying -= wait
+        except ssl.SSLError as ssle:
+            raise KamakiSSLError('SSL Connection error (%s)' % ssle)
         plog = ('\t[%s]' % self) if self.LOG_PID else ''
         logmsg = 'Kamaki Timeout %s %s%s' % (self.method, self.path, plog)
         recvlog.debug(logmsg)
@@ -250,7 +262,7 @@ class ResponseManager(Logged):
         pool_kw = dict(size=self.poolsize) if self.poolsize else dict()
         for retries in range(1, self.CONNECTION_TRY_LIMIT + 1):
             try:
-                with PooledHTTPConnection(
+                with https.PooledHTTPConnection(
                         self.request.netloc, self.request.scheme,
                         **pool_kw) as connection:
                     self.request.LOG_TOKEN = self.LOG_TOKEN
@@ -266,8 +278,7 @@ class ResponseManager(Logged):
                     self._status_code, self._status = r.status, unquote(
                         r.reason)
                     recvlog.info(
-                        '%d %s%s' % (
-                            self.status_code, self.status, plog))
+                        '%d %s%s' % (self.status_code, self.status, plog))
                     self._headers = dict()
 
                     r_headers = r.getheaders()
@@ -283,8 +294,7 @@ class ResponseManager(Logged):
                         data = '%s%s' % (self._content, plog)
                         if self._token:
                             data = data.replace(self._token, '...')
-                        recvlog.info(data)
-                    recvlog.info('-             -        -     -   -  - -')
+                        recvlog.info(utils.escape_ctrl_chars(data))
                 break
             except Exception as err:
                 if isinstance(err, HTTPException):
@@ -374,11 +384,9 @@ class SilentEvent(Thread):
         try:
             self._value = self.method(*(self.args), **(self.kwargs))
         except Exception as e:
+            estatus = e.status if isinstance(e, ClientError) else ''
             recvlog.debug('Thread %s got exception %s\n<%s %s' % (
-                self,
-                type(e),
-                e.status if isinstance(e, ClientError) else '',
-                e))
+                self, type(e), estatus, e))
             self._exception = e
 
 
@@ -400,6 +408,15 @@ class Client(Logged):
         self.request_header_prefices_to_quote = []
         self.response_headers = []
         self.response_header_prefices = []
+
+        # If no CA certificates are set, get the defaults from kamaki.defaults
+        if https.HTTPSClientAuthConnection.ca_file is None:
+            try:
+                from kamaki import defaults
+                https.HTTPSClientAuthConnection.ca_file = getattr(
+                    defaults, 'CACERTS_DEFAULT_PATH', None)
+            except ImportError as ie:
+                log.debug('ImportError while loading default certs: %s' % ie)
 
     @staticmethod
     def _unquote_header_keys(headers, prefices):

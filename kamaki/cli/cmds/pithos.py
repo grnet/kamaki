@@ -38,6 +38,7 @@ from os import path, walk, makedirs
 from threading import activeCount, enumerate as activethreads
 
 from kamaki.clients.pithos import PithosClient, ClientError
+from kamaki.clients.utils import escape_ctrl_chars
 
 from kamaki.cli import command
 from kamaki.cli.cmdtree import CommandTree
@@ -120,7 +121,8 @@ class _PithosAccount(_PithosInit):
             else:
                 size = format_size(obj['bytes'])
                 pretty_obj['bytes'] = '%s (%s)' % (obj['bytes'], size)
-            oname = obj['name'] if self['more'] else bold(obj['name'])
+            oname = escape_ctrl_chars(obj['name'])
+            oname = oname if self['more'] else bold(oname)
             prfx = ('%s%s. ' % (empty_space, index)) if self['enum'] else ''
             if self['detail']:
                 self.writeln('%s%s' % (prfx, oname))
@@ -296,10 +298,6 @@ class file_list(_PithosContainer, OptionalOutput, NameFilter):
             until=self['until'],
             meta=self['meta'])
         files = list(r.json or [])
-        for item in files:
-            for k in ('name', ):
-                if k in item:
-                    item[k] = item[k].decode('unicode_escape')
         return files
 
     @errors.Generic.all
@@ -581,17 +579,16 @@ class _PithosFromTo(_PithosContainer):
                 self.error('  delete source directory %s' % src)
             return
         dst_prf = '' if self.account == self.dst_client.account else (
-                'pithos://%s' % self.dst_client.account)
+            'pithos://%s' % self.dst_client.account)
+        full_dest_path = '%s/%s/%s' % (dst_prf, self.dst_client.container, dst)
         if src:
             src_prf = '' if self.account == self.dst_client.account else (
-                    'pithos://%s' % self.account)
-            self.error('  %s %s/%s/%s\n  -->  %s/%s/%s' % (
-                transfer_name,
-                src_prf, self.container, src,
-                dst_prf, self.dst_client.container, dst))
+                'pithos://%s' % self.account)
+            full_src_path = '/%s/%s/%s' % (src_prf, self.container, src)
+            self.error('  %s %s  -->  %s' % (
+                transfer_name, full_src_path, full_dest_path))
         else:
-            self.error('  mkdir %s/%s/%s' % (
-                dst_prf, self.dst_client.container, dst))
+            self.error('  mkdir %s' % full_dest_path)
 
     @errors.Generic.all
     @errors.Pithos.account
@@ -637,15 +634,13 @@ class _PithosFromTo(_PithosContainer):
                         'Destination object exists', importance=2, details=[
                             'Failed while transfering:',
                             '    pithos://%s/%s/%s' % (
-                                    self.account,
-                                    self.container,
-                                    src_path),
+                                self.account, self.container, src_path),
                             '--> pithos://%s/%s/%s' % (
-                                    self.dst_client.account,
-                                    self.dst_client.container,
-                                    dst_path),
+                                self.dst_client.account,
+                                self.dst_client.container,
+                                dst_path),
                             'Use %s to transfer overwrite' % (
-                                    self.arguments['force'].lvalue)])
+                                self.arguments['force'].lvalue)])
         else:
             #  One object transfer
             try:
@@ -688,15 +683,13 @@ class _PithosFromTo(_PithosContainer):
                     importance=2, details=[
                         'Failed while transfering:',
                         '    pithos://%s/%s/%s' % (
-                                self.account,
-                                self.container,
-                                self.path),
+                            self.account, self.container, self.path),
                         '--> pithos://%s/%s/%s' % (
-                                self.dst_client.account,
-                                self.dst_client.container,
-                                dst_path),
+                            self.dst_client.account,
+                            self.dst_client.container,
+                            dst_path),
                         'Use %s to transfer overwrite' % (
-                                self.arguments['force'].lvalue)])
+                            self.arguments['force'].lvalue)])
         return pairs
 
     def _run(self, source_path_or_url, destination_path_or_url=''):
@@ -1015,7 +1008,7 @@ class file_upload(_PithosContainer):
                         pathfix = f.replace(path.sep, '/')
                         yield open(fpath, 'rb'), '%s/%s' % (rel_path, pathfix)
                     else:
-                        self.error('%s is not a regular file' % fpath)
+                        self.error('%s not a regular file' % fpath)
         else:
             if not path.isfile(lpath):
                 raise CLIError(('%s is not a regular file' % lpath) if (
@@ -1135,11 +1128,11 @@ class RangeArgument(ValueArgument):
                         if start > end:
                             raise CLIInvalidArgument(
                                 'Invalid range %s' % newvalue, details=[
-                                'Valid range formats',
-                                '  START-END', '  UP_TO', '  -FROM',
-                                'where all values are integers',
-                                'OR a compination (csv), e.g.,',
-                                '  %s=5,10-20,-5' % self.lvalue])
+                                    'Valid range formats',
+                                    '  START-END', '  UP_TO', '  -FROM',
+                                    'where all values are integers',
+                                    'OR a compination (csv), e.g.,',
+                                    '  %s=5,10-20,-5' % self.lvalue])
                         self._value += '%s-%s' % (start, end)
                     else:
                         self._value += '-%s' % int(end)
@@ -1542,8 +1535,8 @@ class container_list(_PithosAccount, OptionalOutput, NameFilter):
             if 'bytes' in container:
                 size = format_size(container['bytes'])
             prfx = ('%s. ' % (index + 1)) if self['enum'] else ''
-            _cname = container['name'] if (
-                self['more']) else bold(container['name'])
+            _cname = escape_ctrl_chars(container['name'])
+            _cname = _cname if self['more'] else bold(_cname)
             cname = u'%s%s' % (prfx, _cname)
             if self['detail']:
                 self.writeln(cname)
@@ -1602,10 +1595,6 @@ class container_list(_PithosAccount, OptionalOutput, NameFilter):
                 show_only_shared=self['shared_by_me'],
                 public=self['public'])
         items = list(r.json or [])
-        for item in items:
-            for k in ('name', ):
-                if k in item:
-                    item[k] = item[k].decode('unicode_escape')
         files = self._filter_by_name(items)
         if self['recursive'] and not container:
             self._create_object_forest(files)
@@ -1658,7 +1647,7 @@ class container_create(_PithosAccount):
             if ce.status in (202, ):
                 raise CLIError(
                     'Container %s alread exists' % self.container, details=[
-                    'Delete %s or choose another name' % self.container])
+                        'Delete %s or choose another name' % self.container])
             elif self['project_id'] and ce.status in (400, 403, 404):
                 self._project_id_exists(project_id=self['project_id'])
             raise

@@ -153,7 +153,7 @@ class server_list(_CycladesInit, OptionalOutput, NameFilter, IDFilter):
 
     def _add_user_name(self, servers):
         uuids = self._uuids2usernames(list(set(
-                    [srv['user_id'] for srv in servers])))
+            [srv['user_id'] for srv in servers])))
         for srv in servers:
             srv['user_id'] += ' (%s)' % uuids[srv['user_id']]
         return servers
@@ -179,7 +179,7 @@ class server_list(_CycladesInit, OptionalOutput, NameFilter, IDFilter):
     def _filter_by_metadata(self, servers):
         new_servers = []
         for srv in servers:
-            if not 'metadata' in srv:
+            if 'metadata' not in srv:
                 continue
             meta = [dict(srv['metadata'])]
             if self['meta']:
@@ -204,14 +204,6 @@ class server_list(_CycladesInit, OptionalOutput, NameFilter, IDFilter):
             withimage or withflavor or withmeta or withcommons)
         ch_since = self.arguments['since'].isoformat if self['since'] else None
         servers = list(self.client.list_servers(detail, ch_since) or [])
-        for item in servers:
-            for k in ('name', ):
-                item[k] = item[k].decode('unicode_escape')
-            if 'metadata' in item:
-                ms = dict()
-                for k, v in item['metadata'].items():
-                    ms[k.decode('unicode_escape')] = v.decode('unicode_escape')
-                item['metadata'] = ms
 
         servers = self._filter_by_name(servers)
         servers = self._filter_by_id(servers)
@@ -275,12 +267,6 @@ class server_info(_CycladesInit, OptionalOutput):
             self.print_(self.client.get_server_diagnostics(server_id))
         else:
             vm = self.client.get_server_details(server_id)
-            vm['name'] = vm.get('name', '').decode('unicode_escape')
-            if 'metadata' in vm:
-                ms = dict()
-                for k, v in vm['metadata'].items():
-                    ms[k.decode('unicode_escape')] = v.decode('unicode_escape')
-                vm['metadata'] = ms
             self.print_(vm, self.print_dict)
 
     def main(self, server_id):
@@ -384,8 +370,8 @@ class NetworkArgument(RepeatableArgument):
                 if (part2.startswith('id=') and netid) or (
                         part2.startswith('ip=') and ip):
                     raise CLIInvalidArgument(
-                        'Invalid network argument %s' % v, details=[
-                        'Valid format: [id=]NETWORK_ID[,[ip=]IP]'])
+                        'Invalid network argument %s' % v,
+                        details=['Valid format: [id=]NETWORK_ID[,[ip=]IP]'])
                 if part2.startswith('id='):
                     netid = part2[len('id='):]
                 elif part2.startswith('ip='):
@@ -396,8 +382,8 @@ class NetworkArgument(RepeatableArgument):
                     netid = part2
             if not netid:
                 raise CLIInvalidArgument(
-                    'Invalid network argument %s' % v, details=[
-                    'Valid format: [id=]NETWORK_ID[,[ip=]IP]'])
+                    'Invalid network argument %s' % v,
+                    details=['Valid format: [id=]NETWORK_ID[,[ip=]IP]'])
             self._value = getattr(self, '_value', [])
             self._value.append(dict(uuid=netid))
             if ip:
@@ -473,7 +459,7 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
                 self.error('Failed to build %s servers' % size)
                 self.error('Found %s matching servers:' % len(spawned_servers))
                 self.print_(spawned_servers, out=self._err)
-                self.error('Check if any of these servers should be removed\n')
+                self.error('Check if any of these servers should be removed')
             except Exception as ne:
                 self.error('Error (%s) while notifying about errors' % ne)
             finally:
@@ -551,9 +537,9 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
         if self['no_network'] and self['network_configuration']:
             raise CLIInvalidArgument(
                 'Invalid argument compination', importance=2, details=[
-                'Arguments %s and %s are mutually exclusive' % (
-                    self.arguments['no_network'].lvalue,
-                    self.arguments['network_configuration'].lvalue)])
+                    'Arguments %s and %s are mutually exclusive' % (
+                        self.arguments['no_network'].lvalue,
+                        self.arguments['network_configuration'].lvalue)])
         self._run()
 
 
@@ -750,7 +736,7 @@ class server_delete(_CycladesInit, _ServerWait):
             deleted_vms.append(server_id)
         if self['cluster']:
             dlen = len(deleted_vms)
-            self.error('%s virtual server%s deleted' % (
+            self.error('%s virtual server %s deleted' % (
                 dlen, '' if dlen == 1 else 's'))
 
     def main(self, server_id_or_cluster_prefix):
