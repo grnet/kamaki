@@ -68,7 +68,7 @@ class history_show(_HistoryInit):
     @errors.Generic.all
     def _run(self, cmd_slice):
         c = self.history.counter
-        lines = ['%s.\t%s' % (i + c, l) for i, l in enumerate(
+        lines = ['%s.  %s' % (i + c, l) for i, l in enumerate(
             self.history[:])][cmd_slice]
         if not isinstance(cmd_slice, slice):
             lines = [lines, ]

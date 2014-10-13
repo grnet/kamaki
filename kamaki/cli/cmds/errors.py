@@ -58,7 +58,7 @@ class Generic(object):
                     raise e
                 elif isinstance(e, ClientError):
                     raise CLIError(
-                        u'(%s) %s' % (getattr(e, 'status', 'no status'), e),
+                        '(%s) %s' % (getattr(e, 'status', 'no status'), e),
                         details=getattr(e, 'details', []),
                         importance=1 if (
                             e.status < 200) else 2 if (
@@ -250,8 +250,8 @@ class Cyclades(object):
                     'Cluster size must be a positive integer', '%s' % ve])
             except AssertionError as ae:
                 raise CLIError(
-                    'Invalid cluster size %s' % size, importance=1, details=[
-                    '%s' % ae])
+                    'Invalid cluster size %s' % size,
+                    importance=1, details=['%s' % ae])
             except ClientError:
                 raise
         _raise.__name__ = func.__name__
@@ -276,7 +276,7 @@ class Cyclades(object):
                         'No network with id %s found' % network_id,
                         importance=2,
                         details=[msg, ] + this.about_network_id + [
-                        '%s %s' % (getattr(ce, 'status', ''), ce)])
+                            '%s %s' % (getattr(ce, 'status', ''), ce)])
                 raise
         _raise.__name__ = func.__name__
         return _raise
@@ -438,7 +438,7 @@ class Cyclades(object):
                 if ce.status in (404, 400):
                     server_id = kwargs.get('server_id', None)
                     details = [
-                    'to get a list of all servers', '  kamaki server list']
+                        'to get a list of all servers', '  kamaki server list']
                     if ce.status in (404, ):
                         try:
                             server_id = int(server_id)
@@ -447,7 +447,7 @@ class Cyclades(object):
                     raise CLIError(
                         'No servers with ID %s' % server_id,
                         importance=2, details=details + [
-                        '%s %s' % (getattr(ce, 'status', ''), ce)])
+                            '%s %s' % (getattr(ce, 'status', ''), ce)])
                 raise
         _raise.__name__ = func.__name__
         return _raise
@@ -588,12 +588,13 @@ class Pithos(object):
             except IOError as ioe:
                 raise CLIError(
                     'Failed to access a local file', importance=2, details=[
-                    'To check if the file exists', '  kamaki file info PATH',
-                    'All directories in a remote path must exist, or the '
-                    'download will fail',
-                    'To create a remote directory',
-                    '  kamaki file mkdir REMOTE_DIRECTORY_PATH',
-                    '%s' % ioe])
+                        'To check if the file exists',
+                        '  kamaki file info PATH',
+                        'All directories in a remote path must exist, or the '
+                        'download will fail',
+                        'To create a remote directory',
+                        '  kamaki file mkdir REMOTE_DIRECTORY_PATH',
+                        u'%s' % ioe])
         _raise.__name__ = func.__name__
         return _raise
 
@@ -606,7 +607,7 @@ class Pithos(object):
             except IOError as ioe:
                 raise CLIError(
                     'Failed to access file %s' % local_path,
-                    details=['%s' % ioe, ], importance=2)
+                    details=[u'%s' % ioe, ], importance=2)
         _raise.__name__ = func.__name__
         return _raise
 

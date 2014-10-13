@@ -29,6 +29,40 @@ This is the pseudocode:
 #. Register the image file to the **Plankton** *image* service
 #. Create a number of virtual servers to the **Cyclades** *compute* service
 
+Secure connections
+------------------
+
+To facilitate secure connections, the https connection module should be
+patched before initializing any clients. The rational and the details are
+sketched in the :ref:`clients-ssl` section.
+
+.. code-block:: python
+
+    from kamaki import defaults
+    from kamaki.cli import config
+    from kamaki.clients.utils import https
+
+    #  kamaki.config
+    cnf = config.Config()
+
+    # If kamaki has default CA certificates path, it uses it automatically
+    if not defaults.CACERTS_DEFAULT_PATH:
+        # There is no default CA certificates path - look it up in config
+        ca_certs = cnf.get('global', 'ca_certs')
+        if not ca_certs:
+            # There is no CA certificates path in config - ask the user
+            ca_certs = raw_input(
+                'Warning: No CA certificates path\n Options:\n'
+                ' * <RETURN> for insecure connection\n'
+                ' * <ctrl-C> to cancel\n'
+                ' * Provide a CA certificates path\n: ')
+
+        if ca_certs:
+            # Use this CA certificates path
+            https.patch_with_certs(ca_certs)
+        else:
+            # Risk insecure connections
+            https.patch_to_raise_ssl_errors(False)
 
 Credentials and endpoints
 -------------------------
@@ -575,15 +609,33 @@ logging more. We also added some command line interaction candy.
     from kamaki.cli.logger import get_logger, add_file_logger
     from progress.bar import Bar
     from logging import DEBUG
+    from kamaki.cli import config
+    from kamaki import defaults
+    from kamaki.clients.utils import https
 
     #  Define loggers
     log = get_logger(__name__)
     add_file_logger('kamaki.clients', DEBUG, '%s.log' % __name__)
     add_file_logger(__name__, DEBUG, '%s.log' % __name__)
 
+    #  kamaki.config
+    cnf = config.Config()
+
+    # Setup SSL authentication
+    if not defaults.CACERTS_DEFAULT_PATH:
+        ca_certs = cnf.get('global', 'ca_certs')
+        if not ca_certs:
+            ca_certs = raw_input(
+                'Warning: No CA certificates path\n Options:\n'
+                ' * <RETURN> for insecure connection\n'
+                ' * <ctrl-C> to cancel\n'
+                ' * Provide a CA certificates path\n: ')
+        if ca_certs:
+            https.patch_with_certs(ca_certs)
+        else:
+            https.patch_to_raise_ssl_errors(False)
+
     #  Create progress bar generator
-
-
     def create_pb(msg):
         def generator(n):
             bar = Bar(msg)
@@ -592,22 +644,18 @@ logging more. We also added some command line interaction candy.
             yield
         return generator
 
-
-    #  kamaki.config
     #  Identity,Account / Astakos
 
     def init_astakos():
         from kamaki.clients.astakos import AstakosClient
-        from kamaki.cli.config import Config, CONFIG_PATH
 
         print(' Get the credentials')
-        cnf = Config()
 
         #  Get default cloud name
         try:
             cloud_name = cnf.get('global', 'default_cloud')
         except KeyError:
-            log.debug('No default cloud set in file %' % CONFIG_PATH)
+            log.debug('No default cloud set in file %' % config.CONFIG_PATH)
             raise
 
         try:

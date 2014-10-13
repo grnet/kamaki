@@ -452,12 +452,13 @@ class PithosClient(PithosRestClient):
             return obj_headers
 
         if upload_cb:
-            upload_gen = upload_cb(len(missing))
-            for i in range(len(missing), len(hashmap['hashes']) + 1):
+            upload_gen = upload_cb(len(hashmap['hashes']))
+            for i in range(len(hashmap['hashes']) + 1 - len(missing)):
                 try:
                     upload_gen.next()
                 except:
-                    upload_gen = None
+                    sendlog.debug('Progress bar failure')
+                    break
         else:
             upload_gen = None
 

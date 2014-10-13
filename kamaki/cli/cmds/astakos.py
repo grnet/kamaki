@@ -344,10 +344,10 @@ class user_select(_AstakosInit):
         name = self.astakos.user_info()['name'] or '<USER>'
         if self.astakos.token != first_token:
             self.astakos.token = first_token
-            msg = 'User %s with id %s is now the current session user\n' % (
-                name, uuid)
-            msg += 'Make %s the default user for future sessions?' % name
-            if self.ask_user(msg):
+            self.error('User %s with id %s is now the current session user' % (
+                name, uuid))
+            if self.ask_user(
+                    'Make %s the default user for future sessions?' % name):
                 tokens = self.astakos._uuids.keys()
                 tokens.remove(self.astakos.token)
                 tokens.insert(0, self.astakos.token)
@@ -390,7 +390,8 @@ class user_delete(_AstakosInit):
         try:
             self.astakos.remove_user(uuid)
         except KeyError:
-            raise CLIError('No user with uuid %s in session list' % uuid,
+            raise CLIError(
+                'No user with uuid %s in session list' % uuid,
                 details=[
                     'To see all cached session users',
                     '  kamaki user list',
@@ -734,8 +735,8 @@ class PolicyArgument(ValueArgument):
                 self._value = new_policy.lower()
             else:
                 raise CLIInvalidArgument(
-                    'Invalid value for %s' % self.lvalue, details=[
-                    'Valid values: %s' % ', '.join(self.policies)])
+                    'Invalid value for %s' % self.lvalue,
+                    details=['Valid values: %s' % ', '.join(self.policies)])
 
 
 class ProjectResourceArgument(KeyValueArgument):
@@ -761,12 +762,12 @@ class ProjectResourceArgument(KeyValueArgument):
                 except Exception as e:
                     raise CLIInvalidArgument(
                         'Invalid resource value %s' % value, details=[
-                        'Usage:',
-                        '  %s %s=<member_capacity>,<project_capacity>' % (
-                            self.lvalue, key),
-                        'where both capacities are integers',
-                        'and member_capacity <= project_capacity', '',
-                        '(%s)' % e])
+                            'Usage:',
+                            '  %s %s=<member_capacity>,<project_capacity>' % (
+                                self.lvalue, key),
+                            'where both capacities are integers',
+                            'and member_capacity <= project_capacity', '',
+                            '(%s)' % e])
                 self._value[key] = dict(
                     member_capacity=member_capacity,
                     project_capacity=project_capacity)
@@ -911,8 +912,8 @@ class project_modify(_AstakosInit, OptionalOutput):
             a = self.arguments
             raise CLIInvalidArgument(
                 'Invalid argument combination', details=[
-                'Arguments %s and %s are mutually exclussive' % (
-                    a['private'].lvalue, a['public'].lvalue)])
+                    'Arguments %s and %s are mutually exclussive' % (
+                        a['private'].lvalue, a['public'].lvalue)])
         self._run(project_id=project_id)
 
 

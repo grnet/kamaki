@@ -41,6 +41,7 @@ from kamaki.cli.utils import (
 from kamaki.cli.argument import ValueArgument, ProgressBarArgument
 from kamaki.cli.errors import CLIInvalidArgument, CLIBaseUrlError
 from kamaki.cli.cmds import errors
+from kamaki.clients.utils import escape_ctrl_chars
 
 
 log = get_logger(__name__)
@@ -144,7 +145,8 @@ class CommandInit(object):
         self.write('%s\n' % s)
 
     def error(self, s=''):
-        self._err.write(('%s\n' % s).encode(pref_enc, errors='replace'))
+        esc_s = escape_ctrl_chars(s)
+        self._err.write(('%s\n' % esc_s).encode(pref_enc, errors='replace'))
         self._err.flush()
 
     def print_list(self, *args, **kwargs):
@@ -204,19 +206,19 @@ class CommandInit(object):
                 self['config'].get('global', 'log_token').lower() == 'on')
         except Exception as e:
             log.debug('Failed to read custom log_token setting:'
-                '%s\n default for log_token is off' % e)
+                      '%s\n default for log_token is off' % e)
         try:
             self.client.LOG_DATA = (
                 self['config'].get('global', 'log_data').lower() == 'on')
         except Exception as e:
             log.debug('Failed to read custom log_data setting:'
-                '%s\n default for log_data is off' % e)
+                      '%s\n default for log_data is off' % e)
         try:
             self.client.LOG_PID = (
                 self['config'].get('global', 'log_pid').lower() == 'on')
         except Exception as e:
             log.debug('Failed to read custom log_pid setting:'
-                '%s\n default for log_pid is off' % e)
+                      '%s\n default for log_pid is off' % e)
 
     def _safe_progress_bar(
             self, msg, arg='progress_bar', countdown=False, timeout=100):

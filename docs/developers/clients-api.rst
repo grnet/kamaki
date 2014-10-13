@@ -16,6 +16,22 @@ of the modules implement the Synnefo extensions (i.e., *cyclades* and
 *cyclades_rest_api* extents *compute*, *pithos* and *pithos_rest_api* extent
 *storage*).
 
+Secure connections
+------------------
+
+Before setting up any clients, developers are advised to check whether a CA
+certificates chain file is set, or set one themselves.
+
+.. code-block:: python
+
+    from kamaki import defaults
+    from kamaki.clients.utils import https
+
+    if not defaults.CACERTS_DEFAULT_PATH:
+        https.patch_with_certs(CA_CERTS_PATH)
+
+Check the :ref:`clients-ssl` section for more details on the subject.
+
 Setup a client instance
 -----------------------
 
