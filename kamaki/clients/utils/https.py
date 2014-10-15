@@ -90,19 +90,14 @@ class HTTPSClientAuthConnection(httplib.HTTPSConnection):
             self._tunnel()
 
         # If there's no CA File, let the flag decide if there should be a check
-        if self.ca_file:
-            try:
-                self.sock = ssl.wrap_socket(
-                    sock, self.key_file, self.cert_file,
-                    ca_certs=self.ca_file, cert_reqs=ssl.CERT_REQUIRED)
-                return
-            except ssl.SSLError as ssle:
-                if self.raise_ssl_error:
-                    raise
-                log.debug('Ignored SSL error: %s' % ssle)
-        self.sock = ssl.wrap_socket(
-            sock, self.key_file, self.cert_file, cert_reqs=(
-                ssl.CERT_REQUIRED if self.raise_ssl_error else ssl.CERT_NONE))
+        if self.raise_ssl_error:
+            self.sock = ssl.wrap_socket(
+                sock, self.key_file, self.cert_file,
+                ca_certs=self.ca_file, cert_reqs=ssl.CERT_REQUIRED)
+        else:
+            self.sock = ssl.wrap_socket(
+                sock, self.key_file, self.cert_file,
+                cert_reqs=ssl.CERT_NONE)
 
 
 http.HTTPConnectionPool._scheme_to_class['https'] = HTTPSClientAuthConnection
