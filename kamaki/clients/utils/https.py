@@ -45,34 +45,16 @@ class HTTPSClientAuthConnection(httplib.HTTPSConnection):
 
     ca_file, raise_ssl_error = None, True
 
-    def __init__(
-            self, host,
-            port=None,
-            key_file=None,
-            cert_file=None,
-            timeout=None,
-            source_address=None,
-            ca_file=None,
-            raise_ssl_error=None):
-        kwargs = dict()
-        if port is not None:
-            kwargs['port'] = port
-        if key_file is not None:
-            kwargs['key_file'] = key_file
-        if port is not None:
-            kwargs['cert_file'] = cert_file
-        if key_file is not None:
-            kwargs['key_file'] = key_file
-        if timeout is not None:
-            kwargs['timeout'] = timeout
-        if source_address is not None:
-            kwargs['source_address'] = source_address
+    def __init__(self, *args, **kwargs):
+        """ Extent HTTPSConnection to support SSL authentication
+            :param ca_file: path to CA certificates bundle (default: None)
+            :param raise_ssl_error: flag (default: True)
+        """
+        self.ca_file = kwargs.pop('ca_file', self.ca_file)
+        self.raise_ssl_error = kwargs.pop(
+            'raise_ssl_error', self.raise_ssl_error)
 
-        httplib.HTTPSConnection.__init__(self, host, **kwargs)
-
-        self.ca_file = ca_file or getattr(self, 'ca_file')
-        self.raise_ssl_error = raise_ssl_error if (
-            raise_ssl_error is not None) else getattr(self, 'raise_ssl_error')
+        httplib.HTTPSConnection.__init__(self, *args, **kwargs)
 
     def connect(self):
         """Connect to a host on a given (SSL) port.
@@ -83,8 +65,10 @@ class HTTPSClientAuthConnection(httplib.HTTPSConnection):
         ssl.wrap_socket(), which forces SSL to check server certificate against
         our client certificate.
         """
-        sock = socket.create_connection(
-            (self.host, self.port), self.timeout, self.source_address)
+        source_address = getattr(self, 'source_address', None)
+        socket_args = [(self.host, self.port), self.timeout] + (
+            [source_address, ] if source_address else [])
+        sock = socket.create_connection(*socket_args)
         if self._tunnel_host:
             self.sock = sock
             self._tunnel()
