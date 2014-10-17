@@ -31,7 +31,6 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-#from mock import patch, call
 from unittest import TestCase
 from itertools import product
 
@@ -83,7 +82,7 @@ class Command(TestCase):
                     self.assertFalse(cmd.add_subcmd(subcmd))
                     self.assertTrue(len(cmd.subcommands) == 0)
             else:
-                self.assertRaises(cmd.add_subcmd, subname, AttributeError)
+                self.assertRaises(AttributeError, cmd.add_subcmd, subname)
 
     def test_get_subcmd(self):
         cmd = cmdtree.Command('cmd')
@@ -356,19 +355,19 @@ class CommandTree(TestCase):
         self.assertRaises(KeyError, ctree.get_subcommands, 'cmd')
         self._add_commands(ctree)
         for s1, l2 in (
-            ('', ['cmd', 'othercmd']),
-            ('cmd', ['cmd0a', 'cmd0b', 'cmd0c']),
-            ('cmd_cmd0a', ['cmd1a', 'cmd1b']),
-            ('cmd_cmd0a_cmd1a', ['cmd2', ]),
-            ('cmd_cmd0a_cmd1b', ['cmd2', ]),
-            ('cmd_cmd0a_cmd1a_cmd2', []),
-            ('cmd_cmd0a_cmd1b_cmd2', []),
-            ('cmd_cmd0b', []),
-            ('cmd_cmd0c', ['cmd1a', 'cmd1b']),
-            ('cmd_cmd0c_cmd1a', []),
-            ('cmd_cmd0c_cmd1b', ['cmd2', ]),
-            ('cmd_cmd0c_cmd1b_cmd2', []),
-            ('othercmd', [])):
+                ('', ['cmd', 'othercmd']),
+                ('cmd', ['cmd0a', 'cmd0b', 'cmd0c']),
+                ('cmd_cmd0a', ['cmd1a', 'cmd1b']),
+                ('cmd_cmd0a_cmd1a', ['cmd2', ]),
+                ('cmd_cmd0a_cmd1b', ['cmd2', ]),
+                ('cmd_cmd0a_cmd1a_cmd2', []),
+                ('cmd_cmd0a_cmd1b_cmd2', []),
+                ('cmd_cmd0b', []),
+                ('cmd_cmd0c', ['cmd1a', 'cmd1b']),
+                ('cmd_cmd0c_cmd1a', []),
+                ('cmd_cmd0c_cmd1b', ['cmd2', ]),
+                ('cmd_cmd0c_cmd1b_cmd2', []),
+                ('othercmd', [])):
             l1 = [cmd.path for cmd in ctree.get_subcommands(s1)]
             l2 = ['_'.join([s1, i]) for i in l2] if s1 else l2
             l1.sort(), l2.sort(), self.assertEqual(l1, l2)

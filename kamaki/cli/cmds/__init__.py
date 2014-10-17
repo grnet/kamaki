@@ -138,7 +138,7 @@ class CommandInit(object):
 
     @dont_raise(UnicodeError)
     def write(self, s):
-        self._out.write(s.encode(pref_enc, errors='replace'))
+        self._out.write(s.encode(pref_enc, 'replace'))
         self._out.flush()
 
     def writeln(self, s=''):
@@ -146,7 +146,7 @@ class CommandInit(object):
 
     def error(self, s=''):
         esc_s = escape_ctrl_chars(s)
-        self._err.write(('%s\n' % esc_s).encode(pref_enc, errors='replace'))
+        self._err.write(('%s\n' % esc_s).encode(pref_enc, 'replace'))
         self._err.flush()
 
     def print_list(self, *args, **kwargs):

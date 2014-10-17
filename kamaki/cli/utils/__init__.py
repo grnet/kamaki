@@ -80,7 +80,7 @@ def suggest_missing(miss=None, exclude=[]):
         if v['active'] and stderr.isatty():
             stderr.write('Suggestion: you may like to install %s\n' % k)
             stderr.write(
-                ('%s\n' % v['description']).encode(pref_enc, errors='replace'))
+                ('%s\n' % v['description']).encode(pref_enc, 'replace'))
             stderr.write('\tIt is easy, here are the instructions:\n')
             stderr.write('\t%s/installation.html%s\n' % (
                 kamaki_docs, v['url']))
@@ -384,9 +384,9 @@ def ask_user(msg, true_resp=('y', ), **kwargs):
     """
     yep = u', '.join(true_resp)
     nope = u'<not %s>' % yep if 'n' in true_resp or 'N' in true_resp else 'N'
-    msg = escape_ctrl_chars(msg).encode(pref_enc, errors='replace')
-    yep = yep.encode(pref_enc, errors='replace')
-    nope = nope.encode(pref_enc, errors='replace')
+    msg = escape_ctrl_chars(msg).encode(pref_enc, 'replace')
+    yep = yep.encode(pref_enc, 'replace')
+    nope = nope.encode(pref_enc, 'replace')
     user_response = raw_input(
         '%s [%s/%s]: ' % (msg, yep, nope))
     return user_response[0].lower() in [s.lower() for s in true_resp]

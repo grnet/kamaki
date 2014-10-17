@@ -38,11 +38,10 @@ Ignore SSL Errors
 
     from kamaki.clients.utils import https
 
-    https.patch_to_raise_ssl_errors(False)
+    https.patch_ignore_ssl()
 
-.. note:: Ignoring SSL errors works like this:
-    The https connection module attempts a secure connection.
-    If it fails, it falls back to an insecure connection.
+.. note:: When the connection module is instructed not to use SSL, it won't
+    attempt to connect securely, even if a certificate is provided.
 
 System CA certificates
 ----------------------

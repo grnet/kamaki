@@ -32,7 +32,6 @@
 # or implied, of GRNET S.A.
 
 from mock import patch, call
-from logging import getLogger
 from unittest import TestCase
 from itertools import product
 
@@ -237,7 +236,7 @@ class CachedAstakosClient(TestCase):
         self.assertEqual(example, self.client.authenticate('not important'))
         resolve.assert_called_once_with('not important')
         super_init.assert_called_once_with(
-            self.url, 'rtoken', logger=getLogger('astakosclient'))
+            self.url, 'rtoken', logger=astakos.log)
         authenticate.assert_called_once_with()
         uuid = example['access']['user']['id']
         self.assertEqual(self.client._uuids['rtoken'], uuid)

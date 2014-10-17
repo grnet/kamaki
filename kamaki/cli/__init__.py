@@ -239,7 +239,7 @@ def _init_session(arguments, is_non_api=False):
     else:
         warn = red('WARNING: CA certifications path not set (insecure) ')
         kloger.warning(warn)
-    https.patch_to_raise_ssl_errors(not ignore_ssl)
+    https.patch_ignore_ssl(ignore_ssl)
 
     _check_config_version(_cnf.value)
 
@@ -444,7 +444,8 @@ def update_parser_help(parser, cmd):
 
 
 def print_error_message(cli_err, out=stderr):
-    errmsg = escape_ctrl_chars(('%s' % cli_err).strip('\n'))
+    errmsg = escape_ctrl_chars(('%s' % cli_err).strip('\n')).encode(
+        pref_enc, 'replace')
     if cli_err.importance == 1:
         errmsg = magenta(errmsg)
     elif cli_err.importance == 2:
@@ -454,7 +455,8 @@ def print_error_message(cli_err, out=stderr):
     out.write(errmsg)
     out.write('\n')
     for errmsg in cli_err.details:
-        out.write('|  %s\n' % escape_ctrl_chars(u'%s' % errmsg))
+        out.write('|  %s\n' % escape_ctrl_chars(u'%s' % errmsg).encode(
+            pref_enc, 'replace'))
         out.flush()
 
 

@@ -5,6 +5,25 @@ Unified Changelog file for Kamaki versions >= 0.13
 
 .. _Changelog-0.13:
 
+v0.13rc5
+========
+
+Released: Fri Oct 17 17:12:08 EEST 2014
+
+Bug fixes
+---------
+
+* Fix bug of incorrectly suppressed errors in "kamaki network create"
+  [grnet/kamaki#56]
+* Set a default logger to LoggedAstakosClient [grnet/kamaki#58]
+* Show the correct name when switching kamaki users
+  [grnet/kamaki#66]
+* Fix Python 2.6 compatibility concerning HTTPS arguments
+  [grnet/kamaki#73]
+* Fix Python 2.6 compatibility concerning encode parameters
+* Rename "raise_ssl_errors" to "ignore_ssl" in HTTPConnection class
+  [grnet/kamaki#74]
+
 v0.13rc4
 ========
 
