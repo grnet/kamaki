@@ -16,8 +16,9 @@ Bug fixes
 * Set a default logger to LoggedAstakosClient [grnet/kamaki#58]
 * Show the correct name when switching kamaki users
   [grnet/kamaki#66]
-* Fix Python 2.6 compatibility concerning with HTTPS arguments
+* Fix Python 2.6 compatibility concerning HTTPS arguments
   [grnet/kamaki#73]
+* Fix Python 2.6 compatibility concerning encode parameters
 
 v0.13rc4
 ========
