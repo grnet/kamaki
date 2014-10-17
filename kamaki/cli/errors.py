@@ -46,6 +46,7 @@ class CLIError(Exception):
         """
         message += '' if message and message.endswith('\n') else '\n'
         super(CLIError, self).__init__(message)
+        self.message = message
         self.details = (list(details) if (
             isinstance(details, list) or isinstance(details, tuple)) else [
                 '%s' % details]) if details else []
@@ -55,7 +56,7 @@ class CLIError(Exception):
             self.importance = 0
 
     def __str__(self):
-        return u'%s' % getattr(self, 'message', '')
+        return self.message
 
 
 class CLIUnimplemented(CLIError):
