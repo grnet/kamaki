@@ -239,7 +239,7 @@ def _init_session(arguments, is_non_api=False):
     else:
         warn = red('WARNING: CA certifications path not set (insecure) ')
         kloger.warning(warn)
-    https.patch_to_raise_ssl_errors(not ignore_ssl)
+    https.patch_ignore_ssl(ignore_ssl)
 
     _check_config_version(_cnf.value)
 

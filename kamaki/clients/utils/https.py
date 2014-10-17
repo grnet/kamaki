@@ -43,22 +43,21 @@ log = logging.getLogger(__name__)
 class HTTPSClientAuthConnection(httplib.HTTPSConnection):
     """HTTPS connection, with full client-based SSL Authentication support"""
 
-    ca_file, raise_ssl_error = None, True
+    ca_file, ignore_ssl = None, False
 
     def __init__(self, *args, **kwargs):
         """ Extent HTTPSConnection to support SSL authentication
             :param ca_file: path to CA certificates bundle (default: None)
-            :param raise_ssl_error: flag (default: True)
+            :param ignore_ssl: flag (default: False)
         """
         self.ca_file = kwargs.pop('ca_file', self.ca_file)
-        self.raise_ssl_error = kwargs.pop(
-            'raise_ssl_error', self.raise_ssl_error)
+        self.ignore_ssl = kwargs.pop('ignore_ssl', self.ignore_ssl)
 
         httplib.HTTPSConnection.__init__(self, *args, **kwargs)
 
     def connect(self):
         """Connect to a host on a given (SSL) port.
-        If ca_file is pointing somewhere, use it to check Server Certificate.
+        Use ca_file to check Server Certificate.
 
         Redefined/copied and extended from httplib.py:1105 (Python 2.6.x).
         This is needed to pass cert_reqs=ssl.CERT_REQUIRED as parameter to
@@ -73,15 +72,13 @@ class HTTPSClientAuthConnection(httplib.HTTPSConnection):
             self.sock = sock
             self._tunnel()
 
-        # If there's no CA File, let the flag decide if there should be a check
-        if self.raise_ssl_error:
+        if self.ignore_ssl:
             self.sock = ssl.wrap_socket(
-                sock, self.key_file, self.cert_file,
-                ca_certs=self.ca_file, cert_reqs=ssl.CERT_REQUIRED)
+                sock, self.key_file, self.cert_file, cert_reqs=ssl.CERT_NONE)
         else:
             self.sock = ssl.wrap_socket(
                 sock, self.key_file, self.cert_file,
-                cert_reqs=ssl.CERT_NONE)
+                ca_certs=self.ca_file, cert_reqs=ssl.CERT_REQUIRED)
 
 
 http.HTTPConnectionPool._scheme_to_class['https'] = HTTPSClientAuthConnection
@@ -92,5 +89,5 @@ def patch_with_certs(ca_file):
     HTTPSClientAuthConnection.ca_file = ca_file
 
 
-def patch_to_raise_ssl_errors(ssl_errors=True):
-    HTTPSClientAuthConnection.raise_ssl_error = ssl_errors
+def patch_ignore_ssl(insecure_connection=True):
+    HTTPSClientAuthConnection.ignore_ssl = insecure_connection

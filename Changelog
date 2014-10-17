@@ -19,6 +19,8 @@ Bug fixes
 * Fix Python 2.6 compatibility concerning HTTPS arguments
   [grnet/kamaki#73]
 * Fix Python 2.6 compatibility concerning encode parameters
+* Rename "raise_ssl_errors" to "ignore_ssl" in HTTPConnection class
+  [grnet/kamaki#74]
 
 v0.13rc4
 ========
