@@ -62,7 +62,7 @@ sketched in the :ref:`clients-ssl` section.
             https.patch_with_certs(ca_certs)
         else:
             # Risk insecure connections
-            https.patch_to_raise_ssl_errors(False)
+            https.patch_ignore_ssl()
 
 Credentials and endpoints
 -------------------------
@@ -633,7 +633,7 @@ logging more. We also added some command line interaction candy.
         if ca_certs:
             https.patch_with_certs(ca_certs)
         else:
-            https.patch_to_raise_ssl_errors(False)
+            https.patch_ignore_ssl()
 
     #  Create progress bar generator
     def create_pb(msg):

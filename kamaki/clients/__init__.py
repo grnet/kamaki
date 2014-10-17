@@ -92,11 +92,12 @@ class ClientError(Exception):
             while message.endswith('\n\n'):
                 message = message[:-1]
             super(ClientError, self).__init__(message)
+            self.message = message
             self.status = status if isinstance(status, int) else 0
             self.details = details if details else []
 
     def __str__(self):
-        return u'%s' % getattr(self, 'message', '')
+        return self.message
 
 
 class KamakiSSLError(ClientError):
