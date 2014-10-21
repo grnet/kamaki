@@ -76,8 +76,8 @@ def fall_back(func):
         try:
             inp = func(self, inp)
         except Exception as e:
-            log.warning('WARNING: Error while running %s: %s' % (func, e))
-            log.warning('\tWARNING: Kamaki will use original data to go on')
+            log.warning('Error while running %s: %s' % (func, e))
+            log.warning('Kamaki will use original data to go on')
         finally:
             return inp
     return wrap

@@ -39,7 +39,7 @@ from collections import defaultdict
 from ConfigParser import RawConfigParser, NoOptionError, NoSectionError, Error
 from re import match
 
-from kamaki.cli.errors import CLISyntaxError
+from kamaki.cli.errors import CLISyntaxError, CLIError
 from kamaki import __version__
 
 try:
@@ -138,6 +138,19 @@ class Config(RawConfigParser):
     def __init__(self, path=None, with_defaults=True):
         RawConfigParser.__init__(self, dict_type=OrderedDict)
         self.path = path or os.environ.get(CONFIG_ENV, CONFIG_PATH)
+
+        # Check if self.path is accessible
+        abspath = os.path.abspath(self.path)
+        if not os.path.exists(self.path):
+            log.warning('Config file %s does not exist' % abspath)
+        elif os.access(self.path, os.R_OK):
+            if not os.access(self.path, os.W_OK):
+                log.warning('Config file %s is not writable' % abspath)
+        else:
+            raise CLIError(
+                'Config file %s is inaccessible' % abspath,
+                importance=3, details=['No read permissions for this file'])
+
         self._overrides = defaultdict(dict)
         if with_defaults:
             self._load_defaults()
@@ -289,7 +302,12 @@ class Config(RawConfigParser):
         """
         :returns: (float) version of the config file or 0.9 if unrecognized
         """
+        from kamaki.cli import logger
+        # Ignore logs from "checker" logger
+        logger.deactivate(__name__)
         checker = Config(self.path, with_defaults=False)
+        logger.activate(__name__)
+
         sections = checker.sections()
         #  log.debug('Config file heuristic 1: old global section ?')
         if 'global' in sections:
@@ -425,6 +443,10 @@ class Config(RawConfigParser):
                 f.write(HEADER.lstrip())
                 f.flush()
                 RawConfigParser.write(self, f)
+        except IOError as ioe:
+            raise CLIError(
+                'Cannot write to config file %s' % os.path.abspath(self.path),
+                importance=3, details=[type(ioe), ioe, ])
         finally:
             if CLOUD_PREFIX not in self.sections():
                 self.add_section(CLOUD_PREFIX)

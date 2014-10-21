@@ -234,7 +234,7 @@ class Config(TestCase):
             _cnf = Config(path=f.name)
             self.assertEqual(
                 sorted(['global.%s = %s' % sample for sample in extras]),
-                 sorted(_cnf.rescue_old_file()))
+                sorted(_cnf.rescue_old_file()))
 
     def test_guess_version(self):
         from kamaki.cli.config import Config

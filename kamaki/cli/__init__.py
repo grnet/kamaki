@@ -178,8 +178,8 @@ def _setup_logging(debug=False, verbose=False):
         logger.add_stream_logger('kamaki.clients.send', logging.INFO, sfmt)
         logger.add_stream_logger('kamaki.clients.recv', logging.INFO, rfmt)
         logger.add_stream_logger(__name__, logging.INFO)
-    else:
-        logger.add_stream_logger(__name__, logging.WARNING)
+    # else:
+    #     logger.add_stream_logger(__name__, logging.WARNING)
     global kloger
     kloger = logger.get_logger(__name__)
 
@@ -237,7 +237,7 @@ def _init_session(arguments, is_non_api=False):
     if ca_file:
         https.patch_with_certs(ca_file)
     else:
-        warn = red('WARNING: CA certifications path not set (insecure) ')
+        warn = red('CA certifications path not set (insecure) ')
         kloger.warning(warn)
     https.patch_ignore_ssl(ignore_ssl)
 
@@ -341,12 +341,12 @@ def init_cached_authenticator(config_argument, cloud, logger):
                 _cnf.write()
         if tokens:
             return astakos, help_message
-        logger.warning('WARNING: cloud.%s.token is now empty' % cloud)
+        logger.warning('cloud.%s.token is now empty' % cloud)
         help_message = [
             'To set a new token:',
             '  kamaki config set cloud.%s.token NEW_TOKEN']
     except AssertionError as ae:
-        logger.warning('WARNING: Failed to load authenticator [%s]' % ae)
+        logger.warning('Failed to load authenticator [%s]' % ae)
     return None, help_message
 
 
@@ -528,6 +528,9 @@ def main(func):
             for i, a in enumerate(internal_argv):
                 argv[i] = a
 
+            logger.add_stream_logger(
+                __name__, logging.WARNING,
+                fmt='%(levelname)s (%(name)s): %(message)s')
             _config_arg = ConfigArgument('Path to config file')
             parser = ArgumentParseManager(exe, arguments=dict(
                 config=_config_arg,

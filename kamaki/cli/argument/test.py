@@ -35,8 +35,9 @@ from mock import patch, call
 from unittest import TestCase
 from StringIO import StringIO
 from datetime import datetime
+from tempfile import NamedTemporaryFile
 
-from kamaki.cli import argument, errors
+from kamaki.cli import argument, errors, CLIError
 from kamaki.cli.config import Config
 
 
@@ -109,11 +110,20 @@ class ConfigArgument(TestCase):
     def test_value(self):
         c = argument._config_arg
         self.assertEqual(c.value, None)
-        exp = '/some/random/path'
-        c.value = exp
-        self.assertTrue(isinstance(c.value, Config))
-        self.assertEqual(c.file_path, exp)
-        self.assertEqual(c.value.path, exp)
+
+        wrong_path = '/some/random/path'
+        raises_error = False
+        try:
+            c.value = wrong_path
+        except CLIError:
+            raises_error = True
+        self.assertTrue(raises_error)
+
+        with NamedTemporaryFile() as f:
+            c.value = f.name
+            self.assertTrue(isinstance(c.value, Config))
+            self.assertEqual(c.file_path, f.name)
+            self.assertEqual(c.value.path, f.name)
 
     def test_get(self):
         c = argument._config_arg
@@ -337,8 +347,7 @@ class KeyValueArgument(TestCase):
                 (
                     ('k1=v1 v2', 'k3=', 'k 4=v4'),
                     {'k1': 'v1 v2', 'k3': '', 'k 4': 'v4'}),
-                (('k=v1', 'k=v2', 'k=v3'), {'k': 'v3'})
-            ):
+                (('k=v1', 'k=v2', 'k=v3'), {'k': 'v3'})):
             kva.value = kvpairs
             old.update(exp)
             assert_dicts_are_equal(self, kva.value, old)

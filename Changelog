@@ -5,6 +5,15 @@ Unified Changelog file for Kamaki versions >= 0.13
 
 .. _Changelog-0.13:
 
+v0.13rc6
+========
+
+Bug fixes
+---------
+
+* Warn or raise errors when the configuration file is inaccessible
+  [grnet/kamaki#71]
+
 v0.13rc5
 ========
 
