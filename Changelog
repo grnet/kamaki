@@ -13,6 +13,8 @@ Bug fixes
 
 * Warn or raise errors when the configuration file is inaccessible
   [grnet/kamaki#71]
+* Handle non-ascii characters when managing configuration options
+  [grnet/kamaki#76]
 
 v0.13rc5
 ========

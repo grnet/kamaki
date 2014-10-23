@@ -40,6 +40,7 @@ from ConfigParser import RawConfigParser, NoOptionError, NoSectionError, Error
 from re import match
 
 from kamaki.cli.errors import CLISyntaxError, CLIError
+from kamaki.cli.utils import pref_enc, escape_ctrl_chars
 from kamaki import __version__
 
 try:
@@ -164,6 +165,17 @@ class Config(RawConfigParser):
                 self.remove_section(section)
 
     @staticmethod
+    def assert_option(option):
+        if isinstance(option, unicode):
+            try:
+                option = str(option)
+            except UnicodeError, ue:
+                raise CLIError('Invalid config option %s' % option, details=[
+                    'Illegal character(s) in config option name',
+                    'Non-ascii characters are only allowed as values',
+                    ue])
+
+    @staticmethod
     def cloud_name(full_section_name):
         if not full_section_name.startswith(CLOUD_PREFIX + ' '):
             return None
@@ -238,7 +250,6 @@ class Config(RawConfigParser):
                         err.flush()
                         self.set_cloud('default', term, gval)
                     self.remove_option(s, term)
-                print 'CHECK'
                 for term, wrong, right in (
                         ('ip', 'cyclades', 'network'),
                         ('network', 'cyclades', 'network'),):
@@ -348,6 +359,7 @@ class Config(RawConfigParser):
             d = self.get(CLOUD_PREFIX, cloud) or dict()
         except KeyError:
             d = dict()
+        self.assert_option(option)
         d[option] = value
         self.set(CLOUD_PREFIX, cloud, d)
 
@@ -362,7 +374,14 @@ class Config(RawConfigParser):
         except KeyError:
             d = {}
         try:
-            d.update(RawConfigParser.items(self, section))
+            for k, v in RawConfigParser.items(self, section):
+                new_k, new_v = k, v
+                if isinstance(k, basestring) and not isinstance(k, unicode):
+                    new_k = k.decode(pref_enc)
+                if isinstance(v, basestring) and not isinstance(v, unicode):
+                    new_v = v.decode(pref_enc)
+                d[new_k] = new_v
+            # d.update(RawConfigParser.items(self, section))
         except NoSectionError:
             pass
         return d
@@ -385,7 +404,10 @@ class Config(RawConfigParser):
         if section.startswith(prefix):
             return self.get_cloud(section[len(prefix):], option)
         try:
-            return RawConfigParser.get(self, section, option)
+            r = RawConfigParser.get(self, section, option)
+            if isinstance(r, str):
+                return r.decode(pref_enc, 'replace')
+            return r
         except (NoSectionError, NoOptionError):
             return DEFAULTS.get(section, {}).get(option)
 
@@ -397,6 +419,7 @@ class Config(RawConfigParser):
 
         :param value: str
         """
+        self.assert_option(option)
         prefix = CLOUD_PREFIX + '.'
         if section.startswith(prefix):
             cloud = self.cloud_name(
@@ -430,25 +453,19 @@ class Config(RawConfigParser):
     def override(self, section, option, value):
         self._overrides[section][option] = value
 
-    def write(self):
-        cld_bu = self._get_dict(CLOUD_PREFIX)
-        try:
-            for r, d in self.items(CLOUD_PREFIX):
-                for k, v in d.items():
-                    self.set(CLOUD_PREFIX + ' "%s"' % r, k, v)
-            self.remove_section(CLOUD_PREFIX)
+    def safe_to_print(self):
+        dump = u'[global]\n'
+        for k, v in self.items('global'):
+            dump += u'%s = %s\n' % (escape_ctrl_chars(k), escape_ctrl_chars(v))
+        for r, d in self.items(CLOUD_PREFIX):
+            dump += u'\n[%s "%s"]\n' % (CLOUD_PREFIX, escape_ctrl_chars(r))
+            for k, v in d.items():
+                dump += u'%s = %s\n' % (
+                    escape_ctrl_chars(k), escape_ctrl_chars(v))
+        return dump
 
-            with open(self.path, 'w') as f:
-                os.chmod(self.path, 0600)
-                f.write(HEADER.lstrip())
-                f.flush()
-                RawConfigParser.write(self, f)
-        except IOError as ioe:
-            raise CLIError(
-                'Cannot write to config file %s' % os.path.abspath(self.path),
-                importance=3, details=[type(ioe), ioe, ])
-        finally:
-            if CLOUD_PREFIX not in self.sections():
-                self.add_section(CLOUD_PREFIX)
-            for cloud, d in cld_bu.items():
-                self.set(CLOUD_PREFIX, cloud, d)
+    def write(self):
+        with open(self.path, mode='w') as f:
+            os.chmod(self.path, 0600)
+            f.write(HEADER.lstrip())
+            f.write(self.safe_to_print().encode(pref_enc, 'replace'))

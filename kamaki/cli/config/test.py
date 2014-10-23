@@ -466,39 +466,55 @@ class Config(TestCase):
         _cnf.override('sec', 'opt', 'val')
         self.assertEqual(_cnf._overrides['sec']['opt'], 'val')
 
-    def test_write(self):
-        from kamaki.cli.config import Config, DEFAULTS
+    def test_safe_to_print(self):
+        itemsd = {
+            'global': {
+                'opt1': 'v1',
+                'opt2': 2,
+                'opt3': u'\u03c4\u03b9\u03bc\u03ae',
+                'opt4': 'un\b\bdeleted'
+            }, 'cloud': {
+                'cld1': {'url': 'url1', 'token': 'token1'},
+                'cld2': {'url': u'\u03bf\u03c5\u03b1\u03c1\u03ad\u03bb'}
+            }
+        }
+
+        from kamaki.cli.config import Config
         _cnf = Config(path=self.f.name)
+        bu_func = Config.items
+        try:
+            Config.items = lambda cls, opt: itemsd[opt].items()
+            saved = _cnf.safe_to_print().split('\n')
+            glb, cld = saved[:5], saved[6:]
+            self.assertEqual(u'[global]', glb[0])
+            self.assertTrue(u'opt1 = v1' in glb)
+            self.assertTrue(u'opt2 = 2' in glb)
+            self.assertTrue(u'opt3 = \u03c4\u03b9\u03bc\u03ae' in glb)
+            self.assertTrue(u'opt4 = un\\x08\\x08deleted' in glb)
 
-        exp = '%s[global]\n' % HEADER
-        exp += ''.join([
-            '%s = %s\n' % (k, v) for k, v in DEFAULTS['global'].items()])
-        exp += '\n'
+            self.assertTrue('[cloud "cld1"]' in cld)
+            cld1_i = cld.index('[cloud "cld1"]')
+            cld1 = cld[cld1_i: cld1_i + 3]
+            self.assertTrue('url = url1' in cld1)
+            self.assertTrue('token = token1' in cld1)
 
+            self.assertTrue('[cloud "cld2"]' in cld)
+            cld2_i = cld.index('[cloud "cld2"]')
+            self.assertEqual(
+                u'url = \u03bf\u03c5\u03b1\u03c1\u03ad\u03bb', cld[cld2_i + 1])
+        finally:
+            Config.items = bu_func
+
+    @patch('kamaki.cli.config.Config.safe_to_print', return_value='rv')
+    def test_write(self, stp):
+        from kamaki.cli.config import Config
+        _cnf = Config(path=self.f.name)
+        exp = '%s%s' % (HEADER, 'rv')
         _cnf.write()
         self.f.seek(0)
         self.assertEqual(self.f.read(), exp)
-
+        stp.assert_called_once_with()
         del _cnf
-        with NamedTemporaryFile() as f:
-            f.write('\n'.join(self.config_file_content))
-            f.flush()
-            _cnf = Config(path=f.name)
-            f.seek(0)
-            self.assertEqual(f.read(), '\n'.join(self.config_file_content))
-            _cnf.write()
-            f.seek(0)
-            file_contents = f.read()
-            for line in self.config_file_content:
-                self.assertTrue(line in file_contents)
-            _cnf.set('sec', 'opt', 'val')
-            _cnf.set('global', 'opt', 'val')
-            _cnf.set('global', 'file_cli', 'val')
-            _cnf.write()
-            f.seek(0)
-            file_contents = f.read()
-            for line in ('file_cli = val\n', '[sec]\n', 'opt = val\n'):
-                self.assertTrue(line in file_contents)
 
 
 if __name__ == '__main__':
