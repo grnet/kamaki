@@ -235,7 +235,17 @@ def _init_session(arguments, is_non_api=False):
         _cnf.get('global', 'ignore_ssl').lower() == 'on')
 
     if ca_file:
-        https.patch_with_certs(ca_file)
+        try:
+            https.patch_with_certs(ca_file)
+        except https.SSLUnicodeError as sslu:
+            raise CLIError(
+                'Failed to set CA certificates file %s' % ca_file,
+                importance=2, details=[
+                    'SSL module cannot handle non-ascii file names',
+                    'Check the file path and consider moving and renaming',
+                    'To set the new CA certificates path',
+                    '    kamaki config set ca_certs CA_FILE',
+                    sslu, ])
     else:
         warn = red('CA certifications path not set (insecure) ')
         kloger.warning(warn)

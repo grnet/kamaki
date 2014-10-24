@@ -15,6 +15,7 @@ Bug fixes
   [grnet/kamaki#71]
 * Handle non-ascii characters when managing configuration options
   [grnet/kamaki#76]
+* Handle SSL unicode bug with grace [grnet/kamaki#67]
 
 v0.13rc5
 ========
