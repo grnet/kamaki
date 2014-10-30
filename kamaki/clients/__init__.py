@@ -293,9 +293,10 @@ class ResponseManager(Logged):
                         len(self._content) if self._content else 0, plog))
                     if self.LOG_DATA and self._content:
                         data = '%s%s' % (self._content, plog)
+                        data = utils.escape_ctrl_chars(data)
                         if self._token:
                             data = data.replace(self._token, '...')
-                        recvlog.info(utils.escape_ctrl_chars(data))
+                        recvlog.info(data)
                 break
             except Exception as err:
                 if isinstance(err, HTTPException):
