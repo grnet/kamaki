@@ -17,6 +17,7 @@ Bug fixes
   [grnet/kamaki#76]
 * Handle SSL unicode bug with grace [grnet/kamaki#67]
 * Check server status before changing it [grnet/kamaki#57]
+* Fix format of "create_volume" return values
 
 Support
 -------

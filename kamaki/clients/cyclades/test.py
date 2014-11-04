@@ -35,7 +35,7 @@ from mock import patch, call
 from unittest import TestCase
 from itertools import product
 
-from kamaki.clients import ClientError, cyclades
+from kamaki.clients import cyclades
 
 img_ref = "1m4g3-r3f3r3nc3"
 vm_name = "my new VM"
@@ -304,7 +304,7 @@ class CycladesBlockStorageClient(TestCase):
         keys = (
             'display_description', 'snapshot_id', 'imageRef',
             'volume_type', 'metadata', 'project')
-        FR.json, server_id, display_name = 'ret', 'vid', 'dn'
+        FR.json, server_id, display_name = dict(volume='ret'), 'vid', 'dn'
         for args in product(
                 ('dd', None), ('sn', None), ('ir', None),
                 ('vt', None), ({'mk': 'mv'}, None), ('pid', None)):
