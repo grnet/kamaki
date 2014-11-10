@@ -432,18 +432,21 @@ class Cyclades(object):
     @classmethod
     def server_id(this, func):
         def _raise(self, *args, **kwargs):
+            details = ['To get a list of all servers', '  kamaki server list']
+            server_id = kwargs.get('server_id', None)
+            try:
+                server_id = int(server_id)
+                assert server_id > 0, 'error: %s is not positive' % server_id
+            except (ValueError, AssertionError) as err:
+                raise CLIError(
+                    'Invalid server id %s' % server_id,
+                    importance=2, details=[
+                        'Server id must be a positive integer'] + details + [
+                            err, ])
             try:
                 return func(self, *args, **kwargs)
             except ClientError as ce:
-                if ce.status in (404, 400):
-                    server_id = kwargs.get('server_id', None)
-                    details = [
-                        'to get a list of all servers', '  kamaki server list']
-                    if ce.status in (404, ):
-                        try:
-                            server_id = int(server_id)
-                        except ValueError:
-                            details.insert(0, 'Server ID must be an integer')
+                if ce.status in (404, ):
                     raise CLIError(
                         'No servers with ID %s' % server_id,
                         importance=2, details=details + [

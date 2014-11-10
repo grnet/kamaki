@@ -1643,7 +1643,6 @@ class container_create(_PithosAccount):
                 metadata=self['meta'],
                 success=(201, ))
         except ClientError as ce:
-            print 'WHAAAA?'
             if ce.status in (202, ):
                 raise CLIError(
                     'Container %s alread exists' % self.container, details=[

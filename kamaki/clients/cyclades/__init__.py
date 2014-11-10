@@ -309,7 +309,7 @@ class CycladesBlockStorageClient(CycladesBlockStorageRestClient):
             volume_type=volume_type,
             metadata=metadata,
             project=project)
-        return r.json
+        return r.json['volume']
 
     def reassign_volume(self, volume_id, project):
         self.volumes_action_post(volume_id, {"reassign": {"project": project}})

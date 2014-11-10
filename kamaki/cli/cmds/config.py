@@ -103,10 +103,11 @@ class config_get(CommandInit):
                 return
             section = 'global'
         prefix = 'cloud.'
-        get, section = (
-            self.config.get_cloud, section[len(prefix):]) if (
-                section.startswith(prefix)) else (self.config.get, section)
+        get, section = (self.config.get_cloud, section[len(prefix):]) if (
+            section.startswith(prefix)) else (self.config.get, section)
         value = get(section, key)
+        if value is None:
+            raise CLIError('%s not found' % option)
         if isinstance(value, dict):
             for k, v in value.items():
                 self.writeln('%s.%s.%s = %s' % (section, key, k, v))
