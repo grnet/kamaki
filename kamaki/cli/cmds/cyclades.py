@@ -76,6 +76,17 @@ class _ServerWait(Wait):
             countdown=(current_status not in ('BUILD', )),
             timeout=timeout if current_status not in ('BUILD', ) else 100)
 
+    def assert_not_in_status(self, server_id, status):
+        """
+        :returns: current server status
+        :raises CLIError: if server is already in this status
+        :raises ClientError: (404) if server not found
+        """
+        current = self.client.get_server_details(server_id).get('status', None)
+        if current in (status, ):
+            raiseCLIError('Server %s is already %s' % (server_id, status))
+        return current
+
 
 class _CycladesInit(CommandInit):
     @errors.Generic.all
@@ -790,13 +801,7 @@ class server_start(_CycladesInit, _ServerWait):
     @errors.Cyclades.connection
     @errors.Cyclades.server_id
     def _run(self, server_id):
-        status = 'ACTIVE'
-        if self['wait']:
-            details = self.client.get_server_details(server_id)
-            status = details['status']
-            if status in ('ACTIVE', ):
-                return
-
+        status = self.assert_not_in_status(server_id, 'ACTIVE')
         self.client.start_server(int(server_id))
         if self['wait']:
             self.wait(server_id, status)
@@ -818,13 +823,7 @@ class server_shutdown(_CycladesInit,  _ServerWait):
     @errors.Cyclades.connection
     @errors.Cyclades.server_id
     def _run(self, server_id):
-        status = 'STOPPED'
-        if self['wait']:
-            details = self.client.get_server_details(server_id)
-            status = details['status']
-            if status in ('STOPPED', ):
-                return
-
+        status = self.assert_not_in_status(server_id, 'STOPPED')
         self.client.shutdown_server(int(server_id))
         if self['wait']:
             self.wait(server_id, status)

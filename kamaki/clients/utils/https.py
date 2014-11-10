@@ -40,6 +40,10 @@ from objpool import http
 log = logging.getLogger(__name__)
 
 
+class SSLUnicodeError(ssl.SSLError):
+    """SSL module cannot handle unicode file names"""
+
+
 class HTTPSClientAuthConnection(httplib.HTTPSConnection):
     """HTTPS connection, with full client-based SSL Authentication support"""
 
@@ -50,7 +54,11 @@ class HTTPSClientAuthConnection(httplib.HTTPSConnection):
             :param ca_file: path to CA certificates bundle (default: None)
             :param ignore_ssl: flag (default: False)
         """
-        self.ca_file = kwargs.pop('ca_file', self.ca_file)
+        try:
+            self.ca_file = str(kwargs.pop('ca_file', self.ca_file))
+        except UnicodeError as ue:
+            raise SSLUnicodeError(0, SSLUnicodeError.__doc__, ue)
+
         self.ignore_ssl = kwargs.pop('ignore_ssl', self.ignore_ssl)
 
         httplib.HTTPSConnection.__init__(self, *args, **kwargs)
@@ -72,13 +80,17 @@ class HTTPSClientAuthConnection(httplib.HTTPSConnection):
             self.sock = sock
             self._tunnel()
 
-        if self.ignore_ssl:
-            self.sock = ssl.wrap_socket(
-                sock, self.key_file, self.cert_file, cert_reqs=ssl.CERT_NONE)
-        else:
-            self.sock = ssl.wrap_socket(
-                sock, self.key_file, self.cert_file,
-                ca_certs=self.ca_file, cert_reqs=ssl.CERT_REQUIRED)
+        try:
+            if self.ignore_ssl:
+                self.sock = ssl.wrap_socket(
+                    sock, self.key_file, self.cert_file,
+                    cert_reqs=ssl.CERT_NONE)
+            else:
+                self.sock = ssl.wrap_socket(
+                    sock, self.key_file, self.cert_file,
+                    ca_certs=self.ca_file, cert_reqs=ssl.CERT_REQUIRED)
+        except UnicodeError as ue:
+            raise SSLUnicodeError(0, SSLUnicodeError.__doc__, ue)
 
 
 http.HTTPConnectionPool._scheme_to_class['https'] = HTTPSClientAuthConnection
@@ -86,7 +98,10 @@ PooledHTTPConnection = http.PooledHTTPConnection
 
 
 def patch_with_certs(ca_file):
-    HTTPSClientAuthConnection.ca_file = ca_file
+    try:
+        HTTPSClientAuthConnection.ca_file = str(ca_file)
+    except UnicodeError as ue:
+            raise SSLUnicodeError(0, SSLUnicodeError.__doc__, ue)
 
 
 def patch_ignore_ssl(insecure_connection=True):

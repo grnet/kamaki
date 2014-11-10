@@ -5,6 +5,28 @@ Unified Changelog file for Kamaki versions >= 0.13
 
 .. _Changelog-0.13:
 
+v0.13rc6
+========
+
+Released: Mon Nov 10 13:24:48 EET 2014
+
+Bug fixes
+---------
+
+* Warn or raise errors when the configuration file is inaccessible
+  [grnet/kamaki#71]
+* Handle non-ascii characters when managing configuration options
+  [grnet/kamaki#76]
+* Handle SSL unicode bug with grace [grnet/kamaki#67]
+* Check server status before changing it [grnet/kamaki#57]
+* Fix format of "create_volume" return values
+* Support old history files [grnet/kamaki#80]
+
+Support
+-------
+
+* Update library documentation with examples [grnet/kamaki#49]
+
 v0.13rc5
 ========
 

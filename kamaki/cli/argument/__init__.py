@@ -41,6 +41,7 @@ import dateutil.tz
 import dateutil.parser
 from time import mktime
 from sys import stderr
+import os.path
 
 from logging import getLogger
 from argparse import (
@@ -107,7 +108,7 @@ class Argument(object):
             assert name.count(' ') == 0, '%s: Invalid parse name "%s"' % (
                 self, name)
             msg = '%s: Invalid parse name "%s" should start with a "-"' % (
-                    self, name)
+                self, name)
             assert name.startswith('-'), msg
 
         self.default = default or None
@@ -149,6 +150,10 @@ class ConfigArgument(Argument):
     @value.setter
     def value(self, config_file):
         if config_file:
+            if not os.path.exists(config_file):
+                raiseCLIError(
+                    'Config file "%s" does not exist' % config_file,
+                    importance=3)
             self._value = Config(config_file)
             self.file_path = config_file
         elif self.file_path:
@@ -248,8 +253,8 @@ class BooleanArgument(ValueArgument):
             v = new_value.lower()
             if v not in ('true', 'false'):
                 raise CLIInvalidArgument(
-                    'Invalid value %s=%s' % (self.lvalue, new_value), details=[
-                    'Usage:', '%s=<true|false>' % self.lvalue])
+                    'Invalid value %s=%s' % (self.lvalue, new_value),
+                    details=['Usage:', '%s=<true|false>' % self.lvalue])
             self._value = bool(v == 'true')
 
 
@@ -488,9 +493,9 @@ class StatusArgument(ValueArgument):
             new_status = new_status.upper()
             if new_status not in self.valid_states:
                 raise CLIInvalidArgument(
-                    'Invalid argument %s' % new_status, details=[
-                    'Usage: '
-                    '%s=[%s]' % (self.lvalue, '|'.join(self.valid_states))])
+                    'Invalid argument %s' % new_status,
+                    details=['Usage:', '%s=[%s]' % (
+                        self.lvalue, '|'.join(self.valid_states))])
             self._value = new_status
 
 
@@ -621,7 +626,7 @@ class ArgumentParseManager(object):
                 next = cur + lt_all - lt_pn
                 ret += prefix
                 ret += ('{:<%s}' % (lt_all - lt_pn)).format(arg.help[cur:next])
-                cur, finish = next, '\n%s' % tab2
+                cur = next
             return ret + '\n'
 
     @staticmethod
