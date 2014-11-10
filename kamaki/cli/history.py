@@ -49,12 +49,19 @@ class History(object):
 
     def __getitem__(self, cmd_ids):
         with codecs.open(self.filepath, mode='r', encoding='utf-8') as f:
-            try:
                 lines = f.readlines()
-                self.counter, cmd_list = int(lines[0]), lines[1:]
-                return cmd_list[cmd_ids]
-            except IndexError:
-                return None
+        try:
+            self.counter = int(lines[0])
+            lines = lines[1:]
+        except ValueError:
+            # History file format is old, fix it
+            self.counter = 0
+            with codecs.open(self.filepath, mode='w', encoding='utf-8') as f:
+                f.write('0\n%s' % ''.join(lines))
+        try:
+            return lines[cmd_ids]
+        except IndexError:
+            return None
 
     @property
     def limit(self):

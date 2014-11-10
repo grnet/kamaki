@@ -38,11 +38,6 @@ from os import urandom
 from itertools import product
 from random import randint
 
-try:
-    from collections import OrderedDict
-except ImportError:
-    from kamaki.clients.utils.ordereddict import OrderedDict
-
 from kamaki.clients import pithos, ClientError
 
 
@@ -106,7 +101,8 @@ container_list = [
         name="trash",
         x_container_policy=dict(quota="21474836480", versioning="auto"))]
 object_list = [
-    dict(hash="",
+    dict(
+        hash="",
         name="The_Secret_Garden.zip",
         x_object_public="/public/wdp9p",
         bytes=203304947,
@@ -117,7 +113,8 @@ object_list = [
         x_object_hash="0afdf29f71cd53126225c3f54ca",
         x_object_version=17737,
         x_object_modified_by=user_id),
-    dict(hash="",
+    dict(
+        hash="",
         name="The_Revealed_Garden.zip",
         x_object_public="/public/wpd7p",
         bytes=20330947,
@@ -212,8 +209,8 @@ class PithosRestClient(TestCase):
             args, kwargs = params[-2], params[-1]
             params = params[:-2]
             self.client.account_get(*(params + args), **kwargs)
-            self.assertEqual(SP.mock_calls[-6:],
-                [call(keys[i], iff=X) if (i in (3, 4)) else call(
+            self.assertEqual(SP.mock_calls[-6:], [
+                call(keys[i], iff=X) if (i in (3, 4)) else call(
                     keys[i], X, iff=X) for i, X in enumerate(params[:6])])
             IMS, IUS = params[6], params[7]
             self.assertEqual(SH.mock_calls[-2:], [
@@ -229,7 +226,6 @@ class PithosRestClient(TestCase):
     @patch('%s.set_header' % rest_pkg)
     @patch('%s.post' % rest_pkg, return_value=FR())
     def test_account_post(self, post, SH, SP):
-        #keys = ('update', 'groups', 'metadata', 'quota', 'versioning')
         for pm in product(
                 (True, False),
                 ({}, dict(g=['u1', 'u2']), dict(g1=[], g2=['u1', 'u2'])),
@@ -245,11 +241,11 @@ class PithosRestClient(TestCase):
             self.assertEqual(SP.mock_calls[-1], call('update', '', iff=upd))
             expected = []
             if pm[1]:
-                expected += [
-                call('X-Account-Group-%s' % k, v) for k, v in pm[1].items()]
+                expected += [call(
+                    'X-Account-Group-%s' % k, v) for k, v in pm[1].items()]
             if pm[2]:
-                expected = [
-                call('X-Account-Meta-%s' % k, v) for k, v in pm[2].items()]
+                expected = [call(
+                    'X-Account-Meta-%s' % k, v) for k, v in pm[2].items()]
             expected = [
                 call('X-Account-Policy-Quota', pm[3]),
                 call('X-Account-Policy-Versioning', pm[4])]
@@ -582,7 +578,8 @@ class PithosRestClient(TestCase):
                 call('format', format, iff=format),
                 call('ignore_content_type', iff=ict)])
             im, inm, da, ct, ce, cd, sv, perms, public, metas = pm[2:]
-            exp = [call('If-Match', im),
+            exp = [
+                call('If-Match', im),
                 call('If-None-Match', inm),
                 call('Destination', dest),
                 call('Destination-Account', da),
@@ -635,7 +632,8 @@ class PithosRestClient(TestCase):
                 call('format', format, iff=format),
                 call('ignore_content_type', iff=ict)])
             im, inm, d, da, ct, ce, cd, perms, public, metas = pm[2:]
-            exp = [call('If-Match', im),
+            exp = [
+                call('If-Match', im),
                 call('If-None-Match', inm),
                 call('Destination', d),
                 call('Destination-Account', da),
@@ -938,8 +936,8 @@ class PithosClient(TestCase):
         tmpFile.seek(0)
         ctype = 'video/mpeg'
         sharing = dict(read=['u1', 'g1', 'u2'], write=['u1'])
-        r = self.client.upload_object(obj, tmpFile,
-            content_type=ctype, sharing=sharing)
+        r = self.client.upload_object(
+            obj, tmpFile, content_type=ctype, sharing=sharing)
         self.assert_dicts_are_equal(r, exp_headers)
         self.assertEqual(OP.mock_calls[-1][2]['content_type'], ctype)
         self.assert_dicts_are_equal(
@@ -1233,14 +1231,14 @@ class PithosClient(TestCase):
         num_of_blocks = 8
         tmpFile = self._create_temp_file(num_of_blocks)
         expected = dict(
-                success=201,
-                data=num_of_blocks * 4 * 1024 * 1024,
-                etag='some-etag',
-                content_encoding='some content_encoding',
-                content_type='some content-type',
-                content_disposition='some content_disposition',
-                public=True,
-                permissions=dict(read=['u1', 'g1', 'u2'], write=['u1']))
+            success=201,
+            data=num_of_blocks * 4 * 1024 * 1024,
+            etag='some-etag',
+            content_encoding='some content_encoding',
+            content_type='some content-type',
+            content_disposition='some content_disposition',
+            public=True,
+            permissions=dict(read=['u1', 'g1', 'u2'], write=['u1']))
         r = self.client.upload_object_unchunked(obj, tmpFile)
         self.assert_dicts_are_equal(r, FR.headers)
         self.assertEqual(put.mock_calls[-1][1], (obj,))
@@ -1269,12 +1267,12 @@ class PithosClient(TestCase):
     def test_create_object_by_manifestation(self, put):
         manifest = '%s/%s' % (self.client.container, obj)
         kwargs = dict(
-                etag='some-etag',
-                content_encoding='some content_encoding',
-                content_type='some content-type',
-                content_disposition='some content_disposition',
-                public=True,
-                sharing=dict(read=['u1', 'g1', 'u2'], write=['u1']))
+            etag='some-etag',
+            content_encoding='some content_encoding',
+            content_type='some content-type',
+            content_disposition='some content_disposition',
+            public=True,
+            sharing=dict(read=['u1', 'g1', 'u2'], write=['u1']))
         r = self.client.create_object_by_manifestation(obj)
         self.assert_dicts_are_equal(r, FR.headers)
         expected = dict(content_length=0, manifest=manifest)
@@ -1455,13 +1453,6 @@ class PithosClient(TestCase):
         GAI.assert_called_once_with()
         self.assertEqual(r[key], account_info[key])
 
-    #@patch('%s.get_account_info' % pithos_pkg, return_value=account_info)
-    #def test_get_account_versioning(self, GAI):
-    #    key = 'x-account-policy-versioning'
-    #    r = self.client.get_account_versioning()
-    #    GAI.assert_called_once_with()
-    #    self.assertEqual(r[key], account_info[key])
-
     def test_get_account_meta(self):
         key = 'x-account-meta-'
         with patch.object(
@@ -1505,18 +1496,6 @@ class PithosClient(TestCase):
         metas = dict(k1='v1', k2='v2', k3='v3')
         self.client.set_account_meta(metas)
         post.assert_called_once_with(update=True, metadata=metas)
-
-    #@patch('%s.account_post' % pithos_pkg, return_value=FR())
-    #def test_set_account_quota(self, post):
-    #    qu = 1024
-    #    self.client.set_account_quota(qu)
-    #    post.assert_called_once_with(update=True, quota=qu)
-
-    #@patch('%s.account_post' % pithos_pkg, return_value=FR())
-    #def test_set_account_versioning(self, post):
-    #    vrs = 'n3wV3r51on1ngTyp3'
-    #    self.client.set_account_versioning(vrs)
-    #    post.assert_called_once_with(update=True, versioning=vrs)
 
     @patch('%s.container_delete' % pithos_pkg, return_value=FR())
     def test_del_container(self, delete):
@@ -1739,12 +1718,14 @@ class PithosClient(TestCase):
 
     @patch('%s.object_post' % pithos_pkg, return_value=FR())
     def test_truncate_object(self, post):
-        upto_bytes = 377
-        self.assertRaises(
-            ClientError, self.client.truncate_object, obj, upto_bytes)
-        with patch(
-                '%s.get_object_info' % pithos_pkg,
-                return_value={'content-type': 'ctype'}) as get_object_info:
+        upto_bytes, obj_info_path = 377, '%s.get_object_info' % pithos_pkg
+
+        with patch(obj_info_path, side_effect=ClientError('Not found')):
+            self.assertRaises(
+                ClientError, self.client.truncate_object, obj, upto_bytes)
+
+        ret_val = {'content-type': 'ctype'}
+        with patch(obj_info_path, return_value=ret_val) as get_object_info:
             self.client.truncate_object(obj, upto_bytes)
             post.assert_called_once_with(
                 obj,
