@@ -105,4 +105,3 @@ def readall(openfile, size, retries=7):
                 continue
         return buf
     raise IOError('Failed to read %s bytes from file' % size)
-
