@@ -1,0 +1,78 @@
+kamaki (0.6.3-2) stable; urgency=low
+
+  * python-all >=2.6
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Thu, 17 Jan 2013 17:27:53 +0200
+
+kamaki (0.6.3-1) stable; urgency=low
+
+  * New upstream version
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Wed, 16 Jan 2013 17:07:44 +0200
+
+kamaki (0.6.2.1-2) stable; urgency=low
+
+  * Remove sphinx build dependency, explicitly define manpage
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Tue, 15 Jan 2013 15:29:12 +0200
+
+kamaki (0.6.2.1-1) stable; urgency=low
+
+  * New upstream version, replace dependency snf-common with python-objpool
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Fri, 11 Jan 2013 18:29:33 +0200
+
+kamaki (0.6.1.1-1) stable; urgency=low
+
+  * Documentation updates, bug fixes
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Thu, 13 Dec 2012 18:29:33 +0200
+
+kamaki (0.6.1-2) stable; urgency=low
+
+  * Add missing python-argparse dependency
+
+ -- Nikos Skalkotos <skalkoto@grnet.gr>  Thu, 06 Dec 2012 16:37:07 +0200
+
+kamaki (0.6.1-1) stable; urgency=low
+
+  * New upstream version
+
+ -- Nikos Skalkotos <skalkoto@grnet.gr>  Mon, 26 Nov 2012 16:30:06 +0200
+
+kamaki (0.6-1) stable; urgency=low
+
+  * New upstream version
+
+ -- Nikos Skalkotos <skalkoto@grnet.gr>  Tue, 13 Nov 2012 16:29:09 +0200
+
+kamaki (0.5.1-4) stable; urgency=low
+
+  * Revert python-requests version fix patch 
+
+ -- Kostas Papadimitriou <kpap@grnet.gr>  Thu, 21 Jun 2012 14:59:28 +0300
+
+kamaki (0.5.1-3) stable; urgency=low
+
+  * Fix python-requests dependency version
+
+ -- Kostas Papadimitriou <kpap@grnet.gr>  Thu, 21 Jun 2012 14:35:11 +0300
+
+kamaki (0.5.1-2) stable; urgency=low
+
+  * Fix package dependencies
+
+ -- Kostas Papadimitriou <kpap@grnet.gr>  Mon, 11 Jun 2012 19:41:45 +0300
+
+kamaki (0.5.1-1) stable; urgency=low
+
+  * New upstream version
+
+ -- Kostas Papadimitriou <kpap@grnet.gr>  Mon, 11 Jun 2012 19:16:21 +0300
+
+kamaki (0.3.0-1) stable; urgency=low
+
+  * New upstream version 
+
+ -- Kostas Papadimitriou <kpap@grnet.gr>  Thu, 03 May 2012 14:06:49 +0300
+

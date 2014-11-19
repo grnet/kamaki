@@ -1,4 +1,4 @@
-# Copyright 2013 GRNET S.A. All rights reserved.
+# Copyright 2013-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -31,13 +31,13 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from mock import patch, call, MagicMock
+from mock import patch, call
 from unittest import TestCase
 from StringIO import StringIO
 from datetime import datetime
-#from itertools import product
+from tempfile import NamedTemporaryFile
 
-from kamaki.cli import argument, errors
+from kamaki.cli import argument, errors, CLIError
 from kamaki.cli.config import Config
 
 
@@ -76,8 +76,10 @@ class Argument(TestCase):
                 isinstance(parsed_name, list)) else [parsed_name, ]
             self.assertEqual(exp_name, a.parsed_name)
 
-            exp_default = default if (default or arity) else False
-            self.assertEqual(exp_default, a.default)
+            if default or arity:
+                self.assertEqual(default or None, a.default)
+            else:
+                self.assertFalse(a.default)
 
     def test_value(self):
         a = argument.Argument(1, parsed_name='--value')
@@ -108,11 +110,20 @@ class ConfigArgument(TestCase):
     def test_value(self):
         c = argument._config_arg
         self.assertEqual(c.value, None)
-        exp = '/some/random/path'
-        c.value = exp
-        self.assertTrue(isinstance(c.value, Config))
-        self.assertEqual(c.file_path, exp)
-        self.assertEqual(c.value.path, exp)
+
+        wrong_path = '/some/random/path'
+        raises_error = False
+        try:
+            c.value = wrong_path
+        except CLIError:
+            raises_error = True
+        self.assertTrue(raises_error)
+
+        with NamedTemporaryFile() as f:
+            c.value = f.name
+            self.assertTrue(isinstance(c.value, Config))
+            self.assertEqual(c.file_path, f.name)
+            self.assertEqual(c.value.path, f.name)
 
     def test_get(self):
         c = argument._config_arg
@@ -262,13 +273,18 @@ class DateArgument(TestCase):
         da._value = argument.dtm.strptime(date, format)
         self.assertEqual(da.formated, exp)
 
-    @patch('%s.DateArgument.timestamp' % arg_path)
-    @patch('%s.DateArgument.format_date' % arg_path)
-    def test_value(self, format_date, timestamp):
+    def test_value(self):
         da = argument.DateArgument(parsed_name='--date')
-        self.assertTrue(isinstance(da.value, MagicMock))
-        da.value = 'Something'
-        format_date.assert_called_once(call('Something'))
+        try:
+            da.value = 'Something'
+            self.assertFalse('CLIInvalidArgument error not raised!')
+        except Exception as e:
+            self.assertTrue(isinstance(e, errors.CLIInvalidArgument))
+        da.value = '10/02/2001'
+        self.assertEqual(da.value, da.timestamp)
+        self.assertEqual(da.timestamp, 1001970000.0)
+        self.assertEqual(da.formated, 'Tue Oct 02 00:00:00 2001')
+        self.assertEqual(da.isoformat, '2001-10-02T00:00:00+03:00')
 
     def test_format_date(self):
         da = argument.DateArgument(parsed_name='--date')
@@ -314,7 +330,7 @@ class KeyValueArgument(TestCase):
 
     def test_value(self):
         kva = argument.KeyValueArgument(parsed_name='--keyval')
-        self.assertEqual(kva.value, [])
+        self.assertEqual(kva.value, {})
         for kvpairs in (
                 'strval', 'key=val', 2.8, 42, None,
                 ('key', 'val'), ('key val'), ['=val', 'key=val'],
@@ -331,8 +347,7 @@ class KeyValueArgument(TestCase):
                 (
                     ('k1=v1 v2', 'k3=', 'k 4=v4'),
                     {'k1': 'v1 v2', 'k3': '', 'k 4': 'v4'}),
-                (('k=v1', 'k=v2', 'k=v3'), {'k': 'v3'})
-            ):
+                (('k=v1', 'k=v2', 'k=v3'), {'k': 'v3'})):
             kva.value = kvpairs
             old.update(exp)
             assert_dicts_are_equal(self, kva.value, old)
@@ -407,7 +422,7 @@ class ArgumentParseManager(TestCase):
     @patch('%s.ArgumentParseManager.parse' % arg_path)
     @patch('%s.ArgumentParseManager.update_parser' % arg_path)
     def test___init__(self, parse, update_parser):
-        for arguments in (None, {'k1': 'v1', 'k2': 'v2'}):
+        for arguments in ({}, {'k1': 'v1', 'k2': 'v2'}):
             apm = argument.ArgumentParseManager('exe', arguments)
             self.assertTrue(isinstance(apm, argument.ArgumentParseManager))
 
@@ -419,9 +434,7 @@ class ArgumentParseManager(TestCase):
 
             self.assertEqual(
                 apm.syntax, 'exe <cmd_group> [<cmd_subbroup> ...] <cmd>')
-            assert_dicts_are_equal(
-                self, apm.arguments,
-                arguments or argument._arguments)
+            assert_dicts_are_equal(self, apm.arguments, arguments)
             self.assertFalse(apm._parser_modified)
             self.assertEqual(apm._parsed, None)
             self.assertEqual(apm._unparsed, None)
@@ -430,7 +443,7 @@ class ArgumentParseManager(TestCase):
                 update_parser.assert_called_once()
 
     def test_syntax(self):
-        apm = argument.ArgumentParseManager('exe')
+        apm = argument.ArgumentParseManager('exe', {})
         self.assertEqual(
             apm.syntax, 'exe <cmd_group> [<cmd_subbroup> ...] <cmd>')
         apm.syntax = 'some syntax'
@@ -438,8 +451,7 @@ class ArgumentParseManager(TestCase):
 
     @patch('%s.ArgumentParseManager.update_parser' % arg_path)
     def test_arguments(self, update_parser):
-        apm = argument.ArgumentParseManager('exe')
-        assert_dicts_are_equal(self, apm.arguments, argument._arguments)
+        apm = argument.ArgumentParseManager('exe', {})
         update_parser.assert_called_once()
         exp = {'k1': 'v1', 'k2': 'v2'}
         apm.arguments = exp
@@ -452,7 +464,7 @@ class ArgumentParseManager(TestCase):
 
     @patch('%s.ArgumentParseManager.parse' % arg_path)
     def test_parsed(self, parse):
-        apm = argument.ArgumentParseManager('exe')
+        apm = argument.ArgumentParseManager('exe', {})
         self.assertEqual(apm.parsed, None)
         exp = 'you have been parsed'
         apm._parsed = exp
@@ -464,7 +476,7 @@ class ArgumentParseManager(TestCase):
 
     @patch('%s.ArgumentParseManager.parse' % arg_path)
     def test_unparsed(self, parse):
-        apm = argument.ArgumentParseManager('exe')
+        apm = argument.ArgumentParseManager('exe', {})
         self.assertEqual(apm.unparsed, None)
         exp = 'you have been unparsed'
         apm._unparsed = exp
@@ -474,28 +486,21 @@ class ArgumentParseManager(TestCase):
         self.assertEqual(apm.unparsed, exp + ' v2')
         self.assertEqual(parse.mock_calls, [call(), call()])
 
-    @patch('%s.Argument.update_parser' % arg_path
-        )
+    @patch('%s.Argument.update_parser' % arg_path)
     def test_update_parser(self, update_parser):
-        apm = argument.ArgumentParseManager('exe')
-        body_count = len(update_parser.mock_calls)
-        exp = len(argument._arguments)
-        self.assertEqual(body_count, exp)
+        apm = argument.ArgumentParseManager('exe', {})
         apm.update_parser()
-        exp = len(apm.arguments) + body_count
-        body_count = len(update_parser.mock_calls)
-        self.assertEqual(body_count, exp)
+        self.assertEqual(len(update_parser.mock_calls), 0)
         expd = dict(
             k1=argument.Argument(0, parsed_name='-a'),
             k2=argument.Argument(0, parsed_name='-b'))
         apm.update_parser(expd)
-        body_count = len(update_parser.mock_calls)
-        self.assertEqual(body_count, exp + 2)
+        self.assertEqual(len(update_parser.mock_calls), 2)
 
     def test_update_arguments(self):
         (inp, cor, exp) = (
             {'k1': 'v1', 'k2': 'v3'}, {'k2': 'v2'}, {'k1': 'v1', 'k2': 'v2'})
-        apm = argument.ArgumentParseManager('exe')
+        apm = argument.ArgumentParseManager('exe', {})
         with patch(
                 '%s.ArgumentParseManager.update_parser' % arg_path) as UP:
             apm.update_arguments(None)
@@ -506,7 +511,7 @@ class ArgumentParseManager(TestCase):
             UP.assert_called_once_with()
 
     def test_parse(self):
-        apm = argument.ArgumentParseManager('exe')
+        apm = argument.ArgumentParseManager('exe', {})
         parsed, unparsed = apm.parser.parse_known_args()
         apm.parse()
         self.assertEqual(apm._parsed, parsed)

@@ -41,7 +41,7 @@ import kamaki
 
 optional = ['ansicolors', 'mock>=1.0.1']
 
-requires = ['objpool>=0.2', 'progress>=1.1', 'astakosclient>=0.14.10']
+requires = ['objpool>=0.2', 'progress>=1.1', 'astakosclient>=0.14.10', 'python-dateutil']
 
 if version_info < (2, 7):
     requires.append('argparse')
@@ -49,10 +49,11 @@ if version_info < (2, 7):
 setup(
     name='kamaki',
     version=kamaki.__version__,
-    description='A command-line tool for managing www.synnefo.org clouds',
-    long_description=open('README.rst').read(),
-    url='http://code.grnet.gr/projects/kamaki',
-    download_url='https://code.grnet.gr/projects/kamaki/files',
+    description=('A multipurpose, interactive command-line tool, and also a'
+                 ' client development library for managing OpenStack clouds.'),
+    long_description=open('README.md').read(),
+    url='http://www.synnefo.org',
+    download_url='https://pypi.python.org/pypi/kamaki',
     license='BSD',
     author='Synnefo development team',
     author_email='synnefo-devel@googlegroups.com',
@@ -64,8 +65,8 @@ setup(
         'kamaki.cli.utils',
         'kamaki.cli.config',
         'kamaki.cli.argument',
-        'kamaki.cli.commands',
-        'kamaki.cli.command_tree',
+        'kamaki.cli.cmds',
+        'kamaki.cli.cmdtree',
         'kamaki.clients',
         'kamaki.clients.utils',
         'kamaki.clients.astakos',
@@ -75,7 +76,7 @@ setup(
         'kamaki.clients.compute',
         'kamaki.clients.network',
         'kamaki.clients.cyclades',
-        'kamaki.clients.livetest',
+        'kamaki.clients.blockstorage',
     ],
     classifiers=[
         'Operating System :: OS Independent',

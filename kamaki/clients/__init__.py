@@ -1,5 +1,4 @@
-# Copyright 2011-2013 GRNET S.A. All rights reserved.
-#
+# Copyright 2011-2014 GRNET S.A. All rights reserved. #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
 # conditions are met:
@@ -40,8 +39,11 @@ from httplib import ResponseNotReady, HTTPException
 from time import sleep
 from random import random
 from logging import getLogger
+import ssl
 
-from objpool.http import PooledHTTPConnection
+from kamaki.clients.utils import https
+
+from kamaki.clients import utils
 
 
 TIMEOUT = 60.0   # seconds
@@ -61,9 +63,7 @@ def _encode(v):
 class ClientError(Exception):
     def __init__(self, message, status=0, details=None):
         log.debug('ClientError: msg[%s], sts[%s], dtl[%s]' % (
-            message,
-            status,
-            details))
+            message, status, details))
         try:
             message += '' if message and message[-1] == '\n' else '\n'
             serv_stat, sep, new_msg = message.partition('{')
@@ -92,8 +92,16 @@ class ClientError(Exception):
             while message.endswith('\n\n'):
                 message = message[:-1]
             super(ClientError, self).__init__(message)
+            self.message = message
             self.status = status if isinstance(status, int) else 0
             self.details = details if details else []
+
+    def __str__(self):
+        return self.message
+
+
+class KamakiSSLError(ClientError):
+    """SSL Connection Error"""
 
 
 class Logged(object):
@@ -117,20 +125,19 @@ class RequestManager(Logged):
 
         :returns: (scheme, netloc)
         """
-        url = _encode(str(url)) if url else 'http://127.0.0.1/'
+        url = url or 'http://127.0.0.1/'
         url += '' if url.endswith('/') else '/'
         if path:
             url += _encode(path[1:] if path.startswith('/') else path)
         delim = '?'
         for key, val in params.items():
-            val = quote('' if val in (None, False) else _encode('%s' % val))
+            val = quote('' if val in (None, False) else '%s' % _encode(val))
             url += '%s%s%s' % (delim, key, ('=%s' % val) if val else '')
             delim = '&'
         parsed = urlparse(url)
-        self.url = url
-        self.path = parsed.path or '/'
-        if parsed.query:
-            self.path += '?%s' % parsed.query
+        self.url = '%s' % url
+        self.path = (('%s' % parsed.path) if parsed.path else '/') + (
+            '?%s' % parsed.query if parsed.query else '')
         return (parsed.scheme, parsed.netloc)
 
     def __init__(
@@ -143,10 +150,10 @@ class RequestManager(Logged):
         self.headers = dict(headers)
         self.method, self.data = method, data
         self.scheme, self.netloc = self._connection_info(url, path, params)
+        self._headers_to_quote, self._header_prefices = [], []
 
     def dump_log(self):
         plog = ('\t[%s]' % self) if self.LOG_PID else ''
-        sendlog.info('- -  -   -     -        -             -')
         sendlog.info('%s %s://%s%s%s' % (
             self.method, self.scheme, self.netloc, self.path, plog))
         for key, val in self.headers.items():
@@ -154,12 +161,23 @@ class RequestManager(Logged):
                 self._token, val = val, '...'
             sendlog.info('  %s: %s%s' % (key, val, plog))
         if self.data:
-            sendlog.info('data size:%s%s' % (len(self.data), plog))
+            sendlog.info('data size: %s%s' % (len(self.data), plog))
             if self.LOG_DATA:
-                sendlog.info(self.data.replace(self._token, '...') if (
-                    self._token) else self.data)
+                sendlog.info(utils.escape_ctrl_chars(self.data.replace(
+                    self._token, '...') if self._token else self.data))
         else:
-            sendlog.info('data size:0%s' % plog)
+            sendlog.info('data size: 0%s' % plog)
+
+    def _encode_headers(self):
+        headers = dict()
+        for k, v in self.headers.items():
+            key = k.lower()
+            val = '' if v is None else '%s' % (
+                v.encode('utf-8') if isinstance(v, unicode) else v)
+            quotable = any([key in self._headers_to_quote, ]) or any(
+                [key.startswith(p) for p in self._header_prefices])
+            headers[k] = quote(val) if quotable else val
+        self.headers = headers
 
     def perform(self, conn):
         """
@@ -167,25 +185,47 @@ class RequestManager(Logged):
 
         :returns: (HTTPResponse)
         """
+        self._encode_headers()
         self.dump_log()
-        conn.request(
-            method=str(self.method.upper()),
-            url=str(self.path),
-            headers=self.headers,
-            body=self.data)
-        sendlog.info('')
-        keep_trying = TIMEOUT
-        while keep_trying > 0:
-            try:
-                return conn.getresponse()
-            except ResponseNotReady:
-                wait = 0.03 * random()
-                sleep(wait)
-                keep_trying -= wait
+        try:
+            conn.request(
+                method=self.method.upper(),
+                url=self.path.encode('utf-8'),
+                headers=self.headers,
+                body=self.data)
+            sendlog.info('')
+            keep_trying = TIMEOUT
+            while keep_trying > 0:
+                try:
+                    return conn.getresponse()
+                except ResponseNotReady:
+                    wait = 0.03 * random()
+                    sleep(wait)
+                    keep_trying -= wait
+        except ssl.SSLError as ssle:
+            raise KamakiSSLError('SSL Connection error (%s)' % ssle)
         plog = ('\t[%s]' % self) if self.LOG_PID else ''
         logmsg = 'Kamaki Timeout %s %s%s' % (self.method, self.path, plog)
         recvlog.debug(logmsg)
         raise ClientError('HTTPResponse takes too long - kamaki timeout')
+
+    @property
+    def headers_to_quote(self):
+        return self._headers_to_quote
+
+    @headers_to_quote.setter
+    def headers_to_quote(self, header_keys):
+        self._headers_to_quote += [k.lower() for k in header_keys]
+        self._headers_to_quote = list(set(self._headers_to_quote))
+
+    @property
+    def header_prefices(self):
+        return self._header_prefices
+
+    @header_prefices.setter
+    def header_prefices(self, header_key_prefices):
+        self._header_prefices += [p.lower() for p in header_key_prefices]
+        self._header_prefices = list(set(self._header_prefices))
 
 
 class ResponseManager(Logged):
@@ -203,6 +243,18 @@ class ResponseManager(Logged):
         self.request = request
         self._request_performed = False
         self.poolsize = poolsize
+        self._headers_to_decode, self._header_prefices = [], []
+
+    def _get_headers_to_decode(self, headers):
+        keys = set([k.lower() for k, v in headers])
+        encodable = list(keys.intersection(self.headers_to_decode))
+
+        def has_prefix(s):
+            for k in self.header_prefices:
+                if s.startswith(k):
+                    return True
+            return False
+        return encodable + filter(has_prefix, keys.difference(encodable))
 
     def _get_response(self):
         if self._request_performed:
@@ -211,7 +263,7 @@ class ResponseManager(Logged):
         pool_kw = dict(size=self.poolsize) if self.poolsize else dict()
         for retries in range(1, self.CONNECTION_TRY_LIMIT + 1):
             try:
-                with PooledHTTPConnection(
+                with https.PooledHTTPConnection(
                         self.request.netloc, self.request.scheme,
                         **pool_kw) as connection:
                     self.request.LOG_TOKEN = self.LOG_TOKEN
@@ -227,25 +279,24 @@ class ResponseManager(Logged):
                     self._status_code, self._status = r.status, unquote(
                         r.reason)
                     recvlog.info(
-                        '%d %s%s' % (
-                            self.status_code, self.status, plog))
+                        '%d %s%s' % (self.status_code, self.status, plog))
                     self._headers = dict()
-                    for k, v in r.getheaders():
-                        if k.lower in ('x-auth-token', ) and (
-                                not self.LOG_TOKEN):
-                            self._token, v = v, '...'
-                        v = unquote(v)
-                        self._headers[k] = v
+
+                    r_headers = r.getheaders()
+                    enc_headers = self._get_headers_to_decode(r_headers)
+                    for k, v in r_headers:
+                        self._headers[k] = unquote(v).decode('utf-8') if (
+                            k.lower()) in enc_headers else v
                         recvlog.info('  %s: %s%s' % (k, v, plog))
                     self._content = r.read()
                     recvlog.info('data size: %s%s' % (
                         len(self._content) if self._content else 0, plog))
                     if self.LOG_DATA and self._content:
                         data = '%s%s' % (self._content, plog)
+                        data = utils.escape_ctrl_chars(data)
                         if self._token:
                             data = data.replace(self._token, '...')
                         recvlog.info(data)
-                    recvlog.info('-             -        -     -   -  - -')
                 break
             except Exception as err:
                 if isinstance(err, HTTPException):
@@ -257,9 +308,7 @@ class ResponseManager(Logged):
                     from traceback import format_stack
                     recvlog.debug(
                         '\n'.join(['%s' % type(err)] + format_stack()))
-                    raise ClientError(
-                        'Failed while http-connecting to %s (%s)' % (
-                            self.request.url, err))
+                    raise
 
     @property
     def status_code(self):
@@ -290,6 +339,24 @@ class ResponseManager(Logged):
         return '%s' % self._content
 
     @property
+    def headers_to_decode(self):
+        return self._headers_to_decode
+
+    @headers_to_decode.setter
+    def headers_to_decode(self, header_keys):
+        self._headers_to_decode += [k.lower() for k in header_keys]
+        self._headers_to_decode = list(set(self._headers_to_decode))
+
+    @property
+    def header_prefices(self):
+        return self._header_prefices
+
+    @header_prefices.setter
+    def header_prefices(self, header_key_prefices):
+        self._header_prefices += [p.lower() for p in header_key_prefices]
+        self._header_prefices = list(set(self._header_prefices))
+
+    @property
     def json(self):
         """
         :returns: (dict) squeezed from json-formated content
@@ -305,9 +372,7 @@ class SilentEvent(Thread):
     """Thread-run method(*args, **kwargs)"""
     def __init__(self, method, *args, **kwargs):
         super(self.__class__, self).__init__()
-        self.method = method
-        self.args = args
-        self.kwargs = kwargs
+        self.method, self.args, self.kwargs = method, args, kwargs
 
     @property
     def exception(self):
@@ -321,26 +386,57 @@ class SilentEvent(Thread):
         try:
             self._value = self.method(*(self.args), **(self.kwargs))
         except Exception as e:
+            estatus = e.status if isinstance(e, ClientError) else ''
             recvlog.debug('Thread %s got exception %s\n<%s %s' % (
-                self,
-                type(e),
-                e.status if isinstance(e, ClientError) else '',
-                e))
+                self, type(e), estatus, e))
             self._exception = e
 
 
 class Client(Logged):
-
+    service_type = ''
     MAX_THREADS = 1
     DATE_FORMATS = ['%a %b %d %H:%M:%S %Y', ]
     CONNECTION_RETRY_LIMIT = 0
 
-    def __init__(self, base_url, token):
-        assert base_url, 'No base_url for client %s' % self
-        self.base_url = base_url
+    def __init__(self, endpoint_url, token, base_url=None):
+        #  BW compatibility - keep base_url for some time
+        endpoint_url = endpoint_url or base_url
+        assert endpoint_url, 'No endpoint_url for client %s' % self
+        self.endpoint_url, self.base_url = endpoint_url, endpoint_url
         self.token = token
         self.headers, self.params = dict(), dict()
         self.poolsize = None
+        self.request_headers_to_quote = []
+        self.request_header_prefices_to_quote = []
+        self.response_headers = []
+        self.response_header_prefices = []
+
+        # If no CA certificates are set, get the defaults from kamaki.defaults
+        if https.HTTPSClientAuthConnection.ca_file is None:
+            try:
+                from kamaki import defaults
+                https.HTTPSClientAuthConnection.ca_file = getattr(
+                    defaults, 'CACERTS_DEFAULT_PATH', None)
+            except ImportError as ie:
+                log.debug('ImportError while loading default certs: %s' % ie)
+
+    @staticmethod
+    def _unquote_header_keys(headers, prefices):
+        new_keys = dict()
+        for k in headers:
+            if k.lower().startswith(prefices):
+                new_keys[k] = unquote(k).decode('utf-8')
+        for old, new in new_keys.items():
+            headers[new] = headers.pop(old)
+
+    @staticmethod
+    def _quote_header_keys(headers, prefices):
+        new_keys = dict()
+        for k in headers:
+            if k.lower().startswith(prefices):
+                new_keys[k] = quote(k.encode('utf-8'))
+        for old, new in new_keys.items():
+            headers[new] = headers.pop(old)
 
     def _init_thread_limit(self, limit=1):
         assert isinstance(limit, int) and limit > 0, 'Thread limit not a +int'
@@ -405,30 +501,20 @@ class Client(Logged):
             results[key] = thread.value
         return results.values()
 
-    def _raise_for_status(self, r):
-        log.debug('raise err from [%s] of type[%s]' % (r, type(r)))
-        status_msg = getattr(r, 'status', None) or ''
-        try:
-            message = '%s %s\n' % (status_msg, r.text)
-        except:
-            message = '%s %s\n' % (status_msg, r)
-        status = getattr(r, 'status_code', getattr(r, 'status', 0))
-        raise ClientError(message, status=status)
-
     def set_header(self, name, value, iff=True):
         """Set a header 'name':'value'"""
         if value is not None and iff:
-            self.headers[name] = '%s' % value
+            self.headers['%s' % name] = '%s' % value
 
     def set_param(self, name, value=None, iff=True):
         if iff:
-            self.params[name] = '%s' % value  # unicode(value)
+            self.params[name] = '%s' % value
 
     def request(
             self, method, path,
             async_headers=dict(), async_params=dict(),
             **kwargs):
-        """Commit an HTTP request to base_url/path
+        """Commit an HTTP request to endpoint_url/path
         Requests are commited to and performed by Request/ResponseManager
         These classes perform a lazy http request. Present method, by default,
         enforces them to perform the http call. Hint: call present method with
@@ -450,17 +536,20 @@ class Client(Logged):
                 headers.setdefault('Content-Type', 'application/json')
             if data:
                 headers.setdefault('Content-Length', '%s' % len(data))
-
             plog = ('\t[%s]' % self) if self.LOG_PID else ''
-            sendlog.debug('\n\nCMT %s@%s%s', method, self.base_url, plog)
+            sendlog.debug('\n\nCMT %s@%s%s', method, self.endpoint_url, plog)
             req = RequestManager(
-                method, self.base_url, path,
+                method, self.endpoint_url, path,
                 data=data, headers=headers, params=params)
+            req.headers_to_quote = self.request_headers_to_quote
+            req.header_prefices = self.request_header_prefices_to_quote
             #  req.log()
             r = ResponseManager(
                 req,
                 poolsize=self.poolsize,
                 connection_retry_limit=self.CONNECTION_RETRY_LIMIT)
+            r.headers_to_decode = self.response_headers
+            r.header_prefices = self.response_header_prefices
             r.LOG_TOKEN, r.LOG_DATA, r.LOG_PID = (
                 self.LOG_TOKEN, self.LOG_DATA, self.LOG_PID)
             r._token = headers['X-Auth-Token']
@@ -472,7 +561,14 @@ class Client(Logged):
             # Success can either be an int or a collection
             success = (success,) if isinstance(success, int) else success
             if r.status_code not in success:
-                self._raise_for_status(r)
+                log.debug(u'Client caught error %s (%s)' % (r, type(r)))
+                status_msg = getattr(r, 'status', '')
+                try:
+                    message = u'%s %s\n' % (status_msg, r.text)
+                except:
+                    message = u'%s %s\n' % (status_msg, r)
+                status = getattr(r, 'status_code', getattr(r, 'status', 0))
+                raise ClientError(message, status=status)
         return r
 
     def delete(self, path, **kwargs):

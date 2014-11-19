@@ -1,7 +1,7 @@
 Logging
 =======
 
-Kamaki uses the standard Python logger package to log some of its functionality.
+Kamaki uses the standard Python logger.
 
 All kamaki loggers are named or prefixed after the package they log, e.g.,
 a logger at `kamaki/cli/argument/__init__.py` should be called
@@ -32,18 +32,19 @@ using the Python `logger` package, or the corresponding kamaki wraper
 `kamaki.cli.logger` which allows the definition, activation and deactivation
 of stream (usually console) or file loggers.
 
-As an example, we will use
+We will use
 `this script <clients-api.html#register-a-banch-of-pre-uploaded-images>`_
-that loads images from a set of image files already uploaded to Pithos+
-`images` container.
+as an example to work on. The script registers images from a set of
+pre-uploaded image files.
 
-First, we shall add a logger to keep HTTP communication in `/tmp/my_kamaki.log`
+First, we shall add a logger to track HTTP communication in `/tmp/my_kamaki.log`
 To do this, append the following at the top of the file:
 
 .. code-block:: python
 
 	from kamaki.cli.logger import add_file_logger
-	add_file_logger('kamaki', filename='/tmp/my_kamaki.log')
+	add_file_logger('kamaki.clients.send', filename='/tmp/my_kamaki.log')
+	add_file_logger('kamaki.clients.recv', filename='/tmp/my_kamaki.log')
 
 After a run of the script, a new file will be created at `/tmp/my_kamaki.log`
 that will contain logs of the form::
@@ -76,7 +77,6 @@ of the `pithos.list_objects()` method and print these to stdout. To achieve
 that goal, we should get a stream logger and deactivate it when we do not need
 it anymore.
 
-
 .. code-block:: python
 
 	#! /usr/bin/python
@@ -94,10 +94,8 @@ Logger in kamaki code
 ---------------------
 
 When implementing kamaki code, either as part of the main kamaki project or as
-an extension, it is often useful to use loggers. The suggested strategy is to
-use `kamaki.cli.logger` to create one logger per package, named after the
-package itself. Developers may also directly use the Python logger module, but
-they should respect the naming conventions.
+an extension, it is often useful to use loggers. Developers may also directly
+use the Python logger module with respect to the naming conventions.
 
 In this example, we want to log the arguments of the `register` method found in
 `kamaki/clients/image/__init__.py`. We will use the Python logger module.
@@ -123,21 +121,12 @@ Now, we should use the `log` biding to actually log what we need.
     	log.debug('properties: %s' % properties)
     	[...]
 
-The logging module will not log anything by itself. It is the caller scripts
-responsibility to define the actual logger and set the logging destination.
-We are going to use the same script as in the previous examples, but we need
-to define logger for `kamaki.clients.image`.
+Loggers defined in higher levels of the package hierarchy are inherited. This
+may cause duplication in logs. Use either a high level loger (e.g. 'kamaki' or
+'kamaki.clients') to log everything, or a specific logger (e.g.
+'kamaki.clients.image').
 
 .. code-block:: python
 
-	#! /usr/bin/python
-
-	from kamaki.cli.logger import add_file_logger
-
 	add_file_logger('kamaki.clients.image', filename='/tmp/kamaki_image.log')
-
-.. note:: a logger named as `kamaki` will grab everything logged with a name
-	prefixed as `kamaki`, so if we have two loggers, one named `kamaki` and
-	another	one named `kamaki.clients.image`, they will both grab the
-	`register` logs.
 

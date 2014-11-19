@@ -49,8 +49,8 @@ command-line tool for managing a local or remote Synnefo deployment.
 
 * by third-party `Synnefo` deployers for testing and debugging their setup
 
-* as an API library for other components in the Synnefo universe ((`burnin`,
-    `image-creator`) or external applications
+* as an API library for Synnefo-related components (`burnin`, `image-creator`)
+    or external applications
 
 Community & Support
 -------------------

@@ -2,8 +2,8 @@ Source: kamaki
 Section: python
 Priority: optional
 Maintainer: Stavros Sachtouris <saxtouri@admin.grnet.gr>
-Build-Depends: debhelper (>= 8), python (>= 2.6), python-objpool (>= 0.2), python-astakosclient (>= 0.14.10)
-XS-Python-Version: >= 2.6
+Build-Depends: debhelper (>= 8), python-all
+X-Python-Version: >= 2.6
 Standards-Version: 3.9.1
 Homepage: https://code.grnet.gr/projects/kamaki
 
@@ -12,7 +12,7 @@ Architecture: all
 Depends: ${python:Depends}, ${misc:Depends}, python-setuptools, python-objpool(>= 0.2), python-progress(>= 1.1), python-astakosclient(>= 0.14.10)
 Description: command-line tool for managing clouds
  Simple, yet intuitive, command-line tool for managing clouds.
- It is a client implementation of the OpenStack APIs,
- with custom extensions specific to the Synnefo IaaS cloud
+ It is an initial implementation of the OpenStack Compute API,
+ v1.1, with custom extensions specific to the Synnefo IaaS cloud
  management software.
 

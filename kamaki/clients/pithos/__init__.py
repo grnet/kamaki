@@ -1,4 +1,4 @@
-# Copyright 2011-2013 GRNET S.A. All rights reserved.
+# Copyright 2011-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -102,13 +102,14 @@ def _range_up(start, end, max_value, a_range):
 class PithosClient(PithosRestClient):
     """Synnefo Pithos+ API client"""
 
-    def __init__(self, base_url, token, account=None, container=None):
-        super(PithosClient, self).__init__(base_url, token, account, container)
+    def __init__(self, endpoint_url, token, account=None, container=None):
+        super(PithosClient, self).__init__(
+            endpoint_url, token, account, container)
 
     def create_container(
             self,
             container=None, sizelimit=None, versioning=None, metadata=None,
-            **kwargs):
+            project_id=None, **kwargs):
         """
         :param container: (str) if not given, self.container is used instead
 
@@ -126,7 +127,7 @@ class PithosClient(PithosRestClient):
             self.container = container or cnt_back_up
             r = self.container_put(
                 quota=sizelimit, versioning=versioning, metadata=metadata,
-                **kwargs)
+                project_id=project_id, **kwargs)
             return r.headers
         finally:
             self.container = cnt_back_up
@@ -426,8 +427,7 @@ class PithosClient(PithosRestClient):
             blocksize, blockhash, size, nblocks) = self._get_file_block_info(
                 f, size, container_info_cache)
         (hashes, hmap, offset) = ([], {}, 0)
-        if not content_type:
-            content_type = 'application/octet-stream'
+        content_type = content_type or 'application/octet-stream'
 
         self._calculate_blocks_for_upload(
             *block_info,
@@ -452,45 +452,37 @@ class PithosClient(PithosRestClient):
             return obj_headers
 
         if upload_cb:
-            upload_gen = upload_cb(len(missing))
-            for i in range(len(missing), len(hashmap['hashes']) + 1):
+            upload_gen = upload_cb(len(hashmap['hashes']))
+            for i in range(len(hashmap['hashes']) + 1 - len(missing)):
                 try:
                     upload_gen.next()
                 except:
-                    upload_gen = None
+                    sendlog.debug('Progress bar failure')
+                    break
         else:
             upload_gen = None
 
         retries = 7
-        try:
-            while retries:
-                sendlog.info('%s blocks missing' % len(missing))
-                num_of_blocks = len(missing)
-                missing = self._upload_missing_blocks(
-                    missing,
-                    hmap,
-                    f,
-                    upload_gen)
-                if missing:
-                    if num_of_blocks == len(missing):
-                        retries -= 1
-                    else:
-                        num_of_blocks = len(missing)
-                else:
-                    break
+        while retries:
+            sendlog.info('%s blocks missing' % len(missing))
+            num_of_blocks = len(missing)
+            missing = self._upload_missing_blocks(
+                missing, hmap, f, upload_gen)
             if missing:
-                try:
-                    details = ['%s' % thread.exception for thread in missing]
-                except Exception:
-                    details = ['Also, failed to read thread exceptions']
-                raise ClientError(
-                    '%s blocks failed to upload' % len(missing),
-                    details=details)
-        except KeyboardInterrupt:
-            sendlog.info('- - - wait for threads to finish')
-            for thread in activethreads():
-                thread.join()
-            raise
+                if num_of_blocks == len(missing):
+                    retries -= 1
+                else:
+                    num_of_blocks = len(missing)
+            else:
+                break
+        if missing:
+            try:
+                details = ['%s' % thread.exception for thread in missing]
+            except Exception:
+                details = ['Also, failed to read thread exceptions']
+            raise ClientError(
+                '%s blocks failed to upload' % len(missing),
+                details=details)
 
         r = self.object_put(
             obj,
@@ -619,14 +611,13 @@ class PithosClient(PithosRestClient):
                     tries -= 1
                 old_failures = len(missing)
             if missing:
-                raise ClientError(
-                    '%s blocks failed to upload' % len(missing),
-                    details=['%s' % thread.exception for thread in missing])
+                raise ClientError('%s blocks failed to upload' % len(missing))
         except KeyboardInterrupt:
             sendlog.info('- - - wait for threads to finish')
             for thread in activethreads():
                 thread.join()
             raise
+        self._cb_next()
 
         r = self.object_put(
             obj,
@@ -1109,7 +1100,7 @@ class PithosClient(PithosRestClient):
         finally:
             self.container = cnt_back_up
 
-    def get_container_info(self, until=None):
+    def get_container_info(self, container=None, until=None):
         """
         :param until: (str) formated date
 
@@ -1117,11 +1108,16 @@ class PithosClient(PithosRestClient):
 
         :raises ClientError: 404 Container not found
         """
+        bck_cont = self.container
         try:
+            self.container = container or bck_cont
+            self._assert_container()
             r = self.container_head(until=until)
         except ClientError as err:
             err.details.append('for container %s' % self.container)
             raise err
+        finally:
+            self.container = bck_cont
         return r.headers
 
     def get_container_meta(self, until=None):
@@ -1131,8 +1127,7 @@ class PithosClient(PithosRestClient):
         :returns: (dict)
         """
         return filter_in(
-            self.get_container_info(until=until),
-            'X-Container-Meta')
+            self.get_container_info(until=until), 'X-Container-Meta')
 
     def get_container_object_meta(self, until=None):
         """
@@ -1141,8 +1136,7 @@ class PithosClient(PithosRestClient):
         :returns: (dict)
         """
         return filter_in(
-            self.get_container_info(until=until),
-            'X-Container-Object-Meta')
+            self.get_container_info(until=until), 'X-Container-Object-Meta')
 
     def set_container_meta(self, metapairs):
         """
@@ -1215,7 +1209,7 @@ class PithosClient(PithosRestClient):
         self.object_post(obj, update=True, public=True)
         info = self.get_object_info(obj)
         return info['x-object-public']
-        pref, sep, rest = self.base_url.partition('//')
+        pref, sep, rest = self.endpoint_url.partition('//')
         base = rest.split('/')[0]
         return '%s%s%s/%s' % (pref, sep, base, info['x-object-public'])
 
@@ -1343,7 +1337,7 @@ class PithosClient(PithosRestClient):
 
                 for key, thread in flying.items():
                     if thread.isAlive():
-                        if i < nblocks:
+                        if i < (nblocks - 1):
                             unfinished[key] = thread
                             continue
                         thread.join()
@@ -1359,6 +1353,7 @@ class PithosClient(PithosRestClient):
         finally:
             from time import sleep
             sleep(2 * len(activethreads()))
+            self._cb_next()
         return headers.values()
 
     def truncate_object(self, obj, upto_bytes):
@@ -1369,17 +1364,21 @@ class PithosClient(PithosRestClient):
 
         :returns: (dict) response headers
         """
+        ctype = self.get_object_info(obj)['content-type']
         r = self.object_post(
             obj,
             update=True,
             content_range='bytes 0-%s/*' % upto_bytes,
-            content_type='application/octet-stream',
+            content_type=ctype,
             object_bytes=upto_bytes,
             source_object=path4url(self.container, obj))
         return r.headers
 
-    def overwrite_object(self, obj, start, end, source_file, upload_cb=None):
+    def overwrite_object(
+            self, obj, start, end, source_file,
+            source_version=None, upload_cb=None):
         """Overwrite a part of an object from local source file
+        ATTENTION: content_type must always be application/octet-stream
 
         :param obj: (str) remote object path
 
@@ -1392,21 +1391,18 @@ class PithosClient(PithosRestClient):
         :param upload_db: progress.bar for uploading
         """
 
-        r = self.get_object_info(obj)
-        rf_size = int(r['content-length'])
-        if rf_size < int(start):
-            raise ClientError(
-                'Range start exceeds file size',
-                status=416)
-        elif rf_size < int(end):
-            raise ClientError(
-                'Range end exceeds file size',
-                status=416)
         self._assert_container()
+        r = self.get_object_info(obj, version=source_version)
+        rf_size = int(r['content-length'])
+        start, end = int(start), int(end)
+        assert rf_size >= start, 'Range start %s exceeds file size %s' % (
+            start, rf_size)
+        assert rf_size >= end, 'Range end %s exceeds file size %s' % (
+            end, rf_size)
         meta = self.get_container_info()
         blocksize = int(meta['x-container-block-size'])
         filesize = fstat(source_file.fileno()).st_size
-        datasize = int(end) - int(start) + 1
+        datasize = end - start + 1
         nblocks = 1 + (datasize - 1) // blocksize
         offset = 0
         if upload_cb:
@@ -1424,11 +1420,12 @@ class PithosClient(PithosRestClient):
                 content_range='bytes %s-%s/*' % (
                     start + offset,
                     start + offset + len(block) - 1),
+                source_version=source_version,
                 data=block)
             headers.append(dict(r.headers))
             offset += len(block)
-
-            self._cb_next
+            self._cb_next()
+        self._cb_next()
         return headers
 
     def copy_object(
@@ -1549,3 +1546,7 @@ class PithosClient(PithosRestClient):
         self._assert_container()
         r = self.object_get(obj, format='json', version='list')
         return r.json['versions']
+
+    def reassign_container(self, project_id):
+        r = self.container_post(project_id=project_id)
+        return r.headers

@@ -1,4 +1,4 @@
-# Copyright 2013 GRNET S.A. All rights reserved.
+# Copyright 2013-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -32,10 +32,10 @@
 # or implied, of GRNET S.A.
 
 from mock import patch, call
-from logging import getLogger
 from unittest import TestCase
+from itertools import product
 
-from kamaki.clients import ClientError
+from kamaki.clients import ClientError, astakos
 
 
 example = dict(
@@ -78,7 +78,106 @@ astakos_pkg = 'kamaki.clients.astakos'
 
 
 class AstakosClient(TestCase):
+    """Test synnefo.AstakosClient wrapper"""
 
+    def setUp(self):
+        self.url, self.token = 'https://astakos.example.com', 'ast@k0sT0k3n=='
+        self.client = astakos.AstakosClient(self.url, self.token)
+
+    @patch('astakosclient.AstakosClient.__init__')
+    def test___init__(self, init):
+        for args, kwargs in (
+                (['some url', 'some token'], {}),
+                (['some url', 'some token', 'other', 'params'], {}),
+                (['some url', 'some token', 'other params'], (dict(k='v'))),
+                (['some url', 'some token'], (dict(k1='v1', k2='v2'))),
+                (['some url', ], (dict(k1='v1', k2='v2', token='some token'))),
+            ):
+            astakos.AstakosClient(*args, **kwargs)
+            url, token = args.pop(0), kwargs.pop('token', None) or args.pop(0)
+            self.assertTrue(
+                init.mock_calls[-1], call(token, url, *args, **kwargs))
+
+    @patch('%s.AstakosClient.get_endpoints' % astakos_pkg, return_value='ges')
+    @patch('kamaki.clients.astakos.parse_endpoints', return_value=[
+        dict(endpoints=['e1', 'e2', 'e3']), 'stuff'])
+    def test_get_service_endpoints(self, parse_endpoints, get_endpoints):
+        self.assertEqual(
+            'e1', self.client.get_service_endpoints('service_type', 'version'))
+        get_endpoints.assert_called_once()
+        parse_endpoints.assert_called_once_with(
+            'ges', ep_type='service_type', ep_version_id='version')
+
+    @patch(
+        '%s.AstakosClient.get_service_endpoints' % astakos_pkg,
+        return_value=dict(publicURL='gse', itsnot='important'))
+    def test_get_endpoint_url(self, get_service_endpoints):
+        self.assertEqual(
+            'gse', self.client.get_endpoint_url('serv_type', 'version'))
+        get_service_endpoints.assert_called_once_with('serv_type', 'version')
+
+    @patch('%s.AstakosClient.authenticate' % astakos_pkg, return_value=dict(
+        access=dict(user='some user', itsnot='important'), isit='nope'))
+    def test_user_info(self, authenticate):
+        self.assertEqual('some user', self.client.user_info)
+        authenticate.assert_called_once_with()
+
+    @patch('%s.AstakosClient.authenticate' % astakos_pkg, return_value=dict(
+        access=dict(user=dict(name='user'), itsnot='important'), isit='nope'))
+    def test_user_term(self, authenticate):
+        self.assertEqual('user', self.client.user_term('name'))
+        authenticate.assert_called_once_with()
+
+
+class LoggedAstakosClient(TestCase):
+    """Test LoggedAstakosClient methods"""
+
+    def setUp(self):
+        self.url, self.token = 'https://astakos.example.com', 'ast@k0sT0k3n=='
+        self.client = astakos.LoggedAstakosClient(self.url, self.token)
+
+    def tearDown(self):
+        FR.headers = {}
+
+    @patch('kamaki.clients.recvlog.info', return_value='recvlog info')
+    def test__dump_response(self, recvlog_info):
+        for headers, status, message, data, LOG_DATA, LOG_TOKEN in product(
+                (
+                    {'k': 'v'},
+                    {'X-Auth-Token': 'xxx'},
+                    {'X-Auth-Token': 'xxx', 'k': 'v'}),
+                (42, 'status'), ('message', ), ('data', 'My token is xxx'),
+                (True, None), (True, None)):
+            FR.headers = headers
+            self.client.LOG_DATA, self.client.LOG_TOKEN = LOG_DATA, LOG_TOKEN
+            if isinstance(status, int):
+                self.client._dump_response(FR(), status, message, data)
+                mock_calls = list(recvlog_info.mock_calls[-5:])
+                self.assertEqual(
+                    mock_calls.pop(),
+                    call('-             -        -     -   -  - -'))
+                size = len(data)
+                if LOG_DATA:
+                    token = headers.get('X-Auth-Token', '')
+                    if token and not LOG_TOKEN:
+                        data = data.replace(token, '...')
+                    self.assertEqual(mock_calls.pop(), call(data))
+                self.assertEqual(mock_calls[-2:], [
+                    call('\n%s %s' % (status, message)),
+                    call('data size: %s' % size)])
+            else:
+                self.assertRaises(
+                    TypeError,
+                    self.client._dump_response, FR(), status, message, data)
+
+    @patch('%s.AstakosClient._call_astakos' % astakos_pkg, return_value='ret')
+    def test__call_astakos(self, super_call):
+        self.assertEqual(self.client._call_astakos('x', y='y'), 'ret')
+        super_call.assert_called_once_with('x', y='y')
+
+
+class CachedAstakosClient(TestCase):
+    """Test Chached Astakos Client"""
     cached = False
 
     def assert_dicts_are_equal(self, d1, d2):
@@ -92,143 +191,273 @@ class AstakosClient(TestCase):
     def setUp(self):
         self.url = 'https://astakos.example.com'
         self.token = 'ast@k0sT0k3n=='
-        from kamaki.clients.astakos import AstakosClient as AC
-        self.client = AC(self.url, self.token)
+        self.client = astakos.CachedAstakosClient(self.url, self.token)
 
     def tearDown(self):
         FR.json = example
 
+    @patch('kamaki.clients.Client.__init__')
+    def test___init__(self, super_init):
+        c = astakos.CachedAstakosClient(self.url, self.token)
+        super_init.assert_called_once_with(self.url, self.token)
+        self.assertEqual(c._astakos, dict())
+        self.assertEqual(c._uuids, dict())
+        self.assertEqual(c._cache, dict())
+        self.assertEqual(c._uuids2usernames, dict())
+        self.assertEqual(c._usernames2uuids, dict())
+
+    def test__resolve_token(self):
+        for tok, exp in (
+                (None, self.token), ('some token', 'some token'),
+                (['token 1', 'token 2', 'token 3'], 'token 1')):
+            self.assertEqual(exp, self.client._resolve_token(tok))
+        self.client.token = None
+        self.assertRaises(AssertionError, self.client._resolve_token, None)
+
+    @patch(
+        '%s.CachedAstakosClient._resolve_token' % astakos_pkg,
+        return_value='rtoken')
+    @patch('%s.CachedAstakosClient._validate_token' % astakos_pkg)
+    def test_get_client(self, validate, resolve):
+        self.client._uuids['rtoken'] = 'ruuid'
+        self.client._astakos['ruuid'] = 'rclient'
+        self.assertEqual('rclient', self.client.get_client('not important'))
+        validate.assert_called_once_with('rtoken')
+        resolve.assert_called_once_with('not important')
+
+    @patch(
+        '%s.CachedAstakosClient._resolve_token' % astakos_pkg,
+        return_value='rtoken')
     @patch('%s.LoggedAstakosClient.__init__' % astakos_pkg, return_value=None)
     @patch(
-        '%s.LoggedAstakosClient.get_endpoints' % astakos_pkg,
+        '%s.LoggedAstakosClient.authenticate' % astakos_pkg,
         return_value=example)
-    def _authenticate(self, get_endpoints, sac):
-        r = self.client.authenticate()
-        self.assertEqual(
-            sac.mock_calls[-1], call(self.token, self.url,
-                logger=getLogger('astakosclient')))
-        self.assertEqual(get_endpoints.mock_calls[-1], call())
-        return r
-
-    def test_authenticate(self):
-        r = self._authenticate()
-        self.assert_dicts_are_equal(r, example)
+    def test_authenticate(self, authenticate, super_init, resolve):
+        self.assertEqual(example, self.client.authenticate('not important'))
+        resolve.assert_called_once_with('not important')
+        super_init.assert_called_once_with(
+            self.url, 'rtoken', logger=astakos.log)
+        authenticate.assert_called_once_with()
         uuid = example['access']['user']['id']
-        self.assert_dicts_are_equal(self.client._uuids, {self.token: uuid})
-        self.assert_dicts_are_equal(self.client._cache, {uuid: r})
-        from astakosclient import AstakosClient as SAC
-        self.assertTrue(isinstance(self.client._astakos[uuid], SAC))
-        self.assert_dicts_are_equal(self.client._uuids2usernames, {uuid: {}})
-        self.assert_dicts_are_equal(self.client._usernames2uuids, {uuid: {}})
+        self.assertEqual(self.client._uuids['rtoken'], uuid)
+        self.assertEqual(self.client._cache[uuid], example)
+        self.assertTrue(isinstance(
+            self.client._astakos[uuid], astakos.LoggedAstakosClient))
+        self.assertFalse(self.client._astakos[uuid].LOG_TOKEN)
+        self.assertFalse(self.client._astakos[uuid].LOG_DATA)
+        self.assertEqual(self.client._uuids2usernames[uuid], dict())
+        self.assertEqual(self.client._usernames2uuids[uuid], dict())
 
-    def test_get_client(self):
-        if not self.cached:
-            self._authenticate()
-        from astakosclient import AstakosClient as SNFAC
-        self.assertTrue(self.client.get_client(), SNFAC)
+        self.client.LOG_TOKEN, self.client.LOG_DATA = 'tkn', 'dt'
+        self.client.authenticate()
+        self.assertEqual(resolve.mock_calls[-1], call(None))
+        self.assertEqual(self.client._astakos[uuid].LOG_TOKEN, 'tkn')
+        self.assertEqual(self.client._astakos[uuid].LOG_DATA, 'dt')
+
+    @patch(
+        '%s.CachedAstakosClient.get_token' % astakos_pkg, return_value='t1')
+    def test_remove_user(self, get_token):
+        self.client._uuids = dict(t1='v1', t2='v2')
+        self.client._cache = dict(u1='v1', u2='v2')
+        self.client._astakos = dict(u1='v1', u2='v2')
+        self.client._uuids2usernames = dict(u1='v1', u2='v2')
+        self.client._usernames2uuids = dict(u1='v1', u2='v2')
+        self.client.remove_user('u1')
+        get_token.assert_called_once_with('u1')
+        self.assertEqual(self.client._uuids, dict(t2='v2'))
+        self.assertEqual(self.client._cache, dict(u2='v2'))
+        self.assertEqual(self.client._astakos, dict(u2='v2'))
+        self.assertEqual(self.client._uuids2usernames, dict(u2='v2'))
+        self.assertEqual(self.client._usernames2uuids, dict(u2='v2'))
+        self.assertRaises(KeyError, self.client.remove_user, 'u1')
 
     def test_get_token(self):
-        self._authenticate()
-        uuid = self.client._uuids.values()[0]
-        self.assertEqual(self.client.get_token(uuid), self.token)
+        token = example['access']['token']['id']
+        self.client._cache['uuid'] = example
+        self.assertEqual(self.client.get_token('uuid'), token)
+        self.assertRaises(KeyError, self.client.get_token, 'non uuid')
 
-    def test_get_services(self):
-        if not self.cached:
-            self._authenticate()
-        slist = self.client.get_services()
-        self.assertEqual(slist, example['access']['serviceCatalog'])
+    @patch('%s.CachedAstakosClient.get_token' % astakos_pkg, return_value='t1')
+    @patch('%s.CachedAstakosClient.authenticate' % astakos_pkg)
+    def test__validate_token(self, authenticate, get_token):
+        self.client._uuids['t1'] = 'u1'
+        self.client._validate_token('t1')
+        self.assertEqual(get_token.mock_calls[-1], call('u1'))
+        self.assertEqual(authenticate.mock_calls, [])
+        self.assertTrue('t1' in self.client._uuids)
 
-    def test_get_service_details(self):
-        if not self.cached:
-            self._authenticate()
-        stype = '#FAIL'
-        self.assertRaises(ClientError, self.client.get_service_details, stype)
-        stype = 'compute'
-        expected = [s for s in example['access']['serviceCatalog'] if (
-            s['type'] == stype)]
-        self.assert_dicts_are_equal(
-            self.client.get_service_details(stype), expected[0])
+        self.client._uuids['t2'] = 'u2'
+        self.client._validate_token('t2')
+        self.assertEqual(get_token.mock_calls[-1], call('u2'))
+        self.assertEqual(authenticate.mock_calls[-1], call('t2'))
+        self.assertTrue('t2' not in self.client._uuids)
 
-    def test_get_service_endpoints(self):
-        if not self.cached:
-            self._authenticate()
-        stype, version = 'compute', 'V2'
-        self.assertRaises(
-            ClientError, self.client.get_service_endpoints, stype)
-        expected = [s for s in example['access']['serviceCatalog'] if (
-            s['type'] == stype)]
-        expected = [e for e in expected[0]['endpoints'] if (
-            e['versionId'] == version.lower())]
-        self.assert_dicts_are_equal(
-            self.client.get_service_endpoints(stype, version), expected[0])
-
-    def test_user_info(self):
-        if not self.cached:
-            self._authenticate()
-        self.assertTrue(set(example['access']['user'].keys()).issubset(
-            self.client.user_info().keys()))
-
-    def test_item(self):
-        if not self.cached:
-            self._authenticate()
-        for term, val in example['access']['user'].items():
-            self.assertEqual(self.client.term(term, self.token), val)
-        self.assertTrue(
-            example['access']['user']['email'][0] in self.client.term('email'))
-
-    def test_list_users(self):
-        if not self.cached:
-            self._authenticate()
-        FR.json = example
-        self._authenticate()
-        r = self.client.list_users()
-        self.assertTrue(len(r) == 1)
-        self.assertEqual(r[0]['auth_token'], self.token)
+        self.client._validate_token('t3')
+        self.assertEqual(authenticate.mock_calls[-1], call('t3'))
 
     @patch(
-        '%s.LoggedAstakosClient.get_usernames' % astakos_pkg,
-        return_value={42: 'username42', 43: 'username43'})
-    def test_uuids2usernames(self, get_usernames):
-        from astakosclient import AstakosClientException
-        self.assertRaises(
-            AstakosClientException, self.client.uuids2usernames, [42, 43])
-        with patch(
-                '%s.LoggedAstakosClient.__init__' % astakos_pkg,
-                return_value=None) as sac:
-            with patch(
-                    '%s.LoggedAstakosClient.get_endpoints' % astakos_pkg,
-                    return_value=example) as get_endpoints:
-                r = self.client.uuids2usernames([42, 43])
-                self.assert_dicts_are_equal(
-                    r, {42: 'username42', 43: 'username43'})
-                self.assertEqual(sac.mock_calls[-1], call(
-                    self.token, self.url, logger=getLogger('astakosclient')))
-                self.assertEqual(get_endpoints.mock_calls[-1], call())
-                self.assertEqual(get_usernames.mock_calls[-1], call([42, 43]))
+        '%s.CachedAstakosClient._resolve_token' % astakos_pkg,
+        return_value='tkn')
+    @patch('%s.CachedAstakosClient._validate_token' % astakos_pkg)
+    def test_get_services(self, validate, resolve):
+        self.client._cache['u1'], self.client._uuids['tkn'] = example, 'u1'
+        self.assertEqual(
+            self.client.get_services('dont care'),
+            example['access']['serviceCatalog'])
+        resolve.assert_called_once_with('dont care')
+        validate.assert_called_once_with('tkn')
 
     @patch(
-        '%s.LoggedAstakosClient.get_uuids' % astakos_pkg,
-        return_value={'username42': 42, 'username43': 43})
-    def test_usernames2uuids(self, get_uuids):
-        from astakosclient import AstakosClientException
+        '%s.CachedAstakosClient.get_services' % astakos_pkg,
+        return_value=example['access']['serviceCatalog'])
+    def test_get_service_details(self, get_services):
+        self.assertEqual(
+            example['access']['serviceCatalog'][0],
+            self.client.get_service_details('compute', 'dont care'))
+        get_services.assert_called_once_with('dont care')
         self.assertRaises(
-            AstakosClientException, self.client.usernames2uuids, ['u1', 'u2'])
-        with patch(
-                '%s.LoggedAstakosClient.__init__' % astakos_pkg,
-                return_value=None) as sac:
-            with patch(
-                    '%s.LoggedAstakosClient.get_endpoints' % astakos_pkg,
-                    return_value=example) as get_endpoints:
-                r = self.client.usernames2uuids(['u1', 'u2'])
-                self.assert_dicts_are_equal(
-                    r, {'username42': 42, 'username43': 43})
-                self.assertEqual(sac.mock_calls[-1], call(
-                    self.token, self.url, logger=getLogger('astakosclient')))
-                self.assertEqual(get_endpoints.mock_calls[-1], call())
-                self.assertEqual(get_uuids.mock_calls[-1], call(['u1', 'u2']))
+            astakos.AstakosClientError, self.client.get_service_details,
+            'non-existing type', 'dont care')
+
+    @patch(
+        '%s.CachedAstakosClient.get_service_details' % astakos_pkg,
+        return_value=example['access']['serviceCatalog'][0])
+    def test_get_service_endpoints(self, get_service_details):
+        service = example['access']['serviceCatalog'][0]
+        self.assertEqual(
+            self.client.get_service_endpoints('not important', 'v1'),
+            service['endpoints'][0])
+        get_service_details.assert_called_once_with('not important', None)
+        self.assertRaises(
+            astakos.AstakosClientError, self.client.get_service_endpoints,
+            'dont care', 'vX')
+
+    @patch(
+        '%s.CachedAstakosClient.get_service_endpoints' % astakos_pkg,
+        return_value=dict(publicURL='a URL'))
+    def test_get_endpoint_url(self, get_service_endpoints):
+        args = ('stype', 'version', 'token')
+        self.assertEqual(self.client.get_endpoint_url(*args), 'a URL')
+        get_service_endpoints.assert_called_once_with(*args)
+
+    @patch('%s.CachedAstakosClient.authenticate' % astakos_pkg)
+    @patch('%s.CachedAstakosClient.get_token' % astakos_pkg, return_value='t1')
+    def test_list_users(self, get_token, authenticate):
+        self.client._cache = dict()
+        self.assertEqual(self.client.list_users(), [])
+
+        e1 = dict(access=dict(
+            token=dict(id='t1', otherstuff='...'),
+            user=dict(name='user 1', otherstuff2='...')))
+        e2 = dict(access=dict(
+            token=dict(id='t2', otherstuff='...'),
+            user=dict(name='user 2', otherstuff2='...')))
+        self.client._cache = dict(u1=e1, u2=e2)
+        e1['access']['user']['auth_token'] = 't1'
+        e2['access']['user']['auth_token'] = 't1'
+        self.assertEqual(
+            sorted(self.client.list_users()),
+            sorted([e1['access']['user'], e2['access']['user']]))
+
+    @patch(
+        '%s.CachedAstakosClient._resolve_token' % astakos_pkg,
+        return_value='t1')
+    @patch('%s.CachedAstakosClient._validate_token' % astakos_pkg)
+    def test_user_info(self, validate, resolve):
+        self.client._uuids = dict(t1='u1', t2='u2')
+        self.client._cache = dict(u1=example, u2='nothing')
+        self.assertEqual(
+            self.client.user_info('dont care'), example['access']['user'])
+        resolve.assert_called_once_with('dont care')
+        validate.assert_called_once_with('t1')
+
+    @patch('%s.CachedAstakosClient.user_info' % astakos_pkg, return_value=dict(
+        key='val'))
+    def test_user_term(self, user_info):
+        self.assertEqual('val', self.client.user_term('key', 'dont care'))
+        user_info.assert_called_once_with('dont care')
+        self.assertEqual(None, self.client.user_term('not key', 'dont care'))
+
+    @patch('%s.CachedAstakosClient.user_term' % astakos_pkg, return_value='rt')
+    def test_term(self, user_term):
+        self.assertEqual('rt', self.client.term('key', 'dont care'))
+        user_term.assert_called_once_with('key', 'dont care')
+
+    @patch(
+        '%s.CachedAstakosClient.uuids2usernames' % astakos_pkg,
+        return_value='a user name list')
+    @patch(
+        '%s.CachedAstakosClient.usernames2uuids' % astakos_pkg,
+        return_value='a uuid list')
+    def test_post_user_catalogs(self, usernames2uuids, uuids2usernames):
+        self.assertEqual('a user name list', self.client.post_user_catalogs(
+            uuids=['u1'], token='X'))
+        self.assertEqual('a uuid list', self.client.post_user_catalogs(
+            displaynames=['n1', 'n2'], token='X'))
+        uuids2usernames.assert_called_once_with(['u1'], 'X')
+        usernames2uuids.assert_called_once_with(['n1', 'n2'], 'X')
+
+    @patch(
+        'astakosclient.AstakosClient.get_usernames',
+        return_value=dict(uuid1='name 1', uuid2='name 2'))
+    @patch(
+        '%s.CachedAstakosClient._resolve_token' % astakos_pkg,
+        return_value='t1')
+    @patch('%s.CachedAstakosClient._validate_token' % astakos_pkg)
+    @patch('astakosclient.AstakosClient.__init__', return_value=None)
+    def test_uuids2usernames(
+            self, orig_astakos, validate, resolve, get_usernames):
+        import astakosclient
+        self.client._uuids['t1'] = 'uuid0'
+        self.client._astakos['uuid0'] = astakosclient.AstakosClient(
+            self.url, self.token)
+        self.client._uuids2usernames['uuid0'] = dict(uuid0='name 0')
+        exp = dict()
+        for i in range(3):
+            exp['uuid%s' % i] = 'name %s' % i
+        self.assertEqual(exp, self.client.uuids2usernames(
+            ['uuid1', 'uuid2'], 'dont care'))
+        resolve.assert_called_once_with('dont care')
+        validate.assert_called_once_with('t1')
+        get_usernames.assert_called_once_with(['uuid1', 'uuid2'])
+
+    @patch(
+        'astakosclient.AstakosClient.get_uuids',
+        return_value=dict(name1='uuid 1', name2='uuid 2'))
+    @patch(
+        '%s.CachedAstakosClient._resolve_token' % astakos_pkg,
+        return_value='t1')
+    @patch('%s.CachedAstakosClient._validate_token' % astakos_pkg)
+    @patch('astakosclient.AstakosClient.__init__', return_value=None)
+    def test_usernames2uuids(
+            self, orig_astakos, validate, resolve, get_uuids):
+        import astakosclient
+        self.client._uuids['t1'] = 'uuid 0'
+        self.client._astakos['uuid 0'] = astakosclient.AstakosClient(
+            self.url, self.token)
+        self.client._usernames2uuids['uuid 0'] = dict(name0='uuid 0')
+        exp = dict()
+        for i in range(3):
+            exp['name%s' % i] = 'uuid %s' % i
+        self.assertEqual(exp, self.client.usernames2uuids(
+            ['name1', 'name2'], 'dont care'))
+        resolve.assert_called_once_with('dont care')
+        validate.assert_called_once_with('t1')
+        get_uuids.assert_called_once_with(['name1', 'name2'])
 
 
 if __name__ == '__main__':
     from sys import argv
     from kamaki.clients.test import runTestCase
-    runTestCase(AstakosClient, 'AstakosClient', argv[1:])
+    not_found = True
+    if not argv[1:] or argv[1] == 'AstakosClient':
+        not_found = False
+        runTestCase(AstakosClient, 'Kamaki Astakos Client', argv[2:])
+    if not argv[1:] or argv[1] == 'LoggedAstakosClient':
+        not_found = False
+        runTestCase(LoggedAstakosClient, 'Logged Astakos Client', argv[2:])
+    if not argv[1:] or argv[1] == 'CachedAstakosClient':
+        not_found = False
+        runTestCase(CachedAstakosClient, 'Cached Astakos Client', argv[2:])
+    if not_found:
+        print('TestCase %s not found' % argv[1])
