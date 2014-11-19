@@ -1,4 +1,4 @@
-# Copyright 2013 GRNET S.A. All rights reserved.
+# Copyright 2013-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -37,15 +37,6 @@ from tempfile import NamedTemporaryFile
 from mock import patch, call
 from itertools import product
 
-from kamaki.cli.command_tree.test import Command, CommandTree
-from kamaki.cli.config.test import Config
-from kamaki.cli.argument.test import (
-    Argument, ConfigArgument, RuntimeConfigArgument, FlagArgument,
-    ValueArgument, IntArgument, DateArgument, VersionArgument,
-    RepeatableArgument, KeyValueArgument, ProgressBarArgument,
-    ArgumentParseManager)
-from kamaki.cli.utils.test import UtilsMethods
-
 
 class History(TestCase):
 
@@ -70,31 +61,6 @@ class History(TestCase):
                 ((['line', 'with', 'some terms'], 'some terms'), False)):
             self.assertEqual(self.HCLASS._match(*args), expected)
 
-    def test_get(self):
-        history = self.HCLASS(self.file.name)
-        self.assertEqual(history.get(), [])
-
-        sample_history = (
-            'kamaki history show\n',
-            'kamaki file list\n',
-            'kamaki touch pithos:f1\n',
-            'kamaki file info pithos:f1\n')
-        self.file.write(''.join(sample_history))
-        self.file.flush()
-
-        expected = ['%s.  \t%s' % (
-            i + 1, event) for i, event in enumerate(sample_history)]
-        self.assertEqual(history.get(), expected)
-        self.assertEqual(history.get('kamaki'), expected)
-        self.assertEqual(history.get('file kamaki'), expected[1::2])
-        self.assertEqual(history.get('pithos:f1'), expected[2:])
-        self.assertEqual(history.get('touch pithos:f1'), expected[2:3])
-
-        for limit in range(len(sample_history)):
-            self.assertEqual(history.get(limit=limit), expected[-limit:])
-            self.assertEqual(
-                history.get('kamaki', limit=limit), expected[-limit:])
-
     def test_add(self):
         history = self.HCLASS(self.file.name)
         some_strings = ('a brick', 'two bricks', 'another brick', 'A wall!')
@@ -104,24 +70,25 @@ class History(TestCase):
             self.assertEqual(
                 self.file.read(), '\n'.join(some_strings[:(i + 1)]) + '\n')
 
-    def test_clean(self):
+    def test_empty(self):
         content = 'a brick\ntwo bricks\nanother brick\nA wall!\n'
         self.file.write(content)
         self.file.flush()
         self.file.seek(0)
         self.assertEqual(self.file.read(), content)
         history = self.HCLASS(self.file.name)
-        history.clean()
+        history.empty()
         self.file.seek(0)
-        self.assertEqual(self.file.read(), '')
+        self.assertEqual(self.file.read(), '0\n')
 
     def test_retrieve(self):
         sample_history = (
+            '0\n',
             'kamaki history show\n',
             'kamaki file list\n',
-            'kamaki touch pithos:f1\n',
-            'kamaki file info pithos:f1\n',
-            'current / last command is always excluded')
+            'kamaki file create /pithos/f1\n',
+            'kamaki file info /pithos/f1\n',
+            'last command is always excluded')
         self.file.write(''.join(sample_history))
         self.file.flush()
 
@@ -129,11 +96,43 @@ class History(TestCase):
         self.assertRaises(ValueError, history.retrieve, 'must be number')
         self.assertRaises(TypeError, history.retrieve, [1, 2, 3])
 
-        for i in (0, len(sample_history), -len(sample_history)):
+        for i in (0, len(sample_history) + 1, - len(sample_history) - 1):
             self.assertEqual(history.retrieve(i), None)
         for i in range(1, len(sample_history)):
-            self.assertEqual(history.retrieve(i), sample_history[i - 1])
-            self.assertEqual(history.retrieve(- i), sample_history[- i - 1])
+            self.assertEqual(history.retrieve(i), sample_history[i])
+            self.assertEqual(history.retrieve(- i), sample_history[- i])
+
+    def test_limit(self):
+        sample_history = (
+            '0\n',
+            'kamaki history show\n',
+            'kamaki file list\n',
+            'kamaki file create /pithos/f1\n',
+            'kamaki file info /pithos/f1\n',
+            'last command is always excluded')
+        sample_len = len(sample_history)
+        self.file.write(''.join(sample_history))
+        self.file.flush()
+        history = self.HCLASS(self.file.name)
+
+        for value, exp_e in (
+                    (-2, ValueError),
+                    ('non int', ValueError),
+                    (None, TypeError)):
+            try:
+                history.limit = value
+            except Exception as e:
+                self.assertTrue(isinstance(e, exp_e))
+
+        history.limit = 10
+        self.assertEqual(history.limit, 10)
+        self.file.seek(0)
+        self.assertEqual(len(self.file.readlines()), sample_len)
+
+        history.limit = sample_len - 1
+        self.assertEqual(history.limit, sample_len - 1)
+        self.file.seek(0)
+        self.assertEqual(len(self.file.readlines()), sample_len)
 
 
 class LoggerMethods(TestCase):
@@ -251,9 +250,12 @@ class LoggerMethods(TestCase):
             for name, level, filename in product(
                     ('my name'), ('my level', None), ('my filename', None)):
                 self.assertEqual(add_file_logger(name, level, filename), 'AL')
+                from logging import DEBUG as dbg
+                fmt = '%(name)s(%(levelname)s) %(asctime)s\n\t%(message)s' if (
+                    level == dbg) else '%(name)s: %(message)s'
                 self.assertEqual(AL.mock_calls[-1], call(
                     name, level, filename or 'my log fname',
-                    fmt='%(name)s(%(levelname)s) %(asctime)s\n\t%(message)s'))
+                    fmt=fmt))
                 if filename:
                     self.assertEqual(GLFcount, GLF.call_count)
                 else:
@@ -364,20 +366,6 @@ class CLIBaseUrlError(TestCase):
         for service in ('', 'some service'):
             clibue = CLIBaseUrlError(service=service)
             self.assertEqual('%s' % clibue, 'No URL for %s\n' % service)
-            self.assertEqual(clibue.details, [
-                'Two ways to resolve this:',
-                '(Use the correct cloud name, instead of "default")',
-                'A. (recommended) Let kamaki discover endpoint URLs for all',
-                'services by setting a single Authentication URL and token:',
-                '  /config set cloud.default.url <AUTH_URL>',
-                '  /config set cloud.default.token <t0k3n>',
-                'B. (advanced users) Explicitly set an %s endpoint URL' % (
-                    service.upper()),
-                'Note: URL option has a higher priority, so delete it to',
-                'make that work',
-                '  /config delete cloud.default.url',
-                '  /config set cloud.%s.url <%s_URL>' % (
-                    service, service.upper())])
             self.assertEqual(clibue.importance, 2)
 
 

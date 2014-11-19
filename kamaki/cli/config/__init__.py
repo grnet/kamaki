@@ -1,4 +1,4 @@
-# Copyright 2011-2013 GRNET S.A. All rights reserved.
+# Copyright 2011-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -39,7 +39,8 @@ from collections import defaultdict
 from ConfigParser import RawConfigParser, NoOptionError, NoSectionError, Error
 from re import match
 
-from kamaki.cli.errors import CLISyntaxError
+from kamaki.cli.errors import CLISyntaxError, CLIError
+from kamaki.cli.utils import pref_enc, escape_ctrl_chars
 from kamaki import __version__
 
 try:
@@ -62,6 +63,14 @@ CLOUD_PREFIX = 'cloud'
 # Name of a shell variable to bypass the CONFIG_PATH value
 CONFIG_ENV = 'KAMAKI_CONFIG'
 
+# Get default CA Certifications file path - created while packaging
+try:
+    from kamaki import defaults
+    CACERTS_DEFAULT_PATH = getattr(defaults, 'CACERTS_DEFAULT_PATH', '')
+except ImportError as ie:
+    log.debug('ImportError while loading default certs: %s' % ie)
+    CACERTS_DEFAULT_PATH = ''
+
 version = ''
 for c in '%s' % __version__:
     if c not in '0.123456789':
@@ -78,6 +87,7 @@ DEFAULTS = {
         'log_data': 'off',
         'log_pid': 'off',
         'history_file': HISTORY_PATH,
+        'history_limit': 0,
         'user_cli': 'astakos',
         'quota_cli': 'astakos',
         'resource_cli': 'astakos',
@@ -93,30 +103,33 @@ DEFAULTS = {
         'subnet_cli': 'network',
         'port_cli': 'network',
         'ip_cli': 'network',
+        'volume_cli': 'blockstorage',
+        'snapshot_cli': 'blockstorage',
         'image_cli': 'image',
         'imagecompute_cli': 'image',
         'config_cli': 'config',
-        'history_cli': 'history'
+        'history_cli': 'history',
+        'ignore_ssl': 'off',
+        'ca_certs': CACERTS_DEFAULT_PATH,
         #  Optional command specs:
-        #  'livetest_cli': 'livetest',
         #  'service_cli': 'astakos'
         #  'endpoint_cli': 'astakos'
         #  'commission_cli': 'astakos'
     },
     CLOUD_PREFIX: {
-        #'default': {
-        #    'url': '',
-        #    'token': ''
-        #    'pithos_container': 'THIS IS DANGEROUS'
-        #    'pithos_type': 'object-store',
-        #    'pithos_version': 'v1',
-        #    'cyclades_type': 'compute',
-        #    'cyclades_version': 'v2.0',
-        #    'plankton_type': 'image',
-        #    'plankton_version': '',
-        #    'astakos_type': 'identity',
-        #    'astakos_version': 'v2.0'
-        #}
+        # 'default': {
+        #     'url': '',
+        #     'token': ''
+        #     'pithos_container': 'THIS IS DANGEROUS'
+        #     'pithos_type': 'object-store',
+        #     'pithos_version': 'v1',
+        #     'cyclades_type': 'compute',
+        #     'cyclades_version': 'v2.0',
+        #     'plankton_type': 'image',
+        #     'plankton_version': '',
+        #     'astakos_type': 'identity',
+        #     'astakos_version': 'v2.0'
+        # }
     }
 }
 
@@ -126,20 +139,44 @@ class Config(RawConfigParser):
     def __init__(self, path=None, with_defaults=True):
         RawConfigParser.__init__(self, dict_type=OrderedDict)
         self.path = path or os.environ.get(CONFIG_ENV, CONFIG_PATH)
+
+        # Check if self.path is accessible
+        abspath = os.path.abspath(self.path)
+        if not os.path.exists(self.path):
+            log.warning('Config file %s does not exist' % abspath)
+        elif os.access(self.path, os.R_OK):
+            if not os.access(self.path, os.W_OK):
+                log.warning('Config file %s is not writable' % abspath)
+        else:
+            raise CLIError(
+                'Config file %s is inaccessible' % abspath,
+                importance=3, details=['No read permissions for this file'])
+
         self._overrides = defaultdict(dict)
         if with_defaults:
             self._load_defaults()
         self.read(self.path)
 
         for section in self.sections():
-            r = self._cloud_name(section)
+            r = self.cloud_name(section)
             if r:
                 for k, v in self.items(section):
                     self.set_cloud(r, k, v)
                 self.remove_section(section)
 
     @staticmethod
-    def _cloud_name(full_section_name):
+    def assert_option(option):
+        if isinstance(option, unicode):
+            try:
+                option = str(option)
+            except UnicodeError, ue:
+                raise CLIError('Invalid config option %s' % option, details=[
+                    'Illegal character(s) in config option name',
+                    'Non-ascii characters are only allowed as values',
+                    ue])
+
+    @staticmethod
+    def cloud_name(full_section_name):
         if not full_section_name.startswith(CLOUD_PREFIX + ' '):
             return None
         matcher = match(CLOUD_PREFIX + ' "([~@#$.:\-\w]+)"', full_section_name)
@@ -190,30 +227,29 @@ class Config(RawConfigParser):
                     except KeyError:
                         cval = ''
                     if gval and cval and (
-                        gval.lower().strip('/') != cval.lower().strip('/')):
-                            raise CLISyntaxError(
-                                'Conflicting values for default %s' % (
-                                    term),
-                                importance=2, details=[
-                                    ' global.%s:  %s' % (term, gval),
-                                    ' %s.%s.%s:  %s' % (
-                                        CLOUD_PREFIX,
-                                        default_cloud,
-                                        term,
-                                        cval),
-                                    'Please remove one of them manually:',
-                                    ' /config delete global.%s' % term,
-                                    ' or'
-                                    ' /config delete %s.%s.%s' % (
-                                        CLOUD_PREFIX, default_cloud, term),
-                                    'and try again'])
+                            gval.lower().strip('/') != cval.lower().strip('/')
+                            ):
+                        raise CLISyntaxError(
+                            'Conflicting values for default %s' % (term),
+                            importance=2, details=[
+                                ' global.%s:  %s' % (term, gval),
+                                ' %s.%s.%s:  %s' % (
+                                    CLOUD_PREFIX,
+                                    default_cloud,
+                                    term,
+                                    cval),
+                                'Please remove one of them manually:',
+                                ' /config delete global.%s' % term,
+                                ' or'
+                                ' /config delete %s.%s.%s' % (
+                                    CLOUD_PREFIX, default_cloud, term),
+                                'and try again'])
                     elif gval:
                         err.write(u'... rescue %s.%s => %s.%s.%s\n' % (
                             s, term, CLOUD_PREFIX, default_cloud, term))
                         err.flush()
                         self.set_cloud('default', term, gval)
                     self.remove_option(s, term)
-                print 'CHECK'
                 for term, wrong, right in (
                         ('ip', 'cyclades', 'network'),
                         ('network', 'cyclades', 'network'),):
@@ -277,18 +313,22 @@ class Config(RawConfigParser):
         """
         :returns: (float) version of the config file or 0.9 if unrecognized
         """
+        from kamaki.cli import logger
+        # Ignore logs from "checker" logger
+        logger.deactivate(__name__)
         checker = Config(self.path, with_defaults=False)
+        logger.activate(__name__)
+
         sections = checker.sections()
-        log.debug('Config file heuristic 1: old global section ?')
+        #  log.debug('Config file heuristic 1: old global section ?')
         if 'global' in sections:
             if checker.get('global', 'url') or checker.get('global', 'token'):
-                log.debug('..... config file has an old global section')
+                log.debug('config file has an old global section')
                 return 0.8
-        log.debug('........ nope')
-        log.debug('Config file heuristic 2: Any cloud sections ?')
+        #  log.debug('Config file heuristic 2: Any cloud sections ?')
         if CLOUD_PREFIX in sections:
             for r in self.keys(CLOUD_PREFIX):
-                log.debug('... found cloud "%s"' % r)
+                log.debug('found cloud "%s"' % r)
             ipv = self.get('global', 'ip_cli')
             if ipv in ('cyclades', ):
                     return 0.11
@@ -296,13 +336,12 @@ class Config(RawConfigParser):
             if netv in ('cyclades', ):
                 return 0.10
             return 0.12
-        log.debug('........ nope')
         log.debug('All heuristics failed, cannot decide')
         return 0.12
 
     def get_cloud(self, cloud, option):
         """
-        :param cloud: (str) cloud alias
+        :param cloud: (str) cloud name
 
         :param option: (str) option in cloud section
 
@@ -320,6 +359,7 @@ class Config(RawConfigParser):
             d = self.get(CLOUD_PREFIX, cloud) or dict()
         except KeyError:
             d = dict()
+        self.assert_option(option)
         d[option] = value
         self.set(CLOUD_PREFIX, cloud, d)
 
@@ -334,7 +374,14 @@ class Config(RawConfigParser):
         except KeyError:
             d = {}
         try:
-            d.update(RawConfigParser.items(self, section))
+            for k, v in RawConfigParser.items(self, section):
+                new_k, new_v = k, v
+                if isinstance(k, basestring) and not isinstance(k, unicode):
+                    new_k = k.decode(pref_enc)
+                if isinstance(v, basestring) and not isinstance(v, unicode):
+                    new_v = v.decode(pref_enc)
+                d[new_k] = new_v
+            # d.update(RawConfigParser.items(self, section))
         except NoSectionError:
             pass
         return d
@@ -357,7 +404,10 @@ class Config(RawConfigParser):
         if section.startswith(prefix):
             return self.get_cloud(section[len(prefix):], option)
         try:
-            return RawConfigParser.get(self, section, option)
+            r = RawConfigParser.get(self, section, option)
+            if isinstance(r, str):
+                return r.decode(pref_enc, 'replace')
+            return r
         except (NoSectionError, NoOptionError):
             return DEFAULTS.get(section, {}).get(option)
 
@@ -369,9 +419,10 @@ class Config(RawConfigParser):
 
         :param value: str
         """
+        self.assert_option(option)
         prefix = CLOUD_PREFIX + '.'
         if section.startswith(prefix):
-            cloud = self._cloud_name(
+            cloud = self.cloud_name(
                 CLOUD_PREFIX + ' "' + section[len(prefix):] + '"')
             return self.set_cloud(cloud, option, value)
         if section not in RawConfigParser.sections(self):
@@ -402,21 +453,19 @@ class Config(RawConfigParser):
     def override(self, section, option, value):
         self._overrides[section][option] = value
 
-    def write(self):
-        cld_bu = self._get_dict(CLOUD_PREFIX)
-        try:
-            for r, d in self.items(CLOUD_PREFIX):
-                for k, v in d.items():
-                    self.set(CLOUD_PREFIX + ' "%s"' % r, k, v)
-            self.remove_section(CLOUD_PREFIX)
+    def safe_to_print(self):
+        dump = u'[global]\n'
+        for k, v in self.items('global'):
+            dump += u'%s = %s\n' % (escape_ctrl_chars(k), escape_ctrl_chars(v))
+        for r, d in self.items(CLOUD_PREFIX):
+            dump += u'\n[%s "%s"]\n' % (CLOUD_PREFIX, escape_ctrl_chars(r))
+            for k, v in d.items():
+                dump += u'%s = %s\n' % (
+                    escape_ctrl_chars(k), escape_ctrl_chars(v))
+        return dump
 
-            with open(self.path, 'w') as f:
-                os.chmod(self.path, 0600)
-                f.write(HEADER.lstrip())
-                f.flush()
-                RawConfigParser.write(self, f)
-        finally:
-            if CLOUD_PREFIX not in self.sections():
-                self.add_section(CLOUD_PREFIX)
-            for cloud, d in cld_bu.items():
-                self.set(CLOUD_PREFIX, cloud, d)
+    def write(self):
+        with open(self.path, mode='w') as f:
+            os.chmod(self.path, 0600)
+            f.write(HEADER.lstrip())
+            f.write(self.safe_to_print().encode(pref_enc, 'replace'))

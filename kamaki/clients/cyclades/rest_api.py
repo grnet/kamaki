@@ -1,4 +1,4 @@
-# Copyright 2012-2013 GRNET S.A. All rights reserved.
+# Copyright 2012-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -32,18 +32,59 @@
 # or implied, of GRNET S.A.
 
 from kamaki.clients.compute import ComputeClient
+from kamaki.clients.blockstorage import BlockStorageClient
 from kamaki.clients.utils import path4url
 
 
-class CycladesRestClient(ComputeClient):
+class CycladesComputeRestClient(ComputeClient):
     """Synnefo Cyclades REST API Client"""
 
     def servers_stats_get(self, server_id, **kwargs):
-        """GET base_url/servers/<server_id>/stats"""
+        """GET endpoint_url/servers/<server_id>/stats"""
         path = path4url('servers', server_id, 'stats')
         return self.get(path, success=200, **kwargs)
 
     def servers_diagnostics_get(self, server_id, **kwargs):
-        """GET base_url/servers/<server_id>/diagnostics"""
+        """GET endpoint_url/servers/<server_id>/diagnostics"""
         path = path4url('servers', server_id, 'diagnostics')
         return self.get(path, success=200, **kwargs)
+
+
+#  Backwards compatibility
+CycladesRestClient = CycladesComputeRestClient
+
+
+class CycladesBlockStorageRestClient(BlockStorageClient):
+    """Synnefo Cyclades Block Storage REST API Client"""
+
+    def volumes_post(
+            self, size, server_id, display_name,
+            display_description=None,
+            snapshot_id=None,
+            imageRef=None,
+            volume_type=None,
+            metadata=None,
+            project=None,
+            success=202,
+            **kwargs):
+        path = path4url('volumes')
+        volume = dict(
+            size=int(size), server_id=server_id, display_name=display_name)
+        if display_description is not None:
+            volume['display_description'] = display_description
+        if snapshot_id is not None:
+            volume['snapshot_id'] = snapshot_id
+        if imageRef is not None:
+            volume['imageRef'] = imageRef
+        if volume_type is not None:
+            volume['volume_type'] = volume_type
+        if metadata is not None:
+            volume['metadata'] = metadata
+        if project is not None:
+            volume['project'] = project
+        return self.post(
+            path, json=dict(volume=volume), success=success, **kwargs)
+
+    def volumes_action_post(self, volume_id, json_data, success=200, **kwargs):
+        path = path4url('volumes', volume_id, 'action')
+        return self.post(path, json=json_data, success=success, **kwargs)

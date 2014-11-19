@@ -12,4 +12,5 @@ Examples
     examplesdir/imageregister
     examplesdir/server
     examplesdir/network
+    examplesdir/blockstorage
     examplesdir/astakos

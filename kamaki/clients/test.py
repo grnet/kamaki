@@ -1,4 +1,4 @@
-# Copyright 2013 GRNET S.A. All rights reserved.
+# Copyright 2013-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -39,15 +39,19 @@ from itertools import product
 from random import randint
 
 from kamaki.clients.utils.test import Utils
-from kamaki.clients.astakos.test import AstakosClient
+from kamaki.clients.astakos.test import (
+    AstakosClient, LoggedAstakosClient, CachedAstakosClient)
 from kamaki.clients.compute.test import ComputeClient, ComputeRestClient
 from kamaki.clients.network.test import (NetworkClient, NetworkRestClient)
-from kamaki.clients.cyclades.test import CycladesClient, CycladesNetworkClient
-from kamaki.clients.cyclades.test import CycladesRestClient
+from kamaki.clients.cyclades.test import (
+    CycladesComputeClient, CycladesNetworkClient, CycladesBlockStorageClient,
+    CycladesComputeRestClient, CycladesBlockStorageRestClient)
 from kamaki.clients.image.test import ImageClient
 from kamaki.clients.storage.test import StorageClient
 from kamaki.clients.pithos.test import (
     PithosClient, PithosRestClient, PithosMethods)
+from kamaki.clients.blockstorage.test import (
+    BlockStorageRestClient, BlockStorageClient)
 
 
 class ClientError(TestCase):
@@ -234,10 +238,10 @@ class SilentEvent(TestCase):
             t.start()
 
         for i in range(4):
-            self.assertTrue(threads[i].is_alive())
+            if threads[i].is_alive():
+                threads[i].join()
+                self.assertFalse(threads[i].is_alive())
             self.can_finish = i
-            threads[i].join()
-            self.assertFalse(threads[i].is_alive())
 
     def test_value(self):
         threads = [self.SE(self.thread_content, i) for i in range(4)]
@@ -287,9 +291,9 @@ class Client(TestCase):
     def setUp(self):
         from kamaki.clients import Client
         from kamaki.clients import ClientError as CE
-        self.base_url = 'http://example.com'
+        self.endpoint_url = 'http://example.com'
         self.token = 's0m370k3n=='
-        self.client = Client(self.base_url, self.token)
+        self.client = Client(self.endpoint_url, self.token)
         self.CE = CE
 
     def tearDown(self):
@@ -299,7 +303,7 @@ class Client(TestCase):
         self.client.token = self.token
 
     def test___init__(self):
-        self.assertEqual(self.client.base_url, self.base_url)
+        self.assertEqual(self.client.endpoint_url, self.endpoint_url)
         self.assertEqual(self.client.token, self.token)
         self.assert_dicts_are_equal(self.client.headers, {})
         DATE_FORMATS = ['%a %b %d %H:%M:%S %Y']
@@ -348,24 +352,6 @@ class Client(TestCase):
                 self.client._elapsed_new = wait
                 self.client._watch_thread_limit(list())
                 self.assertEqual(exp_limit, self.client._thread_limit)
-
-    def test__raise_for_status(self):
-        r = FR()
-        for txt, sts_code, sts in (('err msg', 10, None), ('', 42, 'Err St')):
-            r.text, r.status_code, r.status = txt, sts_code, sts
-            try:
-                self.client._raise_for_status(r)
-            except self.CE as ce:
-                self.assertEqual('%s' % ce, '%s %s\n' % (sts or '', txt))
-                self.assertEqual(ce.status, sts_code)
-
-        for msg, sts_code in (('err msg', 32), ('', 42), ('an err', None)):
-            err = self.CE(msg, sts_code) if sts_code else Exception(msg)
-            try:
-                self.client._raise_for_status(err)
-            except self.CE as ce:
-                self.assertEqual('%s' % ce, '%s %s\n' % (sts_code or '', msg))
-                self.assertEqual(ce.status, sts_code or 0)
 
     @patch('kamaki.clients.Client.set_header')
     def test_set_header(self, SH):

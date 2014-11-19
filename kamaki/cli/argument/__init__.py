@@ -1,4 +1,4 @@
-# Copyright 2012-2013 GRNET S.A. All rights reserved.
+# Copyright 2012-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -37,15 +37,56 @@ from kamaki.cli.errors import (
 from kamaki.cli.utils import split_input, to_bytes
 
 from datetime import datetime as dtm
+import dateutil.tz
+import dateutil.parser
 from time import mktime
 from sys import stderr
+import os.path
 
 from logging import getLogger
-from argparse import ArgumentParser, ArgumentError
-from argparse import RawDescriptionHelpFormatter
+from argparse import (
+    ArgumentParser, ArgumentError, RawDescriptionHelpFormatter)
 from progress.bar import ShadyBar as KamakiProgressBar
 
 log = getLogger(__name__)
+
+
+class NoAbbrArgumentParser(ArgumentParser):
+    """This is Argument Parser with disabled argument abbreviation"""
+
+    def _get_option_tuples(self, option_string):
+        result = []
+        chars = self.prefix_chars
+        if option_string[0] in chars and option_string[1] in chars:
+            if '=' in option_string:
+                option_prefix, explicit_arg = option_string.split('=', 1)
+            else:
+                option_prefix = option_string
+                explicit_arg = None
+            for option_string in self._option_string_actions:
+                if option_string == option_prefix:
+                    action = self._option_string_actions[option_string]
+                    tup = action, option_string, explicit_arg
+                    result.append(tup)
+        elif option_string[0] in chars and option_string[1] not in chars:
+            option_prefix = option_string
+            explicit_arg = None
+            short_option_prefix = option_string[:2]
+            short_explicit_arg = option_string[2:]
+
+            for option_string in self._option_string_actions:
+                if option_string == short_option_prefix:
+                    action = self._option_string_actions[option_string]
+                    tup = action, option_string, short_explicit_arg
+                    result.append(tup)
+                elif option_string == option_prefix:
+                    action = self._option_string_actions[option_string]
+                    tup = action, option_string, explicit_arg
+                    result.append(tup)
+        else:
+            return super(
+                NoAbbrArgumentParser, self)._get_option_tuples(option_string)
+        return result
 
 
 class Argument(object):
@@ -67,7 +108,7 @@ class Argument(object):
             assert name.count(' ') == 0, '%s: Invalid parse name "%s"' % (
                 self, name)
             msg = '%s: Invalid parse name "%s" should start with a "-"' % (
-                    self, name)
+                self, name)
             assert name.startswith('-'), msg
 
         self.default = default or None
@@ -109,6 +150,10 @@ class ConfigArgument(Argument):
     @value.setter
     def value(self, config_file):
         if config_file:
+            if not os.path.exists(config_file):
+                raiseCLIError(
+                    'Config file "%s" does not exist' % config_file,
+                    importance=3)
             self._value = Config(config_file)
             self.file_path = config_file
         elif self.file_path:
@@ -139,9 +184,6 @@ class ConfigArgument(Argument):
 
     def get_cloud(self, cloud, option):
         return self.value.get_cloud(cloud, option)
-
-
-_config_arg = ConfigArgument('Path to config file')
 
 
 class RuntimeConfigArgument(Argument):
@@ -198,6 +240,24 @@ class ValueArgument(Argument):
         super(ValueArgument, self).__init__(1, help, parsed_name, default)
 
 
+class BooleanArgument(ValueArgument):
+    """Can be true, false or None (Flag argument can only be true or None)"""
+
+    @property
+    def value(self):
+        return getattr(self, '_value', None)
+
+    @value.setter
+    def value(self, new_value):
+        if new_value:
+            v = new_value.lower()
+            if v not in ('true', 'false'):
+                raise CLIInvalidArgument(
+                    'Invalid value %s=%s' % (self.lvalue, new_value),
+                    details=['Usage:', '%s=<true|false>' % self.lvalue])
+            self._value = bool(v == 'true')
+
+
 class CommaSeparatedListArgument(ValueArgument):
     """
     :value type: string
@@ -252,7 +312,7 @@ class DataSizeArgument(ValueArgument):
             limit = int(user_input)
         except ValueError:
             index = 0
-            digits = [str(num) for num in range(0, 10)] + ['.']
+            digits = ['%s' % num for num in range(0, 10)] + ['.']
             while user_input[index] in digits:
                 index += 1
             limit = user_input[:index]
@@ -275,11 +335,36 @@ class DataSizeArgument(ValueArgument):
             self._value = self._calculate_limit(new_value)
 
 
+class UserAccountArgument(ValueArgument):
+    """A user UUID or name (if uuid does not exist)"""
+
+    account_client = None
+
+    @property
+    def value(self):
+        return super(UserAccountArgument, self).value
+
+    @value.setter
+    def value(self, uuid_or_name):
+        if uuid_or_name and self.account_client:
+            r = self.account_client.uuids2usernames([uuid_or_name, ])
+            if r:
+                self._value = uuid_or_name
+            else:
+                r = self.account_client.usernames2uuids([uuid_or_name])
+                self._value = r.get(uuid_or_name) if r else None
+            if not self._value:
+                raise raiseCLIError('User name or UUID not found', details=[
+                    '%s is not a known username or UUID' % uuid_or_name,
+                    'Usage:  %s <USER_UUID | USERNAME>' % self.lvalue])
+
+
 class DateArgument(ValueArgument):
 
-    DATE_FORMAT = '%a %b %d %H:%M:%S %Y'
-
-    INPUT_FORMATS = [DATE_FORMAT, '%d-%m-%Y', '%H:%M:%S %d-%m-%Y']
+    DATE_FORMATS = ['%a %b %d %H:%M:%S %Y', '%d-%m-%Y', '%H:%M:%S %d-%m-%Y']
+    INPUT_FORMATS = [
+        'YYYY-mm-dd', '"HH:MM:SS YYYY-mm-dd"', 'YYYY-mm-ddTHH:MM:SS+TMZ',
+        '"Day Mon dd HH:MM:SS YYYY"']
 
     @property
     def timestamp(self):
@@ -289,26 +374,40 @@ class DateArgument(ValueArgument):
     @property
     def formated(self):
         v = getattr(self, '_value', self.default)
-        return v.strftime(self.DATE_FORMAT) if v else None
+        return v.strftime(self.DATE_FORMATS[0]) if v else None
 
     @property
     def value(self):
         return self.timestamp
 
+    @property
+    def isoformat(self):
+        d = getattr(self, '_value', self.default)
+        if not d:
+            return None
+        if not d.tzinfo:
+            d = d.replace(tzinfo=dateutil.tz.tzlocal())
+        return d.isoformat()
+
     @value.setter
     def value(self, newvalue):
-        self._value = self.format_date(newvalue) if newvalue else self.default
+        if newvalue:
+            try:
+                self._value = dateutil.parser.parse(newvalue)
+            except Exception:
+                raise CLIInvalidArgument(
+                    'Invalid value "%s" for date argument %s' % (
+                        newvalue, self.lvalue),
+                    details=['Suggested formats:'] + self.INPUT_FORMATS)
 
     def format_date(self, datestr):
-        for format in self.INPUT_FORMATS:
+        for fmt in self.DATE_FORMATS:
             try:
-                t = dtm.strptime(datestr, format)
-            except ValueError:
+                return dtm.strptime(datestr, fmt)
+            except ValueError as ve:
                 continue
-            return t  # .strftime(self.DATE_FORMAT)
-        raiseCLIError(None, 'Date Argument Error', details=[
-            '%s not a valid date' % datestr,
-            'Correct formats:\n\t%s' % self.INPUT_FORMATS])
+        raise raiseCLIError(ve, 'Failed to format date', details=[
+            '%s could not be formated for HTTP headers' % datestr])
 
 
 class VersionArgument(FlagArgument):
@@ -394,9 +493,9 @@ class StatusArgument(ValueArgument):
             new_status = new_status.upper()
             if new_status not in self.valid_states:
                 raise CLIInvalidArgument(
-                    'Invalid argument %s' % new_status, details=[
-                    'Usage: '
-                    '%s=[%s]' % (self.lvalue, '|'.join(self.valid_states))])
+                    'Invalid argument %s' % new_status,
+                    details=['Usage:', '%s=[%s]' % (
+                        self.lvalue, '|'.join(self.valid_states))])
             self._value = new_status
 
 
@@ -452,21 +551,6 @@ class ProgressBarArgument(FlagArgument):
             mybar.finish()
 
 
-_arguments = dict(
-    config=_config_arg,
-    cloud=ValueArgument('Chose a cloud to connect to', ('--cloud')),
-    help=Argument(0, 'Show help message', ('-h', '--help')),
-    debug=FlagArgument('Include debug output', ('-d', '--debug')),
-    #include=FlagArgument(
-    #    'Include raw connection data in the output', ('-i', '--include')),
-    silent=FlagArgument('Do not output anything', ('-s', '--silent')),
-    verbose=FlagArgument('More info at response', ('-v', '--verbose')),
-    version=VersionArgument('Print current version', ('-V', '--version')),
-    options=RuntimeConfigArgument(
-        _config_arg, 'Override a config value', ('-o', '--options'))
-)
-
-
 #  Initial command line interface arguments
 
 
@@ -474,9 +558,8 @@ class ArgumentParseManager(object):
     """Manage (initialize and update) an ArgumentParser object"""
 
     def __init__(
-            self, exe,
-            arguments=None, required=None, syntax=None, description=None,
-            check_required=True):
+            self, exe, arguments,
+            required=None, syntax=None, description=None, check_required=True):
         """
         :param exe: (str) the basic command (e.g. 'kamaki')
 
@@ -500,18 +583,14 @@ class ArgumentParseManager(object):
         :param check_required: (bool) Set to False inorder not to check for
             required argument values while parsing
         """
-        self.parser = ArgumentParser(
+        self.parser = NoAbbrArgumentParser(
             add_help=False, formatter_class=RawDescriptionHelpFormatter)
         self._exe = exe
         self.syntax = syntax or (
             '%s <cmd_group> [<cmd_subbroup> ...] <cmd>' % exe)
         self.required, self.check_required = required, check_required
         self.parser.description = description or ''
-        if arguments:
-            self.arguments = arguments
-        else:
-            global _arguments
-            self.arguments = _arguments
+        self.arguments = arguments
         self._parser_modified, self._parsed, self._unparsed = False, None, None
         self.parse()
 
@@ -547,7 +626,7 @@ class ArgumentParseManager(object):
                 next = cur + lt_all - lt_pn
                 ret += prefix
                 ret += ('{:<%s}' % (lt_all - lt_pn)).format(arg.help[cur:next])
-                cur, finish = next, '\n%s' % tab2
+                cur = next
             return ret + '\n'
 
     @staticmethod
@@ -646,7 +725,7 @@ class ArgumentParseManager(object):
                 if not self._parse_required_arguments(item, parsed_args):
                     return False
             return True
-        if isinstance(required, list):
+        elif isinstance(required, list):
             for item in required:
                 if self._parse_required_arguments(item, parsed_args):
                     return True

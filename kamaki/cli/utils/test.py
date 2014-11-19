@@ -1,4 +1,4 @@
-# Copyright 2013 GRNET S.A. All rights reserved.
+# Copyright 2013-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -64,12 +64,12 @@ class UtilsMethods(TestCase):
             else:
                 self.assertRaises(AssertionError, guess_mime_type, *args)
 
-    @patch('kamaki.cli.utils.dumps', return_value='(dumps output)')
+    @patch('kamaki.cli.utils.dumps', return_value=u'(dumps output)')
     def test_print_json(self, JD):
         from kamaki.cli.utils import print_json, INDENT_TAB
         out = StringIO()
-        print_json('some data', out)
-        JD.assert_called_once_with('some data', indent=INDENT_TAB)
+        print_json(u'some data', out)
+        JD.assert_called_once_with(u'some data', indent=INDENT_TAB)
         self.assertEqual(out.getvalue(), u'(dumps output)\n')
 
     def test_print_dict(self):
@@ -355,29 +355,6 @@ class UtilsMethods(TestCase):
                         self.assertEqual(L2F.mock_calls, exp_l)
                         self.assertEqual(D2F.mock_calls, exp_d)
 
-    def test__parse_with_regex(self):
-        from re import compile as r_compile
-        from kamaki.cli.utils import _parse_with_regex
-        for args in product(
-                (
-                    'this is a line',
-                    'this_is_also_a_line',
-                    'This "text" is quoted',
-                    'This "quoted" "text" is more "complicated"',
-                    'Is this \'quoted\' text "double \'quoted\' or not?"',
-                    '"What \'about\' the" oposite?',
-                    ' Try with a " single double quote',
-                    'Go "down \'deep " deeper \'bottom \' up" go\' up" !'),
-                (
-                    '\'.*?\'|".*?"|^[\S]*$',
-                    r'"([A-Za-z0-9_\./\\-]*)"',
-                    r'\"(.+?)\"',
-                    '\\^a\\.\\*\\$')):
-            r_parser = r_compile(args[1])
-            self.assertEqual(
-                _parse_with_regex(*args),
-                (r_parser.split(args[0]), r_parser.findall(args[0])))
-
     def test_split_input(self):
         from kamaki.cli.utils import split_input
         for line, expected in (
@@ -393,24 +370,6 @@ class UtilsMethods(TestCase):
                 ('Is "this" a \'parsed\' string?', [
                     'Is', 'this', 'a', 'parsed', 'string?'])):
             self.assertEqual(split_input(line), expected)
-
-    def test_ask_user(self):
-        from kamaki.cli.utils import ask_user
-        msg = u'some question'
-        out = StringIO()
-        user_in = StringIO(u'n')
-        self.assertFalse(ask_user(msg, out=out, user_in=user_in))
-        self.assertEqual(out.getvalue(), u'%s [y/N]: ' % msg)
-
-        user_in.seek(0)
-        out.seek(0)
-        self.assertTrue(ask_user(msg, ('n', ), out=out, user_in=user_in))
-        self.assertEqual(out.getvalue(), u'%s [n/<not n>]: ' % msg)
-
-        user_in = StringIO(unicode('N'))
-        out.seek(0)
-        self.assertTrue(ask_user(msg, ('r', 'N'), out=out, user_in=user_in))
-        self.assertEqual(out.getvalue(), u'%s [r, N/<not r, N>]: ' % msg)
 
     def test_remove_from_items(self):
         from kamaki.cli.utils import remove_from_items

@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-
-# Copyright 2012-2013 GRNET S.A. All rights reserved.
+# Copyright 2012-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -34,52 +32,102 @@
 # or implied, of GRNET S.A.
 
 import codecs
+from logging import getLogger
+
+
+log = getLogger(__name__)
 
 
 class History(object):
+    ignore_commands = ['config set', ]
+
     def __init__(self, filepath, token=None):
         self.filepath = filepath
         self.token = token
+        self._limit = 0
+        self.counter = 0
+
+    def __getitem__(self, cmd_ids):
+        with codecs.open(self.filepath, mode='r', encoding='utf-8') as f:
+                lines = f.readlines()
+        try:
+            self.counter = int(lines[0])
+            lines = lines[1:]
+        except ValueError:
+            # History file format is old, fix it
+            self.counter = 0
+            with codecs.open(self.filepath, mode='w', encoding='utf-8') as f:
+                f.write('0\n%s' % ''.join(lines))
+        try:
+            return lines[cmd_ids]
+        except IndexError:
+            return None
+
+    @property
+    def limit(self):
+        return self._limit
+
+    @limit.setter
+    def limit(self, new_limit):
+        new_limit = int(new_limit)
+        if new_limit < 0:
+            raise ValueError('Invalid history limit (%s)' % new_limit)
+        old_limit, self._limit = self._limit, new_limit
+        if self._limit and ((not old_limit) or (self._limit <= old_limit)):
+            with codecs.open(self.filepath, mode='r', encoding='utf-8') as f:
+                lines = f.readlines()
+                self.counter = int(lines[0])
+                old_len = len(lines[1:])
+            if old_len > new_limit:
+                self.counter += old_len - new_limit
+                with codecs.open(
+                        self.filepath, mode='w', encoding='utf-8') as f:
+                    f.write('%s\n' % self.counter)
+                    f.write(''.join(lines[old_len - new_limit + 1:]))
+                    f.flush()
 
     @classmethod
     def _match(self, line, match_terms):
-        if match_terms is None:
-            return True
-        for term in match_terms.split():
-            if term not in line:
-                return False
+        if match_terms:
+            return all(term in line for term in match_terms.split())
         return True
 
     def get(self, match_terms=None, limit=0):
+        """DEPRECATED since 0.14"""
         limit = int(limit or 0)
-        with codecs.open(self.filepath, mode='r', encoding='utf-8') as f:
-            result = [u'%s.  \t%s' % (
-                i + 1, line) for i, line in enumerate(f.readlines())
-                if self._match(line, match_terms)]
-            return result[- limit:]
+        r = ['%s.\t%s' % (i + 1, line) for i, line in enumerate(self[:]) if (
+                self._match(line, match_terms))]
+        return r[- limit:]
 
     def add(self, line):
+        line = '%s' % line or ''
+        bline = [w.lower() for w in line.split() if not w.startswith('-')]
+        for cmd in self.ignore_commands:
+            cmds = [w.lower() for w in cmd.split()]
+            if cmds == bline[1:len(cmds) + 1]:
+                log.debug('History ignored a command of type "%s"' % cmd)
+                return
         line = line.replace(self.token, '...') if self.token else line
-        with open(self.filepath, 'a+') as f:
-            f.write(line + '\n')
+        try:
+            with codecs.open(self.filepath, mode='a+', encoding='utf-8') as f:
+                f.write(line + '\n')
+                f.flush()
+            self.limit = self.limit
+        except Exception as e:
+            log.debug('Add history failed for "%s" (%s)' % (line, e))
+
+    def empty(self):
+        with open(self.filepath, 'w') as f:
+            f.write('0\n')
+            f.flush()
+        self.counter = 0
 
     def clean(self):
-        with open(self.filepath, 'w'):
-            pass
+        """DEPRECATED since version 0.14"""
+        return self.empty()
 
     def retrieve(self, cmd_id):
-        """
-        :param cmd_id: (int) the id of the command to retrieve can be positive
-            or negative, zero values are ignored
-
-        :returns: (str) the stored command record without the id
-        """
-        cmd_id = int(cmd_id)
         if not cmd_id:
             return None
-        with open(self.filepath) as f:
-            try:
-                cmd_list = f.readlines()[:-1]  # exclude current command
-                return cmd_list[cmd_id - (1 if cmd_id > 0 else 0)]
-            except IndexError:
-                return None
+        cmd_id = int(cmd_id)
+        return self[cmd_id - (1 if cmd_id > 0 else 0)]

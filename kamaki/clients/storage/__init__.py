@@ -38,8 +38,8 @@ from kamaki.clients.utils import filter_in, filter_out, path4url
 class StorageClient(Client):
     """OpenStack Object Storage API 1.0 client"""
 
-    def __init__(self, base_url, token, account=None, container=None):
-        super(StorageClient, self).__init__(base_url, token)
+    def __init__(self, endpoint_url, token, account=None, container=None):
+        super(StorageClient, self).__init__(endpoint_url, token)
         self.account = account
         self.container = container
 
@@ -182,6 +182,7 @@ class StorageClient(Client):
         :returns: (dict) request headers
         """
         self._assert_container()
+        assert obj, 'Remote directory path is missing'
         path = path4url(self.account, self.container, obj)
         self.set_header('Content-Type', 'application/directory')
         self.set_header('Content-length', '0')

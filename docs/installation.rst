@@ -7,25 +7,23 @@ targeted to Linux/Unix-like users, it is quite straightforward to install and
 have it up and running in all platforms running Python 2.6 or 2.7.
 
 
-* Kamaki repository: `http://code.grnet.gr/git/kamaki <http://code.grnet.gr/git/kamaki>`_
+* Kamaki repository: `http://github.com/grnet/kamaki <http://github.com/grnet/kamaki>`_
 
-* Kamaki at pypi: `http://pypi.python.org/pypi/kamaki <https://pypi.python.org/pypi/kamaki>`_
+* Kamaki at PyPI: `http://pypi.python.org/pypi/kamaki <https://pypi.python.org/pypi/kamaki>`_
 
 * Synnefo Linux packages: `http://apt.dev.grnet.gr <http://apt.dev.grnet.gr>`_
 
 Linux and Unix-like environments
 --------------------------------
 
-Debian:
-^^^^^^^
+Debian
+^^^^^^
 
-The following steps describe a command-line approach, but any graphic package manager can be used instead.
+For Debian 7.0 (wheezy):
 
 * As root, append the following to */etc/apt/sources.list* ::
 
     deb http://apt.dev.grnet.gr wheezy/
-
-.. warning:: Debian Squeeze users may replace "wheezy" with "squeeze"
 
 * Make sure the GPG public key for the Synnefo repository is added:
 
@@ -35,139 +33,108 @@ The following steps describe a command-line approach, but any graphic package ma
 
     otherwise *apt-get update* will produce GPG warnings.
 
-* Update the Debian sources:
+* Update and install:
 
     .. code-block:: console
 
         $ sudo apt-get update
-
-* Install kamaki:
-
-    .. code-block:: console
-
         $ sudo apt-get install kamaki
 
-Ubuntu
-^^^^^^
+Terminal colors (optional but recommended)
+""""""""""""""""""""""""""""""""""""""""""
 
-The following steps describe a command-line approach, but any graphic package
-manager can be used instead.
+The "python-ansicolors" package enables colorful terminal outputs.
 
-* Let ppa take care of the repository configuration:
-
-    .. code-block:: console
-
-        $ sudo apt-get install python-software-properties
-        $ sudo add-apt-repository ppa:grnet/synnefo
-
-* Update the Debian sources:
-
-    .. code-block:: console
-
-        $ sudo apt-get update
-
-* Install kamaki:
-
-    .. code-block:: console
-
-        $ sudo apt-get install kamaki
-
-Install ansicolors (optional but recommended)
-"""""""""""""""""""""""""""""""""""""""""""""
+E.g., in Debian:
 
 .. code-block:: console
 
     $ sudo apt-get install python-ansicolors
 
-Install mock (for developers only)
-""""""""""""""""""""""""""""""""""
+After the installation, tell kamaki to use the feature
+
+.. code-block:: console
+
+    $ kamaki config set colors on
+
+Unit tests (developers)
+"""""""""""""""""""""""
+
+Install the "python-mock" package to make unit tests work (developers only).
 
 .. code-block:: console
 
     $ sudo apt-get install python-mock
 
-.. warning:: kamaki.clients unit-tests need python-mock 1.X or better. e.g.,::
+Ubuntu
+^^^^^^
 
-    $ sudo apt-get install python-mock=1.0.1
+For Ubuntu 12.04 LTS, 12.10 and 13.04:
 
-.. hint:: To activate functional tests in kamaki enable the preconfigured
-    *livetest* command group:
+.. code-block:: console
 
-    .. code-block:: console
+    $ sudo apt-get install python-software-properties
+    $ sudo add-apt-repository ppa:grnet/synnefo
+    $ sudo apt-get update
+    $ sudo apt-get install kamaki
 
-        $ kamaki config set livetest_cli livetest
+Fedora
+^^^^^^
+
+For Fedora 17:
+
+.. code-block:: console
+
+    $ cd /etc/yum.repos.d
+    $ wget http://download.opensuse.org/repositories/home:/GRNET:/synnefo/Fedora_17/home:GRNET:synnefo.repo
+    $ yum install kamaki
+
+CentOS
+^^^^^^
+
+For CentOS 6:
+
+.. code-block:: console
+
+    $ cd /etc/yum.repos.d
+    $ wget http://download.opensuse.org/repositories/home:/GRNET:/synnefo/CentOS_CentOS-6/home:GRNET:synnefo.repo
+    $ yum install kamaki
+
+OpenSUSE
+^^^^^^^^
+
+For OpenSUSE 12.3:
+
+.. code-block:: console
+
+    $ zypper ar -f http://download.opensuse.org/repositories/home:/GRNET:/synnefo/openSUSE_12.3/home:GRNET:synnefo.repo
+    $ zypper in kamaki
 
 
 .. _installing-from-pypi-ref:
 
 Installing from pypi
-^^^^^^^^^^^^^^^^^^^^
+--------------------
 
-Requirements
-""""""""""""
+Requirements:
 
-Essential:
-
- * Python 2.6 or 2.7 [http://www.python.org]
+ * Python 2.7 [http://www.python.org]
  * Python setuptools [http://pypi.python.org/pypi/setuptools]
 
-Optional:
-
- * VirtualEnv (python-virtualenv) [http://www.virtualenv.org]
-
-Setup a virtual enviroment (optional)
-"""""""""""""""""""""""""""""""""""""
-
-Use virtualenv to setup kamaki and Synnefo services in a sandbox environment.
-
-.. code-block:: console
-
-    $ virtualenv kamaki-env
-    $ source kamaki-env/bin/activate
-
-A more detailed example of using virtual env can be found at the 
-`snf-image-creator setup guide <http://www.synnefo.org/docs/snf-image-creator/latest/install.html#python-virtual-environment>`_
-
-Install kamaki
-""""""""""""""
+Installation:
 
 .. code-block:: console
 
     $ pip install kamaki
 
-Install ansicolors
-""""""""""""""""""
-
-The **ansicolors** package is not required for running kamaki, but it is
-recommended as a user experience improvement. In specific, ansicolors
-adds colors to kamaki responses.
+Optional packages:
+The ansicolors package enables terminal output coloring. The mock package
+allows unit testing while hacking the code.
 
 .. code-block:: console
 
     $ pip install ansicolors
-
-Install mock (developers only)
-""""""""""""""""""""""""""""""
-
-The **mock** package is needed for running the prepared unit-tests in the
-kamaki.clients package. This feature is useful when extending / debugging
-kamaki functionality and is aimed to kamaki developers and contributors.
-Therefore, users can enjoy the full kamaki user experience without installing
-mock.
-
-.. code-block:: console
-
     $ pip install mock
-
-.. warning:: mock version >= 1.X
-
-.. hint:: To activate functional tests in kamaki. enable the preconfigured
-    *livetest* command group:
-
-    .. code-block:: console
-
-        $ kamaki config set livetest_cli livetest
-
 
 Mac OS X
 --------
@@ -181,29 +148,22 @@ Windows
 Kamaki can be installed on Windows by following the pypi method. Installing the
 requirements is a bit different than in other systems. 
 
-The full process is detailed in the following:
+**Requirements**
 
-Requirements
-^^^^^^^^^^^^
-
-* Python 2.7 (`Official versions <http://www.python.org/getit>`_)
+* Python 2.7 (`Official versions <http://www.python.org/download>`_)
 
 * Setuptools (`Official versions and workarounds <http://pypi.python.org/pypi/setuptools>`_)
-
-Users who have already set up python and setuptools (e.g., for
-another project) may skip Python and / or setuptools installation.
 
 Install Python
 ^^^^^^^^^^^^^^
 
+.. note:: Skip this step if python 2.7 is already installed
+
 Download and run the Windows installer from
-`here <http://www.python.org/getit>`_
+`the download page <http://www.python.org/download>`_
+pick the one that fits your windows version and architecture.
 
-Users should pick the installer that fits their windows version and machine
-architecture.
-
-Add Python to windows path
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+**Add Python to windows path**
 
 The following will allow users to run Python and Python scripts from command
 line.
@@ -221,19 +181,17 @@ line.
 .. warning:: In case of a different version, C:\\Python27 should be replaced
     with the actual python path in the system
 
-Install setuptools
+Install Setuptools
 ^^^^^^^^^^^^^^^^^^
 
-According to the corresponding
-`python org page <http://pypi.python.org/pypi/setuptools>`_, the setuptools
-installer doesn't currently work on 64bit machines.
+.. note:: Skip this step if setuptools are already installed
 
-* Users with 32-bit platforms should download and run the graphic
-    installer
+See `here <http://pypi.python.org/pypi/setuptools>`_ for installation
+instructions.
 
-* Users with 64-bit platforms should download the
-    `ez_setup.py <http://peak.telecommunity.com/dist/ez_setup.py>`_ script and
-    install it from a command shell. In the following example, the script was
+.. note:: Users with 64-bit platforms should download the
+    `ez_setup.py <https://bootstrap.pypa.io/ez_setup.py>`_ script and install
+    it from a command shell. In the following example, the script was
     downloaded at C:\\Downloads::
 
         C:\> cd Downloads
