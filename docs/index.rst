@@ -27,6 +27,7 @@ Contents:
    :glob:
    
    overview
+   upgrade
    installation
    setup
    usage
