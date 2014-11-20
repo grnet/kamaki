@@ -1,3 +1,9 @@
+kamaki (0.13-1~wheezy) wheezy; urgency=low
+
+  * New upstream version
+
+ -- Ilias Tsitsimpis <iliastsi@grnet.gr>  Wed, 19 Nov 2014 14:06:24 +0200
+
 kamaki (0.13~rc6-1~wheezy) wheezy; urgency=low
 
   * New upstream version
@@ -29,6 +35,168 @@ kamaki (0.13~rc2-1~wheezy) wheezy; urgency=low
   * New upstream version
 
  -- Ilias Tsitsimpis <iliastsi@grnet.gr>  Fri, 01 Aug 2014 15:37:07 +0300
+
+kamaki (0.12.10-1~wheezy) wheezy; urgency=low
+
+  * release build
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Wed, 19 Feb 2014 15:19:00 +0200
+
+kamaki (0.12.9-1~wheezy) wheezy; urgency=low
+
+  * release build
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Thu, 16 Jan 2014 18:42:04 +0200
+
+kamaki (0.12.8-1~wheezy) wheezy; urgency=low
+
+  * release build
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Thu, 16 Jan 2014 16:31:22 +0200
+
+kamaki (0.12.7-1~wheezy) wheezy; urgency=low
+
+  * release build
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Mon, 13 Jan 2014 17:30:25 +0200
+
+kamaki (0.12.6-1~wheezy) wheezy; urgency=low
+
+  * release build
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Mon, 13 Jan 2014 15:11:59 +0200
+
+kamaki (0.12.5-1~wheezy) wheezy; urgency=low
+
+  * release build
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Fri, 10 Jan 2014 13:22:09 +0200
+
+kamaki (0.12.4-1~wheezy) wheezy; urgency=low
+
+  * release build
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Thu, 09 Jan 2014 15:20:34 +0200
+
+kamaki (0.12.3-2~wheezy) wheezy; urgency=low
+
+  * release build
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Wed, 08 Jan 2014 15:30:23 +0200
+
+kamaki (0.12.3-1~wheezy) wheezy; urgency=low
+
+  * release build
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Wed, 08 Jan 2014 12:59:21 +0200
+
+kamaki (0.12.2-1~wheezy) wheezy; urgency=low
+
+  * release build
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Fri, 20 Dec 2013 15:59:09 +0200
+
+kamaki (0.12.1-1~wheezy) wheezy; urgency=low
+
+  * release build
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Thu, 19 Dec 2013 11:49:02 +0200
+
+kamaki (0.12-2~wheezy) wheezy; urgency=low
+
+  * release build
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Mon, 16 Dec 2013 17:54:01 +0200
+
+kamaki (0.12-1~wheezy) wheezy; urgency=low
+
+  * release build
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Mon, 16 Dec 2013 14:08:41 +0200
+
+kamaki (0.11.7-1~wheezy) wheezy; urgency=low
+
+  * release build
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Wed, 11 Dec 2013 15:28:11 +0200
+
+kamaki (0.11.6-2~wheezy) wheezy; urgency=low
+
+  * release build
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Wed, 11 Dec 2013 15:15:03 +0200
+
+kamaki (0.11.6-1~wheezy) wheezy; urgency=low
+
+  * release build
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Wed, 11 Dec 2013 15:07:40 +0200
+
+kamaki (0.11.5-1~wheezy) wheezy; urgency=low
+
+  * release build
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Wed, 11 Dec 2013 14:27:03 +0200
+
+kamaki (0.11.4-1~wheezy) wheezy; urgency=low
+
+  * release build
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Wed, 11 Dec 2013 13:14:01 +0200
+
+kamaki (0.11.3-1~wheezy) wheezy; urgency=low
+
+  * release build
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Wed, 23 Oct 2013 15:26:24 +0300
+
+kamaki (0.11.2-1~wheezy) wheezy; urgency=low
+
+  * release build
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Tue, 22 Oct 2013 14:39:51 +0300
+
+kamaki (0.11.1-1~wheezy) wheezy; urgency=low
+
+  * release build with hotfix
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Wed, 09 Oct 2013 16:00:05 +0300
+
+kamaki (0.11-1~wheezy) wheezy; urgency=low
+
+  * release build
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Wed, 09 Oct 2013 13:28:57 +0300
+
+kamaki (0.10.2-1~wheezy) wheezy; urgency=low
+
+  * hotfix release build
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Fri, 20 Sep 2013 16:20:18 +0300
+
+kamaki (0.10.1-1~wheezy) wheezy; urgency=low
+
+  * release build
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Fri, 13 Sep 2013 17:32:38 +0300
+
+kamaki (0.10-1~wheezy) wheezy; urgency=low
+
+  * release build
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Fri, 13 Sep 2013 15:52:59 +0300
+
+kamaki (0.7.8-1) stable; urgency=high
+
+  * Enforce objlist>0.1.1, new upstream version
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Wed, 03 Apr 2013 17:26:33 +0300
+
+kamaki (0.7.7-1) stable; urgency=low
+
+  * New upstream version
+
+ -- Stavros Sachtouris <saxtouri@admin.grnet.gr>  Tue, 19 Mar 2013 13:39:18 +0200
 
 kamaki (0.6.3.2-1) stable; urgency=low
 
@@ -138,9 +306,5 @@ kamaki (0.3.0-1) stable; urgency=low
   * New upstream version 
 
  -- Kostas Papadimitriou <kpap@grnet.gr>  Thu, 03 May 2012 14:06:49 +0300
-
-
-
-
 
 

@@ -30,6 +30,8 @@ Otherwise, a default cloud should be specified:
 The endpoints (URLs) for each service are resolved automatically from this
 single authentication URL (Synnefo clouds v0.14 or later).
 
+.. _ssl-setup:
+
 SSL Authentication
 ------------------
 
