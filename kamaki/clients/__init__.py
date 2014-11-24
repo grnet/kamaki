@@ -651,18 +651,19 @@ class Waiter(object):
                         wait_gen.next()
                 except:
                     pass
-        return status if (wait_until_status ^ (status != wait_status)) else False
+        finished = wait_until_status ^ (status != wait_status)
+        return status if finished else False
 
     def wait_until(
             self, item_id, target_status, get_status,
             delay=1, max_wait=100, wait_cb=None):
-        self._wait(
+        return self._wait(
             item_id, target_status, get_status, delay, max_wait, wait_cb,
             wait_until_status=True)
 
     def wait_while(
             self, item_id, target_status, get_status,
             delay=1, max_wait=100, wait_cb=None):
-        self._wait(
+        return self._wait(
             item_id, target_status, get_status, delay, max_wait, wait_cb,
             wait_until_status=False)
