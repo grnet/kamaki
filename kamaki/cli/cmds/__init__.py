@@ -1,4 +1,4 @@
-# Copyright 2011-2014 GRNET S.A. All rights reserved.
+# Copyright 2011-2015 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -388,21 +388,19 @@ class Wait(object):
     )
 
     def wait(
-            self, service, service_id, status_method, current_status,
-            countdown=True, timeout=60):
+            self, service, service_id, status_method, status,
+            countdown=True, timeout=60, msg='still'):
         (progress_bar, wait_cb) = self._safe_progress_bar(
-            '%s %s: status is still %s' % (
-                service, service_id, current_status),
+            '%s %s status %s %s' % (service, service_id, msg, status),
             countdown=countdown, timeout=timeout)
         try:
             new_mode = status_method(
-                service_id, current_status, max_wait=timeout, wait_cb=wait_cb)
+                service_id, status, max_wait=timeout, wait_cb=wait_cb)
             if new_mode:
-                self.error('%s %s: status is now %s' % (
-                    service, service_id, new_mode))
+                self.error(
+                    '%s %s status: %s' % (service, service_id, new_mode))
             else:
-                self.error('%s %s: status is still %s' % (
-                    service, service_id, current_status))
+                self.error("Operation timed out")
         except KeyboardInterrupt:
             self.error('\n- canceled')
         finally:

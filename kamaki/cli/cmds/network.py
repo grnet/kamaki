@@ -1,4 +1,4 @@
-# Copyright 2011-2014 GRNET S.A. All rights reserved.
+# Copyright 2011-2015 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -58,7 +58,7 @@ port_states = ('BUILD', 'ACTIVE', 'DOWN', 'ERROR')
 
 class _PortWait(Wait):
 
-    def wait(self, port_id, current_status, timeout=60):
+    def wait_while(self, port_id, current_status, timeout=60):
         super(_PortWait, self).wait(
             'Port', port_id, self.client.wait_port, current_status,
             timeout=timeout)
@@ -482,7 +482,7 @@ class port_delete(_NetworkInit, _PortWait):
         self.client.delete_port(port_id)
         if self['wait']:
             try:
-                self.wait(port_id, status)
+                self.wait_while(port_id, status)
             except ClientError as ce:
                 if ce.status not in (404, ):
                     raise
@@ -541,7 +541,7 @@ class _port_create(_NetworkInit, OptionalOutput, _PortWait):
                     self._ip_exists(ip=ip, network_id=network_id, error=ce)
             raise
         if self['wait']:
-            self.wait(r['id'], r['status'])
+            self.wait_while(r['id'], r['status'])
             r = self.client.get_port_details(r['id'])
         self.print_([r])
 
@@ -596,7 +596,7 @@ class port_wait(_NetworkInit, _PortWait):
     def _run(self, port_id, port_status):
         port = self.client.get_port_details(port_id)
         if port['status'].lower() == port_status.lower():
-            self.wait(port_id, port_status, timeout=self['timeout'])
+            self.wait_while(port_id, port_status, timeout=self['timeout'])
         else:
             self.error(
                 'Port %s: Cannot wait for status %s, '
@@ -783,7 +783,7 @@ class ip_detach(_NetworkInit, _PortWait, OptionalOutput):
                     port_status = self.client.get_port_details(ip['port_id'])[
                         'status']
                     try:
-                        self.wait(ip['port_id'], port_status)
+                        self.wait_while(ip['port_id'], port_status)
                     except ClientError as ce:
                         if ce.status not in (404, ):
                             raise
@@ -873,7 +873,7 @@ class network_disconnect(_NetworkInit, _PortWait, OptionalOutput):
                 port['id'], network_id, server_id))
             if self['wait']:
                 try:
-                    self.wait(port['id'], port['status'])
+                    self.wait_while(port['id'], port['status'])
                 except ClientError as ce:
                     if ce.status not in (404, ):
                         raise

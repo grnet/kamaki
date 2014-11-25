@@ -1,4 +1,4 @@
-# Copyright 2011-2014 GRNET S.A. All rights reserved.
+# Copyright 2011-2015 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -70,11 +70,16 @@ server_states = ('BUILD', 'ACTIVE', 'STOPPED', 'REBOOT')
 
 class _ServerWait(Wait):
 
-    def wait(self, server_id, current_status, timeout=60):
+    def wait_while(self, server_id, current_status, timeout=60):
         super(_ServerWait, self).wait(
-            'Server', server_id, self.client.wait_server, current_status,
+            'Server', server_id, self.client.wait_server_while, current_status,
             countdown=(current_status not in ('BUILD', )),
             timeout=timeout if current_status not in ('BUILD', ) else 100)
+
+    def wait_until(self, server_id, target_status, timeout=60):
+        super(_ServerWait, self).wait(
+            'Server', server_id, self.client.wait_server_until, target_status,
+            timeout=timeout, msg='not yet')
 
     def assert_not_in_status(self, server_id, status):
         """
@@ -528,7 +533,7 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
                     continue
                 self.print_(r, self.print_dict)
                 if self['wait']:
-                    self.wait(r['id'], r['status'] or 'BUILD')
+                    self.wait_while(r['id'], r['status'] or 'BUILD')
                 self.writeln(' ')
         except ClientError as ce:
             if ce.status in (404, 400):
@@ -547,7 +552,7 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
         super(self.__class__, self)._run()
         if self['no_network'] and self['network_configuration']:
             raise CLIInvalidArgument(
-                'Invalid argument compination', importance=2, details=[
+                'Invalid argument combination', importance=2, details=[
                     'Arguments %s and %s are mutually exclusive' % (
                         self.arguments['no_network'].lvalue,
                         self.arguments['network_configuration'].lvalue)])
@@ -736,7 +741,7 @@ class server_delete(_CycladesInit, _ServerWait):
 
         self.client.delete_server(server_id)
         if self['wait']:
-            self.wait(server_id, status)
+            self.wait_while(server_id, status)
 
     @errors.Generic.all
     @errors.Cyclades.connection
@@ -782,7 +787,7 @@ class server_reboot(_CycladesInit, _ServerWait):
 
         self.client.reboot_server(int(server_id), hard_reboot)
         if self['wait']:
-            self.wait(server_id, 'REBOOT')
+            self.wait_while(server_id, 'REBOOT')
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -804,7 +809,7 @@ class server_start(_CycladesInit, _ServerWait):
         status = self.assert_not_in_status(server_id, 'ACTIVE')
         self.client.start_server(int(server_id))
         if self['wait']:
-            self.wait(server_id, status)
+            self.wait_while(server_id, status)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -826,7 +831,7 @@ class server_shutdown(_CycladesInit,  _ServerWait):
         status = self.assert_not_in_status(server_id, 'STOPPED')
         self.client.shutdown_server(int(server_id))
         if self['wait']:
-            self.wait(server_id, status)
+            self.wait_while(server_id, status)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -902,7 +907,7 @@ class server_wait(_CycladesInit, _ServerWait):
             'Status to wait for (%s, default: %s)' % (
                 ', '.join(server_states), server_states[0]),
             '--status',
-            valid_states=server_states)
+            valid_states=server_states),
     )
 
     @errors.Generic.all
@@ -910,6 +915,7 @@ class server_wait(_CycladesInit, _ServerWait):
     @errors.Cyclades.server_id
     def _run(self, server_id, current_status):
         r = self.client.get_server_details(server_id)
+
         if r['status'].lower() == current_status.lower():
             self.wait(server_id, current_status, timeout=self['timeout'])
         else:
