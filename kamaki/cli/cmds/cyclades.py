@@ -65,7 +65,7 @@ howto_personality = [
     '  [mode=]MODE: permission in octal (e.g., 0777)',
     'e.g., -p /tmp/my.file,owner=root,mode=0777']
 
-server_states = ('BUILD', 'ACTIVE', 'STOPPED', 'REBOOT')
+server_states = ('BUILD', 'ACTIVE', 'STOPPED', 'REBOOT', 'ERROR')
 
 
 class _ServerWait(Wait):
@@ -898,37 +898,65 @@ class server_console(_CycladesInit, OptionalOutput):
 
 @command(server_cmds)
 class server_wait(_CycladesInit, _ServerWait):
-    """Wait for server to change its status (default: BUILD)"""
+    """Wait for server to change its status (default: --while BUILD)"""
 
     arguments = dict(
         timeout=IntArgument(
             'Wait limit in seconds (default: 60)', '--timeout', default=60),
-        server_status=StatusArgument(
-            'Status to wait for (%s, default: %s)' % (
-                ', '.join(server_states), server_states[0]),
+        status=StatusArgument(
+            'DEPRECATED in next version, equivalent to "--while"',
             '--status',
+            valid_states=server_states),
+        status_w=StatusArgument(
+            'Wait while in status (%s)' % ','.join(server_states), '--while',
+            valid_states=server_states),
+        status_u=StatusArgument(
+            'Wait until status is reached (%s)' % ','.join(server_states),
+            '--until',
             valid_states=server_states),
     )
 
     @errors.Generic.all
     @errors.Cyclades.connection
     @errors.Cyclades.server_id
-    def _run(self, server_id, current_status):
+    def _run(self, server_id):
         r = self.client.get_server_details(server_id)
 
-        if r['status'].lower() == current_status.lower():
-            self.wait(server_id, current_status, timeout=self['timeout'])
+        if self['status_u']:
+            if r['status'].lower() == self['status_u'].lower():
+                self.error(
+                    'Server %s: already in %s' % (server_id, r['status']))
+            else:
+                self.wait_until(
+                    server_id, self['status_u'], timeout=self['timeout'])
         else:
-            self.error(
-                'Server %s: Cannot wait for status %s, '
-                'status is already %s' % (
-                    server_id, current_status, r['status']))
+            status_w = self['status_w'] or self['status'] or 'BUILD'
+            if r['status'].lower() == status_w.lower():
+                self.wait_while(
+                    server_id, status_w, timeout=self['timeout'])
+            else:
+                self.error(
+                    'Server %s status: %s' % (server_id, r['status']))
 
     def main(self, server_id):
         super(self.__class__, self)._run()
-        self._run(
-            server_id=server_id,
-            current_status=self['server_status'] or 'BUILD')
+
+        status_args = [self['status'], self['status_w'], self['status_u']]
+        if len([x for x in status_args if x]) > 1:
+            raise CLIInvalidArgument(
+                'Invalid argument combination', importance=2, details=[
+                    'Arguments %s, %s and %s are mutually exclusive' % (
+                        self.arguments['status'].lvalue,
+                        self.arguments['status_w'].lvalue,
+                        self.arguments['status_u'].lvalue)])
+        if self['status']:
+            self.error(
+                'WARNING: argument %s will be deprecated '
+                'in the next version, use %s instead' % (
+                    self.arguments['status'].lvalue,
+                    self.arguments['status_w'].lvalue))
+
+        self._run(server_id=server_id)
 
 
 @command(flavor_cmds)
