@@ -1,4 +1,4 @@
-# Copyright 2011-2013 GRNET S.A. All rights reserved.
+# Copyright 2011-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -31,29 +31,39 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from sys import stdout, stdin
+from sys import stdout, stderr
 from re import compile as regex_compile
 from os import walk, path
 from json import dumps
+from locale import getpreferredencoding
 
+from kamaki.cli.logger import get_logger
 from kamaki.cli.errors import raiseCLIError
-
+from kamaki.clients.utils import escape_ctrl_chars
 
 INDENT_TAB = 4
+log = get_logger(__name__)
+pref_enc = getpreferredencoding()
 
 
 suggest = dict(ansicolors=dict(
-        active=False,
-        url='#install-ansicolors-progress',
-        description='Add colors to console responses'))
+    active=False,
+    url='#install-ansicolors',
+    description='Add colors to console responses'))
 
 try:
     from colors import magenta, red, yellow, bold
 except ImportError:
-    def dummy(val):
-        return val
-    red = yellow = magenta = bold = dummy
+    red = yellow = magenta = bold = lambda x: x
     suggest['ansicolors']['active'] = True
+
+
+def remove_colors():
+    global bold
+    global red
+    global yellow
+    global magenta
+    red = yellow = magenta = bold = lambda x: x
 
 
 def suggest_missing(miss=None, exclude=[]):
@@ -65,13 +75,16 @@ def suggest_missing(miss=None, exclude=[]):
         except KeyError:
             pass
     kamaki_docs = 'http://www.synnefo.org/docs/kamaki/latest'
+
     for k, v in (miss, sgs[miss]) if miss else sgs.items():
-        if v['active'] and stdout.isatty():
-            print('Suggestion: for better user experience install %s' % k)
-            print('\t%s' % v['description'])
-            print('\tIt is easy, here are the instructions:')
-            print('\t%s/installation.html%s' % (kamaki_docs, v['url']))
-            print('')
+        if v['active'] and stderr.isatty():
+            stderr.write('Suggestion: you may like to install %s\n' % k)
+            stderr.write(
+                ('%s\n' % v['description']).encode(pref_enc, 'replace'))
+            stderr.write('\tIt is easy, here are the instructions:\n')
+            stderr.write('\t%s/installation.html%s\n' % (
+                kamaki_docs, v['url']))
+            stderr.flush()
 
 
 def guess_mime_type(
@@ -84,19 +97,9 @@ def guess_mime_type(
         ctype, cenc = guess_type(filename)
         return ctype or default_content_type, cenc or default_encoding
     except ImportError:
-        print 'WARNING: Cannot import mimetypes, using defaults'
+        stderr.write('WARNING: Cannot import mimetypes, using defaults\n')
+        stderr.flush()
         return (default_content_type, default_encoding)
-
-
-def remove_colors():
-    global bold
-    global red
-    global yellow
-    global magenta
-
-    def dummy(val):
-        return val
-    red = yellow = magenta = bold = dummy
 
 
 def pretty_keys(d, delim='_', recursive=False):
@@ -117,8 +120,8 @@ def print_json(data, out=stdout):
 
     :param out: Input/Output stream to dump values into
     """
-    out.write(unicode(dumps(data, indent=INDENT_TAB) + '\n'))
-    out.flush()
+    out.write(dumps(data, indent=INDENT_TAB))
+    out.write(u'\n')
 
 
 def print_dict(
@@ -156,18 +159,18 @@ def print_dict(
         print_str += '%s.' % (i + 1) if with_enumeration else ''
         print_str += '%s:' % k
         if isinstance(v, dict):
-            out.write(print_str + '\n')
+            out.write(escape_ctrl_chars(print_str) + u'\n')
             print_dict(
                 v, exclude, indent + INDENT_TAB,
                 recursive_enumeration, recursive_enumeration, out)
         elif isinstance(v, list) or isinstance(v, tuple):
-            out.write(print_str + '\n')
+            out.write(escape_ctrl_chars(print_str) + u'\n')
             print_list(
                 v, exclude, indent + INDENT_TAB,
                 recursive_enumeration, recursive_enumeration, out)
         else:
-            out.write('%s %s\n' % (print_str, v))
-        out.flush()
+            out.write(escape_ctrl_chars(u'%s %s' % (print_str, v)))
+            out.write(u'\n')
 
 
 def print_list(
@@ -203,18 +206,18 @@ def print_list(
         print_str += '%s.' % (i + 1) if with_enumeration else ''
         if isinstance(item, dict):
             if with_enumeration:
-                out.write(print_str + '\n')
+                out.write(escape_ctrl_chars(print_str) + u'\n')
             elif i and i < len(l):
-                out.write('\n')
+                out.write(u'\n')
             print_dict(
                 item, exclude,
                 indent + (INDENT_TAB if with_enumeration else 0),
                 recursive_enumeration, recursive_enumeration, out)
         elif isinstance(item, list) or isinstance(item, tuple):
             if with_enumeration:
-                out.write(print_str + '\n')
+                out.write(escape_ctrl_chars(print_str) + u'\n')
             elif i and i < len(l):
-                out.write('\n')
+                out.write(u'\n')
             print_list(
                 item, exclude, indent + INDENT_TAB,
                 recursive_enumeration, recursive_enumeration, out)
@@ -222,9 +225,8 @@ def print_list(
             item = ('%s' % item).strip()
             if item in exclude:
                 continue
-            out.write('%s%s\n' % (print_str, item))
-        out.flush()
-    out.flush()
+            out.write(escape_ctrl_chars(u'%s%s' % (print_str, item)))
+            out.write(u'\n')
 
 
 def print_items(
@@ -246,27 +248,26 @@ def print_items(
     if not items:
         return
     if not (isinstance(items, dict) or isinstance(items, list) or isinstance(
-                items, tuple)):
-        out.write('%s\n' % items)
-        out.flush()
+            items, tuple)):
+        out.write(escape_ctrl_chars(u'%s' % items))
+        out.write(u'\n')
         return
 
     for i, item in enumerate(items):
         if with_enumeration:
-            out.write('%s. ' % (i + 1))
+            out.write(u'%s. ' % (i + 1))
         if isinstance(item, dict):
             item = dict(item)
             title = sorted(set(title).intersection(item))
             pick = item.get if with_redundancy else item.pop
-            header = ' '.join('%s' % pick(key) for key in title)
+            header = escape_ctrl_chars(
+                ' '.join('%s' % pick(key) for key in title))
             out.write((unicode(bold(header) if header else '') + '\n'))
             print_dict(item, indent=INDENT_TAB, out=out)
         elif isinstance(item, list) or isinstance(item, tuple):
             print_list(item, indent=INDENT_TAB, out=out)
         else:
-            out.write(' %s\n' % item)
-        out.flush()
-    out.flush()
+            out.write(u' %s\n' % escape_ctrl_chars(item))
 
 
 def format_size(size, decimal_factors=False):
@@ -342,11 +343,6 @@ def list2file(l, f, depth=1):
 # Split input auxiliary
 
 
-def _parse_with_regex(line, regex):
-    re_parser = regex_compile(regex)
-    return (re_parser.split(line), re_parser.findall(line))
-
-
 def _get_from_parsed(parsed_str):
     try:
         parsed_str = parsed_str.strip()
@@ -358,40 +354,41 @@ def _get_from_parsed(parsed_str):
 
 
 def split_input(line):
-    if not line:
-        return []
-    reg_expr = '\'.*?\'|".*?"|^[\S]*$'
-    (trivial_parts, interesting_parts) = _parse_with_regex(line, reg_expr)
-    assert(len(trivial_parts) == 1 + len(interesting_parts))
     terms = []
-    for i, tpart in enumerate(trivial_parts):
-        part = _get_from_parsed(tpart)
-        if part:
-            terms += part
-        try:
-            part = _get_from_parsed(interesting_parts[i])
-        except IndexError:
-            break
-        if part:
-            if tpart and not tpart[-1].endswith(' '):
-                terms[-1] += ' '.join(part)
-            else:
+    if line:
+        rprs = regex_compile('\'.*?\'|".*?"|^[\S]*$')
+        trivial_parts, interesting_parts = rprs.split(line), rprs.findall(line)
+        assert(len(trivial_parts) == 1 + len(interesting_parts))
+        for i, tpart in enumerate(trivial_parts):
+            part = _get_from_parsed(tpart)
+            if part:
                 terms += part
+            try:
+                part = _get_from_parsed(interesting_parts[i])
+            except IndexError:
+                break
+            if part:
+                if tpart and not tpart[-1].endswith(' '):
+                    terms[-1] += ' '.join(part)
+                else:
+                    terms += part
     return terms
 
 
-def ask_user(msg, true_resp=('y', ), out=stdout, user_in=stdin):
+def ask_user(msg, true_resp=('y', ), **kwargs):
     """Print msg and read user response
 
     :param true_resp: (tuple of chars)
 
     :returns: (bool) True if reponse in true responses, False otherwise
     """
-    yep = ', '.join(true_resp)
-    nope = '<not %s>' % yep if 'n' in true_resp or 'N' in true_resp else 'N'
-    out.write('%s [%s/%s]: ' % (msg, yep, nope))
-    out.flush()
-    user_response = user_in.readline()
+    yep = u', '.join(true_resp)
+    nope = u'<not %s>' % yep if 'n' in true_resp or 'N' in true_resp else 'N'
+    msg = escape_ctrl_chars(msg).encode(pref_enc, 'replace')
+    yep = yep.encode(pref_enc, 'replace')
+    nope = nope.encode(pref_enc, 'replace')
+    user_response = raw_input(
+        '%s [%s/%s]: ' % (msg, yep, nope))
     return user_response[0].lower() in [s.lower() for s in true_resp]
 
 
@@ -414,8 +411,7 @@ def remove_from_items(list_of_dicts, key_to_remove):
 
 
 def filter_dicts_by_dict(
-    list_of_dicts, filters,
-    exact_match=True, case_sensitive=False):
+        list_of_dicts, filters, exact_match=True, case_sensitive=False):
     """
     :param list_of_dicts: (list) each dict contains "raw" key-value pairs
 
@@ -424,7 +420,7 @@ def filter_dicts_by_dict(
     :param exact_match: (bool) if false, check if the filter value is part of
         the actual value
 
-    :param case_sensitive: (bool) revers to values only (not keys)
+    :param case_sensitive: (bool) refers to values only (not keys)
 
     :returns: (list) only the dicts that match all filters
     """

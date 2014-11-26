@@ -1,4 +1,4 @@
-# Copyright 2011-2013 GRNET S.A. All rights reserved.
+# Copyright 2011-2014 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -31,18 +31,22 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from kamaki.clients.cyclades.rest_api import CycladesRestClient
+from kamaki.clients.cyclades.rest_api import (
+    CycladesComputeRestClient, CycladesBlockStorageRestClient)
 from kamaki.clients.network import NetworkClient
 from kamaki.clients.utils import path4url
 from kamaki.clients import ClientError, Waiter
 
 
-class CycladesClient(CycladesRestClient, Waiter):
+class CycladesComputeClient(CycladesComputeRestClient, Waiter):
     """Synnefo Cyclades Compute API client"""
+
+    CONSOLE_TYPES = ('vnc', 'vnc-ws', 'vnc-wss')
 
     def create_server(
             self, name, flavor_id, image_id,
-            metadata=None, personality=None, networks=None):
+            metadata=None, personality=None, networks=None, project_id=None,
+            response_headers=dict(location=None)):
         """Submit request to create a new server
 
         :param name: (str)
@@ -64,6 +68,8 @@ class CycladesClient(CycladesRestClient, Waiter):
             ATTENTION: Empty list is different to None. None means ' do not
             mention it', empty list means 'automatically get an ip'
 
+        :param project_id: the project where to assign the server
+
         :returns: a dict with the new virtual server details
 
         :raises ClientError: wraps request errors
@@ -72,13 +78,40 @@ class CycladesClient(CycladesRestClient, Waiter):
         metadata = metadata or dict()
         for key in ('os', 'users'):
             try:
-                metadata[key] = image['metadata'][key]
+                metadata.setdefault(key, image['metadata'][key])
             except KeyError:
                 pass
 
-        return super(CycladesClient, self).create_server(
-            name, flavor_id, image_id,
-            metadata=metadata, personality=personality, networks=networks)
+        req = {'server': {
+            'name': name, 'flavorRef': flavor_id, 'imageRef': image_id}}
+
+        if metadata:
+            req['server']['metadata'] = metadata
+
+        if personality:
+            req['server']['personality'] = personality
+
+        if networks is not None:
+            req['server']['networks'] = networks
+
+        if project_id is not None:
+            req['server']['project'] = project_id
+
+        r = self.servers_post(json_data=req, success=(202, ))
+        for k, v in response_headers.items():
+            response_headers[k] = r.headers.get(k, v)
+        return r.json['server']
+
+    def set_firewall_profile(self, server_id, profile, port_id):
+        """Set the firewall profile for the public interface of a server
+        :param server_id: integer (str or int)
+        :param profile: (str) ENABLED | DISABLED | PROTECTED
+        :param port_id: (str) This port must connect to a public network
+        :returns: (dict) response headers
+        """
+        req = {'firewallProfile': {'profile': profile, 'nic': port_id}}
+        r = self.servers_action_post(server_id, json_data=req, success=202)
+        return r.headers
 
     def start_server(self, server_id):
         """Submit a startup request
@@ -102,15 +135,24 @@ class CycladesClient(CycladesRestClient, Waiter):
         r = self.servers_action_post(server_id, json_data=req, success=202)
         return r.headers
 
-    def get_server_console(self, server_id):
+    def get_server_console(self, server_id, console_type='vnc'):
         """
         :param server_id: integer (str or int)
 
+        :param console_type: str (vnc, vnc-ws, vnc-wss, default: vnc)
+
         :returns: (dict) info to set a VNC connection to virtual server
         """
-        req = {'console': {'type': 'vnc'}}
+        ct = self.CONSOLE_TYPES
+        assert console_type in ct, '%s not in %s' % (console_type, ct)
+        req = {'console': {'type': console_type}}
         r = self.servers_action_post(server_id, json_data=req, success=200)
         return r.json['console']
+
+    def reassign_server(self, server_id, project):
+        req = {'reassign': {'project': project}}
+        r = self.servers_action_post(server_id, json_data=req, success=200)
+        return r.headers
 
     def get_server_stats(self, server_id):
         """
@@ -158,6 +200,10 @@ class CycladesClient(CycladesRestClient, Waiter):
             server_id, current_status, get_status, delay, max_wait, wait_cb)
 
 
+# Backwards compatibility
+CycladesClient = CycladesComputeClient
+
+
 class CycladesNetworkClient(NetworkClient):
     """Cyclades Network API extentions"""
 
@@ -169,14 +215,26 @@ class CycladesNetworkClient(NetworkClient):
         r = self.get(path, success=200)
         return r.json['networks']
 
-    def create_network(self, type, name=None, shared=None):
+    def create_network(self, type, name=None, shared=None, project_id=None):
         req = dict(network=dict(type=type, admin_state_up=True))
         if name:
             req['network']['name'] = name
         if shared not in (None, ):
             req['network']['shared'] = bool(shared)
+        if project_id is not None:
+            req['network']['project'] = project_id
         r = self.networks_post(json_data=req, success=201)
         return r.json['network']
+
+    def reassign_network(self, network_id, project_id, **kwargs):
+        """POST endpoint_url/networks/<network_id>/action
+
+        :returns: request response
+        """
+        path = path4url('networks', network_id, 'action')
+        req = {'reassign': {'project': project_id}}
+        r = self.post(path, json=req, success=200, **kwargs)
+        return r.headers
 
     def list_ports(self, detail=None):
         path = path4url('ports', 'detail' if detail else '')
@@ -204,11 +262,63 @@ class CycladesNetworkClient(NetworkClient):
         r = self.ports_post(json_data=dict(port=port), success=201)
         return r.json['port']
 
-    def create_floatingip(self, floating_network_id, floating_ip_address=''):
-        return super(CycladesNetworkClient, self).create_floatingip(
-            floating_network_id, floating_ip_address=floating_ip_address)
+    def create_floatingip(
+            self,
+            floating_network_id=None, floating_ip_address='', project_id=None):
+        """
+        :param floating_network_id: if not provided, it is assigned
+            automatically by the service
+        :param floating_ip_address: only if the IP is availabel in network pool
+        :param project_id: specific project to get resource quotas from
+        """
+        floatingip = {}
+        if floating_network_id:
+            floatingip['floating_network_id'] = floating_network_id
+        if floating_ip_address:
+            floatingip['floating_ip_address'] = floating_ip_address
+        if project_id is not None:
+            floatingip['project'] = project_id
+        r = self.floatingips_post(
+            json_data=dict(floatingip=floatingip), success=200)
+        return r.json['floatingip']
 
-    def update_floatingip(self, floating_network_id, floating_ip_address=''):
-        """To nullify something optional, use None"""
-        return super(CycladesNetworkClient, self).update_floatingip(
-            floating_network_id, floating_ip_address=floating_ip_address)
+    def reassign_floating_ip(self, floating_network_id, project_id):
+        """Change the project where this ip is charged"""
+        path = path4url('floatingips', floating_network_id, 'action')
+        json_data = dict(reassign=dict(project=project_id))
+        self.post(path, json=json_data, success=200)
+
+
+class CycladesBlockStorageClient(CycladesBlockStorageRestClient):
+    """Cyclades Block Storage REST API Client"""
+
+    def create_volume(
+            self, size, server_id, display_name,
+            display_description=None,
+            snapshot_id=None,
+            imageRef=None,
+            volume_type=None,
+            metadata=None,
+            project=None):
+        """:returns: (dict) new volumes' details"""
+        r = self.volumes_post(
+            size, server_id, display_name,
+            display_description=display_description,
+            snapshot_id=snapshot_id,
+            imageRef=imageRef,
+            volume_type=volume_type,
+            metadata=metadata,
+            project=project)
+        return r.json['volume']
+
+    def reassign_volume(self, volume_id, project):
+        self.volumes_action_post(volume_id, {"reassign": {"project": project}})
+
+    def create_snapshot(
+            self, volume_id, display_name,
+            force=None, display_description=None):
+        return super(CycladesBlockStorageClient, self).create_snapshot(
+            volume_id,
+            display_name=display_name,
+            force=force,
+            display_description=display_description)

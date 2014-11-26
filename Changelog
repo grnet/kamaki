@@ -1,89 +1,73 @@
-Changelog for 0.12.10
+.. _Changelog:
 
-- Bugfix: --diagnostics works
-- Bugfix: Alow unicode image names (#5110)
-- Bugfix: Fix HTTP headers in image members add (#5115)
+Unified Changelog file for Kamaki versions >= 0.13
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Changelog for 0.12.9
+.. _Changelog-0.13:
 
-- Bugfix: --unpublish didn't work in kamaki image modify
+v0.13
+=====
 
-Changelog for 0.12.8
+Released: Tue Nov 18 11:13:58 EET 2014
 
-- Fix image property-del bug (made it a required argument of image modify) [#4940]
-- Sync kamaki documentation for image property updates [#4940]
+Features
+--------
 
-Changelog for 0.12.7
+* Name and Type filters in endpoint list
+* In image register, meta gets same sharing as image
+* Allow image register to auto-resolve remote path from local file
+* Merge ClientError and AstakosClientException --> AstakosClientError
+* Restore kamaki file publish/unpublish
+* Accept username or UUID in kamaki file --account/--to-account
+* History has now a buffer limit
+* Slice notation in history show
+* Datetime support in DateArgument
+* Resources can be reassigned to projects
+* Update account API commands to reflect changes in synnefo 0.16
+* Implement a get_endpoint_url method and use it
+* Rename kamaki.clients.Client.base_url --> endpoint_url, keep BW compatibility
+* Remove deprecated --hard argument in "kamaki server reboot"
+* Modify upload and download command semantics, to be more intuitive
+* Implement more console types (vnc-ws and vnc-wss)
+* Support secure HTTP connections with SSL [grnet/kamaki#54]
 
-- Restore user_info, user_term for bw compatibility in AstakosClient [#4880]
+Support
+-------
 
-Changelog for 0.12.6
+* Adjust project commands to project_API changes
+* Add "dateutils" to dependencies
+* Rename packages, classes and objects to conform to pep8 standards
+* Use the term "project_id" instead of "project" everywhere in kamaki.clients
+* Update library documentation with examples [grnet/kamaki#49]
 
-- Restore get_service_endpoints for AstakosClient
 
-Changelog for hotfix version 0.12.5
+Bug Fixes
+---------
 
-- Fix bug in readall (wrong behavior in non-regular files) [#4871]
-
-Changelog for hotfix version 0.12.4
-
-- Fix bug when registering image with upload but no metafile [#4864]
-- Minor typos
-
-CHANGELOG for hotfix version 0.12.3
-
-- Import the whole astakosclient package
-- Minor typos in help message
-
-CHANGELOG for hotfix version 0.12.2
-
-- Always use "details" call in neworks/subnets list
-- Restore server console, remove --vnc option from server info
-- Fix server create --networks|--no-networks
-- Use --status in * wait commands
-- Fix typos in documentation
-
-CHANGELOG for hotfix version 0.12.1
-
-- Various minor typos
-- Rename comand group "kamaki project membership" --> "kamaki membership"
-- Add docs for astakos-related commands:
-    user, quota, resources, project, membership
-- Correct/simplify network arguments in server create (#4563)
-
-CHANGELOG for version 0.12
-
-Bug Fixes:
-- In file list, the path or prefix was converted to boolean value. Fixed.
-- Thread options did not work [#4616]
-- Various minor typos
-
-Changes:
-1. Make astakosclient a mantatory requirement for kamaki [#4312]
-2. Make post_user_catalogs obsolete, but keep for one more version [#4337]
-3. Rename user commands for cached account requests as /user session [#4340]
-4. Remove max_theads from config, move control to threaded commands [#4617]
-5. Modify all commands [#4583]
-    New scheme for ALL <object> <verb> [object id] [--arguments]
-    e.g., file modidy --metadata-add=revier='Mr. Reviewer' /pithos/myfile.txt
-6. Deprecate (with note) server stats/console/addr (move to server info)
-7. A vanilla kamaki call now shows only the available commands instead of
-    loading a shell [#4612]
-8. Add self.poolsize at kamaki.clients.Client
-9. Add ip attach/detach (shortcuts for port create/delete)
-
-Features:
-
-1. Cache user catalog calls [#4337]
-2. Implement separate methods for uuid2usernames and v.v. [#4337]
-3. Move all methods from snf-astakos.py to astakos.py, with some renaimings
-    astakos_quotas/uuid/username/authenticate --> user_quotas/uuid2username/username2uuid/info
-    astakos_... --> admin_...
-    e.g.,
-    astakos_services --> admin_service, astakos_commission --> admin_commission
-4. Implement OpenStack Network API 2.0, with synnefo/cyclades extentions. New:
-   network info/list/create/delete/set
-   subnet info/list/create/set
-   port info/list/create/delete/set
-5. Create a kamaki-shell for kamaki shell [#4612]
+* Register image with upload but no metafile
+* Minor typos and updates in command help messages
+* All URL-related params are now URL-encoded
+* In file list, show all directories as directories
+* Do not let file-* cmds to create containers
+* Fix unicode-related bugs in error reporting
+* Modify HTTP logs and console output to escape control characters
+  [grnet/kamaki#32]
+* Fix bug of incorrectly suppressed errors in "kamaki network create"
+  [grnet/kamaki#56]
+* Set a default logger to LoggedAstakosClient [grnet/kamaki#58]
+* Show the correct name when switching kamaki users
+  [grnet/kamaki#66]
+* Fix Python 2.6 compatibility concerning HTTPS arguments
+  [grnet/kamaki#73]
+* Fix Python 2.6 compatibility concerning encode parameters
+* Rename "raise_ssl_errors" to "ignore_ssl" in HTTPConnection class
+  [grnet/kamaki#74]
+* Warn or raise errors when the configuration file is inaccessible
+  [grnet/kamaki#71]
+* Handle non-ascii characters when managing configuration options
+  [grnet/kamaki#76]
+* Handle SSL unicode bug with grace [grnet/kamaki#67]
+* Check server status before changing it [grnet/kamaki#57]
+* Fix format of "create_volume" return values
+* Support old history files [grnet/kamaki#80]
 

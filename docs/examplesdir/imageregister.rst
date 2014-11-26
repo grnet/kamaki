@@ -66,12 +66,7 @@ with the **\- -upload-image-file** argument. This single operation will upload
 the image file and then register it as an image, and is equivalent to
 sequentially calling **/file upload** and **/image register**.
 
-<<<<<<< HEAD:docs/collection_of_examples/imageregister.rst
-In other words, the example that follows is equivalent to calling the two
-operations above.
-=======
 In other words, the preceding and following command sequences are equivalent.
->>>>>>> release-0.11:docs/examplesdir/imageregister.rst
 
 .. code-block:: console
 
@@ -303,12 +298,13 @@ A look at the image metadata reveals that the name is changed:
 
 We can use the same idea to change the values of other metadata like disk
 format, container format or status. On the other hand, we cannot modify the
-id, owner, location, checksum and dates. e.g., to publish and unpublish:
+id, owner, location, checksum and dates. e.g., to make an image public or
+private:
 
 .. code-block:: console
 
-    kamaki image modify 7h1rd-1m4g3-1d --publish --name='Debian Base Gama'
-    kamaki image modify 7h1rd-1m4g3-1d --unpublish
+    kamaki image modify 7h1rd-1m4g3-1d --public --name='Debian Base Gama'
+    kamaki image modify 7h1rd-1m4g3-1d --private
 
 The first call publishes the image (set is-public to True) and also restores
 the name to "Debian Base Gama". The second one unpublishes the image (set

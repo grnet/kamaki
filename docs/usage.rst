@@ -3,7 +3,7 @@ Usage
 
 Kamaki features commands of the form::
 
-  [kamaki] <object> <action> [identifier(s)] <non-positional arguments>
+  kamaki <object> <action> [identifier(s)] <non-positional arguments>
   e.g., 
   kamaki user info --username=user@example.com
 
@@ -24,14 +24,12 @@ interactive shell:
   [kamaki]: user info
   ... RESULTS ...
 
-In the later, the term "one-command" will be user to refer to running kamaki
-commands from host shell, while the term "shell" will refer to the kamaki's own
-interactive shell
+In the following, the term "one-command" refer to running kamaki commands from
+host shell, while the term "shell" will refer to the interactive shell.
 
 .. note:: This section refers to the kamaki CLI. Developers and people who write
   scripts, should rather use the the
-  `Clients lib <developers/code.html#the-clients-api>`_ instead of the kamaki
-  CLI.
+  `Clients library <developers/code.html#the-clients-api>`_ instead.
 
 Quick Setup
 -----------
@@ -44,13 +42,12 @@ As rule of the thump, it is enough to set a cloud authentication URL and TOKEN:
 .. code-block:: console
     :emphasize-lines: 1
 
-    Example 1.1: Set authentication URL, user token for cloud alias "default"
+    Example 1.1: Set authentication URL, user token for cloud alias CLOUD_NAME
 
-    $ kamaki config set cloud.default.url <authentication URL>
-    $ kamaki config set cloud.default.token myt0k3n==
+    $ kamaki config set cloud.CLOUD_NAME.url <authentication URL>
+    $ kamaki config set cloud.CLOUD_NAME.token myt0k3n==
 
-.. note:: The term *default* can be replaced by any arbitary term chosen by
-    the user.
+.. note:: The term CLOUD_NAME is arbitrary and can be chosen by the user
 
 Shell vs one-command
 --------------------
@@ -62,10 +59,9 @@ implementation. However, there are some minor differences.
 
 In favor of interactive shell:
 
-* shorter commands (context switching)
+* shorter commands
 * tab completion for commands (if supported by host shell)
 * kamaki-specific history with ↑ or ↓ keys (if supported by host shell)
-* re-run old commands with /history
 
 In favor of one-command:
 
@@ -83,7 +79,7 @@ To use kamaki as a shell, run:
 
     $ kamaki-shell
 
-* with any kind of '-' prefixed arguments, except '-h', '--help', '-V',
+* with any kind of '-' prefixed arguments, except '-h', '- - help', '-V',
     '- - version'.
 
 .. code-block:: console
@@ -95,16 +91,16 @@ To use kamaki as a shell, run:
 
     Example 2.2.3: Run kamaki shell so as to use a specific cloud
 
-    $ kamaki-shell --cloud=my_demo_cloud
+    $ kamaki-shell --cloud=example_cloud
 
-    Example 2.2.4: Run kamaki shell with verbosity (shows HTTP requests)
+    Example 2.2.4: Run kamaki shell with verbosity (prints HTTP communication)
 
     $ kamaki-shell -v
 
-.. note:: Valid arguments can be combined e.g., it is ok to run a shell with
-  verbosity and a specific cloud::
+.. note:: Valid arguments can be combined e.g., to run a shell with verbosity
+    and a specific cloud::
 
-    $ kamaki-shell -v --cloud=my_demo_cloud
+    $ kamaki-shell -v --cloud=example_cloud
 
 Run as one-command
 ^^^^^^^^^^^^^^^^^^
@@ -113,9 +109,6 @@ To use kamaki as an one-command tool, run:
 * with the '-h' or '--help' arguments (help for kamaki one-command)
 
 .. code-block:: console
-    :emphasize-lines: 1
-
-    Example 2.3.1: Kamaki help
 
     $kamaki -h
 
@@ -124,7 +117,7 @@ To use kamaki as an one-command tool, run:
 .. code-block:: console
     :emphasize-lines: 1
 
-    Example 2.3.2: List servers managed by user
+    Example 2.3.2: List virtual servers
 
     $ kamaki server list
 
@@ -297,7 +290,6 @@ history, use the kamaki help system:
     Options:
      - - - -
     clean:  Clean up history (permanent)
-    run  :  Run previously executed command(s)
     show :  Show intersession command history
 
 
@@ -659,60 +651,6 @@ history file (configured as `history_file` in settings, see
 `setup section <setup.html>`_ for details). Commands executed in one-command
 mode are mixed with the ones run in kamaki shell (also see
 :ref:`using-history-ref` section on this guide).
-
-Scripting
-^^^^^^^^^
-
-The history-run feature allows the sequential run of previous command
-executions in kamaki shell.
-
-The following sequence copies and downloads a file from *mycontainer1* ,
-uploads it to *mycontainer2* , then undo the proccess and repeats it with
-history-run
-
-.. code-block:: console
-    :emphasize-lines: 1,12,19,32
-
-    * Download mycontainer1:myfile and upload it to mycontainer2:myfile *
-    [kamaki]: file
-    [file]: copy /mycontainer1/somefile /mycontainer1/myfile
-    [file]: download /mycontainer1/myfile mylocalfile
-    ...
-    Download completed
-    [file]: upload mylocalfile /mycontainer2/myfile -f
-    ...
-    Upload completed
-
-    * undo the process *
-    [file]: !rm mylocalfile
-    [file]: delete /mycontainer1/myfile
-    [file]: delete /mycontainer2/myfile
-
-    * check history entries *
-    [file]: exit
-    [kamaki]: history
-    [history]: show
-    1.  file
-    2.  file copy /mycontainer1/somefile /mycontainer1/myfile
-    3.  file download /mycontainer1/myfile mylocalfile
-    4.  file upload mylocalfile /mycontainer2/myfile -f
-    5.  file delete /mycontainer1/myfile
-    6.  file delete /mycontainer2/myfile
-    7.  history
-    8.  history show
-
-    *repeat the process *
-    [history]: run 2-4
-    <file copy /mycontainer1/somefile /mycontainer1/myfile>
-    <file download /mycontainer1/myfile mylocalfile>
-    Download completed
-    <file upload mylocalfile /mycontainer2/myfile>
-    Upload completed
-
-The suggested best practice for scripting is python scripts that import the
-`kamaki.clients` library. Another option is host shell scripting (e.g., bash)
-with kamaki one-command. Still, the history-run functionality might prove handy
-in many occasions.
 
 OS Shell integration
 ^^^^^^^^^^^^^^^^^^^^

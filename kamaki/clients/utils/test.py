@@ -31,10 +31,9 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-#from mock import patch, call
-
 from unittest import TestCase
 from tempfile import TemporaryFile
+from itertools import product
 
 from kamaki.clients import utils
 
@@ -139,6 +138,24 @@ class Utils(TestCase):
             self.assertEqual(utils.readall(f, 10), tstr[5:])
             self.assertEqual(utils.readall(f, 1), '')
             self.assertRaises(IOError, utils.readall, f, 1, 0)
+
+    def test_escape_ctrl_chars(self):
+        gr_synnefo = u'\u03c3\u03cd\u03bd\u03bd\u03b5\u03c6\u03bf'
+        gr_kamaki = u'\u03ba\u03b1\u03bc\u03ac\u03ba\u03b9'
+
+        char_pairs = (
+            ('\b', '\\x08'), ('\n', '\\n'), ('\a', '\\x07'), ('\f', '\\x0c'),
+            ('\t', '\\t'), ('\v', '\\x0b'), ('\r', '\\r'), ('\072', ':'),
+            ('\016', '\\x0e'), ('\\', '\\'), ('\\n', '\\n'), ("'", '\''),
+            ('"', '"'), (u'\u039f\x89', u'\u039f\\x89'),
+        )
+
+        for orig_char, esc_char in char_pairs:
+            for word1, word2 in product(
+                    ('synnefo', gr_kamaki), ('kamaki', gr_synnefo)):
+                orig_str = word1 + orig_char + word2
+                esc_str = word1 + esc_char + word2
+                self.assertEqual(utils.escape_ctrl_chars(orig_str), esc_str)
 
 if __name__ == '__main__':
     from sys import argv
