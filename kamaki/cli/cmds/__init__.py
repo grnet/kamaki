@@ -31,7 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-from sys import stdin, stdout, stderr
+from sys import stdin, stdout, stderr, exit
 from traceback import format_exc
 
 from kamaki.cli.logger import get_logger
@@ -400,7 +400,7 @@ class Wait(object):
                 self.error(
                     '%s %s status: %s' % (service, service_id, new_mode))
             else:
-                self.error("Operation timed out")
+                exit("Operation timed out")
         except KeyboardInterrupt:
             self.error('\n- canceled')
         finally:
