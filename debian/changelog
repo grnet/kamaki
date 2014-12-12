@@ -1,3 +1,9 @@
+kamaki (0.13.1-1~wheezy) wheezy; urgency=low
+
+  * New upstream version
+
+ -- Nikos Skalkotos <skalkoto@grnet.gr>  Fri, 12 Dec 2014 18:25:38 +0200
+
 kamaki (0.13-1~wheezy) wheezy; urgency=low
 
   * New upstream version
@@ -306,5 +312,6 @@ kamaki (0.3.0-1) stable; urgency=low
   * New upstream version 
 
  -- Kostas Papadimitriou <kpap@grnet.gr>  Thu, 03 May 2012 14:06:49 +0300
+
 
 
