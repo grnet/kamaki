@@ -136,7 +136,7 @@ DEFAULTS = {
 
 class Config(RawConfigParser):
 
-    def __init__(self, path=None, with_defaults=True):
+    def __init__(self, path=None, with_defaults=False):
         RawConfigParser.__init__(self, dict_type=OrderedDict)
         self.path = path or os.environ.get(CONFIG_ENV, CONFIG_PATH)
 
@@ -455,9 +455,9 @@ class Config(RawConfigParser):
 
     def safe_to_print(self):
         dump = u'[global]\n'
-        for k, v in self.items('global'):
+        for k, v in self.items('global', include_defaults=False):
             dump += u'%s = %s\n' % (escape_ctrl_chars(k), escape_ctrl_chars(v))
-        for r, d in self.items(CLOUD_PREFIX):
+        for r, d in self.items(CLOUD_PREFIX, include_defaults=False):
             dump += u'\n[%s "%s"]\n' % (CLOUD_PREFIX, escape_ctrl_chars(r))
             for k, v in d.items():
                 dump += u'%s = %s\n' % (
