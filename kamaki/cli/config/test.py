@@ -483,7 +483,8 @@ class Config(TestCase):
         _cnf = Config(path=self.f.name)
         bu_func = Config.items
         try:
-            Config.items = lambda cls, opt: itemsd[opt].items()
+            Config.items = (
+                lambda cls, opt, include_defaults: itemsd[opt].items())
             saved = _cnf.safe_to_print().split('\n')
             glb, cld = saved[:5], saved[6:]
             self.assertEqual(u'[global]', glb[0])
