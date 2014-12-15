@@ -1,3 +1,9 @@
+kamaki (0.13.1-2~wheezy) wheezy; urgency=low
+
+  * Add ca-certificates to the debian dependencies
+
+ -- Nikos Skalkotos <skalkoto@grnet.gr>  Mon, 15 Dec 2014 13:20:27 +0200
+
 kamaki (0.13.1-1~wheezy) wheezy; urgency=low
 
   * New upstream version
@@ -312,6 +318,7 @@ kamaki (0.3.0-1) stable; urgency=low
   * New upstream version 
 
  -- Kostas Papadimitriou <kpap@grnet.gr>  Thu, 03 May 2012 14:06:49 +0300
+
 
 
 
