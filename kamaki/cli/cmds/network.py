@@ -60,12 +60,12 @@ class _PortWait(Wait):
 
     def wait_while(self, port_id, current_status, timeout=60):
         super(_PortWait, self).wait(
-            'Port', port_id, self.client.wait_port, current_status,
+            'Port', port_id, self.client.wait_port_while, current_status,
             timeout=timeout)
 
-    def wait_until(self, port_id, current_status, timeout=60):
+    def wait_until(self, port_id, target_status, timeout=60):
         super(_PortWait, self).wait(
-            'Port', port_id, self.client.wait_port, current_status,
+            'Port', port_id, self.client.wait_port_until, target_status,
             timeout=timeout, msg='not yet')
 
 

@@ -480,7 +480,8 @@ class StatusArgument(ValueArgument):
     First state is the default"""
 
     def __init__(self, *args, **kwargs):
-        self.valid_states = kwargs.pop('valid_states', ['BUILD', ])
+        self.valid_states = [
+            s.upper() for s in kwargs.pop('valid_states', ['BUILD', ])]
         super(StatusArgument, self).__init__(*args, **kwargs)
 
     @property

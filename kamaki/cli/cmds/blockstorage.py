@@ -32,10 +32,11 @@
 # or implied, of GRNET S.A.command
 
 from kamaki.cli import command
+from kamaki.cli.errors import CLIInvalidArgument
 from kamaki.cli.cmdtree import CommandTree
 from kamaki.cli.cmds import (
-    CommandInit, errors, client_log, OptionalOutput)
-from kamaki.clients.cyclades import CycladesBlockStorageClient
+    CommandInit, errors, client_log, OptionalOutput, Wait)
+from kamaki.clients.cyclades import CycladesBlockStorageClient, ClientError
 from kamaki.cli import argument
 
 
@@ -43,6 +44,24 @@ volume_cmds = CommandTree('volume', 'Block Storage API volume commands')
 snapshot_cmds = CommandTree('snapshot', 'Block Storage API snapshot commands')
 namespaces = [volume_cmds, snapshot_cmds]
 _commands = namespaces
+
+volume_states = (
+    'creating',  'available', 'attaching', 'detaching', 'in_use', 'deleting',
+    'deleted', 'error', 'error_deleting', 'backing_up', 'restoring_backup',
+    'error_restoring', )
+
+
+class _VolumeWait(Wait):
+
+    def wait_while(self, volume_id, current_status, timeout=60):
+        super(_VolumeWait, self).wait(
+            'Volume', volume_id, self.client.wait_volume_while, current_status,
+            timeout=timeout)
+
+    def wait_until(self, volume_id, target_status, timeout=60):
+        super(_VolumeWait, self).wait(
+            'Volume', volume_id, self.client.wait_volume_until, target_status,
+            timeout=timeout, msg='not yet')
 
 
 class _BlockStorageInit(CommandInit):
@@ -88,7 +107,7 @@ class volume_info(_BlockStorageInit, OptionalOutput):
 
 
 @command(volume_cmds)
-class volume_create(_BlockStorageInit, OptionalOutput):
+class volume_create(_BlockStorageInit, OptionalOutput, _VolumeWait):
     """Create a new volume"""
 
     arguments = dict(
@@ -110,22 +129,29 @@ class volume_create(_BlockStorageInit, OptionalOutput):
             'Metadata of key=value form (can be repeated)', '--metadata'),
         project_id=argument.ValueArgument(
             'Assign volume to a project', '--project-id'),
+        wait=argument.FlagArgument(
+            'Wait volume to be created and ready for use', ('-w', '--wait')),
     )
     required = ('size', 'server_id', 'name')
 
     @errors.Generic.all
     def _run(self, size, server_id, name):
-        self.print_(
-            self.client.create_volume(
-                size, server_id, name,
-                # source_volid=self['src_volume_id'],
-                display_description=self['description'],
-                snapshot_id=self['snapshot_id'],
-                imageRef=self['image_id'],
-                volume_type=self['volume_type'],
-                metadata=self['metadata'],
-                project=self['project_id']),
-            self.print_dict)
+        r = self.client.create_volume(
+            size, server_id, name,
+            # source_volid=self['src_volume_id'],
+            display_description=self['description'],
+            snapshot_id=self['snapshot_id'],
+            imageRef=self['image_id'],
+            volume_type=self['volume_type'],
+            metadata=self['metadata'],
+            project=self['project_id'])
+        self.print_dict(r)
+        r = self.client.get_volume_details(r['id'])
+        if self['wait'] and r['status'] != 'in_use':
+            self.wait_while(r['id'], r['status'])
+            r = self.client.get_volume_details(r['id'])
+            if r['status'] != 'in_use':
+                exit(1)
 
     def main(self):
         super(self.__class__, self)._run()
@@ -178,15 +204,74 @@ class volume_reassign(_BlockStorageInit):
 
 
 @command(volume_cmds)
-class volume_delete(_BlockStorageInit):
+class volume_delete(_BlockStorageInit, _VolumeWait):
     """Delete a volume"""
+
+    arguments = dict(
+        wait=argument.FlagArgument('Wait until deleted', ('-w', '--wait')),
+    )
 
     @errors.Generic.all
     def _run(self, volume_id):
         self.client.delete_volume(volume_id)
+        if self['wait']:
+            try:
+                r = self.client.get_volume_details(volume_id)
+                self.wait_while(volume_id, r['status'])
+                r = self.client.get_volume_details(volume_id)
+                if r['status'] != 'deleted':
+                    exit(1)
+            except ClientError as ce:
+                if ce.status not in (404, ):
+                    raise
 
     def main(self, volume_id):
         super(self.__class__, self)._run()
+        self._run(volume_id=volume_id)
+
+
+@command(volume_cmds)
+class volume_wait(_BlockStorageInit, _VolumeWait):
+    """Wait for volume to finish (default: --while creating)"""
+
+    arguments = dict(
+        timeout=argument.IntArgument(
+            'Wait limit in seconds (default: 60)', '--timeout', default=60),
+        status_w=argument.StatusArgument(
+            'Wait while in status (%s)' % ','.join(volume_states), '--while',
+            valid_states=volume_states),
+        status_u=argument.StatusArgument(
+            'Wait until status is reached (%s)' % ','.join(volume_states),
+            '--until',
+            valid_states=volume_states),
+    )
+
+    @errors.Generic.all
+    def _run(self, volume_id):
+        r = self.client.get_volume_details(volume_id)
+        if self['status_u']:
+            if r['status'] == self['status_u'].lower():
+                self.error('Volume %s: already in %s' % (
+                    volume_id, r['status']))
+            else:
+                self.wait_until(
+                    volume_id, self['status_u'].lower(),
+                    timeout=self['timeout'])
+        else:
+            status_w = self['status_w'].lower() or 'creating'
+            if r['status'] == status_w.lower():
+                self.wait_while(volume_id, status_w, timeout=self['timeout'])
+            else:
+                self.error('Volume %s status: %s' % (volume_id, r['status']))
+
+    def main(self, volume_id):
+        super(self.__class__, self)._run()
+        if all([self['status_w'], self['status_u']]):
+            raise CLIInvalidArgument(
+                'Invalid argument combination', importance=2, details=[
+                    'Arguments %s and %s are mutually exclusive' % (
+                        self.arguments['status_w'].lvalue,
+                        self.arguments['status_u'].lvalue)])
         self._run(volume_id=volume_id)
 
 
