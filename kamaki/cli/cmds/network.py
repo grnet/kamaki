@@ -1,4 +1,4 @@
-# Copyright 2011-2014 GRNET S.A. All rights reserved.
+# Copyright 2011-2015 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -58,10 +58,15 @@ port_states = ('BUILD', 'ACTIVE', 'DOWN', 'ERROR')
 
 class _PortWait(Wait):
 
-    def wait(self, port_id, current_status, timeout=60):
+    def wait_while(self, port_id, current_status, timeout=60):
         super(_PortWait, self).wait(
-            'Port', port_id, self.client.wait_port, current_status,
+            'Port', port_id, self.client.wait_port_while, current_status,
             timeout=timeout)
+
+    def wait_until(self, port_id, target_status, timeout=60):
+        super(_PortWait, self).wait(
+            'Port', port_id, self.client.wait_port_until, target_status,
+            timeout=timeout, msg='not yet')
 
 
 class _NetworkInit(CommandInit):
@@ -482,7 +487,7 @@ class port_delete(_NetworkInit, _PortWait):
         self.client.delete_port(port_id)
         if self['wait']:
             try:
-                self.wait(port_id, status)
+                self.wait_while(port_id, status)
             except ClientError as ce:
                 if ce.status not in (404, ):
                     raise
@@ -541,7 +546,7 @@ class _port_create(_NetworkInit, OptionalOutput, _PortWait):
                     self._ip_exists(ip=ip, network_id=network_id, error=ce)
             raise
         if self['wait']:
-            self.wait(r['id'], r['status'])
+            self.wait_while(r['id'], r['status'])
             r = self.client.get_port_details(r['id'])
         self.print_([r])
 
@@ -579,34 +584,60 @@ class port_create(_port_create):
 
 @command(port_cmds)
 class port_wait(_NetworkInit, _PortWait):
-    """Wait for port to finish (default: BUILD)"""
+    """Wait for port to finish (default: --while BUILD)"""
 
     arguments = dict(
-        port_status=StatusArgument(
-            'Wait while in this status (%s, default: %s)' % (
-                ', '.join(port_states), port_states[0]),
-            '--status',
-            valid_states=port_states),
         timeout=IntArgument(
-            'Wait limit in seconds (default: 60)', '--timeout', default=60)
+            'Wait limit in seconds (default: 60)', '--timeout', default=60),
+        status=StatusArgument(
+            'DEPRECATED in next version, equivalent to "--while"', '--status',
+            valid_states=port_states),
+        status_w=StatusArgument(
+            'Wait while in status (%s)' % ','.join(port_states), '--while',
+            valid_states=port_states),
+        status_u=StatusArgument(
+            'Wait until status is reached (%s)' % ','.join(port_states),
+            '--until',
+            valid_states=port_states),
     )
 
     @errors.Generic.all
     @errors.Cyclades.connection
-    def _run(self, port_id, port_status):
-        port = self.client.get_port_details(port_id)
-        if port['status'].lower() == port_status.lower():
-            self.wait(port_id, port_status, timeout=self['timeout'])
+    def _run(self, port_id):
+        r = self.client.get_port_details(port_id)
+
+        if self['status_u']:
+            if r['status'].lower() == self['status_u'].lower():
+                self.error('Port %s: already in %s' % (port_id, r['status']))
+            else:
+                self.wait_until(
+                    port_id, self['status_u'], timeout=self['timeout'])
         else:
-            self.error(
-                'Port %s: Cannot wait for status %s, '
-                'status is already %s' % (
-                    port_id, port_status, port['status']))
+            status_w = self['status_w'] or self['status'] or 'BUILD'
+            if r['status'].lower() == status_w.lower():
+                self.wait_while(port_id, status_w, timeout=self['timeout'])
+            else:
+                self.error('Port %s status: %s' % (port_id, r['status']))
 
     def main(self, port_id):
         super(self.__class__, self)._run()
-        port_status = self['port_status'] or port_states[0]
-        self._run(port_id=port_id, port_status=port_status)
+
+        status_args = [self['status'], self['status_w'], self['status_u']]
+        if len([x for x in status_args if x]) > 1:
+            raise CLIInvalidArgument(
+                'Invalid argument combination', importance=2, details=[
+                    'Arguments %s, %s and %s are mutually exclusive' % (
+                        self.arguments['status'].lvalue,
+                        self.arguments['status_w'].lvalue,
+                        self.arguments['status_u'].lvalue)])
+        if self['status']:
+            self.error(
+                'WARNING: argument %s will be deprecated '
+                'in the next version, use %s instead' % (
+                    self.arguments['status'].lvalue,
+                    self.arguments['status_w'].lvalue))
+
+        self._run(port_id=port_id)
 
 
 @command(ip_cmds)
@@ -783,7 +814,7 @@ class ip_detach(_NetworkInit, _PortWait, OptionalOutput):
                     port_status = self.client.get_port_details(ip['port_id'])[
                         'status']
                     try:
-                        self.wait(ip['port_id'], port_status)
+                        self.wait_while(ip['port_id'], port_status)
                     except ClientError as ce:
                         if ce.status not in (404, ):
                             raise
@@ -873,7 +904,7 @@ class network_disconnect(_NetworkInit, _PortWait, OptionalOutput):
                 port['id'], network_id, server_id))
             if self['wait']:
                 try:
-                    self.wait(port['id'], port['status'])
+                    self.wait_while(port['id'], port['status'])
                 except ClientError as ce:
                     if ce.status not in (404, ):
                         raise

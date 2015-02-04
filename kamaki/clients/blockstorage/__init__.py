@@ -1,4 +1,4 @@
-# Copyright 2014 GRNET S.A. All rights reserved.
+# Copyright 2014-2015 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -32,9 +32,10 @@
 # or implied, of GRNET S.A.
 
 from kamaki.clients.blockstorage.rest_api import BlockStorageRestClient
+from kamaki.clients import ClientError, Waiter
 
 
-class BlockStorageClient(BlockStorageRestClient):
+class BlockStorageClient(BlockStorageRestClient, Waiter):
     """OpenStack Block Storage v2 client"""
 
     def list_volumes(self, detail=None):
@@ -137,3 +138,23 @@ class BlockStorageClient(BlockStorageRestClient):
     def get_volume_type_details(self, type_id):
         r = self.types_get(type_id)
         return r.json['volume_type']
+
+    #  Wait methods
+
+    def get_volume_status(self, volume_id):
+        r = self.get_volume_details(volume_id)
+        return r['status'], None
+
+    def wait_volume_while(
+            self, volume_id,
+            current_status='creating', delay=1, max_wait=100, wait_cb=None):
+        return self.wait_while(
+            volume_id, current_status, BlockStorageClient.get_volume_status,
+            delay, max_wait, wait_cb)
+
+    def wait_volume_until(
+            self, volume_id,
+            target_status='in_use', delay=1, max_wait=100, wait_cb=None):
+        return self.wait_until(
+            volume_id, target_status, BlockStorageClient.get_volume_status,
+            delay, max_wait, wait_cb)

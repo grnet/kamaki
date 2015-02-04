@@ -1,4 +1,4 @@
-# Copyright 2011-2014 GRNET S.A. All rights reserved.
+# Copyright 2011-2015 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -172,32 +172,44 @@ class CycladesComputeClient(CycladesComputeRestClient, Waiter):
         r = self.servers_diagnostics_get(server_id)
         return r.json
 
-    def wait_server(
+    def get_server_status(self, server_id):
+        """:returns: (current status, progress percentile if available)"""
+        r = self.get_server_details(server_id)
+        return r['status'], (r.get('progress', None) if (
+            r['status'] in ('BUILD', )) else None)
+
+    def wait_server_while(
             self, server_id,
-            current_status='BUILD',
-            delay=1, max_wait=100, wait_cb=None):
-        """Wait for server while its status is current_status
-
+            current_status='BUILD', delay=1, max_wait=100, wait_cb=None):
+        """Wait for server WHILE its status is current_status
         :param server_id: integer (str or int)
-
         :param current_status: (str) BUILD|ACTIVE|STOPPED|DELETED|REBOOT
-
         :param delay: time interval between retries
-
         :max_wait: (int) timeout in secconds
-
         :param wait_cb: if set a progressbar is used to show progress
-
         :returns: (str) the new mode if succesfull, (bool) False if timed out
         """
+        return self.wait_while(
+            server_id, current_status, CycladesComputeClient.get_server_status,
+            delay, max_wait, wait_cb)
 
-        def get_status(self, server_id):
-            r = self.get_server_details(server_id)
-            return r['status'], (r.get('progress', None) if (
-                            current_status in ('BUILD', )) else None)
+    def wait_server_until(
+            self, server_id,
+            target_status='ACTIVE', delay=1, max_wait=100, wait_cb=None):
+        """Wait for server WHILE its status is target_status
+        :param server_id: integer (str or int)
+        :param target_status: (str) BUILD|ACTIVE|STOPPED|DELETED|REBOOT
+        :param delay: time interval between retries
+        :max_wait: (int) timeout in secconds
+        :param wait_cb: if set a progressbar is used to show progress
+        :returns: (str) the new mode if succesfull, (bool) False if timed out
+        """
+        return self.wait_until(
+            server_id, target_status, CycladesComputeClient.get_server_status,
+            delay, max_wait, wait_cb)
 
-        return self._wait(
-            server_id, current_status, get_status, delay, max_wait, wait_cb)
+    # Backwards compatibility
+    wait_server = wait_server_while
 
 
 # Backwards compatibility

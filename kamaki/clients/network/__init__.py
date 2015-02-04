@@ -1,4 +1,4 @@
-# Copyright 2013 GRNET S.A. All rights reserved.
+# Copyright 2013-2015 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -364,13 +364,23 @@ class NetworkClient(NetworkRestClient, Waiter):
 
     #  Wait methods
 
-    def wait_port(
+    def get_port_status(self, port_id):
+        r = self.get_port_details(port_id)
+        return r['status'], None
+
+    def wait_port_while(
             self, port_id,
             current_status='BUILD', delay=1, max_wait=100, wait_cb=None):
+        return self.wait_while(
+            port_id, current_status, NetworkClient.get_port_status,
+            delay, max_wait, wait_cb)
 
-        def get_status(self, net_id):
-            r = self.get_port_details(port_id)
-            return r['status'], None
+    def wait_port_until(
+            self, port_id,
+            target_status='ACTIVE', delay=1, max_wait=100, wait_cb=None):
+        return self.wait_until(
+            port_id, target_status, NetworkClient.get_port_status,
+            delay, max_wait, wait_cb)
 
-        return self._wait(
-            port_id, current_status, get_status, delay, max_wait, wait_cb)
+    # Backwards compatibility
+    wait_port = wait_port_while
