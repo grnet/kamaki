@@ -15,6 +15,7 @@ Features
   "wait_until" and "wait_while"
 * Implement "wait" commands in CLI, where applicable
 * Implement "wait" functionality for volumes 
+* Print public url in "kamaki file upload --public"
 
 .. _Changelog-0.13:
 

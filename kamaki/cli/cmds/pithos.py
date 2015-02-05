@@ -1093,6 +1093,10 @@ class file_upload(_PithosContainer):
                     raise
                 finally:
                     self._safe_progress_bar_finish(progress_bar)
+
+            if self['public']:
+                obj = self.client.get_object_info(rpath)
+                self.write('%s\n' % obj.get('x-object-public', ''))
             self.error('Upload completed')
 
     def main(self, local_path, remote_path_or_url=None):
