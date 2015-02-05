@@ -1,4 +1,4 @@
-# Copyright 2012-2014 GRNET S.A. All rights reserved.
+# Copyright 2012-2015 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -33,6 +33,7 @@
 
 import logging
 from sys import argv, exit, stdout, stderr
+import os
 from os.path import basename, exists
 from inspect import getargspec
 
@@ -51,6 +52,7 @@ from kamaki.clients.utils import https, escape_ctrl_chars
 
 _debug = False
 kloger = None
+DEF_CLOUD_ENV = 'KAMAKI_DEFAULT_CLOUD'
 
 #  command auxiliary methods
 
@@ -258,7 +260,7 @@ def _init_session(arguments, is_non_api=False):
         remove_colors()
 
     cloud = arguments['cloud'].value or _cnf.value.get(
-        'global', 'default_cloud')
+        'global', 'default_cloud') or os.environ.get(DEF_CLOUD_ENV)
     if not cloud:
         num_of_clouds = len(_cnf.value.keys('cloud'))
         if num_of_clouds == 1:
@@ -274,6 +276,7 @@ def _init_session(arguments, is_non_api=False):
                     '  kamaki config get cloud.<cloud name>',
                     'To set a default cloud:',
                     '  kamaki config set default_cloud <cloud name>',
+                    '  or set the %s enviroment variable' % DEF_CLOUD_ENV,
                     'To pick a cloud for the current session, use --cloud:',
                     '  kamaki --cloud=<cloud name> ...'])
     if cloud not in _cnf.value.keys('cloud'):
