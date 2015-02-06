@@ -548,7 +548,7 @@ def main(func):
             logger.add_stream_logger(
                 __name__, logging.WARNING,
                 fmt='%(levelname)s (%(name)s): %(message)s')
-            _config_arg = ConfigArgument('Path to config file')
+            _config_arg = ConfigArgument('Path to a custom config file')
             parser = ArgumentParseManager(exe, arguments=dict(
                 config=_config_arg,
                 cloud=ValueArgument(
@@ -565,7 +565,8 @@ def main(func):
                     'Print current version', ('-V', '--version')),
                 options=RuntimeConfigArgument(
                     _config_arg,
-                    'Override a config value', ('-o', '--options')),
+                    'Override a config option (not persistent)',
+                    ('-o', '--options')),
                 ignore_ssl=FlagArgument(
                     'Allow connections to SSL sites without certs',
                     ('-k', '--ignore-ssl', '--insecure')),
