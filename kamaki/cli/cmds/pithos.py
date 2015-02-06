@@ -1019,6 +1019,9 @@ class file_upload(_PithosContainer):
                         rel_path = rpath + top.split(lpath)[1]
                     except IndexError:
                         rel_path = rpath
+                    # Use the '/' separator for directories that
+                    # are about to be created in Pithos
+                    rel_path = rel_path.replace(path.sep, '/')
                     self.error('remote: mkdir /%s/%s' % (
                         self.client.container, rel_path))
                     self.client.create_directory(rel_path)
