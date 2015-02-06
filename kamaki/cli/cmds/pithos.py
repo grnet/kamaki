@@ -998,7 +998,7 @@ class file_upload(_PithosContainer):
                         rel_path = rpath + top.split(lpath)[1]
                     except IndexError:
                         rel_path = rpath
-                    self.error('mkdir /%s/%s' % (
+                    self.error('remote: mkdir /%s/%s' % (
                         self.client.container, rel_path))
                     self.client.create_directory(rel_path)
                 for f in files:
