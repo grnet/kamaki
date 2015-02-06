@@ -167,7 +167,7 @@ cmd_spec_locations = [
 #  Generic init auxiliary functions
 
 
-def _setup_logging(debug=False, verbose=False):
+def _setup_logging(debug=False, verbose=False, _verbose_with_data=False):
     """handle logging for clients package"""
 
     sfmt, rfmt = '> %(message)s', '< %(message)s'
@@ -182,6 +182,9 @@ def _setup_logging(debug=False, verbose=False):
         logger.add_stream_logger(__name__, logging.INFO)
     # else:
     #     logger.add_stream_logger(__name__, logging.WARNING)
+    if _verbose_with_data:
+        from kamaki import clients
+        clients.Client.LOG_DATA = True
     global kloger
     kloger = logger.get_logger(__name__)
 
@@ -223,10 +226,11 @@ def _init_session(arguments, is_non_api=False):
     _help = arguments['help'].value
     global _debug
     _debug = arguments['debug'].value
-    _verbose = arguments['verbose'].value
+    _verbose_with_data = arguments['verbose_with_data'].value
+    _verbose = arguments['verbose'].value or _verbose_with_data
     _cnf = arguments['config']
 
-    _setup_logging(_debug, _verbose)
+    _setup_logging(_debug, _verbose, _verbose_with_data)
 
     if _help or is_non_api:
         return None
@@ -552,7 +556,11 @@ def main(func):
                 help=Argument(0, 'Show help message', ('-h', '--help')),
                 debug=FlagArgument('Include debug output', ('-d', '--debug')),
                 verbose=FlagArgument(
-                    'More info at response', ('-v', '--verbose')),
+                    'Show HTTP requests and responses, without HTTP body',
+                    ('-v', '--verbose')),
+                verbose_with_data=FlagArgument(
+                    'Show HTTP requests and responses, including HTTP body',
+                    ('-vv', '--verbose-with-data')),
                 version=VersionArgument(
                     'Print current version', ('-V', '--version')),
                 options=RuntimeConfigArgument(
