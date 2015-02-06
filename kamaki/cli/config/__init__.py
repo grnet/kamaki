@@ -1,4 +1,4 @@
-# Copyright 2011-2014 GRNET S.A. All rights reserved.
+# Copyright 2011-2015 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -77,6 +77,64 @@ for c in '%s' % __version__:
         break
     version += c
 HEADER = '# Kamaki configuration file v%s\n' % version
+
+DOCUMENTATION = OrderedDict()
+DOCUMENTATION['global'] = OrderedDict()
+DOCUMENTATION['global']['default_cloud'] = (
+    'The default cloud, when there are more than one clouds'),
+DOCUMENTATION['global']['colors'] = (
+    'enable / disable console colors, requires "ansi-colors" (on / off)'),
+DOCUMENTATION['global']['history_file'] = 'path to store kamaki history',
+DOCUMENTATION['global']['history_limit'] = '#commands to keep in history',
+DOCUMENTATION['global']['log_file'] = 'path to dumb kamaki logs',
+DOCUMENTATION['global']['log_token'] = (
+    'show user token in HTTP logs (insecure - on / off)'),
+DOCUMENTATION['global']['log_data'] = (
+    'show HTTP data (body) in logs (on / off)'),
+DOCUMENTATION['global']['log_pid'] = 'show process id in HTTP logs (on / off)',
+DOCUMENTATION['global']['ignore_ssl'] = (
+    'allow insecure HTTP connections (on / off)'),
+DOCUMENTATION['global']['ca_certs'] = (
+    'path to CA certificates bundle (system depended)'),
+DOCUMENTATION['global']['config_cli'] = 'CLI specs for config commands',
+DOCUMENTATION['global']['history_cli'] = 'CLI specs for history commands',
+DOCUMENTATION['global']['user_cli'] = 'CLI specs for user commands',
+DOCUMENTATION['global']['quota_cli'] = 'CLI specs for quota commands',
+DOCUMENTATION['global']['project_cli'] = 'CLI specs for project commands',
+DOCUMENTATION['global']['resource_cli'] = 'CLI specs for resource commands',
+DOCUMENTATION['global']['membership_cli'] = (
+    'CLI specs for membership commands'),
+DOCUMENTATION['global']['file_cli'] = 'CLI specs for file commands',
+DOCUMENTATION['global']['container_cli'] = 'CLI specs for container commands',
+DOCUMENTATION['global']['sharer_cli'] = 'CLI specs for sharer commands',
+DOCUMENTATION['global']['group_cli'] = 'CLI specs for group commands',
+DOCUMENTATION['global']['server_cli'] = 'CLI specs for server commands',
+DOCUMENTATION['global']['flavor_cli'] = 'CLI specs for flavor commands',
+DOCUMENTATION['global']['network_cli'] = 'CLI specs for network commands',
+DOCUMENTATION['global']['subnet_cli'] = 'CLI specs for subnet commands',
+DOCUMENTATION['global']['port_cli'] = 'CLI specs for port ommands',
+DOCUMENTATION['global']['ip_cli'] = '\tCLI specs for ip commands',
+DOCUMENTATION['global']['volume_cli'] = 'CLI specs for volume commands',
+DOCUMENTATION['global']['snapshot_cli'] = 'CLI specs for snapshot commands',
+DOCUMENTATION['global']['image_cli'] = 'CLI specs for image commands',
+DOCUMENTATION['global']['imagecompute_cli'] = (
+    'CLI specs for imagecompute commands'),
+#  Optional command specs:
+DOCUMENTATION['global']['service_cli'] = (
+    '(hidden) CLI specs for service commands'),
+DOCUMENTATION['global']['endpoint_cli'] = (
+    '(hidden) CLI specs for endpoint list'),
+DOCUMENTATION['global']['commission_cli'] = (
+    '(hidden) CLI specs for commission commands'),
+DOCUMENTATION['%s.<CLOUD NAME>' % CLOUD_PREFIX] = OrderedDict()
+DOCUMENTATION['%s.<CLOUD NAME>' % CLOUD_PREFIX]['url'] = (
+    'cloud authentication URL'),
+DOCUMENTATION['%s.<CLOUD NAME>' % CLOUD_PREFIX]['token'] = (
+    'user token for this cloud'),
+DOCUMENTATION['%s.<CLOUD NAME>' % CLOUD_PREFIX]['pithos_container'] = (
+    'default pithos container for this cloud (if not set, use pithos)'),
+DOCUMENTATION['%s.<CLOUD NAME>' % CLOUD_PREFIX]['pithos_id'] = (
+    'pithos user uuid (if not set, use the token user)'),
 
 DEFAULTS = {
     'global': {
