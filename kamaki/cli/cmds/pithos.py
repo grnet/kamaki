@@ -519,10 +519,31 @@ class file_delete(_PithosContainer):
         self.client.get_object_info(self.path)
         if self['yes'] or self.ask_user(
                 'Delete /%s/%s ?' % (self.container, self.path)):
-            self.client.del_object(
-                self.path,
-                until=self['until_date'],
-                delimiter='/' if self['recursive'] else self['delimiter'])
+            # See if any objects exist under prefix
+            # Add a trailing / to object's name
+            prefix = self.path.rstrip('/') + '/'
+            result = self.client.container_get(prefix=prefix)
+
+            if result.json:
+                count = len(result.json)
+                self.error(' * %d other object(s) with %s as prefix found' %
+                    (count, prefix))
+
+                if self['recursive']:
+                    msg = 'The above %d object(s) will be deleted, too' % \
+                        count
+                else:
+                    msg = 'The above %d object(s) will be preserved,' \
+                        ' but the directory structure' \
+                        ' will become inconsistent' % count
+
+                self.error(' * %s!' % msg)
+
+            if not result.json or self.ask_user("Continue?"):
+                self.client.del_object(
+                    self.path,
+                    until=self['until_date'],
+                    delimiter='/' if self['recursive'] else self['delimiter'])
         else:
             self.error('Aborted')
 
