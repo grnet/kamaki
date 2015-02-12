@@ -1,4 +1,4 @@
-# Copyright 2012-2014 GRNET S.A. All rights reserved.
+# Copyright 2012-2015 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -247,12 +247,26 @@ class image_list(_ImageInit, OptionalOutput, NameFilter, IDFilter):
 class image_info(_ImageInit, OptionalOutput):
     """Get image metadata"""
 
+    arguments = dict(
+        hashmap=FlagArgument(
+            'Get image file hashmap instead of metadata', '--hashmap'),
+    )
+
     @errors.Generic.all
     @errors.Image.connection
     @errors.Image.id
     def _run(self, image_id):
         meta = self.client.get_meta(image_id)
-        if not self['output_format']:
+        if self['hashmap']:
+            print meta['location']
+            location = meta['location'].split('pithos://')[1]
+            location = location.split('/')
+            uuid, container = location[0], location[1]
+            pithos = self.get_client(PithosClient, 'pithos')
+            pithos.account, pithos.container = uuid, container
+            path = '/'.join(location[2:])
+            meta = pithos.get_object_hashmap(path)
+        elif not self['output_format']:
             try:
                 meta['owner'] += ' (%s)' % self._uuid2username(meta['owner'])
             except KeyError as ke:
