@@ -3,6 +3,21 @@
 Changelog file for Kamaki versions >= 0.13
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+.. _Changelog-0.15:
+
+v0.15
+=====
+
+Release: UNKNOWN
+
+Bugfixes
+--------
+
+* Sync object permissions between image and meta
+
+Features
+--------
+
 .. _Changelog-0.14:
 
 v0.14

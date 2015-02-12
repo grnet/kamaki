@@ -381,7 +381,8 @@ class image_register(_ImageInit, OptionalOutput):
         uuid=ValueArgument('Custom user uuid', '--uuid'),
         local_image_path=ValueArgument(
             'Local image file path to upload and register '
-            '(still need target file in the form /CONTAINER/REMOTE-PATH )',
+            '(requires target remote location with '
+            '"--location /CONTAINER/REMOTE-PATH" )',
             '--upload-image-file'),
         progress_bar=ProgressBarArgument(
             'Do not use progress bar', '--no-progress-bar', default=False),
@@ -496,10 +497,12 @@ class image_register(_ImageInit, OptionalOutput):
 
         # upload the metadata file
         if not self['no_metafile_upload']:
+            sharing = dict([(k, v.split(',')) for k, v in (
+                pithos.get_object_sharing(locator.path).items())])
             try:
                 meta_headers = pithos.upload_from_string(
                     meta_path, dumps(r, indent=2),
-                    sharing=dict(read='*' if params.get('is_public') else ''),
+                    sharing=sharing,
                     container_info_cache=self.container_info_cache)
             except TypeError:
                 self.error('Failed to dump metafile /%s/%s' % (
