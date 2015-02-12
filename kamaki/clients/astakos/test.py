@@ -1,4 +1,4 @@
-# Copyright 2013-2014 GRNET S.A. All rights reserved.
+# Copyright 2013-2015 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -35,12 +35,12 @@ from mock import patch, call
 from unittest import TestCase
 from itertools import product
 
-from kamaki.clients import ClientError, astakos
+from kamaki.clients import astakos
 
 
 example = dict(
     access=dict(
-         token=dict(
+        token=dict(
             expires="2013-07-14T10:07:42.481134+00:00",
             id="ast@k0sT0k3n==",
             tenant=dict(
@@ -153,9 +153,6 @@ class LoggedAstakosClient(TestCase):
             if isinstance(status, int):
                 self.client._dump_response(FR(), status, message, data)
                 mock_calls = list(recvlog_info.mock_calls[-5:])
-                self.assertEqual(
-                    mock_calls.pop(),
-                    call('-             -        -     -   -  - -'))
                 size = len(data)
                 if LOG_DATA:
                     token = headers.get('X-Auth-Token', '')
@@ -163,7 +160,7 @@ class LoggedAstakosClient(TestCase):
                         data = data.replace(token, '...')
                     self.assertEqual(mock_calls.pop(), call(data))
                 self.assertEqual(mock_calls[-2:], [
-                    call('\n%s %s' % (status, message)),
+                    call('%s %s' % (status, message)),
                     call('data size: %s' % size)])
             else:
                 self.assertRaises(

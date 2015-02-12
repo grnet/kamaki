@@ -1,4 +1,4 @@
-# Copyright 2012-2014 GRNET S.A. All rights reserved.
+# Copyright 2012-2015 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -135,7 +135,7 @@ class LoggedAstakosClient(AstakosClient):
         super(LoggedAstakosClient, self).__init__(*args, **kwargs)
 
     def _dump_response(self, request, status, message, data):
-        recvlog.info('\n%d %s' % (status, message))
+        recvlog.info('%d %s' % (status, message))
         recvlog.info('data size: %s' % len(data))
         if not self.LOG_TOKEN:
             token = request.headers.get('X-Auth-Token', '')
@@ -143,7 +143,6 @@ class LoggedAstakosClient(AstakosClient):
                 data = data.replace(token, '...') if token else data
         if self.LOG_DATA:
             recvlog.info(data)
-        recvlog.info('-             -        -     -   -  - -')
 
     def _call_astakos(self, *args, **kwargs):
         r = super(LoggedAstakosClient, self)._call_astakos(*args, **kwargs)

@@ -1,4 +1,4 @@
-# Copyright 2011-2014 GRNET S.A. All rights reserved.
+# Copyright 2011-2015 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -36,6 +36,7 @@ from logging import getLogger
 from astakosclient import AstakosClientException
 
 from kamaki.clients import ClientError
+from kamaki.cli import DEF_CLOUD_ENV
 from kamaki.cli.errors import CLIError, CLISyntaxError
 from kamaki.cli.utils import format_size
 
@@ -115,7 +116,8 @@ class Astakos(object):
         '  kamaki config get cloud'
         'To set/get the default cloud:',
         '  kamaki config get default_cloud',
-        '  kamaki config set default_cloud CLOUD'
+        '  kamaki config set default_cloud CLOUD',
+        '  or get/set the %s enviroment variable' % DEF_CLOUD_ENV,
         'If (re)set a token:',
         '  #  (permanent)',
         '  $ kamaki config set cloud.CLOUD.token <token>']
