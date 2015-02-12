@@ -20,6 +20,7 @@ Features
 * Document config options and show descriptions in
     "kamaki config list"
 * Modify some help messages (-c, -o, HTTP log separators) for clarity
+* Show image file hashmap in "kamaki image info", with "--hashmap"
 
 .. _Changelog-0.13:
 
