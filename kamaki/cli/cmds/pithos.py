@@ -1365,7 +1365,8 @@ class file_download(_PithosContainer):
 
         for r, l, resume in ret:
             if r:
-                with open(l, 'rwb+' if resume else 'wb+') as f:
+                mode = 'rb+' if resume and path.exists(l) else 'wb+'
+                with open(l, mode) as f:
                     yield (r, f)
             else:
                 yield (r, l)
