@@ -1381,7 +1381,7 @@ class file_download(_PithosContainer):
         progress_bar = None
         try:
             for rpath, output_file in self._src_dst(local_path):
-                if not rpath:
+                if not rpath and not path.exists(output_file):
                     self.error('Create local directory %s' % output_file)
                     makedirs(output_file)
                     continue
