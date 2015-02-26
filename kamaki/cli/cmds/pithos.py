@@ -519,10 +519,31 @@ class file_delete(_PithosContainer):
         self.client.get_object_info(self.path)
         if self['yes'] or self.ask_user(
                 'Delete /%s/%s ?' % (self.container, self.path)):
-            self.client.del_object(
-                self.path,
-                until=self['until_date'],
-                delimiter='/' if self['recursive'] else self['delimiter'])
+            # See if any objects exist under prefix
+            # Add a trailing / to object's name
+            prefix = self.path.rstrip('/') + '/'
+            result = self.client.container_get(prefix=prefix)
+
+            if result.json:
+                count = len(result.json)
+                self.error(' * %d other object(s) with %s as prefix found' %
+                    (count, prefix))
+
+                if self['recursive']:
+                    msg = 'The above %d object(s) will be deleted, too' % \
+                        count
+                else:
+                    msg = 'The above %d object(s) will be preserved,' \
+                        ' but the directory structure' \
+                        ' will become inconsistent' % count
+
+                self.error(' * %s!' % msg)
+
+            if not result.json or self.ask_user("Continue?"):
+                self.client.del_object(
+                    self.path,
+                    until=self['until_date'],
+                    delimiter='/' if self['recursive'] else self['delimiter'])
         else:
             self.error('Aborted')
 
@@ -998,7 +1019,10 @@ class file_upload(_PithosContainer):
                         rel_path = rpath + top.split(lpath)[1]
                     except IndexError:
                         rel_path = rpath
-                    self.error('mkdir /%s/%s' % (
+                    # Use the '/' separator for directories that
+                    # are about to be created in Pithos
+                    rel_path = rel_path.replace(path.sep, '/')
+                    self.error('remote: mkdir /%s/%s' % (
                         self.client.container, rel_path))
                     self.client.create_directory(rel_path)
                 for f in files:
@@ -1217,11 +1241,16 @@ class file_download(_PithosContainer):
         and they are pretended to other objects in a very strict order (shorter
         to longer path)."""
         ret, obj = [], None
+        # The prefix is actually the relative remote path without
+        # the trailing separator.
+        prefix = self.path.rstrip('/')
         try:
-            if self.path:
+            # prefix here is the object's path we requested to download
+            if prefix:
                 obj = self.client.get_object_info(
-                    self.path, version=self['object_version'])
-                obj.setdefault('name', self.path.strip('/'))
+                    prefix, version=self['object_version'])
+                #FIXME: why is this needed????
+                obj.setdefault('name', prefix)
         except ClientError as ce:
             if ce.status in (404, ):
                 self._container_exists()
@@ -1242,29 +1271,37 @@ class file_download(_PithosContainer):
                         '  kamaki container download %s [LOCAL_PATH]' % (
                             self.container)])
             raise
-        rpath = self.path.strip('/')
-        if local_path and self.path and local_path.endswith('/'):
-            local_path = local_path.rstrip('/') or '/'
 
+        # We requested to download either a whole container or a directory
         if (not obj) or self.object_is_dir(obj):
             if self['recursive']:
-                if not (self.path or local_path.endswith('/')):
-                    #  Download the whole container
-                    local_path = '' if local_path in ('.', ) else local_path
-                    local_path = '%s/' % (local_path or self.container)
                 obj = obj or dict(
                     name='', content_type='application/directory')
                 dirs, files = [], []
-                objects = self.client.container_get(
-                    prefix=rpath,
+                result = self.client.container_get(
+                    prefix=prefix,
                     if_modified_since=self['modified_since_date'],
                     if_unmodified_since=self['unmodified_since_date'])
-                for o in objects.json:
-                    (dirs if self.object_is_dir(o) else files).append(o)
+
+                # Find the final local path for each remote object
+                # [(remote name, final local path),.]
+                for o in result.json:
+                    remote = o['name']
+                    # First find the relative path of the object
+                    # without the prefix and any leading '/'
+                    relative = remote[len(prefix):].lstrip('/')
+                    # Translate it to a valid path with proper separator
+                    norm = relative.replace('/', path.sep)
+                    # Append it to the desired local path
+                    final = path.join(local_path, norm)
+                    if self.object_is_dir(o):
+                        dirs.append((remote, final))
+                    else:
+                        files.append((remote, final))
+                    self.error(r"%s -> %s" % (remote, final))
 
                 #  Put the directories on top of the list
-                for dpath in sorted(['%s%s' % (
-                        local_path, d['name'][len(rpath):]) for d in dirs]):
+                for dpath in sorted(p for _, p in dirs):
                     if path.exists(dpath):
                         if path.isdir(dpath):
                             continue
@@ -1277,13 +1314,12 @@ class file_download(_PithosContainer):
                     ret.append((None, dpath, None))
 
                 #  Append the file objects
-                for opath in [o['name'] for o in files]:
-                    lpath = '%s%s' % (local_path, opath[len(rpath):])
+                for opath, lpath in files:
                     if self['resume']:
                         fxists = path.exists(lpath)
                         if fxists and path.isdir(lpath):
                             raise CLIError(
-                                'Cannot change local dir %s info file' % (
+                                'Cannot change local dir %s into a file' % (
                                     lpath),
                                 details=[
                                     'Either remove the file or specify a'
@@ -1296,10 +1332,10 @@ class file_download(_PithosContainer):
                                 self.arguments['resume'].lvalue)])
                     else:
                         ret.append((opath, lpath, None))
-            elif self.path:
+            elif prefix:
                 raise CLIError(
                     'Remote object /%s/%s is a directory' % (
-                        self.container, local_path),
+                        self.container, prefix),
                     details=['Use %s to download directories' % (
                         self.arguments['recursive'].lvalue)])
             else:
@@ -1312,30 +1348,21 @@ class file_download(_PithosContainer):
                             parsed_name, self.container)])
         else:
             #  Remote object is just a file
+            #  The local path to be stored already exists
             if path.exists(local_path):
                 if not self['resume']:
                     raise CLIError(
                         'Cannot overwrite local file %s' % (local_path),
                         details=['To overwrite/resume, use  %s' % (
                             self.arguments['resume'].lvalue)])
-            elif '/' in local_path[1:-1]:
-                dirs = [p for p in local_path.split('/') if p]
-                pref = '/' if local_path.startswith('/') else ''
-                for d in dirs[:-1]:
-                    pref += d
-                    if not path.exists(pref):
-                        ret.append((None, d, None))
-                    elif not path.isdir(pref):
-                        raise CLIError(
-                            'Failed to use %s as a destination' % local_path,
-                            importance=3,
-                            details=[
-                                'Local file %s is not a directory' % pref,
-                                'Destination prefix must consist of '
-                                'directories or non-existing names',
-                                'Either remove the file, or choose another '
-                                'destination'])
-            ret.append((rpath, local_path, self['resume']))
+            #  The local path does not exist.
+            elif path.sep in local_path:
+                # Delegate intermediate local dir cration
+                # to makedirs() inside _run()
+                d = path.dirname(local_path)
+                ret.append((None, d, None))
+            ret.append((prefix, local_path, self['resume']))
+
         for r, l, resume in ret:
             if r:
                 with open(l, 'rwb+' if resume else 'wb+') as f:
@@ -1394,14 +1421,19 @@ class file_download(_PithosContainer):
         self.error('Download completed')
 
     def main(self, remote_path_or_url, local_path=None):
+        """ Dowload remote_path_or_url to local_path. """
         super(self.__class__, self)._run(remote_path_or_url)
-        local_path, rpath = local_path or '.', self.path or self.container
-        if local_path.endswith('.'):
-            local_path = local_path[:-1] + path.basename(self.path.rstrip('/'))
-        elif local_path.endswith(path.sep):
-            local_path += path.basename(rpath.rstrip('/'))
+        # Translate relative remote path to local path with proper separator
+        # and without trailing '/'. If not given use the name of the container
+        rpath = self.path.rstrip('/').replace('/', path.sep) or self.container
+        # If remote path is /pithos/dir1/dir2/ then here we download dir2
+        base = path.basename(rpath)
+        # If local_path is not given use current dir
+        if not local_path:
+            local_path = path.join('.', base)
+        # existing_dir/ -> existing_dir/base
         elif path.exists(local_path) and path.isdir(local_path):
-            local_path += path.sep + path.basename(rpath.rstrip('/'))
+            local_path = path.join(local_path, base)
         self._run(local_path=local_path)
 
 
