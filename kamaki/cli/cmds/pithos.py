@@ -1365,7 +1365,8 @@ class file_download(_PithosContainer):
 
         for r, l, resume in ret:
             if r:
-                with open(l, 'rwb+' if resume else 'wb+') as f:
+                mode = 'rb+' if resume and path.exists(l) else 'wb+'
+                with open(l, mode) as f:
                     yield (r, f)
             else:
                 yield (r, l)
@@ -1381,7 +1382,7 @@ class file_download(_PithosContainer):
         progress_bar = None
         try:
             for rpath, output_file in self._src_dst(local_path):
-                if not rpath:
+                if not rpath and not path.exists(output_file):
                     self.error('Create local directory %s' % output_file)
                     makedirs(output_file)
                     continue
