@@ -1381,11 +1381,17 @@ class file_download(_PithosContainer):
         self.client.MAX_THREADS = int(self['max_threads'] or 5)
         progress_bar = None
         try:
+            # From _src_dst():
+            # If rpath is None output_file is a directory.
+            # If rpath is not None output_file is a file descriptor.
             for rpath, output_file in self._src_dst(local_path):
-                if not rpath and not path.exists(output_file):
-                    self.error('Create local directory %s' % output_file)
-                    makedirs(output_file)
+                # Create a directory
+                if not rpath:
+                    if not path.exists(output_file):
+                        self.error('Create local directory %s' % output_file)
+                        makedirs(output_file)
                     continue
+                # Download a file
                 self.error('/%s/%s --> %s' % (
                     self.container, rpath, output_file.name))
                 progress_bar, download_cb = self._safe_progress_bar(
