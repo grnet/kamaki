@@ -14,6 +14,7 @@ Bug Fixes
 * Fix delimiter handling when uploading/downloading in windows systems
 * Introduce a new command "kamaki scripts verifyfs" to verify and
   repair affected containers
+* Create subnets without gateway IPs
 
 v0.13.1
 =======
