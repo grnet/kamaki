@@ -123,8 +123,9 @@ class NetworkClient(NetworkRestClient, Waiter):
         :param name: (str) The subnet name
         :param allocation_pools: (list of dicts) start/end addresses of
             allocation pools: [{'start': ..., 'end': ...}, ...]
-        :param gateway_ip: (str)
-        :param subnet_id: (str)
+        :param gateway_ip: (str) Special cases:
+            None: server applies the default policy
+            empty iterable: no gateway IP on this subnet
         :param ipv6: (bool) ip_version == 6 if true else 4 (default)
         :param enable_dhcp: (bool)
         """
@@ -134,8 +135,8 @@ class NetworkClient(NetworkRestClient, Waiter):
             subnet['name'] = name
         if allocation_pools:
             subnet['allocation_pools'] = allocation_pools
-        if gateway_ip:
-            subnet['gateway_ip'] = gateway_ip
+        if gateway_ip is not None:
+            subnet['gateway_ip'] = gateway_ip or None
         if subnet_id:
             subnet['id'] = subnet_id
         if enable_dhcp not in (None, ):
