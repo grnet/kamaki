@@ -372,6 +372,7 @@ class subnet_create(_NetworkInit, OptionalOutput):
             ' e.g., --alloc-pool=123.45.67.1,123.45.67.8',
             '--alloc-pool'),
         gateway=ValueArgument('Gateway IP', '--gateway'),
+        no_gateway=FlagArgument('Do not assign a gateway IP', '--no-gateway'),
         subnet_id=ValueArgument('The id for the subnet', '--id'),
         ipv6=FlagArgument('If set, IP version is set to 6, else 4', '--ipv6'),
         enable_dhcp=FlagArgument('Enable dhcp (default: off)', '--with-dhcp'),
@@ -383,10 +384,11 @@ class subnet_create(_NetworkInit, OptionalOutput):
     @errors.Generic.all
     @errors.Cyclades.connection
     def _run(self):
+        gateway = '' if self['no_gateway'] else self['gateway']
         try:
             net = self.client.create_subnet(
                 self['network_id'], self['cidr'],
-                self['name'], self['allocation_pools'], self['gateway'],
+                self['name'], self['allocation_pools'], gateway,
                 self['subnet_id'], self['ipv6'], self['enable_dhcp'])
         except ClientError as ce:
             if ce.status in (404, 400):
@@ -396,6 +398,11 @@ class subnet_create(_NetworkInit, OptionalOutput):
 
     def main(self):
         super(self.__class__, self)._run()
+        if self['gateway'] and self['no_gateway']:
+            raise CLIInvalidArgument('Conflicting arguments', details=[
+                'Arguments %s and %s cannot be used together' % (
+                    self.arguments['gateway'].lvalue,
+                    self.arguments['no_gateway'].lvalue)])
         self._run()
 
 
