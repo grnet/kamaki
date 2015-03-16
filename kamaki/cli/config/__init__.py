@@ -110,6 +110,7 @@ DEFAULTS = {
         'config_cli': 'config',
         'history_cli': 'history',
         'ignore_ssl': 'off',
+        'scripts_cli': 'contrib.scripts',
         'ca_certs': CACERTS_DEFAULT_PATH,
         #  Optional command specs:
         #  'service_cli': 'astakos'
