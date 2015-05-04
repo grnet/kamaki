@@ -1,4 +1,4 @@
-# Copyright 2011-2014 GRNET S.A. All rights reserved.
+# Copyright 2011-2015 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -754,7 +754,8 @@ class PithosClient(PithosRestClient):
             if_match=None,
             if_none_match=None,
             if_modified_since=None,
-            if_unmodified_since=None):
+            if_unmodified_since=None,
+            headers=dict()):
         """Download an object (multiple connections, random blocks)
 
         :param obj: (str) remote object path
@@ -775,14 +776,18 @@ class PithosClient(PithosRestClient):
 
         :param if_modified_since: (str) formated date
 
-        :param if_unmodified_since: (str) formated date"""
+        :param if_unmodified_since: (str) formated date
+
+        :param headers: (dict) placeholder to gather object headers
+        """
         restargs = dict(
             version=version,
             data_range=None if range_str is None else 'bytes=%s' % range_str,
             if_match=if_match,
             if_none_match=if_none_match,
             if_modified_since=if_modified_since,
-            if_unmodified_since=if_unmodified_since)
+            if_unmodified_since=if_unmodified_since,
+            headers=dict())
 
         (
             blocksize,
@@ -790,6 +795,7 @@ class PithosClient(PithosRestClient):
             total_size,
             hash_list,
             remote_hashes) = self._get_remote_blocks_info(obj, **restargs)
+        headers.update(restargs.pop('headers'))
         assert total_size >= 0
 
         if download_cb:
@@ -829,7 +835,8 @@ class PithosClient(PithosRestClient):
             if_match=None,
             if_none_match=None,
             if_modified_since=None,
-            if_unmodified_since=None):
+            if_unmodified_since=None,
+            headers=dict()):
         """Download an object to a string (multiple connections). This method
         uses threads for http requests, but stores all content in memory.
 
@@ -849,6 +856,8 @@ class PithosClient(PithosRestClient):
 
         :param if_unmodified_since: (str) formated date
 
+        :param headers: (dict) a placeholder dict to gather object headers
+
         :returns: (str) the whole object contents
         """
         restargs = dict(
@@ -857,7 +866,8 @@ class PithosClient(PithosRestClient):
             if_match=if_match,
             if_none_match=if_none_match,
             if_modified_since=if_modified_since,
-            if_unmodified_since=if_unmodified_since)
+            if_unmodified_since=if_unmodified_since,
+            headers=dict())
 
         (
             blocksize,
@@ -865,6 +875,7 @@ class PithosClient(PithosRestClient):
             total_size,
             hash_list,
             remote_hashes) = self._get_remote_blocks_info(obj, **restargs)
+        headers.update(restargs.pop('headers'))
         assert total_size >= 0
 
         if download_cb:
@@ -901,7 +912,7 @@ class PithosClient(PithosRestClient):
             for thread in activethreads():
                 thread.join()
 
-    #Command Progress Bar method
+    # Command Progress Bar method
     def _cb_next(self, step=1):
         if hasattr(self, 'progress_bar_gen'):
             try:
@@ -923,7 +934,8 @@ class PithosClient(PithosRestClient):
             if_match=None,
             if_none_match=None,
             if_modified_since=None,
-            if_unmodified_since=None):
+            if_unmodified_since=None,
+            headers=dict()):
         """
         :param obj: (str) remote object path
 
@@ -950,6 +962,7 @@ class PithosClient(PithosRestClient):
             if err.status == 304 or err.status == 412:
                 return {}
             raise
+        headers.update(r.headers)
         return r.json
 
     def set_account_group(self, group, usernames):
