@@ -23,6 +23,21 @@ Features
 
 .. _Changelog-0.13:
 
+v0.13.4
+=======
+
+Bug Fixes
+=========
+* Fix Destination headers to support unicode values (pithos object
+    copy and move)
+
+v0.13.3
+=======
+
+Bug Fixes
+---------
+* Return object request headers in download methods
+
 v0.13.2
 =======
 

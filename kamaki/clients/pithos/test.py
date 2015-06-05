@@ -1302,15 +1302,17 @@ class PithosClient(TestCase):
             if_match='if and only if',
             if_none_match='if and only not',
             if_modified_since='what if not?',
-            if_unmodified_since='this happens if not!')
+            if_unmodified_since='this happens if not!',
+            headers=dict())
         expargs = dict(kwargs)
         expargs.pop('range_str')
-        for k in expargs:
-            expargs[k] = None
+        for k, v in expargs.items():
+            expargs[k] = None if v else v
         GOH.assert_called_once_with(obj, **expargs)
 
         r = self.client.download_to_string(obj, **kwargs)
         expargs['data_range'] = 'bytes=%s' % kwargs['range_str']
+        expargs.pop('headers')
         for k, v in expargs.items():
             self.assertEqual(
                 GET.mock_calls[-1][2][k],
