@@ -12,7 +12,7 @@ Package: kamaki
 Architecture: all
 Depends: ${python:Depends}, ${misc:Depends}, python-setuptools,
  python-objpool(>= 0.2), python-progress(>= 1.1),
- python-astakosclient(>= 0.14.10)
+ python-astakosclient(>= 0.14.10), ca-certificates
 Description: command-line tool for managing clouds
  Simple, yet intuitive, command-line tool for managing clouds.
  It is an initial implementation of the OpenStack Compute API,

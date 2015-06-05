@@ -5,6 +5,32 @@ Unified Changelog file for Kamaki versions >= 0.13
 
 .. _Changelog-0.13:
 
+v0.13.4
+=======
+
+Bug Fixes
+=========
+* Fix Destination headers to support unicode values (pithos object
+    copy and move)
+
+v0.13.3
+=======
+
+Bug Fixes
+---------
+* Return object request headers in download methods
+
+v0.13.2
+=======
+
+Bug Fixes
+---------
+
+* Fix delimiter handling when uploading/downloading in windows systems
+* Introduce a new command "kamaki scripts verifyfs" to verify and
+  repair affected containers
+* Create subnets without gateway IPs
+
 v0.13.1
 =======
 

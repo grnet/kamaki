@@ -387,8 +387,10 @@ def ask_user(msg, true_resp=('y', ), **kwargs):
     msg = escape_ctrl_chars(msg).encode(pref_enc, 'replace')
     yep = yep.encode(pref_enc, 'replace')
     nope = nope.encode(pref_enc, 'replace')
-    user_response = raw_input(
+    response = raw_input(
         '%s [%s/%s]: ' % (msg, yep, nope))
+    # Pressing just enter gives an empty response!
+    user_response = response if response else 'N'
     return user_response[0].lower() in [s.lower() for s in true_resp]
 
 

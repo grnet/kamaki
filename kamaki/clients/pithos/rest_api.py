@@ -738,7 +738,8 @@ class PithosRestClient(StorageClient):
             'X-Source-Version',
         ]
         self.response_header_prefices = ['X-Object-', ]
-        self.request_header_prefices_to_quote = ['x-object-meta-', ]
+        self.request_header_prefices_to_quote = [
+            'x-object-meta-', 'Destination']
 
         self.set_param('format', format, iff=format)
         self.set_param('ignore_content_type', iff=ignore_content_type)
@@ -838,7 +839,8 @@ class PithosRestClient(StorageClient):
             'X-Source-Version',
         ]
         self.response_header_prefices = ['X-Object-', ]
-        self.request_header_prefices_to_quote = ['x-object-meta-', ]
+        self.request_header_prefices_to_quote = [
+            'x-object-meta-', 'Destination']
 
         self.set_param('format', format, iff=format)
         self.set_param('ignore_content_type', iff=ignore_content_type)
