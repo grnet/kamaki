@@ -5,6 +5,14 @@ Unified Changelog file for Kamaki versions >= 0.13
 
 .. _Changelog-0.13:
 
+v0.13.4
+=======
+
+Bug Fixes
+=========
+* Fix Destination headers to support unicode values (pithos object
+    copy and move)
+
 v0.13.3
 =======
 
