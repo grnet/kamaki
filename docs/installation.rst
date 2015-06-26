@@ -11,7 +11,7 @@ have it up and running in all platforms running Python 2.6 or 2.7.
 
 * Kamaki at PyPI: `http://pypi.python.org/pypi/kamaki <https://pypi.python.org/pypi/kamaki>`_
 
-* Synnefo Linux packages: `http://apt.dev.grnet.gr <http://apt.dev.grnet.gr>`_
+* Synnefo APT repositories: `http://apt.dev.grnet.gr <http://apt.dev.grnet.gr>`_
 
 Linux and Unix-like environments
 --------------------------------
@@ -19,17 +19,17 @@ Linux and Unix-like environments
 Debian
 ^^^^^^
 
-For Debian 7.0 (wheezy):
+For Debian 8.0 (jessie):
 
 * As root, append the following to */etc/apt/sources.list* ::
 
-    deb http://apt.dev.grnet.gr wheezy/
+    deb http://apt.dev.grnet.gr jessie/
 
 * Make sure the GPG public key for the Synnefo repository is added:
 
     .. code-block:: console
 
-        $ sudo curl https://dev.grnet.gr/files/apt-grnetdev.pub|apt-key add -
+        # curl https://dev.grnet.gr/files/apt-grnetdev.pub|apt-key add -
 
     otherwise *apt-get update* will produce GPG warnings.
 
@@ -37,39 +37,13 @@ For Debian 7.0 (wheezy):
 
     .. code-block:: console
 
-        $ sudo apt-get update
-        $ sudo apt-get install kamaki
-
-Terminal colors (optional but recommended)
-""""""""""""""""""""""""""""""""""""""""""
-
-The "python-ansicolors" package enables colorful terminal outputs.
-
-E.g., in Debian:
-
-.. code-block:: console
-
-    $ sudo apt-get install python-ansicolors
-
-After the installation, tell kamaki to use the feature
-
-.. code-block:: console
-
-    $ kamaki config set colors on
-
-Unit tests (developers)
-"""""""""""""""""""""""
-
-Install the "python-mock" package to make unit tests work (developers only).
-
-.. code-block:: console
-
-    $ sudo apt-get install python-mock
+        # apt-get update
+        # apt-get install kamaki
 
 Ubuntu
 ^^^^^^
 
-For Ubuntu 12.04 LTS, 12.10 and 13.04:
+For Ubuntu 12.04 LTS and 14.04 LTS:
 
 .. code-block:: console
 
@@ -81,37 +55,65 @@ For Ubuntu 12.04 LTS, 12.10 and 13.04:
 Fedora
 ^^^^^^
 
-For Fedora 17:
+For Fedora 21:
 
 .. code-block:: console
 
-    $ cd /etc/yum.repos.d
-    $ wget http://download.opensuse.org/repositories/home:/GRNET:/synnefo/Fedora_17/home:GRNET:synnefo.repo
-    $ yum install kamaki
+    # cd /etc/yum.repos.d
+    # wget http://download.opensuse.org/repositories/home:/GRNET:/synnefo/Fedora_21/home:GRNET:synnefo.repo
+    # yum install kamaki
 
 CentOS
 ^^^^^^
 
-For CentOS 6:
+For CentOS 7:
 
 .. code-block:: console
 
-    $ cd /etc/yum.repos.d
-    $ wget http://download.opensuse.org/repositories/home:/GRNET:/synnefo/CentOS_CentOS-6/home:GRNET:synnefo.repo
-    $ yum install kamaki
+    # cd /etc/yum.repos.d
+    # wget http://download.opensuse.org/repositories/home:/GRNET:/synnefo/CentOS_7/home:GRNET:synnefo.repo
+    # yum install kamaki
 
 OpenSUSE
 ^^^^^^^^
 
-For OpenSUSE 12.3:
+For OpenSUSE 13.2:
 
 .. code-block:: console
 
-    $ zypper ar -f http://download.opensuse.org/repositories/home:/GRNET:/synnefo/openSUSE_12.3/home:GRNET:synnefo.repo
-    $ zypper in kamaki
+    # zypper ar -f http://download.opensuse.org/repositories/home:/GRNET:/synnefo/openSUSE_13.2/home:GRNET:synnefo.repo
+    # zypper in kamaki
 
 
 .. _installing-from-pypi-ref:
+
+
+Enabling terminal colors (optional but recommended)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The python ansicolors library enables colorful terminal outputs. To
+install it under Debian use the following command as root:
+
+.. code-block:: console
+
+    # apt-get install python-ansicolors
+
+After the installation, tell kamaki to use the feature by executing:
+
+.. code-block:: console
+
+    $ kamaki config set colors on
+
+Adding support for unit tests (developers only)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To make the unit tests work, install the python mock library. Under Debian you
+can do this by executing the following command as root:
+
+.. code-block:: console
+
+    # apt-get install python-mock
+
 
 Installing from pypi
 --------------------
