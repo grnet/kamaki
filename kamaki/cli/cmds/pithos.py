@@ -135,8 +135,13 @@ class _PithosAccount(_PithosInit):
 
     @staticmethod
     def object_is_dir(remote_dict):
-        return 'application/directory' in remote_dict.get(
+        """:returns: True if the content type of the object is
+            'applcation/directory' or 'application/folder'
+        """
+        content_type = remote_dict.get(
             'content_type', remote_dict.get('content-type', ''))
+        dir_types = ['application/directory', 'application/folder']
+        return any([t in content_type for t in dir_types])
 
     def _run(self):
         super(_PithosAccount, self)._run()
@@ -526,8 +531,8 @@ class file_delete(_PithosContainer):
 
             if result.json:
                 count = len(result.json)
-                self.error(' * %d other object(s) with %s as prefix found' %
-                    (count, prefix))
+                self.error(' * %d other object(s) with %s as prefix found' % (
+                    count, prefix))
 
                 if self['recursive']:
                     msg = 'The above %d object(s) will be deleted, too' % \
@@ -1211,7 +1216,7 @@ class file_cat(_PithosContainer):
 
 @command(file_cmds)
 class file_download(_PithosContainer):
-    """Download a remove file or directory object to local file system"""
+    """Download a remote file or directory object to local file system"""
 
     arguments = dict(
         resume=FlagArgument(
@@ -1253,7 +1258,6 @@ class file_download(_PithosContainer):
             if prefix:
                 obj = self.client.get_object_info(
                     prefix, version=self['object_version'])
-                #FIXME: why is this needed????
                 obj.setdefault('name', prefix)
         except ClientError as ce:
             if ce.status in (404, ):
