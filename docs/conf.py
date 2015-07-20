@@ -325,6 +325,7 @@ latex_documents = [
 # (source start file, name, description, authors, manual section).
 man_pages = [
     ('man/kamaki', 'kamaki', 'Command-line tool for managing clouds', '', 1),
+    ('man/kamaki-shell', 'kamaki-shell', 'Interactive shell for managing clouds', '', 1),
 ]
 
 # If true, show URL addresses after external links.
