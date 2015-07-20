@@ -805,7 +805,7 @@ class ip_detach(_NetworkInit, _PortWait, OptionalOutput):
     """Detach an IP from a virtual server"""
 
     arguments = dict(
-        wait=FlagArgument('Wait network to disconnect', ('-w', '--wait')),
+        wait=FlagArgument('Wait until IP is detached', ('-w', '--wait')),
     )
 
     @errors.Generic.all

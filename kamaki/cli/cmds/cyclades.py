@@ -766,7 +766,7 @@ class server_reboot(_CycladesInit, _ServerWait):
 
     arguments = dict(
         type=ValueArgument('SOFT or HARD - default: SOFT', ('--type')),
-        wait=FlagArgument('Wait server to be destroyed', ('-w', '--wait'))
+        wait=FlagArgument('Wait server to start again', ('-w', '--wait'))
     )
 
     @errors.Generic.all
@@ -799,7 +799,7 @@ class server_start(_CycladesInit, _ServerWait):
     """Start an existing virtual server"""
 
     arguments = dict(
-        wait=FlagArgument('Wait server to be destroyed', ('-w', '--wait'))
+        wait=FlagArgument('Wait server to start', ('-w', '--wait'))
     )
 
     @errors.Generic.all
@@ -821,7 +821,7 @@ class server_shutdown(_CycladesInit,  _ServerWait):
     """Shutdown an active virtual server"""
 
     arguments = dict(
-        wait=FlagArgument('Wait server to be destroyed', ('-w', '--wait'))
+        wait=FlagArgument('Wait server to shut down', ('-w', '--wait'))
     )
 
     @errors.Generic.all
