@@ -449,7 +449,7 @@ class PithosClient(PithosRestClient):
             ) = self.use_alternative_account(
                 self._get_file_block_info, f, size, container_info_cache,
                 alternative_account=target_account)
-        (hashes, hmap, offset) = ([], {}, 0)
+        hashes, hmap = [], {}
         content_type = content_type or 'application/octet-stream'
 
         self._calculate_blocks_for_upload(
@@ -575,7 +575,7 @@ class PithosClient(PithosRestClient):
         self._assert_container()
 
         blocksize, blockhash, size, nblocks = self._get_file_block_info(
-                fileobj=None, size=len(input_str), cache=container_info_cache)
+            fileobj=None, size=len(input_str), cache=container_info_cache)
         (hashes, hmap, offset) = ([], {}, 0)
         if not content_type:
             content_type = 'application/octet-stream'
@@ -662,14 +662,14 @@ class PithosClient(PithosRestClient):
 
     # download_* auxiliary methods
     def _get_remote_blocks_info(self, obj, **restargs):
-        #retrieve object hashmap
+        # retrieve object hashmap
         myrange = restargs.pop('data_range', None)
         hashmap = self.get_object_hashmap(obj, **restargs)
         restargs['data_range'] = myrange
         blocksize = int(hashmap['block_size'])
         blockhash = hashmap['block_hash']
         total_size = hashmap['bytes']
-        #assert total_size/blocksize + 1 == len(hashmap['hashes'])
+        # assert total_size/blocksize + 1 == len(hashmap['hashes'])
         map_dict = {}
         for i, h in enumerate(hashmap['hashes']):
             #  map_dict[h] = i   CHAGE
@@ -745,7 +745,7 @@ class PithosClient(PithosRestClient):
             blockids = [blk * blocksize for blk in blockids]
             unsaved = [blk for blk in blockids if not (
                 blk < file_size and block_hash == self._hash_from_file(
-                        local_file, blk, blocksize, blockhash))]
+                    local_file, blk, blocksize, blockhash))]
             self._cb_next(len(blockids) - len(unsaved))
             if unsaved:
                 key = unsaved[0]
@@ -1026,15 +1026,6 @@ class PithosClient(PithosRestClient):
             'X-Account-Policy-Quota',
             exactMatch=True)
 
-    #def get_account_versioning(self):
-    #    """
-    #    :returns: (dict)
-    #    """
-    #    return filter_in(
-    #        self.get_account_info(),
-    #        'X-Account-Policy-Versioning',
-    #        exactMatch=True)
-
     def get_account_meta(self, until=None):
         """
         :param until: (str) formated date
@@ -1063,19 +1054,6 @@ class PithosClient(PithosRestClient):
         """
         r = self.account_post(update=True, metadata={metakey: ''})
         return r.headers
-
-    #def set_account_quota(self, quota):
-    #    """
-    #    :param quota: (int)
-    #    """
-    #    self.account_post(update=True, quota=quota)
-
-    #def set_account_versioning(self, versioning):
-    #    """
-    #    :param versioning: (str)
-    #    """
-    #    r = self.account_post(update=True, versioning=versioning)
-    #    return r.headers
 
     def list_containers(self):
         """
