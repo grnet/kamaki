@@ -109,6 +109,19 @@ class PithosClient(PithosRestClient):
         super(PithosClient, self).__init__(
             endpoint_url, token, account, container)
 
+    def use_alternative_account(self, func, *args, **kwargs):
+        """Run method with an alternative account UUID, as long as kwargs
+           contain a non-None "alternative_account" argument
+        """
+        alternative_account = kwargs.pop('alternative_account', None)
+        bu_account = self.account
+        try:
+            if alternative_account and alternative_account != self.account:
+                self.account = alternative_account
+            return func(*args, **kwargs)
+        finally:
+            self.account = bu_account
+
     def create_container(
             self,
             container=None, sizelimit=None, versioning=None, metadata=None,
@@ -389,7 +402,8 @@ class PithosClient(PithosRestClient):
             content_type=None,
             sharing=None,
             public=None,
-            container_info_cache=None):
+            container_info_cache=None,
+            target_account=None):
         """Upload an object using multiple connections (threads)
 
         :param obj: (str) remote object path
@@ -423,12 +437,18 @@ class PithosClient(PithosRestClient):
 
         :param container_info_cache: (dict) if given, avoid redundant calls to
             server for container info (block size and hash information)
+
+        :param target_account: (str) the UUID of the account the object will be
+            allocated at, if different to the client account (e.g., when
+            user A uploads something to a location owned by user B)
         """
         self._assert_container()
 
         block_info = (
-            blocksize, blockhash, size, nblocks) = self._get_file_block_info(
-                f, size, container_info_cache)
+            blocksize, blockhash, size, nblocks
+            ) = self.use_alternative_account(
+                self._get_file_block_info, f, size, container_info_cache,
+                alternative_account=target_account)
         (hashes, hmap, offset) = ([], {}, 0)
         content_type = content_type or 'application/octet-stream'
 
@@ -440,8 +460,8 @@ class PithosClient(PithosRestClient):
             hash_cb=hash_cb)
 
         hashmap = dict(bytes=size, hashes=hashes)
-        missing, obj_headers = self._create_object_or_get_missing_hashes(
-            obj, hashmap,
+        missing, obj_headers = self.use_alternative_account(
+            self._create_object_or_get_missing_hashes, obj, hashmap,
             content_type=content_type,
             size=size,
             if_etag_match=if_etag_match,
@@ -449,7 +469,8 @@ class PithosClient(PithosRestClient):
             content_encoding=content_encoding,
             content_disposition=content_disposition,
             permissions=sharing,
-            public=public)
+            public=public,
+            alternative_account=target_account)
 
         if missing is None:
             return obj_headers
@@ -487,7 +508,8 @@ class PithosClient(PithosRestClient):
                 '%s blocks failed to upload' % len(missing),
                 details=details)
 
-        r = self.object_put(
+        r = self.use_alternative_account(
+            self.object_put,
             obj,
             format='json',
             hashmap=True,
@@ -499,7 +521,8 @@ class PithosClient(PithosRestClient):
             json=hashmap,
             permissions=sharing,
             public=public,
-            success=201)
+            success=201,
+            alternative_account=target_account)
         return r.headers
 
     def upload_from_string(

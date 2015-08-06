@@ -1,4 +1,4 @@
-# Copyright 2011-2014 GRNET S.A. All rights reserved.
+# Copyright 2011-2015 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -966,7 +966,10 @@ class file_upload(_PithosContainer):
 
     def _check_container_limit(self, path):
         cl_dict = self.client.get_container_limit()
-        container_limit = int(cl_dict['x-container-policy-quota'])
+        try:
+            container_limit = int(cl_dict['x-container-policy-quota'])
+        except KeyError:
+            container_limit = 0
         r = self.client.container_get()
         used_bytes = sum(int(o['bytes']) for o in r.json)
         path_size = get_path_size(path)
@@ -1069,7 +1072,7 @@ class file_upload(_PithosContainer):
             sharing=self._sharing(),
             public=self['public'])
         container_info_cache = dict()
-        rpref = 'pithos://%s' if self['account'] else ''
+        rpref = ('pithos://%s' % self['account']) if self['account'] else ''
         for f, rpath in self._src_dst(local_path, remote_path):
             self.error('%s --> %s/%s/%s' % (
                 f.name, rpref, self.client.container, rpath))
@@ -1092,6 +1095,11 @@ class file_upload(_PithosContainer):
                             'Calculating block hashes')
                     else:
                         hash_cb = None
+
+                    caller_id = self.astakos.user_term('id')
+                    if self.client.account != caller_id:
+                        params['target_account'], self.client.account = (
+                            self.client.account, caller_id)
                     self.client.upload_object(
                         rpath, f,
                         hash_cb=hash_cb,
