@@ -65,8 +65,8 @@ class CycladesComputeClient(CycladesComputeRestClient, Waiter):
             {"uuid": <network_uuid>},
             {"uuid": <network_uuid>, "fixed_ip": address},
             {"port": <port_id>}, ...]
-            ATTENTION: Empty list is different to None. None means ' do not
-            mention it', empty list means 'automatically get an ip'
+            ATTENTION: Empty list is different to None. None means 'apply the
+            default server policy', empty list means 'do not attach a network'
 
         :param project_id: the project where to assign the server
 
@@ -268,7 +268,7 @@ class CycladesNetworkClient(NetworkClient):
             port['name'] = name
         if fixed_ips:
             for fixed_ip in fixed_ips or []:
-                if not 'ip_address' in fixed_ip:
+                if 'ip_address' not in fixed_ip:
                     raise ValueError('Invalid fixed_ip [%s]' % fixed_ip)
             port['fixed_ips'] = fixed_ips
         r = self.ports_post(json_data=dict(port=port), success=201)
