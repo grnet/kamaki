@@ -504,11 +504,14 @@ class image_register(_ImageInit, OptionalOutput):
                 if pbar:
                     hash_bar = pbar.clone()
                     hash_cb = hash_bar.get_generator('Calculating hashes')
-                pithos.upload_object(
-                    locator.path, f,
-                    hash_cb=hash_cb, upload_cb=upload_cb,
-                    container_info_cache=self.container_info_cache)
-                pbar.finish()
+                try:
+                    pithos.upload_object(
+                        locator.path, f,
+                        hash_cb=hash_cb, upload_cb=upload_cb,
+                        container_info_cache=self.container_info_cache)
+                finally:
+                    if pbar:
+                        pbar.finish()
 
         (params, properties, new_loc) = self._load_params_from_file(location)
         if location != new_loc:
@@ -561,7 +564,7 @@ class image_register(_ImageInit, OptionalOutput):
 
     def main(self):
         super(self.__class__, self)._run()
-        locator, pithos = self.arguments['pithos_location'], None
+        locator = self.arguments['pithos_location']
         locator.setdefault('uuid', self.astakos.user_term('id'))
         locator.path = locator.path or path.basename(
             self['local_image_path'] or '')
