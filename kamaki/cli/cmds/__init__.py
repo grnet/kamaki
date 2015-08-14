@@ -389,19 +389,32 @@ class Wait(object):
 
     def wait(
             self, service, service_id, status_method, status,
-            countdown=True, timeout=60, msg='still'):
-        (progress_bar, wait_cb) = self._safe_progress_bar(
+            countdown=True, timeout=60, msg='still', update_cb=None):
+        (progress_bar, wait_gen) = self._safe_progress_bar(
             '%s %s status %s %s' % (service, service_id, msg, status),
             countdown=countdown, timeout=timeout)
+        wait_step = None
+        if wait_gen:
+            wait_step = wait_gen(timeout)
+            wait_step.next()
+
+        def wait_cb(item_details):
+            if wait_step:
+                if update_cb:
+                    progress_bar.bar.goto(update_cb(item_details))
+                else:
+                    wait_step.next()
+
         try:
-            new_mode = status_method(
+            item_details = status_method(
                 service_id, status, max_wait=timeout, wait_cb=wait_cb)
-            if new_mode:
-                self.error(
-                    '%s %s status: %s' % (service, service_id, new_mode))
+            if item_details:
+                self.error('')
+                self.error('%s %s status: %s' % (
+                    service, service_id, item_details['status']))
             else:
                 exit("Operation timed out")
         except KeyboardInterrupt:
-            self.error('\n- canceled')
+            self.error(' - canceled')
         finally:
             self._safe_progress_bar_finish(progress_bar)

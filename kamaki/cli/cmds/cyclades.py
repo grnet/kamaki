@@ -71,10 +71,17 @@ server_states = ('BUILD', 'ACTIVE', 'STOPPED', 'REBOOT', 'ERROR')
 class _ServerWait(Wait):
 
     def wait_while(self, server_id, current_status, timeout=60):
+        if current_status in ('BUILD', ):
+
+            def update_cb(item_details):
+                return item_details.get('progress', None)
+        else:
+            update_cb = None
+
         super(_ServerWait, self).wait(
             'Server', server_id, self.client.wait_server_while, current_status,
             countdown=(current_status not in ('BUILD', )),
-            timeout=timeout if current_status not in ('BUILD', ) else 100)
+            timeout=timeout, update_cb=update_cb)
 
     def wait_until(self, server_id, target_status, timeout=60):
         super(_ServerWait, self).wait(

@@ -596,12 +596,38 @@ class Client(Logged):
         return self.request('move', path, **kwargs)
 
 
+def wait(poll, poll_params, stop, delay=1, timeout=100, wait_cb=None):
+    """Wait as long as the stop method returns False, polling each round
+    :param poll: (method) the polling method is called with poll_params. By
+        convention, it returns a dict of information about the item
+    :param poll_params: (iterable) each round, call poll with these parameters
+    :param stop: (method) gets the results of poll method as input and decides
+        if the wait method should stop
+    :param delay: (int) how long to wait (in seconds) between polls
+    :param timeout: (int) if this number of polls is reached, stop
+    :param wait_cb: (method) a call back method that takes item_details as
+        input
+    :returns: (dict) the last details dict of the item
+    """
+    results = None
+    for polls in range(timeout // delay):
+        results = poll(*poll_params)
+        if wait_cb:
+            wait_cb(results)
+        if stop(results):
+            break
+        sleep(delay)
+    return results
+
+
 class Waiter(object):
+    """Use this class to provide blocking API methods - DEPRECATED FROM 0.16"""
 
     def _wait(
             self, item_id, wait_status, get_status,
             delay=1, max_wait=100, wait_cb=None, wait_until_status=False):
-        """Wait while the item is still in wait_status or to reach it
+        """DEPRECATED, to be removed in 0.16
+        Wait while the item is still in wait_status or to reach it
 
         :param server_id: integer (str or int)
 

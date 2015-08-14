@@ -35,7 +35,7 @@ from kamaki.clients.cyclades.rest_api import (
     CycladesComputeRestClient, CycladesBlockStorageRestClient)
 from kamaki.clients.network import NetworkClient
 from kamaki.clients.utils import path4url
-from kamaki.clients import ClientError, Waiter
+from kamaki.clients import ClientError, Waiter, wait
 
 
 class CycladesComputeClient(CycladesComputeRestClient, Waiter):
@@ -173,7 +173,8 @@ class CycladesComputeClient(CycladesComputeRestClient, Waiter):
         return r.json
 
     def get_server_status(self, server_id):
-        """:returns: (current status, progress percentile if available)"""
+        """Deprecated - will be removed in version 0.15
+        :returns: (current status, progress percentile if available)"""
         r = self.get_server_details(server_id)
         return r['status'], (r.get('progress', None) if (
             r['status'] in ('BUILD', )) else None)
@@ -189,8 +190,9 @@ class CycladesComputeClient(CycladesComputeRestClient, Waiter):
         :param wait_cb: if set a progressbar is used to show progress
         :returns: (str) the new mode if succesfull, (bool) False if timed out
         """
-        return self.wait_while(
-            server_id, current_status, CycladesComputeClient.get_server_status,
+        return wait(
+            self.get_server_details, (server_id, ),
+            lambda i: i['status'] != current_status,
             delay, max_wait, wait_cb)
 
     def wait_server_until(
@@ -204,15 +206,16 @@ class CycladesComputeClient(CycladesComputeRestClient, Waiter):
         :param wait_cb: if set a progressbar is used to show progress
         :returns: (str) the new mode if succesfull, (bool) False if timed out
         """
-        return self.wait_until(
-            server_id, target_status, CycladesComputeClient.get_server_status,
+        return wait(
+            self.get_server_details, (server_id, ),
+            lambda i: i['status'] == target_status,
             delay, max_wait, wait_cb)
 
-    # Backwards compatibility
+    # Backwards compatibility - deprecated, will be replaced in 0.15
     wait_server = wait_server_while
 
 
-# Backwards compatibility
+# Backwards compatibility - will be removed in 0.15
 CycladesClient = CycladesComputeClient
 
 
