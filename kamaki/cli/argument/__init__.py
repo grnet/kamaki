@@ -552,6 +552,63 @@ class ProgressBarArgument(FlagArgument):
             mybar.finish()
 
 
+class PithosLocationArgument(ValueArgument):
+    """Resolve pithos URI, return in the form pithos://uuid/container[/object]
+
+    UPDATE: URLs without an object are also resolvable. Therefore, caller
+    methods should check if there is an object or not
+    """
+
+    def __init__(
+            self, help=None, parsed_name=None, default=None, user_uuid=None):
+        super(PithosLocationArgument, self).__init__(
+            help=help, parsed_name=parsed_name, default=default)
+        self.uuid, self.container, self.object = user_uuid, None, None
+
+    def setdefault(self, term, value):
+        if not getattr(self, term, None):
+            setattr(self, term, value)
+
+    @property
+    def dict(self):
+        """:returns: location as {user_uuid: .., container: .., object: ..}"""
+        return dict(
+            user_uuid=self.uuid, container=self.container, object=self.object)
+
+    @property
+    def tuple(self):
+        """returns: location as (user_uuid, container, object)"""
+        return (self.uuid, self.container, self.object)
+
+    @property
+    def value(self):
+        object_ = ('/%s' % self.object) if self.object else ''
+        return 'pithos://%s/%s%s' % (self.uuid, self.container, object_)
+
+    @value.setter
+    def value(self, location):
+        if location:
+            from kamaki.cli.cmds.pithos import _PithosContainer as pc
+            try:
+                uuid, self.container, self.object = pc.resolve_pithos_url(
+                    location)
+                self.uuid = uuid or self.uuid
+                assert self.container, 'No container in pithos URI'
+            except Exception as e:
+                raise CLIInvalidArgument(
+                    'Invalid Pithos+ location %s (%s)' % (location, e),
+                    details=[
+                        'The image location must be a valid Pithos+',
+                        'location. There are two valid formats:',
+                        '  pithos://USER_UUID/CONTAINER[/OBJECT]',
+                        'OR',
+                        '  /CONTAINER/OBJECT]',
+                        'To see all containers:',
+                        '  [kamaki] container list',
+                        'To list the contents of a container:',
+                        '  [kamaki] container list CONTAINER'])
+
+
 #  Initial command line interface arguments
 
 
