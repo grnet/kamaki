@@ -574,7 +574,14 @@ class Pithos(object):
             try:
                 return func(self, *args, **kwargs)
             except ClientError as ce:
-                if ce.status in (404, ):
+                if '/' in getattr(self, 'container', ''):
+                    raise CLIError(
+                        'Invalid container name %s' % self.container,
+                        importance=2, details=[
+                            '"/" is an invalid character for containers',
+                            '%s %s' % (getattr(ce, 'status', ''), ce)
+                        ])
+                elif ce.status in (404, ):
                         cont = ('%s or %s' % (self.container, dst_cont)) if (
                             dst_cont) else self.container
                         raise CLIError(
