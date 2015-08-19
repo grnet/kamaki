@@ -355,8 +355,8 @@ class AllocationPoolArgument(RepeatableArgument):
             if not (start and comma and end):
                 raise CLIInvalidArgument(
                     'Invalid allocation pool argument %s' % pool, details=[
-                    'Allocation values must be of the form:',
-                    '  <start address>,<end address>'])
+                        'Allocation values must be of the form:',
+                        '  <start address>,<end address>'])
             new_list.append(dict(start=start, end=end))
         self._value = new_list
 

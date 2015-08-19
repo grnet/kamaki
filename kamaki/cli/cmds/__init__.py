@@ -202,19 +202,19 @@ class CommandInit(object):
         if not self.client:
             return
         try:
-            self.client.LOG_TOKEN = (
+            self.client.LOG_TOKEN = self.client.LOG_TOKEN or (
                 self['config'].get('global', 'log_token').lower() == 'on')
         except Exception as e:
             log.debug('Failed to read custom log_token setting:'
                       '%s\n default for log_token is off' % e)
         try:
-            self.client.LOG_DATA = (
+            self.client.LOG_DATA = self.client.LOG_DATA or (
                 self['config'].get('global', 'log_data').lower() == 'on')
         except Exception as e:
             log.debug('Failed to read custom log_data setting:'
                       '%s\n default for log_data is off' % e)
         try:
-            self.client.LOG_PID = (
+            self.client.LOG_PID = self.client.LOG_PID or (
                 self['config'].get('global', 'log_pid').lower() == 'on')
         except Exception as e:
             log.debug('Failed to read custom log_pid setting:'
