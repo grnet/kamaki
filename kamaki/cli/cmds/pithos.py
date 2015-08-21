@@ -1195,7 +1195,9 @@ class file_cat(_PithosContainer):
         if_unmodified_since=DateArgument(
             'show output unmodified since then', '--if-unmodified-since'),
         object_version=ValueArgument(
-            'Get contents of the chosen version', '--object-version')
+            'Get contents of the chosen version', '--object-version'),
+        buffer_blocks=IntArgument(
+            'Size of buffer in blocks (default: 4)', '--buffer-blocks')
     )
 
     @errors.Generic.all
@@ -1203,14 +1205,16 @@ class file_cat(_PithosContainer):
     @errors.Pithos.object_path
     def _run(self):
         try:
-            self.client.download_object(
+            # self.client.download_object(
+            self.client.stream_down(
                 self.path, self._out,
                 range_str=self['range'],
                 version=self['object_version'],
                 if_match=self['if_match'],
                 if_none_match=self['if_none_match'],
                 if_modified_since=self['if_modified_since'],
-                if_unmodified_since=self['if_unmodified_since'])
+                if_unmodified_since=self['if_unmodified_since'],
+                buffer_blocks=self['buffer_blocks'])
         except ClientError as ce:
             if ce.status in (404, ):
                 self._container_exists()
@@ -1219,6 +1223,11 @@ class file_cat(_PithosContainer):
 
     def main(self, path_or_url):
         super(self.__class__, self)._run(path_or_url)
+        if self['buffer_blocks'] is not None and self['buffer_blocks'] < 1:
+            arg = self.arguments['buffer_blocks']
+            raise CLIInvalidArgument(
+                'Invalid value %s' % arg.value, importance=2, details=[
+                    '%s must be a possitive integer' % arg.lvalue])
         self._run()
 
 

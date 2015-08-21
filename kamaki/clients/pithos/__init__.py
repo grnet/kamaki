@@ -49,6 +49,12 @@ from kamaki.clients.utils import path4url, filter_in, readall
 LOG = getLogger(__name__)
 
 
+def _dump_buffer(buffer_, destination):
+    """Append buffer to destination (file descriptor)"""
+    destination.write(buffer_)
+    destination.flush()
+
+
 def _pithos_hash(block, blockhash):
     h = newhashlib(blockhash)
     h.update(block.rstrip('\x00'))
@@ -664,7 +670,8 @@ class PithosClient(PithosRestClient):
     def _get_remote_blocks_info(self, obj, **restargs):
         # retrieve object hashmap
         myrange = restargs.pop('data_range', None)
-        hashmap = self.get_object_hashmap(obj, **restargs)
+        hashmap = restargs.pop('hashmap', None) or (
+            self.get_object_hashmap(obj, **restargs))
         restargs['data_range'] = myrange
         blocksize = int(hashmap['block_size'])
         blockhash = hashmap['block_hash']
@@ -725,6 +732,7 @@ class PithosClient(PithosRestClient):
                 raise g.exception
             block = g.value.content
             for block_start in blockids[key]:
+                # This should not be used in all cases
                 local_file.seek(block_start + offset)
                 local_file.write(block)
                 self._cb_next()
@@ -849,6 +857,7 @@ class PithosClient(PithosRestClient):
                 range_str,
                 **restargs)
             if not range_str:
+                # this should not be used in all cases
                 dst.truncate(total_size)
 
         self._complete_cb()
@@ -862,6 +871,8 @@ class PithosClient(PithosRestClient):
             if_none_match=None,
             if_modified_since=None,
             if_unmodified_since=None,
+            remote_block_info=None,
+            hashmap=None,
             headers=dict()):
         """Download an object to a string (multiple connections). This method
         uses threads for http requests, but stores all content in memory.
@@ -882,6 +893,13 @@ class PithosClient(PithosRestClient):
 
         :param if_unmodified_since: (str) formated date
 
+        :param remote_block_info: (tuple) blocksize, blockhas, total_size and
+            hash_list
+
+        :param hashmap: (dict) the remote object hashmap, if it is available
+            e.g., from another call. Used for minimizing HEAD container
+            requests
+
         :param headers: (dict) a placeholder dict to gather object headers
 
         :returns: (str) the whole object contents
@@ -900,7 +918,8 @@ class PithosClient(PithosRestClient):
             blockhash,
             total_size,
             hash_list,
-            remote_hashes) = self._get_remote_blocks_info(obj, **restargs)
+            remote_hashes) = self._get_remote_blocks_info(
+                obj, hashmap=hashmap, **restargs)
         headers.update(restargs.pop('headers'))
         assert total_size >= 0
 
@@ -937,6 +956,54 @@ class PithosClient(PithosRestClient):
             LOG.debug('- - - wait for threads to finish')
             for thread in activethreads():
                 thread.join()
+
+    def stream_down(self, obj, dst, buffer_blocks=4, **kwargs):
+        """
+        Download obj to dst as a stream. Buffer-sized chunks are downloaded
+            sequentially, but the blocks of each chunk are downloaded
+            asynchronously, using the download_to_string method
+        :param obj: (str) the remote object
+        :param dst: a file descriptor allowing sequential writing
+        :param buffer_blocks: (int) the size of the buffer in blocks. If it is
+            1, all blocks will be downloaded sequentially
+        :param kwargs: (dict) keyword arguments for download_to_string method
+        """
+        buffer_blocks = 1 if buffer_blocks < 2 else buffer_blocks
+        hashmap = kwargs.get('hashmap', None)
+        range_str = kwargs.pop('range_str', None)
+        if hashmap is None:
+            # Clean kwargs if it contains hashmap=None
+            kwargs.pop('hashmap', None)
+            # Get new hashmap
+            hashmap = kwargs['hashmap'] = self.get_object_hashmap(
+                obj,
+                kwargs.get('version', None),
+                kwargs.get('if_match', None),
+                kwargs.get('if_none_match', None),
+                kwargs.get('if_modified_since', None),
+                kwargs.get('if_unmodified_since', None))
+        block_size, obj_size = int(hashmap['block_size']), hashmap['bytes']
+        buffer_size = buffer_blocks * block_size
+        event = None
+
+        def finish_event(e):
+            """Blocking: stop until e is finished or raise error"""
+            if e is not None:
+                if e.isAlive():
+                    e.join()
+                if e.exception:
+                    raise e.exception
+
+        for chunk_number in range(1 + obj_size // buffer_size):
+            start = chunk_number * buffer_size
+            end = start + buffer_size
+            end = (obj_size if (end > obj_size) else end) - 1
+            kwargs['range_str'] = _range_up(start, end, obj_size, range_str)
+            buffer_ = self.download_to_string(obj, **kwargs)
+            finish_event(event)
+            event = SilentEvent(_dump_buffer, buffer_, dst)
+            event.start()
+        finish_event(event)
 
     # Command Progress Bar method
     def _cb_next(self, step=1):
