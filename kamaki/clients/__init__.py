@@ -38,20 +38,21 @@ from time import time
 from httplib import ResponseNotReady, HTTPException
 from time import sleep
 from random import random
-from logging import getLogger
+import logging
 import ssl
 
 from kamaki.clients.utils import https
-
 from kamaki.clients import utils
 
 
 TIMEOUT = 60.0   # seconds
 HTTP_METHODS = ['GET', 'POST', 'PUT', 'HEAD', 'DELETE', 'COPY', 'MOVE']
+DEBUGV = logging.DEBUG + 1
 
-log = getLogger(__name__)
-sendlog = getLogger('%s.send' % __name__)
-recvlog = getLogger('%s.recv' % __name__)
+logging.addLevelName(DEBUGV, 'DEBUGV')
+log = logging.getLogger(__name__)
+sendlog = logging.getLogger('%s.send' % __name__)
+recvlog = logging.getLogger('%s.recv' % __name__)
 
 
 def _encode(v):
@@ -154,19 +155,19 @@ class RequestManager(Logged):
 
     def dump_log(self):
         plog = ('\t[%s]' % self) if self.LOG_PID else ''
-        sendlog.info('%s %s://%s%s%s' % (
+        sendlog.log(DEBUGV, '%s %s://%s%s%s' % (
             self.method, self.scheme, self.netloc, self.path, plog))
         for key, val in self.headers.items():
             if key.lower() in ('x-auth-token', ) and not self.LOG_TOKEN:
                 self._token, val = val, '...'
-            sendlog.info('  %s: %s%s' % (key, val, plog))
+            sendlog.log(DEBUGV, '  %s: %s%s' % (key, val, plog))
         if self.data:
-            sendlog.info('data size: %s%s' % (len(self.data), plog))
+            sendlog.log(DEBUGV, 'data size: %s%s' % (len(self.data), plog))
             if self.LOG_DATA:
-                sendlog.info(utils.escape_ctrl_chars(self.data.replace(
+                sendlog.log(DEBUGV, utils.escape_ctrl_chars(self.data.replace(
                     self._token, '...') if self._token else self.data))
         else:
-            sendlog.info('data size: 0%s' % plog)
+            sendlog.log(DEBUGV, 'data size: 0%s' % plog)
 
     def _encode_headers(self):
         headers = dict()
@@ -193,7 +194,7 @@ class RequestManager(Logged):
                 url=self.path.encode('utf-8'),
                 headers=self.headers,
                 body=self.data)
-            sendlog.info('')
+            sendlog.log(DEBUGV, '')
             keep_trying = TIMEOUT
             while keep_trying > 0:
                 try:
@@ -206,7 +207,7 @@ class RequestManager(Logged):
             raise KamakiSSLError('SSL Connection error (%s)' % ssle)
         plog = ('\t[%s]' % self) if self.LOG_PID else ''
         logmsg = 'Kamaki Timeout %s %s%s' % (self.method, self.path, plog)
-        recvlog.debug(logmsg)
+        recvlog.log(DEBUGV, logmsg)
         raise ClientError('HTTPResponse takes too long - kamaki timeout')
 
     @property
@@ -272,13 +273,14 @@ class ResponseManager(Logged):
                     r = self.request.perform(connection)
                     plog = ''
                     if self.LOG_PID:
-                        recvlog.info('\n%s <-- %s <-- [req: %s]\n' % (
+                        recvlog.log(DEBUGV, '\n%s <-- %s <-- [req: %s]\n' % (
                             self, r, self.request))
                         plog = '\t[%s]' % self
                     self._request_performed = True
                     self._status_code, self._status = r.status, unquote(
                         r.reason)
-                    recvlog.info(
+                    recvlog.log(
+                        DEBUGV,
                         '%d %s%s' % (self.status_code, self.status, plog))
                     self._headers = dict()
 
@@ -287,16 +289,16 @@ class ResponseManager(Logged):
                     for k, v in r_headers:
                         self._headers[k] = unquote(v).decode('utf-8') if (
                             k.lower()) in enc_headers else v
-                        recvlog.info('  %s: %s%s' % (k, v, plog))
+                        recvlog.log(DEBUGV, '  %s: %s%s' % (k, v, plog))
                     self._content = r.read()
-                    recvlog.info('data size: %s%s' % (
+                    recvlog.log(DEBUGV, 'data size: %s%s' % (
                         len(self._content) if self._content else 0, plog))
                     if self.LOG_DATA and self._content:
                         data = '%s%s' % (self._content, plog)
                         data = utils.escape_ctrl_chars(data)
                         if self._token:
                             data = data.replace(self._token, '...')
-                        recvlog.info(data)
+                        recvlog.log(DEBUGV, data)
                 break
             except Exception as err:
                 if isinstance(err, HTTPException):
@@ -306,8 +308,8 @@ class ResponseManager(Logged):
                                 self.request.url, retries, type(err), err))
                 else:
                     from traceback import format_stack
-                    recvlog.debug(
-                        '\n'.join(['%s' % type(err)] + format_stack()))
+                    recvlog.log(
+                        DEBUGV, '\n'.join(['%s' % type(err)] + format_stack()))
                     raise
 
     @property
@@ -492,7 +494,7 @@ class Client(Logged):
                 else:
                     results[key] = thread.value
             flying = unfinished
-        sendlog.info('- - - wait for threads to finish')
+        sendlog.debug('- - - wait for threads to finish')
         for key, thread in flying.items():
             if thread.isAlive():
                 thread.join()
@@ -537,7 +539,8 @@ class Client(Logged):
             if data:
                 headers.setdefault('Content-Length', '%s' % len(data))
             plog = ('\t[%s]' % self) if self.LOG_PID else ''
-            sendlog.debug('\n\nCMT %s@%s%s', method, self.endpoint_url, plog)
+            sendlog.log(
+                DEBUGV, '\n\nCMT %s@%s%s', method, self.endpoint_url, plog)
             req = RequestManager(
                 method, self.endpoint_url, path,
                 data=data, headers=headers, params=params)
