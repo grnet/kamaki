@@ -5,6 +5,17 @@ Unified Changelog file for Kamaki versions >= 0.13
 
 .. _Changelog-0.13:
 
+v0.13.5
+=======
+
+Bug Fixes
+=========
+* Raise SSLError when connecting with SSL on OSX and no valid SSL
+    credential files exist)
+* Use a new logging level for verbosity. This prevents the client
+    loggers in INFO mode and above from outputting the detailed
+    connection information.
+
 v0.13.4
 =======
 
