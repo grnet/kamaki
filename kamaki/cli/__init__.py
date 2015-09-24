@@ -46,7 +46,7 @@ from kamaki.cli.utils import (
 from kamaki.cli.errors import CLIError, CLICmdSpecError
 from kamaki.cli import logger
 from kamaki.clients.astakos import CachedAstakosClient
-from kamaki.clients import ClientError, KamakiSSLError
+from kamaki.clients import ClientError, KamakiSSLError, DEBUGV
 from kamaki.clients.utils import https, escape_ctrl_chars
 
 
@@ -177,9 +177,9 @@ def _setup_logging(debug=False, verbose=False, _verbose_with_data=False):
         logger.add_stream_logger('kamaki.clients.recv', logging.DEBUG, rfmt)
         logger.add_stream_logger(__name__, logging.DEBUG)
     elif verbose:
-        logger.add_stream_logger('kamaki.clients.send', logging.INFO, sfmt)
-        logger.add_stream_logger('kamaki.clients.recv', logging.INFO, rfmt)
-        logger.add_stream_logger(__name__, logging.INFO)
+        logger.add_stream_logger('kamaki.clients.send', DEBUGV, sfmt)
+        logger.add_stream_logger('kamaki.clients.recv', DEBUGV, rfmt)
+        logger.add_stream_logger(__name__, DEBUGV)
     # else:
     #     logger.add_stream_logger(__name__, logging.WARNING)
     if _verbose_with_data:

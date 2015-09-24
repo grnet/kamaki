@@ -91,8 +91,8 @@ class AstakosClient(TestCase):
                 (['some url', 'some token', 'other', 'params'], {}),
                 (['some url', 'some token', 'other params'], (dict(k='v'))),
                 (['some url', 'some token'], (dict(k1='v1', k2='v2'))),
-                (['some url', ], (dict(k1='v1', k2='v2', token='some token'))),
-            ):
+                (['some url', ], (dict(k1='v1', k2='v2', token='some token')))
+                ):
             astakos.AstakosClient(*args, **kwargs)
             url, token = args.pop(0), kwargs.pop('token', None) or args.pop(0)
             self.assertTrue(
@@ -139,7 +139,7 @@ class LoggedAstakosClient(TestCase):
     def tearDown(self):
         FR.headers = {}
 
-    @patch('kamaki.clients.recvlog.info', return_value='recvlog info')
+    @patch('kamaki.clients.recvlog.debug', return_value='recvlog info')
     def test__dump_response(self, recvlog_info):
         for headers, status, message, data, LOG_DATA, LOG_TOKEN in product(
                 (
