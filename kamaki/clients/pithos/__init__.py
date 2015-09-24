@@ -37,13 +37,16 @@ from os import fstat
 from hashlib import new as newhashlib
 from time import time
 from StringIO import StringIO
+from logging import getLogger
 
 from binascii import hexlify
 
-from kamaki.clients import SilentEvent, sendlog
+from kamaki.clients import SilentEvent
 from kamaki.clients.pithos.rest_api import PithosRestClient
 from kamaki.clients.storage import ClientError
 from kamaki.clients.utils import path4url, filter_in, readall
+
+LOG = getLogger(__name__)
 
 
 def _pithos_hash(block, blockhash):
@@ -457,14 +460,14 @@ class PithosClient(PithosRestClient):
                 try:
                     upload_gen.next()
                 except:
-                    sendlog.debug('Progress bar failure')
+                    LOG.debug('Progress bar failure')
                     break
         else:
             upload_gen = None
 
         retries = 7
         while retries:
-            sendlog.info('%s blocks missing' % len(missing))
+            LOG.debug('%s blocks missing' % len(missing))
             num_of_blocks = len(missing)
             missing = self._upload_missing_blocks(
                 missing, hmap, f, upload_gen)
@@ -613,7 +616,7 @@ class PithosClient(PithosRestClient):
             if missing:
                 raise ClientError('%s blocks failed to upload' % len(missing))
         except KeyboardInterrupt:
-            sendlog.info('- - - wait for threads to finish')
+            LOG.debug('- - - wait for threads to finish')
             for thread in activethreads():
                 thread.join()
             raise
@@ -908,7 +911,7 @@ class PithosClient(PithosRestClient):
                     flying.pop(runid)
             return ''.join(ret)
         except KeyboardInterrupt:
-            sendlog.info('- - - wait for threads to finish')
+            LOG.debug('- - - wait for threads to finish')
             for thread in activethreads():
                 thread.join()
 
@@ -1360,7 +1363,7 @@ class PithosClient(PithosRestClient):
                     self._cb_next()
                 flying = unfinished
         except KeyboardInterrupt:
-            sendlog.info('- - - wait for threads to finish')
+            LOG.debug('- - - wait for threads to finish')
             for thread in activethreads():
                 thread.join()
         finally:
