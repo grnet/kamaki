@@ -214,6 +214,57 @@ class CycladesComputeClient(CycladesComputeRestClient, Waiter):
     # Backwards compatibility - deprecated, will be replaced in 0.15
     wait_server = wait_server_while
 
+    # Volume attachment extensions
+
+    def get_volume_attachment(self, server_id, attachment_id):
+        """
+        :param server_id: (str)
+        :param attachment_id: (str)
+        :returns: (dict) details on the volume attachment
+        """
+        r = self.volume_attachment_get(server_id, attachment_id)
+        return r.json['volumeAttachment']
+
+    def list_volume_attachments(self, server_id):
+        """
+        :param server_id: (str)
+        :returns: (list) all volume attachments for this server
+        """
+        r = self.volume_attachment_get(server_id)
+        return r.json['volumeAttachments']
+
+    def attach_volume(self, server_id, volume_id):
+        """Attach volume on server
+        :param server_id: (str)
+        :volume_id: (str)
+        :returns: (dict) information on attachment (contains volumeId)
+        """
+        r = self.volume_attachment_post(server_id, volume_id)
+        return r.json['volumeAttachment']
+
+    def delete_volume_attachment(self, server_id, attachment_id):
+        """Delete a volume attachment. The volume will not be deleted.
+        :param server_id: (str)
+        :param attachment_id: (str)
+        :returns: (dict) HTTP response headers
+        """
+        r = self.volume_attachment_delete(server_id, attachment_id)
+        return r.headers
+
+    def detach_volume(self, server_id, volume_id):
+        """Remove volume attachment(s) for this volume and server
+        This is not an atomic operation. Use "delete_volume_attachment" for an
+        atomic operation with similar semantics.
+        :param server_id: (str)
+        :param volume_id: (str)
+        :returns: (list) the deleted attachments
+        """
+        all_atts = self.list_volume_attachments(server_id)
+        vstr = '%s' % volume_id
+        attachments = [a for a in all_atts if ('%s' % a['volumeId']) == vstr]
+        for attachment in attachments:
+            self.delete_volume_attachment(server_id, attachment['id'])
+        return attachments
 
 # Backwards compatibility - will be removed in 0.15
 CycladesClient = CycladesComputeClient

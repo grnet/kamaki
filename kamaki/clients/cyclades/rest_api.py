@@ -49,6 +49,25 @@ class CycladesComputeRestClient(ComputeClient):
         path = path4url('servers', server_id, 'diagnostics')
         return self.get(path, success=200, **kwargs)
 
+    def volume_attachment_get(self, server_id, attachment_id=None, **kwargs):
+        path_args = ['servers', server_id, 'os-volume_attachments']
+        path_args += [attachment_id, ] if attachment_id else []
+        path = path4url(*path_args)
+        success = kwargs.pop('success', 200)
+        return self.get(path, success=success, **kwargs)
+
+    def volume_attachment_post(self, server_id, volume_id, **kwargs):
+        path = path4url('servers', server_id, 'os-volume_attachments')
+        data = dict(volumeAttachment=dict(volumeId=volume_id))
+        success = kwargs.pop('success', 202)
+        return self.post(path, json=data, success=success, **kwargs)
+
+    def volume_attachment_delete(self, server_id, attachment_id, **kwargs):
+        path = path4url(
+            'servers', server_id, 'os-volume_attachments', attachment_id)
+        success = kwargs.pop('success', 202)
+        return self.delete(path, success=success, **kwargs)
+
 
 #  Backwards compatibility
 CycladesRestClient = CycladesComputeRestClient

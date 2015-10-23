@@ -113,10 +113,39 @@ class CycladesComputeRestClient(TestCase):
         get.assert_called_once_with(
             '/servers/%s/diagnostics' % server_id, success=200)
 
+    @patch('kamaki.clients.Client.get', return_value='ret')
+    def test_volume_attachment_get(self, get):
+        server_id = 'server-id'
+        for attachment_id in ('attachment-id', None):
+            r = self.client.volume_attachment_get(server_id, attachment_id)
+            self.assertEqual(r, 'ret')
+            actual = get.mock_calls[-1]
+            path = u'/servers/%s/os-volume_attachments' % server_id
+            path += ('/%s' % attachment_id) if attachment_id else ''
+            expexted = call(path, success=200)
+            self.assertEqual(actual, expexted)
+
+    @patch('kamaki.clients.Client.post', return_value='ret')
+    def test_volume_attachment_post(self, post):
+        server_id, volume_id = 'server-id', 'volume-id'
+        r = self.client.volume_attachment_post(server_id, volume_id)
+        self.assertEqual(r, 'ret')
+        post.assert_called_once_with(
+            u'/servers/%s/os-volume_attachments' % server_id,
+            json={'volumeAttachment': {'volumeId': volume_id}}, success=200)
+
+    @patch('kamaki.clients.Client.delete')
+    def test_volume_attachment_delete(self, delete):
+        server_id, att_id = 'server-id', 'attachment-id'
+        self.client.volume_attachment_delete(server_id, att_id)
+        delete.assert_called_once_with(
+            u'/servers/%s/os-volume_attachments/%s' % (server_id, att_id),
+            success=200)
+
 
 class CycladesNetworkClient(TestCase):
+    """Set up a thorough Network client test"""
 
-    """Set up a ComputesRest thorough test"""
     def setUp(self):
         self.url = 'http://network.example.com'
         self.token = 'n2tw0rk70k3n'
@@ -238,6 +267,50 @@ class CycladesComputeClient(TestCase):
                 vm_id, json_data=dict(console=dict(type=ctype)), success=200))
             self.assert_dicts_are_equal(r, cnsl['console'])
 
+    @patch('%s.volume_attachment_get' % cyclades_pkg, return_value=FR())
+    def test_get_volume_attachment(self, volume_attachment_get):
+        server_id, att_id = 'server-id', 'attachment-id'
+        FR.json = dict(volumeAttachment='ret')
+        r = self.client.get_volume_attachment(server_id, att_id)
+        self.assertEqual(r, 'ret')
+        volume_attachment_get.assert_called_once_with(server_id, att_id)
+
+    @patch('%s.volume_attachment_get' % cyclades_pkg, return_value=FR())
+    def test_list_volume_attachments(self, volume_attachment_get):
+        server_id = 'server-id'
+        FR.json = dict(volumeAttachments='ret')
+        r = self.client.list_volume_attachments(server_id)
+        self.assertEqual(r, 'ret')
+        volume_attachment_get.assert_called_once_with(server_id)
+
+    @patch('%s.volume_attachment_post' % cyclades_pkg, return_value=FR())
+    def test_attach_volume(self, volume_attachment_post):
+        server_id, volume_id = 'server-id', 'volume-id'
+        FR.json = dict(volumeAttachment='ret')
+        r = self.client.attach_volume(server_id, volume_id)
+        self.assertEqual(r, 'ret')
+        volume_attachment_post.assert_called_once_with(server_id, volume_id)
+
+    @patch('%s.volume_attachment_delete' % cyclades_pkg)
+    def test_delete_volume_attachment(self, volume_attachment_delete):
+        server_id, att_id = 'server-id', 'attachment-id'
+        self.client.delete_volume_attachment(server_id, att_id)
+        volume_attachment_delete.assert_called_once_with(server_id, att_id)
+
+    @patch('%s.list_volume_attachments' % cyclades_pkg, return_value=[
+        dict(id='att-id-1', volumeId='other-id'),
+        dict(id='att-id-2', volumeId='volume-id'),
+        dict(id='att-id-3', volumeId='other-id'),
+    ])
+    @patch('%s.delete_volume_attachment' % cyclades_pkg)
+    def test_detach_volume(
+            self, delete_volume_attachment, list_volume_attachments):
+        server_id, volume_id = 'server-id', 'volume-id'
+        r = self.client.detach_volume(server_id, volume_id)
+        self.assertEqual(r, [dict(id='att-id-2', volumeId='volume-id'), ])
+        list_volume_attachments.assert_called_once_with(server_id)
+        delete_volume_attachment.assert_called_once_with(server_id, 'att-id-2')
+
 
 clients_pkg = 'kamaki.clients.Client'
 
@@ -343,7 +416,7 @@ if __name__ == '__main__':
     not_found = True
     if not argv[1:] or argv[1] == 'CycladesComputeClient':
         not_found = False
-        runTestCase(CycladesNetworkClient, 'Cyclades Client', argv[2:])
+        runTestCase(CycladesComputeClient, 'Cyclades Client', argv[2:])
     if not argv[1:] or argv[1] == 'CycladesNetworkClient':
         not_found = False
         runTestCase(CycladesNetworkClient, 'CycladesNetwork Client', argv[2:])
