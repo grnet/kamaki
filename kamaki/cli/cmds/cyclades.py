@@ -110,6 +110,10 @@ class _CycladesInit(CommandInit):
     def _flavor_exists(self, flavor_id):
         self.client.get_flavor_details(flavor_id=flavor_id)
 
+    @errors.Cyclades.server_id
+    def _server_exists(self, server_id):
+        self.client.get_server_details(server_id=server_id)
+
     @fall_back
     def _restruct_server_info(self, vm):
         if not vm:
@@ -1036,3 +1040,108 @@ class flavor_info(_CycladesInit, OptionalOutput):
     def main(self, flavor_id):
         super(self.__class__, self)._run()
         self._run(flavor_id=flavor_id)
+
+
+# Volume Attachment Commands
+
+@command(server_cmds)
+class server_attachment(_CycladesInit, OptionalOutput):
+    """Details on the attachment of a volume
+    This is not information about the volume. To see volume information:
+        $ kamaki volume info VOLUME_ID
+    """
+
+    arguments = dict(
+        attachment_id=ValueArgument(
+            'The volume attachment', '--attachment-id', )
+    )
+    required = ('attachment_id', )
+
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.server_id
+    @errors.Cyclades.endpoint
+    def _run(self, server_id):
+        r = self.client.get_volume_attachment(server_id, self['attachment_id'])
+        self.print_(r, self.print_dict)
+
+    def main(self, server_id):
+        super(self.__class__, self)._run()
+        self._run(server_id=server_id)
+
+
+@command(server_cmds)
+class server_attachments(_CycladesInit, OptionalOutput):
+    """List the volume attachments of a VM"""
+
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.server_id
+    @errors.Cyclades.endpoint
+    def _run(self, server_id):
+        r = self.client.list_volume_attachments(server_id)
+        self.print_(r)
+
+    def main(self, server_id):
+        super(self.__class__, self)._run()
+        self._run(server_id=server_id)
+
+
+@command(server_cmds)
+class server_attach(_CycladesInit, OptionalOutput):
+    """Attach a volume on a VM"""
+
+    arguments = dict(
+        volume_id=ValueArgument('The volume to be attached', '--volume-id')
+    )
+    required = ('volume_id', )
+
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.server_id
+    @errors.Cyclades.endpoint
+    def _run(self, server_id):
+        r = self.client.attach_volume(server_id, self['volume_id'])
+        self.print_(r, self.print_dict)
+
+    def main(self, server_id):
+        super(self.__class__, self)._run()
+        self._run(server_id=server_id)
+
+
+@command(server_cmds)
+class server_detach(_CycladesInit):
+    """Detach a volume from a VM"""
+
+    arguments = dict(
+        attachment_id=ValueArgument(
+            'The volume attachment (mutually exclusive to --volume-id)',
+            '--attachment-id', ),
+        volume_id=ValueArgument(
+            'Volume to detach from VM (mutually exclusive to --attachment-id)',
+            '--volume-id')
+    )
+    required = ['attachment_id', 'volume_id']
+
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.server_id
+    @errors.Cyclades.endpoint
+    def _run(self, server_id):
+        att_id = self['attachment_id']
+        if att_id:
+            self.client.delete_volume_attachment(server_id, att_id)
+        else:
+            r = self.client.detach_volume(server_id, self['volume_id'])
+            self.error('%s detachment%s deleted, volume is detached' % (
+                len(r), '' if len(r) == 1 else 's'))
+        self.error('OK')
+
+    def main(self, server_id):
+        super(self.__class__, self)._run()
+        if all([self['attachment_id'], self['volume_id']]):
+            raise CLISyntaxError('Invalid argument compination', details=[
+                '%s and %s are mutually exclusive' % (
+                    self.arguments['attachment_id'].lvalue,
+                    self.arguments['volume_id'].lvalue)])
+        self._run(server_id=server_id)

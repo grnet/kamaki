@@ -458,6 +458,20 @@ class Cyclades(object):
         return _raise
 
     @classmethod
+    def endpoint(this, func):
+        """If the endpoint contains server_id, check if the id exists"""
+        def _raise(self, *args, **kwargs):
+            server_id = kwargs.get('server_id', None)
+            try:
+                func(self, *args, **kwargs)
+            except ClientError as ce:
+                if ce.status in (400, ):
+                    self.client.get_server_details(server_id)
+                raise
+        _raise.__name__ = func.__name__
+        return _raise
+
+    @classmethod
     def metadata(this, func):
         def _raise(self, *args, **kwargs):
             key = kwargs.get('key', None)
