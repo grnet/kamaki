@@ -22,6 +22,8 @@ Features
 * Modify some help messages (-c, -o, HTTP log separators) for clarity
 * Show image file hashmap in "kamaki image info", with "--hashmap"
 * Implement compute detachable volumes (API lib and CLI)
+* Adjust BlockStorage client API and CLI commands to comply with
+    Synnefo 0.16next API
 
 .. _Changelog-0.13:
 
