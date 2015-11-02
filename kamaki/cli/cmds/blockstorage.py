@@ -113,7 +113,7 @@ class volume_create(_BlockStorageInit, OptionalOutput, _VolumeWait):
     arguments = dict(
         size=argument.IntArgument('Volume size in GB', '--size'),
         server_id=argument.ValueArgument(
-            'The server for the new volume', '--server-id'),
+            'The server to attach the volume to', '--server-id'),
         name=argument.ValueArgument('Display name', '--name'),
         description=argument.ValueArgument(
             'Volume description', '--description'),
@@ -129,12 +129,13 @@ class volume_create(_BlockStorageInit, OptionalOutput, _VolumeWait):
         wait=argument.FlagArgument(
             'Wait volume to be created and ready for use', ('-w', '--wait')),
     )
-    required = ('size', 'server_id', 'name')
+    required = ('size', 'name')
 
     @errors.Generic.all
-    def _run(self, size, server_id, name):
+    def _run(self, size, name):
         r = self.client.create_volume(
-            size, name, server_id,
+            size, name,
+            server_id=self['server_id'],
             display_description=self['description'],
             snapshot_id=self['snapshot_id'],
             imageRef=self['image_id'],
@@ -152,7 +153,7 @@ class volume_create(_BlockStorageInit, OptionalOutput, _VolumeWait):
     def main(self):
         super(self.__class__, self)._run()
         self._run(
-            size=self['size'], server_id=self['server_id'], name=self['name'])
+            size=self['size'], name=self['name'])
 
 
 @command(volume_cmds)
@@ -339,22 +340,22 @@ class snapshot_create(_BlockStorageInit, OptionalOutput):
         volume_id=argument.ValueArgument(
             'Volume associated to new snapshot', '--volume-id'),
         name=argument.ValueArgument('Display name', '--name'),
-        force=argument.BooleanArgument('Switch force flag', '--force'),
         description=argument.ValueArgument('New description', '--description'),
     )
-    required = ('volume_id', 'name')
+    required = ('volume_id', )
 
     @errors.Generic.all
-    def _run(self, volume_id, name):
+    def _run(self, volume_id):
         self.print_(
             self.client.create_snapshot(
-                volume_id, name,
-                force=self['force'], display_description=self['description']),
+                volume_id,
+                display_name=self['name'],
+                display_description=self['description']),
             self.print_dict)
 
     def main(self):
         super(self.__class__, self)._run()
-        self._run(volume_id=self['volume_id'], name=self['name'])
+        self._run(volume_id=self['volume_id'])
 
 
 @command(snapshot_cmds)
