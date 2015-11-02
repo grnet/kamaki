@@ -121,7 +121,11 @@ class volume_create(_BlockStorageInit, OptionalOutput, _VolumeWait):
             'Associate a snapshot to the new volume', '--snapshot-id'),
         image_id=argument.ValueArgument(
             'Associate an image to the new volume', '--image-id'),
-        volume_type=argument.ValueArgument('Volume type', '--volume-type'),
+        volume_type=argument.ValueArgument(
+            'default: if combined with --server-id, the default is '
+            'automatically configured to match the server, otherwise it is '
+            'ext_archipelago',
+            '--volume-type'),
         metadata=argument.KeyValueArgument(
             'Metadata of key=value form (can be repeated)', '--metadata'),
         project_id=argument.ValueArgument(
@@ -133,13 +137,21 @@ class volume_create(_BlockStorageInit, OptionalOutput, _VolumeWait):
 
     @errors.Generic.all
     def _run(self, size, name):
+        # Figure out volume type
+        volume_type = self['volume_type']
+        if not (self['server_id'] or volume_type):
+            for vtype in self.client.list_volume_types():
+                if vtype['name'] in ('ext_archipelago'):
+                    volume_type = vtype['id']
+                    break
+
         r = self.client.create_volume(
             size, name,
             server_id=self['server_id'],
             display_description=self['description'],
             snapshot_id=self['snapshot_id'],
             imageRef=self['image_id'],
-            volume_type=self['volume_type'],
+            volume_type=volume_type,
             metadata=self['metadata'],
             project=self['project_id'])
         self.print_dict(r)
@@ -210,10 +222,10 @@ class volume_delete(_BlockStorageInit, _VolumeWait):
 
     @errors.Generic.all
     def _run(self, volume_id):
+        r = self.client.get_volume_details(volume_id)
         self.client.delete_volume(volume_id)
         if self['wait']:
             try:
-                r = self.client.get_volume_details(volume_id)
                 self.wait_while(volume_id, r['status'])
                 r = self.client.get_volume_details(volume_id)
                 if r['status'] != 'deleted':
@@ -255,7 +267,7 @@ class volume_wait(_BlockStorageInit, _VolumeWait):
                     volume_id, self['status_u'].lower(),
                     timeout=self['timeout'])
         else:
-            status_w = self['status_w'].lower() or 'creating'
+            status_w = (self['status_w'] or '').lower() or 'creating'
             if r['status'] == status_w.lower():
                 self.wait_while(volume_id, status_w, timeout=self['timeout'])
             else:
