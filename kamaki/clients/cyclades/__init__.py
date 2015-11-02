@@ -359,7 +359,8 @@ class CycladesBlockStorageClient(CycladesBlockStorageRestClient):
     """Cyclades Block Storage REST API Client"""
 
     def create_volume(
-            self, size, server_id, display_name,
+            self, size, display_name,
+            server_id=None,
             display_description=None,
             snapshot_id=None,
             imageRef=None,
@@ -368,7 +369,8 @@ class CycladesBlockStorageClient(CycladesBlockStorageRestClient):
             project=None):
         """:returns: (dict) new volumes' details"""
         r = self.volumes_post(
-            size, server_id, display_name,
+            size, display_name,
+            server_id=server_id,
             display_description=display_description,
             snapshot_id=snapshot_id,
             imageRef=imageRef,
@@ -381,10 +383,9 @@ class CycladesBlockStorageClient(CycladesBlockStorageRestClient):
         self.volumes_action_post(volume_id, {"reassign": {"project": project}})
 
     def create_snapshot(
-            self, volume_id, display_name,
-            force=None, display_description=None):
+            self, volume_id, display_name=None, display_description=None):
+        """:returns: (dict) new snapshots' details"""
         return super(CycladesBlockStorageClient, self).create_snapshot(
             volume_id,
             display_name=display_name,
-            force=force,
             display_description=display_description)

@@ -77,7 +77,8 @@ class CycladesBlockStorageRestClient(BlockStorageClient):
     """Synnefo Cyclades Block Storage REST API Client"""
 
     def volumes_post(
-            self, size, server_id, display_name,
+            self, size, display_name,
+            server_id=None,
             display_description=None,
             snapshot_id=None,
             imageRef=None,
@@ -87,8 +88,9 @@ class CycladesBlockStorageRestClient(BlockStorageClient):
             success=202,
             **kwargs):
         path = path4url('volumes')
-        volume = dict(
-            size=int(size), server_id=server_id, display_name=display_name)
+        volume = dict(size=int(size), display_name=display_name)
+        if server_id is not None:
+            volume['server_id'] = server_id
         if display_description is not None:
             volume['display_description'] = display_description
         if snapshot_id is not None:

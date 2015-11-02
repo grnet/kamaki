@@ -326,23 +326,21 @@ class CycladesBlockStorageRestClient(TestCase):
     @patch('%s.post' % clients_pkg)
     def test_volumes_post(self, post):
         keys = (
-            'display_description', 'snapshot_id', 'imageRef',
+            'server_id', 'display_description', 'snapshot_id', 'imageRef',
             'volume_type', 'metadata', 'project')
         for args in product(
-                ('dd', None), ('sn', None), ('ir', None),
+                ('sid', None), ('dd', None), ('sn', None), ('ir', None),
                 ('vt', None), ({'mk': 'mv'}, None), ('pid', None),
                 ({'k1': 'v1', 'k2': 'v2'}, {'success': 1000}, {})):
-            kwargs, server_id, display_name = args[-1], 'sid', 'dn'
+            kwargs, display_name = args[-1], 'dn'
             args = args[:-1]
             for err, size in ((TypeError, None), (ValueError, 'size')):
                 self.assertRaises(
                     err, self.client.volumes_post,
-                    size, server_id, display_name, *args, **kwargs)
+                    size, display_name, *args, **kwargs)
             size = 42
-            self.client.volumes_post(
-                size, server_id, display_name, *args, **kwargs)
-            volume = dict(
-                size=int(size), server_id=server_id, display_name=display_name)
+            self.client.volumes_post(size, display_name, *args, **kwargs)
+            volume = dict(size=int(size), display_name=display_name)
             for k, v in zip(keys, args):
                 if v:
                     volume[k] = v
@@ -375,19 +373,19 @@ class CycladesBlockStorageClient(TestCase):
     @patch('%s.volumes_post' % bsrest_pkg, return_value=FR())
     def test_create_volume(self, volumes_post):
         keys = (
-            'display_description', 'snapshot_id', 'imageRef',
+            'server_id', 'display_description', 'snapshot_id', 'imageRef',
             'volume_type', 'metadata', 'project')
-        FR.json, server_id, display_name = dict(volume='ret'), 'vid', 'dn'
+        FR.json = dict(volume='ret')
+        display_name = 'display name'
         for args in product(
-                ('dd', None), ('sn', None), ('ir', None),
+                ('si', None), ('dd', None), ('sn', None), ('ir', None),
                 ('vt', None), ({'mk': 'mv'}, None), ('pid', None)):
             self.assertEqual(
-                self.client.create_volume(42, server_id, display_name, *args),
-                'ret')
+                self.client.create_volume(42, display_name, *args), 'ret')
             kwargs = dict(zip(keys, args))
             self.assertEqual(
                 volumes_post.mock_calls[-1],
-                call(42, server_id, display_name, **kwargs))
+                call(42, display_name, **kwargs))
 
     @patch('%s.volumes_action_post' % bsrest_pkg, return_value=FR())
     def test_reassign_volume(self, volumes_action_post):
@@ -398,16 +396,14 @@ class CycladesBlockStorageClient(TestCase):
 
     @patch('%s.create_snapshot' % bsrest_pkg, return_value='ret')
     def test_create_snapshot(self, create_snapshot):
-        keys = ('force', 'display_description')
-        volume_id, display_name = 'vid', 'dn'
-        for args in product((True, False, None), ('dd', None)):
+        keys = ('display_name', 'display_description')
+        volume_id = 'vid'
+        for args in product(('dn', None), ('dd', None)):
             self.assertEqual(
-                self.client.create_snapshot(volume_id, display_name, *args),
-                'ret')
+                self.client.create_snapshot(volume_id, *args), 'ret')
             kwargs = dict(zip(keys, args))
             self.assertEqual(
-                create_snapshot.mock_calls[-1],
-                call(volume_id, display_name=display_name, **kwargs))
+                create_snapshot.mock_calls[-1], call(volume_id, **kwargs))
 
 
 if __name__ == '__main__':

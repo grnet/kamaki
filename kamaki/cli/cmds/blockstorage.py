@@ -1,4 +1,4 @@
-# Copyright 2014 GRNET S.A. All rights reserved.
+# Copyright 2014-2015 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -115,9 +115,6 @@ class volume_create(_BlockStorageInit, OptionalOutput, _VolumeWait):
         server_id=argument.ValueArgument(
             'The server for the new volume', '--server-id'),
         name=argument.ValueArgument('Display name', '--name'),
-        # src_volume_id=argument.ValueArgument(
-        #     'Associate another volume to the new volume',
-        #     '--source-volume-id'),
         description=argument.ValueArgument(
             'Volume description', '--description'),
         snapshot_id=argument.ValueArgument(
@@ -137,8 +134,7 @@ class volume_create(_BlockStorageInit, OptionalOutput, _VolumeWait):
     @errors.Generic.all
     def _run(self, size, server_id, name):
         r = self.client.create_volume(
-            size, server_id, name,
-            # source_volid=self['src_volume_id'],
+            size, name, server_id,
             display_description=self['description'],
             snapshot_id=self['snapshot_id'],
             imageRef=self['image_id'],
