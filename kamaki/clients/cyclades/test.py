@@ -132,7 +132,7 @@ class CycladesComputeRestClient(TestCase):
         self.assertEqual(r, 'ret')
         post.assert_called_once_with(
             u'/servers/%s/os-volume_attachments' % server_id,
-            json={'volumeAttachment': {'volumeId': volume_id}}, success=200)
+            json={'volumeAttachment': {'volumeId': volume_id}}, success=202)
 
     @patch('kamaki.clients.Client.delete')
     def test_volume_attachment_delete(self, delete):
@@ -140,7 +140,7 @@ class CycladesComputeRestClient(TestCase):
         self.client.volume_attachment_delete(server_id, att_id)
         delete.assert_called_once_with(
             u'/servers/%s/os-volume_attachments/%s' % (server_id, att_id),
-            success=200)
+            success=202)
 
 
 class CycladesNetworkClient(TestCase):

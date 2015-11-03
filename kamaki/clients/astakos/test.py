@@ -139,7 +139,7 @@ class LoggedAstakosClient(TestCase):
     def tearDown(self):
         FR.headers = {}
 
-    @patch('kamaki.clients.recvlog.debug', return_value='recvlog info')
+    @patch('kamaki.clients.recvlog.info', return_value='recvlog info')
     def test__dump_response(self, recvlog_info):
         for headers, status, message, data, LOG_DATA, LOG_TOKEN in product(
                 (
