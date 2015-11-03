@@ -58,6 +58,7 @@ def dont_raise(*errs):
                         ('%s=%s' % items) for items in kwargs.items()])))
                 log.debug(format_exc(e))
                 return None
+        wrap.__name__ = func.__name__
         return wrap
     return decorator
 
@@ -68,6 +69,7 @@ def client_log(func):
             return func(self, *args, **kwargs)
         finally:
             self._set_log_params()
+    wrap.__name__ = func.__name__
     return wrap
 
 
@@ -80,6 +82,7 @@ def fall_back(func):
             log.warning('Kamaki will use original data to go on')
         finally:
             return inp
+    wrap.__name__ = func.__name__
     return wrap
 
 
@@ -199,7 +202,7 @@ class CommandInit(object):
         return self._usernames2uuids([username]).get(username, None)
 
     def _set_log_params(self):
-        if not self.client:
+        if not getattr(self, 'client', None):
             return
         try:
             self.client.LOG_TOKEN = self.client.LOG_TOKEN or (
