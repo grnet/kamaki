@@ -1,4 +1,4 @@
-# Copyright 2011-2014 GRNET S.A. All rights reserved.
+# Copyright 2011-2015 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -36,6 +36,7 @@ from logging import getLogger
 from astakosclient import AstakosClientException
 
 from kamaki.clients import ClientError
+from kamaki.cli import DEF_CLOUD_ENV
 from kamaki.cli.errors import CLIError, CLISyntaxError
 from kamaki.cli.utils import format_size
 
@@ -115,7 +116,8 @@ class Astakos(object):
         '  kamaki config get cloud'
         'To set/get the default cloud:',
         '  kamaki config get default_cloud',
-        '  kamaki config set default_cloud CLOUD'
+        '  kamaki config set default_cloud CLOUD',
+        '  or get/set the %s enviroment variable' % DEF_CLOUD_ENV,
         'If (re)set a token:',
         '  #  (permanent)',
         '  $ kamaki config set cloud.CLOUD.token <token>']
@@ -456,6 +458,20 @@ class Cyclades(object):
         return _raise
 
     @classmethod
+    def endpoint(this, func):
+        """If the endpoint contains server_id, check if the id exists"""
+        def _raise(self, *args, **kwargs):
+            server_id = kwargs.get('server_id', None)
+            try:
+                func(self, *args, **kwargs)
+            except ClientError as ce:
+                if ce.status in (400, ):
+                    self.client.get_server_details(server_id)
+                raise
+        _raise.__name__ = func.__name__
+        return _raise
+
+    @classmethod
     def metadata(this, func):
         def _raise(self, *args, **kwargs):
             key = kwargs.get('key', None)
@@ -572,7 +588,14 @@ class Pithos(object):
             try:
                 return func(self, *args, **kwargs)
             except ClientError as ce:
-                if ce.status in (404, ):
+                if '/' in getattr(self, 'container', ''):
+                    raise CLIError(
+                        'Invalid container name %s' % self.container,
+                        importance=2, details=[
+                            '"/" is an invalid character for containers',
+                            '%s %s' % (getattr(ce, 'status', ''), ce)
+                        ])
+                elif ce.status in (404, ):
                         cont = ('%s or %s' % (self.container, dst_cont)) if (
                             dst_cont) else self.container
                         raise CLIError(

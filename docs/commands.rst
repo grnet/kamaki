@@ -216,6 +216,10 @@ server (Compute/Cyclades)
     delete    Delete a virtual server
     console   Create a VNC console and show connection information
     wait      Wait for server to finish [BUILD, STOPPED, REBOOT, ACTIVE]
+    attachment  Details on a volume attachment
+    attachments List of all volume attachments for a server
+    attach      Attach a volume on a server
+    detach      Delete an attachment/detach a volume from a server
 
 Showcase: Create a server
 ^^^^^^^^^^^^^^^^^^^^^^^^^

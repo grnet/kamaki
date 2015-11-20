@@ -91,63 +91,115 @@ There are two kinds of configuration options:
     settings are mandatory. There are also a few optional settings for
     overriding some service-specific operations (e.g., endpoint URLs).
 
-All kamaki-related options default to a set of values. Cloud-related
++----------------------+-----------------------------------+-------------------+
+| Option               | Description                       | Value             |
++======================+===================================+===================+
+| **global**                                                                   |
++----------------------+-----------------------------------+-------------------+
+| default_cloud        | Name of the default cloud. Used   |  <CLOUD NAME>     |
+|                      | if there are more than one clouds |                   |
++----------------------+-----------------------------------+-------------------+
+| colors               | enable / disable console colors   | on / **off**      |
++----------------------+-----------------------------------+-------------------+
+| history_file         | path to store kamaki history      | ~/.kamaki.history |
++----------------------+-----------------------------------+-------------------+
+| history_limit        | maximum commands in history       | 0 (unlimited)     |
++----------------------+-----------------------------------+-------------------+
+| log_file             | path to dumb kamaki logs          | .kamaki.log       |
++----------------------+-----------------------------------+-------------------+
+| log_token            | show user token in HTTP logs      | on / **off**      |
++----------------------+-----------------------------------+-------------------+
+| log_data             | show HTTP data (body) in logs     | on / **off**      |
++----------------------+-----------------------------------+-------------------+
+| log_pid              | show process id in HTTP logs      | on / **off**      |
++----------------------+-----------------------------------+-------------------+
+| ignore_ssl           | allow insecure HTTP connections   | on / **off**      |
++----------------------+-----------------------------------+-------------------+
+| ca_certs             | path to CA certificates bundle    | System depended   |
++----------------------+-----------------------------------+-------------------+
+| config_cli           | CLI specs for config commands     | config            |
++----------------------+-----------------------------------+-------------------+
+| history_cli          | CLI specs for history commands    | history           |
++----------------------+-----------------------------------+-------------------+
+| user_cli             | CLI specs for user commands       | astakos           |
++----------------------+-----------------------------------+-------------------+
+| quota_cli            | CLI specs for quota commands      | astakos           |
++----------------------+-----------------------------------+-------------------+
+| project_cli          | CLI specs for project commands    | astakos           |
++----------------------+-----------------------------------+-------------------+
+| resource_cli         | CLI specs for resource commands   | astakos           |
++----------------------+-----------------------------------+-------------------+
+| membership_cli       | CLI specs for membership commands | astakos           |
++----------------------+-----------------------------------+-------------------+
+| file_cli             | CLI specs for file commands       | pithos            |
++----------------------+-----------------------------------+-------------------+
+| container_cli        | CLI specs for container commands  | pithos            |
++----------------------+-----------------------------------+-------------------+
+| sharer_cli           | CLI specs for sharer commands     | pithos            |
++----------------------+-----------------------------------+-------------------+
+| group_cli            | CLI specs for group commands      | pithos            |
++----------------------+-----------------------------------+-------------------+
+| image_cli            | CLI specs for image commands      | image             |
++----------------------+-----------------------------------+-------------------+
+| imagecompute_cli     | CLI specs for imagecompute        | cyclades          |
+|                      | commands                          |                   |
++----------------------+-----------------------------------+-------------------+
+| server_cli           | CLI specs for server commands     | cyclades          |
++----------------------+-----------------------------------+-------------------+
+| flavor_cli           | CLI specs for flavor commands     | cyclades          |
++----------------------+-----------------------------------+-------------------+
+| network_cli          | CLI specs for network commands    | network           |
++----------------------+-----------------------------------+-------------------+
+| subnet_cli           | CLI specs for network commands    | network           |
++----------------------+-----------------------------------+-------------------+
+| port_cli             | CLI specs for port commands       | network           |
++----------------------+-----------------------------------+-------------------+
+| ip_cli               | CLI specs for ip commands         | network           |
++----------------------+-----------------------------------+-------------------+
+| volume_cli           | CLI specs for volume commands     | blockstorage      |
++----------------------+-----------------------------------+-------------------+
+| snapshot_cli         | CLI specs for snapshot commands   | blockstorage      |
++----------------------+-----------------------------------+-------------------+
+| service_cli          | (hidden) CLI specs for service    | astakos           |
+|                      | commands                          |                   |
++----------------------+-----------------------------------+-------------------+
+| endpoint_cli         | (hidden) CLI specs for endpoint   | astakos           |
+|                      | commands                          |                   |
++----------------------+-----------------------------------+-------------------+
+| commission_cli       | (hidden) CLI specs for commission | astakos           |
+|                      | commands                          |                   |
++----------------------+-----------------------------------+-------------------+
+| **cloud <CLOUD NAME>**   (can be repeated)                                   |
++----------------------+-----------------------------------+-------------------+
+| url                  | Cloud authentication URL          | <URL>             |
++----------------------+-----------------------------------+-------------------+
+| token                | User token for this cloud         | <TOKEN>           |
++----------------------+-----------------------------------+-------------------+
+| pithos_uuid          | (hidden) Default pithos user UUID | <user UUID>       |
+|                      | on this cloud                     |                   |
++----------------------+-----------------------------------+-------------------+
+| pithos_container     | (hidden) Default pithos container | pithos            |
+|                      | on this cloud                     |                   |
++----------------------+-----------------------------------+-------------------+
+
+
+The kamaki-related options usually default to a set of values. Cloud-related
 information does not default to anything and should be provided by the user.
 
 Options can be set with the `kamaki config` command (suggested) or by editing
 the configuration file.
 
-Global options
-^^^^^^^^^^^^^^
+.. note:: Users can add arbitary configuration options, either to existing
+    option groups ("global", "cloud"), or to new groups they can create. This
+    is especially useful for applications using kamaki as a library.
 
-* global.default_cloud CLOUD_NAME
-    The name of the default cloud to be used. See cloud settings bellow.
+.. note:: Hidden features can be enabled by setting values on the corresponding
+    options e.g., to set "images" are the default pithos container on cloud
+    "~okeanos" ::
 
-* global.colors < on | **off** >
-    enable / disable colors in command line based uis. Requires the ansicolors
-    optional package, otherwise it is ignored
+        $ kamaki config set cloud.~okeanos.pithos_container images
 
-* global.log_file < path (default: $HOME/.kamaki.log) >
-    The kamaki log file location
-
-* global.log_token < on | **off** >
-    allow kamaki to log user tokens
-
-* global.log_data < on | **off** >
-    allow kamaki to log http data (body)
-
-* global.log_pid < on | **off** >
-    attach the process name and id that produces each log line. Useful for
-    resolving race condition problems.
-
-* global.history_file < path (default: $HOME/.kamaki.history) >
-    the path of a simple file for inter-session kamaki history. Make sure
-    kamaki is executed in a context where this file is accessible for reading
-    and writing. Kamaki automatically creates the file if it doesn't exist
-
-* global.history_limit POSSITIVE_INTEGER (default: 0 (unlimited))
-    the maximum number of lines stored in history. If there is a finite limit,
-    old lines will be deleted automatically.
-
-* global.<command group>_cli <command definition package>
-    options that help kamaki locate the command definitions for each command
-    group. Some command groups are defined automatically (can be overridden),
-    others are optional and are not set by default.
-
-    The following command groups are defined automatically::
-
-        user, quota, resource, project, membership, file, container, sharer,
-        group, server, flavor, network, subnet, port, ip, volume, sdnapshot,
-        image, imagecompute, config, history
-
-    The following command groups are optional::
-
-        service, endpoint, commission
-
-    For example, the "endpoint" commands are defined in the "astakos" package,
-    but are not enabled by default. To enable them:
-
-    .. code-block:: console
+    Similarly, to reveal the endpoint commands::
 
         $ kamaki config set endpoint_cli astakos
 

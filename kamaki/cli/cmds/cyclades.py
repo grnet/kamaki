@@ -1,4 +1,4 @@
-# Copyright 2011-2014 GRNET S.A. All rights reserved.
+# Copyright 2011-2015 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -65,16 +65,28 @@ howto_personality = [
     '  [mode=]MODE: permission in octal (e.g., 0777)',
     'e.g., -p /tmp/my.file,owner=root,mode=0777']
 
-server_states = ('BUILD', 'ACTIVE', 'STOPPED', 'REBOOT')
+server_states = ('BUILD', 'ACTIVE', 'STOPPED', 'REBOOT', 'ERROR')
 
 
 class _ServerWait(Wait):
 
-    def wait(self, server_id, current_status, timeout=60):
+    def wait_while(self, server_id, current_status, timeout=60):
+        if current_status in ('BUILD', ):
+
+            def update_cb(item_details):
+                return item_details.get('progress', None)
+        else:
+            update_cb = None
+
         super(_ServerWait, self).wait(
-            'Server', server_id, self.client.wait_server, current_status,
+            'Server', server_id, self.client.wait_server_while, current_status,
             countdown=(current_status not in ('BUILD', )),
-            timeout=timeout if current_status not in ('BUILD', ) else 100)
+            timeout=timeout, update_cb=update_cb)
+
+    def wait_until(self, server_id, target_status, timeout=60):
+        super(_ServerWait, self).wait(
+            'Server', server_id, self.client.wait_server_until, target_status,
+            timeout=timeout, msg='not yet')
 
     def assert_not_in_status(self, server_id, status):
         """
@@ -97,6 +109,10 @@ class _CycladesInit(CommandInit):
     @errors.Cyclades.flavor_id
     def _flavor_exists(self, flavor_id):
         self.client.get_flavor_details(flavor_id=flavor_id)
+
+    @errors.Cyclades.server_id
+    def _server_exists(self, server_id):
+        self.client.get_server_details(server_id=server_id)
 
     @fall_back
     def _restruct_server_info(self, vm):
@@ -528,7 +544,7 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
                     continue
                 self.print_(r, self.print_dict)
                 if self['wait']:
-                    self.wait(r['id'], r['status'] or 'BUILD')
+                    self.wait_while(r['id'], r['status'] or 'BUILD')
                 self.writeln(' ')
         except ClientError as ce:
             if ce.status in (404, 400):
@@ -547,7 +563,7 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
         super(self.__class__, self)._run()
         if self['no_network'] and self['network_configuration']:
             raise CLIInvalidArgument(
-                'Invalid argument compination', importance=2, details=[
+                'Invalid argument combination', importance=2, details=[
                     'Arguments %s and %s are mutually exclusive' % (
                         self.arguments['no_network'].lvalue,
                         self.arguments['network_configuration'].lvalue)])
@@ -736,7 +752,7 @@ class server_delete(_CycladesInit, _ServerWait):
 
         self.client.delete_server(server_id)
         if self['wait']:
-            self.wait(server_id, status)
+            self.wait_while(server_id, status)
 
     @errors.Generic.all
     @errors.Cyclades.connection
@@ -761,7 +777,7 @@ class server_reboot(_CycladesInit, _ServerWait):
 
     arguments = dict(
         type=ValueArgument('SOFT or HARD - default: SOFT', ('--type')),
-        wait=FlagArgument('Wait server to be destroyed', ('-w', '--wait'))
+        wait=FlagArgument('Wait server to start again', ('-w', '--wait'))
     )
 
     @errors.Generic.all
@@ -782,7 +798,7 @@ class server_reboot(_CycladesInit, _ServerWait):
 
         self.client.reboot_server(int(server_id), hard_reboot)
         if self['wait']:
-            self.wait(server_id, 'REBOOT')
+            self.wait_while(server_id, 'REBOOT')
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -794,7 +810,7 @@ class server_start(_CycladesInit, _ServerWait):
     """Start an existing virtual server"""
 
     arguments = dict(
-        wait=FlagArgument('Wait server to be destroyed', ('-w', '--wait'))
+        wait=FlagArgument('Wait server to start', ('-w', '--wait'))
     )
 
     @errors.Generic.all
@@ -804,7 +820,7 @@ class server_start(_CycladesInit, _ServerWait):
         status = self.assert_not_in_status(server_id, 'ACTIVE')
         self.client.start_server(int(server_id))
         if self['wait']:
-            self.wait(server_id, status)
+            self.wait_while(server_id, status)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -816,7 +832,7 @@ class server_shutdown(_CycladesInit,  _ServerWait):
     """Shutdown an active virtual server"""
 
     arguments = dict(
-        wait=FlagArgument('Wait server to be destroyed', ('-w', '--wait'))
+        wait=FlagArgument('Wait server to shut down', ('-w', '--wait'))
     )
 
     @errors.Generic.all
@@ -826,7 +842,7 @@ class server_shutdown(_CycladesInit,  _ServerWait):
         status = self.assert_not_in_status(server_id, 'STOPPED')
         self.client.shutdown_server(int(server_id))
         if self['wait']:
-            self.wait(server_id, status)
+            self.wait_while(server_id, status)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -893,36 +909,65 @@ class server_console(_CycladesInit, OptionalOutput):
 
 @command(server_cmds)
 class server_wait(_CycladesInit, _ServerWait):
-    """Wait for server to change its status (default: BUILD)"""
+    """Wait for server to change its status (default: --while BUILD)"""
 
     arguments = dict(
         timeout=IntArgument(
             'Wait limit in seconds (default: 60)', '--timeout', default=60),
-        server_status=StatusArgument(
-            'Status to wait for (%s, default: %s)' % (
-                ', '.join(server_states), server_states[0]),
+        status=StatusArgument(
+            'DEPRECATED in next version, equivalent to "--while"',
             '--status',
-            valid_states=server_states)
+            valid_states=server_states),
+        status_w=StatusArgument(
+            'Wait while in status (%s)' % ','.join(server_states), '--while',
+            valid_states=server_states),
+        status_u=StatusArgument(
+            'Wait until status is reached (%s)' % ','.join(server_states),
+            '--until',
+            valid_states=server_states),
     )
 
     @errors.Generic.all
     @errors.Cyclades.connection
     @errors.Cyclades.server_id
-    def _run(self, server_id, current_status):
+    def _run(self, server_id):
         r = self.client.get_server_details(server_id)
-        if r['status'].lower() == current_status.lower():
-            self.wait(server_id, current_status, timeout=self['timeout'])
+
+        if self['status_u']:
+            if r['status'].lower() == self['status_u'].lower():
+                self.error(
+                    'Server %s: already in %s' % (server_id, r['status']))
+            else:
+                self.wait_until(
+                    server_id, self['status_u'], timeout=self['timeout'])
         else:
-            self.error(
-                'Server %s: Cannot wait for status %s, '
-                'status is already %s' % (
-                    server_id, current_status, r['status']))
+            status_w = self['status_w'] or self['status'] or 'BUILD'
+            if r['status'].lower() == status_w.lower():
+                self.wait_while(
+                    server_id, status_w, timeout=self['timeout'])
+            else:
+                self.error(
+                    'Server %s status: %s' % (server_id, r['status']))
 
     def main(self, server_id):
         super(self.__class__, self)._run()
-        self._run(
-            server_id=server_id,
-            current_status=self['server_status'] or 'BUILD')
+
+        status_args = [self['status'], self['status_w'], self['status_u']]
+        if len([x for x in status_args if x]) > 1:
+            raise CLIInvalidArgument(
+                'Invalid argument combination', importance=2, details=[
+                    'Arguments %s, %s and %s are mutually exclusive' % (
+                        self.arguments['status'].lvalue,
+                        self.arguments['status_w'].lvalue,
+                        self.arguments['status_u'].lvalue)])
+        if self['status']:
+            self.error(
+                'WARNING: argument %s will be deprecated '
+                'in the next version, use %s instead' % (
+                    self.arguments['status'].lvalue,
+                    self.arguments['status_w'].lvalue))
+
+        self._run(server_id=server_id)
 
 
 @command(flavor_cmds)
@@ -995,3 +1040,108 @@ class flavor_info(_CycladesInit, OptionalOutput):
     def main(self, flavor_id):
         super(self.__class__, self)._run()
         self._run(flavor_id=flavor_id)
+
+
+# Volume Attachment Commands
+
+@command(server_cmds)
+class server_attachment(_CycladesInit, OptionalOutput):
+    """Details on the attachment of a volume
+    This is not information about the volume. To see volume information:
+        $ kamaki volume info VOLUME_ID
+    """
+
+    arguments = dict(
+        attachment_id=ValueArgument(
+            'The volume attachment', '--attachment-id', )
+    )
+    required = ('attachment_id', )
+
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.server_id
+    @errors.Cyclades.endpoint
+    def _run(self, server_id):
+        r = self.client.get_volume_attachment(server_id, self['attachment_id'])
+        self.print_(r, self.print_dict)
+
+    def main(self, server_id):
+        super(self.__class__, self)._run()
+        self._run(server_id=server_id)
+
+
+@command(server_cmds)
+class server_attachments(_CycladesInit, OptionalOutput):
+    """List the volume attachments of a VM"""
+
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.server_id
+    @errors.Cyclades.endpoint
+    def _run(self, server_id):
+        r = self.client.list_volume_attachments(server_id)
+        self.print_(r)
+
+    def main(self, server_id):
+        super(self.__class__, self)._run()
+        self._run(server_id=server_id)
+
+
+@command(server_cmds)
+class server_attach(_CycladesInit, OptionalOutput):
+    """Attach a volume on a VM"""
+
+    arguments = dict(
+        volume_id=ValueArgument('The volume to be attached', '--volume-id')
+    )
+    required = ('volume_id', )
+
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.server_id
+    @errors.Cyclades.endpoint
+    def _run(self, server_id):
+        r = self.client.attach_volume(server_id, self['volume_id'])
+        self.print_(r, self.print_dict)
+
+    def main(self, server_id):
+        super(self.__class__, self)._run()
+        self._run(server_id=server_id)
+
+
+@command(server_cmds)
+class server_detach(_CycladesInit):
+    """Detach a volume from a VM"""
+
+    arguments = dict(
+        attachment_id=ValueArgument(
+            'The volume attachment (mutually exclusive to --volume-id)',
+            '--attachment-id', ),
+        volume_id=ValueArgument(
+            'Volume to detach from VM (mutually exclusive to --attachment-id)',
+            '--volume-id')
+    )
+    required = ['attachment_id', 'volume_id']
+
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.server_id
+    @errors.Cyclades.endpoint
+    def _run(self, server_id):
+        att_id = self['attachment_id']
+        if att_id:
+            self.client.delete_volume_attachment(server_id, att_id)
+        else:
+            r = self.client.detach_volume(server_id, self['volume_id'])
+            self.error('%s detachment%s deleted, volume is detached' % (
+                len(r), '' if len(r) == 1 else 's'))
+        self.error('OK')
+
+    def main(self, server_id):
+        super(self.__class__, self)._run()
+        if all([self['attachment_id'], self['volume_id']]):
+            raise CLISyntaxError('Invalid argument compination', details=[
+                '%s and %s are mutually exclusive' % (
+                    self.arguments['attachment_id'].lvalue,
+                    self.arguments['volume_id'].lvalue)])
+        self._run(server_id=server_id)

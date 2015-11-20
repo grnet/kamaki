@@ -1,4 +1,4 @@
-# Copyright 2012-2014 GRNET S.A. All rights reserved.
+# Copyright 2012-2015 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -49,6 +49,25 @@ class CycladesComputeRestClient(ComputeClient):
         path = path4url('servers', server_id, 'diagnostics')
         return self.get(path, success=200, **kwargs)
 
+    def volume_attachment_get(self, server_id, attachment_id=None, **kwargs):
+        path_args = ['servers', server_id, 'os-volume_attachments']
+        path_args += [attachment_id, ] if attachment_id else []
+        path = path4url(*path_args)
+        success = kwargs.pop('success', 200)
+        return self.get(path, success=success, **kwargs)
+
+    def volume_attachment_post(self, server_id, volume_id, **kwargs):
+        path = path4url('servers', server_id, 'os-volume_attachments')
+        data = dict(volumeAttachment=dict(volumeId=volume_id))
+        success = kwargs.pop('success', 202)
+        return self.post(path, json=data, success=success, **kwargs)
+
+    def volume_attachment_delete(self, server_id, attachment_id, **kwargs):
+        path = path4url(
+            'servers', server_id, 'os-volume_attachments', attachment_id)
+        success = kwargs.pop('success', 202)
+        return self.delete(path, success=success, **kwargs)
+
 
 #  Backwards compatibility
 CycladesRestClient = CycladesComputeRestClient
@@ -58,7 +77,8 @@ class CycladesBlockStorageRestClient(BlockStorageClient):
     """Synnefo Cyclades Block Storage REST API Client"""
 
     def volumes_post(
-            self, size, server_id, display_name,
+            self, size, display_name,
+            server_id=None,
             display_description=None,
             snapshot_id=None,
             imageRef=None,
@@ -68,8 +88,9 @@ class CycladesBlockStorageRestClient(BlockStorageClient):
             success=202,
             **kwargs):
         path = path4url('volumes')
-        volume = dict(
-            size=int(size), server_id=server_id, display_name=display_name)
+        volume = dict(size=int(size), display_name=display_name)
+        if server_id is not None:
+            volume['server_id'] = server_id
         if display_description is not None:
             volume['display_description'] = display_description
         if snapshot_id is not None:

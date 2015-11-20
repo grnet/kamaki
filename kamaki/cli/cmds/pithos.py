@@ -1,4 +1,4 @@
-# Copyright 2011-2014 GRNET S.A. All rights reserved.
+# Copyright 2011-2015 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -135,8 +135,13 @@ class _PithosAccount(_PithosInit):
 
     @staticmethod
     def object_is_dir(remote_dict):
-        return 'application/directory' in remote_dict.get(
+        """:returns: True if the content type of the object is
+            'applcation/directory' or 'application/folder'
+        """
+        content_type = remote_dict.get(
             'content_type', remote_dict.get('content-type', ''))
+        dir_types = ['application/directory', 'application/folder']
+        return any([t in content_type for t in dir_types])
 
     def _run(self):
         super(_PithosAccount, self)._run()
@@ -526,8 +531,8 @@ class file_delete(_PithosContainer):
 
             if result.json:
                 count = len(result.json)
-                self.error(' * %d other object(s) with %s as prefix found' %
-                    (count, prefix))
+                self.error(' * %d other object(s) with %s as prefix found' % (
+                    count, prefix))
 
                 if self['recursive']:
                     msg = 'The above %d object(s) will be deleted, too' % \
@@ -961,7 +966,10 @@ class file_upload(_PithosContainer):
 
     def _check_container_limit(self, path):
         cl_dict = self.client.get_container_limit()
-        container_limit = int(cl_dict['x-container-policy-quota'])
+        try:
+            container_limit = int(cl_dict['x-container-policy-quota'])
+        except KeyError:
+            container_limit = 0
         r = self.client.container_get()
         used_bytes = sum(int(o['bytes']) for o in r.json)
         path_size = get_path_size(path)
@@ -1064,7 +1072,7 @@ class file_upload(_PithosContainer):
             sharing=self._sharing(),
             public=self['public'])
         container_info_cache = dict()
-        rpref = 'pithos://%s' if self['account'] else ''
+        rpref = ('pithos://%s' % self['account']) if self['account'] else ''
         for f, rpath in self._src_dst(local_path, remote_path):
             self.error('%s --> %s/%s/%s' % (
                 f.name, rpref, self.client.container, rpath))
@@ -1087,6 +1095,11 @@ class file_upload(_PithosContainer):
                             'Calculating block hashes')
                     else:
                         hash_cb = None
+
+                    caller_id = self.astakos.user_term('id')
+                    if self.client.account != caller_id:
+                        params['target_account'], self.client.account = (
+                            self.client.account, caller_id)
                     self.client.upload_object(
                         rpath, f,
                         hash_cb=hash_cb,
@@ -1117,6 +1130,10 @@ class file_upload(_PithosContainer):
                     raise
                 finally:
                     self._safe_progress_bar_finish(progress_bar)
+
+            if self['public']:
+                obj = self.client.get_object_info(rpath)
+                self.write('%s\n' % obj.get('x-object-public', ''))
             self.error('Upload completed')
 
     def main(self, local_path, remote_path_or_url=None):
@@ -1178,7 +1195,9 @@ class file_cat(_PithosContainer):
         if_unmodified_since=DateArgument(
             'show output unmodified since then', '--if-unmodified-since'),
         object_version=ValueArgument(
-            'Get contents of the chosen version', '--object-version')
+            'Get contents of the chosen version', '--object-version'),
+        buffer_blocks=IntArgument(
+            'Size of buffer in blocks (default: 4)', '--buffer-blocks')
     )
 
     @errors.Generic.all
@@ -1186,14 +1205,16 @@ class file_cat(_PithosContainer):
     @errors.Pithos.object_path
     def _run(self):
         try:
-            self.client.download_object(
+            # self.client.download_object(
+            self.client.stream_down(
                 self.path, self._out,
                 range_str=self['range'],
                 version=self['object_version'],
                 if_match=self['if_match'],
                 if_none_match=self['if_none_match'],
                 if_modified_since=self['if_modified_since'],
-                if_unmodified_since=self['if_unmodified_since'])
+                if_unmodified_since=self['if_unmodified_since'],
+                buffer_blocks=self['buffer_blocks'])
         except ClientError as ce:
             if ce.status in (404, ):
                 self._container_exists()
@@ -1202,12 +1223,17 @@ class file_cat(_PithosContainer):
 
     def main(self, path_or_url):
         super(self.__class__, self)._run(path_or_url)
+        if self['buffer_blocks'] is not None and self['buffer_blocks'] < 1:
+            arg = self.arguments['buffer_blocks']
+            raise CLIInvalidArgument(
+                'Invalid value %s' % arg.value, importance=2, details=[
+                    '%s must be a possitive integer' % arg.lvalue])
         self._run()
 
 
 @command(file_cmds)
 class file_download(_PithosContainer):
-    """Download a remove file or directory object to local file system"""
+    """Download a remote file or directory object to local file system"""
 
     arguments = dict(
         resume=FlagArgument(
@@ -1249,7 +1275,6 @@ class file_download(_PithosContainer):
             if prefix:
                 obj = self.client.get_object_info(
                     prefix, version=self['object_version'])
-                #FIXME: why is this needed????
                 obj.setdefault('name', prefix)
         except ClientError as ce:
             if ce.status in (404, ):
