@@ -1,4 +1,4 @@
-# Copyright 2014 GRNET S.A. All rights reserved.
+# Copyright 2014-2015 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -35,6 +35,7 @@ import logging
 import httplib
 import socket
 import ssl
+import os.path
 from objpool import http
 
 log = logging.getLogger(__name__)
@@ -42,6 +43,10 @@ log = logging.getLogger(__name__)
 
 class SSLUnicodeError(ssl.SSLError):
     """SSL module cannot handle unicode file names"""
+
+
+class SSLCredentialsMissing(ssl.SSLError):
+    """Missing credentials for SSL authentication"""
 
 
 class HTTPSClientAuthConnection(httplib.HTTPSConnection):
@@ -55,7 +60,8 @@ class HTTPSClientAuthConnection(httplib.HTTPSConnection):
             :param ignore_ssl: flag (default: False)
         """
         try:
-            self.ca_file = str(kwargs.pop('ca_file', self.ca_file))
+            self.ca_file = str(
+                kwargs.pop('ca_file', self.ca_file) or '') or None
         except UnicodeError as ue:
             raise SSLUnicodeError(0, SSLUnicodeError.__doc__, ue)
 
@@ -91,6 +97,21 @@ class HTTPSClientAuthConnection(httplib.HTTPSConnection):
                     ca_certs=self.ca_file, cert_reqs=ssl.CERT_REQUIRED)
         except UnicodeError as ue:
             raise SSLUnicodeError(0, SSLUnicodeError.__doc__, ue)
+        except IOError as ioe:
+            # In OSX, a wrong SSL credential file may raise an IOError with
+            # errno of 2, instead of an SSL error
+            # Wrap it in SSL and raise it
+            if getattr(ioe, 'errno', None) == 2:
+                files = self.key_file, self.cert_file, self.ca_file
+                if not any(files):
+                    raise SSLCredentialsMissing(
+                        'No SSL cred. files provided (IOError:%s)' % ioe)
+                for f in files:
+                    if f and not os.path.exists(f):
+                        raise SSLCredentialsMissing(
+                            'SSL cred. file %s does not exist (IOError:%s)' % (
+                                f, ioe))
+            raise
 
 
 http.HTTPConnectionPool._scheme_to_class['https'] = HTTPSClientAuthConnection
