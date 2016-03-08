@@ -212,7 +212,7 @@ class ResponseManager(TestCase):
         self.assertEqual(self.RM.status, FakeResp.reason)
         self.assertEqual(self.RM.status_code, FakeResp.status)
         self.assertEqual(self.RM.headers, FakeResp.HEADERS)
-        perform.assert_called_only_once
+        assert perform.call_count == 1
 
 
 class SilentEvent(TestCase):
