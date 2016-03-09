@@ -440,7 +440,7 @@ class ArgumentParseManager(TestCase):
             self.assertEqual(apm._unparsed, None)
             self.assertEqual(parse.mock_calls[-1], call())
             if arguments:
-                assert update_parser.call_count == 1
+                assert update_parser.call_count == 2
 
     def test_syntax(self):
         apm = argument.ArgumentParseManager('exe', {})
