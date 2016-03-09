@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2011-2013 GRNET S.A. All rights reserved.
+# Copyright 2011-2016 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -123,13 +123,13 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Kamaki'
-copyright = u'2014, GRNET'
+copyright = u'2016, GRNET'
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 #
 # The short X.Y version.
-version = '0.13'
+version = '0.14'
 # The full version, including alpha/beta/rc tags.
 
 try:
