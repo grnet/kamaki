@@ -22,7 +22,7 @@ Please see the [official Synnefo site](http://www.synnefo.org) and the
 Copyright and license
 =====================
 
-Copyright (C) 2011-2015 GRNET S.A. All rights reserved.
+Copyright (C) 2011-2016 GRNET S.A. All rights reserved.
 
 Redistribution and use in source and binary forms, with or
 without modification, are permitted provided that the following
