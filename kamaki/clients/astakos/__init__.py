@@ -39,7 +39,7 @@ from astakosclient import AstakosClientException, parse_endpoints
 import astakosclient
 
 from kamaki.clients import (
-    Client, ClientError, KamakiSSLError, RequestManager, recvlog)
+    Client, Logged, ClientError, KamakiSSLError, RequestManager, recvlog)
 
 from kamaki.clients.utils import https
 
@@ -120,19 +120,16 @@ for m in inspect.getmembers(AstakosClient):
         setattr(AstakosClient, m[0], _astakos_error(m[1]))
 
 
-class LoggedAstakosClient(AstakosClient):
+class LoggedAstakosClient(AstakosClient, Logged):
     """An AstakosClient wrapper with modified logging
 
     Logs are adjusted to appear similar to the ones of kamaki clients.
     No other changes are made to the parent class.
     """
 
-    LOG_TOKEN = False
-    LOG_DATA = False
-
     def __init__(self, *args, **kwargs):
         kwargs.setdefault('logger', log)
-        super(LoggedAstakosClient, self).__init__(*args, **kwargs)
+        AstakosClient.__init__(self, *args, **kwargs)
 
     def _dump_response(self, request, status, message, data):
         recvlog.info('%d %s' % (status, message))
@@ -145,7 +142,7 @@ class LoggedAstakosClient(AstakosClient):
             recvlog.info(data)
 
     def _call_astakos(self, *args, **kwargs):
-        r = super(LoggedAstakosClient, self)._call_astakos(*args, **kwargs)
+        r = AstakosClient._call_astakos(self, *args, **kwargs)
         try:
             log_request = getattr(self, 'log_request', None)
             if log_request:
