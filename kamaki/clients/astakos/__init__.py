@@ -32,6 +32,7 @@
 # or implied, of GRNET S.A.
 
 from logging import getLogger
+from functools import wraps
 import inspect
 import ssl
 
@@ -54,11 +55,39 @@ class AstakosClientError(ClientError, AstakosClientException):
         super(ClientError, self).__init__(message, details, status)
 
 
-def _astakos_error(foo):
+def _log_astakosclient_request(cls):
+    """
+    :param cls: An AstakosClient instance
+    """
+    try:
+        log_request = getattr(cls, 'log_request', None)
+        if log_request:
+            req = RequestManager(
+                method=log_request['method'],
+                url='%s://%s' % (cls.scheme, cls.astakos_base_url),
+                path=log_request['path'],
+                data=log_request.get('body', None),
+                headers=log_request.get('headers', dict()))
+            req.LOG_TOKEN, req.LOG_DATA = cls.LOG_TOKEN, cls.LOG_DATA
+            req.dump_log()
+            log_response = getattr(cls, 'log_response', None)
+            if log_response:
+                cls._dump_response(
+                    req,
+                    status=log_response['status'],
+                    message=log_response['message'],
+                    data=log_response.get('data', ''))
+    except Exception:
+        recvlog.debug('Kamaki failed to log an AstakosClient call')
+
+
+def _astakos_error(func):
+    @wraps(func)
     def wrap(self, *args, **kwargs):
         try:
-            return foo(self, *args, **kwargs)
+            return func(self, *args, **kwargs)
         except AstakosClientException as sace:
+            _log_astakosclient_request(self)
             if isinstance(getattr(sace, 'errobject', None), ssl.SSLError):
                 raise KamakiSSLError('SSL Connection error (%s)' % sace)
             raise AstakosClientError(
@@ -143,28 +172,8 @@ class LoggedAstakosClient(AstakosClient, Logged):
 
     def _call_astakos(self, *args, **kwargs):
         r = AstakosClient._call_astakos(self, *args, **kwargs)
-        try:
-            log_request = getattr(self, 'log_request', None)
-            if log_request:
-                req = RequestManager(
-                    method=log_request['method'],
-                    url='%s://%s' % (self.scheme, self.astakos_base_url),
-                    path=log_request['path'],
-                    data=log_request.get('body', None),
-                    headers=log_request.get('headers', dict()))
-                req.LOG_TOKEN, req.LOG_DATA = self.LOG_TOKEN, self.LOG_DATA
-                req.dump_log()
-                log_response = getattr(self, 'log_response', None)
-                if log_response:
-                    self._dump_response(
-                        req,
-                        status=log_response['status'],
-                        message=log_response['message'],
-                        data=log_response.get('data', ''))
-        except Exception:
-            recvlog.debug('Kamaki failed to log an AstakosClient call')
-        finally:
-            return r
+        _log_astakosclient_request(self)
+        return r
 
 
 class CachedAstakosClient(Client):
