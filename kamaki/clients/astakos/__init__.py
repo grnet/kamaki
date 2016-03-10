@@ -48,11 +48,14 @@ from kamaki.clients.utils import https
 log = getLogger(__name__)
 
 
-class AstakosClientError(ClientError, AstakosClientException):
-    """Join AstakosClientException as ClientError in one class"""
+class AstakosClientError(ClientError):
+    pass
 
-    def __init__(self, message='Astakos Client Error', details='', status=0):
-        super(ClientError, self).__init__(message, details, status)
+
+def mk_astakosclienterror(sace):
+    """Make an AstakosClientError from an AstakosClientException"""
+    return AstakosClientError(
+        message=sace.message, status=sace.status, details=sace.details)
 
 
 def _log_astakosclient_request(cls):
@@ -90,9 +93,7 @@ def _astakos_error(func):
             _log_astakosclient_request(self)
             if isinstance(getattr(sace, 'errobject', None), ssl.SSLError):
                 raise KamakiSSLError('SSL Connection error (%s)' % sace)
-            raise AstakosClientError(
-                getattr(sace, 'message', '%s' % sace),
-                details=sace.details, status=sace.status)
+            raise mk_astakosclienterror(sace)
     return wrap
 
 

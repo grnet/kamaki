@@ -33,7 +33,6 @@
 
 from traceback import format_exc, format_stack
 from logging import getLogger
-from astakosclient import AstakosClientException
 
 from kamaki.clients import ClientError
 from kamaki.cli import DEF_CLOUD_ENV
@@ -125,12 +124,7 @@ class Astakos(object):
     @classmethod
     def astakosclient(this, func):
         def _raise(self, *args, **kwargs):
-            try:
-                r = func(self, *args, **kwargs)
-            except AstakosClientException as ace:
-                raise CLIError(
-                    'Error in AstakosClient', details=['%s' % ace, ])
-            return r
+            return func(self, *args, **kwargs)
         _raise.__name__ = func.__name__
         return _raise
 
