@@ -654,15 +654,15 @@ class endpoint_list(_AstakosInit, OptionalOutput, NameFilter):
 
 _project_specs = """
     {
-    "name": name,
-    "owner": uuid,  # if omitted, request user assumed
+    "name": name.in.domainlike.format,
+    "owner": user-uuid,  # if omitted, request user assumed
     "homepage": homepage,  # optional
     "description": description,  # optional
     "comments": comments,  # optional
     "max_members": max_members,  # optional
     "private": true | false,  # optional
-    "start_date": date,  # optional
-    "end_date": date,
+    "start_date": date,  # optional - in ISO8601 format
+    "end_date": date,  # in ISO8601 format e.g., YYYY-MM-DDThh:mm:ssZ
     "join_policy": "auto" | "moderated" | "closed",  # default: "moderated"
     "leave_policy": "auto" | "moderated" | "closed",  # default: "auto"
     "resources": {

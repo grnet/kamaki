@@ -170,7 +170,7 @@ class LoggedAstakosClient(TestCase):
     @patch('%s.AstakosClient._call_astakos' % astakos_pkg, return_value='ret')
     def test__call_astakos(self, super_call):
         self.assertEqual(self.client._call_astakos('x', y='y'), 'ret')
-        super_call.assert_called_once_with('x', y='y')
+        super_call.assert_called_once_with(self.client, 'x', y='y')
 
 
 class CachedAstakosClient(TestCase):
