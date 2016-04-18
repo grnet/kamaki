@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2011-2013 GRNET S.A. All rights reserved.
+# Copyright 2011-2016 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -83,8 +83,8 @@ except ImportError:
         AstakosClient
     except ImportError:
         stderr.write(
-            '`astakosclient` package is required to build kamaki docs.\n')
-        exit(1)
+            'W: `astakosclient` package is required to build kamaki docs.\n')
+        # exit(1)
 
 # try:
 #     from progress.bar import ShadyBar

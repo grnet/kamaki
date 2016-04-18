@@ -1,42 +1,19 @@
 Extending kamaki.clients
 ========================
 
-By default, kamaki clients implement REST APIs, therefore they manage HTTP
-requests and responses to communicate with services.
+All service client classes are subclasses of the ``kamaki.clients.Client``
+class. They implement specific client functionalities as member methods. This,
+along with the ``kamaki.clients.ClientError`` error class are enough to
+implement your own client or extend an existing one.
 
-How to build a client
----------------------
+Add a new client
+----------------
 
-All service clients consist of a subclass of the Client class and implement
-separate client functionalities as member methods. There is also an error class
-to raise exceptions that can be handled by kamaki interfaces.
+First, create a new python file under ``${KAMAKI_ROOT/kamaki/clients`` the name
+of which will be the name of your client module.
 
-.. code-block:: python
-    
-    #  ${KAMAKI_PATH}/kamaki/clients/mynewclient.py
-
-    from kamaki.clients import Client, ClientError
-
-
-    class MyNewClient(Client):
-        """MyNewClient Description Here"""
-
-        def my_first_method(self, **args):
-            """Method description"""
-            try:
-                ...
-                method code
-                ...
-            except SomeKnownException as e1:
-                raise ClientError('MyError: %s' % e1)
-            except SomeOtherException as e2:
-                raise ClientError('MyError: %s' % e2)
-
-        def my_second_method(self, **params):
-            """Method description"""
-            ...
-
-Custom clients can use a set of convenience methods for easy HTTP requests
+Custom clients can use a set of convenience methods which simplify calling the
+API.
 
 .. code-block:: python
 
@@ -48,23 +25,70 @@ Custom clients can use a set of convenience methods for easy HTTP requests
     def copy(self, path, **kwargs)
     def move(self, path, **kwargs)
 
+In the following example, we will create a client that makes a "GET" and a
+"POST" to a cloud endpoint at
+``https://www.example.org/some/api/endpoint/my/content``:
+
+.. note:: The API endpoint ``https://www.example.org/some/api/endpoint is
+    provided by the caller. The suffix ``/my/content`` is call-specific
+
+.. code-block:: python
+    
+    #  ${KAMAKI_PATH}/kamaki/clients/mynewclient.py
+
+    import logging
+    from kamaki.clients import Client, ClientError
+
+    logger = getLogger(__name__)
+
+
+    class MyNewClient(Client):
+        """MyNewClient Description Here"""
+
+        def list(self, **params):
+            """
+            :returns: a list of content objects [{...}, {...}, ...]
+            """
+            r = self.get('/my/contents', **params)
+            return r.json
+
+        def create(self, data, **args):
+            """
+            :returns: True if new content is created, False if already there
+            """
+            logger.info("Create new content")
+            try:
+                r = self.post(json=data, **args, success=202)
+            except ClientError as ce:
+                if ce.status in (201, ):
+                    logger.debug("Content was already there")
+                    return False
+                raise
+
+            logger.debug("New content was added")
+            return True
+
+The above script showcases some of the conveniences provided by the kamaki
+library. The "r.json" attribute parses the response data and extracts a dict or
+list. The "json=data" parameter in "post" tells kamaki that this is a json piece
+of data, so kamaki will format it and update the request headers accordingly.
+
 How to use your client
 ----------------------
-
-External applications must instantiate a MyNewClient object.
 
 .. code-block:: python
 
     from kamaki.clients import ClientError
     from kamaki.clients.mynewclient import MyNewClient
 
-    ...
+    apiendpoint = "https://www.example.org/some/api/endpoint"
+    TOKEN = 'Some-token'
+
     try:
-        cl = MyNewClient(args)
-        cl.my_first_method(other_args)
+        cl = MyNewClient(apiendpoint, TOKEN)
+        print cl.list(other_args)
     except ClientError as cle:
-        print('Client Error: %s' % cle)
-    ...
+        print("Client Error: {0}".format(cle))
 
 Concurrency control
 -------------------
@@ -85,8 +109,8 @@ each call of the single method).
             kwarg_list = [kwarg for each run]
             self.async_run(self._single_threaded_method, kwarg_list)
 
-Going agile
------------
+Testing
+-------
 
 The kamaki.clients package contains a set of fine-grained unit-tests for all
 APIs. 

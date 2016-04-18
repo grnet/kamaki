@@ -6,16 +6,16 @@ SSL authentication
 Kamaki supports SSL authenticated connections since version 0.13.
 
 In order to establish secure connections, the https connection module uses a CA
-certificates file (see the discussion on
+certificates PEM file (see the discussion on
 `Certificates <https://docs.python.org/2/library/ssl.html#ssl-certificates>`_
 at docs.python.org, for more information).
 
-The CA certificates file location depends on the platform (e.g.,
+The system CA certificates file location depends on the platform (e.g.,
 `/etc/ssl/certs/ca-certifications.crt` on Debian Linux), but developers can
 also `provide a custom path <#set-ca-certificates-path>`_.
 
 If the CA certificates path (a) is not set, (b) the file is invalid or (c) the
-server fails to authenticate against it, a KamakiSSLError ensues. Developers
+server fails to authenticate against it, a ``KamakiSSLError`` ensues. Developers
 can `deactivate SSL errors <#ignore-ssl-errors>`_ and connect insecurely
 instead.
 
@@ -53,10 +53,7 @@ Some copies of kamaki are packaged for specific operating systems, while others
 are system-ignorant (i.e., installed through pypi, cloned from a GitHub
 repository or installed from source code).
 
-If a kamaki package is system-aware, the typical CA certifications path for the
-system is set automatically when a kamaki client is initialized.
-
-If the copy is system-ignorant, the caller has to
+If a kamaki package is system-aware, the system CA certifications path is set automatically when a kamaki client is initialized. Otherwise, the caller has to
 `provide a CA certificates path <#set-ca-certificates-path>`_.
 
 To check if kamaki is equipped with a default path:
@@ -67,17 +64,12 @@ To check if kamaki is equipped with a default path:
 
     assert defaults.CACERTS_DEFAULT_PATH, 'No default CA certificates'
 
-CA certificates path from config
---------------------------------
+CA certificates from CLI config
+-------------------------------
 
-The following concerns developers who have set a CA certificates path in kamaki
-config. To check if kamaki config is aware of a CA path:
-
-.. code-block:: console
-
-    $ kamaki config get ca_certs
-
-To extract the CA certificates path from config:
+Some developers use the kamaki CLI config file (e.g., ``~/.kamakirc``) to
+configure their application. The kamaki CLI has a global variable ``ca_certs``
+for the SSL certificates.
 
 .. code-block:: python
 
@@ -86,11 +78,12 @@ To extract the CA certificates path from config:
     cnf = config.Config()
     ca_certs = cnf.get('global', 'ca_certs')
 
-.. note:: If the configuration file does not contain a ca_certs field, config
-    returns the value of CACERTS_DEFAULT_PATH from "kamaki.defaults".
+.. note:: For convenience, if the configuration file does not contain a ca_certs
+    field, config returns the value of CACERTS_DEFAULT_PATH from
+    ``kamaki.defaults``.
 
-Building packages with SSL support
-----------------------------------
+Building kamaki packages with SSL support
+-----------------------------------------
 
 To build a kamaki package with SSL support, maintainers must explicitly set the
 system provided CA certificates path of the target system to
@@ -109,8 +102,8 @@ In the following example, set the CA certificates path for a Debian system.
       >> kamaki/kamaki/defaults.py
 
 .. warning:: editing the `kamaki/kamaki/defaults.py` file should be avoided.
-    Maintainers should rather append their settings (in valid python code) at
-    the end of the file.
+    Maintainers should rather append their settings (valid python code) at the
+    end of the file.
 
 The typical paths for CA certificates differ from system to system. Some of
 them are listed bellow::
