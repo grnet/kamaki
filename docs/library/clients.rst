@@ -182,3 +182,151 @@ Image
 
 Pithos
 ------
+
+Synnefo API: https://www.synnefo.org/docs/synnefo/latest/object-api-guide.html
+Pithos+ is the storage service of Synnefo.
+
+Each user has their own storage space, organized in containers. Each
+container contains objects. In most cases we can think of objects as files, but
+in reality they are not the same think. Typically, it is the responsibility of
+the application to simulate the functionality of folders and files, if they need
+it.
+
+Here is an example, where the containers are ``pithos``, ``images``, ``music``
+and ``trash``::
+
+    user-uuid
+        pithos
+            myfile.txt
+            myfolder/
+            myfolder/anotherfile.txt
+            my-linux-distro.diskdump
+        images
+            debian-stable.disckdump
+            my-special-image.diskdump
+        music
+            The Beatles - White Album/
+            The Beatles - White Album/Back in the U.S.S.R.
+            BoC - Music has the right to children/
+            BoC - Music has the right to children/Wildlife Analysis
+            BoC - Music has the right to children/An eagle in your mind
+        trash
+            my deleted folder/
+            my deleted folder/some old file.txt
+            my deleted folder/removed by accident.png
+
+Quotas are applied at project level. Each project is registered to a project
+(by default, the personal/system project of the owner). Objects ("files")
+inherit the project policy of the container they are in.
+
+Initialize pithos client
+^^^^^^^^^^^^^^^^^^^^^^^^
+**Example:** Initialize a pithos client to handle the objects in the container
+``pithos``
+
+.. literalinclude:: examples/pithos-init.py
+    :language: python
+    :lines: 34-
+    :linenos:
+
+.. note:: To access the objects of another user, set the ``account`` parameter
+    to their uuid and Pithos will have access to the objects the other user
+    allows you to see or edit.
+
+List and information
+^^^^^^^^^^^^^^^^^^^^
+**Example** Recursively list the contents of all my containers.
+
+.. literalinclude:: examples/pithos-list.py
+    :language: python
+    :lines: 34-
+    :linenos:
+
+The results should look like this::
+
+    Listing contents of pithos (project: a1234567-a890-1234-56ae-78f90bb1c2db)
+        myfile.txt  text/plain     202 bytes
+        myfolder/   application/directory   0 bytes
+        myfolder/anotherfile.txt    text/plain   333 bytes
+        my-linux-distro.diskdump    applcation/octet-stream    539427293 bytes
+    Listing contents of images (project: a9f87654-3af2-1e09-8765-43a2df1098765)
+        debian-stable.disckdump     application/octet-stream    309427093 bytes
+        my-special-image.diskdump   applcation/octet-stream    339427293 bytes
+    Listing contents of music (project: a9f87654-3af2-1e09-8765-43a2df1098765)
+        The Beatles - White Album/  application/directory   0 bytes
+        The Beatles - White Album/Back in the U.S.S.R.mp3  media/mpeg   3442135 bytes
+        BoC - Music has the right to children/     application/directory   0 bytes
+        BoC - Music has the right to children/Wildlife Analysis.mp3   media/mpeg   4442135 bytes
+        BoC - Music has the right to children/An eagle in your mind.mp3    media/mpeg   23442135 bytes
+    Listing contents of trash (project: a1234567-a890-1234-56ae-78f90bb1c2db)
+        my deleted folder/     application/directory   0 bytes
+        my deleted folder/some old file.txt      text/plain   10 bytes
+        my deleted folder/removed by accident.png   image/png   20 bytes
+
+.. note:: In the above example, half of the projects (pithos, trash) are
+    registered to the users system (personal) project, while the rest (
+    images, music) at another project, probably one offering more storage
+    resources.
+
+Upload and download
+^^^^^^^^^^^^^^^^^^^
+
+**Example:** Download ``my-linux-distro.diskdump`` from container "pithos" to a
+    local file as ``local.diskdump`` and upload it to container "images" as
+    ``recovered.diskdump``
+
+.. literalinclude:: examples/pithos-download-upload.py
+    :language: python
+    :lines: 34-
+    :linenos:
+
+.. note:: The file is now stored at three locations: the container "pithos", the
+    container "images" and, with a different name, a the local hard disk.
+
+.. note:: The ``upload_object`` and ``download_object`` methods are optimized in
+    many ways: they feature dynamic simultaneous connections and automatic
+    resume. In this casem for instance, the data of the uploaded file will not
+    be uploaded, as they are already on the server.
+
+Move / Copy / Delete
+^^^^^^^^^^^^^^^^^^^^
+**Example:** Move ``/pithos/my-linux-distro.diskdump`` to ``trash``, delete
+    ``/images/my-pithos-distro.diskdump`` and then copy it from trash.
+
+.. literalinclude:: examples/pithos-move-copy-delete.py
+    :language: python
+    :lines: 34-
+    :linenos:
+
+This is the status after the execution of the script above::
+
+    user-uuid
+        pithos
+            myfile.txt
+            myfolder/
+            myfolder/anotherfile.txt
+        images
+            debian-stable.disckdump
+            my-special-image.diskdump
+            recovered.diskdump
+        music
+            The Beatles - White Album/
+            The Beatles - White Album/Back in the U.S.S.R.
+            BoC - Music has the right to children/
+            BoC - Music has the right to children/Wildlife Analysis
+            BoC - Music has the right to children/An eagle in your mind
+        trash
+            my deleted folder/
+            my deleted folder/some old file.txt
+            my deleted folder/removed by accident.png
+            my-linux-distro.diskdump
+
+Reassign container
+^^^^^^^^^^^^^^^^^^
+
+**Example:** Reassign container "music" to same container as "pithos.
+
+.. literalinclude:: examples/pithos-reassign.py
+    :language: python
+    :lines: 34-
+    :linenos:
