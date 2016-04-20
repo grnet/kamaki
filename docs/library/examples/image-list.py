@@ -32,29 +32,22 @@
 # or implied, of GRNET S.A.
 
 from kamaki.clients.astakos import AstakosClient
-from kamaki.clients.pithos import PithosClient
+from kamaki.clients.image import ImageClient
 
-#  Initliaze astakos client
 AUTHENTICATION_URL = "https://astakos.example.com/identity/v2.0"
 TOKEN = "User-Token"
 astakos = AstakosClient(AUTHENTICATION_URL, TOKEN)
-
-service_type = PithosClient.service_type
-endpoint = astakos.get_endpoint_url(service_type)
-pithos = PithosClient(endpoint, TOKEN)
-
 user = astakos.authenticate()
 uuid = user["access"]["user"]["id"]
-pithos.account = uuid
 
-#  Download from container "pithos"
-pithos.container = "pithos"
-source = "my-linux-distro.diskdump"
-target = "local.diskdump"
-with open(target, "rb+") as f:
-    pithos.download_object(source, f)
+service_type = ImageClient.service_type
+endpoint = astakos.get_endpoint_url(service_type)
+image = ImageClient(endpoint, TOKEN)
 
-#  Upload to container "images"
-pithos.container = "images"
-with open(target) as f:
-    pithos.upload_object(source, f)
+#  Get all images owned/registered by me
+images = filter(lambda img: img["owner"] == uuid, image.list_public())
+
+print "My images:\n"
+for i in images:
+    print "\t{name} ({location})".format(
+        name=i["name"], location=i["location"])

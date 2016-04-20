@@ -180,6 +180,81 @@ Cyclades / BlockStorage
 Image
 -----
 
+Synnefo API: https://www.synnefo.org/docs/synnefo/latest/image-api-guide.html
+
+In Synnefo, an image is loaded as a file to the storage service (Pithos+), and
+then is registered to the image service (Plankton). The image location is unique
+and can used as an image identifier.
+
+Image location formats::
+
+    pithos://<user_uuid>/<container>/<object path>
+    e.g., pithos://user-uuid/images/debian_base.diskdump
+
+    or, if the user uuid os implied
+    /<container>/<object path>
+    e.g., /images/debian_base.diskdump
+
+Register
+^^^^^^^^
+
+**Example:** Register the image file ``debian_base3.diskdump``, currently stored
+locally. It will be uploaded to ``images``.
+
+.. literalinclude:: examples/image-register.py
+    :language: python
+    :lines: 34-
+    :linenos:
+
+It is a common practice to keep the image registration details in a json meta
+file (e.g., to register images in the future). This metafile is typically
+uploaded along with the image.
+
+.. code-block:: console
+
+    kamaki file cat /images/my-image.diskdump.meta
+    {
+      "name": "Debian Base With Extras",
+      "checksum": "3cb03556ec971f...e8dd6190443b560cb7",
+      "updated-at": "2013-06-19 08:01:00",
+      "created-at": "2013-06-19 08:00:22",
+      "properties": {
+        "OS": "linux",
+        "USER": "root"
+      },
+      "location": "pithos://user-uuid/images/my-image.diskdump",
+      "is-public": "False",
+      "owner": "user-uuid",
+      "disk-format": "diskdump",
+      "size": "903471104",
+      "deleted-at": "",
+      "container-format": "bare"
+    }
+
+List
+^^^^
+**Example:** List the names and Pithos locations of the images registered by me
+
+.. literalinclude:: examples/image-list.py
+    :language: python
+    :lines: 34-
+    :linenos:
+
+Unresgister
+^^^^^^^^^^^
+**Example:** Unregister and delete an image.
+
+.. literalinclude:: examples/image-unregister.py
+    :language: python
+    :lines: 34-
+    :linenos:
+
+.. note:: Unresgitering an image does not delete the image dump from pithos. In
+    order to do that, you need to have the appropriate permissions (aka, the
+    image file must by stored on your Pithos account), so that you can delete it
+    as a file.
+
+
 Pithos
 ------
 

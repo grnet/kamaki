@@ -33,28 +33,39 @@
 
 from kamaki.clients.astakos import AstakosClient
 from kamaki.clients.pithos import PithosClient
+from kamaki.clients.image import ImageClient
 
-#  Initliaze astakos client
 AUTHENTICATION_URL = "https://astakos.example.com/identity/v2.0"
 TOKEN = "User-Token"
 astakos = AstakosClient(AUTHENTICATION_URL, TOKEN)
+user = astakos.authenticate()
+uuid = user["access"]["user"]["id"]
 
 service_type = PithosClient.service_type
 endpoint = astakos.get_endpoint_url(service_type)
 pithos = PithosClient(endpoint, TOKEN)
-
-user = astakos.authenticate()
-uuid = user["access"]["user"]["id"]
 pithos.account = uuid
 
-#  Download from container "pithos"
-pithos.container = "pithos"
-source = "my-linux-distro.diskdump"
-target = "local.diskdump"
-with open(target, "rb+") as f:
-    pithos.download_object(source, f)
+service_type = ImageClient.service_type
+endpoint = astakos.get_endpoint_url(service_type)
+image = ImageClient(endpoint, TOKEN)
 
-#  Upload to container "images"
-pithos.container = "images"
-with open(target) as f:
-    pithos.upload_object(source, f)
+#  Find the image by id
+image_id = "my-image-id"
+my_image = image.get_meta(image_id)
+
+#  Check if it is my image
+if my_image["owner"] == uuid:
+    image.unregister(image_id)
+
+    #  Delete the image files
+    pithos.container = "images"
+    separator = "{uuid}/{container}/".format(
+        uuid=uuid, container=pithos.container)
+    _, location = my_image["location"].split(separator)
+    meta_object = "{0}.meta".format(location)
+
+    pithos.del_object(location)
+    pithos.del_object(meta_object)
+else:
+    print "This image wasn't registered by me"

@@ -52,7 +52,7 @@ pithos.move_object("pithos", object_, "trash")
 
 #  Delete from "images"
 pithos.container = "images"
-pithos.delete_object(object_)
+pithos.del_object(object_)
 
 #  Copy from "trash" to "images"
 new_object = "recovered.diskdump"
