@@ -253,6 +253,42 @@ Reassign and resize a server
 
 Cyclades / Network
 ------------------
+Synnefo API: https://www.synnefo.org/docs/synnefo/latest/network-api-guide.html
+
+The Synnefo approach to the Network API diverges from the OpenStack semantics.
+Check the Synnefo documentation for more details.
+
+Create private network
+^^^^^^^^^^^^^^^^^^^^^^
+**Example:** Create a new private network between two servers.
+
+.. literalinclude:: examples/network-vpn.py
+    :language: python
+    :lines: 34-
+    :linenos:
+
+.. note:: In Synnefo, ports are the connections between a network and a server.
+
+Reserve IP
+^^^^^^^^^^
+**Example:** Check if there are free IP, reserve one if not and use it with a
+server.
+
+.. literalinclude:: examples/network-ip.py
+    :language: python
+    :lines: 34-
+    :linenos:
+
+.. note:: IPs are connected to networks, which are connected to servers.
+
+Create cluster
+^^^^^^^^^^^^^^
+**Example:** Create a cluster of three servers, where only one has a punlic IP.
+
+.. literalinclude:: examples/network-cluster.py
+    :language: python
+    :lines: 34-
+    :linenos:
 
 Cyclades / BlockStorage
 -----------------------
