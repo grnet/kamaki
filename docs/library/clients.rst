@@ -170,6 +170,86 @@ used up, we will reassign it to a different project.
 
 Cyclades / Compute
 ------------------
+Synnefo API: https://www.synnefo.org/docs/synnefo/latest/compute-api-guide.html
+
+A server or VM (Virtual Machine) is a complex resource: you need other resources
+to built it, namely CPU cores, RAM memory, Volume space and, optionally, VPNs
+and IPs.
+
+List server quotas
+^^^^^^^^^^^^^^^^^^
+**Example:** Check server-related resources and report to user
+
+.. literalinclude:: examples/compute-quotas.py
+    :language: python
+    :lines: 34-
+    :linenos:
+
+Create server
+^^^^^^^^^^^^^
+**Example:** Create a server with an IP and a server without networking (assume
+the IP is reserved for use by current user)
+
+.. literalinclude:: examples/compute-create.py
+    :language: python
+    :lines: 34-
+    :linenos:
+
+.. note:: The "networks" parameter sets the connectivity attributes of the new
+    server. If it is None (default), networking is configured according to the
+    default policy of the cloud (e.g., automatically assign the first available
+    public IP). To set up a server without networking: ``networks=[]``.
+
+Wait server to built
+^^^^^^^^^^^^^^^^^^^^
+**Example:** Create a new server (default settings) and wait until it is built.
+Then, print the server id and its IP (assume that the default networking policy
+of the cloud is to automatically set an IP to every new server).
+
+.. literalinclude:: examples/compute-wait.py
+    :language: python
+    :lines: 34-
+    :linenos:
+
+.. note:: The ``wait_server_while`` and ``wait_server_until`` methods work for
+    all valid server states (`ACTIVE`, `BUILD`, `STOPPED`, `ERROR`, etc.) can
+    can be used to block a program under some conditions. These blockers are
+    based on the ``kamaki.clients.wait``, which blocks for as long as a
+    user-provided method returns true.
+
+Query images and flavors
+^^^^^^^^^^^^^^^^^^^^^^^^
+**Example:** Find the appropriate image and flavor for a server
+
+.. literalinclude:: examples/compute-image-flavor.py
+    :language: python
+    :lines: 34-
+    :linenos:
+
+Reboot server
+^^^^^^^^^^^^^
+**Example:** Reboot a server.
+
+.. literalinclude:: examples/compute-reboot.py
+    :language: python
+    :lines: 34-
+    :linenos:
+
+.. note:: Similarly you can ``start_server``, ``shutdown_server`` as well as
+    ``resize_server`` and ``delete_server``.
+
+Reassign and resize a server
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+**Example:** We need to make our server more powerful, but it's assigned to a
+    project which is out of resources. We will shutdown the server, reassign it
+    to another project and resize it to another flavor.
+
+.. literalinclude:: examples/compute-reassign-resize.py
+    :language: python
+    :lines: 34-
+    :linenos:
+
+.. note:: Serves must be stopped in order to resize or reassign it.
 
 Cyclades / Network
 ------------------
