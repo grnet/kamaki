@@ -12,8 +12,8 @@ In ``kamaki.clients.astakos``::
 
     AstakosClient           An Identity and Account client for Synnefo API
     OriginalAstakosClient   The client of the Synnefo astakosclient package
-    LoggedAstakosClient     The original client with kamaki-style logging 
-    CachedAstakosClient     Some calls are cached to speed thinks up
+    LoggedAstakosClient     The original client with kamaki-style logging
+    CachedAstakosClient     Some calls are cached to speed things up
 
 .. note:: Use ``AstakosClient`` if you are not sure
 
@@ -24,7 +24,7 @@ Astakos / Identity
 
 Synnefo API: https://www.synnefo.org/docs/synnefo/latest/identity-api-guide.html
 
-The core functionality of this module is to authenticate a user and provide user
+The core functionality of this module is to authenticate a user and provide user data
 (e.g., email, unique user id)
 
 Authenticate user
@@ -58,7 +58,7 @@ Resource quotas
     :linenos:
 
 .. note:: Quotas are defined by projects (see next section). Every user is
-    member to a personal project (the "system" project) which is identitified by
+    member to a personal project (the "system" project) which is identified by
     the uuid of the user, but they may draw resources from other projects as
     well. In this script we only got the quota information related to the system
     project and we did that with this line of code
@@ -212,7 +212,7 @@ of the cloud is to automatically set an IP to every new server).
     :linenos:
 
 .. note:: The ``wait_server_while`` and ``wait_server_until`` methods work for
-    all valid server states (`ACTIVE`, `BUILD`, `STOPPED`, `ERROR`, etc.) can
+    all valid server states (`ACTIVE`, `BUILD`, `STOPPED`, `ERROR`, etc.) and
     can be used to block a program under some conditions. These blockers are
     based on the ``kamaki.clients.wait``, which blocks for as long as a
     user-provided method returns true.
@@ -249,7 +249,7 @@ Reassign and resize a server
     :lines: 34-
     :linenos:
 
-.. note:: Serves must be stopped in order to resize or reassign it.
+.. note:: Servers must be stopped in order to resize or reassign it.
 
 Cyclades / Network
 ------------------
@@ -271,7 +271,7 @@ Create private network
 
 Reserve IP
 ^^^^^^^^^^
-**Example:** Check if there are free IP, reserve one if not and use it with a
+**Example:** Check if there are free IPs, reserve one if not and use it with a
 server.
 
 .. literalinclude:: examples/network-ip.py
@@ -283,7 +283,7 @@ server.
 
 Create cluster
 ^^^^^^^^^^^^^^
-**Example:** Create a cluster of three servers, where only one has a punlic IP.
+**Example:** Create a cluster of three servers, where only one has a public IP.
 
 .. literalinclude:: examples/network-cluster.py
     :language: python
@@ -292,6 +292,17 @@ Create cluster
 
 Cyclades / BlockStorage
 -----------------------
+Synnefo API: https://www.synnefo.org/docs/synnefo/latest/blockstorage-api-guide.html
+
+Unplug and plug volume
+^^^^^^^^^^^^^^^^^^^^^^
+**Example:** Create a volume for server_1, then unplug it and plug it on
+server_2, as you would do with a USB stick.
+
+.. literalinclude:: examples/volume-plug-unplug.py
+    :language: python
+    :lines: 34-
+    :linenos:
 
 Image
 -----
@@ -300,7 +311,7 @@ Synnefo API: https://www.synnefo.org/docs/synnefo/latest/image-api-guide.html
 
 In Synnefo, an image is loaded as a file to the storage service (Pithos+), and
 then is registered to the image service (Plankton). The image location is unique
-and can used as an image identifier.
+and can be used as an image identifier.
 
 Image location formats::
 
@@ -314,7 +325,7 @@ Image location formats::
 Register
 ^^^^^^^^
 
-**Example:** Register the image file ``debian_base3.diskdump``, currently stored
+**Example:** Register the image file ``my-image.diskdump``, currently stored
 locally. It will be uploaded to ``images``.
 
 .. literalinclude:: examples/image-register.py
@@ -365,7 +376,7 @@ Unresgister
     :lines: 34-
     :linenos:
 
-.. note:: Unresgitering an image does not delete the image dump from pithos. In
+.. note:: Unregistering an image does not delete the image dump from pithos. In
     order to do that, you need to have the appropriate permissions (aka, the
     image file must by stored on your Pithos account), so that you can delete it
     as a file.
@@ -379,7 +390,7 @@ Pithos+ is the storage service of Synnefo.
 
 Each user has their own storage space, organized in containers. Each
 container contains objects. In most cases we can think of objects as files, but
-in reality they are not the same think. Typically, it is the responsibility of
+in reality they are not the same thing. Typically, it is the responsibility of
 the application to simulate the functionality of folders and files, if they need
 it.
 
@@ -406,7 +417,7 @@ and ``trash``::
             my deleted folder/some old file.txt
             my deleted folder/removed by accident.png
 
-Quotas are applied at project level. Each project is registered to a project
+Quotas are applied at project level. Each container is registered to a project
 (by default, the personal/system project of the owner). Objects ("files")
 inherit the project policy of the container they are in.
 
@@ -455,7 +466,7 @@ The results should look like this::
         my deleted folder/removed by accident.png   image/png   20 bytes
 
 .. note:: In the above example, half of the projects (pithos, trash) are
-    registered to the users system (personal) project, while the rest (
+    registered to the user's system (personal) project, while the rest (
     images, music) at another project, probably one offering more storage
     resources.
 
@@ -472,11 +483,11 @@ Upload and download
     :linenos:
 
 .. note:: The file is now stored at three locations: the container "pithos", the
-    container "images" and, with a different name, a the local hard disk.
+    container "images" and, with a different name, at the local hard disk.
 
 .. note:: The ``upload_object`` and ``download_object`` methods are optimized in
     many ways: they feature dynamic simultaneous connections and automatic
-    resume. In this casem for instance, the data of the uploaded file will not
+    resume. In this case for instance, the data of the uploaded file will not
     be uploaded, as they are already on the server.
 
 Move / Copy / Delete
@@ -515,7 +526,7 @@ This is the status after the execution of the script above::
 Reassign container
 ^^^^^^^^^^^^^^^^^^
 
-**Example:** Reassign container "music" to same container as "pithos.
+**Example:** Reassign container "images" to the same project as the one of "pithos".
 
 .. literalinclude:: examples/pithos-reassign.py
     :language: python

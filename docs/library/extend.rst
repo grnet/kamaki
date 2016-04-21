@@ -12,7 +12,7 @@ Add a new client
 First, create a new python file under ``${KAMAKI_ROOT/kamaki/clients`` the name
 of which will be the name of your client module.
 
-Custom clients can use a set of convenience methods which simplify calling the
+Custom clients can use a set of convenient methods which simplify calling the
 API.
 
 .. code-block:: python
@@ -33,7 +33,7 @@ In the following example, we will create a client that makes a "GET" and a
     provided by the caller. The suffix ``/my/content`` is call-specific
 
 .. code-block:: python
-    
+
     #  ${KAMAKI_PATH}/kamaki/clients/mynewclient.py
 
     import logging
@@ -113,10 +113,10 @@ Testing
 -------
 
 The kamaki.clients package contains a set of fine-grained unit-tests for all
-APIs. 
+APIs.
 
 .. note:: unit tests require the optional python-mock package, version 1.X or
-    better
+    greater
 
 Using the tests
 ^^^^^^^^^^^^^^^
@@ -176,8 +176,8 @@ to test everything in kamaki.clients.pithos package:
 Mechanism
 ^^^^^^^^^
 
-Each folder / package contains a test.py file, where its test module lived. All
-test modules contain a set of classes that extent the TestCase class. They also
+Each folder / package contains a test.py file, where its test module lives. All
+test modules contain a set of classes that extend the TestCase class. They also
 contain a main method to run the tests.
 
 By convention, testing classes have the same name as the class they test.
@@ -233,20 +233,20 @@ bellow:
 Implementing a new class or module
 """"""""""""""""""""""""""""""""""
 
-Each class or module needs a seperate test sub-module. By convention, each
+Each class or module needs a separate test sub-module. By convention, each
 class or module under *kamaki.clients*, should be located in a separate
 directory.
 
-Example 1: To add a NewService class that implements *kamaki.clients.Client*: 
+Example 1: To add a NewService class that implements *kamaki.clients.Client*:
 
-* create a new_service package and implement the unit tests in
+* Create a new_service package and implement the unit tests in
     *kamaki.clients.new_service.test*:
 
 .. code-block:: console
 
     $ mkdir new_service && touch new_service/test.py
 
-* create the package file for the package implementation:
+* Create the package file for the package implementation:
 
 .. code-block:: console
 

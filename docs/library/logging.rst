@@ -10,17 +10,17 @@ Kamaki features the following logger objects::
 	* logger for monitoring the HTTP connection (requests and responses)
 
 Loggers defined in higher levels of the package hierarchy are inherited. This
-may cause duplication in logs. Use either a high level loger (e.g. 'kamaki' or
+may cause duplication in logs. Use either a high level logger (e.g. 'kamaki' or
 'kamaki.clients') to log everything, or a specific logger (e.g.
 'kamaki.clients.image').
 
 Monitor requests and responses
 ------------------------------
 
-It is strongly recomended to declare the following loggers in your own code::
+It is strongly recommended to declare the following loggers in your own code::
 
 	kamaki.clients.send   logs requests URL, headers and, maybe, data
-	kamaki.clients.recv   logs responses headerts and, maybe, data
+	kamaki.clients.recv   logs responses headers and, maybe, data
 
 For security reasons, some information is omitted from the above loggers:
 	* X-Auth-Token header value.
@@ -62,7 +62,7 @@ After a call, the contents of the log file will look like this::
 	<   content-language: en-us
 	<   expires: Wed, 31 Jul 2013 14:27:47 GMT
 	<   vary: X-Auth-Token,Accept-Language
-	<   server: gunicorn/0.14.5	
+	<   server: gunicorn/0.14.5
 	<   last-modified: Wed, 31 Jul 2013 14:27:47 GMT
 	<   connection: close
 	<   etag: "43af...36"
@@ -71,7 +71,7 @@ After a call, the contents of the log file will look like this::
 	<   content-type: application/json; charset=UTF-8
 	< data size: 2425
 
-The ">" symbol shows a request, a "<" shows a response. The "data size" is a 
+The ">" symbol shows a request, a "<" shows a response. The "data size" is a
 statistic calculated by kamaki and is not used in the actual connection.
 
 Deactivate a logger

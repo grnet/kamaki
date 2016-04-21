@@ -2,7 +2,7 @@ Get started with kamaki API library
 ===================================
 
 Kamaki is the de facto python API library for Synnefo. It provides full coverage
-of the Synnefo API as well as convenience methods for complex activities (e.g.,
+of the Synnefo API as well as convenient methods for complex activities (e.g.,
 block and wait for a server-side action, optimized upload and download). The
 principal functionality of kamaki is to make REST API calls to a Synnefo cloud.
 
@@ -10,7 +10,7 @@ Setup
 -----
 
 The library part of kamaki is called `kamaki.clients`. In the following we
-assume kamaki is installed succesfuly.
+assume kamaki is installed successfully.
 
 First, check if kamaki is patched with SSL certificates or provide them yourself
 by using the patch_with_certs method.
@@ -25,7 +25,7 @@ by using the patch_with_certs method.
 
 For more information on kamaki SSL support, check :ref:`clients-ssl`.
 
-Kamaki needs two thinks in order to function: (a) a Synnefo cloud and (b) a user
+Kamaki needs two things in order to function: (a) a Synnefo cloud and (b) a user
 of that cloud. Therefore, you need to provide the following credentials::
 
     AUTHENTICATION_URL: single point for all Synnefo APIs in a cloud
@@ -79,10 +79,10 @@ API clients.
     pithos_endpoint = astakos.get_endpoint_url(pithos_type)
 
     # Initialize client instances
-    cyclades_compute = CycladesComputeClient(cyclades_compute_endpoint, TOKEN)
+    cyclades_compute = CycladesComputeClient(cyclades_endpoint, TOKEN)
     pithos = PithosClient(pithos_endpoint, TOKEN)
 
-The `service_type` of a client identifies the OpenStack API dialect they talk.
+The `service_type` of a client identifies the OpenStack API dialect it speaks.
 The values of `service_type` per client are shown bellow::
 
     StorageClient, PithosClient          --> object-store

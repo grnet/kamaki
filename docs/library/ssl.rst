@@ -92,7 +92,7 @@ CACERTS_DEFAULT_PATH in "kamaki.defaults" module.
 The purpose of "kamaki.defaults" is to let package maintainers set constants,
 the values of which are used at runtime.
 
-In the following example, set the CA certificates path for a Debian system.
+In the following example, the CA certificates path is set for a Debian system.
 
 .. code-block:: console
 
