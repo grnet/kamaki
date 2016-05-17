@@ -8,6 +8,11 @@ Changelog file for Kamaki versions >= 0.13
 v0.14
 =====
 
+Bugfixes
+--------
+
+* Fix handling of astakosclient errors
+
 Features
 --------
 
