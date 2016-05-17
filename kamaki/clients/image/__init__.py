@@ -1,4 +1,4 @@
-# Copyright 2011-2014 GRNET S.A. All rights reserved.
+# Copyright 2011-2015 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -43,7 +43,7 @@ def _format_image_headers(headers):
     for key, val in headers.items():
         key = key.lower()
         if key.startswith(property_prefix):
-            key = key[len(property_prefix):].upper().replace('-', '_')
+            key = key[len(property_prefix):].replace('-', '_')
             reply['properties'][key] = val
         elif key.startswith(meta_prefix):
             key = key[len(meta_prefix):]
@@ -178,7 +178,6 @@ class ImageClient(Client):
         :returns: (list) images shared by member
         """
         path = path4url('shared-images', member)
-        #self.set_param('format', 'json')
         r = self.get(path, success=200)
         return r.json['shared_images']
 

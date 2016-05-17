@@ -1,4 +1,4 @@
-# Copyright 2013 GRNET S.A. All rights reserved.
+# Copyright 2013-2015 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -31,7 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
-from kamaki.clients import ClientError, Waiter
+from kamaki.clients import ClientError, wait, Waiter
 from kamaki.clients.network.rest_api import NetworkRestClient
 
 
@@ -363,15 +363,30 @@ class NetworkClient(NetworkRestClient, Waiter):
         r = self.floatingips_delete(floatingip_id, success=204)
         return r.headers
 
+    def get_port_status(self, port_id):
+        """Deprecated, will be removed in version 0.15"""
+        r = self.get_port_details(port_id)
+        return r['status'], None
+
     #  Wait methods
 
-    def wait_port(
+    def wait_port_while(
             self, port_id,
             current_status='BUILD', delay=1, max_wait=100, wait_cb=None):
+        """Wait for port while in current_status"""
+        return wait(
+            self.get_port_details, (port_id, ),
+            lambda i: i['status'] != current_status,
+            delay, max_wait, wait_cb)
 
-        def get_status(self, net_id):
-            r = self.get_port_details(port_id)
-            return r['status'], None
+    def wait_port_until(
+            self, port_id,
+            target_status='BUILD', delay=1, max_wait=100, wait_cb=None):
+        """Wait for port while in current_status"""
+        return wait(
+            self.get_port_details, (port_id, ),
+            lambda i: i['status'] == target_status,
+            delay, max_wait, wait_cb)
 
-        return self._wait(
-            port_id, current_status, get_status, delay, max_wait, wait_cb)
+    # Backwards compatibility - deprecated, will be replaced in version 0.15
+    wait_port = wait_port_while

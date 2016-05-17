@@ -1,4 +1,4 @@
-# Copyright 2011-2014 GRNET S.A. All rights reserved.
+# Copyright 2011-2015 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -36,6 +36,7 @@ from kamaki.cli.argument import FlagArgument
 from kamaki.cli.cmds import CommandInit, errors
 from kamaki.cli.cmdtree import CommandTree
 from kamaki.cli.errors import CLIError, CLISyntaxError
+from kamaki.cli.config import DOCUMENTATION
 
 config_cmds = CommandTree('config', 'Kamaki configurations')
 namespaces = [config_cmds, ]
@@ -67,17 +68,45 @@ class config_list(CommandInit):
     A: Default options remain if not explicitly replaced or deleted
     """
 
+    arguments = dict(
+        describe_options=FlagArgument(
+            'List all option keys, if known to kamaki, including inactive '
+            'ones',
+            '--describe-option-keys'),
+        with_description=FlagArgument(
+            'Add description to listed options', '--with-description'),
+    )
+
     @errors.Generic.all
     def _run(self):
-        for section in sorted(self.config.sections()):
-            items = self.config.items(section)
-            for key, val in sorted(items):
-                if section in ('cloud',):
-                    prefix = '%s.%s' % (section, key)
-                    for k, v in val.items():
-                        self.writeln('%s.%s = %s' % (prefix, k, v))
-                else:
-                    self.writeln('%s.%s = %s' % (section, key, val))
+        if self['describe_options']:
+            for group, options in DOCUMENTATION.items():
+                self.writeln()
+                for k, v in options.items():
+                    self.writeln('%s.%s: \t%s' % (group, k, v[0]))
+        else:
+            for section in sorted(self.config.sections()):
+                items = self.config.items(section)
+                for key, val in sorted(items):
+                    if section in ('cloud',):
+                        prefix = '%s.%s' % (section, key)
+                        for k, v in val.items():
+                            if self['with_description']:
+                                try:
+                                    self.writeln('# %s' % DOCUMENTATION[
+                                        'cloud.<CLOUD NAME>'][k])
+                                except KeyError:
+                                    self.writeln('# unknown option')
+                            self.writeln('%s.%s %s' % (prefix, k, v))
+                        self.writeln()
+                    else:
+                        if self['with_description']:
+                            try:
+                                self.writeln(
+                                    '# %s' % DOCUMENTATION[section][key])
+                            except KeyError:
+                                self.writeln('# unknown option')
+                        self.writeln('%s.%s %s' % (section, key, val))
 
     def main(self):
         self._run()

@@ -1,8 +1,8 @@
 
-__version__ = "0.13.5"
+__version__ = "0.14"
 __version_vcs_info__ = {
-    'branch': 'hotfix-0.13.5',
-    'revid': 'dfe824d',
-    'revno': 2509}
-__version_user_email__ = "saxtouri@admin.grnet.gr"
-__version_user_name__ = "Stavros Sachtouris"
+    'branch': 'master',
+    'revid': '8d8f3b8',
+    'revno': 2589}
+__version_user_email__ = "skalkoto@grnet.gr"
+__version_user_name__ = "Nikos Skalkotos"

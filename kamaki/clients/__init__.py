@@ -1,4 +1,4 @@
-# Copyright 2011-2014 GRNET S.A. All rights reserved. #
+# Copyright 2011-2015 GRNET S.A. All rights reserved. #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
 # conditions are met:
@@ -596,12 +596,38 @@ class Client(Logged):
         return self.request('move', path, **kwargs)
 
 
+def wait(poll, poll_params, stop, delay=1, timeout=100, wait_cb=None):
+    """Wait as long as the stop method returns False, polling each round
+    :param poll: (method) the polling method is called with poll_params. By
+        convention, it returns a dict of information about the item
+    :param poll_params: (iterable) each round, call poll with these parameters
+    :param stop: (method) gets the results of poll method as input and decides
+        if the wait method should stop
+    :param delay: (int) how long to wait (in seconds) between polls
+    :param timeout: (int) if this number of polls is reached, stop
+    :param wait_cb: (method) a call back method that takes item_details as
+        input
+    :returns: (dict) the last details dict of the item
+    """
+    results = None
+    for polls in range(timeout // delay):
+        results = poll(*poll_params)
+        if wait_cb:
+            wait_cb(results)
+        if stop(results):
+            break
+        sleep(delay)
+    return results
+
+
 class Waiter(object):
+    """Use this class to provide blocking API methods - DEPRECATED FROM 0.16"""
 
     def _wait(
             self, item_id, wait_status, get_status,
-            delay=1, max_wait=100, wait_cb=None, wait_for_status=False):
-        """Wait while the item is still in wait_status or to reach it
+            delay=1, max_wait=100, wait_cb=None, wait_until_status=False):
+        """DEPRECATED, to be removed in 0.16
+        Wait while the item is still in wait_status or to reach it
 
         :param server_id: integer (str or int)
 
@@ -615,7 +641,7 @@ class Waiter(object):
         :param wait_cb: (method(total steps)) returns a generator for
             reporting progress or timeouts i.e., for a progress bar
 
-        :param wait_for_status: (bool) wait FOR (True) or wait WHILE (False)
+        :param wait_until_status: (bool) wait FOR (True) or wait WHILE (False)
 
         :returns: (str) the new mode if successful, (bool) False if timed out
         """
@@ -625,7 +651,7 @@ class Waiter(object):
             wait_gen = wait_cb(max_wait // delay)
             wait_gen.next()
 
-        if wait_for_status ^ (status != wait_status):
+        if wait_until_status ^ (status != wait_status):
             # if wait_cb:
             #     try:
             #         wait_gen.next()
@@ -634,7 +660,7 @@ class Waiter(object):
             return status
         old_wait = total_wait = 0
 
-        while (wait_for_status ^ (status == wait_status)) and (
+        while (wait_until_status ^ (status == wait_status)) and (
                 total_wait <= max_wait):
             if wait_cb:
                 try:
@@ -654,18 +680,19 @@ class Waiter(object):
                         wait_gen.next()
                 except:
                     pass
-        return status if (wait_for_status ^ (status != wait_status)) else False
+        finished = wait_until_status ^ (status != wait_status)
+        return status if finished else False
 
-    def wait_for(
+    def wait_until(
             self, item_id, target_status, get_status,
             delay=1, max_wait=100, wait_cb=None):
-        self._wait(
+        return self._wait(
             item_id, target_status, get_status, delay, max_wait, wait_cb,
-            wait_for_status=True)
+            wait_until_status=True)
 
     def wait_while(
             self, item_id, target_status, get_status,
             delay=1, max_wait=100, wait_cb=None):
-        self._wait(
+        return self._wait(
             item_id, target_status, get_status, delay, max_wait, wait_cb,
-            wait_for_status=False)
+            wait_until_status=False)

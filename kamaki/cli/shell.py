@@ -1,4 +1,4 @@
-# Copyright 2012-2014 GRNET S.A. All rights reserved.
+# Copyright 2012-2015 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -172,6 +172,7 @@ class Shell(Cmd):
         tmp_args.pop('cloud', None)
         tmp_args.pop('debug', None)
         tmp_args.pop('verbose', None)
+        tmp_args.pop('verbose_with_data', None)
         tmp_args.pop('config', None)
         tmp_args.pop('ignore_ssl', None)
         tmp_args.pop('ca_file', None)
