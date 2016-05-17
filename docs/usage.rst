@@ -209,6 +209,10 @@ command group (server) and of a command in that group (list).
     start: Start an existing virtual server
     shutdown: Shutdown an active virtual server
     delete: Delete a virtual server
+    attachment: Details on a volume attachment
+    attachments: List of all volume attachments for a server
+    attach: Attach a volume on a server
+    detach: Delete an attachment/detach a volume from a server
 
 .. code-block:: console
     :emphasize-lines: 1,2

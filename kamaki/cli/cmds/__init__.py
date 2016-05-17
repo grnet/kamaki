@@ -1,4 +1,4 @@
-# Copyright 2011-2014 GRNET S.A. All rights reserved.
+# Copyright 2011-2015 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -31,7 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.command
 
-from sys import stdin, stdout, stderr
+from sys import stdin, stdout, stderr, exit
 from traceback import format_exc
 
 from kamaki.cli.logger import get_logger
@@ -58,6 +58,7 @@ def dont_raise(*errs):
                         ('%s=%s' % items) for items in kwargs.items()])))
                 log.debug(format_exc(e))
                 return None
+        wrap.__name__ = func.__name__
         return wrap
     return decorator
 
@@ -68,6 +69,7 @@ def client_log(func):
             return func(self, *args, **kwargs)
         finally:
             self._set_log_params()
+    wrap.__name__ = func.__name__
     return wrap
 
 
@@ -80,6 +82,7 @@ def fall_back(func):
             log.warning('Kamaki will use original data to go on')
         finally:
             return inp
+    wrap.__name__ = func.__name__
     return wrap
 
 
@@ -199,22 +202,22 @@ class CommandInit(object):
         return self._usernames2uuids([username]).get(username, None)
 
     def _set_log_params(self):
-        if not self.client:
+        if not getattr(self, 'client', None):
             return
         try:
-            self.client.LOG_TOKEN = (
+            self.client.LOG_TOKEN = self.client.LOG_TOKEN or (
                 self['config'].get('global', 'log_token').lower() == 'on')
         except Exception as e:
             log.debug('Failed to read custom log_token setting:'
                       '%s\n default for log_token is off' % e)
         try:
-            self.client.LOG_DATA = (
+            self.client.LOG_DATA = self.client.LOG_DATA or (
                 self['config'].get('global', 'log_data').lower() == 'on')
         except Exception as e:
             log.debug('Failed to read custom log_data setting:'
                       '%s\n default for log_data is off' % e)
         try:
-            self.client.LOG_PID = (
+            self.client.LOG_PID = self.client.LOG_PID or (
                 self['config'].get('global', 'log_pid').lower() == 'on')
         except Exception as e:
             log.debug('Failed to read custom log_pid setting:'
@@ -388,22 +391,33 @@ class Wait(object):
     )
 
     def wait(
-            self, service, service_id, status_method, current_status,
-            countdown=True, timeout=60):
-        (progress_bar, wait_cb) = self._safe_progress_bar(
-            '%s %s: status is still %s' % (
-                service, service_id, current_status),
+            self, service, service_id, status_method, status,
+            countdown=True, timeout=60, msg='still', update_cb=None):
+        (progress_bar, wait_gen) = self._safe_progress_bar(
+            '%s %s status %s %s' % (service, service_id, msg, status),
             countdown=countdown, timeout=timeout)
+        wait_step = None
+        if wait_gen:
+            wait_step = wait_gen(timeout)
+            wait_step.next()
+
+        def wait_cb(item_details):
+            if wait_step:
+                if update_cb:
+                    progress_bar.bar.goto(update_cb(item_details))
+                else:
+                    wait_step.next()
+
         try:
-            new_mode = status_method(
-                service_id, current_status, max_wait=timeout, wait_cb=wait_cb)
-            if new_mode:
-                self.error('%s %s: status is now %s' % (
-                    service, service_id, new_mode))
+            item_details = status_method(
+                service_id, status, max_wait=timeout, wait_cb=wait_cb)
+            if item_details:
+                self.error('')
+                self.error('%s %s status: %s' % (
+                    service, service_id, item_details['status']))
             else:
-                self.error('%s %s: status is still %s' % (
-                    service, service_id, current_status))
+                exit("Operation timed out")
         except KeyboardInterrupt:
-            self.error('\n- canceled')
+            self.error(' - canceled')
         finally:
             self._safe_progress_bar_finish(progress_bar)

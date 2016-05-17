@@ -1,4 +1,4 @@
-# Copyright 2014 GRNET S.A. All rights reserved.
+# Copyright 2014-2015 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -32,9 +32,10 @@
 # or implied, of GRNET S.A.
 
 from kamaki.clients.blockstorage.rest_api import BlockStorageRestClient
+from kamaki.clients import ClientError, Waiter, wait
 
 
-class BlockStorageClient(BlockStorageRestClient):
+class BlockStorageClient(BlockStorageRestClient, Waiter):
     """OpenStack Block Storage v2 client"""
 
     def list_volumes(self, detail=None):
@@ -137,3 +138,44 @@ class BlockStorageClient(BlockStorageRestClient):
     def get_volume_type_details(self, type_id):
         r = self.types_get(type_id)
         return r.json['volume_type']
+
+    #  Wait methods
+
+    def get_volume_status(self, volume_id):
+        """Deprecated, will be removed in 0.15"""
+        r = self.get_volume_details(volume_id)
+        return r['status'], None
+
+    def wait_volume(
+            self, volume_id, stop=None, delay=1, timeout=100, wait_cb=None):
+        """Wait (block) while the stop method returns True, poll for status
+            each time
+        :param volume_id: (str)
+        :param stop: (method) takes the volume details dict as input, returns
+            true if the blocking must stop. Default: wait while 'creating'
+        :param delay: (int) seconds between polls
+        :param timeout: (int) in seconds
+        :param wait_cb: (method) optional call back method called after each
+            poll, provided by the caller. Typically used to monitor progress
+            Takes volume details dict as parameter
+        """
+        return wait(
+            self.get_volume_details, (volume_id, ),
+            stop or (lambda i: i['status'] != 'creating'),
+            delay, timeout, wait_cb)
+
+    def wait_volume_while(
+            self, volume_id,
+            current_status='creating', delay=1, max_wait=100, wait_cb=None):
+        return wait(
+            self.get_volume_details, (volume_id, ),
+            lambda i: i['status'] != current_status,
+            delay, max_wait, wait_cb)
+
+    def wait_volume_until(
+            self, volume_id,
+            target_status='in_use', delay=1, max_wait=100, wait_cb=None):
+        return wait(
+            self.get_volume_details, (volume_id, ),
+            lambda i: i['status'] == target_status,
+            delay, max_wait, wait_cb)

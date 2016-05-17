@@ -1,7 +1,34 @@
 .. _Changelog:
 
-Unified Changelog file for Kamaki versions >= 0.13
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Changelog file for Kamaki versions >= 0.13
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. _Changelog-0.14:
+
+v0.14
+=====
+
+Bugfixes
+--------
+
+* Fix handling of astakosclient errors
+
+Features
+--------
+
+* Rename "wait_*" kamaki.clients.Client methods to
+  "wait_until" and "wait_while"
+* Implement "wait" commands in CLI, where applicable
+* Implement "wait" functionality for volumes 
+* Print public url in "kamaki file upload --public"
+* Show HTTP data (body) with a single runtime argument "-vv"
+* Document config options and show descriptions in
+    "kamaki config list"
+* Modify some help messages (-c, -o, HTTP log separators) for clarity
+* Show image file hashmap in "kamaki image info", with "--hashmap"
+* Implement compute detachable volumes (API lib and CLI)
+* Adjust BlockStorage client API and CLI commands to comply with
+    Synnefo 0.16next API
 
 .. _Changelog-0.13:
 

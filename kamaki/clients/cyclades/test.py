@@ -1,4 +1,4 @@
-# Copyright 2013-2014 GRNET S.A. All rights reserved.
+# Copyright 2013-2015 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -113,10 +113,39 @@ class CycladesComputeRestClient(TestCase):
         get.assert_called_once_with(
             '/servers/%s/diagnostics' % server_id, success=200)
 
+    @patch('kamaki.clients.Client.get', return_value='ret')
+    def test_volume_attachment_get(self, get):
+        server_id = 'server-id'
+        for attachment_id in ('attachment-id', None):
+            r = self.client.volume_attachment_get(server_id, attachment_id)
+            self.assertEqual(r, 'ret')
+            actual = get.mock_calls[-1]
+            path = u'/servers/%s/os-volume_attachments' % server_id
+            path += ('/%s' % attachment_id) if attachment_id else ''
+            expexted = call(path, success=200)
+            self.assertEqual(actual, expexted)
+
+    @patch('kamaki.clients.Client.post', return_value='ret')
+    def test_volume_attachment_post(self, post):
+        server_id, volume_id = 'server-id', 'volume-id'
+        r = self.client.volume_attachment_post(server_id, volume_id)
+        self.assertEqual(r, 'ret')
+        post.assert_called_once_with(
+            u'/servers/%s/os-volume_attachments' % server_id,
+            json={'volumeAttachment': {'volumeId': volume_id}}, success=202)
+
+    @patch('kamaki.clients.Client.delete')
+    def test_volume_attachment_delete(self, delete):
+        server_id, att_id = 'server-id', 'attachment-id'
+        self.client.volume_attachment_delete(server_id, att_id)
+        delete.assert_called_once_with(
+            u'/servers/%s/os-volume_attachments/%s' % (server_id, att_id),
+            success=202)
+
 
 class CycladesNetworkClient(TestCase):
+    """Set up a thorough Network client test"""
 
-    """Set up a ComputesRest thorough test"""
     def setUp(self):
         self.url = 'http://network.example.com'
         self.token = 'n2tw0rk70k3n'
@@ -238,6 +267,50 @@ class CycladesComputeClient(TestCase):
                 vm_id, json_data=dict(console=dict(type=ctype)), success=200))
             self.assert_dicts_are_equal(r, cnsl['console'])
 
+    @patch('%s.volume_attachment_get' % cyclades_pkg, return_value=FR())
+    def test_get_volume_attachment(self, volume_attachment_get):
+        server_id, att_id = 'server-id', 'attachment-id'
+        FR.json = dict(volumeAttachment='ret')
+        r = self.client.get_volume_attachment(server_id, att_id)
+        self.assertEqual(r, 'ret')
+        volume_attachment_get.assert_called_once_with(server_id, att_id)
+
+    @patch('%s.volume_attachment_get' % cyclades_pkg, return_value=FR())
+    def test_list_volume_attachments(self, volume_attachment_get):
+        server_id = 'server-id'
+        FR.json = dict(volumeAttachments='ret')
+        r = self.client.list_volume_attachments(server_id)
+        self.assertEqual(r, 'ret')
+        volume_attachment_get.assert_called_once_with(server_id)
+
+    @patch('%s.volume_attachment_post' % cyclades_pkg, return_value=FR())
+    def test_attach_volume(self, volume_attachment_post):
+        server_id, volume_id = 'server-id', 'volume-id'
+        FR.json = dict(volumeAttachment='ret')
+        r = self.client.attach_volume(server_id, volume_id)
+        self.assertEqual(r, 'ret')
+        volume_attachment_post.assert_called_once_with(server_id, volume_id)
+
+    @patch('%s.volume_attachment_delete' % cyclades_pkg)
+    def test_delete_volume_attachment(self, volume_attachment_delete):
+        server_id, att_id = 'server-id', 'attachment-id'
+        self.client.delete_volume_attachment(server_id, att_id)
+        volume_attachment_delete.assert_called_once_with(server_id, att_id)
+
+    @patch('%s.list_volume_attachments' % cyclades_pkg, return_value=[
+        dict(id='att-id-1', volumeId='other-id'),
+        dict(id='att-id-2', volumeId='volume-id'),
+        dict(id='att-id-3', volumeId='other-id'),
+    ])
+    @patch('%s.delete_volume_attachment' % cyclades_pkg)
+    def test_detach_volume(
+            self, delete_volume_attachment, list_volume_attachments):
+        server_id, volume_id = 'server-id', 'volume-id'
+        r = self.client.detach_volume(server_id, volume_id)
+        self.assertEqual(r, [dict(id='att-id-2', volumeId='volume-id'), ])
+        list_volume_attachments.assert_called_once_with(server_id)
+        delete_volume_attachment.assert_called_once_with(server_id, 'att-id-2')
+
 
 clients_pkg = 'kamaki.clients.Client'
 
@@ -253,23 +326,21 @@ class CycladesBlockStorageRestClient(TestCase):
     @patch('%s.post' % clients_pkg)
     def test_volumes_post(self, post):
         keys = (
-            'display_description', 'snapshot_id', 'imageRef',
+            'server_id', 'display_description', 'snapshot_id', 'imageRef',
             'volume_type', 'metadata', 'project')
         for args in product(
-                ('dd', None), ('sn', None), ('ir', None),
+                ('sid', None), ('dd', None), ('sn', None), ('ir', None),
                 ('vt', None), ({'mk': 'mv'}, None), ('pid', None),
                 ({'k1': 'v1', 'k2': 'v2'}, {'success': 1000}, {})):
-            kwargs, server_id, display_name = args[-1], 'sid', 'dn'
+            kwargs, display_name = args[-1], 'dn'
             args = args[:-1]
             for err, size in ((TypeError, None), (ValueError, 'size')):
                 self.assertRaises(
                     err, self.client.volumes_post,
-                    size, server_id, display_name, *args, **kwargs)
+                    size, display_name, *args, **kwargs)
             size = 42
-            self.client.volumes_post(
-                size, server_id, display_name, *args, **kwargs)
-            volume = dict(
-                size=int(size), server_id=server_id, display_name=display_name)
+            self.client.volumes_post(size, display_name, *args, **kwargs)
+            volume = dict(size=int(size), display_name=display_name)
             for k, v in zip(keys, args):
                 if v:
                     volume[k] = v
@@ -302,19 +373,19 @@ class CycladesBlockStorageClient(TestCase):
     @patch('%s.volumes_post' % bsrest_pkg, return_value=FR())
     def test_create_volume(self, volumes_post):
         keys = (
-            'display_description', 'snapshot_id', 'imageRef',
+            'server_id', 'display_description', 'snapshot_id', 'imageRef',
             'volume_type', 'metadata', 'project')
-        FR.json, server_id, display_name = dict(volume='ret'), 'vid', 'dn'
+        FR.json = dict(volume='ret')
+        display_name = 'display name'
         for args in product(
-                ('dd', None), ('sn', None), ('ir', None),
+                ('si', None), ('dd', None), ('sn', None), ('ir', None),
                 ('vt', None), ({'mk': 'mv'}, None), ('pid', None)):
             self.assertEqual(
-                self.client.create_volume(42, server_id, display_name, *args),
-                'ret')
+                self.client.create_volume(42, display_name, *args), 'ret')
             kwargs = dict(zip(keys, args))
             self.assertEqual(
                 volumes_post.mock_calls[-1],
-                call(42, server_id, display_name, **kwargs))
+                call(42, display_name, **kwargs))
 
     @patch('%s.volumes_action_post' % bsrest_pkg, return_value=FR())
     def test_reassign_volume(self, volumes_action_post):
@@ -325,16 +396,14 @@ class CycladesBlockStorageClient(TestCase):
 
     @patch('%s.create_snapshot' % bsrest_pkg, return_value='ret')
     def test_create_snapshot(self, create_snapshot):
-        keys = ('force', 'display_description')
-        volume_id, display_name = 'vid', 'dn'
-        for args in product((True, False, None), ('dd', None)):
+        keys = ('display_name', 'display_description')
+        volume_id = 'vid'
+        for args in product(('dn', None), ('dd', None)):
             self.assertEqual(
-                self.client.create_snapshot(volume_id, display_name, *args),
-                'ret')
+                self.client.create_snapshot(volume_id, *args), 'ret')
             kwargs = dict(zip(keys, args))
             self.assertEqual(
-                create_snapshot.mock_calls[-1],
-                call(volume_id, display_name=display_name, **kwargs))
+                create_snapshot.mock_calls[-1], call(volume_id, **kwargs))
 
 
 if __name__ == '__main__':
@@ -343,7 +412,7 @@ if __name__ == '__main__':
     not_found = True
     if not argv[1:] or argv[1] == 'CycladesComputeClient':
         not_found = False
-        runTestCase(CycladesNetworkClient, 'Cyclades Client', argv[2:])
+        runTestCase(CycladesComputeClient, 'Cyclades Client', argv[2:])
     if not argv[1:] or argv[1] == 'CycladesNetworkClient':
         not_found = False
         runTestCase(CycladesNetworkClient, 'CycladesNetwork Client', argv[2:])
