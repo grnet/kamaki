@@ -8,6 +8,13 @@ Changelog file for Kamaki versions >= 0.13
 v0.14
 =====
 
+Release: Tue May 17 15:30:17 EEST 2016
+
+Bugfixes
+--------
+
+* Fix handling of astakosclient errors
+
 Features
 --------
 
@@ -31,7 +38,8 @@ v0.13.5
 =======
 
 Bug Fixes
-=========
+---------
+
 * Raise SSLError when connecting with SSL on OSX and no valid SSL
     credential files exist)
 * Use a new logging level for verbosity. This prevents the client
@@ -42,7 +50,8 @@ v0.13.4
 =======
 
 Bug Fixes
-=========
+---------
+
 * Fix Destination headers to support unicode values (pithos object
     copy and move)
 
@@ -51,6 +60,7 @@ v0.13.3
 
 Bug Fixes
 ---------
+
 * Return object request headers in download methods
 
 v0.13.2

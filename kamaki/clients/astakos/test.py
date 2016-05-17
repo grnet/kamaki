@@ -1,4 +1,4 @@
-# Copyright 2013-2015 GRNET S.A. All rights reserved.
+# Copyright 2013-2016 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -104,7 +104,7 @@ class AstakosClient(TestCase):
     def test_get_service_endpoints(self, parse_endpoints, get_endpoints):
         self.assertEqual(
             'e1', self.client.get_service_endpoints('service_type', 'version'))
-        get_endpoints.assert_called_once()
+        assert get_endpoints.call_count == 1
         parse_endpoints.assert_called_once_with(
             'ges', ep_type='service_type', ep_version_id='version')
 
@@ -170,7 +170,7 @@ class LoggedAstakosClient(TestCase):
     @patch('%s.AstakosClient._call_astakos' % astakos_pkg, return_value='ret')
     def test__call_astakos(self, super_call):
         self.assertEqual(self.client._call_astakos('x', y='y'), 'ret')
-        super_call.assert_called_once_with('x', y='y')
+        super_call.assert_called_once_with(self.client, 'x', y='y')
 
 
 class CachedAstakosClient(TestCase):
