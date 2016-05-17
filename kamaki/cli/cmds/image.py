@@ -1,4 +1,4 @@
-# Copyright 2012-2014 GRNET S.A. All rights reserved.
+# Copyright 2012-2015 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -45,7 +45,7 @@ from kamaki.clients.pithos import PithosClient
 from kamaki.clients import ClientError
 from kamaki.cli.argument import (
     FlagArgument, ValueArgument, RepeatableArgument, KeyValueArgument,
-    IntArgument, ProgressBarArgument)
+    IntArgument, ProgressBarArgument, PithosLocationArgument)
 from kamaki.cli.cmds.cyclades import _CycladesInit
 from kamaki.cli.errors import CLIError, raiseCLIError, CLIInvalidArgument
 from kamaki.cli.cmds import (
@@ -247,12 +247,26 @@ class image_list(_ImageInit, OptionalOutput, NameFilter, IDFilter):
 class image_info(_ImageInit, OptionalOutput):
     """Get image metadata"""
 
+    arguments = dict(
+        hashmap=FlagArgument(
+            'Get image file hashmap instead of metadata', '--hashmap'),
+    )
+
     @errors.Generic.all
     @errors.Image.connection
     @errors.Image.id
     def _run(self, image_id):
         meta = self.client.get_meta(image_id)
-        if not self['output_format']:
+        if self['hashmap']:
+            print meta['location']
+            location = meta['location'].split('pithos://')[1]
+            location = location.split('/')
+            uuid, container = location[0], location[1]
+            pithos = self.get_client(PithosClient, 'pithos')
+            pithos.account, pithos.container = uuid, container
+            path = '/'.join(location[2:])
+            meta = pithos.get_object_hashmap(path)
+        elif not self['output_format']:
             try:
                 meta['owner'] += ' (%s)' % self._uuid2username(meta['owner'])
             except KeyError as ke:
@@ -323,52 +337,6 @@ class image_modify(_ImageInit):
     def main(self, image_id):
         super(self.__class__, self)._run()
         self._run(image_id=image_id)
-
-
-class PithosLocationArgument(ValueArgument):
-    """Resolve pithos URI, return in the form pithos://uuid/container[/path]
-
-    UPDATE: URLs without a path are also resolvable. Therefore, caller methods
-    should check if there is a path or not
-    """
-
-    def __init__(
-            self, help=None, parsed_name=None, default=None, user_uuid=None):
-        super(PithosLocationArgument, self).__init__(
-            help=help, parsed_name=parsed_name, default=default)
-        self.uuid, self.container, self.path = user_uuid, None, None
-
-    def setdefault(self, term, value):
-        if not getattr(self, term, None):
-            setattr(self, term, value)
-
-    @property
-    def value(self):
-        path = ('/%s' % self.path) if self.path else ''
-        return 'pithos://%s/%s%s' % (self.uuid, self.container, path)
-
-    @value.setter
-    def value(self, location):
-        if location:
-            from kamaki.cli.cmds.pithos import _PithosContainer as pc
-            try:
-                uuid, self.container, self.path = pc.resolve_pithos_url(
-                    location)
-                self.uuid = uuid or self.uuid
-                assert self.container, 'No container in pithos URI'
-            except Exception as e:
-                raise CLIInvalidArgument(
-                    'Invalid Pithos+ location %s (%s)' % (location, e),
-                    details=[
-                        'The image location must be a valid Pithos+',
-                        'location. There are two valid formats:',
-                        '  pithos://USER_UUID/CONTAINER[/PATH]',
-                        'OR',
-                        '  /CONTAINER[/PATH]',
-                        'To see all containers:',
-                        '  [kamaki] container list',
-                        'To list the contents of a container:',
-                        '  [kamaki] container list CONTAINER'])
 
 
 @command(image_cmds)
@@ -485,16 +453,19 @@ class image_register(_ImageInit, OptionalOutput):
         if self['local_image_path']:
             with open(self['local_image_path']) as f:
                 pithos = self._get_pithos_client(locator)
-                self._assert_remote_file_not_exist(pithos, locator.path)
+                self._assert_remote_file_not_exist(pithos, locator.object)
                 (pbar, upload_cb) = self._safe_progress_bar('Uploading')
                 if pbar:
                     hash_bar = pbar.clone()
                     hash_cb = hash_bar.get_generator('Calculating hashes')
-                pithos.upload_object(
-                    locator.path, f,
-                    hash_cb=hash_cb, upload_cb=upload_cb,
-                    container_info_cache=self.container_info_cache)
-                pbar.finish()
+                try:
+                    pithos.upload_object(
+                        locator.object, f,
+                        hash_cb=hash_cb, upload_cb=upload_cb,
+                        container_info_cache=self.container_info_cache)
+                finally:
+                    if pbar:
+                        pbar.finish()
 
         (params, properties, new_loc) = self._load_params_from_file(location)
         if location != new_loc:
@@ -504,7 +475,7 @@ class image_register(_ImageInit, OptionalOutput):
         if not self['no_metafile_upload']:
             # check if metafile exists
             pithos = pithos or self._get_pithos_client(locator)
-            meta_path = '%s.meta' % locator.path
+            meta_path = '%s.meta' % locator.object
             self._assert_remote_file_not_exist(pithos, meta_path)
 
         # register the image
@@ -517,8 +488,8 @@ class image_register(_ImageInit, OptionalOutput):
                     details=[
                         '%s' % ce,
                         'Does the image file %s exist at container %s ?' % (
-                            locator.path,
-                            locator.container)] + howto_image_file)
+                            locator.object, locator.container)
+                    ] + howto_image_file)
             raise
         r['owner'] += ' (%s)' % self._uuid2username(r['owner'])
         self.print_(r, self.print_dict)
@@ -547,11 +518,11 @@ class image_register(_ImageInit, OptionalOutput):
 
     def main(self):
         super(self.__class__, self)._run()
-        locator, pithos = self.arguments['pithos_location'], None
+        locator = self.arguments['pithos_location']
         locator.setdefault('uuid', self.astakos.user_term('id'))
-        locator.path = locator.path or path.basename(
+        locator.object = locator.object or path.basename(
             self['local_image_path'] or '')
-        if not locator.path:
+        if not locator.object:
             raise CLIInvalidArgument(
                 'Missing the image file or object', details=[
                     'Pithos+ URI %s does not point to a physical image' % (

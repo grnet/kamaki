@@ -1,4 +1,4 @@
-# Copyright 2013-2014 GRNET S.A. All rights reserved.
+# Copyright 2013-2016 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -212,7 +212,7 @@ class ResponseManager(TestCase):
         self.assertEqual(self.RM.status, FakeResp.reason)
         self.assertEqual(self.RM.status_code, FakeResp.status)
         self.assertEqual(self.RM.headers, FakeResp.HEADERS)
-        perform.assert_called_only_once
+        assert perform.call_count == 1
 
 
 class SilentEvent(TestCase):
@@ -451,6 +451,7 @@ def runTestCase(cls, test_name, args=[], failure_collector=[]):
         suite.addTest(makeSuite(cls))
     print('* Test * %s *' % test_name)
     r = TextTestRunner(verbosity=2).run(suite)
+    failure_collector += r.errors
     failure_collector += r.failures
     return r.testsRun
 
@@ -489,6 +490,9 @@ def main(argv):
                 print('\t%s' % field)
         print('\nTotal tests run: %s' % num_of_tests)
         print('Total failures: %s' % len(failure_collector))
+        if len(failure_collector):
+            from sys import exit
+            exit(1)
 
 
 if __name__ == '__main__':
