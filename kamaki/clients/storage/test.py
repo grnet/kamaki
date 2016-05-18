@@ -1,4 +1,4 @@
-# Copyright 2013 GRNET S.A. All rights reserved.
+# Copyright 2013-2016 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -89,41 +89,39 @@ object_info = {
     'x-object-meta-k1': 'v1',
     'x-object-meta-k2': 'v2'}
 container_list = [
-    dict(
-        count=2,
-        last_modified="2013-02-27T11:56:09.893033+00:00",
-        bytes=677076979,
-        name="pithos",
-        x_container_policy=dict(quota="21474836480", versioning="auto")),
-    dict(
-        count=0,
-        last_modified="2012-10-23T12:25:17.229187+00:00",
-        bytes=0,
-        name="trash",
-        x_container_policy=dict(quota="21474836480", versioning="auto"))]
+    dict(count=2,
+         last_modified="2013-02-27T11:56:09.893033+00:00",
+         bytes=677076979,
+         name="pithos",
+         x_container_policy=dict(quota="21474836480", versioning="auto")),
+    dict(count=0,
+         last_modified="2012-10-23T12:25:17.229187+00:00",
+         bytes=0,
+         name="trash",
+         x_container_policy=dict(quota="21474836480", versioning="auto"))]
 object_list = [
     dict(hash="",
-        name="The_Secret_Garden.zip",
-        x_object_public="/public/wdp9p",
-        bytes=203304947,
-        x_object_version_timestamp="1360237915.7027509",
-        x_object_uuid="s0m3uu1df0r0bj0n3",
-        last_modified="2013-02-07T11:51:55.702751+00:00",
-        content_type="application/octet-stream",
-        x_object_hash="0afdf29f71cd53126225c3f54ca",
-        x_object_version=17737,
-        x_object_modified_by=user_id),
+         name="The_Secret_Garden.zip",
+         x_object_public="/public/wdp9p",
+         bytes=203304947,
+         x_object_version_timestamp="1360237915.7027509",
+         x_object_uuid="s0m3uu1df0r0bj0n3",
+         last_modified="2013-02-07T11:51:55.702751+00:00",
+         content_type="application/octet-stream",
+         x_object_hash="0afdf29f71cd53126225c3f54ca",
+         x_object_version=17737,
+         x_object_modified_by=user_id),
     dict(hash="",
-        name="The_Revealed_Garden.zip",
-        x_object_public="/public/wpd7p",
-        bytes=20330947,
-        x_object_version_timestamp="13602915.7027509",
-        x_object_uuid="s0m3uu1df0r0bj70w",
-        last_modified="2013-02-07T11:51:55.702751+00:00",
-        content_type="application/octet-stream",
-        x_object_hash="0afdf29f71cd53126225c3f54ca",
-        x_object_version=17737,
-        x_object_modified_by=user_id)]
+         name="The_Revealed_Garden.zip",
+         x_object_public="/public/wpd7p",
+         bytes=20330947,
+         x_object_version_timestamp="13602915.7027509",
+         x_object_uuid="s0m3uu1df0r0bj70w",
+         last_modified="2013-02-07T11:51:55.702751+00:00",
+         content_type="application/octet-stream",
+         x_object_hash="0afdf29f71cd53126225c3f54ca",
+         x_object_version=17737,
+         x_object_modified_by=user_id)]
 
 
 class FR(object):
