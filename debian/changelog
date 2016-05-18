@@ -1,3 +1,9 @@
+kamaki (0.14-2~precise) precise; urgency=low
+
+  * Add missing kamaki-shell man page
+
+ -- Nikos Skalkotos <skalkoto@grnet.gr>  Wed, 18 May 2016 10:55:53 +0300
+
 kamaki (0.14-1~precise) precise; urgency=low
 
   * New upstream version
