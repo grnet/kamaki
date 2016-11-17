@@ -1,4 +1,4 @@
-# Copyright 2013-2014 GRNET S.A. All rights reserved.
+# Copyright 2011-2016 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -47,6 +47,7 @@ compute_pkg = 'kamaki.clients.compute.ComputeClient'
 img_ref = "1m4g3-r3f3r3nc3"
 vm_name = "my new VM"
 fid = 42
+key_name = "my new Keypair"
 vm_send = dict(server=dict(
     flavorRef=fid,
     name=vm_name,
@@ -60,6 +61,7 @@ vm_recv = dict(server=dict(
     imageRef=img_ref,
     created="2013-03-01T10:04:00.087324+00:00",
     flavorRef=fid,
+    key_name=key_name,
     adminPass="n0n3sh@11p@55",
     suspended=False,
     progress=0,
