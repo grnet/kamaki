@@ -402,3 +402,35 @@ class ComputeRestClient(Client):
     def floating_ips_delete(self, ip='', success=204, **kwargs):
         path = path4url('os-floating-ips', ip or '')
         return self.delete(path, success=success, **kwargs)
+
+    def keypairs_get(self, key_name=None, success=200, **kwargs):
+        """GET endpoint_url/os-keypairs/[<key_name>]
+
+        :param key_name: (str) the name of the key
+
+        :returns: request response
+        """
+        path = path4url('os-keypairs', key_name or '')
+        return self.get(path, success=success, **kwargs)
+
+    def keypairs_post(self, json_data, success=200, **kwargs):
+        """POST endpoint_url/os-keypairs/
+
+        :returns: request response
+        """
+        json_data = json.dumps(json_data)
+        self.set_header('Content-Type', 'application/json')
+        self.set_header('Content-Length', len(json_data))
+
+        path = path4url('os-keypairs')
+        return self.post(path, data=json_data, success=success, **kwargs)
+
+    def keypairs_delete(self, key_name, success=200, **kwargs):
+        """DELETE endpoint_url/os-keypairs/[<key_name>]
+
+        :param key_name: (str) the name of the key
+
+        :returns: request response
+        """
+        path = path4url('os-keypairs', key_name)
+        return self.delete(path, success=success, **kwargs)
