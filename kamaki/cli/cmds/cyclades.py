@@ -33,6 +33,8 @@
 import cStringIO
 import codecs
 from base64 import b64encode
+import uuid
+from datetime import datetime
 from os.path import exists, expanduser
 from io import StringIO
 from pydoc import pager
@@ -40,7 +42,7 @@ from pydoc import pager
 from kamaki.cli import command
 from kamaki.cli.cmdtree import CommandTree
 from kamaki.cli.utils import remove_from_items, filter_dicts_by_dict
-from kamaki.cli.errors import raiseCLIError, CLISyntaxError, CLIInvalidArgument
+from kamaki.cli.errors import CLIError, CLISyntaxError, CLIInvalidArgument
 from kamaki.clients.cyclades import (
     CycladesComputeClient, ClientError, CycladesNetworkClient)
 from kamaki.cli.argument import (
@@ -53,7 +55,8 @@ from kamaki.cli.cmds import (
 
 server_cmds = CommandTree('server', 'Cyclades/Compute API server commands')
 flavor_cmds = CommandTree('flavor', 'Cyclades/Compute API flavor commands')
-namespaces = [server_cmds, flavor_cmds]
+keypair_cmds = CommandTree('keypair', 'Cyclades/Compute API keypair commands')
+namespaces = [server_cmds, flavor_cmds, keypair_cmds]
 
 howto_personality = [
     'Defines a file to be injected to virtual servers file system.',
@@ -96,7 +99,7 @@ class _ServerWait(Wait):
         """
         current = self.client.get_server_details(server_id).get('status', None)
         if current in (status, ):
-            raiseCLIError('Server %s is already %s' % (server_id, status))
+            raise CLIError('Server %s is already %s' % (server_id, status))
         return current
 
 
@@ -329,7 +332,7 @@ class PersonalityArgument(KeyValueArgument):
             termlist = terms.split(',')
             if len(termlist) > len(self.terms):
                 msg = 'Wrong number of terms (1<=terms<=%s)' % len(self.terms)
-                raiseCLIError(CLISyntaxError(msg), details=howto_personality)
+                raise CLIError(CLISyntaxError(msg), details=howto_personality)
 
             for k, v in self.terms:
                 prefix = '%s=' % k
@@ -519,7 +522,7 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
             fip['floating_ip_address'] == ip)]
         if not ips:
             msg = 'IP %s not available for current user' % ip
-            raiseCLIError(cerror, details=[msg] + errors.Cyclades.about_ips)
+            raise CLIError(cerror, details=[msg] + errors.Cyclades.about_ips)
         ipnet, ipvm = ips[0]['floating_network_id'], ips[0]['instance_id']
         if getattr(cerror, 'status', 0) in (409, ):
             msg = ''
@@ -529,7 +532,7 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
             elif ipvm:
                 msg = 'IP %s is already used by device %s' % (ip, ipvm)
             if msg:
-                raiseCLIError(cerror, details=[
+                raise CLIError(cerror, details=[
                     msg,
                     'To get details on IP',
                     '  kamaki ip info %s' % ip] + errors.Cyclades.about_ips)
@@ -631,7 +634,7 @@ class server_modify(_CycladesInit):
                     v = p.get(k)
                     if v:
                         port_strings.append('\t%s: %s' % (k, v))
-            raiseCLIError(
+            raise CLIError(
                 'Multiple public connections on server %s' % (
                     server_id), details=port_strings + [
                         'To select one:',
@@ -640,7 +643,7 @@ class server_modify(_CycladesInit):
                         '  %s *' % pick_port.lvalue, ])
         if not ports:
             pp = pick_port.value
-            raiseCLIError(
+            raise CLIError(
                 'No public networks attached on server %s%s' % (
                     server_id, ' through port %s' % pp if pp else ''),
                 details=[
@@ -661,7 +664,7 @@ class server_modify(_CycladesInit):
     def _server_is_stopped(self, server_id, cerror):
         vm = self.client.get_server_details(server_id)
         if vm['status'].lower() not in ('stopped'):
-            raiseCLIError(cerror, details=[
+            raise CLIError(cerror, details=[
                 'To resize a virtual server, it must be STOPPED',
                 'Server %s status is %s' % (server_id, vm['status']),
                 'To stop the server',
@@ -1148,3 +1151,155 @@ class server_detach(_CycladesInit):
                     self.arguments['attachment_id'].lvalue,
                     self.arguments['volume_id'].lvalue)])
         self._run(server_id=server_id)
+
+
+@command(keypair_cmds)
+class keypair_list(_CycladesInit, OptionalOutput, NameFilter):
+    """List all keypairs"""
+
+    arguments = dict(
+        detail=FlagArgument('show detailed output', ('-l', '--detail')),
+    )
+
+    @errors.Generic.all
+    @errors.Keypair.connection
+    def _run(self):
+        keypairs = self.client.list_keypairs()
+        keypairs = [k['keypair'] for k in keypairs]
+        if not self['detail']:
+            remove_from_items(keypairs, 'public_key')
+        keypairs = self._filter_by_name(keypairs)
+        self.print_(keypairs)
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
+
+
+@command(keypair_cmds)
+class keypair_info(_CycladesInit, OptionalOutput):
+    """Detailed information on a keypair"""
+
+    @errors.Generic.all
+    @errors.Keypair.connection
+    @errors.Keypair.name
+    def _run(self, key_name):
+        keypair = self.client.get_keypair_details(key_name)
+        self.print_(keypair, self.print_dict)
+
+    def main(self, key_name):
+        super(self.__class__, self)._run()
+        self._run(key_name=key_name)
+
+
+@command(keypair_cmds)
+class keypair_delete(_CycladesInit):
+    """Delete a keypair"""
+
+    @errors.Generic.all
+    @errors.Keypair.connection
+    @errors.Keypair.name
+    def _run(self, key_name):
+        self.client.delete_keypair(key_name)
+
+    def main(self, key_name):
+        super(self.__class__, self)._run()
+        self._run(key_name=key_name)
+
+
+@command(keypair_cmds)
+class keypair_upload(_CycladesInit, OptionalOutput):
+    """Upload or update a keypair"""
+
+    arguments = dict(
+        key_name=ValueArgument(
+            'The name of the key',
+            '--key-name'),
+        public_key=ValueArgument(
+            'The contents of the keypair(the public key)',
+            '--public-key'),
+        force=FlagArgument(
+            '(DANGEROUS) Force keypair creation. This option'
+            ' will delete an existing keypair in case of a name'
+            'conflict. Do not use it if unsure.',
+            ('-f', '--force')
+        )
+    )
+
+    required = ['public_key']
+
+    @errors.Generic.all
+    @errors.Keypair.connection
+    def _run(self):
+        key_name = self['key_name']
+        if key_name is None:
+            uniq = str(uuid.uuid4())[:8]
+            key_name = 'kamaki-key_autogen_{:%m_%d_%H_%M_%S_%f}_{uniq}'.format(
+                datetime.now(), uniq=uniq)
+        try:
+            keypair = self.client.create_key(
+                key_name=key_name, public_key=self['public_key'])
+        except ClientError as e:
+            if e.status == 409 and self['force']:
+                self.client.delete_keypair(key_name)
+                keypair = self.client.create_key(
+                    key_name=key_name, public_key=self['public_key'])
+            else:
+                help_command = ('kamaki keypair upload -f --key-name %s '
+                                '--public-key %s'
+                                % (key_name, self['public_key']))
+                self._err.write('A keypair with that name already exists. '
+                                'To override the conflicting key you can use '
+                                'the following command:\n%s\n' %
+                                (help_command))
+                raise e
+        self.print_(keypair, self.print_dict)
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
+
+
+@command(keypair_cmds)
+class keypair_generate(_CycladesInit, OptionalOutput):
+    """Generate a keypair"""
+
+    arguments = dict(
+        key_name=ValueArgument(
+            'The name of the key',
+            '--key-name'),
+        force=FlagArgument(
+            '(DANGEROUS) Force keypair creation. This option'
+            ' will delete an existing keypair in case of a name'
+            'conflict. Do not use it if unsure.',
+            ('-f', '--force')
+        )
+    )
+
+    @errors.Generic.all
+    @errors.Keypair.connection
+    def _run(self):
+        key_name = self['key_name']
+        if key_name is None:
+            uniq = str(uuid.uuid4())[:8]
+            key_name = 'kamaki-key_autogen_{:%m_%d_%H_%M_%S_%f}_{uniq}'.format(
+                datetime.now(), uniq=uniq)
+        try:
+            keypair = self.client.create_key(key_name=key_name)
+        except ClientError as e:
+            if e.status == 409 and self['force']:
+                self.client.delete_keypair(key_name)
+                keypair = self.client.create_key(key_name=key_name)
+            else:
+                help_command = ('kamaki keypair generate -f --key-name %s'
+                                % (key_name))
+                self._err.write('A keypair with that name already exists. '
+                                'To override the conflicting key you can use '
+                                'the following command:\n%s\n' %
+                                (help_command))
+                raise e
+        self.print_(keypair, self.print_dict)
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
