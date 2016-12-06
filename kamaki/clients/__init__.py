@@ -40,6 +40,7 @@ from time import sleep
 from random import random
 import logging
 import ssl
+import re
 
 from kamaki.clients.utils import https
 from kamaki.clients import utils
@@ -394,6 +395,19 @@ class SilentEvent(Thread):
             self._exception = e
 
 
+def strip_version(url):
+    """Given a synnefo endpoint it will return the URL without the API version
+    part as well as the API version of the URL.
+    """
+    ver = ""
+    # remove trailing '/' if present
+    url = url.rstrip('/')
+    m = re.search('/v(\d+(?:\.\d*)?)$', url)
+    if m:
+        ver = m.group(1)
+    return (url[:len(url)-len(ver)], ver)
+
+
 class Client(Logged):
     service_type = ''
     MAX_THREADS = 1
@@ -403,6 +417,10 @@ class Client(Logged):
     def __init__(self, endpoint_url, token, base_url=None):
         #  BW compatibility - keep base_url for some time
         endpoint_url = endpoint_url or base_url
+
+        # remove trailing '/' if present
+        endpoint_url = endpoint_url.rstrip('/')
+
         assert endpoint_url, 'No endpoint_url for client %s' % self
         self.endpoint_url, self.base_url = endpoint_url, endpoint_url
         self.token = token
@@ -412,6 +430,15 @@ class Client(Logged):
         self.request_header_prefices_to_quote = []
         self.response_headers = []
         self.response_header_prefices = []
+        _, self.api_version = strip_version(self.endpoint_url)
+
+        if self.api_version:
+            assert hasattr(self, "DEFAULT_API_VERSION"), \
+                "Endpoint contains no version and no default one exists"
+            log.info("Endpoint does not provide API version. Using default %s"
+                     "API version: %s", self.service_type,
+                     self.DEFAULT_API_VERSION)
+            self.endpoint_url += "/v%s" % self.DEFAULT_API_VERSION
 
         # If no CA certificates are set, get the defaults from kamaki.defaults
         if https.HTTPSClientAuthConnection.ca_file is None:

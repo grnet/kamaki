@@ -37,6 +37,8 @@ from kamaki.clients.utils import filter_in, filter_out, path4url
 
 class StorageClient(Client):
     """OpenStack Object Storage API 1.0 client"""
+    service_type = "object-store"
+    DEFAULT_API_VERSION = '1'
 
     def __init__(self, endpoint_url, token, account=None, container=None):
         super(StorageClient, self).__init__(endpoint_url, token)

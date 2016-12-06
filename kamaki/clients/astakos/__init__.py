@@ -180,6 +180,7 @@ class LoggedAstakosClient(AstakosClient, Logged):
 class CachedAstakosClient(Client):
     """Synnefo Astakos cached client wraper"""
     service_type = 'identity'
+    DEFAULT_API_VERSION = '2.0'
 
     @_astakos_error
     def __init__(self, endpoint_url, token=None):
