@@ -1,4 +1,4 @@
-# Copyright 2011-2015 GRNET S.A. All rights reserved. #
+# Copyright 2011-2016 GRNET S.A. All rights reserved. #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
 # conditions are met:
@@ -414,15 +414,10 @@ class Client(Logged):
     DATE_FORMATS = ['%a %b %d %H:%M:%S %Y', ]
     CONNECTION_RETRY_LIMIT = 0
 
-    def __init__(self, endpoint_url, token, base_url=None):
-        #  BW compatibility - keep base_url for some time
-        endpoint_url = endpoint_url or base_url
-
-        # remove trailing '/' if present
+    def __init__(self, endpoint_url, token):
         endpoint_url = endpoint_url.rstrip('/')
-
         assert endpoint_url, 'No endpoint_url for client %s' % self
-        self.endpoint_url, self.base_url = endpoint_url, endpoint_url
+        self.endpoint_url = endpoint_url
         self.token = token
         self.headers, self.params = dict(), dict()
         self.poolsize = None

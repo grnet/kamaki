@@ -114,8 +114,7 @@ class AstakosClient(OriginalAstakosClient):
             token = args.pop(0) if args else kwargs.pop('token', None)
             args = tuple([token, url] + args)
         else:
-            kwargs.setdefault(
-                'auth_url', kwargs.get('endpoint_url', kwargs['base_url']))
+            kwargs.setdefault('auth_url', kwargs['endpoint_url'])
 
         # If no CA certificates are set, get the defaults from kamaki.defaults
         if https.HTTPSClientAuthConnection.ca_file is None:
