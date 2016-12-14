@@ -432,13 +432,14 @@ class Client(Logged):
         self.response_header_prefices = []
         _, self.api_version = strip_version(self.endpoint_url)
 
-        if self.api_version:
+        if not self.api_version:
             assert hasattr(self, "DEFAULT_API_VERSION"), \
                 "Endpoint contains no version and no default one exists"
             log.info("Endpoint does not provide API version. Using default %s"
                      "API version: %s", self.service_type,
                      self.DEFAULT_API_VERSION)
-            self.endpoint_url += "/v%s" % self.DEFAULT_API_VERSION
+            self.api_version = self.DEFAULT_API_VERSION
+            self.endpoint_url += "/v%s" % self.api_version
 
         # If no CA certificates are set, get the defaults from kamaki.defaults
         if https.HTTPSClientAuthConnection.ca_file is None:
