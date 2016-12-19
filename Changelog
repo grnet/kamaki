@@ -21,6 +21,8 @@ Features
 * On client initialization, detect if endpoint URL is unversioned and, in
   this case, set a default version. This is to support changes in Synnefo
   0.19, in compliance with OpenStack practice.
+* Remove deprecated argument "base_url" from Client initialization; use
+  "endpoint_url" instead.
 
 .. _Changelog-0.14:
 
