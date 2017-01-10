@@ -1,4 +1,4 @@
-# Copyright 2011-2015 GRNET S.A. All rights reserved.
+# Copyright 2011-2016 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -425,6 +425,8 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
         server_name=ValueArgument('The name of the new server', '--name'),
         flavor_id=IntArgument('The ID of the flavor', '--flavor-id'),
         image_id=ValueArgument('The ID of the image', '--image-id'),
+        key_name=ValueArgument('The name of the ssh key to add the server',
+                               '--key-name'),
         personality=PersonalityArgument(
             (80 * ' ').join(howto_personality), ('-p', '--personality')),
         wait=FlagArgument('Wait server to build', ('-w', '--wait')),
@@ -464,6 +466,7 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
             name='%s%s' % (prefix, i if size > 1 else ''),
             flavor_id=flavor_id,
             image_id=image_id,
+            key_name=self['key_name'],
             project_id=self['project_id'],
             personality=self['personality'],
             metadata=self['metadata'],
