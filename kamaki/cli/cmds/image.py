@@ -498,7 +498,7 @@ class image_register(_ImageInit, OptionalOutput):
         # upload the metadata file
         if not self['no_metafile_upload']:
             sharing = dict([(k, v.split(',')) for k, v in (
-                pithos.get_object_sharing(locator.path).items())])
+                pithos.get_object_sharing(locator.object).items())])
             try:
                 meta_headers = pithos.upload_from_string(
                     meta_path, dumps(r, indent=2),
