@@ -1,4 +1,4 @@
-# Copyright 2011-2014 GRNET S.A. All rights reserved.
+# Copyright 2011-2016 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -35,7 +35,7 @@ from kamaki.clients.cyclades.rest_api import (
     CycladesComputeRestClient, CycladesBlockStorageRestClient)
 from kamaki.clients.network import NetworkClient
 from kamaki.clients.utils import path4url
-from kamaki.clients import ClientError, Waiter
+from kamaki.clients import ClientError, Waiter, wait
 
 
 class CycladesComputeClient(CycladesComputeRestClient, Waiter):
@@ -44,7 +44,7 @@ class CycladesComputeClient(CycladesComputeRestClient, Waiter):
     CONSOLE_TYPES = ('vnc', 'vnc-ws', 'vnc-wss')
 
     def create_server(
-            self, name, flavor_id, image_id,
+            self, name, flavor_id, image_id, key_name=None,
             metadata=None, personality=None, networks=None, project_id=None,
             response_headers=dict(location=None)):
         """Submit request to create a new server
@@ -65,8 +65,8 @@ class CycladesComputeClient(CycladesComputeRestClient, Waiter):
             {"uuid": <network_uuid>},
             {"uuid": <network_uuid>, "fixed_ip": address},
             {"port": <port_id>}, ...]
-            ATTENTION: Empty list is different to None. None means ' do not
-            mention it', empty list means 'automatically get an ip'
+            ATTENTION: Empty list is different to None. None means 'apply the
+            default server policy', empty list means 'do not attach a network'
 
         :param project_id: the project where to assign the server
 
@@ -84,6 +84,9 @@ class CycladesComputeClient(CycladesComputeRestClient, Waiter):
 
         req = {'server': {
             'name': name, 'flavorRef': flavor_id, 'imageRef': image_id}}
+
+        if key_name:
+            req['server']['key_name'] = key_name
 
         if metadata:
             req['server']['metadata'] = metadata
@@ -172,35 +175,101 @@ class CycladesComputeClient(CycladesComputeRestClient, Waiter):
         r = self.servers_diagnostics_get(server_id)
         return r.json
 
-    def wait_server(
+    def get_server_status(self, server_id):
+        """Deprecated - will be removed in version 0.15
+        :returns: (current status, progress percentile if available)"""
+        r = self.get_server_details(server_id)
+        return r['status'], (r.get('progress', None) if (
+            r['status'] in ('BUILD', )) else None)
+
+    def wait_server_while(
             self, server_id,
-            current_status='BUILD',
-            delay=1, max_wait=100, wait_cb=None):
-        """Wait for server while its status is current_status
-
+            current_status='BUILD', delay=1, max_wait=100, wait_cb=None):
+        """Wait for server WHILE its status is current_status
         :param server_id: integer (str or int)
-
         :param current_status: (str) BUILD|ACTIVE|STOPPED|DELETED|REBOOT
-
         :param delay: time interval between retries
-
         :max_wait: (int) timeout in secconds
-
         :param wait_cb: if set a progressbar is used to show progress
-
         :returns: (str) the new mode if succesfull, (bool) False if timed out
         """
+        return wait(
+            self.get_server_details, (server_id, ),
+            lambda i: i['status'] != current_status,
+            delay, max_wait, wait_cb)
 
-        def get_status(self, server_id):
-            r = self.get_server_details(server_id)
-            return r['status'], (r.get('progress', None) if (
-                            current_status in ('BUILD', )) else None)
+    def wait_server_until(
+            self, server_id,
+            target_status='ACTIVE', delay=1, max_wait=100, wait_cb=None):
+        """Wait for server WHILE its status is target_status
+        :param server_id: integer (str or int)
+        :param target_status: (str) BUILD|ACTIVE|STOPPED|DELETED|REBOOT
+        :param delay: time interval between retries
+        :max_wait: (int) timeout in secconds
+        :param wait_cb: if set a progressbar is used to show progress
+        :returns: (str) the new mode if succesfull, (bool) False if timed out
+        """
+        return wait(
+            self.get_server_details, (server_id, ),
+            lambda i: i['status'] == target_status,
+            delay, max_wait, wait_cb)
 
-        return self._wait(
-            server_id, current_status, get_status, delay, max_wait, wait_cb)
+    # Backwards compatibility - deprecated, will be replaced in 0.15
+    wait_server = wait_server_while
 
+    # Volume attachment extensions
 
-# Backwards compatibility
+    def get_volume_attachment(self, server_id, attachment_id):
+        """
+        :param server_id: (str)
+        :param attachment_id: (str)
+        :returns: (dict) details on the volume attachment
+        """
+        r = self.volume_attachment_get(server_id, attachment_id)
+        return r.json['volumeAttachment']
+
+    def list_volume_attachments(self, server_id):
+        """
+        :param server_id: (str)
+        :returns: (list) all volume attachments for this server
+        """
+        r = self.volume_attachment_get(server_id)
+        return r.json['volumeAttachments']
+
+    def attach_volume(self, server_id, volume_id):
+        """Attach volume on server
+        :param server_id: (str)
+        :volume_id: (str)
+        :returns: (dict) information on attachment (contains volumeId)
+        """
+        r = self.volume_attachment_post(server_id, volume_id)
+        return r.json['volumeAttachment']
+
+    def delete_volume_attachment(self, server_id, attachment_id):
+        """Delete a volume attachment. The volume will not be deleted.
+        :param server_id: (str)
+        :param attachment_id: (str)
+        :returns: (dict) HTTP response headers
+        """
+        r = self.volume_attachment_delete(server_id, attachment_id)
+        return r.headers
+
+    def detach_volume(self, server_id, volume_id):
+        """Remove volume attachment(s) for this volume and server
+        This is not an atomic operation. Use "delete_volume_attachment" for an
+        atomic operation with similar semantics.
+        :param server_id: (str)
+        :param volume_id: (str)
+        :returns: (list) the deleted attachments
+        """
+        all_atts = self.list_volume_attachments(server_id)
+        vstr = '%s' % volume_id
+        attachments = [a for a in all_atts if ('%s' % a['volumeId']) == vstr]
+        for attachment in attachments:
+            self.delete_volume_attachment(server_id, attachment['id'])
+        return attachments
+
+# Backwards compatibility - will be removed in 0.15
 CycladesClient = CycladesComputeClient
 
 
@@ -256,7 +325,7 @@ class CycladesNetworkClient(NetworkClient):
             port['name'] = name
         if fixed_ips:
             for fixed_ip in fixed_ips or []:
-                if not 'ip_address' in fixed_ip:
+                if 'ip_address' not in fixed_ip:
                     raise ValueError('Invalid fixed_ip [%s]' % fixed_ip)
             port['fixed_ips'] = fixed_ips
         r = self.ports_post(json_data=dict(port=port), success=201)
@@ -293,7 +362,8 @@ class CycladesBlockStorageClient(CycladesBlockStorageRestClient):
     """Cyclades Block Storage REST API Client"""
 
     def create_volume(
-            self, size, server_id, display_name,
+            self, size, display_name,
+            server_id=None,
             display_description=None,
             snapshot_id=None,
             imageRef=None,
@@ -302,7 +372,8 @@ class CycladesBlockStorageClient(CycladesBlockStorageRestClient):
             project=None):
         """:returns: (dict) new volumes' details"""
         r = self.volumes_post(
-            size, server_id, display_name,
+            size, display_name,
+            server_id=server_id,
             display_description=display_description,
             snapshot_id=snapshot_id,
             imageRef=imageRef,
@@ -315,10 +386,9 @@ class CycladesBlockStorageClient(CycladesBlockStorageRestClient):
         self.volumes_action_post(volume_id, {"reassign": {"project": project}})
 
     def create_snapshot(
-            self, volume_id, display_name,
-            force=None, display_description=None):
+            self, volume_id, display_name=None, display_description=None):
+        """:returns: (dict) new snapshots' details"""
         return super(CycladesBlockStorageClient, self).create_snapshot(
             volume_id,
             display_name=display_name,
-            force=force,
             display_description=display_description)

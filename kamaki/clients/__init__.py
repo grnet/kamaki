@@ -1,4 +1,4 @@
-# Copyright 2011-2014 GRNET S.A. All rights reserved. #
+# Copyright 2011-2016 GRNET S.A. All rights reserved. #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
 # conditions are met:
@@ -38,20 +38,22 @@ from time import time
 from httplib import ResponseNotReady, HTTPException
 from time import sleep
 from random import random
-from logging import getLogger
+import logging
 import ssl
+import re
 
 from kamaki.clients.utils import https
-
 from kamaki.clients import utils
 
 
 TIMEOUT = 60.0   # seconds
 HTTP_METHODS = ['GET', 'POST', 'PUT', 'HEAD', 'DELETE', 'COPY', 'MOVE']
+DEBUGV = logging.DEBUG + 1
 
-log = getLogger(__name__)
-sendlog = getLogger('%s.send' % __name__)
-recvlog = getLogger('%s.recv' % __name__)
+logging.addLevelName(DEBUGV, 'DEBUGV')
+log = logging.getLogger(__name__)
+sendlog = logging.getLogger('%s.send' % __name__)
+recvlog = logging.getLogger('%s.recv' % __name__)
 
 
 def _encode(v):
@@ -154,19 +156,19 @@ class RequestManager(Logged):
 
     def dump_log(self):
         plog = ('\t[%s]' % self) if self.LOG_PID else ''
-        sendlog.info('%s %s://%s%s%s' % (
+        sendlog.log(DEBUGV, '%s %s://%s%s%s' % (
             self.method, self.scheme, self.netloc, self.path, plog))
         for key, val in self.headers.items():
             if key.lower() in ('x-auth-token', ) and not self.LOG_TOKEN:
                 self._token, val = val, '...'
-            sendlog.info('  %s: %s%s' % (key, val, plog))
+            sendlog.log(DEBUGV, '  %s: %s%s' % (key, val, plog))
         if self.data:
-            sendlog.info('data size: %s%s' % (len(self.data), plog))
+            sendlog.log(DEBUGV, 'data size: %s%s' % (len(self.data), plog))
             if self.LOG_DATA:
-                sendlog.info(utils.escape_ctrl_chars(self.data.replace(
+                sendlog.log(DEBUGV, utils.escape_ctrl_chars(self.data.replace(
                     self._token, '...') if self._token else self.data))
         else:
-            sendlog.info('data size: 0%s' % plog)
+            sendlog.log(DEBUGV, 'data size: 0%s' % plog)
 
     def _encode_headers(self):
         headers = dict()
@@ -193,7 +195,7 @@ class RequestManager(Logged):
                 url=self.path.encode('utf-8'),
                 headers=self.headers,
                 body=self.data)
-            sendlog.info('')
+            sendlog.log(DEBUGV, '')
             keep_trying = TIMEOUT
             while keep_trying > 0:
                 try:
@@ -206,7 +208,7 @@ class RequestManager(Logged):
             raise KamakiSSLError('SSL Connection error (%s)' % ssle)
         plog = ('\t[%s]' % self) if self.LOG_PID else ''
         logmsg = 'Kamaki Timeout %s %s%s' % (self.method, self.path, plog)
-        recvlog.debug(logmsg)
+        recvlog.log(DEBUGV, logmsg)
         raise ClientError('HTTPResponse takes too long - kamaki timeout')
 
     @property
@@ -272,13 +274,14 @@ class ResponseManager(Logged):
                     r = self.request.perform(connection)
                     plog = ''
                     if self.LOG_PID:
-                        recvlog.info('\n%s <-- %s <-- [req: %s]\n' % (
+                        recvlog.log(DEBUGV, '\n%s <-- %s <-- [req: %s]\n' % (
                             self, r, self.request))
                         plog = '\t[%s]' % self
                     self._request_performed = True
                     self._status_code, self._status = r.status, unquote(
                         r.reason)
-                    recvlog.info(
+                    recvlog.log(
+                        DEBUGV,
                         '%d %s%s' % (self.status_code, self.status, plog))
                     self._headers = dict()
 
@@ -287,16 +290,16 @@ class ResponseManager(Logged):
                     for k, v in r_headers:
                         self._headers[k] = unquote(v).decode('utf-8') if (
                             k.lower()) in enc_headers else v
-                        recvlog.info('  %s: %s%s' % (k, v, plog))
+                        recvlog.log(DEBUGV, '  %s: %s%s' % (k, v, plog))
                     self._content = r.read()
-                    recvlog.info('data size: %s%s' % (
+                    recvlog.log(DEBUGV, 'data size: %s%s' % (
                         len(self._content) if self._content else 0, plog))
                     if self.LOG_DATA and self._content:
                         data = '%s%s' % (self._content, plog)
                         data = utils.escape_ctrl_chars(data)
                         if self._token:
                             data = data.replace(self._token, '...')
-                        recvlog.info(data)
+                        recvlog.log(DEBUGV, data)
                 break
             except Exception as err:
                 if isinstance(err, HTTPException):
@@ -306,8 +309,8 @@ class ResponseManager(Logged):
                                 self.request.url, retries, type(err), err))
                 else:
                     from traceback import format_stack
-                    recvlog.debug(
-                        '\n'.join(['%s' % type(err)] + format_stack()))
+                    recvlog.log(
+                        DEBUGV, '\n'.join(['%s' % type(err)] + format_stack()))
                     raise
 
     @property
@@ -392,17 +395,29 @@ class SilentEvent(Thread):
             self._exception = e
 
 
+def strip_version(url):
+    """Given a synnefo endpoint it will return the URL without the API version
+    part as well as the API version of the URL.
+    """
+    ver = ""
+    # remove trailing '/' if present
+    url = url.rstrip('/')
+    m = re.search('/v(\d+(?:\.\d*)?)$', url)
+    if m:
+        ver = m.group(1)
+    return (url[:len(url)-len(ver)], ver)
+
+
 class Client(Logged):
     service_type = ''
     MAX_THREADS = 1
     DATE_FORMATS = ['%a %b %d %H:%M:%S %Y', ]
     CONNECTION_RETRY_LIMIT = 0
 
-    def __init__(self, endpoint_url, token, base_url=None):
-        #  BW compatibility - keep base_url for some time
-        endpoint_url = endpoint_url or base_url
+    def __init__(self, endpoint_url, token):
+        endpoint_url = endpoint_url.rstrip('/')
         assert endpoint_url, 'No endpoint_url for client %s' % self
-        self.endpoint_url, self.base_url = endpoint_url, endpoint_url
+        self.endpoint_url = endpoint_url
         self.token = token
         self.headers, self.params = dict(), dict()
         self.poolsize = None
@@ -410,6 +425,16 @@ class Client(Logged):
         self.request_header_prefices_to_quote = []
         self.response_headers = []
         self.response_header_prefices = []
+        _, self.api_version = strip_version(self.endpoint_url)
+
+        if not self.api_version:
+            assert hasattr(self, "DEFAULT_API_VERSION"), \
+                "Endpoint contains no version and no default one exists"
+            log.info("Endpoint does not provide API version. Using default %s"
+                     "API version: %s", self.service_type,
+                     self.DEFAULT_API_VERSION)
+            self.api_version = self.DEFAULT_API_VERSION
+            self.endpoint_url += "/v%s" % self.api_version
 
         # If no CA certificates are set, get the defaults from kamaki.defaults
         if https.HTTPSClientAuthConnection.ca_file is None:
@@ -492,7 +517,7 @@ class Client(Logged):
                 else:
                     results[key] = thread.value
             flying = unfinished
-        sendlog.info('- - - wait for threads to finish')
+        sendlog.debug('- - - wait for threads to finish')
         for key, thread in flying.items():
             if thread.isAlive():
                 thread.join()
@@ -537,7 +562,8 @@ class Client(Logged):
             if data:
                 headers.setdefault('Content-Length', '%s' % len(data))
             plog = ('\t[%s]' % self) if self.LOG_PID else ''
-            sendlog.debug('\n\nCMT %s@%s%s', method, self.endpoint_url, plog)
+            sendlog.log(
+                DEBUGV, '\n\nCMT %s@%s%s', method, self.endpoint_url, plog)
             req = RequestManager(
                 method, self.endpoint_url, path,
                 data=data, headers=headers, params=params)
@@ -593,12 +619,38 @@ class Client(Logged):
         return self.request('move', path, **kwargs)
 
 
+def wait(poll, poll_params, stop, delay=1, timeout=100, wait_cb=None):
+    """Wait as long as the stop method returns False, polling each round
+    :param poll: (method) the polling method is called with poll_params. By
+        convention, it returns a dict of information about the item
+    :param poll_params: (iterable) each round, call poll with these parameters
+    :param stop: (method) gets the results of poll method as input and decides
+        if the wait method should stop
+    :param delay: (int) how long to wait (in seconds) between polls
+    :param timeout: (int) if this number of polls is reached, stop
+    :param wait_cb: (method) a call back method that takes item_details as
+        input
+    :returns: (dict) the last details dict of the item
+    """
+    results = None
+    for polls in range(timeout // delay):
+        results = poll(*poll_params)
+        if wait_cb:
+            wait_cb(results)
+        if stop(results):
+            break
+        sleep(delay)
+    return results
+
+
 class Waiter(object):
+    """Use this class to provide blocking API methods - DEPRECATED FROM 0.16"""
 
     def _wait(
             self, item_id, wait_status, get_status,
-            delay=1, max_wait=100, wait_cb=None, wait_for_status=False):
-        """Wait while the item is still in wait_status or to reach it
+            delay=1, max_wait=100, wait_cb=None, wait_until_status=False):
+        """DEPRECATED, to be removed in 0.16
+        Wait while the item is still in wait_status or to reach it
 
         :param server_id: integer (str or int)
 
@@ -612,7 +664,7 @@ class Waiter(object):
         :param wait_cb: (method(total steps)) returns a generator for
             reporting progress or timeouts i.e., for a progress bar
 
-        :param wait_for_status: (bool) wait FOR (True) or wait WHILE (False)
+        :param wait_until_status: (bool) wait FOR (True) or wait WHILE (False)
 
         :returns: (str) the new mode if successful, (bool) False if timed out
         """
@@ -622,7 +674,7 @@ class Waiter(object):
             wait_gen = wait_cb(max_wait // delay)
             wait_gen.next()
 
-        if wait_for_status ^ (status != wait_status):
+        if wait_until_status ^ (status != wait_status):
             # if wait_cb:
             #     try:
             #         wait_gen.next()
@@ -631,7 +683,7 @@ class Waiter(object):
             return status
         old_wait = total_wait = 0
 
-        while (wait_for_status ^ (status == wait_status)) and (
+        while (wait_until_status ^ (status == wait_status)) and (
                 total_wait <= max_wait):
             if wait_cb:
                 try:
@@ -651,18 +703,19 @@ class Waiter(object):
                         wait_gen.next()
                 except:
                     pass
-        return status if (wait_for_status ^ (status != wait_status)) else False
+        finished = wait_until_status ^ (status != wait_status)
+        return status if finished else False
 
-    def wait_for(
+    def wait_until(
             self, item_id, target_status, get_status,
             delay=1, max_wait=100, wait_cb=None):
-        self._wait(
+        return self._wait(
             item_id, target_status, get_status, delay, max_wait, wait_cb,
-            wait_for_status=True)
+            wait_until_status=True)
 
     def wait_while(
             self, item_id, target_status, get_status,
             delay=1, max_wait=100, wait_cb=None):
-        self._wait(
+        return self._wait(
             item_id, target_status, get_status, delay, max_wait, wait_cb,
-            wait_for_status=False)
+            wait_until_status=False)

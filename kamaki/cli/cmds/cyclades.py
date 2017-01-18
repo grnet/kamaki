@@ -1,4 +1,4 @@
-# Copyright 2011-2014 GRNET S.A. All rights reserved.
+# Copyright 2011-2016 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -33,6 +33,8 @@
 import cStringIO
 import codecs
 from base64 import b64encode
+import uuid
+from datetime import datetime
 from os.path import exists, expanduser
 from io import StringIO
 from pydoc import pager
@@ -40,7 +42,7 @@ from pydoc import pager
 from kamaki.cli import command
 from kamaki.cli.cmdtree import CommandTree
 from kamaki.cli.utils import remove_from_items, filter_dicts_by_dict
-from kamaki.cli.errors import raiseCLIError, CLISyntaxError, CLIInvalidArgument
+from kamaki.cli.errors import CLIError, CLISyntaxError, CLIInvalidArgument
 from kamaki.clients.cyclades import (
     CycladesComputeClient, ClientError, CycladesNetworkClient)
 from kamaki.cli.argument import (
@@ -53,7 +55,8 @@ from kamaki.cli.cmds import (
 
 server_cmds = CommandTree('server', 'Cyclades/Compute API server commands')
 flavor_cmds = CommandTree('flavor', 'Cyclades/Compute API flavor commands')
-namespaces = [server_cmds, flavor_cmds]
+keypair_cmds = CommandTree('keypair', 'Cyclades/Compute API keypair commands')
+namespaces = [server_cmds, flavor_cmds, keypair_cmds]
 
 howto_personality = [
     'Defines a file to be injected to virtual servers file system.',
@@ -65,16 +68,28 @@ howto_personality = [
     '  [mode=]MODE: permission in octal (e.g., 0777)',
     'e.g., -p /tmp/my.file,owner=root,mode=0777']
 
-server_states = ('BUILD', 'ACTIVE', 'STOPPED', 'REBOOT')
+server_states = ('BUILD', 'ACTIVE', 'STOPPED', 'REBOOT', 'ERROR')
 
 
 class _ServerWait(Wait):
 
-    def wait(self, server_id, current_status, timeout=60):
+    def wait_while(self, server_id, current_status, timeout=60):
+        if current_status in ('BUILD', ):
+
+            def update_cb(item_details):
+                return item_details.get('progress', None)
+        else:
+            update_cb = None
+
         super(_ServerWait, self).wait(
-            'Server', server_id, self.client.wait_server, current_status,
+            'Server', server_id, self.client.wait_server_while, current_status,
             countdown=(current_status not in ('BUILD', )),
-            timeout=timeout if current_status not in ('BUILD', ) else 100)
+            timeout=timeout, update_cb=update_cb)
+
+    def wait_until(self, server_id, target_status, timeout=60):
+        super(_ServerWait, self).wait(
+            'Server', server_id, self.client.wait_server_until, target_status,
+            timeout=timeout, msg='not yet')
 
     def assert_not_in_status(self, server_id, status):
         """
@@ -84,7 +99,7 @@ class _ServerWait(Wait):
         """
         current = self.client.get_server_details(server_id).get('status', None)
         if current in (status, ):
-            raiseCLIError('Server %s is already %s' % (server_id, status))
+            raise CLIError('Server %s is already %s' % (server_id, status))
         return current
 
 
@@ -97,6 +112,10 @@ class _CycladesInit(CommandInit):
     @errors.Cyclades.flavor_id
     def _flavor_exists(self, flavor_id):
         self.client.get_flavor_details(flavor_id=flavor_id)
+
+    @errors.Cyclades.server_id
+    def _server_exists(self, server_id):
+        self.client.get_server_details(server_id=server_id)
 
     @fall_back
     def _restruct_server_info(self, vm):
@@ -313,7 +332,7 @@ class PersonalityArgument(KeyValueArgument):
             termlist = terms.split(',')
             if len(termlist) > len(self.terms):
                 msg = 'Wrong number of terms (1<=terms<=%s)' % len(self.terms)
-                raiseCLIError(CLISyntaxError(msg), details=howto_personality)
+                raise CLIError(CLISyntaxError(msg), details=howto_personality)
 
             for k, v in self.terms:
                 prefix = '%s=' % k
@@ -409,6 +428,8 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
         server_name=ValueArgument('The name of the new server', '--name'),
         flavor_id=IntArgument('The ID of the flavor', '--flavor-id'),
         image_id=ValueArgument('The ID of the image', '--image-id'),
+        key_name=ValueArgument('The name of the ssh key to add the server',
+                               '--key-name'),
         personality=PersonalityArgument(
             (80 * ' ').join(howto_personality), ('-p', '--personality')),
         wait=FlagArgument('Wait server to build', ('-w', '--wait')),
@@ -448,6 +469,7 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
             name='%s%s' % (prefix, i if size > 1 else ''),
             flavor_id=flavor_id,
             image_id=image_id,
+            key_name=self['key_name'],
             project_id=self['project_id'],
             personality=self['personality'],
             metadata=self['metadata'],
@@ -500,7 +522,7 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
             fip['floating_ip_address'] == ip)]
         if not ips:
             msg = 'IP %s not available for current user' % ip
-            raiseCLIError(cerror, details=[msg] + errors.Cyclades.about_ips)
+            raise CLIError(cerror, details=[msg] + errors.Cyclades.about_ips)
         ipnet, ipvm = ips[0]['floating_network_id'], ips[0]['instance_id']
         if getattr(cerror, 'status', 0) in (409, ):
             msg = ''
@@ -510,7 +532,7 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
             elif ipvm:
                 msg = 'IP %s is already used by device %s' % (ip, ipvm)
             if msg:
-                raiseCLIError(cerror, details=[
+                raise CLIError(cerror, details=[
                     msg,
                     'To get details on IP',
                     '  kamaki ip info %s' % ip] + errors.Cyclades.about_ips)
@@ -528,7 +550,7 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
                     continue
                 self.print_(r, self.print_dict)
                 if self['wait']:
-                    self.wait(r['id'], r['status'] or 'BUILD')
+                    self.wait_while(r['id'], r['status'] or 'BUILD')
                 self.writeln(' ')
         except ClientError as ce:
             if ce.status in (404, 400):
@@ -547,7 +569,7 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
         super(self.__class__, self)._run()
         if self['no_network'] and self['network_configuration']:
             raise CLIInvalidArgument(
-                'Invalid argument compination', importance=2, details=[
+                'Invalid argument combination', importance=2, details=[
                     'Arguments %s and %s are mutually exclusive' % (
                         self.arguments['no_network'].lvalue,
                         self.arguments['network_configuration'].lvalue)])
@@ -612,7 +634,7 @@ class server_modify(_CycladesInit):
                     v = p.get(k)
                     if v:
                         port_strings.append('\t%s: %s' % (k, v))
-            raiseCLIError(
+            raise CLIError(
                 'Multiple public connections on server %s' % (
                     server_id), details=port_strings + [
                         'To select one:',
@@ -621,7 +643,7 @@ class server_modify(_CycladesInit):
                         '  %s *' % pick_port.lvalue, ])
         if not ports:
             pp = pick_port.value
-            raiseCLIError(
+            raise CLIError(
                 'No public networks attached on server %s%s' % (
                     server_id, ' through port %s' % pp if pp else ''),
                 details=[
@@ -642,7 +664,7 @@ class server_modify(_CycladesInit):
     def _server_is_stopped(self, server_id, cerror):
         vm = self.client.get_server_details(server_id)
         if vm['status'].lower() not in ('stopped'):
-            raiseCLIError(cerror, details=[
+            raise CLIError(cerror, details=[
                 'To resize a virtual server, it must be STOPPED',
                 'Server %s status is %s' % (server_id, vm['status']),
                 'To stop the server',
@@ -736,7 +758,7 @@ class server_delete(_CycladesInit, _ServerWait):
 
         self.client.delete_server(server_id)
         if self['wait']:
-            self.wait(server_id, status)
+            self.wait_while(server_id, status)
 
     @errors.Generic.all
     @errors.Cyclades.connection
@@ -761,7 +783,7 @@ class server_reboot(_CycladesInit, _ServerWait):
 
     arguments = dict(
         type=ValueArgument('SOFT or HARD - default: SOFT', ('--type')),
-        wait=FlagArgument('Wait server to be destroyed', ('-w', '--wait'))
+        wait=FlagArgument('Wait server to start again', ('-w', '--wait'))
     )
 
     @errors.Generic.all
@@ -782,7 +804,7 @@ class server_reboot(_CycladesInit, _ServerWait):
 
         self.client.reboot_server(int(server_id), hard_reboot)
         if self['wait']:
-            self.wait(server_id, 'REBOOT')
+            self.wait_while(server_id, 'REBOOT')
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -794,7 +816,7 @@ class server_start(_CycladesInit, _ServerWait):
     """Start an existing virtual server"""
 
     arguments = dict(
-        wait=FlagArgument('Wait server to be destroyed', ('-w', '--wait'))
+        wait=FlagArgument('Wait server to start', ('-w', '--wait'))
     )
 
     @errors.Generic.all
@@ -804,7 +826,7 @@ class server_start(_CycladesInit, _ServerWait):
         status = self.assert_not_in_status(server_id, 'ACTIVE')
         self.client.start_server(int(server_id))
         if self['wait']:
-            self.wait(server_id, status)
+            self.wait_while(server_id, status)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -816,7 +838,7 @@ class server_shutdown(_CycladesInit,  _ServerWait):
     """Shutdown an active virtual server"""
 
     arguments = dict(
-        wait=FlagArgument('Wait server to be destroyed', ('-w', '--wait'))
+        wait=FlagArgument('Wait server to shut down', ('-w', '--wait'))
     )
 
     @errors.Generic.all
@@ -826,7 +848,7 @@ class server_shutdown(_CycladesInit,  _ServerWait):
         status = self.assert_not_in_status(server_id, 'STOPPED')
         self.client.shutdown_server(int(server_id))
         if self['wait']:
-            self.wait(server_id, status)
+            self.wait_while(server_id, status)
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -893,36 +915,65 @@ class server_console(_CycladesInit, OptionalOutput):
 
 @command(server_cmds)
 class server_wait(_CycladesInit, _ServerWait):
-    """Wait for server to change its status (default: BUILD)"""
+    """Wait for server to change its status (default: --while BUILD)"""
 
     arguments = dict(
         timeout=IntArgument(
             'Wait limit in seconds (default: 60)', '--timeout', default=60),
-        server_status=StatusArgument(
-            'Status to wait for (%s, default: %s)' % (
-                ', '.join(server_states), server_states[0]),
+        status=StatusArgument(
+            'DEPRECATED in next version, equivalent to "--while"',
             '--status',
-            valid_states=server_states)
+            valid_states=server_states),
+        status_w=StatusArgument(
+            'Wait while in status (%s)' % ','.join(server_states), '--while',
+            valid_states=server_states),
+        status_u=StatusArgument(
+            'Wait until status is reached (%s)' % ','.join(server_states),
+            '--until',
+            valid_states=server_states),
     )
 
     @errors.Generic.all
     @errors.Cyclades.connection
     @errors.Cyclades.server_id
-    def _run(self, server_id, current_status):
+    def _run(self, server_id):
         r = self.client.get_server_details(server_id)
-        if r['status'].lower() == current_status.lower():
-            self.wait(server_id, current_status, timeout=self['timeout'])
+
+        if self['status_u']:
+            if r['status'].lower() == self['status_u'].lower():
+                self.error(
+                    'Server %s: already in %s' % (server_id, r['status']))
+            else:
+                self.wait_until(
+                    server_id, self['status_u'], timeout=self['timeout'])
         else:
-            self.error(
-                'Server %s: Cannot wait for status %s, '
-                'status is already %s' % (
-                    server_id, current_status, r['status']))
+            status_w = self['status_w'] or self['status'] or 'BUILD'
+            if r['status'].lower() == status_w.lower():
+                self.wait_while(
+                    server_id, status_w, timeout=self['timeout'])
+            else:
+                self.error(
+                    'Server %s status: %s' % (server_id, r['status']))
 
     def main(self, server_id):
         super(self.__class__, self)._run()
-        self._run(
-            server_id=server_id,
-            current_status=self['server_status'] or 'BUILD')
+
+        status_args = [self['status'], self['status_w'], self['status_u']]
+        if len([x for x in status_args if x]) > 1:
+            raise CLIInvalidArgument(
+                'Invalid argument combination', importance=2, details=[
+                    'Arguments %s, %s and %s are mutually exclusive' % (
+                        self.arguments['status'].lvalue,
+                        self.arguments['status_w'].lvalue,
+                        self.arguments['status_u'].lvalue)])
+        if self['status']:
+            self.error(
+                'WARNING: argument %s will be deprecated '
+                'in the next version, use %s instead' % (
+                    self.arguments['status'].lvalue,
+                    self.arguments['status_w'].lvalue))
+
+        self._run(server_id=server_id)
 
 
 @command(flavor_cmds)
@@ -995,3 +1046,260 @@ class flavor_info(_CycladesInit, OptionalOutput):
     def main(self, flavor_id):
         super(self.__class__, self)._run()
         self._run(flavor_id=flavor_id)
+
+
+# Volume Attachment Commands
+
+@command(server_cmds)
+class server_attachment(_CycladesInit, OptionalOutput):
+    """Details on the attachment of a volume
+    This is not information about the volume. To see volume information:
+        $ kamaki volume info VOLUME_ID
+    """
+
+    arguments = dict(
+        attachment_id=ValueArgument(
+            'The volume attachment', '--attachment-id', )
+    )
+    required = ('attachment_id', )
+
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.server_id
+    @errors.Cyclades.endpoint
+    def _run(self, server_id):
+        r = self.client.get_volume_attachment(server_id, self['attachment_id'])
+        self.print_(r, self.print_dict)
+
+    def main(self, server_id):
+        super(self.__class__, self)._run()
+        self._run(server_id=server_id)
+
+
+@command(server_cmds)
+class server_attachments(_CycladesInit, OptionalOutput):
+    """List the volume attachments of a VM"""
+
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.server_id
+    @errors.Cyclades.endpoint
+    def _run(self, server_id):
+        r = self.client.list_volume_attachments(server_id)
+        self.print_(r)
+
+    def main(self, server_id):
+        super(self.__class__, self)._run()
+        self._run(server_id=server_id)
+
+
+@command(server_cmds)
+class server_attach(_CycladesInit, OptionalOutput):
+    """Attach a volume on a VM"""
+
+    arguments = dict(
+        volume_id=ValueArgument('The volume to be attached', '--volume-id')
+    )
+    required = ('volume_id', )
+
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.server_id
+    @errors.Cyclades.endpoint
+    def _run(self, server_id):
+        r = self.client.attach_volume(server_id, self['volume_id'])
+        self.print_(r, self.print_dict)
+
+    def main(self, server_id):
+        super(self.__class__, self)._run()
+        self._run(server_id=server_id)
+
+
+@command(server_cmds)
+class server_detach(_CycladesInit):
+    """Detach a volume from a VM"""
+
+    arguments = dict(
+        attachment_id=ValueArgument(
+            'The volume attachment (mutually exclusive to --volume-id)',
+            '--attachment-id', ),
+        volume_id=ValueArgument(
+            'Volume to detach from VM (mutually exclusive to --attachment-id)',
+            '--volume-id')
+    )
+    required = ['attachment_id', 'volume_id']
+
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.server_id
+    @errors.Cyclades.endpoint
+    def _run(self, server_id):
+        att_id = self['attachment_id']
+        if att_id:
+            self.client.delete_volume_attachment(server_id, att_id)
+        else:
+            r = self.client.detach_volume(server_id, self['volume_id'])
+            self.error('%s detachment%s deleted, volume is detached' % (
+                len(r), '' if len(r) == 1 else 's'))
+        self.error('OK')
+
+    def main(self, server_id):
+        super(self.__class__, self)._run()
+        if all([self['attachment_id'], self['volume_id']]):
+            raise CLISyntaxError('Invalid argument compination', details=[
+                '%s and %s are mutually exclusive' % (
+                    self.arguments['attachment_id'].lvalue,
+                    self.arguments['volume_id'].lvalue)])
+        self._run(server_id=server_id)
+
+
+@command(keypair_cmds)
+class keypair_list(_CycladesInit, OptionalOutput, NameFilter):
+    """List all keypairs"""
+
+    arguments = dict(
+        detail=FlagArgument('show detailed output', ('-l', '--detail')),
+    )
+
+    @errors.Generic.all
+    @errors.Keypair.connection
+    def _run(self):
+        keypairs = self.client.list_keypairs()
+        keypairs = [k['keypair'] for k in keypairs]
+        if not self['detail']:
+            remove_from_items(keypairs, 'public_key')
+        keypairs = self._filter_by_name(keypairs)
+        self.print_(keypairs)
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
+
+
+@command(keypair_cmds)
+class keypair_info(_CycladesInit, OptionalOutput):
+    """Detailed information on a keypair"""
+
+    @errors.Generic.all
+    @errors.Keypair.connection
+    @errors.Keypair.name
+    def _run(self, key_name):
+        keypair = self.client.get_keypair_details(key_name)
+        self.print_(keypair, self.print_dict)
+
+    def main(self, key_name):
+        super(self.__class__, self)._run()
+        self._run(key_name=key_name)
+
+
+@command(keypair_cmds)
+class keypair_delete(_CycladesInit):
+    """Delete a keypair"""
+
+    @errors.Generic.all
+    @errors.Keypair.connection
+    @errors.Keypair.name
+    def _run(self, key_name):
+        self.client.delete_keypair(key_name)
+
+    def main(self, key_name):
+        super(self.__class__, self)._run()
+        self._run(key_name=key_name)
+
+
+@command(keypair_cmds)
+class keypair_upload(_CycladesInit, OptionalOutput):
+    """Upload or update a keypair"""
+
+    arguments = dict(
+        key_name=ValueArgument(
+            'The name of the key',
+            '--key-name'),
+        public_key=ValueArgument(
+            'The contents of the keypair(the public key)',
+            '--public-key'),
+        force=FlagArgument(
+            '(DANGEROUS) Force keypair creation. This option'
+            ' will delete an existing keypair in case of a name'
+            'conflict. Do not use it if unsure.',
+            ('-f', '--force')
+        )
+    )
+
+    required = ['public_key']
+
+    @errors.Generic.all
+    @errors.Keypair.connection
+    def _run(self):
+        key_name = self['key_name']
+        if key_name is None:
+            uniq = str(uuid.uuid4())[:8]
+            key_name = 'kamaki-key_autogen_{:%m_%d_%H_%M_%S_%f}_{uniq}'.format(
+                datetime.now(), uniq=uniq)
+        try:
+            keypair = self.client.create_key(
+                key_name=key_name, public_key=self['public_key'])
+        except ClientError as e:
+            if e.status == 409 and self['force']:
+                self.client.delete_keypair(key_name)
+                keypair = self.client.create_key(
+                    key_name=key_name, public_key=self['public_key'])
+            else:
+                help_command = ('kamaki keypair upload -f --key-name %s '
+                                '--public-key %s'
+                                % (key_name, self['public_key']))
+                self._err.write('A keypair with that name already exists. '
+                                'To override the conflicting key you can use '
+                                'the following command:\n%s\n' %
+                                (help_command))
+                raise e
+        self.print_(keypair, self.print_dict)
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()
+
+
+@command(keypair_cmds)
+class keypair_generate(_CycladesInit, OptionalOutput):
+    """Generate a keypair"""
+
+    arguments = dict(
+        key_name=ValueArgument(
+            'The name of the key',
+            '--key-name'),
+        force=FlagArgument(
+            '(DANGEROUS) Force keypair creation. This option'
+            ' will delete an existing keypair in case of a name'
+            'conflict. Do not use it if unsure.',
+            ('-f', '--force')
+        )
+    )
+
+    @errors.Generic.all
+    @errors.Keypair.connection
+    def _run(self):
+        key_name = self['key_name']
+        if key_name is None:
+            uniq = str(uuid.uuid4())[:8]
+            key_name = 'kamaki-key_autogen_{:%m_%d_%H_%M_%S_%f}_{uniq}'.format(
+                datetime.now(), uniq=uniq)
+        try:
+            keypair = self.client.create_key(key_name=key_name)
+        except ClientError as e:
+            if e.status == 409 and self['force']:
+                self.client.delete_keypair(key_name)
+                keypair = self.client.create_key(key_name=key_name)
+            else:
+                help_command = ('kamaki keypair generate -f --key-name %s'
+                                % (key_name))
+                self._err.write('A keypair with that name already exists. '
+                                'To override the conflicting key you can use '
+                                'the following command:\n%s\n' %
+                                (help_command))
+                raise e
+        self.print_(keypair, self.print_dict)
+
+    def main(self):
+        super(self.__class__, self)._run()
+        self._run()

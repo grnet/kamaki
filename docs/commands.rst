@@ -201,6 +201,18 @@ imagecompute (Compute/Cyclades)
     modify    Modify image properties (metadata)
     delete    Delete an image (WARNING: image file is also removed)
 
+keypair (Compute/Cyclades)
+--------------------------
+
+.. code-block:: text
+
+    info: Detailed information on a keypair
+    delete: Delete a keypair
+    list: List all keypairs
+    generate: Generate a keypair
+    upload: Upload or update a keypair
+
+
 server (Compute/Cyclades)
 -------------------------
 
@@ -216,6 +228,10 @@ server (Compute/Cyclades)
     delete    Delete a virtual server
     console   Create a VNC console and show connection information
     wait      Wait for server to finish [BUILD, STOPPED, REBOOT, ACTIVE]
+    attachment  Details on a volume attachment
+    attachments List of all volume attachments for a server
+    attach      Attach a volume on a server
+    detach      Delete an attachment/detach a volume from a server
 
 Showcase: Create a server
 ^^^^^^^^^^^^^^^^^^^^^^^^^

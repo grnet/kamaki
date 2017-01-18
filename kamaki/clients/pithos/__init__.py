@@ -37,13 +37,22 @@ from os import fstat
 from hashlib import new as newhashlib
 from time import time
 from StringIO import StringIO
+from logging import getLogger
 
 from binascii import hexlify
 
-from kamaki.clients import SilentEvent, sendlog
+from kamaki.clients import SilentEvent
 from kamaki.clients.pithos.rest_api import PithosRestClient
 from kamaki.clients.storage import ClientError
 from kamaki.clients.utils import path4url, filter_in, readall
+
+LOG = getLogger(__name__)
+
+
+def _dump_buffer(buffer_, destination):
+    """Append buffer to destination (file descriptor)"""
+    destination.write(buffer_)
+    destination.flush()
 
 
 def _pithos_hash(block, blockhash):
@@ -105,6 +114,19 @@ class PithosClient(PithosRestClient):
     def __init__(self, endpoint_url, token, account=None, container=None):
         super(PithosClient, self).__init__(
             endpoint_url, token, account, container)
+
+    def use_alternative_account(self, func, *args, **kwargs):
+        """Run method with an alternative account UUID, as long as kwargs
+           contain a non-None "alternative_account" argument
+        """
+        alternative_account = kwargs.pop('alternative_account', None)
+        bu_account = self.account
+        try:
+            if alternative_account and alternative_account != self.account:
+                self.account = alternative_account
+            return func(*args, **kwargs)
+        finally:
+            self.account = bu_account
 
     def create_container(
             self,
@@ -386,7 +408,8 @@ class PithosClient(PithosRestClient):
             content_type=None,
             sharing=None,
             public=None,
-            container_info_cache=None):
+            container_info_cache=None,
+            target_account=None):
         """Upload an object using multiple connections (threads)
 
         :param obj: (str) remote object path
@@ -420,13 +443,19 @@ class PithosClient(PithosRestClient):
 
         :param container_info_cache: (dict) if given, avoid redundant calls to
             server for container info (block size and hash information)
+
+        :param target_account: (str) the UUID of the account the object will be
+            allocated at, if different to the client account (e.g., when
+            user A uploads something to a location owned by user B)
         """
         self._assert_container()
 
         block_info = (
-            blocksize, blockhash, size, nblocks) = self._get_file_block_info(
-                f, size, container_info_cache)
-        (hashes, hmap, offset) = ([], {}, 0)
+            blocksize, blockhash, size, nblocks
+            ) = self.use_alternative_account(
+                self._get_file_block_info, f, size, container_info_cache,
+                alternative_account=target_account)
+        hashes, hmap = [], {}
         content_type = content_type or 'application/octet-stream'
 
         self._calculate_blocks_for_upload(
@@ -437,8 +466,8 @@ class PithosClient(PithosRestClient):
             hash_cb=hash_cb)
 
         hashmap = dict(bytes=size, hashes=hashes)
-        missing, obj_headers = self._create_object_or_get_missing_hashes(
-            obj, hashmap,
+        missing, obj_headers = self.use_alternative_account(
+            self._create_object_or_get_missing_hashes, obj, hashmap,
             content_type=content_type,
             size=size,
             if_etag_match=if_etag_match,
@@ -446,7 +475,8 @@ class PithosClient(PithosRestClient):
             content_encoding=content_encoding,
             content_disposition=content_disposition,
             permissions=sharing,
-            public=public)
+            public=public,
+            alternative_account=target_account)
 
         if missing is None:
             return obj_headers
@@ -457,14 +487,14 @@ class PithosClient(PithosRestClient):
                 try:
                     upload_gen.next()
                 except:
-                    sendlog.debug('Progress bar failure')
+                    LOG.debug('Progress bar failure')
                     break
         else:
             upload_gen = None
 
         retries = 7
         while retries:
-            sendlog.info('%s blocks missing' % len(missing))
+            LOG.debug('%s blocks missing' % len(missing))
             num_of_blocks = len(missing)
             missing = self._upload_missing_blocks(
                 missing, hmap, f, upload_gen)
@@ -484,7 +514,8 @@ class PithosClient(PithosRestClient):
                 '%s blocks failed to upload' % len(missing),
                 details=details)
 
-        r = self.object_put(
+        r = self.use_alternative_account(
+            self.object_put,
             obj,
             format='json',
             hashmap=True,
@@ -496,7 +527,8 @@ class PithosClient(PithosRestClient):
             json=hashmap,
             permissions=sharing,
             public=public,
-            success=201)
+            success=201,
+            alternative_account=target_account)
         return r.headers
 
     def upload_from_string(
@@ -549,7 +581,7 @@ class PithosClient(PithosRestClient):
         self._assert_container()
 
         blocksize, blockhash, size, nblocks = self._get_file_block_info(
-                fileobj=None, size=len(input_str), cache=container_info_cache)
+            fileobj=None, size=len(input_str), cache=container_info_cache)
         (hashes, hmap, offset) = ([], {}, 0)
         if not content_type:
             content_type = 'application/octet-stream'
@@ -613,7 +645,7 @@ class PithosClient(PithosRestClient):
             if missing:
                 raise ClientError('%s blocks failed to upload' % len(missing))
         except KeyboardInterrupt:
-            sendlog.info('- - - wait for threads to finish')
+            LOG.debug('- - - wait for threads to finish')
             for thread in activethreads():
                 thread.join()
             raise
@@ -636,14 +668,15 @@ class PithosClient(PithosRestClient):
 
     # download_* auxiliary methods
     def _get_remote_blocks_info(self, obj, **restargs):
-        #retrieve object hashmap
+        # retrieve object hashmap
         myrange = restargs.pop('data_range', None)
-        hashmap = self.get_object_hashmap(obj, **restargs)
+        hashmap = restargs.pop('hashmap', None) or (
+            self.get_object_hashmap(obj, **restargs))
         restargs['data_range'] = myrange
         blocksize = int(hashmap['block_size'])
         blockhash = hashmap['block_hash']
         total_size = hashmap['bytes']
-        #assert total_size/blocksize + 1 == len(hashmap['hashes'])
+        # assert total_size/blocksize + 1 == len(hashmap['hashes'])
         map_dict = {}
         for i, h in enumerate(hashmap['hashes']):
             #  map_dict[h] = i   CHAGE
@@ -699,6 +732,7 @@ class PithosClient(PithosRestClient):
                 raise g.exception
             block = g.value.content
             for block_start in blockids[key]:
+                # This should not be used in all cases
                 local_file.seek(block_start + offset)
                 local_file.write(block)
                 self._cb_next()
@@ -719,7 +753,7 @@ class PithosClient(PithosRestClient):
             blockids = [blk * blocksize for blk in blockids]
             unsaved = [blk for blk in blockids if not (
                 blk < file_size and block_hash == self._hash_from_file(
-                        local_file, blk, blocksize, blockhash))]
+                    local_file, blk, blocksize, blockhash))]
             self._cb_next(len(blockids) - len(unsaved))
             if unsaved:
                 key = unsaved[0]
@@ -823,6 +857,7 @@ class PithosClient(PithosRestClient):
                 range_str,
                 **restargs)
             if not range_str:
+                # this should not be used in all cases
                 dst.truncate(total_size)
 
         self._complete_cb()
@@ -836,6 +871,8 @@ class PithosClient(PithosRestClient):
             if_none_match=None,
             if_modified_since=None,
             if_unmodified_since=None,
+            remote_block_info=None,
+            hashmap=None,
             headers=dict()):
         """Download an object to a string (multiple connections). This method
         uses threads for http requests, but stores all content in memory.
@@ -856,6 +893,13 @@ class PithosClient(PithosRestClient):
 
         :param if_unmodified_since: (str) formated date
 
+        :param remote_block_info: (tuple) blocksize, blockhas, total_size and
+            hash_list
+
+        :param hashmap: (dict) the remote object hashmap, if it is available
+            e.g., from another call. Used for minimizing HEAD container
+            requests
+
         :param headers: (dict) a placeholder dict to gather object headers
 
         :returns: (str) the whole object contents
@@ -874,7 +918,8 @@ class PithosClient(PithosRestClient):
             blockhash,
             total_size,
             hash_list,
-            remote_hashes) = self._get_remote_blocks_info(obj, **restargs)
+            remote_hashes) = self._get_remote_blocks_info(
+                obj, hashmap=hashmap, **restargs)
         headers.update(restargs.pop('headers'))
         assert total_size >= 0
 
@@ -908,9 +953,57 @@ class PithosClient(PithosRestClient):
                     flying.pop(runid)
             return ''.join(ret)
         except KeyboardInterrupt:
-            sendlog.info('- - - wait for threads to finish')
+            LOG.debug('- - - wait for threads to finish')
             for thread in activethreads():
                 thread.join()
+
+    def stream_down(self, obj, dst, buffer_blocks=4, **kwargs):
+        """
+        Download obj to dst as a stream. Buffer-sized chunks are downloaded
+            sequentially, but the blocks of each chunk are downloaded
+            asynchronously, using the download_to_string method
+        :param obj: (str) the remote object
+        :param dst: a file descriptor allowing sequential writing
+        :param buffer_blocks: (int) the size of the buffer in blocks. If it is
+            1, all blocks will be downloaded sequentially
+        :param kwargs: (dict) keyword arguments for download_to_string method
+        """
+        buffer_blocks = 1 if buffer_blocks < 2 else buffer_blocks
+        hashmap = kwargs.get('hashmap', None)
+        range_str = kwargs.pop('range_str', None)
+        if hashmap is None:
+            # Clean kwargs if it contains hashmap=None
+            kwargs.pop('hashmap', None)
+            # Get new hashmap
+            hashmap = kwargs['hashmap'] = self.get_object_hashmap(
+                obj,
+                kwargs.get('version', None),
+                kwargs.get('if_match', None),
+                kwargs.get('if_none_match', None),
+                kwargs.get('if_modified_since', None),
+                kwargs.get('if_unmodified_since', None))
+        block_size, obj_size = int(hashmap['block_size']), hashmap['bytes']
+        buffer_size = buffer_blocks * block_size
+        event = None
+
+        def finish_event(e):
+            """Blocking: stop until e is finished or raise error"""
+            if e is not None:
+                if e.isAlive():
+                    e.join()
+                if e.exception:
+                    raise e.exception
+
+        for chunk_number in range(1 + obj_size // buffer_size):
+            start = chunk_number * buffer_size
+            end = start + buffer_size
+            end = (obj_size if (end > obj_size) else end) - 1
+            kwargs['range_str'] = _range_up(start, end, obj_size, range_str)
+            buffer_ = self.download_to_string(obj, **kwargs)
+            finish_event(event)
+            event = SilentEvent(_dump_buffer, buffer_, dst)
+            event.start()
+        finish_event(event)
 
     # Command Progress Bar method
     def _cb_next(self, step=1):
@@ -1000,15 +1093,6 @@ class PithosClient(PithosRestClient):
             'X-Account-Policy-Quota',
             exactMatch=True)
 
-    #def get_account_versioning(self):
-    #    """
-    #    :returns: (dict)
-    #    """
-    #    return filter_in(
-    #        self.get_account_info(),
-    #        'X-Account-Policy-Versioning',
-    #        exactMatch=True)
-
     def get_account_meta(self, until=None):
         """
         :param until: (str) formated date
@@ -1037,19 +1121,6 @@ class PithosClient(PithosRestClient):
         """
         r = self.account_post(update=True, metadata={metakey: ''})
         return r.headers
-
-    #def set_account_quota(self, quota):
-    #    """
-    #    :param quota: (int)
-    #    """
-    #    self.account_post(update=True, quota=quota)
-
-    #def set_account_versioning(self, versioning):
-    #    """
-    #    :param versioning: (str)
-    #    """
-    #    r = self.account_post(update=True, versioning=versioning)
-    #    return r.headers
 
     def list_containers(self):
         """
@@ -1360,7 +1431,7 @@ class PithosClient(PithosRestClient):
                     self._cb_next()
                 flying = unfinished
         except KeyboardInterrupt:
-            sendlog.info('- - - wait for threads to finish')
+            LOG.debug('- - - wait for threads to finish')
             for thread in activethreads():
                 thread.join()
         finally:

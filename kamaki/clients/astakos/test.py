@@ -1,4 +1,4 @@
-# Copyright 2013-2014 GRNET S.A. All rights reserved.
+# Copyright 2013-2016 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -35,12 +35,12 @@ from mock import patch, call
 from unittest import TestCase
 from itertools import product
 
-from kamaki.clients import ClientError, astakos
+from kamaki.clients import astakos
 
 
 example = dict(
     access=dict(
-         token=dict(
+        token=dict(
             expires="2013-07-14T10:07:42.481134+00:00",
             id="ast@k0sT0k3n==",
             tenant=dict(
@@ -91,8 +91,8 @@ class AstakosClient(TestCase):
                 (['some url', 'some token', 'other', 'params'], {}),
                 (['some url', 'some token', 'other params'], (dict(k='v'))),
                 (['some url', 'some token'], (dict(k1='v1', k2='v2'))),
-                (['some url', ], (dict(k1='v1', k2='v2', token='some token'))),
-            ):
+                (['some url', ], (dict(k1='v1', k2='v2', token='some token')))
+                ):
             astakos.AstakosClient(*args, **kwargs)
             url, token = args.pop(0), kwargs.pop('token', None) or args.pop(0)
             self.assertTrue(
@@ -104,7 +104,7 @@ class AstakosClient(TestCase):
     def test_get_service_endpoints(self, parse_endpoints, get_endpoints):
         self.assertEqual(
             'e1', self.client.get_service_endpoints('service_type', 'version'))
-        get_endpoints.assert_called_once()
+        assert get_endpoints.call_count == 1
         parse_endpoints.assert_called_once_with(
             'ges', ep_type='service_type', ep_version_id='version')
 
@@ -153,9 +153,6 @@ class LoggedAstakosClient(TestCase):
             if isinstance(status, int):
                 self.client._dump_response(FR(), status, message, data)
                 mock_calls = list(recvlog_info.mock_calls[-5:])
-                self.assertEqual(
-                    mock_calls.pop(),
-                    call('-             -        -     -   -  - -'))
                 size = len(data)
                 if LOG_DATA:
                     token = headers.get('X-Auth-Token', '')
@@ -163,7 +160,7 @@ class LoggedAstakosClient(TestCase):
                         data = data.replace(token, '...')
                     self.assertEqual(mock_calls.pop(), call(data))
                 self.assertEqual(mock_calls[-2:], [
-                    call('\n%s %s' % (status, message)),
+                    call('%s %s' % (status, message)),
                     call('data size: %s' % size)])
             else:
                 self.assertRaises(
@@ -173,7 +170,7 @@ class LoggedAstakosClient(TestCase):
     @patch('%s.AstakosClient._call_astakos' % astakos_pkg, return_value='ret')
     def test__call_astakos(self, super_call):
         self.assertEqual(self.client._call_astakos('x', y='y'), 'ret')
-        super_call.assert_called_once_with('x', y='y')
+        super_call.assert_called_once_with(self.client, 'x', y='y')
 
 
 class CachedAstakosClient(TestCase):

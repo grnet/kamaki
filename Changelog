@@ -1,15 +1,79 @@
 .. _Changelog:
 
-Unified Changelog file for Kamaki versions >= 0.13
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Changelog file for Kamaki versions >= 0.13
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. _Changelog-0.15:
+
+v0.15
+=====
+
+Release: Wed Jan 18 14:53:33 EET 2017
+
+Bugfixes
+--------
+
+* Sync object permissions between image and meta
+
+Features
+--------
+
+* On client initialization, detect if endpoint URL is unversioned and, in
+  this case, set a default version. This is to support changes in Synnefo
+  0.19, in compliance with OpenStack practice.
+* Remove deprecated argument "base_url" from Client initialization; use
+  "endpoint_url" instead.
+* Add support for keypairs in compute client
+
+.. _Changelog-0.14:
+
+v0.14
+=====
+
+Release: Tue May 17 15:30:17 EEST 2016
+
+Bugfixes
+--------
+
+* Fix handling of astakosclient errors
+
+Features
+--------
+
+* Rename "wait_*" kamaki.clients.Client methods to
+  "wait_until" and "wait_while"
+* Implement "wait" commands in CLI, where applicable
+* Implement "wait" functionality for volumes 
+* Print public url in "kamaki file upload --public"
+* Show HTTP data (body) with a single runtime argument "-vv"
+* Document config options and show descriptions in
+    "kamaki config list"
+* Modify some help messages (-c, -o, HTTP log separators) for clarity
+* Show image file hashmap in "kamaki image info", with "--hashmap"
+* Implement compute detachable volumes (API lib and CLI)
+* Adjust BlockStorage client API and CLI commands to comply with
+    Synnefo 0.16next API
 
 .. _Changelog-0.13:
+
+v0.13.5
+=======
+
+Bug Fixes
+---------
+
+* Raise SSLError when connecting with SSL on OSX and no valid SSL
+    credential files exist)
+* Use a new logging level for verbosity. This prevents the client
+    loggers in INFO mode and above from outputting the detailed
+    connection information.
 
 v0.13.4
 =======
 
 Bug Fixes
-=========
+---------
+
 * Fix Destination headers to support unicode values (pithos object
     copy and move)
 
@@ -18,6 +82,7 @@ v0.13.3
 
 Bug Fixes
 ---------
+
 * Return object request headers in download methods
 
 v0.13.2

@@ -1,4 +1,4 @@
-# Copyright 2013-2014 GRNET S.A. All rights reserved.
+# Copyright 2013-2016 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -221,7 +221,7 @@ class FlagArgument(TestCase):
         help, pname, default = 'help', 'pname', 'default'
         fa = argument.FlagArgument(help, pname, default)
         self.assertTrue(isinstance(fa, argument.FlagArgument))
-        arg.assert_called_once(0, help, pname, default)
+        arg.assert_called_once_with(0, help, pname, default)
 
 
 class ValueArgument(TestCase):
@@ -231,7 +231,7 @@ class ValueArgument(TestCase):
         help, pname, default = 'help', 'pname', 'default'
         fa = argument.ValueArgument(help, pname, default)
         self.assertTrue(isinstance(fa, argument.ValueArgument))
-        arg.assert_called_once(1, help, pname, default)
+        arg.assert_called_once_with(1, help, pname, default)
 
 
 class IntArgument(TestCase):
@@ -368,7 +368,7 @@ class ProgressBarArgument(TestCase):
         pba = argument.ProgressBarArgument(help, pname, default)
         self.assertTrue(isinstance(pba, argument.ProgressBarArgument))
         self.assertEqual(pba.suffix, '%(percent)d%%')
-        init.assert_called_once(help, pname, default)
+        init.assert_called_once_with(help, pname, default)
 
     def test_clone(self):
         pba = argument.ProgressBarArgument(parsed_name='--progress')
@@ -392,7 +392,7 @@ class ProgressBarArgument(TestCase):
                 self.assertEqual(pba.bar.message, '%s%s' % (
                     msg, ' ' * (msg_len - len(msg))))
                 self.assertEqual(pba.bar.suffix, '%(percent)d%% - %(eta)ds')
-                start.assert_called_once()
+                assert start.call_count == 1
 
                 pba.get_generator(msg, msg_len, countdown=True)
                 self.assertTrue(
@@ -414,7 +414,7 @@ class ProgressBarArgument(TestCase):
         pba.bar = argument.KamakiProgressBar()
         with patch('%s.KamakiProgressBar.finish' % arg_path) as finish:
             pba.finish()
-            finish.assert_called_once()
+            assert finish.call_count == 1
 
 
 class ArgumentParseManager(TestCase):
@@ -440,7 +440,7 @@ class ArgumentParseManager(TestCase):
             self.assertEqual(apm._unparsed, None)
             self.assertEqual(parse.mock_calls[-1], call())
             if arguments:
-                update_parser.assert_called_once()
+                assert update_parser.call_count == 2
 
     def test_syntax(self):
         apm = argument.ArgumentParseManager('exe', {})
@@ -452,7 +452,7 @@ class ArgumentParseManager(TestCase):
     @patch('%s.ArgumentParseManager.update_parser' % arg_path)
     def test_arguments(self, update_parser):
         apm = argument.ArgumentParseManager('exe', {})
-        update_parser.assert_called_once()
+        assert update_parser.call_count == 1
         exp = {'k1': 'v1', 'k2': 'v2'}
         apm.arguments = exp
         assert_dicts_are_equal(self, apm.arguments, exp)
