@@ -37,6 +37,7 @@ from kamaki.clients.utils import path4url
 
 class NetworkRestClient(Client):
     service_type = 'network'
+    DEFAULT_API_VERSION = '2.0'
 
     def networks_get(self, network_id=None, **kwargs):
         if network_id:
