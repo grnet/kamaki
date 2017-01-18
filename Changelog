@@ -8,7 +8,7 @@ Changelog file for Kamaki versions >= 0.13
 v0.15
 =====
 
-Release: UNKNOWN
+Release: Wed Jan 18 14:53:33 EET 2017
 
 Bugfixes
 --------
@@ -23,6 +23,7 @@ Features
   0.19, in compliance with OpenStack practice.
 * Remove deprecated argument "base_url" from Client initialization; use
   "endpoint_url" instead.
+* Add support for keypairs in compute client
 
 .. _Changelog-0.14:
 
