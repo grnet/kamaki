@@ -25,6 +25,9 @@ For Debian 8.0 (jessie):
 
     deb http://apt.dev.grnet.gr jessie/
 
+.. note:: For Debian 7.0 (wheezy) replace `jessie/` with `wheezy/` in the
+ appeded line above
+
 * Make sure the GPG public key for the Synnefo repository is added:
 
     .. code-block:: console
@@ -40,10 +43,11 @@ For Debian 8.0 (jessie):
         # apt-get update
         # apt-get install kamaki
 
+
 Ubuntu
 ^^^^^^
 
-For Ubuntu 12.04 LTS and 14.04 LTS:
+For Ubuntu 12.04 LTS, 14.04 LTS and 16.04 LTS:
 
 .. code-block:: console
 
@@ -55,7 +59,7 @@ For Ubuntu 12.04 LTS and 14.04 LTS:
 Fedora
 ^^^^^^
 
-For Fedora 21:
+For Fedora 23:
 
 .. code-block:: console
 
