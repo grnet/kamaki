@@ -1,4 +1,4 @@
-# Copyright 2013-2014 GRNET S.A. All rights reserved.
+# Copyright 2013-2016 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -323,8 +323,7 @@ class CLIError(TestCase):
                 (Exception('msg'), 'orther msg', 0, ['d1', 'd2']),
                 (Exception('msg'), '', 10, []),
                 (Exception('msg'), '', None, []),
-                (CLIError('some msg'), '', None, ['d1', 'd2'])
-            ):
+                (CLIError('some msg'), '', None, ['d1', 'd2'])):
             try:
                 raiseCLIError(err, message, importance, details)
             except CLIError as clie:

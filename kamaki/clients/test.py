@@ -331,12 +331,13 @@ class Client(TestCase):
             dict(max=1, args=tuple([(randint(1, 10) / 3.0, 1), ] * 10)),
             dict(
                 limit=5,
-                args=tuple([
-                    (1.0 + (i / 10.0), (5 - i - 1)) for i in range(4)] + [
-                    (2.0, 1), (1.9, 2), (2.0, 1), (2.0, 2)])),
+                args=tuple(
+                    [(1.0 + (i / 10.0), (5 - i - 1)) for i in range(4)] +
+                    [(2.0, 1), (1.9, 2), (2.0, 1), (2.0, 2)])),
             dict(args=tuple(
-                [(1.0 - (i / 10.0), (i + 1)) for i in range(7)] + [
-                (0.1, 7), (0.2, 6), (0.4, 5), (0.3, 6), (0.2, 7), (0.1, 7)])),)
+                 [(1.0 - (i / 10.0), (i + 1)) for i in range(7)] +
+                 [(0.1, 7), (0.2, 6), (0.4, 5), (0.3, 6), (0.2, 7), (0.1, 7)])
+                 ),)
         for wait_dict in waits:
             if 'max' in wait_dict:
                 self.client.MAX_THREADS = wait_dict['max']

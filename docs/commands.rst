@@ -201,6 +201,18 @@ imagecompute (Compute/Cyclades)
     modify    Modify image properties (metadata)
     delete    Delete an image (WARNING: image file is also removed)
 
+keypair (Compute/Cyclades)
+--------------------------
+
+.. code-block:: text
+
+    info: Detailed information on a keypair
+    delete: Delete a keypair
+    list: List all keypairs
+    generate: Generate a keypair
+    upload: Upload or update a keypair
+
+
 server (Compute/Cyclades)
 -------------------------
 

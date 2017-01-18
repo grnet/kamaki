@@ -1,4 +1,4 @@
-# Copyright 2011-2015 GRNET S.A. All rights reserved.
+# Copyright 2011-2016 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -29,7 +29,7 @@
 # The views and conclusions contained in the software and
 # documentation are those of the authors and should not be
 # interpreted as representing official policies, either expressed
-# or implied, of GRNET S.A.command
+# or implied, of GRNET S.A.
 
 from traceback import format_exc, format_stack
 from logging import getLogger
@@ -521,6 +521,32 @@ class Image(object):
                             '  kamaki image info IMAGE_ID',
                             'To see image file permissions',
                             '  kamaki file info IMAGE_LOCATION --sharing',
+                            '%s %s' % (getattr(ce, 'status', ''), ce)])
+                raise
+        _raise.__name__ = func.__name__
+        return _raise
+
+
+class Keypair(object):
+    about_keypair = [
+        'To list all keypairs', '  kamaki keypair list',
+        'To get keypair details', '  kamaki keypair info KEY_NAME', ]
+
+    @classmethod
+    def connection(this, func):
+        return Generic._connection(func)
+
+    @classmethod
+    def name(this, func):
+        def _raise(self, *args, **kwargs):
+            key_name = kwargs.get('key_name', None)
+            try:
+                func(self, *args, **kwargs)
+            except ClientError as ce:
+                if key_name and ce.status in (404, 400):
+                    raise CLIError(
+                        'No keypair with name %s found' % key_name,
+                        importance=2, details=this.about_keypair + [
                             '%s %s' % (getattr(ce, 'status', ''), ce)])
                 raise
         _raise.__name__ = func.__name__
