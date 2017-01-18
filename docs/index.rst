@@ -33,7 +33,7 @@ Contents:
    usage
    commands
    examples
-   devguide
+   library
 
 
 Indices and tables

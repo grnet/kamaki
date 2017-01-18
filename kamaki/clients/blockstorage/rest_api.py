@@ -37,6 +37,7 @@ from kamaki.clients import Client, utils
 class BlockStorageRestClient(Client):
     """Block Storage (cinder) REST API"""
     service_type = 'volume'
+    DEFAULT_API_VERSION = '2.0'
 
     def volumes_get(self, detail=None, volume_id=None, success=200, **kwargs):
         """GET endpoint_url/volumes[/<detail> | /<volume_id>]

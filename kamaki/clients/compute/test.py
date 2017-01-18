@@ -1,4 +1,4 @@
-# Copyright 2013-2014 GRNET S.A. All rights reserved.
+# Copyright 2011-2016 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -47,6 +47,7 @@ compute_pkg = 'kamaki.clients.compute.ComputeClient'
 img_ref = "1m4g3-r3f3r3nc3"
 vm_name = "my new VM"
 fid = 42
+key_name = "my new Keypair"
 vm_send = dict(server=dict(
     flavorRef=fid,
     name=vm_name,
@@ -60,6 +61,7 @@ vm_recv = dict(server=dict(
     imageRef=img_ref,
     created="2013-03-01T10:04:00.087324+00:00",
     flavorRef=fid,
+    key_name=key_name,
     adminPass="n0n3sh@11p@55",
     suspended=False,
     progress=0,
@@ -89,6 +91,11 @@ flavor_list = dict(flavors=[
     dict(id=41, name="C1R1024D20"),
     dict(id=42, name="C1R1024D40"),
     dict(id=43, name="C1R1028D20")])
+keypair_list = dict(keypairs=[
+    dict(keypair=dict(name="key1", public_key="publickey1")),
+    dict(keypair=dict(name="key2", public_key="publickey2")),
+    dict(keypair=dict(name="key3", public_key="publickey3")),
+])
 img_list = dict(images=[
     dict(name="maelstrom", id="0fb03e45-7d5a-4515-bd4e-e6bbf6457f06"),
     dict(name="edx_saas", id="1357163d-5fd8-488e-a117-48734c526206"),
@@ -451,6 +458,49 @@ class ComputeRestClient(TestCase):
             self.assertEqual(delete.mock_calls[-1], call(
                 '/os-floating-ips%s' % expected, success=success, **kwargs))
 
+    @patch('%s.get' % rest_pkg, return_value=FR())
+    def test_keypairs_get(self, get):
+        for args in product(
+                (None, 'my new Keypair'),
+                (200,),
+                ({}, {'k': 'v'})):
+            key_name, success, kwargs = args
+            r = self.client.keypairs_get(key_name=key_name, success=success,
+                                         **kwargs)
+            self.assertTrue(isinstance(r, FR))
+            expected = '' if not key_name else '/%s' % key_name
+            self.assertEqual(get.mock_calls[-1], call(
+                '/os-keypairs%s' % expected, success=success, **kwargs))
+
+    @patch('%s.post' % rest_pkg, return_value=FR())
+    def test_keypairs_post(self, post):
+        for args in product(
+                (dict(), dict(foo='bar')),
+                (201,),
+                ({}, {'k': 'v'})):
+            json_data, success, kwargs = args
+            self.client.keypairs_post(json_data, success=success,
+                                      **kwargs)
+            json_data = json.dumps(json_data)
+            self.assertEqual(post.mock_calls[-1], call(
+                '/os-keypairs',
+                data=json_data, success=success,
+                **kwargs))
+
+    @patch('%s.delete' % rest_pkg, return_value=FR())
+    def test_keypairs_delete(self, delete):
+        for args in product(
+                ('', 'my new Keypair'),
+                (200,),
+                ({}, {'k': 'v'})):
+            key_name, success, kwargs = args
+            r = self.client.keypairs_delete(key_name, success=success,
+                                            **kwargs)
+            self.assertTrue(isinstance(r, FR))
+            expected = '' if not key_name else '/%s' % key_name
+            self.assertEqual(delete.mock_calls[-1], call(
+                '/os-keypairs%s' % expected, success=success, **kwargs))
+
 
 class ComputeClient(TestCase):
 
@@ -778,6 +828,38 @@ class ComputeClient(TestCase):
             tenant_id, fip = args
             self.assertEqual(r, FR.headers)
             self.assertEqual(delete.mock_calls[-1], call(tenant_id, fip))
+
+    @patch('%s.keypairs_get' % compute_pkg, return_value=FR())
+    def test_list_keypairs(self, get):
+        FR.json = keypair_list
+        r = self.client.list_keypairs()
+        self.assertEqual(get.mock_calls[-1], call())
+        self.assertEqual(r, keypair_list['keypairs'])
+
+    @patch('%s.keypairs_get' % compute_pkg, return_value=FR())
+    def test_get_keypair_details(self, get):
+        FR.json = dict(keypair=keypair_list['keypairs'][0]['keypair'])
+        r = self.client.get_keypair_details(key_name)
+        get.assert_called_once_with(key_name=key_name)
+        self.assert_dicts_are_equal(r, keypair_list['keypairs'][0]['keypair'])
+
+    @patch('%s.keypairs_post' % compute_pkg, return_value=FR())
+    def test_create_keypair(self, post):
+        keypair = dict(name=key_name, public_key=public_key,
+                       fingerpint="ke:yf:in:ge:rp:in:t")
+        FR.json = dict(keypair=keypair)
+        r = self.client.create_key(key_name=key_name,
+                                   public_key=public_key)
+        post.assert_called_once_with(json_data=dict(keypair=dict(
+            name=key_name, public_key=public_key)), success=201)
+        self.assert_dicts_are_equal(r, keypair)
+
+    @patch('%s.keypairs_delete' % compute_pkg, return_value=FR())
+    def test_delete_keypair(self, delete):
+        FR.json = dict(keypair=keypair_list['keypairs'][0]['keypair'])
+        r = self.client.delete_keypair(key_name)
+        delete.assert_called_once_with(key_name, success=204)
+        self.assert_dicts_are_equal(r, keypair_list['keypairs'][0]['keypair'])
 
 
 if __name__ == '__main__':

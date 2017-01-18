@@ -114,8 +114,7 @@ class AstakosClient(OriginalAstakosClient):
             token = args.pop(0) if args else kwargs.pop('token', None)
             args = tuple([token, url] + args)
         else:
-            kwargs.setdefault(
-                'auth_url', kwargs.get('endpoint_url', kwargs['base_url']))
+            kwargs.setdefault('auth_url', kwargs['endpoint_url'])
 
         # If no CA certificates are set, get the defaults from kamaki.defaults
         if https.HTTPSClientAuthConnection.ca_file is None:
@@ -180,6 +179,7 @@ class LoggedAstakosClient(AstakosClient, Logged):
 class CachedAstakosClient(Client):
     """Synnefo Astakos cached client wraper"""
     service_type = 'identity'
+    DEFAULT_API_VERSION = '2.0'
 
     @_astakos_error
     def __init__(self, endpoint_url, token=None):
