@@ -441,3 +441,55 @@ class ComputeClient(ComputeRestClient):
         """
         r = self.floating_ips_delete(tenant_id, fip_id)
         return r.headers
+
+    def list_keypairs(self):
+        """
+        :returns: (list) [
+            {id: ..., name: ..., public_key: ..., fingerprint: ...},
+            ... ]
+        """
+        r = self.keypairs_get()
+        return r.json['keypairs']
+
+    def get_keypair_details(self, key_name):
+        """
+        :param key_name: (str) The name of the key
+
+        :returns: (dict) {keypair: ..., id: ..., name: ..., public_key: ...,
+                                   fingerprint: ...., created_at: ...,
+                                   updated_at: ...}
+        """
+        r = self.keypairs_get(key_name=key_name)
+        return r.json['keypair']
+
+    def create_key(self, key_name=None, public_key=None):
+        """
+        :param key_name: (str) The name of the key
+        :param public_key: (str) The contents of the key to be inserted.
+                                 (if None, a new key is created)
+
+        :returns: (dict) {keypair: ..., id: ..., name: ..., public_key: ...,
+                                   fingerprint: ...., created_at: ...,
+                                   updated_at: ..., private_key: ...}
+        """
+        keypair = {}
+
+        if key_name is not None:
+            keypair['name'] = key_name
+
+        if public_key is not None:
+            keypair['public_key'] = public_key
+
+        req = {'keypair': keypair}
+
+        r = self.keypairs_post(json_data=req, success=201)
+        return r.json['keypair']
+
+    def delete_keypair(self, key_name=None):
+        """
+        :param key_name: (str) The name of the key
+
+        :returns: (dict) request headers
+        """
+        r = self.keypairs_delete(key_name, success=204)
+        return r.headers

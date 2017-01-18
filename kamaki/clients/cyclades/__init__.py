@@ -1,4 +1,4 @@
-# Copyright 2011-2015 GRNET S.A. All rights reserved.
+# Copyright 2011-2016 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -44,7 +44,7 @@ class CycladesComputeClient(CycladesComputeRestClient, Waiter):
     CONSOLE_TYPES = ('vnc', 'vnc-ws', 'vnc-wss')
 
     def create_server(
-            self, name, flavor_id, image_id,
+            self, name, flavor_id, image_id, key_name=None,
             metadata=None, personality=None, networks=None, project_id=None,
             response_headers=dict(location=None)):
         """Submit request to create a new server
@@ -84,6 +84,9 @@ class CycladesComputeClient(CycladesComputeRestClient, Waiter):
 
         req = {'server': {
             'name': name, 'flavorRef': flavor_id, 'imageRef': image_id}}
+
+        if key_name:
+            req['server']['key_name'] = key_name
 
         if metadata:
             req['server']['metadata'] = metadata

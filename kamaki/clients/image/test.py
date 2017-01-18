@@ -1,4 +1,4 @@
-# Copyright 2012-2013 GRNET S.A. All rights reserved.
+# Copyright 2012-2016 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -302,7 +302,7 @@ class ImageClient(TestCase):
                 (dict(k1='v1', k2='v2'), {})):
             r = self.client.update_image(*args[:-1], **args[-1])
             (image_id, name, disk_format, container_format,
-            status, public, owner_id, properties) = args
+             status, public, owner_id, properties) = args
             self.assertEqual(r, FR.headers)
             header_calls = [call('Content-Length', 0), ]
             prf = 'X-Image-Meta-'
