@@ -1,4 +1,4 @@
-# Copyright 2012-2013 GRNET S.A. All rights reserved.
+# Copyright 2012-2017 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -355,6 +355,7 @@ class ComputeRestClient(Client):
             minRam=None,
             marker=None,
             limit=None,
+            is_public=None,
             success=200,
             **kwargs):
         """GET endpoint_url[/flavor_id][/command]
@@ -375,6 +376,8 @@ class ComputeRestClient(Client):
 
         :param limit: limit the number of returned values
 
+        :param is_public: return only public flavors
+
         :returns: request response
         """
         if not flavor_id:
@@ -383,6 +386,7 @@ class ComputeRestClient(Client):
             self.set_param('minRam', minRam, iff=minRam)
             self.set_param('marker', marker, iff=marker)
             self.set_param('limit', limit, iff=limit)
+            self.set_param('is_public', is_public, iff=is_public)
 
         path = path4url('flavors', 'detail' if detail else (flavor_id or ''))
         return self.get(path, success=success, **kwargs)

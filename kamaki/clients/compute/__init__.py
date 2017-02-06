@@ -1,4 +1,4 @@
-# Copyright 2011-2013 GRNET S.A. All rights reserved.
+# Copyright 2011-2017 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -291,11 +291,8 @@ class ComputeClient(ComputeRestClient):
             server_id, network_id=network_id, changes_since=changes_since)
         return r.json['network']
 
-    def list_flavors(self, detail=False, response_headers=dict(
-            previous=None, next=None)):
-        r = self.flavors_get(detail=bool(detail))
-        for k, v in response_headers.items():
-            response_headers[k] = r.headers.get(k, v)
+    def list_flavors(self, detail=None, is_public=None):
+        r = self.flavors_get(detail=detail, is_public=is_public)
         return r.json['flavors']
 
     def get_flavor_details(self, flavor_id):

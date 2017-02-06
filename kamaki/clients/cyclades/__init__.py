@@ -1,4 +1,4 @@
-# Copyright 2011-2016 GRNET S.A. All rights reserved.
+# Copyright 2011-2017 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -268,6 +268,11 @@ class CycladesComputeClient(CycladesComputeRestClient, Waiter):
         for attachment in attachments:
             self.delete_volume_attachment(server_id, attachment['id'])
         return attachments
+
+    def list_flavors(self, detail=None, is_public=None, project_id=None):
+        r = self.flavors_get(
+            detail=detail, is_public=is_public, project_id=project_id)
+        return r.json['flavors']
 
 # Backwards compatibility - will be removed in 0.15
 CycladesClient = CycladesComputeClient
