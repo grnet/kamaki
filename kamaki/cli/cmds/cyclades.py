@@ -1,4 +1,4 @@
-# Copyright 2011-2016 GRNET S.A. All rights reserved.
+# Copyright 2011-2017 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -991,7 +991,9 @@ class flavor_list(_CycladesInit, OptionalOutput, NameFilter, IDFilter):
         vcpus=ValueArgument('filter by number of VCPUs', ('--vcpus')),
         disk=ValueArgument('filter by disk size in GB', ('--disk')),
         disk_template=ValueArgument(
-            'filter by disk_templace', ('--disk-template'))
+            'filter by disk_templace', ('--disk-template')),
+        project_id=ValueArgument('filter by project ID', '--project'),
+        is_public=FlagArgument('list only public flavors', '--public'),
     )
 
     def _apply_common_filters(self, flavors):
@@ -1012,7 +1014,8 @@ class flavor_list(_CycladesInit, OptionalOutput, NameFilter, IDFilter):
         withcommons = self['ram'] or self['vcpus'] or (
             self['disk'] or self['disk_template'])
         detail = self['detail'] or withcommons
-        flavors = self.client.list_flavors(detail)
+        flavors = self.client.list_flavors(
+            detail, is_public=self['is_public'], project_id=self['project_id'])
         flavors = self._filter_by_name(flavors)
         flavors = self._filter_by_id(flavors)
         if withcommons:
