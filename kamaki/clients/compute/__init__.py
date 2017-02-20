@@ -296,7 +296,7 @@ class ComputeClient(ComputeRestClient):
         return r.json['flavors']
 
     def get_flavor_details(self, flavor_id):
-        r = self.flavors_get(flavor_id)
+        r = self.flavors_get(flavor_id=flavor_id)
         return r.json['flavor']
 
     def list_images(self, detail=False, response_headers=dict(
