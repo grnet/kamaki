@@ -255,6 +255,18 @@ class ComputeClient(ComputeRestClient):
         r = self.servers_action_post(server_id, json_data=req, success=202)
         return r.headers
 
+    def rescue_server(self, server_id, rescue_image_ref=None):
+        req = {'rescue': {}}
+        if rescue_image_ref is not None:
+            req['rescue_image_ref'] = rescue_image_ref
+        r = self.servers_action_post(server_id, json_data=req, success=202)
+        return r.headers
+
+    def unrescue_server(self, server_id):
+        req = {'unrescue': {}}
+        r = self.servers_action_post(server_id, json_data=req, success=202)
+        return r.headers
+
     def get_server_metadata(self, server_id, key='', response_headers=dict(
             previous=None, next=None)):
         r = self.servers_metadata_get(server_id, key)

@@ -858,6 +858,44 @@ class server_shutdown(_CycladesInit,  _ServerWait):
 _basic_cons = CycladesComputeClient.CONSOLE_TYPES
 
 
+@command(server_cmds)
+class server_rescue(_CycladesInit):
+    """Rescue an existing virtual server"""
+
+    arguments = dict(
+        rescue_image_ref=ValueArgument('The rescue image ID to use',
+                                       '--rescue-image-ref')
+    )
+
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.server_id
+    def _run(self, server_id):
+        rescue_image_ref = None
+        if self['rescue_image_ref']:
+            rescue_image_ref = int(self['rescue_image_ref'])
+        self.client.rescue_server(int(server_id), rescue_image_ref)
+
+    def main(self, server_id):
+        super(self.__class__, self)._run()
+        self._run(server_id=server_id)
+
+@command(server_cmds)
+class server_unrescue(_CycladesInit):
+    """Unrescue an existing virtual server, currently in rescue mode"""
+
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.server_id
+    def _run(self, server_id):
+        rescue_image_ref = None
+        self.client.unrescue_server(int(server_id))
+
+    def main(self, server_id):
+        super(self.__class__, self)._run()
+        self._run(server_id=server_id)
+
+
 class ConsoleTypeArgument(ValueArgument):
 
     TRANSLATE = {'no-vnc': 'vnc-ws', 'no-vnc-encrypted': 'vnc-wss'}
