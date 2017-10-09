@@ -106,6 +106,54 @@ class CycladesComputeRestClient(TestCase):
             '/servers/%s/stats' % server_id, success=200)
 
     @patch('kamaki.clients.Client.get', return_value='ret')
+    def test_servers_tags_get(self, get):
+        server_id = 'server id'
+        self.assertEqual(self.client.servers_tags_get(server_id), 'ret')
+        get.assert_called_once_with(
+            '/servers/%s/tags' % server_id, success=200)
+
+    @patch('kamaki.clients.Client.get', return_value='ret')
+    def test_servers_tag_exists(self, get):
+        server_id = 'server id'
+        tag = 'tag'
+        self.assertEqual(self.client.servers_tag_exists(server_id, tag), 'ret')
+        get.assert_called_once_with(
+            '/servers/%s/tags/%s' % (server_id, tag), success=204)
+
+    @patch('kamaki.clients.Client.put', return_value='ret')
+    def test_servers_tag_add(self, put):
+        server_id = 'server id'
+        tag = 'tag'
+        self.assertEqual(self.client.servers_tag_add(server_id, tag), 'ret')
+        put.assert_called_once_with(
+            '/servers/%s/tags/%s' % (server_id, tag), success=201)
+
+    @patch('kamaki.clients.Client.put', return_value='ret')
+    def test_servers_tags_replace(self, put):
+        server_id = 'server id'
+        tags = ['tag1', 'tag2']
+        request = {'tags': tags}
+        self.assertEqual(self.client.servers_tags_replace(server_id, tags),
+                         'ret')
+        put.assert_called_once_with(
+            '/servers/%s/tags' % server_id, json=request, success=200)
+
+    @patch('kamaki.clients.Client.delete', return_value='ret')
+    def test_servers_tag_delete(self, delete):
+        server_id = 'server id'
+        tag = 'tag'
+        self.assertEqual(self.client.servers_tag_delete(server_id, tag), 'ret')
+        delete.assert_called_once_with(
+            '/servers/%s/tags/%s' % (server_id, tag), success=204)
+
+    @patch('kamaki.clients.Client.delete', return_value='ret')
+    def test_servers_tags_delete(self, delete):
+        server_id = 'server id'
+        self.assertEqual(self.client.servers_tags_delete(server_id), 'ret')
+        delete.assert_called_once_with(
+            '/servers/%s/tags' % server_id, success=204)
+
+    @patch('kamaki.clients.Client.get', return_value='ret')
     def test_servers_diagnostics_get(self, get):
         server_id = 'server id'
         self.assertEqual(
@@ -332,6 +380,58 @@ class CycladesComputeClient(TestCase):
             r = self.client.list_flavors(**kw)
             self.assertEqual(r, 'ret')
             self.assertEqual(flavors_get.mock_calls[-1], call(**kw))
+
+    @patch('%s.servers_tags_get' % cyclades_pkg, return_value=FR())
+    def test_list_tags(self, servers_tags_get):
+        server_id = 'server-id'
+        FR.json = dict(tags='ret')
+        r = self.client.list_tags(server_id)
+        self.assertEqual(r, 'ret')
+        servers_tags_get.assert_called_once_with(server_id)
+
+    @patch('%s.servers_tag_exists' % cyclades_pkg, return_value=FR())
+    def test_check_tag_exists(self, servers_tag_exists):
+        server_id = 'server-id'
+        tag = 'tag'
+        FR.status_code = 204
+        r = self.client.check_tag_exists(server_id, tag)
+        self.assertEqual(r, 204)
+        servers_tag_exists.assert_called_once_with(server_id, tag)
+
+    @patch('%s.servers_tag_add' % cyclades_pkg, return_value=FR())
+    def test_add_tag(self, servers_tag_add):
+        server_id = 'server-id'
+        tag = 'tag'
+        FR.headers = {'Location': 'ret'}
+        r = self.client.add_tag(server_id, tag)
+        self.assertEqual(r['Location'], 'ret')
+        servers_tag_add.assert_called_once_with(server_id, tag)
+
+    @patch('%s.servers_tags_replace' % cyclades_pkg, return_value=FR())
+    def test_replace_tags(self, servers_tags_replace):
+        server_id = 'server-id'
+        tags = ['tag1', 'tag2']
+        FR.json = dict(tags='ret')
+        r = self.client.replace_tags(server_id, tags)
+        self.assertEqual(r, 'ret')
+        servers_tags_replace.assert_called_once_with(server_id, tags)
+
+    @patch('%s.servers_tags_delete' % cyclades_pkg, return_value=FR())
+    def test_delete_tags(self, servers_tags_delete):
+        server_id = 'server-id'
+        FR.status_code = 204
+        r = self.client.delete_tags(server_id)
+        self.assertEqual(r, 204)
+        servers_tags_delete.assert_called_once_with(server_id)
+
+    @patch('%s.servers_tag_delete' % cyclades_pkg, return_value=FR())
+    def test_delete_tag(self, servers_tag_delete):
+        server_id = 'server-id'
+        tag = 'tag'
+        FR.status_code = 204
+        r = self.client.delete_tag(server_id, tag)
+        self.assertEqual(r, 204)
+        servers_tag_delete.assert_called_once_with(server_id, tag)
 
 
 clients_pkg = 'kamaki.clients.Client'
