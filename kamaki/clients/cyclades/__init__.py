@@ -48,7 +48,7 @@ class CycladesComputeClient(CycladesComputeRestClient, Waiter):
     def create_server(
             self, name, flavor_id, image_id, key_names=None, key_name=None,
             user_data=None, metadata=None, personality=None, networks=None,
-            project_id=None, response_headers=dict(location=None)):
+            tags=None, project_id=None, response_headers=dict(location=None)):
         """Submit request to create a new server
 
         :param name: (str)
@@ -115,6 +115,9 @@ class CycladesComputeClient(CycladesComputeRestClient, Waiter):
 
         if project_id is not None:
             req['server']['project'] = project_id
+
+        if tags is not None:
+            req['server']['tags'] = tags
 
         r = self.servers_post(json_data=req, success=(202, ))
         for k, v in response_headers.items():
@@ -289,6 +292,64 @@ class CycladesComputeClient(CycladesComputeRestClient, Waiter):
         r = self.flavors_get(
             detail=detail, is_public=is_public, project_id=project_id)
         return r.json['flavors']
+
+    def check_tag_exists(self, server_id, tag):
+        """
+        :param server_id: integer (str or int)
+        :param tag: (str)
+
+        :returns: integer HTTP status code
+        """
+        r = self.servers_tag_exists(server_id, tag)
+        return r.status_code
+
+    def add_tag(self, server_id, tag):
+        """
+        :param server_id: integer (str or int)
+        :param tag: (str)
+
+        :returns: request response
+        """
+        r = self.servers_tag_add(server_id, tag)
+        return r.headers
+
+    def delete_tag(self, server_id, tag):
+        """
+        :param server_id: integer (str or int)
+        :param tag: (str)
+
+        :returns: integer HTTP status code
+        """
+        r = self.servers_tag_delete(server_id, tag)
+        return r.status_code
+
+    def list_tags(self, server_id):
+        """
+        :param server_id: integer (str or int)
+
+        :returns: (list) server tags
+        """
+        r = self.servers_tags_get(server_id)
+        return r.json['tags']
+
+    def replace_tags(self, server_id, tags):
+        """
+        :param server_id: integer (str or int)
+        :param tag: (str)
+
+        :returns: (list) server tags
+        """
+        r = self.servers_tags_replace(server_id, tags)
+        return r.json['tags']
+
+    def delete_tags(self, server_id):
+        """
+        :param server_id: integer (str or int)
+
+        :returns: integer HTTP status code
+        """
+        r = self.servers_tags_delete(server_id)
+        return r.status_code
 
 # Backwards compatibility - will be removed in 0.15
 CycladesClient = CycladesComputeClient
