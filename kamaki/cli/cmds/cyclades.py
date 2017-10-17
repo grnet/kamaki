@@ -47,7 +47,7 @@ from kamaki.clients.cyclades import (
     CycladesComputeClient, ClientError, CycladesNetworkClient)
 from kamaki.cli.argument import (
     FlagArgument, ValueArgument, KeyValueArgument, RepeatableArgument,
-    DateArgument, IntArgument, StatusArgument)
+    DateArgument, IntArgument, StatusArgument, FileContentArgument)
 from kamaki.cli.cmds import (
     CommandInit, fall_back, OptionalOutput, NameFilter, IDFilter, Wait, errors,
     client_log)
@@ -430,6 +430,9 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
         image_id=ValueArgument('The ID of the image', '--image-id'),
         key_name=ValueArgument('The name of the ssh key to add the server',
                                '--key-name'),
+        user_data=FileContentArgument('A file containing a blob of data to '
+                                      'be made available to the instance',
+                                      ('-u', '--user-data')),
         personality=PersonalityArgument(
             (80 * ' ').join(howto_personality), ('-p', '--personality')),
         wait=FlagArgument('Wait server to build', ('-w', '--wait')),
@@ -472,6 +475,7 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
             key_name=self['key_name'],
             project_id=self['project_id'],
             personality=self['personality'],
+            user_data=self['user_data'],
             metadata=self['metadata'],
             networks=networks) for i in range(1, 1 + size)]
         if size == 1:

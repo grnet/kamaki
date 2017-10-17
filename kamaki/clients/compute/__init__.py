@@ -31,6 +31,7 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+from base64 import b64encode
 from kamaki.clients import ClientError
 from kamaki.clients.compute.rest_api import ComputeRestClient
 
@@ -128,6 +129,9 @@ class ComputeClient(ComputeRestClient):
         :param personality: a list of (file path, file contents) tuples,
             describing files to be injected into virtual server upon creation
 
+        :param user_data: (str) the path to a file containing an opaque blob of
+            data which is made available to the instance
+
         :param networks: (list of dicts) Networks to connect to, list this:
             [
             {"uuid": <network_uuid>},
@@ -154,7 +158,7 @@ class ComputeClient(ComputeRestClient):
         r = self.servers_post(
             json_data=req,
             security_group=security_group,
-            user_data=user_data,
+            user_data=b64encode(user_data) if user_data else None,
             availability_zone=availability_zone)
         for k, v in response_headers.items():
             response_headers[k] = r.headers.get(k, v)
