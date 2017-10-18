@@ -1,4 +1,4 @@
-# Copyright 2011-2016 GRNET S.A. All rights reserved.
+# Copyright 2011-2017 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -858,6 +858,44 @@ class server_shutdown(_CycladesInit,  _ServerWait):
 _basic_cons = CycladesComputeClient.CONSOLE_TYPES
 
 
+@command(server_cmds)
+class server_rescue(_CycladesInit):
+    """Rescue an existing virtual server"""
+
+    arguments = dict(
+        rescue_image_ref=ValueArgument('The rescue image ID to use',
+                                       '--rescue-image-ref')
+    )
+
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.server_id
+    def _run(self, server_id):
+        rescue_image_ref = None
+        if self['rescue_image_ref']:
+            rescue_image_ref = int(self['rescue_image_ref'])
+        self.client.rescue_server(int(server_id), rescue_image_ref)
+
+    def main(self, server_id):
+        super(self.__class__, self)._run()
+        self._run(server_id=server_id)
+
+@command(server_cmds)
+class server_unrescue(_CycladesInit):
+    """Unrescue an existing virtual server, currently in rescue mode"""
+
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.server_id
+    def _run(self, server_id):
+        rescue_image_ref = None
+        self.client.unrescue_server(int(server_id))
+
+    def main(self, server_id):
+        super(self.__class__, self)._run()
+        self._run(server_id=server_id)
+
+
 class ConsoleTypeArgument(ValueArgument):
 
     TRANSLATE = {'no-vnc': 'vnc-ws', 'no-vnc-encrypted': 'vnc-wss'}
@@ -991,7 +1029,9 @@ class flavor_list(_CycladesInit, OptionalOutput, NameFilter, IDFilter):
         vcpus=ValueArgument('filter by number of VCPUs', ('--vcpus')),
         disk=ValueArgument('filter by disk size in GB', ('--disk')),
         disk_template=ValueArgument(
-            'filter by disk_templace', ('--disk-template'))
+            'filter by disk_templace', ('--disk-template')),
+        project_id=ValueArgument('filter by project ID', '--project'),
+        is_public=FlagArgument('list only public flavors', '--public'),
     )
 
     def _apply_common_filters(self, flavors):
@@ -1012,7 +1052,8 @@ class flavor_list(_CycladesInit, OptionalOutput, NameFilter, IDFilter):
         withcommons = self['ram'] or self['vcpus'] or (
             self['disk'] or self['disk_template'])
         detail = self['detail'] or withcommons
-        flavors = self.client.list_flavors(detail)
+        flavors = self.client.list_flavors(
+            detail, is_public=self['is_public'], project_id=self['project_id'])
         flavors = self._filter_by_name(flavors)
         flavors = self._filter_by_id(flavors)
         if withcommons:

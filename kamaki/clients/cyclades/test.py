@@ -1,4 +1,4 @@
-# Copyright 2013-2015 GRNET S.A. All rights reserved.
+# Copyright 2013-2017 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -141,6 +141,15 @@ class CycladesComputeRestClient(TestCase):
         delete.assert_called_once_with(
             u'/servers/%s/os-volume_attachments/%s' % (server_id, att_id),
             success=202)
+
+    @patch('kamaki.clients.Client.get', return_value='ret')
+    @patch('kamaki.clients.Client.set_param')
+    def test_flavors_get(self, set_param, get):
+        pid = 'some-project-id'
+        self.client.flavors_get(project_id=pid)
+        get.assert_called_once_with(u'/flavors', success=200)
+        self.assertEqual(
+            set_param.mock_calls[0], call('SNF:flavor-access', pid, iff=pid))
 
 
 class CycladesNetworkClient(TestCase):
@@ -310,6 +319,19 @@ class CycladesComputeClient(TestCase):
         self.assertEqual(r, [dict(id='att-id-2', volumeId='volume-id'), ])
         list_volume_attachments.assert_called_once_with(server_id)
         delete_volume_attachment.assert_called_once_with(server_id, 'att-id-2')
+
+    @patch('{0}.flavors_get'.format(cyclades_pkg), return_value=FR())
+    def test_list_flavors(self, flavors_get):
+        FR.json = {'flavors': 'ret'}
+
+        for detail, is_public, project_id in product(
+                (True, None), (True, False, None), ('some-id', None)
+                ):
+            kw = dict(
+                detail=detail, is_public=is_public, project_id=project_id)
+            r = self.client.list_flavors(**kw)
+            self.assertEqual(r, 'ret')
+            self.assertEqual(flavors_get.mock_calls[-1], call(**kw))
 
 
 clients_pkg = 'kamaki.clients.Client'

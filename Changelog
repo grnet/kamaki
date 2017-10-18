@@ -3,6 +3,26 @@
 Changelog file for Kamaki versions >= 0.13
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+.. _Changelog-0.16:
+
+v0.16
+=====
+
+Release: Wed 18 Oct 14:53:32 EEST 2017
+
+Bugfixes
+--------
+
+* Fix call of flavor_get() in get_flavor_details()
+
+Features
+--------
+
+* Add support for rescue mode in compute client
+* Add support for filtering flavors by project id
+* Add support for listing only public flavors
+
+
 .. _Changelog-0.15:
 
 v0.15
