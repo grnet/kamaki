@@ -1,4 +1,4 @@
-# Copyright 2011-2013 GRNET S.A. All rights reserved.
+# Copyright 2011-2017 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -255,6 +255,18 @@ class ComputeClient(ComputeRestClient):
         r = self.servers_action_post(server_id, json_data=req, success=202)
         return r.headers
 
+    def rescue_server(self, server_id, rescue_image_ref=None):
+        req = {'rescue': {}}
+        if rescue_image_ref is not None:
+            req['rescue_image_ref'] = rescue_image_ref
+        r = self.servers_action_post(server_id, json_data=req, success=202)
+        return r.headers
+
+    def unrescue_server(self, server_id):
+        req = {'unrescue': {}}
+        r = self.servers_action_post(server_id, json_data=req, success=202)
+        return r.headers
+
     def get_server_metadata(self, server_id, key='', response_headers=dict(
             previous=None, next=None)):
         r = self.servers_metadata_get(server_id, key)
@@ -291,15 +303,12 @@ class ComputeClient(ComputeRestClient):
             server_id, network_id=network_id, changes_since=changes_since)
         return r.json['network']
 
-    def list_flavors(self, detail=False, response_headers=dict(
-            previous=None, next=None)):
-        r = self.flavors_get(detail=bool(detail))
-        for k, v in response_headers.items():
-            response_headers[k] = r.headers.get(k, v)
+    def list_flavors(self, detail=None, is_public=None):
+        r = self.flavors_get(detail=detail, is_public=is_public)
         return r.json['flavors']
 
     def get_flavor_details(self, flavor_id):
-        r = self.flavors_get(flavor_id)
+        r = self.flavors_get(flavor_id=flavor_id)
         return r.json['flavor']
 
     def list_images(self, detail=False, response_headers=dict(

@@ -1,4 +1,4 @@
-# Copyright 2012-2015 GRNET S.A. All rights reserved.
+# Copyright 2012-2017 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -67,6 +67,11 @@ class CycladesComputeRestClient(ComputeClient):
             'servers', server_id, 'os-volume_attachments', attachment_id)
         success = kwargs.pop('success', 202)
         return self.delete(path, success=success, **kwargs)
+
+    def flavors_get(self, **kwargs):
+        project_id = kwargs.pop('project_id', None)
+        self.set_param('SNF:flavor-access', project_id, iff=project_id)
+        return super(ComputeClient, self).flavors_get(**kwargs)
 
 
 #  Backwards compatibility
