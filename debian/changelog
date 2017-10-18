@@ -1,3 +1,9 @@
+kamaki (0.16-1~jessie) jessie; urgency=medium
+
+  * New upstream version
+
+ -- Nikos Skalkotos <skalkoto@grnet.gr>  Wed, 18 Oct 2017 15:46:46 +0300
+
 kamaki (0.15-2~jessie) jessie; urgency=medium
 
   * Fix changelog history
@@ -378,5 +384,6 @@ kamaki (0.3.0-1) stable; urgency=low
   * New upstream version 
 
  -- Kostas Papadimitriou <kpap@grnet.gr>  Thu, 03 May 2012 14:06:49 +0300
+
 
 
