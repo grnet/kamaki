@@ -1,3 +1,9 @@
+kamaki (0.16-2~stretch) stretch; urgency=medium
+
+  * New upstream version
+
+ -- Nikos Skalkotos <skalkoto@grnet.gr>  Thu, 19 Oct 2017 16:22:19 +0300
+
 kamaki (0.16-1~jessie) jessie; urgency=medium
 
   * New upstream version
