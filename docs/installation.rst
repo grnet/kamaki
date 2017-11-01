@@ -19,13 +19,13 @@ Linux and Unix-like environments
 Debian
 ^^^^^^
 
-For Debian 8.0 (jessie):
+For Debian 9.0 (stretch):
 
 * As root, append the following to */etc/apt/sources.list* ::
 
-    deb http://apt.dev.grnet.gr jessie/
+    deb http://apt.dev.grnet.gr stretch/
 
-.. note:: For Debian 7.0 (wheezy) replace `jessie/` with `wheezy/` in the
+.. note:: For Debian 8.0 (jessie) replace `stretch/` with `jessie/` in the
  appeded line above
 
 * Make sure the GPG public key for the Synnefo repository is added:
