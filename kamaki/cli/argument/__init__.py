@@ -609,7 +609,22 @@ class PithosLocationArgument(ValueArgument):
                         '  [kamaki] container list CONTAINER'])
 
 
-#  Initial command line interface arguments
+class FileContentArgument(ValueArgument):
+    """A file whose content we be return"""
+    @property
+    def value(self):
+        return getattr(self, "_value", self.default)
+
+    @value.setter
+    def value(self, new_file):
+        if not new_file:
+            return
+        try:
+            with open(new_file) as user_data:
+                self._value = user_data.read()
+        except IOError as err:
+            raise CLIInvalidArgument('Could not open user data file',
+                                     details=["%s" % err])
 
 
 class ArgumentParseManager(object):

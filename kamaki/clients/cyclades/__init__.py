@@ -31,6 +31,8 @@
 # interpreted as representing official policies, either expressed
 # or implied, of GRNET S.A.
 
+from base64 import b64encode
+
 from kamaki.clients.cyclades.rest_api import (
     CycladesComputeRestClient, CycladesBlockStorageRestClient)
 from kamaki.clients.network import NetworkClient
@@ -44,7 +46,7 @@ class CycladesComputeClient(CycladesComputeRestClient, Waiter):
     CONSOLE_TYPES = ('vnc', 'vnc-ws', 'vnc-wss')
 
     def create_server(
-            self, name, flavor_id, image_id, key_name=None,
+            self, name, flavor_id, image_id, key_name=None, user_data=None,
             metadata=None, personality=None, networks=None, project_id=None,
             response_headers=dict(location=None)):
         """Submit request to create a new server
@@ -54,6 +56,9 @@ class CycladesComputeClient(CycladesComputeRestClient, Waiter):
         :param flavor_id: integer id denoting a preset hardware configuration
 
         :param image_id: (str) id denoting the OS image to run on virt. server
+
+        :param user_data: (str) an opaque blob of data which is made available
+            to the instance
 
         :param metadata: (dict) vm metadata updated by os/users image metadata
 
@@ -87,6 +92,9 @@ class CycladesComputeClient(CycladesComputeRestClient, Waiter):
 
         if key_name:
             req['server']['key_name'] = key_name
+
+        if user_data:
+            req['server']['user_data'] = b64encode(user_data)
 
         if metadata:
             req['server']['metadata'] = metadata
