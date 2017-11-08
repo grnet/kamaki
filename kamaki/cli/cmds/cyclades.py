@@ -428,11 +428,13 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
         server_name=ValueArgument('The name of the new server', '--name'),
         flavor_id=IntArgument('The ID of the flavor', '--flavor-id'),
         image_id=ValueArgument('The ID of the image', '--image-id'),
-        key_name=ValueArgument('The name of the ssh key to add the server',
-                               '--key-name'),
-        user_data=FileContentArgument('A file containing a blob of data to '
-                                      'be made available to the instance',
-                                      ('-u', '--user-data')),
+        key_name=RepeatableArgument(
+            'The name of the ssh key to add to server (can be repeated)',
+            '--key-name'),
+        user_data=FileContentArgument(
+            'A file containing a blob of data to be made available to the'
+            ' instance',
+            ('-u', '--user-data')),
         personality=PersonalityArgument(
             (80 * ' ').join(howto_personality), ('-p', '--personality')),
         wait=FlagArgument('Wait server to build', ('-w', '--wait')),
@@ -472,7 +474,7 @@ class server_create(_CycladesInit, OptionalOutput, _ServerWait):
             name='%s%s' % (prefix, i if size > 1 else ''),
             flavor_id=flavor_id,
             image_id=image_id,
-            key_name=self['key_name'],
+            key_names=self['key_name'],
             project_id=self['project_id'],
             personality=self['personality'],
             user_data=self['user_data'],
