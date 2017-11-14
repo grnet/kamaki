@@ -46,9 +46,9 @@ class CycladesComputeClient(CycladesComputeRestClient, Waiter):
     CONSOLE_TYPES = ('vnc', 'vnc-ws', 'vnc-wss')
 
     def create_server(
-            self, name, flavor_id, image_id, key_name=None, user_data=None,
-            metadata=None, personality=None, networks=None, project_id=None,
-            response_headers=dict(location=None)):
+            self, name, flavor_id, image_id, key_names=None, key_name=None,
+            user_data=None, metadata=None, personality=None, networks=None,
+            project_id=None, response_headers=dict(location=None)):
         """Submit request to create a new server
 
         :param name: (str)
@@ -56,6 +56,11 @@ class CycladesComputeClient(CycladesComputeRestClient, Waiter):
         :param flavor_id: integer id denoting a preset hardware configuration
 
         :param image_id: (str) id denoting the OS image to run on virt. server
+
+        :param key_names: (list) a list of ssh key names for ssh access. Uses a
+            Synnefo API extension.
+
+        :param key_name: (str) a key name for ssh access. OpenStack compatible.
 
         :param user_data: (str) an opaque blob of data which is made available
             to the instance
@@ -92,6 +97,9 @@ class CycladesComputeClient(CycladesComputeRestClient, Waiter):
 
         if key_name:
             req['server']['key_name'] = key_name
+
+        if key_names:
+            req['server']['SNF:key_names'] = key_names
 
         if user_data:
             req['server']['user_data'] = b64encode(user_data)
