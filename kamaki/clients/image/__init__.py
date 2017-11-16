@@ -93,7 +93,7 @@ class ImageClient(Client):
             async_params['sort_key'] = order
 
         r = self.get(path, async_params=async_params, success=200)
-        return r.json
+        return r.json['images'] if 'images' in r.json else r.json
 
     def get_meta(self, image_id):
         """
