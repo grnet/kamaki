@@ -619,10 +619,20 @@ class server_modify(_CycladesInit):
             'Delete metadata by key (can be repeated)', '--metadata-del'),
         public_network_port_id=ValueArgument(
             'Connection to set new firewall (* for all)', '--port-id'),
+        tag_to_add=ValueArgument(
+            'Add one tag to a virtual machine instance', '--tag-add'),
+        tag_to_delete=ValueArgument(
+            'Delete one tag of a virtual machine instance', '--tag-del'),
+        tags_delete=FlagArgument(
+            'Delete all tags of a virtual machine instance', '--tags-del'),
+        tag_to_replace=RepeatableArgument(
+            'Replace all tags of a virtual machine instance with a new set',
+            '--tag-replace'),
     )
     required = [
         'server_name', 'flavor_id', 'firewall_profile', 'metadata_to_set',
-        'metadata_to_delete']
+        'metadata_to_delete', 'tag_to_add', 'tag_to_delete',
+        'tags_delete', 'tag_to_replace']
 
     def _set_firewall_profile(self, server_id):
         vm = self._restruct_server_info(
@@ -699,6 +709,14 @@ class server_modify(_CycladesInit):
         for key in (self['metadata_to_delete'] or []):
             errors.Cyclades.metadata(
                 self.client.delete_server_metadata)(server_id, key=key)
+        if self['tag_to_add']:
+            self.client.add_tag(server_id, self['tag_to_add'])
+        if self['tag_to_delete']:
+            self.client.delete_tag(server_id, self['tag_to_delete'])
+        if self['tags_delete']:
+            self.client.delete_tags(server_id)
+        if self['tag_to_replace']:
+            self.client.replace_tags(server_id, self['tag_to_replace'])
 
     def main(self, server_id):
         super(self.__class__, self)._run()
@@ -885,6 +903,7 @@ class server_rescue(_CycladesInit):
     def main(self, server_id):
         super(self.__class__, self)._run()
         self._run(server_id=server_id)
+
 
 @command(server_cmds)
 class server_unrescue(_CycladesInit):
@@ -1197,6 +1216,51 @@ class server_detach(_CycladesInit):
                 '%s and %s are mutually exclusive' % (
                     self.arguments['attachment_id'].lvalue,
                     self.arguments['volume_id'].lvalue)])
+        self._run(server_id=server_id)
+
+
+@command(server_cmds)
+class server_tags(_CycladesInit, OptionalOutput):
+    """List a Virtual Machine's tags"""
+
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.server_id
+    def _run(self, server_id):
+        self.print_(self.client.list_tags(server_id))
+
+    def main(self, server_id):
+        super(self.__class__, self)._run()
+        self._run(server_id=server_id)
+
+
+@command(server_cmds)
+class server_tagexists(_CycladesInit, OptionalOutput):
+    """Check whether a Virtual Machine tag exists"""
+
+    arguments = dict(
+        tag_to_check=ValueArgument('tag to check existence', ('-t', '--tag')),
+    )
+
+    required = ['tag_to_check']
+
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.server_id
+    def _run(self, server_id):
+        if self['tag_to_check']:
+            try:
+                status = self.client.check_tag_exists(server_id,
+                                                      self['tag_to_check'])
+            except ClientError as e:
+                if e.status == 404:
+                    status = e.status
+                else:
+                    raise
+            self.writeln(status == 204)
+
+    def main(self, server_id):
+        super(self.__class__, self)._run()
         self._run(server_id=server_id)
 
 
