@@ -314,7 +314,18 @@ class CachedAstakosClient(Client):
         token = self._resolve_token(token)
         self._validate_token(token)
         r = self._cache[self._uuids[token]]
-        return r['access']['user']
+        user_access = r['access']
+        user_info = user_access['user']
+        user_info['default_project'] = user_access['token']['tenant']['id']
+        return user_info
+
+    @_astakos_error
+    def user_set_default_project(self, project_id, token=None):
+        token = self._resolve_token(token)
+        self._validate_token(token)
+        uuid = self._uuids[token]
+        astakos = self._astakos[uuid]
+        return astakos.set_default_project(project_id)
 
     def term(self, key, token=None):
         """Get (cached) term, from user credentials"""
