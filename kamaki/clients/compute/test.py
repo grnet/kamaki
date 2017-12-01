@@ -536,12 +536,11 @@ class ComputeClient(TestCase):
 
         for params in product(
                 ('security_group', None),
-                ('user_data', None),
                 ('availability_zone', None),
                 (None, {'os': 'debian', 'users': 'root'})):
-            kwargs = dict()
+            kwargs = {"user_data": None}
             for i, k in enumerate((
-                    'security_group', 'user_data', 'availability_zone')):
+                    'security_group', 'availability_zone')):
                 if params[i]:
                     kwargs[k] = params[i]
             with patch.object(
@@ -553,7 +552,6 @@ class ComputeClient(TestCase):
                     flavorRef=fid, name=vm_name, imageRef=img_ref))
                 for k in set([
                         'security_group',
-                        'user_data',
                         'availability_zone']).difference(kwargs):
                     kwargs[k] = None
                 self.assertEqual(
