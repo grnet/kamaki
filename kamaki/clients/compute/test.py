@@ -711,7 +711,7 @@ class ComputeClient(TestCase):
     def test_get_flavor_details(self, FG):
         FR.json = dict(flavor=flavor_list['flavors'][0])
         r = self.client.get_flavor_details(fid)
-        FG.assert_called_once_with(fid)
+        FG.assert_called_once_with(flavor_id=fid)
         self.assert_dicts_are_equal(r, flavor_list['flavors'][0])
 
     @patch('%s.images_get' % compute_pkg, return_value=FR())
