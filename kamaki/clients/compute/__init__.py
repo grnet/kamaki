@@ -115,6 +115,7 @@ class ComputeClient(ComputeRestClient):
             metadata=None,
             personality=None,
             networks=None,
+            tags=None,
             response_headers=dict(location=None)):
         """Submit request to create a new server
 
@@ -139,6 +140,8 @@ class ComputeClient(ComputeRestClient):
             {"port": <port_id>}, ...]
             ATTENTION: Empty list is different to None.
 
+        :param tags: (list) a list of tags to assign to the server
+
         :returns: a dict with the new virtual server details
 
         :raises ClientError: wraps request errors
@@ -154,6 +157,9 @@ class ComputeClient(ComputeRestClient):
 
         if networks is not None:
             req['server']['networks'] = networks
+
+        if tags is not None:
+            req['server']['tags'] = tags
 
         r = self.servers_post(
             json_data=req,
@@ -506,3 +512,61 @@ class ComputeClient(ComputeRestClient):
         """
         r = self.keypairs_delete(key_name, success=204)
         return r.headers
+
+    def check_tag_exists(self, server_id, tag):
+        """
+        :param server_id: integer (str or int)
+        :param tag: (str)
+
+        :returns: integer HTTP status code
+        """
+        r = self.servers_tag_exists(server_id, tag)
+        return r.status_code
+
+    def add_tag(self, server_id, tag):
+        """
+        :param server_id: integer (str or int)
+        :param tag: (str)
+
+        :returns: request response
+        """
+        r = self.servers_tag_add(server_id, tag)
+        return r.headers
+
+    def delete_tag(self, server_id, tag):
+        """
+        :param server_id: integer (str or int)
+        :param tag: (str)
+
+        :returns: integer HTTP status code
+        """
+        r = self.servers_tag_delete(server_id, tag)
+        return r.status_code
+
+    def list_tags(self, server_id):
+        """
+        :param server_id: integer (str or int)
+
+        :returns: (list) server tags
+        """
+        r = self.servers_tags_get(server_id)
+        return r.json['tags']
+
+    def replace_tags(self, server_id, tags):
+        """
+        :param server_id: integer (str or int)
+        :param tag: (str)
+
+        :returns: (list) server tags
+        """
+        r = self.servers_tags_replace(server_id, tags)
+        return r.json['tags']
+
+    def delete_tags(self, server_id):
+        """
+        :param server_id: integer (str or int)
+
+        :returns: integer HTTP status code
+        """
+        r = self.servers_tags_delete(server_id)
+        return r.status_code

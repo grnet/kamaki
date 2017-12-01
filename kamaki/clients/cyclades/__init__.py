@@ -78,6 +78,8 @@ class CycladesComputeClient(CycladesComputeRestClient, Waiter):
             ATTENTION: Empty list is different to None. None means 'apply the
             default server policy', empty list means 'do not attach a network'
 
+        :param tags: a list of tags to assign to the server
+
         :param project_id: the project where to assign the server
 
         :returns: a dict with the new virtual server details
@@ -292,64 +294,6 @@ class CycladesComputeClient(CycladesComputeRestClient, Waiter):
         r = self.flavors_get(
             detail=detail, is_public=is_public, project_id=project_id)
         return r.json['flavors']
-
-    def check_tag_exists(self, server_id, tag):
-        """
-        :param server_id: integer (str or int)
-        :param tag: (str)
-
-        :returns: integer HTTP status code
-        """
-        r = self.servers_tag_exists(server_id, tag)
-        return r.status_code
-
-    def add_tag(self, server_id, tag):
-        """
-        :param server_id: integer (str or int)
-        :param tag: (str)
-
-        :returns: request response
-        """
-        r = self.servers_tag_add(server_id, tag)
-        return r.headers
-
-    def delete_tag(self, server_id, tag):
-        """
-        :param server_id: integer (str or int)
-        :param tag: (str)
-
-        :returns: integer HTTP status code
-        """
-        r = self.servers_tag_delete(server_id, tag)
-        return r.status_code
-
-    def list_tags(self, server_id):
-        """
-        :param server_id: integer (str or int)
-
-        :returns: (list) server tags
-        """
-        r = self.servers_tags_get(server_id)
-        return r.json['tags']
-
-    def replace_tags(self, server_id, tags):
-        """
-        :param server_id: integer (str or int)
-        :param tag: (str)
-
-        :returns: (list) server tags
-        """
-        r = self.servers_tags_replace(server_id, tags)
-        return r.json['tags']
-
-    def delete_tags(self, server_id):
-        """
-        :param server_id: integer (str or int)
-
-        :returns: integer HTTP status code
-        """
-        r = self.servers_tags_delete(server_id)
-        return r.status_code
 
 # Backwards compatibility - will be removed in 0.15
 CycladesClient = CycladesComputeClient

@@ -438,3 +438,34 @@ class ComputeRestClient(Client):
         """
         path = path4url('os-keypairs', key_name)
         return self.delete(path, success=success, **kwargs)
+
+    def servers_tag_exists(self, server_id, tag, **kwargs):
+        """GET endpoint_url/servers/<server_id>/tags/<tag>"""
+        path = path4url('servers', server_id, 'tags', tag)
+        return self.get(path, success=204, **kwargs)
+
+    def servers_tag_add(self, server_id, tag, **kwargs):
+        """PUT endpoint_url/servers/<server_id>/tags/<tag>"""
+        path = path4url('servers', server_id, 'tags', tag)
+        return self.put(path, success=201, **kwargs)
+
+    def servers_tag_delete(self, server_id, tag, **kwargs):
+        """DELETE endpoint_url/servers/<server_id>/tags/<tag>"""
+        path = path4url('servers', server_id, 'tags', tag)
+        return self.delete(path, success=204, **kwargs)
+
+    def servers_tags_get(self, server_id, **kwargs):
+        """GET endpoint_url/servers/<server_id>/tags"""
+        path = path4url('servers', server_id, 'tags')
+        return self.get(path, success=200, **kwargs)
+
+    def servers_tags_replace(self, server_id, tags, **kwargs):
+        """PUT endpoint_url/servers/<server_id>/tags"""
+        path = path4url('servers', server_id, 'tags')
+        request = {'tags': tags}
+        return self.put(path, json=request, success=200, **kwargs)
+
+    def servers_tags_delete(self, server_id, **kwargs):
+        """DELETE endpoint_url/servers/<server_id>/tags"""
+        path = path4url('servers', server_id, 'tags')
+        return self.delete(path, success=204, **kwargs)
