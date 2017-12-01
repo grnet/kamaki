@@ -849,13 +849,13 @@ class ComputeClient(TestCase):
 
     @patch('%s.keypairs_post' % compute_pkg, return_value=FR())
     def test_create_keypair(self, post):
-        keypair = dict(name=key_name, public_key=public_key,
-                       fingerpint="ke:yf:in:ge:rp:in:t")
+        keypair = keypair_list['keypairs'][0]['keypair']
         FR.json = dict(keypair=keypair)
-        r = self.client.create_key(key_name=key_name,
-                                   public_key=public_key)
+        r = self.client.create_key(key_name=keypair['name'],
+                                   public_key=keypair['public_key'])
         post.assert_called_once_with(json_data=dict(keypair=dict(
-            name=key_name, public_key=public_key)), success=201)
+            name=keypair['name'], public_key=keypair['public_key'])),
+            success=201)
         self.assert_dicts_are_equal(r, keypair)
 
     @patch('%s.keypairs_delete' % compute_pkg, return_value=FR())
