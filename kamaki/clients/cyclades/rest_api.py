@@ -71,6 +71,8 @@ class CycladesComputeRestClient(ComputeClient):
     def flavors_get(self, **kwargs):
         project_id = kwargs.pop('project_id', None)
         self.set_param('SNF:flavor-access', project_id, iff=project_id)
+        is_public = kwargs.pop('is_public', None)
+        self.set_param('SNF:is_public', is_public, iff=is_public)
         return super(ComputeClient, self).flavors_get(**kwargs)
 
 

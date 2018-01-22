@@ -313,8 +313,8 @@ class ComputeClient(ComputeRestClient):
             server_id, network_id=network_id, changes_since=changes_since)
         return r.json['network']
 
-    def list_flavors(self, detail=None, is_public=None):
-        r = self.flavors_get(detail=detail, is_public=is_public)
+    def list_flavors(self, detail=None):
+        r = self.flavors_get(detail=detail)
         return r.json['flavors']
 
     def get_flavor_details(self, flavor_id):
