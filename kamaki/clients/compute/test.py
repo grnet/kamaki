@@ -456,8 +456,7 @@ class ComputeRestClient(TestCase):
             minDisk=('minDisk', None),
             minRam=('minRam', None),
             marker=('marker', None),
-            limit=('limit', None),
-            is_public=('is_public', None), )
+            limit=('limit', None), )
         self._test_get('flavors', params)
 
     @patch('%s.get' % rest_pkg, return_value=FR())
@@ -750,12 +749,11 @@ class ComputeClient(TestCase):
     @patch('%s.flavors_get' % compute_pkg, return_value=FR())
     def test_list_flavors(self, FG):
         FR.json = flavor_list
-        for (detail, is_public) in product(
-                ('', 'detail'), (True, False, None)):
+        for detail in ('', 'detail'):
             r = self.client.list_flavors(
-                detail=bool(detail), is_public=is_public)
+                detail=bool(detail))
             self.assertEqual(FG.mock_calls[-1], call(
-                detail=bool(detail), is_public=is_public))
+                detail=bool(detail)))
             self.assertEqual(r, flavor_list['flavors'])
 
     @patch('%s.flavors_get' % compute_pkg, return_value=FR())
