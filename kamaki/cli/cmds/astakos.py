@@ -267,6 +267,29 @@ class user_info(_AstakosInit, OptionalOutput):
 
 
 @command(user_cmds)
+class user_setdefaultproject(_AstakosInit, OptionalOutput):
+    """Set default project for (current) session user"""
+
+    @errors.Generic.all
+    @errors.Astakos.astakosclient
+    def _run(self, project_id):
+        try:
+            self.astakos.user_set_default_project(project_id)
+        except KeyError:
+            msg = ('id %s' % self['uuid'])
+            raise CLIError(
+                'No user with %s in the cached session list' % msg, details=[
+                    'To see all cached session users:',
+                    '  kamaki user list',
+                    'To authenticate and add a new user in the session list:',
+                    '  kamaki user add NEW_TOKEN'])
+
+    def main(self, project_id):
+        super(self.__class__, self)._run()
+        self._run(project_id)
+
+
+@command(user_cmds)
 class user_add(_AstakosInit, OptionalOutput):
     """Authenticate a user by token and add to session user list (cache)"""
 

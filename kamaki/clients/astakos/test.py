@@ -368,6 +368,24 @@ class CachedAstakosClient(TestCase):
         resolve.assert_called_once_with('dont care')
         validate.assert_called_once_with('t1')
 
+    @patch(
+        'astakosclient.AstakosClient.set_default_project', return_value=None)
+    @patch(
+        '%s.CachedAstakosClient._resolve_token' % astakos_pkg,
+        return_value='t1')
+    @patch('%s.CachedAstakosClient._validate_token' % astakos_pkg)
+    @patch('astakosclient.AstakosClient.__init__', return_value=None)
+    def test_user_set_default_project(self, orig_astakos, validate, resolve,
+                                      set_default_project):
+        import astakosclient
+        self.client._uuids['t1'] = 'uuid0'
+        self.client._astakos['uuid0'] = astakosclient.AstakosClient(
+            self.url, self.token)
+        self.client.user_set_default_project('puuid0')
+        resolve.assert_called_once_with(None)
+        validate.assert_called_once_with('t1')
+        set_default_project.assert_called_once_with('puuid0')
+
     @patch('%s.CachedAstakosClient.user_info' % astakos_pkg, return_value=dict(
         key='val'))
     def test_user_term(self, user_info):
