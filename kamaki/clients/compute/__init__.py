@@ -1,4 +1,4 @@
-# Copyright 2011-2017 GRNET S.A. All rights reserved.
+# Copyright 2011-2018 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -518,10 +518,10 @@ class ComputeClient(ComputeRestClient):
         :param server_id: integer (str or int)
         :param tag: (str)
 
-        :returns: integer HTTP status code
+        :returns: (boolean)
         """
         r = self.servers_tag_exists(server_id, tag)
-        return r.status_code
+        return r.status_code == 204
 
     def add_tag(self, server_id, tag):
         """

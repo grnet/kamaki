@@ -41,7 +41,8 @@ from pydoc import pager
 
 from kamaki.cli import command
 from kamaki.cli.cmdtree import CommandTree
-from kamaki.cli.utils import remove_from_items, filter_dicts_by_dict
+from kamaki.cli.utils import (
+    remove_from_items, filter_dicts_by_dict, rearrange_tags_list)
 from kamaki.cli.errors import CLIError, CLISyntaxError, CLIInvalidArgument
 from kamaki.clients.cyclades import (
     CycladesComputeClient, ClientError, CycladesNetworkClient)
@@ -1228,8 +1229,7 @@ class server_tags(_CycladesInit, OptionalOutput):
     @errors.Cyclades.server_id
     def _run(self, server_id):
         orig = self.client.list_tags(server_id)
-        zipped = zip(orig['tags'], orig['statuses'])
-        r = [dict(id=tag, status=status) for tag, status in zipped]
+        r = rearrange_tags_list(orig)
         self.print_(r)
 
     def main(self, server_id):
@@ -1252,15 +1252,32 @@ class server_tagexists(_CycladesInit, OptionalOutput):
     @errors.Cyclades.server_id
     def _run(self, server_id):
         if self['tag_to_check']:
-            try:
-                status = self.client.check_tag_exists(server_id,
-                                                      self['tag_to_check'])
-            except ClientError as e:
-                if e.status == 404:
-                    status = e.status
-                else:
-                    raise
-            self.writeln(status == 204)
+            r = self.client.check_tag_exists(server_id, self['tag_to_check'])
+            self.writeln(r)
+
+    def main(self, server_id):
+        super(self.__class__, self)._run()
+        self._run(server_id=server_id)
+
+
+@command(server_cmds)
+class server_tagstatus(_CycladesInit, OptionalOutput):
+    """Get the status of a Virtual Machine tag"""
+
+    arguments = dict(
+        tag_to_check=ValueArgument('tag to get status of', ('-t', '--tag')),
+    )
+
+    required = ['tag_to_check']
+
+    @errors.Generic.all
+    @errors.Cyclades.connection
+    @errors.Cyclades.server_id
+    @errors.Cyclades.tag
+    def _run(self, server_id):
+        if self['tag_to_check']:
+            status = self.client.get_tag_status(server_id, self['tag_to_check'])
+            self.writeln(status)
 
     def main(self, server_id):
         super(self.__class__, self)._run()

@@ -1,4 +1,4 @@
-# Copyright 2011-2014 GRNET S.A. All rights reserved.
+# Copyright 2011-2018 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -443,3 +443,12 @@ def filter_dicts_by_dict(
         if match:
             new_dicts.append(d)
     return new_dicts
+
+
+def rearrange_tags_list(orig):
+    """
+    :param orig: {"statuses": ["s1", "s2", ...], "tags": ["t1", "t2", ...]}
+    :returns: [{"id": "t1", "status": "s1"}, {"id": "t2", "status": "s2"}]
+    """
+    zipped = zip(orig['tags'], orig['statuses'])
+    return [dict(id=tag, status=status) for tag, status in zipped]

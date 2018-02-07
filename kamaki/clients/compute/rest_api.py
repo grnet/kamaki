@@ -1,4 +1,4 @@
-# Copyright 2012-2017 GRNET S.A. All rights reserved.
+# Copyright 2012-2018 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -438,7 +438,8 @@ class ComputeRestClient(Client):
     def servers_tag_exists(self, server_id, tag, **kwargs):
         """GET endpoint_url/servers/<server_id>/tags/<tag>"""
         path = path4url('servers', server_id, 'tags', tag)
-        return self.get(path, success=204, **kwargs)
+        success = kwargs.pop('success', (204, 404))
+        return self.get(path, success=success, **kwargs)
 
     def servers_tag_add(self, server_id, tag, **kwargs):
         """PUT endpoint_url/servers/<server_id>/tags/<tag>"""

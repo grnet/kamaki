@@ -1,4 +1,4 @@
-# Copyright 2011-2016 GRNET S.A. All rights reserved.
+# Copyright 2011-2018 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -476,6 +476,23 @@ class Cyclades(object):
                         'metadata' in ('%s' % ce).lower()):
                     raise CLIError(
                         'No virtual server metadata with key %s' % key,
+                        details=['%s %s' % (getattr(ce, 'status', ''), ce), ])
+                raise
+        _raise.__name__ = func.__name__
+        return _raise
+
+    @classmethod
+    def tag(this, func):
+        def _raise(self, *args, **kwargs):
+            server_id = kwargs.get('server_id', None)
+            try:
+                func(self, *args, **kwargs)
+            except ClientError as ce:
+                if ce.status in (404, ):
+                    self.client.get_server_details(server_id)
+                    raise CLIError(
+                        'No such tag',
+                        importance=2,
                         details=['%s %s' % (getattr(ce, 'status', ''), ce), ])
                 raise
         _raise.__name__ = func.__name__

@@ -304,6 +304,26 @@ class CycladesComputeClient(CycladesComputeRestClient, Waiter):
         r = self.servers_tags_get(server_id)
         return r.json
 
+    def replace_tags(self, server_id, tags):
+        """
+        :param server_id: integer (str or int)
+        :param tag: (str)
+
+        :returns: (list) server tags
+        """
+        r = self.servers_tags_replace(server_id, tags)
+        return r.json
+
+    def get_tag_status(self, server_id, tag):
+        """
+        :param server_id: integer (int or str)
+        :param tag: (str)
+        :returns: (str)
+        :raises: 404 if tag does not exist
+        """
+        r = self.servers_tag_exists(server_id, tag, success=204)
+        return r.headers['tag-status']
+
 # Backwards compatibility - will be removed in 0.15
 CycladesClient = CycladesComputeClient
 
