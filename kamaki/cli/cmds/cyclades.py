@@ -1,4 +1,4 @@
-# Copyright 2011-2017 GRNET S.A. All rights reserved.
+# Copyright 2011-2018 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -1227,7 +1227,10 @@ class server_tags(_CycladesInit, OptionalOutput):
     @errors.Cyclades.connection
     @errors.Cyclades.server_id
     def _run(self, server_id):
-        self.print_(self.client.list_tags(server_id))
+        orig = self.client.list_tags(server_id)
+        zipped = zip(orig['tags'], orig['statuses'])
+        r = [dict(id=tag, status=status) for tag, status in zipped]
+        self.print_(r)
 
     def main(self, server_id):
         super(self.__class__, self)._run()

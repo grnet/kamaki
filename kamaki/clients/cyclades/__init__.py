@@ -1,4 +1,4 @@
-# Copyright 2011-2017 GRNET S.A. All rights reserved.
+# Copyright 2011-2018 GRNET S.A. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
@@ -294,6 +294,15 @@ class CycladesComputeClient(CycladesComputeRestClient, Waiter):
         r = self.flavors_get(
             detail=detail, is_public=is_public, project_id=project_id)
         return r.json['flavors']
+
+    def list_tags(self, server_id):
+        """
+        :param server_id: integer (str or int)
+
+        :returns: (list) server tags and statuses
+        """
+        r = self.servers_tags_get(server_id)
+        return r.json
 
 # Backwards compatibility - will be removed in 0.15
 CycladesClient = CycladesComputeClient
